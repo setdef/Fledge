@@ -62,8 +62,9 @@ class TarGzTest < Minitest::Test
     skip "tar is not on PATH" unless system("tar", "--version", out: File::NULL, err: File::NULL)
 
     Dir.mktmpdir do |dir|
-      path = write(dir)
-      out, status = Open3.capture2e("tar", "-xzf", path, "-C", dir)
+      write(dir)
+      # A relative path: GNU tar reads "D:/..." on Windows as a remote host.
+      out, status = Open3.capture2e("tar", "-xzf", "a.tar.gz", chdir: dir)
 
       assert_predicate status, :success?, out
       assert_equal "x" * 1000, File.read(File.join(dir, LONG))
@@ -83,11 +84,10 @@ class TarGzTest < Minitest::Test
       FileUtils.mkdir_p(File.join(dir, "src/#{'d' * 120}"))
       File.write(File.join(dir, "src/#{'d' * 120}/#{'f' * 120}"), "deep")
       File.symlink("x", File.join(dir, "src/l"))
-      archive = File.join(dir, "sys.tar.gz")
-      out, status = Open3.capture2e("tar", "-czf", archive, "-C", dir, "src")
+      out, status = Open3.capture2e("tar", "-czf", "sys.tar.gz", "src", chdir: dir)
       assert_predicate status, :success?, out
 
-      by_path = read(archive).to_h { |entry| [entry.path, entry] }
+      by_path = read(File.join(dir, "sys.tar.gz")).to_h { |entry| [entry.path, entry] }
 
       assert_equal "deep", by_path.fetch("src/#{'d' * 120}/#{'f' * 120}").content
       assert_equal "x", by_path.fetch("src/l").link

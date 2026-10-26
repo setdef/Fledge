@@ -11,10 +11,13 @@
 # coverage, REUSE, actionlint, clang-format) read the same files on
 # every OS, so one run answers for all three.
 #
-# Runtimes build on each platform's own runner (macos-15 is Apple
-# Silicon, ubuntu-24.04-arm is aarch64), because the launcher is native
-# code and nothing here cross-compiles. Apps, though, build for every
-# platform from one Linux runner, as ADR 001 promises developers.
+# The macOS and Linux runtimes build on each platform's own runner
+# (macos-15 is Apple Silicon, ubuntu-24.04-arm is aarch64), because their
+# launchers link Ruby itself. The Windows runtime builds on Linux: its
+# launcher loads Ruby's DLL when it runs, so it cross-compiles with a
+# pinned llvm-mingw from Ruby's headers alone (runtime/sources.yml), and
+# Windows runners test it and deliver it. Apps build for every platform
+# from one Linux runner, as ADR 001 promises developers.
 #
 # release.yml calls this workflow on a v* tag and publishes the runtimes
 # it built once Delivery passes. Nothing here, or ever, publishes to
@@ -106,8 +109,10 @@ jobs:
           fi
 
   # One runtime per platform (rake runtime): the launcher compiled with
-  # warnings as errors and the compiler's static analyzer, rv-ruby's
-  # standard library pruned beside it, and the license notices.
+  # warnings as errors and the compiler's static analyzer, the pinned
+  # Ruby's standard library pruned beside it (rv-ruby's, or for Windows
+  # RubyInstaller's, checked against its PGP signature), and the license
+  # notices.
   runtime:
     name: Runtime (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
@@ -122,6 +127,10 @@ jobs:
             platform: x86_64-linux
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
+          # Cross-compiled; the runner's 7z unpacks RubyInstaller's archive
+          # and its gpgv checks the signature.
+          - os: ubuntu-24.04
+            platform: x64-mingw-ucrt
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -138,14 +147,15 @@ jobs:
       # extensions. Pinned to Ubuntu 24.04's build of it; gcc, make, perl,
       # and xz, which libxcrypt's build needs, are on the runner already.
       - name: Install patchelf
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.platform != 'x64-mingw-ucrt'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq patchelf=0.18.0-1.1build1
 
-      # rv-ruby and libxcrypt downloads, keyed by the file that pins
-      # their SHA-256s, so a changed pin downloads afresh. The builder
-      # checks every cached file's SHA-256 again before using it.
+      # rv-ruby, RubyInstaller, llvm-mingw, and libxcrypt downloads, keyed
+      # by the file that pins their SHA-256s, so a changed pin downloads
+      # afresh. The builder checks every cached file's SHA-256 again
+      # before using it.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tmp/downloads
@@ -157,7 +167,7 @@ jobs:
         run: |
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
           export SOURCE_DATE_EPOCH
-          ruby tasks/runtime_builder.rb
+          ruby tasks/runtime_builder.rb "${{ matrix.platform }}"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -223,13 +233,16 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test
 
-  # Windows has no runtime yet (its spike is separate), so its tests run
-  # without one, on RubyInstaller's Ruby, the Ruby an x64-mingw-ucrt
-  # runtime will ship (ADR 001), through setup-ruby at mise.toml's pin.
+  # The tests on Windows, with the Windows runtime, on RubyInstaller's
+  # Ruby, which the runtime ships too (ADR 001), through setup-ruby at
+  # mise.toml's pin. test/built_app_test.rb unpacks hello with Windows'
+  # own Expand-Archive and runs hello.exe; test/zip_test.rb checks that
+  # Expand-Archive reads what Fledge::Zip writes.
   test-windows:
-    name: Test (windows-latest)
+    name: Test (x64-mingw-ucrt)
+    needs: runtime
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -244,10 +257,17 @@ jobs:
           ruby-version: ${{ steps.pins.outputs.ruby }}
           bundler-cache: true
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-x64-mingw-ucrt
+          path: ${{ runner.temp }}/runtimes
+
       - name: Run the tests
-        timeout-minutes: 10
+        timeout-minutes: 15
         env:
           A: --verbose
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test
 
   # Every platform's app from one Linux computer, from the runtimes the
@@ -274,10 +294,10 @@ jobs:
           merge-multiple: true
           path: ${{ runner.temp }}/runtimes
 
-      - name: Build hello for arm64-darwin, x86_64-linux, and aarch64-linux
+      - name: Build hello for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
-        run: ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux examples/hello
+        run: ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux -t x64-mingw-ucrt examples/hello
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -297,6 +317,13 @@ jobs:
         with:
           name: hello-aarch64-linux
           path: dist/hello-aarch64-linux.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hello-x64-mingw-ucrt
+          path: dist/hello-x64-mingw-ucrt.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -370,3 +397,31 @@ jobs:
 
       - name: Run hello on a computer with no Ruby installed
         run: .github/scripts/deliver.sh "delivered/hello-${{ matrix.platform }}.tar.gz" "${{ matrix.platform }}" --no-ruby-installed
+
+  # Delivery on a fresh Windows runner, with nothing of Fledge but the
+  # .zip and the script that checks it, and no Ruby set up: the runner's
+  # own Rubies and MSYS2 are kept off the app's PATH, and the script runs
+  # hello.exe from another drive, under a folder name outside ASCII, in a
+  # clean and in a hostile environment (.github/scripts/deliver.ps1).
+  delivery-windows:
+    name: Delivery (x64-mingw-ucrt)
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: hello-x64-mingw-ucrt
+          path: ${{ runner.temp }}/delivered
+
+      - name: Run hello.exe as someone with no Ruby would
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/hello-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt

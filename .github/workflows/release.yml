@@ -4,8 +4,8 @@
 # Publishes a Fledge release when the maintainer pushes a vX.Y.Z tag
 # (ADR 001, section 7; AGENTS.md, Releasing). It runs all of CI on the
 # tagged commit, and only when every job passes, Delivery included, does
-# it create the GitHub Release and attach each platform's runtime with a
-# SHA256SUMS file. fledge build at that version downloads its runtimes
+# it create the GitHub Release and attach each platform's runtime (macOS,
+# two Linux, and Windows, all .tar.gz) with a SHA256SUMS file. fledge build at that version downloads its runtimes
 # from this release and checks them against SHA256SUMS.
 #
 # Agents never push tags; whether and when to release is the
@@ -68,7 +68,10 @@ jobs:
         run: |
           sha256sum fledge-runtime-*.tar.gz > SHA256SUMS
           cat SHA256SUMS
-          [ "$(wc -l < SHA256SUMS)" -eq 3 ] || { echo "::error::expected three runtimes"; exit 1; }
+          [ "$(wc -l < SHA256SUMS)" -eq 4 ] || { echo "::error::expected four runtimes"; exit 1; }
+          for platform in arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt; do
+            grep -q "fledge-runtime-.*-$platform\.tar\.gz$" SHA256SUMS || { echo "::error::no $platform runtime"; exit 1; }
+          done
 
       - name: Create the release with the runtimes attached
         env:

@@ -18,7 +18,9 @@ command -v gcc windres objdump strip
 gcc --version | head -1
 
 cflags=(-std=gnu11 -O2 -Wall -Wextra -Werror -municode
-        -I"$ri/include/ruby-4.0.0" -I"$ri/include/ruby-4.0.0/x64-mingw-ucrt")
+        -isystem "$ri/include/ruby-4.0.0" -isystem "$ri/include/ruby-4.0.0/x64-mingw-ucrt")
+# -isystem: Ruby's own headers are not -Wextra clean (unused parameter in
+# ruby/internal/gc.h), and their warnings are not ours to fix.
 ldflags=(-municode -static-libgcc -s)
 
 (cd "$here" && windres launcher.rc -O coff -o "$obj/launcher.res.o")

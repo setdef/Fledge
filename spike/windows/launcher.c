@@ -41,7 +41,7 @@
  *
  * Compile (MSYS2 UCRT64 gcc):
  *   gcc -std=gnu11 -O2 -Wall -Wextra -Werror -municode \
- *       -I<ri>/include/ruby-4.0.0 -I<ri>/include/ruby-4.0.0/x64-mingw-ucrt \
+ *       -isystem <ri>/include/ruby-4.0.0 -isystem <ri>/include/ruby-4.0.0/x64-mingw-ucrt \
  *       launcher.c launcher.res.o -o launcher.exe -static-libgcc
  */
 

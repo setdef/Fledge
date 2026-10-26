@@ -27,6 +27,8 @@ ldflags=(-municode -static-libgcc -s)
 
 echo "== compile: run-time loading, console (the reference build)"
 gcc "${cflags[@]}" "$here/launcher.c" "$obj/launcher.res.o" "${ldflags[@]}" -mconsole -o "$out/launcher.exe"
+echo "== compile: run-time loading, console, no manifest (long-path control)"
+gcc "${cflags[@]}" "$here/launcher.c" "${ldflags[@]}" -mconsole -o "$out/launcher-nomanifest.exe"
 echo "== compile: run-time loading, windowed"
 gcc "${cflags[@]}" -DFLEDGE_WINDOWED "$here/launcher.c" "$obj/launcher.res.o" "${ldflags[@]}" -mwindows -o "$out/launcherw.exe"
 echo "== compile: run-time loading, --disable-gems"
@@ -80,6 +82,7 @@ make_app hello-full runtime-full hello
 make_app diag runtime-min diag
 cp "$out/launcherw.exe" "$out/apps/hello/hello-windowed.exe"
 cp "$out/launcher-nogems.exe" "$out/apps/hello/hello-nogems.exe"
+cp "$out/launcher-nomanifest.exe" "$out/apps/hello/hello-nomanifest.exe"
 cp "$out/launcher-nogems.exe" "$out/apps/diag/diag-nogems.exe"
 cp "$out/launcherw.exe" "$out/apps/diag/diag-windowed.exe"
 # The import-linked exe works only beside the DLL; a copy at the top

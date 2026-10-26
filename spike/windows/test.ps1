@@ -215,13 +215,27 @@ Check ($hex -eq '63 61 66 c3 a9 20 e2 9c 93 0a') 'UTF-8 bytes reach a redirected
 Section 'Long path (> 260 characters)'
 $lp = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -ErrorAction SilentlyContinue
 Write-Host "  LongPathsEnabled: $($lp.LongPathsEnabled)"
-$deep = Join-Path $env:RUNNER_TEMP ((1..12 | ForEach-Object { 'a-rather-long-folder-name' }) -join '\')
+# A folder whose own path is under MAX_PATH, so CreateProcess can start
+# the exe, but whose runtime files (rubygems.rb, extensions) are past it.
+$deep = $env:RUNNER_TEMP
+while ($deep.Length -lt 225) { $deep = Join-Path $deep 'a-rather-long-folder-name' }
 New-Item -ItemType Directory -Force $deep | Out-Null
 Copy-Item -Recurse (Join-Path $root 'hello') $deep
 $deepExe = Join-Path $deep 'hello\hello.exe'
-Write-Host "  exe path length: $($deepExe.Length)"
+$longest = (Get-ChildItem -Recurse -File (Join-Path $deep 'hello') | Sort-Object { $_.FullName.Length } | Select-Object -Last 1).FullName.Length
+Write-Host "  exe path length: $($deepExe.Length); longest runtime file path: $longest; rubygems.rb path: $((Join-Path $deep 'hello\ruby\lib\ruby\4.0.0\rubygems.rb').Length)"
 $r = Invoke-App $deepExe; Show $r
-Check (($r.Out -join "`n") -ceq $expected) 'hello.exe runs from a path longer than MAX_PATH'
+Check (($r.Out -join "`n") -ceq $expected) 'hello.exe (longPathAware manifest) runs with its runtime past MAX_PATH'
+$r = Invoke-App (Join-Path $deep 'hello\hello-nomanifest.exe'); Show $r
+Write-Host "  without the manifest: $(if (($r.Out -join "`n") -ceq $expected) { 'also works' } else { 'fails' })"
+
+# An exe whose own path is past MAX_PATH.
+$deeper = $deep
+while ($deeper.Length -lt 270) { $deeper = Join-Path $deeper 'a-rather-long-folder-name' }
+New-Item -ItemType Directory -Force $deeper | Out-Null
+Copy-Item -Recurse (Join-Path $root 'hello') $deeper
+$r = Invoke-App (Join-Path $deeper 'hello\hello.exe'); Show $r
+Write-Host "  exe path past MAX_PATH ($((Join-Path $deeper 'hello\hello.exe').Length) chars): $(if ($r.Code -eq 0) { 'starts' } else { 'Windows cannot start it' })"
 
 # --- Sizes ---------------------------------------------------------------
 Section 'Sizes'

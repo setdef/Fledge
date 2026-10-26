@@ -1,6 +1,8 @@
 /*
  * SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
  * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileComment: Adapted from the Windows launcher spike,
+ *   spike/windows/launcher.c on Fledge's spike/windows branch (ebd438d).
  */
 
 /*
@@ -15,7 +17,7 @@
  *   ruby\bin\x64-ucrt-ruby400.dll      Ruby
  *   ruby\bin\ruby_builtin_dlls\        the DLLs Ruby's DLL needs
  *   ruby\lib\ruby\4.0.0\               Ruby's standard library
- *   ruby\lib\ruby\gems\4.0.0\          Ruby's default gems
+ *   ruby\lib\ruby\gems\4.0.0\          Ruby's default and bundled gems
  *   notices\                           the licenses of everything above
  *
  * Ruby lives in a DLL, which this program loads when it runs rather than
@@ -45,15 +47,23 @@
  *      names for itself, never the current folder or PATH, where another
  *      Ruby's DLLs may be (SetDefaultDllDirectories).
  *   2. Finds the folder it lives in (GetModuleFileNameW).
- *   3. Removes every environment variable scrub.c names, from both
- *      copies of the environment Ruby reads (see scrub_environment).
- *      The runtime's own lib\ruby\4.0.0\rubygems\defaults\
- *      operating_system.rb, which replaces RubyInstaller's, then keeps
- *      RubyGems to the runtime's gems, away from the person's own.
+ *   3. Sets aside every environment variable scrub.c names, removing it
+ *      from both copies of the environment Ruby reads (see
+ *      scrub_environment). The runtime's own lib\ruby\4.0.0\rubygems\
+ *      defaults\operating_system.rb, which replaces RubyInstaller's, then
+ *      keeps RubyGems to the runtime's gems, away from the person's own.
  *   4. Runs the app with arguments equivalent to
- *        NAME --disable=rubyopt -I ROOT\app -- ROOT\app\main.rb ARGS
- *      and exits with the app's exit status. RubyInstaller's Ruby has no
- *      YJIT, so unlike on macOS and Linux there is no --yjit.
+ *        NAME --disable=rubyopt -- ROOT\app\main.rb ARGS
+ *      which is what ruby ROOT\app\main.rb ARGS does with no RUBYOPT
+ *      (ADR 003): no -I, so the app loads its own files with
+ *      require_relative.
+ *   5. Once Ruby has booted and before main.rb runs, fixes RubyGems'
+ *      paths and puts the variables of step 3 back (restore_environment),
+ *      so ENV and the app's child processes see what they would see
+ *      without Fledge.
+ *
+ * It exits with the app's exit status, or, when it cannot start the app,
+ * with a status from sysexits(3) (launcher.h), as unix.c does.
  *
  * Its entry point is wmain, linked with -municode, as Ruby's own ruby.exe
  * and rubyw.exe are. On Windows, ruby_sysinit discards the argv it is
@@ -153,14 +163,14 @@ show(const wchar_t *message)
 }
 
 /*
- * Shows "NAME: message" and exits with FLEDGE_EXIT_BROKEN_RUNTIME. A
- * person who runs an app never asked for Ruby, so messages name the app,
- * not Ruby.
+ * Shows "NAME: message" and exits with status, as Ruby's own
+ * "ruby: message" does. A person who runs an app never asked for Ruby, so
+ * messages name the app, not Ruby (ADR 002).
  */
-static void fail(const wchar_t *format, ...) __attribute__((noreturn));
+static void fail_with(int status, const wchar_t *format, ...) __attribute__((noreturn));
 
 static void
-fail(const wchar_t *format, ...)
+fail_with(int status, const wchar_t *format, ...)
 {
     wchar_t message[4096];
     size_t capacity = sizeof message / sizeof *message;
@@ -173,8 +183,10 @@ fail(const wchar_t *format, ...)
     va_end(arguments);
     message[capacity - 1] = L'\0';
     show(message);
-    exit(FLEDGE_EXIT_BROKEN_RUNTIME);
+    exit(status);
 }
+
+#define fail(...) fail_with(FLEDGE_EXIT_SOFTWARE, __VA_ARGS__)
 
 static void *
 allocate(size_t count, size_t size)
@@ -255,10 +267,18 @@ unset(const wchar_t *name)
 }
 
 /*
- * Removes every variable scrub.c names, in any case: Windows' variable
- * names ignore case, so bundle_gemfile is BUNDLE_GEMFILE. The names are
- * collected first, because removing a variable invalidates the block
- * being read.
+ * The variables scrub_environment set aside, name and value, in the case
+ * the person gave them, for restore_environment to put back.
+ */
+static wchar_t **set_aside_names;
+static wchar_t **set_aside_values;
+static size_t set_aside_count;
+
+/*
+ * Removes every variable scrub.c names, in any case, keeping a copy of
+ * each: Windows' variable names ignore case, so bundle_gemfile is
+ * BUNDLE_GEMFILE. The variables are collected first, because removing one
+ * invalidates the block being read.
  */
 static void
 scrub_environment(void)
@@ -269,8 +289,8 @@ scrub_environment(void)
     if (block == NULL) fail(L"could not read the environment (Windows error %lu)", GetLastError());
     for (const wchar_t *entry = block; *entry != L'\0'; entry += wcslen(entry) + 1) count++;
 
-    wchar_t **names = allocate(count + 1, sizeof *names);
-    size_t found = 0;
+    set_aside_names = allocate(count + 1, sizeof *set_aside_names);
+    set_aside_values = allocate(count + 1, sizeof *set_aside_values);
     for (const wchar_t *entry = block; *entry != L'\0'; entry += wcslen(entry) + 1) {
         /* "=C:=C:\folder" entries hold each drive's current folder. */
         if (entry[0] == L'=') continue;
@@ -281,7 +301,9 @@ scrub_environment(void)
         memcpy(name, entry, length * sizeof *name);
         char *narrow = utf8(name);
         if (fledge_is_scrubbed(narrow, 1)) {
-            names[found++] = name;
+            set_aside_names[set_aside_count] = name;
+            set_aside_values[set_aside_count] = join(L"", equals != NULL ? equals + 1 : L"");
+            set_aside_count++;
         } else {
             free(name);
         }
@@ -289,19 +311,50 @@ scrub_environment(void)
     }
     FreeEnvironmentStringsW(block);
 
-    for (size_t index = 0; index < found; index++) {
-        unset(names[index]);
-        free(names[index]);
-    }
-    free(names);
+    for (size_t index = 0; index < set_aside_count; index++) unset(set_aside_names[index]);
 }
 
-/* The five functions Ruby's main.c calls, typed by Ruby's own headers. */
+/*
+ * Puts back every variable scrub_environment set aside, with its original
+ * value, in both copies of the environment. Once Ruby has initialized,
+ * its ENV reads the process's copy on every access (win32/win32.c,
+ * w32_getenv, through GetEnvironmentStringsW), so the app's ENV, and
+ * every process it starts, see them. Ruby's own gem_prelude.rb does the
+ * same with BUNDLER_SETUP: it removes the variable while RubyGems loads
+ * and puts it back afterwards.
+ */
+static void
+restore_environment(void)
+{
+    for (size_t index = 0; index < set_aside_count; index++) {
+        const wchar_t *name = set_aside_names[index];
+        const wchar_t *value = set_aside_values[index];
+
+        if (_wputenv_s(name, value) != 0) fail(L"could not restore %ls in the environment", name);
+        if (!SetEnvironmentVariableW(name, value)) {
+            fail(L"could not restore %ls in the environment (Windows error %lu)", name, GetLastError());
+        }
+        free(set_aside_names[index]);
+        free(set_aside_values[index]);
+    }
+    free(set_aside_names);
+    free(set_aside_values);
+    set_aside_names = NULL;
+    set_aside_values = NULL;
+    set_aside_count = 0;
+}
+
+/*
+ * The five functions Ruby's main.c calls, and the two the launcher calls
+ * between ruby_options and ruby_run_node, typed by Ruby's own headers.
+ */
 static struct {
     __typeof__(ruby_sysinit) *sysinit;
     __typeof__(ruby_init_stack) *init_stack;
     __typeof__(ruby_init) *init;
     __typeof__(ruby_options) *options;
+    __typeof__(ruby_executable_node) *executable_node;
+    __typeof__(rb_eval_string_protect) *eval_string_protect;
     __typeof__(ruby_run_node) *run_node;
 } ruby_api;
 
@@ -354,7 +407,26 @@ load_ruby(const wchar_t *folder)
     ruby_api.init_stack = (__typeof__(ruby_api.init_stack))RUBY_FUNCTION(ruby_init_stack);
     ruby_api.init = (__typeof__(ruby_api.init))RUBY_FUNCTION(ruby_init);
     ruby_api.options = (__typeof__(ruby_api.options))RUBY_FUNCTION(ruby_options);
+    ruby_api.executable_node = (__typeof__(ruby_api.executable_node))RUBY_FUNCTION(ruby_executable_node);
+    ruby_api.eval_string_protect = (__typeof__(ruby_api.eval_string_protect))RUBY_FUNCTION(rb_eval_string_protect);
     ruby_api.run_node = (__typeof__(ruby_api.run_node))RUBY_FUNCTION(ruby_run_node);
+}
+
+/*
+ * Has RubyGems work out its gem paths now, from the environment Ruby
+ * booted with, before restore_environment puts GEM_HOME and GEM_PATH
+ * back. Gem.paths reads them once and keeps the answer (rubygems.rb,
+ * Gem.paths, at Ruby 4.0.9), so the app's gems stay the runtime's even
+ * when the person has GEM_HOME set; a child Ruby the app starts still
+ * reads the person's own.
+ */
+static void
+pin_rubygems(void)
+{
+    int state = 0;
+
+    ruby_api.eval_string_protect("Gem.paths if defined?(Gem.paths)", &state);
+    if (state != 0) fail(L"could not start RubyGems");
 }
 
 /*
@@ -362,6 +434,14 @@ load_ruby(const wchar_t *folder)
  * address of a variable in this frame tells Ruby where the stack it
  * scans for references begins (RUBY_INIT_STACK), so this frame must be
  * a real one, below wmain's.
+ *
+ * SPDX-SnippetBegin
+ * SPDX-License-Identifier: Ruby OR BSD-2-Clause
+ * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
+ * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
+ *   43) at Ruby v4.0.9 (3e93b23afc), with RUBY_INIT_STACK spelled out
+ *   through a function pointer, and pin_rubygems and restore_environment
+ *   between ruby_options and ruby_run_node.
  */
 static int __attribute__((noinline))
 run_ruby(int argc, char **argv)
@@ -370,8 +450,12 @@ run_ruby(int argc, char **argv)
 
     ruby_api.init_stack(&variable_in_this_stack_frame);
     ruby_api.init();
-    return ruby_api.run_node(ruby_api.options(argc, argv));
+    void *node = ruby_api.options(argc, argv);
+    if (ruby_api.executable_node(node, NULL)) pin_rubygems();
+    restore_environment();
+    return ruby_api.run_node(node);
 }
+/* SPDX-SnippetEnd */
 
 /* Whether path names a file, at any length. */
 static int
@@ -401,21 +485,21 @@ static int
 build_ruby_arguments(int argc, char **argv)
 {
     static char disable_rubyopt[] = "--disable=rubyopt";
-    static char include[] = "-I";
     static char end_of_options[] = "--";
     static char fallback_name[] = "ruby";
-    wchar_t *app = join(root, L"\\app");
     wchar_t *main_rb = join(root, L"\\app\\main.rb");
 
-    if (!is_file(main_rb)) fail(L"this app is incomplete: %ls is missing", main_rb);
+    if (!is_file(main_rb)) fail_with(FLEDGE_EXIT_NO_APP, L"this app is incomplete: %ls is missing", main_rb);
 
     char *before_app_arguments[] = {
-        argc > 0 ? argv[0] : fallback_name, disable_rubyopt, include, utf8(app), end_of_options, utf8(main_rb),
+        argc > 0 ? argv[0] : fallback_name,
+        disable_rubyopt,
+        end_of_options,
+        utf8(main_rb),
     };
     size_t fixed = sizeof before_app_arguments / sizeof before_app_arguments[0];
     size_t count = fixed + (size_t)(argc > 1 ? argc - 1 : 0);
 
-    free(app);
     free(main_rb);
     ruby_arguments = allocate(count + 1, sizeof *ruby_arguments);
     memcpy(ruby_arguments, before_app_arguments, sizeof before_app_arguments);
@@ -425,6 +509,15 @@ build_ruby_arguments(int argc, char **argv)
 
 int wmain(int argc, wchar_t **argv);
 
+/*
+ * SPDX-SnippetBegin
+ * SPDX-License-Identifier: Ruby OR BSD-2-Clause
+ * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
+ * SPDX-SnippetComment: wmain and main, adapted from Ruby's main.c (lines
+ *   45 to 63) at Ruby v4.0.9 (3e93b23afc), which on Windows hands
+ *   ruby_sysinit no arguments for it to rebuild from the command line,
+ *   with the launcher's own steps before ruby_sysinit.
+ */
 int
 wmain(int argc, wchar_t **argv)
 {
@@ -451,3 +544,4 @@ wmain(int argc, wchar_t **argv)
     int count = build_ruby_arguments(ruby_argc, ruby_argv);
     return run_ruby(count, ruby_arguments);
 }
+/* SPDX-SnippetEnd */

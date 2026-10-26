@@ -63,7 +63,7 @@ class RuntimeBuilderTest < Minitest::Test
     linux = builder("aarch64-linux").notices.map { |notice| notice.fetch("folder") }
     darwin = builder("arm64-darwin").notices.map { |notice| notice.fetch("folder") }
 
-    assert_equal %w[fledge ruby rust openssl libyaml ca-certificates zlib libxcrypt], linux
+    assert_equal %w[fledge ruby rust openssl libyaml ca-certificates zlib libffi libxcrypt], linux
     assert_equal %w[fledge ruby rust openssl libyaml ca-certificates], darwin
   end
 
@@ -72,7 +72,7 @@ class RuntimeBuilderTest < Minitest::Test
   def test_windows_carries_the_notices_of_rubyinstaller_and_the_dlls_it_ships
     notices = builder("x64-mingw-ucrt").notices
 
-    assert_equal %w[fledge ruby rubyinstaller openssl libyaml zlib gmp mingw-w64 ca-certificates],
+    assert_equal %w[fledge ruby rubyinstaller openssl libyaml zlib gmp libffi mingw-w64 ca-certificates],
       notices.map { |notice| notice.fetch("folder") }
     assert_includes notices.find { |notice| notice.fetch("folder") == "openssl" }.fetch("name"), "OpenSSL 3.6.5"
     assert_includes notices.find { |notice| notice.fetch("folder") == "gmp" }.fetch("name"), "which you may replace"
@@ -104,7 +104,8 @@ class RuntimeBuilderTest < Minitest::Test
     Dir.mktmpdir do |stage|
       builder("x86_64-linux").write_notices(stage)
 
-      assert_equal %w[README.txt ca-certificates fledge libxcrypt libyaml openssl ruby rust zlib], Dir.children(File.join(stage, "notices")).sort
+      assert_equal %w[README.txt ca-certificates fledge libffi libxcrypt libyaml openssl ruby rust zlib],
+        Dir.children(File.join(stage, "notices")).sort
       assert_path_exists File.join(stage, "notices/fledge/AGPL-3.0-or-later.txt")
       assert_path_exists File.join(stage, "notices/libxcrypt/COPYING.LIB")
       index = File.read(File.join(stage, "notices/README.txt"))
@@ -113,52 +114,113 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
-  def test_prune_keeps_the_standard_library_and_default_gems_and_drops_the_rest
+  # Ruby 4.0.9's gems/bundled_gems, at its v4.0.9 tag.
+  def test_the_bundled_gems_are_ruby_4_0_9s
+    bundled = builder("x86_64-linux").bundled_gems
+
+    assert_equal 39, bundled.size
+    assert_equal %w[minitest power_assert rake test-unit], bundled.first(4)
+    assert_includes bundled, "csv"
+    assert_includes bundled, "fiddle"
+    refute_includes bundled, "bootsnap"
+  end
+
+  def make_files(root, files)
+    files.each do |file|
+      FileUtils.mkdir_p(File.dirname(File.join(root, file)))
+      FileUtils.touch(File.join(root, file))
+    end
+  end
+
+  def write_spec(gems, name, version, default: false, executables: [])
+    folder = File.join(gems, "specifications", *("default" if default))
+    FileUtils.mkdir_p(folder)
+    spec = Gem::Specification.new do |s|
+      s.name = name
+      s.version = version
+      s.summary = name
+      s.authors = ["x"]
+      s.executables = executables
+    end
+    File.write(File.join(folder, "#{name}-#{version}.gemspec"), spec.to_ruby)
+  end
+
+  def kept(root)
+    Dir.glob("**/*", base: root).select { |path| File.file?(File.join(root, path)) }.sort
+  end
+
+  # Everything a standard Ruby installs and Ruby code can reach stays;
+  # what only compilers, debuggers, and documentation tools read goes,
+  # and so do gems no standard Ruby 4.0.9 installs, such as rv-ruby's
+  # bootsnap.
+  def test_prune_keeps_default_and_bundled_gems_and_drops_what_no_ruby_code_reads
     Dir.mktmpdir do |ruby|
-      files = %w[
+      gems = File.join(ruby, "gems/4.0.0")
+      make_files(ruby, %w[
         4.0.0/json.rb
         4.0.0/arm64-darwin23/json/ext/parser.bundle
         4.0.0/arm64-darwin23/json/ext/parser.bundle.dSYM/Contents/Info.plist
         4.0.0/arm64-darwin23/portable_ruby_gems.rb
         4.0.0/arm64-darwin23/stray.a
-        gems/4.0.0/specifications/default/json-2.18.0.gemspec
-        gems/4.0.0/specifications/csv-3.3.5.gemspec
+        include/ruby.h
+        pkgconfig/ruby-4.0.pc
         gems/4.0.0/gems/bundler-4.0.20/exe/bundle
         gems/4.0.0/gems/csv-3.3.5/lib/csv.rb
+        gems/4.0.0/gems/bigdecimal-4.0.1/lib/bigdecimal.rb
+        gems/4.0.0/gems/bigdecimal-4.0.1/ext/bigdecimal/bigdecimal.h
+        gems/4.0.0/gems/bootsnap-1.24.6/lib/bootsnap.rb
         gems/4.0.0/cache/csv-3.3.5.gem
+        gems/4.0.0/cache/bootsnap-1.24.6.gem
+        gems/4.0.0/build_info/csv-3.3.5.info
+        gems/4.0.0/build_info/bootsnap-1.24.6.info
         gems/4.0.0/extensions/arm64-darwin-23/4.0.0-static/bigdecimal-4.0.1/bigdecimal.bundle
-        gems/4.0.0/doc/x
-        gems/4.0.0/build_info/x
+        gems/4.0.0/extensions/arm64-darwin-23/4.0.0-static/bootsnap-1.24.6/bootsnap.bundle
+        gems/4.0.0/doc/csv-3.3.5/ri/x
         gems/4.0.0/plugins/rdoc_plugin.rb
-      ]
-      FileUtils.touch(File.join(ruby, "x"))
-      files.each do |file|
-        FileUtils.mkdir_p(File.dirname(File.join(ruby, file)))
-        FileUtils.touch(File.join(ruby, file))
-      end
-      FileUtils.mkdir_p(File.join(ruby, "gems/4.0.0/specifications/default"))
-      File.write(File.join(ruby, "gems/4.0.0/specifications/default/bundler-4.0.20.gemspec"), "")
+      ])
+      write_spec(gems, "json", "2.18.0", default: true)
+      write_spec(gems, "bundler", "4.0.20", default: true, executables: %w[bundle bundler])
+      write_spec(gems, "csv", "3.3.5")
+      write_spec(gems, "bigdecimal", "4.0.1")
+      write_spec(gems, "bootsnap", "1.24.6", executables: %w[bootsnap])
 
-      RuntimeBuilder.prune(ruby)
+      removed = RuntimeBuilder.prune(ruby, %w[csv bigdecimal])
 
-      kept = Dir.glob("**/*", base: ruby).select { |path| File.file?(File.join(ruby, path)) }.sort
+      assert_equal %w[bootsnap], removed
       assert_equal %w[
         4.0.0/arm64-darwin23/json/ext/parser.bundle
         4.0.0/json.rb
+        gems/4.0.0/build_info/csv-3.3.5.info
+        gems/4.0.0/cache/csv-3.3.5.gem
+        gems/4.0.0/extensions/arm64-darwin-23/4.0.0-static/bigdecimal-4.0.1/bigdecimal.bundle
+        gems/4.0.0/gems/bigdecimal-4.0.1/lib/bigdecimal.rb
         gems/4.0.0/gems/bundler-4.0.20/exe/bundle
+        gems/4.0.0/gems/csv-3.3.5/lib/csv.rb
+        gems/4.0.0/plugins/rdoc_plugin.rb
+        gems/4.0.0/specifications/bigdecimal-4.0.1.gemspec
+        gems/4.0.0/specifications/csv-3.3.5.gemspec
         gems/4.0.0/specifications/default/bundler-4.0.20.gemspec
         gems/4.0.0/specifications/default/json-2.18.0.gemspec
-        x
-      ], kept
+      ], kept(ruby)
+    end
+  end
+
+  def test_prune_bin_drops_the_executables_of_removed_gems_only
+    Dir.mktmpdir do |bin|
+      make_files(bin, %w[ruby gem bundle rake bootsnap])
+
+      RuntimeBuilder.prune_bin(bin, %w[bootsnap])
+
+      assert_equal %w[bundle gem rake ruby], kept(bin)
     end
   end
 
   # RubyInstaller's tree keeps its shape; what goes is documentation,
-  # headers and import libraries, ridk's files, the command-line wrappers
-  # in bin, and the bundled gems, as on Unix.
-  def test_prune_windows_keeps_rubys_dlls_executables_and_library
+  # headers and import libraries, and RubyInstaller's tools for setting
+  # up MSYS2 and a developer's shell. The gems' wrappers stay.
+  def test_prune_windows_keeps_rubys_programs_dlls_wrappers_and_gems
     Dir.mktmpdir do |tree|
-      files = %w[
+      make_files(tree, %w[
         LICENSE.txt
         bin/ruby.exe
         bin/rubyw.exe
@@ -168,6 +230,7 @@ class RuntimeBuilderTest < Minitest::Test
         bin/bundle
         bin/bundle.bat
         bin/gem.cmd
+        bin/ridk.cmd
         bin/ridk.ps1
         bin/setrbvars.cmd
         bin/startmenu.rb
@@ -179,25 +242,26 @@ class RuntimeBuilderTest < Minitest::Test
         lib/ruby/4.0.0/x64-mingw-ucrt/zlib.so
         lib/ruby/4.0.0/x64-mingw-ucrt/zlib.so-assembly.manifest
         lib/ruby/4.0.0/etc/ssl/cert.pem
-        lib/ruby/gems/4.0.0/specifications/default/json-2.18.0.gemspec
-        lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec
         lib/ruby/gems/4.0.0/gems/csv-3.3.5/lib/csv.rb
         lib/ruby/gems/4.0.0/extensions/x64-mingw-ucrt/4.0.0/fiddle-1.1.8/libffi-8.dll
         lib/ruby/site_ruby/4.0.0/ruby_installer.rb
         packages/msys2-keyring.pkg.tar.zst
         ridk_use/ridk_use.rb
         share/doc/ruby/README.md
-      ]
-      files.each do |file|
-        FileUtils.mkdir_p(File.dirname(File.join(tree, file)))
-        FileUtils.touch(File.join(tree, file))
-      end
+        share/ri/4.0.0/system/String/cdesc-String.ri
+      ])
+      gems = File.join(tree, "lib/ruby/gems/4.0.0")
+      write_spec(gems, "json", "2.18.0", default: true)
+      write_spec(gems, "csv", "3.3.5")
+      write_spec(gems, "fiddle", "1.1.8")
 
-      RuntimeBuilder.prune_windows(tree)
+      RuntimeBuilder.prune_windows(tree, %w[csv fiddle])
 
-      kept = Dir.glob("**/*", base: tree).select { |path| File.file?(File.join(tree, path)) }.sort
       assert_equal %w[
         LICENSE.txt
+        bin/bundle
+        bin/bundle.bat
+        bin/gem.cmd
         bin/ruby.exe
         bin/ruby_builtin_dlls/libgmp-10.dll
         bin/ruby_builtin_dlls/ruby_builtin_dlls.manifest
@@ -208,9 +272,13 @@ class RuntimeBuilderTest < Minitest::Test
         lib/ruby/4.0.0/x64-mingw-ucrt/zlib.so
         lib/ruby/4.0.0/x64-mingw-ucrt/zlib.so-assembly.manifest
         lib/ruby/4.0.0/x64-mingw-ucrt/zlib1.dll
+        lib/ruby/gems/4.0.0/extensions/x64-mingw-ucrt/4.0.0/fiddle-1.1.8/libffi-8.dll
+        lib/ruby/gems/4.0.0/gems/csv-3.3.5/lib/csv.rb
+        lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec
         lib/ruby/gems/4.0.0/specifications/default/json-2.18.0.gemspec
+        lib/ruby/gems/4.0.0/specifications/fiddle-1.1.8.gemspec
         lib/ruby/site_ruby/4.0.0/ruby_installer.rb
-      ], kept
+      ], kept(tree)
     end
   end
 

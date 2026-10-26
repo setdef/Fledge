@@ -4,13 +4,15 @@
  */
 
 /*
- * Which environment variables the launcher removes before Ruby starts,
- * on every operating system.
+ * Which environment variables the launcher hides from Ruby's boot, on
+ * every operating system. It removes them before Ruby starts and puts
+ * them back, with their values, before the app's main.rb runs (unix.c
+ * and windows.c, restore_environment; ADR 003).
  *
  * A person who runs an app never asked for Ruby, so nothing of a Ruby
- * they happen to have may change what the app does (ADR 001, section
+ * they happen to have may change how the app starts (ADR 001, section
  * 1). Ruby, RubyGems, and Bundler read their settings from environment
- * variables, so the launcher removes every variable whose name starts
+ * variables, so the launcher hides every variable whose name starts
  * with one of these prefixes. Prefixes, not a list of names, so a
  * variable a later Ruby adds is removed too. Read at Ruby 4.0.9:
  *

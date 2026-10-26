@@ -20,12 +20,23 @@
 # RubyInstaller's package signing key as rubyinstaller2's own repository
 # records it (recipes/unpack/appveyor-repo-key.asc), at a pinned commit
 # and pinned by SHA-256; the signature must be that key's, by
-# fingerprint. The key expires on 2027-06-15 (doc/contributors/
-# questions.md). The SHA-256 is the one the Windows launcher spike
-# verified (Plan 001).
+# fingerprint. The key expires on 2027-06-15; how to move to a renewed
+# key is ADR 001, section 3. The SHA-256 is the one the Windows launcher
+# spike verified (Plan 001).
+#
+# bundled_gems lists Ruby 4.0.9's bundled gems, from gems/bundled_gems
+# at Ruby's v4.0.9 tag (3e93b23afc). A runtime keeps every default gem
+# and every one of these that its Ruby installs (rv-ruby installs all but
+# win32ole, which only Windows builds), and prunes any other gem its Ruby
+# adds (rv-ruby adds bootsnap and msgpack), so that an app finds exactly
+# what a standard Ruby 4.0.9 has (ADR 003).
 ruby:
   version: 4.0.9
   release: "20261023"
+  bundled_gems: [minitest, power_assert, rake, test-unit, rexml, rss, net-ftp, net-imap, net-pop, net-smtp, matrix,
+    prime, rbs, typeprof, debug, racc, mutex_m, getoptlong, base64, bigdecimal, observer, abbrev, resolv-replace,
+    rinda, drb, nkf, syslog, csv, repl_type_completor, ostruct, pstore, benchmark, logger, rdoc, win32ole, irb,
+    reline, readline, fiddle]
   platforms:
     arm64-darwin:
       url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_sonoma.tar.gz
@@ -78,7 +89,7 @@ llvm-mingw:
 # a shared library from the same release rv-ruby used (its formula
 # rv-portable-libxcrypt.rb at the commit that built release 20261023) and
 # the launcher loads it from the runtime's lib/ folder, where whoever
-# receives an app can replace it. See doc/contributors/questions.md.
+# receives an app can replace it. See Plan 002, "Copyleft-free runtimes."
 libxcrypt:
   version: 4.5.2
   url: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
@@ -93,8 +104,10 @@ libxcrypt:
 # release 20261023 (074afbcb773b580516a281c84878f1cd3a651cda). For
 # Windows, they are what RubyInstaller 4.0.9-1 ships: the DLLs MSYS2's
 # UCRT64 packages build, with the versions their files report, and no
-# Rust, since RubyInstaller's Ruby has no YJIT. Its libffi left with the
-# fiddle bundled gem, which runtimes leave out.
+# Rust, since RubyInstaller's Ruby has no YJIT. The fiddle bundled gem
+# carries libffi: compiled into fiddle.so on Linux, as libffi-8.dll
+# beside it on Windows, and macOS's own /usr/lib/libffi.dylib on macOS,
+# which needs no notice.
 notices:
   - folder: fledge
     name: Fledge launcher
@@ -131,6 +144,11 @@ notices:
     license: LGPL-3.0-or-later OR GPL-2.0-or-later
     source: https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz, as MSYS2 builds it (https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-gmp)
     platforms: [x64-mingw-ucrt]
+  - folder: libffi
+    name: libffi (the fiddle gem's libffi-8.dll), as MSYS2 builds it
+    license: MIT
+    source: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-libffi
+    platforms: [x64-mingw-ucrt]
   - folder: mingw-w64
     name: The MinGW-w64 runtime, linked into the launcher and every DLL, and winpthreads (libwinpthread-1.dll)
     license: MinGW-w64 runtime license (COPYING.MinGW-w64-runtime.txt); winpthreads MIT AND BSD-3-Clause
@@ -165,6 +183,11 @@ notices:
     name: zlib 1.3.2, compiled into Ruby's zlib extension
     license: Zlib
     source: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+    platforms: [x86_64-linux, aarch64-linux]
+  - folder: libffi
+    name: libffi 3.5.2, compiled into the fiddle gem's fiddle.so
+    license: MIT
+    source: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
     platforms: [x86_64-linux, aarch64-linux]
   - folder: libxcrypt
     name: libxcrypt 4.5.2 (lib/libcrypt.so.2, which you may replace with your own build)

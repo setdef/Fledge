@@ -18,14 +18,26 @@
 # with their own Ruby 4.0 would shadow a gem the app ships, json
 # included. Here the app's gems come from the runtime and nowhere else.
 #
-# The launcher removes GEM_HOME and GEM_PATH before Ruby starts, so this
-# default is the whole path. Setting it here rather than pinning those
-# variables in the launcher keeps them out of the environment the app's
-# own child processes inherit, and works the same way on Windows, where
-# a Fledge runtime ships this file too.
+# The launcher hides GEM_HOME and GEM_PATH from Ruby's boot, and has
+# RubyGems settle its paths before it puts them back (ADR 003), so this
+# default is the whole path for the app, while the app's own child
+# processes still see the person's variables. It works the same way on
+# Windows, where a Fledge runtime ships this file too.
+#--
+# SPDX-SnippetBegin
+# SPDX-License-Identifier: Ruby OR MIT
+# SPDX-SnippetCopyrightText: Chad Fowler, Rich Kilmer, Jim Weirich and others
+# SPDX-SnippetComment: Gem.default_path, adapted from RubyGems'
+#   lib/rubygems/defaults.rb at Ruby v4.0.9 (3e93b23afc), keeping only its
+#   default_dir, through the operating_system.rb hook RubyGems documents
+#   there for packagers.
+#++
 module Gem
   # The runtime's own gem folder, and nothing else.
   def self.default_path
     [default_dir]
   end
 end
+#--
+# SPDX-SnippetEnd
+#++

@@ -24,10 +24,12 @@
 #include <stddef.h>
 
 /*
- * The exit status for a runtime folder that cannot run, as sysexits(3)'s
- * EX_SOFTWARE. An app's own failures exit with the app's status instead.
+ * The exit statuses of a launcher that cannot start its app, from
+ * sysexits(3) (ADR 002): EX_NOINPUT when the app's app/main.rb is missing,
+ * and EX_SOFTWARE when anything else about the runtime is broken. An app's
+ * own failures exit with the app's status instead, as under ruby.
  */
-enum { FLEDGE_EXIT_BROKEN_RUNTIME = 70 };
+enum { FLEDGE_EXIT_NO_APP = 66, FLEDGE_EXIT_SOFTWARE = 70 };
 
 /*
  * Whether the environment variable name (or "NAME=value" entry) is one

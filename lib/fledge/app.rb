@@ -12,8 +12,9 @@ module Fledge
   # A Ruby app Fledge can ship: a folder with a main.rb.
   #
   # LÖVE ships a game as a folder with a main.lua, and Fledge ships a
-  # Ruby app the same way: the launcher runs <tt>main.rb</tt> with the
-  # app's folder on the load path. A folder without one would build
+  # Ruby app the same way: the launcher runs <tt>main.rb</tt> as
+  # <tt>ruby main.rb</tt> would, so the app loads its other files with
+  # +require_relative+. A folder without one would build
   # into an archive that fails the moment someone runs it, far from the
   # person who could fix it.
   #

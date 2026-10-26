@@ -20,9 +20,10 @@ require_relative "../lib/fledge/version"
 # Builds a runtime (ADR 001, section 2).
 #
 # On macOS and Linux, a runtime is the launcher in runtime/launcher/,
-# compiled against rv-ruby's static libruby, beside rv-ruby's standard
-# library and default gems, its CA bundle, and the license notices of
-# everything it carries. Those launchers link Ruby itself, so each builds
+# compiled against rv-ruby's static libruby, beside Ruby's own program
+# (bin/ruby, built from the same libruby), rv-ruby's standard library,
+# default gems, and bundled gems, its CA bundle, and the license notices
+# of everything it carries. Those launchers link Ruby itself, so each builds
 # on its own platform's runner. On Windows, a runtime is the launcher,
 # cross-compiled with llvm-mingw, beside RubyInstaller's Ruby in ruby\,
 # with the notices: the Windows launcher loads Ruby's DLL when it runs
@@ -34,8 +35,16 @@ require_relative "../lib/fledge/version"
 # SHA-256, and RubyInstaller's archive against its PGP signature too. The
 # steps that differ by operating system (unpacking Ruby, compiling,
 # stripping, libxcrypt) live in a recipe per OS: Darwin and Linux, which
-# share Unix, and Windows. The layout and pruning rules are those the
-# Unix and Windows launcher spikes settled (Plan 001).
+# share Unix, and Windows. The layout is the one the Unix and Windows
+# launcher spikes settled (Plan 001).
+#
+# What a runtime leaves out follows one rule (ADR 003): an app's Ruby
+# code must run as it does under a standard Ruby 4.0.9, so a runtime
+# keeps everything such a Ruby installs that running Ruby code can
+# reach (every default and bundled gem, its executables, the gem cache,
+# the C extensions, RbConfig.ruby) and prunes only what no running Ruby
+# code reads: documentation, man pages, headers, static and import
+# libraries, and debug information. Size matters less than that rule.
 #
 # Run it as rake runtime (or rake "runtime[x64-mingw-ucrt]"), or as ruby
 # tasks/runtime_builder.rb [PLATFORM] in a container that has a C
@@ -57,11 +66,6 @@ class RuntimeBuilder
     -Wconversion
     -Wsign-conversion
   ].freeze
-
-  # Folders and files of rv-ruby's gem directory that a runtime keeps.
-  # Default gems stay; bundled gems, caches, docs, and build leftovers
-  # go (Plan 001: "A runtime per target").
-  KEPT_GEM_FOLDERS = %w[gems specifications].freeze
 
   attr_reader :platform, :host, :sources
 
@@ -137,42 +141,96 @@ class RuntimeBuilder
     out
   end
 
-  # Removes what a shipped app never needs from a copy of rv-ruby's
-  # lib/ruby at +ruby+: debug symbols, rv-ruby's bundled-gem load path
-  # helper, bundled gems and their caches and docs, and anything for
-  # compiling against Ruby.
-  def self.prune(ruby)
+  # Removes, from a copy of a Ruby's lib/ruby at +ruby+, what no running
+  # Ruby code reads, and what a standard Ruby 4.0.9 does not install.
+  # Returns the names of the executables of the gems it removed, for
+  # prune_bin. +bundled+ names Ruby's bundled gems, from
+  # runtime/sources.yml. Each removal, and why no app can miss it:
+  #
+  # [*.dSYM] macOS debug symbols, read by debuggers and crash reporters,
+  #          never by Ruby.
+  # [*.a, *.h, pkgconfig] Static libraries, C headers, and pkg-config
+  #          files, for compiling against Ruby; a runtime compiles
+  #          nothing, and Ruby code never loads them.
+  # [gems/4.0.0/doc] RDoc and ri documentation, read by the rdoc and ri
+  #          tools a developer runs, never by an app's requires.
+  # [portable_ruby_gems.rb, and gems no standard Ruby installs] rv-ruby's
+  #          own additions (a load-path helper for its executables, and
+  #          bootsnap and msgpack): a standard Ruby 4.0.9, and
+  #          RubyInstaller's, has none of them, so an app that worked
+  #          under ruby never needed them. Gems that are neither default
+  #          gems nor in +bundled+ go, with their specification, cache,
+  #          build information, and extensions.
+  #
+  # Everything else stays: the standard library, every default and
+  # bundled gem, each gem's executables, the .gem cache (gem pristine and
+  # Gem::Specification#cache_file read it), build information, plugins,
+  # and C extensions.
+  def self.prune(ruby, bundled)
     FileUtils.rm_rf(Dir.glob(File.join(ruby, "**", "*.dSYM")))
     FileUtils.rm_f(Dir.glob(File.join(ruby, "*", "*", "portable_ruby_gems.rb")))
     FileUtils.rm_f(Dir.glob(File.join(ruby, "**", "*.{a,h}")))
     FileUtils.rm_rf(Dir.glob(File.join(ruby, "**", "pkgconfig")))
-    Dir.glob(File.join(ruby, "gems", "*")).each { |gems| prune_gems(gems) }
+    Dir.glob(File.join(ruby, "gems", "*")).flat_map { |gems| prune_gems(gems, bundled) }
   end
 
-  def self.prune_gems(gems)
-    (Dir.children(gems) - KEPT_GEM_FOLDERS).each { |name| FileUtils.rm_rf(File.join(gems, name)) }
-    default = Dir.glob(File.join(gems, "specifications", "default", "*.gemspec")).map { |spec| File.basename(spec, ".gemspec") }
-    FileUtils.rm_f(Dir.glob(File.join(gems, "specifications", "*.gemspec")))
-    Dir.glob(File.join(gems, "gems", "*")).each do |gem|
-      FileUtils.rm_rf(gem) unless default.include?(File.basename(gem))
+  # Removes the documentation, and every gem that is neither a default
+  # gem nor one of +bundled+, from the gem folder +gems+. Returns the
+  # removed gems' executables.
+  def self.prune_gems(gems, bundled)
+    FileUtils.rm_rf(File.join(gems, "doc"))
+    Dir.glob(File.join(gems, "specifications", "*.gemspec")).flat_map do |path|
+      spec = Gem::Specification.load(path) or raise "#{path} is not a gem specification"
+      next [] if bundled.include?(spec.name)
+
+      remove_gem(gems, spec.full_name)
+      spec.executables
     end
   end
 
-  # Removes what a shipped app never needs from a copy of
-  # RubyInstaller's tree at +tree+, as the Windows launcher spike found
-  # safe: its documentation (share\), headers and import libraries, the
-  # MSYS2 keyring and ridk's files, and the command-line wrappers in bin\
-  # (bundle.bat, gem.cmd, ridk.ps1, ...), which a launched app never runs.
-  # ruby.exe and rubyw.exe stay, since RbConfig.ruby and Gem.ruby name
-  # them for an app's child processes, and every DLL stays, since some
-  # extension's manifest names each. Then lib\ruby is pruned as on Unix.
-  def self.prune_windows(tree)
+  def self.remove_gem(gems, full_name)
+    FileUtils.rm_f(File.join(gems, "specifications", "#{full_name}.gemspec"))
+    FileUtils.rm_rf(File.join(gems, "gems", full_name))
+    FileUtils.rm_f(File.join(gems, "cache", "#{full_name}.gem"))
+    FileUtils.rm_f(File.join(gems, "build_info", "#{full_name}.info"))
+    FileUtils.rm_rf(Dir.glob(File.join(gems, "extensions", "*", "*", full_name)))
+  end
+
+  # Removes from +bin+ the executables of gems prune removed, which
+  # would fail without their gem.
+  def self.prune_bin(bin, executables)
+    executables.each { |name| FileUtils.rm_f(File.join(bin, name)) }
+  end
+
+  # Removes, from a copy of RubyInstaller's tree at +tree+, what no
+  # running Ruby code reads, as prune does for lib\ruby, and
+  # RubyInstaller's own tools for setting up a developer's computer:
+  #
+  # [share\] Ruby's HTML documentation and ri data, for the rdoc and ri
+  #          tools.
+  # [include\, lib\*.a, lib\pkgconfig] Headers and import libraries,
+  #          for compiling against Ruby.
+  # [packages\, ridk_use\, bin\ridk.cmd, bin\ridk.ps1,
+  #          bin\setrbvars.cmd, bin\startmenu.rb] The MSYS2 keyring and
+  #          ridk, which install and select MSYS2 compilers for a
+  #          developer, and the scripts that set up a developer's shell
+  #          and the Start menu; they work only beside an installed
+  #          RubyInstaller and MSYS2.
+  #
+  # Every program and DLL stays (ruby.exe and rubyw.exe for RbConfig.ruby
+  # and Gem.ruby, and the DLLs some extension's manifest names), and so
+  # do the gems' command-line wrappers (gem.cmd, bundle.bat, ...) and
+  # RubyInstaller's own Ruby library in site_ruby.
+  def self.prune_windows(tree, bundled)
     FileUtils.rm_rf(%w[share include packages ridk_use lib/pkgconfig].map { |path| File.join(tree, path) })
     FileUtils.rm_f(Dir.glob(File.join(tree, "lib", "*.a")))
-    Dir.glob(File.join(tree, "bin", "*")).each do |path|
-      FileUtils.rm_f(path) if File.file?(path) && !File.extname(path).match?(/\A\.(?:exe|dll)\z/i)
-    end
-    prune(File.join(tree, "lib", "ruby"))
+    FileUtils.rm_f(%w[ridk.cmd ridk.ps1 setrbvars.cmd startmenu.rb].map { |name| File.join(tree, "bin", name) })
+    prune_bin(File.join(tree, "bin"), prune(File.join(tree, "lib", "ruby"), bundled))
+  end
+
+  # Ruby's bundled gems, as runtime/sources.yml lists them.
+  def bundled_gems
+    sources.fetch("ruby").fetch("bundled_gems")
   end
 
   # The bytes of an ASCII-armored OpenPGP block (RFC 4880, section 6),
@@ -300,16 +358,17 @@ class RuntimeBuilder
 
   # macOS and Linux: rv-ruby's Ruby, whose static libruby the launcher
   # links, so each builds only on its own platform. The runtime is the
-  # launcher with lib/ruby and libexec/cert.pem beside it.
+  # launcher with bin/, lib/ruby, and libexec/cert.pem beside it.
   class Unix < Recipe
     def build(stage)
       @prefix = unpack_ruby
-      compile(File.join(stage, "launcher"))
       copy_ruby(stage)
+      compile(File.join(stage, "launcher"), launcher_sources, "$ORIGIN/lib")
+      compile(File.join(stage, "bin", "ruby"), [File.join(LAUNCHER, "ruby_main.c")], "$ORIGIN/../lib")
       finish(stage)
     end
 
-    private def sources(os_file)
+    private def launcher_sources
       [File.join(LAUNCHER, "unix.c"), File.join(LAUNCHER, "scrub.c"), File.join(LAUNCHER, os_file)]
     end
 
@@ -331,11 +390,17 @@ class RuntimeBuilder
       prefixes.first.to_s
     end
 
+    # Copies rv-ruby's bin/ (whose ruby compile then replaces with one
+    # built from the same libruby as the launcher; the rest are the gems'
+    # executables), lib/ruby, and the CA bundle.
     private def copy_ruby(stage)
       FileUtils.mkdir_p(File.join(stage, "lib"))
+      FileUtils.cp_r(File.join(@prefix, "bin"), File.join(stage, "bin"))
+      FileUtils.rm_f(File.join(stage, "bin", "ruby"))
       FileUtils.cp_r(File.join(@prefix, "lib", "ruby"), File.join(stage, "lib", "ruby"))
-      FileUtils.chmod_R("u+w", File.join(stage, "lib"))
-      RuntimeBuilder.prune(File.join(stage, "lib", "ruby"))
+      FileUtils.chmod_R("u+w", [File.join(stage, "lib"), File.join(stage, "bin")])
+      removed = RuntimeBuilder.prune(File.join(stage, "lib", "ruby"), @builder.bundled_gems)
+      RuntimeBuilder.prune_bin(File.join(stage, "bin"), removed)
       @builder.install_rubygems_defaults(File.join(stage, "lib", "ruby"))
       FileUtils.mkdir_p(File.join(stage, "libexec"))
       FileUtils.cp(File.join(@prefix, "libexec", "cert.pem"), File.join(stage, "libexec", "cert.pem"))
@@ -346,14 +411,17 @@ class RuntimeBuilder
   # symbols to extensions by default; ad hoc sign it, since Apple Silicon
   # runs only signed code.
   class Darwin < Unix
-    def compile(output)
+    # Compiles +sources+ with libruby into the program +output+, which
+    # needs no RPATH: it links only libraries macOS ships.
+    def compile(output, sources, _rpath)
       cc = ENV.fetch("CC", "clang")
-      sources("darwin.c").each do |source|
+      sources.each do |source|
         report = File.join(@build_dir, "#{File.basename(source, '.c')}.plist")
         @builder.run(cc, "--analyze", "-Xclang", "-analyzer-werror", "-std=gnu11", *includes, source, "-o", report)
       end
       static = File.join(@prefix, "lib", "libruby.4.0-static.a")
-      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, "-mmacosx-version-min=14.0", *includes, *sources("darwin.c"),
+      FileUtils.mkdir_p(File.dirname(output))
+      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, "-mmacosx-version-min=14.0", *includes, *sources,
         "-Wl,-force_load,#{static}", "-framework", "CoreFoundation", "-ldl", "-lobjc", "-lpthread", "-o", output)
       @builder.run("strip", "-x", output)
       @builder.run("codesign", "--sign", "-", "--force", output)
@@ -361,6 +429,10 @@ class RuntimeBuilder
     end
 
     def finish(_stage); end
+
+    private def os_file
+      "darwin.c"
+    end
 
     private def check_libraries(output)
       libraries = @builder.capture("otool", "-L", output).lines.drop(1).map { |line| line.strip.split.first.to_s }
@@ -377,19 +449,23 @@ class RuntimeBuilder
     # runtime's own libxcrypt.
     ALLOWED = /\A(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|ld-linux[-\w.]*\.so\.\d|libcrypt\.so\.\d+)\z/
 
-    def compile(output)
-      xcrypt = build_libxcrypt
+    # Compiles +sources+ with libruby into the program +output+, which
+    # finds the runtime's libcrypt through the RPATH +rpath+: $ORIGIN/lib
+    # for the launcher at the runtime's top, $ORIGIN/../lib for bin/ruby.
+    def compile(output, sources, rpath)
+      xcrypt = (@xcrypt ||= build_libxcrypt)
       cc = ENV.fetch("CC", "cc")
-      sources("linux.c").each do |source|
+      sources.each do |source|
         @builder.run(cc, "-fanalyzer", "-Werror", "-std=gnu11", *includes, "-c", source, "-o", File::NULL)
       end
       static = File.join(@prefix, "lib", "libruby-static.a")
-      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *includes, *sources("linux.c"), "-rdynamic", "-static-libgcc",
+      FileUtils.mkdir_p(File.dirname(output))
+      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *includes, *sources, "-rdynamic", "-static-libgcc",
         "-Wl,--whole-archive", static, "-Wl,--no-whole-archive", "-L#{File.join(xcrypt, 'lib')}", "-lcrypt",
-        "-Wl,--disable-new-dtags,-rpath,$ORIGIN/lib", "-lrt", "-ldl", "-lm", "-lpthread", "-o", output)
+        "-Wl,--disable-new-dtags,-rpath,#{rpath}", "-lrt", "-ldl", "-lm", "-lpthread", "-o", output)
       @builder.run("strip", "--strip-unneeded", output)
-      copy_libcrypt(xcrypt, File.join(File.dirname(output), "lib"))
-      check_dynamic_section(output)
+      copy_libcrypt(xcrypt, File.join(@builder.stage, "lib"))
+      check_dynamic_section(output, rpath)
     end
 
     # Strips debug sections from extensions, and removes the RUNPATHs
@@ -429,14 +505,18 @@ class RuntimeBuilder
       @builder.run("strip", "--strip-unneeded", target)
     end
 
-    private def check_dynamic_section(output)
+    private def os_file
+      "linux.c"
+    end
+
+    private def check_dynamic_section(output, rpath)
       dynamic = @builder.capture("readelf", "-d", output)
-      raise "the launcher has a RUNPATH, which LD_LIBRARY_PATH overrides" if dynamic.include?("(RUNPATH)")
-      raise "the launcher has no RPATH of $ORIGIN/lib" unless dynamic.include?("Library rpath: [$ORIGIN/lib]")
+      raise "#{output} has a RUNPATH, which LD_LIBRARY_PATH overrides" if dynamic.include?("(RUNPATH)")
+      raise "#{output} has no RPATH of #{rpath}" unless dynamic.include?("Library rpath: [#{rpath}]")
 
       needed = dynamic.scan(/\(NEEDED\)\s+Shared library: \[([^\]]+)\]/).flatten
       foreign = needed.grep_v(ALLOWED)
-      raise "the launcher needs libraries a runtime does not ship: #{foreign.join(', ')}" unless foreign.empty?
+      raise "#{output} needs libraries a runtime does not ship: #{foreign.join(', ')}" unless foreign.empty?
     end
   end
 
@@ -471,7 +551,7 @@ class RuntimeBuilder
       ruby = File.join(stage, "ruby")
       FileUtils.cp_r(tree, ruby)
       FileUtils.chmod_R("u+w", ruby)
-      RuntimeBuilder.prune_windows(ruby)
+      RuntimeBuilder.prune_windows(ruby, @builder.bundled_gems)
       @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
     end
 

@@ -78,3 +78,9 @@ path = "runtime/notices/mingw-w64/COPYING.winpthreads"
 precedence = "override"
 SPDX-FileCopyrightText = ["2011 mingw-w64 project", "2010 Lockless Inc."]
 SPDX-License-Identifier = "MIT AND BSD-3-Clause"
+
+[[annotations]]
+path = "runtime/notices/libffi/**"
+precedence = "override"
+SPDX-FileCopyrightText = "1996-2025 Anthony Green, Red Hat, Inc and others"
+SPDX-License-Identifier = "MIT"

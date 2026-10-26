@@ -54,3 +54,27 @@ path = "runtime/notices/rust/**"
 precedence = "override"
 SPDX-FileCopyrightText = "The Rust Project Developers"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "runtime/notices/rubyinstaller/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2007-2019 RubyInstaller Team"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+[[annotations]]
+path = "runtime/notices/gmp/**"
+precedence = "override"
+SPDX-FileCopyrightText = "1991-2023 Free Software Foundation, Inc."
+SPDX-License-Identifier = "LGPL-3.0-or-later OR GPL-2.0-or-later"
+
+[[annotations]]
+path = "runtime/notices/mingw-w64/COPYING.MinGW-w64-runtime.txt"
+precedence = "override"
+SPDX-FileCopyrightText = "2009-2013 the mingw-w64 project"
+SPDX-License-Identifier = "LicenseRef-MinGW-w64-runtime"
+
+[[annotations]]
+path = "runtime/notices/mingw-w64/COPYING.winpthreads"
+precedence = "override"
+SPDX-FileCopyrightText = ["2011 mingw-w64 project", "2010 Lockless Inc."]
+SPDX-License-Identifier = "MIT AND BSD-3-Clause"

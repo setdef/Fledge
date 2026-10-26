@@ -30,7 +30,7 @@
  *   2. It removes every environment variable through which a Ruby that
  *      happens to be installed on the computer could change what runs:
  *      RUBYOPT, RUBYLIB, GEM_HOME, BUNDLE_GEMFILE, and the rest (see
- *      scrub_environment). The runtime's own
+ *      scrub.c, which windows.c shares). The runtime's own
  *      lib/ruby/4.0.0/rubygems/defaults/operating_system.rb then keeps
  *      RubyGems to the runtime's gems, away from ~/.gem.
  *   3. It turns a bare C locale into a UTF-8 one (see coerce_locale).
@@ -76,12 +76,6 @@ RUBY_GLOBAL_SETUP
 
 extern char **environ;
 
-/*
- * The exit status for a runtime folder that cannot run, as sysexits(3)'s
- * EX_SOFTWARE. An app's own failures exit with the app's status instead.
- */
-enum { EXIT_BROKEN_RUNTIME = 70 };
-
 /* The launcher's file name, for messages. Set once in main. */
 static const char *program_name = "launcher";
 
@@ -101,46 +95,13 @@ fail(const char *format, ...)
     vfprintf(stderr, format, arguments);
     va_end(arguments);
     fputc('\n', stderr);
-    exit(EXIT_BROKEN_RUNTIME);
+    exit(FLEDGE_EXIT_BROKEN_RUNTIME);
 }
 
 /*
- * Prefixes of environment variables that change what Ruby, RubyGems, or
- * Bundler load or do. Prefixes, not a list of names, so a variable a
- * later Ruby adds is removed too. Read at Ruby 4.0.9:
- *
- *   RUBY      ruby.c: RUBYOPT, RUBYLIB, RUBYPATH, RUBYSHELL,
- *             RUBY_YJIT_ENABLE, RUBY_ZJIT_ENABLE; gc.c, vm.c, thread.c:
- *             RUBY_GC_*, RUBY_THREAD_*, RUBY_FIBER_*, RUBY_MN_THREADS,
- *             RUBY_MAX_CPU, RUBY_CRASH_REPORT, RUBY_DEBUG,
- *             RUBY_FREE_AT_EXIT; RubyGems: RUBYGEMS_GEMDEPS.
- *   GEM_      RubyGems: GEM_HOME, GEM_PATH, GEM_SPEC_CACHE, GEM_VENDOR,
- *             GEM_REQUIREMENT_<NAME>.
- *   GEMRC     RubyGems' configuration file.
- *   BUNDLE_   Bundler's settings: BUNDLE_GEMFILE, BUNDLE_PATH, ...
- *   BUNDLER_  Bundler: BUNDLER_VERSION, and BUNDLER_SETUP, a file that
- *             rubygems.rb requires as it loads (its last lines), which
- *             would run any code it names.
- *
- * Variables outside these, such as SSL_CERT_FILE, HOME, and the XDG_
- * directories, describe the person's computer, not their Ruby, and stay.
- */
-static const char *const scrubbed_prefixes[] = {
-    "RUBY", "GEM_", "GEMRC", "BUNDLE_", "BUNDLER_", NULL,
-};
-
-static int
-is_scrubbed(const char *entry)
-{
-    for (const char *const *prefix = scrubbed_prefixes; *prefix != NULL; prefix++) {
-        if (strncmp(entry, *prefix, strlen(*prefix)) == 0) return 1;
-    }
-    return 0;
-}
-
-/*
- * Removes every scrubbed variable. unsetenv rearranges environ, so the
- * scan starts over after each removal; environments are small.
+ * Removes every variable scrub.c names: RUBYOPT, RUBYLIB, GEM_HOME,
+ * BUNDLE_GEMFILE, and the rest. unsetenv rearranges environ, so the scan
+ * starts over after each removal; environments are small.
  */
 static void
 scrub_environment(void)
@@ -150,7 +111,7 @@ scrub_environment(void)
     do {
         removed = 0;
         for (char **entry = environ; entry != NULL && *entry != NULL; entry++) {
-            if (!is_scrubbed(*entry)) continue;
+            if (!fledge_is_scrubbed(*entry, 0)) continue;
 
             const char *equals = strchr(*entry, '=');
             size_t length = equals != NULL ? (size_t)(equals - *entry) : strlen(*entry);

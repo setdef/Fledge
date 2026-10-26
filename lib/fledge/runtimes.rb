@@ -7,6 +7,7 @@
 
 require_relative "download"
 require_relative "error"
+require_relative "tar_gz"
 require_relative "version"
 
 module Fledge
@@ -52,6 +53,11 @@ module Fledge
     # Where Fledge's GitHub Releases keep their assets.
     RELEASES = "https://github.com/setdef/Fledge/releases/download"
 
+    # The extension of every runtime archive. Runtimes are .tar.gz on
+    # every platform, Windows too, whatever a built app ships in: Fledge
+    # reads them, not the person who runs the app.
+    EXTENSION = TarGz::EXTENSION
+
     # The file name of the runtime archive for +platform+ at +version+
     # (default: this Fledge's version).
     #
@@ -68,7 +74,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.file_name(platform, version: VERSION)
-      "fledge-runtime-#{version}-#{platform}#{platform.archive_extension}"
+      "fledge-runtime-#{version}-#{platform}#{EXTENSION}"
     end
 
     # Creates the finder.

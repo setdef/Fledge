@@ -39,6 +39,17 @@ class CLITest < Minitest::Test
     end
   end
 
+  # The help is the CLI's contract, so it must name every target Fledge
+  # builds for, and the archive each gets.
+  def test_help_names_every_target_and_its_archive
+    out, = fledge("--help")
+    options = out[/^OPTIONS\n(.*?)^FILES\n/m, 1].to_s.split.join(" ")
+
+    assert_includes options, "One of: #{Fledge::Platform.names.join(', ')} (default"
+    assert_includes out, "DIR/NAME-PLATFORM.zip\n"
+    assert_includes out.split.join(" "), "a .zip for Windows, a .tar.gz for macOS and Linux."
+  end
+
   def test_help_ends_at_the_closing_marker
     out, = fledge("--help")
 
@@ -94,7 +105,7 @@ class CLITest < Minitest::Test
     assert_equal 1, status
     assert_empty out
     assert_equal "fledge build: 'sparc-solaris' is not a target Fledge builds for. " \
-      "Targets: arm64-darwin, x86_64-linux, aarch64-linux.\n", err
+      "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n", err
   end
 
   def test_the_command_table_names_every_command

@@ -8,6 +8,7 @@ module Fledge
     end
 
     RELEASES: String
+    EXTENSION: String
 
     @env: _Env
     @release_url: String

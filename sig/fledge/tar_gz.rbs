@@ -4,6 +4,7 @@
 module Fledge
   module TarGz
     BLOCK: Integer
+    EXTENSION: String
 
     interface _Sink
       def write: (*String) -> Integer
@@ -12,6 +13,8 @@ module Fledge
     interface _Source
       def read: (Integer) -> String?
     end
+
+    def self.extension: () -> String
 
     def self.write: (String path, ?mtime: Integer) { (Writer) -> void } -> String
 

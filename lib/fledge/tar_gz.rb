@@ -49,6 +49,26 @@ module Fledge
     # Tar's unit: headers and contents fill whole blocks of this size.
     BLOCK = 512
 
+    # The extension of a gzipped tar archive.
+    EXTENSION = ".tar.gz"
+
+    # The extension of the archives this module writes.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::TarGz.extension # => ".tar.gz"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.extension
+      EXTENSION
+    end
+
     # Writes the archive at +path+, yielding a Writer to add entries to,
     # and returns +path+. Stamps every entry with +mtime+ (default: the
     # current time), as seconds since 1970.

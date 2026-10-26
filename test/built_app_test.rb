@@ -10,9 +10,10 @@ require "open3"
 require "stringio"
 
 # examples/hello, built by fledge build from a real runtime for this
-# computer, unpacked by the system's tar, and run in a clean and in a
-# hostile environment. .github/scripts/deliver.sh runs the same checks on
-# fresh computers with no Ruby; this test runs them wherever a runtime is.
+# computer, unpacked by the system's own tool (tar, or Expand-Archive on
+# Windows), and run in a clean and in a hostile environment.
+# .github/scripts/deliver.sh and deliver.ps1 run the same checks on fresh
+# computers with no Ruby; this test runs them wherever a runtime is.
 #
 # The runtime comes from FLEDGE_RUNTIME_DIR, or from tmp/runtime, where
 # rake runtime writes it. Without one the test skips, unless
@@ -87,6 +88,12 @@ class BuiltAppTest < Minitest::Test
         "BUNDLE_GEMFILE" => File.join(evil, "Gemfile"),
         "BUNDLER_SETUP" => File.join(evil, "bundler_setup.rb"),
         "RUBYGEMS_GEMDEPS" => "-",
+        # RubyInstaller's: folders to load DLLs from, and putting them on
+        # PATH. Windows' variable names ignore case, so a lowercase
+        # bundle_ variable is Bundler's too.
+        "RUBY_DLL_PATH" => evil,
+        "RI_FORCE_PATH_FOR_DLL" => "1",
+        "bundle_gemfile" => File.join(evil, "Gemfile"),
       }
 
       out, err, status = run_app(env, app)
@@ -104,23 +111,46 @@ class BuiltAppTest < Minitest::Test
   end
 
   # Builds hello through the fledge executable, as a person would, and
-  # unpacks its archive with the system's tar under a path with spaces
-  # and characters outside ASCII. Returns the launcher's path.
+  # unpacks its archive under a path with spaces and characters outside
+  # ASCII. Returns the launcher's path.
   def build_and_unpack(dir)
     out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
       "-o", File.join(dir, "dist"), HELLO)
     assert_predicate status, :success?, err
-    archive = File.join(dir, out.chomp)
-    archive = out.chomp unless File.file?(archive)
+    archive = File.expand_path(out.chomp, Dir.pwd)
 
     place = File.join(dir, "My Apps", "Ünïcödé 日本")
     FileUtils.mkdir_p(place)
-    tar_out, tar_status = Open3.capture2e("tar", "-xzf", archive, "-C", place)
-    assert_predicate tar_status, :success?, tar_out
-    File.join(place, "hello-#{@platform}", "hello")
+    unpack(archive, place)
+    File.join(place, "hello-#{@platform}", @platform.executable("hello"))
   end
 
+  # Windows' own Expand-Archive for a .zip, as a person on Windows has
+  # it, and the system's tar for a .tar.gz.
+  def unpack(archive, place)
+    command = if @platform.windows?
+      [
+        "powershell",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath $env:ARCHIVE -DestinationPath $env:PLACE",
+]
+    else
+      ["tar", "-xzf", archive, "-C", place]
+    end
+    out, status = Open3.capture2e({ "ARCHIVE" => archive, "PLACE" => place }, *command)
+    assert_predicate status, :success?, out
+  end
+
+  # Runs the app, never through a shell, with nothing in its environment
+  # but +env+. Windows' network and cryptography libraries need
+  # SystemRoot, so on Windows that stays, with a PATH of System32.
   def run_app(env, app, *argv)
+    if @platform.windows?
+      system_root = ENV.fetch("SystemRoot", "C:\\Windows")
+      env = { "SystemRoot" => system_root, "PATH" => File.join(system_root, "System32") }.merge(env)
+    end
     Open3.capture3(env, [app, app], *argv, unsetenv_others: true, chdir: Dir.tmpdir)
   end
 end

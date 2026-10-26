@@ -9,8 +9,9 @@
 #
 # It prints one line, <tt>Hello from Ruby VERSION on PLATFORM</tt>,
 # where PLATFORM is +RUBY_PLATFORM+: <tt>arm64-darwin23</tt> (rv-ruby
-# builds for macOS 14, Darwin 23), <tt>x86_64-linux</tt>, or
-# <tt>aarch64-linux</tt>. Delivery checks that line exactly.
+# builds for macOS 14, Darwin 23), <tt>x86_64-linux</tt>,
+# <tt>aarch64-linux</tt>, or <tt>x64-mingw-ucrt</tt>. Delivery checks
+# that line exactly.
 #
 # The line goes through JSON first. +json+ is a C extension in Ruby's
 # standard library, so the line only prints when extensions load from

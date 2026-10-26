@@ -7,10 +7,22 @@
 # SHA-256 differs fails the build. Change a pin on purpose, and run
 # Delivery (ci.yml) before trusting it.
 
-# rv-ruby's relocatable CRuby builds (ADR 001, section 3): release
-# 20261023, Ruby 4.0.9, one asset per target. Each carries a static
-# libruby the launcher links, and the standard library the runtime ships.
-# The SHA-256s are those the Unix launcher spike verified (Plan 001).
+# Ruby 4.0.9 for each target (ADR 001, section 3).
+#
+# macOS and Linux: rv-ruby's relocatable CRuby builds, release 20261023,
+# one asset per target. Each carries a static libruby the launcher links,
+# and the standard library the runtime ships. The SHA-256s are those the
+# Unix launcher spike verified (Plan 001).
+#
+# Windows: RubyInstaller's release RubyInstaller-4.0.9-1, the 7-Zip
+# archive of its x64 UCRT build, which the launcher loads as a DLL. Its
+# PGP signature is checked on every build too, with gpgv, against
+# RubyInstaller's package signing key as rubyinstaller2's own repository
+# records it (recipes/unpack/appveyor-repo-key.asc), at a pinned commit
+# and pinned by SHA-256; the signature must be that key's, by
+# fingerprint. The key expires on 2027-06-15 (doc/contributors/
+# questions.md). The SHA-256 is the one the Windows launcher spike
+# verified (Plan 001).
 ruby:
   version: 4.0.9
   release: "20261023"
@@ -24,6 +36,42 @@ ruby:
     aarch64-linux:
       url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_linux.tar.gz
       sha256: 6b49808f690ecfe0f51f266b9c3477908f69d7a927d90355565368c40c875d22
+    x64-mingw-ucrt:
+      url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-x64.7z
+      sha256: 1dc0715916251a13c4f6a550a3da1f2c726bff869371fd573a65234c008f47b4
+      signature:
+        url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-x64.7z.asc
+        sha256: a97fdc468289fb9b6343b5101c9121f06d3e71823584f47cb50a5c907805d158
+        key:
+          url: https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc
+          sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
+          fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
+          expires: "2027-06-15"
+
+# llvm-mingw, the compiler that builds the Windows launcher, release
+# 20261020, its UCRT flavor, one asset per computer that can build a
+# Windows runtime. The launcher needs only Ruby's headers, never a
+# library to link (windows.c loads Ruby's DLL at run time), so it
+# cross-compiles: CI builds the Windows runtime on Linux, and a
+# contributor can on a Mac. The UCRT flavor matters: the launcher must
+# share RubyInstaller's C runtime, so that removing a variable from its
+# environment removes it from Ruby's, and Ubuntu's own mingw-w64 targets
+# the older msvcrt. Pinned by version and SHA-256 like everything else
+# here, which MSYS2's rolling gcc on a Windows runner could not be. The
+# SHA-256s are those GitHub records for each asset; the Windows launcher
+# spike verified the x86_64-linux one.
+llvm-mingw:
+  version: "20261020"
+  hosts:
+    x86_64-linux:
+      url: https://github.com/mstorsjo/llvm-mingw/releases/download/20261020/llvm-mingw-20261020-ucrt-ubuntu-22.04-x86_64.tar.xz
+      sha256: 55064b60b991a1e1e8090b8c2f84e82b22cfe5903d12c159d65064cf5e8ae335
+    aarch64-linux:
+      url: https://github.com/mstorsjo/llvm-mingw/releases/download/20261020/llvm-mingw-20261020-ucrt-ubuntu-22.04-aarch64.tar.xz
+      sha256: ca16bb0f4f485876496fa46ad8d353c525eba57d0cf9e9e49ec1738fe4810151
+    arm64-darwin:
+      url: https://github.com/mstorsjo/llvm-mingw/releases/download/20261020/llvm-mingw-20261020-ucrt-macos-universal.tar.xz
+      sha256: e9c13e4ede38e715003ffc674d4d00a1088df8235439d1f0c16188ff0704c17e
 
 # libxcrypt, which libruby calls for String#crypt on Linux. rv-ruby links
 # it statically, but it is LGPL-2.1-or-later, so the runtime builds it as
@@ -39,19 +87,60 @@ libxcrypt:
 # The license notices each runtime carries in its notices/ folder, one
 # folder of runtime/notices/ per component, for the platforms that ship
 # the component. rake runtime copies them and writes notices/README.txt
-# from this list. Versions and sources are rv-ruby's formulas at the
-# commit that built release 20261023 (074afbcb773b580516a281c84878f1cd3a651cda).
+# from this list. A folder may appear twice, for different platforms,
+# when the same license covers a different build. For macOS and Linux,
+# versions and sources are rv-ruby's formulas at the commit that built
+# release 20261023 (074afbcb773b580516a281c84878f1cd3a651cda). For
+# Windows, they are what RubyInstaller 4.0.9-1 ships: the DLLs MSYS2's
+# UCRT64 packages build, with the versions their files report, and no
+# Rust, since RubyInstaller's Ruby has no YJIT. Its libffi left with the
+# fiddle bundled gem, which runtimes leave out.
 notices:
   - folder: fledge
     name: Fledge launcher
     license: AGPL-3.0-or-later
     source: https://github.com/setdef/Fledge
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
   - folder: ruby
     name: Ruby 4.0.9 (with the third-party code listed in LEGAL)
     license: Ruby OR BSD-2-Clause
     source: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
+  - folder: rubyinstaller
+    name: RubyInstaller 4.0.9-1, which builds Ruby for Windows (ruby/, whose LICENSE.txt this is)
+    license: BSD-3-Clause
+    source: https://github.com/oneclick/rubyinstaller2/tree/RubyInstaller-4.0.9-1
+    platforms: [x64-mingw-ucrt]
+  - folder: openssl
+    name: OpenSSL 3.6.5 (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers)
+    license: Apache-2.0
+    source: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
+    platforms: [x64-mingw-ucrt]
+  - folder: libyaml
+    name: libyaml 0.2.5 (libyaml-0-2.dll)
+    license: MIT
+    source: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    platforms: [x64-mingw-ucrt]
+  - folder: zlib
+    name: zlib 1.3.2 (zlib1.dll)
+    license: Zlib
+    source: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+    platforms: [x64-mingw-ucrt]
+  - folder: gmp
+    name: GNU MP 6.3.0 (ruby/bin/ruby_builtin_dlls/libgmp-10.dll, which you may replace with your own build)
+    license: LGPL-3.0-or-later OR GPL-2.0-or-later
+    source: https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz, as MSYS2 builds it (https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-gmp)
+    platforms: [x64-mingw-ucrt]
+  - folder: mingw-w64
+    name: The MinGW-w64 runtime, linked into the launcher and every DLL, and winpthreads (libwinpthread-1.dll)
+    license: MinGW-w64 runtime license (COPYING.MinGW-w64-runtime.txt); winpthreads MIT AND BSD-3-Clause
+    source: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0
+    platforms: [x64-mingw-ucrt]
+  - folder: ca-certificates
+    name: Mozilla's CA certificates, as MSYS2 packages them (ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, Mozilla's data of 2026-10-21)
+    license: MPL-2.0
+    source: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-ca-certificates
+    platforms: [x64-mingw-ucrt]
   - folder: rust
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
     license: MIT OR Apache-2.0

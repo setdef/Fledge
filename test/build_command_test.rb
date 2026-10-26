@@ -39,13 +39,24 @@ class BuildCommandTest < Minitest::Test
   end
 
   def test_every_target_builds_from_one_computer
-    out, err, status = build("-t", "arm64-darwin", "--target", "x86_64-linux", "--target=aarch64-linux", "-o", "builds", "hello")
+    out, err, status = build("-t", "arm64-darwin", "--target", "x86_64-linux", "--target=aarch64-linux",
+      "-t", "x64-mingw-ucrt", "-o", "builds", "hello")
 
     assert_equal [0, ""], [status, err]
-    assert_equal "builds/hello-arm64-darwin.tar.gz\nbuilds/hello-x86_64-linux.tar.gz\nbuilds/hello-aarch64-linux.tar.gz\n", out
+    assert_equal "builds/hello-arm64-darwin.tar.gz\nbuilds/hello-x86_64-linux.tar.gz\n" \
+      "builds/hello-aarch64-linux.tar.gz\nbuilds/hello-x64-mingw-ucrt.zip\n", out
     %w[arm64-darwin x86_64-linux aarch64-linux].each do |name|
       assert_path_exists File.join(@dir, "builds/hello-#{name}.tar.gz")
+      assert_path_exists File.join(@dir, "builds/hello-#{name}/hello")
     end
+    assert_path_exists File.join(@dir, "builds/hello-x64-mingw-ucrt.zip")
+    assert_path_exists File.join(@dir, "builds/hello-x64-mingw-ucrt/hello.exe")
+  end
+
+  def test_the_default_target_on_windows_is_windows
+    out, err, status = build("hello", host: Gem::Platform.new("x64-mingw-ucrt"))
+
+    assert_equal [0, "", "dist/hello-x64-mingw-ucrt.zip\n"], [status, err, out]
   end
 
   def test_a_repeated_target_builds_once
@@ -75,7 +86,7 @@ class BuildCommandTest < Minitest::Test
   def test_mistakes_print_one_line_and_exit_one
     {
       %w[-t sparc-solaris hello] => "fledge build: 'sparc-solaris' is not a target Fledge builds for. " \
-        "Targets: arm64-darwin, x86_64-linux, aarch64-linux.\n",
+        "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n",
       %w[hello -t] => "fledge build: -t needs a PLATFORM. See 'fledge --help'.\n",
       %w[--out] => "fledge build: --out needs a DIR. See 'fledge --help'.\n",
       %w[--frobnicate hello] => "fledge build: unknown option '--frobnicate'. See 'fledge --help'.\n",
@@ -94,7 +105,7 @@ class BuildCommandTest < Minitest::Test
 
     assert_equal 1, status
     assert_equal "fledge build: Fledge has no runtime for this computer's platform (x86_64-linux-musl). " \
-      "Choose a target with --target: arm64-darwin, x86_64-linux, aarch64-linux.\n", err
+      "Choose a target with --target: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n", err
   end
 
   def test_a_missing_runtime_is_an_error

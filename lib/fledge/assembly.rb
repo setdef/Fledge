@@ -8,24 +8,26 @@
 require "fileutils"
 require_relative "entry"
 require_relative "error"
+require_relative "platform"
 require_relative "tar_gz"
 
 module Fledge
   # Puts one app into one platform's runtime: a folder and its archive.
   #
-  # A runtime archive holds a launcher named +launcher+ beside the Ruby
-  # it embeds. A built app is that runtime with the launcher renamed to
-  # the app's name and the app copied into its +app+ folder, written
-  # twice: as <tt>OUT/NAME-PLATFORM/</tt>, to try, and as
-  # <tt>OUT/NAME-PLATFORM.tar.gz</tt>, to ship. Unpacking the runtime and
-  # packing the folder again would lose the launcher's executable bit on
-  # a disk that has none.
+  # A runtime archive holds a launcher named +launcher+ (+launcher.exe+
+  # on Windows) beside the Ruby it embeds. A built app is that runtime
+  # with the launcher renamed to the app's name and the app copied into
+  # its +app+ folder, written twice: as <tt>OUT/NAME-PLATFORM/</tt>, to
+  # try, and as <tt>OUT/NAME-PLATFORM.tar.gz</tt> (<tt>.zip</tt> for
+  # Windows), to ship. Unpacking the runtime and packing the folder again
+  # would lose the launcher's executable bit on a disk that has none.
   #
   # This class streams each runtime entry, and then each of the app's,
   # into the folder and the archive at once, so the archive keeps the
-  # permissions and symlinks the runtime was built with. It replaces a
-  # previous build of the same app and platform, and removes what it
-  # wrote if the build fails.
+  # permissions and symlinks the runtime was built with. The platform
+  # names the archive's format (Fledge::Platform#archive_format). It
+  # replaces a previous build of the same app and platform, and removes
+  # what it wrote if the build fails.
   #
   # Use it once per target in <tt>fledge build</tt>.
   #
@@ -108,11 +110,11 @@ module Fledge
     private def build
       remove_output
       FileUtils.mkdir_p(folder)
-      TarGz.write(archive) do |tar|
-        tar.add(Entry.directory(base_name))
-        copy_runtime(tar)
-        place(tar, Entry.directory("app"))
-        @app.entries(skip: [@out]).each { |entry| place(tar, entry.with(path: "app/#{entry.path}")) }
+      @platform.archive_format.write(archive) do |writer|
+        writer.add(Entry.directory(base_name))
+        copy_runtime(writer)
+        place(writer, Entry.directory("app"))
+        @app.entries(skip: [@out]).each { |entry| place(writer, entry.with(path: "app/#{entry.path}")) }
       end
     rescue
       remove_output
@@ -132,7 +134,7 @@ module Fledge
       FileUtils.rm_f(archive)
     end
 
-    private def copy_runtime(tar)
+    private def copy_runtime(writer)
       launcher = @platform.executable(LAUNCHER)
       top = nil # : String?
       found = false
@@ -143,7 +145,7 @@ module Fledge
         next unless rest
 
         found ||= rest == launcher
-        place(tar, entry.with(path: runtime_path(rest, launcher)))
+        place(writer, entry.with(path: runtime_path(rest, launcher)))
       end
       raise Error, "#{@runtime} is not a Fledge runtime: it has no #{launcher}" unless found
     end
@@ -161,9 +163,9 @@ module Fledge
       path
     end
 
-    private def place(tar, entry)
+    private def place(writer, entry)
       entry.write_into(folder)
-      tar.add(entry.with(path: "#{base_name}/#{entry.path}"))
+      writer.add(entry.with(path: "#{base_name}/#{entry.path}"))
     end
   end
 end

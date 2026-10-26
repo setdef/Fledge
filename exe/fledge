@@ -40,8 +40,9 @@
 # OPTIONS
 #     -t, --target PLATFORM
 #                        Build for PLATFORM (repeatable). One of:
-#                        arm64-darwin, x86_64-linux, aarch64-linux
-#                        (default: the platform you are on)
+#                        arm64-darwin, x86_64-linux, aarch64-linux,
+#                        x64-mingw-ucrt (default: the platform you are
+#                        on)
 #     -o, --out DIR      Write builds to DIR (default: dist)
 #     -h, --help         Show this help
 #     -V, --version      Print Fledge's version
@@ -53,9 +54,12 @@
 #                        PATH/.git and DIR, if DIR is inside PATH.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        NAME is PATH's folder name, and NAME is also
-#                        the program to run. A new build replaces it.
+#                        the program to run (NAME.exe on Windows). A
+#                        new build replaces it.
+#     DIR/NAME-PLATFORM.zip
 #     DIR/NAME-PLATFORM.tar.gz
-#                        The same folder, archived for download.
+#                        The same folder, archived for download: a .zip
+#                        for Windows, a .tar.gz for macOS and Linux.
 #     ~/.cache/fledge/runtimes/
 #                        Runtimes downloaded from Fledge's GitHub
 #                        Release for this version, each checked
@@ -78,7 +82,8 @@
 #     fledge build
 #
 #     Build for every platform, from any one of them:
-#     fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux
+#     fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux \
+#       -t x64-mingw-ucrt
 #
 #     Build an app from elsewhere, into another folder:
 #     fledge build --out /tmp/builds path/to/app

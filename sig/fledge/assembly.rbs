@@ -24,10 +24,10 @@ module Fledge
 
     private def remove_output: () -> void
 
-    private def copy_runtime: (TarGz::Writer tar) -> void
+    private def copy_runtime: (TarGz::Writer | Zip::Writer writer) -> void
 
     private def runtime_path: (String path, String launcher) -> String
 
-    private def place: (TarGz::Writer tar, Entry entry) -> void
+    private def place: (TarGz::Writer | Zip::Writer writer, Entry entry) -> void
   end
 end

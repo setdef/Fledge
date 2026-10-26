@@ -18,6 +18,10 @@ module Fledge
 
     private def self.target_name: (Gem::Platform) -> String
 
+    def windows?: () -> bool
+
+    def archive_format: () -> (singleton(TarGz) | singleton(Zip))
+
     def archive_extension: () -> String
 
     def executable: (String) -> String

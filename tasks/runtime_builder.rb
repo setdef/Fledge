@@ -17,23 +17,29 @@ require_relative "../lib/fledge/runtimes"
 require_relative "../lib/fledge/tar_gz"
 require_relative "../lib/fledge/version"
 
-# Builds the runtime for the platform it runs on (ADR 001, section 2).
+# Builds a runtime (ADR 001, section 2).
 #
-# A runtime is the launcher in runtime/launcher/, compiled against
-# rv-ruby's static libruby, beside rv-ruby's standard library and
-# default gems, its CA bundle, and the license notices of everything it
-# carries. Fledge's CI runs this on each platform's own runner, because
-# the launcher is native code and nothing here cross-compiles; then
-# fledge build, on any computer, copies apps into the results.
+# On macOS and Linux, a runtime is the launcher in runtime/launcher/,
+# compiled against rv-ruby's static libruby, beside rv-ruby's standard
+# library and default gems, its CA bundle, and the license notices of
+# everything it carries. Those launchers link Ruby itself, so each builds
+# on its own platform's runner. On Windows, a runtime is the launcher,
+# cross-compiled with llvm-mingw, beside RubyInstaller's Ruby in ruby\,
+# with the notices: the Windows launcher loads Ruby's DLL when it runs
+# and needs only Ruby's headers to build, so a Linux runner, or a Mac,
+# builds it. Then fledge build, on any computer, copies apps into the
+# results.
 #
 # Every input comes from runtime/sources.yml and is checked against its
-# SHA-256. The steps that differ by operating system (compiler flags,
-# stripping, libxcrypt) live in a recipe per OS, Darwin and Linux, so a
-# Windows recipe can join them. The layout and pruning rules are those
-# the Unix launcher spike settled (Plan 001).
+# SHA-256, and RubyInstaller's archive against its PGP signature too. The
+# steps that differ by operating system (unpacking Ruby, compiling,
+# stripping, libxcrypt) live in a recipe per OS: Darwin and Linux, which
+# share Unix, and Windows. The layout and pruning rules are those the
+# Unix and Windows launcher spikes settled (Plan 001).
 #
-# Run it as rake runtime, or as ruby tasks/runtime_builder.rb in a
-# container that has a C toolchain and any Ruby.
+# Run it as rake runtime (or rake "runtime[x64-mingw-ucrt]"), or as ruby
+# tasks/runtime_builder.rb [PLATFORM] in a container that has a C
+# toolchain and any Ruby.
 class RuntimeBuilder
   ROOT = File.expand_path("..", __dir__)
 
@@ -57,12 +63,13 @@ class RuntimeBuilder
   # go (Plan 001: "A runtime per target").
   KEPT_GEM_FOLDERS = %w[gems specifications].freeze
 
-  attr_reader :platform, :sources
+  attr_reader :platform, :host, :sources
 
-  def initialize(platform: Fledge::Platform.local, work: File.join(ROOT, "tmp", "runtime"),
+  def initialize(platform: Fledge::Platform.local, host: Fledge::Platform.local, work: File.join(ROOT, "tmp", "runtime"),
     downloads: File.join(ROOT, "tmp", "downloads"), sources: File.join(ROOT, "runtime", "sources.yml")
   )
     @platform = platform
+    @host = host
     @work = work
     @downloads = downloads
     @sources = YAML.safe_load_file(sources)
@@ -70,15 +77,13 @@ class RuntimeBuilder
 
   # Builds the runtime and returns the path of its archive.
   def call
-    raise "#{platform} runtimes build on #{platform} only; this is #{Fledge::Platform.local}" unless platform == Fledge::Platform.local
+    recipe = recipe_class.new(builder: self, build_dir:)
+    hosts = recipe.hosts
+    raise "#{platform} runtimes build on #{hosts.join(', ')} only; this is #{host}" unless hosts.include?(host.name)
 
     FileUtils.rm_rf(build_dir)
-    prefix = unpack_ruby
-    recipe = recipe_class.new(builder: self, prefix:, build_dir:)
     FileUtils.mkdir_p(stage)
-    recipe.compile(File.join(stage, "launcher"))
-    copy_ruby(prefix)
-    recipe.finish(stage)
+    recipe.build(stage)
     write_notices(stage)
     archive
   end
@@ -89,7 +94,7 @@ class RuntimeBuilder
   end
 
   def top
-    File.basename(Fledge::Runtimes.file_name(platform), platform.archive_extension)
+    File.basename(Fledge::Runtimes.file_name(platform), Fledge::Runtimes::EXTENSION)
   end
 
   def build_dir
@@ -106,10 +111,22 @@ class RuntimeBuilder
     Fledge::Download.save(url, to: path, sha256:)
   end
 
+  # The first of +tools+ found on PATH, as a full path, or nil.
+  def which(*tools)
+    directories = ENV.fetch("PATH", "").split(File::PATH_SEPARATOR)
+    tools.each do |tool|
+      directories.each do |directory|
+        path = File.join(directory, tool)
+        return path if File.file?(path) && File.executable?(path)
+      end
+    end
+    nil
+  end
+
   # Runs a command, echoing it, and raises when it fails.
-  def run(*command, chdir: ROOT)
+  def run(*command, chdir: ROOT, out: $stdout)
     puts "+ #{command.join(' ')}"
-    system(*command, chdir:, exception: true)
+    system(*command, chdir:, out:, exception: true)
   end
 
   # Runs a command and returns its standard output.
@@ -139,6 +156,70 @@ class RuntimeBuilder
     Dir.glob(File.join(gems, "gems", "*")).each do |gem|
       FileUtils.rm_rf(gem) unless default.include?(File.basename(gem))
     end
+  end
+
+  # Removes what a shipped app never needs from a copy of
+  # RubyInstaller's tree at +tree+, as the Windows launcher spike found
+  # safe: its documentation (share\), headers and import libraries, the
+  # MSYS2 keyring and ridk's files, and the command-line wrappers in bin\
+  # (bundle.bat, gem.cmd, ridk.ps1, ...), which a launched app never runs.
+  # ruby.exe and rubyw.exe stay, since RbConfig.ruby and Gem.ruby name
+  # them for an app's child processes, and every DLL stays, since some
+  # extension's manifest names each. Then lib\ruby is pruned as on Unix.
+  def self.prune_windows(tree)
+    FileUtils.rm_rf(%w[share include packages ridk_use lib/pkgconfig].map { |path| File.join(tree, path) })
+    FileUtils.rm_f(Dir.glob(File.join(tree, "lib", "*.a")))
+    Dir.glob(File.join(tree, "bin", "*")).each do |path|
+      FileUtils.rm_f(path) if File.file?(path) && !File.extname(path).match?(/\A\.(?:exe|dll)\z/i)
+    end
+    prune(File.join(tree, "lib", "ruby"))
+  end
+
+  # The bytes of an ASCII-armored OpenPGP block (RFC 4880, section 6),
+  # which gpgv reads only as binary. Raises when the armor's CRC-24 does
+  # not match.
+  def self.dearmor(armored)
+    body = armored[/^-----BEGIN PGP [A-Z ]+-----\r?\n(.*?)^-----END PGP /m, 1] or raise "not an ASCII-armored OpenPGP block"
+    lines = body.split(/\r?\n\r?\n/, 2).last.to_s.lines.map(&:strip).reject(&:empty?)
+    checksum = lines.last.to_s.start_with?("=") ? lines.pop.to_s.delete_prefix("=") : nil
+    bytes = lines.join.unpack1("m0")
+    raise "the armor's CRC-24 does not match its data" if checksum && [crc24(bytes)].pack("N").byteslice(1, 3) != checksum.unpack1("m0")
+
+    bytes
+  end
+
+  def self.crc24(bytes)
+    bytes.each_byte.reduce(0xB704CE) do |crc, byte|
+      crc ^= byte << 16
+      8.times { crc = (crc << 1).then { |shifted| shifted.anybits?(0x1000000) ? shifted ^ 0x1864CFB : shifted } }
+      crc
+    end & 0xFFFFFF
+  end
+
+  # The Subsystem field of the Windows program at +path+ (2 for a GUI
+  # program, 3 for a console one), from its PE optional header, which
+  # starts 24 bytes into the PE header and holds Subsystem at offset 68
+  # in both PE32 and PE32+.
+  def self.pe_subsystem(path)
+    bytes = File.binread(path, 4096).to_s
+    raise "#{path} is not a Windows program" unless bytes.start_with?("MZ") && bytes.bytesize >= 64
+
+    header = bytes.byteslice(0x3C, 4).to_s.unpack1("V").to_i
+    raise "#{path} is not a Windows program" unless bytes.byteslice(header, 4) == "PE\0\0"
+
+    bytes.byteslice(header + 24 + 68, 2).to_s.unpack1("v")
+  end
+
+  # Puts Fledge's rubygems/defaults/operating_system.rb into the Ruby
+  # library at +ruby+ (a lib/ruby folder), replacing any there, such as
+  # RubyInstaller's; see the file's own comment.
+  def install_rubygems_defaults(ruby)
+    version = sources.fetch("ruby").fetch("version").sub(/\.\d+\z/, ".0")
+    defaults = File.join(ruby, version, "rubygems", "defaults")
+    raise "#{ruby} has no RubyGems at #{version}" unless File.directory?(File.dirname(defaults))
+
+    FileUtils.mkdir_p(defaults)
+    FileUtils.cp(File.join(ROOT, "runtime", "rubygems", "operating_system.rb"), defaults)
   end
 
   # The notices that apply to this platform, from runtime/sources.yml.
@@ -183,39 +264,11 @@ class RuntimeBuilder
   end
 
   private def recipe_class
-    platform.name.end_with?("-darwin") ? Darwin : Linux
-  end
-
-  private def unpack_ruby
-    pin = sources.fetch("ruby").fetch("platforms").fetch(platform.name)
-    tarball = fetch(pin.fetch("url"), pin.fetch("sha256"))
-    unpacked = File.join(build_dir, "rv-ruby")
-    FileUtils.mkdir_p(unpacked)
-    run("tar", "-xzf", tarball, "-C", unpacked)
-    prefixes = Dir.glob(File.join(unpacked, "*", sources.fetch("ruby").fetch("version")))
-    raise "#{tarball} does not hold one Ruby prefix: #{prefixes}" unless prefixes.size == 1
-
-    prefixes.first
-  end
-
-  private def copy_ruby(prefix)
-    FileUtils.mkdir_p(File.join(stage, "lib"))
-    FileUtils.cp_r(File.join(prefix, "lib", "ruby"), File.join(stage, "lib", "ruby"))
-    FileUtils.chmod_R("u+w", File.join(stage, "lib"))
-    self.class.prune(File.join(stage, "lib", "ruby"))
-    install_rubygems_defaults(File.join(stage, "lib", "ruby"))
-    FileUtils.mkdir_p(File.join(stage, "libexec"))
-    FileUtils.cp(File.join(prefix, "libexec", "cert.pem"), File.join(stage, "libexec", "cert.pem"))
-  end
-
-  # Keeps RubyGems to the runtime's gems; see the file's own comment.
-  private def install_rubygems_defaults(ruby)
-    version = sources.fetch("ruby").fetch("version").sub(/\.\d+\z/, ".0")
-    defaults = File.join(ruby, version, "rubygems", "defaults")
-    raise "#{ruby} has no RubyGems at #{version}" unless File.directory?(File.dirname(defaults))
-
-    FileUtils.mkdir_p(defaults)
-    FileUtils.cp(File.join(ROOT, "runtime", "rubygems", "operating_system.rb"), defaults)
+    if platform.windows?
+      Windows
+    else
+      platform.name.end_with?("-darwin") ? Darwin : Linux
+    end
   end
 
   private def archive
@@ -229,19 +282,35 @@ class RuntimeBuilder
     path
   end
 
-  # What every recipe shares: the C sources and the include flags for
-  # rv-ruby's headers.
+  # What every recipe shares: the builder, the folder it works in, and
+  # where the launcher's sources are.
   class Recipe
     LAUNCHER = File.join(ROOT, "runtime", "launcher")
 
-    def initialize(builder:, prefix:, build_dir:)
+    def initialize(builder:, build_dir:)
       @builder = builder
-      @prefix = prefix
       @build_dir = build_dir
     end
 
+    # The platforms whose computers can build this recipe's runtime.
+    def hosts
+      [@builder.platform.name]
+    end
+  end
+
+  # macOS and Linux: rv-ruby's Ruby, whose static libruby the launcher
+  # links, so each builds only on its own platform. The runtime is the
+  # launcher with lib/ruby and libexec/cert.pem beside it.
+  class Unix < Recipe
+    def build(stage)
+      @prefix = unpack_ruby
+      compile(File.join(stage, "launcher"))
+      copy_ruby(stage)
+      finish(stage)
+    end
+
     private def sources(os_file)
-      [File.join(LAUNCHER, "unix.c"), File.join(LAUNCHER, os_file)]
+      [File.join(LAUNCHER, "unix.c"), File.join(LAUNCHER, "scrub.c"), File.join(LAUNCHER, os_file)]
     end
 
     private def includes
@@ -249,12 +318,34 @@ class RuntimeBuilder
       arch = Dir.glob(File.join(headers, "*")).find { |dir| File.directory?(dir) && File.basename(dir) != "ruby" }
       ["-isystem", arch.to_s, "-isystem", headers, "-I", LAUNCHER]
     end
+
+    private def unpack_ruby
+      pin = @builder.sources.fetch("ruby").fetch("platforms").fetch(@builder.platform.name)
+      tarball = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      unpacked = File.join(@build_dir, "rv-ruby")
+      FileUtils.mkdir_p(unpacked)
+      @builder.run("tar", "-xzf", tarball, "-C", unpacked)
+      prefixes = Dir.glob(File.join(unpacked, "*", @builder.sources.fetch("ruby").fetch("version")))
+      raise "#{tarball} does not hold one Ruby prefix: #{prefixes}" unless prefixes.size == 1
+
+      prefixes.first.to_s
+    end
+
+    private def copy_ruby(stage)
+      FileUtils.mkdir_p(File.join(stage, "lib"))
+      FileUtils.cp_r(File.join(@prefix, "lib", "ruby"), File.join(stage, "lib", "ruby"))
+      FileUtils.chmod_R("u+w", File.join(stage, "lib"))
+      RuntimeBuilder.prune(File.join(stage, "lib", "ruby"))
+      @builder.install_rubygems_defaults(File.join(stage, "lib", "ruby"))
+      FileUtils.mkdir_p(File.join(stage, "libexec"))
+      FileUtils.cp(File.join(@prefix, "libexec", "cert.pem"), File.join(stage, "libexec", "cert.pem"))
+    end
   end
 
   # macOS: link libruby whole into the launcher, which exports its
   # symbols to extensions by default; ad hoc sign it, since Apple Silicon
   # runs only signed code.
-  class Darwin < Recipe
+  class Darwin < Unix
     def compile(output)
       cc = ENV.fetch("CC", "clang")
       sources("darwin.c").each do |source|
@@ -281,7 +372,7 @@ class RuntimeBuilder
   # Linux: link libruby whole and export its symbols (-rdynamic), take
   # libgcc's unwinder statically, and link libxcrypt dynamically from
   # the runtime's lib/ (see runtime/launcher/unix.c).
-  class Linux < Recipe
+  class Linux < Unix
     # The shared libraries the launcher may need: glibc's, and the
     # runtime's own libxcrypt.
     ALLOWED = /\A(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|ld-linux[-\w.]*\.so\.\d|libcrypt\.so\.\d+)\z/
@@ -348,6 +439,144 @@ class RuntimeBuilder
       raise "the launcher needs libraries a runtime does not ship: #{foreign.join(', ')}" unless foreign.empty?
     end
   end
+
+  # Windows: RubyInstaller's Ruby, checked against its signature, whose
+  # tree goes into ruby\ with its shape unchanged and Fledge's RubyGems
+  # defaults in place of RubyInstaller's, and the launcher cross-compiled
+  # beside it with llvm-mingw. The launcher loads Ruby's DLL when it runs
+  # (runtime/launcher/windows.c), so it needs Ruby's headers to build,
+  # and nothing to link.
+  class Windows < Recipe
+    TARGET = "x86_64-w64-mingw32"
+
+    # The PE Subsystem of a console program, which Windows gives a
+    # console, and of a GUI one, which it does not.
+    CONSOLE = 3
+    GUI = 2
+
+    # The DLLs a launcher may import: Windows' kernel and its universal C
+    # runtime, which every supported Windows ships, and for a windowed
+    # one, USER32 for its message box.
+    IMPORTS = /\A(?:KERNEL32\.dll|api-ms-win-crt-[a-z0-9-]+\.dll)\z/i
+    WINDOWED_IMPORTS = /\AUSER32\.dll\z/i
+
+    def hosts
+      @builder.sources.fetch("llvm-mingw").fetch("hosts").keys
+    end
+
+    def build(stage)
+      tree = unpack_rubyinstaller
+      @toolchain = unpack_toolchain
+      compile(tree, File.join(stage, "launcher.exe"))
+      ruby = File.join(stage, "ruby")
+      FileUtils.cp_r(tree, ruby)
+      FileUtils.chmod_R("u+w", ruby)
+      RuntimeBuilder.prune_windows(ruby)
+      @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
+    end
+
+    # Compiles the console launcher to +output+, and a windowed one beside
+    # the build, which no runtime ships yet, to check that it still
+    # builds as a GUI program. Both build with warnings as errors, under
+    # clang's static analyzer, and may import only what IMPORTS allows.
+    private def compile(tree, output)
+      sources = [File.join(LAUNCHER, "windows.c"), File.join(LAUNCHER, "scrub.c")]
+      flags = ["-std=gnu11", *WARNINGS, "-municode", "-DFLEDGE_RUBY_DLL=L\"#{ruby_dll(tree)}\"", *includes(tree)]
+      sources.each do |source|
+        report = File.join(@build_dir, "#{File.basename(source, '.c')}.plist")
+        @builder.run(tool("clang"), "--analyze", "-Xclang", "-analyzer-werror", *flags, source, "-o", report)
+        @builder.run(tool("clang"), "--analyze", "-Xclang", "-analyzer-werror", *flags, "-DFLEDGE_WINDOWED", source, "-o", report)
+      end
+      resources = File.join(@build_dir, "windows.res.o")
+      @builder.run(tool("windres"), "windows.rc", "-O", "coff", "-o", resources, chdir: LAUNCHER)
+      windowed = File.join(@build_dir, "launcher-windowed.exe")
+      @builder.run(tool("clang"), "-O2", *flags, *sources, resources, "-mconsole", "-s", "-o", output)
+      @builder.run(tool("clang"), "-O2", *flags, "-DFLEDGE_WINDOWED", *sources, resources, "-mwindows", "-s", "-o", windowed)
+      check(output, CONSOLE, IMPORTS)
+      check(windowed, GUI, Regexp.union(IMPORTS, WINDOWED_IMPORTS))
+    end
+
+    private def check(program, subsystem, allowed)
+      actual = RuntimeBuilder.pe_subsystem(program)
+      raise "#{program} has PE subsystem #{actual}, not #{subsystem}" unless actual == subsystem
+
+      imports = @builder.capture(tool("objdump", prefix: "llvm-"), "-p", program).scan(/DLL Name: (\S+)/).flatten
+      raise "#{program} imports no DLLs, which is not a Windows program" if imports.empty?
+
+      foreign = imports.grep_v(allowed)
+      raise "#{program} imports DLLs Windows does not ship: #{foreign.join(', ')}" unless foreign.empty?
+    end
+
+    private def tool(name, prefix: "#{TARGET}-")
+      File.join(@toolchain, "bin", "#{prefix}#{name}")
+    end
+
+    private def includes(tree)
+      headers = Dir.glob(File.join(tree, "include", "ruby-*")).first or raise "#{tree} has no Ruby headers"
+      ["-isystem", headers, "-isystem", File.join(headers, "x64-mingw-ucrt"), "-I", LAUNCHER]
+    end
+
+    # The name of Ruby's DLL in bin\, such as x64-ucrt-ruby400.dll.
+    private def ruby_dll(tree)
+      dlls = Dir.glob(File.join(tree, "bin", "*-ruby*.dll"))
+      raise "#{tree}/bin holds no single Ruby DLL: #{dlls}" unless dlls.size == 1
+
+      File.basename(dlls.first.to_s)
+    end
+
+    private def unpack_rubyinstaller
+      pin = @builder.sources.fetch("ruby").fetch("platforms").fetch(@builder.platform.name)
+      archive = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      verify(archive, pin.fetch("signature"))
+      unpacked = File.join(@build_dir, "rubyinstaller")
+      FileUtils.mkdir_p(unpacked)
+      extract_7z(archive, unpacked)
+      trees = Dir.glob(File.join(unpacked, "*")).select { |path| File.directory?(path) }
+      raise "#{archive} does not hold one RubyInstaller tree: #{trees}" unless trees.size == 1
+
+      trees.first.to_s
+    end
+
+    # Checks +archive+ against its detached signature with gpgv, which
+    # trusts only the keyring it is given: here, the one key the pin
+    # names, and the signature must be that key's, by fingerprint.
+    private def verify(archive, pin)
+      signature = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      key = pin.fetch("key")
+      keyring = File.join(@build_dir, "rubyinstaller-signing-key.gpg")
+      File.binwrite(keyring, RuntimeBuilder.dearmor(File.read(@builder.fetch(key.fetch("url"), key.fetch("sha256")))))
+      gpgv = @builder.which("gpgv") or raise "checking RubyInstaller's signature needs gpgv (GnuPG) on PATH"
+      status = @builder.capture(gpgv, "--keyring", keyring, "--status-fd", "1", signature, archive)
+      fingerprint = key.fetch("fingerprint")
+      raise "#{archive} is not signed by #{fingerprint}" unless status.match?(/^\[GNUPG:\] VALIDSIG #{fingerprint} /)
+
+      puts "#{File.basename(archive)}: good signature from #{fingerprint}"
+    end
+
+    # 7-Zip where it is installed (Ubuntu's runners), and libarchive's
+    # bsdtar otherwise (macOS's own tar).
+    private def extract_7z(archive, into)
+      if (seven_zip = @builder.which("7z", "7zz"))
+        @builder.run(seven_zip, "x", "-y", "-bd", "-o#{into}", archive, out: File::NULL)
+      elsif (bsdtar = @builder.which("bsdtar"))
+        @builder.run(bsdtar, "-xf", archive, "-C", into)
+      else
+        raise "unpacking #{archive} needs 7z or bsdtar on PATH"
+      end
+    end
+
+    private def unpack_toolchain
+      pin = @builder.sources.fetch("llvm-mingw").fetch("hosts").fetch(@builder.host.name)
+      tarball = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      toolchain = File.join(@build_dir, "llvm-mingw")
+      FileUtils.mkdir_p(toolchain)
+      @builder.run("tar", "-xJf", tarball, "-C", toolchain, "--strip-components=1")
+      toolchain
+    end
+  end
 end
 
-puts RuntimeBuilder.new.call if $PROGRAM_NAME == __FILE__
+if $PROGRAM_NAME == __FILE__
+  platform = ARGV.first ? Fledge::Platform.find(ARGV.first) : Fledge::Platform.local
+  puts RuntimeBuilder.new(platform:).call
+end

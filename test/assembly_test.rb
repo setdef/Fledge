@@ -6,13 +6,15 @@
 #++
 
 require_relative "test_helper"
+require_relative "support/zip_reader"
 
 class AssemblyTest < Minitest::Test
   LINUX = Fledge::Platform.find("x86_64-linux")
+  WINDOWS = Fledge::Platform.find("x64-mingw-ucrt")
 
-  def assemble(dir, app_root, runtime: FakeRuntime.write(dir, LINUX))
+  def assemble(dir, app_root, platform: LINUX, runtime: FakeRuntime.write(dir, platform))
     out = File.join(dir, "dist")
-    Fledge::Assembly.new(app: Fledge::App.at(app_root), platform: LINUX, runtime:, out:).call
+    Fledge::Assembly.new(app: Fledge::App.at(app_root), platform:, runtime:, out:).call
   end
 
   def entries(archive)
@@ -49,6 +51,68 @@ class AssemblyTest < Minitest::Test
       ], found.keys.sort
       assert_equal 0o755, found.fetch("hello-x86_64-linux/hello").mode
       assert_equal :symlink, found.fetch("hello-x86_64-linux/lib/current").type
+    end
+  end
+
+  # Windows' layout differs from Unix's (Ruby's own tree in ruby\, not
+  # lib/ beside the launcher), but assembly does not care: it renames
+  # launcher.exe and copies the rest as the runtime holds it.
+  def test_a_windows_app_lands_in_a_folder_and_a_zip_with_the_exe_renamed
+    Dir.mktmpdir do |dir|
+      runtime = FakeRuntime.write(dir, WINDOWS, extra: [
+        Fledge::Entry.directory("ruby"),
+        Fledge::Entry.directory("ruby/bin"),
+        Fledge::Entry.file("ruby/bin/x64-ucrt-ruby400.dll", "MZ", mode: 0o755),
+      ])
+
+      archive = assemble(dir, FakeApp.write(dir), platform: WINDOWS, runtime:)
+
+      assert_equal File.join(dir, "dist", "hello-x64-mingw-ucrt.zip"), archive
+      folder = File.join(dir, "dist", "hello-x64-mingw-ucrt")
+      assert_equal %w[app hello.exe lib ruby], Dir.children(folder).sort
+      assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "hello.exe"))
+      members = ZipReader.read(archive).to_h { |member| [member.name, member] }
+      assert_equal %w[
+        hello-x64-mingw-ucrt/
+        hello-x64-mingw-ucrt/app/
+        hello-x64-mingw-ucrt/app/main.rb
+        hello-x64-mingw-ucrt/hello.exe
+        hello-x64-mingw-ucrt/lib/
+        hello-x64-mingw-ucrt/lib/ruby/
+        hello-x64-mingw-ucrt/lib/ruby/stdlib.rb
+        hello-x64-mingw-ucrt/ruby/
+        hello-x64-mingw-ucrt/ruby/bin/
+        hello-x64-mingw-ucrt/ruby/bin/x64-ucrt-ruby400.dll
+      ], members.keys.sort
+      assert_equal FakeRuntime::LAUNCHER, members.fetch("hello-x64-mingw-ucrt/hello.exe").data
+      assert_equal "puts 'hi'\n", members.fetch("hello-x64-mingw-ucrt/app/main.rb").data
+      refute_path_exists File.join(dir, "dist", "hello-x64-mingw-ucrt.tar.gz")
+    end
+  end
+
+  def test_a_windows_runtime_without_launcher_exe_is_refused
+    Dir.mktmpdir do |dir|
+      runtime = File.join(dir, "unix-launcher.tar.gz")
+      Fledge::TarGz.write(runtime) { |tar| tar.add(Fledge::Entry.file("top/launcher", "", mode: 0o755)) }
+
+      error = assert_raises(Fledge::Error) { assemble(dir, FakeApp.write(dir), platform: WINDOWS, runtime:) }
+      assert_equal "#{runtime} is not a Fledge runtime: it has no launcher.exe", error.message
+      assert_empty Dir.children(File.join(dir, "dist"))
+    end
+  end
+
+  def test_a_symlink_in_an_app_for_windows_is_refused_and_nothing_is_left
+    skip "symlinks need privileges on Windows" if Gem.win_platform?
+
+    Dir.mktmpdir do |dir|
+      app = FakeApp.write(dir)
+      File.symlink("main.rb", File.join(app, "link.rb"))
+
+      error = assert_raises(Fledge::Error) { assemble(dir, app, platform: WINDOWS) }
+
+      assert_equal "hello-x64-mingw-ucrt/app/link.rb is a symbolic link, which a .zip for Windows cannot hold. " \
+        "Replace it with what it points to.", error.message
+      assert_empty Dir.children(File.join(dir, "dist"))
     end
   end
 

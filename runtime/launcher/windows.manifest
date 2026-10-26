@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+The Windows launcher's application manifest, embedded in the program by
+windows.rc, so it stays with the program when fledge build renames it.
+
+longPathAware lets the process open files past MAX_PATH where Windows
+allows it, as RubyInstaller's own ruby.exe declares; without it,
+RubyGems fails to load from an app unpacked deep in a folder tree (the
+Windows launcher spike). supportedOS names Windows 10 and 11, so Windows
+runs the program without compatibility shims. requestedExecutionLevel
+asInvoker runs it with the rights of whoever starts it, and turns off
+Windows' installer detection, which would otherwise ask for an
+administrator's password before running an app whose name contains
+"setup", "install", or "update".
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+    </application>
+  </compatibility>
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings xmlns:ws2="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+      <ws2:longPathAware>true</ws2:longPathAware>
+    </windowsSettings>
+  </application>
+</assembly>

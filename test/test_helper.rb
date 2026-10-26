@@ -14,7 +14,8 @@ require "tmpdir"
 
 # Builds runtime archives shaped like the ones rake runtime writes, small
 # enough for a unit test: a launcher that is a shell script, a library
-# file, and a symlink, under one top folder.
+# file, and, except on Windows, whose runtimes hold none, a symlink, under
+# one top folder.
 module FakeRuntime
   LAUNCHER = "#!/bin/sh\necho launched\n"
 
@@ -22,16 +23,16 @@ module FakeRuntime
   # Fledge::Runtimes expects, and returns its path. +extra+ entries
   # (paths relative to the runtime's top folder) go in after the rest.
   def self.write(directory, platform, extra: [])
-    top = File.basename(Fledge::Runtimes.file_name(platform), platform.archive_extension)
+    top = File.basename(Fledge::Runtimes.file_name(platform), Fledge::Runtimes::EXTENSION)
     path = File.join(directory, Fledge::Runtimes.file_name(platform))
     Fledge::TarGz.write(path) do |tar|
       tar.add(Fledge::Entry.directory(top))
       [
-        Fledge::Entry.file("launcher", LAUNCHER, mode: 0o755),
+        Fledge::Entry.file(platform.executable("launcher"), LAUNCHER, mode: 0o755),
         Fledge::Entry.directory("lib"),
         Fledge::Entry.directory("lib/ruby"),
         Fledge::Entry.file("lib/ruby/stdlib.rb", "# stdlib\n"),
-        Fledge::Entry.symlink("lib/current", "ruby"),
+        *(platform.windows? ? [] : [Fledge::Entry.symlink("lib/current", "ruby")]),
         *extra,
       ].each { |entry| tar.add(entry.with(path: "#{top}/#{entry.path}")) }
     end

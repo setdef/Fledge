@@ -64,15 +64,19 @@ class ParityTest < Minitest::Test
     refute_predicate Parity.compare(reference, { "gems" => ["json 2.18.0 (default)"] }, platform: "arm64-darwin").first, :justified?
   end
 
+  # rv-ruby has no RubyGems defaults file, so on macOS and Linux only the
+  # app loads Fledge's; RubyInstaller has one at the same path, which
+  # loads RubyInstaller's runtime, so on Windows only ruby main.rb loads
+  # that.
   def test_a_justification_holds_only_on_its_platforms
-    feature = "<prefix>/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"
-    reference = { "$LOADED_FEATURES" => [] }
-    app = { "$LOADED_FEATURES" => [feature] }
+    defaults = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"] }
+    installer = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/4.0.0/ruby_installer/runtime.rb"] }
+    none = { "$LOADED_FEATURES" => [] }
 
-    assert_predicate Parity.compare(reference, app, platform: "x86_64-linux").first, :justified?
-    assert_predicate Parity.compare(reference, app, platform: "x64-mingw-ucrt").first, :justified?
-    refute_predicate Parity.compare({ "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/4.0.0/ruby_installer/runtime.rb"] },
-      { "$LOADED_FEATURES" => [] }, platform: "x86_64-linux").first, :justified?
+    assert_predicate Parity.compare(none, defaults, platform: "x86_64-linux").first, :justified?
+    refute_predicate Parity.compare(none, defaults, platform: "x64-mingw-ucrt").first, :justified?
+    assert_predicate Parity.compare(installer, none, platform: "x64-mingw-ucrt").first, :justified?
+    refute_predicate Parity.compare(installer, none, platform: "x86_64-linux").first, :justified?
   end
 
   def test_the_same_elements_in_another_order_differ

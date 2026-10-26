@@ -81,12 +81,12 @@ class Parity
     Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt],
       reference: [
         %r{\A"<prefix>/lib/ruby/site_ruby/4\.0\.0/ruby_installer/},
-        %r{/rubygems/defaults/operating_system\.rb"\z},
-        %r{\A"<prefix>/lib/ruby/4\.0\.0/(?:x64-mingw-ucrt/)?(?:fiddle|win32/|etc|rbconfig|fileutils|tmpdir)},
-],
-      app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/defaults/operating_system\.rb"\z}],
-      reason: "Fledge's RubyGems defaults replace RubyInstaller's, which load RubyInstaller's runtime to " \
-        "find MSYS2 and write to the gem folder on every start (ADR 001, section 8)."),
+        %r{\A"<prefix>/lib/ruby/4\.0\.0/x64-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)},
+      ],
+      reason: "Fledge's RubyGems defaults replace RubyInstaller's (ADR 001, section 8), which load " \
+        "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
+        "encodings its messages use. Ruby loads an encoding when code first needs it, so an app " \
+        "that uses one finds it either way."),
   ].freeze
 
   # A fact that differs between the two runs.

@@ -165,7 +165,8 @@ jobs:
 
       - name: Unzip the apps
         shell: pwsh
-        run: 7z x -y -bd "-o$env:RUNNER_TEMP\apps" "$env:RUNNER_TEMP\dl\apps.zip" | Select-Object -Last 3
+        run: |
+          7z x -y -bd "-o$env:RUNNER_TEMP\apps" "$env:RUNNER_TEMP\dl\apps.zip" | Select-Object -Last 3
           Copy-Item "$env:RUNNER_TEMP\cross\launcher-cross.exe" "$env:RUNNER_TEMP\apps\hello\hello-cross.exe"
 
       - name: Run the apps elsewhere, without Ruby, in a hostile environment

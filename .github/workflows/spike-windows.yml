@@ -76,10 +76,16 @@ jobs:
           echo "== exports the launcher needs"
           objdump -p rubyinstaller-4.0.9-1-x64/bin/x64-ucrt-ruby400.dll | grep -E '\b(ruby_sysinit|ruby_init_stack|ruby_init|ruby_options|ruby_run_node|ruby_setup)$'
 
+      # One zip, as a person would download it (the artifact service's own
+      # extraction failed on the bare tree in an earlier run).
+      - name: Zip the apps
+        shell: bash
+        run: cd dist/apps && 7z a -tzip -mx=9 -bd ../apps.zip . > /dev/null && ls -l ../apps.zip
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: apps
-          path: dist/apps
+          path: dist/apps.zip
           if-no-files-found: error
 
   delivery:
@@ -96,7 +102,11 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: apps
-          path: ${{ runner.temp }}/apps
+          path: ${{ runner.temp }}/dl
+
+      - name: Unzip the apps
+        shell: pwsh
+        run: 7z x -y -bd "-o$env:RUNNER_TEMP\apps" "$env:RUNNER_TEMP\dl\apps.zip" | Select-Object -Last 3
 
       - name: Run the apps elsewhere, without Ruby, in a hostile environment
         shell: pwsh

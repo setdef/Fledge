@@ -90,7 +90,7 @@ jobs:
 
   # Plan 001 asks whether the launcher can be built off Windows. It needs
   # only Ruby's headers (the default mode links no Ruby library), so try
-  # Ubuntu's mingw-w64 UCRT cross compiler.
+  # a mingw-w64 UCRT cross compiler.
   cross:
     name: Cross-compile on Linux
     runs-on: ubuntu-latest
@@ -100,11 +100,21 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install mingw-w64 (UCRT)
+      # Ubuntu 26.04 dropped gcc-mingw-w64-ucrt64, and its plain mingw-w64
+      # targets msvcrt, a different C runtime from RubyInstaller's UCRT (the
+      # launcher's _wputenv_s must edit the same environment copy Ruby's
+      # CRT reads). llvm-mingw's UCRT build, pinned by hash, instead.
+      - name: Install llvm-mingw (UCRT)
+        env:
+          LLVM_MINGW: llvm-mingw-20261020-ucrt-ubuntu-22.04-x86_64
+          LLVM_MINGW_SHA256: 55064b60b991a1e1e8090b8c2f84e82b22cfe5903d12c159d65064cf5e8ae335
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends gcc-mingw-w64-ucrt64 binutils-mingw-w64-ucrt64
-          x86_64-w64-mingw32ucrt-gcc --version | head -1
+          set -euo pipefail
+          curl -fsSLO "https://github.com/mstorsjo/llvm-mingw/releases/download/20261020/$LLVM_MINGW.tar.xz"
+          echo "$LLVM_MINGW_SHA256  $LLVM_MINGW.tar.xz" | sha256sum -c -
+          tar -xJf "$LLVM_MINGW.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$LLVM_MINGW/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/$LLVM_MINGW/bin/x86_64-w64-mingw32-clang" --version | head -1
 
       - name: Download RubyInstaller's headers
         run: |
@@ -118,12 +128,12 @@ jobs:
           set -euo pipefail
           ri=$PWD/rubyinstaller-4.0.9-1-x64
           mkdir -p cross
-          (cd spike/windows && x86_64-w64-mingw32ucrt-windres launcher.rc -O coff -o ../../cross/launcher.res.o)
-          x86_64-w64-mingw32ucrt-gcc -std=gnu11 -O2 -Wall -Wextra -Werror -municode \
+          (cd spike/windows && x86_64-w64-mingw32-windres launcher.rc -O coff -o ../../cross/launcher.res.o)
+          x86_64-w64-mingw32-clang -std=gnu11 -O2 -Wall -Wextra -Werror -municode \
             -isystem "$ri/include/ruby-4.0.0" -isystem "$ri/include/ruby-4.0.0/x64-mingw-ucrt" \
-            spike/windows/launcher.c cross/launcher.res.o -municode -static-libgcc -s -mconsole \
+            spike/windows/launcher.c cross/launcher.res.o -municode -s -mconsole \
             -o cross/launcher-cross.exe
-          x86_64-w64-mingw32ucrt-objdump -p cross/launcher-cross.exe | grep -E 'Subsystem|DLL Name'
+          llvm-objdump -p cross/launcher-cross.exe | grep -E 'Subsystem|DLL Name'
           ls -l cross/launcher-cross.exe
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

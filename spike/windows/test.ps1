@@ -219,7 +219,7 @@ Write-Host "  LongPathsEnabled: $($lp.LongPathsEnabled)"
 # the exe, but whose runtime files (rubygems.rb, extensions) are past it.
 $deep = $env:RUNNER_TEMP
 while ($deep.Length -lt 205) { $deep = Join-Path $deep 'a-rather-long-folder-name' }
-$deep = Join-Path $deep ('x' * (238 - $deep.Length - 1)) # exe path: 254 chars
+$deep = Join-Path $deep ('x' * (234 - $deep.Length - 1)) # hello.exe: 250 chars
 New-Item -ItemType Directory -Force $deep | Out-Null
 Copy-Item -Recurse (Join-Path $root 'hello') $deep
 $deepExe = Join-Path $deep 'hello\hello.exe'
@@ -227,7 +227,8 @@ $longest = (Get-ChildItem -Recurse -File (Join-Path $deep 'hello') | Sort-Object
 Write-Host "  exe path length: $($deepExe.Length); longest runtime file path: $longest; rubygems.rb path: $((Join-Path $deep 'hello\ruby\lib\ruby\4.0.0\rubygems.rb').Length)"
 $r = Invoke-App $deepExe; Show $r
 Check (($r.Out -join "`n") -ceq $expected) 'hello.exe (longPathAware manifest) runs with its runtime past MAX_PATH'
-$r = Invoke-App (Join-Path $deep 'hello\hello-nomanifest.exe'); Show $r
+Copy-Item (Join-Path $deep 'hello\hello-nomanifest.exe') (Join-Path $deep 'hello\hello-nm.exe')
+$r = Invoke-App (Join-Path $deep 'hello\hello-nm.exe'); Show $r
 Write-Host "  without the manifest: $(if (($r.Out -join "`n") -ceq $expected) { 'also works' } else { 'fails' })"
 
 # An exe whose own path is past MAX_PATH.

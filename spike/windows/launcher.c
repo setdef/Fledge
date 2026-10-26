@@ -211,6 +211,13 @@ static FARPROC symbol(HMODULE dll, const char *name)
 static void load_ruby(const wchar_t *base)
 {
     wchar_t *path = join(base, L"ruby\\bin\\" FLEDGE_RUBY_DLL);
+    /* LoadLibraryExW fails with ERROR_FILENAME_EXCED_RANGE (206) past
+     * MAX_PATH even in a longPathAware process; try the \\?\ form there. */
+    if (wcslen(path) >= MAX_PATH && wcsncmp(path, L"\\\\?\\", 4) != 0) {
+        wchar_t *prefixed = join(L"\\\\?\\", path);
+        free(path);
+        path = prefixed;
+    }
     /* Search only the DLL's own folder and System32 for its imports:
      * never the current directory or PATH, where another Ruby's DLLs
      * may be. (Its private assembly is found by its manifest either way.) */

@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class App < Data
+    NEVER_SHIPPED: Array[String]
+
+    attr_reader root: String
+
+    def self.new: (root: String) -> instance
+
+    def self.at: (String path) -> App
+
+    def name: () -> String
+
+    def entries: (?skip: Array[String]) -> Array[Entry]
+  end
+end

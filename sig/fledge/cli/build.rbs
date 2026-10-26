@@ -4,12 +4,22 @@
 module Fledge
   class CLI
     class Build
+      DEFAULT_OUT: String
+
       @out: CLI::_Output
       @err: CLI::_Output
+      @env: Runtimes::_Env
+      @host: Gem::Platform
 
-      def initialize: (out: CLI::_Output, err: CLI::_Output) -> void
+      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?host: Gem::Platform) -> void
 
       def call: (Array[String]) -> Integer
+
+      private def build: (App app, Array[Platform] platforms, String out) -> void
+
+      private def parse: (Array[String] argv) -> [Array[String], String, String]
+
+      private def value_of: (String option, Array[String] arguments, String name) -> String
     end
   end
 end

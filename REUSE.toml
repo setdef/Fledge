@@ -9,3 +9,48 @@ SPDX-License-Identifier = "CC0-1.0"
 path = 'README.rdoc'
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+# Third-party license texts the runtimes ship in their notices/ folder,
+# copied unchanged from each project at the version runtime/sources.yml
+# pins.
+[[annotations]]
+path = "runtime/notices/ruby/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Yukihiro Matsumoto <matz@netlab.jp>"
+SPDX-License-Identifier = "Ruby OR BSD-2-Clause"
+
+[[annotations]]
+path = "runtime/notices/openssl/**"
+precedence = "override"
+SPDX-FileCopyrightText = "The OpenSSL Project Authors"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "runtime/notices/libyaml/**"
+precedence = "override"
+SPDX-FileCopyrightText = ["2017-2020 Ingy döt Net", "2006-2016 Kirill Simonov"]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "runtime/notices/zlib/**"
+precedence = "override"
+SPDX-FileCopyrightText = "1995-2026 Jean-loup Gailly and Mark Adler"
+SPDX-License-Identifier = "Zlib"
+
+[[annotations]]
+path = "runtime/notices/libxcrypt/**"
+precedence = "override"
+SPDX-FileCopyrightText = "The libxcrypt contributors"
+SPDX-License-Identifier = "LGPL-2.1-or-later"
+
+[[annotations]]
+path = "runtime/notices/ca-certificates/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Mozilla Foundation"
+SPDX-License-Identifier = "MPL-2.0"
+
+[[annotations]]
+path = "runtime/notices/rust/**"
+precedence = "override"
+SPDX-FileCopyrightText = "The Rust Project Developers"
+SPDX-License-Identifier = "MIT OR Apache-2.0"

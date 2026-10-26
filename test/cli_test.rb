@@ -88,12 +88,13 @@ class CLITest < Minitest::Test
     end
   end
 
-  def test_build_is_reserved_but_not_yet_implemented
-    out, err, status = fledge("build", "--target", "x86_64-linux", "examples/hello")
+  def test_build_reports_its_own_mistakes_through_the_error_stream
+    out, err, status = fledge("build", "--target", "sparc-solaris", "examples/hello")
 
     assert_equal 1, status
     assert_empty out
-    assert_equal "fledge build: not yet implemented\n", err
+    assert_equal "fledge build: 'sparc-solaris' is not a target Fledge builds for. " \
+      "Targets: arm64-darwin, x86_64-linux, aarch64-linux.\n", err
   end
 
   def test_the_command_table_names_every_command
@@ -124,12 +125,12 @@ class CLITest < Minitest::Test
 
   # A frozen ARGV-like Array raises FrozenError if the CLI shifts it.
   def test_the_callers_arguments_are_left_unchanged
-    argv = %w[build here].freeze
+    argv = %w[build --frobnicate].freeze
 
     status = Fledge::CLI.new(help_path: EXE, out: StringIO.new, err: StringIO.new).call(argv)
 
     assert_equal 1, status
-    assert_equal %w[build here], argv
+    assert_equal %w[build --frobnicate], argv
   end
 
   def test_a_file_without_a_help_header_is_an_error

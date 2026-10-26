@@ -5,18 +5,26 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require_relative "../app"
+require_relative "../assembly"
+require_relative "../error"
+require_relative "../platform"
+require_relative "../runtimes"
+
 module Fledge
   class CLI
     # The <tt>fledge build</tt> command.
     #
     # Shipping an app means copying it into a runtime for each platform
-    # and archiving each result (Plan 001). Until that pipeline exists,
-    # a build that pretended to succeed would hand you a folder that
-    # does not run.
+    # you want it to run on, and archiving each result (Plan 001). Doing
+    # that by hand means knowing where each runtime lives, renaming its
+    # launcher, and archiving without losing an executable bit.
     #
-    # This command holds the name +build+ in Fledge::CLI::COMMANDS and
-    # fails plainly, with exit status 1, so a script that calls it today
-    # stops instead of shipping nothing.
+    # This command reads <tt>--target</tt>, <tt>--out</tt>, and the app's
+    # folder from its arguments, finds each target's runtime through
+    # Fledge::Runtimes, builds each with Fledge::Assembly, and prints the
+    # path of each archive it wrote, one per line. A mistake becomes one
+    # line on the error stream and exit status 1.
     #
     # Use it through the +fledge+ executable, or through Fledge::CLI.
     #
@@ -28,25 +36,33 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   # From a terminal:
-    #   #   $ fledge build
-    #   #   fledge build: not yet implemented
+    #   #   $ fledge build -t x86_64-linux examples/hello
+    #   #   dist/hello-x86_64-linux.tar.gz
     #
-    #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call([]) # => 1
+    #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call(["-t", "x86_64-linux", "examples/hello"]) # => 0
     #--
     # SPDX-SnippetEnd
     #++
     class Build
+      # The output folder when you give no <tt>--out</tt>.
+      DEFAULT_OUT = "dist"
+
       # Creates the command.
       #
       # [out] Where results go, such as <tt>$stdout</tt>.
-      # [err] Where errors go, such as <tt>$stderr</tt>.
-      def initialize(out:, err:)
+      # [err] Where errors and progress go, such as <tt>$stderr</tt>.
+      # [env] The environment Fledge::Runtimes reads (default: +ENV+).
+      # [host] The Gem::Platform the default target comes from (default:
+      #        Gem::Platform.local).
+      def initialize(out:, err:, env: ENV, host: Gem::Platform.local)
         @out = out
         @err = err
+        @env = env
+        @host = host
       end
 
       # Runs the command with the arguments after +build+, and returns
-      # the exit status: always 1, for now.
+      # the exit status: 0 when every target built, 1 otherwise.
       #
       # === Example
       #
@@ -55,13 +71,60 @@ module Fledge
       # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
       # SPDX-License-Identifier: MIT-0
       #++
-      #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call(["examples/hello"]) # => 1
+      #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call(["--out", "/tmp/builds", "my_app"]) # => 0
       #--
       # SPDX-SnippetEnd
       #++
-      def call(_argv)
-        @err.puts "fledge build: not yet implemented"
+      def call(argv)
+        targets, out, path = parse(argv)
+        app = App.at(path)
+        platforms = targets.empty? ? [Platform.local(@host)] : targets.uniq.map { |name| Platform.find(name) }
+        build(app, platforms, out)
+        0
+      rescue Error => e
+        @err.puts "fledge build: #{e.message}"
         1
+      end
+
+      private def build(app, platforms, out)
+        out_dir = File.expand_path(out)
+        raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
+
+        runtimes = Runtimes.new(env: @env, log: @err)
+        platforms.each do |platform|
+          assembly = Assembly.new(app:, platform:, runtime: runtimes.archive(platform), out: out_dir)
+          archive = assembly.call
+          @out.puts File.join(out, File.basename(archive))
+        end
+      end
+
+      # [targets, out, path] from +argv+.
+      private def parse(argv)
+        targets = [] # : Array[String]
+        out = DEFAULT_OUT
+        paths = [] # : Array[String]
+        arguments = argv.dup
+        while (argument = arguments.shift)
+          case argument
+          when "-t", "--target" then targets << value_of(argument, arguments, "PLATFORM")
+          when /\A--target=(.+)\z/ then targets << ::Regexp.last_match(1).to_s
+          when "-o", "--out" then out = value_of(argument, arguments, "DIR")
+          when /\A--out=(.+)\z/ then out = ::Regexp.last_match(1).to_s
+          when "--" then paths.concat(arguments.shift(arguments.size))
+          when /\A-./ then raise Error, "unknown option '#{argument}'. See 'fledge --help'."
+          else paths << argument
+          end
+        end
+        raise Error, "takes one PATH, but got #{paths.map { |p| "'#{p}'" }.join(' and ')}" if paths.size > 1
+
+        [targets, out, paths.first || "."]
+      end
+
+      private def value_of(option, arguments, name)
+        value = arguments.shift
+        raise Error, "#{option} needs a #{name}. See 'fledge --help'." if value.nil? || value.empty?
+
+        value
       end
     end
   end

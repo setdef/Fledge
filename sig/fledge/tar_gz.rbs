@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module TarGz
+    BLOCK: Integer
+
+    interface _Sink
+      def write: (*String) -> Integer
+    end
+
+    interface _Source
+      def read: (Integer) -> String?
+    end
+
+    def self.write: (String path, ?mtime: Integer) { (Writer) -> void } -> String
+
+    def self.each_entry: (String path) { (Entry) -> void } -> void
+
+    class Writer
+      @io: _Sink
+      @mtime: Integer
+
+      def initialize: (_Sink io, mtime: Integer) -> void
+
+      def add: (Entry entry) -> void
+
+      def finish: () -> void
+
+      private def write_pax: (String name, String link) -> void
+
+      private def pax_record: (String key, String value) -> String
+
+      private def header: (String name, Entry entry, Integer size) -> String
+
+      private def split_name: (String name) -> [String, String]?
+
+      private def raw_header: (String name, Integer mode, Integer size, String typeflag, String link, String prefix) -> String
+
+      private def write_padded: (String bytes) -> void
+    end
+
+    class Reader
+      @io: _Source
+
+      def initialize: (_Source io) -> void
+
+      def each: () { (Entry) -> void } -> void
+
+      private def read_block: () -> String?
+
+      private def verify_checksum: (String block) -> void
+
+      private def number: (String block, Integer offset, Integer length) -> Integer
+
+      private def read_padded: (Integer size) -> String
+
+      private def pax: (String data) -> Hash[String, String]
+
+      private def entry: (String block, String typeflag, String data, Hash[String, String] overrides) -> Entry
+
+      private def ustar_name: (String block) -> String
+
+      private def field: (String block, Integer offset, Integer length) -> String
+
+      private def utf8: (String bytes) -> String
+    end
+  end
+end

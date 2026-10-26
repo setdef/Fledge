@@ -18,13 +18,13 @@ An app is a folder with a `main.rb`. During development, run it with your own Ru
 
 ## Status
 
-Fledge is a walking skeleton under construction. `fledge --help` and `fledge --version` work; `fledge build` says it is not yet implemented. The first goal is an app that does nothing: [Plan 001](doc/contributors/plan/001.md) ships a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby, before Fledge does anything more useful. [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
+Fledge is a walking skeleton under construction. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`) and for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), from any of them; Windows is next. No release exists yet, so `fledge build` has no runtimes to download: build them with `bundle exec rake runtime` (on each platform) and point `FLEDGE_RUNTIME_DIR` at them. The first goal is an app that does nothing: [Plan 001](doc/contributors/plan/001.md) ships a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby, before Fledge does anything more useful. [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
 
 Fledge is not on RubyGems.org, and never will be under this plan. Releases are git tags and [GitHub Releases](https://github.com/setdef/Fledge/releases).
 
 ## Using Fledge
 
-Once `fledge build` works, building looks like this:
+Building looks like this:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -33,15 +33,18 @@ Once `fledge build` works, building looks like this:
 -->
 ```bash
 cd my_app            # a folder with a main.rb
-fledge build -t arm64-darwin -t x86_64-linux -t x64-mingw-ucrt
+fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux
 ls dist
+# my_app-aarch64-linux/     my_app-aarch64-linux.tar.gz
 # my_app-arm64-darwin/      my_app-arm64-darwin.tar.gz
 # my_app-x86_64-linux/      my_app-x86_64-linux.tar.gz
-# my_app-x64-mingw-ucrt/    my_app-x64-mingw-ucrt.zip
+./dist/my_app-arm64-darwin/my_app   # on a Mac, with or without Ruby
 ```
 <!-- SPDX-SnippetEnd -->
 
 Targets use RubyGems' platform names. `fledge --help` prints the full usage.
+
+A built app is a folder: the program, named for your app; your app in `app/`; Ruby's standard library in `lib/`; and the licenses of everything Fledge put there in `notices/`. Whoever runs it needs no Ruby, and a Ruby they do have (`RUBYOPT`, `GEM_HOME`, gems in `~/.gem`, and the rest) does not change it.
 
 Game, desktop, and terminal frameworks (Lota, Tokra, and Rooibos) are expected to call Fledge for their own packaging commands.
 
@@ -54,9 +57,11 @@ bin/setup
 bundle exec rake
 ```
 
-`bin/setup` installs the tools pinned in `mise.toml` (Ruby, the REUSE tool, actionlint, and shellcheck), installs the bundle, and installs the pre-commit hook. `bundle exec rake` is the gate: it fixes what RuboCop and the REUSE tool can fix, then runs the tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck over the workflows and shellcheck over `bin/setup`, signature checks (no `untyped`, `rbs validate`, and parity between `sig/` and `lib/`), Steep, and the package check, which builds the gem, installs it into an empty `GEM_HOME`, and runs `fledge` from there. It passes with zero errors and zero warnings.
+`bin/setup` installs the tools pinned in `mise.toml` (Ruby, the REUSE tool, actionlint, shellcheck, and clang-format), installs the bundle, and installs the pre-commit hook. `bundle exec rake` is the gate: it fixes what RuboCop and the REUSE tool can fix, then runs the tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck over the workflows and shellcheck over `bin/setup` and `.github/scripts`, clang-format over the launcher's C, signature checks (no `untyped`, `rbs validate`, and parity between `sig/` and `lib/`), Steep, and the package check, which builds the gem, installs it into an empty `GEM_HOME`, and runs `fledge` from there. It passes with zero errors and zero warnings.
 
-GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. The **Gate** job runs `bundle exec rake` on Linux and fails if the gate changed a file. The **Test** jobs run the tests on macOS 15 (Apple Silicon), Windows, and Linux.
+`bundle exec rake runtime` builds this computer's runtime into `tmp/runtime/` from the sources pinned in `runtime/sources.yml`; it needs a C compiler, and on Linux `make`, `perl`, and `patchelf`. With a runtime there, `bundle exec rake test` also builds `examples/hello` and runs it in a clean and a hostile environment. The launcher's C is in `runtime/launcher/`.
+
+GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. The **Gate** job runs `bundle exec rake` on Linux and fails if the gate changed a file. The **Runtime** jobs build a runtime on macOS 15 (Apple Silicon), Ubuntu 24.04, and Ubuntu 24.04 on arm64. The **Test** jobs run the tests on each with its runtime, and on Windows without one. The **Build** job builds `examples/hello` for all three platforms on one Linux runner, and the **Delivery** jobs run each on a fresh runner, and in Debian 13 containers with no Ruby installed, with `.github/scripts/deliver.sh`. `.github/workflows/release.yml` publishes the runtimes to a GitHub Release when the maintainer pushes a `v*` tag.
 
 Contributors, people and agents alike, start with [AGENTS.md](AGENTS.md) and the [documentation style guide](doc/contributors/documentation_style.md). Open questions for the maintainer live in [doc/contributors/questions.md](doc/contributors/questions.md).
 

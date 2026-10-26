@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# The launcher's C follows Ruby's own C style (main.c, ruby.c): four-space
+# indents, the return type on its own line above a function's name, and
+# the opening brace of a function on its own line.
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+BreakAfterReturnType: AllDefinitions
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: None
+SortIncludes: Never

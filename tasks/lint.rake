@@ -127,7 +127,7 @@ namespace :lint do
   task docs: %w[safe_rdoc_coverage rubycritic reuse:lint]
   task code: %w[rubocop rubycritic]
   task licenses: %w[reuse:lint]
-  task all: %w[docs code licenses rbs workflows shell]
+  task all: %w[docs code licenses rbs workflows shell c]
 
   # actionlint runs shellcheck over each step's script only when it finds
   # it, and passes without a word when it does not, so a missing shellcheck
@@ -143,8 +143,19 @@ namespace :lint do
 
   desc "Check the shell scripts git tracks with shellcheck"
   task :shell do
-    scripts = `git ls-files -z bin`.split("\0").select { |path| File.read(path, 64).start_with?("#!/usr/bin/env bash") }
+    scripts = `git ls-files -z bin .github/scripts`.split("\0").select do |path|
+      File.read(path, 64).start_with?("#!/usr/bin/env bash", "#!/bin/sh")
+    end
     sh "shellcheck", *scripts unless scripts.empty?
+  end
+
+  # The compiler checks the launcher's warnings and runs its static
+  # analyzer when rake runtime builds it, which needs rv-ruby's headers;
+  # formatting needs nothing, so it runs in the gate.
+  desc "Check the launcher's C formatting with clang-format"
+  task :c do
+    sources = `git ls-files -z runtime/launcher`.split("\0").grep(/\.[ch]\z/)
+    sh "clang-format", "--dry-run", "--Werror", *sources unless sources.empty?
   end
 
   namespace :fix do

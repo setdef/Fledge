@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Platform < Data
+    NAMES: Array[String]
+
+    attr_reader name: String
+
+    def self.new: (name: String) -> instance
+                | (String name) -> instance
+
+    def self.names: () -> Array[String]
+
+    def self.find: (String) -> Platform
+
+    def self.local: (?Gem::Platform) -> Platform
+
+    private def self.target_name: (Gem::Platform) -> String
+
+    def archive_extension: () -> String
+
+    def executable: (String) -> String
+
+    def to_s: () -> String
+  end
+end

@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module Download
+    REDIRECTS: Integer
+
+    def self.read: (String url) -> String
+
+    def self.save: (String url, to: String, sha256: String) -> String
+
+    private def self.verify: (String url, String actual, String expected) -> void
+
+    private def self.get: (String url, ?Integer redirects) { (Net::HTTPResponse) -> void } -> void
+
+    private def self.follow: (URI::Generic from, String location, Integer redirects) { (Net::HTTPResponse) -> void } -> void
+  end
+end

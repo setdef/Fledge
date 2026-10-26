@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Runtimes
+    interface _Env
+      def []: (String) -> String?
+    end
+
+    RELEASES: String
+
+    @env: _Env
+    @release_url: String
+    @log: CLI::_Output?
+
+    def self.file_name: (Platform platform, ?version: String) -> String
+
+    def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?) -> void
+
+    def archive: (Platform platform) -> String
+
+    def cache: () -> String
+
+    private def from_directory: (String directory, String name) -> String
+
+    private def download: (String name, String destination) -> String
+
+    private def pinned_sha256: (String sums_url, String name) -> String
+  end
+end

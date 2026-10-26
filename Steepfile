@@ -6,4 +6,5 @@
 target :lib do
   signature "sig"
   check "lib"
+  library "digest", "fileutils", "net-http", "openssl", "uri", "zlib"
 end

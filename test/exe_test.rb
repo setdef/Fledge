@@ -8,6 +8,7 @@
 require_relative "test_helper"
 require "open3"
 require "rbconfig"
+require "tmpdir"
 
 # exe/fledge as a person runs it: a process of its own, with its own
 # standard streams and exit status. test/cli_test.rb covers each
@@ -41,11 +42,13 @@ class ExeTest < Minitest::Test
     assert_equal "fledge #{Fledge::VERSION}\n", out
   end
 
-  def test_build_exits_with_status_one
-    out, err, status = run_fledge("build")
+  def test_build_without_an_app_exits_with_status_one
+    Dir.mktmpdir do |dir|
+      out, err, status = run_fledge("build", dir)
 
-    assert_equal 1, status.exitstatus
-    assert_empty out
-    assert_equal "fledge build: not yet implemented\n", err
+      assert_equal 1, status.exitstatus
+      assert_empty out
+      assert_equal "fledge build: #{dir} has no main.rb. An app is a folder with a main.rb.\n", err
+    end
   end
 end

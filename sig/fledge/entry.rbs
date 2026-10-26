@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Entry < Data
+    type kind = :file | :directory | :symlink
+
+    TYPES: Array[kind]
+
+    attr_reader path: String
+    attr_reader type: kind
+    attr_reader mode: Integer
+    attr_reader content: String
+    attr_reader link: String
+
+    def self.new: (path: String, type: kind, mode: Integer, ?content: String, ?link: String) -> instance
+
+    private def initialize: (path: String, type: kind, mode: Integer, ?content: String, ?link: String) -> void
+
+    def self.file: (String path, String content, ?mode: Integer) -> Entry
+
+    def self.directory: (String path, ?mode: Integer) -> Entry
+
+    def self.symlink: (String path, String link) -> Entry
+
+    def self.walk: (String root, ?skip: Array[String]) -> Array[Entry]
+
+    private def self.walk_into: (String root, String relative, Array[String] skipped, Array[Entry] entries) -> void
+
+    private def self.from_disk: (String full, String path) -> Entry
+
+    private def safe?: (String) -> bool
+
+    def write_into: (String root) -> void
+
+    private def refuse_symlinked_parents: (String root) -> void
+  end
+end

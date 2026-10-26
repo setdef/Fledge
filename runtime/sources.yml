@@ -1,0 +1,84 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Everything a runtime is built from that comes from outside this
+# repository, pinned by version and SHA-256 (AGENTS.md: "Pin every
+# external input"). rake runtime reads this file; a download whose
+# SHA-256 differs fails the build. Change a pin on purpose, and run
+# Delivery (ci.yml) before trusting it.
+
+# rv-ruby's relocatable CRuby builds (ADR 001, section 3): release
+# 20261023, Ruby 4.0.9, one asset per target. Each carries a static
+# libruby the launcher links, and the standard library the runtime ships.
+# The SHA-256s are those the Unix launcher spike verified (Plan 001).
+ruby:
+  version: 4.0.9
+  release: "20261023"
+  platforms:
+    arm64-darwin:
+      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_sonoma.tar.gz
+      sha256: 38130a97c314e2e44198f37fc6555a66ab9a8011ecc5980d4ae36f2858ed11b5
+    x86_64-linux:
+      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.x86_64_linux.tar.gz
+      sha256: 16b24f5b3aac3925f95cbbdd08e55c2877aec4f2614edf44af236a59a6591aa4
+    aarch64-linux:
+      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_linux.tar.gz
+      sha256: 6b49808f690ecfe0f51f266b9c3477908f69d7a927d90355565368c40c875d22
+
+# libxcrypt, which libruby calls for String#crypt on Linux. rv-ruby links
+# it statically, but it is LGPL-2.1-or-later, so the runtime builds it as
+# a shared library from the same release rv-ruby used (its formula
+# rv-portable-libxcrypt.rb at the commit that built release 20261023) and
+# the launcher loads it from the runtime's lib/ folder, where whoever
+# receives an app can replace it. See doc/contributors/questions.md.
+libxcrypt:
+  version: 4.5.2
+  url: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
+  sha256: 71513a31c01a428bccd5367a32fd95f115d6dac50fb5b60c779d5c7942aec071
+
+# The license notices each runtime carries in its notices/ folder, one
+# folder of runtime/notices/ per component, for the platforms that ship
+# the component. rake runtime copies them and writes notices/README.txt
+# from this list. Versions and sources are rv-ruby's formulas at the
+# commit that built release 20261023 (074afbcb773b580516a281c84878f1cd3a651cda).
+notices:
+  - folder: fledge
+    name: Fledge launcher
+    license: AGPL-3.0-or-later
+    source: https://github.com/setdef/Fledge
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+  - folder: ruby
+    name: Ruby 4.0.9 (with the third-party code listed in LEGAL)
+    license: Ruby OR BSD-2-Clause
+    source: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+  - folder: rust
+    name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
+    license: MIT OR Apache-2.0
+    source: https://github.com/rust-lang/rust
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+  - folder: openssl
+    name: OpenSSL 3.6.2, compiled into Ruby's openssl extension
+    license: Apache-2.0
+    source: https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+  - folder: libyaml
+    name: libyaml 0.2.5, compiled into Ruby's psych extension
+    license: MIT
+    source: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+  - folder: ca-certificates
+    name: Mozilla's CA certificates, as curl publishes them (libexec/cert.pem, cacert-2026-03-19)
+    license: MPL-2.0
+    source: https://curl.se/ca/cacert-2026-03-19.pem
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+  - folder: zlib
+    name: zlib 1.3.2, compiled into Ruby's zlib extension
+    license: Zlib
+    source: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+    platforms: [x86_64-linux, aarch64-linux]
+  - folder: libxcrypt
+    name: libxcrypt 4.5.2 (lib/libcrypt.so.2, which you may replace with your own build)
+    license: LGPL-2.1-or-later
+    source: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
+    platforms: [x86_64-linux, aarch64-linux]

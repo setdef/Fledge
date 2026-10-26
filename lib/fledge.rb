@@ -6,6 +6,14 @@
 #++
 
 require_relative "fledge/version"
+require_relative "fledge/error"
+require_relative "fledge/platform"
+require_relative "fledge/entry"
+require_relative "fledge/tar_gz"
+require_relative "fledge/app"
+require_relative "fledge/download"
+require_relative "fledge/runtimes"
+require_relative "fledge/assembly"
 require_relative "fledge/cli"
 
 # Ships a Ruby app to people who don't have Ruby.

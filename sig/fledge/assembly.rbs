@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Assembly
+    LAUNCHER: String
+
+    @app: App
+    @platform: Platform
+    @runtime: String
+    @out: String
+
+    def initialize: (app: App, platform: Platform, runtime: String, out: String) -> void
+
+    def base_name: () -> String
+
+    def call: () -> String
+
+    private def build: () -> String
+
+    private def folder: () -> String
+
+    private def archive: () -> String
+
+    private def remove_output: () -> void
+
+    private def copy_runtime: (TarGz::Writer tar) -> void
+
+    private def runtime_path: (String path, String launcher) -> String
+
+    private def place: (TarGz::Writer tar, Entry entry) -> void
+  end
+end

@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Gem
+  class Platform
+    def self.local: () -> Gem::Platform
+
+    def self.new: (String) -> Gem::Platform
+
+    attr_accessor cpu: String?
+    attr_accessor os: String
+    attr_accessor version: String?
+  end
+end

@@ -1,0 +1,80 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Publishes a Fledge release when the maintainer pushes a vX.Y.Z tag
+# (ADR 001, section 7; AGENTS.md, Releasing). It runs all of CI on the
+# tagged commit, and only when every job passes, Delivery included, does
+# it create the GitHub Release and attach each platform's runtime with a
+# SHA256SUMS file. fledge build at that version downloads its runtimes
+# from this release and checks them against SHA256SUMS.
+#
+# Agents never push tags; whether and when to release is the
+# maintainer's call (doc/contributors/questions.md). Nothing here
+# publishes to RubyGems.org, ever.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Publish the GitHub Release
+    needs: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      # Creating a release and uploading its assets.
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # A runtime's file name carries Fledge::VERSION, and fledge build
+      # looks for its runtimes under the tag v#{Fledge::VERSION}, so a tag
+      # that disagrees with the version would publish runtimes no Fledge
+      # ever downloads.
+      - name: Check the tag matches Fledge::VERSION
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(sed -n 's/^  VERSION = "\(.*\)"$/\1/p' lib/fledge/version.rb)
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::The tag $TAG does not match Fledge::VERSION $version"
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: runtime-*
+          merge-multiple: true
+          path: release
+
+      - name: Write SHA256SUMS
+        working-directory: release
+        run: |
+          sha256sum fledge-runtime-*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+          [ "$(wc -l < SHA256SUMS)" -eq 3 ] || { echo "::error::expected three runtimes"; exit 1; }
+
+      - name: Create the release with the runtimes attached
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "Fledge $TAG" \
+            --notes "Runtimes for fledge build at $TAG. See CHANGELOG.md for what changed." \
+            release/fledge-runtime-*.tar.gz release/SHA256SUMS

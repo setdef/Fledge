@@ -7,16 +7,17 @@
 
 ## Project
 
-Fledge (the `fledge` gem, https://github.com/setdef/Fledge) ships a Ruby app to people who don't have Ruby. It copies an app, a folder with a `main.rb`, into a runtime for each target platform: a relocatable CRuby plus a small C launcher that embeds it and runs the app. Then it archives each result. Runtimes are prebuilt per platform by Fledge's own CI, so one machine builds for every platform (ADR 001). Targets use RubyGems platform names: `arm64-darwin`, `x86_64-linux`, and `x64-mingw-ucrt` to start. App kinds will be `console` and `windowed`; the walking skeleton does `console` only. Framework wrappers (Lota for 2D games, Tokra for desktop apps, Rooibos for terminal UIs) will call Fledge. The plan of record is `doc/contributors/plan/001.md`.
+Fledge (the `fledge` gem, https://github.com/setdef/Fledge) ships a Ruby app to people who don't have Ruby. It copies an app, a folder with a `main.rb`, into a runtime for each target platform: a relocatable CRuby plus a small C launcher that embeds it and runs the app. Then it archives each result. Runtimes are prebuilt per platform by Fledge's own CI, so one machine builds for every platform (ADR 001). Targets use RubyGems platform names: `arm64-darwin`, `x86_64-linux`, and `x64-mingw-ucrt` to start. App kinds will be `console` and `windowed`; the walking skeleton does `console` only. Framework wrappers (Lota for 2D games, Tokra for desktop apps, Rooibos for terminal UIs) will call Fledge. The plans of record are `doc/contributors/plan/001.md` (the walking skeleton) and `doc/contributors/plan/002.md` (toward 1.0); what the maintainer has decided is in `doc/contributors/decisions.md`.
 
 Pre-1.0, zero external users. Prefer good design over backward compatibility; record every breaking change in CHANGELOG.md.
 
 ## Design precedence
 
-1. **A person who double-clicks or runs the app never meets Ruby.** No install step, no Ruby on `PATH`, no error that names a gem, no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are scrubbed). When anything below conflicts with this, this wins.
-2. **Ruby the language and its own conventions.** RubyGems platform names for targets, CRuby's own `main.c` for how the launcher starts the interpreter, Ruby's own layout for the standard library. Read the source at the pinned Ruby version; do not guess.
-3. **Prior art.** LÖVE's fused games (an app is a folder joined to a runtime), the Tauri bundler, PyInstaller and Briefcase (console and windowed kinds), and python-build-standalone (prebuilt relocatable interpreters). When Fledge needs a behavior these already settled, match them and cite them.
-4. **Ruby culture.** Idioms yield to 1, 2, and 3.
+1. **A person who double-clicks or runs the app never meets Ruby.** No install step, no Ruby on `PATH`, no error that names a gem, no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot, and the app's gems are the runtime's). When anything below conflicts with this, this wins.
+2. **The app's Ruby code runs as it does under `ruby main.rb`.** Same requires, same globals, same `ENV`, same standard library and bundled gems (decisions 9, 10, and 20; ADR 003). The parity check proves it on every platform; a difference is a bug unless `Parity::JUSTIFIED` says why it is right.
+3. **Ruby the language and its own conventions.** RubyGems platform names for targets, CRuby's own `main.c` for how the launcher starts the interpreter, Ruby's own layout for the standard library. Read the source at the pinned Ruby version; do not guess.
+4. **Prior art and standards.** GNU's and POSIX's command-line conventions, sysexits.h, and LÖVE's fused games (an app is a folder joined to a runtime), the Tauri bundler, PyInstaller and Briefcase (console and windowed kinds), and python-build-standalone (prebuilt relocatable interpreters). When Fledge needs a behavior these already settled, match them and cite them in an ADR.
+5. **Ruby culture.** Idioms yield to 1 through 4.
 
 ## How to work
 
@@ -40,6 +41,7 @@ Pre-1.0, zero external users. Prefer good design over backward compatibility; re
 - `bundle exec rake` is the gate: RuboCop and REUSE fixes, tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck, RBS checks (no `untyped`, `rbs validate`, signature parity), Steep, and the package check. It must pass with zero errors and zero warnings. Run `bundle exec rake rubocop:autocorrect_all` first to save time.
 - Approved exceptions live in `rbs_exceptions.rb`; adding one needs a justification that it is impossible otherwise.
 - Rake tasks use `git ls-files`: new or deleted files must be staged before they count.
+- `bundle exec rake parity` compares an app built from this computer's runtime with `ruby main.rb` on the Ruby that runtime came from (ADR 003); run it after `bundle exec rake runtime`. CI runs it on every platform.
 - Always `PAGER=cat` for git.
 
 ## Provenance
@@ -47,20 +49,40 @@ Pre-1.0, zero external users. Prefer good design over backward compatibility; re
 The maintainer uses three words for how work comes to exist. *Written* means typed by hand, with nothing generated. *Wrought* means an agent generated it while the maintainer iterated with it and reviewed every change before committing it. *Requested* means an agent built it with little or no review.
 
 - **In Fledge, everything is requested:** ADRs, plans, this file, the README, `lib/`, `sig/`, `exe/`, `tasks/`, `test/`, the launcher's C, the workflows. Nothing here is written or wrought. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass.
-- **Decisions** that belong to the maintainer as product owner go to the maintainer as questions, never as decisions: the public CLI surface (commands, options, output formats), how an app is laid out and configured, the license of anything Fledge copies into the apps people ship, and anything that publishes outside this repository. Do not wait for an answer, and do not decide silently: pick a sensible default that is easy to reverse, build on it, and record the question in `doc/contributors/questions.md` with its context, the default chosen, and how to reverse it. When the maintainer answers, record the answer in an ADR or the plan and remove the question.
+- **The maintainer's words** are in `doc/contributors/decisions.md`, quoted verbatim with the date. That file is the only record of what the maintainer said. Everything else here, ADRs, plans, and this file included, was written by agents, and agents change it freely, as long as it stays true to `decisions.md`.
 - **Generated code** is marked as generated in its header and is never edited by hand; change the generator instead.
 
 Every commit carries a `Provenance: requested` trailer.
 
+## Questions
+
+`doc/contributors/questions.md` holds only two kinds of question:
+
+1. An apparent conflict with, or ambiguity in, `doc/contributors/decisions.md`.
+2. Direction only the maintainer can give: product scope, what app developers control, licensing and commercial terms, money, and external accounts (Apple, Microsoft, certificate authorities, package registries).
+
+Everything agents invented is the agents' to decide: ADR and plan content, CLI details, the help header, error messages, internal layouts, and names inside the runtime. Decide it by prior art and industry standards (Design precedence, above), record the rationale and citations in an ADR, and change it freely when a better reason arrives. Never ask the maintainer to second-guess an agent's own invention; ask only where the maintainer's own words leave something open.
+
+A question names its context, the default the work proceeds on, and how to reverse that default. Do not wait for an answer: build on the default. When the maintainer answers, add the answer verbatim to `decisions.md`, apply it, and remove the question.
+
+## Licensing
+
+Fledge is AGPL-3.0-or-later (decision 1), and setdef may offer it under a commercial license too, so every line must be clearly Fledge's own or clearly attributed.
+
+- **Derived code and prose get SPDX snippets**, as Tokra does (`~/Developer/Tokra`, for example `plugins/notification/test/support/notification_test.rb` and `ext/tokra/src/responders.rs`). Anything adapted from elsewhere (Ruby's `main.c`, `ruby.c`, or `win32/win32.c`; RubyGems; RubyInstaller; rv-ruby; Lota; Tokra; a spike) sits between `SPDX-SnippetBegin` and `SPDX-SnippetEnd`, with the source's `SPDX-License-Identifier`, an `SPDX-SnippetCopyrightText` naming the source's authors, and an `SPDX-SnippetComment` naming the source file and the commit or tag it came from. Do this for the maintainer's own projects too: their license or ownership may differ from Fledge's. Add the source's license text to `LICENSES/`; `reuse lint` in the gate checks both.
+- **Nothing Fledge copies into an app may carry copyleft obligations beyond keeping notices** (decision 8), except Fledge's own setdef-owned code, which is AGPL-3.0-or-later and commercially licensable. A developer who buys a commercial license must be able to ship an app with no copyleft obligation at all. Every third-party component in a runtime (a library, a DLL, a gem, a data file) must be under a permissive license such as MIT, BSD, Apache-2.0, Zlib, or Ruby's, or be an LGPL library shipped as a separate shared library a person can replace, never linked statically, with its source published beside the runtime. Fledge never asks an app developer for their app's source or object files. GPL or AGPL third-party code, and LGPL code linked statically into any binary, are bugs to remove (Plan 002, "Copyleft-free runtimes"). Check a new component's license before it lands in `runtime/sources.yml`, list its notice there, and say plainly in the documentation for app developers what it asks of them.
+
 ## Committing
 
-- One commit per working session, on `trunk`, after the gate passes. Include any plan, ADR, or question the session produced.
-- Pushing `trunk` to `origin` (github.com/setdef/Fledge) is allowed once the gate passes. Never force-push, and never push or tag in any other repository.
+- Commit on `trunk` in coherent steps, each after the gate passes, with the plan, ADR, or question each step produced.
+- Pushing `trunk` to `origin` (github.com/setdef/Fledge) is allowed once the gate passes. Never force-push, and never push or tag in any other repository, or to another agent's branch.
 - Conventional Commits, plain text, wrapped at 72. The body explains why this approach over alternatives, in prose (no lists, no markdown, no file inventories). Types: `lib`/`sig`/`exe`/launcher feat/fix/refactor/perf; `bin`/`tasks`/CI chore; `examples/` and `doc/` docs; `test/` test. End with the `Provenance: requested` trailer, then the AI footer shown by `git log -n1`.
 
 ## Releasing
 
-Fledge never publishes to RubyGems.org: no `gem push`, ever, by anyone working in this repository. The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses. Releases are git tags (`vX.Y.Z`) and GitHub Releases, which carry the prebuilt runtimes as assets, as Ferro releases by tag. Cutting a release is the maintainer's call, so it goes to the maintainer as a question.
+Before 1.0, agents may push `trunk`, create and push tags (`vX.Y.Z`), and create GitHub Releases (decision 6). Releases are git tags and GitHub Releases at https://github.com/setdef/Fledge, which carry the prebuilt runtimes as assets, as Ferro releases by tag; `.github/workflows/release.yml` publishes one when a tag is pushed, after CI passes. Tag only a commit whose CI is green on every job.
+
+Fledge never publishes to RubyGems.org: no `gem push`, ever, by anyone working in this repository. The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses.
 
 ## Changelog
 
@@ -72,5 +94,5 @@ Keep a Changelog + SemVer. Only changes people who build apps with Fledge, or ru
 2. Behavior follows the design precedence above; deviations from the prior art are justified and documented.
 3. `bundle exec rake` passes from a clean build (`rm -rf tmp`), zero errors, zero warnings.
 4. RDoc, RBS, the `exe/fledge` help header, `doc/`, README, and CHANGELOG updated where behavior changed.
-5. Every maintainer decision the work touched is in `doc/contributors/questions.md` or already answered.
+5. The work is true to `doc/contributors/decisions.md`, and any conflict or open direction is in `doc/contributors/questions.md`.
 6. A commit message is written (and the commit made, per Committing).

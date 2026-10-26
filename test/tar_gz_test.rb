@@ -64,15 +64,33 @@ class TarGzTest < Minitest::Test
     Dir.mktmpdir do |dir|
       write(dir)
       # A relative path: GNU tar reads "D:/..." on Windows as a remote host.
+      listed, status = Open3.capture2e("tar", "-tzf", "a.tar.gz", chdir: dir)
+
+      assert_predicate status, :success?, listed
+      names = listed.lines(chomp: true)
+      assert_equal entries.size, names.size
+      # Some tars escape names outside ASCII when they list them.
+      entries.select { |entry| entry.path.ascii_only? }.each do |entry|
+        assert_includes names, (entry.type == :directory) ? "#{entry.path}/" : entry.path
+      end
+    end
+  end
+
+  # Windows tars cannot create a symlink to a file that is not there yet,
+  # so extraction runs where symlinks are ordinary.
+  def test_system_tar_unpacks_what_the_writer_writes_with_modes_and_links
+    skip "tar is not on PATH" unless system("tar", "--version", out: File::NULL, err: File::NULL)
+    skip "symlinks need privileges on Windows" if Gem.win_platform?
+
+    Dir.mktmpdir do |dir|
+      write(dir)
       out, status = Open3.capture2e("tar", "-xzf", "a.tar.gz", chdir: dir)
 
       assert_predicate status, :success?, out
       assert_equal "x" * 1000, File.read(File.join(dir, LONG))
       assert_equal "y", File.read(File.join(dir, LONG_NAME))
-      unless Gem.win_platform?
-        assert_equal "run", File.readlink(File.join(dir, "top/link"))
-        assert_equal 0o755, File.stat(File.join(dir, "top/run")).mode & 0o777
-      end
+      assert_equal "run", File.readlink(File.join(dir, "top/link"))
+      assert_equal 0o755, File.stat(File.join(dir, "top/run")).mode & 0o777
     end
   end
 

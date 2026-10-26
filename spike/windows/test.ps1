@@ -218,7 +218,8 @@ Write-Host "  LongPathsEnabled: $($lp.LongPathsEnabled)"
 # A folder whose own path is under MAX_PATH, so CreateProcess can start
 # the exe, but whose runtime files (rubygems.rb, extensions) are past it.
 $deep = $env:RUNNER_TEMP
-while ($deep.Length -lt 225) { $deep = Join-Path $deep 'a-rather-long-folder-name' }
+while ($deep.Length -lt 205) { $deep = Join-Path $deep 'a-rather-long-folder-name' }
+$deep = Join-Path $deep ('x' * (238 - $deep.Length - 1)) # exe path: 254 chars
 New-Item -ItemType Directory -Force $deep | Out-Null
 Copy-Item -Recurse (Join-Path $root 'hello') $deep
 $deepExe = Join-Path $deep 'hello\hello.exe'

@@ -42,6 +42,14 @@ class ExeTest < Minitest::Test
     assert_equal "fledge #{Fledge::VERSION}\n", out
   end
 
+  def test_a_bare_fledge_is_a_usage_error_with_status_two
+    out, err, status = run_fledge
+
+    assert_equal 2, status.exitstatus
+    assert_empty out
+    assert_equal "Try 'fledge --help'.\n", err.lines.last
+  end
+
   def test_build_without_an_app_exits_with_status_one
     Dir.mktmpdir do |dir|
       out, err, status = run_fledge("build", dir)

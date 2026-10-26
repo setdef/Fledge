@@ -24,15 +24,23 @@ class CLITest < Minitest::Test
     [out.string, err.string, status]
   end
 
+  USAGE = "Usage: fledge build [OPTIONS] [PATH]\n" \
+    "       fledge --help\n" \
+    "       fledge --version\n" \
+    "Try 'fledge --help'.\n"
+
+  # GNU Coding Standards, section 4.8: --help and --version print to
+  # standard output and succeed. -? is the Windows habit (dotnet, winget).
   def test_help_flags_print_the_executables_header_without_comment_markers
-    %w[--help -h].each do |flag|
+    %w[--help -h -?].each do |flag|
       out, err, status = fledge(flag)
 
       assert_equal 0, status
       assert_empty err
       assert_match(/\A=+\nfledge - Ship a Ruby app to people who don't have Ruby\n=+\n\n/, out)
       assert_includes out, "\nSYNOPSIS\n    fledge build [OPTIONS] [PATH]\n"
-      assert_includes out, "    -V, --version      Print Fledge's version\n"
+      assert_includes out, "    -v, --version      Print Fledge's version\n"
+      assert_includes out, "    -h, -?, --help     Show this help\n"
       refute_match(/^#/, out)
       refute_includes out, "SPDX"
       refute_includes out, "fledge/cli"
@@ -50,11 +58,27 @@ class CLITest < Minitest::Test
     assert_includes out.split.join(" "), "a .zip for Windows, a .tar.gz for macOS and Linux."
   end
 
+  def test_help_names_each_exit_status
+    out, = fledge("--help")
+    statuses = out[/^EXIT STATUS\n(.*?)^EXAMPLES\n/m, 1].to_s
+
+    assert_match(/^    0 +Success/, statuses)
+    assert_match(/^    1 +The build failed/, statuses)
+    assert_match(/^    2 +Usage error/, statuses)
+  end
+
   def test_help_ends_at_the_closing_marker
     out, = fledge("--help")
 
     assert out.end_with?("=\n"), "help should end with the header's closing rule"
-    refute_includes out, "Fledge is requested"
+  end
+
+  # The source carries no provenance statement after the header, printed
+  # or not.
+  def test_the_executable_carries_no_provenance_statement
+    source = File.read(EXE)
+
+    refute_match(/requested|AI agent|generative/i, source)
   end
 
   def test_help_keeps_blank_lines_and_indentation
@@ -63,8 +87,9 @@ class CLITest < Minitest::Test
     assert_includes out, "\n\nDESCRIPTION\n    Put a Ruby app"
   end
 
+  # -v as ruby, gem, and bundle have it.
   def test_version_flags_print_the_version
-    %w[--version -V].each do |flag|
+    %w[--version -v].each do |flag|
       out, err, status = fledge(flag)
 
       assert_equal 0, status
@@ -73,39 +98,64 @@ class CLITest < Minitest::Test
     end
   end
 
-  def test_no_arguments_print_help_to_standard_error_and_fail
+  def test_the_short_usage_is_the_help_headers_synopsis
+    assert_equal "Usage: fledge build [OPTIONS] [PATH]\n       fledge --help\n       fledge --version\n",
+      Fledge::CLI.new(help_path: EXE).usage
+  end
+
+  # A bare fledge asked for nothing: a usage error, as for GNU tools,
+  # with exit status 2 rather than 1, which means an operation failed.
+  def test_no_arguments_print_the_usage_to_standard_error_with_status_two
     out, err, status = fledge
 
-    assert_equal 1, status
+    assert_equal 2, status
     assert_empty out
-    assert_equal fledge("--help").first, err
+    assert_equal USAGE, err
   end
 
-  def test_an_unknown_command_names_fledge_help
+  def test_an_unknown_command_is_a_usage_error
     out, err, status = fledge("frobnicate", "now")
 
-    assert_equal 1, status
+    assert_equal 2, status
     assert_empty out
-    assert_equal "fledge: 'frobnicate' is not a command. See 'fledge --help'.\n", err
+    assert_equal "fledge: 'frobnicate' is not a fledge command\n#{USAGE}", err
   end
 
-  def test_an_unknown_option_names_fledge_help
-    %w[--frobnicate -x].each do |option|
+  def test_an_unknown_option_is_a_usage_error
+    %w[--frobnicate -x -V].each do |option|
       out, err, status = fledge(option)
 
-      assert_equal 1, status
+      assert_equal 2, status
       assert_empty out
-      assert_equal "fledge: unknown option '#{option}'. See 'fledge --help'.\n", err
+      assert_equal "fledge: unrecognized option '#{option}'\n#{USAGE}", err
     end
   end
 
-  def test_build_reports_its_own_mistakes_through_the_error_stream
+  def test_a_commands_usage_error_gets_the_usage_too
+    out, err, status = fledge("build", "--frobnicate")
+
+    assert_equal 2, status
+    assert_empty out
+    assert_equal "fledge build: unrecognized option '--frobnicate'\n#{USAGE}", err
+  end
+
+  def test_an_unknown_target_is_a_usage_error
     out, err, status = fledge("build", "--target", "sparc-solaris", "examples/hello")
 
-    assert_equal 1, status
+    assert_equal 2, status
     assert_empty out
     assert_equal "fledge build: 'sparc-solaris' is not a target Fledge builds for. " \
-      "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n", err
+      "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n#{USAGE}", err
+  end
+
+  def test_a_build_that_fails_exits_with_status_one_and_no_usage
+    Dir.mktmpdir do |dir|
+      out, err, status = fledge("build", dir)
+
+      assert_equal 1, status
+      assert_empty out
+      assert_equal "fledge build: #{dir} has no main.rb. An app is a folder with a main.rb.\n", err
+    end
   end
 
   def test_the_command_table_names_every_command
@@ -140,7 +190,7 @@ class CLITest < Minitest::Test
 
     status = Fledge::CLI.new(help_path: EXE, out: StringIO.new, err: StringIO.new).call(argv)
 
-    assert_equal 1, status
+    assert_equal 2, status
     assert_equal %w[build --frobnicate], argv
   end
 

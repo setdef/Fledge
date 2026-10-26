@@ -28,12 +28,14 @@ module Fledge
 
     def help: () -> String
 
+    def usage: () -> String
+
     private def missing_header: () -> ArgumentError
 
     private def run: (String, Array[String]) -> Integer
 
     private def succeed_with: (String) -> Integer
 
-    private def fail_with: (String) -> Integer
+    private def usage_error: (String?) -> Integer
   end
 end

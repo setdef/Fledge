@@ -72,7 +72,7 @@ module Fledge
       NAMES
     end
 
-    # The platform named +name+. Raises Fledge::Error, listing the
+    # The platform named +name+. Raises Fledge::UsageError, listing the
     # platforms Fledge knows, for any other name.
     #
     # === Example
@@ -89,7 +89,7 @@ module Fledge
     def self.find(name)
       return new(name:) if NAMES.include?(name)
 
-      raise Error, "'#{name}' is not a target Fledge builds for. Targets: #{NAMES.join(', ')}."
+      raise UsageError, "'#{name}' is not a target Fledge builds for. Targets: #{NAMES.join(', ')}."
     end
 
     # The platform of the computer described by +gem_platform+ (default:

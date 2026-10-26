@@ -36,4 +36,34 @@ module Fledge
   #++
   class Error < StandardError
   end
+
+  # A command line Fledge cannot make sense of: an unrecognized option, a
+  # missing value, an unknown target.
+  #
+  # A mistake in how +fledge+ was called needs a different answer from
+  # a build that failed. The person needs to see how to call it, and a
+  # script needs to tell "you called me wrong" from "I tried and failed."
+  # GNU tools and the BSDs answer both with exit status 2 and a short
+  # usage on standard error.
+  #
+  # Fledge::CLI catches this error, prints its message, the usage, and
+  # <tt>Try 'fledge --help'.</tt>, and exits with status 2. A command
+  # raises it from its argument parsing.
+  #
+  # Use it in a command for any mistake the help text would have
+  # prevented.
+  #
+  # === Example
+  #
+  #--
+  # SPDX-SnippetBegin
+  # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  # SPDX-License-Identifier: MIT-0
+  #++
+  #   raise Fledge::UsageError, "unrecognized option '--frobnicate'"
+  #--
+  # SPDX-SnippetEnd
+  #++
+  class UsageError < Error
+  end
 end

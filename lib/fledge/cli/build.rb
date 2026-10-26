@@ -23,8 +23,10 @@ module Fledge
     # This command reads <tt>--target</tt>, <tt>--out</tt>, and the app's
     # folder from its arguments, finds each target's runtime through
     # Fledge::Runtimes, builds each with Fledge::Assembly, and prints the
-    # path of each archive it wrote, one per line. A mistake becomes one
-    # line on the error stream and exit status 1.
+    # path of each archive it wrote, one per line. A failed build becomes
+    # one line on the error stream and exit status 1; a mistake in its
+    # arguments raises Fledge::UsageError, which Fledge::CLI turns into
+    # the usage and exit status 2.
     #
     # Use it through the +fledge+ executable, or through Fledge::CLI.
     #
@@ -62,7 +64,8 @@ module Fledge
       end
 
       # Runs the command with the arguments after +build+, and returns
-      # the exit status: 0 when every target built, 1 otherwise.
+      # the exit status: 0 when every target built, 1 otherwise. Raises
+      # Fledge::UsageError for arguments it cannot make sense of.
       #
       # === Example
       #
@@ -77,10 +80,12 @@ module Fledge
       #++
       def call(argv)
         targets, out, path = parse(argv)
+        platforms = targets.uniq.map { |name| Platform.find(name) }
         app = App.at(path)
-        platforms = targets.empty? ? [Platform.local(@host)] : targets.uniq.map { |name| Platform.find(name) }
-        build(app, platforms, out)
+        build(app, platforms.empty? ? [Platform.local(@host)] : platforms, out)
         0
+      rescue UsageError
+        raise
       rescue Error => e
         @err.puts "fledge build: #{e.message}"
         1
@@ -111,18 +116,19 @@ module Fledge
           when "-o", "--out" then out = value_of(argument, arguments, "DIR")
           when /\A--out=(.+)\z/ then out = ::Regexp.last_match(1).to_s
           when "--" then paths.concat(arguments.shift(arguments.size))
-          when /\A-./ then raise Error, "unknown option '#{argument}'. See 'fledge --help'."
+          when /\A--(?:target|out)=\z/ then value_of(argument.delete_suffix("="), [], argument.start_with?("--t") ? "PLATFORM" : "DIR")
+          when /\A-./ then raise UsageError, "unrecognized option '#{argument}'"
           else paths << argument
           end
         end
-        raise Error, "takes one PATH, but got #{paths.map { |p| "'#{p}'" }.join(' and ')}" if paths.size > 1
+        raise UsageError, "takes one PATH, but got #{paths.map { |p| "'#{p}'" }.join(' and ')}" if paths.size > 1
 
         [targets, out, paths.first || "."]
       end
 
       private def value_of(option, arguments, name)
         value = arguments.shift
-        raise Error, "#{option} needs a #{name}. See 'fledge --help'." if value.nil? || value.empty?
+        raise UsageError, "#{option} needs a #{name}" if value.nil? || value.empty?
 
         value
       end

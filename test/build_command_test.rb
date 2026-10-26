@@ -83,14 +83,25 @@ class BuildCommandTest < Minitest::Test
     assert_equal "../dist/hello-x86_64-linux.tar.gz\n", out.string
   end
 
-  def test_mistakes_print_one_line_and_exit_one
+  # Usage errors are the command line's to report, with the usage and
+  # exit status 2 (Fledge::CLI), so the command raises them.
+  def test_usage_mistakes_raise_a_usage_error
     {
-      %w[-t sparc-solaris hello] => "fledge build: 'sparc-solaris' is not a target Fledge builds for. " \
-        "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n",
-      %w[hello -t] => "fledge build: -t needs a PLATFORM. See 'fledge --help'.\n",
-      %w[--out] => "fledge build: --out needs a DIR. See 'fledge --help'.\n",
-      %w[--frobnicate hello] => "fledge build: unknown option '--frobnicate'. See 'fledge --help'.\n",
-      %w[hello other] => "fledge build: takes one PATH, but got 'hello' and 'other'\n",
+      %w[-t sparc-solaris hello] => "'sparc-solaris' is not a target Fledge builds for. " \
+        "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.",
+      %w[hello -t] => "-t needs a PLATFORM",
+      %w[--out] => "--out needs a DIR",
+      %w[--target=] => "--target needs a PLATFORM",
+      %w[--frobnicate hello] => "unrecognized option '--frobnicate'",
+      %w[hello other] => "takes one PATH, but got 'hello' and 'other'",
+    }.each do |argv, message|
+      error = assert_raises(Fledge::UsageError, argv.inspect) { build(*argv) }
+      assert_equal message, error.message, argv.inspect
+    end
+  end
+
+  def test_build_failures_print_one_line_and_exit_one
+    {
       %w[nowhere] => "fledge build: nowhere is not a folder. An app is a folder with a main.rb.\n",
       %w[-o hello hello] => "fledge build: --out can't be the app's own folder, hello\n",
     }.each do |argv, message|

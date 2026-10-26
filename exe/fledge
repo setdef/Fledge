@@ -44,18 +44,22 @@
 #                        x64-mingw-ucrt (default: the platform you are
 #                        on)
 #     -o, --out DIR      Write builds to DIR (default: dist)
-#     -h, --help         Show this help
-#     -V, --version      Print Fledge's version
+#     -h, -?, --help     Show this help
+#     -v, --version      Print Fledge's version
 #
 # FILES
-#     PATH/main.rb       The file the launcher runs. The app's folder
-#                        is on its load path, so require "foo" finds
-#                        PATH/foo.rb. Everything in PATH ships except
-#                        PATH/.git and DIR, if DIR is inside PATH.
+#     PATH/main.rb       The file the launcher runs, as ruby main.rb
+#                        would: load the app's other files with
+#                        require_relative. Everything in PATH ships
+#                        except PATH/.git and DIR, if DIR is inside
+#                        PATH.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        NAME is PATH's folder name, and NAME is also
-#                        the program to run (NAME.exe on Windows). A
-#                        new build replaces it.
+#                        the program to run (NAME.exe on Windows). It
+#                        exits with the app's own status, or with 66
+#                        when its app/main.rb is missing and 70 when
+#                        the rest of the folder is broken. A new build
+#                        replaces it.
 #     DIR/NAME-PLATFORM.zip
 #     DIR/NAME-PLATFORM.tar.gz
 #                        The same folder, archived for download: a .zip
@@ -74,8 +78,10 @@
 #
 # EXIT STATUS
 #     0                  Success
-#     1                  Error (bad arguments, a missing app, or a
-#                        failed build)
+#     1                  The build failed (a missing app, a runtime
+#                        that would not download, a full disk)
+#     2                  Usage error (an unrecognized option, a
+#                        missing value, an unknown target)
 #
 # EXAMPLES
 #     Build the app in the current directory for this computer:
@@ -90,9 +96,6 @@
 #
 # ======================================================================
 ###
-# Fledge is requested: an AI agent built it, with little or no review
-# from a person. Its gates (tests, linters, and delivery to computers
-# that have never seen Ruby) review it instead.
 
 require "fledge/cli"
 exit Fledge::CLI.new(help_path: __FILE__).call(ARGV)

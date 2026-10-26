@@ -57,6 +57,10 @@ report "Zlib", Zlib.zlib_version if defined?(Zlib)
 
 # The DLLs this process has loaded, from outside (Ruby has no API for it).
 ps = File.join(ENV.fetch("SystemRoot", "C:/Windows"), "System32/WindowsPowerShell/v1.0/powershell.exe")
-modules = IO.popen([ps, "-NoProfile", "-Command",
-                    "(Get-Process -Id #{Process.pid}).Modules | ForEach-Object FileName"], &:read)
-modules.to_s.lines.map(&:strip).reject { |m| m.match?(%r{\\Windows\\}i) }.each { |m| report "module", m }
+modules = IO.popen([
+  ps,
+  "-NoProfile",
+  "-Command",
+  "(Get-Process -Id #{Process.pid}).Modules | ForEach-Object FileName",
+], &:read)
+modules.to_s.lines.map(&:strip).reject { |m| m.match?(/\\Windows\\/i) }.each { |m| report "module", m }

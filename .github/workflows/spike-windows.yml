@@ -88,9 +88,53 @@ jobs:
           path: dist/apps.zip
           if-no-files-found: error
 
+  # Plan 001 asks whether the launcher can be built off Windows. It needs
+  # only Ruby's headers (the default mode links no Ruby library), so try
+  # Ubuntu's mingw-w64 UCRT cross compiler.
+  cross:
+    name: Cross-compile on Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mingw-w64 (UCRT)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends gcc-mingw-w64-ucrt64 binutils-mingw-w64-ucrt64
+          x86_64-w64-mingw32ucrt-gcc --version | head -1
+
+      - name: Download RubyInstaller's headers
+        run: |
+          set -euo pipefail
+          curl -fsSLO "https://github.com/oneclick/rubyinstaller2/releases/download/$RI_TAG/$RI_ASSET"
+          echo "$RI_SHA256  $RI_ASSET" | sha256sum -c -
+          7z x -y -bd "$RI_ASSET" 'rubyinstaller-4.0.9-1-x64/include' > /dev/null
+
+      - name: Cross-compile the launcher
+        run: |
+          set -euo pipefail
+          ri=$PWD/rubyinstaller-4.0.9-1-x64
+          mkdir -p cross
+          (cd spike/windows && x86_64-w64-mingw32ucrt-windres launcher.rc -O coff -o ../../cross/launcher.res.o)
+          x86_64-w64-mingw32ucrt-gcc -std=gnu11 -O2 -Wall -Wextra -Werror -municode \
+            -isystem "$ri/include/ruby-4.0.0" -isystem "$ri/include/ruby-4.0.0/x64-mingw-ucrt" \
+            spike/windows/launcher.c cross/launcher.res.o -municode -static-libgcc -s -mconsole \
+            -o cross/launcher-cross.exe
+          x86_64-w64-mingw32ucrt-objdump -p cross/launcher-cross.exe | grep -E 'Subsystem|DLL Name'
+          ls -l cross/launcher-cross.exe
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cross
+          path: cross/launcher-cross.exe
+          if-no-files-found: error
+
   delivery:
     name: Delivery
-    needs: build
+    needs: [build, cross]
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -104,9 +148,15 @@ jobs:
           name: apps
           path: ${{ runner.temp }}/dl
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cross
+          path: ${{ runner.temp }}/cross
+
       - name: Unzip the apps
         shell: pwsh
         run: 7z x -y -bd "-o$env:RUNNER_TEMP\apps" "$env:RUNNER_TEMP\dl\apps.zip" | Select-Object -Last 3
+          Copy-Item "$env:RUNNER_TEMP\cross\launcher-cross.exe" "$env:RUNNER_TEMP\apps\hello\hello-cross.exe"
 
       - name: Run the apps elsewhere, without Ruby, in a hostile environment
         shell: pwsh

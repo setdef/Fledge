@@ -117,6 +117,9 @@ Expect-Hello (Join-Path $root 'hello-full\hello-full.exe') 'hello-full.exe in a 
 Section 'hello-nogems.exe (--disable-gems), hostile'
 Expect-Hello (Join-Path $root 'hello\hello-nogems.exe') 'hello-nogems.exe in a hostile environment'
 
+Section 'hello-cross.exe (cross-compiled on Linux), hostile'
+Expect-Hello (Join-Path $root 'hello\hello-cross.exe') 'the Linux-cross-compiled launcher'
+
 Section "Renamed copy: $name.exe"
 $renamed = Join-Path $root "hello\$name.exe"
 Copy-Item (Join-Path $root 'hello\hello.exe') $renamed

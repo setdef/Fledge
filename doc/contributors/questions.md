@@ -48,7 +48,7 @@ Decisions that belong to the maintainer (AGENTS.md, Provenance) wait here. None 
 
 **Context.** The help header says `fledge build` writes `DIR/NAME-PLATFORM/`, but not where NAME comes from. It becomes the folder and archive name a person downloads, and on Windows likely the executable's name too.
 
-**Default.** NAME is the app folder's base name (`examples/hello` builds `dist/hello-x86_64-linux/`), as LÖVE's fused games take the developer's chosen file name. The launcher inside the folder is renamed to NAME too, so a person runs `hello-x86_64-linux/hello`. An app whose name would collide with a folder in the runtime (`app`, `lib`, `libexec`, `notices`, in any case) is refused with a message asking to rename the folder.
+**Default.** NAME is the app folder's base name (`examples/hello` builds `dist/hello-x86_64-linux/`), as LÖVE's fused games take the developer's chosen file name. The launcher inside the folder is renamed to NAME too, so a person runs `hello-x86_64-linux/hello`, or on Windows `hello-x64-mingw-ucrt\hello.exe`. An app whose name would collide with a folder in the runtime (`app`, `lib`, `libexec`, `notices`, in any case) is refused with a message asking to rename the folder.
 
 **To reverse.** Add a `--name` option or a configuration file, and update the help header and Plan 001.
 
@@ -96,7 +96,7 @@ Decisions that belong to the maintainer (AGENTS.md, Provenance) wait here. None 
 
 **Options.** An environment variable the launcher sets (such as `FLEDGE_EXECUTABLE`), a constant the launcher defines before `main.rb` runs, or a small Ruby file the launcher requires first.
 
-**To reverse.** Add it in `runtime/launcher/unix.c` (and the Windows launcher), and document it in the README.
+**To reverse.** Add it in `runtime/launcher/unix.c` and `runtime/launcher/windows.c`, and document it in the README.
 
 ## 11. Should apps be able to reach the person's own Ruby environment?
 
@@ -106,7 +106,7 @@ Decisions that belong to the maintainer (AGENTS.md, Provenance) wait here. None 
 
 **Options.** Keep the original values under other names (such as `FLEDGE_ORIGINAL_RUBYOPT`) for apps that want to restore them.
 
-**To reverse.** Have `scrub_environment` in `runtime/launcher/unix.c` copy each value to a renamed variable before removing it.
+**To reverse.** Have `scrub_environment` in `runtime/launcher/unix.c` and `runtime/launcher/windows.c` copy each value to a renamed variable before removing it.
 
 ## 12. Is musl Linux (Alpine) out of scope?
 
@@ -121,7 +121,8 @@ Decisions that belong to the maintainer (AGENTS.md, Provenance) wait here. None 
 **Context.** `fledge build` gained behavior the help header did not spell out before, all of it public surface.
 
 **Default.**
-- A built app's folder holds the program `NAME`, the app in `app/`, Ruby in `lib/`, the CA bundle in `libexec/cert.pem`, and license notices in `notices/` with a `README.txt` index.
+- A built app's folder holds the program `NAME`, the app in `app/`, Ruby in `lib/`, the CA bundle in `libexec/cert.pem`, and license notices in `notices/` with a `README.txt` index. On Windows it holds `NAME.exe`, `app\`, `notices\`, and RubyInstaller's tree in `ruby\` (question 23).
+- The archive is `DIR/NAME-PLATFORM.zip` for Windows, which a person opens with a double-click, and `DIR/NAME-PLATFORM.tar.gz` elsewhere. A Windows app whose folder holds a symbolic link is refused, since Windows would unpack the link as a small text file.
 - It prints the path of each archive it writes, one per line, on standard output, and download progress on standard error.
 - A new build replaces `DIR/NAME-PLATFORM/` and its archive.
 - Everything in the app's folder ships except `.git` and the output folder, when the output folder is inside the app's folder. `--out` may not be the app's folder itself.
@@ -153,7 +154,80 @@ Decisions that belong to the maintainer (AGENTS.md, Provenance) wait here. None 
 
 **Context.** The launcher can fail before Ruby starts: its folder renamed to `bin` or `lib` (Ruby would then look for its library one folder up), `app/main.rb` missing, or a path too long. A person who ran an app never asked for Ruby, so the message should not be about Ruby.
 
-**Default.** The launcher prints `NAME: message` on standard error, naming the app, and exits with status 70 (`EX_SOFTWARE` from sysexits). An app's own failures exit with the app's status.
+**Default.** The launcher prints `NAME: message` on standard error, naming the app (`NAME.exe` on Windows), and exits with status 70 (`EX_SOFTWARE` from sysexits). An app's own failures exit with the app's status. A windowed Windows launcher, which has no console, shows the message in a message box unless whoever started it captured standard error.
 
-**To reverse.** Change `fail` and `EXIT_BROKEN_RUNTIME` in `runtime/launcher/unix.c`.
+**To reverse.** Change `fail` in `runtime/launcher/unix.c` and `runtime/launcher/windows.c`, and `FLEDGE_EXIT_BROKEN_RUNTIME` in `runtime/launcher/launcher.h`.
 
+## 17. Should Windows apps be code-signed?
+
+**Context.** A Windows app is an unsigned `NAME.exe`. A file downloaded with a browser carries the Mark of the Web, and Windows SmartScreen shows "Windows protected your PC" before running an unsigned program from it, until the program builds a reputation; a person has to click "More info" and "Run anyway". Some antivirus products also flag programs that load a DLL with `LoadLibrary` and `GetProcAddress`, as the launcher does. Signing with an Authenticode certificate (an EV certificate, or Azure Trusted Signing) quiets SmartScreen. Signing costs money, needs an identity, and is publishing on someone's behalf, and the developer, not Fledge, would sign their own app, since renaming the launcher and adding the app changes what is signed.
+
+**Default.** Nothing is signed. Delivery runs the app without the Mark of the Web, so it does not meet SmartScreen.
+
+**Options.** Document how a developer signs their own built app with `signtool`; add a `--sign` option that calls a signing tool the developer configures; sign the runtime's launcher in Fledge's CI (which does not cover the renamed copy inside an app).
+
+**To reverse.** Add a signing step after `Fledge::Assembly` writes the folder and before it writes the `.zip`, and a Delivery check that the signature verifies.
+
+## 18. How does a Windows app get its own icon and version information?
+
+**Context.** Windows shows a program's icon and its version resource (`VERSIONINFO`: product name, version, company, description) in Explorer, the taskbar, and the file's properties, and Task Manager names a running program by its description. Every Windows app built with Fledge today shows the launcher's: no icon, and no version information. Changing them means writing resources into a built `NAME.exe`, which Ruby's standard library cannot do, and a configuration that says what they are, which is public surface (question 2).
+
+**Default.** No icon and no version information; the launcher's manifest is its only resource.
+
+**Options.** A resource editor in Ruby that rewrites the `.rsrc` section of the copied launcher (as rcedit does for Electron), configured by files in the app's folder such as `icon.ico`; or a launcher per app compiled on the developer's machine, which ADR 001 avoids.
+
+**To reverse.** Add the resource writer to `Fledge::Assembly` for Windows targets, and the configuration to the help header.
+
+## 19. What happens when RubyInstaller's signing key expires?
+
+**Context.** Every Windows runtime build checks RubyInstaller's archive against its PGP signature with the key `79D1 D4E1 2FF9 3365 DEAA 8DCE F98B 8484 BE8B F1C5` ("appveyor ri2 package signing key"), pinned in `runtime/sources.yml` from `oneclick/rubyinstaller2` at commit `866be16`. That key expires on 2027-06-15. `gpgv` checks a signature against the keyring it is given without judging the key's expiry the way `gpg` does, so a build after that date should still pass for this archive, but RubyInstaller will sign later releases with a renewed or new key.
+
+**Default.** Keep the pinned key and its expiry date in `runtime/sources.yml`. When the Ruby pin moves to a RubyInstaller release signed by another key, pin that key the same way (its URL in `rubyinstaller2` at a commit, its SHA-256, and its fingerprint).
+
+**To reverse.** Change the `signature.key` entry under `x64-mingw-ucrt` in `runtime/sources.yml`; `RuntimeBuilder::Windows#verify` reads it.
+
+## 20. Should Windows runtimes prune more?
+
+**Context.** A Windows runtime is 28 MB in 1,030 files; the app archive is 10 MB. It already leaves out what the Windows spike found safe (documentation, headers, import libraries, MSYS2's keyring, `ridk`, and the command-line wrappers in `bin\`) and, as on macOS and Linux, Ruby's bundled gems (question 9), among them the developer tools `rbs`, `rdoc`, `typeprof`, `debug`, and `test-unit`. Untested candidates remain: RubyInstaller's own Ruby in `lib\ruby\site_ruby\4.0.0` (`ruby_installer`, `devkit.rb`, `irbrc_predefiner.rb`), which nothing loads once Fledge's RubyGems defaults replace RubyInstaller's; OpenSSL's engines (`capi`, `padlock`, `loader_attic`) and legacy provider; `ruby.exe` and `rubyw.exe`, which only an app that starts Ruby again uses; and Bundler, a default gem an app without a Gemfile never loads.
+
+**Default.** Keep them, so an app that reaches for any of them finds it.
+
+**To reverse.** Add them to `RuntimeBuilder.prune_windows` in `tasks/runtime_builder.rb` and its test, and run Delivery.
+
+## 21. Do Windows apps behave under other console code pages, and on Ctrl-C?
+
+**Context.** Delivery runs a Windows app with its output captured, where Ruby writes UTF-8. A person's console may use a legacy code page (437, or 932 in Japan), where Ruby's `Encoding.default_external` follows the code page and text outside it may print as question marks. RubyInstaller's `ruby.exe` behaves the same. Windows can also run a program with UTF-8 as its code page through `activeCodePage` in its manifest. Ctrl-C in a console should end the app as it ends `ruby.exe`, through Ruby's own console handler; nobody has checked.
+
+**Default.** The launcher's manifest does not set `activeCodePage`, and the launcher does nothing about Ctrl-C, as `ruby.exe`.
+
+**Options.** Add `<activeCodePage>UTF-8</activeCodePage>` to `runtime/launcher/windows.manifest`, which changes what an app's `Encoding.default_external` and its child processes see; add Delivery checks under `chcp 437` and for Ctrl-C (`GenerateConsoleCtrlEvent`).
+
+**To reverse.** Edit `runtime/launcher/windows.manifest`, and add the checks to `.github/scripts/deliver.ps1`.
+
+## 22. Should Fledge build for Windows on ARM?
+
+**Context.** RubyInstaller publishes an ARM64 build (`rubyinstaller-4.0.9-1-arm.7z`, `aarch64-mingw-ucrt`, SHA-256 `d13273600bff5ca349f3866a0492517b144510ceb916525e891e2e1a3f728b78`), and llvm-mingw cross-compiles for ARM64. Windows on ARM runs x64 programs under emulation, so today's `x64-mingw-ucrt` apps run there, more slowly. GitHub has Windows ARM64 runners for Delivery.
+
+**Default.** No `aarch64-mingw-ucrt` target. The Windows spike found it feasible and did not try it.
+
+**To reverse.** Add `aarch64-mingw-ucrt` to `Fledge::Platform::NAMES`, its pin to `runtime/sources.yml`, a `TARGET` per platform in `RuntimeBuilder::Windows`, and Runtime, Test, and Delivery jobs to CI.
+
+## 23. Should Windows and Unix apps share one layout?
+
+**Context.** A macOS or Linux app holds Ruby in `lib/` and `libexec/` beside the program; a Windows app holds it in `ruby\`, RubyInstaller's tree with its shape unchanged (ADR 001, section 8). The difference comes from the Rubies: rv-ruby's libruby is linked into the launcher, which makes the launcher's own folder Ruby's prefix, while RubyInstaller's is a DLL, which makes the DLL's folder's parent the prefix. An app or a framework that looks for Ruby's files (a CA bundle, `RbConfig::CONFIG["prefix"]`) finds them in different places on each.
+
+**Default.** Keep the two layouts, each Ruby's own shape.
+
+**Options.** Move Unix runtimes into `ruby/` too, which needs the launcher to point Ruby at a prefix other than its own folder (rv-ruby's load-relative build derives it from the file that holds libruby, so this means linking libruby into a shared library inside `ruby/lib`); or build a static Ruby for Windows, which is ADR 001's fallback of building Ruby ourselves.
+
+**To reverse.** Change `RuntimeBuilder::Unix#copy_ruby` or `RuntimeBuilder::Windows#build`, the launcher that moves, the README, and ADR 001, section 8.
+
+## 24. How should the Windows runtime carry GMP, which is LGPL?
+
+**Context.** RubyInstaller's Ruby uses GMP 6.3.0 for big-integer arithmetic, from `ruby\bin\ruby_builtin_dlls\libgmp-10.dll`. GMP is LGPL-3.0-or-later or GPL-2.0-or-later. Like libxcrypt on Linux (question 8), it ships as a shared library that whoever receives an app can replace with their own build, which is what the LGPL asks; the LGPL also asks that the library's source be available, and MSYS2 builds it with patches of its own. The license of what ships inside apps is the maintainer's call (question 1).
+
+**Default.** Ship RubyInstaller's `libgmp-10.dll` unchanged, with GMP's license texts in `notices/gmp/` and, as its source, GMP's release and MSYS2's package recipe.
+
+**Options.** Point the notice at the exact MSYS2 source package RubyInstaller used, or mirror it in Fledge's release; or build Ruby for Windows without GMP (ADR 001's fallback).
+
+**To reverse.** Change the `gmp` notice in `runtime/sources.yml`, or prune the DLL in `RuntimeBuilder.prune_windows` once Ruby no longer needs it.

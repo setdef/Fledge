@@ -206,4 +206,17 @@ Check 'DLLs planted on PATH and in the current folder' 0 $app $planted @() $evil
 if ((Get-Snapshot $place) -ne $before) { Fail "running the app changed the files in $place" }
 Write-Host 'ok: the app wrote nothing into its own folder'
 
+# A broken app fails with a message that names the app, not Ruby, on
+# standard error, and the launcher's own exit status, 70.
+$main = Join-Path $root 'app\main.rb'
+Move-Item -LiteralPath $main -Destination "$main.away"
+$broken = Invoke-App $app $clean
+Move-Item -LiteralPath "$main.away" -Destination $main
+$message = "\Ahello\.exe: this app is incomplete: $([regex]::Escape($main)) is missing\r?\n\z"
+if ($broken.Code -ne 70 -or $broken.Out -ne '' -or $broken.Err -cnotmatch $message) {
+  Write-Host "--- stdout`n$($broken.Out)--- stderr`n$($broken.Err)"
+  Fail "an app without main.rb: exit status $($broken.Code) (expected 70), output above"
+}
+Write-Host 'ok: an app without main.rb says so and exits 70'
+
 Write-Host "Delivered: $expected"

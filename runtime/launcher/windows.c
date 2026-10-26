@@ -448,5 +448,6 @@ wmain(int argc, wchar_t **argv)
     int ruby_argc = 0;
     char **ruby_argv = NULL;
     ruby_api.sysinit(&ruby_argc, &ruby_argv);
-    return run_ruby(build_ruby_arguments(ruby_argc, ruby_argv), ruby_arguments);
+    int count = build_ruby_arguments(ruby_argc, ruby_argv);
+    return run_ruby(count, ruby_arguments);
 }

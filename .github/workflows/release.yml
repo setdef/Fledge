@@ -1,16 +1,17 @@
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Publishes a Fledge release when the maintainer pushes a vX.Y.Z tag
-# (ADR 001, section 7; AGENTS.md, Releasing). It runs all of CI on the
-# tagged commit, and only when every job passes, Delivery included, does
-# it create the GitHub Release and attach each platform's runtime (macOS,
-# two Linux, and Windows, all .tar.gz) with a SHA256SUMS file. fledge build at that version downloads its runtimes
-# from this release and checks them against SHA256SUMS.
+# Publishes a Fledge release when a vX.Y.Z tag is pushed (ADR 001,
+# section 7; AGENTS.md, Releasing). It runs all of CI on the tagged
+# commit, and only when every job passes, Delivery included, does it
+# create the GitHub Release and attach each platform's runtime (macOS,
+# two Linux, and Windows, all .tar.gz) with a SHA256SUMS file. fledge
+# build at that version downloads its runtimes from this release and
+# checks them against SHA256SUMS.
 #
-# Agents never push tags; whether and when to release is the
-# maintainer's call (doc/contributors/questions.md). Nothing here
-# publishes to RubyGems.org, ever.
+# Before 1.0, agents may push tags and create releases (AGENTS.md,
+# Releasing; decision 6 in doc/contributors/decisions.md), on a commit
+# whose CI is green. Nothing here publishes to RubyGems.org, ever.
 
 name: Release
 

@@ -5,20 +5,24 @@
 # Delivery (Plan 001): runs a built examples/hello the way a person who
 # has never installed Ruby would, and fails unless it behaves.
 #
-#   deliver.sh ARCHIVE RUBY_PLATFORM [--no-ruby-installed]
+#   deliver.sh ARCHIVE PROBE_ARCHIVE RUBY_PLATFORM [--no-ruby-installed]
 #
-# ARCHIVE is hello-PLATFORM.tar.gz as fledge build wrote it. RUBY_PLATFORM
-# is what the app must report: arm64-darwin23, x86_64-linux, or
-# aarch64-linux. With --no-ruby-installed, the computer itself must have
-# no Ruby on its PATH (a fresh container); without it, the app still runs
-# with a PATH that holds no Ruby, whatever the runner has installed.
+# ARCHIVE is hello-PLATFORM.tar.gz as fledge build wrote it, and
+# PROBE_ARCHIVE parity-PLATFORM.tar.gz, the parity probe
+# (test/fixtures/parity), which reports what a child Ruby sees.
+# RUBY_PLATFORM is what the app must report: arm64-darwin23,
+# x86_64-linux, or aarch64-linux. With --no-ruby-installed, the computer
+# itself must have no Ruby on its PATH (a fresh container); without it,
+# the app still runs with a PATH that holds no Ruby, whatever the runner
+# has installed.
 #
 # This is POSIX sh on purpose: nothing here may need Ruby.
 
 set -eu
 
 archive=$1
-platform=$2
+probe_archive=$2
+platform=$3
 expected="Hello from Ruby 4.0.9 on $platform"
 
 fail() {
@@ -26,13 +30,14 @@ fail() {
   exit 1
 }
 
-if [ "${3:-}" = "--no-ruby-installed" ] && command -v ruby >/dev/null 2>&1; then
+if [ "${4:-}" = "--no-ruby-installed" ] && command -v ruby >/dev/null 2>&1; then
   fail "this computer has Ruby at $(command -v ruby), so it cannot prove the app needs none"
 fi
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 archive=$(cd "$(dirname "$archive")" && pwd)/$(basename "$archive")
+probe_archive=$(cd "$(dirname "$probe_archive")" && pwd)/$(basename "$probe_archive")
 name=$(basename "$archive" .tar.gz)
 
 # Unpack somewhere the app was never built, under a path with spaces and
@@ -41,9 +46,12 @@ name=$(basename "$archive" .tar.gz)
 place="$work/My Apps/Ünïcödé 日本"
 mkdir -p "$place"
 tar -xzf "$archive" -C "$place"
+tar -xzf "$probe_archive" -C "$place"
 root="$place/$name"
 app="$root/hello"
+probe="$place/$(basename "$probe_archive" .tar.gz)/parity"
 [ -x "$app" ] || fail "$app is not executable after unpacking"
+[ -x "$probe" ] || fail "$probe is not executable after unpacking"
 
 # The app runs with a PATH that holds nothing at all, so no Ruby is on
 # it, whatever this computer has installed.
@@ -132,6 +140,40 @@ links="$work/links"
 mkdir -p "$links"
 ln -s "$app" "$links/hello-link"
 check "run through a symlink on PATH" 0 env -i PATH="$links" HOME="$home" hello-link
+
+# The person's own Ruby settings are hidden from the app's boot only
+# (ADR 003): the app's gems stay the runtime's, and a Ruby the app starts
+# through RbConfig.ruby, the runtime's own bin/ruby, sees the person's
+# GEM_HOME, as it would under ruby main.rb.
+person_gems="$work/person gems"
+mkdir -p "$person_gems"
+seen=$(cd / && env -i PATH="$empty" HOME="$home" GEM_HOME="$person_gems" "$probe" child-env GEM_HOME)
+[ "$seen" = "$person_gems" ] || fail "a child Ruby saw GEM_HOME as '$seen', not the person's '$person_gems'"
+echo "ok: a child Ruby sees the person's GEM_HOME"
+gem_path=$(cd / && env -i PATH="$empty" HOME="$home" GEM_HOME="$person_gems" "$probe" gem-path)
+case "$gem_path" in
+  *"$person_gems"*) fail "the app's own Gem.path holds the person's GEM_HOME: $gem_path" ;;
+esac
+echo "ok: the app's own gems ignore the person's GEM_HOME"
+
+# A broken app names itself, not Ruby, on standard error, and exits with
+# EX_NOINPUT (66) when its app/main.rb is missing (ADR 002).
+main="$root/app/main.rb"
+mv "$main" "$main.away"
+set +e
+(cd / && env -i PATH="$empty" HOME="$home" "$app") >"$work/out" 2>"$work/err"
+actual=$?
+set -e
+mv "$main.away" "$main"
+# The launcher names the file by its real path, symlinks resolved (macOS's
+# temporary folder is a symlink into /private).
+real_main="$(cd "$root/app" && pwd -P)/main.rb"
+if [ "$actual" -ne 66 ] || [ -s "$work/out" ] || [ "$(cat "$work/err")" != "hello: this app is incomplete: $real_main is missing" ]; then
+  echo "--- stdout"; cat "$work/out"
+  echo "--- stderr"; cat "$work/err"
+  fail "an app without main.rb: exit status $actual (expected 66), output above"
+fi
+echo "ok: an app without main.rb says so and exits 66"
 
 case "$(uname -s)" in
   Linux)

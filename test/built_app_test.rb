@@ -21,6 +21,7 @@ require "stringio"
 # runtime, so a missing runtime there fails instead of passing silently.
 class BuiltAppTest < Minitest::Test
   HELLO = File.expand_path("../examples/hello", __dir__)
+  PROBE = File.expand_path("fixtures/parity", __dir__)
   EXE = File.expand_path("../exe/fledge", __dir__)
   LIB = File.expand_path("../lib", __dir__)
 
@@ -47,17 +48,21 @@ class BuiltAppTest < Minitest::Test
     (@platform.name == "arm64-darwin") ? "arm64-darwin23" : @platform.name
   end
 
-  # One build serves every test: building takes seconds.
-  def app
-    self.class.built ||= begin
+  # One build of each app serves every test: building takes seconds.
+  def app = built(HELLO)
+
+  def probe = built(PROBE)
+
+  def built(source)
+    self.class.built[source] ||= begin
       dir = Dir.mktmpdir
       Minitest.after_run { FileUtils.rm_rf(dir) }
-      build_and_unpack(dir)
+      build_and_unpack(dir, source)
     end
   end
 
   class << self
-    attr_accessor :built
+    def built = (@built ||= {})
   end
 
   def test_the_built_app_runs_with_no_ruby_environment
@@ -102,6 +107,36 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # The launcher hides the person's Ruby settings from Ruby's boot, then
+  # puts them back (ADR 003): the app's own gems stay the runtime's, and a
+  # Ruby the app starts sees the person's settings, as under ruby main.rb.
+  def test_the_persons_ruby_settings_reach_child_processes_but_not_the_apps_gems
+    Dir.mktmpdir do |dir|
+      gems = File.join(dir, "person-gems")
+      env = { "HOME" => dir, "GEM_HOME" => gems, "bundle_gemfile" => File.join(dir, "Gemfile") }
+
+      out, err, status = run_app(env, probe, "child-env", "GEM_HOME")
+      assert_equal ["#{gems}\n", "", 0], [out, err, status.exitstatus]
+
+      out, err, status = run_app(env, probe, "gem-path")
+      assert_equal 0, status.exitstatus, err
+      refute_includes out, gems
+      assert_equal 1, out.lines.size, out
+    end
+  end
+
+  def test_a_missing_main_rb_exits_with_ex_noinput
+    main = File.join(File.realpath(File.dirname(app)), "app", "main.rb")
+    File.rename(main, "#{main}.away")
+    out, err, status = run_app({}, app)
+
+    assert_equal ["", 66], [out, status.exitstatus]
+    assert_equal "#{@platform.executable('hello')}: this app is incomplete: #{main.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
+      err.gsub("\r\n", "\n")
+  ensure
+    File.rename("#{main}.away", main) if main && File.exist?("#{main}.away")
+  end
+
   def test_the_apps_exit_status_reaches_the_caller
     Dir.mktmpdir do |dir|
       out, _, status = run_app({ "HOME" => dir }, app, "3")
@@ -110,19 +145,20 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # Builds hello through the fledge executable, as a person would, and
-  # unpacks its archive under a path with spaces and characters outside
-  # ASCII. Returns the launcher's path.
-  def build_and_unpack(dir)
+  # Builds the app in +source+ through the fledge executable, as a person
+  # would, and unpacks its archive under a path with spaces and characters
+  # outside ASCII. Returns the launcher's path.
+  def build_and_unpack(dir, source)
     out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
-      "-o", File.join(dir, "dist"), HELLO)
+      "-o", File.join(dir, "dist"), source)
     assert_predicate status, :success?, err
     archive = File.expand_path(out.chomp, Dir.pwd)
 
     place = File.join(dir, "My Apps", "Ünïcödé 日本")
     FileUtils.mkdir_p(place)
     unpack(archive, place)
-    File.join(place, "hello-#{@platform}", @platform.executable("hello"))
+    name = File.basename(source)
+    File.join(place, "#{name}-#{@platform}", @platform.executable(name))
   end
 
   # Windows' own Expand-Archive for a .zip, as a person on Windows has

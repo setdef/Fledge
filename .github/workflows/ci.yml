@@ -233,6 +233,15 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test
 
+      # ADR 003: the probe app, built from this runtime, against rv-ruby's
+      # own ruby running the same main.rb. The report lands in the job
+      # summary; an unjustified difference fails the job.
+      - name: Check parity with ruby main.rb
+        timeout-minutes: 10
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: bundle exec rake parity
+
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 001), through setup-ruby at
   # mise.toml's pin. test/built_app_test.rb unpacks hello with Windows'
@@ -270,6 +279,16 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test
 
+      # ADR 003: the probe app, built from this runtime, against
+      # RubyInstaller's own ruby.exe running the same main.rb, then both
+      # again under code page 437. The report lands in the job summary; an
+      # unjustified difference fails the job.
+      - name: Check parity with ruby main.rb
+        timeout-minutes: 10
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: bundle exec rake parity
+
   # Every platform's app from one Linux computer, from the runtimes the
   # runtime jobs built: the cross-building ADR 001 promises.
   build:
@@ -294,36 +313,49 @@ jobs:
           merge-multiple: true
           path: ${{ runner.temp }}/runtimes
 
-      - name: Build hello for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
+      # The parity probe (test/fixtures/parity) goes to Delivery too, which
+      # asks it what a child Ruby sees.
+      - name: Build hello and the parity probe for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
-        run: ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux -t x64-mingw-ucrt examples/hello
+        run: |
+          for app in examples/hello test/fixtures/parity; do
+            ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux -t x64-mingw-ucrt "$app"
+          done
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hello-arm64-darwin
-          path: dist/hello-arm64-darwin.tar.gz
+          path: |
+            dist/hello-arm64-darwin.tar.gz
+            dist/parity-arm64-darwin.tar.gz
           if-no-files-found: error
           retention-days: 14
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hello-x86_64-linux
-          path: dist/hello-x86_64-linux.tar.gz
+          path: |
+            dist/hello-x86_64-linux.tar.gz
+            dist/parity-x86_64-linux.tar.gz
           if-no-files-found: error
           retention-days: 14
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hello-aarch64-linux
-          path: dist/hello-aarch64-linux.tar.gz
+          path: |
+            dist/hello-aarch64-linux.tar.gz
+            dist/parity-aarch64-linux.tar.gz
           if-no-files-found: error
           retention-days: 14
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hello-x64-mingw-ucrt
-          path: dist/hello-x64-mingw-ucrt.zip
+          path: |
+            dist/hello-x64-mingw-ucrt.zip
+            dist/parity-x64-mingw-ucrt.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -364,7 +396,9 @@ jobs:
           path: ${{ runner.temp }}/delivered
 
       - name: Run hello as someone with no Ruby would
-        run: .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/hello-${{ matrix.platform }}.tar.gz" "${{ matrix.ruby-platform }}"
+        run: >-
+          .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/hello-${{ matrix.platform }}.tar.gz"
+          "$RUNNER_TEMP/delivered/parity-${{ matrix.platform }}.tar.gz" "${{ matrix.ruby-platform }}"
 
   # Delivery again, in Debian 13 containers with no Ruby installed at all
   # (deliver.sh --no-ruby-installed checks), glibc 2.41, and no CA
@@ -396,7 +430,9 @@ jobs:
           path: delivered
 
       - name: Run hello on a computer with no Ruby installed
-        run: .github/scripts/deliver.sh "delivered/hello-${{ matrix.platform }}.tar.gz" "${{ matrix.platform }}" --no-ruby-installed
+        run: >-
+          .github/scripts/deliver.sh "delivered/hello-${{ matrix.platform }}.tar.gz"
+          "delivered/parity-${{ matrix.platform }}.tar.gz" "${{ matrix.platform }}" --no-ruby-installed
 
   # Delivery on a fresh Windows runner, with nothing of Fledge but the
   # .zip and the script that checks it, and no Ruby set up: the runner's
@@ -424,4 +460,5 @@ jobs:
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/hello-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Archive "$env:RUNNER_TEMP/delivered/hello-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt

@@ -6,10 +6,12 @@
 # It is deliver.sh's counterpart, with the same checks where Windows has
 # them, and more where Windows has more ways in.
 #
-#   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Platform RUBY_PLATFORM
+#   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Probe PROBE_ARCHIVE -Platform RUBY_PLATFORM
 #
-# ARCHIVE is hello-PLATFORM.zip as fledge build wrote it. RUBY_PLATFORM is
-# what the app must report: x64-mingw-ucrt.
+# ARCHIVE is hello-PLATFORM.zip as fledge build wrote it, and PROBE_ARCHIVE
+# parity-PLATFORM.zip, the parity probe (test/fixtures/parity), which
+# reports what a child Ruby sees. RUBY_PLATFORM is what the app must
+# report: x64-mingw-ucrt.
 #
 # Each run goes through .NET's Process, which waits for the program and
 # captures both of its streams: PowerShell's & operator neither waits for
@@ -19,6 +21,7 @@
 
 param(
   [Parameter(Mandatory)] [string] $Archive,
+  [Parameter(Mandatory)] [string] $Probe,
   [Parameter(Mandatory)] [string] $Platform
 )
 
@@ -94,6 +97,9 @@ $drive = if (Test-Path 'D:\') { 'D:\' } else { $env:RUNNER_TEMP }
 $place = Join-Path (Join-Path $drive 'Fledge test') $folderName
 New-Item -ItemType Directory -Force $place | Out-Null
 Expand-Archive -LiteralPath $Archive -DestinationPath $place
+$Probe = (Resolve-Path -LiteralPath $Probe).Path
+Expand-Archive -LiteralPath $Probe -DestinationPath $place
+$probeApp = Join-Path (Join-Path $place ([IO.Path]::GetFileNameWithoutExtension($Probe))) 'parity.exe'
 $root = Join-Path $place $name
 $app = Join-Path $root 'hello.exe'
 if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing after unpacking $Archive" }
@@ -206,17 +212,39 @@ Check 'DLLs planted on PATH and in the current folder' 0 $app $planted @() $evil
 if ((Get-Snapshot $place) -ne $before) { Fail "running the app changed the files in $place" }
 Write-Host 'ok: the app wrote nothing into its own folder'
 
+# The person's own Ruby settings are hidden from the app's boot only
+# (ADR 003): the app's gems stay the runtime's, and a Ruby the app starts
+# through RbConfig.ruby, the runtime's own ruby.exe, sees the person's
+# GEM_HOME, as it would under ruby main.rb.
+$personGems = Join-Path $work 'person gems'
+New-Item -ItemType Directory -Force $personGems | Out-Null
+$person = $clean.Clone()
+$person['GEM_HOME'] = $personGems
+$seen = Invoke-App $probeApp $person @('child-env', 'GEM_HOME')
+if ($seen.Code -ne 0 -or $seen.Out.TrimEnd() -cne $personGems) {
+  Write-Host "--- stdout`n$($seen.Out)--- stderr`n$($seen.Err)"
+  Fail "a child Ruby saw GEM_HOME as '$($seen.Out.TrimEnd())', not the person's '$personGems'"
+}
+Write-Host "ok: a child Ruby sees the person's GEM_HOME"
+$gemPath = Invoke-App $probeApp $person @('gem-path')
+if ($gemPath.Code -ne 0 -or $gemPath.Out.Replace('/', '\').Contains($personGems)) {
+  Write-Host "--- stdout`n$($gemPath.Out)--- stderr`n$($gemPath.Err)"
+  Fail "the app's own Gem.path holds the person's GEM_HOME"
+}
+Write-Host "ok: the app's own gems ignore the person's GEM_HOME"
+
 # A broken app fails with a message that names the app, not Ruby, on
-# standard error, and the launcher's own exit status, 70.
+# standard error, and EX_NOINPUT (66) when its app\main.rb is missing
+# (ADR 002).
 $main = Join-Path $root 'app\main.rb'
 Move-Item -LiteralPath $main -Destination "$main.away"
 $broken = Invoke-App $app $clean
 Move-Item -LiteralPath "$main.away" -Destination $main
 $message = "\Ahello\.exe: this app is incomplete: $([regex]::Escape($main)) is missing\r?\n\z"
-if ($broken.Code -ne 70 -or $broken.Out -ne '' -or $broken.Err -cnotmatch $message) {
+if ($broken.Code -ne 66 -or $broken.Out -ne '' -or $broken.Err -cnotmatch $message) {
   Write-Host "--- stdout`n$($broken.Out)--- stderr`n$($broken.Err)"
-  Fail "an app without main.rb: exit status $($broken.Code) (expected 70), output above"
+  Fail "an app without main.rb: exit status $($broken.Code) (expected 66), output above"
 }
-Write-Host 'ok: an app without main.rb says so and exits 70'
+Write-Host 'ok: an app without main.rb says so and exits 66'
 
 Write-Host "Delivered: $expected"

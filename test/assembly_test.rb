@@ -65,7 +65,8 @@ class AssemblyTest < Minitest::Test
         Fledge::Entry.file("ruby/bin/x64-ucrt-ruby400.dll", "MZ", mode: 0o755),
       ])
 
-      archive = assemble(dir, FakeApp.write(dir), platform: WINDOWS, runtime:)
+      app = FakeApp.write(dir)
+      archive = assemble(dir, app, platform: WINDOWS, runtime:)
 
       assert_equal File.join(dir, "dist", "hello-x64-mingw-ucrt.zip"), archive
       folder = File.join(dir, "dist", "hello-x64-mingw-ucrt")
@@ -85,7 +86,7 @@ class AssemblyTest < Minitest::Test
         hello-x64-mingw-ucrt/ruby/bin/x64-ucrt-ruby400.dll
       ], members.keys.sort
       assert_equal FakeRuntime::LAUNCHER, members.fetch("hello-x64-mingw-ucrt/hello.exe").data
-      assert_equal "puts 'hi'\n", members.fetch("hello-x64-mingw-ucrt/app/main.rb").data
+      assert_equal File.binread(File.join(app, "main.rb")), members.fetch("hello-x64-mingw-ucrt/app/main.rb").data
       refute_path_exists File.join(dir, "dist", "hello-x64-mingw-ucrt.tar.gz")
     end
   end

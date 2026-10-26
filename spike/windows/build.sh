@@ -33,8 +33,12 @@ echo "== compile: run-time loading, --disable-gems"
 gcc "${cflags[@]}" -DFLEDGE_DISABLE_GEMS "$here/launcher.c" "$obj/launcher.res.o" "${ldflags[@]}" -mconsole -o "$out/launcher-nogems.exe"
 echo "== compile: linked against RubyInstaller's import library"
 ls -l "$ri"/lib/*.dll.a
-gcc "${cflags[@]}" -DFLEDGE_IMPORT "$here/launcher.c" "$obj/launcher.res.o" "${ldflags[@]}" -mconsole \
+gcc "${cflags[@]}" -DFLEDGE_IMPORT -DFLEDGE_BASE='L"..\\..\\"' "$here/launcher.c" "$obj/launcher.res.o" "${ldflags[@]}" -mconsole \
   -L"$ri/lib" -lx64-ucrt-ruby400 -o "$out/launcher-import.exe"
+echo "== compile: linked against the import library, side-by-side manifest"
+(cd "$here" && windres sxs.rc -O coff -o "$obj/sxs.res.o")
+gcc "${cflags[@]}" -DFLEDGE_IMPORT "$here/launcher.c" "$obj/sxs.res.o" "${ldflags[@]}" -mconsole \
+  -L"$ri/lib" -lx64-ucrt-ruby400 -o "$out/launcher-sxs.exe"
 
 for exe in "$out"/*.exe; do
   echo "== $(basename "$exe"): $(stat -c %s "$exe") bytes"
@@ -82,6 +86,23 @@ cp "$out/launcherw.exe" "$out/apps/diag/diag-windowed.exe"
 # shows what happens otherwise.
 cp "$out/launcher-import.exe" "$out/apps/diag/ruby/bin/diag-import.exe"
 cp "$out/launcher-import.exe" "$out/apps/diag/diag-import-toplevel.exe"
+
+# The side-by-side alternative: DLL and its private assembly moved up
+# from ruby\bin to ruby\, plus ruby\ruby.manifest naming the DLL.
+make_app sxs runtime-min hello
+cp "$out/launcher-sxs.exe" "$out/apps/sxs/sxs.exe"
+mv "$out/apps/sxs/ruby/bin/x64-ucrt-ruby400.dll" "$out/apps/sxs/ruby/"
+mv "$out/apps/sxs/ruby/bin/ruby_builtin_dlls" "$out/apps/sxs/ruby/"
+cp "$here/ruby.assembly.manifest" "$out/apps/sxs/ruby/ruby.manifest"
+mkdir -p "$out/apps/sxs-diag" && cp -a "$out/apps/sxs/." "$out/apps/sxs-diag/"
+cp "$here/diag/main.rb" "$out/apps/sxs-diag/app/main.rb"
+mv "$out/apps/sxs-diag/sxs.exe" "$out/apps/sxs-diag/sxs-diag.exe"
+
+# Fledge's own operating_system.rb in place of RubyInstaller's.
+for app in hello diag; do
+  make_app "$app-os" runtime-min "$app"
+  cp "$here/operating_system.rb" "$out/apps/$app-os/ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"
+done
 
 rm -rf "$out/runtime-full" "$out/runtime-min"
 du -sh "$out"/apps/*

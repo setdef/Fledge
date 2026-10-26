@@ -17,14 +17,27 @@ function Check($ok, $what) {
   if ($ok) { Write-Host "PASS: $what" }
   else { Write-Host "::error::FAIL: $what"; $script:failures++ }
 }
-# Runs an exe; returns stdout lines, stderr text, and exit code.
+# Runs an exe through .NET's Process (not PowerShell's & operator, which
+# neither waits for nor captures a GUI-subsystem exe, and which failed to
+# start an exe from a path longer than MAX_PATH); returns stdout lines,
+# stderr text, and exit code.
 function Invoke-App([string] $exe, [string[]] $argv = @()) {
-  $errFile = New-TemporaryFile
-  $out = & $exe @argv 2> $errFile.FullName
-  $code = $LASTEXITCODE
-  $err = Get-Content -Raw $errFile.FullName
-  Remove-Item $errFile
-  [pscustomobject]@{ Out = @($out); Err = $err; Code = $code }
+  $psi = [Diagnostics.ProcessStartInfo]::new($exe)
+  foreach ($a in $argv) { $psi.ArgumentList.Add($a) }
+  $psi.UseShellExecute = $false
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
+  $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
+  try { $p = [Diagnostics.Process]::Start($psi) }
+  catch { return [pscustomobject]@{ Out = @(); Err = "failed to start: $_"; Code = $null } }
+  $errTask = $p.StandardError.ReadToEndAsync()
+  $out = $p.StandardOutput.ReadToEnd()
+  $p.WaitForExit()
+  $lines = @($out -split "`r?`n")
+  if ($lines.Count -gt 0 -and $lines[-1] -eq '') { $lines = $lines[0..($lines.Count - 2)] }
+  if ($out -eq '') { $lines = @() }
+  [pscustomobject]@{ Out = $lines; Err = $errTask.Result; Code = $p.ExitCode }
 }
 function Show($r) {
   $r.Out | ForEach-Object { Write-Host "  out| $_" }
@@ -134,6 +147,40 @@ $r = Invoke-App (Join-Path $root 'diag\diag-import-toplevel.exe'); Show $r
 Write-Host ('  exit code as hex: 0x{0:X8}' -f $r.Code)
 Check ($r.Code -ne 0) 'the import-linked launcher cannot start away from the DLL'
 
+Section 'sxs.exe: import-linked at the top, DLL found through a side-by-side manifest'
+Expect-Hello (Join-Path $root 'sxs\sxs.exe') 'sxs.exe (side-by-side layout)'
+$r = Invoke-App (Join-Path $root 'sxs-diag\sxs-diag.exe'); Show $r
+Check (($r.Out -join "`n") -match 'require openssl: "ok"') 'openssl loads in the side-by-side layout'
+
+Section "Fledge's operating_system.rb in place of RubyInstaller's"
+Expect-Hello (Join-Path $root 'hello-os\hello-os.exe') 'hello-os.exe'
+$r = Invoke-App (Join-Path $root 'diag-os\diag-os.exe'); Show $r
+Check (($r.Out -join "`n") -match 'require openssl: "ok"') 'openssl loads without RubyInstaller::Runtime'
+Check (($r.Out -join "`n") -match 'RubyInstaller::Runtime: nil') 'RubyInstaller::Runtime is not loaded'
+
+Section "A person's own gems (RubyGems' user directory)"
+$userGems = Join-Path $env:USERPROFILE '.local\share\gem\ruby\4.0.0'
+New-Item -ItemType Directory -Force "$userGems\specifications", "$userGems\gems\json-99.0.0\lib" | Out-Null
+@'
+# -*- encoding: utf-8 -*-
+# stub: json 99.0.0 ruby lib
+
+Gem::Specification.new do |s|
+  s.name = "json"
+  s.version = "99.0.0"
+  s.require_paths = ["lib"]
+  s.files = ["lib/json.rb"]
+  s.summary = "hostile"
+  s.authors = ["hostile"]
+end
+'@ | Set-Content "$userGems\specifications\json-99.0.0.gemspec"
+'raise "a json gem from the user gem directory was loaded"' | Set-Content "$userGems\gems\json-99.0.0\lib\json.rb"
+$r = Invoke-App (Join-Path $root 'hello\hello.exe'); Show $r
+Write-Host "  RubyInstaller's operating_system.rb: $(if ($r.Code -eq 0) { 'unaffected' } else { 'LOADED THE USER GEM' })"
+$r = Invoke-App (Join-Path $root 'hello-os\hello-os.exe'); Show $r
+Check (($r.Out -join "`n") -ceq $expected -and $r.Code -eq 0) "Fledge's operating_system.rb ignores the user gem directory"
+Remove-Item -Recurse -Force (Join-Path $env:USERPROFILE '.local\share\gem')
+
 # --- Windowed ----------------------------------------------------------------
 Section 'Windowed (GUI subsystem) build'
 foreach ($exe in 'hello\hello.exe', 'hello\hello-windowed.exe') {
@@ -145,7 +192,10 @@ $outFile = Join-Path $env:RUNNER_TEMP 'windowed-out.txt'
 $p = Start-Process -FilePath (Join-Path $root 'hello\hello-windowed.exe') -Wait -PassThru -NoNewWindow -RedirectStandardOutput $outFile
 Write-Host "  Start-Process -Wait -RedirectStandardOutput: exit $($p.ExitCode), stdout: '$(Get-Content -Raw $outFile)'"
 $r = Invoke-App (Join-Path $root 'hello\hello-windowed.exe'); Show $r
-Write-Host '  (captured through a pipe with & in PowerShell)'
+Check (($r.Out -join "`n") -ceq $expected -and $r.Code -eq 0) 'a windowed exe writes to stdout when its parent redirects it'
+$global:LASTEXITCODE = 12345
+$pwshOut = & (Join-Path $root 'hello\hello-windowed.exe')
+Write-Host "  PowerShell's & on the windowed exe: output '$pwshOut', LASTEXITCODE $LASTEXITCODE (12345 = never set: & did not wait)"
 $sw = [Diagnostics.Stopwatch]::StartNew()
 $p = Start-Process -FilePath (Join-Path $root 'diag\diag-windowed.exe') -ArgumentList 'exit3' -Wait -PassThru
 Write-Host "  windowed exit3, no redirection: exit $($p.ExitCode) in $($sw.ElapsedMilliseconds) ms"

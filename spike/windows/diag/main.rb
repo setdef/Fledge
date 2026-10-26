@@ -16,6 +16,8 @@ when "unicode"
   exit
 end
 
+require "rbconfig" # not loaded by --disable-gems
+
 def report(label, value) = puts("#{label}: #{value.inspect}")
 
 report "RUBY_PLATFORM", RUBY_PLATFORM

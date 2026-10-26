@@ -33,7 +33,8 @@
  * Build modes (spike only):
  *   default             load ruby\bin\<FLEDGE_RUBY_DLL> at run time
  *   -DFLEDGE_IMPORT     link the import library instead (for Q1); the
- *                       exe must then sit beside the DLL, in ruby\bin
+ *                       exe must then sit beside the DLL, in ruby\bin,
+ *                       or name it in a side-by-side manifest (sxs.rc)
  *   -DFLEDGE_WINDOWED   GUI subsystem (link with -mwindows): errors go
  *                       to a message box, since there is no console
  *   -DFLEDGE_DISABLE_GEMS  pass --disable-gems (proves DLL loading does
@@ -268,9 +269,10 @@ int wmain(int unused_argc, wchar_t **unused_argv)
     if (!slash) fail(L"Could not find this app's folder.", self);
     slash[1] = L'\0'; /* self is now the folder, with its trailing \ */
 
-#ifdef FLEDGE_IMPORT
-    /* The import-linked spike build lives in ruby\bin, beside the DLL. */
-    wchar_t *top = join(self, L"..\\..\\");
+#ifdef FLEDGE_BASE
+    /* Spike only: the import-linked build run from ruby\bin, beside the
+     * DLL, is built with FLEDGE_BASE=L"..\\..\\" to find the app. */
+    wchar_t *top = join(self, FLEDGE_BASE);
     free(self);
     self = top;
 #endif

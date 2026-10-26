@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+SPIKE: installed as ruby\ruby.manifest in the side-by-side layout.
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity type="win32" name="ruby" version="1.0.0.0"/>
+  <file name="x64-ucrt-ruby400.dll"/>
+</assembly>

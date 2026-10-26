@@ -49,7 +49,7 @@ jobs:
           curl -fsSLO "$base/$RI_ASSET.asc"
           echo "$RI_SHA256  $RI_ASSET" | sha256sum -c -
           curl -fsSL "$RI_KEY_URL" -o ri-key.asc
-          export GNUPGHOME="$RUNNER_TEMP/gnupg"; mkdir -p "$GNUPGHOME"
+          export GNUPGHOME="$PWD/.gnupg"; mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
           gpg --batch --import ri-key.asc
           gpg --batch --status-fd 1 --verify "$RI_ASSET.asc" "$RI_ASSET" | tee gpg.out
           grep -q "^\[GNUPG:\] VALIDSIG $RI_KEY_FPR " gpg.out

@@ -1,0 +1,79 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#++
+
+####
+# ======================================================================
+# fledge - Ship a Ruby app to people who don't have Ruby
+# ======================================================================
+#
+# SYNOPSIS
+#     fledge build [OPTIONS] [PATH]
+#     fledge --help
+#     fledge --version
+#
+# DESCRIPTION
+#     Put a Ruby app, and a Ruby to run it, in one folder that runs on
+#     a computer with no Ruby installed.
+#
+#     The Ruby on your computer can't travel. It was built for one
+#     machine, with that machine's paths and libraries baked in, so a
+#     copy breaks anywhere else. Fledge starts instead from a runtime:
+#     a Ruby built to be moved, and a small launcher that runs your
+#     app on it. Fledge copies your app into the runtime for each
+#     platform you ask for, so you can build for macOS, Windows, and
+#     Linux from one computer.
+#
+#     An app is a folder with a main.rb. Run it during development
+#     with your own Ruby; build it to ship it.
+#
+# COMMANDS
+#     build              Copy the app in PATH (default: the current
+#                        directory) into a runtime for each target,
+#                        then archive each result.
+#
+# OPTIONS
+#     -t, --target PLATFORM
+#                        Build for PLATFORM (repeatable). One of:
+#                        arm64-darwin, x86_64-linux, x64-mingw-ucrt
+#                        (default: the platform you are on)
+#     -o, --out DIR      Write builds to DIR (default: dist)
+#     -h, --help         Show this help
+#     -V, --version      Print Fledge's version
+#
+# FILES
+#     PATH/main.rb       The file the launcher runs. The app's folder
+#                        is on its load path, so require "foo" finds
+#                        PATH/foo.rb.
+#     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
+#     DIR/NAME-PLATFORM.tar.gz, DIR/NAME-PLATFORM.zip
+#                        The same folder, archived for download: a
+#                        .zip for Windows, a .tar.gz everywhere else.
+#
+# EXIT STATUS
+#     0                  Success
+#     1                  Error (bad arguments, a missing app, or a
+#                        failed build)
+#
+# EXAMPLES
+#     Build the app in the current directory for this computer:
+#     fledge build
+#
+#     Build for all three platforms:
+#     fledge build -t arm64-darwin -t x86_64-linux -t x64-mingw-ucrt
+#
+#     Build an app from elsewhere, into another folder:
+#     fledge build --out /tmp/builds path/to/app
+#
+# ======================================================================
+###
+# Fledge is requested: an AI agent built it, with little or no review
+# from a person. Its gates (tests, linters, and delivery to computers
+# that have never seen Ruby) review it instead.
+
+require "fledge/cli"
+exit Fledge::CLI.new(help_path: __FILE__).call(ARGV)

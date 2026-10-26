@@ -1,0 +1,13 @@
+== Ship a Ruby App to People Who Don't Have Ruby
+
+Almost nobody who would play your game, open your desktop app, or run
+your terminal tool has Ruby installed, and the Ruby on your computer
+can't travel with the app. Fledge copies your app, a folder with a
+main.rb, into a runtime for each platform you ask for: a Ruby built to
+be moved, and a small launcher that embeds it and runs your app. The
+result is a folder that runs where it lands, on macOS, Linux, or
+Windows, built from one computer.
+
+Fledge is a walking skeleton: +fledge build+ is not yet implemented.
+It is not published on RubyGems.org; releases are git tags and GitHub
+Releases at https://github.com/setdef/Fledge.

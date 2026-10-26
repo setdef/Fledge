@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class CLI
+    interface _Output
+      def puts: (*String) -> nil
+    end
+
+    interface _Command
+      def call: (Array[String]) -> Integer
+    end
+
+    interface _CommandClass
+      def new: (out: _Output, err: _Output) -> _Command
+    end
+
+    COMMANDS: Hash[String, _CommandClass]
+
+    @help_path: String
+    @out: _Output
+    @err: _Output
+    @commands: Hash[String, _CommandClass]
+
+    def initialize: (help_path: String, ?out: _Output, ?err: _Output, ?commands: Hash[String, _CommandClass]) -> void
+
+    def call: (Array[String]) -> Integer
+
+    def help: () -> String
+
+    private def missing_header: () -> ArgumentError
+
+    private def run: (String, Array[String]) -> Integer
+
+    private def succeed_with: (String) -> Integer
+
+    private def fail_with: (String) -> Integer
+  end
+end

@@ -1,0 +1,103 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# SPIKE (Plan 001, spike 2): does a Windows launcher run an app on
+# RubyInstaller's Ruby? Throwaway; see spike/windows/FINDINGS.md.
+# Build compiles the launcher with MSYS2 UCRT64 gcc against the pinned
+# RubyInstaller archive and assembles test apps; Delivery runs them on a
+# fresh runner from another drive, with no Ruby on PATH.
+
+name: Spike (Windows)
+
+on:
+  push:
+    branches: [spike/windows]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RI_TAG: RubyInstaller-4.0.9-1
+  RI_ASSET: rubyinstaller-4.0.9-1-x64.7z
+  RI_SHA256: 1dc0715916251a13c4f6a550a3da1f2c726bff869371fd573a65234c008f47b4
+  # "appveyor ri2 package signing key", from rubyinstaller2's own repo at
+  # a pinned commit (recipes/unpack/appveyor-repo-key.asc).
+  RI_KEY_URL: https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc
+  RI_KEY_FPR: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download and verify RubyInstaller
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://github.com/oneclick/rubyinstaller2/releases/download/$RI_TAG"
+          curl -fsSLO "$base/$RI_ASSET"
+          curl -fsSLO "$base/$RI_ASSET.asc"
+          echo "$RI_SHA256  $RI_ASSET" | sha256sum -c -
+          curl -fsSL "$RI_KEY_URL" -o ri-key.asc
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"; mkdir -p "$GNUPGHOME"
+          gpg --batch --import ri-key.asc
+          gpg --batch --status-fd 1 --verify "$RI_ASSET.asc" "$RI_ASSET" | tee gpg.out
+          grep -q "^\[GNUPG:\] VALIDSIG $RI_KEY_FPR " gpg.out
+          7z x -y -bd "$RI_ASSET" > /dev/null
+          ls rubyinstaller-4.0.9-1-x64
+
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
+        with:
+          msystem: UCRT64
+          release: false
+          update: false
+          install: mingw-w64-ucrt-x86_64-gcc
+
+      - name: Build launchers and apps
+        shell: msys2 {0}
+        run: bash spike/windows/build.sh rubyinstaller-4.0.9-1-x64 dist
+
+      - name: Inspect RubyInstaller's own executables
+        shell: msys2 {0}
+        run: |
+          for f in rubyinstaller-4.0.9-1-x64/bin/ruby.exe rubyinstaller-4.0.9-1-x64/bin/rubyw.exe rubyinstaller-4.0.9-1-x64/bin/x64-ucrt-ruby400.dll; do
+            echo "== $f"; objdump -p "$f" | grep -E 'Subsystem|DLL Name'
+          done
+          echo "== exports the launcher needs"
+          objdump -p rubyinstaller-4.0.9-1-x64/bin/x64-ucrt-ruby400.dll | grep -E '\b(ruby_sysinit|ruby_init_stack|ruby_init|ruby_options|ruby_run_node|ruby_setup)$'
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apps
+          path: dist/apps
+          if-no-files-found: error
+
+  delivery:
+    name: Delivery
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: spike/windows
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps
+          path: ${{ runner.temp }}/apps
+
+      - name: Run the apps elsewhere, without Ruby, in a hostile environment
+        shell: pwsh
+        run: pwsh -NoProfile -File spike/windows/test.ps1 -Apps "$env:RUNNER_TEMP\apps"

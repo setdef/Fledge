@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# What the license audit finds in rv-ruby's whole x86_64-linux tree, which a
+# runtime prunes and relinks (ci.yml, Licenses of the whole upstream
+# tree): rv-ruby links libxcrypt, which is LGPL, statically into
+# bin/ruby, and ships its static archive for compiling native gems.
+- "static-copyleft: bin/ruby:"
+- "static-copyleft: lib/libcrypt.a:"
+- "policy: lib/libcrypt.a:"

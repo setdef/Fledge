@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# What the license audit finds in RubyInstaller's whole tree, which a
+# runtime prunes (ci.yml, Licenses of the whole upstream tree): MSYS2's
+# package-signing keyring, GPL, which only ridk uses. GMP passes as a
+# replaceable shared library with its source pinned.
+- "policy: packages/msys2-keyring-"

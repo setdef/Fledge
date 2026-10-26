@@ -373,6 +373,19 @@ class RuntimeBuilder
   # libgcc's unwinder statically, and link libxcrypt dynamically from
   # the runtime's lib/ (see runtime/launcher/unix.c).
   class Linux < Unix
+    # libxcrypt's configure options: those of rv-ruby's
+    # rv-portable-libxcrypt formula, shared instead of static. The LGPL
+    # source bundle (tasks/license_audit/source_bundle.rb) prints them
+    # as the way the runtime's copy was built.
+    LIBXCRYPT_CONFIGURE = %w[
+      --enable-shared
+      --disable-static
+      --disable-obsolete-api
+      --disable-xcrypt-compat-files
+      --disable-failure-tokens
+      --disable-valgrind
+    ].freeze
+
     # The shared libraries the launcher may need: glibc's, and the
     # runtime's own libxcrypt.
     ALLOWED = /\A(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|ld-linux[-\w.]*\.so\.\d|libcrypt\.so\.\d+)\z/
@@ -409,10 +422,7 @@ class RuntimeBuilder
       prefix = File.join(@build_dir, "libxcrypt-prefix")
       FileUtils.mkdir_p(source)
       @builder.run("tar", "-xJf", tarball, "-C", source, "--strip-components=1")
-      # The options of rv-ruby's rv-portable-libxcrypt formula, shared
-      # instead of static.
-      @builder.run("./configure", "--prefix=#{prefix}", "--enable-shared", "--disable-static", "--disable-obsolete-api",
-        "--disable-xcrypt-compat-files", "--disable-failure-tokens", "--disable-valgrind", chdir: source)
+      @builder.run("./configure", "--prefix=#{prefix}", *LIBXCRYPT_CONFIGURE, chdir: source)
       @builder.run("make", "-j#{Etc.nprocessors}", chdir: source)
       @builder.run("make", "install", chdir: source)
       prefix

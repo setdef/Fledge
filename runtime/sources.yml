@@ -84,6 +84,40 @@ libxcrypt:
   url: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
   sha256: 71513a31c01a428bccd5367a32fd95f115d6dac50fb5b60c779d5c7942aec071
 
+# GNU MP, which RubyInstaller's Ruby DLL imports for big-integer
+# arithmetic, ships unchanged as ruby/bin/ruby_builtin_dlls/libgmp-10.dll.
+# That file is byte for byte the one in MSYS2's package
+# mingw-w64-ucrt-x86_64-gmp 6.3.0-2 (package), and MSYS2 built the
+# package from its source package (url): GMP's release, MSYS2's patches,
+# and the PKGBUILD. GMP is LGPL-3.0-or-later OR GPL-2.0-or-later, so the
+# LGPL source bundle each Windows runtime release carries holds the
+# source package (tasks/license_audit/source_bundle.rb), and the license
+# audit checks the DLL's SHA-256 (runtime/licenses.yml), so a
+# RubyInstaller that ships another GMP fails until this pin follows.
+gmp:
+  version: 6.3.0
+  url: https://repo.msys2.org/mingw/sources/mingw-w64-gmp-6.3.0-2.src.tar.zst
+  sha256: f288f944fd9609db220bcf6a8dd0703a5674eeb906ef35eb8485bb8192135994
+  package:
+    url: https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-gmp-6.3.0-2-any.pkg.tar.zst
+    sha256: e82a75968a556484a50084578238a84eb60fb93e34986fd6695c537975bd39ea
+  dll_sha256: c2567ccf3f410c3411ba7cd4b7ba14f393a0e70a1d0c0593297df6706b5fba96
+
+# Inputs that no runtime ships, used only by CI's checks that whoever
+# receives an app can replace its LGPL libraries (ci.yml: Replace
+# libcrypt, Replace GMP): musl, whose crypt (MIT, BSD-3-Clause, and
+# public domain) stands in for libxcrypt, and an older GNU MP, which
+# stands in for RubyInstaller's and reports another version.
+replaceability:
+  musl:
+    version: 1.2.5
+    url: https://musl.libc.org/releases/musl-1.2.5.tar.gz
+    sha256: a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4
+  gmp:
+    version: 6.2.1
+    url: https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz
+    sha256: fd4829912cddd12f84181c3451cc752be224643e87fac497b69edddadc49b4f2
+
 # The license notices each runtime carries in its notices/ folder, one
 # folder of runtime/notices/ per component, for the platforms that ship
 # the component. rake runtime copies them and writes notices/README.txt

@@ -1,0 +1,233 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#++
+
+require_relative "test_helper"
+require_relative "support/binaries"
+require_relative "../tasks/license_audit"
+require "stringio"
+
+# The license audit against small runtime trees shaped like a Linux
+# runtime, built from real (minimal) ELF files and gem specifications,
+# and checked against the real runtime/licenses.yml. CI runs it against
+# the four real runtimes and the whole trees they come from.
+class LicenseAuditTest < Minitest::Test
+  RUST = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
+  ARCH = "lib/ruby/4.0.0/x86_64-linux"
+
+  def setup
+    @tree = Dir.mktmpdir("license-audit")
+    write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2], rpath: "$ORIGIN/lib",
+      payload: "ruby 4.0.9 (revision 3e93b23afc) #{RUST}"))
+    write("lib/libcrypt.so.2", Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"))
+    write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.2 "))
+    write("lib/ruby/4.0.0/set.rb", "class Set; end\n")
+    write("lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
+    write("libexec/cert.pem", "-----BEGIN CERTIFICATE-----\n")
+    write_gem("csv", "3.3.5", ["Ruby", "BSD-2-Clause"])
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tree)
+  end
+
+  def write(path, content)
+    full = File.join(@tree, path)
+    FileUtils.mkdir_p(File.dirname(full))
+    File.binwrite(full, content)
+  end
+
+  def write_gem(name, version, licenses)
+    spec = Gem::Specification.new do |gem|
+      gem.name = name
+      gem.version = version
+      gem.summary = name
+      gem.authors = ["someone"]
+      gem.licenses = licenses
+    end
+    write("lib/ruby/gems/4.0.0/specifications/#{name}-#{version}.gemspec", spec.to_ruby)
+    write("lib/ruby/gems/4.0.0/gems/#{name}-#{version}/lib/#{name}.rb", "module #{name.capitalize}; end\n")
+    write("lib/ruby/gems/4.0.0/gems/#{name}-#{version}/LICENSE.txt", "#{licenses.join(' or ')}\n")
+  end
+
+  def audit
+    LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0").call
+  end
+
+  def rules(report)
+    report.violations.map { |violation| [violation.rule, violation.path] }
+  end
+
+  def test_a_runtime_of_permissive_code_and_a_replaceable_lgpl_library_meets_the_policy
+    report = audit
+
+    assert_empty report.violations.map(&:to_s)
+    assert_equal %w[fledge gem-csv-3.3.5 libxcrypt openssl ruby rust-std ca-certificates gcc-runtime].sort, report.present.map(&:id).sort
+    assert_equal "lib/libcrypt.so.2", report.links.fetch("launcher").fetch("libcrypt.so.2")
+    assert_equal :system, report.links.fetch("launcher").fetch("libc.so.6")
+  end
+
+  def test_each_file_belongs_to_the_most_specific_component
+    owners = audit.owners.transform_values(&:id)
+
+    assert_equal "fledge", owners.fetch("lib/ruby/4.0.0/rubygems/defaults/operating_system.rb")
+    assert_equal "ruby", owners.fetch("lib/ruby/4.0.0/set.rb")
+    assert_equal "gem-csv-3.3.5", owners.fetch("lib/ruby/gems/4.0.0/gems/csv-3.3.5/lib/csv.rb")
+    assert_equal "libxcrypt", owners.fetch("lib/libcrypt.so.2")
+  end
+
+  def test_a_file_no_component_owns_fails
+    write("stray.txt", "hello\n")
+
+    assert_includes rules(audit), ["unaccounted", "stray.txt"]
+  end
+
+  def test_a_compiled_file_its_component_does_not_list_fails
+    write("#{ARCH}/gpl_thing.so", Binaries.elf(needed: %w[libc.so.6]))
+
+    assert_includes rules(audit), ["unlisted-binary", "#{ARCH}/gpl_thing.so"]
+  end
+
+  def test_libxcrypt_compiled_into_another_file_fails
+    write("bin/ruby", Binaries.elf(needed: %w[libc.so.6], payload: "#{RUST} yescrypt-ROMhash"))
+
+    assert_includes rules(audit), ["static-copyleft", "bin/ruby"]
+  end
+
+  def test_a_library_neither_the_system_nor_the_runtime_provides_fails
+    write("launcher", Binaries.elf(needed: %w[libreadline.so.8 libc.so.6], payload: "3e93b23afc #{RUST}"))
+
+    assert_includes rules(audit), ["unresolved", "launcher"]
+  end
+
+  def test_a_component_whose_version_changed_fails
+    write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.3 "))
+
+    assert_includes rules(audit), ["stale", "#{ARCH}/openssl.so"]
+  end
+
+  def test_a_gem_under_the_gpl_fails
+    write_gem("copyleft", "1.0.0", ["GPL-3.0-or-later"])
+
+    assert_includes rules(audit), ["policy", "lib/ruby/gems/4.0.0/gems/copyleft-1.0.0/LICENSE.txt"]
+  end
+
+  def test_a_gem_that_declares_no_license_fails
+    write_gem("mystery", "1.0.0", [])
+
+    assert(audit.violations.any? { |violation| violation.message.include?("gem-mystery-1.0.0 is NOASSERTION") })
+  end
+
+  def test_text_that_names_a_copyleft_license_must_have_been_reviewed
+    write("lib/ruby/4.0.0/borrowed.rb", "# Licensed under the GNU General Public License, version 3.\n")
+
+    assert_includes rules(audit), ["copyleft-text", "lib/ruby/4.0.0/borrowed.rb"]
+  end
+
+  def test_policy_takes_the_least_restrictive_alternative_and_the_most_restrictive_part
+    policy = YAML.safe_load_file(LicenseAudit::MAP).fetch("policy")
+    expected = {
+      "MIT" => :notice_only,
+      "Ruby OR BSD-2-Clause" => :notice_only,
+      "BSDL" => :notice_only,
+      "GPL-1.0-or-later OR Artistic-1.0-Perl" => :notice_only,
+      "GPL-3.0-or-later WITH GCC-exception-3.1" => :notice_only,
+      "MIT AND MPL-2.0" => :file_level,
+      "LGPL-3.0-or-later OR GPL-2.0-or-later" => :shared_library,
+      "(MIT OR LGPL-2.1-or-later) AND Apache-2.0" => :notice_only,
+      "GPL-2.0-only" => :forbidden,
+      "AGPL-3.0-or-later" => :forbidden,
+      "GPL-2.0-only WITH Classpath-exception-2.0" => :forbidden,
+      "NOASSERTION" => :forbidden,
+      "LicenseRef-unknown" => :forbidden,
+      "" => :forbidden,
+      "(MIT" => :forbidden,
+    }
+
+    expected.each { |expression, category| assert_equal category, LicenseAudit.category(expression, policy), expression }
+    assert_equal :first_party, LicenseAudit.category("AGPL-3.0-or-later", policy, first_party: true)
+  end
+
+  def test_reads_the_libraries_elf_pe_and_mach_o_files_need
+    elf = LicenseAudit::Binary.parse(Binaries.elf(needed: %w[libc.so.6 libcrypt.so.2], rpath: "$ORIGIN/lib"))
+    pe = LicenseAudit::Binary.parse(Binaries.pe(needed: %w[libgmp-10.dll KERNEL32.dll],
+      payload: '<dependentAssembly><assemblyIdentity type="win32" name="ruby_builtin_dlls" /></dependentAssembly>'))
+    macho = LicenseAudit::Binary.parse(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib @rpath/libffi.dylib]))
+
+    assert_equal [:elf, %w[libc.so.6 libcrypt.so.2], ["$ORIGIN/lib"]], [elf.format, elf.needed, elf.rpaths]
+    assert_equal [:pe, %w[libgmp-10.dll KERNEL32.dll], ["ruby_builtin_dlls"]], [pe.format, pe.needed, pe.assemblies]
+    assert_equal [:macho, %w[/usr/lib/libSystem.B.dylib @rpath/libffi.dylib]], [macho.format, macho.needed]
+    assert_equal :archive, LicenseAudit::Binary.parse("!<arch>\nfoo.o/").format
+    assert_nil LicenseAudit::Binary.parse("puts 'MZ'\n")
+  end
+
+  def test_writes_an_spdx_sbom_that_accounts_for_every_file_and_link
+    report = audit
+    sbom = LicenseAudit::Spdx.new(report, version: "0.0.0", created: Time.utc(2026, 10, 26)).to_h
+    files = sbom.fetch("files").to_h { |file| [file.fetch("fileName"), file] }
+    launcher = files.fetch("./launcher").fetch("SPDXID")
+    relationships = sbom.fetch("relationships").map { |relationship| relationship.values_at("spdxElementId", "relationshipType", "relatedSpdxElement") }
+
+    assert_equal "SPDX-2.3", sbom.fetch("spdxVersion")
+    assert_equal report.owners.keys.sort.map { |path| "./#{path}" }, files.keys
+    assert(files.each_value.all? { |file| file.fetch("checksums").map { |checksum| checksum.fetch("algorithm") } == %w[SHA1 SHA256] })
+    assert_includes relationships, [launcher, "DYNAMIC_LINK", files.fetch("./lib/libcrypt.so.2").fetch("SPDXID")]
+    assert_includes relationships, [launcher, "STATIC_LINK", "SPDXRef-Package-rust-std"]
+    assert_equal "LGPL-2.1-or-later", sbom.fetch("packages").find { |package| package["name"].start_with?("libxcrypt") }.fetch("licenseConcluded")
+  end
+
+  def test_notices_tell_the_recipient_how_to_replace_the_lgpl_library_and_where_its_source_is
+    audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
+    notices = LicenseAudit::Notices.new(audit_run.call, version: "0.0.0", map: audit_run.map)
+    text = notices.text
+
+    assert_includes text, "LIBRARIES UNDER THE GNU LESSER GENERAL PUBLIC LICENSE"
+    assert_includes text, "  lib/libcrypt.so.2"
+    assert_includes text, "https://github.com/setdef/Fledge/releases/download/v0.0.0/fledge-runtime-0.0.0-x86_64-linux-lgpl-sources.tar.gz"
+    assert_includes text, "=== notices/libxcrypt/COPYING.LIB"
+    assert_includes text, "License text: lib/ruby/gems/4.0.0/gems/csv-3.3.5/LICENSE.txt"
+    assert_empty notices.missing
+  end
+
+  def test_the_source_bundle_holds_the_pinned_source_its_license_and_how_it_was_built
+    Dir.mktmpdir do |directory|
+      tarball = File.join(directory, "downloads", "libxcrypt-4.5.2.tar.xz")
+      FileUtils.mkdir_p(File.dirname(tarball))
+      File.binwrite(tarball, "pretend source")
+      sources = File.join(directory, "sources.yml")
+      File.write(sources, {
+        "libxcrypt" => {
+          "version" => "4.5.2",
+          "url" => "https://example.com/libxcrypt-4.5.2.tar.xz",
+          "sha256" => Digest::SHA256.hexdigest("pretend source"),
+        },
+      }.to_yaml)
+
+      path = LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: "0.0.0", sources:, downloads: File.dirname(tarball)).write(directory)
+      entries = {}
+      Fledge::TarGz.each_entry(path) { |entry| entries[entry.path] = entry.content }
+      top = "fledge-runtime-0.0.0-x86_64-linux-lgpl-sources"
+
+      assert_equal "pretend source", entries.fetch("#{top}/libxcrypt/libxcrypt-4.5.2.tar.xz")
+      assert_includes entries.fetch("#{top}/libxcrypt/BUILD.txt"), "--enable-shared --disable-static --disable-obsolete-api"
+      assert entries.key?("#{top}/libxcrypt/COPYING.LIB")
+      assert_includes entries.fetch("#{top}/README.txt"), "libxcrypt"
+    end
+  end
+
+  def test_the_command_fails_on_a_violation_unless_it_was_expected
+    write("stray.txt", "hello\n")
+    out = StringIO.new
+    expect = File.join(@tree, "..", "#{File.basename(@tree)}-expect.yml")
+    File.write(expect, ["unaccounted: stray.txt"].to_yaml)
+
+    assert_equal 1, LicenseAudit::CLI.new(["--platform", "x86_64-linux", "--tree", @tree, "--version", "0.0.0"], out:).call
+    assert_includes out.string, "VIOLATION: unaccounted: stray.txt"
+    assert_equal 0, LicenseAudit::CLI.new(["--platform", "x86_64-linux", "--tree", @tree, "--version", "0.0.0", "--expect", expect], out: StringIO.new).call
+  ensure
+    FileUtils.rm_f(expect)
+  end
+end

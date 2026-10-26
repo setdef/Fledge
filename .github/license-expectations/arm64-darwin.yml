@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# What the license audit finds in rv-ruby's whole arm64-darwin tree
+# (ci.yml, Licenses of the whole upstream tree): nothing. macOS's own
+# libSystem provides crypt(3), and everything else is notice-only.
+[]

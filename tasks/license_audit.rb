@@ -464,30 +464,39 @@ class LicenseAudit
   # name in the gem's folder.
   private def check_gem_archives(files, owners)
     files.grep(%r{\A#{Regexp.escape(prefix)}lib/ruby/gems/[^/]+/cache/[^/]+\.gem\z}).each do |path|
-      installed = "#{File.dirname(path, 2)}/gems/#{File.basename(path, '.gem')}"
-      LicenseAudit.gem_files(File.join(tree, path)) do |name, bytes|
-        label = "#{path}!#{name}"
-        binary = Binary.parse(bytes)
-        violate("unlisted-binary", label, "is compiled code (#{binary.format}) inside a cached gem") if binary
-        signature = @map.fetch("signatures").find { |entry| entry.fetch("bytes").any? { |needle| bytes.include?(needle.b) } }
-        violate("static-copyleft", label, "holds #{signature.fetch('component')}'s code inside a cached gem") if signature
-        check_text(label, [label, "#{installed}/#{name}"], owners[path], bytes) unless binary || bytes.bytesize > TEXT_LIMIT
-      end
+      check_gem_archive(path, owners[path])
     end
+  end
+
+  private def check_gem_archive(path, owner)
+    installed = "#{File.dirname(path, 2)}/gems/#{File.basename(path, '.gem')}"
+    read = LicenseAudit.gem_files(File.join(tree, path)) do |name, bytes|
+      label = "#{path}!#{name}"
+      binary = Binary.parse(bytes)
+      violate("unlisted-binary", label, "is compiled code (#{binary.format}) inside a cached gem") if binary
+      signature = @map.fetch("signatures").find { |entry| entry.fetch("bytes").any? { |needle| bytes.include?(needle.b) } }
+      violate("static-copyleft", label, "holds #{signature.fetch('component')}'s code inside a cached gem") if signature
+      check_text(label, [label, "#{installed}/#{name}"], owner, bytes) unless binary || bytes.bytesize > TEXT_LIMIT
+    end
+    violate("unreadable", path, "is not a .gem the audit can read: it holds no data.tar.gz") unless read
+  rescue Gem::Package::TarInvalidError, Zlib::Error, ArgumentError => e
+    violate("unreadable", path, "is not a .gem the audit can read (#{e.message})")
   end
 
   # Yields the name and bytes of each file in the .gem at +path+: the
   # entries of its data.tar.gz (RubyGems' package format, a tar holding
-  # metadata.gz, data.tar.gz, and checksums.yaml.gz).
+  # metadata.gz, data.tar.gz, and checksums.yaml.gz). Returns whether it
+  # found a data.tar.gz at all.
   def self.gem_files(path)
     File.open(path, "rb") do |io|
-      Gem::Package::TarReader.new(io).each do |outer|
-        next unless outer.full_name == "data.tar.gz"
+      Gem::Package::TarReader.new(io).each.count do |outer|
+        next false unless outer.full_name == "data.tar.gz"
 
         Zlib::GzipReader.wrap(StringIO.new(outer.read.to_s)) do |gzip|
           Gem::Package::TarReader.new(gzip).each { |entry| yield entry.full_name, entry.read.to_s.b if entry.file? }
         end
-      end
+        true
+      end.positive?
     end
   end
 

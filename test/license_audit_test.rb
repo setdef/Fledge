@@ -140,6 +140,17 @@ class LicenseAuditTest < Minitest::Test
     refute_includes rules(audit).map(&:last), "lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem!lib/csv.rb"
   end
 
+  # Such as the AppleDouble ._csv-3.3.5.gem macOS's tar adds beside a
+  # file with extended attributes: the audit cannot see inside it, so it
+  # must not pass it.
+  def test_a_cached_gem_the_audit_cannot_read_fails
+    write("lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem", "\x00\x05\x16\x07 not a tar".b)
+    write("lib/ruby/gems/4.0.0/cache/._csv-3.3.5.gem", ("\x01" * 512).b)
+
+    assert_includes rules(audit), ["unreadable", "lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem"]
+    assert_includes rules(audit), ["unreadable", "lib/ruby/gems/4.0.0/cache/._csv-3.3.5.gem"]
+  end
+
   def test_compiled_or_libxcrypt_code_inside_a_cached_gem_fails
     write_cached_gem("csv", "3.3.5", "lib/csv.so" => Binaries.elf(needed: %w[libc.so.6]), "lib/crypt.c" => "yescrypt-ROMhash")
 

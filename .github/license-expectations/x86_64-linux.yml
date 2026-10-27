@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileComment: Adapted from .github/license-expectations/ on Fledge's
+#   spike/permissive branch (58edf27d27912d062ccfa5c4960533a220c9eb24).
+
+# What the license audit finds in rv-ruby's whole x86_64-linux tree, which the
+# runtime builder prunes and replaces (ci.yml, Licenses of the whole
+# upstream tree). rv-ruby links libxcrypt, which is LGPL, statically into
+# its bin/ruby, which a runtime replaces with one built from Ruby's own
+# main.c against the shared lib/libcrypt.so.2, and ships libxcrypt's
+# static archive for compiling native gems, which a runtime prunes.
+- "static-copyleft: bin/ruby:"
+- "static-copyleft: lib/libcrypt.a:"
+- "policy: lib/libcrypt.a:"
+# nkf ships JRuby's Java sources (EPL-2.0 OR LGPL-2.1-or-later) in its
+# folder and in its cached .gem; a runtime prunes them
+# (RuntimeBuilder.prune_jruby).
+- "copyleft-text: lib/ruby/gems/4.0.0/gems/nkf-0.2.0/ext/java/"
+- "copyleft-text: lib/ruby/gems/4.0.0/cache/nkf-0.2.0.gem!ext/java/"

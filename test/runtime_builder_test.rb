@@ -6,10 +6,11 @@
 #++
 
 require_relative "test_helper"
+require_relative "support/binaries"
 require_relative "../tasks/runtime_builder"
 
 # The parts of rake runtime that need no compiler: the pins it reads, the
-# pruning it does, and the notices it writes. CI's runtime jobs build real
+# pruning it does, and the license audit it runs before it archives. CI's runtime jobs build real
 # runtimes, and test/built_app_test.rb runs them.
 class RuntimeBuilderTest < Minitest::Test
   def builder(name)
@@ -59,58 +60,123 @@ class RuntimeBuilderTest < Minitest::Test
     assert_match(%r{\Ahttps://}, pin.fetch("url"))
   end
 
-  def test_linux_carries_the_notices_of_what_it_links_statically_and_macos_does_not
-    linux = builder("aarch64-linux").notices.map { |notice| notice.fetch("folder") }
-    darwin = builder("arm64-darwin").notices.map { |notice| notice.fetch("folder") }
+  def test_gmp_is_pinned_to_msys2s_source_package_and_the_dll_it_built
+    pin = builder("x64-mingw-ucrt").sources.fetch("gmp")
 
-    assert_equal %w[fledge ruby rust openssl libyaml ca-certificates zlib libffi libxcrypt], linux
-    assert_equal %w[fledge ruby rust openssl libyaml ca-certificates], darwin
+    assert_match(%r{\Ahttps://repo\.msys2\.org/mingw/sources/mingw-w64-gmp-#{pin.fetch('version')}-\d+\.src\.tar\.zst\z}, pin.fetch("url"))
+    assert_match(%r{\Ahttps://repo\.msys2\.org/mingw/ucrt64/}, pin.fetch("package").fetch("url"))
+    [pin, pin.fetch("package")].each { |entry| assert_match(/\A\h{64}\z/, entry.fetch("sha256")) }
+    licensed = YAML.safe_load_file(LicenseAudit::MAP).fetch("components").find { |component| component.fetch("id") == "gmp" }
+    assert_equal pin.fetch("dll_sha256"), licensed.fetch("sha256").values.first
   end
 
-  # RubyInstaller's Ruby has no YJIT, so no Rust, and ships its libraries
-  # as DLLs, whose notices name them.
-  def test_windows_carries_the_notices_of_rubyinstaller_and_the_dlls_it_ships
-    notices = builder("x64-mingw-ucrt").notices
-
-    assert_equal %w[fledge ruby rubyinstaller openssl libyaml zlib gmp libffi mingw-w64 ca-certificates],
-      notices.map { |notice| notice.fetch("folder") }
-    assert_includes notices.find { |notice| notice.fetch("folder") == "openssl" }.fetch("name"), "OpenSSL 3.6.5"
-    assert_includes notices.find { |notice| notice.fetch("folder") == "gmp" }.fetch("name"), "which you may replace"
+  # A release publishes these beside each runtime, and fledge build
+  # downloads the first by the name Fledge::Runtimes gives it.
+  def test_the_assets_are_named_for_the_version_and_platform
+    assert_equal({
+      runtime: "fledge-runtime-1.2.3-x86_64-linux.tar.gz",
+      sbom: "fledge-runtime-1.2.3-x86_64-linux.spdx.json",
+      notices: "fledge-runtime-1.2.3-x86_64-linux-NOTICES.txt",
+      sources: "fledge-runtime-1.2.3-x86_64-linux-lgpl-sources.tar.gz",
+    }, builder("x86_64-linux").assets(version: "1.2.3"))
+    assert_equal Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")), builder("x64-mingw-ucrt").assets.fetch(:runtime)
   end
 
-  def test_write_notices_for_windows_copies_rubyinstallers_license_and_the_gmp_texts
+  # Linux and Windows ship an LGPL library, so their releases carry its
+  # source; macOS ships none.
+  def test_a_release_publishes_every_platforms_assets_and_the_lgpl_sources_where_they_ship
+    assets = RuntimeBuilder.release_assets(version: "1.2.3")
+
+    assert_equal 15, assets.size
+    assert_equal assets.sort, assets
+    assert_includes assets, "fledge-runtime-1.2.3-x64-mingw-ucrt-lgpl-sources.tar.gz"
+    assert_includes assets, "fledge-runtime-1.2.3-aarch64-linux-lgpl-sources.tar.gz"
+    refute_includes assets, "fledge-runtime-1.2.3-arm64-darwin-lgpl-sources.tar.gz"
+    assert_includes assets, "fledge-runtime-1.2.3-arm64-darwin.spdx.json"
+  end
+
+  # A small Linux runtime made of real (minimal) ELF files, shaped like
+  # the one the Linux recipe stages.
+  def linux_stage(root)
+    rust = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
+    {
+      "launcher" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], rpath: "$ORIGIN/lib", payload: "3e93b23afc #{rust} GCC: ("),
+      "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], rpath: "$ORIGIN/../lib", payload: "3e93b23afc #{rust} GCC: ("),
+      "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
+      "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
+      "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n",
+    }.each do |path, bytes|
+      FileUtils.mkdir_p(File.dirname(File.join(root, path)))
+      File.binwrite(File.join(root, path), bytes)
+    end
+    root
+  end
+
+  def test_license_writes_the_notices_and_sbom_of_a_runtime_that_meets_the_policy
     Dir.mktmpdir do |stage|
-      builder("x64-mingw-ucrt").write_notices(stage)
+      report = nil
+      out, = capture_io { report = builder("x86_64-linux").license(linux_stage(stage)) }
 
-      assert_path_exists File.join(stage, "notices/rubyinstaller/LICENSE.txt")
-      assert_equal %w[COPYING.LESSERv3 COPYINGv2 COPYINGv3], Dir.children(File.join(stage, "notices/gmp")).sort
-      assert_path_exists File.join(stage, "notices/mingw-w64/COPYING.MinGW-w64-runtime.txt")
-      refute_path_exists File.join(stage, "notices/rust")
-      index = File.read(File.join(stage, "notices/README.txt"))
-      assert_includes index, "gmp/\n  GNU MP 6.3.0"
-      assert_includes index, "License: LGPL-3.0-or-later OR GPL-2.0-or-later"
+      assert_equal "x86_64-linux: 5 files in 6 components meet the license policy\n", out
+      assert_empty report.violations
+      assert_equal %w[NOTICES.txt sbom.spdx.json], Dir.children(File.join(stage, "notices")).sort
+      notices = File.read(File.join(stage, "notices/NOTICES.txt"))
+      assert_includes notices, "libxcrypt, which backs String#crypt\n  Version: 4.5.2\n  License: LGPL-2.1-or-later"
+      assert_includes notices, "fledge-runtime-#{Fledge::VERSION}-x86_64-linux-lgpl-sources.tar.gz"
+      assert_includes notices, "=== libxcrypt/COPYING.LIB"
+      sbom = JSON.parse(File.read(File.join(stage, "notices/sbom.spdx.json")))
+      assert_equal %w[./bin/ruby ./launcher ./lib/libcrypt.so.2 ./lib/ruby/4.0.0/set.rb ./libexec/cert.pem],
+        sbom.fetch("files").map { |file| file.fetch("fileName") }
     end
   end
 
-  def test_every_notice_folder_has_its_license_texts
-    builder("x86_64-linux").sources.fetch("notices").each do |notice|
-      next if notice.fetch("folder") == "fledge"
+  # The build's gate: a runtime that breaks the policy is never archived.
+  def test_license_refuses_a_runtime_with_libxcrypt_linked_into_bin_ruby_or_a_gpl_gem
+    Dir.mktmpdir do |stage|
+      linux_stage(stage)
+      File.binwrite(File.join(stage, "bin/ruby"), Binaries.elf(needed: %w[libc.so.6], payload: "3e93b23afc /rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/ GCC: ( yescrypt-ROMhash"))
+      gems = File.join(stage, "lib/ruby/gems/4.0.0")
+      write_spec(gems, "copyleft", "1.0.0", licenses: ["GPL-3.0-only"])
+      FileUtils.mkdir_p(File.join(gems, "gems/copyleft-1.0.0"))
+      File.write(File.join(gems, "gems/copyleft-1.0.0/copyleft.rb"), "")
 
-      refute_empty Dir.glob(File.join(RuntimeBuilder::ROOT, "runtime/notices", notice.fetch("folder"), "*")), notice.fetch("folder")
+      error = assert_raises(LicenseAudit::Failure) { builder("x86_64-linux").license(stage) }
+      assert_includes error.message, "static-copyleft: bin/ruby: holds libxcrypt's code"
+      assert_includes error.message, "gem-copyleft-1.0.0 is GPL-3.0-only, which the policy does not allow"
+      refute_path_exists File.join(stage, "notices")
     end
   end
 
-  def test_write_notices_copies_each_and_indexes_them
-    Dir.mktmpdir do |stage|
-      builder("x86_64-linux").write_notices(stage)
+  # nkf's ext/java goes from the installed gem and from its .gem, which
+  # RubyGems still verifies and installs.
+  def test_prune_jruby_removes_nkfs_java_sources_from_the_gem_and_its_cache
+    Dir.mktmpdir do |gems|
+      files = { "lib/nkf.rb" => "module NKF; end\n", "ext/nkf/nkf.c" => "/* nkf */\n", "ext/java/org/jruby/ext/nkf/RubyNKF.java" => "/* EPL 2.0/LGPL 2.1 */\n" }
+      files.each do |name, content|
+        FileUtils.mkdir_p(File.dirname(File.join(gems, "gems/nkf-0.2.0", name)))
+        File.write(File.join(gems, "gems/nkf-0.2.0", name), content)
+      end
+      spec = Gem::Specification.new do |gem|
+        gem.name = "nkf"
+        gem.version = "0.2.0"
+        gem.summary = "nkf"
+        gem.authors = ["x"]
+        gem.files = files.keys
+      end
+      FileUtils.mkdir_p(File.join(gems, "cache"))
+      cache = File.join(gems, "cache/nkf-0.2.0.gem")
+      capture_io { Dir.chdir(File.join(gems, "gems/nkf-0.2.0")) { Gem::Package.build(spec, true, false, cache) } }
 
-      assert_equal %w[README.txt ca-certificates fledge libffi libxcrypt libyaml openssl ruby rust zlib],
-        Dir.children(File.join(stage, "notices")).sort
-      assert_path_exists File.join(stage, "notices/fledge/AGPL-3.0-or-later.txt")
-      assert_path_exists File.join(stage, "notices/libxcrypt/COPYING.LIB")
-      index = File.read(File.join(stage, "notices/README.txt"))
-      assert_includes index, "libxcrypt/\n  libxcrypt 4.5.2"
-      assert_includes index, "License: LGPL-2.1-or-later\n  Source: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz"
+      RuntimeBuilder.prune_jruby(gems)
+
+      refute_path_exists File.join(gems, "gems/nkf-0.2.0/ext/java")
+      assert_path_exists File.join(gems, "gems/nkf-0.2.0/ext/nkf/nkf.c")
+      package = Gem::Package.new(File.join(gems, "cache/nkf-0.2.0.gem"))
+      package.verify
+      assert_equal %w[ext/nkf/nkf.c lib/nkf.rb], package.contents.sort
+      assert_equal %w[ext/nkf/nkf.c lib/nkf.rb], package.spec.files.sort
+      package.extract_files(File.join(gems, "pristine"))
+      assert_equal "module NKF; end\n", File.read(File.join(gems, "pristine/lib/nkf.rb"))
     end
   end
 
@@ -132,7 +198,7 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
-  def write_spec(gems, name, version, default: false, executables: [])
+  def write_spec(gems, name, version, default: false, executables: [], licenses: [])
     folder = File.join(gems, "specifications", *("default" if default))
     FileUtils.mkdir_p(folder)
     spec = Gem::Specification.new do |s|
@@ -141,6 +207,7 @@ class RuntimeBuilderTest < Minitest::Test
       s.summary = name
       s.authors = ["x"]
       s.executables = executables
+      s.licenses = licenses
     end
     File.write(File.join(folder, "#{name}-#{version}.gemspec"), spec.to_ruby)
   end

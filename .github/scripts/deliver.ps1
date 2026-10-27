@@ -106,6 +106,18 @@ if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing a
 if ((Get-Subsystem $app) -ne 3) { Fail "$app is not a console program (PE subsystem $(Get-Subsystem $app))" }
 Write-Host "Unpacked to $root"
 
+# The app carries the notices the license audit wrote (ADR 004): every
+# component and license text, GMP's replaceability and source among them,
+# and the SBOM.
+$notices = Join-Path $root 'notices\NOTICES.txt'
+if (-not (Test-Path -LiteralPath (Join-Path $root 'notices\sbom.spdx.json') -PathType Leaf)) { Fail "the app has no notices\sbom.spdx.json" }
+if (-not (Test-Path -LiteralPath $notices -PathType Leaf)) { Fail "the app has no notices\NOTICES.txt" }
+$text = Get-Content -LiteralPath $notices -Raw
+foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_dlls/libgmp-10.dll', '-x64-mingw-ucrt-lgpl-sources.tar.gz')) {
+  if (-not $text.Contains($line)) { Fail "notices\NOTICES.txt does not say '$line'" }
+}
+Write-Host "ok: the app carries its notices and SBOM"
+
 # The runner has Rubies (on PATH, in C:\hostedtoolcache, MSYS2 in
 # C:\msys64). PATH keeps only Windows' own folders, and nothing on it may
 # find a Ruby or a compiler.

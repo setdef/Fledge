@@ -8,8 +8,13 @@
 require "digest"
 require "etc"
 require "fileutils"
+require "json"
 require "open3"
+require "rubygems/package"
+require "stringio"
 require "yaml"
+require "zlib"
+require_relative "license_audit"
 require_relative "../lib/fledge/download"
 require_relative "../lib/fledge/entry"
 require_relative "../lib/fledge/platform"
@@ -30,6 +35,13 @@ require_relative "../lib/fledge/version"
 # and needs only Ruby's headers to build, so a Linux runner, or a Mac,
 # builds it. Then fledge build, on any computer, copies apps into the
 # results.
+#
+# Before it archives a runtime, the builder audits it (LicenseAudit,
+# against runtime/licenses.yml) and refuses to archive one that breaks
+# Fledge's license policy (ADR 004). The audit's findings become the
+# runtime's notices/NOTICES.txt and notices/sbom.spdx.json, and, beside
+# the archive, the release assets that go with it: the SBOM, the
+# NOTICES, and the source of the runtime's LGPL libraries.
 #
 # Every input comes from runtime/sources.yml and is checked against its
 # SHA-256, and RubyInstaller's archive against its PGP signature too. The
@@ -79,17 +91,78 @@ class RuntimeBuilder
     @sources = YAML.safe_load_file(sources)
   end
 
-  # Builds the runtime and returns the path of its archive.
+  # Builds the runtime, audits it, and returns the path of its archive,
+  # with the release assets that go with it beside it (#assets). Raises
+  # LicenseAudit::Failure, and archives nothing, when the runtime breaks
+  # the license policy.
   def call
     recipe = recipe_class.new(builder: self, build_dir:)
     hosts = recipe.hosts
     raise "#{platform} runtimes build on #{hosts.join(', ')} only; this is #{host}" unless hosts.include?(host.name)
 
     FileUtils.rm_rf(build_dir)
+    FileUtils.rm_f(assets.values.map { |name| File.join(@work, name) })
     FileUtils.mkdir_p(stage)
     recipe.build(stage)
-    write_notices(stage)
-    archive
+    license(stage)
+    path = archive
+    publish(stage)
+    path
+  end
+
+  # The file names of what a release publishes for this platform at
+  # +version+: the runtime archive Fledge::Runtimes downloads, its SPDX
+  # SBOM and NOTICES (the same files as the archive's notices/), and the
+  # source bundle of its LGPL libraries, if it ships any.
+  def assets(version: Fledge::VERSION)
+    archive = Fledge::Runtimes.file_name(platform, version:)
+    base = File.basename(archive, Fledge::Runtimes::EXTENSION)
+    {
+      runtime: archive,
+      sbom: "#{base}.spdx.json",
+      notices: "#{base}-NOTICES.txt",
+      sources: LicenseAudit::Notices.source_bundle(version, platform.name),
+    }
+  end
+
+  # Every asset a release of +version+ publishes but SHA256SUMS, sorted:
+  # each platform's #assets, and its source bundle only where the
+  # platform ships an LGPL library. release.yml checks the release
+  # against it.
+  def self.release_assets(version: Fledge::VERSION)
+    Fledge::Platform.names.flat_map do |name|
+      lgpl = !LicenseAudit::SourceBundle.new(platform: name, version:).components.empty?
+      new(platform: Fledge::Platform.find(name)).assets(version:).filter_map { |kind, file| file if kind != :sources || lgpl }
+    end.sort
+  end
+
+  # Audits the runtime folder +stage+ against runtime/licenses.yml and
+  # writes what it found into +stage+/notices: NOTICES.txt, which names
+  # every component and its license and holds every license text, and
+  # sbom.spdx.json. Raises LicenseAudit::Failure when the runtime breaks
+  # the policy or a component's license text is nowhere, so that no such
+  # runtime is ever archived. Returns the audit's Report.
+  def license(stage)
+    audit = LicenseAudit.new(platform: platform.name, tree: stage, fledge_version: Fledge::VERSION)
+    report = audit.call
+    notices = LicenseAudit::Notices.new(report, version: Fledge::VERSION, map: audit.map)
+    problems = LicenseAudit.problems(report, notices)
+    raise LicenseAudit::Failure.new(platform.name, problems) unless problems.empty?
+
+    FileUtils.mkdir_p(File.join(stage, "notices"))
+    File.write(File.join(stage, "notices", "NOTICES.txt"), notices.text)
+    File.write(File.join(stage, "notices", "sbom.spdx.json"), "#{JSON.pretty_generate(LicenseAudit::Spdx.new(report, version: Fledge::VERSION).to_h)}\n")
+    puts "#{platform}: #{report.owners.size} files in #{report.present.size} components meet the license policy"
+    report
+  end
+
+  # Writes the release assets beside the archive: copies of the SBOM and
+  # NOTICES the runtime carries, and the LGPL source bundle.
+  private def publish(stage)
+    FileUtils.cp(File.join(stage, "notices", "sbom.spdx.json"), File.join(@work, assets.fetch(:sbom)))
+    FileUtils.cp(File.join(stage, "notices", "NOTICES.txt"), File.join(@work, assets.fetch(:notices)))
+    bundle = LicenseAudit::SourceBundle.new(platform: platform.name, version: Fledge::VERSION, downloads: @downloads).write(@work)
+    puts "Wrote #{bundle}" if bundle
   end
 
   # The folder that becomes the runtime archive's top folder.
@@ -179,6 +252,7 @@ class RuntimeBuilder
   # removed gems' executables.
   def self.prune_gems(gems, bundled)
     FileUtils.rm_rf(File.join(gems, "doc"))
+    prune_jruby(gems)
     Dir.glob(File.join(gems, "specifications", "*.gemspec")).flat_map do |path|
       spec = Gem::Specification.load(path) or raise "#{path} is not a gem specification"
       next [] if bundled.include?(spec.name)
@@ -194,6 +268,83 @@ class RuntimeBuilder
     FileUtils.rm_f(File.join(gems, "cache", "#{full_name}.gem"))
     FileUtils.rm_f(File.join(gems, "build_info", "#{full_name}.info"))
     FileUtils.rm_rf(Dir.glob(File.join(gems, "extensions", "*", "*", full_name)))
+  end
+
+  # Files of CRuby's gems that only JRuby reads, by gem: nkf's ext/java,
+  # the Java sources of JRuby's nkf, which CRuby never compiles or loads
+  # (nkf.gemspec builds them only for the java platform, and ext/nkf is
+  # CRuby's). They are EPL-2.0 OR LGPL-2.1-or-later, the only copyleft
+  # text in a runtime besides license data (runtime/licenses.yml).
+  JRUBY_ONLY = { "nkf" => "ext/java/" }.freeze
+
+  # Removes JRUBY_ONLY's files from the gem folder +gems+: from each
+  # gem's installed folder, and from its .gem in the cache, which holds
+  # them too (repack_gem).
+  def self.prune_jruby(gems)
+    JRUBY_ONLY.each do |name, folder|
+      Dir.glob(File.join(gems, "gems", "#{name}-*", folder)).each { |path| FileUtils.rm_rf(path) }
+      Dir.glob(File.join(gems, "cache", "#{name}-*.gem")).each { |path| repack_gem(path, folder) }
+    end
+  end
+
+  # Rewrites the .gem at +path+ without the files under +folder+, in
+  # RubyGems' own format (a tar of metadata.gz, data.tar.gz, and
+  # checksums.yaml.gz): data.tar.gz without them, the specification in
+  # metadata.gz no longer listing them, and checksums.yaml.gz over the
+  # new two, so Gem::Package#verify, and so gem pristine, accept it.
+  # Every other entry, and every timestamp, stays as it was.
+  def self.repack_gem(path, folder)
+    entries = read_tar(File.binread(path))
+    data = entries.fetch("data.tar.gz")
+    files = read_tar(gunzip(data.fetch(:bytes))).reject { |name, _| name.start_with?(folder) }
+    data[:bytes] = regzip(data.fetch(:bytes), write_tar(files))
+    metadata = entries.fetch("metadata.gz")
+    spec = Gem::Specification.from_yaml(gunzip(metadata.fetch(:bytes)))
+    spec.files = spec.files.reject { |name| name.start_with?(folder) }
+    metadata[:bytes] = regzip(metadata.fetch(:bytes), spec.to_yaml)
+    checksums = entries.fetch("checksums.yaml.gz")
+    checksums[:bytes] = regzip(checksums.fetch(:bytes), gem_checksums(entries.slice("metadata.gz", "data.tar.gz")).to_yaml)
+    File.binwrite(path, write_tar(entries))
+  end
+
+  # RubyGems' checksums.yaml: each digest of each file (Gem::Package's
+  # build, at Ruby 4.0.9).
+  def self.gem_checksums(entries)
+    { "SHA256" => Digest::SHA256, "SHA512" => Digest::SHA512 }.transform_values do |digest|
+      entries.transform_values { |entry| digest.hexdigest(entry.fetch(:bytes)) }
+    end
+  end
+
+  # The files of a tar, by name, each with its bytes, mode, and mtime.
+  def self.read_tar(bytes)
+    Gem::Package::TarReader.new(StringIO.new(bytes)).each.with_object({}) do |entry, files|
+      next unless entry.file?
+
+      files[entry.full_name] = { bytes: entry.read.to_s.b, mode: entry.header.mode, mtime: entry.header.mtime }
+    end
+  end
+
+  def self.write_tar(files)
+    io = StringIO.new(+"".b)
+    Gem::Package::TarWriter.new(io) do |tar|
+      files.each { |name, file| tar.add_file(name, file.fetch(:mode), Time.at(file.fetch(:mtime))) { |out| out.write(file.fetch(:bytes)) } }
+    end
+    io.string
+  end
+
+  def self.gunzip(bytes)
+    Zlib::GzipReader.wrap(StringIO.new(bytes)) { |gzip| gzip.read.to_s.b }
+  end
+
+  # +bytes+ compressed as a gzip member with the MTIME of the member
+  # +original+ (RFC 1952, section 2.3: bytes 4 to 7, little-endian).
+  def self.regzip(original, bytes)
+    io = StringIO.new(+"".b)
+    Zlib::GzipWriter.wrap(io) do |gzip|
+      gzip.mtime = original.byteslice(4, 4).to_s.unpack1("V").to_i
+      gzip.write(bytes)
+    end
+    io.string
   end
 
   # Removes from +bin+ the executables of gems prune removed, which
@@ -278,47 +429,6 @@ class RuntimeBuilder
 
     FileUtils.mkdir_p(defaults)
     FileUtils.cp(File.join(ROOT, "runtime", "rubygems", "operating_system.rb"), defaults)
-  end
-
-  # The notices that apply to this platform, from runtime/sources.yml.
-  def notices
-    sources.fetch("notices").select { |notice| notice.fetch("platforms").include?(platform.name) }
-  end
-
-  # Copies each notice into +stage+/notices and indexes them in
-  # notices/README.txt.
-  def write_notices(stage)
-    notices.each do |notice|
-      folder = File.join(stage, "notices", notice.fetch("folder"))
-      FileUtils.mkdir_p(folder)
-      notice_files(notice).each { |file| FileUtils.cp(file, folder) }
-    end
-    File.write(File.join(stage, "notices", "README.txt"), notices_index)
-  end
-
-  def notices_index
-    entries = notices.map do |notice|
-      <<~ENTRY
-        #{notice.fetch('folder')}/
-          #{notice.fetch('name')}
-          License: #{notice.fetch('license')}
-          Source: #{notice.fetch('source')}
-      ENTRY
-    end
-    <<~INDEX
-      This app was built with Fledge (https://github.com/setdef/Fledge). Its
-      launcher, the Ruby it runs on, and the libraries Ruby uses are the work
-      of the people below, under the licenses in each folder. The source of
-      each is at the address given.
-
-      #{entries.join("\n")}
-    INDEX
-  end
-
-  private def notice_files(notice)
-    return [File.join(ROOT, "LICENSES", "AGPL-3.0-or-later.txt")] if notice.fetch("folder") == "fledge"
-
-    Dir.glob(File.join(ROOT, "runtime", "notices", notice.fetch("folder"), "*"))
   end
 
   private def recipe_class
@@ -445,6 +555,19 @@ class RuntimeBuilder
   # libgcc's unwinder statically, and link libxcrypt dynamically from
   # the runtime's lib/ (see runtime/launcher/unix.c).
   class Linux < Unix
+    # libxcrypt's configure options: those of rv-ruby's
+    # rv-portable-libxcrypt formula, shared instead of static. The LGPL
+    # source bundle (tasks/license_audit/source_bundle.rb) prints them
+    # as the way the runtime's copy was built.
+    LIBXCRYPT_CONFIGURE = %w[
+      --enable-shared
+      --disable-static
+      --disable-obsolete-api
+      --disable-xcrypt-compat-files
+      --disable-failure-tokens
+      --disable-valgrind
+    ].freeze
+
     # The shared libraries the launcher may need: glibc's, and the
     # runtime's own libxcrypt.
     ALLOWED = /\A(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|ld-linux[-\w.]*\.so\.\d|libcrypt\.so\.\d+)\z/
@@ -485,10 +608,7 @@ class RuntimeBuilder
       prefix = File.join(@build_dir, "libxcrypt-prefix")
       FileUtils.mkdir_p(source)
       @builder.run("tar", "-xJf", tarball, "-C", source, "--strip-components=1")
-      # The options of rv-ruby's rv-portable-libxcrypt formula, shared
-      # instead of static.
-      @builder.run("./configure", "--prefix=#{prefix}", "--enable-shared", "--disable-static", "--disable-obsolete-api",
-        "--disable-xcrypt-compat-files", "--disable-failure-tokens", "--disable-valgrind", chdir: source)
+      @builder.run("./configure", "--prefix=#{prefix}", *LIBXCRYPT_CONFIGURE, chdir: source)
       @builder.run("make", "-j#{Etc.nprocessors}", chdir: source)
       @builder.run("make", "install", chdir: source)
       prefix

@@ -53,6 +53,19 @@ probe="$place/$(basename "$probe_archive" .tar.gz)/parity"
 [ -x "$app" ] || fail "$app is not executable after unpacking"
 [ -x "$probe" ] || fail "$probe is not executable after unpacking"
 
+# The app carries the notices the license audit wrote (ADR 004): every
+# component and license text, and the SBOM; on Linux, libxcrypt's
+# replaceability and where its source is.
+[ -s "$root/notices/sbom.spdx.json" ] || fail "the app has no notices/sbom.spdx.json"
+grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the app has no notices/NOTICES.txt from the license audit"
+case "$(uname -s)" in
+  Linux)
+    grep -qx "  lib/libcrypt.so.2" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say lib/libcrypt.so.2 is replaceable"
+    grep -q -- "-lgpl-sources.tar.gz$" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say where libxcrypt's source is"
+    ;;
+esac
+echo "ok: the app carries its notices and SBOM"
+
 # The app runs with a PATH that holds nothing at all, so no Ruby is on
 # it, whatever this computer has installed.
 empty="$work/empty-path"
@@ -177,11 +190,19 @@ echo "ok: an app without main.rb says so and exits 66"
 
 case "$(uname -s)" in
   Linux)
-    crypt=$(ldd "$app" | sed -n 's/^[[:space:]]*libcrypt\.so\.[0-9]* => \(.*\) (0x[0-9a-f]*)$/\1/p')
-    case "$crypt" in
-      "$root/lib/libcrypt.so."*) echo "ok: libcrypt loads from the runtime ($crypt)" ;;
-      *) ldd "$app"; fail "libcrypt resolves to '$crypt', not the runtime's lib/" ;;
-    esac
+    # The launcher and Ruby's own bin/ruby both load the runtime's
+    # libcrypt, the LGPL library a person may replace, and neither has
+    # one of its own. bin/ruby finds it through $ORIGIN/../lib, so the
+    # loader's path is compared by the folder it really is.
+    lib=$(cd "$root/lib" && pwd -P)
+    for program in "$app" "$root/bin/ruby"; do
+      crypt=$(ldd "$program" | sed -n 's/^[[:space:]]*libcrypt\.so\.[0-9]* => \(.*\) (0x[0-9a-f]*)$/\1/p')
+      folder=$( (cd "$(dirname "$crypt")" 2>/dev/null && pwd -P) || echo none)
+      case "$folder/$(basename "$crypt")" in
+        "$lib/libcrypt.so."*) echo "ok: $(basename "$program") loads libcrypt from the runtime ($crypt)" ;;
+        *) ldd "$program"; fail "$program resolves libcrypt to '$crypt', not the runtime's lib/" ;;
+      esac
+    done
     ;;
   Darwin)
     otool -L "$app" | tail -n +2 | while read -r library _; do

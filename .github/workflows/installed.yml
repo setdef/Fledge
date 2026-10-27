@@ -1,0 +1,154 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# The shipped path, end to end (Plan 001's walking skeleton in
+# production): on a fresh runner of each platform, a developer's project
+# installs Fledge from its git tag with Bundler, as the README says, never
+# from RubyGems.org; fledge build, with no FLEDGE_RUNTIME_DIR and an empty
+# cache, downloads that version's runtime from the GitHub Release and
+# checks it against the release's SHA256SUMS; and the app it builds is
+# delivered as CI delivers every push's (.github/scripts/deliver.sh, or
+# deliver.ps1 on Windows). Another job downloads every asset of the
+# release and checks it against SHA256SUMS.
+#
+# release.yml calls this after it publishes a release; run it by hand
+# (workflow_dispatch) to check any published tag again.
+
+name: Installed from a tag
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag to install, such as v0.0.1.pre.1
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to install, such as v0.0.1.pre.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  sums:
+    name: The release's assets match its SHA256SUMS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download every asset and check it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          cd "$RUNNER_TEMP/release"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY"
+          ls -l
+          sha256sum -c SHA256SUMS
+          for asset in *; do
+            [ "$asset" = SHA256SUMS ] || grep -q "  $asset\$" SHA256SUMS || { echo "::error::$asset is not in SHA256SUMS"; exit 1; }
+          done
+
+  installed:
+    name: Install, build, and deliver (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            platform: arm64-darwin
+            ruby-platform: arm64-darwin23
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+            ruby-platform: x86_64-linux
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+            ruby-platform: aarch64-linux
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+            ruby-platform: x64-mingw-ucrt
+    steps:
+      # Only what a developer would have of Fledge's repository: hello and
+      # the parity probe to build, and the scripts that check the result,
+      # at the tag. Fledge itself comes from Bundler.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.tag }}
+          sparse-checkout: |
+            examples/hello
+            test/fixtures/parity
+            .github/scripts
+            mise.toml
+          sparse-checkout-cone-mode: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        if: runner.os != 'Windows'
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Read the Ruby pin
+        if: runner.os == 'Windows'
+        id: pins
+        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        if: runner.os == 'Windows'
+        with:
+          ruby-version: ${{ steps.pins.outputs.ruby }}
+
+      - name: Install Fledge from the tag with Bundler
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/project"
+          cat > "$RUNNER_TEMP/project/Gemfile" <<GEMFILE
+          source "https://rubygems.org"
+          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG"
+          GEMFILE
+          cd "$RUNNER_TEMP/project"
+          bundle install
+          bundle exec fledge --version
+
+      # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
+      # from the release, checked against its SHA256SUMS.
+      - name: Build hello and the parity probe with runtimes from the release
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          unset FLEDGE_RUNTIME_DIR
+          export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
+          cd "$RUNNER_TEMP/project"
+          for app in examples/hello test/fixtures/parity; do
+            bundle exec fledge build -t "$PLATFORM" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
+          done
+          cat "$RUNNER_TEMP/build.err"
+          grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/build.err"
+          grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" "$RUNNER_TEMP/build.err"
+          ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
+
+      - name: Run hello as someone with no Ruby would
+        if: runner.os != 'Windows'
+        run: >-
+          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/hello-${{ matrix.platform }}.tar.gz"
+          "$RUNNER_TEMP/dist/parity-${{ matrix.platform }}.tar.gz" "${{ matrix.ruby-platform }}"
+
+      - name: Run hello.exe as someone with no Ruby would
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/dist/hello-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/dist/parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt

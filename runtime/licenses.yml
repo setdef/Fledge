@@ -1,0 +1,537 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileComment: Adapted from runtime/licenses.yml on Fledge's spike/permissive
+#   branch (58edf27d27912d062ccfa5c4960533a220c9eb24).
+
+# What ships inside every app Fledge builds, and the license policy it
+# must meet. tasks/license_audit.rb reads this file and a runtime tree
+# (a built runtime, or the whole rv-ruby or RubyInstaller tree it came
+# from), and fails unless:
+#
+#   - every file in the tree belongs to a component below or to a gem
+#     whose specification the tree holds, and every compiled file is one
+#     its component names as a binary;
+#   - every shared library a compiled file needs is either one the
+#     operating system provides (system_libraries) or a file in the tree;
+#   - every component compiled into another file is still there, at the
+#     version below, by the evidence string named here;
+#   - no compiled file carries the code of a copyleft library (signatures)
+#     except that library's own shared library;
+#   - every text file whose words name a copyleft license is one a person
+#     has reviewed (reviewed);
+#   - and every component's license meets the policy.
+#
+# The maintainer's rule (decisions 1, 8, and 24, and the replies of
+# 2026-10-26 in doc/contributors/decisions.md; AGENTS.md, Licensing): an
+# app's developer must owe nothing beyond notices for what Fledge copies
+# into the app, except for Fledge's own AGPL-3.0-or-later files, which
+# setdef will likely license commercially too, and LGPL libraries, which
+# may ship only as separate shared libraries the app's recipient can
+# replace, with their source (never the app's) published beside each
+# runtime. RuntimeBuilder runs the audit on every runtime it builds and
+# refuses to archive one that fails (ADR 004).
+#
+# Patterns are File.fnmatch globs relative to the tree (** crosses
+# folders, {a,b} alternates). {prefix} is where Ruby's own tree starts
+# ("ruby/" in a Windows runtime, "" elsewhere), {arch} is Ruby's archdir
+# name, {gem_arch} the name of RubyGems' extensions folder, and {so} the
+# extension of a Ruby extension on that platform.
+
+policy:
+  # Licenses whose only obligation, for an unmodified copy shipped in a
+  # proprietary app, is to keep their notices.
+  notice_only:
+    - 0BSD
+    - Apache-2.0
+    # Perl's Artistic License, which Ruby's LEGAL offers for
+    # win32/win32.c and win32ole.c beside the GPL. Unmodified, it asks
+    # for its notice and directions to the standard version (section 4a).
+    - Artistic-1.0-Perl
+    - BSD-2-Clause
+    - BSD-3-Clause
+    - BSL-1.0
+    - CC-BY-2.5
+    - CC0-1.0
+    - ISC
+    - LicenseRef-MinGW-w64-runtime
+    - MIT
+    - MIT-0
+    # Fonts may ship inside any software; only the fonts stay OFL.
+    - OFL-1.1
+    - PSF-2.0
+    - Ruby
+    - Unlicense
+    - Zlib
+  # Licenses whose copyleft reaches only the files they cover: allowed for
+  # components that ship as unmodified files (kind: files), such as the
+  # CA bundle, whose source form is the file itself.
+  file_level:
+    - EPL-2.0
+    - MPL-2.0
+  # Allowed only for a component that ships as its own shared library
+  # (kind: shared_library) with its source published (source).
+  shared_library:
+    - LGPL-2.1-only
+    - LGPL-2.1-or-later
+    - LGPL-3.0-only
+    - LGPL-3.0-or-later
+  # Exceptions that make a GPL runtime library's code notice-only, or
+  # less, inside a program compiled with it.
+  exceptions:
+    - Bison-exception-2.2
+    - GCC-exception-3.1
+    - LLVM-exception
+  # Names gemspecs use that are not SPDX identifiers.
+  aliases:
+    BSDL: BSD-2-Clause
+    PSFL: PSF-2.0
+
+# What the operating system provides, which a runtime need not ship.
+system_libraries:
+  linux:
+    - /\A(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|libgcc_s\.so\.1|ld-linux[-\w.]*\.so\.\d)\z/
+  darwin:
+    - /\A\/usr\/lib\/[^\/]+\.dylib\z/
+    - /\A\/System\/Library\/Frameworks\//
+  windows:
+    - /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i
+    - /\A(?:advapi32|bcrypt|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i
+
+platforms:
+  arm64-darwin: {os: darwin, arch: arm64-darwin23, gem_arch: arm64-darwin-23, so: bundle}
+  x86_64-linux: {os: linux, arch: x86_64-linux, gem_arch: x86_64-linux, so: so}
+  aarch64-linux: {os: linux, arch: aarch64-linux, gem_arch: aarch64-linux, so: so}
+  x64-mingw-ucrt: {os: windows, arch: x64-mingw-ucrt, gem_arch: x64-mingw-ucrt, so: so}
+
+# Code of copyleft libraries that must never be compiled into another
+# file: bytes found only in that library's own code. A match anywhere but
+# in a file the named component owns as a shared library fails.
+signatures:
+  - component: libxcrypt
+    bytes: ["yescrypt-ROMhash", "$sm3y$"]
+  - component: gmp
+    bytes: ["GNU MP: Cannot allocate memory"]
+
+# Components, in the order that decides which owns a file two of them
+# match. Gems come from the tree's own specifications and are placed
+# before the components marked fallback.
+#
+#   kind: program        compiled code and the files around it
+#         shared_library a library in its own file, which other files load
+#         files          unmodified source or data files
+#   files:     what the component owns
+#   binaries:  which of its files may be compiled code
+#   embedded:  files the component is compiled into, each with a string
+#              that proves its version is still the one named here
+#   source:    the runtime/sources.yml pin of its source, for LGPL code
+components:
+  - id: fledge
+    name: Fledge launcher and RubyGems defaults
+    version: "{fledge_version}"
+    license: AGPL-3.0-or-later
+    first_party: true
+    kind: program
+    supplier: "Organization: setdef"
+    download: https://github.com/setdef/Fledge
+    notice: fledge
+    ships: "the program the app's user runs, and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
+    files:
+      - launcher
+      - launcher.exe
+      - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
+    binaries: [launcher, launcher.exe]
+
+  - id: rust-std
+    name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
+    version: 1.85.1
+    license: MIT OR Apache-2.0
+    kind: program
+    download: https://github.com/rust-lang/rust/tree/1.85.1
+    notice: rust
+    ships: compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out)
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [launcher, "{prefix}bin/ruby", "{prefix}lib/libruby*-static.a"]
+        evidence: /rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/
+
+  - id: gcc-runtime
+    name: GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc)
+    version: "13"
+    license: GPL-3.0-or-later WITH GCC-exception-3.1
+    kind: program
+    download: https://gcc.gnu.org/
+    ships: compiled into the launcher and bin/ruby
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [launcher, bin/ruby]
+        evidence: "GCC: ("
+
+  - id: gcc-runtime-msys2
+    name: GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs
+    version: "13 to 16"
+    license: GPL-3.0-or-later WITH GCC-exception-3.1
+    kind: program
+    download: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-gcc
+    ships: compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built
+    platforms: [x64-mingw-ucrt]
+    embedded:
+      - files: ["{prefix}bin/*.{dll,exe}", "{prefix}bin/ruby_builtin_dlls/*.dll", "{prefix}lib/ruby/**/*.{dll,so}"]
+        evidence: "Built by MSYS2 project"
+
+  - id: mingw-w64-runtime
+    name: The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL
+    version: "14.0.0"
+    license: LicenseRef-MinGW-w64-runtime
+    kind: program
+    download: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0
+    notice: mingw-w64
+    ships: compiled into launcher.exe and every DLL and extension in ruby/
+    platforms: [x64-mingw-ucrt]
+    embedded:
+      - files: [launcher.exe, "{prefix}bin/*.{dll,exe}", "{prefix}lib/ruby/**/*.{dll,so}"]
+
+  - id: compiler-rt
+    name: LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw
+    version: "20261020"
+    license: Apache-2.0 WITH LLVM-exception
+    kind: program
+    download: https://github.com/mstorsjo/llvm-mingw/releases/tag/20261020
+    ships: compiled into launcher.exe
+    platforms: [x64-mingw-ucrt]
+    embedded:
+      - files: [launcher.exe]
+
+  - id: openssl
+    name: OpenSSL, compiled into Ruby's openssl extension
+    version: 3.6.2
+    license: Apache-2.0
+    kind: program
+    download: https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz
+    notice: openssl
+    ships: "compiled into lib/ruby/4.0.0/{arch}/openssl.{so}"
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    embedded:
+      - files: ["{prefix}lib/ruby/4.0.0/{arch}/openssl.{so}"]
+        evidence: "OpenSSL 3.6.2 "
+
+  - id: openssl-dlls
+    name: OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers)
+    version: 3.6.5
+    license: Apache-2.0
+    kind: shared_library
+    download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
+    notice: openssl
+    ships: shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}lib/ruby/4.0.0/{arch}/lib{crypto,ssl}-3-x64.dll", "{prefix}lib/ruby/4.0.0/lib/{engines-3,ossl-modules}/*.dll"]
+    binaries: ["{prefix}lib/ruby/4.0.0/{arch}/lib{crypto,ssl}-3-x64.dll", "{prefix}lib/ruby/4.0.0/lib/{engines-3,ossl-modules}/*.dll"]
+    embedded:
+      - files: ["{prefix}lib/ruby/4.0.0/{arch}/libcrypto-3-x64.dll"]
+        evidence: "OpenSSL 3.6.5 "
+
+  - id: libyaml
+    name: libyaml, compiled into Ruby's psych extension
+    version: 0.2.5
+    license: MIT
+    kind: program
+    download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    notice: libyaml
+    ships: "compiled into lib/ruby/4.0.0/{arch}/psych.{so}"
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    embedded:
+      - files: ["{prefix}lib/ruby/4.0.0/{arch}/psych.{so}"]
+        evidence: "0.2.5\0"
+
+  - id: libyaml-dll
+    name: libyaml (libyaml-0-2.dll)
+    version: 0.2.5
+    license: MIT
+    kind: shared_library
+    download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    notice: libyaml
+    ships: a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}lib/ruby/4.0.0/{arch}/libyaml-0-2.dll"]
+    binaries: ["{prefix}lib/ruby/4.0.0/{arch}/libyaml-0-2.dll"]
+    embedded:
+      - files: ["{prefix}lib/ruby/4.0.0/{arch}/libyaml-0-2.dll"]
+        evidence: "0.2.5\0"
+
+  - id: zlib
+    name: zlib, compiled into Ruby's zlib extension
+    version: 1.3.2
+    license: Zlib
+    kind: program
+    download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+    notice: zlib
+    ships: "compiled into lib/ruby/4.0.0/{arch}/zlib.so"
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib.so"]
+        evidence: "deflate 1.3.2 "
+
+  - id: zlib-dll
+    name: zlib (zlib1.dll)
+    version: 1.3.2
+    license: Zlib
+    kind: shared_library
+    download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+    notice: zlib
+    ships: a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib1.dll"]
+    binaries: ["{prefix}lib/ruby/4.0.0/{arch}/zlib1.dll"]
+    embedded:
+      - files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib1.dll"]
+        evidence: "deflate 1.3.2 "
+
+  - id: libffi
+    name: libffi, compiled into the fiddle gem's extension
+    version: 3.5.2
+    license: MIT
+    kind: program
+    download: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
+    notice: libffi
+    ships: compiled into the fiddle gem's extension
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
+        evidence: "3.5.2\0"
+
+  - id: libffi-dll
+    name: libffi (libffi-8.dll, beside the fiddle gem's extension)
+    version: 3.8.0
+    license: MIT
+    kind: shared_library
+    download: https://github.com/libffi/libffi/releases/tag/v3.8.0
+    notice: libffi
+    ships: a shared library beside the fiddle gem's extension
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+    binaries: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+    embedded:
+      - files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+        evidence: "3.8.0\0"
+
+  - id: winpthreads
+    name: winpthreads (libwinpthread-1.dll), from MinGW-w64
+    version: "14.0.0"
+    license: MIT AND BSD-3-Clause
+    kind: shared_library
+    download: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0/mingw-w64-libraries/winpthreads
+    notice: mingw-w64
+    ships: a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/4.0.0/{arch}/libwinpthread-1.dll"]
+    binaries: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/4.0.0/{arch}/libwinpthread-1.dll"]
+
+  - id: libxcrypt
+    name: libxcrypt, which backs String#crypt
+    version: 4.5.2
+    license: LGPL-2.1-or-later
+    kind: shared_library
+    download: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
+    notice: libxcrypt
+    source: libxcrypt
+    ships: lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start
+    platforms: [x86_64-linux, aarch64-linux]
+    files: [lib/libcrypt.so.2]
+    binaries: [lib/libcrypt.so.2]
+    embedded:
+      - files: [lib/libcrypt.so.2]
+        evidence: "XCRYPT_4.4\0"
+
+  - id: libxcrypt-static
+    name: libxcrypt's static archive, which rv-ruby ships for compiling native gems
+    version: 4.5.2
+    license: LGPL-2.1-or-later
+    kind: program
+    download: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
+    notice: libxcrypt
+    ships: lib/libcrypt.a (only in rv-ruby's whole tree; a runtime leaves it out)
+    platforms: [x86_64-linux, aarch64-linux]
+    files: ["{prefix}lib/libcrypt.a"]
+    binaries: ["{prefix}lib/libcrypt.a"]
+
+  - id: gmp
+    name: GNU MP, which Ruby's Integer uses for arithmetic on large numbers
+    version: 6.3.0
+    license: LGPL-3.0-or-later OR GPL-2.0-or-later
+    kind: shared_library
+    download: https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz
+    notice: gmp
+    source: gmp
+    ships: ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}bin/ruby_builtin_dlls/libgmp-10.dll"]
+    binaries: ["{prefix}bin/ruby_builtin_dlls/libgmp-10.dll"]
+    # MSYS2's mingw-w64-ucrt-x86_64-gmp 6.3.0-2 holds this very file, so
+    # its source package is this file's corresponding source.
+    sha256:
+      "{prefix}bin/ruby_builtin_dlls/libgmp-10.dll": c2567ccf3f410c3411ba7cd4b7ba14f393a0e70a1d0c0593297df6706b5fba96
+
+  - id: msys2-keyring
+    name: MSYS2's package-signing keyring, which RubyInstaller ships for ridk
+    version: 1~20240410-1
+    license: GPL-2.0-or-later
+    kind: files
+    download: https://github.com/msys2/MSYS2-keyring
+    ships: ruby/packages/ (only in RubyInstaller's whole tree; a runtime leaves it out)
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}packages/**"]
+
+  - id: ca-certificates
+    name: Mozilla's CA certificates, as curl publishes them
+    version: cacert-2026-03-19
+    license: MPL-2.0
+    kind: files
+    download: https://curl.se/ca/cacert-2026-03-19.pem
+    notice: ca-certificates
+    ships: libexec/cert.pem, unmodified
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    files: ["{prefix}libexec/cert.pem"]
+
+  - id: ca-certificates-msys2
+    name: Mozilla's CA certificates, as MSYS2 packages them
+    version: "Mozilla's data of 2026-10-21"
+    license: MPL-2.0
+    kind: files
+    download: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-ca-certificates
+    notice: ca-certificates
+    ships: ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}lib/ruby/4.0.0/etc/ssl/cert.pem"]
+
+  - id: rubyinstaller
+    name: RubyInstaller's runtime files, manifests, and tools
+    version: 4.0.9-1
+    license: BSD-3-Clause
+    kind: program
+    download: https://github.com/oneclick/rubyinstaller2/tree/RubyInstaller-4.0.9-1
+    notice: rubyinstaller
+    ships: the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/)
+    platforms: [x64-mingw-ucrt]
+    files:
+      - "{prefix}LICENSE.txt"
+      - "{prefix}lib/ruby/site_ruby/**"
+      - "{prefix}lib/ruby/4.0.0/etc/ssl/{README-SSL.md,certs/c_rehash.rb}"
+      - "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"
+      - "{prefix}bin/ruby_builtin_dlls/ruby_builtin_dlls.manifest"
+      - "{prefix}lib/ruby/**/*-assembly.manifest"
+      - "{prefix}bin/{ridk.cmd,ridk.ps1,setrbvars.cmd,startmenu.rb}"
+      - "{prefix}ridk_use/**"
+
+  - id: rv-ruby
+    name: rv-ruby's build metadata
+    version: "20261023"
+    license: BSD-2-Clause
+    kind: files
+    download: https://github.com/spinel-coop/rv-ruby/tree/074afbcb773b580516a281c84878f1cd3a651cda
+    ships: rv-ruby's install receipt and SBOM (only in rv-ruby's whole tree)
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    notice: rv-ruby
+    files: ["{prefix}INSTALL_RECEIPT.json", "{prefix}sbom.spdx.json", "{prefix}.brew/*.rb", "{prefix}lib/ruby/4.0.0/{arch}/portable_ruby_gems.rb"]
+
+  - id: ruby-win32
+    name: Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL)
+    version: 4.0.9
+    license: GPL-1.0-or-later OR Artistic-1.0-Perl
+    kind: program
+    download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+    notice: ruby
+    ships: compiled into ruby/bin/x64-ucrt-ruby400.dll
+    platforms: [x64-mingw-ucrt]
+    embedded:
+      - files: ["{prefix}bin/x64-ucrt-ruby400.dll"]
+
+  - id: ruby
+    name: Ruby, with the third-party code its LEGAL lists (Onigmo, and others)
+    version: 4.0.9
+    license: Ruby OR BSD-2-Clause
+    kind: program
+    supplier: "Organization: Ruby core team"
+    download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+    notice: ruby
+    ships: "compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/"
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
+    fallback: true
+    embedded:
+      - files: [launcher, "{prefix}bin/ruby"]
+        evidence: "3e93b23afc"
+      - files: ["{prefix}bin/x64-ucrt-ruby400.dll"]
+        evidence: "3e93b23afc"
+    files:
+      - "{prefix}lib/ruby/4.0.0/**"
+      - "{prefix}lib/ruby/gems/4.0.0/**/"
+      - "{prefix}include/**"
+      - "{prefix}share/**"
+      - "{prefix}lib/pkgconfig/**"
+      - "{prefix}lib/libruby*-static.a"
+      - "{prefix}lib/lib*-ruby*.dll.a"
+      - "{prefix}bin/*"
+      - "{prefix}{COPYING,COPYING.ja,NEWS.md,README.md}"
+    binaries:
+      - "{prefix}bin/ruby"
+      - "{prefix}bin/{ruby,rubyw}.exe"
+      - "{prefix}bin/*-ruby*.dll"
+      - "{prefix}lib/libruby*-static.a"
+      - "{prefix}lib/lib*-ruby*.dll.a"
+      # Ruby's own extensions, by name, so that a file nobody listed fails.
+      - "{prefix}lib/ruby/4.0.0/{arch}/{cgi/escape,continuation,coverage,date_core,digest,etc,fcntl,monitor,objspace,openssl,psych,pty,ripper,socket,stringio,strscan,zlib}.{so}"
+      - "{prefix}lib/ruby/4.0.0/{arch}/{digest/{bubblebabble,md5,rmd160,sha1,sha2},erb/escape,io/{console,nonblock,wait},json/ext/{generator,parser},rbconfig/sizeof,win32/{dll_directory,resolv}}.{so}"
+      - "{prefix}lib/ruby/4.0.0/{arch}/enc/{big5,cesu_8,cp949,emacs_mule,encdb,euc_jp,euc_kr,euc_tw,gb18030,gb2312,gbk,iso_8859_1,iso_8859_10,iso_8859_11,iso_8859_13,iso_8859_14,iso_8859_15,iso_8859_16,iso_8859_2,iso_8859_3,iso_8859_4,iso_8859_5,iso_8859_6,iso_8859_7,iso_8859_8,iso_8859_9,koi8_r,koi8_u,shift_jis,utf_16be,utf_16le,utf_32be,utf_32le,windows_1250,windows_1251,windows_1252,windows_1253,windows_1254,windows_1257,windows_31j}.{so}"
+      - "{prefix}lib/ruby/4.0.0/{arch}/enc/trans/{big5,cesu_8,chinese,ebcdic,emoji,emoji_iso2022_kddi,emoji_sjis_docomo,emoji_sjis_kddi,emoji_sjis_softbank,escape,gb18030,gbk,iso2022,japanese,japanese_euc,japanese_sjis,korean,single_byte,transdb,utf8_mac,utf_16_32}.{so}"
+      # The debug symbols rv-ruby's macOS build keeps beside each one.
+      - "{prefix}lib/ruby/4.0.0/{arch}/**/*.bundle.dSYM/Contents/Resources/DWARF/*.bundle"
+
+# Gems whose files hold more than their specification says: another
+# license, or a license text the gem's own files do not carry (a
+# default gem's code is in lib/ruby/4.0.0, and its license file is not).
+gems:
+  minitest:
+    text: README.rdoc
+  prism:
+    notice: prism
+  syntax_suggest:
+    notice: syntax_suggest
+  win32-registry:
+    license: Ruby OR BSD-2-Clause
+    why: >-
+      Its specification declares no license; it is Ruby's ext/win32, and
+      its repository (ruby/win32-registry) carries Ruby's COPYING.
+  rdoc:
+    license: Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5
+    why: >-
+      rdoc's LEGAL.rdoc: Darkfish is BSD-3-Clause, Aliki and the SDoc and
+      peg-markdown parts MIT, its Lato and Source Code Pro fonts OFL-1.1,
+      and Darkfish's Silk icons (famfamfam) CC-BY-2.5.
+  reline:
+    license: Ruby AND BSD-3-Clause
+    why: reline's license_of_rb-readline (rb-readline, Park Heesob, BSD-3-Clause).
+
+# Text files whose words name a copyleft license, reviewed by a person.
+# Each names why the file meets the policy anyway.
+reviewed:
+  - files: ["{prefix}lib/ruby/4.0.0/net/{http,protocol}.rb", "{prefix}lib/ruby/4.0.0/rubygems/vendor/net-{http,protocol}/lib/net/*.rb"]
+    why: The old header offers the Ruby license or the GPL; Ruby's license applies.
+  - files: ["{prefix}lib/ruby/4.0.0/rubygems/{specification,util/licenses}.rb", "{prefix}lib/ruby/4.0.0/bundler/**/*.rb"]
+    why: RubyGems' and Bundler's lists of license identifiers name these licenses as data.
+  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rdoc-*/{LEGAL.rdoc,lib/rdoc/generator/template/darkfish/css/fonts.css}"]
+    why: Names the OFL that covers rdoc's fonts, and the Perl terms of a test fixture rdoc's gem leaves out.
+  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/test-unit-*/{PSFL,doc/text/news.md}"]
+    why: The PSF license's own text, and a changelog entry; test-unit is Ruby OR BSD-2-Clause OR PSF-2.0.
+  - files: ["{prefix}lib/ruby/gems/4.0.0/cache/nkf-*.gem!nkf.gemspec"]
+    why: >-
+      nkf's own gemspec adds EPL-2.0 and LGPL-2.1 to its licenses only when
+      it builds JRuby's java-platform gem, from ext/java, which runtimes
+      prune (RuntimeBuilder.prune_jruby); the gem CRuby installs is Ruby OR
+      BSD-2-Clause.
+  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rdoc-*/{LICENSE.rdoc,lib/rdoc/rd.rb}"]
+    why: Ruby's old license, which offers the GPL-2.0 or Ruby's own conditions; Ruby's apply.
+  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rbs-*/core/dir.rbs", "{prefix}include/ruby-4.0.0/ruby/internal/ctype.h"]
+    why: Mentions the word (a file name in an example, a comment about compatibility); no license.
+  - files: ["{prefix}share/doc/ruby/html/**"]
+    why: >-
+      Ruby's HTML documentation (RubyInstaller's whole tree only; a runtime
+      leaves share/ out), which quotes LEGAL and the NEWS of past releases.

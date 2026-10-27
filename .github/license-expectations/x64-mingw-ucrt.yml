@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileComment: Adapted from .github/license-expectations/ on Fledge's
+#   spike/permissive branch (58edf27d27912d062ccfa5c4960533a220c9eb24).
+
+# What the license audit finds in RubyInstaller's whole tree, which a
+# runtime prunes (ci.yml, Licenses of the whole upstream tree): MSYS2's
+# package-signing keyring, GPL, which only ridk uses. GMP passes as a
+# replaceable shared library with its source pinned.
+- "policy: packages/msys2-keyring-"
+- "missing-notice: msys2-keyring "
+# nkf ships JRuby's Java sources (EPL-2.0 OR LGPL-2.1-or-later) in its
+# folder and in its cached .gem; a runtime prunes them
+# (RuntimeBuilder.prune_jruby).
+- "copyleft-text: lib/ruby/gems/4.0.0/gems/nkf-0.2.0/ext/java/"
+- "copyleft-text: lib/ruby/gems/4.0.0/cache/nkf-0.2.0.gem!ext/java/"

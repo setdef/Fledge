@@ -84,3 +84,21 @@ path = "runtime/notices/libffi/**"
 precedence = "override"
 SPDX-FileCopyrightText = "1996-2025 Anthony Green, Red Hat, Inc and others"
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "runtime/notices/prism/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2022-present Shopify Inc."
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "runtime/notices/syntax_suggest/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2020 schneems"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "runtime/notices/rv-ruby/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Spinel Cooperative"
+SPDX-License-Identifier = "BSD-2-Clause"

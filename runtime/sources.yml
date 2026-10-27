@@ -95,102 +95,41 @@ libxcrypt:
   url: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
   sha256: 71513a31c01a428bccd5367a32fd95f115d6dac50fb5b60c779d5c7942aec071
 
-# The license notices each runtime carries in its notices/ folder, one
-# folder of runtime/notices/ per component, for the platforms that ship
-# the component. rake runtime copies them and writes notices/README.txt
-# from this list. A folder may appear twice, for different platforms,
-# when the same license covers a different build. For macOS and Linux,
-# versions and sources are rv-ruby's formulas at the commit that built
-# release 20261023 (074afbcb773b580516a281c84878f1cd3a651cda). For
-# Windows, they are what RubyInstaller 4.0.9-1 ships: the DLLs MSYS2's
-# UCRT64 packages build, with the versions their files report, and no
-# Rust, since RubyInstaller's Ruby has no YJIT. The fiddle bundled gem
-# carries libffi: compiled into fiddle.so on Linux, as libffi-8.dll
-# beside it on Windows, and macOS's own /usr/lib/libffi.dylib on macOS,
-# which needs no notice.
-notices:
-  - folder: fledge
-    name: Fledge launcher
-    license: AGPL-3.0-or-later
-    source: https://github.com/setdef/Fledge
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
-  - folder: ruby
-    name: Ruby 4.0.9 (with the third-party code listed in LEGAL)
-    license: Ruby OR BSD-2-Clause
-    source: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
-  - folder: rubyinstaller
-    name: RubyInstaller 4.0.9-1, which builds Ruby for Windows (ruby/, whose LICENSE.txt this is)
-    license: BSD-3-Clause
-    source: https://github.com/oneclick/rubyinstaller2/tree/RubyInstaller-4.0.9-1
-    platforms: [x64-mingw-ucrt]
-  - folder: openssl
-    name: OpenSSL 3.6.5 (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers)
-    license: Apache-2.0
-    source: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
-    platforms: [x64-mingw-ucrt]
-  - folder: libyaml
-    name: libyaml 0.2.5 (libyaml-0-2.dll)
-    license: MIT
-    source: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
-    platforms: [x64-mingw-ucrt]
-  - folder: zlib
-    name: zlib 1.3.2 (zlib1.dll)
-    license: Zlib
-    source: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
-    platforms: [x64-mingw-ucrt]
-  - folder: gmp
-    name: GNU MP 6.3.0 (ruby/bin/ruby_builtin_dlls/libgmp-10.dll, which you may replace with your own build)
-    license: LGPL-3.0-or-later OR GPL-2.0-or-later
-    source: https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz, as MSYS2 builds it (https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-gmp)
-    platforms: [x64-mingw-ucrt]
-  - folder: libffi
-    name: libffi (the fiddle gem's libffi-8.dll), as MSYS2 builds it
-    license: MIT
-    source: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-libffi
-    platforms: [x64-mingw-ucrt]
-  - folder: mingw-w64
-    name: The MinGW-w64 runtime, linked into the launcher and every DLL, and winpthreads (libwinpthread-1.dll)
-    license: MinGW-w64 runtime license (COPYING.MinGW-w64-runtime.txt); winpthreads MIT AND BSD-3-Clause
-    source: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0
-    platforms: [x64-mingw-ucrt]
-  - folder: ca-certificates
-    name: Mozilla's CA certificates, as MSYS2 packages them (ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, Mozilla's data of 2026-10-21)
-    license: MPL-2.0
-    source: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-ca-certificates
-    platforms: [x64-mingw-ucrt]
-  - folder: rust
-    name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
-    license: MIT OR Apache-2.0
-    source: https://github.com/rust-lang/rust
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
-  - folder: openssl
-    name: OpenSSL 3.6.2, compiled into Ruby's openssl extension
-    license: Apache-2.0
-    source: https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
-  - folder: libyaml
-    name: libyaml 0.2.5, compiled into Ruby's psych extension
-    license: MIT
-    source: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
-  - folder: ca-certificates
-    name: Mozilla's CA certificates, as curl publishes them (libexec/cert.pem, cacert-2026-03-19)
-    license: MPL-2.0
-    source: https://curl.se/ca/cacert-2026-03-19.pem
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
-  - folder: zlib
-    name: zlib 1.3.2, compiled into Ruby's zlib extension
-    license: Zlib
-    source: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
-    platforms: [x86_64-linux, aarch64-linux]
-  - folder: libffi
-    name: libffi 3.5.2, compiled into the fiddle gem's fiddle.so
-    license: MIT
-    source: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
-    platforms: [x86_64-linux, aarch64-linux]
-  - folder: libxcrypt
-    name: libxcrypt 4.5.2 (lib/libcrypt.so.2, which you may replace with your own build)
-    license: LGPL-2.1-or-later
-    source: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
-    platforms: [x86_64-linux, aarch64-linux]
+# GNU MP, which RubyInstaller's Ruby DLL imports for big-integer
+# arithmetic, ships unchanged as ruby/bin/ruby_builtin_dlls/libgmp-10.dll.
+# That file is byte for byte the one in MSYS2's package
+# mingw-w64-ucrt-x86_64-gmp 6.3.0-2 (package), and MSYS2 built the
+# package from its source package (url): GMP's release, MSYS2's patches,
+# and the PKGBUILD. GMP is LGPL-3.0-or-later OR GPL-2.0-or-later, so the
+# LGPL source bundle each Windows runtime release carries holds the
+# source package (tasks/license_audit/source_bundle.rb); the license
+# audit checks the DLL's SHA-256 (runtime/licenses.yml), so a
+# RubyInstaller that ships another GMP fails until this pin follows; and
+# CI checks that the package holds that very DLL (ci.yml, Runtime).
+gmp:
+  version: 6.3.0
+  url: https://repo.msys2.org/mingw/sources/mingw-w64-gmp-6.3.0-2.src.tar.zst
+  sha256: f288f944fd9609db220bcf6a8dd0703a5674eeb906ef35eb8485bb8192135994
+  package:
+    url: https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-gmp-6.3.0-2-any.pkg.tar.zst
+    sha256: e82a75968a556484a50084578238a84eb60fb93e34986fd6695c537975bd39ea
+  dll_sha256: c2567ccf3f410c3411ba7cd4b7ba14f393a0e70a1d0c0593297df6706b5fba96
+
+# Inputs that no runtime ships, used only by CI's proofs that whoever
+# receives an app can replace its LGPL libraries (ci.yml: Replace
+# libcrypt, Replace GMP): musl, whose crypt (MIT, BSD-3-Clause, and
+# public domain) stands in for libxcrypt, and an older GNU MP, which
+# stands in for RubyInstaller's and reports another version.
+replaceability:
+  musl:
+    version: 1.2.5
+    url: https://musl.libc.org/releases/musl-1.2.5.tar.gz
+    sha256: a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4
+  gmp:
+    version: 6.2.1
+    url: https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz
+    sha256: fd4829912cddd12f84181c3451cc752be224643e87fac497b69edddadc49b4f2
+
+# What each runtime ships, under which license, and with which notice,
+# is runtime/licenses.yml's: the license audit derives it from each built
+# runtime and writes its notices/NOTICES.txt and SBOM (ADR 004).

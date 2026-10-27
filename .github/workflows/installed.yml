@@ -6,8 +6,9 @@
 # installs Fledge from its git tag with Bundler, as the README says, never
 # from RubyGems.org; fledge build, with no FLEDGE_RUNTIME_DIR and an empty
 # cache, downloads that version's runtime from the GitHub Release and
-# checks it against the release's SHA256SUMS; and the app it builds is
-# delivered as CI delivers every push's (.github/scripts/deliver.sh, or
+# checks it against the release's SHA256SUMS, and, to compile
+# examples/native_app's gems from source, its build-only companion; and
+# each app it builds is delivered as CI delivers every push's (.github/scripts/deliver.sh, or
 # deliver.ps1 on Windows). Another job downloads every asset of the
 # release and checks it against SHA256SUMS.
 #
@@ -37,6 +38,10 @@ defaults:
   run:
     shell: bash
 
+env:
+  # The Rust that compiles native_app's Rust gem, as in ci.yml.
+  RUST_TOOLCHAIN: "1.99.1"
+
 jobs:
   sums:
     name: The release's assets match its SHA256SUMS
@@ -60,7 +65,7 @@ jobs:
   installed:
     name: Install, build, and deliver (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -88,6 +93,7 @@ jobs:
           sparse-checkout: |
             examples/hello
             examples/my_cool_app
+            examples/native_app
             test/fixtures/parity
             .github/scripts
             mise.toml
@@ -108,6 +114,30 @@ jobs:
         if: runner.os == 'Windows'
         with:
           ruby-version: ${{ steps.pins.outputs.ruby }}
+
+      # native_app's Rust gem compiles on each platform for itself, as in
+      # ci.yml's Build from source jobs, which say why Windows takes Rust's
+      # GNU toolchain and how bindgen finds MSYS2.
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}${{ runner.os == 'Windows' && '-x86_64-pc-windows-gnu' || '' }}
+
+      # SPDX-SnippetBegin
+      # SPDX-License-Identifier: AGPL-3.0-or-later
+      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetComment: Adapted from Ferro's .github/workflows/ci.yml at
+      #   ef2407b1f44cd3c23d98c5085042857761598b85 (setdef/Ferro), its step
+      #   "Point bindgen at Ruby's MSYS2 headers".
+      - name: Point bindgen and RubyInstaller at MSYS2
+        if: runner.os == 'Windows'
+        run: |
+          sysroot="${RI_DEVKIT//\\//}${MSYSTEM_PREFIX:?setup-ruby did not set MSYSTEM_PREFIX}"
+          {
+            echo "BINDGEN_EXTRA_CLANG_ARGS=--target=x86_64-pc-windows-gnu --sysroot=$sysroot -D__AVX512VLFP16INTRIN_H -D__AVX512FP16INTRIN_H"
+            echo "LIBCLANG_PATH=C:/Program Files/LLVM/bin"
+            echo "MSYS2_PATH=$RI_DEVKIT"
+          } >> "$GITHUB_ENV"
+      # SPDX-SnippetEnd
 
       - name: Install Fledge from the tag with Bundler
         env:
@@ -140,6 +170,22 @@ jobs:
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" "$RUNNER_TEMP/build.err"
           ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
 
+      # Compiling a gem downloads the runtime's build-only companion from
+      # the release too (ADR 006).
+      - name: Build native_app from source with the release's build-only companion
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          unset FLEDGE_RUNTIME_DIR
+          export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
+          cd "$RUNNER_TEMP/project"
+          bundle exec fledge build -t "$PLATFORM" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/native_app" 2> "$RUNNER_TEMP/native.err" ||
+            { cat "$RUNNER_TEMP/native.err"; exit 1; }
+          grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/native.err" | grep -F -- "-dev.tar.gz"
+          cd "$GITHUB_WORKSPACE/examples/native_app"
+          bundle install
+          bundle exec ruby main.rb | tee "$RUNNER_TEMP/native_app.expected"
+
       # What my_cool_app prints as its developer runs it, which the built
       # app must print too.
       - name: Run my_cool_app with bundle exec
@@ -155,6 +201,8 @@ jobs:
             "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.0.9 on ${{ matrix.ruby-platform }}"
           .github/scripts/deliver.sh "$RUNNER_TEMP/dist/MyCoolApp-${{ matrix.platform }}.tar.gz" \
             "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/my_cool_app.expected")"
+          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/NativeApp-${{ matrix.platform }}.tar.gz" \
+            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/native_app.expected")"
 
       - name: Run Hello.exe as someone with no Ruby would
         if: runner.os == 'Windows'
@@ -173,3 +221,12 @@ jobs:
           -Archive "$env:RUNNER_TEMP/dist/MyCoolApp-x64-mingw-ucrt.zip"
           -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/my_cool_app.expected" -Raw).TrimEnd()
+
+      - name: Run NativeApp.exe as someone with no Ruby would
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/dist/NativeApp-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/native_app.expected" -Raw).TrimEnd()

@@ -7,7 +7,7 @@
 
 # What Ships Inside an App Built with Fledge, and What Its Licenses Ask of You
 
-This page lists, for Fledge 0.0.1.pre.1, every third-party component that `fledge build` copies into an app on each platform, the license it is under, and what that license asks of you when you give the app to other people. Fledge's CI writes it from the same license audit that every runtime must pass before it is published (ADR 004), so it lists what the runtimes hold, not what someone remembered.
+This page lists, for Fledge 0.0.1.pre.2, every third-party component that `fledge build` copies into an app on each platform, the license it is under, and what that license asks of you when you give the app to other people. Fledge's CI writes it from the same license audit that every runtime must pass before it is published (ADR 004), so it lists what the runtimes hold, not what someone remembered.
 
 It states facts and cites the sections of each license they come from. It is not legal advice, and it makes no claim about what any license requires of you in your situation: ask your own lawyer.
 
@@ -33,7 +33,7 @@ Each built app lists its gems in `notices/GEMS.txt`: each one's version and plat
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.1 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.2 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/arm64-darwin23/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/arm64-darwin23/openssl.bundle |
@@ -57,7 +57,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.1 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.2 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
@@ -79,13 +79,13 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.1-x86_64-linux-lgpl-sources.tar.gz` in Fledge's release.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.2-x86_64-linux-lgpl-sources.tar.gz` in Fledge's release.
 
 ## Linux on ARM64 (aarch64-linux)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.1 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.2 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
@@ -107,13 +107,13 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.1-aarch64-linux-lgpl-sources.tar.gz` in Fledge's release.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.2-aarch64-linux-lgpl-sources.tar.gz` in Fledge's release.
 
 ## Windows on x64 (x64-mingw-ucrt)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.1 | `AGPL-3.0-or-later` | the program the app's user runs, and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.2 | `AGPL-3.0-or-later` | the program the app's user runs, and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs | 13 to 16 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
@@ -139,7 +139,7 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.1-x64-mingw-ucrt-lgpl-sources.tar.gz` in Fledge's release.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.2-x64-mingw-ucrt-lgpl-sources.tar.gz` in Fledge's release.
 
 ## Libraries under the LGPL
 

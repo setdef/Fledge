@@ -12,6 +12,8 @@
 # Native build artifacts
 *.so
 *.bundle
+# An example's own Bundler settings, such as a gem's build options.
+!/examples/*/.bundle/
 *.dll
 *.o
 *.exe

@@ -29,7 +29,9 @@ class GemPackageTest < Minitest::Test
     gems = "lib/ruby/gems/4.0.0"
     assert_equal :directory, entries.fetch("#{gems}/gems/tool-1.2.0").type
     assert_equal ["# tool\n", 0o644], entries.fetch("#{gems}/gems/tool-1.2.0/lib/tool.rb").then { |entry| [entry.content, entry.mode] }
-    assert_equal 0o755, entries.fetch("#{gems}/gems/tool-1.2.0/exe/tool").mode
+    # gem build takes each file's mode from the disk, and a Windows disk
+    # keeps no executable bit, so a gem built there has none to keep.
+    assert_equal Gem.win_platform? ? 0o644 : 0o755, entries.fetch("#{gems}/gems/tool-1.2.0/exe/tool").mode
     assert_equal File.binread(built.path), entries.fetch("#{gems}/cache/tool-1.2.0.gem").content
     assert_equal "require_relative '../gems/tool-1.2.0/lib/rubygems_plugin.rb'\n", entries.fetch("#{gems}/plugins/tool_plugin.rb").content
     refute(entries.keys.any? { |path| path.include?("/bin/") }, "no executables for a shell")

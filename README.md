@@ -18,11 +18,11 @@ You build the program you already run: `exe/my_cool_app` in a gem, `bin/server` 
 
 ## Status
 
-Fledge is a walking skeleton under construction, and its latest pre-release is `v0.0.1.pre.2`. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), and for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), from any of them. [Plan 001](doc/contributors/plan/001.md)'s walking skeleton shipped a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby; [Plan 002](doc/contributors/plan/002.md) is the road to 1.0, and Fledge now ships gem-shaped apps with their gems ([ADR 005](doc/contributors/adr/005.md)). [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
+Fledge is a walking skeleton under construction, and its latest pre-release is `v0.0.1.pre.3`. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), and for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), from any of them. [Plan 001](doc/contributors/plan/001.md)'s walking skeleton shipped a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby; [Plan 002](doc/contributors/plan/002.md) is the road to 1.0, and Fledge now ships gem-shaped apps with their gems ([ADR 005](doc/contributors/adr/005.md)). [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
 
 ## Installing
 
-Fledge is not on RubyGems.org, and never will be under this plan. Each release is a git tag, such as `v0.0.1.pre.2`, with a [GitHub Release](https://github.com/setdef/Fledge/releases) that carries its runtimes, so take the gem from its tag:
+Fledge is not on RubyGems.org, and never will be under this plan. Each release is a git tag, such as `v0.0.1.pre.3`, with a [GitHub Release](https://github.com/setdef/Fledge/releases) that carries its runtimes, so take the gem from its tag:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -31,7 +31,7 @@ Fledge is not on RubyGems.org, and never will be under this plan. Each release i
 -->
 ```ruby
 # Gemfile
-gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.0.1.pre.2"
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.0.1.pre.3"
 ```
 <!-- SPDX-SnippetEnd -->
 

@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Binary < Data
+    ELF_MAGIC: String
+    AR_MAGIC: String
+    MACHO_MAGICS: Array[String]
+    FAT_MAGIC: String
+    DT_NEEDED: Integer
+    DT_RPATH: Integer
+    DT_RUNPATH: Integer
+    SHT_DYNAMIC: Integer
+    LC_DYLIBS: Array[Integer]
+    LC_RPATH: Integer
+
+    attr_reader format: Symbol
+    attr_reader needed: Array[String]
+    attr_reader rpaths: Array[String]
+    attr_reader assemblies: Array[String]
+
+    def self.new: (format: Symbol, needed: Array[String], rpaths: Array[String], assemblies: Array[String]) -> instance
+
+    def self.read: (String path) -> Binary?
+
+    def self.parse: (String bytes) -> Binary?
+
+    private def self.elf: (String bytes) -> Binary
+
+    private def self.elf_section: (String bytes, Integer at, bool wide, String word, String long) -> Hash[Symbol, Integer]
+
+    private def self.macho: (String bytes, Integer base) -> Binary
+
+    private def self.fat: (String bytes) -> Binary
+
+    private def self.pe?: (String bytes) -> bool
+
+    private def self.pe: (String bytes) -> Binary
+
+    private def self.pe_names: (String bytes, ^(Integer) -> Integer? at, Integer rva, Integer size, Integer name_at) -> Array[String]
+
+    private def self.number: (String bytes, Integer offset, Integer size, String format) -> Integer
+
+    private def self.c_string: (String bytes, Integer offset) -> String
+  end
+end

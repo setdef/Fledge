@@ -16,6 +16,8 @@ module Fledge
 
     def entries: (String gem_dir) -> Array[Entry]
 
+    def contents: () -> Hash[String, String]
+
     def license_files: () -> Hash[String, String]
 
     private def specification: () -> String

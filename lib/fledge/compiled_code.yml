@@ -1,0 +1,122 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# What the precompiled builds of native gems compile into their binaries,
+# as Fledge has reviewed them (Fledge::CompiledCode; ADR 005, section 7).
+#
+# A gem declares one license, its own, but a precompiled build often
+# carries more: nokogiri's compiles in libxml2, libxslt, zlib, and on some
+# platforms GNU libiconv, which is LGPL. Fledge ships an LGPL library only
+# as a separate shared library a person can replace, with its source
+# published, and GPL code not at all (decision 8 and the replies of
+# 2026-10-26 in doc/contributors/decisions.md), so fledge build reads
+# every compiled file of every gem an app ships, and:
+#
+#   - fails on the code of a copyleft library (copyleft, below) compiled
+#     into a file, wherever it is, whatever anyone declares;
+#   - attributes everything else in a gem's compiled files to the gem's
+#     own code and to the libraries its entry here (gems, below) or the
+#     app's fledge.yml (compiled:) says it holds, and fails on a gem with
+#     compiled code that neither describes;
+#   - lists what it found, and each library's license, in the app's
+#     notices/GEMS.txt.
+#
+# copyleft: a library's name, its license, and bytes found only in its
+#   code; a file holding every one of them holds the library.
+# toolchain: what compilers link into every binary they build, listed
+#   wherever its evidence is.
+# gems: by gem name, what its precompiled builds hold besides its own
+#   code (holds), each library with its license, and evidence, a string
+#   found only where the library is compiled in, so that the list is what
+#   a build really holds; reviewed, what the entry was checked against;
+#   and advice, what to tell a developer whose build of the gem holds a
+#   copyleft library.
+#
+# Each entry was checked against the gem's own notices and its binaries
+# for arm64-darwin, x86_64-linux-gnu, aarch64-linux-gnu, and
+# x64-mingw-ucrt, on 2026-10-27.
+
+copyleft:
+  # GNU libiconv's own names for its internal encodings and for MULE's
+  # Lao charset (lib/encodings.def), which neither glibc's iconv nor
+  # libxml2 has. Found in nokogiri 1.19.4's macOS and Windows builds.
+  - library: GNU libiconv
+    license: LGPL-2.1-or-later
+    bytes: ["UCS-4-INTERNAL", "MULELAO-1"]
+  # The audit's signatures for the runtimes' own LGPL libraries
+  # (runtime/licenses.yml).
+  - library: libxcrypt
+    license: LGPL-2.1-or-later
+    bytes: ["yescrypt-ROMhash"]
+  - library: GNU MP
+    license: LGPL-3.0-or-later OR GPL-2.0-or-later
+    bytes: ["GNU MP: Cannot allocate memory"]
+
+toolchain:
+  # GCC writes its version into every object it compiles (.comment); a
+  # binary GCC links carries libgcc's startup code, whose license's
+  # exception asks nothing of a program compiled with it.
+  - name: GCC's runtime library (libgcc)
+    license: GPL-3.0-or-later WITH GCC-exception-3.1
+    evidence: "GCC: ("
+
+gems:
+  sqlite3:
+    reviewed: sqlite3 2.10.2's README.md and dependencies.yml (SQLite 3.54.1, compiled in)
+    holds:
+      - name: SQLite
+        license: blessing
+        evidence: SQLite format 3
+
+  nokogiri:
+    reviewed: nokogiri 1.19.4's LICENSE-DEPENDENCIES.md and dependencies.yml
+    holds:
+      - name: libxml2
+        license: MIT
+        evidence: "libxml2: out of memory"
+      - name: libxslt
+        license: MIT
+        evidence: libxslt (SAXON 6.2 compatible)
+      - name: libgumbo
+        license: Apache-2.0
+        evidence: gumbo
+      - name: zlib
+        license: Zlib
+        evidence: Jean-loup Gailly
+    advice: >-
+      nokogiri's builds for x86_64-linux and aarch64-linux use the C
+      library's iconv and compile in no libiconv (its LICENSE-DEPENDENCIES.md);
+      for macOS and Windows, Fledge cannot ship nokogiri until it can build
+      it without a static libiconv.
+
+  ffi:
+    reviewed: ffi 1.17.4's LICENSE, COPYING, and its build of ext/ffi_c/libffi
+    holds:
+      - name: libffi
+        license: MIT
+        evidence: /libffi/src/prep_cif.c
+
+  pg:
+    reviewed: >-
+      pg 1.7.0's README.md and ports/ (its own shared library of libpq,
+      with OpenSSL and MIT Kerberos compiled in, which pg_ext loads)
+    holds:
+      - name: PostgreSQL's libpq
+        license: PostgreSQL
+        evidence: PGPASSFILE
+      - name: OpenSSL
+        license: Apache-2.0
+        evidence: OpenSSL 3
+      - name: MIT Kerberos
+        license: LicenseRef-krb5
+        evidence: krb5
+
+  google-protobuf:
+    reviewed: google-protobuf 4.36.2's ext/google/protobuf_c (upb, which is protobuf's own, and third_party/utf8_range)
+    holds:
+      - name: utf8_range
+        license: MIT
+
+  prism:
+    reviewed: prism 2.0.0's src/ and include/, all prism's own
+    holds: []

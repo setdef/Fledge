@@ -1,0 +1,103 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class CompiledCode
+    MAP: String
+    RULE: String
+
+    class Signature < Data
+      attr_reader library: String
+      attr_reader license: String
+      attr_reader bytes: Array[String]
+
+      def self.new: (library: String, license: String, bytes: Array[String]) -> instance
+
+      def in?: (String content) -> bool
+    end
+
+    class Library < Data
+      attr_reader name: String
+      attr_reader license: String
+      attr_reader evidence: String?
+
+      def self.new: (name: String, license: String, evidence: String?) -> instance
+    end
+
+    class Entry < Data
+      attr_reader holds: Array[Library]
+      attr_reader advice: String?
+
+      def self.new: (holds: Array[Library], advice: String?) -> instance
+    end
+
+    class Map < Data
+      attr_reader copyleft: Array[Signature]
+      attr_reader toolchain: Array[Library]
+      attr_reader gems: Hash[String, Entry]
+
+      def self.new: (copyleft: Array[Signature], toolchain: Array[Library], gems: Hash[String, Entry]) -> instance
+
+      def self.from: (Hash[String, Object] data) -> Map
+
+      private def self.library: (Hash[String, Object] item) -> Library
+
+      private def self.list: (Hash[String, Object] item, String key) -> Array[Hash[String, Object]]
+
+      private def self.text: (Hash[String, Object] item, String key) -> String
+    end
+
+    class Component < Data
+      attr_reader name: String
+      attr_reader license: String
+      attr_reader files: Array[String]
+      attr_reader shared: bool
+      attr_reader source: String?
+      attr_reader declared: bool
+
+      def self.new: (name: String, license: String, files: Array[String], shared: bool, source: String?, declared: bool) -> instance
+    end
+
+    class Result < Data
+      attr_reader components: Array[Component]
+      attr_reader problems: Array[String]
+
+      def self.new: (components: Array[Component], problems: Array[String]) -> instance
+    end
+
+    self.@map: Map?
+
+    @declared: Hash[String, Array[Config::Compiled]]
+    @map: Map
+
+    def self.map: () -> Map
+
+    def initialize: (?declared: Hash[String, Array[Config::Compiled]], ?map: Map) -> void
+
+    def audit: (String name, Hash[String, String] files, ?label: String) -> Result
+
+    private def binary: (String path, String content) -> Binary?
+
+    private def loaded_files: (Hash[String, Binary] binaries) -> Array[String]
+
+    private def shared_libraries: (String name, Hash[String, Binary] binaries) -> Hash[String, Config::Compiled]
+
+    private def copyleft_problems: (String name, String label, Hash[String, String] files, Array[String] paths, Array[String] loaded) -> Array[String]
+
+    private def attribute: (String name, String label, Hash[String, String] files, Hash[String, Binary] binaries, Hash[String, Config::Compiled] shared, Array[String] loaded) -> [Array[Component], Array[String]]
+
+    private def declared_components: (String label, Hash[String, String] files, Hash[String, Binary] binaries, Array[Config::Compiled] declared, Hash[String, Config::Compiled] shared, Array[String] loaded) -> [Array[Component], Array[String]]
+
+    private def shared_problems: (String label, Hash[String, String] files, Config::Compiled library, Array[String] paths, Array[String] loaded) -> Array[String]
+
+    private def compiled_in_problem: (String label, Config::Compiled library) -> String
+
+    private def unreviewed: (String name, String label, Array[String] paths) -> String
+
+    private def toolchain: (Hash[String, String] files, Hash[String, Binary] binaries) -> Array[Component]
+
+    private def component: (String name, String license, Array[String] files, declared: bool, ?shared: bool, ?source: String?) -> Component
+
+    private def sentence: (Array[String] items) -> String
+  end
+end

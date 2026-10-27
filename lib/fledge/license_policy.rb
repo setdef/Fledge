@@ -47,7 +47,11 @@ module Fledge
     # license Ruby's LEGAL offers for win32/win32.c and win32ole.c beside
     # the GPL; unmodified, it asks for its notice and directions to the
     # standard version (section 4a). OFL-1.1 lets fonts ship inside any
-    # software; only the fonts stay OFL.
+    # software; only the fonts stay OFL. blessing is SQLite's dedication
+    # to the public domain, which asks nothing at all. LicenseRef-krb5 is
+    # MIT Kerberos's NOTICE, whose parts are all BSD, MIT, ISC, and
+    # OpenLDAP terms that ask for their notices (krb5's NOTICE at
+    # krb5-1.22.2-final), and which no single SPDX identifier names.
     NOTICE_ONLY = %w[
       0BSD
       Apache-2.0
@@ -59,13 +63,16 @@ module Fledge
       CC0-1.0
       ISC
       LicenseRef-MinGW-w64-runtime
+      LicenseRef-krb5
       MIT
       MIT-0
       OFL-1.1
       PSF-2.0
+      PostgreSQL
       Ruby
       Unlicense
       Zlib
+      blessing
     ].freeze
 
     # Licenses whose copyleft reaches only the files they cover: allowed

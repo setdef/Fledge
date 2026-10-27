@@ -22,14 +22,18 @@ module Fledge
 
     def for: (Platform platform, runtime: RuntimeContents) -> Result
 
-    private def result: (Hash[LockedGem, GemPackage] packages, Platform platform, RuntimeContents runtime) -> Result
+    private def result: (Hash[LockedGem, GemPackage] packages, Hash[LockedGem, CompiledCode::Result] compiled, Platform platform, RuntimeContents runtime) -> Result
 
     private def license: (LockedGem gem, GemPackage package) -> String
 
     private def license_problem: (LockedGem gem, GemPackage package) -> Array[String]
 
-    private def notices: (Hash[LockedGem, GemPackage] packages, Platform platform, RuntimeContents runtime) -> String
+    private def notices: (Hash[LockedGem, GemPackage] packages, Hash[LockedGem, CompiledCode::Result] compiled, Platform platform, RuntimeContents runtime) -> String
 
-    private def entry: (LockedGem gem, GemPackage package, RuntimeContents runtime) -> String
+    private def entry: (LockedGem gem, GemPackage package, Array[CompiledCode::Component] components, RuntimeContents runtime) -> String
+
+    private def component_line: (CompiledCode::Component component) -> String
+
+    private def lgpl: (Array[CompiledCode::Component] shared) -> String
   end
 end

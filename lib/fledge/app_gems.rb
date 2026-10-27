@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require_relative "compiled_code"
 require_relative "entry"
 require_relative "error"
 require_relative "gem_package"
@@ -27,11 +28,14 @@ module Fledge
   # out those the runtime already has at the same version, fetches the
   # rest (Fledge::GemFetcher), and checks each one: its license, as its
   # specification declares it or as <tt>fledge.yml</tt> corrects it, and
-  # whether it runs on the platform's runtime (Fledge::GemPackage). It
-  # names every problem at once, then raises, so one build shows them
-  # all. Otherwise it returns the entries that install each gem and
-  # <tt>notices/GEMS.txt</tt>, which lists each gem, its license, and where
-  # it came from, then holds the text of every license file it ships.
+  # whether it runs on the platform's runtime (Fledge::GemPackage), and
+  # what its compiled files hold (Fledge::CompiledCode), since a native
+  # gem's binaries can carry libraries under licenses its specification
+  # does not name. It names every problem at once, then raises, so one
+  # build shows them all. Otherwise it returns the entries that install
+  # each gem and <tt>notices/GEMS.txt</tt>, which lists each gem, its
+  # license, the libraries its compiled files hold, and where it came
+  # from, then holds the text of every license file it ships.
   #
   # Use it once per target in <tt>fledge build</tt>.
   #
@@ -114,22 +118,28 @@ module Fledge
     def for(platform, runtime:)
       locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version).reject { |gem| runtime.gems.include?(gem.full_name) }
       packages = locked.to_h { |gem| [gem, GemPackage.new(@fetcher.fetch(gem))] }
+      code = CompiledCode.new(declared: @app.config.compiled)
+      compiled = packages.to_h { |gem, package| [gem, code.audit(gem.name, package.contents, label: gem.to_s)] }
       problems = packages.flat_map do |gem, package|
-        [*license_problem(gem, package), *package.problems(platform: platform.name, ruby_version: runtime.ruby_version)]
+        [
+          *license_problem(gem, package),
+          *package.problems(platform: platform.name, ruby_version: runtime.ruby_version),
+          *compiled.fetch(gem).problems,
+]
       end
       raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
 
-      result(packages, platform, runtime)
+      result(packages, compiled, platform, runtime)
     end
 
-    private def result(packages, platform, runtime)
+    private def result(packages, compiled, platform, runtime)
       return Result.new(files: [], warnings: []) if packages.empty?
 
       files = packages.values.flat_map { |package| package.entries(runtime.gem_dir) }
       warnings = packages.filter_map do |gem, package|
         "#{gem} ships no license file, so #{NOTICES} names its license but cannot quote it." if package.license_files.empty?
       end
-      Result.new(files: [*files, Entry.file(NOTICES, notices(packages, platform, runtime))], warnings:)
+      Result.new(files: [*files, Entry.file(NOTICES, notices(packages, compiled, platform, runtime))], warnings:)
     end
 
     # The license that decides, and whether it came from fledge.yml.
@@ -148,8 +158,9 @@ module Fledge
 ]
     end
 
-    private def notices(packages, platform, runtime)
-      summary = packages.map { |gem, package| entry(gem, package, runtime) }
+    private def notices(packages, compiled, platform, runtime)
+      summary = packages.map { |gem, package| entry(gem, package, compiled.fetch(gem).components, runtime) }
+      shared = compiled.values.flat_map(&:components).select { |component| component.shared && component.source }
       texts = packages.flat_map do |gem, package|
         package.license_files.map { |file, text| "#{'=' * 72}\n#{gem}: #{file}\n#{'=' * 72}\n\n#{text.b.force_encoding(Encoding::UTF_8).scrub}\n" }
       end
@@ -161,27 +172,56 @@ module Fledge
         components and gems are in NOTICES.txt, beside this file.
 
         Each is listed with the license that its specification declares, or
-        that the app's fledge.yml gives, where it came from, and the license
-        files it ships, whose text follows. Fledge ships only gems whose
-        licenses ask nothing beyond keeping their notices: keep this file
-        with the app.
-
+        that the app's fledge.yml gives, the libraries its compiled files
+        hold and their licenses, where it came from, and the license files
+        it ships, whose text follows. Fledge ships only gems whose licenses
+        ask nothing beyond keeping their notices, and LGPL libraries only as
+        separate shared libraries: keep this file with the app.
+        #{lgpl(shared)}
         #{summary.join("\n")}
         #{texts.join("\n")}
       NOTICES
     end
 
-    private def entry(gem, package, runtime)
+    private def entry(gem, package, components, runtime)
       spec = package.spec
       files = package.license_files.keys.map { |file| "#{runtime.gem_dir}/gems/#{spec.full_name}/#{file}" }
       corrected = @app.config.licenses.key?(gem.name) ? " (as fledge.yml gives it; the gem declares #{LicensePolicy.gem_license(spec.licenses)})" : ""
       <<~ENTRY
         #{gem}
           License: #{license(gem, package)}#{corrected}
-          Homepage: #{spec.homepage || 'none given'}
+        #{components.map { |component| "  #{component_line(component)}\n" }.join}  Homepage: #{spec.homepage || 'none given'}
           From: #{gem.url}
           License files: #{files.empty? ? 'none: the gem ships no license text' : files.join(', ')}
       ENTRY
+    end
+
+    # One library a gem's compiled files hold, as GEMS.txt lists it.
+    private def component_line(component)
+      license = "#{component.license}#{', as fledge.yml gives it' if component.declared}"
+      where = component.files.join(", ")
+      return "Compiled in: #{component.name} (#{license}), in #{where}" unless component.shared
+
+      "Shared library: #{component.name} (#{license}), #{where}, which whoever receives the app may replace" \
+        "#{"; its source: #{component.source}" if component.source}"
+    end
+
+    # What the LGPL asks of a developer whose app ships LGPL libraries as
+    # their own shared libraries, or nothing when it ships none.
+    private def lgpl(shared)
+      return "" if shared.empty?
+
+      <<~LGPL
+
+        Some of these gems ship an LGPL library as its own shared library,
+        listed below as a shared library with where its exact source is. The
+        LGPL asks you to keep this notice, to give whoever receives the app
+        that source or a written offer of it, to let them replace the library
+        with their own build, and to allow reverse engineering of the app for
+        debugging such a replacement (LGPL-2.1, sections 6 and 7; LGPL-3.0,
+        section 4). It asks nothing of your own code. doc/licensing.md says
+        more; ask your own lawyer what applies to you.
+      LGPL
     end
   end
 end

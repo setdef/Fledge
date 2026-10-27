@@ -3,13 +3,26 @@
 
 module Fledge
   class Config < Data
+    class Compiled < Data
+      KEYS: Array[String]
+
+      attr_reader name: String
+      attr_reader license: String
+      attr_reader shared_library: String?
+      attr_reader source: String?
+
+      def self.new: (name: String, license: String, shared_library: String?, source: String?) -> instance
+    end
+
     FILE: String
     KEYS: Array[String]
+    KNOWN: String
 
     attr_reader name: String?
     attr_reader licenses: Hash[String, String]
+    attr_reader compiled: Hash[String, Array[Compiled]]
 
-    def self.new: (name: String?, licenses: Hash[String, String]) -> instance
+    def self.new: (name: String?, licenses: Hash[String, String], compiled: Hash[String, Array[Compiled]]) -> instance
 
     def self.none: () -> Config
 
@@ -22,5 +35,9 @@ module Fledge
     private def self.name_from: (Object? value, String path) -> String?
 
     private def self.licenses_from: (Object? value, String path) -> Hash[String, String]
+
+    private def self.compiled_from: (Object? value, String path) -> Hash[String, Array[Compiled]]
+
+    private def self.compiled_entry: (Object entry) -> Compiled?
   end
 end

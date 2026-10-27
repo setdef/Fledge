@@ -6,6 +6,7 @@
 #++
 
 require_relative "test_helper"
+require_relative "support/binaries"
 require_relative "support/gems"
 require_relative "support/loopback_server"
 require "stringio"
@@ -144,6 +145,43 @@ class GemAppBuildTest < Minitest::Test
     notices = File.read(File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt"))
     assert_includes notices, "  License: MIT (as fledge.yml gives it; the gem declares NOASSERTION)\n"
     assert_includes notices, "  License files: none: the gem ships no license text\n"
+  end
+
+  # A native gem whose compiled code holds a copyleft library compiled
+  # in fails, naming the gem, the file, the library, and why; one whose
+  # compiled code no one reviewed fails saying how to declare it; and once
+  # fledge.yml declares what it holds, GEMS.txt says so (ADR 005,
+  # section 7).
+  def test_a_native_gems_compiled_code_is_judged_by_what_it_holds
+    iconv = FakeGem.build(@gems, "iconvy", "1.0.0", platform: "x86_64-linux-gnu",
+      files: { "lib/iconvy.so" => Binaries.elf(payload: "UCS-4-INTERNAL MULELAO-1"), "LICENSE" => "MIT\n" })
+    mystery = FakeGem.build(@gems, "mystery", "1.0.0", platform: "x86_64-linux-gnu",
+      files: { "lib/mystery.so" => Binaries.elf(needed: ["libc.so.6"], payload: "libfoo 1.2"), "LICENSE" => "MIT\n" })
+    root = project(dependencies: { "iconvy" => ">= 0", "mystery" => ">= 0" }, locked: [iconv, mystery])
+
+    _, err, status = build("-t", "x86_64-linux", root)
+
+    assert_equal 1, status
+    problems = err.lines.map(&:chomp).grep_v(/\ADownloading /)
+    assert_equal "fledge build: MyApp can't ship for x86_64-linux:", problems.first
+    assert_match(%r{\Afledge build:   iconvy 1\.0\.0 \(x86_64-linux-gnu\) compiles GNU libiconv's code \(LGPL-2\.1-or-later\) into lib/iconvy\.so\.},
+      problems[1])
+    assert_match(%r{\Afledge build:   mystery 1\.0\.0 \(x86_64-linux-gnu\) ships compiled code \(lib/mystery\.so\) that Fledge has not reviewed},
+      problems[2])
+  end
+
+  def test_fledge_yml_says_what_a_native_gems_compiled_code_holds
+    mystery = FakeGem.build(@gems, "mystery", "1.0.0", platform: "x86_64-linux-gnu",
+      files: { "lib/mystery.so" => Binaries.elf(needed: ["libc.so.6"], payload: "libfoo 1.2"), "LICENSE" => "MIT\n" })
+    root = project(dependencies: { "mystery" => ">= 0" }, locked: [mystery])
+    File.write(File.join(root, "fledge.yml"), "compiled:\n  mystery:\n    - {name: libfoo 1.2, license: BSD-3-Clause}\n")
+
+    _, err, status = build("-t", "x86_64-linux", root)
+
+    assert_equal 0, status, err
+    notices = File.read(File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt"))
+    assert_includes notices, "mystery 1.0.0 (x86_64-linux-gnu)\n  License: MIT\n"
+    assert_includes notices, "  Compiled in: libfoo 1.2 (BSD-3-Clause, as fledge.yml gives it), in lib/mystery.so\n"
   end
 
   def test_a_gem_whose_file_differs_from_the_lockfile_is_refused

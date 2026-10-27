@@ -8,6 +8,7 @@
 require "fileutils"
 require "tmpdir"
 require_relative "license_audit"
+require_relative "../lib/fledge/compiled_code"
 require_relative "../lib/fledge/platform"
 require_relative "../lib/fledge/tar_gz"
 require_relative "../lib/fledge/version"
@@ -131,8 +132,33 @@ class LicensingPage
 
       `fledge build` adds the gems your app's `Gemfile.lock` locks for each platform (leaving out its `development` and `test` groups) to Ruby's own, and holds them to the rule above: it ships a gem only when the license its specification declares asks nothing beyond keeping notices (#{Fledge::LicensePolicy::NOTICE_ONLY.map { |id| "`#{id}`" }.join(', ')}, or a choice that includes one), and otherwise fails the build, naming each gem and the license it found. A gem whose specification declares no license fails too. If a gem's specification declares no license, or the wrong one, you may give the right one in your project's `fledge.yml`, under `licenses`; that is your own statement, and the app's notices say that it came from you.
 
-      Each built app lists its gems in `notices/GEMS.txt`: each one's version and platform, license, homepage, and where Fledge downloaded it, then the full text of every license file the gem ships. A gem that ships no license file is listed with the license it declares, and `fledge build` warns you, since the notice that license asks you to keep is then yours to find. Fledge reads the license each gem declares; it does not look inside a native gem's compiled code for the libraries the gem built into it (sqlite3, for one, compiles in SQLite, which is in the public domain), so read a native gem's own notices too.
+      A native gem's compiled files can hold more than its own code: libraries its build compiled in, under licenses its specification does not name. So `fledge build` reads every compiled file of every gem (`.so`, `.bundle`, `.dll`, and any other binary) as it reads a runtime's, and:
+
+      - **fails on a copyleft library compiled into a file**, found by bytes only that library's code holds, naming the gem, the files, the library, and its license. The LGPL allows a library in a proprietary app only as a separate, replaceable shared library, and the GPL not at all, so no statement of yours lifts this. It looks for #{sentence(Fledge::CompiledCode.map.copyleft.map { |signature| "#{signature.library} (`#{signature.license}`)" })}.
+      - **attributes the rest** to the gem's own code and to the libraries Fledge has reviewed its precompiled builds to hold (`lib/fledge/compiled_code.yml`), or that your `fledge.yml` says it holds, under `compiled`, and fails on compiled code neither describes, saying how to describe it. Your `fledge.yml` is your own statement, as cargo-deny's `clarify` is for a Rust crate, and the app's notices say that it came from you: `compiled: {some_gem: [{name: libfoo 1.2, license: MIT}]}`, or `compiled: {some_gem: []}` for a gem whose compiled code is its own alone.
+      - **ships an LGPL library in its own file** only when another of the gem's compiled files loads it, so whoever receives the app can replace it, and your `fledge.yml` says where its exact source is: `{name: GNU libiconv 1.18, license: LGPL-2.1-or-later, shared_library: lib/libiconv-2.dll, source: https://...}`. Fledge does not host a third-party gem's sources; `notices/GEMS.txt` names the place you give, and what the LGPL then asks of you (below) applies to that library.
+
+      Fledge has reviewed these gems' precompiled builds:
+
+      #{reviewed_gems.join("\n")}
+
+      Each built app lists its gems in `notices/GEMS.txt`: each one's version and platform, license, the libraries its compiled files hold with their licenses and files, homepage, and where Fledge downloaded it, then the full text of every license file the gem ships. A gem that ships no license file is listed with the license it declares, and `fledge build` warns you, since the notice that license asks you to keep is then yours to find. A library a gem compiles in is listed with its license even when the gem carries no copy of that license's text (pg's OpenSSL and MIT Kerberos, for two); that text, too, is then yours to add.
     GEMS
+  end
+
+  # +items+ as a sentence lists them.
+  private def sentence(items)
+    return items.join(" and ") if items.size < 3
+
+    "#{items[0...-1].to_a.join(', ')}, and #{items.last}"
+  end
+
+  # Each gem lib/fledge/compiled_code.yml reviews, with what it holds.
+  private def reviewed_gems
+    Fledge::CompiledCode.map.gems.sort.map do |name, entry|
+      holds = entry.holds.map { |library| "#{library.name} (`#{library.license}`)" }
+      "- **#{name}**: #{holds.empty? ? 'its own code alone' : holds.join(', ')}.#{" #{entry.advice}" if entry.advice}"
+    end
   end
 
   private def section(platform, summary)

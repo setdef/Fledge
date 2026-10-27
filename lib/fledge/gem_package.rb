@@ -130,6 +130,23 @@ module Fledge
       ]
     end
 
+    # Every file in the gem, by its path in the gem, and its bytes.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   package.contents.keys.grep(/\.so\z/) # => ["lib/sqlite3/4.0/sqlite3_native.so", ...]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def contents
+      @files.select { |entry| entry.type == :file }.to_h { |entry| [entry.path, entry.content.to_s] }
+    end
+
     # The gem's license files, by their paths in the gem, and their text.
     #
     # === Example

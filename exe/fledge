@@ -67,11 +67,16 @@
 #                        gem's checksum (bundle lock --add-checksums).
 #                        A gem must be pure Ruby or locked precompiled
 #                        for the target, and under a license that asks
-#                        nothing beyond keeping its notices; the build
-#                        names each one that is not, and fails.
+#                        nothing beyond keeping its notices, and its
+#                        compiled files may hold no LGPL or GPL library
+#                        compiled in; the build names each one that
+#                        does not, and fails.
 #     ROOT/fledge.yml    Optional. name: the app's name. licenses: the
 #                        license of a gem whose gemspec gives none, or
 #                        the wrong one, such as {some_gem: MIT}.
+#                        compiled: what a native gem Fledge has not
+#                        reviewed compiles in, such as {some_gem:
+#                        [{name: libfoo 1.2, license: MIT}]}.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        NAME is the gemspec's name, or else ROOT's
 #                        folder name, camelized (my_cool_app is

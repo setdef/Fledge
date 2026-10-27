@@ -18,9 +18,24 @@ An app is a folder with a `main.rb`. During development, run it with `ruby main.
 
 ## Status
 
-Fledge is a walking skeleton under construction. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), and for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), from any of them. No release exists yet, so `fledge build` has no runtimes to download: build them with `bundle exec rake runtime` (on each platform; the Windows one with `bundle exec rake "runtime[x64-mingw-ucrt]"` on macOS or Linux) and point `FLEDGE_RUNTIME_DIR` at them. The first goal is an app that does nothing: [Plan 001](doc/contributors/plan/001.md) ships a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby, before Fledge does anything more useful. [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
+Fledge is a walking skeleton under construction, and its first pre-release is `v0.0.1.pre.1`. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), and for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), from any of them. The first goal is an app that does nothing: [Plan 001](doc/contributors/plan/001.md) ships a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby, before Fledge does anything more useful. [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
 
-Fledge is not on RubyGems.org, and never will be under this plan. Releases are git tags and [GitHub Releases](https://github.com/setdef/Fledge/releases).
+## Installing
+
+Fledge is not on RubyGems.org, and never will be under this plan. Each release is a git tag, such as `v0.0.1.pre.1`, with a [GitHub Release](https://github.com/setdef/Fledge/releases) that carries its runtimes, so take the gem from its tag:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```ruby
+# Gemfile
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.0.1.pre.1"
+```
+<!-- SPDX-SnippetEnd -->
+
+Then `bundle install`, and run it as `bundle exec fledge`. Fledge needs Ruby 4.0. The first `fledge build` for a platform downloads that version's runtime from its GitHub Release into `~/.cache/fledge/runtimes` (or `$XDG_CACHE_HOME/fledge/runtimes`), checked against the release's `SHA256SUMS`; later builds use the cache. With `FLEDGE_RUNTIME_DIR` naming a folder of runtimes, it uses those instead.
 
 ## Using Fledge
 
@@ -66,7 +81,7 @@ bundle exec rake
 
 `bin/setup` installs the tools pinned in `mise.toml` (Ruby, the REUSE tool, actionlint, shellcheck, and clang-format), installs the bundle, and installs the pre-commit hook. `bundle exec rake` is the gate: it fixes what RuboCop and the REUSE tool can fix, then runs the tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck over the workflows and shellcheck over `bin/setup` and `.github/scripts`, clang-format over the launcher's C, signature checks (no `untyped`, `rbs validate`, and parity between `sig/` and `lib/`), Steep, and the package check, which builds the gem, installs it into an empty `GEM_HOME`, and runs `fledge` from there. It passes with zero errors and zero warnings.
 
-`bundle exec rake runtime` builds this computer's runtime into `tmp/runtime/` from the sources pinned in `runtime/sources.yml`; it needs a C compiler, and on Linux `make`, `perl`, and `patchelf`. `bundle exec rake "runtime[x64-mingw-ucrt]"` builds the Windows runtime on macOS or Linux, with a pinned llvm-mingw it downloads; it needs `gpgv` (GnuPG), to check RubyInstaller's signature, and `7z` or `bsdtar`. With a runtime there, `bundle exec rake test` also builds `examples/hello` and runs it in a clean and a hostile environment, and `bundle exec rake parity` builds the probe in `test/fixtures/parity` and compares what it sees with `ruby main.rb` on the Ruby the runtime came from ([ADR 003](doc/contributors/adr/003.md)). The launcher's C is in `runtime/launcher/`.
+`bundle exec rake runtime` builds this computer's runtime into `tmp/runtime/` from the sources pinned in `runtime/sources.yml`, with the release assets that describe it beside it, and `FLEDGE_RUNTIME_DIR=tmp/runtime` makes `fledge build` use it; it needs a C compiler, and on Linux `make`, `perl`, and `patchelf`. `bundle exec rake "runtime[x64-mingw-ucrt]"` builds the Windows runtime on macOS or Linux, with a pinned llvm-mingw it downloads; it needs `gpgv` (GnuPG), to check RubyInstaller's signature, and `7z` or `bsdtar`. With a runtime there, `bundle exec rake test` also builds `examples/hello` and runs it in a clean and a hostile environment, and `bundle exec rake parity` builds the probe in `test/fixtures/parity` and compares what it sees with `ruby main.rb` on the Ruby the runtime came from ([ADR 003](doc/contributors/adr/003.md)). The launcher's C is in `runtime/launcher/`.
 
 GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. The **Gate** job runs `bundle exec rake` on Linux and fails if the gate changed a file. The **Runtime** jobs build a runtime on macOS 15 (Apple Silicon), Ubuntu 24.04, and Ubuntu 24.04 on arm64, and the Windows runtime, cross-compiled, on Ubuntu 24.04. The **Test** jobs run the tests and the parity check on each platform, Windows included, with its runtime. The **Build** job builds `examples/hello` and the parity probe for all four platforms on one Linux runner, and the **Delivery** jobs run each on a fresh runner, and in Debian 13 containers with no Ruby installed, with `.github/scripts/deliver.sh`, or on Windows `.github/scripts/deliver.ps1`. Every runtime build runs the license audit (`tasks/license_audit.rb`, against `runtime/licenses.yml`), and refuses to archive a runtime that breaks the policy. The **Licenses** jobs validate each runtime's SBOM with the SPDX tools and prove the audit still fails when a GPL library and a GPL gem are slipped in; the **Licenses of the whole upstream tree** jobs audit rv-ruby's and RubyInstaller's whole trees, which must fail exactly as `.github/license-expectations/` says; **Licensing page is current** regenerates `doc/licensing.md` from the four runtimes (`bundle exec rake "licensing[DIR]"` does it locally) and fails if it differs; and **Replace libcrypt** and **Replace GMP** prove that whoever receives an app can replace its LGPL libraries. `.github/workflows/release.yml` publishes the runtimes, their SBOMs and NOTICES, the LGPL source bundles, and `SHA256SUMS` to a GitHub Release when a `v*` tag is pushed, then `.github/workflows/installed.yml` installs Fledge from that tag on a fresh runner of each platform and builds and delivers hello with runtimes downloaded from the release.
 

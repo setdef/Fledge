@@ -9,7 +9,7 @@
 #
 #   pwsh -NoProfile -File replace-gmp.ps1 -Archive ARCHIVE -Dll DLL -Version VERSION
 #
-# ARCHIVE is a built hello-x64-mingw-ucrt.zip; DLL a libgmp-10.dll built
+# ARCHIVE is a built Hello-x64-mingw-ucrt.zip; DLL a libgmp-10.dll built
 # some other way (CI cross-builds GNU MP VERSION with llvm-mingw). The app
 # prints Integer::GMP_VERSION, which Ruby reads from the GMP it loaded,
 # and the SHA-256 of a large product printed in decimal, which takes GMP's
@@ -36,7 +36,7 @@ $place = Join-Path $env:RUNNER_TEMP 'replace-gmp'
 New-Item -ItemType Directory -Force $place | Out-Null
 Expand-Archive -LiteralPath $Archive -DestinationPath $place
 $root = Join-Path $place ([IO.Path]::GetFileNameWithoutExtension($Archive))
-$app = Join-Path $root 'hello.exe'
+$app = Join-Path $root 'Hello.exe'
 $gmp = Join-Path $root 'ruby\bin\ruby_builtin_dlls\libgmp-10.dll'
 Set-Content -LiteralPath (Join-Path $root 'app\main.rb') -NoNewline -Value @'
 require "digest"
@@ -61,7 +61,7 @@ function Invoke-Hello {
   $errors = $process.StandardError.ReadToEndAsync()
   $out = $process.StandardOutput.ReadToEnd()
   $process.WaitForExit()
-  if ($process.ExitCode -ne 0) { Fail "hello.exe exited $($process.ExitCode): $out $($errors.GetAwaiter().GetResult())" }
+  if ($process.ExitCode -ne 0) { Fail "Hello.exe exited $($process.ExitCode): $out $($errors.GetAwaiter().GetResult())" }
   $out -split "`r?`n" | Where-Object { $_ -ne '' }
 }
 

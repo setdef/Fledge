@@ -3,9 +3,9 @@
 
 # Plan 001's pipeline, on every push and pull request: the gate, then a
 # runtime per platform, then the tests on each platform with its own
-# runtime, then one machine building examples/hello for every platform,
-# then Delivery: each built app unpacked and run on a fresh computer
-# that has never had Ruby.
+# runtime, then one machine building examples/hello and the gem-shaped
+# examples/my_cool_app for every platform, then Delivery: each built app
+# unpacked and run on a fresh computer that has never had Ruby.
 #
 # The gate runs once, on Linux: its lints (RuboCop, Steep, RDoc
 # coverage, REUSE, actionlint, clang-format) read the same files on
@@ -257,10 +257,12 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test
 
-      # ADR 003: the probe app, built from this runtime, against rv-ruby's
-      # own ruby running the same main.rb. The report lands in the job
-      # summary; an unjustified difference fails the job.
-      - name: Check parity with ruby main.rb
+      # ADR 003 and ADR 005: the probe app, built from this runtime,
+      # against rv-ruby's own ruby running the same main.rb, then the probe
+      # as examples/my_cool_app's program, built with its gems, against
+      # bundle exec on that Ruby. The report lands in the job summary; an
+      # unjustified difference fails the job.
+      - name: Check parity with ruby main.rb and bundle exec
         timeout-minutes: 10
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
@@ -268,9 +270,10 @@ jobs:
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 001), through setup-ruby at
-  # mise.toml's pin. test/built_app_test.rb unpacks hello with Windows'
-  # own Expand-Archive and runs hello.exe; test/zip_test.rb checks that
-  # Expand-Archive reads what Fledge::Zip writes.
+  # mise.toml's pin. test/built_app_test.rb unpacks hello and my_cool_app
+  # with Windows' own Expand-Archive and runs Hello.exe and MyCoolApp.exe;
+  # test/zip_test.rb checks that Expand-Archive reads what Fledge::Zip
+  # writes.
   test-windows:
     name: Test (x64-mingw-ucrt)
     needs: runtime
@@ -303,20 +306,22 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test
 
-      # ADR 003: the probe app, built from this runtime, against
-      # RubyInstaller's own ruby.exe running the same main.rb, then both
-      # again under code page 437. The report lands in the job summary; an
-      # unjustified difference fails the job.
-      - name: Check parity with ruby main.rb
+      # ADR 003 and ADR 005: the probe app, built from this runtime,
+      # against RubyInstaller's own ruby.exe running the same main.rb, then
+      # both again under code page 437, then the probe as
+      # examples/my_cool_app's program against bundle exec. The report
+      # lands in the job summary; an unjustified difference fails the job.
+      - name: Check parity with ruby main.rb and bundle exec
         timeout-minutes: 10
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: bundle exec rake parity
 
   # Every platform's app from one Linux computer, from the runtimes the
-  # runtime jobs built: the cross-building ADR 001 promises.
+  # runtime jobs built: the cross-building ADR 001 promises, now with each
+  # platform's build of my_cool_app's native gem (ADR 005).
   build:
-    name: Build examples/hello for every platform
+    name: Build the examples for every platform
     needs: runtime
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -338,48 +343,65 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       # The parity probe (test/fixtures/parity) goes to Delivery too, which
-      # asks it what a child Ruby sees.
-      - name: Build hello and the parity probe for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
+      # asks it what a child Ruby sees. my_cool_app's gems come from
+      # RubyGems.org, each checked against its Gemfile.lock's checksum.
+      - name: Build hello, the parity probe, and my_cool_app for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: |
-          for app in examples/hello test/fixtures/parity; do
+          for app in examples/hello test/fixtures/parity examples/my_cool_app; do
             ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux -t x64-mingw-ucrt "$app"
           done
 
+      # What my_cool_app prints as its developer runs it, which every
+      # platform's built app must print too.
+      - name: Run my_cool_app with bundle exec
+        working-directory: examples/my_cool_app
+        run: |
+          bundle install
+          bundle exec ruby exe/my_cool_app | tee "$GITHUB_WORKSPACE/dist/my_cool_app.expected"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: hello-arm64-darwin
+          name: apps-arm64-darwin
           path: |
-            dist/hello-arm64-darwin.tar.gz
-            dist/parity-arm64-darwin.tar.gz
+            dist/Hello-arm64-darwin.tar.gz
+            dist/Parity-arm64-darwin.tar.gz
+            dist/MyCoolApp-arm64-darwin.tar.gz
+            dist/my_cool_app.expected
           if-no-files-found: error
           retention-days: 14
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: hello-x86_64-linux
+          name: apps-x86_64-linux
           path: |
-            dist/hello-x86_64-linux.tar.gz
-            dist/parity-x86_64-linux.tar.gz
+            dist/Hello-x86_64-linux.tar.gz
+            dist/Parity-x86_64-linux.tar.gz
+            dist/MyCoolApp-x86_64-linux.tar.gz
+            dist/my_cool_app.expected
           if-no-files-found: error
           retention-days: 14
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: hello-aarch64-linux
+          name: apps-aarch64-linux
           path: |
-            dist/hello-aarch64-linux.tar.gz
-            dist/parity-aarch64-linux.tar.gz
+            dist/Hello-aarch64-linux.tar.gz
+            dist/Parity-aarch64-linux.tar.gz
+            dist/MyCoolApp-aarch64-linux.tar.gz
+            dist/my_cool_app.expected
           if-no-files-found: error
           retention-days: 14
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: hello-x64-mingw-ucrt
+          name: apps-x64-mingw-ucrt
           path: |
-            dist/hello-x64-mingw-ucrt.zip
-            dist/parity-x64-mingw-ucrt.zip
+            dist/Hello-x64-mingw-ucrt.zip
+            dist/Parity-x64-mingw-ucrt.zip
+            dist/MyCoolApp-x64-mingw-ucrt.zip
+            dist/my_cool_app.expected
           if-no-files-found: error
           retention-days: 14
 
@@ -416,13 +438,18 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: hello-${{ matrix.platform }}
+          name: apps-${{ matrix.platform }}
           path: ${{ runner.temp }}/delivered
 
       - name: Run hello as someone with no Ruby would
         run: >-
-          .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/hello-${{ matrix.platform }}.tar.gz"
-          "$RUNNER_TEMP/delivered/parity-${{ matrix.platform }}.tar.gz" "${{ matrix.ruby-platform }}"
+          .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/Hello-${{ matrix.platform }}.tar.gz"
+          "$RUNNER_TEMP/delivered/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.0.9 on ${{ matrix.ruby-platform }}"
+
+      - name: Run my_cool_app as someone with no Ruby would
+        run: >-
+          .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
+          "$RUNNER_TEMP/delivered/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
 
   # Delivery again, in Debian 13 containers with no Ruby installed at all
   # (deliver.sh --no-ruby-installed checks), glibc 2.41, and no CA
@@ -450,18 +477,23 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: hello-${{ matrix.platform }}
+          name: apps-${{ matrix.platform }}
           path: delivered
 
       - name: Run hello on a computer with no Ruby installed
         run: >-
-          .github/scripts/deliver.sh "delivered/hello-${{ matrix.platform }}.tar.gz"
-          "delivered/parity-${{ matrix.platform }}.tar.gz" "${{ matrix.platform }}" --no-ruby-installed
+          .github/scripts/deliver.sh "delivered/Hello-${{ matrix.platform }}.tar.gz"
+          "delivered/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.0.9 on ${{ matrix.platform }}" --no-ruby-installed
+
+      - name: Run my_cool_app on a computer with no Ruby installed
+        run: >-
+          .github/scripts/deliver.sh "delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
+          "delivered/Parity-${{ matrix.platform }}.tar.gz" "$(cat delivered/my_cool_app.expected)" --no-ruby-installed
 
   # Delivery on a fresh Windows runner, with nothing of Fledge but the
   # .zip and the script that checks it, and no Ruby set up: the runner's
   # own Rubies and MSYS2 are kept off the app's PATH, and the script runs
-  # hello.exe from another drive, under a folder name outside ASCII, in a
+  # Hello.exe and MyCoolApp.exe from another drive, under a folder name outside ASCII, in a
   # clean and in a hostile environment (.github/scripts/deliver.ps1).
   delivery-windows:
     name: Delivery (x64-mingw-ucrt)
@@ -477,15 +509,24 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: hello-x64-mingw-ucrt
+          name: apps-x64-mingw-ucrt
           path: ${{ runner.temp }}/delivered
 
-      - name: Run hello.exe as someone with no Ruby would
+      - name: Run Hello.exe as someone with no Ruby would
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/hello-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/delivered/parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Archive "$env:RUNNER_TEMP/delivered/Hello-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Expected "Hello from Ruby 4.0.9 on x64-mingw-ucrt"
+
+      - name: Run MyCoolApp.exe as someone with no Ruby would
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/MyCoolApp-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected" -Raw).TrimEnd()
 
   # The license audit's own checks on each runtime this run built: that
   # the release assets are the very notices the runtime carries, that a
@@ -665,13 +706,13 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: hello-${{ matrix.platform }}
+          name: apps-${{ matrix.platform }}
           path: ${{ runner.temp }}/delivered
 
       - name: Replace lib/libcrypt.so.2 and run the app with each replacement
         run: |
-          tar -xzf "$RUNNER_TEMP/delivered/hello-${{ matrix.platform }}.tar.gz" -C "$RUNNER_TEMP"
-          sh .github/scripts/replace-libcrypt.sh "$RUNNER_TEMP/hello-${{ matrix.platform }}" hello \
+          tar -xzf "$RUNNER_TEMP/delivered/Hello-${{ matrix.platform }}.tar.gz" -C "$RUNNER_TEMP"
+          sh .github/scripts/replace-libcrypt.sh "$RUNNER_TEMP/Hello-${{ matrix.platform }}" Hello \
             "$(ruby .github/scripts/fetch_pin.rb libxcrypt)" "$(ruby .github/scripts/fetch_pin.rb replaceability musl)"
 
   # Another GNU MP for Windows, cross-built with the pinned llvm-mingw
@@ -731,7 +772,7 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: hello-x64-mingw-ucrt
+          name: apps-x64-mingw-ucrt
           path: ${{ runner.temp }}/delivered
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -743,5 +784,5 @@ jobs:
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/replace-gmp.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/hello-x64-mingw-ucrt.zip"
+          -Archive "$env:RUNNER_TEMP/delivered/Hello-x64-mingw-ucrt.zip"
           -Dll "$env:RUNNER_TEMP/gmp-dll/libgmp-10.dll" -Version 6.2.1

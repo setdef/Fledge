@@ -78,8 +78,8 @@ jobs:
             platform: x64-mingw-ucrt
             ruby-platform: x64-mingw-ucrt
     steps:
-      # Only what a developer would have of Fledge's repository: hello and
-      # the parity probe to build, and the scripts that check the result,
+      # Only what a developer would have of Fledge's repository: hello,
+      # my_cool_app, and the parity probe to build, and the scripts that check the result,
       # at the tag. Fledge itself comes from Bundler.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -87,6 +87,7 @@ jobs:
           ref: ${{ inputs.tag }}
           sparse-checkout: |
             examples/hello
+            examples/my_cool_app
             test/fixtures/parity
             .github/scripts
             mise.toml
@@ -123,7 +124,7 @@ jobs:
 
       # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
       # from the release, checked against its SHA256SUMS.
-      - name: Build hello and the parity probe with runtimes from the release
+      - name: Build hello, my_cool_app, and the parity probe with runtimes from the release
         env:
           PLATFORM: ${{ matrix.platform }}
           TAG: ${{ inputs.tag }}
@@ -131,7 +132,7 @@ jobs:
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
           cd "$RUNNER_TEMP/project"
-          for app in examples/hello test/fixtures/parity; do
+          for app in examples/hello test/fixtures/parity examples/my_cool_app; do
             bundle exec fledge build -t "$PLATFORM" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
           done
           cat "$RUNNER_TEMP/build.err"
@@ -139,16 +140,36 @@ jobs:
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" "$RUNNER_TEMP/build.err"
           ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
 
-      - name: Run hello as someone with no Ruby would
-        if: runner.os != 'Windows'
-        run: >-
-          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/hello-${{ matrix.platform }}.tar.gz"
-          "$RUNNER_TEMP/dist/parity-${{ matrix.platform }}.tar.gz" "${{ matrix.ruby-platform }}"
+      # What my_cool_app prints as its developer runs it, which the built
+      # app must print too.
+      - name: Run my_cool_app with bundle exec
+        working-directory: examples/my_cool_app
+        run: |
+          bundle install
+          bundle exec ruby exe/my_cool_app | tee "$RUNNER_TEMP/my_cool_app.expected"
 
-      - name: Run hello.exe as someone with no Ruby would
+      - name: Run hello and my_cool_app as someone with no Ruby would
+        if: runner.os != 'Windows'
+        run: |
+          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.tar.gz" \
+            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.0.9 on ${{ matrix.ruby-platform }}"
+          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/MyCoolApp-${{ matrix.platform }}.tar.gz" \
+            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/my_cool_app.expected")"
+
+      - name: Run Hello.exe as someone with no Ruby would
         if: runner.os == 'Windows'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/dist/hello-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/dist/parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Archive "$env:RUNNER_TEMP/dist/Hello-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Expected "Hello from Ruby 4.0.9 on x64-mingw-ucrt"
+
+      - name: Run MyCoolApp.exe as someone with no Ruby would
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/dist/MyCoolApp-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/my_cool_app.expected" -Raw).TrimEnd()

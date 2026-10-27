@@ -1,17 +1,18 @@
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Delivery (Plan 001) on Windows: runs a built examples/hello the way a
-# person who has never installed Ruby would, and fails unless it behaves.
-# It is deliver.sh's counterpart, with the same checks where Windows has
-# them, and more where Windows has more ways in.
+# Delivery (Plan 001) on Windows: runs a built app the way a person who
+# has never installed Ruby would, and fails unless it behaves. It is
+# deliver.sh's counterpart, with the same checks where Windows has them,
+# and more where Windows has more ways in. CI delivers examples/hello and
+# examples/my_cool_app (ADR 005).
 #
-#   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Probe PROBE_ARCHIVE -Platform RUBY_PLATFORM
+#   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Probe PROBE_ARCHIVE -Platform PLATFORM -Expected LINE
 #
-# ARCHIVE is hello-PLATFORM.zip as fledge build wrote it, and PROBE_ARCHIVE
-# parity-PLATFORM.zip, the parity probe (test/fixtures/parity), which
-# reports what a child Ruby sees. RUBY_PLATFORM is what the app must
-# report: x64-mingw-ucrt.
+# ARCHIVE is NAME-PLATFORM.zip as fledge build wrote it, and PROBE_ARCHIVE
+# Parity-PLATFORM.zip, the parity probe (test/fixtures/parity), which
+# reports what a child Ruby sees. PLATFORM is x64-mingw-ucrt, and LINE the
+# one line the app must print.
 #
 # Each run goes through .NET's Process, which waits for the program and
 # captures both of its streams: PowerShell's & operator neither waits for
@@ -22,14 +23,15 @@
 param(
   [Parameter(Mandatory)] [string] $Archive,
   [Parameter(Mandatory)] [string] $Probe,
-  [Parameter(Mandatory)] [string] $Platform
+  [Parameter(Mandatory)] [string] $Platform,
+  [Parameter(Mandatory)] [string] $Expected
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
-$expected = "Hello from Ruby 4.0.9 on $Platform"
+$expected = $Expected
 
 function Fail([string] $message) {
   Write-Host "::error::Delivery: $message"
@@ -80,10 +82,11 @@ function Get-Subsystem([string] $Program) {
   [BitConverter]::ToUInt16($bytes, $header + 24 + 68)
 }
 
-# What is in a folder, to tell whether running the app wrote to it.
+# What is in a folder, to tell whether running the app wrote to it: a
+# Bundler that touched or rewrote the Gemfile.lock would, on every start.
 function Get-Snapshot([string] $Folder) {
   (Get-ChildItem -LiteralPath $Folder -Recurse -Force | ForEach-Object {
-      "$($_.FullName)|$(if ($_.PSIsContainer) { 'dir' } else { $_.Length })"
+      "$($_.FullName)|$(if ($_.PSIsContainer) { 'dir' } else { "$($_.Length)|$($_.LastWriteTimeUtc.Ticks)" })"
     } | Sort-Object) -join "`n"
 }
 
@@ -99,9 +102,12 @@ New-Item -ItemType Directory -Force $place | Out-Null
 Expand-Archive -LiteralPath $Archive -DestinationPath $place
 $Probe = (Resolve-Path -LiteralPath $Probe).Path
 Expand-Archive -LiteralPath $Probe -DestinationPath $place
-$probeApp = Join-Path (Join-Path $place ([IO.Path]::GetFileNameWithoutExtension($Probe))) 'parity.exe'
+$probeApp = Join-Path (Join-Path $place ([IO.Path]::GetFileNameWithoutExtension($Probe))) 'Parity.exe'
 $root = Join-Path $place $name
-$app = Join-Path $root 'hello.exe'
+$appName = $name.Substring(0, $name.Length - $Platform.Length - 1)
+$app = Join-Path $root "$appName.exe"
+$entry = ((Get-Content -LiteralPath (Join-Path $root 'fledge.cfg')) -match '^entry = ' | Select-Object -First 1) -replace '^entry = ', ''
+if (-not $entry) { Fail "$root\fledge.cfg names no entry" }
 if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing after unpacking $Archive" }
 if ((Get-Subsystem $app) -ne 3) { Fail "$app is not a console program (PE subsystem $(Get-Subsystem $app))" }
 Write-Host "Unpacked to $root"
@@ -115,6 +121,13 @@ if (-not (Test-Path -LiteralPath $notices -PathType Leaf)) { Fail "the app has n
 $text = Get-Content -LiteralPath $notices -Raw
 foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_dlls/libgmp-10.dll', '-x64-mingw-ucrt-lgpl-sources.tar.gz')) {
   if (-not $text.Contains($line)) { Fail "notices\NOTICES.txt does not say '$line'" }
+}
+# An app with a Gemfile carries its gems' notices too (ADR 005).
+if (Test-Path -LiteralPath (Join-Path $root 'app\Gemfile') -PathType Leaf) {
+  $gems = Join-Path $root 'notices\GEMS.txt'
+  if (-not (Test-Path -LiteralPath $gems -PathType Leaf) -or -not (Get-Content -LiteralPath $gems -Raw).StartsWith("THE APP'S OWN GEMS")) {
+    Fail "the app has gems but no notices\GEMS.txt"
+  }
 }
 Write-Host "ok: the app carries its notices and SBOM"
 
@@ -176,6 +189,18 @@ Gem::Specification.new do |s|
 end
 '@
 }
+# A %USERPROFILE%\.bundle\config that points Bundler elsewhere, asks for
+# gems compiled from source, leaves out the app's own gems, and installs
+# whatever is missing, which the app's Bundler must never read.
+New-Item -ItemType Directory -Force (Join-Path $env:USERPROFILE '.bundle') | Out-Null
+Set-Content -LiteralPath (Join-Path $env:USERPROFILE '.bundle\config') -Value @"
+---
+BUNDLE_GEMFILE: "$($work -replace '\\', '/')/evil/Gemfile"
+BUNDLE_PATH: "$($work -replace '\\', '/')/evil"
+BUNDLE_FORCE_RUBY_PLATFORM: "true"
+BUNDLE_WITHOUT: "default"
+BUNDLE_AUTO_INSTALL: "true"
+"@
 $xdgGems = Join-Path $env:USERPROFILE '.local\share\gem\ruby\4.0.0'
 Install-LeakingJson $xdgGems
 Check 'a json gem in %USERPROFILE%\.local\share\gem' 0 $app $clean
@@ -203,6 +228,10 @@ $hostile['GEM_SPEC_CACHE'] = $evil
 $hostile['GEMRC'] = Join-Path $evil 'gemrc'
 $hostile['bundle_gemfile'] = Join-Path $evil 'Gemfile'
 $hostile['BUNDLE_PATH'] = $evil
+$hostile['BUNDLE_APP_CONFIG'] = $evil
+$hostile['BUNDLE_FROZEN'] = 'false'
+$hostile['BUNDLE_WITHOUT'] = 'default'
+$hostile['BUNDLER_VERSION'] = '2.1.0'
 $hostile['BUNDLER_SETUP'] = Join-Path $evil 'bundler_setup.rb'
 $hostile['RUBY_DLL_PATH'] = $evil
 $hostile['RI_FORCE_PATH_FOR_DLL'] = '1'
@@ -246,17 +275,17 @@ if ($gemPath.Code -ne 0 -or $gemPath.Out.Replace('/', '\').Contains($personGems)
 Write-Host "ok: the app's own gems ignore the person's GEM_HOME"
 
 # A broken app fails with a message that names the app, not Ruby, on
-# standard error, and EX_NOINPUT (66) when its app\main.rb is missing
-# (ADR 002).
-$main = Join-Path $root 'app\main.rb'
-Move-Item -LiteralPath $main -Destination "$main.away"
+# standard error, and EX_NOINPUT (66) when the program it runs, app\ENTRY,
+# is missing (ADR 002).
+$program = Join-Path $root ('app\' + $entry.Replace('/', '\'))
+Move-Item -LiteralPath $program -Destination "$program.away"
 $broken = Invoke-App $app $clean
-Move-Item -LiteralPath "$main.away" -Destination $main
-$message = "\Ahello\.exe: this app is incomplete: $([regex]::Escape($main)) is missing\r?\n\z"
+Move-Item -LiteralPath "$program.away" -Destination $program
+$message = "\A$([regex]::Escape("$appName.exe")): this app is incomplete: $([regex]::Escape($program)) is missing\r?\n\z"
 if ($broken.Code -ne 66 -or $broken.Out -ne '' -or $broken.Err -cnotmatch $message) {
   Write-Host "--- stdout`n$($broken.Out)--- stderr`n$($broken.Err)"
-  Fail "an app without main.rb: exit status $($broken.Code) (expected 66), output above"
+  Fail "an app without app\${entry}: exit status $($broken.Code) (expected 66), output above"
 }
-Write-Host 'ok: an app without main.rb says so and exits 66'
+Write-Host "ok: an app without app\$entry says so and exits 66"
 
 Write-Host "Delivered: $expected"

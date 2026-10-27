@@ -2,19 +2,22 @@
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Delivery (Plan 001): runs a built examples/hello the way a person who
-# has never installed Ruby would, and fails unless it behaves.
+# Delivery (Plan 001): runs a built app the way a person who has never
+# installed Ruby would, and fails unless it behaves. CI delivers two:
+# examples/hello, a lone main.rb, and examples/my_cool_app, a gem whose
+# exe/my_cool_app needs a pure-Ruby gem and a native one (ADR 005).
 #
-#   deliver.sh ARCHIVE PROBE_ARCHIVE RUBY_PLATFORM [--no-ruby-installed]
+#   deliver.sh ARCHIVE PROBE_ARCHIVE EXPECTED [--no-ruby-installed]
 #
-# ARCHIVE is hello-PLATFORM.tar.gz as fledge build wrote it, and
-# PROBE_ARCHIVE parity-PLATFORM.tar.gz, the parity probe
-# (test/fixtures/parity), which reports what a child Ruby sees.
-# RUBY_PLATFORM is what the app must report: arm64-darwin23,
-# x86_64-linux, or aarch64-linux. With --no-ruby-installed, the computer
-# itself must have no Ruby on its PATH (a fresh container); without it,
-# the app still runs with a PATH that holds no Ruby, whatever the runner
-# has installed.
+# ARCHIVE is NAME-PLATFORM.tar.gz as fledge build wrote it, and
+# PROBE_ARCHIVE Parity-PLATFORM.tar.gz, the parity probe
+# (test/fixtures/parity), which reports what a child Ruby sees. EXPECTED
+# is the one line the app must print: for hello, "Hello from Ruby 4.0.9
+# on RUBY_PLATFORM"; for my_cool_app, what bundle exec exe/my_cool_app
+# printed on the computer that built it. With --no-ruby-installed, the
+# computer itself must have no Ruby on its PATH (a fresh container);
+# without it, the app still runs with a PATH that holds no Ruby, whatever
+# the runner has installed.
 #
 # This is POSIX sh on purpose: nothing here may need Ruby.
 
@@ -22,8 +25,7 @@ set -eu
 
 archive=$1
 probe_archive=$2
-platform=$3
-expected="Hello from Ruby 4.0.9 on $platform"
+expected=$3
 
 fail() {
   echo "::error::Delivery: $*" >&2
@@ -38,7 +40,10 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 archive=$(cd "$(dirname "$archive")" && pwd)/$(basename "$archive")
 probe_archive=$(cd "$(dirname "$probe_archive")" && pwd)/$(basename "$probe_archive")
-name=$(basename "$archive" .tar.gz)
+folder=$(basename "$archive" .tar.gz)
+# NAME-PLATFORM, where every PLATFORM here (arm64-darwin, x86_64-linux,
+# aarch64-linux) has one hyphen.
+name=${folder%-*-*}
 
 # Unpack somewhere the app was never built, under a path with spaces and
 # characters outside ASCII: a C locale reads those as invalid bytes
@@ -47,9 +52,11 @@ place="$work/My Apps/Ünïcödé 日本"
 mkdir -p "$place"
 tar -xzf "$archive" -C "$place"
 tar -xzf "$probe_archive" -C "$place"
-root="$place/$name"
-app="$root/hello"
-probe="$place/$(basename "$probe_archive" .tar.gz)/parity"
+root="$place/$folder"
+app="$root/$name"
+probe="$place/$(basename "$probe_archive" .tar.gz)/Parity"
+entry=$(sed -n 's/^entry = //p' "$root/fledge.cfg")
+[ -n "$entry" ] || fail "$root/fledge.cfg names no entry"
 [ -x "$app" ] || fail "$app is not executable after unpacking"
 [ -x "$probe" ] || fail "$probe is not executable after unpacking"
 
@@ -64,6 +71,10 @@ case "$(uname -s)" in
     grep -q -- "-lgpl-sources.tar.gz$" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say where libxcrypt's source is"
     ;;
 esac
+# An app with a Gemfile carries its gems' notices too (ADR 005).
+if [ -f "$root/app/Gemfile" ]; then
+  grep -q "^THE APP'S OWN GEMS$" "$root/notices/GEMS.txt" || fail "the app has gems but no notices/GEMS.txt"
+fi
 echo "ok: the app carries its notices and SBOM"
 
 # The app runs with a PATH that holds nothing at all, so no Ruby is on
@@ -100,6 +111,10 @@ x" ] || [ -s "$work/err" ] || [ "$actual" -ne "$status" ]; then
 
 home="$work/home"
 mkdir -p "$home"
+# Nothing the app runs may write into its own folder: a Bundler that
+# touched or rewrote the Gemfile.lock would, on every start.
+untouched="$work/untouched"
+touch "$untouched"
 check "clean environment" 0 env -i PATH="$empty" HOME="$home" "$app"
 
 # A hostile environment: everything a Ruby developer's shell might set,
@@ -130,8 +145,24 @@ end
 SPEC
 }
 
+# plant_bundler_config HOME: a ~/.bundle/config that points Bundler at
+# the evil folder, asks for gems compiled from source, leaves out the
+# app's own gems, and installs whatever is missing.
+plant_bundler_config() {
+  mkdir -p "$1/.bundle"
+  cat >"$1/.bundle/config" <<CONFIG
+---
+BUNDLE_GEMFILE: "$evil/Gemfile"
+BUNDLE_PATH: "$evil"
+BUNDLE_FORCE_RUBY_PLATFORM: "true"
+BUNDLE_WITHOUT: "default"
+BUNDLE_AUTO_INSTALL: "true"
+CONFIG
+}
+
 dot_gem_home="$work/dot-gem-home"
 plant_json "$dot_gem_home/.gem/ruby/4.0.0"
+plant_bundler_config "$dot_gem_home"
 xdg_home="$work/xdg-home"
 plant_json "$xdg_home/.local/share/gem/ruby/4.0.0"
 
@@ -142,6 +173,7 @@ check "hostile environment" 0 env -i PATH="$empty" HOME="$dot_gem_home" \
   GEM_HOME="$dot_gem_home/.gem/ruby/4.0.0" GEM_PATH="$dot_gem_home/.gem/ruby/4.0.0" \
   GEM_SPEC_CACHE="$evil" GEMRC="$evil/json.rb" \
   BUNDLE_GEMFILE="$evil/Gemfile" BUNDLE_PATH="$evil" BUNDLER_SETUP="$evil/bundler_setup.rb" \
+  BUNDLE_APP_CONFIG="$evil" BUNDLE_FROZEN=false BUNDLE_WITHOUT=default BUNDLER_VERSION=2.1.0 \
   RUBYGEMS_GEMDEPS=- RUBY_YJIT_ENABLE=0 LD_LIBRARY_PATH="$evil/lib" \
   "$app"
 
@@ -151,8 +183,12 @@ check "exit status 3 reaches the caller" 3 env -i PATH="$empty" HOME="$home" "$a
 # the launcher must still find the runtime it really lives in.
 links="$work/links"
 mkdir -p "$links"
-ln -s "$app" "$links/hello-link"
-check "run through a symlink on PATH" 0 env -i PATH="$links" HOME="$home" hello-link
+ln -s "$app" "$links/app-link"
+check "run through a symlink on PATH" 0 env -i PATH="$links" HOME="$home" app-link
+
+changed=$(find "$root" -newer "$untouched" | head -n 5)
+[ -z "$changed" ] || fail "running the app changed files in its folder: $changed"
+echo "ok: the app wrote nothing into its own folder"
 
 # The person's own Ruby settings are hidden from the app's boot only
 # (ADR 003): the app's gems stay the runtime's, and a Ruby the app starts
@@ -170,23 +206,24 @@ esac
 echo "ok: the app's own gems ignore the person's GEM_HOME"
 
 # A broken app names itself, not Ruby, on standard error, and exits with
-# EX_NOINPUT (66) when its app/main.rb is missing (ADR 002).
-main="$root/app/main.rb"
-mv "$main" "$main.away"
+# EX_NOINPUT (66) when the program it runs, app/ENTRY, is missing (ADR
+# 002).
+program="$root/app/$entry"
+mv "$program" "$program.away"
 set +e
 (cd / && env -i PATH="$empty" HOME="$home" "$app") >"$work/out" 2>"$work/err"
 actual=$?
 set -e
-mv "$main.away" "$main"
+mv "$program.away" "$program"
 # The launcher names the file by its real path, symlinks resolved (macOS's
 # temporary folder is a symlink into /private).
-real_main="$(cd "$root/app" && pwd -P)/main.rb"
-if [ "$actual" -ne 66 ] || [ -s "$work/out" ] || [ "$(cat "$work/err")" != "hello: this app is incomplete: $real_main is missing" ]; then
+real_program="$(cd "$root/app" && pwd -P)/$entry"
+if [ "$actual" -ne 66 ] || [ -s "$work/out" ] || [ "$(cat "$work/err")" != "$name: this app is incomplete: $real_program is missing" ]; then
   echo "--- stdout"; cat "$work/out"
   echo "--- stderr"; cat "$work/err"
-  fail "an app without main.rb: exit status $actual (expected 66), output above"
+  fail "an app without app/$entry: exit status $actual (expected 66), output above"
 fi
-echo "ok: an app without main.rb says so and exits 66"
+echo "ok: an app without app/$entry says so and exits 66"
 
 case "$(uname -s)" in
   Linux)

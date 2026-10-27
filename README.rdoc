@@ -8,6 +8,9 @@ be moved, and a small launcher that embeds it and runs your app. The
 result is a folder that runs where it lands, on macOS, Linux, or
 Windows, built from one computer.
 
-Fledge is a walking skeleton: +fledge build+ is not yet implemented.
-It is not published on RubyGems.org; releases are git tags and GitHub
-Releases at https://github.com/setdef/Fledge.
+Fledge is a walking skeleton: +fledge build+ builds console apps for
+arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt. It is
+not published on RubyGems.org; releases are git tags and GitHub
+Releases at https://github.com/setdef/Fledge, and you install it from a
+tag. What ships inside an app, and what its licenses ask of you, is in
+doc/licensing.md there.

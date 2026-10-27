@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Open3
+  def self.capture2e: (Hash[String, String?] env, *String command) -> [String, Process::Status]
+                    | ...
+
+  def self.capture3: (Hash[String, String?] env, *String command) -> [String, String, Process::Status]
+                   | ...
+
+  def self.popen2e: [T] (Hash[String, String?] env, *String command) { (IO input, IO output, Process::Waiter thread) -> T } -> T
+end

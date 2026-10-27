@@ -6,12 +6,14 @@ module Fledge
     SPECIFICATION: Regexp
     RBCONFIG: Regexp
     VERSION_PARTS: Regexp
+    LIBRARY: Regexp
 
     attr_reader gem_dir: String
     attr_reader gems: Array[String]
     attr_reader ruby_version: String
+    attr_reader libraries: Array[String]
 
-    def self.new: (gem_dir: String, gems: Array[String], ruby_version: String) -> instance
+    def self.new: (gem_dir: String, gems: Array[String], ruby_version: String, libraries: Array[String]) -> instance
 
     def self.read: (String path) -> RuntimeContents
 

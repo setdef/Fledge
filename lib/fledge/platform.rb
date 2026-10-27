@@ -51,6 +51,26 @@ module Fledge
     # it lists them.
     NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt].freeze
 
+    # Rust's name for each platform, as rb-sys derives it from the
+    # runtime's RbConfig to compile a gem's Rust extension (rb-sys-build's
+    # RbConfig, and RubyInstaller's MinGW Ruby taking the GNU target).
+    RUST_TARGETS = {
+      "arm64-darwin" => "aarch64-apple-darwin",
+      "x86_64-linux" => "x86_64-unknown-linux-gnu",
+      "aarch64-linux" => "aarch64-unknown-linux-gnu",
+      "x64-mingw-ucrt" => "x86_64-pc-windows-gnu",
+    }.freeze
+
+    # The oldest macOS an arm64-darwin runtime runs on: rv-ruby's Sonoma
+    # build, and the launcher built with -mmacosx-version-min=14.0 (ADR
+    # 001, section 3).
+    MACOS_MINIMUM = "14.0"
+
+    # The oldest glibc a Linux runtime runs on: rv-ruby's Linux builds
+    # call functions glibc added in 2.39, a floor the maintainer accepted
+    # (decision 7; ADR 001, section 3).
+    GLIBC_MINIMUM = "2.39"
+
     ##
     # :attr_reader: name
     # The RubyGems platform name, such as <tt>"x86_64-linux"</tt>.
@@ -147,6 +167,80 @@ module Fledge
     #++
     def windows?
       name.end_with?("-mingw-ucrt")
+    end
+
+    # The operating system's name, as the libraries it provides are listed
+    # under (Fledge::CompiledCode): +darwin+, +linux+, or +windows+.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("aarch64-linux").os # => "linux"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def os
+      return "windows" if windows?
+
+      name.end_with?("-darwin") ? "darwin" : "linux"
+    end
+
+    # Rust's name for the platform (RUST_TARGETS), for reading what a
+    # gem's Rust extension compiled in.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("x64-mingw-ucrt").rust_target # => "x86_64-pc-windows-gnu"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def rust_target
+      RUST_TARGETS.fetch(name)
+    end
+
+    # The oldest macOS the platform's apps run on (MACOS_MINIMUM), or
+    # +nil+ for a platform that is not macOS.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("arm64-darwin").macos_minimum # => "14.0"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def macos_minimum
+      (os == "darwin") ? MACOS_MINIMUM : nil
+    end
+
+    # The oldest glibc the platform's apps run on (GLIBC_MINIMUM), or +nil+
+    # for a platform that is not Linux.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("x86_64-linux").glibc_minimum # => "2.39"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def glibc_minimum
+      (os == "linux") ? GLIBC_MINIMUM : nil
     end
 
     # The names a Gemfile.lock's PLATFORMS section gives this platform,

@@ -5,6 +5,7 @@ module Fledge
   class CompiledCode
     MAP: String
     RULE: String
+    RUBY_DLL: Regexp
 
     class Signature < Data
       attr_reader library: String
@@ -35,10 +36,13 @@ module Fledge
       attr_reader copyleft: Array[Signature]
       attr_reader toolchain: Array[Library]
       attr_reader gems: Hash[String, Entry]
+      attr_reader system_libraries: Hash[String, Array[Regexp]]
 
-      def self.new: (copyleft: Array[Signature], toolchain: Array[Library], gems: Hash[String, Entry]) -> instance
+      def self.new: (copyleft: Array[Signature], toolchain: Array[Library], gems: Hash[String, Entry], system_libraries: Hash[String, Array[Regexp]]) -> instance
 
       def self.from: (Hash[String, Object] data) -> Map
+
+      private def self.system_libraries: (Hash[String, Object] data) -> Hash[String, Array[Regexp]]
 
       private def self.library: (Hash[String, Object] item) -> Library
 
@@ -69,12 +73,18 @@ module Fledge
 
     @declared: Hash[String, Array[Config::Compiled]]
     @map: Map
+    @os: String?
+    @provided: Array[String]
 
     def self.map: () -> Map
 
-    def initialize: (?declared: Hash[String, Array[Config::Compiled]], ?map: Map) -> void
+    def initialize: (?declared: Hash[String, Array[Config::Compiled]], ?map: Map, ?os: String?, ?provided: Array[String]) -> void
 
-    def audit: (String name, Hash[String, String] files, ?label: String) -> Result
+    def audit: (String name, Hash[String, String] files, ?label: String, ?crates: Array[Library]?) -> Result
+
+    private def crate_components: (String label, Hash[String, Binary] binaries, Array[Library] crates) -> [Array[Component], Array[String]]
+
+    private def linkage_problems: (String label, Hash[String, Binary] binaries) -> Array[String]
 
     private def binary: (String path, String content) -> Binary?
 

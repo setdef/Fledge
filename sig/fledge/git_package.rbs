@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class GitPackage
+    @gem: GitGem
+    @contents: Hash[String, String]?
+
+    attr_reader spec: Gem::Specification
+    attr_reader checkout: String
+    attr_reader folder: String
+    attr_reader gemspec: String
+
+    def scope: () -> String
+
+    def initialize: (GitGem gem, String checkout) -> void
+
+    def problems: (ruby_version: String) -> Array[String]
+
+    def extensions?: () -> bool
+
+    def checkout_path: (String gem_dir) -> String
+
+    def installed_path: (String gem_dir) -> String
+
+    def entries: (String gem_dir) -> Array[Entry]
+
+    def contents: () -> Hash[String, String]
+
+    def license_files: () -> Hash[String, String]
+  end
+end

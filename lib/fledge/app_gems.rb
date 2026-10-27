@@ -9,7 +9,10 @@ require_relative "compiled_code"
 require_relative "entry"
 require_relative "error"
 require_relative "gem_package"
+require_relative "git_checkout"
+require_relative "git_package"
 require_relative "license_policy"
+require_relative "native_build"
 
 module Fledge
   # The gems one platform's build of an app adds to its runtime, and what
@@ -26,15 +29,19 @@ module Fledge
   #
   # This class takes the gems Fledge::Bundle locks for a platform, leaves
   # out those the runtime already has at the same version, fetches the
-  # rest (Fledge::GemFetcher), and checks each one: its license, as its
-  # specification declares it or as <tt>fledge.yml</tt> corrects it, and
-  # whether it runs on the platform's runtime (Fledge::GemPackage), and
-  # what its compiled files hold (Fledge::CompiledCode), since a native
-  # gem's binaries can carry libraries under licenses its specification
-  # does not name. It names every problem at once, then raises, so one
-  # build shows them all. Otherwise it returns the entries that install
-  # each gem and <tt>notices/GEMS.txt</tt>, which lists each gem, its
-  # license, the libraries its compiled files hold, and where it came
+  # rest (Fledge::GemFetcher for a gem server's, Fledge::GitCheckout for
+  # git's), compiles those with an extension still to compile when the
+  # platform is the one Fledge runs on (Fledge::NativeBuild), and refuses
+  # them for any other platform. Then it checks each one: its license, as
+  # its specification declares it or as <tt>fledge.yml</tt> corrects it,
+  # whether it runs on the platform's runtime, and what its compiled
+  # files hold and need (Fledge::CompiledCode, with the Rust crates a
+  # Rust extension compiled in), since a native gem's binaries can carry
+  # libraries under licenses its specification does not name. It names
+  # every problem at once, then raises, so one build shows them all.
+  # Otherwise it returns the entries that install each gem and
+  # <tt>notices/GEMS.txt</tt>, which lists each gem, its license, how it
+  # was built, the libraries its compiled files hold, and where it came
   # from, then holds the text of every license file it ships.
   #
   # Use it once per target in <tt>fledge build</tt>.
@@ -76,10 +83,15 @@ module Fledge
     #       license.
     # [bundle] Its Fledge::Bundle.
     # [fetcher] The Fledge::GemFetcher that finds each gem's file.
-    def initialize(app:, bundle:, fetcher:)
+    # [checkouts] The Fledge::GitCheckout that fetches each git gem.
+    # [compiler] The Fledge::NativeBuild for the platform Fledge runs on,
+    #            or +nil+ when Fledge has no runtime for it.
+    def initialize(app:, bundle:, fetcher:, checkouts:, compiler: nil)
       @app = app
       @bundle = bundle
       @fetcher = fetcher
+      @checkouts = checkouts
+      @compiler = compiler
     end
 
     # What the app's +app+ folder holds in place of the project's own
@@ -117,14 +129,18 @@ module Fledge
     #++
     def for(platform, runtime:)
       locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version).reject { |gem| runtime.gems.include?(gem.full_name) }
-      packages = locked.to_h { |gem| [gem, GemPackage.new(@fetcher.fetch(gem))] }
-      code = CompiledCode.new(declared: @app.config.compiled)
-      compiled = packages.to_h { |gem, package| [gem, code.audit(gem.name, package.contents, label: gem.to_s)] }
+      packages, uncompiled = compile(platform, locked.to_h { |gem| [gem, package_for(gem)] })
+      code = CompiledCode.new(declared: @app.config.compiled, os: platform.os, provided: runtime.libraries)
+      compiled = packages.to_h do |gem, package|
+        [gem, code.audit(gem.name, package.contents, label: gem.to_s, crates: package.is_a?(CompiledGem) ? package.crates&.compiled : nil)]
+      end
       problems = packages.flat_map do |gem, package|
         [
           *license_problem(gem, package),
-          *package.problems(platform: platform.name, ruby_version: runtime.ruby_version),
+          *uncompiled.fetch(gem, []),
+          *package.problems(ruby_version: runtime.ruby_version),
           *compiled.fetch(gem).problems,
+          *build_crate_problems(gem, package),
 ]
       end
       raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
@@ -132,10 +148,41 @@ module Fledge
       result(packages, compiled, platform, runtime)
     end
 
+    private def package_for(gem)
+      case gem
+      when LockedGem then GemPackage.new(@fetcher.fetch(gem))
+      else GitPackage.new(gem, @checkouts.checkout(gem))
+      end
+    end
+
+    # The packages with each extension compiled, when +platform+ is the
+    # one Fledge runs on, and otherwise why each gem with an extension
+    # cannot ship, by gem.
+    private def compile(platform, packages)
+      uncompiled = packages.select { |_, package| package.extensions? }
+      none = {} # : Hash[locked_gem, Array[String]]
+      return [packages, none] if uncompiled.empty?
+
+      compiler = @compiler
+      if compiler && compiler.platform == platform
+        [compiler.call(packages, build_args: uncompiled.keys.to_h { |gem| [gem.name, @bundle.build_args(gem.name)] }), none]
+      else
+        [packages, uncompiled.keys.to_h { |gem| [gem, [cross_problem(gem, platform, compiler&.platform)]] }]
+      end
+    end
+
+    private def cross_problem(gem, platform, host)
+      this = host ? "this computer is #{host}" : "Fledge has no runtime for this computer"
+      "#{gem} has an extension to compile, and the lockfile locks no build of it precompiled for #{platform}. Fledge compiles " \
+        "a gem only on the platform it is for, and #{this}: build for #{platform} on a computer that is #{platform}, such as " \
+        "a CI runner of that platform, or choose a version of #{gem.name} with a build for #{platform} and run bundle lock " \
+        "--add-platform #{platform}."
+    end
+
     private def result(packages, compiled, platform, runtime)
       return Result.new(files: [], warnings: []) if packages.empty?
 
-      files = packages.values.flat_map { |package| package.entries(runtime.gem_dir) }
+      files = packages.values.flat_map { |package| package.entries(runtime.gem_dir) }.uniq(&:path)
       warnings = packages.filter_map do |gem, package|
         "#{gem} ships no license file, so #{NOTICES} names its license but cannot quote it." if package.license_files.empty?
       end
@@ -185,15 +232,38 @@ module Fledge
 
     private def entry(gem, package, components, runtime)
       spec = package.spec
-      files = package.license_files.keys.map { |file| "#{runtime.gem_dir}/gems/#{spec.full_name}/#{file}" }
+      files = package.license_files.keys.map { |file| "#{package.installed_path(runtime.gem_dir)}/#{file}" }
       corrected = @app.config.licenses.key?(gem.name) ? " (as fledge.yml gives it; the gem declares #{LicensePolicy.gem_license(spec.licenses)})" : ""
       <<~ENTRY
         #{gem}
           License: #{license(gem, package)}#{corrected}
-        #{components.map { |component| "  #{component_line(component)}\n" }.join}  Homepage: #{spec.homepage || 'none given'}
+        #{built_line(package, runtime)}#{components.map { |component| "  #{component_line(component)}\n" }.join}  Homepage: #{spec.homepage || 'none given'}
           From: #{gem.url}
           License files: #{files.empty? ? 'none: the gem ships no license text' : files.join(', ')}
       ENTRY
+    end
+
+    # The Rust crates that ran while +package+ compiled whose licenses ask
+    # more than notices. Their code writes some of what is compiled in, so
+    # they meet the policy too, as cargo-deny checks every crate.
+    private def build_crate_problems(gem, package)
+      return [] unless package.is_a?(CompiledGem)
+
+      (package.crates&.build || []).reject { |crate| LicensePolicy.notice_only?(crate.license) }.map do |crate|
+        said = (crate.license == "NOASSERTION") ? "declares no license" : "is #{crate.license}"
+        "#{gem} is built with the #{crate.name}, which #{said}, and Fledge builds gems only with code whose license asks " \
+          "nothing beyond keeping its notices (doc/licensing.md)."
+      end
+    end
+
+    # How a gem Fledge compiled was built, as GEMS.txt says it, with the
+    # Rust crates that ran only while it compiled.
+    private def built_line(package, runtime)
+      return "" unless package.is_a?(CompiledGem)
+
+      options = package.build_args.empty? ? "" : ", with the build options #{package.build_args.join(' ')}"
+      tools = (package.crates&.build || []).map { |crate| "  Built with: #{crate.name} (#{crate.license}), which ran only while it compiled\n" }
+      "  Built: compiled from source by fledge build, against the runtime's Ruby #{runtime.ruby_version}#{options}\n#{tools.join}"
     end
 
     # One library a gem's compiled files hold, as GEMS.txt lists it.

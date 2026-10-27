@@ -5,7 +5,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require "shellwords"
 require_relative "error"
+require_relative "git_gem"
 require_relative "locked_gem"
 
 module Fledge
@@ -28,10 +30,14 @@ module Fledge
   # locks for it as Bundler picks one at run time
   # (Bundler::MatchPlatform), leaving out the +development+ and +test+
   # groups, as Warbler and <tt>bundle install --without</tt> do, and gems
-  # the Gemfile limits to other platforms. It refuses what it cannot ship:
-  # a platform the lockfile does not lock, a gem from git or from a folder
-  # outside the project, a gem without a checksum, and a Gemfile that
-  # asks for another Ruby.
+  # the Gemfile limits to other platforms. A gem from git comes at the
+  # revision the lockfile locks (Fledge::GitGem). It refuses what it
+  # cannot ship: a platform the lockfile does not lock, a git gem the
+  # lockfile does not pin to a commit, a gem from a folder outside the
+  # project, a path gem with an extension to compile, a gem without a
+  # checksum, and a Gemfile that asks for another Ruby. It also reads the
+  # build options Bundler would pass each gem's extension
+  # (<tt>bundle config build.NAME</tt>).
   #
   # Use it in <tt>fledge build</tt> for an app with a Gemfile.
   #
@@ -89,8 +95,31 @@ module Fledge
         raise Error, "#{app.root} has #{app.gemfile} but no #{File.basename(@lockfile)}. Run bundle lock, then build again."
       end
 
+      @build_args = {} # : Hash[String, Array[String]]
       @definition = definition(gemfile)
       @checksums = checksums(File.read(@lockfile))
+    end
+
+    # The options Bundler would pass +name+'s extension when it compiles
+    # it, from <tt>bundle config build.NAME</tt> at any level Bundler
+    # reads (the project's <tt>.bundle/config</tt>, BUNDLE_BUILD__NAME,
+    # or the developer's own), split as a shell would, as
+    # Bundler::GemInstaller#spec_settings splits them.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   # bundle config build.nokogiri --use-system-libraries
+    #   bundle.build_args("nokogiri") # => ["--use-system-libraries"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def build_args(name)
+      @build_args.fetch(name, [])
     end
 
     # The lockfile's name, such as <tt>Gemfile.lock</tt>.
@@ -116,10 +145,21 @@ module Fledge
         dsl.eval_gemfile(gemfile)
         definition = dsl.to_definition(Pathname.new(@lockfile), {})
         Bundler.settings.temporary(frozen: true) { definition.ensure_equivalent_gemfile_and_lockfile(true) }
+        @build_args = build_settings
         definition
       end
     rescue Bundler::BundlerError => e
       raise Error, "Bundler can't read #{gemfile} and #{lockfile_name}:\n#{e.message}"
+    end
+
+    # Every build.NAME setting Bundler has, by NAME.
+    private def build_settings
+      settings = Bundler.settings
+      settings.all.filter_map do |key|
+        next unless key.start_with?("build.")
+
+        [key.delete_prefix("build."), Shellwords.shellsplit(settings[key].to_s)]
+      end.to_h
     end
 
     # Runs the block with Bundler's root at the app's project, as
@@ -144,14 +184,16 @@ module Fledge
       section.scan(/^  (\S+ \([^)]+\)) sha256=([0-9a-f]{64})\b/).to_h { |name, sha256| [name.to_s, sha256.to_s] }
     end
 
-    # The gems from a gem server that +platform+'s app ships: each gem
-    # the lockfile locks for +platform+ that the app's dependencies reach,
-    # leaving out Bundler, the project's own gems, WITHOUT's groups, and
-    # gems the Gemfile limits to other platforms. +ruby_version+ is the
-    # runtime's Ruby, for a dependency limited to some Ruby versions.
-    # Raises Fledge::Error, saying what to run, when the lockfile does not
-    # lock +platform+, the Gemfile asks for another Ruby, a gem comes from
-    # git or from a folder outside the project, or a gem has no checksum.
+    # The gems from a gem server or from git that +platform+'s app ships:
+    # each gem the lockfile locks for +platform+ that the app's
+    # dependencies reach, leaving out Bundler, the project's own gems,
+    # WITHOUT's groups, and gems the Gemfile limits to other platforms.
+    # +ruby_version+ is the runtime's Ruby, for a dependency limited to
+    # some Ruby versions. Raises Fledge::Error, saying what to run, when
+    # the lockfile does not lock +platform+, the Gemfile asks for another
+    # Ruby, a git gem is not pinned to a commit or needs its submodules, a
+    # gem comes from a folder outside the project or is a path gem with an
+    # extension, or a gem has no checksum.
     #
     # === Example
     #
@@ -242,8 +284,7 @@ module Fledge
       source = spec.source
       case source
       when Bundler::Source::Rubygems then rubygem(spec, source, platform)
-      when Bundler::Source::Git then raise Error, "#{lockfile_name} takes #{spec.name} from #{source}, and Fledge ships only gems " \
-        "from a gem server or from folders inside the project. Release it to a gem server, or vendor it into the project."
+      when Bundler::Source::Git then git_gem(spec, source)
       when Bundler::Source::Path then own_gem(spec, source)
       else raise Error, "#{lockfile_name} takes #{spec.name} from #{source}, and Fledge ships only gems from a gem server or from the project."
       end
@@ -258,14 +299,52 @@ module Fledge
       LockedGem.new(name: spec.name, version: spec.version.to_s, platform: platform_name, remote: source.remotes.first.to_s, sha256:)
     end
 
+    # A gem from git, at the revision the lockfile locks, which must be a
+    # whole commit: SHA-1's 40 hexadecimal digits, or SHA-256's 64.
+    private def git_gem(spec, source)
+      revision = source.options["revision"].to_s
+      unless revision.match?(/\A(?:\h{40}|\h{64})\z/)
+        raise Error, "#{lockfile_name} takes #{spec.name} from #{source.uri} without pinning it to a commit (its revision is " \
+          "#{revision.inspect}), and Fledge ships a git gem only at the full commit the lockfile locks. Run bundle lock, then build again."
+      end
+      if source.submodules
+        raise Error, "#{lockfile_name} takes #{spec.name} from #{source.uri} with its submodules, which Fledge does not fetch yet. " \
+          "Release it to a gem server, or take it from git without submodules."
+      end
+
+      ref = %w[tag branch ref].filter_map { |kind| (value = source.options[kind]) && "#{kind} #{value}" }.first
+      GitGem.new(name: spec.name, version: spec.version.to_s, uri: source.uri.to_s, revision:, glob: source.glob.to_s, ref:)
+    end
+
     # A gem from a folder (the project's own gemspec, or a path gem), which
-    # ships as part of the project when the folder is inside it.
+    # ships as part of the project when the folder is inside it, unless
+    # its gemspec has an extension to compile: Bundler compiles no path
+    # gem's extension (Bundler::Source::Path#install generates its
+    # executables with extensions disabled), so what bundle exec loads is
+    # what the developer last compiled there, for their own Ruby.
     private def own_gem(spec, source)
       folder = File.expand_path(source.path.to_s, @app.root)
-      return nil if inside_project?(folder)
+      if inside_project?(folder)
+        if path_gemspec(folder, spec.name)&.extensions&.any?
+          raise Error, "#{lockfile_name} takes #{spec.name} from #{folder}, a folder inside the project, and its gemspec has an " \
+            "extension to compile, which Bundler does not compile for a path gem (bundle exec loads whatever was last compiled " \
+            "there, for your own Ruby). Take it from git or a gem server, so Fledge can compile it for the runtime's Ruby."
+        end
+        return nil
+      end
 
       raise Error, "#{lockfile_name} takes #{spec.name} from #{folder}, outside the project, and Fledge ships only what is " \
         "inside #{@app.root}. Move it into the project, or take it from a gem server."
+    end
+
+    # The gemspec named +name+ in the path gem folder +folder+, as Bundler
+    # finds and evaluates it, or +nil+.
+    private def path_gemspec(folder, name)
+      Dir.glob(GEMSPECS, base: folder).each do |file|
+        spec = Bundler.load_gemspec(File.join(folder, file))
+        return spec if spec&.name == name
+      end
+      nil
     end
 
     private def inside_project?(folder)

@@ -5,12 +5,15 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require "tmpdir"
 require_relative "../app"
 require_relative "../app_gems"
 require_relative "../assembly"
 require_relative "../bundle"
 require_relative "../error"
 require_relative "../gem_fetcher"
+require_relative "../git_checkout"
+require_relative "../native_build"
 require_relative "../platform"
 require_relative "../runtime_contents"
 require_relative "../runtimes"
@@ -28,7 +31,9 @@ module Fledge
     # program to ship from its arguments (Fledge::App), finds each
     # target's runtime through Fledge::Runtimes, adds the gems the app's
     # Gemfile.lock locks for that target (Fledge::Bundle and
-    # Fledge::AppGems), builds each with Fledge::Assembly, and prints the
+    # Fledge::AppGems), compiling those that need it when the target is
+    # the platform it runs on (Fledge::NativeBuild) in a work folder it
+    # removes afterwards, builds each with Fledge::Assembly, and prints the
     # path of each archive it wrote, one per line. A failed build becomes
     # lines beginning <tt>fledge build:</tt> on the error stream and exit
     # status 1; a mistake in its arguments raises Fledge::UsageError,
@@ -102,24 +107,36 @@ module Fledge
         raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
 
         runtimes = Runtimes.new(env: @env, log: @err)
-        gems = gems_for(app, runtimes)
-        app_files = gems ? gems.app_files : {} # : Hash[String, String]
-        platforms.each do |platform|
-          runtime = runtimes.archive(platform)
-          added = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : AppGems::Result.new(files: [], warnings: [])
-          added.warnings.each { |warning| @err.puts "fledge build: warning: #{warning}" }
-          archive = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files: added.files).call
-          @out.puts File.join(out, File.basename(archive))
+        Dir.mktmpdir("fledge-build") do |work|
+          gems = gems_for(app, runtimes, work)
+          app_files = gems ? gems.app_files : {} # : Hash[String, String]
+          platforms.each do |platform|
+            runtime = runtimes.archive(platform)
+            added = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : AppGems::Result.new(files: [], warnings: [])
+            added.warnings.each { |warning| @err.puts "fledge build: warning: #{warning}" }
+            archive = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files: added.files).call
+            @out.puts File.join(out, File.basename(archive))
+          end
         end
       end
 
       # The app's gems, for an app with a Gemfile: Fledge keeps the gems it
-      # downloads beside its runtimes, in <tt>~/.cache/fledge/gems</tt>.
-      private def gems_for(app, runtimes)
+      # downloads beside its runtimes, in <tt>~/.cache/fledge/gems</tt>,
+      # and the git repositories it fetches in <tt>~/.cache/fledge/git</tt>,
+      # and compiles gems only for the platform it runs on.
+      private def gems_for(app, runtimes, work)
         return nil unless app.gemfile
 
-        fetcher = GemFetcher.new(cache: File.join(File.dirname(runtimes.cache), "gems"), project: app.root, log: @err)
-        AppGems.new(app:, bundle: Bundle.new(app), fetcher:)
+        cache = File.dirname(runtimes.cache)
+        fetcher = GemFetcher.new(cache: File.join(cache, "gems"), project: app.root, log: @err)
+        checkouts = GitCheckout.new(cache: File.join(cache, "git"), work:, log: @err)
+        AppGems.new(app:, bundle: Bundle.new(app), fetcher:, checkouts:, compiler: compiler(runtimes, work))
+      end
+
+      private def compiler(runtimes, work)
+        NativeBuild.new(platform: Platform.local(@host), runtimes:, work:, log: @err, env: @env)
+      rescue Error
+        nil
       end
 
       # [targets, out, path] from +argv+.

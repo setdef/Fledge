@@ -21,6 +21,24 @@ class RuntimeContentsTest < Minitest::Test
     end
   end
 
+  # A gem's compiled file may need a library the runtime ships, such as
+  # Ruby's DLL on Windows or libxcrypt on Linux.
+  def test_reads_the_file_names_of_the_shared_libraries_it_ships
+    Dir.mktmpdir do |dir|
+      extra = [
+        Fledge::Entry.file("ruby/bin/x64-ucrt-ruby400.dll", "MZ"),
+        Fledge::Entry.file("ruby/bin/ruby_builtin_dlls/libgmp-10.dll", "MZ"),
+        Fledge::Entry.file("ruby/bin/ruby.exe", "MZ"),
+]
+      windows = Fledge::RuntimeContents.read(FakeRuntime.write(dir, Fledge::Platform.find("x64-mingw-ucrt"), extra:))
+      linux = Fledge::RuntimeContents.read(FakeRuntime.write(dir, Fledge::Platform.find("x86_64-linux"),
+        extra: [Fledge::Entry.file("lib/libcrypt.so.2", "ELF"), Fledge::Entry.file("lib/libfoo.dylib", "")]))
+
+      assert_equal %w[libgmp-10.dll x64-ucrt-ruby400.dll], windows.libraries
+      assert_equal %w[libcrypt.so.2 libfoo.dylib], linux.libraries
+    end
+  end
+
   def test_an_archive_that_is_not_a_runtime_is_refused
     Dir.mktmpdir do |dir|
       bare = File.join(dir, "bare.tar.gz")

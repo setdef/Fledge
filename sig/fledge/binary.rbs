@@ -11,8 +11,11 @@ module Fledge
     DT_RPATH: Integer
     DT_RUNPATH: Integer
     SHT_DYNAMIC: Integer
+    SHT_GNU_VERNEED: Integer
     LC_DYLIBS: Array[Integer]
     LC_RPATH: Integer
+    LC_BUILD_VERSION: Integer
+    LC_VERSION_MIN_MACOSX: Integer
 
     attr_reader format: Symbol
     attr_reader needed: Array[String]
@@ -24,6 +27,14 @@ module Fledge
     def self.read: (String path) -> Binary?
 
     def self.parse: (String bytes) -> Binary?
+
+    def self.macos_minimum: (String bytes) -> String?
+
+    private def self.version_text: (Integer packed) -> String
+
+    def self.glibc_minimum: (String bytes) -> String?
+
+    private def self.needed_versions: (String bytes, Integer at, Integer strings, String half, String long) -> Array[String]
 
     private def self.elf: (String bytes) -> Binary
 

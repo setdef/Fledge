@@ -85,12 +85,24 @@ module Fledge
     # The ELF section type of the dynamic section.
     SHT_DYNAMIC = 6
 
+    # The ELF section of the symbol versions a file needs from the
+    # libraries it loads (SHT_GNU_verneed, in glibc's elf.h).
+    SHT_GNU_VERNEED = 0x6FFFFFFE
+
     # The Mach-O load commands that name a dylib: LC_LOAD_DYLIB,
     # LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB, LC_LAZY_LOAD_DYLIB, and
     # LC_LOAD_UPWARD_DYLIB.
     LC_DYLIBS = [0xC, 0x80000018, 0x8000001F, 0x20, 0x80000023].freeze
     # The Mach-O load command that adds a search path.
     LC_RPATH = 0x8000001C
+
+    # The Mach-O load command that says which macOS a file was built for,
+    # and so the oldest it loads on, in its third word, minos (Apple's
+    # mach-o/loader.h).
+    LC_BUILD_VERSION = 0x32
+
+    # The older load command that says the same, in its second word.
+    LC_VERSION_MIN_MACOSX = 0x24
 
     # The Binary in the file at +path+, or nil when it holds no code.
     # Raises ArgumentError when the file looks like a binary but cannot be
@@ -136,6 +148,100 @@ module Fledge
       elsif bytes.start_with?("MZ") && pe?(bytes) then pe(bytes)
       elsif bytes.start_with?(AR_MAGIC) then new(format: :archive, needed: [], rpaths: [], assemblies: [])
       end
+    end
+
+    # The oldest macOS the Mach-O file +bytes+ says it runs on, as
+    # <tt>MAJOR.MINOR</tt>, or +nil+ when it is not a Mach-O file or says
+    # none. A compiler writes the deployment target it was given, or else
+    # the macOS it runs on, so a gem compiled on a new Mac may refuse to
+    # load on an older one the runtime supports.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Binary.macos_minimum(File.binread("redcarpet.bundle")) # => "14.0"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.macos_minimum(bytes)
+      bytes = bytes.b
+      base = (bytes.start_with?(FAT_MAGIC) && number(bytes, 4, 4, "N") < 32) ? number(bytes, 16, 4, "N") : 0
+      return nil unless MACHO_MAGICS.include?(bytes.byteslice(base, 4))
+
+      offset = base + ((bytes.byteslice(base, 4) == MACHO_MAGICS.first) ? 32 : 28)
+      number(bytes, base + 16, 4, "L<").times do
+        cmd = number(bytes, offset, 4, "L<")
+        at = { LC_BUILD_VERSION => 12, LC_VERSION_MIN_MACOSX => 8 }[cmd]
+        return version_text(number(bytes, offset + at, 4, "L<")) if at
+
+        offset += number(bytes, offset + 4, 4, "L<")
+      end
+      nil
+    end
+
+    # The oldest glibc the ELF file +bytes+ runs on: the newest
+    # <tt>GLIBC_X.Y</tt> symbol version it needs, as auditwheel reads it to
+    # judge a wheel's manylinux tag, or +nil+ when it is not an ELF file or
+    # needs none. A compiler links against the glibc it runs on, so a gem
+    # compiled on a newer Linux may refuse to load on an older one the
+    # runtime supports.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Binary.glibc_minimum(File.binread("redcarpet.so")) # => "2.34"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.glibc_minimum(bytes)
+      bytes = bytes.b
+      return nil unless bytes.start_with?(ELF_MAGIC)
+
+      wide = bytes.getbyte(4) == 2
+      little = bytes.getbyte(5) == 1
+      word = wide ? (little ? "Q<" : "Q>") : (little ? "L<" : "L>")
+      half = little ? "S<" : "S>"
+      long = little ? "L<" : "L>"
+      shoff = number(bytes, wide ? 0x28 : 0x20, wide ? 8 : 4, word)
+      shentsize = number(bytes, wide ? 0x3A : 0x2E, 2, half)
+      sections = Array.new(number(bytes, wide ? 0x3C : 0x30, 2, half)) { |index| elf_section(bytes, shoff + (index * shentsize), wide, word, long) }
+      versions = sections.select { |section| section.fetch(:type) == SHT_GNU_VERNEED }.flat_map do |section|
+        needed_versions(bytes, section.fetch(:offset), sections.fetch(section.fetch(:link)).fetch(:offset), half, long)
+      end
+      versions.filter_map { |name| name[/\AGLIBC_(\d+(?:\.\d+)+)\z/, 1] }.max_by { |version| Gem::Version.new(version) }
+    end
+
+    # The version names of each Elf_Verneed at +at+ and its Elf_Vernaux
+    # entries, whose names are in the string table at +strings+.
+    private_class_method def self.needed_versions(bytes, at, strings, half, long) # :nodoc:
+      names = [] # : Array[String]
+      loop do
+        aux = at + number(bytes, at + 8, 4, long)
+        number(bytes, at + 2, 2, half).times do
+          names << c_string(bytes, strings + number(bytes, aux + 8, 4, long))
+          step = number(bytes, aux + 12, 4, long)
+          break if step.zero?
+
+          aux += step
+        end
+        step = number(bytes, at + 12, 4, long)
+        return names if step.zero?
+
+        at += step
+      end
+    end
+
+    # A Mach-O version, X.Y.Z in nibbles xxxx.yy.zz, as X.Y.
+    private_class_method def self.version_text(packed) # :nodoc:
+      "#{packed >> 16}.#{(packed >> 8) & 0xFF}"
     end
 
     private_class_method def self.elf(bytes) # :nodoc:

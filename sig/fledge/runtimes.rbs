@@ -5,6 +5,8 @@ module Fledge
   class Runtimes
     interface _Env
       def []: (String) -> String?
+
+      def to_h: () -> Hash[String, String]
     end
 
     RELEASES: String
@@ -16,9 +18,15 @@ module Fledge
 
     def self.file_name: (Platform platform, ?version: String) -> String
 
+    def self.dev_file_name: (Platform platform, ?version: String) -> String
+
     def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?) -> void
 
     def archive: (Platform platform) -> String
+
+    def dev_archive: (Platform platform) -> String
+
+    private def find: (String name) -> String
 
     def cache: () -> String
 

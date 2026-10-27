@@ -2,4 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 module Fledge
+  type locked_gem = LockedGem | GitGem
+
+  type package = GemPackage | GitPackage | CompiledGem
 end

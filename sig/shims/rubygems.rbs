@@ -23,6 +23,8 @@ module Gem
 
     def required_ruby_version: () -> Gem::Requirement
 
+    def runtime_dependencies: () -> Array[Gem::Dependency]
+
     def file_name: () -> String
 
     def to_ruby: () -> String

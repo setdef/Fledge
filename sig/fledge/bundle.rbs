@@ -11,10 +11,15 @@ module Fledge
     @lockfile: String
     @definition: Bundler::Definition
     @checksums: Hash[String, String]
+    @build_args: Hash[String, Array[String]]
 
     def initialize: (App app) -> void
 
+    def build_args: (String name) -> Array[String]
+
     def lockfile_name: () -> String
+
+    private def build_settings: () -> Hash[String, Array[String]]
 
     private def definition: (String gemfile) -> Bundler::Definition
 
@@ -22,7 +27,7 @@ module Fledge
 
     private def checksums: (String text) -> Hash[String, String]
 
-    def gems_for: (Platform platform, ruby_version: String) -> Array[LockedGem]
+    def gems_for: (Platform platform, ruby_version: String) -> Array[LockedGem | GitGem]
 
     private def check_ruby: (String ruby_version) -> void
 
@@ -36,11 +41,15 @@ module Fledge
 
     private def on_platform?: (String name, Platform platform, String ruby_version) -> bool
 
-    private def locked_gem: (Bundler::LazySpecification spec, Platform platform) -> LockedGem?
+    private def locked_gem: (Bundler::LazySpecification spec, Platform platform) -> (LockedGem | GitGem)?
 
     private def rubygem: (Bundler::LazySpecification spec, Bundler::Source::Rubygems source, Platform platform) -> LockedGem
 
+    private def git_gem: (Bundler::LazySpecification spec, Bundler::Source::Git source) -> GitGem
+
     private def own_gem: (Bundler::LazySpecification spec, Bundler::Source::Path source) -> nil
+
+    private def path_gemspec: (String folder, String name) -> Gem::Specification?
 
     private def inside_project?: (String folder) -> bool
 

@@ -4,6 +4,9 @@
 module Fledge
   class Platform < Data
     NAMES: Array[String]
+    RUST_TARGETS: Hash[String, String]
+    MACOS_MINIMUM: String
+    GLIBC_MINIMUM: String
 
     attr_reader name: String
 
@@ -19,6 +22,14 @@ module Fledge
     private def self.target_name: (Gem::Platform) -> String
 
     def windows?: () -> bool
+
+    def os: () -> String
+
+    def rust_target: () -> String
+
+    def macos_minimum: () -> String?
+
+    def glibc_minimum: () -> String?
 
     def lockfile_names: () -> Array[String]
 

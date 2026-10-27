@@ -16,6 +16,8 @@ class LicensePolicyTest < Minitest::Test
       "GPL-1.0-or-later OR Artistic-1.0-Perl" => :notice_only,
       "GPL-3.0-or-later WITH GCC-exception-3.1" => :notice_only,
       "MIT AND MPL-2.0" => :file_level,
+      "(MIT OR Apache-2.0) AND Unicode-3.0" => :notice_only,
+      "Unicode-DFS-2016" => :notice_only,
       "LGPL-3.0-or-later OR GPL-2.0-or-later" => :shared_library,
       "(MIT OR LGPL-2.1-or-later) AND Apache-2.0" => :notice_only,
       "GPL-2.0-only" => :forbidden,

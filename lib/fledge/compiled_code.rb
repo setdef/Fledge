@@ -128,8 +128,9 @@ module Fledge
     end
 
     # Fledge's map, read: the copyleft libraries it looks for, what
-    # compilers link into every binary, and what each reviewed gem holds.
-    class Map < Data.define(:copyleft, :toolchain, :gems)
+    # compilers link into every binary, what each reviewed gem holds, and
+    # the libraries each operating system provides.
+    class Map < Data.define(:copyleft, :toolchain, :gems, :system_libraries)
       ##
       # :attr_reader: copyleft
       # The Signature of each copyleft library.
@@ -141,6 +142,11 @@ module Fledge
       ##
       # :attr_reader: gems
       # Each reviewed gem's Entry, by the gem's name.
+
+      ##
+      # :attr_reader: system_libraries
+      # By operating system (+darwin+, +linux+, +windows+), the patterns
+      # of the libraries it provides, which an app need not ship.
 
       # The Map that +data+, as <tt>compiled_code.yml</tt> holds it,
       # describes. Raises Fledge::Error when it is not one.
@@ -166,7 +172,26 @@ module Fledge
         raise Error, "#{MAP}: gems must be a mapping" unless gems.is_a?(Hash)
 
         new(copyleft:, toolchain: list(data, "toolchain").map { |item| library(item) },
-          gems: gems.to_h { |name, entry| [name.to_s, Entry.new(holds: list(entry, "holds").map { |item| library(item) }, advice: entry["advice"]&.to_s)] })
+          gems: gems.to_h { |name, entry| [name.to_s, Entry.new(holds: list(entry, "holds").map { |item| library(item) }, advice: entry["advice"]&.to_s)] },
+          system_libraries: system_libraries(data))
+      end
+
+      # Each OS's patterns, written as /REGEXP/ or /REGEXP/i, as
+      # runtime/licenses.yml writes them.
+      private_class_method def self.system_libraries(data) # :nodoc:
+        none = {} # : Hash[String, Object]
+        libraries = data.fetch("system_libraries", none)
+        raise Error, "#{MAP}: system_libraries must be a mapping" unless libraries.is_a?(Hash)
+
+        libraries.to_h do |os, patterns|
+          [
+            os.to_s,
+            list({ "patterns" => patterns }, "patterns").map do |pattern|
+              found = %r{\A/(.*)/(i?)\z}m.match(pattern.to_s) or raise Error, "#{MAP}: #{pattern} is not a /pattern/"
+              Regexp.new(found[1].to_s, found[2].to_s.empty? ? nil : Regexp::IGNORECASE)
+            end,
+]
+        end
       end
 
       private_class_method def self.library(item) # :nodoc:
@@ -251,9 +276,16 @@ module Fledge
     # [declared] What <tt>fledge.yml</tt> says each gem compiles in
     #            (Fledge::Config#compiled), which wins over the map.
     # [map] The Map of what reviewed gems hold.
-    def initialize(declared: {}, map: CompiledCode.map)
+    # [os] The operating system the app is for (Fledge::Platform#os),
+    #      whose libraries a compiled file may need, or +nil+ to leave
+    #      what files need unjudged.
+    # [provided] The file names of the shared libraries the runtime
+    #            ships, which a compiled file may need too.
+    def initialize(declared: {}, map: CompiledCode.map, os: nil, provided: [])
       @declared = declared
       @map = map
+      @os = os
+      @provided = provided
     end
 
     # Audits the gem +name+, whose files are +files+ (paths relative to its
@@ -271,15 +303,21 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def audit(name, files, label: name)
+    #
+    # +crates+, for a gem whose Rust extension Fledge compiled, are the
+    # Rust crates its build compiled in (Fledge::NativeBuild), as Library
+    # entries; they describe its compiled code as the map would, and each
+    # must ask nothing beyond notices.
+    def audit(name, files, label: name, crates: nil)
       binaries = files.filter_map { |path, content| binary(path, content)&.then { |found| [path, found] } }.sort.to_h
       return Result.new(components: [], problems: []) if binaries.empty?
 
       loaded = loaded_files(binaries)
       shared = shared_libraries(name, binaries)
       copyleft = copyleft_problems(name, label, files, binaries.keys - shared.keys, loaded)
-      components, problems = attribute(name, label, files, binaries, shared, loaded)
-      problems.clear if !copyleft.empty? && !@declared.key?(name) && !@map.gems.key?(name)
+      components, problems = crates ? crate_components(label, binaries, crates) : attribute(name, label, files, binaries, shared, loaded)
+      problems.clear if !copyleft.empty? && !@declared.key?(name) && !@map.gems.key?(name) && crates.nil?
+      problems += linkage_problems(label, binaries)
       Result.new(components: components + toolchain(files, binaries), problems: copyleft + problems)
     rescue ArgumentError => e
       Result.new(components: [], problems: ["#{label} ships a compiled file Fledge cannot read: #{e.message}"])
@@ -392,6 +430,42 @@ module Fledge
         "then say what its compiled code holds in fledge.yml, under compiled, such as " \
         "compiled: {#{name}: [{name: libfoo 1.2, license: MIT}]}, or compiled: {#{name}: []} when it is the gem's own " \
         "code alone."
+    end
+
+    # The crates a Rust build compiled into every compiled file of the
+    # gem, and why any of them cannot ship.
+    private def crate_components(label, binaries, crates)
+      problems = crates.reject { |crate| LicensePolicy.notice_only?(crate.license) }.map do |crate|
+        said = (crate.license == "NOASSERTION") ? "declares no license" : "is #{crate.license}"
+        "#{label} compiles in the #{crate.name}, which #{said}, and Fledge ships only code whose license asks nothing " \
+          "beyond keeping its notices (doc/licensing.md)."
+      end
+      [crates.map { |crate| component(crate.name, crate.license, binaries.keys, declared: false) }, problems]
+    end
+
+    # A Windows Ruby's DLL, such as x64-ucrt-ruby400.dll.
+    RUBY_DLL = /\A[\w-]*-ruby\d+\.dll\z/i
+
+    # Why a compiled file would not load where the app goes: a library it
+    # needs that neither the operating system, nor the runtime, nor the
+    # gem itself provides. A file that needs another Ruby's DLL is built
+    # for that Ruby, as a gem precompiled for several Ruby versions ships
+    # one file for each (lib/nokogiri/3.4/nokogiri.so), and the runtime's
+    # Ruby never loads it.
+    private def linkage_problems(label, binaries)
+      return [] unless @os
+
+      system = @map.system_libraries.fetch(@os, [])
+      shipped = (binaries.keys.map { |path| File.basename(path) } + @provided).map(&:downcase)
+      binaries.flat_map do |path, binary|
+        next [] if binary.needed.any? { |library| library.match?(RUBY_DLL) && !shipped.include?(library.downcase) }
+
+        binary.needed.reject { |library| system.any? { |pattern| pattern.match?(library) } || shipped.include?(File.basename(library).downcase) }
+          .map do |library|
+            "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \
+              "the app could not load it on another computer. Build the gem so that it carries the library, or links it statically."
+          end
+      end
     end
 
     # What the compiler linked into each file, where its evidence is.

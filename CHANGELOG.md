@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge build` compiles a gem with an extension to compile (one published only as source, such as redcarpet, or one from git) when the target is the platform it runs on, against the runtime's own Ruby: Xcode's command line tools on macOS (for macOS 14 and later), the C compiler on Linux, RubyInstaller's MSYS2 UCRT64 tools on Windows, and cargo for a Rust extension. `bundle config build.NAME` options reach the gem's `extconf.rb`, and `notices/GEMS.txt` says each gem was compiled, with which options.
+- For any other target, such a gem fails the build, naming it and saying to build on that platform or choose a precompiled version.
+- nokogiri ships for `arm64-darwin` when built from source on a Mac (`force_ruby_platform: true`, with `bundle config build.nokogiri --disable-xml2-legacy`), using macOS's own iconv.
+- Git gems ship, from any computer, at the commit the lockfile locks, fetched into `~/.cache/fledge/git` and laid out as Bundler lays them out, with their gemspecs evaluated; a git gem's extension compiles as above.
+- A Rust extension's crates, read from its build's `Cargo.lock` with `cargo metadata`, are listed in `notices/GEMS.txt` (those compiled in, and those that ran only while it compiled), and each must be under a license that asks nothing beyond notices.
+- Each release carries `fledge-runtime-VERSION-PLATFORM-dev.tar.gz`, the runtime's build-only companion of Ruby's headers and libraries, which `fledge build` downloads only to compile a gem, and never ships.
+- `Unicode-3.0` and `Unicode-DFS-2016` are notice-only licenses.
+- `notices/GEMS.txt` quotes the license texts in a gem's `LICENSES/` folder.
+
+### Changed
+
+- A gem's compiled file that needs a shared library neither its operating system (on Linux, what manylinux_2_39 allows), the runtime, nor the gem itself provides fails the build.
+- A path gem inside the project whose gemspec has an extension fails the build, since Bundler never compiles one.
+
 ## [0.0.1.pre.3] - 2026-10-27
 
 ### Added

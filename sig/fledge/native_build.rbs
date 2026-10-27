@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class NativeBuild
+    SCRUBBED: Regexp
+    SCRIPT: String
+    LOGS: Array[String]
+
+    @runtimes: Runtimes
+    @work: String
+    @log: CLI::_Output
+    @env: Runtimes::_Env
+    @ruby: String?
+
+    attr_reader platform: Platform
+
+    def initialize: (platform: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, ?env: Runtimes::_Env) -> void
+
+    def call: (Hash[locked_gem, package] packages, build_args: Hash[String, Array[String]]) -> Hash[locked_gem, package]
+
+    private def install_order: (Hash[locked_gem, package] packages, Hash[locked_gem, package] wanted) -> Array[locked_gem]
+
+    private def job: (locked_gem gem, package package, Array[String] args) -> [locked_gem, GemPackage | GitPackage, Hash[String, String | Array[String]], Array[String]]
+
+    private def run: (Array[Hash[String, String | Array[String]]] jobs) -> Array[Hash[String, String]]
+
+    private def prepare: () -> String
+
+    private def home: () -> String
+
+    private def child_env: () -> Hash[String, String?]
+
+    private def compiled_gem: (locked_gem gem, GemPackage | GitPackage package, Array[String] args, Hash[String, String] result) -> CompiledGem
+
+    private def new_files: (GemPackage | GitPackage package, String gem_dir) -> Array[Entry]
+
+    private def files_in: (String folder) -> Array[Entry]
+
+    private def relative_to_home: (String path) -> String
+
+    private def floor_problems: (locked_gem gem, Array[Entry] entries) -> Array[String]
+
+    private def newer?: (String found, String floor) -> bool
+
+    private def crates: (locked_gem gem, GemPackage | GitPackage package, String gem_dir) -> RustCrates::Found?
+  end
+end

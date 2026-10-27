@@ -19,6 +19,39 @@ class RuntimesTest < Minitest::Test
       Fledge::Runtimes.file_name(Fledge::Platform.find("arm64-darwin"), version: "1.2.3")
   end
 
+  def test_the_build_only_companion_is_named_beside_the_runtime
+    assert_equal "fledge-runtime-1.2.3-arm64-darwin-dev.tar.gz",
+      Fledge::Runtimes.dev_file_name(Fledge::Platform.find("arm64-darwin"), version: "1.2.3")
+  end
+
+  # A gem compiled from source needs the runtime's C headers, which the
+  # runtime itself prunes; they come from the same place it does.
+  def test_the_build_only_companion_comes_from_where_the_runtime_does
+    Dir.mktmpdir do |dir|
+      dev = File.join(dir, Fledge::Runtimes.dev_file_name(LINUX))
+      File.write(dev, "headers")
+      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir }, release_url: "http://127.0.0.1:1")
+
+      assert_equal dev, runtimes.dev_archive(LINUX)
+      error = assert_raises(Fledge::Error) { runtimes.dev_archive(Fledge::Platform.find("aarch64-linux")) }
+      assert_includes error.message, "which has no fledge-runtime-#{Fledge::VERSION}-aarch64-linux-dev.tar.gz"
+    end
+  end
+
+  def test_a_missing_build_only_companion_downloads_checked_against_the_release_sums
+    body = "headers"
+    name = Fledge::Runtimes.dev_file_name(LINUX)
+    server = LoopbackServer.new("/v/SHA256SUMS" => [200, {}, "#{Digest::SHA256.hexdigest(body)}  #{name}\n"], "/v/#{name}" => [200, {}, body])
+    Dir.mktmpdir do |home|
+      path = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v")).dev_archive(LINUX)
+
+      assert_equal File.join(home, ".cache/fledge/runtimes", name), path
+      assert_equal body, File.binread(path)
+    end
+  ensure
+    server&.stop
+  end
+
   def test_the_runtime_directory_wins_and_is_the_only_place_looked
     Dir.mktmpdir do |dir|
       archive = FakeRuntime.write(dir, LINUX)

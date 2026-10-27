@@ -13,6 +13,10 @@ module Bundler
 
   class Settings
     def temporary: [T] (Hash[Symbol, bool] update) { () -> T } -> T
+
+    def all: () -> Array[String]
+
+    def []: (String name) -> (String | bool | Integer)?
   end
 
   class Dsl
@@ -85,6 +89,13 @@ module Bundler
     end
 
     class Git < Path
+      def uri: () -> String
+
+      def options: () -> Hash[String, String]
+
+      def glob: () -> String
+
+      def submodules: () -> bool?
     end
   end
 end

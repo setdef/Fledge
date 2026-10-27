@@ -77,6 +77,29 @@ module Fledge
       "fledge-runtime-#{version}-#{platform}#{EXTENSION}"
     end
 
+    # The file name of the runtime's build-only companion for +platform+
+    # at +version+ (default: this Fledge's version): Ruby's C headers, and
+    # on Windows its import library, which a runtime prunes because no
+    # running app reads them, and which compiling a gem's extension
+    # against the runtime's own Ruby needs (ADR 006). Its top folder is
+    # the runtime's, so it unpacks over it. It never ships in an app.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Runtimes.dev_file_name(Fledge::Platform.find("arm64-darwin"), version: "0.1.0")
+    #   # => "fledge-runtime-0.1.0-arm64-darwin-dev.tar.gz"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.dev_file_name(platform, version: VERSION)
+      "#{File.basename(file_name(platform, version:), EXTENSION)}-dev#{EXTENSION}"
+    end
+
     # Creates the finder.
     #
     # [env] The environment to read +FLEDGE_RUNTIME_DIR+,
@@ -106,7 +129,31 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def archive(platform)
-      name = self.class.file_name(platform)
+      find(self.class.file_name(platform))
+    end
+
+    # The path of the build-only companion of +platform+'s runtime
+    # (Runtimes.dev_file_name), found and downloaded as #archive finds and
+    # downloads the runtime. Raises Fledge::Error when it cannot be found
+    # or downloaded.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Runtimes.new.dev_archive(Fledge::Platform.local)
+    #   # => "/home/you/.cache/fledge/runtimes/fledge-runtime-0.0.0-x86_64-linux-dev.tar.gz"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def dev_archive(platform)
+      find(self.class.dev_file_name(platform))
+    end
+
+    private def find(name)
       directory = @env["FLEDGE_RUNTIME_DIR"].to_s
       return from_directory(directory, name) unless directory.empty?
 

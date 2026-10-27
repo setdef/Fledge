@@ -41,11 +41,11 @@ class GemAppBuildTest < Minitest::Test
     FakeProject.write(@dir, dependencies:, locked:, remote: @server.url("/"), **)
   end
 
-  def build(*argv)
+  def build(*argv, host: "x86_64-linux")
     out = StringIO.new
     err = StringIO.new
     env = { "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache") }
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new("x86_64-linux")).call(argv) }
+    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host)).call(argv) }
     [out.string, err.string, status]
   end
 
@@ -113,7 +113,7 @@ class GemAppBuildTest < Minitest::Test
     root = project(dependencies: { "copyleft" => ">= 0", "unlabeled" => ">= 0", "needs_compiling" => ">= 0", "old" => ">= 0" },
       locked: [gpl, unlabeled, needs_compiling, old])
 
-    out, err, status = build("-t", "x86_64-linux", root)
+    out, err, status = build("-t", "x86_64-linux", root, host: "aarch64-linux")
 
     assert_equal [1, ""], [status, out]
     assert_equal [
@@ -121,15 +121,54 @@ class GemAppBuildTest < Minitest::Test
       "fledge build:   copyleft 1.0.0 is GPL-3.0-only, and Fledge ships only gems whose licenses ask nothing beyond keeping " \
         "their notices (doc/licensing.md). If its license is another, give it in fledge.yml, under licenses, such as " \
         "licenses: {copyleft: MIT}.",
-      "fledge build:   needs_compiling 1.0.0 has a C extension, which would have to be compiled for x86_64-linux, and the " \
-        "lockfile locks no build of it precompiled for x86_64-linux. Fledge ships only precompiled native gems for now: " \
-        "choose a version of needs_compiling with a build for x86_64-linux, and run bundle lock --add-platform x86_64-linux.",
+      "fledge build:   needs_compiling 1.0.0 has an extension to compile, and the lockfile locks no build of it precompiled for " \
+        "x86_64-linux. Fledge compiles a gem only on the platform it is for, and this computer is aarch64-linux: build for " \
+        "x86_64-linux on a computer that is x86_64-linux, such as a CI runner of that platform, or choose a version of " \
+        "needs_compiling with a build for x86_64-linux and run bundle lock --add-platform x86_64-linux.",
       "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.0.9.",
       "fledge build:   unlabeled 1.0.0 declares no license, and Fledge ships only gems whose licenses ask nothing beyond " \
         "keeping their notices (doc/licensing.md). If its license is another, give it in fledge.yml, under licenses, " \
         "such as licenses: {unlabeled: MIT}.",
     ], err.lines.map(&:chomp).grep_v(/\ADownloading /)
     assert_empty Dir.glob(File.join(@dir, "dist", "*"))
+  end
+
+  # On a computer Fledge has no runtime for, nothing compiles.
+  def test_a_gem_with_an_extension_is_refused_on_a_computer_fledge_has_no_runtime_for
+    needs_compiling = FakeGem.build(@gems, "needs_compiling", "1.0.0", extensions: ["ext/needs_compiling/extconf.rb"],
+      files: { "ext/needs_compiling/extconf.rb" => "", "LICENSE" => "MIT\n" })
+    root = project(dependencies: { "needs_compiling" => ">= 0" }, locked: [needs_compiling])
+
+    _, err, status = build("-t", "x86_64-linux", root, host: "x86_64-freebsd")
+
+    assert_equal 1, status
+    assert_includes err, "Fledge compiles a gem only on the platform it is for, and Fledge has no runtime for this computer: build"
+  end
+
+  # A git gem ships as Bundler keeps one, for every platform, from any
+  # computer, when it has nothing to compile (ADR 006).
+  def test_a_git_gem_ships_where_bundler_keeps_it_for_every_platform
+    require_relative "support/git_repos"
+    repo, revision = FakeRepo.write(@dir, "Monorepo", gems: { "alpha" => { "lib/alpha.rb" => "# alpha\n", "LICENSE" => "MIT\n" } })
+    root = FakeProject.write(@dir, dependencies: {}, locked: [], remote: @server.url("/"),
+      gemfile: "gem \"alpha\", git: #{repo.inspect}, branch: \"trunk\", glob: \"gems/*/*.gemspec\"\n", lock_dependencies: ["alpha!"])
+    lock = File.join(root, "Gemfile.lock")
+    text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  alpha (1.0)\n")
+    File.write(lock, "GIT\n  remote: #{repo}\n  revision: #{revision}\n  branch: trunk\n  glob: gems/*/*.gemspec\n  specs:\n" \
+      "    alpha (1.0)\n\n#{text}")
+
+    _, err, status = build("-t", "x64-mingw-ucrt", "-t", "aarch64-linux", root)
+
+    assert_equal 0, status, err
+    scope = "Monorepo-#{revision[0, 12]}"
+    assert_equal "# alpha\n", File.read(File.join(@dir, "dist/MyApp-x64-mingw-ucrt/ruby/lib/ruby/gems/4.0.0/bundler/gems", scope,
+      "gems/alpha/lib/alpha.rb"))
+    gemspec = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.0.0/bundler/gems", scope, "gems/alpha/alpha.gemspec"))
+    refute_includes gemspec, "git ls-files"
+    notices = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/notices/GEMS.txt"))
+    assert_includes notices, "alpha 1.0\n  License: MIT\n"
+    assert_includes notices, "  From: #{repo} at #{revision} (branch trunk)\n"
+    assert_includes notices, "lib/ruby/gems/4.0.0/bundler/gems/#{scope}/gems/alpha/LICENSE"
   end
 
   def test_fledge_yml_gives_the_license_a_gem_does_not_declare

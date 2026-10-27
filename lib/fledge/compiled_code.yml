@@ -59,6 +59,41 @@ toolchain:
   - name: GCC's runtime library (libgcc)
     license: GPL-3.0-or-later WITH GCC-exception-3.1
     evidence: "GCC: ("
+  # rustc compiles its standard library into every Rust extension, which
+  # names the compiler's own sources by their /rustc/COMMIT/ paths in its
+  # panic messages, as runtime/licenses.yml finds in YJIT.
+  - name: The Rust standard library
+    license: MIT OR Apache-2.0
+    evidence: /rustc/
+  # A DLL MinGW-w64's GCC links (MSYS2's, compiling a gem on Windows)
+  # carries the MinGW-w64 runtime's startup code, whose pseudo-relocation
+  # code reports failures in these words, as every extension
+  # RubyInstaller 4.0.9-1 ships holds them (strscan.so, zlib.so, psych.so).
+  - name: The MinGW-w64 runtime
+    license: LicenseRef-MinGW-w64-runtime
+    evidence: "Mingw-w64 runtime failure"
+
+# What each operating system provides, which an app need not ship and a
+# gem's compiled files may need. On Linux, the libraries PEP 600 lets a
+# manylinux_2_39 wheel assume of every distribution with glibc 2.39,
+# Fledge's floor (decision 7): auditwheel 6.4.2's manylinux-policy.json,
+# lib_whitelist for manylinux_2_39, and glibc's dynamic loader. Elsewhere,
+# runtime/licenses.yml's system_libraries, which a runtime's own files
+# meet, and on Windows bcryptprimitives.dll too, whose ProcessPrng the
+# Rust standard library imports for random numbers (its
+# x86_64-pc-windows-gnu libstd rlib names both, at Rust 1.99.1). A
+# compiled file that needs anything else must find it in the runtime or
+# in its own gem.
+system_libraries:
+  linux:
+    - /\A(?:libGL\.so\.1|libICE\.so\.6|libSM\.so\.6|libX11\.so\.6|libXext\.so\.6|libXrender\.so\.1|libanl\.so\.1|libatomic\.so\.1|libc\.so\.6|libdl\.so\.2|libexpat\.so\.1|libgcc_s\.so\.1|libglib-2\.0\.so\.0|libgobject-2\.0\.so\.0|libgthread-2\.0\.so\.0|libm\.so\.6|libnsl\.so\.1|libpthread\.so\.0|libresolv\.so\.2|librt\.so\.1|libstdc\+\+\.so\.6|libutil\.so\.1|libz\.so\.1)\z/
+    - /\Ald-linux[-\w.]*\.so\.\d\z/
+  darwin:
+    - /\A\/usr\/lib\/[^\/]+\.dylib\z/
+    - /\A\/System\/Library\/Frameworks\//
+  windows:
+    - /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i
+    - /\A(?:advapi32|bcrypt|bcryptprimitives|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i
 
 gems:
   sqlite3:
@@ -69,7 +104,10 @@ gems:
         evidence: SQLite format 3
 
   nokogiri:
-    reviewed: nokogiri 1.19.4's LICENSE-DEPENDENCIES.md and dependencies.yml
+    reviewed: >-
+      nokogiri 1.19.4's LICENSE-DEPENDENCIES.md and dependencies.yml, and its
+      build from source on macOS (which compiles in libxml2, libxslt, and
+      libgumbo, and loads macOS's iconv)
     holds:
       - name: libxml2
         license: MIT
@@ -85,9 +123,13 @@ gems:
         evidence: Jean-loup Gailly
     advice: >-
       nokogiri's builds for x86_64-linux and aarch64-linux use the C
-      library's iconv and compile in no libiconv (its LICENSE-DEPENDENCIES.md);
-      for macOS and Windows, Fledge cannot ship nokogiri until it can build
-      it without a static libiconv.
+      library's iconv and compile in no libiconv (its LICENSE-DEPENDENCIES.md).
+      For macOS, build nokogiri from source on a Mac, which uses macOS's own
+      iconv: gem "nokogiri", force_ruby_platform: true, and bundle config
+      build.nokogiri --disable-xml2-legacy, so libxml2 links none of the
+      build machine's own libraries (examples/nokogiri_app). On Windows its
+      extconf.rb compiles GNU libiconv in from source too, so Fledge cannot
+      ship nokogiri there.
 
   ffi:
     reviewed: ffi 1.17.4's LICENSE, COPYING, and its build of ext/ffi_c/libffi
@@ -119,4 +161,13 @@ gems:
 
   prism:
     reviewed: prism 2.0.0's src/ and include/, all prism's own
+    holds: []
+
+  # redcarpet publishes only its source; fledge build compiles it on the
+  # platform it builds for (ADR 006).
+  redcarpet:
+    reviewed: >-
+      redcarpet 3.6.1's COPYING and ext/redcarpet/, all redcarpet's own MIT
+      code (Natacha Porté's and Vicent Marti's), html_blocks.h included,
+      which gperf generated from its html_block_names.txt
     holds: []

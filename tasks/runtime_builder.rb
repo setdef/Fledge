@@ -107,6 +107,7 @@ class RuntimeBuilder
     license(stage)
     path = archive
     publish(stage)
+    write_dev(recipe.tree)
     path
   end
 
@@ -122,7 +123,49 @@ class RuntimeBuilder
       sbom: "#{base}.spdx.json",
       notices: "#{base}-NOTICES.txt",
       sources: LicenseAudit::Notices.source_bundle(version, platform.name),
+      dev: Fledge::Runtimes.dev_file_name(platform, version:),
     }
+  end
+
+  # What a runtime's build-only companion explains about itself, before
+  # the text of Ruby's license (DEV-NOTICES.txt).
+  DEV_NOTICE = <<~TEXT
+    THE RUNTIME'S BUILD-ONLY FILES
+
+    This archive unpacks over the Fledge runtime of the same name. It holds
+    what that runtime prunes because no running app reads it, and what
+    compiling a gem's C or Rust extension against the runtime's own Ruby
+    needs: Ruby's C headers, and Ruby's library to link against, which is
+    static libruby on macOS and Linux (whose extension builds link test
+    programs against it) and the import library of Ruby's DLL on Windows
+    (ADR 006). fledge build uses them to compile gems on the platform it
+    builds for, and never copies them into an app.
+
+    They are Ruby's, under Ruby's license (Ruby OR BSD-2-Clause), and
+    static libruby holds the Rust standard library too, compiled into
+    YJIT (MIT OR Apache-2.0). Their texts follow.
+  TEXT
+
+  # Copies, from the Ruby tree +tree+ (rv-ruby's prefix, or RubyInstaller's
+  # tree), what the build-only companion holds into +dev+, laid out as the
+  # runtime lays out Ruby (in ruby\ on Windows): include/, and the library
+  # extension builds link against, which is lib/*.dll.a on Windows, the
+  # import library of Ruby's DLL, and lib/libruby*-static.a elsewhere. A
+  # static Ruby's extensions themselves link no libruby (mkmf leaves
+  # LIBRUBYARG empty unless Ruby is shared), but mkmf links the test
+  # programs of have_func and the rest against LIBRUBYARG_STATIC, so an
+  # extconf.rb that checks for a function (nokogiri's) fails without it.
+  # No other static library comes along: rv-ruby's lib/libcrypt.a is
+  # libxcrypt, which is LGPL. Then DEV-NOTICES.txt, with Ruby's license
+  # and, beside a static libruby, Rust's.
+  def self.copy_dev(tree, dev, windows:)
+    ruby = windows ? File.join(dev, "ruby") : dev
+    FileUtils.mkdir_p(File.join(ruby, "lib"))
+    FileUtils.cp_r(File.join(tree, "include"), File.join(ruby, "include"))
+    FileUtils.cp(Dir.glob(File.join(tree, "lib", windows ? "*.dll.a" : "libruby*-static.a")), File.join(ruby, "lib"))
+    notices = [%w[ruby COPYING], %w[ruby BSDL], *(windows ? [] : [%w[rust COPYRIGHT], %w[rust LICENSE-MIT], %w[rust LICENSE-APACHE]])]
+    licenses = notices.map { |folder, name| File.read(File.join(ROOT, "runtime", "notices", folder, name)) }
+    File.write(File.join(dev, "DEV-NOTICES.txt"), [DEV_NOTICE, *licenses].join("\n#{'=' * 72}\n\n"))
   end
 
   # Every asset a release of +version+ publishes but SHA256SUMS, sorted:
@@ -154,6 +197,20 @@ class RuntimeBuilder
     File.write(File.join(stage, "notices", "sbom.spdx.json"), "#{JSON.pretty_generate(LicenseAudit::Spdx.new(report, version: Fledge::VERSION).to_h)}\n")
     puts "#{platform}: #{report.owners.size} files in #{report.present.size} components meet the license policy"
     report
+  end
+
+  # Writes the build-only companion (#assets, :dev) from the Ruby tree
+  # +tree+, with the runtime's top folder, so it unpacks over the runtime.
+  private def write_dev(tree)
+    dev = File.join(build_dir, "dev", top)
+    FileUtils.rm_rf(File.dirname(dev))
+    RuntimeBuilder.copy_dev(tree, dev, windows: platform.windows?)
+    path = File.join(@work, assets.fetch(:dev))
+    Fledge::TarGz.write(path, mtime: Integer(ENV.fetch("SOURCE_DATE_EPOCH", Time.now.to_i.to_s))) do |tar|
+      tar.add(Fledge::Entry.directory(top))
+      Fledge::Entry.walk(dev).each { |entry| tar.add(entry.with(path: "#{top}/#{entry.path}")) }
+    end
+    puts "Built #{path} (#{(File.size(path) / 1_000_000.0).round(1)} MB)"
   end
 
   # Writes the release assets beside the archive: copies of the SBOM and
@@ -464,6 +521,10 @@ class RuntimeBuilder
     def hosts
       [@builder.platform.name]
     end
+
+    # The Ruby tree the runtime was made from, once #build has unpacked
+    # it, for the build-only companion (RuntimeBuilder.copy_dev).
+    attr_reader :tree
   end
 
   # macOS and Linux: rv-ruby's Ruby, whose static libruby the launcher
@@ -471,7 +532,7 @@ class RuntimeBuilder
   # launcher with bin/, lib/ruby, and libexec/cert.pem beside it.
   class Unix < Recipe
     def build(stage)
-      @prefix = unpack_ruby
+      @prefix = @tree = unpack_ruby
       copy_ruby(stage)
       compile(File.join(stage, "launcher"), launcher_sources, "$ORIGIN/lib")
       compile(File.join(stage, "bin", "ruby"), [File.join(LAUNCHER, "ruby_main.c")], "$ORIGIN/../lib")
@@ -665,7 +726,7 @@ class RuntimeBuilder
     end
 
     def build(stage)
-      tree = unpack_rubyinstaller
+      tree = @tree = unpack_rubyinstaller
       @toolchain = unpack_toolchain
       compile(tree, File.join(stage, "launcher.exe"))
       ruby = File.join(stage, "ruby")

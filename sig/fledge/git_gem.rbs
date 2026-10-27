@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class GitGem < Data
+    attr_reader name: String
+    attr_reader version: String
+    attr_reader uri: String
+    attr_reader revision: String
+    attr_reader glob: String
+    attr_reader ref: String?
+
+    def self.new: (name: String, version: String, uri: String, revision: String, glob: String, ref: String?) -> instance
+
+    def full_name: () -> String
+
+    def scope: () -> String
+
+    private def base_name: () -> String
+
+    def url: () -> String
+
+    def to_s: () -> String
+  end
+end

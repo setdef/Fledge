@@ -51,18 +51,29 @@ class GemPackageTest < Minitest::Test
       package.entries("ruby/lib/ruby/gems/4.0.0").map(&:path).grep(/native\.rb\z/).first
   end
 
-  def test_says_what_keeps_a_gem_from_the_target
+  def test_says_what_keeps_a_gem_from_the_target_and_whether_it_has_an_extension_to_compile
     compiled = Fledge::GemPackage.new(FakeGem.build(@dir, "c", extensions: ["ext/c/extconf.rb"], files: { "ext/c/extconf.rb" => "" }).path)
     old = Fledge::GemPackage.new(FakeGem.build(@dir, "old", required_ruby_version: [">= 3.1", "< 3.5"]).path)
     fine = Fledge::GemPackage.new(FakeGem.build(@dir, "fine", required_ruby_version: ">= 3.2").path)
 
-    assert_equal [
-"c 1.0.0 has a C extension, which would have to be compiled for aarch64-linux, and the lockfile locks no build " \
-  "of it precompiled for aarch64-linux. Fledge ships only precompiled native gems for now: choose a version of c with a " \
-  "build for aarch64-linux, and run bundle lock --add-platform aarch64-linux.",
-], compiled.problems(platform: "aarch64-linux", ruby_version: "4.0.9")
-    assert_equal ["old 1.0.0 needs Ruby >= 3.1, < 3.5, and Fledge's runtime is Ruby 4.0.9."], old.problems(platform: "x", ruby_version: "4.0.9")
-    assert_empty fine.problems(platform: "x", ruby_version: "4.0.9")
+    assert_predicate compiled, :extensions?
+    assert_empty compiled.problems(ruby_version: "4.0.9"), "compiling is for Fledge::AppGems to judge"
+    assert_equal ["old 1.0.0 needs Ruby >= 3.1, < 3.5, and Fledge's runtime is Ruby 4.0.9."], old.problems(ruby_version: "4.0.9")
+    assert_empty fine.problems(ruby_version: "4.0.9")
+    refute_predicate fine, :extensions?
+    assert_equal "lib/ruby/gems/4.0.0/gems/fine-1.0.0", fine.installed_path("lib/ruby/gems/4.0.0")
+  end
+
+  # REUSE keeps license texts in LICENSES/, as Ferro's gems ship theirs.
+  def test_license_files_include_a_reuse_licenses_folder
+    built = FakeGem.build(@dir, "reused", files: {
+"lib/reused.rb" => "",
+"LICENSES/MIT.txt" => "MIT\n",
+"LICENSES/Apache-2.0.txt" => "Apache\n",
+"LICENSES/deep/x.txt" => "",
+})
+
+    assert_equal %w[LICENSES/Apache-2.0.txt LICENSES/MIT.txt], Fledge::GemPackage.new(built.path).license_files.keys
   end
 
   def test_a_file_that_is_not_a_gem_is_refused

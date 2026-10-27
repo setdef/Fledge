@@ -15,22 +15,34 @@ module Fledge
     @app: App
     @bundle: Bundle
     @fetcher: GemFetcher
+    @checkouts: GitCheckout
+    @compiler: NativeBuild?
 
-    def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher) -> void
+    def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, ?compiler: NativeBuild?) -> void
 
     def app_files: () -> Hash[String, String]
 
     def for: (Platform platform, runtime: RuntimeContents) -> Result
 
-    private def result: (Hash[LockedGem, GemPackage] packages, Hash[LockedGem, CompiledCode::Result] compiled, Platform platform, RuntimeContents runtime) -> Result
+    private def package_for: (locked_gem gem) -> package
 
-    private def license: (LockedGem gem, GemPackage package) -> String
+    private def compile: (Platform platform, Hash[locked_gem, package] packages) -> [Hash[locked_gem, package], Hash[locked_gem, Array[String]]]
 
-    private def license_problem: (LockedGem gem, GemPackage package) -> Array[String]
+    private def cross_problem: (locked_gem gem, Platform platform, Platform? host) -> String
 
-    private def notices: (Hash[LockedGem, GemPackage] packages, Hash[LockedGem, CompiledCode::Result] compiled, Platform platform, RuntimeContents runtime) -> String
+    private def result: (Hash[locked_gem, package] packages, Hash[locked_gem, CompiledCode::Result] compiled, Platform platform, RuntimeContents runtime) -> Result
 
-    private def entry: (LockedGem gem, GemPackage package, Array[CompiledCode::Component] components, RuntimeContents runtime) -> String
+    private def license: (locked_gem gem, package package) -> String
+
+    private def license_problem: (locked_gem gem, package package) -> Array[String]
+
+    private def notices: (Hash[locked_gem, package] packages, Hash[locked_gem, CompiledCode::Result] compiled, Platform platform, RuntimeContents runtime) -> String
+
+    private def entry: (locked_gem gem, package package, Array[CompiledCode::Component] components, RuntimeContents runtime) -> String
+
+    private def build_crate_problems: (locked_gem gem, package package) -> Array[String]
+
+    private def built_line: (package package, RuntimeContents runtime) -> String
 
     private def component_line: (CompiledCode::Component component) -> String
 

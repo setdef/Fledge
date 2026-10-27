@@ -138,7 +138,9 @@ class LicensingPage
       - **attributes the rest** to the gem's own code and to the libraries Fledge has reviewed its precompiled builds to hold (`lib/fledge/compiled_code.yml`), or that your `fledge.yml` says it holds, under `compiled`, and fails on compiled code neither describes, saying how to describe it. Your `fledge.yml` is your own statement, as cargo-deny's `clarify` is for a Rust crate, and the app's notices say that it came from you: `compiled: {some_gem: [{name: libfoo 1.2, license: MIT}]}`, or `compiled: {some_gem: []}` for a gem whose compiled code is its own alone.
       - **ships an LGPL library in its own file** only when another of the gem's compiled files loads it, so whoever receives the app can replace it, and your `fledge.yml` says where its exact source is: `{name: GNU libiconv 1.18, license: LGPL-2.1-or-later, shared_library: lib/libiconv-2.dll, source: https://...}`. Fledge does not host a third-party gem's sources; `notices/GEMS.txt` names the place you give, and what the LGPL then asks of you (below) applies to that library.
 
-      Fledge has reviewed these gems' precompiled builds:
+      A gem Fledge compiles from source on the platform it builds for (one published only as source, or one from git; ADR 006) meets the same rules, read from what the build produced. A Rust extension's crates, as its build's `Cargo.lock` resolved them, describe its compiled code in place of a review: each crate compiled in, and each that ran only while it compiled (build dependencies and procedural macros), must be under a license that asks nothing beyond notices, and `notices/GEMS.txt` lists them all. And a compiled file of any gem may need only libraries the target's operating system provides (on Linux, those a manylinux_2_39 wheel may assume), the runtime ships, or the gem itself carries; one that needs a library from the computer that built it fails the build, since the app would not load it anywhere else.
+
+      Fledge has reviewed these gems' builds:
 
       #{reviewed_gems.join("\n")}
 

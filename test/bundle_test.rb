@@ -131,16 +131,68 @@ class BundleTest < Minitest::Test
       "what is inside #{root}. Move it into the project, or take it from a gem server.", error.message
   end
 
-  def test_a_gem_from_git_is_refused
-    root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "gem \"g\", git: \"https://example.com/g.git\"\n",
+  # A project whose Gemfile takes "g" from git, locked at +revision+,
+  # with +options+ (tag, glob, submodules) in its GIT section.
+  def git_project(revision: "a" * 40, options: "  tag: v1.0\n  glob: gems/*/*.gemspec\n")
+    root = FakeProject.write(@dir, dependencies: {}, locked: [],
+      gemfile: "gem \"g\", git: \"https://example.com/repo.git\", tag: \"v1.0\", glob: \"gems/*/*.gemspec\"\n",
       lock_dependencies: ["g!"])
     lock = File.join(root, "Gemfile.lock")
     text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  g (1.0)\n")
-    File.write(lock, "GIT\n  remote: https://example.com/g.git\n  revision: #{'0' * 40}\n  specs:\n    g (1.0)\n\n#{text}")
+    File.write(lock, "GIT\n  remote: https://example.com/repo.git\n  revision: #{revision}\n#{options}  specs:\n    g (1.0)\n\n#{text}")
+    root
+  end
+
+  # The lockfile's revision pins a git gem, as its checksum pins a .gem.
+  def test_a_gem_from_git_is_taken_at_the_revision_the_lockfile_locks
+    gems = Fledge::Bundle.new(Fledge::App.at(git_project)).gems_for(LINUX, ruby_version: "4.0.9")
+
+    assert_equal [
+Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git", revision: "a" * 40,
+  glob: "gems/*/*.gemspec", ref: "tag v1.0",),
+], gems
+  end
+
+  def test_a_git_gem_without_a_full_revision_is_refused
+    error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(git_project(revision: "abc1234"))), LINUX) }
+
+    assert_equal "Gemfile.lock takes g from https://example.com/repo.git without pinning it to a commit (its revision is " \
+      "\"abc1234\"), and Fledge ships a git gem only at the full commit the lockfile locks. Run bundle lock, then build again.",
+      error.message
+  end
+
+  def test_a_git_gem_with_submodules_is_refused_for_now
+    root = git_project(options: "  tag: v1.0\n  glob: gems/*/*.gemspec\n  submodules: true\n")
+    File.write(File.join(root, "Gemfile"), File.read(File.join(root, "Gemfile")).sub("glob: \"gems/*/*.gemspec\"", "glob: \"gems/*/*.gemspec\", submodules: true"))
 
     error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(root)), LINUX) }
-    assert_match(%r{\AGemfile.lock takes g from https://example.com/g.git.*, and Fledge ships only gems from a gem server or from folders inside the project\.},
-      error.message)
+    assert_includes error.message, "takes g from https://example.com/repo.git with its submodules, which Fledge does not fetch yet"
+  end
+
+  # bundle config build.NAME, at any level Bundler reads, as Bundler
+  # passes it to the gem's extconf.rb (Bundler::GemInstaller#spec_settings).
+  def test_build_options_are_bundlers_split_as_a_shell_would
+    root = FakeProject.write(@dir, dependencies: {}, locked: [])
+    FileUtils.mkdir_p(File.join(root, ".bundle"))
+    File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_BUILD__NOKOGIRI: \"--use-system-libraries --with-opt='a b'\"\n")
+
+    bundle = Fledge::Bundle.new(Fledge::App.at(root))
+
+    assert_equal ["--use-system-libraries", "--with-opt=a b"], bundle.build_args("nokogiri")
+    assert_empty bundle.build_args("other")
+  end
+
+  # Bundler never compiles a path gem's extension; bundle exec loads what
+  # the developer last compiled there, for their own Ruby.
+  def test_a_path_gem_with_an_extension_is_refused
+    root = FakeProject.write(@dir, dependencies: {}, locked: [])
+    File.write(File.join(root, "my_app.gemspec"), File.read(File.join(root, "my_app.gemspec"))
+      .sub("spec.bindir", "spec.extensions = [\"ext/my_app/extconf.rb\"]\n  spec.bindir"))
+
+    error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(root)), LINUX) }
+    assert_equal "Gemfile.lock takes my_app from #{root}, a folder inside the project, and its gemspec has an extension to " \
+      "compile, which Bundler does not compile for a path gem (bundle exec loads whatever was last compiled there, for your own " \
+      "Ruby). Take it from git or a gem server, so Fledge can compile it for the runtime's Ruby.", error.message
   end
 
   def test_the_app_folder_gets_bundlers_settings_and_evaluated_gemspecs

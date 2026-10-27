@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class GitCheckout
+    ENVIRONMENT: Hash[String, String?]
+
+    @cache: String
+    @work: String
+    @log: CLI::_Output?
+    @checkouts: Hash[[String, String], String]
+
+    def initialize: (cache: String, work: String, ?log: CLI::_Output?) -> void
+
+    def checkout: (GitGem gem) -> String
+
+    private def mirror: (GitGem gem) -> String
+
+    private def fetch: (GitGem gem, String path) -> void
+
+    private def commit?: (String path, String revision) -> bool
+
+    private def serialize_gemspecs: (String folder, String glob) -> void
+
+    private def git: (*String arguments) -> String
+  end
+end

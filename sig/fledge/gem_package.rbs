@@ -4,15 +4,24 @@
 module Fledge
   class GemPackage
     LICENSE_FILE: Regexp
+    LICENSES: String
 
-    @path: String
     @files: Array[Entry]
 
     attr_reader spec: Gem::Specification
+    attr_reader path: String
+
+    def self.license_files_in: (Hash[String, String] files) -> Hash[String, String]
+
+    def self.ruby_problems: (Gem::Specification spec, String ruby_version) -> Array[String]
 
     def initialize: (String path) -> void
 
-    def problems: (platform: String, ruby_version: String) -> Array[String]
+    def problems: (ruby_version: String) -> Array[String]
+
+    def extensions?: () -> bool
+
+    def installed_path: (String gem_dir) -> String
 
     def entries: (String gem_dir) -> Array[Entry]
 

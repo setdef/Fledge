@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class RustCrates
+    class Found < Data
+      attr_reader compiled: Array[CompiledCode::Library]
+      attr_reader build: Array[CompiledCode::Library]
+
+      def self.new: (compiled: Array[CompiledCode::Library], build: Array[CompiledCode::Library]) -> instance
+    end
+
+    @manifest: String
+    @target: String
+    @env: Hash[String, String?]
+
+    def self.from_metadata: (Hash[String, Object] data, String manifest) -> Found
+
+    private def self.reach: (Hash[String, Hash[String, Object]] nodes, String root) { (Array[String?] kinds, String id) -> bool } -> Array[String]
+
+    private def self.proc_macro?: (Hash[String, Object] package) -> bool
+
+    private def self.same_file?: (String one, String other) -> bool
+
+    private def self.library: (Hash[String, Object] package) -> CompiledCode::Library
+
+    private def self.items: (Hash[String, Object] object, String key) -> Array[Hash[String, Object]]
+
+    private def self.mapping: (Hash[String, Object] object, String key) -> Hash[String, Object]
+
+    private def self.text: (Hash[String, Object] object, String key) -> String
+
+    def initialize: (String manifest, target: String, ?env: Hash[String, String?]) -> void
+
+    def call: (label: String) -> Found
+  end
+end

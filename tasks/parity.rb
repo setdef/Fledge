@@ -14,44 +14,53 @@ require "yaml"
 require_relative "runtime_builder"
 require_relative "../lib/fledge/cli"
 
-# The parity check (ADR 003): an app's Ruby code must see the same Ruby
-# under Fledge as under ruby main.rb.
+# The parity check (ADR 003 and ADR 005): an app's Ruby code must see the
+# same Ruby under Fledge as it does run as its developer runs it.
 #
 # It builds the probe app in test/fixtures/parity with fledge build, from
 # this computer's runtime, runs it, then runs the same main.rb with the
 # very Ruby the runtime was made from (rv-ruby's, or RubyInstaller's,
 # fetched by the pins in runtime/sources.yml and left as it ships), as
-# ruby main.rb from the app's folder. Both get the same arguments and the
-# same environment: the caller's, without the caller's own Ruby settings,
-# plus a GEM_HOME and two markers that stand for a person's. It
-# normalizes paths (the app's folder, each Ruby's prefix, the home
-# folder, the work folder), and compares every fact.
+# ruby main.rb from the app's folder. Then it does the same for a
+# gem-shaped app: examples/my_cool_app with the probe as its
+# exe/my_cool_app, built with its locked gems, against bundle exec ruby
+# exe/my_cool_app on the same Ruby, with the bundle installed there as
+# its developer would install it (bundle install, into GEM_HOME). Each
+# pair gets the same arguments and the same environment: the caller's,
+# without the caller's own Ruby settings, plus a GEM_HOME and two markers
+# that stand for a person's. It normalizes paths (the app's folder, its
+# project's root, each Ruby's prefix, the home folder, the work folder),
+# and compares every fact.
 #
 # Every difference is either listed in JUSTIFIED, with the reason it is
-# right, or fails the check. On Windows it runs both again under code
-# page 437, as a console in the United States starts.
+# right, or fails the check. On Windows it runs the script check again
+# under code page 437, as a console in the United States starts.
 #
 # Run it as rake parity, after rake runtime or with FLEDGE_RUNTIME_DIR set.
 class Parity
   ROOT = File.expand_path("..", __dir__)
   PROBE = File.join(ROOT, "test", "fixtures", "parity")
+  # The gem-shaped app whose exe/my_cool_app the probe stands in for.
+  GEM_APP = File.join(ROOT, "examples", "my_cool_app")
   ARGUMENTS = ["one", "two words", "ünïcödé"].freeze
 
   # One difference parity allows, and why. +reference+ and +app+ are
-  # patterns: each element found only in the reference run must match
-  # one of +reference+, and each found only in the app must match one of
-  # +app+. +platforms+, when given, limits it to those platforms.
-  class Justification < Data.define(:fact, :reference, :app, :reason, :platforms)
-    def self.new(fact:, reason:, reference: [], app: [], platforms: nil)
+  # patterns: an element found only in the reference run is justified
+  # when it matches one of +reference+, and one found only in the app
+  # when it matches one of +app+. +platforms+, when given, limits it to
+  # those platforms, and +checks+ to the script check (:script, against
+  # ruby main.rb) or the gem-shaped one (:bundle, against bundle exec).
+  class Justification < Data.define(:fact, :reference, :app, :reason, :platforms, :checks)
+    def self.new(fact:, reason:, reference: [], app: [], platforms: nil, checks: %i[script bundle])
       super
     end
 
-    def covers?(fact_name, platform, only_in_reference, only_in_app)
-      return false if fact != fact_name
-      return false if platforms && !platforms.include?(platform)
+    def applies?(fact_name, platform, check)
+      fact == fact_name && (platforms.nil? || platforms.include?(platform)) && checks.include?(check)
+    end
 
-      only_in_reference.all? { |element| reference.any? { |pattern| pattern.match?(element) } } &&
-        only_in_app.all? { |element| app.any? { |pattern| pattern.match?(element) } }
+    def explains?(element, side)
+      ((side == :reference) ? reference : app).any? { |pattern| pattern.match?(element) }
     end
   end
 
@@ -59,12 +68,49 @@ class Parity
   # runtime prunes (RuntimeBuilder.prune).
   RV_RUBY_EXTRAS = /\A"(?:bootsnap|msgpack)(?: |"=)/
 
+  # Where bundle install puts a gem's files for the person, and where
+  # fledge build puts them in the app.
+  PERSON_GEMS = %r{<work>/person-gems}
+  APP_GEMS = %r{<prefix>/lib/ruby/gems/4\.0\.0}
+
+  # The variables Bundler sets for the bundle it set up, whose values
+  # name where the gems are (ADR 005).
+  BUNDLE_LOCATIONS = /\A"(?:GEM_HOME|PATH|BUNDLER_ORIG_GEM_HOME)"=/
+
   JUSTIFIED = [
     *%w[$0 __FILE__ $PROGRAM_NAME].map do |fact|
-      Justification.new(fact:, reference: [/\A"main\.rb"\z/], app: [%r{\A"<app>/main\.rb"\z}],
+      Justification.new(fact:, reference: [/\A"main\.rb"\z/], app: [%r{\A"<app>/main\.rb"\z}], checks: %i[script],
         reason: "ruby main.rb names the script as typed. The launcher runs it by its absolute path, as " \
           "ruby /path/to/app/main.rb would, since a person may start the app from any folder.")
     end,
+    *%w[$0 __FILE__ $PROGRAM_NAME].map do |fact|
+      Justification.new(fact:, reference: [%r{\A"exe/my_cool_app"\z}], app: [%r{\A"<app>/my_cool_app"\z}], checks: %i[bundle],
+        reason: "bundle exec ruby exe/my_cool_app names the program as typed. The launcher runs it by its absolute " \
+          "path, since a person may start the app from any folder.")
+    end,
+    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/gems/}], app: [%r{\A"#{APP_GEMS}/gems/}], checks: %i[bundle],
+      reason: "bundle install put the gems in the person's GEM_HOME; fledge build put the same gems in the runtime's gem " \
+        "folder, beside Ruby's own (ADR 005). Bundler sets up the same gems, in the same order, from each."),
+    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/gems/rake-}], checks: %i[bundle],
+      reason: "A built app leaves out the Gemfile's development and test groups, as Warbler does, and its Bundler " \
+        "sets up the rest (ADR 005); bundle exec on the developer's computer sets up all of them."),
+    Justification.new(fact: "gems", reference: [/\A"rake /], checks: %i[bundle], reason: "As for $LOAD_PATH: rake is a development gem."),
+    Justification.new(fact: "requireable", reference: [/\A"rake"=/], checks: %i[bundle], reason: "As for gems."),
+    *["ENV", "child ENV"].map do |fact|
+      Justification.new(fact:, reference: [BUNDLE_LOCATIONS], app: [BUNDLE_LOCATIONS], checks: %i[bundle],
+        reason: "Bundler points GEM_HOME and PATH at the bundle's gems, as bundle exec does: the person's GEM_HOME on " \
+          "their computer, the runtime's gem folder in the app. The app's Bundler started from an environment " \
+          "without the person's Ruby settings (ADR 003), so it records no GEM_HOME of theirs.")
+    end,
+    Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/yaml_serializer\.rb"\z}],
+      checks: %i[bundle],
+      reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
+        "without the development and test groups, as bundle config set --local would (ADR 005). Reading a " \
+        "configuration file loads RubyGems' YAML serializer."),
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<project>/lib/my_cool_app/version\.rb"\z}], checks: %i[bundle],
+      reason: "Bundler evaluates the project's gemspec as it sets up the bundle, and this one requires its version file. " \
+        "A built app ships the gemspec evaluated, as Bundler caches a git gem's (ADR 005), so that one that runs git " \
+        "needs no git; the version file loads when the app requires it, as every other file of the app does."),
     Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, %r{\A"<home>/\.(?:gem|local/share/gem)/}],
       reason: "The app's gems are the runtime's alone (ADR 003): the person's GEM_HOME, GEM_PATH, and " \
         "Gem.user_dir never shadow them. Their ENV still reaches the app and its child processes."),
@@ -89,18 +135,19 @@ class Parity
         "that uses one finds it either way."),
   ].freeze
 
-  # A fact that differs between the two runs.
-  class Difference < Data.define(:fact, :only_in_reference, :only_in_app, :justification)
+  # A fact that differs between the two runs, and the justifications
+  # that explain every element of the difference, or none.
+  class Difference < Data.define(:fact, :only_in_reference, :only_in_app, :justifications)
     def justified?
-      !justification.nil?
+      !justifications.empty?
     end
 
     def to_s
       lines = ["#{justified? ? 'justified' : 'DIFFERENT'}: #{fact}"]
-      only_in_reference.each { |element| lines << "    ruby main.rb only: #{element}" }
-      only_in_app.each { |element| lines << "    built app only:    #{element}" }
+      only_in_reference.each { |element| lines << "    reference only: #{element}" }
+      only_in_app.each { |element| lines << "    built app only: #{element}" }
       lines << "    order differs" if only_in_reference.empty? && only_in_app.empty?
-      lines << "    why: #{justification.reason}" if justification
+      justifications.each { |justification| lines << "    why: #{justification.reason}" }
       lines.join("\n")
     end
   end
@@ -113,16 +160,16 @@ class Parity
     JSON.parse(line.delete_prefix("FLEDGE-PARITY "))
   end
 
-  # +report+ with every path it names relative to a placeholder: <app>,
-  # <prefix>, <home>, and <work> (+work+), with backslashes as slashes.
+  # +report+ with every path it names relative to a placeholder: <app>
+  # (the probe's own folder), <project> (its project's root, when that is
+  # another), <prefix>, <home>, and <work> (+work+), with backslashes as
+  # slashes.
   def self.normalize(report, work:)
     paths = report.fetch("paths")
-    replacements = {
-      paths.fetch("app") => "<app>",
-      paths.fetch("prefix") => "<prefix>",
-      paths.fetch("home") => "<home>",
-      work => "<work>",
-    }.flat_map { |path, token| variants(path).map { |variant| [variant, token] } }.sort_by { |path, _| -path.size }
+    tokens = { paths.fetch("project", paths.fetch("app")) => "<project>" }
+    tokens[paths.fetch("app")] = "<app>"
+    tokens.merge!(paths.fetch("prefix") => "<prefix>", paths.fetch("home") => "<home>", work => "<work>")
+    replacements = tokens.flat_map { |path, token| variants(path).map { |variant| [variant, token] } }.sort_by { |path, _| -path.size }
     rewrite(report.except("paths"), replacements)
   end
 
@@ -141,19 +188,25 @@ class Parity
     end
   end
 
-  # A fact as a list of strings to compare: each element of an Array,
-  # each KEY=VALUE of a Hash, or the one value of anything else.
+  # A fact as a list of strings to compare: each element of an Array, in
+  # order, each KEY=VALUE of a Hash, sorted, or the one value of anything
+  # else. A Hash's order is how the environment happened to be built (the
+  # launcher puts the person's variables back after Ruby boots, and
+  # Bundler adds its own), not something Ruby promises an app.
   def self.elements(value)
     case value
     when Array then value.map { |element| JSON.generate(element) }
-    when Hash then value.map { |key, element| "#{JSON.generate(key)}=#{JSON.generate(element)}" }
+    when Hash then value.map { |key, element| "#{JSON.generate(key)}=#{JSON.generate(element)}" }.sort
     else [JSON.generate(value)]
     end
   end
 
-  # The facts that differ between two normalized reports, each with the
-  # justification that covers it, if any.
-  def self.compare(reference, app, platform:)
+  # The facts that differ between two normalized reports, for the script
+  # check or, with +check+ :bundle, the gem-shaped one. A difference is
+  # justified when every element found on one side only is explained by
+  # some justification for that fact, and the elements both sides share
+  # come in the same order.
+  def self.compare(reference, app, platform:, check: :script)
     (reference.keys | app.keys).filter_map do |fact|
       expected = elements(reference[fact])
       actual = elements(app[fact])
@@ -161,9 +214,11 @@ class Parity
 
       only_in_reference = expected - actual
       only_in_app = actual - expected
-      justification = JUSTIFIED.find { |candidate| candidate.covers?(fact, platform, only_in_reference, only_in_app) }
-      justification = nil if justification && (expected - only_in_reference) != (actual - only_in_app)
-      Difference.new(fact:, only_in_reference:, only_in_app:, justification:)
+      applicable = JUSTIFIED.select { |candidate| candidate.applies?(fact, platform, check) }
+      used = only_in_reference.map { |element| applicable.find { |candidate| candidate.explains?(element, :reference) } } +
+        only_in_app.map { |element| applicable.find { |candidate| candidate.explains?(element, :app) } }
+      justified = !used.empty? && used.none?(&:nil?) && (expected - only_in_reference) == (actual - only_in_app)
+      Difference.new(fact:, only_in_reference:, only_in_app:, justifications: justified ? used.compact.uniq : [])
     end
   end
 
@@ -189,7 +244,37 @@ class Parity
     FileUtils.cp_r(PROBE, @reference_app)
     results = [check("", nil)]
     results << check(" under code page 437", "437") if platform.windows?
+    results << check_bundle
     results.all?
+  end
+
+  # The gem-shaped check: the probe as examples/my_cool_app's program,
+  # built with its locked gems, against bundle exec ruby
+  # exe/my_cool_app, with the bundle installed into the person's GEM_HOME.
+  private def check_bundle
+    env = environment
+    project = gem_project("gem-app")
+    reference = gem_project("reference-gem-app")
+    bundle = File.join(File.dirname(@ruby), "bundle")
+    install = [@ruby, bundle, "install", "--quiet"]
+    system(env.merge("BUNDLE_FROZEN" => "true"), *install, chdir: reference, unsetenv_others: true, exception: true)
+    launcher = build_app(File.join(project, "exe", "my_cool_app"), "MyCoolApp")
+    expected = run([@ruby, bundle, "exec", @ruby, "exe/my_cool_app", *ARGUMENTS], reference, env)
+    actual = run([launcher, *ARGUMENTS], File.join(File.dirname(launcher), "app"), env)
+    differences = Parity.compare(Parity.normalize(expected, work: @work), Parity.normalize(actual, work: @work),
+      platform: platform.name, check: :bundle)
+    report(" of a gem-shaped app with bundle exec", env, differences)
+    differences.all?(&:justified?)
+  end
+
+  # A copy of examples/my_cool_app in the work folder, named +name+, with
+  # the probe as its exe/my_cool_app.
+  private def gem_project(name)
+    project = File.join(@work, name)
+    FileUtils.cp_r(GEM_APP, project)
+    FileUtils.rm_rf(File.join(project, ".bundle"))
+    FileUtils.cp(File.join(PROBE, "main.rb"), File.join(project, "exe", "my_cool_app"))
+    project
   end
 
   # Runs both, on Windows under +code_page+ when it is given, reports the
@@ -255,16 +340,16 @@ class Parity
     Parity.report(out)
   end
 
-  # Builds the probe with fledge build into the work folder and returns
-  # its launcher.
-  private def build_app
+  # Builds +path+ (default: the probe) with fledge build into the work
+  # folder and returns its launcher, the program +name+.
+  private def build_app(path = PROBE, name = "Parity")
     out = StringIO.new
     err = StringIO.new
-    status = Fledge::CLI::Build.new(out:, err:, env: { "FLEDGE_RUNTIME_DIR" => @runtimes })
-      .call(["-t", platform.name, "-o", File.join(@work, "dist"), PROBE])
+    env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => @runtimes)
+    status = Fledge::CLI::Build.new(out:, err:, env:).call(["-t", platform.name, "-o", File.join(@work, "dist"), path])
     raise "fledge build failed: #{err.string}" unless status.zero?
 
-    File.join(@work, "dist", "parity-#{platform}", platform.executable("parity"))
+    File.join(@work, "dist", "#{name}-#{platform}", platform.executable(name))
   end
 
   # Unpacks the pinned Ruby the runtime was made from, as it ships, and

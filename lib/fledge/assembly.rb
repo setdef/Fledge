@@ -16,16 +16,21 @@ module Fledge
   #
   # A runtime archive holds a launcher named +launcher+ (+launcher.exe+
   # on Windows) beside the Ruby it embeds. A built app is that runtime
-  # with the launcher renamed to the app's name and the app copied into
-  # its +app+ folder, written twice: as <tt>OUT/NAME-PLATFORM/</tt>, to
-  # try, and as <tt>OUT/NAME-PLATFORM.tar.gz</tt> (<tt>.zip</tt> for
-  # Windows), to ship. Unpacking the runtime and packing the folder again
-  # would lose the launcher's executable bit on a disk that has none.
+  # with the launcher renamed to the app's name, the app's project copied
+  # into its +app+ folder, and a CONFIG beside the launcher that tells it
+  # which program in +app+ to run and, for a project with a Gemfile,
+  # which Gemfile to set up (ADR 005). It is written twice: as
+  # <tt>OUT/NAME-PLATFORM/</tt>, to try, and as
+  # <tt>OUT/NAME-PLATFORM.tar.gz</tt> (<tt>.zip</tt> for Windows), to
+  # ship. Unpacking the runtime and packing the folder again would lose
+  # the launcher's executable bit on a disk that has none.
   #
-  # This class streams each runtime entry, and then each of the app's,
-  # into the folder and the archive at once, so the archive keeps the
-  # permissions and symlinks the runtime was built with. The platform
-  # names the archive's format (Fledge::Platform#archive_format). It
+  # This class streams each runtime entry, then CONFIG, each of the app's
+  # entries, and the files the build adds (the app's gems and their
+  # notices), into the folder and the archive at once, so the archive
+  # keeps the permissions and symlinks the runtime was built with. The
+  # platform names the archive's format (Fledge::Platform#archive_format).
+  # It refuses to let an added file replace one the runtime holds,
   # replaces a previous build of the same app and platform, and removes
   # what it wrote if the build fails.
   #
@@ -45,7 +50,7 @@ module Fledge
   #     runtime: Fledge::Runtimes.new.archive(platform),
   #     out: File.expand_path("dist")
   #   ).call
-  #   # => "/path/to/dist/hello-x86_64-linux.tar.gz"
+  #   # => "/path/to/dist/Hello-x86_64-linux.tar.gz"
   #--
   # SPDX-SnippetEnd
   #++
@@ -54,17 +59,30 @@ module Fledge
     # adds an extension.
     LAUNCHER = "launcher"
 
+    # The file beside the launcher that says what it runs. The launcher
+    # reads it as Python reads the pyvenv.cfg beside its interpreter (PEP
+    # 405): lines of <tt>key = value</tt>.
+    CONFIG = "fledge.cfg"
+
     # Creates the assembly.
     #
     # [app] The Fledge::App to ship.
     # [platform] The Fledge::Platform the runtime is for.
     # [runtime] The path of the runtime archive.
     # [out] The folder builds go to, as an absolute path.
-    def initialize(app:, platform:, runtime:, out:)
+    # [app_files] Contents for files in the app's folder, by path relative
+    #             to it, in place of the project's own file at that path or
+    #             beside the rest.
+    # [files] More entries for the built folder, with paths relative to
+    #         it, which may not replace anything the runtime holds.
+    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [])
       @app = app
       @platform = platform
       @runtime = runtime
       @out = out
+      @app_files = app_files
+      @files = files
+      @placed = {} # : Hash[String, bool]
     end
 
     # The built app's folder and archive name: <tt>NAME-PLATFORM</tt>.
@@ -76,7 +94,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   assembly.base_name # => "hello-x86_64-linux"
+    #   assembly.base_name # => "Hello-x86_64-linux"
     #--
     # SPDX-SnippetEnd
     #++
@@ -86,7 +104,8 @@ module Fledge
 
     # Writes the built app's folder and archive, and returns the
     # archive's path. Raises Fledge::Error when the runtime is not a
-    # Fledge runtime or the app's name collides with a file in it.
+    # Fledge runtime, the app's name collides with a file in it, or an
+    # added file would replace one of the runtime's.
     #
     # === Example
     #
@@ -95,16 +114,47 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   assembly.call # => "/path/to/dist/hello-x86_64-linux.tar.gz"
+    #   assembly.call # => "/path/to/dist/Hello-x86_64-linux.tar.gz"
     #--
     # SPDX-SnippetEnd
     #++
     def call
-      if @platform.executable(@app.name).casecmp?("app")
-        raise Error, "an app named #{@app.name} would collide with its own app folder. Rename the app's folder."
+      executable = @platform.executable(@app.name)
+      { "app" => "its own app folder", CONFIG => "the file that says what it runs" }.each do |taken, what|
+        raise Error, "an app named #{@app.name} would collide with #{what}. Give it another name." if executable.casecmp?(taken)
       end
 
       build
+    end
+
+    # The contents of CONFIG for the app: its entry point, and its
+    # Gemfile when it has one, relative to the +app+ folder.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   assembly.launch_config.lines.drop(1)
+    #   # => ["entry = exe/my_cool_app\n", "gemfile = Gemfile\n"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def launch_config
+      lines = ["entry = #{config_value(@app.entry)}"]
+      gemfile = @app.gemfile
+      lines << "gemfile = #{config_value(gemfile)}" if gemfile
+      "# Written by fledge build: what this app's program runs (ADR 005).\n#{lines.join("\n")}\n"
+    end
+
+    private def config_value(path)
+      if path.match?(/[\r\n]/) || path != path.strip
+        raise Error, "#{path.inspect} can't be an app's program or Gemfile: its name begins or ends with a space, or holds a line break"
+      end
+
+      path
     end
 
     private def build
@@ -113,8 +163,9 @@ module Fledge
       @platform.archive_format.write(archive) do |writer|
         writer.add(Entry.directory(base_name))
         copy_runtime(writer)
-        place(writer, Entry.directory("app"))
-        @app.entries(skip: [@out]).each { |entry| place(writer, entry.with(path: "app/#{entry.path}")) }
+        add(writer, Entry.file(CONFIG, launch_config))
+        copy_app(writer)
+        @files.each { |entry| add(writer, entry) }
       end
     rescue
       remove_output
@@ -156,16 +207,47 @@ module Fledge
 
       first = path.split("/", 2).first.to_s
       raise Error, "#{@runtime} is not a Fledge runtime: it holds an app folder" if first == "app"
+      raise Error, "#{@runtime} is not a Fledge runtime: it holds a #{CONFIG}" if first == CONFIG
       if first.casecmp?(executable)
-        raise Error, "an app named #{@app.name} would collide with the runtime's #{first}. Rename the app's folder."
+        raise Error, "an app named #{@app.name} would collide with the runtime's #{first}. Give it another name."
       end
 
       path
     end
 
+    # The project's entries in +app+, with the contents @app_files gives
+    # in place of a file's own, then the files of @app_files the project
+    # does not have.
+    private def copy_app(writer)
+      add(writer, Entry.directory("app"))
+      remaining = @app_files.dup
+      @app.entries(skip: [@out]).each do |entry|
+        content = remaining.delete(entry.path)
+        entry = entry.with(content:) if content && entry.type == :file
+        add(writer, entry.with(path: "app/#{entry.path}"))
+      end
+      remaining.each { |path, content| add(writer, Entry.file("app/#{path}", content)) }
+    end
+
+    # Places an entry the build adds, after any folder above it that is
+    # not there yet. A folder already there stays; any other entry already
+    # there is the runtime's, which nothing the build adds may replace.
+    private def add(writer, entry)
+      parents = entry.path.split("/")[0...-1] || []
+      parents.each_index do |index|
+        parent = parents.first(index + 1).join("/")
+        place(writer, Entry.directory(parent)) unless @placed.key?(parent)
+      end
+      return if entry.type == :directory && @placed.key?(entry.path)
+      raise Error, "#{entry.path} is in #{@runtime} already, so the build can't add its own" if @placed.key?(entry.path)
+
+      place(writer, entry)
+    end
+
     private def place(writer, entry)
       entry.write_into(folder)
       writer.add(entry.with(path: "#{base_name}/#{entry.path}"))
+      @placed[entry.path] = true
     end
   end
 end

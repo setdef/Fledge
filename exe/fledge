@@ -28,14 +28,20 @@
 #     platform you ask for, so you can build for macOS, Windows, and
 #     Linux from one computer.
 #
-#     An app is a folder with a main.rb. Run it during development
-#     with your own Ruby; build it to ship it.
+#     Build the program you already run, such as exe/my_app in a gem,
+#     bin/server in an app with a Gemfile, or a lone main.rb. Its
+#     project ships with it, and so do the gems its Gemfile.lock locks,
+#     each as built for the target, which Bundler sets up before the
+#     program runs, as bundle exec would.
 #
 # COMMANDS
-#     build              Copy the app in PATH (default: the current
-#                        directory) into a runtime for each target,
-#                        then archive each result. Prints the path of
-#                        each archive it writes, one per line.
+#     build              Copy the program PATH (default: the current
+#                        directory) and its project into a runtime for
+#                        each target, with the gems it needs, then
+#                        archive each result. Prints the path of each
+#                        archive it writes, one per line. A folder
+#                        means the one executable its gemspec names,
+#                        or else its main.rb.
 #
 # OPTIONS
 #     -t, --target PLATFORM
@@ -48,18 +54,35 @@
 #     -v, --version      Print Fledge's version
 #
 # FILES
-#     PATH/main.rb       The file the launcher runs, as ruby main.rb
-#                        would: load the app's other files with
-#                        require_relative. Everything in PATH ships
-#                        except PATH/.git and DIR, if DIR is inside
-#                        PATH.
+#     ROOT               The program's project: the nearest folder,
+#                        from the program's up, with a Gemfile,
+#                        gems.rb, a gemspec, or a fledge.yml, but not
+#                        above a git repository's top; else the
+#                        program's own folder. Everything in it ships,
+#                        as app/, except .git, .bundle, vendor/bundle,
+#                        vendor/cache, and DIR.
+#     ROOT/Gemfile.lock  The gems to ship, without the development and
+#                        test groups. It must lock each target's
+#                        platform (bundle lock --add-platform) and each
+#                        gem's checksum (bundle lock --add-checksums).
+#                        A gem must be pure Ruby or locked precompiled
+#                        for the target, and under a license that asks
+#                        nothing beyond keeping its notices; the build
+#                        names each one that is not, and fails.
+#     ROOT/fledge.yml    Optional. name: the app's name. licenses: the
+#                        license of a gem whose gemspec gives none, or
+#                        the wrong one, such as {some_gem: MIT}.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
-#                        NAME is PATH's folder name, and NAME is also
-#                        the program to run (NAME.exe on Windows). It
-#                        exits with the app's own status, or with 66
-#                        when its app/main.rb is missing and 70 when
-#                        the rest of the folder is broken. A new build
-#                        replaces it.
+#                        NAME is the gemspec's name, or else ROOT's
+#                        folder name, camelized (my_cool_app is
+#                        MyCoolApp), unless fledge.yml names it. NAME
+#                        is also the program to run (NAME.exe on
+#                        Windows). It runs app/PROGRAM as ruby, or
+#                        bundle exec, would, and exits with its status,
+#                        or with 66 when it is missing and 70 when the
+#                        rest of the folder is broken. Its notices/
+#                        holds every license, the gems' in GEMS.txt. A
+#                        new build replaces it.
 #     DIR/NAME-PLATFORM.zip
 #     DIR/NAME-PLATFORM.tar.gz
 #                        The same folder, archived for download: a .zip
@@ -68,31 +91,37 @@
 #                        Runtimes downloaded from Fledge's GitHub
 #                        Release for this version, each checked
 #                        against the release's SHA256SUMS.
+#     ~/.cache/fledge/gems/
+#                        Gems downloaded from the lockfile's gem
+#                        server, each checked against the lockfile's
+#                        checksum. ROOT/vendor/cache and RubyGems' own
+#                        caches are looked in first.
 #
 # ENVIRONMENT
 #     FLEDGE_RUNTIME_DIR Take runtimes from this folder of
 #                        fledge-runtime-VERSION-PLATFORM.tar.gz files,
 #                        and never download them.
-#     XDG_CACHE_HOME     Keep downloaded runtimes in
-#                        $XDG_CACHE_HOME/fledge/runtimes instead.
+#     XDG_CACHE_HOME     Keep downloaded runtimes and gems in
+#                        $XDG_CACHE_HOME/fledge instead.
 #
 # EXIT STATUS
 #     0                  Success
 #     1                  The build failed (a missing app, a runtime
-#                        that would not download, a full disk)
+#                        that would not download, a gem that cannot
+#                        ship, a full disk)
 #     2                  Usage error (an unrecognized option, a
 #                        missing value, an unknown target)
 #
 # EXAMPLES
-#     Build the app in the current directory for this computer:
+#     Build the gem in the current directory for this computer:
 #     fledge build
 #
-#     Build for every platform, from any one of them:
+#     Build a gem's executable for every platform, from any one of them:
 #     fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux \
-#       -t x64-mingw-ucrt
+#       -t x64-mingw-ucrt exe/my_cool_app
 #
-#     Build an app from elsewhere, into another folder:
-#     fledge build --out /tmp/builds path/to/app
+#     Build a script from elsewhere, into another folder:
+#     fledge build --out /tmp/builds path/to/app/main.rb
 #
 # ======================================================================
 ###

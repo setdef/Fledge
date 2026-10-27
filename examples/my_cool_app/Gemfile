@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+gemspec
+
+# Development gems stay on the developer's computer: a built app leaves
+# out the development and test groups (ADR 005).
+group :development do
+  gem "rake", "~> 13.0"
+end

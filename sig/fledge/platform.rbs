@@ -20,6 +20,8 @@ module Fledge
 
     def windows?: () -> bool
 
+    def lockfile_names: () -> Array[String]
+
     def archive_format: () -> (singleton(TarGz) | singleton(Zip))
 
     def archive_extension: () -> String

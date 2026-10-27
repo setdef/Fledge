@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+
+# hello is a lone script, run as ruby main.rb, with no Gemfile or gemspec
+# of its own. It sits inside Fledge's own gem, so without this file
+# fledge build would take Fledge's Gemfile for hello's and ship all of
+# Fledge's repository. A fledge.yml makes its folder a project's root
+# (ADR 005); this one says nothing else, so the app is named for the
+# folder, camelized: Hello.

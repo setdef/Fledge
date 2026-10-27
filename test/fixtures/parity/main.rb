@@ -69,9 +69,16 @@ rescue LoadError, StandardError => e
   "#{e.class}: #{e.message.lines.first.to_s.chomp}"
 end
 
+# The root of the project the probe runs in: Bundler's, when Bundler set
+# it up (bundle exec, or a built gem-shaped app), and the probe's own
+# folder otherwise.
+def project_root
+  (defined?(Bundler) && Bundler.respond_to?(:root)) ? Bundler.root.to_s : __dir__
+end
+
 def facts
   {
-    "paths" => { "app" => __dir__, "prefix" => RbConfig::TOPDIR, "home" => Dir.home },
+    "paths" => { "app" => __dir__, "project" => project_root, "prefix" => RbConfig::TOPDIR, "home" => Dir.home },
     "$0" => $0,
     "__FILE__" => __FILE__,
     "__dir__" => __dir__,

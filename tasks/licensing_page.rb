@@ -60,7 +60,7 @@ class LicensingPage
   # The page, from the audit of each platform's runtime.
   def text
     reports = Fledge::Platform.names.to_h { |platform| [platform, audit(platform)] }
-    [header, everywhere(reports), *reports.map { |platform, report| section(platform, report) }, lgpl(reports), footer].join("\n")
+    [header, everywhere(reports), app_gems, *reports.map { |platform, report| section(platform, report) }, lgpl(reports), footer].join("\n")
   end
 
   # Audits the runtime archive for +platform+ in the runtimes folder.
@@ -121,6 +121,18 @@ class LicensingPage
 
       **Fledge's own files** in an app are #{ours.files.map { |file| "`#{file}`" }.join(' and ')} (the first is the program your app's users run, renamed for your app). They are Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
     EVERYWHERE
+  end
+
+  # What fledge build asks of an app's own gems (ADR 005), which follow
+  # the same policy as every runtime.
+  private def app_gems
+    <<~GEMS
+      ## Your app's own gems
+
+      `fledge build` adds the gems your app's `Gemfile.lock` locks for each platform (leaving out its `development` and `test` groups) to Ruby's own, and holds them to the rule above: it ships a gem only when the license its specification declares asks nothing beyond keeping notices (#{Fledge::LicensePolicy::NOTICE_ONLY.map { |id| "`#{id}`" }.join(', ')}, or a choice that includes one), and otherwise fails the build, naming each gem and the license it found. A gem whose specification declares no license fails too. If a gem's specification declares no license, or the wrong one, you may give the right one in your project's `fledge.yml`, under `licenses`; that is your own statement, and the app's notices say that it came from you.
+
+      Each built app lists its gems in `notices/GEMS.txt`: each one's version and platform, license, homepage, and where Fledge downloaded it, then the full text of every license file the gem ships. A gem that ships no license file is listed with the license it declares, and `fledge build` warns you, since the notice that license asks you to keep is then yours to find. Fledge reads the license each gem declares; it does not look inside a native gem's compiled code for the libraries the gem built into it (sqlite3, for one, compiles in SQLite, which is in the public domain), so read a native gem's own notices too.
+    GEMS
   end
 
   private def section(platform, summary)

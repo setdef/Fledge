@@ -81,6 +81,16 @@ class LicensingPageTest < Minitest::Test
     refute_empty section(text, "Windows on x64 (x64-mingw-ucrt)")
   end
 
+  # An app's own gems meet the runtimes' policy (ADR 005); the page says
+  # which licenses pass, from the policy itself.
+  def test_it_says_what_an_apps_own_gems_must_be
+    gems = section(page, "Your app's own gems")
+
+    assert_includes gems, "`BSD-3-Clause`, `BSL-1.0`"
+    assert_includes gems, "under `licenses`"
+    assert_includes gems, "`notices/GEMS.txt`"
+  end
+
   def test_it_cites_the_license_sections_and_says_to_ask_a_lawyer
     text = page
 

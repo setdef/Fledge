@@ -10,24 +10,28 @@
  * app's name, beside the Ruby it embeds and the app it runs:
  *
  *   NAME                       this program
+ *   fledge.cfg                 what it runs (config.c)
  *   bin/ruby                   Ruby's own program, for RbConfig.ruby
  *   lib/ruby/4.0.0/            Ruby's standard library
- *   lib/ruby/gems/4.0.0/       Ruby's default and bundled gems
+ *   lib/ruby/gems/4.0.0/       Ruby's default and bundled gems, and the
+ *                              app's own
  *   lib/libcrypt.so.N          libxcrypt, on Linux only (see below)
  *   libexec/cert.pem           certificate authorities for HTTPS
  *   notices/                   the licenses of everything above
- *   app/main.rb                the app
+ *   app/                       the app's project, such as app/main.rb, or
+ *                              app/exe/my_cool_app beside its Gemfile
  *
  * libruby is linked into this program statically, so the program is the
  * Ruby interpreter. It starts Ruby the way Ruby's own main.c does
  * (main.c lines 37 to 63 at Ruby 4.0.9): setlocale, ruby_sysinit, then
  * ruby_start_main, whose callback runs RUBY_INIT_STACK, ruby_init, and
  * ruby_run_node(ruby_options(...)). Ruby runs on the process's main
- * thread, where macOS wants windows and events. Beyond that it does five
+ * thread, where macOS wants windows and events. Beyond that it does six
  * things Ruby's main.c does not:
  *
  *   1. It finds the folder it lives in (fledge_executable_path, one file
- *      per operating system).
+ *      per operating system), and reads fledge.cfg there, which names the
+ *      program in app/ to run, ENTRY, and the app's Gemfile, if it has one.
  *   2. It sets aside every environment variable through which a Ruby
  *      that happens to be installed on the computer could change how
  *      Ruby boots: RUBYOPT, RUBYLIB, GEM_HOME, BUNDLE_GEMFILE, and the
@@ -36,13 +40,15 @@
  *      RubyGems to the runtime's gems, away from ~/.gem.
  *   3. It turns a bare C locale into a UTF-8 one (see coerce_locale).
  *   4. It runs the app with arguments equivalent to
- *        NAME --disable=rubyopt -- ROOT/app/main.rb ARGS
- *      which is what ruby ROOT/app/main.rb ARGS does with no RUBYOPT
+ *        NAME --disable=rubyopt -- ROOT/app/ENTRY ARGS
+ *      which is what ruby ROOT/app/ENTRY ARGS does with no RUBYOPT
  *      (ADR 003): no -I, so the app loads its own files with
  *      require_relative, and no --yjit, so RubyVM::YJIT.enabled? is
  *      false until the app enables it, as under ruby.
- *   5. Once Ruby has booted and before main.rb runs, it fixes RubyGems'
- *      paths and puts the variables of step 2 back (restore_environment),
+ *   5. Once Ruby has booted and before ENTRY runs, it fixes RubyGems'
+ *      paths, and for an app with a Gemfile has Bundler set up the app's
+ *      gems, as bundle exec would (setup_bundler, ADR 005).
+ *   6. Then it puts the variables of step 2 back (restore_environment),
  *      so ENV and the app's child processes see what they would see
  *      without Fledge.
  *
@@ -158,11 +164,13 @@ scrub_environment(void)
 
 /*
  * Puts back every variable scrub_environment set aside, with its
- * original value. Ruby's ENV reads the process's environment on every
- * access (hash.c, env_fetch and getenv), so the app's ENV, and every
- * process it starts, see them. Ruby's own gem_prelude.rb does the same
- * with BUNDLER_SETUP: it removes the variable while RubyGems loads and
- * puts it back afterwards.
+ * original value, unless the app's boot set it anew: Bundler sets
+ * BUNDLE_GEMFILE, RUBYOPT, GEM_HOME, and the rest for the app's bundle,
+ * as bundle exec does, and the app's own bundle wins (ADR 005). Ruby's
+ * ENV reads the process's environment on every access (hash.c, env_fetch
+ * and getenv), so the app's ENV, and every process it starts, see them.
+ * Ruby's own gem_prelude.rb does the same with BUNDLER_SETUP: it removes
+ * the variable while RubyGems loads and puts it back afterwards.
  */
 static void
 restore_environment(void)
@@ -173,7 +181,9 @@ restore_environment(void)
 
         if (equals != NULL) {
             *equals = '\0';
-            if (setenv(entry, equals + 1, 1) != 0) fail("could not restore %s: %s", entry, strerror(errno));
+            if (getenv(entry) == NULL && setenv(entry, equals + 1, 1) != 0) {
+                fail("could not restore %s: %s", entry, strerror(errno));
+            }
         }
         free(entry);
     }
@@ -197,6 +207,62 @@ pin_rubygems(void)
 
     rb_eval_string_protect("Gem.paths if defined?(Gem.paths)", &state);
     if (state != 0) fail("could not start RubyGems");
+}
+
+/* The folder this program lives in, and what its fledge.cfg says. */
+static char root[PATH_MAX];
+static struct fledge_config app_config;
+
+/*
+ * The Ruby that loads Bundler, and that has Bundler set up the app's
+ * gems, by their paths in Ruby's own library, as bundle exec's
+ * RUBYOPT=-r.../bundler/setup does (bundler/shared_helpers.rb,
+ * set_rubyopt): required by name, RubyGems would activate the bundler gem
+ * first, loading what bundle exec does not. The second prints what went
+ * wrong when it cannot. bundler/setup prints its
+ * own message and exits when standard output is a terminal; otherwise it
+ * raises, quietly.
+ */
+static const char require_bundler[] = "require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler')";
+static const char bundler_setup[] = "begin\n"
+                                    "  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\n"
+                                    "rescue StandardError => e\n"
+                                    "  $stderr.puts(e.message)\n"
+                                    "  raise\n"
+                                    "end\n";
+
+/*
+ * Has Bundler set up the gems of the app's Gemfile, which fledge build
+ * installed into the runtime's gem folder, as bundle exec would before
+ * running ENTRY (ADR 005). The person's own Bundler settings are still
+ * set aside: BUNDLE_GEMFILE names the app's Gemfile, and
+ * BUNDLE_USER_CONFIG names the app's own .bundle/config, which fledge
+ * build wrote, in place of ~/.bundle/config, so nothing of the person's
+ * changes which gems load. Bundler is required first, so the environment
+ * it records as the one it started from (Bundler.original_env) is the one
+ * Ruby booted with, without the launcher's two variables.
+ */
+static void
+setup_bundler(void)
+{
+    static char gemfile[PATH_MAX];
+    static char settings[PATH_MAX];
+    int gemfile_length = snprintf(gemfile, sizeof gemfile, "%s/app/%s", root, app_config.gemfile);
+    int settings_length = snprintf(settings, sizeof settings, "%s/app/.bundle/config", root);
+    int state = 0;
+
+    if (gemfile_length < 0 || (size_t)gemfile_length >= sizeof gemfile || settings_length < 0 ||
+        (size_t)settings_length >= sizeof settings) {
+        fail("the path to this app is too long");
+    }
+    rb_eval_string_protect(require_bundler, &state);
+    if (state != 0) fail("could not start Bundler");
+    if (setenv("BUNDLE_GEMFILE", gemfile, 1) != 0 || setenv("BUNDLE_USER_CONFIG", settings, 1) != 0) {
+        fail("could not set up Bundler: %s", strerror(errno));
+    }
+    rb_eval_string_protect(bundler_setup, &state);
+    if (state != 0) fail("could not set up this app's gems");
+    if (unsetenv("BUNDLE_USER_CONFIG") != 0) fail("could not clear the environment: %s", strerror(errno));
 }
 
 static int
@@ -236,7 +302,7 @@ coerce_locale(void)
  * as a bin or lib folder.
  */
 static void
-find_root(char *root, size_t size)
+find_root(size_t size)
 {
     if (fledge_executable_path(root, size) != 0) {
         fail("could not find where this app is: %s", strerror(errno));
@@ -263,6 +329,36 @@ find_root(char *root, size_t size)
     /* SPDX-SnippetEnd */
 }
 
+/*
+ * Reads ROOT/fledge.cfg into app_config (config.c). A missing file is a
+ * missing input, as a missing ENTRY is (EX_NOINPUT); one that cannot be
+ * read or says something wrong is a damaged app.
+ */
+static void
+read_config(void)
+{
+    static char path[PATH_MAX];
+    static char text[65536];
+    int length = snprintf(path, sizeof path, "%s/%s", root, FLEDGE_CONFIG);
+    const char *problem = "is unreadable";
+
+    if (length < 0 || (size_t)length >= sizeof path) fail("the path to this app is too long");
+
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) {
+        if (errno == ENOENT) fail_with(FLEDGE_EXIT_NO_APP, "this app is incomplete: %s is missing", path);
+        fail("could not read %s: %s", path, strerror(errno));
+    }
+    size_t size = fread(text, 1, sizeof text - 1, file);
+    int unreadable = ferror(file);
+    fclose(file);
+    if (unreadable) fail("could not read %s", path);
+    if (size == sizeof text - 1 || memchr(text, '\0', size) != NULL)
+        fail("this app is damaged: %s is not a fledge.cfg", path);
+    text[size] = '\0';
+    if (fledge_parse_config(text, &app_config, &problem) != 0) fail("this app is damaged: %s %s", path, problem);
+}
+
 /* Ruby's argument vector, built in main and handed to ruby_options. */
 static char **ruby_argv;
 static int ruby_argc;
@@ -273,8 +369,8 @@ static int ruby_argc;
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
  *   43) at Ruby v4.0.9 (3e93b23afc), as Lota's launcher spike first did
- *   (setdef/lota, ADR 002), with pin_rubygems and restore_environment
- *   between ruby_options and ruby_run_node.
+ *   (setdef/lota, ADR 002), with pin_rubygems, setup_bundler, and
+ *   restore_environment between ruby_options and ruby_run_node.
  */
 static int
 run_ruby(int argc, char **argv)
@@ -282,7 +378,13 @@ run_ruby(int argc, char **argv)
     RUBY_INIT_STACK;
     ruby_init();
     void *node = ruby_options(argc, argv);
-    if (ruby_executable_node(node, NULL)) pin_rubygems();
+    if (ruby_executable_node(node, NULL)) {
+        pin_rubygems();
+        if (app_config.gemfile != NULL) {
+            setup_bundler();
+            pin_rubygems();
+        }
+    }
     restore_environment();
     return ruby_run_node(node);
 }
@@ -296,21 +398,21 @@ run_ruby(int argc, char **argv)
  * so a launcher found on PATH by its bare name still finds its root.
  */
 static void
-build_ruby_arguments(int argc, char **argv, const char *root)
+build_ruby_arguments(int argc, char **argv)
 {
-    static char main_rb[PATH_MAX];
-    int main_length = snprintf(main_rb, sizeof main_rb, "%s/app/main.rb", root);
+    static char entry[PATH_MAX];
+    int entry_length = snprintf(entry, sizeof entry, "%s/app/%s", root, app_config.entry);
 
-    if (main_length < 0 || (size_t)main_length >= sizeof main_rb) fail("the path to this app is too long");
+    if (entry_length < 0 || (size_t)entry_length >= sizeof entry) fail("the path to this app is too long");
 
     struct stat status;
-    if (stat(main_rb, &status) != 0 || !S_ISREG(status.st_mode)) {
-        fail_with(FLEDGE_EXIT_NO_APP, "this app is incomplete: %s is missing", main_rb);
+    if (stat(entry, &status) != 0 || !S_ISREG(status.st_mode)) {
+        fail_with(FLEDGE_EXIT_NO_APP, "this app is incomplete: %s is missing", entry);
     }
 
     static char disable_rubyopt[] = "--disable=rubyopt";
     static char end_of_options[] = "--";
-    char *before_app_arguments[] = {argv[0], disable_rubyopt, end_of_options, main_rb};
+    char *before_app_arguments[] = {argv[0], disable_rubyopt, end_of_options, entry};
     size_t fixed = sizeof before_app_arguments / sizeof before_app_arguments[0];
     size_t count = fixed + (size_t)(argc > 1 ? argc - 1 : 0);
 
@@ -332,14 +434,13 @@ build_ruby_arguments(int argc, char **argv, const char *root)
 int
 main(int argc, char **argv)
 {
-    static char root[PATH_MAX];
-
-    find_root(root, sizeof root);
+    find_root(sizeof root);
+    read_config();
     scrub_environment();
     coerce_locale();
 
     ruby_sysinit(&argc, &argv);
-    build_ruby_arguments(argc, argv, root);
+    build_ruby_arguments(argc, argv);
     return ruby_start_main(run_ruby, ruby_argc, ruby_argv);
 }
 /* SPDX-SnippetEnd */

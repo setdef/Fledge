@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class AppGems
+    NOTICES: String
+
+    class Result < Data
+      attr_reader files: Array[Entry]
+      attr_reader warnings: Array[String]
+
+      def self.new: (files: Array[Entry], warnings: Array[String]) -> instance
+    end
+
+    @app: App
+    @bundle: Bundle
+    @fetcher: GemFetcher
+
+    def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher) -> void
+
+    def app_files: () -> Hash[String, String]
+
+    def for: (Platform platform, runtime: RuntimeContents) -> Result
+
+    private def result: (Hash[LockedGem, GemPackage] packages, Platform platform, RuntimeContents runtime) -> Result
+
+    private def license: (LockedGem gem, GemPackage package) -> String
+
+    private def license_problem: (LockedGem gem, GemPackage package) -> Array[String]
+
+    private def notices: (Hash[LockedGem, GemPackage] packages, Platform platform, RuntimeContents runtime) -> String
+
+    private def entry: (LockedGem gem, GemPackage package, RuntimeContents runtime) -> String
+  end
+end

@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Bundler
+  def self.settings: () -> Settings
+
+  def self.reset_settings_and_root!: () -> void
+
+  def self.load_gemspec: (String file) -> Gem::Specification?
+
+  class BundlerError < StandardError
+  end
+
+  class Settings
+    def temporary: [T] (Hash[Symbol, bool] update) { () -> T } -> T
+  end
+
+  class Dsl
+    def initialize: () -> void
+
+    def eval_gemfile: (String gemfile) -> void
+
+    def to_definition: (Pathname lockfile, Hash[Symbol, bool] unlock) -> Definition
+  end
+
+  class Definition
+    def ensure_equivalent_gemfile_and_lockfile: (bool explicit_flag) -> void
+
+    def ruby_version: () -> RubyVersion?
+
+    def platforms: () -> Array[Gem::Platform]
+
+    def locked_gems: () -> LockfileParser
+
+    def dependencies: () -> Array[Dependency]
+  end
+
+  class LockfileParser
+    def specs: () -> Array[LazySpecification]
+  end
+
+  class LazySpecification
+    def name: () -> String
+
+    def version: () -> Gem::Version
+
+    def platform: () -> (Gem::Platform | String)
+
+    def source: () -> Source
+
+    def dependencies: () -> Array[Gem::Dependency]
+  end
+
+  class Dependency < Gem::Dependency
+    def groups: () -> Array[Symbol]
+
+    def platforms: () -> Array[Symbol]
+
+    def should_include: () -> bool
+
+    def current_env?: () -> bool
+
+    def force_ruby_platform: () -> bool?
+  end
+
+  class RubyVersion
+    def initialize: (Array[String] versions, String? patchlevel, String engine, String engine_version) -> void
+
+    def diff: (RubyVersion other) -> Array[Symbol | String]?
+
+    def versions: () -> Array[String]
+  end
+
+  module MatchPlatform
+    def self.select_best_platform_match: (Array[LazySpecification] specs, Gem::Platform platform, ?force_ruby: bool) -> Array[LazySpecification]
+  end
+
+  class Source
+    class Rubygems < Source
+      def remotes: () -> Array[URI::Generic]
+    end
+
+    class Path < Source
+      def path: () -> Pathname
+    end
+
+    class Git < Path
+    end
+  end
+end

@@ -5,6 +5,12 @@ path = 'Gemfile.lock'
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "CC0-1.0"
 
+# Bundler writes a lockfile and gives it no place for a header.
+[[annotations]]
+path = 'examples/my_cool_app/Gemfile.lock'
+SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-License-Identifier = "MIT-0"
+
 [[annotations]]
 path = 'README.rdoc'
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"

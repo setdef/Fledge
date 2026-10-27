@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Bundle
+    WITHOUT: Array[Symbol]
+    SETTINGS: String
+    GEMSPECS: String
+
+    @app: App
+    @lockfile: String
+    @definition: Bundler::Definition
+    @checksums: Hash[String, String]
+
+    def initialize: (App app) -> void
+
+    def lockfile_name: () -> String
+
+    private def definition: (String gemfile) -> Bundler::Definition
+
+    private def at_project: [T] (String gemfile) { () -> T } -> T
+
+    private def checksums: (String text) -> Hash[String, String]
+
+    def gems_for: (Platform platform, ruby_version: String) -> Array[LockedGem]
+
+    private def check_ruby: (String ruby_version) -> void
+
+    private def check_locked: (Platform platform) -> void
+
+    private def chosen: (Platform platform, String ruby_version) -> Array[Bundler::LazySpecification]
+
+    private def best: (Hash[String, Array[Bundler::LazySpecification]] lookup, String name, Gem::Platform target, bool force_ruby, Platform platform) -> Bundler::LazySpecification
+
+    private def ships?: (Bundler::Dependency dependency, Platform platform, String ruby_version) -> bool
+
+    private def on_platform?: (String name, Platform platform, String ruby_version) -> bool
+
+    private def locked_gem: (Bundler::LazySpecification spec, Platform platform) -> LockedGem?
+
+    private def rubygem: (Bundler::LazySpecification spec, Bundler::Source::Rubygems source, Platform platform) -> LockedGem
+
+    private def own_gem: (Bundler::LazySpecification spec, Bundler::Source::Path source) -> nil
+
+    private def inside_project?: (String folder) -> bool
+
+    def app_files: () -> Hash[String, String]
+
+    private def own_folders: () -> Array[String]
+  end
+end

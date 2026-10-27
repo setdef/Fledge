@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class GemPackage
+    LICENSE_FILE: Regexp
+
+    @path: String
+    @files: Array[Entry]
+
+    attr_reader spec: Gem::Specification
+
+    def initialize: (String path) -> void
+
+    def problems: (platform: String, ruby_version: String) -> Array[String]
+
+    def entries: (String gem_dir) -> Array[Entry]
+
+    def license_files: () -> Hash[String, String]
+
+    private def specification: () -> String
+
+    private def plugins: (String gem_dir, String installed) -> Array[Entry]
+
+    private def data_files: () -> Array[Entry]
+
+    private def entry_of: (Gem::Package::TarReader::Entry entry) -> Entry?
+  end
+end

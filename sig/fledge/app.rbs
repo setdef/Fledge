@@ -4,14 +4,38 @@
 module Fledge
   class App < Data
     NEVER_SHIPPED: Array[String]
+    MARKERS: Array[String]
+    RESERVED: Regexp
 
     attr_reader root: String
+    attr_reader entry: String
+    attr_reader name: String
+    attr_reader gemfile: String?
+    attr_reader config: Config
 
-    def self.new: (root: String) -> instance
+    def self.new: (root: String, entry: String, name: String, gemfile: String?, config: Config) -> instance
 
-    def self.at: (String path) -> App
+    def self.at: (String path, ?home: String) -> App
 
-    def name: () -> String
+    private def self.project_root: (String start) -> String?
+
+    private def self.marked?: (String folder) -> bool
+
+    private def self.same_folder?: (String one, String other) -> bool
+
+    private def self.gemspec_in: (String root) -> Gem::Specification?
+
+    private def self.default_entry: (String path, String folder, String root, Gem::Specification? gemspec) -> String
+
+    private def self.relative: (String full, String root) -> String
+
+    private def self.gemfile_in: (String root, Gem::Specification? gemspec) -> String?
+
+    private def self.name_for: (Config config, Gem::Specification? gemspec, String root) -> String
+
+    def self.camelize: (String name) -> String
+
+    private def self.valid_name: (String name, String what) -> String
 
     def entries: (?skip: Array[String]) -> Array[Entry]
   end

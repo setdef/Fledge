@@ -27,7 +27,7 @@ end
 namespace :rbs do
   desc "Validate the signatures in sig/ against RBS's core library"
   task :validate do
-    libraries = %w[digest fileutils net-http openssl uri zlib].flat_map { |library| ["-r", library] }
+    libraries = %w[digest fileutils net-http openssl pathname stringio uri yaml zlib].flat_map { |library| ["-r", library] }
     sh "bundle", "exec", "rbs", *libraries, "-I", "sig", "validate"
   end
 

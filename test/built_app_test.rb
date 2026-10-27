@@ -9,9 +9,10 @@ require_relative "test_helper"
 require "open3"
 require "stringio"
 
-# examples/hello, built by fledge build from a real runtime for this
-# computer, unpacked by the system's own tool (tar, or Expand-Archive on
-# Windows), and run in a clean and in a hostile environment.
+# examples/hello and examples/my_cool_app, built by fledge build from a
+# real runtime for this computer, unpacked by the system's own tool (tar,
+# or Expand-Archive on Windows), and run in a clean and in a hostile
+# environment. Building my_cool_app downloads its gems from RubyGems.org.
 # .github/scripts/deliver.sh and deliver.ps1 run the same checks on fresh
 # computers with no Ruby; this test runs them wherever a runtime is.
 #
@@ -21,6 +22,7 @@ require "stringio"
 # runtime, so a missing runtime there fails instead of passing silently.
 class BuiltAppTest < Minitest::Test
   HELLO = File.expand_path("../examples/hello", __dir__)
+  MY_COOL_APP = File.expand_path("../examples/my_cool_app", __dir__)
   PROBE = File.expand_path("fixtures/parity", __dir__)
   EXE = File.expand_path("../exe/fledge", __dir__)
   LIB = File.expand_path("../lib", __dir__)
@@ -48,8 +50,19 @@ class BuiltAppTest < Minitest::Test
     (@platform.name == "arm64-darwin") ? "arm64-darwin23" : @platform.name
   end
 
+  # What examples/my_cool_app prints: the versions of i18n and sqlite3 its
+  # Gemfile.lock locks, and the SQLite that sqlite3 carries.
+  def my_cool_app_line
+    lock = File.read(File.join(MY_COOL_APP, "Gemfile.lock"))
+    i18n = lock[/^    i18n \(([^)]+)\)$/, 1]
+    sqlite3 = lock[/^    sqlite3 \(([\d.]+)-/, 1]
+    /\AMyCoolApp 0\.1\.0 says hello through i18n #{Regexp.escape(i18n.to_s)} and sqlite3 #{Regexp.escape(sqlite3.to_s)} \(SQLite 3\.\d+\.\d+\)\n\z/
+  end
+
   # One build of each app serves every test: building takes seconds.
   def app = built(HELLO)
+
+  def my_cool_app = built(MY_COOL_APP)
 
   def probe = built(PROBE)
 
@@ -131,10 +144,78 @@ class BuiltAppTest < Minitest::Test
     out, err, status = run_app({}, app)
 
     assert_equal ["", 66], [out, status.exitstatus]
-    assert_equal "#{@platform.executable('hello')}: this app is incomplete: #{main.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
+    assert_equal "#{@platform.executable('Hello')}: this app is incomplete: #{main.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
       err.gsub("\r\n", "\n")
   ensure
     File.rename("#{main}.away", main) if main && File.exist?("#{main}.away")
+  end
+
+  # The gem-shaped app (ADR 005): exe/my_cool_app, with i18n and the
+  # runtime's own build of sqlite3 set up by Bundler as bundle exec would.
+  def test_the_gem_shaped_app_runs_with_its_gems_and_its_status
+    Dir.mktmpdir do |dir|
+      out, err, status = run_app({ "HOME" => dir }, my_cool_app, "5")
+
+      assert_match my_cool_app_line, out
+      assert_equal ["", 5], [err, status.exitstatus]
+    end
+  end
+
+  # Nothing of the person's Bundler (their ~/.bundle/config, BUNDLE_*,
+  # BUNDLER_VERSION) changes which gems the app loads, and running it
+  # changes nothing in its folder: frozen, Bundler neither installs nor
+  # rewrites the lockfile.
+  def test_the_gem_shaped_app_ignores_the_persons_bundler_and_writes_nothing
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, ".bundle"))
+      File.write(File.join(dir, ".bundle", "config"), <<~YAML)
+        ---
+        BUNDLE_GEMFILE: "#{File.join(dir, 'Gemfile')}"
+        BUNDLE_FORCE_RUBY_PLATFORM: "true"
+        BUNDLE_WITHOUT: "default"
+        BUNDLE_PATH: "#{dir}"
+        BUNDLE_AUTO_INSTALL: "true"
+      YAML
+      env = {
+        "HOME" => dir,
+        "USERPROFILE" => dir,
+        "BUNDLE_GEMFILE" => File.join(dir, "Gemfile"),
+        "BUNDLE_FROZEN" => "false",
+        "BUNDLE_WITHOUT" => "default",
+        "BUNDLE_APP_CONFIG" => dir,
+        "BUNDLER_VERSION" => "2.1.0",
+        "GEM_HOME" => dir,
+        "RUBYOPT" => "-rnonexistent",
+      }
+      root = File.dirname(my_cool_app)
+      before = snapshot(root)
+
+      out, err, status = run_app(env, my_cool_app)
+
+      assert_match my_cool_app_line, out
+      assert_equal ["", 0], [err, status.exitstatus]
+      assert_equal before, snapshot(root)
+    end
+  end
+
+  def test_a_gem_shaped_app_without_its_program_exits_with_ex_noinput
+    program = File.join(File.realpath(File.dirname(my_cool_app)), "app", "exe", "my_cool_app")
+    File.rename(program, "#{program}.away")
+    out, err, status = run_app({}, my_cool_app)
+
+    assert_equal ["", 66], [out, status.exitstatus]
+    assert_equal "#{@platform.executable('MyCoolApp')}: this app is incomplete: #{program.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
+      err.gsub("\r\n", "\n")
+  ensure
+    File.rename("#{program}.away", program) if program && File.exist?("#{program}.away")
+  end
+
+  # Every file under +root+, with its size and modification time.
+  def snapshot(root)
+    Dir.glob("**/*", File::FNM_DOTMATCH, base: root).sort.map do |path|
+      stat = File.lstat(File.join(root, path))
+      [path, stat.size, stat.mtime.to_f]
+    end
   end
 
   def test_the_apps_exit_status_reaches_the_caller
@@ -157,7 +238,7 @@ class BuiltAppTest < Minitest::Test
     place = File.join(dir, "My Apps", "Ünïcödé 日本")
     FileUtils.mkdir_p(place)
     unpack(archive, place)
-    name = File.basename(source)
+    name = Fledge::App.at(source).name
     File.join(place, "#{name}-#{@platform}", @platform.executable(name))
   end
 

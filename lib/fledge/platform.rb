@@ -149,6 +149,30 @@ module Fledge
       name.end_with?("-mingw-ucrt")
     end
 
+    # The names a Gemfile.lock's PLATFORMS section gives this platform,
+    # any of which locks gems for it: the name itself, and on Linux its
+    # glibc name too, which RubyGems treats as the same platform
+    # (Gem::Platform#=== normalizes +gnu+ away). A macOS lockfile
+    # platform with a Darwin version, such as <tt>arm64-darwin-25</tt>,
+    # does not count: Bundler would refuse it on another version of
+    # macOS.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("x86_64-linux").lockfile_names # => ["x86_64-linux", "x86_64-linux-gnu"]
+    #   Fledge::Platform.find("arm64-darwin").lockfile_names # => ["arm64-darwin"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def lockfile_names
+      name.end_with?("-linux") ? [name, "#{name}-gnu"] : [name]
+    end
+
     # The module that writes the archive a built app ships in:
     # Fledge::Zip for Windows, Fledge::TarGz elsewhere.
     #

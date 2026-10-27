@@ -83,4 +83,11 @@ class PlatformTest < Minitest::Test
     assert_equal "hello.exe", platform.executable("hello")
     assert_equal "héllo wörld.exe", platform.executable("héllo wörld")
   end
+
+  def test_lockfile_names_are_what_a_gemfile_lock_calls_each_platform
+    assert_equal %w[x86_64-linux x86_64-linux-gnu], Fledge::Platform.find("x86_64-linux").lockfile_names
+    assert_equal %w[aarch64-linux aarch64-linux-gnu], Fledge::Platform.find("aarch64-linux").lockfile_names
+    assert_equal %w[arm64-darwin], Fledge::Platform.find("arm64-darwin").lockfile_names
+    assert_equal %w[x64-mingw-ucrt], Fledge::Platform.find("x64-mingw-ucrt").lockfile_names
+  end
 end

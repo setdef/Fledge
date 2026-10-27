@@ -56,7 +56,8 @@ class ExeTest < Minitest::Test
 
       assert_equal 1, status.exitstatus
       assert_empty out
-      assert_equal "fledge build: #{dir} has no main.rb. An app is a folder with a main.rb.\n", err
+      assert_equal "fledge build: #{dir} is a folder with no main.rb, and its project names no one program to ship. " \
+        "Build the program you run, such as fledge build #{File.join(dir, 'exe', 'my_app')}.\n", err
     end
   end
 end

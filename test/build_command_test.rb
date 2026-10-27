@@ -34,8 +34,8 @@ class BuildCommandTest < Minitest::Test
     out, err, status = build("hello", host: Gem::Platform.new("arm64-darwin-25"))
 
     assert_equal [0, ""], [status, err]
-    assert_equal "dist/hello-arm64-darwin.tar.gz\n", out
-    assert_path_exists File.join(@dir, "dist/hello-arm64-darwin/hello")
+    assert_equal "dist/Hello-arm64-darwin.tar.gz\n", out
+    assert_path_exists File.join(@dir, "dist/Hello-arm64-darwin/Hello")
   end
 
   def test_every_target_builds_from_one_computer
@@ -43,33 +43,33 @@ class BuildCommandTest < Minitest::Test
       "-t", "x64-mingw-ucrt", "-o", "builds", "hello")
 
     assert_equal [0, ""], [status, err]
-    assert_equal "builds/hello-arm64-darwin.tar.gz\nbuilds/hello-x86_64-linux.tar.gz\n" \
-      "builds/hello-aarch64-linux.tar.gz\nbuilds/hello-x64-mingw-ucrt.zip\n", out
+    assert_equal "builds/Hello-arm64-darwin.tar.gz\nbuilds/Hello-x86_64-linux.tar.gz\n" \
+      "builds/Hello-aarch64-linux.tar.gz\nbuilds/Hello-x64-mingw-ucrt.zip\n", out
     %w[arm64-darwin x86_64-linux aarch64-linux].each do |name|
-      assert_path_exists File.join(@dir, "builds/hello-#{name}.tar.gz")
-      assert_path_exists File.join(@dir, "builds/hello-#{name}/hello")
+      assert_path_exists File.join(@dir, "builds/Hello-#{name}.tar.gz")
+      assert_path_exists File.join(@dir, "builds/Hello-#{name}/Hello")
     end
-    assert_path_exists File.join(@dir, "builds/hello-x64-mingw-ucrt.zip")
-    assert_path_exists File.join(@dir, "builds/hello-x64-mingw-ucrt/hello.exe")
+    assert_path_exists File.join(@dir, "builds/Hello-x64-mingw-ucrt.zip")
+    assert_path_exists File.join(@dir, "builds/Hello-x64-mingw-ucrt/Hello.exe")
   end
 
   def test_the_default_target_on_windows_is_windows
     out, err, status = build("hello", host: Gem::Platform.new("x64-mingw-ucrt"))
 
-    assert_equal [0, "", "dist/hello-x64-mingw-ucrt.zip\n"], [status, err, out]
+    assert_equal [0, "", "dist/Hello-x64-mingw-ucrt.zip\n"], [status, err, out]
   end
 
   def test_a_repeated_target_builds_once
     out, = build("-t", "x86_64-linux", "-t", "x86_64-linux", "hello")
 
-    assert_equal "dist/hello-x86_64-linux.tar.gz\n", out
+    assert_equal "dist/Hello-x86_64-linux.tar.gz\n", out
   end
 
   def test_out_and_path_take_their_equals_and_double_dash_forms
     out, _, status = build("--out=elsewhere", "--", "hello")
 
     assert_equal 0, status
-    assert_equal "elsewhere/hello-x86_64-linux.tar.gz\n", out
+    assert_equal "elsewhere/Hello-x86_64-linux.tar.gz\n", out
   end
 
   def test_the_path_defaults_to_the_current_directory
@@ -80,7 +80,7 @@ class BuildCommandTest < Minitest::Test
     end
 
     assert_equal 0, status
-    assert_equal "../dist/hello-x86_64-linux.tar.gz\n", out.string
+    assert_equal "../dist/Hello-x86_64-linux.tar.gz\n", out.string
   end
 
   # Usage errors are the command line's to report, with the usage and
@@ -102,7 +102,7 @@ class BuildCommandTest < Minitest::Test
 
   def test_build_failures_print_one_line_and_exit_one
     {
-      %w[nowhere] => "fledge build: nowhere is not a folder. An app is a folder with a main.rb.\n",
+      %w[nowhere] => "fledge build: nowhere does not exist. Build the program you run, such as exe/my_app or main.rb.\n",
       %w[-o hello hello] => "fledge build: --out can't be the app's own folder, hello\n",
     }.each do |argv, message|
       out, err, status = build(*argv)

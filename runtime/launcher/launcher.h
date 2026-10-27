@@ -13,9 +13,10 @@
  * with _NSGetExecutablePath, linux.c with /proc/self/exe. windows.c is
  * the whole launcher on Windows, where everything else differs too: a
  * wide-character entry point, Ruby in a DLL loaded at run time, and an
- * environment kept in two copies. scrub.c holds the one rule every
+ * environment kept in two copies. scrub.c holds one rule every
  * operating system shares: which variables a person's own Ruby may not
- * pass to an app.
+ * pass to an app. config.c holds another: how to read fledge.cfg, which
+ * says what the app runs.
  */
 
 #ifndef FLEDGE_LAUNCHER_H
@@ -25,9 +26,10 @@
 
 /*
  * The exit statuses of a launcher that cannot start its app, from
- * sysexits(3) (ADR 002): EX_NOINPUT when the app's app/main.rb is missing,
- * and EX_SOFTWARE when anything else about the runtime is broken. An app's
- * own failures exit with the app's status instead, as under ruby.
+ * sysexits(3) (ADR 002): EX_NOINPUT when the program the app runs, or the
+ * fledge.cfg that names it, is missing, and EX_SOFTWARE when anything else
+ * about the app or its runtime is broken. An app's own failures exit with
+ * the app's status instead, as under ruby.
  */
 enum { FLEDGE_EXIT_NO_APP = 66, FLEDGE_EXIT_SOFTWARE = 70 };
 
@@ -37,6 +39,26 @@ enum { FLEDGE_EXIT_NO_APP = 66, FLEDGE_EXIT_SOFTWARE = 70 };
  * nonzero on Windows, whose variable names ignore ASCII case.
  */
 int fledge_is_scrubbed(const char *name, int ignore_case);
+
+/* The file beside the launcher that says what the app runs (config.c). */
+#define FLEDGE_CONFIG "fledge.cfg"
+
+/*
+ * What fledge.cfg says: the program to run, and the Gemfile to set up
+ * first, or NULL for none, each relative to the app folder with / between
+ * folders.
+ */
+struct fledge_config {
+    const char *entry;
+    const char *gemfile;
+};
+
+/*
+ * Reads fledge.cfg's NUL-terminated text, changing it in place, into
+ * config, whose strings point into text. Returns 0, or -1 with problem
+ * set to what is wrong, as words that follow "fledge.cfg ".
+ */
+int fledge_parse_config(char *text, struct fledge_config *config, const char **problem);
 
 #ifndef _WIN32
 /*

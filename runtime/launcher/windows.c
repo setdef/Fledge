@@ -13,11 +13,16 @@
  * the shape RubyInstaller gives it:
  *
  *   NAME.exe                           this program
- *   app\main.rb                        the app
+ *   fledge.cfg                         what it runs (config.c)
+ *   app\                               the app's project, such as
+ *                                      app\main.rb, or
+ *                                      app\exe\my_cool_app beside its
+ *                                      Gemfile
  *   ruby\bin\x64-ucrt-ruby400.dll      Ruby
  *   ruby\bin\ruby_builtin_dlls\        the DLLs Ruby's DLL needs
  *   ruby\lib\ruby\4.0.0\               Ruby's standard library
- *   ruby\lib\ruby\gems\4.0.0\          Ruby's default and bundled gems
+ *   ruby\lib\ruby\gems\4.0.0\          Ruby's default and bundled gems,
+ *                                      and the app's own
  *   notices\                           the licenses of everything above
  *
  * Ruby lives in a DLL, which this program loads when it runs rather than
@@ -46,21 +51,25 @@
  *   1. Keeps every DLL loaded by name to System32 and the folders a DLL
  *      names for itself, never the current folder or PATH, where another
  *      Ruby's DLLs may be (SetDefaultDllDirectories).
- *   2. Finds the folder it lives in (GetModuleFileNameW).
+ *   2. Finds the folder it lives in (GetModuleFileNameW), and reads
+ *      fledge.cfg there, which names the program in app\ to run, ENTRY,
+ *      and the app's Gemfile, if it has one.
  *   3. Sets aside every environment variable scrub.c names, removing it
  *      from both copies of the environment Ruby reads (see
  *      scrub_environment). The runtime's own lib\ruby\4.0.0\rubygems\
  *      defaults\operating_system.rb, which replaces RubyInstaller's, then
  *      keeps RubyGems to the runtime's gems, away from the person's own.
  *   4. Runs the app with arguments equivalent to
- *        NAME --disable=rubyopt -- ROOT\app\main.rb ARGS
- *      which is what ruby ROOT\app\main.rb ARGS does with no RUBYOPT
+ *        NAME --disable=rubyopt -- ROOT\app\ENTRY ARGS
+ *      which is what ruby ROOT\app\ENTRY ARGS does with no RUBYOPT
  *      (ADR 003): no -I, so the app loads its own files with
  *      require_relative.
- *   5. Once Ruby has booted and before main.rb runs, fixes RubyGems'
- *      paths and puts the variables of step 3 back (restore_environment),
- *      so ENV and the app's child processes see what they would see
- *      without Fledge.
+ *   5. Once Ruby has booted and before ENTRY runs, fixes RubyGems'
+ *      paths, and for an app with a Gemfile has Bundler set up the app's
+ *      gems, as bundle exec would (setup_bundler, ADR 005).
+ *   6. Then puts the variables of step 3 back (restore_environment), so
+ *      ENV and the app's child processes see what they would see without
+ *      Fledge.
  *
  * It exits with the app's exit status, or, when it cannot start the app,
  * with a status from sysexits(3) (launcher.h), as unix.c does.
@@ -266,6 +275,25 @@ unset(const wchar_t *name)
     }
 }
 
+/* Sets one variable in both copies of the environment, as unset clears
+ * it. */
+static void
+set(const wchar_t *name, const wchar_t *value)
+{
+    if (_wputenv_s(name, value) != 0) fail(L"could not set %ls in the environment", name);
+    if (!SetEnvironmentVariableW(name, value)) {
+        fail(L"could not set %ls in the environment (Windows error %lu)", name, GetLastError());
+    }
+}
+
+/* Whether either copy of the environment holds the variable, in any
+ * case. */
+static int
+is_set(const wchar_t *name)
+{
+    return _wgetenv(name) != NULL || GetEnvironmentVariableW(name, NULL, 0) != 0;
+}
+
 /*
  * The variables scrub_environment set aside, name and value, in the case
  * the person gave them, for restore_environment to put back.
@@ -316,24 +344,22 @@ scrub_environment(void)
 
 /*
  * Puts back every variable scrub_environment set aside, with its original
- * value, in both copies of the environment. Once Ruby has initialized,
- * its ENV reads the process's copy on every access (win32/win32.c,
- * w32_getenv, through GetEnvironmentStringsW), so the app's ENV, and
- * every process it starts, see them. Ruby's own gem_prelude.rb does the
- * same with BUNDLER_SETUP: it removes the variable while RubyGems loads
- * and puts it back afterwards.
+ * value, in both copies of the environment, unless the app's boot set it
+ * anew: Bundler sets BUNDLE_GEMFILE, RUBYOPT, GEM_HOME, and the rest for
+ * the app's bundle, as bundle exec does, and the app's own bundle wins
+ * (ADR 005). Once Ruby has initialized, its ENV reads the process's copy
+ * on every access (win32/win32.c, w32_getenv, through
+ * GetEnvironmentStringsW), so the app's ENV, and every process it starts,
+ * see them. Ruby's own gem_prelude.rb does the same with BUNDLER_SETUP: it
+ * removes the variable while RubyGems loads and puts it back afterwards.
  */
 static void
 restore_environment(void)
 {
     for (size_t index = 0; index < set_aside_count; index++) {
         const wchar_t *name = set_aside_names[index];
-        const wchar_t *value = set_aside_values[index];
 
-        if (_wputenv_s(name, value) != 0) fail(L"could not restore %ls in the environment", name);
-        if (!SetEnvironmentVariableW(name, value)) {
-            fail(L"could not restore %ls in the environment (Windows error %lu)", name, GetLastError());
-        }
+        if (!is_set(name)) set(name, set_aside_values[index]);
         free(set_aside_names[index]);
         free(set_aside_values[index]);
     }
@@ -430,6 +456,116 @@ pin_rubygems(void)
 }
 
 /*
+ * What the launcher keeps for the life of the process: the app's folder,
+ * what its fledge.cfg says, with ENTRY and the Gemfile as Windows paths,
+ * and the arguments Ruby runs with. Ruby holds on to its arguments, so
+ * they are never freed.
+ */
+static wchar_t *root;
+static struct fledge_config app_config;
+static wchar_t *entry;
+static wchar_t *gemfile;
+static char **ruby_arguments;
+
+/* The UTF-8 path from fledge.cfg as a wide Windows path, with \ for /. */
+static wchar_t *
+windows_path(const char *path)
+{
+    int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, NULL, 0);
+    if (length <= 0) fail(L"this app is damaged: its %hs names a path that is not UTF-8", FLEDGE_CONFIG);
+
+    wchar_t *wide = allocate((size_t)length, sizeof *wide);
+    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, wide, length);
+    for (wchar_t *letter = wide; *letter != L'\0'; letter++) {
+        if (*letter == L'/') *letter = L'\\';
+    }
+    return wide;
+}
+
+/*
+ * Reads ROOT\fledge.cfg into app_config (config.c). A missing file is a
+ * missing input, as a missing ENTRY is (EX_NOINPUT); one that cannot be
+ * read or says something wrong is a damaged app.
+ */
+static void
+read_config(void)
+{
+    static char text[65536];
+    wchar_t *path = join(root, L"\\" FLEDGE_CONFIG);
+    wchar_t *long_path = extended_length(path);
+    DWORD attributes = GetFileAttributesW(long_path);
+    const char *problem = "is unreadable";
+
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+        fail_with(FLEDGE_EXIT_NO_APP, L"this app is incomplete: %ls is missing", path);
+    }
+    FILE *file = _wfopen(long_path, L"rb");
+    free(long_path);
+    if (file == NULL) fail(L"could not read %ls", path);
+    size_t size = fread(text, 1, sizeof text - 1, file);
+    int unreadable = ferror(file);
+    fclose(file);
+    if (unreadable) fail(L"could not read %ls", path);
+    if (size == sizeof text - 1 || memchr(text, '\0', size) != NULL) {
+        fail(L"this app is damaged: %ls is not a fledge.cfg", path);
+    }
+    text[size] = '\0';
+    if (fledge_parse_config(text, &app_config, &problem) != 0) fail(L"this app is damaged: %ls %hs", path, problem);
+    free(path);
+
+    entry = windows_path(app_config.entry);
+    if (app_config.gemfile != NULL) gemfile = windows_path(app_config.gemfile);
+}
+
+/*
+ * The Ruby that loads Bundler, and that has Bundler set up the app's
+ * gems, by their paths in Ruby's own library, as bundle exec's
+ * RUBYOPT=-r.../bundler/setup does (bundler/shared_helpers.rb,
+ * set_rubyopt): required by name, RubyGems would activate the bundler gem
+ * first, loading what bundle exec does not. The second prints what went
+ * wrong when it cannot. bundler/setup prints its
+ * own message and exits when standard output is a console; otherwise it
+ * raises, quietly.
+ */
+static const char require_bundler[] = "require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler')";
+static const char bundler_setup[] = "begin\n"
+                                    "  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\n"
+                                    "rescue StandardError => e\n"
+                                    "  $stderr.puts(e.message)\n"
+                                    "  raise\n"
+                                    "end\n";
+
+/*
+ * Has Bundler set up the gems of the app's Gemfile, which fledge build
+ * installed into the runtime's gem folder, as bundle exec would before
+ * running ENTRY (ADR 005), as unix.c does. BUNDLE_GEMFILE names the app's
+ * Gemfile, and BUNDLE_USER_CONFIG names the app's own .bundle\config,
+ * which fledge build wrote, in place of %USERPROFILE%\.bundle\config, so
+ * nothing of the person's changes which gems load. Bundler is required
+ * first, so the environment it records as the one it started from is the
+ * one Ruby booted with.
+ */
+static void
+setup_bundler(void)
+{
+    int state = 0;
+    wchar_t *app = join(root, L"\\app\\");
+    wchar_t *gemfile_path = join(app, gemfile);
+    wchar_t *settings = join(app, L".bundle\\config");
+
+    ruby_api.eval_string_protect(require_bundler, &state);
+    if (state != 0) fail(L"could not start Bundler");
+    set(L"BUNDLE_GEMFILE", gemfile_path);
+    set(L"BUNDLE_USER_CONFIG", settings);
+    ruby_api.eval_string_protect(bundler_setup, &state);
+    if (state != 0) fail(L"could not set up this app's gems");
+    unset(L"BUNDLE_USER_CONFIG");
+    free(app);
+    free(gemfile_path);
+    free(settings);
+}
+
+/*
  * As rb_main in Ruby's main.c, with the launcher's arguments: the
  * address of a variable in this frame tells Ruby where the stack it
  * scans for references begins (RUBY_INIT_STACK), so this frame must be
@@ -440,8 +576,8 @@ pin_rubygems(void)
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
  *   43) at Ruby v4.0.9 (3e93b23afc), with RUBY_INIT_STACK spelled out
- *   through a function pointer, and pin_rubygems and restore_environment
- *   between ruby_options and ruby_run_node.
+ *   through a function pointer, and pin_rubygems, setup_bundler, and
+ *   restore_environment between ruby_options and ruby_run_node.
  */
 static int __attribute__((noinline))
 run_ruby(int argc, char **argv)
@@ -451,7 +587,13 @@ run_ruby(int argc, char **argv)
     ruby_api.init_stack(&variable_in_this_stack_frame);
     ruby_api.init();
     void *node = ruby_api.options(argc, argv);
-    if (ruby_api.executable_node(node, NULL)) pin_rubygems();
+    if (ruby_api.executable_node(node, NULL)) {
+        pin_rubygems();
+        if (gemfile != NULL) {
+            setup_bundler();
+            pin_rubygems();
+        }
+    }
     restore_environment();
     return ruby_api.run_node(node);
 }
@@ -469,14 +611,6 @@ is_file(const wchar_t *path)
 }
 
 /*
- * What the launcher keeps for the life of the process: the app's folder
- * and the arguments Ruby runs with. Ruby holds on to its arguments, so
- * they are never freed.
- */
-static wchar_t *root;
-static char **ruby_arguments;
-
-/*
  * Builds the arguments Ruby sees from the ones ruby_sysinit rebuilt from
  * the command line: Ruby's own argv[0], the launcher's options and the
  * app, then everything the person passed.
@@ -487,20 +621,22 @@ build_ruby_arguments(int argc, char **argv)
     static char disable_rubyopt[] = "--disable=rubyopt";
     static char end_of_options[] = "--";
     static char fallback_name[] = "ruby";
-    wchar_t *main_rb = join(root, L"\\app\\main.rb");
+    wchar_t *app = join(root, L"\\app\\");
+    wchar_t *program = join(app, entry);
 
-    if (!is_file(main_rb)) fail_with(FLEDGE_EXIT_NO_APP, L"this app is incomplete: %ls is missing", main_rb);
+    free(app);
+    if (!is_file(program)) fail_with(FLEDGE_EXIT_NO_APP, L"this app is incomplete: %ls is missing", program);
 
     char *before_app_arguments[] = {
         argc > 0 ? argv[0] : fallback_name,
         disable_rubyopt,
         end_of_options,
-        utf8(main_rb),
+        utf8(program),
     };
     size_t fixed = sizeof before_app_arguments / sizeof before_app_arguments[0];
     size_t count = fixed + (size_t)(argc > 1 ? argc - 1 : 0);
 
-    free(main_rb);
+    free(program);
     ruby_arguments = allocate(count + 1, sizeof *ruby_arguments);
     memcpy(ruby_arguments, before_app_arguments, sizeof before_app_arguments);
     for (int index = 1; index < argc; index++) ruby_arguments[fixed + (size_t)index - 1] = argv[index];
@@ -534,6 +670,7 @@ wmain(int argc, wchar_t **argv)
     program_name = slash + 1;
     *slash = L'\0';
 
+    read_config();
     scrub_environment();
     load_ruby(root);
 

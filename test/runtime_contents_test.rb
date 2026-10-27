@@ -1,0 +1,37 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#++
+
+require_relative "test_helper"
+
+class RuntimeContentsTest < Minitest::Test
+  def test_reads_the_gem_folder_its_gems_and_its_ruby
+    Dir.mktmpdir do |dir|
+      {
+        "x86_64-linux" => "lib/ruby/gems/4.0.0",
+        "x64-mingw-ucrt" => "ruby/lib/ruby/gems/4.0.0",
+      }.each do |name, gem_dir|
+        contents = Fledge::RuntimeContents.read(FakeRuntime.write(dir, Fledge::Platform.find(name)))
+
+        assert_equal [gem_dir, %w[csv-3.3.5 json-2.18.0], "4.0.9"], [contents.gem_dir, contents.gems, contents.ruby_version]
+      end
+    end
+  end
+
+  def test_an_archive_that_is_not_a_runtime_is_refused
+    Dir.mktmpdir do |dir|
+      bare = File.join(dir, "bare.tar.gz")
+      Fledge::TarGz.write(bare) { |tar| tar.add(Fledge::Entry.file("top/lib/ruby/gems/4.0.0/specifications/a-1.gemspec", "")) }
+      error = assert_raises(Fledge::Error) { Fledge::RuntimeContents.read(bare) }
+      assert_equal "#{bare} is not a Fledge runtime: it holds no rbconfig.rb", error.message
+
+      empty = File.join(dir, "empty.tar.gz")
+      Fledge::TarGz.write(empty) { |tar| tar.add(Fledge::Entry.directory("top")) }
+      error = assert_raises(Fledge::Error) { Fledge::RuntimeContents.read(empty) }
+      assert_equal "#{empty} is not a Fledge runtime: it holds no one gem folder ()", error.message
+    end
+  end
+end

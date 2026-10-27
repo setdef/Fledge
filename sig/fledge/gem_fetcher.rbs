@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class GemFetcher
+    @cache: String
+    @project: String
+    @gem_path: Array[String]
+    @log: CLI::_Output?
+
+    def initialize: (cache: String, project: String, ?gem_path: Array[String], ?log: CLI::_Output?) -> void
+
+    def fetch: (LockedGem gem) -> String
+
+    private def candidates: (LockedGem gem, String cached) -> Array[String]
+  end
+end

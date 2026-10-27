@@ -6,9 +6,13 @@
 #++
 
 require_relative "../app"
+require_relative "../app_gems"
 require_relative "../assembly"
+require_relative "../bundle"
 require_relative "../error"
+require_relative "../gem_fetcher"
 require_relative "../platform"
+require_relative "../runtime_contents"
 require_relative "../runtimes"
 
 module Fledge
@@ -20,13 +24,15 @@ module Fledge
     # that by hand means knowing where each runtime lives, renaming its
     # launcher, and archiving without losing an executable bit.
     #
-    # This command reads <tt>--target</tt>, <tt>--out</tt>, and the app's
-    # folder from its arguments, finds each target's runtime through
-    # Fledge::Runtimes, builds each with Fledge::Assembly, and prints the
+    # This command reads <tt>--target</tt>, <tt>--out</tt>, and the
+    # program to ship from its arguments (Fledge::App), finds each
+    # target's runtime through Fledge::Runtimes, adds the gems the app's
+    # Gemfile.lock locks for that target (Fledge::Bundle and
+    # Fledge::AppGems), builds each with Fledge::Assembly, and prints the
     # path of each archive it wrote, one per line. A failed build becomes
-    # one line on the error stream and exit status 1; a mistake in its
-    # arguments raises Fledge::UsageError, which Fledge::CLI turns into
-    # the usage and exit status 2.
+    # lines beginning <tt>fledge build:</tt> on the error stream and exit
+    # status 1; a mistake in its arguments raises Fledge::UsageError,
+    # which Fledge::CLI turns into the usage and exit status 2.
     #
     # Use it through the +fledge+ executable, or through Fledge::CLI.
     #
@@ -38,8 +44,8 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   # From a terminal:
-    #   #   $ fledge build -t x86_64-linux examples/hello
-    #   #   dist/hello-x86_64-linux.tar.gz
+    #   #   $ fledge build -t x86_64-linux examples/my_cool_app/exe/my_cool_app
+    #   #   dist/MyCoolApp-x86_64-linux.tar.gz
     #
     #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call(["-t", "x86_64-linux", "examples/hello"]) # => 0
     #--
@@ -87,7 +93,7 @@ module Fledge
       rescue UsageError
         raise
       rescue Error => e
-        @err.puts "fledge build: #{e.message}"
+        e.message.each_line { |line| @err.puts "fledge build: #{line.chomp}" }
         1
       end
 
@@ -96,11 +102,24 @@ module Fledge
         raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
 
         runtimes = Runtimes.new(env: @env, log: @err)
+        gems = gems_for(app, runtimes)
+        app_files = gems ? gems.app_files : {} # : Hash[String, String]
         platforms.each do |platform|
-          assembly = Assembly.new(app:, platform:, runtime: runtimes.archive(platform), out: out_dir)
-          archive = assembly.call
+          runtime = runtimes.archive(platform)
+          added = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : AppGems::Result.new(files: [], warnings: [])
+          added.warnings.each { |warning| @err.puts "fledge build: warning: #{warning}" }
+          archive = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files: added.files).call
           @out.puts File.join(out, File.basename(archive))
         end
+      end
+
+      # The app's gems, for an app with a Gemfile: Fledge keeps the gems it
+      # downloads beside its runtimes, in <tt>~/.cache/fledge/gems</tt>.
+      private def gems_for(app, runtimes)
+        return nil unless app.gemfile
+
+        fetcher = GemFetcher.new(cache: File.join(File.dirname(runtimes.cache), "gems"), project: app.root, log: @err)
+        AppGems.new(app:, bundle: Bundle.new(app), fetcher:)
       end
 
       # [targets, out, path] from +argv+.

@@ -1,0 +1,82 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Gem
+  class BasicSpecification
+    def full_name: () -> String
+
+    def require_paths: () -> Array[String]
+  end
+
+  class Specification
+    def self.load: (String file) -> Gem::Specification?
+
+    attr_accessor name: String
+    attr_accessor version: Gem::Version
+    attr_accessor platform: String
+    attr_accessor bindir: String
+    attr_accessor executables: Array[String]
+    attr_accessor extensions: Array[String]
+    attr_accessor licenses: Array[String]
+    attr_accessor homepage: String?
+    attr_accessor installed_by_version: Gem::Version | String
+
+    def required_ruby_version: () -> Gem::Requirement
+
+    def file_name: () -> String
+
+    def to_ruby: () -> String
+
+    def to_ruby_for_cache: () -> String
+  end
+
+  class Dependency
+    def name: () -> String
+
+    def type: () -> Symbol
+  end
+
+  class Package
+    class FormatError < StandardError
+    end
+
+    def initialize: (String path) -> void
+
+    def verify: () -> void
+
+    def spec: () -> Gem::Specification
+
+    class TarHeader
+      def mode: () -> Integer
+
+      def linkname: () -> String
+    end
+
+    class TarReader
+      class Entry
+        def full_name: () -> String
+
+        def header: () -> TarHeader
+
+        def directory?: () -> bool
+
+        def symlink?: () -> bool
+
+        def file?: () -> bool
+
+        def read: () -> String?
+      end
+
+      include Enumerable[Entry]
+
+      def initialize: (IO | StringIO io) -> void
+
+      def each: () { (Entry) -> void } -> void
+    end
+  end
+
+  module Security
+    class Exception < StandardError
+    end
+  end
+end

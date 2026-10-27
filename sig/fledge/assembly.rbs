@@ -4,17 +4,25 @@
 module Fledge
   class Assembly
     LAUNCHER: String
+    CONFIG: String
 
     @app: App
     @platform: Platform
     @runtime: String
     @out: String
+    @app_files: Hash[String, String]
+    @files: Array[Entry]
+    @placed: Hash[String, bool]
 
-    def initialize: (app: App, platform: Platform, runtime: String, out: String) -> void
+    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry]) -> void
 
     def base_name: () -> String
 
     def call: () -> String
+
+    def launch_config: () -> String
+
+    private def config_value: (String path) -> String
 
     private def build: () -> String
 
@@ -27,6 +35,10 @@ module Fledge
     private def copy_runtime: (TarGz::Writer | Zip::Writer writer) -> void
 
     private def runtime_path: (String path, String launcher) -> String
+
+    private def copy_app: (TarGz::Writer | Zip::Writer writer) -> void
+
+    private def add: (TarGz::Writer | Zip::Writer writer, Entry entry) -> void
 
     private def place: (TarGz::Writer | Zip::Writer writer, Entry entry) -> void
   end

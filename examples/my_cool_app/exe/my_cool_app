@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# The program a developer runs as bundle exec exe/my_cool_app, and the
+# one Fledge ships, unchanged: it needs bundler/setup no more than it
+# needs it under bundle exec. Pass a number to exit with it, as hello
+# does, so Delivery can check that the app's status reaches whoever ran
+# it.
+
+require "my_cool_app"
+
+puts MyCoolApp.greeting
+exit Integer(ARGV.fetch(0, "0"))

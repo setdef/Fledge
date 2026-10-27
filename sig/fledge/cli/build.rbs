@@ -17,6 +17,8 @@ module Fledge
 
       private def build: (App app, Array[Platform] platforms, String out) -> void
 
+      private def gems_for: (App app, Runtimes runtimes) -> AppGems?
+
       private def parse: (Array[String] argv) -> [Array[String], String, String]
 
       private def value_of: (String option, Array[String] arguments, String name) -> String

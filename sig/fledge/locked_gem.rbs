@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class LockedGem < Data
+    attr_reader name: String
+    attr_reader version: String
+    attr_reader platform: String
+    attr_reader remote: String
+    attr_reader sha256: String
+
+    def self.new: (name: String, version: String, platform: String, remote: String, sha256: String) -> instance
+
+    def full_name: () -> String
+
+    def file_name: () -> String
+
+    def url: () -> String
+
+    def to_s: () -> String
+  end
+end

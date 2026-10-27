@@ -7,14 +7,14 @@
 
 ## Project
 
-Fledge (the `fledge` gem, https://github.com/setdef/Fledge) ships a Ruby app to people who don't have Ruby. It copies an app, a folder with a `main.rb`, into a runtime for each target platform: a relocatable CRuby plus a small C launcher that embeds it and runs the app. Then it archives each result. Runtimes are prebuilt per platform by Fledge's own CI, so one machine builds for every platform (ADR 001). Targets use RubyGems platform names: `arm64-darwin`, `x86_64-linux`, and `x64-mingw-ucrt` to start. App kinds will be `console` and `windowed`; the walking skeleton does `console` only. Framework wrappers (Lota for 2D games, Tokra for desktop apps, Rooibos for terminal UIs) will call Fledge. The plans of record are `doc/contributors/plan/001.md` (the walking skeleton) and `doc/contributors/plan/002.md` (toward 1.0); what the maintainer has decided is in `doc/contributors/decisions.md`.
+Fledge (the `fledge` gem, https://github.com/setdef/Fledge) ships a Ruby app to people who don't have Ruby. It copies an app, the program its developer already runs (`exe/my_cool_app`, `bin/server`, or a `main.rb`) with its project and the gems its Gemfile.lock locks, into a runtime for each target platform: a relocatable CRuby plus a small C launcher that embeds it and runs the program, with Bundler set up as `bundle exec` would (ADR 005). Then it archives each result. Runtimes are prebuilt per platform by Fledge's own CI, so one machine builds for every platform (ADR 001). Targets use RubyGems platform names: `arm64-darwin`, `x86_64-linux`, and `x64-mingw-ucrt` to start. App kinds will be `console` and `windowed`; the walking skeleton does `console` only. Framework wrappers (Lota for 2D games, Tokra for desktop apps, Rooibos for terminal UIs) will call Fledge. The plans of record are `doc/contributors/plan/001.md` (the walking skeleton) and `doc/contributors/plan/002.md` (toward 1.0); what the maintainer has decided is in `doc/contributors/decisions.md`.
 
 Pre-1.0, zero external users. Prefer good design over backward compatibility; record every breaking change in CHANGELOG.md.
 
 ## Design precedence
 
 1. **A person who double-clicks or runs the app never meets Ruby.** No install step, no Ruby on `PATH`, no error that names a gem, no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot, and the app's gems are the runtime's). When anything below conflicts with this, this wins.
-2. **The app's Ruby code runs as it does under `ruby main.rb`.** Same requires, same globals, same `ENV`, same standard library and bundled gems (decisions 9, 10, and 20; ADR 003). The parity check proves it on every platform; a difference is a bug unless `Parity::JUSTIFIED` says why it is right.
+2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`.** Same requires, same globals, same `ENV`, same standard library, bundled gems, and locked gems (decisions 9, 10, and 20; ADR 003 and ADR 005). The parity check proves it on every platform; a difference is a bug unless `Parity::JUSTIFIED` says why it is right.
 3. **Ruby the language and its own conventions.** RubyGems platform names for targets, CRuby's own `main.c` for how the launcher starts the interpreter, Ruby's own layout for the standard library. Read the source at the pinned Ruby version; do not guess.
 4. **Prior art and standards.** GNU's and POSIX's command-line conventions, sysexits.h, and LÖVE's fused games (an app is a folder joined to a runtime), the Tauri bundler, PyInstaller and Briefcase (console and windowed kinds), and python-build-standalone (prebuilt relocatable interpreters). When Fledge needs a behavior these already settled, match them and cite them in an ADR.
 5. **Ruby culture.** Idioms yield to 1 through 4.
@@ -41,7 +41,7 @@ Pre-1.0, zero external users. Prefer good design over backward compatibility; re
 - `bundle exec rake` is the gate: RuboCop and REUSE fixes, tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck, RBS checks (no `untyped`, `rbs validate`, signature parity), Steep, and the package check. It must pass with zero errors and zero warnings. Run `bundle exec rake rubocop:autocorrect_all` first to save time.
 - Approved exceptions live in `rbs_exceptions.rb`; adding one needs a justification that it is impossible otherwise.
 - Rake tasks use `git ls-files`: new or deleted files must be staged before they count.
-- `bundle exec rake parity` compares an app built from this computer's runtime with `ruby main.rb` on the Ruby that runtime came from (ADR 003); run it after `bundle exec rake runtime`. CI runs it on every platform.
+- `bundle exec rake parity` compares an app built from this computer's runtime with `ruby main.rb` on the Ruby that runtime came from, and a gem-shaped one with `bundle exec` (ADR 003 and ADR 005); run it after `bundle exec rake runtime`. CI runs it on every platform.
 - Always `PAGER=cat` for git.
 
 ## Provenance

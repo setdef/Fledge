@@ -23,6 +23,12 @@ Each app carries the same facts in `notices/NOTICES.txt` (every component, its l
 
 **Fledge's own files** in an app are `launcher` and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb` (the first is the program your app's users run, renamed for your app). They are Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
 
+## Your app's own gems
+
+`fledge build` adds the gems your app's `Gemfile.lock` locks for each platform (leaving out its `development` and `test` groups) to Ruby's own, and holds them to the rule above: it ships a gem only when the license its specification declares asks nothing beyond keeping notices (`0BSD`, `Apache-2.0`, `Artistic-1.0-Perl`, `BSD-2-Clause`, `BSD-3-Clause`, `BSL-1.0`, `CC-BY-2.5`, `CC0-1.0`, `ISC`, `LicenseRef-MinGW-w64-runtime`, `MIT`, `MIT-0`, `OFL-1.1`, `PSF-2.0`, `Ruby`, `Unlicense`, `Zlib`, or a choice that includes one), and otherwise fails the build, naming each gem and the license it found. A gem whose specification declares no license fails too. If a gem's specification declares no license, or the wrong one, you may give the right one in your project's `fledge.yml`, under `licenses`; that is your own statement, and the app's notices say that it came from you.
+
+Each built app lists its gems in `notices/GEMS.txt`: each one's version and platform, license, homepage, and where Fledge downloaded it, then the full text of every license file the gem ships. A gem that ships no license file is listed with the license it declares, and `fledge build` warns you, since the notice that license asks you to keep is then yours to find. Fledge reads the license each gem declares; it does not look inside a native gem's compiled code for the libraries the gem built into it (sqlite3, for one, compiles in SQLite, which is in the public domain), so read a native gem's own notices too.
+
 ## macOS on Apple Silicon (arm64-darwin)
 
 | Component | Version | License | How it ships |

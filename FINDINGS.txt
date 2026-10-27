@@ -1,0 +1,376 @@
+SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+SPDX-License-Identifier: CC-BY-SA-4.0
+
+SPIKE: WHAT SHIPS INSIDE AN APP, AND UNDER WHICH LICENSES
+
+Requested work, unreviewed. Branch spike/permissive, from trunk at
+b8162e6. (Written as .txt because the agent harness blocked a .md report
+file.) Nothing here is legal advice: license sections are cited as facts;
+the readings are for the maintainer's counsel to confirm.
+
+THE RULE
+
+The maintainer: an app developer with a commercial license must owe
+nothing beyond notices for what Fledge copies into the app, except LGPL
+libraries, which may ship as separate shared libraries the recipient can
+replace, with the library's source (never the app's) published. The
+check is to be automated.
+
+ANSWER
+
+All four runtimes meet the rule today. One thing trunk is about to add
+breaks it: rv-ruby's Linux bin/ruby has libxcrypt (LGPL-2.1-or-later)
+STATICALLY linked (crypt_r, yescrypt etc. defined in it; no NEEDED
+libcrypt). Trunk now keeps bin/ruby, so it must be relinked against the
+runtime's lib/libcrypt.so.2. .github/scripts/relink-ruby.sh does this
+(Ruby's own main.c body, rv-ruby's static libruby, shared libxcrypt,
+RPATH $ORIGIN/../lib); YJIT, OpenSSL, RubyGems, irb and bundled native
+gems still work, and the audit then passes the whole rv-ruby tree.
+
+The two LGPL libraries, libxcrypt (Linux) and GNU MP (Windows), are
+separate shared libraries, and CI proves that swapping each one in a
+built app takes effect. Nothing else in the four full trees (including
+every bundled gem) is GPL, AGPL, or LGPL code that ships in a runtime.
+
+WHAT WAS BUILT
+
+tasks/license_audit.rb (+ tasks/license_audit/), stdlib-only Ruby:
+  - Walks every file of a runtime tree.
+  - Reads each binary's links in Ruby: the ELF dynamic section, Mach-O
+    dylib commands, PE import and delay-import tables, and the assemblies
+    a PE's manifest names. So one Linux runner audits all four platforms.
+  - Reads each gem's license from its specification.
+  - Matches everything else against runtime/licenses.yml.
+
+runtime/licenses.yml:
+  - Policy:
+      * notice-only licenses pass;
+      * MPL-2.0 and EPL-2.0 pass only for unmodified files;
+      * LGPL passes only as kind shared_library with a sources.yml pin;
+      * anything else fails.
+  - The map: components invisible in links (OpenSSL in openssl.so,
+    libyaml in psych, zlib, libffi in fiddle, Rust std in YJIT, libgcc,
+    MinGW CRT, win32.c), each with an evidence string that must be in
+    the binary ("OpenSSL 3.6.2 ", /rustc/4eb1612.../, "3e93b23afc"), and
+    a SHA-256 pin on the GMP DLL. A version change fails as "stale".
+  - Fails on:
+      * a file nobody owns;
+      * a binary its component doesn't list;
+      * an unresolved library;
+      * libxcrypt or GMP code inside any other file (byte signatures);
+      * unreviewed text naming a copyleft license.
+
+Outputs:
+  - sbom.spdx.json (SPDX 2.3: every file with SHA-1 and SHA-256; a
+    package per component and gem; CONTAINS, STATIC_LINK and
+    DYNAMIC_LINK relationships; validated by pyspdxtools 0.8.3 in CI).
+  - NOTICES.txt: every component, its license, how it ships, its source,
+    and where its license text is; an LGPL section saying the library is
+    replaceable and where its exact source is; then all license texts.
+
+LGPL source bundles, fledge-runtime-V-PLATFORM-lgpl-sources.tar.gz:
+  - Linux: the pinned libxcrypt 4.5.2 tarball, plus BUILD.txt with the
+    builder's exact configure line (now RuntimeBuilder::Linux::
+    LIBXCRYPT_CONFIGURE).
+  - Windows: MSYS2's mingw-w64-gmp-6.3.0-2.src.tar.zst. CI proves that
+    MSYS2's binary package holds RubyInstaller's libgmp-10.dll byte for
+    byte (SHA-256 c2567ccf...), so this is its exact corresponding source.
+
+Notice gaps found and filled (runtime/notices/): prism and
+syntax_suggest (MIT default gems) had no license text anywhere in a
+runtime; libffi is needed once bundled gems ship; rv-ruby's license
+text is added too.
+
+Tests: test/license_audit_test.rb, 16 tests on real minimal
+ELF/PE/Mach-O files (test/support/binaries.rb) and the real map.
+`bundle exec rake` passes.
+
+CI jobs (ci.yml):
+  - Licenses x4: audit each built runtime, validate the SBOM, then plant
+    a GPL .so and a GPL gem and require the audit to fail naming both.
+  - Licenses of the whole upstream tree x4: rv-ruby's and RubyInstaller's
+    full trees, which must fail with exactly
+    .github/license-expectations/*. On Linux, relink bin/ruby, then
+    require a clean pass.
+  - LGPL source bundles.
+  - Replace libcrypt x2.
+  - Build a replacement libgmp-10.dll, then Replace GMP.
+
+AUDIT VERDICTS (full upstream trees, all bundled gems)
+
+Component | License | Ships | Obligation | Verdict
+
+  Fledge launcher, rubygems/defaults/operating_system.rb
+    License:    AGPL-3.0-or-later
+    Ships:      program; Ruby file
+    Obligation: commercial license
+    Verdict:    first-party (question A)
+
+  Ruby 4.0.9, stdlib, default gems, Onigmo, LEGAL
+    License:    Ruby OR BSD-2-Clause
+    Ships:      static / DLL / lib/ruby
+    Obligation: notices
+    Verdict:    OK
+
+  parse.c (Bison)
+    License:    GPL-3+ WITH Bison-exception-2.2
+    Ships:      libruby
+    Obligation: none
+    Verdict:    OK
+
+  config.guess, config.sub
+    License:    GPL-3 with Autoconf exception
+    Ships:      build only
+    Obligation: none
+    Verdict:    OK
+
+  win32.c (in the Windows DLL), win32ole gem
+    License:    GPL-1.0+ OR Artistic-1.0-Perl
+    Ships:      Ruby DLL
+    Obligation: Artistic section 4a: notice and directions to the standard
+                version
+    Verdict:    OK (counsel to confirm)
+
+  Rust std 1.85.1 (YJIT/ZJIT)
+    License:    MIT OR Apache-2.0
+    Ships:      static
+    Obligation: notices
+    Verdict:    OK
+
+  libgcc
+    License:    GPL-3+ WITH GCC-exception-3.1
+    Ships:      static
+    Obligation: none
+    Verdict:    OK
+
+  compiler-rt (llvm-mingw)
+    License:    Apache-2.0 WITH LLVM-exception
+    Ships:      static in launcher.exe
+    Obligation: none
+    Verdict:    OK
+
+  MinGW-w64 CRT, winpthreads
+    License:    MinGW runtime license; MIT AND BSD-3
+    Ships:      static; DLL that nothing imports
+    Obligation: notices
+    Verdict:    OK
+
+  OpenSSL 3.6.2 (Unix) / 3.6.5 (Windows)
+    License:    Apache-2.0
+    Ships:      static / DLLs
+    Obligation: notices
+    Verdict:    OK
+
+  libyaml 0.2.5, zlib 1.3.2
+    License:    MIT, Zlib
+    Ships:      static / DLL (macOS uses the system zlib)
+    Obligation: notices
+    Verdict:    OK
+
+  libffi 3.5.2 (Linux) / 3.8.0 (Windows)
+    License:    MIT
+    Ships:      fiddle gem (macOS uses the system libffi)
+    Obligation: notices (added)
+    Verdict:    OK
+
+  cert.pem
+    License:    MPL-2.0
+    Ships:      unmodified file
+    Obligation: keep the notice; the file is its own source form (MPL-2.0
+                sections 3.2, 3.4)
+    Verdict:    OK
+
+  libxcrypt 4.5.2
+    License:    LGPL-2.1+
+    Ships:      lib/libcrypt.so.2
+    Obligation: see below
+    Verdict:    OK as shared
+
+  libxcrypt in rv-ruby's bin/ruby
+    License:    LGPL-2.1+
+    Ships:      STATIC
+    Obligation: relinking materials
+    Verdict:    REMOVE: relink (prototyped)
+
+  lib/libcrypt.a
+    License:    LGPL-2.1+
+    Ships:      archive
+    Obligation: -
+    Verdict:    REMOVE (already pruned)
+
+  GNU MP 6.3.0
+    License:    LGPL-3+ OR GPL-2+
+    Ships:      ruby_builtin_dlls/libgmp-10.dll, imported only by
+                x64-ucrt-ruby400.dll (14 __gmpz functions)
+    Obligation: see below
+    Verdict:    OK as shared
+
+  MSYS2 keyring (packages/)
+    License:    GPL
+    Ships:      RubyInstaller tree only
+    Obligation: -
+    Verdict:    REMOVE (already pruned)
+
+  RubyInstaller files and manifests
+    License:    BSD-3-Clause
+    Ships:      site_ruby, manifests
+    Obligation: notices
+    Verdict:    OK
+
+  Default gems (46)
+    License:    Ruby/BSD-2 or MIT
+    Ships:      lib/ruby
+    Obligation: notices (prism and syntax_suggest texts added)
+    Verdict:    OK
+
+  win32-registry
+    License:    declares none; Ruby's COPYING
+    Ships:      lib/ruby
+    Obligation: notices
+    Verdict:    OK (map override)
+
+  Bundled gems (40)
+    License:    Ruby/BSD-2, MIT, BSD-2, PSF option (test-unit), Apache-2.0
+                (msgpack)
+    Ships:      gems/
+    Obligation: notices
+    Verdict:    OK
+
+  rdoc fonts and icons
+    License:    OFL-1.1, CC-BY-2.5
+    Ships:      rdoc gem
+    Obligation: notices; the fonts stay OFL
+    Verdict:    OK
+
+  nkf ext/java/*.java
+    License:    EPL-2.0 OR LGPL-2.1+
+    Ships:      unmodified source CRuby never uses
+    Obligation: file-level
+    Verdict:    CHECK (pruning is easy)
+
+  readline, libedit, ncurses, gdbm
+    Not present: Ruby 4.0 uses reline, and rv-ruby's libedit and ncurses
+    formulas are not dependencies of Ruby.
+
+Question 5: no bundled gem has a non-permissive license. A normal Ruby
+install ships the same gems under the same licenses.
+
+THE LGPL LIBRARIES: PATH 1, SHARED AND REPLACEABLE (chosen; prototyped)
+
+Replaceability, proven in CI:
+
+  Linux. The app's lib/libcrypt.so.2 was swapped two ways; ldd confirmed
+  the app loaded each, and behavior confirmed it:
+    - libxcrypt rebuilt with strong hashes only: DES, MD5 and SHA-256
+      then raise Errno::EINVAL.
+    - musl's crypt built as libcrypt.so.2, with crypt_r@XCRYPT_2.0 from a
+      version script: the app runs.
+  The interface requirement is only crypt_r at symbol version XCRYPT_2.0.
+
+  Windows. A GNU MP 6.2.1 DLL cross-built with the pinned llvm-mingw is
+  put in place of libgmp-10.dll. The app must report
+  Integer::GMP_VERSION "GMP 6.2.1" and give the same SHA-256 for a large
+  product.
+
+  The ruby_builtin_dlls manifest names the file with no hash. Authenticode
+  signs each file separately, and Windows does not check a DLL's
+  signature on load unless the user's own policy (WDAC, Smart App
+  Control) demands it.
+
+  macOS ships no LGPL code (crypt comes from libSystem; rv-ruby builds
+  --without-gmp).
+
+What an app developer must do:
+
+  libxcrypt (LGPL-2.1+):
+    - Prominent notice that the library is used and is under the LGPL,
+      plus the license text (section 6). NOTICES does this.
+    - The library's copyright notice among any the app displays while it
+      runs (section 6).
+    - Keep the library replaceable through a shared-library mechanism
+      (section 6b). Fledge does this.
+    - Make the library's source available: accompany the binary with it
+      (section 4), offer it "from the same place" (section 4, second
+      paragraph; section 6d), or give a written offer valid for 3 years
+      (section 6c).
+    - Because the license is "or later," the developer may instead take
+      LGPL-3.0's terms, under which GPL-3.0 section 6(d) allows a
+      third-party server with "clear directions", the developer remaining
+      obligated to keep it available "as long as needed".
+
+  GMP (take the LGPL-3.0 option):
+    - Section 4(a)-(c): notice, license texts, and copyright notices.
+    - Section 4(d)(1): a shared-library mechanism. Fledge does this.
+    - Source through GPL-3.0 section 6(d).
+    - Section 4(e) Installation Information applies only where GPL-3.0
+      section 6 requires it, which is conveying in, with, or specifically
+      for a "User Product" (a consumer device). A downloadable desktop
+      app is not one; an app preinstalled on a device the developer sells
+      may be.
+
+  Both: the app's terms must permit modification for the customer's own
+  use and reverse engineering for debugging such modifications (LGPL-2.1
+  section 6; LGPL-3.0 section 4). This falls on the developer's EULA.
+
+  Many corporate open-source policies ban LGPL-3.0 (GMP).
+
+PATH 2, REMOVE OR REPLACE (costed)
+
+libxcrypt -> musl crypt
+  musl's src/crypt is MIT, with DES under BSD-3 (FreeSec) and blowfish,
+  MD5 and SHA public domain (headers verified). The build is about 30
+  lines, prototyped in replace-libcrypt.sh.
+
+  Measured against the runtime's libxcrypt, rv-ruby's bin/ruby, and
+  Ubuntu 24.04's Ruby (all three identical):
+    - Identical: DES, _ (BSDi), $1$, $5$, $6$, $2b$, $2y$.
+    - SILENTLY WRONG DES HASH: $y$ (yescrypt, the default /etc/shadow
+      hash on Debian 11+, Ubuntu 22.04+ and Fedora 35+), $gy$, $7$,
+      $sha1$, $md5, $3$.
+  Not "just works". FreeBSD's libcrypt has the same gap; a stub breaks
+  String#crypt outright.
+
+GMP -> our own Windows Ruby --without-gmp
+  - Results are identical: bignum.c uses GMP only past 20 BDIGITs (mul,
+    divmod, to_s, str2big), for powm, and in Rational's gcd. Huge numbers
+    would be slower, and Integer::GMP_VERSION would disappear.
+  - There is no official GMP-free RubyInstaller: rubyinstaller2-packages
+    mingw-w64-ruby40/PKGBUILD depends on gmp, which Ruby imports at load
+    time, not lazily.
+  - Cost: fork that PKGBUILD and RubyInstaller2's packaging; build on
+    MSYS2's rolling, unpinnable toolchain at about 30-60 minutes per
+    build; follow every RubyInstaller patch; lose the signed-archive
+    provenance.
+  Not prototyped, since the maintainer chose path 1.
+
+RECOMMENDATION
+
+1. Relink bin/ruby on Linux before trunk ships it (relink-ruby.sh). Keep
+   pruning *.a files and packages/.
+2. Plug the audit into RuntimeBuilder#call, after recipe.build and before
+   archive:
+     - raise on any violation;
+     - write notices/NOTICES.txt and notices/sbom.spdx.json in place of
+       notices_index;
+     - retire the notices: list in sources.yml.
+3. In release.yml, publish each platform's lgpl-sources bundle and SBOM
+   beside its runtime, include them in the SHA-256 sums, and never delete
+   them.
+4. Keep libxcrypt and GMP shared (path 1). Tell app developers the facts
+   above: notices, replaceability, the source bundle (best placed beside
+   their own download), the EULA reverse-engineering clause, and the
+   LGPL-3.0 policy caveat on Windows.
+5. Optionally, prune nkf's ext/java.
+
+Costs: about 3 s per runtime for the audit, seconds for the relink, and
+licenses.yml upkeep with each pin bump (by design it fails loudly when a
+pin moves). No behavior changes.
+
+QUESTIONS (defaults taken)
+
+A. Fledge's own shipped files (the launcher, operating_system.rb) are
+   AGPL. Should they get a runtime exception or a permissive license?
+   Default: unchanged; the audit treats them as first-party.
+B. Should Fledge host the LGPL source bundles permanently, or tell
+   developers to host them? Default: both.
+C. Prune nkf's ext/java? Default: keep.

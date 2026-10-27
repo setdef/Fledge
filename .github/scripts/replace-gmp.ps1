@@ -70,7 +70,7 @@ $after = @(Invoke-Hello)
 Write-Host "Replacement libgmp-10.dll ($((Get-FileHash $gmp).Hash.Substring(0, 16))): $($after -join ' / ')"
 
 if ($before[0] -ne 'GMP 6.3.0') { Fail "the app first reported $($before[0]), not RubyInstaller's GMP 6.3.0" }
-if ($after[0] -ne "GMP $Version") { Fail "after the swap the app reported $($after[0]), not GMP $Version: it did not load the replacement" }
+if ($after[0] -ne "GMP $Version") { Fail "after the swap the app reported $($after[0]), not GMP ${Version}: it did not load the replacement" }
 if ($after[1] -ne $before[1]) { Fail "the replacement GMP computed a different product" }
 "| | Integer::GMP_VERSION | SHA-256 of the product |`n|---|---|---|`n| RubyInstaller's DLL | $($before[0]) | ``$($before[1])`` |`n| replacement DLL | $($after[0]) | ``$($after[1])`` |" |
   Out-File -Append -FilePath $env:GITHUB_STEP_SUMMARY

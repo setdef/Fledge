@@ -10,9 +10,11 @@
 #   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Probe PROBE_ARCHIVE -Platform PLATFORM -Expected LINE
 #
 # ARCHIVE is NAME-PLATFORM.zip as fledge build wrote it, and PROBE_ARCHIVE
-# Parity-PLATFORM.zip, the parity probe (test/fixtures/parity), which
-# reports what a child Ruby sees. PLATFORM is x64-mingw-ucrt, and LINE the
-# one line the app must print.
+# the parity probe (test/fixtures/parity) built the same way, which
+# reports what a child Ruby sees: Parity-PLATFORM.zip, a lone script, for
+# hello, and ParityBundle-PLATFORM.zip, the probe as a gem-shaped app's
+# program (Parity.gem_probe), for my_cool_app. PLATFORM is x64-mingw-ucrt,
+# and LINE the one line the app must print.
 #
 # Each run goes through .NET's Process, which waits for the program and
 # captures both of its streams: PowerShell's & operator neither waits for
@@ -102,7 +104,9 @@ New-Item -ItemType Directory -Force $place | Out-Null
 Expand-Archive -LiteralPath $Archive -DestinationPath $place
 $Probe = (Resolve-Path -LiteralPath $Probe).Path
 Expand-Archive -LiteralPath $Probe -DestinationPath $place
-$probeApp = Join-Path (Join-Path $place ([IO.Path]::GetFileNameWithoutExtension($Probe))) 'Parity.exe'
+$probeBase = [IO.Path]::GetFileNameWithoutExtension($Probe)
+$probeFolder = Join-Path $place $probeBase
+$probeApp = Join-Path $probeFolder "$($probeBase.Substring(0, $probeBase.Length - $Platform.Length - 1)).exe"
 $root = Join-Path $place $name
 $appName = $name.Substring(0, $name.Length - $Platform.Length - 1)
 $app = Join-Path $root "$appName.exe"
@@ -254,19 +258,33 @@ if ((Get-Snapshot $place) -ne $before) { Fail "running the app changed the files
 Write-Host 'ok: the app wrote nothing into its own folder'
 
 # The person's own Ruby settings are hidden from the app's boot only
-# (ADR 003): the app's gems stay the runtime's, and a Ruby the app starts
-# through RbConfig.ruby, the runtime's own ruby.exe, sees the person's
-# GEM_HOME, as it would under ruby main.rb.
+# (ADR 003): the app's gems stay the runtime's, and what the app starts
+# sees the person's GEM_HOME and RUBYOPT. Without a Gemfile, that is any
+# Ruby the app starts through RbConfig.ruby, the runtime's own ruby.exe,
+# as under ruby main.rb. With one, the app's ENV is bundle exec's, with
+# Bundler's GEM_HOME over the person's, and a Ruby started inside
+# Bundler.with_original_env or with_unbundled_env, as a Bundler app
+# starts a person's own tools, sees theirs (ADR 005).
 $personGems = Join-Path $work 'person gems'
 New-Item -ItemType Directory -Force $personGems | Out-Null
 $person = $clean.Clone()
 $person['GEM_HOME'] = $personGems
-$seen = Invoke-App $probeApp $person @('child-env', 'GEM_HOME')
-if ($seen.Code -ne 0 -or $seen.Out.TrimEnd() -cne $personGems) {
-  Write-Host "--- stdout`n$($seen.Out)--- stderr`n$($seen.Err)"
-  Fail "a child Ruby saw GEM_HOME as '$($seen.Out.TrimEnd())', not the person's '$personGems'"
+$person['RUBYOPT'] = '-W0'
+$commands = if (Test-Path -LiteralPath (Join-Path $probeFolder 'app\Gemfile')) {
+  @('original-child-env', 'unbundled-child-env')
+} else {
+  @('child-env')
 }
-Write-Host "ok: a child Ruby sees the person's GEM_HOME"
+foreach ($command in $commands) {
+  foreach ($variable in @(@('GEM_HOME', $personGems), @('RUBYOPT', '-W0'))) {
+    $seen = Invoke-App $probeApp $person @($command, $variable[0])
+    if ($seen.Code -ne 0 -or $seen.Out.TrimEnd() -cne $variable[1]) {
+      Write-Host "--- stdout`n$($seen.Out)--- stderr`n$($seen.Err)"
+      Fail "${command}: a child Ruby saw $($variable[0]) as '$($seen.Out.TrimEnd())', not the person's '$($variable[1])'"
+    }
+  }
+}
+Write-Host "ok: a child Ruby started by $($commands -join ' and ') sees the person's GEM_HOME and RUBYOPT"
 $gemPath = Invoke-App $probeApp $person @('gem-path')
 if ($gemPath.Code -ne 0 -or $gemPath.Out.Replace('/', '\').Contains($personGems)) {
   Write-Host "--- stdout`n$($gemPath.Out)--- stderr`n$($gemPath.Err)"

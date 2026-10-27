@@ -113,6 +113,28 @@ class ParityTest < Minitest::Test
     assert_equal "seen\n", out
   end
 
+  # Under Bundler, the probe starts a child Ruby inside
+  # Bundler.with_original_env and with_unbundled_env, as a Bundler app
+  # starts a person's own tools; without Bundler it says so.
+  def test_the_probe_tells_delivery_what_a_child_ruby_sees_outside_the_bundle
+    gemfile = File.expand_path("../Gemfile", __dir__)
+
+    assert_equal "#{gemfile}\n", bundled_probe(gemfile, "original-child-env", "BUNDLE_GEMFILE")
+    assert_equal "(unset)\n", bundled_probe(gemfile, "unbundled-child-env", "BUNDLE_GEMFILE")
+    assert_match %r{bundler/setup}, bundled_probe(gemfile, "child-env", "RUBYOPT")
+    assert_equal "(no Bundler)\n", probe("original-child-env", "BUNDLE_GEMFILE").first
+  end
+
+  # Runs the probe under this Ruby with Bundler set up for +gemfile+, as
+  # bundle exec ruby main.rb would, and returns what it printed.
+  def bundled_probe(gemfile, *argv)
+    out, err, status = Bundler.with_unbundled_env do
+      Open3.capture3({ "BUNDLE_GEMFILE" => gemfile }, RbConfig.ruby, "-rbundler/setup", File.join(Parity::PROBE, "main.rb"), *argv)
+    end
+    assert_predicate status, :success?, err
+    out
+  end
+
   # Each element may be explained by a different justification of its
   # fact, as long as every one is.
   def test_justifications_combine_element_by_element

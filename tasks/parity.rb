@@ -27,10 +27,10 @@ require_relative "../lib/fledge/cli"
 # exe/my_cool_app on the same Ruby, with the bundle installed there as
 # its developer would install it (bundle install, into GEM_HOME). Each
 # pair gets the same arguments and the same environment: the caller's,
-# without the caller's own Ruby settings, plus a GEM_HOME and two markers
-# that stand for a person's. It normalizes paths (the app's folder, its
-# project's root, each Ruby's prefix, the home folder, the work folder),
-# and compares every fact.
+# without the caller's own Ruby settings, plus a GEM_HOME, a RUBYOPT, and
+# two markers that stand for a person's. It normalizes paths (the app's
+# folder, its project's root, each Ruby's prefix, the home folder, the
+# work folder), and compares every fact.
 #
 # Every difference is either listed in JUSTIFIED, with the reason it is
 # right, or fails the check. On Windows it runs the script check again
@@ -75,7 +75,7 @@ class Parity
 
   # The variables Bundler sets for the bundle it set up, whose values
   # name where the gems are (ADR 005).
-  BUNDLE_LOCATIONS = /\A"(?:GEM_HOME|PATH|BUNDLER_ORIG_GEM_HOME)"=/
+  BUNDLE_LOCATIONS = /\A"(?:GEM_HOME|PATH)"=/
 
   JUSTIFIED = [
     *%w[$0 __FILE__ $PROGRAM_NAME].map do |fact|
@@ -99,9 +99,12 @@ class Parity
     *["ENV", "child ENV"].map do |fact|
       Justification.new(fact:, reference: [BUNDLE_LOCATIONS], app: [BUNDLE_LOCATIONS], checks: %i[bundle],
         reason: "Bundler points GEM_HOME and PATH at the bundle's gems, as bundle exec does: the person's GEM_HOME on " \
-          "their computer, the runtime's gem folder in the app. The app's Bundler started from an environment " \
-          "without the person's Ruby settings (ADR 003), so it records no GEM_HOME of theirs.")
+          "their computer, the runtime's gem folder in the app. Everything else Bundler sets, it sets over the " \
+          "person's own values in both, and records theirs as BUNDLER_ORIG_*.")
     end,
+    Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
+      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1; ADR 003), " \
+        "so it cannot change how the app runs; it still reaches the app's ENV and every program the app starts."),
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/yaml_serializer\.rb"\z}],
       checks: %i[bundle],
       reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
@@ -274,10 +277,19 @@ class Parity
   # A copy of examples/my_cool_app in the work folder, named +name+, with
   # the probe as its exe/my_cool_app.
   private def gem_project(name)
-    project = File.join(@work, name)
+    Parity.gem_probe(File.join(@work, name))
+  end
+
+  # Writes the gem-shaped probe into the new folder +project+: a copy of
+  # examples/my_cool_app, without the developer's .bundle, with the probe
+  # as its exe/my_cool_app, and with +name+, when given, as the app's name
+  # in its fledge.yml. Returns +project+. CI builds one for Delivery, and
+  # test/built_app_test.rb for the built app's tests.
+  def self.gem_probe(project, name: nil)
     FileUtils.cp_r(GEM_APP, project)
     FileUtils.rm_rf(File.join(project, ".bundle"))
     FileUtils.cp(File.join(PROBE, "main.rb"), File.join(project, "exe", "my_cool_app"))
+    File.write(File.join(project, "fledge.yml"), "name: #{name}\n") if name
     project
   end
 
@@ -322,9 +334,10 @@ class Parity
     File.write(summary, "```\n#{lines.join("\n")}\n```\n", mode: "a") if summary
   end
 
-  # Settings that stand for a person's own Ruby: an empty GEM_HOME, and
-  # RUBY_ and BUNDLE_ variables no Ruby reads.
-  PERSON = %w[GEM_HOME RUBY_PARITY_PERSON BUNDLE_PARITY_PERSON].freeze
+  # Settings that stand for a person's own Ruby: an empty GEM_HOME, a
+  # RUBYOPT that only quiets warnings, and RUBY_ and BUNDLE_ variables no
+  # Ruby reads.
+  PERSON = %w[GEM_HOME RUBYOPT RUBY_PARITY_PERSON BUNDLE_PARITY_PERSON].freeze
 
   # The caller's environment without their own Ruby settings (as for a
   # person who has none), with an empty home folder, so the caller's own
@@ -334,7 +347,7 @@ class Parity
     home = File.join(@work, "home")
     person_gems = File.join(@work, "person-gems")
     FileUtils.mkdir_p([home, person_gems])
-    clean.merge("HOME" => home, PERSON[0] => person_gems, PERSON[1] => "1", PERSON[2] => "1")
+    clean.merge("HOME" => home, PERSON[0] => person_gems, PERSON[1] => "-W0", PERSON[2] => "1", PERSON[3] => "1")
   end
 
   private def run(command, chdir, env)

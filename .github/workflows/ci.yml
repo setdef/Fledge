@@ -343,14 +343,18 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       # The parity probe (test/fixtures/parity) goes to Delivery too, which
-      # asks it what a child Ruby sees. my_cool_app's gems come from
-      # RubyGems.org, each checked against its Gemfile.lock's checksum.
-      - name: Build hello, the parity probe, and my_cool_app for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
+      # asks it what a child Ruby sees, and so does the probe as a
+      # gem-shaped app's program (Parity.gem_probe), which Delivery asks
+      # what Bundler.with_original_env and with_unbundled_env give a child.
+      # my_cool_app's gems come from RubyGems.org, each checked against its
+      # Gemfile.lock's checksum.
+      - name: Build hello, the parity probes, and my_cool_app for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: |
-          for app in examples/hello test/fixtures/parity examples/my_cool_app; do
-            ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux -t x64-mingw-ucrt "$app"
+          ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
+          for app in examples/hello test/fixtures/parity "$RUNNER_TEMP/parity-bundle" examples/my_cool_app; do
+            ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux -t x64-mingw-ucrt -o dist "$app"
           done
 
       # What my_cool_app prints as its developer runs it, which every
@@ -367,6 +371,7 @@ jobs:
           path: |
             dist/Hello-arm64-darwin.tar.gz
             dist/Parity-arm64-darwin.tar.gz
+            dist/ParityBundle-arm64-darwin.tar.gz
             dist/MyCoolApp-arm64-darwin.tar.gz
             dist/my_cool_app.expected
           if-no-files-found: error
@@ -378,6 +383,7 @@ jobs:
           path: |
             dist/Hello-x86_64-linux.tar.gz
             dist/Parity-x86_64-linux.tar.gz
+            dist/ParityBundle-x86_64-linux.tar.gz
             dist/MyCoolApp-x86_64-linux.tar.gz
             dist/my_cool_app.expected
           if-no-files-found: error
@@ -389,6 +395,7 @@ jobs:
           path: |
             dist/Hello-aarch64-linux.tar.gz
             dist/Parity-aarch64-linux.tar.gz
+            dist/ParityBundle-aarch64-linux.tar.gz
             dist/MyCoolApp-aarch64-linux.tar.gz
             dist/my_cool_app.expected
           if-no-files-found: error
@@ -400,6 +407,7 @@ jobs:
           path: |
             dist/Hello-x64-mingw-ucrt.zip
             dist/Parity-x64-mingw-ucrt.zip
+            dist/ParityBundle-x64-mingw-ucrt.zip
             dist/MyCoolApp-x64-mingw-ucrt.zip
             dist/my_cool_app.expected
           if-no-files-found: error
@@ -449,7 +457,7 @@ jobs:
       - name: Run my_cool_app as someone with no Ruby would
         run: >-
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
-          "$RUNNER_TEMP/delivered/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
+          "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
 
   # Delivery again, in Debian 13 containers with no Ruby installed at all
   # (deliver.sh --no-ruby-installed checks), glibc 2.41, and no CA
@@ -488,7 +496,7 @@ jobs:
       - name: Run my_cool_app on a computer with no Ruby installed
         run: >-
           .github/scripts/deliver.sh "delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
-          "delivered/Parity-${{ matrix.platform }}.tar.gz" "$(cat delivered/my_cool_app.expected)" --no-ruby-installed
+          "delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat delivered/my_cool_app.expected)" --no-ruby-installed
 
   # Delivery on a fresh Windows runner, with nothing of Fledge but the
   # .zip and the script that checks it, and no Ruby set up: the runner's
@@ -525,7 +533,7 @@ jobs:
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
           -Archive "$env:RUNNER_TEMP/delivered/MyCoolApp-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/delivered/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected" -Raw).TrimEnd()
 
   # The license audit's own checks on each runtime this run built: that

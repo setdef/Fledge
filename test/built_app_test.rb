@@ -6,6 +6,7 @@
 #++
 
 require_relative "test_helper"
+require_relative "../tasks/parity"
 require "open3"
 require "stringio"
 
@@ -65,6 +66,16 @@ class BuiltAppTest < Minitest::Test
   def my_cool_app = built(MY_COOL_APP)
 
   def probe = built(PROBE)
+
+  # The probe as a gem-shaped app's program (Parity.gem_probe), run with
+  # Bundler as bundle exec would.
+  def bundled_probe
+    self.class.built[:bundled_probe] ||= begin
+      dir = Dir.mktmpdir
+      Minitest.after_run { FileUtils.rm_rf(dir) }
+      build_and_unpack(dir, Parity.gem_probe(File.join(dir, "parity-bundle"), name: "ParityBundle"), name: "ParityBundle")
+    end
+  end
 
   def built(source)
     self.class.built[source] ||= begin
@@ -135,6 +146,34 @@ class BuiltAppTest < Minitest::Test
       assert_equal 0, status.exitstatus, err
       refute_includes out, gems
       assert_equal 1, out.lines.size, out
+    end
+  end
+
+  # An app with a Gemfile gets the ENV bundle exec gives (ADR 005):
+  # Bundler's settings over the person's, so a child Ruby runs in the
+  # app's bundle with the person's RUBYOPT after Bundler's own, and
+  # Bundler.with_original_env and with_unbundled_env, which a Bundler app
+  # uses to start a person's own tools, give the person's environment
+  # back. The app's own gems stay the runtime's. The child runs in a
+  # UTF-8 locale: under a C locale, Bundler 4.0.20 itself fails to set up
+  # a bundle whose path is not ASCII (SharedHelpers#clean_load_path), as
+  # bundle exec would there.
+  def test_a_bundler_apps_children_see_the_persons_ruby_settings_as_under_bundle_exec
+    Dir.mktmpdir do |dir|
+      gems = File.join(dir, "person-gems")
+      locale = @platform.name.end_with?("darwin") ? "en_US.UTF-8" : "C.UTF-8"
+      env = { "HOME" => dir, "LC_ALL" => locale, "GEM_HOME" => gems, "RUBYOPT" => "-W0", "BUNDLE_PERSON" => "1" }
+      seen = -> (*argv) { run_app(env, bundled_probe, *argv).then { |out, err, status| [out.chomp, err, status.exitstatus] } }
+
+      %w[original-child-env unbundled-child-env].each do |command|
+        assert_equal [gems, "", 0], seen.call(command, "GEM_HOME"), command
+        assert_equal ["-W0", "", 0], seen.call(command, "RUBYOPT"), command
+      end
+      assert_equal ["1", "", 0], seen.call("original-child-env", "BUNDLE_PERSON")
+      assert_equal ["(unset)", "", 0], seen.call("unbundled-child-env", "BUNDLE_PERSON")
+      assert_match %r{\A-r(?:\S*/)?bundler/setup -W0\z}, seen.call("child-env", "RUBYOPT").first
+      refute_equal gems, seen.call("child-env", "GEM_HOME").first
+      refute_includes seen.call("gem-path").first, gems
     end
   end
 
@@ -228,8 +267,10 @@ class BuiltAppTest < Minitest::Test
 
   # Builds the app in +source+ through the fledge executable, as a person
   # would, and unpacks its archive under a path with spaces and characters
-  # outside ASCII. Returns the launcher's path.
-  def build_and_unpack(dir, source)
+  # outside ASCII. Returns the launcher's path. +name+ is the app's name,
+  # when the caller knows it; reading it from the project would load a
+  # copy of my_cool_app's gemspec, and so its version constant, again.
+  def build_and_unpack(dir, source, name: Fledge::App.at(source).name)
     out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
       "-o", File.join(dir, "dist"), source)
     assert_predicate status, :success?, err
@@ -238,7 +279,6 @@ class BuiltAppTest < Minitest::Test
     place = File.join(dir, "My Apps", "Ünïcödé 日本")
     FileUtils.mkdir_p(place)
     unpack(archive, place)
-    name = Fledge::App.at(source).name
     File.join(place, "#{name}-#{@platform}", @platform.executable(name))
   end
 

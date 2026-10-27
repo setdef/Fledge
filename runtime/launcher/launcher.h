@@ -16,7 +16,8 @@
  * environment kept in two copies. scrub.c holds one rule every
  * operating system shares: which variables a person's own Ruby may not
  * pass to an app. config.c holds another: how to read fledge.cfg, which
- * says what the app runs.
+ * says what the app runs. bundler.c holds a third: how an app with a
+ * Gemfile gets the environment bundle exec would give it.
  */
 
 #ifndef FLEDGE_LAUNCHER_H
@@ -39,6 +40,15 @@ enum { FLEDGE_EXIT_NO_APP = 66, FLEDGE_EXIT_SOFTWARE = 70 };
  * nonzero on Windows, whose variable names ignore ASCII case.
  */
 int fledge_is_scrubbed(const char *name, int ignore_case);
+
+/*
+ * The Ruby code that gives an app with a Gemfile bundle exec's
+ * environment, built over the person's own (bundler.c), as a new
+ * NUL-terminated string for rb_eval_string_protect. variables holds the
+ * length bytes of the variables the launcher set aside, each "NAME=value"
+ * followed by a NUL. Returns NULL when out of memory.
+ */
+char *fledge_bundle_environment_code(const char *variables, size_t length);
 
 /* The file beside the launcher that says what the app runs (config.c). */
 #define FLEDGE_CONFIG "fledge.cfg"

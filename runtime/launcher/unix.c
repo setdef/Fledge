@@ -48,9 +48,11 @@
  *   5. Once Ruby has booted and before ENTRY runs, it fixes RubyGems'
  *      paths, and for an app with a Gemfile has Bundler set up the app's
  *      gems, as bundle exec would (setup_bundler, ADR 005).
- *   6. Then it puts the variables of step 2 back (restore_environment),
- *      so ENV and the app's child processes see what they would see
- *      without Fledge.
+ *   6. Then it puts the variables of step 2 back, so ENV and the app's
+ *      child processes see what they would see without Fledge: as they
+ *      were (restore_environment), or for an app with a Gemfile beneath
+ *      Bundler's own settings, as bundle exec composes them
+ *      (bundle_environment, bundler.c).
  *
  * It exits with the app's exit status, or, when it cannot start the app,
  * with a status from sysexits(3) (launcher.h).
@@ -163,14 +165,25 @@ scrub_environment(void)
 }
 
 /*
+ * Forgets the variables scrub_environment set aside, once they are back.
+ */
+static void
+forget_set_aside(void)
+{
+    for (size_t index = 0; index < set_aside_count; index++) free(set_aside[index]);
+    free(set_aside);
+    set_aside = NULL;
+    set_aside_count = 0;
+}
+
+/*
  * Puts back every variable scrub_environment set aside, with its
- * original value, unless the app's boot set it anew: Bundler sets
- * BUNDLE_GEMFILE, RUBYOPT, GEM_HOME, and the rest for the app's bundle,
- * as bundle exec does, and the app's own bundle wins (ADR 005). Ruby's
- * ENV reads the process's environment on every access (hash.c, env_fetch
- * and getenv), so the app's ENV, and every process it starts, see them.
- * Ruby's own gem_prelude.rb does the same with BUNDLER_SETUP: it removes
- * the variable while RubyGems loads and puts it back afterwards.
+ * original value, for an app without a Gemfile, whose boot sets none of
+ * them. Ruby's ENV reads the process's environment on every access
+ * (hash.c, env_fetch and getenv), so the app's ENV, and every process it
+ * starts, see them. Ruby's own gem_prelude.rb does the same with
+ * BUNDLER_SETUP: it removes the variable while RubyGems loads and puts
+ * it back afterwards.
  */
 static void
 restore_environment(void)
@@ -184,12 +197,44 @@ restore_environment(void)
             if (getenv(entry) == NULL && setenv(entry, equals + 1, 1) != 0) {
                 fail("could not restore %s: %s", entry, strerror(errno));
             }
+            *equals = '=';
         }
-        free(entry);
     }
-    free(set_aside);
-    set_aside = NULL;
-    set_aside_count = 0;
+    forget_set_aside();
+}
+
+/*
+ * Puts back every variable scrub_environment set aside for an app with a
+ * Gemfile, once Bundler has set up its gems, beneath Bundler's own
+ * settings, as bundle exec would have composed them over the person's
+ * environment, and records the person's environment as the one Bundler
+ * started from (bundler.c; ADR 005, section 5).
+ */
+static void
+bundle_environment(void)
+{
+    size_t length = 0;
+
+    for (size_t index = 0; index < set_aside_count; index++) length += strlen(set_aside[index]) + 1;
+
+    char *variables = malloc(length + 1);
+    if (variables == NULL) fail("out of memory");
+    char *next = variables;
+    for (size_t index = 0; index < set_aside_count; index++) {
+        size_t size = strlen(set_aside[index]) + 1;
+        memcpy(next, set_aside[index], size);
+        next += size;
+    }
+
+    char *code = fledge_bundle_environment_code(variables, length);
+    free(variables);
+    if (code == NULL) fail("out of memory");
+
+    int state = 0;
+    rb_eval_string_protect(code, &state);
+    free(code);
+    if (state != 0) fail("could not set up this app's environment");
+    forget_set_aside();
 }
 
 /*
@@ -240,7 +285,8 @@ static const char bundler_setup[] = "begin\n"
  * build wrote, in place of ~/.bundle/config, so nothing of the person's
  * changes which gems load. Bundler is required first, so the environment
  * it records as the one it started from (Bundler.original_env) is the one
- * Ruby booted with, without the launcher's two variables.
+ * Ruby booted with, without the launcher's two variables, which
+ * bundle_environment then completes with the person's own.
  */
 static void
 setup_bundler(void)
@@ -369,8 +415,9 @@ static int ruby_argc;
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
  *   43) at Ruby v4.0.9 (3e93b23afc), as Lota's launcher spike first did
- *   (setdef/lota, ADR 002), with pin_rubygems, setup_bundler, and
- *   restore_environment between ruby_options and ruby_run_node.
+ *   (setdef/lota, ADR 002), with pin_rubygems, setup_bundler,
+ *   bundle_environment, and restore_environment between ruby_options and
+ *   ruby_run_node.
  */
 static int
 run_ruby(int argc, char **argv)
@@ -383,6 +430,7 @@ run_ruby(int argc, char **argv)
         if (app_config.gemfile != NULL) {
             setup_bundler();
             pin_rubygems();
+            bundle_environment();
         }
     }
     restore_environment();

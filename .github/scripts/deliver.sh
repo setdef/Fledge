@@ -10,8 +10,10 @@
 #   deliver.sh ARCHIVE PROBE_ARCHIVE EXPECTED [--no-ruby-installed]
 #
 # ARCHIVE is NAME-PLATFORM.tar.gz as fledge build wrote it, and
-# PROBE_ARCHIVE Parity-PLATFORM.tar.gz, the parity probe
-# (test/fixtures/parity), which reports what a child Ruby sees. EXPECTED
+# PROBE_ARCHIVE the parity probe (test/fixtures/parity) built the same
+# way, which reports what a child Ruby sees: Parity-PLATFORM.tar.gz, a
+# lone script, for hello, and ParityBundle-PLATFORM.tar.gz, the probe as
+# a gem-shaped app's program (Parity.gem_probe), for my_cool_app. EXPECTED
 # is the one line the app must print: for hello, "Hello from Ruby 4.0.9
 # on RUBY_PLATFORM"; for my_cool_app, what bundle exec exe/my_cool_app
 # printed on the computer that built it. With --no-ruby-installed, the
@@ -54,7 +56,8 @@ tar -xzf "$archive" -C "$place"
 tar -xzf "$probe_archive" -C "$place"
 root="$place/$folder"
 app="$root/$name"
-probe="$place/$(basename "$probe_archive" .tar.gz)/Parity"
+probe_folder=$(basename "$probe_archive" .tar.gz)
+probe="$place/$probe_folder/${probe_folder%-*-*}"
 entry=$(sed -n 's/^entry = //p' "$root/fledge.cfg")
 [ -n "$entry" ] || fail "$root/fledge.cfg names no entry"
 [ -x "$app" ] || fail "$app is not executable after unpacking"
@@ -191,15 +194,36 @@ changed=$(find "$root" -newer "$untouched" | head -n 5)
 echo "ok: the app wrote nothing into its own folder"
 
 # The person's own Ruby settings are hidden from the app's boot only
-# (ADR 003): the app's gems stay the runtime's, and a Ruby the app starts
-# through RbConfig.ruby, the runtime's own bin/ruby, sees the person's
-# GEM_HOME, as it would under ruby main.rb.
+# (ADR 003): the app's gems stay the runtime's, and what the app starts
+# sees the person's GEM_HOME and RUBYOPT. Without a Gemfile, that is any
+# Ruby the app starts through RbConfig.ruby, the runtime's own bin/ruby,
+# as under ruby main.rb. With one, the app's ENV is bundle exec's, with
+# Bundler's GEM_HOME over the person's, and a Ruby started inside
+# Bundler.with_original_env or with_unbundled_env, as a Bundler app
+# starts a person's own tools, sees theirs (ADR 005).
 person_gems="$work/person gems"
 mkdir -p "$person_gems"
-seen=$(cd / && env -i PATH="$empty" HOME="$home" GEM_HOME="$person_gems" "$probe" child-env GEM_HOME)
-[ "$seen" = "$person_gems" ] || fail "a child Ruby saw GEM_HOME as '$seen', not the person's '$person_gems'"
-echo "ok: a child Ruby sees the person's GEM_HOME"
-gem_path=$(cd / && env -i PATH="$empty" HOME="$home" GEM_HOME="$person_gems" "$probe" gem-path)
+# person_sees COMMAND NAME: what the probe's COMMAND says a child Ruby
+# sees as NAME, for a person whose GEM_HOME and RUBYOPT are set.
+person_sees() {
+  (cd / && env -i PATH="$empty" HOME="$home" GEM_HOME="$person_gems" RUBYOPT=-W0 "$probe" "$1" "$2")
+}
+if [ -f "$place/$probe_folder/app/Gemfile" ]; then
+  for command in original-child-env unbundled-child-env; do
+    seen=$(person_sees "$command" GEM_HOME)
+    [ "$seen" = "$person_gems" ] || fail "$command: a child Ruby saw GEM_HOME as '$seen', not the person's '$person_gems'"
+    seen=$(person_sees "$command" RUBYOPT)
+    [ "$seen" = "-W0" ] || fail "$command: a child Ruby saw RUBYOPT as '$seen', not the person's '-W0'"
+  done
+  echo "ok: Bundler.with_original_env and with_unbundled_env give a child Ruby the person's GEM_HOME and RUBYOPT"
+else
+  seen=$(person_sees child-env GEM_HOME)
+  [ "$seen" = "$person_gems" ] || fail "a child Ruby saw GEM_HOME as '$seen', not the person's '$person_gems'"
+  seen=$(person_sees child-env RUBYOPT)
+  [ "$seen" = "-W0" ] || fail "a child Ruby saw RUBYOPT as '$seen', not the person's '-W0'"
+  echo "ok: a child Ruby sees the person's GEM_HOME and RUBYOPT"
+fi
+gem_path=$(cd / && env -i PATH="$empty" HOME="$home" GEM_HOME="$person_gems" RUBYOPT=-W0 "$probe" gem-path)
 case "$gem_path" in
   *"$person_gems"*) fail "the app's own Gem.path holds the person's GEM_HOME: $gem_path" ;;
 esac

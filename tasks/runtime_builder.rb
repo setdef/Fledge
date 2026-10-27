@@ -479,7 +479,7 @@ class RuntimeBuilder
     end
 
     private def launcher_sources
-      %w[unix.c scrub.c config.c].map { |file| File.join(LAUNCHER, file) } << File.join(LAUNCHER, os_file)
+      %w[unix.c scrub.c config.c bundler.c].map { |file| File.join(LAUNCHER, file) } << File.join(LAUNCHER, os_file)
     end
 
     private def includes
@@ -680,7 +680,7 @@ class RuntimeBuilder
     # builds as a GUI program. Both build with warnings as errors, under
     # clang's static analyzer, and may import only what IMPORTS allows.
     private def compile(tree, output)
-      sources = %w[windows.c scrub.c config.c].map { |file| File.join(LAUNCHER, file) }
+      sources = %w[windows.c scrub.c config.c bundler.c].map { |file| File.join(LAUNCHER, file) }
       flags = ["-std=gnu11", *WARNINGS, "-municode", "-DFLEDGE_RUBY_DLL=L\"#{ruby_dll(tree)}\"", *includes(tree)]
       sources.each do |source|
         report = File.join(@build_dir, "#{File.basename(source, '.c')}.plist")

@@ -67,9 +67,11 @@
  *   5. Once Ruby has booted and before ENTRY runs, fixes RubyGems'
  *      paths, and for an app with a Gemfile has Bundler set up the app's
  *      gems, as bundle exec would (setup_bundler, ADR 005).
- *   6. Then puts the variables of step 3 back (restore_environment), so
- *      ENV and the app's child processes see what they would see without
- *      Fledge.
+ *   6. Then puts the variables of step 3 back, so ENV and the app's
+ *      child processes see what they would see without Fledge: as they
+ *      were (restore_environment), or for an app with a Gemfile beneath
+ *      Bundler's own settings, as bundle exec composes them
+ *      (bundle_environment, bundler.c).
  *
  * It exits with the app's exit status, or, when it cannot start the app,
  * with a status from sysexits(3) (launcher.h), as unix.c does.
@@ -342,12 +344,26 @@ scrub_environment(void)
     for (size_t index = 0; index < set_aside_count; index++) unset(set_aside_names[index]);
 }
 
+/* Forgets the variables scrub_environment set aside, once they are back. */
+static void
+forget_set_aside(void)
+{
+    for (size_t index = 0; index < set_aside_count; index++) {
+        free(set_aside_names[index]);
+        free(set_aside_values[index]);
+    }
+    free(set_aside_names);
+    free(set_aside_values);
+    set_aside_names = NULL;
+    set_aside_values = NULL;
+    set_aside_count = 0;
+}
+
 /*
  * Puts back every variable scrub_environment set aside, with its original
- * value, in both copies of the environment, unless the app's boot set it
- * anew: Bundler sets BUNDLE_GEMFILE, RUBYOPT, GEM_HOME, and the rest for
- * the app's bundle, as bundle exec does, and the app's own bundle wins
- * (ADR 005). Once Ruby has initialized, its ENV reads the process's copy
+ * value, in both copies of the environment, for an app without a
+ * Gemfile, whose boot sets none of them. Once Ruby has initialized, its
+ * ENV reads the process's copy
  * on every access (win32/win32.c, w32_getenv, through
  * GetEnvironmentStringsW), so the app's ENV, and every process it starts,
  * see them. Ruby's own gem_prelude.rb does the same with BUNDLER_SETUP: it
@@ -360,14 +376,8 @@ restore_environment(void)
         const wchar_t *name = set_aside_names[index];
 
         if (!is_set(name)) set(name, set_aside_values[index]);
-        free(set_aside_names[index]);
-        free(set_aside_values[index]);
     }
-    free(set_aside_names);
-    free(set_aside_values);
-    set_aside_names = NULL;
-    set_aside_values = NULL;
-    set_aside_count = 0;
+    forget_set_aside();
 }
 
 /*
@@ -543,7 +553,8 @@ static const char bundler_setup[] = "begin\n"
  * which fledge build wrote, in place of %USERPROFILE%\.bundle\config, so
  * nothing of the person's changes which gems load. Bundler is required
  * first, so the environment it records as the one it started from is the
- * one Ruby booted with.
+ * one Ruby booted with, which bundle_environment then completes with the
+ * person's own.
  */
 static void
 setup_bundler(void)
@@ -566,6 +577,56 @@ setup_bundler(void)
 }
 
 /*
+ * Puts back every variable scrub_environment set aside for an app with a
+ * Gemfile, once Bundler has set up its gems, beneath Bundler's own
+ * settings, as bundle exec would have composed them, as unix.c does
+ * (bundler.c; ADR 005, section 5). Ruby's ENV on Windows is UTF-8
+ * (hash.c, env_encoding), so the variables go to Ruby as UTF-8, in the
+ * case the person gave their names.
+ */
+static void
+bundle_environment(void)
+{
+    size_t length = 0;
+    char **entries = allocate(set_aside_count + 1, sizeof *entries);
+
+    for (size_t index = 0; index < set_aside_count; index++) {
+        char *name = utf8(set_aside_names[index]);
+        char *value = utf8(set_aside_values[index]);
+        size_t name_length = strlen(name);
+        size_t value_length = strlen(value);
+
+        entries[index] = allocate(name_length + value_length + 2, 1);
+        memcpy(entries[index], name, name_length);
+        entries[index][name_length] = '=';
+        memcpy(entries[index] + name_length + 1, value, value_length + 1);
+        length += name_length + value_length + 2;
+        free(name);
+        free(value);
+    }
+
+    char *variables = allocate(length + 1, 1);
+    char *next = variables;
+    for (size_t index = 0; index < set_aside_count; index++) {
+        size_t size = strlen(entries[index]) + 1;
+        memcpy(next, entries[index], size);
+        next += size;
+        free(entries[index]);
+    }
+    free(entries);
+
+    char *code = fledge_bundle_environment_code(variables, length);
+    free(variables);
+    if (code == NULL) fail(L"out of memory");
+
+    int state = 0;
+    ruby_api.eval_string_protect(code, &state);
+    free(code);
+    if (state != 0) fail(L"could not set up this app's environment");
+    forget_set_aside();
+}
+
+/*
  * As rb_main in Ruby's main.c, with the launcher's arguments: the
  * address of a variable in this frame tells Ruby where the stack it
  * scans for references begins (RUBY_INIT_STACK), so this frame must be
@@ -576,8 +637,9 @@ setup_bundler(void)
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
  *   43) at Ruby v4.0.9 (3e93b23afc), with RUBY_INIT_STACK spelled out
- *   through a function pointer, and pin_rubygems, setup_bundler, and
- *   restore_environment between ruby_options and ruby_run_node.
+ *   through a function pointer, and pin_rubygems, setup_bundler,
+ *   bundle_environment, and restore_environment between ruby_options and
+ *   ruby_run_node.
  */
 static int __attribute__((noinline))
 run_ruby(int argc, char **argv)
@@ -592,6 +654,7 @@ run_ruby(int argc, char **argv)
         if (gemfile != NULL) {
             setup_bundler();
             pin_rubygems();
+            bundle_environment();
         }
     }
     restore_environment();

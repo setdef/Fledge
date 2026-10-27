@@ -16,14 +16,24 @@
 # With no command, it prints one line, "FLEDGE-PARITY " followed by a
 # JSON object of facts: the globals an app sees, what is loaded and
 # loadable, RubyGems' paths, the encodings, the environment, and what a
-# child Ruby sees. Paths are raw; the comparison normalizes them. The
-# arguments it was given are among the facts.
+# child Ruby sees. Under Bundler (bundle exec, or a built app with a
+# Gemfile) it also reports the environment Bundler recorded as the one it
+# started from, and what a child Ruby sees inside
+# Bundler.with_original_env and Bundler.with_unbundled_env, which is how
+# a Bundler app starts a person's own tools. Paths are raw; the
+# comparison normalizes them. The arguments it was given are among the
+# facts.
 #
 # Delivery, which has no Ruby to compare with, asks it one thing at a
 # time instead:
 #
 #   parity child-env NAME   prints ENV[NAME] as a child Ruby started
 #                           through RbConfig.ruby sees it, or (unset)
+#   parity original-child-env NAME
+#   parity unbundled-child-env NAME
+#                           the same, for a child Ruby started inside
+#                           Bundler.with_original_env or
+#                           Bundler.with_unbundled_env, or (no Bundler)
 #   parity gem-path         prints Gem.path, one folder per line
 #
 # It uses nothing but Ruby's standard library, so it runs under any Ruby
@@ -38,6 +48,20 @@ def child_ruby(code)
   IO.popen([RbConfig.ruby, "-e", code], err: File::NULL, &:read)
 rescue SystemCallError => e
   "#{e.class}: #{e.message}"
+end
+
+# What a child Ruby prints for +code+ when Bundler's +method+
+# (with_original_env or with_unbundled_env) starts it, or nil without
+# Bundler.
+def bundler_child_ruby(method, code)
+  Bundler.public_send(method) { child_ruby(code) } if defined?(Bundler)
+end
+
+# The child's ENV as a Hash, through +start+, a method that runs code in
+# a child Ruby, or nil when it ran none.
+def child_env(start, *)
+  output = method(start).call(*, "require 'json'; print JSON.generate(ENV.to_h)")
+  output && JSON.parse(output)
 end
 
 # The features each gem's own files provide, so a gem named io-console
@@ -104,7 +128,11 @@ def facts
     "$VERBOSE" => $VERBOSE,
     "$DEBUG" => $DEBUG,
     "ENV" => ENV.to_h,
-    "child ENV" => JSON.parse(child_ruby("require 'json'; print JSON.generate(ENV.to_h)")),
+    "child ENV" => child_env(:child_ruby),
+    "Bundler.original_env" => defined?(Bundler) ? Bundler.original_env : nil,
+    "Bundler.unbundled_env" => defined?(Bundler) ? Bundler.unbundled_env : nil,
+    "original child ENV" => child_env(:bundler_child_ruby, :with_original_env),
+    "unbundled child ENV" => child_env(:bundler_child_ruby, :with_unbundled_env),
     "RUBY_PLATFORM" => RUBY_PLATFORM,
     "RUBY_DESCRIPTION" => RUBY_DESCRIPTION,
     "RubyVM::YJIT.enabled?" => defined?(RubyVM::YJIT) ? RubyVM::YJIT.enabled? : nil,
@@ -114,6 +142,9 @@ end
 case ARGV.first
 when "child-env"
   puts child_ruby("print ENV.fetch(#{ARGV.fetch(1).inspect}, '(unset)')")
+when "original-child-env", "unbundled-child-env"
+  method = (ARGV.first == "original-child-env") ? :with_original_env : :with_unbundled_env
+  puts bundler_child_ruby(method, "print ENV.fetch(#{ARGV.fetch(1).inspect}, '(unset)')") || "(no Bundler)"
 when "gem-path"
   puts Gem.path
 else

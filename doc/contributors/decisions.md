@@ -133,3 +133,41 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 > 24. See #8 [re: GMP being LGPL]
 
 *Governs:* GMP, like every other component of a runtime, falls under decision 8. *Applied in:* Plan 002, "Copyleft-free runtimes."
+
+## 2026-10-26, later
+
+Replies to the orchestrating agent's answers in chat, quoted from the maintainer's messages. The orchestrating agent recorded them, because the maintainer, asked whether it could, said "You may" (2026-10-27). Brackets say what each reply answered.
+
+> 2. Ok.
+
+[re: what the options are besides a folder with a `main.rb`: the orchestrator offered (a) a folder with a `main.rb`; (b) the executable you already run, such as `exe/my_cool_app` or `bin/server`, with the project root where the Gemfile or gemspec is; (c) a configuration file naming the entry point; (d) the gemspec's `executables`. It recommended (b), with configuration only where it's needed, and NAME taken from the project (the gemspec's name or the folder's, camelized, such as `MyCoolApp`), which configuration can override.]
+
+*Governs:* an app's layout and entry point, and, with decision 5, where NAME comes from. *Applied in:* Plan 002, "Ship the executable you already run."
+
+> 4. Ok.
+
+[re: the CLI conventions: `-h`, `-?`, and `--help`, and `-v` and `--version`, print to standard output and exit 0; a usage error prints a short usage to standard error and exits 2.]
+
+*Governs:* the CLI conventions. *Applied in:* ADR 002.
+
+> 11. I think yes?
+
+[re: whether to restore the person's own `RUBYOPT`, `GEM_*`, `BUNDLE_*`, and the rest into `ENV` after Ruby has booted, so the app's `ENV` and its child processes look as they would without Fledge, while the app's own boot stays protected. The orchestrator recommended restoring.]
+
+*Governs:* the environment an app and its child processes see. *Applied in:* ADR 003, section 3; `runtime/launcher/unix.c` and `windows.c`; the parity check and Delivery.
+
+> 8 and 24. Remember that LGPL and GPL/AGPL's main differentiator is dynamic linking. Relevant here or not?
+
+> Source offer for... the app? Or the LGPL'ed library? Former won't be liked, latter is fine and normal.
+
+> As long as we're clear about that to app devs, that's great.
+
+[re: libxcrypt on Linux and GMP on Windows, both LGPL. The orchestrator explained that, shipped as separate, replaceable shared libraries, they leave the app proprietary but still require a notice, the library's source or a written offer of it, the ability to replace the library, and app terms that permit reverse engineering for debugging such a replacement (LGPL-2.1 section 6, LGPL-3.0 section 4).]
+
+*Governs:* LGPL components may ship in a runtime only as separate, replaceable shared libraries, never linked statically; Fledge publishes the source of each LGPL library it ships and never requires an app's source or object files; what app developers owe is stated to them plainly. *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe."
+
+> "lists, for each platform, everything that..." Better to automate this as part of the DevOps pipeline, yes?
+
+[re: a user-facing page listing, for each platform, every third-party component that ships in an app, its license, and what the app developer must do.]
+
+*Governs:* the component list, license notices, SBOM, and licensing page are generated from each built runtime in CI, behind a license policy gate, never written by hand. *Applied in:* Plan 002, "Tell app developers what they owe."

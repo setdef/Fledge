@@ -107,6 +107,10 @@ class Parity
       reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
         "without the development and test groups, as bundle config set --local would (ADR 005). Reading a " \
         "configuration file loads RubyGems' YAML serializer."),
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/4\.0\.0/bundler/feature_flag\.rb"\z}],
+      checks: %i[bundle],
+      reason: "With no setting that says where the bundle's gems are, Bundler asks its feature flags whether to use " \
+        "Ruby's own gem folder; the app's .bundle/config says so (path.system, as Warbler's does), so it never asks."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<project>/lib/my_cool_app/version\.rb"\z}], checks: %i[bundle],
       reason: "Bundler evaluates the project's gemspec as it sets up the bundle, and this one requires its version file. " \
         "A built app ships the gemspec evaluated, as Bundler caches a git gem's (ADR 005), so that one that runs git " \

@@ -32,7 +32,7 @@ module FakeGem
     all = files.merge(plugin ? { "lib/rubygems_plugin.rb" => "# plugin\n" } : {})
     all.each do |path, content|
       FileUtils.mkdir_p(File.join(source, File.dirname(path)))
-      File.write(File.join(source, path), content)
+      File.binwrite(File.join(source, path), content)
       File.chmod(0o755, File.join(source, path)) if path.start_with?("exe/")
     end
     spec = Gem::Specification.new do |s|

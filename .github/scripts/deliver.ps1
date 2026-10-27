@@ -97,7 +97,7 @@ $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $name = [IO.Path]::GetFileNameWithoutExtension($Archive)
 $folderName = "h$([char]0xE9)llo w$([char]0xF6)rld"
 $drive = if (Test-Path 'D:\') { 'D:\' } else { $env:RUNNER_TEMP }
-$place = Join-Path (Join-Path $drive 'Fledge test') $folderName
+$place = Join-Path (Join-Path (Join-Path $drive 'Fledge test') $name) $folderName
 New-Item -ItemType Directory -Force $place | Out-Null
 Expand-Archive -LiteralPath $Archive -DestinationPath $place
 $Probe = (Resolve-Path -LiteralPath $Probe).Path

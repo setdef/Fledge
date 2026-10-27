@@ -176,28 +176,12 @@ class LicenseAuditTest < Minitest::Test
     assert_includes rules(audit), ["copyleft-text", "lib/ruby/4.0.0/borrowed.rb"]
   end
 
-  def test_policy_takes_the_least_restrictive_alternative_and_the_most_restrictive_part
-    policy = YAML.safe_load_file(LicenseAudit::MAP).fetch("policy")
-    expected = {
-      "MIT" => :notice_only,
-      "Ruby OR BSD-2-Clause" => :notice_only,
-      "BSDL" => :notice_only,
-      "GPL-1.0-or-later OR Artistic-1.0-Perl" => :notice_only,
-      "GPL-3.0-or-later WITH GCC-exception-3.1" => :notice_only,
-      "MIT AND MPL-2.0" => :file_level,
-      "LGPL-3.0-or-later OR GPL-2.0-or-later" => :shared_library,
-      "(MIT OR LGPL-2.1-or-later) AND Apache-2.0" => :notice_only,
-      "GPL-2.0-only" => :forbidden,
-      "AGPL-3.0-or-later" => :forbidden,
-      "GPL-2.0-only WITH Classpath-exception-2.0" => :forbidden,
-      "NOASSERTION" => :forbidden,
-      "LicenseRef-unknown" => :forbidden,
-      "" => :forbidden,
-      "(MIT" => :forbidden,
-    }
-
-    expected.each { |expression, category| assert_equal category, LicenseAudit.category(expression, policy), expression }
-    assert_equal :first_party, LicenseAudit.category("AGPL-3.0-or-later", policy, first_party: true)
+  # The audit judges every component by Fledge::LicensePolicy, as fledge
+  # build judges an app's gems (test/license_policy_test.rb).
+  def test_the_audit_judges_licenses_by_fledges_policy
+    assert_equal :notice_only, LicenseAudit.category("Ruby OR BSD-2-Clause")
+    assert_equal :forbidden, LicenseAudit.category("AGPL-3.0-or-later")
+    assert_equal :first_party, LicenseAudit.category("AGPL-3.0-or-later", first_party: true)
   end
 
   def test_reads_the_libraries_elf_pe_and_mach_o_files_need

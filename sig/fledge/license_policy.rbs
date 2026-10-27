@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module LicensePolicy
+    type category = :notice_only | :first_party | :file_level | :shared_library | :forbidden
+
+    NOTICE_ONLY: Array[String]
+    FILE_LEVEL: Array[String]
+    SHARED_LIBRARY: Array[String]
+    EXCEPTIONS: Array[String]
+    ALIASES: Hash[String, String]
+    CATEGORIES: Array[category]
+
+    def self.category: (String expression, ?first_party: bool) -> category
+
+    def self.notice_only?: (String expression) -> bool
+
+    def self.gem_license: (Array[String] licenses) -> String
+
+    class Expression
+      @tokens: Array[String]
+      @first_party: bool
+
+      def initialize: (String text, ?first_party: bool) -> void
+
+      def category: () -> category
+
+      private def disjunction: () -> category
+
+      private def conjunction: () -> category
+
+      private def exception: () -> category
+
+      private def atom: () -> category
+
+      private def classify: (String id) -> category
+    end
+  end
+end

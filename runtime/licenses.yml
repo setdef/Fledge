@@ -3,10 +3,10 @@
 # SPDX-FileComment: Adapted from runtime/licenses.yml on Fledge's spike/permissive
 #   branch (58edf27d27912d062ccfa5c4960533a220c9eb24).
 
-# What ships inside every app Fledge builds, and the license policy it
-# must meet. tasks/license_audit.rb reads this file and a runtime tree
-# (a built runtime, or the whole rv-ruby or RubyInstaller tree it came
-# from), and fails unless:
+# What ships inside every app Fledge builds: the map the license audit
+# checks every runtime against. tasks/license_audit.rb reads this file
+# and a runtime tree (a built runtime, or the whole rv-ruby or
+# RubyInstaller tree it came from), and fails unless:
 #
 #   - every file in the tree belongs to a component below or to a gem
 #     whose specification the tree holds, and every compiled file is one
@@ -19,7 +19,9 @@
 #     except that library's own shared library;
 #   - every text file whose words name a copyleft license is one a person
 #     has reviewed (reviewed);
-#   - and every component's license meets the policy.
+#   - and every component's license meets the policy, which
+#     lib/fledge/license_policy.rb holds (Fledge::LicensePolicy), since
+#     fledge build judges an app's own gems by it too (ADR 005).
 #
 # The maintainer's rule (decisions 1, 8, and 24, and the replies of
 # 2026-10-26 in doc/contributors/decisions.md; AGENTS.md, Licensing): an
@@ -36,55 +38,6 @@
 # ("ruby/" in a Windows runtime, "" elsewhere), {arch} is Ruby's archdir
 # name, {gem_arch} the name of RubyGems' extensions folder, and {so} the
 # extension of a Ruby extension on that platform.
-
-policy:
-  # Licenses whose only obligation, for an unmodified copy shipped in a
-  # proprietary app, is to keep their notices.
-  notice_only:
-    - 0BSD
-    - Apache-2.0
-    # Perl's Artistic License, which Ruby's LEGAL offers for
-    # win32/win32.c and win32ole.c beside the GPL. Unmodified, it asks
-    # for its notice and directions to the standard version (section 4a).
-    - Artistic-1.0-Perl
-    - BSD-2-Clause
-    - BSD-3-Clause
-    - BSL-1.0
-    - CC-BY-2.5
-    - CC0-1.0
-    - ISC
-    - LicenseRef-MinGW-w64-runtime
-    - MIT
-    - MIT-0
-    # Fonts may ship inside any software; only the fonts stay OFL.
-    - OFL-1.1
-    - PSF-2.0
-    - Ruby
-    - Unlicense
-    - Zlib
-  # Licenses whose copyleft reaches only the files they cover: allowed for
-  # components that ship as unmodified files (kind: files), such as the
-  # CA bundle, whose source form is the file itself.
-  file_level:
-    - EPL-2.0
-    - MPL-2.0
-  # Allowed only for a component that ships as its own shared library
-  # (kind: shared_library) with its source published (source).
-  shared_library:
-    - LGPL-2.1-only
-    - LGPL-2.1-or-later
-    - LGPL-3.0-only
-    - LGPL-3.0-or-later
-  # Exceptions that make a GPL runtime library's code notice-only, or
-  # less, inside a program compiled with it.
-  exceptions:
-    - Bison-exception-2.2
-    - GCC-exception-3.1
-    - LLVM-exception
-  # Names gemspecs use that are not SPDX identifiers.
-  aliases:
-    BSDL: BSD-2-Clause
-    PSFL: PSF-2.0
 
 # What the operating system provides, which a runtime need not ship.
 system_libraries:

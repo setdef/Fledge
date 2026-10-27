@@ -14,9 +14,11 @@ require "rubygems/package"
 require "stringio"
 require "yaml"
 require "zlib"
+require_relative "../lib/fledge/license_policy"
 
 # Accounts for everything in a runtime tree and checks it against
-# Fledge's license policy (runtime/licenses.yml).
+# Fledge's license policy (Fledge::LicensePolicy) and the map of what
+# ships (runtime/licenses.yml).
 #
 # A Fledge runtime is copied whole into every app built with it, so
 # whatever it carries, the app's developer distributes. The audit derives
@@ -137,80 +139,12 @@ class LicenseAudit
     report.violations.map(&:to_s) + notices.missing.map { |id| "missing-notice: #{id} has no license text in runtime/notices/ or its gem" }
   end
 
-  # The license policy's verdict on an SPDX license expression: the
-  # least restrictive way to take it, as one of :notice_only,
-  # :first_party, :file_level, :shared_library, or :forbidden.
-  def self.category(expression, policy, first_party: false)
-    Expression.new(expression, policy, first_party:).category
-  end
-
-  # Parses and judges an SPDX license expression (SPDX 2.3, annex D):
-  # OR takes the least restrictive alternative, AND the most
-  # restrictive part, and WITH an allowed exception makes the license it
-  # follows notice-only.
-  class Expression
-    RANKS = %i[notice_only first_party file_level shared_library forbidden].freeze
-
-    def initialize(text, policy, first_party: false)
-      @tokens = text.to_s.scan(/\(|\)|[A-Za-z0-9.+:-]+/)
-      @policy = policy
-      @first_party = first_party
-    end
-
-    def category
-      return :forbidden if @tokens.empty?
-
-      result = disjunction
-      @tokens.empty? ? result : :forbidden
-    end
-
-    private def disjunction
-      categories = [conjunction]
-      categories << conjunction while @tokens.first == "OR" && @tokens.shift
-      categories.min_by { |category| RANKS.index(category) }
-    end
-
-    private def conjunction
-      categories = [exception]
-      categories << exception while @tokens.first == "AND" && @tokens.shift
-      categories.max_by { |category| RANKS.index(category) }
-    end
-
-    private def exception
-      license = atom
-      return license unless @tokens.first == "WITH"
-
-      @tokens.shift
-      @policy.fetch("exceptions").include?(@tokens.shift) ? :notice_only : :forbidden
-    end
-
-    private def atom
-      token = @tokens.shift
-      if token == "("
-        inner = disjunction
-        (@tokens.shift == ")") ? inner : :forbidden
-      else
-        classify(token.to_s)
-      end
-    end
-
-    private def classify(id)
-      id = @policy.fetch("aliases", {}).fetch(id, id)
-      return :notice_only if @policy.fetch("notice_only").include?(id)
-      return :first_party if @first_party && id == "AGPL-3.0-or-later"
-      return :file_level if @policy.fetch("file_level").include?(id)
-      return :shared_library if @policy.fetch("shared_library").include?(id)
-
-      :forbidden
-    end
-  end
-
-  # The SPDX expression a gem's specification declares, its names
-  # mapped through the policy's aliases, alternatives joined by OR.
-  def self.gem_license(licenses, aliases)
-    return "NOASSERTION" if licenses.empty?
-
-    licenses.map { |license| aliases.fetch(license, license) }.uniq.join(" OR ")
+  # The license policy's verdict on an SPDX license expression
+  # (Fledge::LicensePolicy, which fledge build applies to an app's gems
+  # too): one of :notice_only, :first_party, :file_level,
+  # :shared_library, or :forbidden.
+  def self.category(expression, first_party: false)
+    Fledge::LicensePolicy.category(expression, first_party:)
   end
 
   # Where Ruby's own tree starts: ruby/ in a Windows runtime.
@@ -264,14 +198,13 @@ class LicenseAudit
   # gem's files where RubyGems keeps them.
   private def gem_components
     root = "#{prefix}lib/ruby/gems/4.0.0"
-    aliases = @map.fetch("policy").fetch("aliases", {})
     Dir.glob(File.join(tree, root, "specifications", "{,default/}*.gemspec")).map do |path|
       spec = Gem::Specification.load(path) or raise "#{path}: not a gem specification"
       full = spec.full_name
       override = @map.fetch("gems", {}).fetch(spec.name, {})
       default = path.include?("/specifications/default/")
       Component.new(id: "gem-#{full}", name: "#{spec.name} (#{default ? 'default' : 'bundled'} gem)", version: spec.version.to_s,
-        license: override.fetch("license") { LicenseAudit.gem_license(spec.licenses, aliases) }, kind: "program",
+        license: override.fetch("license") { Fledge::LicensePolicy.gem_license(spec.licenses) }, kind: "program",
         first_party: false, download: "https://rubygems.org/gems/#{spec.name}/versions/#{spec.version}", notice: nil, source: nil,
         ships: default ? "Ruby's default gem; its code is in lib/ruby/4.0.0" : "files under lib/ruby/gems/4.0.0/gems/#{full}",
         supplier: nil, files: gem_files(root, spec), binaries: gem_binaries(root, full), embedded: [], sha256: {},
@@ -441,7 +374,7 @@ class LicenseAudit
   end
 
   private def check_text(label, names, owner, text)
-    return if owner && LicenseAudit.category(owner.license, @map.fetch("policy"), first_party: owner.first_party) != :notice_only
+    return if owner && LicenseAudit.category(owner.license, first_party: owner.first_party) != :notice_only
     return if text.byteslice(0, 8192).to_s.include?("\0")
     return unless COPYLEFT_BYTES.match?(text)
     return if names.any? { |name| reviewed.any? { |pattern| matches?(pattern, name) } }
@@ -501,7 +434,7 @@ class LicenseAudit
   end
 
   private def check_policy(component, report)
-    category = LicenseAudit.category(component.license, @map.fetch("policy"), first_party: component.first_party)
+    category = LicenseAudit.category(component.license, first_party: component.first_party)
     where = (report.owned(component) + report.embedded_in(component)).first.to_s
     case category
     when :notice_only, :first_party then nil

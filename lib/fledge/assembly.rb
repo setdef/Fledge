@@ -14,6 +14,8 @@ require_relative "mac_bundle"
 require_relative "platform"
 require_relative "tar_gz"
 require_relative "windows_resources"
+require_relative "assembly/placement"
+require_relative "assembly/runtime_archive"
 
 module Fledge
   # Puts one app into one platform's runtime: a folder and its archive.
@@ -108,7 +110,6 @@ module Fledge
       @app_files = app_files
       @files = files
       @makensis = makensis
-      @placed = {} # : Hash[String, bool]
       @bundle = nil # : MacBundle?
       @writers = [] # : Array[Dmg | Nsis | AppImage]
       @kit = {} # : Hash[String, Entry]
@@ -218,11 +219,12 @@ module Fledge
       end
       path = @platform.archive_format.write(archive, mtime:) do |writer|
         writer.add(Entry.directory(base_name))
-        launcher = copy_runtime(writer)
-        add(writer, Entry.file(CONFIG, launch_config))
-        copy_app(writer)
-        @files.each { |entry| add(writer, entry) }
-        finish(writer, launcher)
+        placement = Placement.new(folder:, base_name:, writer:, bundle: @bundle, installers: @writers, runtime: @runtime)
+        launcher = copy_runtime(placement)
+        placement.add(Entry.file(CONFIG, launch_config))
+        copy_app(placement)
+        @files.each { |entry| placement.add(entry) }
+        finish(placement, launcher)
       end
       @installers = @writers.map { |installer| installer.finish(@kit) }
       path
@@ -235,19 +237,19 @@ module Fledge
     # Places the launcher, last, as the app's program: on Windows with the
     # app's resources in it; in a bundle, after the bundle's own files,
     # signed for it; on Linux, after a windowed app's desktop entry.
-    private def finish(writer, launcher)
+    private def finish(placement, launcher)
       bundle = @bundle
       if bundle
-        bundle.extras.each { |entry| put(writer, entry) }
-        bundle.finish(launcher).each { |entry| put(writer, entry) }
+        bundle.extras.each { |entry| placement.put(entry) }
+        bundle.finish(launcher).each { |entry| placement.put(entry) }
         return
       end
 
       executable = @platform.executable(@app.name)
       content = launcher.content
       content = windows_program(content, executable) if @platform.windows?
-      DesktopEntry.new(@app.identity).entries.each { |entry| put(writer, entry) } if @platform.os == "linux" && @app.identity.windowed?
-      put(writer, Entry.file(executable, content, mode: launcher.mode))
+      DesktopEntry.new(@app.identity).entries.each { |entry| placement.put(entry) } if @platform.os == "linux" && @app.identity.windowed?
+      placement.put(Entry.file(executable, content, mode: launcher.mode))
     end
 
     private def windows_program(content, executable)
@@ -279,82 +281,23 @@ module Fledge
     # Copies every entry of the runtime but its launchers and its
     # installer files, which it keeps for the installers, and returns the
     # launcher this app runs.
-    private def copy_runtime(writer)
-      launcher = @platform.executable(launcher_name)
-      launchers = [launcher, @platform.executable(LAUNCHER), @platform.executable(WINDOWED_LAUNCHER)]
-      top = nil # : String?
-      found = nil # : Entry?
-      TarGz.each_entry(@runtime) do |entry|
-        first, rest = entry.path.split("/", 2)
-        top ||= first
-        raise Error, "#{@runtime} is not a Fledge runtime: it holds both #{top}/ and #{first}" unless first == top
-        next unless rest
-
-        found = entry if rest == launcher
-        next if launchers.include?(rest)
-        next @kit[rest.delete_prefix("#{INSTALLER}/")] = entry if rest.start_with?("#{INSTALLER}/") && entry.type == :file
-        next if rest == INSTALLER || rest.start_with?("#{INSTALLER}/")
-
-        add(writer, entry.with(path: runtime_path(rest)))
-      end
-      found or raise Error, "#{@runtime} is not a Fledge runtime: it has no #{launcher}"
-    end
-
-    private def runtime_path(path)
-      executable = @platform.executable(@app.name)
-      first = path.split("/", 2).first.to_s
-      raise Error, "#{@runtime} is not a Fledge runtime: it holds an app folder" if first == "app"
-      raise Error, "#{@runtime} is not a Fledge runtime: it holds a #{CONFIG}" if first == CONFIG
-      if first.casecmp?(executable)
-        raise Error, "an app named #{@app.name} would collide with the runtime's #{first}. Give it another name."
-      end
-
-      path
+    private def copy_runtime(placement)
+      runtime = RuntimeArchive.new(@runtime, platform: @platform, app_name: @app.name)
+      runtime.copy(launcher_name, @kit) { |entry| placement.add(entry) }
     end
 
     # The project's entries in +app+, with the contents @app_files gives
     # in place of a file's own, then the files of @app_files the project
     # does not have.
-    private def copy_app(writer)
-      add(writer, Entry.directory("app"))
+    private def copy_app(placement)
+      placement.add(Entry.directory("app"))
       remaining = @app_files.dup
       @app.entries(skip: [@out]).each do |entry|
         content = remaining.delete(entry.path)
         entry = entry.with(content:) if content && entry.type == :file
-        add(writer, entry.with(path: "app/#{entry.path}"))
+        placement.add(entry.with(path: "app/#{entry.path}"))
       end
-      remaining.each { |path, content| add(writer, Entry.file("app/#{path}", content)) }
-    end
-
-    # Places an entry of the runtime, the app, or the build, at its place
-    # in the built app: where it is, or in a bundle's +Resources+.
-    private def add(writer, entry)
-      bundle = @bundle
-      put(writer, bundle ? entry.with(path: bundle.resource(entry.path)) : entry)
-    end
-
-    # Places +entry+, whose path is in the built app's folder, after any
-    # folder above it that is not there yet. A folder already there stays;
-    # any other entry already there is the runtime's, which nothing the
-    # build adds may replace.
-    private def put(writer, entry)
-      parents = entry.path.split("/")[0...-1] || []
-      parents.each_index do |index|
-        parent = parents.first(index + 1).join("/")
-        place(writer, Entry.directory(parent)) unless @placed.key?(parent)
-      end
-      return if entry.type == :directory && @placed.key?(entry.path)
-      raise Error, "#{entry.path} is in #{@runtime} already, so the build can't add its own" if @placed.key?(entry.path)
-
-      place(writer, entry)
-    end
-
-    private def place(writer, entry)
-      entry.write_into(folder)
-      writer.add(entry.with(path: "#{base_name}/#{entry.path}"))
-      @placed[entry.path] = true
-      @bundle&.seal(entry)
-      @writers.each { |installer| installer.add(entry) }
+      remaining.each { |path, content| placement.add(Entry.file("app/#{path}", content)) }
     end
   end
 end

@@ -426,15 +426,16 @@ jobs:
 
   # Gems that must be compiled compile only on the platform they are for
   # (ADR 006), so each platform's own runner builds examples/native_app:
-  # redcarpet, a C gem published only as source, and ferro-idna, a Rust
-  # gem (rb-sys) from its git tag, each compiled against the runtime's own
-  # Ruby and its build-only companion, which the runtime job built. The
-  # Mac builds examples/nokogiri_app too, nokogiri from source with
-  # macOS's own iconv; Windows checks that the same app is refused, since
-  # nokogiri's Windows source build compiles GNU libiconv in. Each also
-  # builds the gem-shaped parity probe, which Delivery asks what a child
-  # Ruby sees, and records what bundle exec prints, which the built app
-  # must print too.
+  # redcarpet, a C gem published only as source, ferro-idna, a Rust gem
+  # (rb-sys) from its git tag, and bigdecimal, which spreadsheet, a GPL
+  # gem, needs, each compiled against the runtime's own Ruby and its
+  # build-only companion, which the runtime job built. The Mac and
+  # Windows build examples/nokogiri_app too, nokogiri from source: with
+  # macOS's own iconv on the Mac, and with GNU libiconv linked in on
+  # Windows, which ships as any gem's compiled code does (ADR 007). Each
+  # also builds the gem-shaped parity probe, which Delivery asks what a
+  # child Ruby sees, and records what bundle exec prints, which the built
+  # app must print too.
   build-native:
     name: Build from source (${{ matrix.platform }})
     needs: runtime
@@ -523,32 +524,19 @@ jobs:
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
           ruby -I lib exe/fledge build -o dist "$RUNNER_TEMP/parity-bundle"
           ruby -I lib exe/fledge build -o dist examples/native_app
-          head -n 60 "dist/NativeApp-${{ matrix.platform }}/notices/GEMS.txt"
 
-      - name: Build nokogiri_app from source for arm64-darwin
-        if: matrix.platform == 'arm64-darwin'
+      - name: Build nokogiri_app from source for ${{ matrix.platform }}
+        if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x64-mingw-ucrt'
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: ruby -I lib exe/fledge build -o dist examples/nokogiri_app
-
-      - name: Check nokogiri_app is refused for x64-mingw-ucrt for its static GNU libiconv
-        if: matrix.platform == 'x64-mingw-ucrt'
-        env:
-          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
-        run: |
-          if ruby -I lib exe/fledge build -o "$RUNNER_TEMP/refused" examples/nokogiri_app 2> "$RUNNER_TEMP/nokogiri.err"; then
-            echo "::error::fledge build shipped nokogiri for Windows, whose source build compiles GNU libiconv in"
-            exit 1
-          fi
-          tail -n 20 "$RUNNER_TEMP/nokogiri.err"
-          grep -F "nokogiri 1.19.4 compiles GNU libiconv's code (LGPL-2.1-or-later)" "$RUNNER_TEMP/nokogiri.err"
 
       # What each app prints as its developer runs it, which its built app
       # must print too.
       - name: Run the examples with bundle exec
         run: |
           examples=native_app
-          if [ "${{ matrix.platform }}" = arm64-darwin ]; then examples="native_app nokogiri_app"; fi
+          case "${{ matrix.platform }}" in arm64-darwin | x64-mingw-ucrt) examples="native_app nokogiri_app" ;; esac
           for example in $examples; do
             (cd "examples/$example" && bundle install)
             (cd "examples/$example" && bundle exec ruby main.rb) | tee "dist/$example.expected"
@@ -616,6 +604,15 @@ jobs:
           -Archive "$env:RUNNER_TEMP/delivered/NativeApp-x64-mingw-ucrt.zip"
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/native_app.expected" -Raw).TrimEnd()
+
+      - name: Run NokogiriApp.exe as someone with no Ruby would
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/NokogiriApp-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/nokogiri_app.expected" -Raw).TrimEnd()
 
   # Delivery (Plan 001): each app on a fresh runner of its platform, with
   # nothing of Fledge but the archive and the script that checks it, and

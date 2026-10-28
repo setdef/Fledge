@@ -126,13 +126,6 @@ $text = Get-Content -LiteralPath $notices -Raw
 foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_dlls/libgmp-10.dll', '-x64-mingw-ucrt-lgpl-sources.tar.gz')) {
   if (-not $text.Contains($line)) { Fail "notices\NOTICES.txt does not say '$line'" }
 }
-# An app with a Gemfile carries its gems' notices too (ADR 005).
-if (Test-Path -LiteralPath (Join-Path $root 'app\Gemfile') -PathType Leaf) {
-  $gems = Join-Path $root 'notices\GEMS.txt'
-  if (-not (Test-Path -LiteralPath $gems -PathType Leaf) -or -not (Get-Content -LiteralPath $gems -Raw).StartsWith("THE APP'S OWN GEMS")) {
-    Fail "the app has gems but no notices\GEMS.txt"
-  }
-}
 Write-Host "ok: the app carries its notices and SBOM"
 
 # The runner has Rubies (on PATH, in C:\hostedtoolcache, MSYS2 in

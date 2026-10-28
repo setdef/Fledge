@@ -115,7 +115,7 @@ jobs:
           prerelease=()
           case "$VERSION" in *pre*) prerelease=(--prerelease) ;; esac
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" --title "Fledge $TAG" \
-            --notes "Runtimes for fledge build at $TAG, each with its SPDX SBOM and NOTICES, and the source of the LGPL libraries the Linux and Windows runtimes ship. What each platform's app holds, and what its licenses ask of you: doc/licensing.md at $TAG. What changed: CHANGELOG.md." \
+            --notes "Runtimes for fledge build at $TAG, each with its SPDX SBOM and NOTICES, and the source of the LGPL libraries the Linux and Windows runtimes ship. What Fledge puts into each platform's app, and what its licenses ask of you: doc/licensing.md at $TAG. What changed: CHANGELOG.md." \
             release/fledge-runtime-* release/SHA256SUMS
 
   installed:

@@ -74,10 +74,6 @@ case "$(uname -s)" in
     grep -q -- "-lgpl-sources.tar.gz$" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say where libxcrypt's source is"
     ;;
 esac
-# An app with a Gemfile carries its gems' notices too (ADR 005).
-if [ -f "$root/app/Gemfile" ]; then
-  grep -q "^THE APP'S OWN GEMS$" "$root/notices/GEMS.txt" || fail "the app has gems but no notices/GEMS.txt"
-fi
 echo "ok: the app carries its notices and SBOM"
 
 # The app runs with a PATH that holds nothing at all, so no Ruby is on

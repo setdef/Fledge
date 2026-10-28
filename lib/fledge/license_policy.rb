@@ -217,16 +217,28 @@ module Fledge
         @tokens.empty? ? result : :forbidden
       end
 
+      # Licenses joined by OR: whoever ships may choose any, so the most
+      # permissive decides.
       private def disjunction
-        categories = [conjunction]
-        categories << conjunction while @tokens.first == "OR" && @tokens.shift
-        categories.min_by { |category| CATEGORIES.index(category) || CATEGORIES.size } || :forbidden
+        operands("OR") { conjunction }.min_by { |category| rank(category) } || :forbidden
       end
 
+      # Licenses joined by AND: each must hold, so the strictest decides.
       private def conjunction
-        categories = [exception]
-        categories << exception while @tokens.first == "AND" && @tokens.shift
-        categories.max_by { |category| CATEGORIES.index(category) || CATEGORIES.size } || :forbidden
+        operands("AND") { exception }.max_by { |category| rank(category) } || :forbidden
+      end
+
+      # The verdict on each operand the block reads, for as long as
+      # +operator+ joins another.
+      private def operands(operator)
+        categories = [yield]
+        categories << yield while @tokens.first == operator && @tokens.shift
+        categories
+      end
+
+      # Where +category+ is in CATEGORIES, from most permissive to least.
+      private def rank(category)
+        CATEGORIES.index(category) || CATEGORIES.size
       end
 
       private def exception

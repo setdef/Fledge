@@ -30,6 +30,10 @@ module Fledge
 
       private def conjunction: () -> category
 
+      private def operands: (String operator) { () -> category } -> Array[category]
+
+      private def rank: (category category) -> Integer
+
       private def exception: () -> category
 
       private def atom: () -> category

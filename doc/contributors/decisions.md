@@ -68,7 +68,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 8. Because of what I said re: #1, we must be VERY careful to be able to let app devs _not_ be copyleft-laden when they pay for a commercial license.
 
-*Governs:* the license of everything Fledge copies into an app. *Applied in:* AGENTS.md, Licensing (the standing rule for what a runtime may carry); Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe, from CI."
+*Governs:* the license of everything Fledge itself copies into an app, its runtime; not the app's own gems, which the 2026-10-28 reply leaves to the app's developer. *Applied in:* AGENTS.md, Licensing (the standing rule for what a runtime may carry); Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe, from CI."
 
 > 9. When using fledge, your ruby source code should be able to be identical to how it was without Fledge, so the things you had to `require` before you can still need the app dev to `require`, but the things you didn't have to `require` before the app dev still shouldn't have to require.
 
@@ -164,7 +164,7 @@ Replies to the orchestrating agent's answers in chat, quoted from the maintainer
 
 [re: libxcrypt on Linux and GMP on Windows, both LGPL. The orchestrator explained that, shipped as separate, replaceable shared libraries, they leave the app proprietary but still require a notice, the library's source or a written offer of it, the ability to replace the library, and app terms that permit reverse engineering for debugging such a replacement (LGPL-2.1 section 6, LGPL-3.0 section 4).]
 
-*Governs:* LGPL components may ship in a runtime only as separate, replaceable shared libraries, never linked statically; Fledge publishes the source of each LGPL library it ships and never requires an app's source or object files; what app developers owe is stated to them plainly. *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe."
+*Governs:* LGPL components may ship in a runtime only as separate, replaceable shared libraries, never linked statically; Fledge publishes the source of each LGPL library it ships and never requires an app's source or object files; what app developers owe for what Fledge ships is stated to them plainly. These replies govern Fledge's runtimes, not the app's own gems (2026-10-28). *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe."
 
 > "lists, for each platform, everything that..." Better to automate this as part of the DevOps pipeline, yes?
 
@@ -183,3 +183,13 @@ Replies to the orchestrating agent's answers in chat, quoted from the maintainer
 > Would it be a good idea to move that research somewhere more durable for cross-session reference? Maybe the repo?
 
 *Governs:* research that sessions share lives in the repository, under `doc/contributors/research/`. *Applied in:* `doc/contributors/research/`.
+
+## 2026-10-28
+
+The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
+
+> Why does it refuse GPL and AGPL gems? That's up to the app dev to decide, not up to Fledge. In fact, why is Fledge taking any kind of opinion at all about what license the gems the app dev uses are under?
+
+[re: the orchestrator's report that `fledge build` refused GPL and AGPL app gems, such as Tokra, allowed LGPL ones only with their source pinned, and refused gems whose binaries had LGPL code linked in statically.]
+
+*Governs:* Fledge takes no position on the licenses of the gems an app depends on — those are the app developer's choice and responsibility; decision 8 and the LGPL replies govern only what Fledge itself puts into apps (its runtime). *Applied in:* ADR 007, which supersedes the parts of ADR 004 (section 7 and part of 8), ADR 005 (sections 3 and 7), and ADR 006 (sections 8 to 10) that judged an app's gems; AGENTS.md, Licensing; `Fledge::AppGems`, which no longer judges a gem's license or what its compiled files hold, and `Fledge::Linkage`, which checks only that they load; `fledge.yml`, which no longer has `licenses` or `compiled`; the removal of `lib/fledge/compiled_code.yml`, `Fledge::RustCrates`, and `notices/GEMS.txt`; `doc/licensing.md`, "Your app's own gems"; the README; `exe/fledge`'s help; Plan 002; `examples/native_app`, which ships spreadsheet (GPL-3.0), and `examples/nokogiri_app`, which ships for Windows with GNU libiconv linked in.

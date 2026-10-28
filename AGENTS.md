@@ -39,6 +39,7 @@ Pre-1.0, zero external users. Prefer good design over backward compatibility; re
 
 - Run Ruby with `bundle exec ruby`. Run tests with `bundle exec rake test`. Never `ruby -Ilib:test`.
 - `bundle exec rake` is the gate: RuboCop and REUSE fixes, tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck, RBS checks (no `untyped`, `rbs validate`, signature parity), Steep, and the package check. It must pass with zero errors and zero warnings. Run `bundle exec rake rubocop:autocorrect_all` first to save time.
+- RubyCritic reports a score and a rating for each file and fails nothing, as in Tokra and rove_2d. Its score is an average of each file's complexity, which code that reads and writes binary formats runs high on however it is designed, so a floor would reward splitting files over making them clear. Read its report after a change instead: no file in `lib/` may be rated F, and when one falls toward it, find the responsibility it took on and give that a class of its own.
 - Approved exceptions live in `rbs_exceptions.rb`; adding one needs a justification that it is impossible otherwise.
 - Rake tasks use `git ls-files`: new or deleted files must be staged before they count.
 - `bundle exec rake parity` compares an app built from this computer's runtime with `ruby main.rb` on the Ruby that runtime came from, and a gem-shaped one with `bundle exec` (ADR 003 and ADR 005); run it after `bundle exec rake runtime`. CI runs it on every platform.

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.9] - 2026-10-28
+
 ### Added
 
 - Mobile runtimes, as release assets beside the desktop ones, with their SBOMs and NOTICES: `fledge-runtime-VERSION-ios.tar.gz`, holding `FledgeRuby.xcframework` for iOS and iPadOS devices and the Simulator (`arm64-ios`, `arm64-ios-simulator`), and `fledge-runtime-VERSION-android.tar.gz`, holding `FledgeRuby.aar` for Android's arm64-v8a and x86_64 (`aarch64-linux-android`, `x86_64-linux-android`). Each is CRuby 4.0.9 built from source as an interpreter, with its extensions linked in, OpenSSL 3.6.5, libyaml 0.2.5, on Android libffi 3.5.2, every default and bundled gem as a gem (fiddle left out on iOS), Mozilla's CA certificates, and a UTF-8 locale, started by a small embedding API (`fledge_ruby_run`, `fledge_ruby_forward_output`, and on Android `org.setdef.fledge.FledgeRuby`) that sends standard output and standard error to os_log or logcat. `fledge build` does not build mobile apps yet.
@@ -130,7 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.8...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.9...HEAD
+[0.0.1.pre.9]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.9
 [0.0.1.pre.8]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.8
 [0.0.1.pre.7]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.7
 [0.0.1.pre.6]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.6

@@ -26,49 +26,5 @@ module Fledge
     def encode: () -> String
 
     private def chunk: (String type, String data) -> String
-
-    class Decoder
-      @width: Integer
-      @height: Integer
-      @depth: Integer
-      @color: Integer
-      @interlace: Integer
-      @channels: Integer
-      @palette: String?
-      @transparency: String?
-      @palette_table: Array[String]
-
-      def initialize: (width: Integer, height: Integer, depth: Integer, color: Integer, interlace: Integer, chunks: Array[[String, String]]) -> void
-
-      def decode: (String raw) -> Png
-
-      private def decode_rows: (String raw) -> String
-
-      private def chunk: (Array[[String, String]] chunks, String type) -> String?
-
-      private def each_line: (String raw, Integer at, Integer columns, Integer rows) { (Array[Integer], Integer) -> void } -> Integer
-
-      private def unfilter: (Integer filter, Array[Integer] line, Array[Integer] previous, Integer step) -> void
-
-      private def left: (Array[Integer] line, Integer index, Integer step) -> Integer
-
-      private def paeth: (Integer left, Integer up, Integer up_left) -> Integer
-
-      private def rgba_row: (Array[Integer] line, Integer columns) -> String
-
-      private def palette_table: () -> Array[String]
-
-      private def samples: (Array[Integer] line, Integer columns) -> Array[Array[Integer]]
-
-      private def rgba: (Array[Integer] sample) -> Array[Integer]
-
-      private def gray: (Integer level, Integer alpha) -> Array[Integer]
-
-      private def scale: (Integer value) -> Integer
-
-      private def transparent?: (Array[Integer] sample) -> bool
-
-      private def palette_color: (Integer index) -> Array[Integer]
-    end
   end
 end

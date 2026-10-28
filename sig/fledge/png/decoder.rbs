@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Png
+    class Decoder
+      @width: Integer
+      @height: Integer
+      @depth: Integer
+      @interlace: Integer
+      @channels: Integer
+      @pixels: Pixels
+
+      def initialize: (width: Integer, height: Integer, depth: Integer, color: Integer, interlace: Integer, chunks: Array[[String, String]]) -> void
+
+      def decode: (String raw) -> Png
+
+      private def decode_rows: (String raw) -> String
+
+      private def decode_passes: (String raw) -> String
+
+      private def chunk: (Array[[String, String]] chunks, String type) -> String?
+
+      private def each_line: (String raw, Integer at, Integer columns, Integer rows) { (Array[Integer], Integer) -> void } -> Integer
+    end
+  end
+end

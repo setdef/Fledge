@@ -72,8 +72,10 @@ class RuntimeBuilder
 
     # What of NSIS's release fledge build compiles an installer with (ADR
     # 009 and ADR 010): its license; makensis, the release's own Windows
-    # program, and the zlib1.dll it loads; the stubs of solid LZMA
-    # compression, NSIS's default and Tauri's, and the uninstaller's icon;
+    # program, and the zlib1.dll it loads; the stub of solid LZMA
+    # compression, NSIS's default and Tauri's, the zlib stub makensis
+    # loads as it starts, before a script chooses its compressor, and the
+    # uninstaller's icon;
     # the System plug-in, which sets the Start menu shortcut's
     # AppUserModelID, and nsDialogs, which Modern UI's pages use; the
     # script headers; and Modern UI 2 with its dialogs, graphics, and
@@ -84,6 +86,7 @@ class RuntimeBuilder
       "Bin/makensis.exe",
       "Bin/zlib1.dll",
       "Stubs/lzma_solid-x86-unicode",
+      "Stubs/zlib-x86-unicode",
       "Stubs/uninst",
       "Plugins/x86-unicode/System.dll",
       "Plugins/x86-unicode/nsDialogs.dll",

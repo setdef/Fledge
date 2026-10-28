@@ -362,7 +362,7 @@ components:
     ships: tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive
     platforms: [x64-mingw-ucrt]
     files: ["tools/nsis/**"]
-    binaries: ["tools/nsis/Bin/{makensis.exe,zlib1.dll}", "tools/nsis/Stubs/lzma_solid-x86-unicode", "tools/nsis/Plugins/x86-unicode/*.dll",
+    binaries: ["tools/nsis/Bin/{makensis.exe,zlib1.dll}", "tools/nsis/Stubs/{lzma_solid,zlib}-x86-unicode", "tools/nsis/Plugins/x86-unicode/*.dll",
       "tools/nsis/Contrib/UIs/*.exe"]
 
   - id: rcedit

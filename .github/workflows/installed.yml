@@ -87,8 +87,7 @@ jobs:
     steps:
       # Only what a developer would have of Fledge's repository: hello,
       # my_cool_app, native_app, windowed_app, and the parity probe to
-      # build, and the scripts that check the result, at the tag. Fledge
-      # itself comes from Bundler.
+      # build, at the tag. Fledge itself comes from Bundler.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -99,9 +98,23 @@ jobs:
             examples/native_app
             examples/windowed_app
             test/fixtures/parity
-            .github/scripts
             mise.toml
           sparse-checkout-cone-mode: false
+
+      # The scripts that check the result come from this workflow's own
+      # commit: the tag's, when release.yml calls it, and the checks as
+      # they are now when a published tag is checked again by hand.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: checks
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Put the checks where the steps run them
+        run: |
+          mkdir -p .github
+          cp -R checks/.github/scripts .github/scripts
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         if: runner.os != 'Windows'

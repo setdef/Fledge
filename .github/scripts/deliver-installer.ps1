@@ -153,8 +153,14 @@ CheckInstalled
 
 # Started from its Start menu shortcut, through the shell, as a click in
 # the Start menu starts it. Given no arguments, it writes its report to
-# %TEMP%\hello_window.json.
-$report = Join-Path $env:TEMP 'hello_window.json'
+# its temporary folder (Ruby's Dir.tmpdir: TMPDIR, TMP, or TEMP), here a
+# folder of this script's own, since setup-ruby points TMPDIR elsewhere.
+$temporary = Join-Path $env:RUNNER_TEMP 'from the shortcut'
+New-Item -ItemType Directory -Force $temporary | Out-Null
+$env:TMPDIR = $temporary
+$env:TMP = $temporary
+$env:TEMP = $temporary
+$report = Join-Path $temporary 'hello_window.json'
 Remove-Item -LiteralPath $report -ErrorAction SilentlyContinue
 Start-Process -FilePath $shortcut
 WaitFor { Test-Path -LiteralPath $report } 'the app writing its report after starting from its shortcut' 60

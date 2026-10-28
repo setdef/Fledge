@@ -1,0 +1,864 @@
+SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+SPDX-License-Identifier: CC-BY-SA-4.0
+
+SPIKE: WHAT iOS, iPadOS, AND ANDROID COST FLEDGE
+================================================
+
+Requested (an agent wrote this and the code beside it; nobody reviewed it
+line by line). Spike code is throwaway; these findings are what the spike
+is for. Date: 2026-10-27. Branch spike/mobile, forked from trunk at
+618d0f7. (Written as FINDINGS.txt because the agent harness refused to
+write a .md report file.)
+
+The maintainer's decision this informs (2026-10-27): "We should, if we
+can, support iOS and iPadOS and Android. Ideally before 1.0 but I could be
+swayed if it turns out incredibly burdensome."
+
+
+VERDICT
+-------
+
+Not incredibly burdensome. CRuby 4.0.9 cross-builds for iOS (device and
+Simulator) and Android (arm64-v8a and x86_64), statically, with its
+extensions linked in and no JIT. A bundled main.rb that requires json ran
+in CI on:
+
+  - an iPhone simulator;
+  - an iPad simulator (device type iPad (A16), iPadOS 26.5);
+  - API 36 Android emulators with 4 KB and with 16 KB pages.
+
+The device .ipa links without signing credentials.
+
+The runtime build is the cheap part: about 6 minutes per slice in CI, and
+a handful of small, scriptable source changes. The expensive parts are
+what comes after:
+
+  - parity on platforms without a console or subprocesses;
+  - native gems, which must be compiled per app and linked statically;
+  - a Delivery gate without real devices;
+  - the per-app project Fledge has to emit.
+
+Recommendation: both mobile platforms before 1.0, scoped to pure-Ruby apps
+and the standard library, delivered as a prebuilt runtime plus a generated
+Xcode or Gradle project. Native gems on mobile after 1.0. Smallest next
+story: "Mobile runtimes" (section 7).
+
+
+GREEN CI RUNS
+-------------
+
+Spike mobile iOS: https://github.com/setdef/Fledge/actions/runs/40630328845
+  - Ruby built for iphonesimulator and iphoneos.
+  - The app ran on an iPhone 17 and an iPad simulator (iOS 26.5, Xcode
+    26.5) to FLEDGE-SPIKE-DONE, with stdout and the unified log both
+    captured.
+  - An unsigned FledgeSpike-unsigned.ipa was built: LC_BUILD_VERSION
+    platform 2 (iOS), minos 15.0, sdk 26.5.
+
+Spike mobile Android: https://github.com/setdef/Fledge/actions/runs/40630328941
+  - Ruby built for arm64-v8a and x86_64 with NDK r30.
+  - The APK was built with Gradle 9.8.2 and AGP 9.4.1:
+    targetSdkVersion:'36'.
+  - zipalign -c -P 16 passed, and every LOAD segment is 16 KB-aligned.
+  - The app ran on API 36 google_apis (page size 4096) and
+    google_apis_ps16k (page size 16384), with logcat captured.
+
+Earlier runs:
+  - Android, first push: https://github.com/setdef/Fledge/actions/runs/40629082695
+    Green too, before the -android-android platform fix (section 2).
+  - iOS, first push: https://github.com/setdef/Fledge/actions/runs/40629082668
+    Failed only at xcodebuild: macos-26's default Xcode 26.1.1 has no
+    simulator runtime. Fixed by pinning Xcode 26.5.
+
+Trunk's own ci.yml is told to skip spike/mobile on this branch only, so
+the spike spends only its own minutes.
+
+
+WHAT IS IN THE BRANCH
+---------------------
+
+spike/mobile/sources.sh
+  Every input pinned by URL and SHA-256 (Ruby 4.0.9, OpenSSL 3.6.3,
+  libyaml 0.2.5, libffi 3.5.2, NDK r30 for Linux and macOS), and a fetch
+  that refuses a mismatch.
+
+spike/mobile/common-ruby-src.sh
+  The source changes both platforms need (sections 1 and 2).
+
+spike/mobile/ios/
+  - build-ruby.sh: builds one slice.
+  - build-app.sh: XCFramework, XcodeGen 2.46.0 project, xcodebuild,
+    unsigned .ipa.
+  - run-sim.sh: simctl create, bootstatus, install, and launch
+    --console-pty, then log show.
+  - app/: an Objective-C main.m with one UIKit scene, Info.plist,
+    PrivacyInfo.xcprivacy, project.yml.
+
+spike/mobile/android/
+  - build-ruby.sh: builds one ABI, plus the JNI library.
+  - build-apk.sh: Gradle, then the 16 KB checks.
+  - run-emulator.sh.
+  - app/jni/fledge_jni.c.
+  - project/: a Java Activity, with no Kotlin and no CMake.
+
+spike/mobile/app/main.rb
+  The program both hosts run. It requires json, prints FLEDGE-SPIKE-OK,
+  then probes about 80 facts (question 4).
+
+.github/workflows/spike-mobile-ios.yml, spike-mobile-android.yml
+  Run on push to spike/mobile and on workflow_dispatch only. Actions are
+  pinned by the SHAs trunk uses, plus
+  ReactiveCircus/android-emulator-runner@a421e43 (v2.38.0).
+
+
+1. iOS AND iPadOS
+-----------------
+
+The recipe
+
+xord/cruby (github.com/xord/cruby at 11d62c4, Rakefile), the runtime
+behind RubySketch on the App Store, was the starting point. The spike
+follows it where it is about iOS, and departs where Fledge's parity rules
+need more:
+
+  - configure --host=aarch64-apple-darwin --with-static-linked-ext
+    --disable-shared --disable-dln --disable-yjit --disable-zjit
+    --enable-load-relative, with CC targeting arm64-apple-ios15.0 or
+    arm64-apple-ios15.0-simulator. xord's Rakefile line 571:
+    "yjit = rustc_target != nil && !ios".
+  - ac_cv_func_{system,syscall,__syscall,backtrace,getentropy,dup3,pipe2}=no
+    (xord line 578), and vm_dump.c's system() guarded (xord lines 299-310).
+  - A stub sys/vnode.h, which the iOS SDK lacks and dir.c line 100
+    includes (xord lines 546-564).
+  - fiddle left out, as xord does "to pass the App Store review"
+    (line 577).
+  - OpenSSL's own ios64-xcrun and iossimulator-arm64-xcrun targets. The
+    simulator build needs -mios-simulator-version-min. With
+    -mios-version-min, its assembly objects are tagged iOS and the link
+    fails ("building for 'iOS-simulator', but linking in object file ...
+    built for 'iOS'").
+  - One archive per slice: libruby-static.a, every extension's .a,
+    extinit.o, encinit.o, OpenSSL, and libyaml, merged with
+    libtool -static, then dmyext.o and dmyenc.o deleted. Without that
+    last step the linker takes libruby-static.a's empty Init_ext, and
+    require "json" fails with "cannot load such file -- json/ext/parser"
+    (seen in the simulator; xord excludes them too, line 686).
+  - xcodebuild -create-xcframework over both slices. Both say
+    arm64-darwin.
+
+Three things the spike found that xord's recipe does not cover. Each is
+now in common-ruby-src.sh.
+
+  a. A cross-compiled CRuby boots without RubyGems.
+     - configure.ac lines 1584-1588 set X_BUILTIN_BINARY=no when
+       cross-compiling ("miniruby cannot run if cross compiling"). So
+       builtin.c falls back to mini_builtin.c, whose
+       Init_builtin_features never loads gem_prelude.
+     - The first simulator run had no Gem, no RbConfig, no did_you_mean
+       or error_highlight, and require "csv" failed.
+     - The fix: an iseq binary depends only on Ruby's version,
+       endianness, and word size (compile.c, ibf_load_setup_bytes). So a
+       miniruby built for the build machine from the same tarball writes
+       the same builtin_binary.rbbin.
+     - With it, the app has RubyGems 4.0.20 and 77 specifications, and
+       csv loads as a bundled gem.
+     - Cost: one host "make miniruby", about 1.5 minutes.
+
+  b. Bundled gems' C extensions never link statically.
+     - template/configure-ext.mk.tmpl passes --no-extstatic for
+       .bundle/gems, and ext/extmk.rb line 656 calls
+       extmake(d, ext_prefix, !@gemname). So nkf's extension was built
+       as a .bundle, and its link failed.
+     - The spike moves bigdecimal, debug, nkf, racc, and syslog (and
+       fiddle on Android) into ext/ as ordinary extensions, with their
+       Ruby files in lib/.
+     - They require fine, but they stop being gems:
+       Gem.loaded_specs["bigdecimal"] is nil.
+     - rbs is left out: its extension needs the gem's own include/ and
+       src/ beside it.
+
+  c. Host libraries leak in.
+     - psych found Homebrew's libyaml through pkg-config. xord patches
+       ext/psych/extconf.rb (lines 312-317).
+     - The spike also passes PKG_CONFIG=false to configure.
+
+Which extensions build (both slices)
+
+  bigdecimal, cgi/escape, continuation, coverage, date_core, debug,
+  digest (with md5, rmd160, sha1, sha2, bubblebabble), erb/escape, etc,
+  fcntl, io/console, io/nonblock, io/wait, json (generator and parser),
+  monitor, nkf, objspace, openssl, psych, pty, racc/cparse,
+  rbconfig/sizeof, ripper, socket, stringio, strscan, syslog, zlib.
+
+  Not built: fiddle (left out on purpose), rbs (see b), win32ole.
+
+  - OpenSSL: 3.6.3, built from the release tarball, Apache-2.0, linked
+    statically. iOS has no OpenSSL of its own to use: Apple ships
+    BoringSSL privately and Network.framework publicly. So a Ruby on iOS
+    carries its own, as RubySketch does.
+  - psych: libyaml 0.2.5, MIT, linked statically.
+  - zlib: the iOS SDK's /usr/lib/libz.1.dylib (1.2.12), a system
+    library, so nothing ships.
+  - fiddle: removed. libffi was not built for iOS.
+
+The host
+
+  - main.m (about 100 lines) starts Ruby as Fledge's desktop launcher
+    does: ruby_sysinit, RUBY_INIT_STACK, ruby_init, ruby_options with
+    "--disable=rubyopt -- APP/main.rb", ruby_run_node. It does this on
+    the main thread, before UIApplicationMain, then shows one UIKit
+    scene.
+  - Scenes matter: Apple has said apps built with the SDK after iOS 26
+    must adopt the scene lifecycle.
+  - No source change was needed for the load path. With
+    --enable-load-relative, ruby_init_loadpath (ruby.c lines 669-760)
+    takes the folder holding the executable as the prefix. An .app
+    bundle is flat, so Foo.app/lib/ruby/4.0.0 is found exactly as the
+    desktop launcher finds lib/ beside itself. A desktop runtime's
+    layout maps onto an iOS bundle unchanged.
+
+Output
+
+  - iOS discards an app's stdout and stderr unless a debugger or
+    "simctl launch --console-pty" holds them.
+  - The host copies both, line by line, through a pipe to os_log
+    (subsystem org.setdef.fledge.spike) and to the original stdout.
+  - CI shows both: --console-pty's capture, and
+    log show --predicate 'subsystem == "org.setdef.fledge.spike"'.
+
+iPadOS
+
+  The same simulator build ran unchanged on an iPad simulator
+  (TARGETED_DEVICE_FAMILY = 1,2). It is one binary and one target.
+
+Device without credentials
+
+  - "xcodebuild -sdk iphoneos CODE_SIGNING_ALLOWED=NO" links the device
+    slice.
+  - FledgeSpike-unsigned.ipa is 12.6 MB. The app folder is 34 MB: a
+    15 MB executable and 20 MB of lib/ruby.
+  - It links only system libraries: libz, libobjc, libSystem, and the
+    Security, CoreFoundation, Foundation, and UIKit frameworks.
+  - It cannot run on a device without signing. Nothing in this spike ran
+    on a device.
+
+Not verified, for want of a device
+
+  - The device sandbox: fork and exec denied, the bundle read-only.
+  - Real launch time.
+  - App Store review.
+
+  The simulator runs as a macOS process, so it forks and lets the app
+  write into its own bundle. Both differ on a device.
+
+Privacy manifest
+
+  - The device binary imports stat, fstat, lstat, and getattrlist
+    (FileTimestamp, reason C617.1), and mach_absolute_time
+    (SystemBootTime, 35F9.1). PrivacyInfo.xcprivacy declares both.
+  - No statfs or statvfs is imported, so no DiskSpace reason is needed.
+  - It also imports fork, execve, dlopen, and sysctlbyname, all public
+    API.
+
+
+2. ANDROID
+----------
+
+The recipe
+
+  - NDK r30 (Pkg.Revision = 30.0.16248370), API 26.
+  - --host=<arch>-linux-android --with-static-linked-ext --disable-shared
+    --disable-yjit --disable-zjit --enable-load-relative.
+  - Termux's flags (termux-packages/packages/ruby/build.sh):
+    ac_cv_func_setgroups=no ac_cv_func_setresuid=no
+    ac_cv_func_setreuid=no ac_cv_lib_crypt_crypt=no
+    rb_cv_type_deprecated=x, and -fno-strict-aliasing.
+  - Ruby's own configure.ac (lines 3916-3933 at 4.0.7, the same at 4.0.9)
+    never enables a JIT for *android*.
+  - OpenSSL uses its android-arm64 and android-x86_64 targets.
+
+What Android needed beyond iOS
+
+  - API 26, not 24. localeinit.c calls nl_langinfo, which bionic has only
+    from API 26. Termux reaches API 24 through its own
+    libandroid-support. API 26 is Android 8.0 (2017).
+
+  - One five-line change to ruby.c.
+    With --enable-load-relative, Ruby's prefix comes from dladdr on the
+    binary holding libruby. On Android that is the APK's native library
+    folder, which holds only lib*.so files, so the standard library has
+    to live elsewhere. The spike adds ruby_embed_libruby_path, which the
+    host sets to FILES/fledge/lib/libruby.so before ruby_options. Ruby
+    then derives FILES/fledge as its prefix. iOS needs nothing like it.
+
+  - A configure guard.
+    Configure appends "-android" to an OS that already says android
+    (configure.ac line 581). So the first run reported
+    x86_64-linux-android-android. Termux guards it
+    (android-sdk-level.patch). The spike applies the same guard to the
+    generated configure, which avoids autoreconf, and the second run
+    reports x86_64-linux-android.
+
+  - The standard library is extracted.
+    An APK's assets are not files. lib/ruby and app/ travel as one stored
+    zip asset (6.0 MB), which MainActivity extracts into the app's files
+    folder on each installed version's first launch. That took 1.5 to
+    2.8 seconds on the CI emulators. Later launches take 2 to 33 ms to
+    check a stamp. The tree is then on disk twice: in the APK and in
+    files/.
+
+  - Ruby runs on a Java thread of its own, with a 64 MB stack, never on
+    the UI thread, which Android kills an app for blocking. CRuby boots
+    once per process, so the Activity guards against starting it twice.
+
+  - stdout and stderr go to logcat through a pipe and a thread, under the
+    tag FledgeRuby.
+
+Which extensions build
+
+  The iOS list plus fiddle, with libffi 3.5.2 (MIT). Play's policy does
+  not forbid it, but see section 6 on downloaded code.
+
+  Not built: rbs and win32ole.
+
+  - OpenSSL: 3.6.3, static.
+  - psych: libyaml, static.
+  - zlib: the system libz.so.
+  - crypt: bionic has none, so String#crypt uses Ruby's own
+    missing/crypt.c. It returns the same hash as on iOS.
+
+The library
+
+  - libfledgeapp.so holds Ruby, its extensions, OpenSSL, libyaml, libffi,
+    and the JNI glue. After llvm-strip it is 15.7 MB for arm64-v8a and
+    16.0 MB for x86_64.
+  - It exports one symbol, Java_org_setdef_fledge_spike_MainActivity_runRuby
+    (with --exclude-libs,ALL).
+  - It needs only liblog, libz, libdl, libm, and libc.
+  - The APK holds both ABIs and is 38.6 MB, with the .so files stored
+    uncompressed so they load in place. A Play App Bundle would split it
+    per ABI.
+
+16 KB pages
+
+  - Every LOAD segment of both libraries is aligned to 0x4000
+    (llvm-readelf -lW). NDK r28 and later do this by default, and the
+    link says -z max-page-size=16384 anyway.
+  - "zipalign -c -P 16 -v 4" reports "Verification successful".
+  - The app ran on the google_apis_ps16k image, where getconf PAGE_SIZE
+    is 16384. Ruby 4.0.9 reads the page size at run time, and nothing
+    broke.
+
+targetSdk 36
+
+  aapt2 dump badging reports targetSdkVersion:'36', minSdk 26, and
+  native-code: 'arm64-v8a' 'x86_64'.
+
+Not verified
+
+  The arm64-v8a library was built and checked for alignment, but never
+  ran: GitHub's x86_64 runners can only emulate x86_64.
+
+
+3. APP GEMS ON MOBILE (SKETCH)
+------------------------------
+
+Pure-Ruby gems can be carried unchanged.
+
+  - Both apps carry Ruby's own gem folder (lib/ruby/gems/4.0.0), with
+    RubyGems working: Gem.dir is inside the bundle or the files folder,
+    77 specifications load, and require "csv" activates the bundled gem
+    through RubyGems on iOS and Android alike.
+  - ADR 005 installs an app's gems into exactly that folder, from their
+    .gem files, so the same code runs. The only change is where the
+    folder lives: the .app on iOS, the extracted zip on Android.
+  - Bundler was not exercised. Frozen bundler/setup needs no subprocess
+    or network, so nothing found here should stop it, but parity must
+    prove it.
+
+The platform names need care.
+
+  - On iOS, RUBY_PLATFORM and Gem::Platform.local are arm64-darwin, the
+    same as macOS. RubyGems says a macOS arm64-darwin (or
+    arm64-darwin-23) gem fits: Gem::Platform.new("arm64-darwin") ===
+    Gem::Platform.local is true. So Bundler would pick a macOS
+    precompiled gem whose .bundle can never load on iOS.
+  - So Fledge's iOS target needs a target name of its own, whatever
+    RUBY_PLATFORM says, and must refuse every precompiled build for it.
+    RubyGems has no iOS platform to borrow.
+  - On Android, aarch64-linux-android matches no aarch64-linux, -gnu, or
+    -musl gem. That is right, since bionic cannot load them.
+
+Precompiled native gems for iOS or Android do not exist.
+
+  So every native gem would be compiled from source for the target and
+  linked statically into the one binary, as the spike does with Ruby's
+  own extensions. That needs:
+
+    1. The gem's extconf.rb run against the target's rbconfig.rb with
+       the target toolchain. mkmf has a cross-compile path for this
+       (--with-baseruby, and the ARCH-fake.rb Ruby already writes).
+    2. Its .a and an Init_ registration added to an extinit.c, under
+       feature names like nokogiri/nokogiri.so.
+    3. The final binary relinked per app.
+
+  So the app's binary stops being a prebuilt runtime: it becomes per-app,
+  like the gems. For Rust gems (Tokra, Ferro), rb-sys would have to
+  cross-compile aarch64-apple-ios, aarch64-apple-ios-sim, and
+  aarch64-linux-android static libraries.
+
+Dynamic alternatives exist, but cost more.
+
+  - iOS may dlopen a signed framework embedded in the app. That is how
+    CPython's iOS support (PEP 730) ships binary modules: each moves into
+    Frameworks/ as a .framework, with a marker file and a custom loader.
+    Ruby has no such loader; Fledge would write one.
+  - Whether Android may dlopen an extension from the app's writable data
+    folder under W^X (targetSdk 29 and later) was not tested.
+
+What this does to "build from one machine" (ADR 001)
+
+  - Pure-Ruby app: still one machine, with one caveat.
+    - Fledge can prebuild per-platform mobile runtimes as it does
+      desktop ones, and copy the app in.
+    - Producing the final iOS app and signing it needs Xcode on a Mac,
+      by Apple's tooling and license.
+    - Android's NDK, SDK, and Gradle run on macOS, Linux, and Windows.
+    - So a Mac builds every target. Linux and Windows build every target
+      but iOS.
+  - App with native gems: each mobile target needs that target's cross
+    toolchain (Xcode or the NDK) at build time. ADR 006's "compile on
+    the platform" becomes "cross-compile from a Mac or a Linux machine".
+    That is a larger project than everything else here.
+
+
+4. WHAT "THE APP'S RUBY CODE IS IDENTICAL" COSTS ON A PHONE
+-----------------------------------------------------------
+
+What main.rb saw. iOS values are from the simulator; Android values are
+from the API 36 emulator.
+
+  __dir__
+    iOS:     inside the .app bundle
+    Android: /data/data/PKG/files/fledge/app (extracted)
+
+  Dir.pwd
+    iOS:     /
+    Android: /
+
+  Dir.home, ENV["HOME"]
+    iOS:     the app's data container (HOME is set)
+    Android: /data from passwd, not writable (HOME is unset)
+
+  Dir.tmpdir
+    iOS:     the container's tmp (TMPDIR is set)
+    Android: the app's cache folder (TMPDIR is set)
+
+  Writable
+    iOS:     Dir.home, ~/Documents, ~/Library/Caches, tmp. The bundle is
+             writable only in the simulator; it is read-only on a device.
+    Android: files/ (so beside main.rb, since it was extracted) and
+             cache/. Not Dir.home.
+
+  ENV
+    iOS:     44-46 variables, mostly SIMULATOR_* (a device has far
+             fewer). No LANG.
+    Android: 19 variables. No LANG and no HOME.
+
+  Encoding.default_external
+    iOS:     US-ASCII (no LANG)
+    Android: UTF-8 (bionic's default)
+
+  stdin
+    iOS:     /dev/null (EOF)
+    Android: /dev/null (EOF)
+
+  stdout and stderr
+    iOS:     go nowhere unless the host forwards them (the spike sends
+             them to os_log)
+    Android: go nowhere unless the host forwards them (the spike sends
+             them to logcat)
+
+  system, backticks, spawn, IO.popen, Open3
+    iOS:     ENOENT in the simulator (its runtime root has no /bin/sh or
+             true). Denied by the sandbox on a device, per Apple's
+             documented sandbox (not verified here).
+    Android: work (/system/bin toybox)
+
+  fork
+    iOS:     works in the simulator; denied on a device
+    Android: works, but forks the whole ART runtime. One of four Android
+             runs hung in Open3 right after it, which is why the probe
+             now forks last.
+
+  RbConfig.ruby
+    iOS:     names a bin/ruby that does not exist and could not run
+    Android: names a bin/ruby that does not exist
+
+  HTTPS
+    iOS:     fails: "certificate verify failed", because
+             OpenSSL::X509::DEFAULT_CERT_FILE is the build machine's path
+    Android: fails the same way
+
+  Etc.getpwuid
+    iOS:     ArgumentError in the simulator (uid 501 is unknown);
+             "mobile" on a device
+    Android: u0_a216
+
+  String#crypt
+    iOS:     works (libSystem)
+    Android: works (Ruby's missing/crypt.c)
+
+  Threads, Ractor, trap, at_exit, sockets, zlib, psych, openssl, bigdecimal
+    work on both
+
+  RubyVM::YJIT
+    undefined on both
+
+  bigdecimal, nkf, racc, syslog, debug
+    load on both, but are not gems (section 1)
+
+  fiddle
+    iOS:     absent
+    Android: present
+
+  rbs
+    absent on both
+
+What a typical script would notice
+
+  - No terminal. Debugging with puts needs Console.app, Xcode, or
+    adb logcat.
+  - gets returns nil.
+  - Relative paths resolve against /.
+  - Child processes fail on iOS.
+  - HTTPS fails until the runtime ships a CA bundle, as the desktop
+    runtimes ship libexec/cert.pem, and OpenSSL finds it relative to the
+    prefix. Android could use /system/etc/security/cacerts instead.
+  - iOS strings default to US-ASCII.
+  - Dir.home is not writable on Android.
+  - The OS may kill the app in the background without running at_exit.
+
+What decisions 9 and 10 then cost on mobile
+
+  1. A parity check that runs in the simulator and the emulator, against
+     a reference: the same main.rb under that platform's desktop Ruby. It
+     needs a new Parity::JUSTIFIED list for everything above that is the
+     platform's nature (cwd, stdin, HOME, subprocesses).
+  2. Host fixes for what is not the platform's nature, as the desktop
+     launcher already makes:
+     - a UTF-8 locale when LANG is unset (ADR 003, section 5, already
+       does this on macOS and Linux);
+     - a CA bundle;
+     - HOME set to a writable folder on Android;
+     - perhaps Dir.pwd set to the app's data folder.
+  3. Bundled gems kept as real gems with statically linked extensions.
+     Ruby's build does not support this (section 1), so Fledge would
+     carry its own extmk change or upstream one.
+
+
+5. WHAT FLEDGE WOULD PRODUCE, AND WHO CONSUMES IT
+-------------------------------------------------
+
+A plain script does not map onto a phone.
+
+  There is no console app on iOS or Android; even the spike shows a UI
+  label. A "console" kind becomes "runs main.rb and shows its output":
+  useful for tests and demos, not for products. Real mobile apps come
+  from frameworks.
+
+Lota
+
+  Lota is an SDL3 game engine: LÖVE's C++, with Ruby in place of Lua.
+  Its entry point belongs to SDL on both platforms:
+
+  - On iOS, SDL3 runs SDL_main from its own UIKit app delegate.
+  - On Android, SDL's SDLActivity (Java) loads libSDL3.so and libmain.so
+    and calls SDL_main on its own thread.
+  - Lota's C++, SDL, and Ruby must link into one binary on iOS, which may
+    load only signed embedded frameworks. On Android they can be one or
+    several .so files.
+
+  So Lota needs Ruby as a library with an embedding API, not a finished
+  app: start Ruby with this root and these arguments, forward output,
+  set the prefix. That is what the spike's hosts do, in about 100 lines
+  each.
+
+  Lota's macOS engine links OpenAL Soft (LGPL-2.0-or-later) as a separate
+  framework (rove_2d/ext/lota/licenses.rb, lines 462-528). On iOS that
+  becomes an embedded dynamic framework, which nobody who downloads an
+  App Store app can actually replace (section 6).
+
+Tokra
+
+  Tokra is a Ruby port of Tauri: a Rust extension over tao and wry. It
+  would follow Tauri 2's mobile design:
+
+  - "tauri ios init" writes an XcodeGen project that links the app's
+    Rust code as a static library and hosts it in WKWebView.
+  - "tauri android init" writes a Gradle project with Tauri's Kotlin
+    activity (wry's WryActivity), and loads the Rust code as a .so set
+    up through tao's android_binding! JNI glue.
+
+  Tokra on mobile therefore means its Rust extension cross-compiled as a
+  static library (rb-sys, section 3), Ruby linked beside it, and Tauri's
+  generated projects taken as the template. Tokra's own plans list mobile
+  as out of scope today (Tokra, doc/contributors/plan/023.md, line 281).
+
+Recommended output shape
+
+This matches what Tauri, CPython's iOS and Android support, and LÖVE's
+mobile ports converge on.
+
+  1. A prebuilt mobile runtime per platform, built by Fledge's CI like
+     the desktop ones.
+
+     iOS:
+       - FledgeRuby.xcframework: static, with device and simulator
+         slices holding Ruby, its extensions, OpenSSL, and libyaml;
+       - Ruby's headers;
+       - the lib/ruby tree;
+       - a CA bundle;
+       - a small C embedding API: fledge_ruby_run(root, argc, argv),
+         output forwarding, locale.
+
+     Android:
+       - an AAR carrying the same as a Prefab module (Prefab packages
+         static libraries and headers for CMake consumers);
+       - a small Java helper for extraction and the Ruby thread;
+       - the tree as an asset;
+       - a prebuilt libfledgeruby.so, for apps with no native code of
+         their own.
+
+  2. A generated project for apps without a framework.
+     fledge build writes an XcodeGen spec (or an .xcodeproj) or a Gradle
+     project holding the app, its gems, the runtime, the privacy
+     manifest, and the developer's identity: bundle ID, name, and icons
+     (decision 18). The developer opens it, signs, and submits. Fledge
+     must never submit for them (guideline 4.2.6, which the research
+     quotes).
+
+  3. Frameworks take the library, not the project.
+     Lota's and Tokra's own mobile templates link the XCFramework or the
+     Prefab module, and call the embedding API from their SDL_main or
+     Tauri entry point.
+
+
+6. LICENSING
+------------
+
+What ships inside a mobile app's binary
+
+  - Ruby 4.0.9, including Onigmo, the absorbed bundled gems' extensions,
+    and missing/crypt.c on Android: Ruby OR BSD-2-Clause, static.
+  - bigdecimal, nkf, racc, syslog, debug, fiddle: Ruby OR BSD-2-Clause,
+    static.
+  - OpenSSL 3.6.3: Apache-2.0, static. Needs its notice.
+  - libyaml 0.2.5: MIT, static.
+  - libffi 3.5.2 (Android only): MIT, static.
+  - The compiler's runtime (compiler-rt builtins, NDK clang 21):
+    Apache-2.0 WITH LLVM-exception, static. The exception waives notice
+    for binary forms.
+  - The app's host code: Fledge's own (AGPL-3.0-or-later, or
+    commercial), static.
+  - The Mozilla CA bundle, once one ships: MPL-2.0, file-level, already
+    allowed.
+
+What the app links but does not ship (the operating system)
+
+  - iOS: zlib, libSystem (crypt), libobjc, Security, CoreFoundation,
+    Foundation, UIKit.
+  - Android: zlib, liblog, libc, libm, libdl.
+
+No LGPL or GPL code is in either binary.
+
+  - GMP is configured out (--without-gmp).
+  - libxcrypt is never used: iOS has crypt in libSystem, and Android
+    builds with ac_cv_lib_crypt_crypt=no.
+  - readline and ncurses are not linked.
+  - The license audit's libxcrypt and GMP byte signatures found nothing
+    in either binary (below).
+
+So static linking is within decision 8 for everything here.
+
+The rule that bites on mobile is LGPL in frameworks.
+
+  - Decision 8 allows LGPL "only as separate replaceable shared
+    libraries".
+  - An iOS app may embed a dynamic framework, but nobody who installs an
+    App Store app can replace one without re-signing the whole app. That
+    meets the letter of the rule, and arguably not its purpose.
+  - Android's APKs are a little more open: they can be repackaged and
+    re-signed.
+  - This matters to Lota (OpenAL Soft) and to any LGPL gem (ADR 006,
+    section 10), not to Fledge's runtime.
+  - Whether an LGPL framework in an App Store app meets decision 8 is
+    the maintainer's call: licensing is on the list AGENTS.md reserves
+    for them.
+
+The audit's model works.
+
+  tasks/license_audit.rb from trunk was run unchanged on the iOS device
+  bundle (--platform arm64-darwin --tree FledgeSpike.app):
+
+  - It accounted for all 1,937 Ruby files and 77 gems.
+  - It flagged only the host's own files (FledgeSpike, Info.plist,
+    PkgInfo, PrivacyInfo.xcprivacy, app/main.rb) and the one compiled
+    file it had no map entry for.
+
+  On the Android tree with libfledgeapp.so (--platform aarch64-linux):
+
+  - It accounted for the same Ruby files.
+  - It flagged the .so as unaccounted, and its five bionic libraries as
+    unresolved.
+
+  Both failures are map data, not model changes:
+
+  - a mobile platform entry naming the system libraries (bionic's,
+    Apple's frameworks);
+  - a component entry for the static binary, which proves OpenSSL by the
+    string "OpenSSL 3.6.3 9 Jun 2026" (present in both binaries), Ruby by
+    its revision, and libyaml by its version.
+
+  Fledge::Binary already recognizes ar archives (AR_MAGIC), the remaining
+  piece for auditing the static libraries in an XCFramework or a Prefab
+  module. An AAR or APK is a zip, as a .gem is, and the audit already
+  opens those.
+
+
+7. BURDEN, AND THE RECOMMENDATION
+---------------------------------
+
+CI minutes per push, from the green runs. The repository is public, so
+GitHub charges nothing; on a private repository a macOS minute costs ten
+Linux minutes.
+
+  iOS: about 24 macOS minutes of runner time, about 18 minutes wall clock.
+    - 2 Ruby slices: 6.3 and 6.1 minutes.
+    - The app job: 11.6 minutes. It includes two simulator boots (2.0 and
+      2.4 minutes), about 2 minutes per launch, and two xcodebuild runs of
+      about 25 seconds.
+
+  Android: about 16 Linux minutes of runner time, about 9 minutes wall
+  clock.
+    - 2 Ruby ABIs: 4.7 and 5.4 minutes.
+    - The APK: 1.5 minutes.
+    - 2 emulators: 2.0 and 2.3 minutes.
+
+  Caching the Ruby builds by the hash of their inputs would cut repeat
+  runs to the app and Delivery jobs. The spike caches only downloads.
+
+Build times, on an Apple-silicon laptop with 10 cores
+
+  - OpenSSL: 3 minutes per slice (once).
+  - libyaml: seconds.
+  - Ruby configure: about 50 seconds.
+  - Host miniruby: about 1.5 minutes (once).
+  - make: about 1-2 minutes.
+  - The Xcode app: 10 seconds.
+  - Altogether, one iOS slice took 4 minutes and one Android ABI 2-4
+    minutes.
+
+Toolchain pins, and how often they move
+
+  - Xcode: pinned to 26.5 on macos-26, because the image's default Xcode
+    has no simulator runtime. Apple raises the minimum SDK for App Store
+    uploads every spring, so Xcode moves at least yearly, with a runner
+    image to match.
+  - NDK: r30, pinned by URL and SHA-256. Google's target-API rule moves
+    every August (API 36 since 2026-08-31).
+  - Gradle 9.8.2 and AGP 9.4.1: pinned. They move together, about
+    quarterly.
+  - XcodeGen 2.46.0 and android-emulator-runner v2.38.0: pinned.
+
+Maintenance per Ruby release
+
+  Six small source changes to re-check:
+
+    - the bundled-gem absorption;
+    - the host miniruby builtin binary;
+    - the psych pkg-config guard;
+    - on iOS, the vnode stub and vm_dump.c;
+    - on Android, the ruby.c prefix hook and the configure guard.
+
+  Each is a scripted edit with a grep that fails loudly when it stops
+  applying. Three are worth upstreaming to ruby/ruby: the builtin binary
+  for cross builds, static bundled-gem extensions, and an embedder's
+  prefix.
+
+  Estimate: half a day to a day per Ruby minor release, plus OpenSSL
+  updates, which the desktop runtimes already track.
+
+Review risks
+
+  App Store:
+    - Bundled interpreted code is allowed (DPLA 3.3.1(B), guideline
+      2.5.2). Downloaded code that changes features is not, and Fledge
+      should say so to developers.
+    - No JIT.
+    - Fiddle is left out, as RubySketch's runtime does.
+    - A privacy manifest is required (the spike's is in section 1).
+    - Guideline 4.2.6 means each developer submits their own app.
+    - The scene lifecycle is required from the next SDK.
+    - RubySketch, which embeds CRuby and runs user-edited scripts, is on
+      the App Store today.
+
+  Play:
+    - Target API 36, and 16 KB pages from 2027-02-01: both met here.
+    - Bundled Ruby is fine. Downloaded Ruby with fiddle edges toward
+      "direct access to Android APIs", so Fledge should tell developers
+      not to download code.
+
+Recommendation
+
+  Before 1.0: both platforms, for pure-Ruby apps and the standard
+  library.
+    - The runtime work is shared: one common-ruby-src.sh, the same
+      embedding code, the same probe. Both proved out in CI within one
+      spike.
+    - iOS is not much harder than Android to build. It is harder to test
+      (no devices in CI) and to iterate on (macOS minutes, Xcode churn).
+    - Doing one platform first saves less than it seems, and Lota wants
+      both.
+
+  After 1.0:
+    - native gems on mobile (cross-compiled and statically linked per
+      app; section 3);
+    - Rust gems, through rb-sys;
+    - Delivery on real devices.
+
+  If the maintainer wants to be swayed: Android first is the cheaper
+  half. It builds from any OS, runs on Linux CI, its emulator runs both
+  page sizes, and its sandbox lets more desktop Ruby code work as is.
+
+Smallest next story: "Mobile runtimes"
+
+  - Fledge's CI builds ios, ios-simulator, and android runtimes, for
+    arm64 and x86_64. The target names are an ADR's to settle; iOS cannot
+    be arm64-darwin.
+  - They are built from the pinned sources in runtime/sources.yml, by the
+    spike's scripts turned into RuntimeBuilder recipes.
+  - They keep the bundled gems as gems, with a CA bundle and a UTF-8
+    locale.
+  - They pass the license audit, with mobile entries in
+    runtime/licenses.yml.
+  - They ship as release assets.
+  - A Delivery job runs test/fixtures/parity's probe in the iOS simulator
+    and the Android emulator, under a mobile Parity::JUSTIFIED.
+
+  Then, as its own story: fledge build --target writing the Xcode and
+  Gradle projects (section 5). Neither story needs anything from the
+  maintainer except the two questions below.
+
+Questions only the maintainer can answer (licensing and external
+accounts, per AGENTS.md)
+
+  1. Does an LGPL library shipped as an embedded dynamic framework in an
+     App Store app (replaceable only by re-signing) satisfy decision 8?
+     The default until answered is no: LGPL stays off iOS, which affects
+     Lota's OpenAL Soft.
+
+  2. Real-device testing needs an Apple Developer account (and a device
+     or a device-cloud service) for iOS, and optionally a Play Console
+     account. The default until answered is simulator and emulator only,
+     with device behavior taken from Apple's and Google's documentation.

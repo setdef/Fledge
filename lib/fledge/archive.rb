@@ -98,7 +98,8 @@ module Fledge
     end
 
     # The path of every entry in +archive+, as tar lists them, a folder's
-    # with a slash at its end.
+    # with a slash at its end, one per line as tar prints them (with
+    # Windows' line endings on Windows).
     #
     # === Example
     #
@@ -112,7 +113,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.names(archive)
-      Command.read(tar, "-tf", archive, install: INSTALL).force_encoding(Encoding::UTF_8).split("\n")
+      Command.read(tar, "-tf", archive, install: INSTALL).force_encoding(Encoding::UTF_8).lines(chomp: true)
     end
 
     # The contents of the file +name+ in +archive+, as bytes.

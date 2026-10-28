@@ -11,6 +11,13 @@ source "https://rubygems.org"
 # against the runtime's Ruby on the platform it builds for (ADR 006).
 gem "redcarpet", "~> 3.6"
 
+# A Rust extension (rb-sys) published precompiled for arm64-darwin,
+# x86_64-linux, and x64-mingw-ucrt, each built for several Rubies, and as
+# source, which fledge build compiles for aarch64-linux, the one platform
+# it has no build for. It is LGPL-3.0-or-later, which ships as its own
+# files with its source pinned (ADR 006, section 10).
+gem "ratatui_ruby", "1.5.2"
+
 # A Rust extension (rb-sys) from a git tag, as Ferro's gems are consumed,
 # which fledge build fetches at the lockfile's revision and compiles, and
 # whose Rust crates it reads from the build's Cargo.lock.

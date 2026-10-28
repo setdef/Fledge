@@ -3,13 +3,13 @@
 
 module Fledge
   module WindowsResources
-    LANGUAGE: Integer
-    ICON_GROUP: Integer
+    RCEDIT: String
+    MAX_PART: Integer
 
-    def self.apply: (String program, identity: Identity, file_name: String) -> String
+    def self.apply: (String program, identity: Identity, tools: String?) -> String
 
-    def self.icons: (Array[[Integer, String]] images) -> Hash[[Integer, Integer, Integer], String]
+    def self.strings: (Identity identity, String file_name) -> Hash[String, String]
 
-    def self.version_info: (Identity identity, String file_name) -> VersionInfo
+    def self.numbers: (String version) -> Array[Integer]
   end
 end

@@ -31,7 +31,7 @@ module Fledge
   # runs; the 256-pixel icon at the top, named as the desktop entry's
   # +Icon+ names it; and <tt>.DirIcon</tt>, a link to it. It writes the
   # files into a SquashFS (Fledge::Squashfs), then writes
-  # the runtime the Linux runtime carries (<tt>installer/appimage-runtime</tt>,
+  # the runtime the Linux runtime carries (<tt>tools/appimage-runtime</tt>,
   # Fledge's build of AppImage's type 2 runtime) and the file system
   # after it, executable.
   #
@@ -44,13 +44,13 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   Fledge::AppImage.write(identity:, folder: "dist/My App-x86_64-linux", kit:, to: "dist/My App-x86_64-linux.AppImage")
+  #   Fledge::AppImage.write(identity:, folder: "dist/My App-x86_64-linux", tools:, to: "dist/My App-x86_64-linux.AppImage")
   #   # => "dist/My App-x86_64-linux.AppImage"
   #--
   # SPDX-SnippetEnd
   #++
   module AppImage
-    # The runtime's path in the runtime's installer folder.
+    # The AppImage runtime's path in the runtime's tools folder.
     RUNTIME = "appimage-runtime"
 
     # The size of the icon at the AppImage's top, as appimagetool
@@ -59,7 +59,7 @@ module Fledge
 
     # Writes the AppImage of the app whose Fledge::Identity is +identity+
     # and whose built folder is +folder+ to +to+, with the runtime in
-    # +kit+, the runtime's installer folder, and returns +to+. Raises
+    # +tools+, the runtime's tools folder, and returns +to+. Raises
     # Fledge::Error when the runtime has no AppImage runtime.
     #
     # === Example
@@ -69,14 +69,14 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::AppImage.write(identity:, folder: "dist/My App-x86_64-linux", kit:, to: "dist/My App-x86_64-linux.AppImage")
+    #   Fledge::AppImage.write(identity:, folder: "dist/My App-x86_64-linux", tools:, to: "dist/My App-x86_64-linux.AppImage")
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(identity:, folder:, kit:, to:)
-      runtime = kit && File.join(kit, RUNTIME)
+    def self.write(identity:, folder:, tools:, to:)
+      runtime = tools && File.join(tools, RUNTIME)
       unless runtime && File.file?(runtime)
-        raise Error, "the runtime has no installer/#{RUNTIME}, which runtimes carry from Fledge 0.0.1.pre.7 on"
+        raise Error, "the runtime has no tools/#{RUNTIME}, which Linux runtimes carry from Fledge 0.0.1.pre.8 on"
       end
 
       Tempfile.create(["fledge", ".squashfs"], binmode: true) do |image|
@@ -101,7 +101,7 @@ module Fledge
       return entries unless icon
 
       name = "#{identity.identifier}.png"
-      entries << Entry.file(name, icon.png(ICON_SIZE))
+      entries << Entry.file(name, File.binread(icon.png(ICON_SIZE)))
       entries << Entry.symlink(".DirIcon", name)
     end
   end

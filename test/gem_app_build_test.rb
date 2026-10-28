@@ -60,29 +60,32 @@ class GemAppBuildTest < Minitest::Test
 
     out, err, status = build(File.join(root, "exe/my_app"))
     assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    out, windows_err, status = build(File.join(root, "exe/my_app"), host: "x64-mingw-ucrt")
-    assert_equal [0, "dist/MyApp-x64-mingw-ucrt.zip\n"], [status, out], windows_err
+    folders = { "dist/MyApp-x86_64-linux" => ["lib/ruby/gems/4.0.0", linux] }
+    if FakeRuntime.windows
+      out, windows_err, status = build(File.join(root, "exe/my_app"), host: "x64-mingw-ucrt")
+      assert_equal [0, "dist/MyApp-x64-mingw-ucrt.zip\n"], [status, out], windows_err
+      folders["dist/MyApp-x64-mingw-ucrt"] = ["ruby/lib/ruby/gems/4.0.0", windows]
+    end
 
-    { "dist/MyApp-x86_64-linux" => ["lib/ruby/gems/4.0.0", linux], "dist/MyApp-x64-mingw-ucrt" => ["ruby/lib/ruby/gems/4.0.0", windows] }
-      .each do |folder, (gem_dir, native)|
-        gems = File.join(@dir, folder, gem_dir)
-        assert_equal "# foo\n", File.read(File.join(gems, "gems/foo-1.0.0/lib/foo.rb"))
-        assert_path_exists File.join(gems, "gems/bar-2.0.0/lib/bar.rb")
-        assert_path_exists File.join(gems, "gems/native-1.0.0-#{native.platform}/lib/native.rb")
-        assert_equal File.binread(native.path), File.binread(File.join(gems, "cache/native-1.0.0-#{native.platform}.gem"))
-        spec = Gem::Specification.load(File.join(gems, "specifications/foo-1.0.0.gemspec"))
-        assert_equal ["foo", "1.0.0", ["bar"]], [spec.name, spec.version.to_s, spec.dependencies.map(&:name)]
-        assert_equal "require_relative '../gems/foo-1.0.0/lib/rubygems_plugin.rb'\n", File.read(File.join(gems, "plugins/foo_plugin.rb"))
-        refute_path_exists File.join(gems, "gems/csv-3.3.5"), "the runtime's own csv 3.3.5 stays the runtime's"
+    folders.each do |folder, (gem_dir, native)|
+      gems = File.join(@dir, folder, gem_dir)
+      assert_equal "# foo\n", File.read(File.join(gems, "gems/foo-1.0.0/lib/foo.rb"))
+      assert_path_exists File.join(gems, "gems/bar-2.0.0/lib/bar.rb")
+      assert_path_exists File.join(gems, "gems/native-1.0.0-#{native.platform}/lib/native.rb")
+      assert_equal File.binread(native.path), File.binread(File.join(gems, "cache/native-1.0.0-#{native.platform}.gem"))
+      spec = Gem::Specification.load(File.join(gems, "specifications/foo-1.0.0.gemspec"))
+      assert_equal ["foo", "1.0.0", ["bar"]], [spec.name, spec.version.to_s, spec.dependencies.map(&:name)]
+      assert_equal "require_relative '../gems/foo-1.0.0/lib/rubygems_plugin.rb'\n", File.read(File.join(gems, "plugins/foo_plugin.rb"))
+      refute_path_exists File.join(gems, "gems/csv-3.3.5"), "the runtime's own csv 3.3.5 stays the runtime's"
 
-        assert_equal "foo is MIT\n", File.read(File.join(gems, "gems/foo-1.0.0/LICENSE.txt")), "a gem's own notices ship in its folder"
-        refute_path_exists File.join(@dir, folder, "notices/GEMS.txt"), "Fledge writes no notices of its own for the app's gems"
+      assert_equal "foo is MIT\n", File.read(File.join(gems, "gems/foo-1.0.0/LICENSE.txt")), "a gem's own notices ship in its folder"
+      refute_path_exists File.join(@dir, folder, "notices/GEMS.txt"), "Fledge writes no notices of its own for the app's gems"
 
-        assert_equal Fledge::Bundle::SETTINGS, File.read(File.join(@dir, folder, "app/.bundle/config"))
-        gemspec = File.read(File.join(@dir, folder, "app/my_app.gemspec"))
-        refute_includes gemspec, "git ls-files", "the gemspec ships evaluated, so it needs no git"
-        assert_includes gemspec, "s.name = \"my_app\""
-      end
+      assert_equal Fledge::Bundle::SETTINGS, File.read(File.join(@dir, folder, "app/.bundle/config"))
+      gemspec = File.read(File.join(@dir, folder, "app/my_app.gemspec"))
+      refute_includes gemspec, "git ls-files", "the gemspec ships evaluated, so it needs no git"
+      assert_includes gemspec, "s.name = \"my_app\""
+    end
     assert_equal 1, err.scan("Downloading native-1.0.0-x86_64-linux-gnu.gem from #{@server.url('/')}").size
     assert_equal 1, @server.requests.count("/gems/foo-1.0.0.gem"), "a gem downloaded once is taken from the cache"
   end
@@ -183,14 +186,16 @@ class GemAppBuildTest < Minitest::Test
     File.write(lock, "GIT\n  remote: #{repo}\n  revision: #{revision}\n  branch: trunk\n  glob: gems/*/*.gemspec\n  specs:\n" \
       "    alpha (1.0)\n\n#{text}")
 
-    _, err, status = build(root, host: "x64-mingw-ucrt")
-    assert_equal 0, status, err
     _, err, status = build(root, host: "aarch64-linux")
     assert_equal 0, status, err
 
     scope = "Monorepo-#{revision[0, 12]}"
-    assert_equal "# alpha\n", File.read(File.join(@dir, "dist/MyApp-x64-mingw-ucrt/ruby/lib/ruby/gems/4.0.0/bundler/gems", scope,
-      "gems/alpha/lib/alpha.rb"))
+    if FakeRuntime.windows
+      _, err, status = build(root, host: "x64-mingw-ucrt")
+      assert_equal 0, status, err
+      assert_equal "# alpha\n", File.read(File.join(@dir, "dist/MyApp-x64-mingw-ucrt/ruby/lib/ruby/gems/4.0.0/bundler/gems", scope,
+        "gems/alpha/lib/alpha.rb"))
+    end
     gemspec = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.0.0/bundler/gems", scope, "gems/alpha/alpha.gemspec"))
     refute_includes gemspec, "git ls-files"
     assert_equal "MIT\n", File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.0.0/bundler/gems", scope, "gems/alpha/LICENSE"))

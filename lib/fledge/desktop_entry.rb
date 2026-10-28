@@ -69,7 +69,7 @@ module Fledge
     def entries
       id = @identity.identifier.to_s
       icon = @identity.icon
-      icons = icon ? Icon::LINUX.map { |size| Entry.file("share/icons/hicolor/#{size}x#{size}/apps/#{id}.png", icon.png(size)) } : [] # : Array[Entry]
+      icons = icon ? Icon::LINUX.map { |size| Entry.file("share/icons/hicolor/#{size}x#{size}/apps/#{id}.png", File.binread(icon.png(size))) } : [] # : Array[Entry]
       [Entry.file("#{id}.desktop", text), *icons]
     end
 

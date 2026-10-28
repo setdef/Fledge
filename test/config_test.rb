@@ -31,12 +31,12 @@ class ConfigTest < Minitest::Test
       kind: windowed
       identifier: com.example.Hello-Window
       version: "1.10"
-      icon: art/icon.png
+      icon: art/icon
       publisher: Example, Inc.
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon.png", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil), config
+      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
   end
@@ -70,7 +70,8 @@ class ConfigTest < Minitest::Test
       "identifier: com.#{'a' * 130}\n" => /: identifier must be reverse-DNS.*in at most 128 characters/,
       "version: 1.2\n" => /: version must be text; quote it, as in version: "1\.2"\z/,
       "version: v1\n" => /: version must be a version that begins with a number, such as 1\.2\.3, not v1\z/,
-      "icon: 3\n" => /: icon must be text, such as icon: icon\.png\z/,
+      "icon: 3\n" => %r{: icon must be text, such as icon: icons/app\z},
+      "icon: art/icon.png\n" => %r{: icon names the icon's files without an extension, such as icon: art/icon for art/icon\.icns, \.ico, and -16\.png to -512\.png\z},
       "publisher: [a]\n" => /: publisher must be text/,
       "copyright: true\n" => /: copyright must be text/,
       "kind: windowed\ninstallers: dmg\n" => /: installers must be a list of dmg, nsis, appimage, such as installers: \[dmg, nsis, appimage\], or \[\] for none\z/,

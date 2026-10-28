@@ -10,6 +10,6 @@ module Fledge
 
     def self.file_name: (String format, String base) -> String
 
-    def self.write: (String format, app: App, folder: String, kit: String?, makensis: String?) -> String
+    def self.write: (String format, app: App, folder: String, tools: String?, makensis: String?) -> String
   end
 end

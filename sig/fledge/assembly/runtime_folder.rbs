@@ -13,7 +13,7 @@ module Fledge
 
       def launcher: (String name) -> String
 
-      def kit: () -> String?
+      def tools: () -> String?
 
       def move_into: (String folder) -> void
 

@@ -15,7 +15,7 @@ module Fledge
 
     def script: (icon: String?) -> String
 
-    def write: (String? kit) -> String
+    def write: (String? tools) -> String
 
     def self.host_path: (String path) -> String
 

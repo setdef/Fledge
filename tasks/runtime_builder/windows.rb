@@ -56,7 +56,18 @@ class RuntimeBuilder
       FileUtils.chmod_R("u+w", ruby)
       Pruning.prune_windows(ruby, @builder.bundled_gems)
       @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
-      copy_nsis(File.join(stage, "installer", "nsis"))
+      copy_nsis(File.join(stage, "tools", "nsis"))
+      copy_rcedit(File.join(stage, "tools", "rcedit.exe"))
+    end
+
+    # rcedit, which fledge build runs on Windows to write an app's
+    # version information and icon into its program (ADR 010): Electron's
+    # release of it, as electron-builder downloads it, pinned by SHA-256.
+    private def copy_rcedit(to)
+      pin = @builder.sources.fetch("rcedit")
+      FileUtils.mkdir_p(File.dirname(to))
+      FileUtils.cp(@builder.fetch(pin.fetch("url"), pin.fetch("sha256")), to)
+      FileUtils.chmod(0o755, to)
     end
 
     # What of NSIS's release an installer is compiled from (ADR 009): the

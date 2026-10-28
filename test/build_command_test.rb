@@ -110,7 +110,7 @@ class BuildCommandTest < Minitest::Test
   # A windowed app's installer (ADR 009) is printed after its archive.
   def test_a_windowed_apps_installer_follows_its_archive
     linux = Fledge::Platform.find("x86_64-linux")
-    FakeRuntime.write(@runtimes, linux, extra: [Fledge::Entry.file("installer/appimage-runtime", "\x7FELF", mode: 0o755)])
+    FakeRuntime.write(@runtimes, linux, extra: [Fledge::Entry.file("tools/appimage-runtime", "\x7FELF", mode: 0o755)])
     File.write(File.join(@app, "fledge.yml"), "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\n")
 
     out, err, status = build("hello")

@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
-require_relative "../version_info"
+require_relative "../windows_resources"
 
 module Fledge
   class Nsis
@@ -92,7 +92,7 @@ module Fledge
       end
 
       private def header(icon)
-        numbers = VersionInfo.numbers(@identity.version)
+        numbers = WindowsResources.numbers(@identity.version)
         lines = [
           "Unicode true",
           "ManifestDPIAware true",

@@ -27,12 +27,18 @@ class DesktopEntryTest < Minitest::Test
     DESKTOP
   end
 
+  # Each of the developer's PNGs goes, as it is, into the hicolor
+  # theme's folder of its size.
   def test_writes_icons_in_the_hicolor_theme
-    icon = Fledge::Icon.new(Fledge::Png.new(width: 1024, height: 1024, pixels: ([1, 2, 3, 255] * (1024 * 1024)).pack("C*")))
-    entries = Fledge::DesktopEntry.new(identity(icon:)).entries
-    assert_includes entries.first.content, "\nIcon=com.example.HelloWindow\n"
-    sizes = entries.drop(1).map { |entry| [entry.path, Fledge::Png.read(entry.content).width] }
-    assert_equal Fledge::Icon::LINUX.map { |size| ["share/icons/hicolor/#{size}x#{size}/apps/com.example.HelloWindow.png", size] }, sizes
+    Dir.mktmpdir do |dir|
+      FakeRuntime.icons(dir)
+      entries = Fledge::DesktopEntry.new(identity(icon: Fledge::Icon.new(base: File.join(dir, "icon"), name: "icon"))).entries
+      assert_includes entries.first.content, "\nIcon=com.example.HelloWindow\n"
+      expected = Fledge::Icon::LINUX.map do |size|
+        ["share/icons/hicolor/#{size}x#{size}/apps/com.example.HelloWindow.png", File.binread(File.join(dir, "icon-#{size}.png"))]
+      end
+      assert_equal expected, entries.drop(1).map { |entry| [entry.path, entry.content] }
+    end
   end
 
   def test_escapes_values_and_quotes_the_program

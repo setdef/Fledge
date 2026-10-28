@@ -5,7 +5,7 @@ module Fledge
   class Assembly
     LAUNCHER: String
     WINDOWED_LAUNCHER: String
-    INSTALLER: String
+    TOOLS: String
     CONFIG: String
 
     @app: App
@@ -31,11 +31,9 @@ module Fledge
 
     private def build: () -> String
 
-    private def place_launcher: (String launcher) -> void
+    private def place_launcher: (String launcher, String? tools) -> void
 
     private def add: (String root, Entry entry) -> void
-
-    private def windows_program: (String content, String executable) -> String
 
     private def launcher_name: () -> String
 

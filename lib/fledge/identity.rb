@@ -80,7 +80,7 @@ module Fledge
 
     # The identity of the app named +name+ in the project at +root+, from
     # its +config+ and its +gemspec+, if it has one. Raises Fledge::Error
-    # for a windowed app with no identifier, or an icon Fledge cannot use.
+    # for a windowed app with no identifier.
     #
     # === Example
     #
@@ -108,7 +108,7 @@ module Fledge
         version: config.version || gemspec&.version&.to_s || DEFAULT_VERSION,
         publisher: config.publisher || (authors.empty? ? nil : authors.join(", ")),
         copyright: config.copyright,
-        icon: config.icon && Icon.read(File.expand_path(config.icon.to_s, root))
+        icon: config.icon && Icon.new(base: File.expand_path(config.icon.to_s, root), name: config.icon.to_s)
       )
     end
 

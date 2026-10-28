@@ -13,23 +13,21 @@ require "zlib"
 # without (.github/scripts/deliver-appimage.sh).
 class AppImageTest < Minitest::Test
   RUNTIME = Fledge::Entry.file("appimage-runtime", "\x7FELF#{'runtime' * 100}".b, mode: 0o755)
-  ICON = Fledge::Png.new(width: 1024, height: 1024, pixels: ([40, 80, 160, 255] * (1024 * 1024)).pack("C*"))
-
   def identity(icon: nil)
     Fledge::Identity.new(name: "My App", kind: "windowed", identifier: "com.example.MyApp", version: "1.0", publisher: nil,
-      copyright: nil, icon: icon && Fledge::Icon.new(icon))
+      copyright: nil, icon:)
   end
 
   # Writes the AppImage of a folder with the app's program and desktop
-  # entry, with RUNTIME in its runtime's installer folder unless +kit+
+  # entry, with RUNTIME in its runtime's tools folder unless +tools+
   # says otherwise, and returns its path.
-  def build(dir, identity: self.identity, kit: :runtime)
+  def build(dir, identity: self.identity, tools: :runtime)
     folder = File.join(dir, "My App-x86_64-linux")
     Fledge::Entry.file("My App", "#!/bin/sh\n", mode: 0o755).write_into(folder)
     Fledge::Entry.file("com.example.MyApp.desktop", "[Desktop Entry]\n").write_into(folder)
-    installer = File.join(dir, "installer")
+    installer = File.join(dir, "tools")
     RUNTIME.write_into(installer)
-    Fledge::AppImage.write(identity:, folder:, kit: (kit == :runtime) ? installer : kit, to: "#{folder}.AppImage")
+    Fledge::AppImage.write(identity:, folder:, tools: (tools == :runtime) ? installer : tools, to: "#{folder}.AppImage")
   end
 
   # The first metadata block of the directory table (squashfs-tools-ng's
@@ -59,7 +57,8 @@ class AppImageTest < Minitest::Test
   # .DirIcon linked to it.
   def test_the_file_system_is_an_appdir_with_apprun_and_the_icon
     Dir.mktmpdir do |dir|
-      path = build(dir, identity: identity(icon: ICON))
+      FakeRuntime.icons(dir)
+      path = build(dir, identity: identity(icon: Fledge::Icon.new(base: File.join(dir, "icon"), name: "icon")))
 
       squashfs = File.binread(path).byteslice((RUNTIME.content.bytesize)..).to_s
       assert_equal 6, squashfs.unpack1("x4V"), "the root, My App, its desktop entry, AppRun, the icon, and .DirIcon"
@@ -70,9 +69,9 @@ class AppImageTest < Minitest::Test
 
   def test_a_runtime_without_an_appimage_runtime_is_refused
     Dir.mktmpdir do |dir|
-      [nil, dir].each do |kit|
-        error = assert_raises(Fledge::Error) { build(dir, kit:) }
-        assert_includes error.message, "the runtime has no installer/appimage-runtime"
+      [nil, dir].each do |tools|
+        error = assert_raises(Fledge::Error) { build(dir, tools:) }
+        assert_includes error.message, "the runtime has no tools/appimage-runtime"
       end
     end
   end

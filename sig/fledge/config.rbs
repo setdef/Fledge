@@ -38,6 +38,8 @@ module Fledge
 
     private def self.version: (Hash[Object, Object] data, String path) -> String?
 
+    private def self.icon: (Hash[Object, Object] data, String path) -> String?
+
     private def self.installers: (Hash[Object, Object] data, String path) -> Array[String]?
   end
 end

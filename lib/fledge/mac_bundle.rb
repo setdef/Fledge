@@ -188,7 +188,7 @@ module Fledge
       FileUtils.mv(launcher, File.join(macos, @identity.name))
       write_info_plist
       icon = @identity.icon
-      File.binwrite(File.join(resources, icon_file), icon.icns) if icon
+      FileUtils.cp(icon.file("icns"), File.join(resources, icon_file)) if icon
       Command.run("codesign", "--force", "--sign", "-", "--identifier", @identity.identifier.to_s, path, install: INSTALL)
     end
 

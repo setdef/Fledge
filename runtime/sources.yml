@@ -130,8 +130,19 @@ replaceability:
     url: https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz
     sha256: fd4829912cddd12f84181c3451cc752be224643e87fac497b69edddadc49b4f2
 
-# What installers need (ADR 009), which a runtime keeps in its
-# installer/ folder and no app holds.
+# What fledge build runs or copies (ADR 009 and ADR 010), which a
+# runtime keeps in its tools/ folder and no app holds.
+#
+# Windows: rcedit, Electron's editor of a Windows program's resources
+# (MIT), which fledge build runs on Windows to write an app's version
+# information and icon into its program, as electron-builder runs it.
+# The SHA-256 is of its release's rcedit-x64.exe, which imports only
+# KERNEL32, USER32, and VERSION.
+rcedit:
+  version: 2.0.0
+  url: https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe
+  sha256: 3e7801db1a5edbec91b49a24a094aad776cb4515488ea5a4ca2289c400eade2a
+
 #
 # Linux: Fledge's build of AppImage's type 2 runtime, the program at the
 # front of every AppImage, from its repository at a commit (it publishes

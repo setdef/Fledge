@@ -13,10 +13,11 @@ path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock',
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "MIT-0"
 
-# The windowed example's icon, drawn by a script and saved as a PNG,
-# which has no place for a header.
+# The windowed example's icon, drawn by a script, saved as a PNG, and
+# made into each system's files with sips and iconutil, none of which
+# has a place for a header.
 [[annotations]]
-path = 'examples/windowed_app/icon.png'
+path = 'examples/windowed_app/icons/**'
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "MIT-0"
 
@@ -143,3 +144,9 @@ path = "runtime/notices/squashfuse/**"
 precedence = "override"
 SPDX-FileCopyrightText = ["2012 Dave Vasilevsky <dave@vasilevsky.ca>", "2012 Phillip Lougher <phillip@squashfs.org.uk>"]
 SPDX-License-Identifier = "BSD-2-Clause"
+
+[[annotations]]
+path = "runtime/notices/rcedit/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2013 GitHub Inc."
+SPDX-License-Identifier = "MIT"

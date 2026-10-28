@@ -127,8 +127,8 @@ class NsisTest < Minitest::Test
     Dir.mktmpdir do |dir|
       nsis = Fledge::Nsis.new(identity:, folder: dir, to: File.join(dir, "setup.exe"), makensis: "makensis")
 
-      assert_match(%r{the runtime has no installer/nsis}, assert_raises(Fledge::Error) { nsis.write(nil) }.message)
-      assert_match(%r{the runtime has no installer/nsis}, assert_raises(Fledge::Error) { nsis.write(dir) }.message)
+      assert_match(%r{the runtime has no tools/nsis}, assert_raises(Fledge::Error) { nsis.write(nil) }.message)
+      assert_match(%r{the runtime has no tools/nsis}, assert_raises(Fledge::Error) { nsis.write(dir) }.message)
     end
   end
 
@@ -143,7 +143,7 @@ class NsisTest < Minitest::Test
 
     Dir.mktmpdir do |dir|
       Fledge::Archive.unpack(windows, into: File.join(dir, "runtime"))
-      kit = File.join(Dir.glob(File.join(dir, "runtime", "*")).first.to_s, "installer")
+      kit = File.join(Dir.glob(File.join(dir, "runtime", "*")).first.to_s, "tools")
       folder = File.join(dir, "My App-x64-mingw-ucrt")
       Fledge::Entry.file("My App.exe", "MZ", mode: 0o755).write_into(folder)
       program = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => runtimes, "XDG_CACHE_HOME" => File.join(dir, "cache") })

@@ -2,30 +2,19 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 module Fledge
-  class Icon
-    MINIMUM: Integer
-    ICNS: Array[[String, Integer]]
-    WINDOWS: Array[Integer]
+  class Icon < Data
     LINUX: Array[Integer]
+    MAKE: Hash[String, String]
 
-    @source: Integer
-    @sizes: Hash[Integer, Png]
-    @encoded: Hash[Integer, String]
+    attr_reader base: String
+    attr_reader name: String
 
-    def self.read: (String path) -> Icon
+    def self.new: (base: String, name: String) -> instance
 
-    def initialize: (Png image, ?path: String) -> void
-
-    def image: (Integer size) -> Png
-
-    private def source_side: (Integer size) -> Integer
+    def file: (String extension) -> String
 
     def png: (Integer size) -> String
 
-    def icns: () -> String
-
-    def windows_images: () -> Array[[Integer, String]]
-
-    def ico: () -> String
+    private def found: (String path, String shown, String extension) -> String
   end
 end

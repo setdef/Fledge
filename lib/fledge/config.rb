@@ -41,7 +41,7 @@ module Fledge
   #   #   name: Cool App
   #   #   kind: windowed
   #   #   identifier: com.example.CoolApp
-  #   #   icon: icon.png
+  #   #   icon: icons/app
   #   config = Fledge::Config.load("path/to/project")
   #   config.name       # => "Cool App"
   #   config.kind       # => "windowed"
@@ -69,8 +69,10 @@ module Fledge
 
     ##
     # :attr_reader: icon
-    # The path of the app's icon, a PNG, relative to the project's root, or
-    # +nil+ for none.
+    # The path of the app's icon files without their extension, relative
+    # to the project's root, such as <tt>icons/app</tt> for
+    # <tt>icons/app.icns</tt> and the rest (Fledge::Icon), or +nil+ for
+    # none.
 
     ##
     # :attr_reader: publisher
@@ -166,11 +168,22 @@ module Fledge
         kind: kind(data, path),
         identifier: identifier(data, path),
         version: version(data, path),
-        icon: text(data, "icon", path, "icon.png"),
+        icon: icon(data, path),
         publisher: text(data, "publisher", path, "Example, Inc."),
         copyright: text(data, "copyright", path, "\"Copyright 2026 Example, Inc.\""),
         installers: installers(data, path)
       )
+    end
+
+    # The icon's path without an extension, as Briefcase's +icon+ is.
+    # One that ends in an icon's extension, as 0.0.1.pre.7's one PNG did,
+    # is refused with what to write instead.
+    private_class_method def self.icon(data, path) # :nodoc:
+      value = text(data, "icon", path, "icons/app")
+      return value unless value&.match?(/\.(?:png|icns|ico)\z/i)
+
+      raise Error, "#{path}: icon names the icon's files without an extension, such as icon: #{value.sub(/\.[^.]+\z/, '')} " \
+        "for #{value.sub(/\.[^.]+\z/, '')}.icns, .ico, and -16.png to -512.png"
     end
 
     # The installers to build: a list of INSTALLERS, which may be empty,

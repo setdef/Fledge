@@ -12,8 +12,8 @@ require_relative "../error"
 module Fledge
   class Assembly
     # A runtime archive, unpacked for one app: its one top folder, sorted
-    # into what the app holds, its launchers, and the installer files
-    # only installers use. It refuses an archive that is not a Fledge
+    # into what the app holds, its launchers, and the tools only the build
+    # uses. It refuses an archive that is not a Fledge
     # runtime, and one whose files the app's own would collide with.
     class RuntimeFolder # :nodoc:
       # Unpacks the runtime archive at +path+ into +work+, for
@@ -38,14 +38,14 @@ module Fledge
         path
       end
 
-      # The runtime's installer folder, or +nil+ when it has none.
-      def kit
-        path = File.join(@top, INSTALLER)
+      # The runtime's tools folder, or +nil+ when it has none.
+      def tools
+        path = File.join(@top, TOOLS)
         File.directory?(path) ? path : nil
       end
 
       # Moves everything the app holds of the runtime, which is all of it
-      # but its launchers and installer folder, into +folder+, once
+      # but its launchers and tools folder, into +folder+, once
       # nothing of the app's could collide with it.
       def move_into(folder)
         FileUtils.mkdir_p(folder)
@@ -54,7 +54,7 @@ module Fledge
 
       private def held
         launchers = [LAUNCHER, WINDOWED_LAUNCHER].map { |name| @platform.executable(name) }
-        names = Dir.children(@top).sort - launchers - [INSTALLER]
+        names = Dir.children(@top).sort - launchers - [TOOLS]
         names.each { |name| check(name) }
       end
 

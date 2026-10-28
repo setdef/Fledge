@@ -56,7 +56,7 @@ class InstallersTest < Minitest::Test
       windowed = app(dir, "kind: windowed\nidentifier: com.example.Hello\n")
       folder = File.join(dir, "Hello-x64-mingw-ucrt")
 
-      error = assert_raises(Fledge::Error) { Fledge::Installers.write("nsis", app: windowed, folder:, kit: nil, makensis: nil) }
+      error = assert_raises(Fledge::Error) { Fledge::Installers.write("nsis", app: windowed, folder:, tools: nil, makensis: nil) }
       assert_equal "an NSIS installer needs makensis, which fledge build could not find", error.message
     end
   end

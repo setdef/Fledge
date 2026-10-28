@@ -6,34 +6,29 @@
 #++
 
 require_relative "error"
-require_relative "png"
-require_relative "icon/ico"
-require_relative "icon/resampler"
 
 module Fledge
-  # Your app's icon, in every size and shape each operating system asks
-  # for.
+  # Your app's icon, in the file each operating system takes it from.
   #
   # macOS shows an app's icon from an <tt>.icns</tt> file in its bundle,
-  # Windows from icon resources inside its program, and Linux desktops
-  # from PNGs in the hicolor icon theme's folders, and each wants several
-  # sizes, so the icon stays sharp in a Dock, a title bar, and a file
-  # list (decision 18). Drawing each by hand, and converting each with
-  # another tool for each format, is what you would do without Fledge.
+  # Windows from icon resources inside its program, made from an
+  # <tt>.ico</tt>, and Linux desktops from PNGs in the hicolor icon
+  # theme's folders, each at several sizes, so the icon stays sharp in a
+  # Dock, a title bar, and a file list (decision 18). Each system's own
+  # tools make its format, and the icon editors you draw with export
+  # them.
   #
-  # This class starts from one square PNG of at least MINIMUM pixels a
-  # side, as Tauri's and Electron's icon generators do, shrinks it to each
-  # size with an area-averaging filter that weighs each pixel's color by
-  # its alpha (so a transparent edge does not darken), and writes:
+  # This class names those files as Briefcase does: <tt>icon:</tt> in
+  # <tt>fledge.yml</tt> is a path without an extension, and the build for
+  # each system takes the file it needs from beside it, as you made it
+  # (ADR 010):
   #
-  # * #icns, Apple's icon family, with a PNG for each size from 16 to
-  #   1024 pixels and each Retina double;
-  # * #windows_images, the images of a Windows icon, as a <tt>.ico</tt>
-  #   holds them: a 32-bit bitmap for each size below 256 pixels and a PNG
-  #   at 256, which Windows has read since Vista;
-  # * #png, a PNG of any size, for Linux.
-  #
-  # Each size is made once, from the next larger one, and kept.
+  # * <tt>ICON.icns</tt> on macOS, which <tt>iconutil -c icns
+  #   ICON.iconset</tt> makes from PNGs;
+  # * <tt>ICON.ico</tt> on Windows, holding the sizes Windows shows, 16,
+  #   32, 48, 64, and 256 pixels a side, as Briefcase asks;
+  # * <tt>ICON-16.png</tt> to <tt>ICON-512.png</tt> on Linux, one for
+  #   each of LINUX's sizes.
   #
   # Use it through Fledge::Identity, which knows where your icon is.
   #
@@ -44,42 +39,35 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   icon = Fledge::Icon.read("icon.png")
-  #   File.binwrite("MyCoolApp.icns", icon.icns)
-  #   File.binwrite("48.png", icon.png(48))
+  #   icon = Fledge::Icon.new(base: "/path/to/my_app/icons/app", name: "icons/app")
+  #   icon.file("icns") # => "/path/to/my_app/icons/app.icns"
+  #   icon.png(48)      # => "/path/to/my_app/icons/app-48.png"
   #--
   # SPDX-SnippetEnd
   #++
-  class Icon
-    # The smallest side a source icon may have: the largest image macOS
-    # asks for, 512 points at Retina scale.
-    MINIMUM = 1024
+  class Icon < Data.define(:base, :name)
+    ##
+    # :attr_reader: base
+    # The icon's path without an extension, absolute.
 
-    # The types in an <tt>.icns</tt> and the size of each one's PNG
-    # (Apple's IconFamily.h names them; Retina doubles are +ic11+ to
-    # +ic14+ and +ic10+).
-    ICNS = [
-      ["icp4", 16],
-      ["icp5", 32],
-      ["ic11", 32],
-      ["ic12", 64],
-      ["ic07", 128],
-      ["ic13", 256],
-      ["ic08", 256],
-      ["ic14", 512],
-      ["ic09", 512],
-      ["ic10", 1024],
-    ].freeze
+    ##
+    # :attr_reader: name
+    # The icon's path as <tt>fledge.yml</tt> gives it, for messages.
 
-    # The sizes of a Windows icon: those Microsoft's icon guidelines ask
-    # for at every display scale.
-    WINDOWS = [16, 20, 24, 32, 40, 48, 64, 96, 256].freeze
+    # The sizes of a Linux app's icons, which Briefcase asks of an
+    # AppImage, each in the hicolor theme's folder of that size.
+    LINUX = [16, 32, 64, 128, 256, 512].freeze
 
-    # The sizes of a Linux icon, in the hicolor theme's folders.
-    LINUX = [16, 24, 32, 48, 64, 128, 256, 512].freeze
+    # How to make each file, for the message when it is missing.
+    MAKE = {
+      "icns" => "Make it from PNGs with iconutil -c icns, as a Mac app's icon is made.",
+      "ico" => "Make it with the sizes Windows shows, 16, 32, 48, 64, and 256 pixels a side.",
+      "png" => "Linux apps take one PNG of each size, #{LINUX.map { |size| "-#{size}" }.join(', ')}.",
+    }.freeze
 
-    # Reads the icon at +path+. Raises Fledge::Error, naming the file, when
-    # it is not a square PNG of at least MINIMUM pixels a side.
+    # The icon file with +extension+ beside the icon's base, such as
+    # <tt>ICON.icns</tt>. Raises Fledge::Error, saying how to make it,
+    # when it does not exist.
     #
     # === Example
     #
@@ -88,38 +76,17 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::Icon.read("icon.png")
+    #   icon.file("ico") # => "/path/to/my_app/icons/app.ico"
     #--
     # SPDX-SnippetEnd
     #++
-    def self.read(path)
-      raise Error, "the icon #{path} does not exist" unless File.file?(path)
-
-      image = begin
-        Png.read(File.binread(path))
-      rescue Error => e
-        raise Error, "the icon #{path} #{e.message}"
-      end
-      new(image, path:)
+    def file(extension)
+      found("#{base}.#{extension}", "#{name}.#{extension}", extension)
     end
 
-    # Creates an icon from +image+, a Fledge::Png. Raises Fledge::Error,
-    # naming +path+, when it is not square or is smaller than MINIMUM.
-    #
-    # [image] The source Fledge::Png.
-    # [path] Where it came from, for messages.
-    def initialize(image, path: "icon")
-      unless image.width == image.height && image.width >= MINIMUM
-        raise Error, "the icon #{path} is #{image.width}x#{image.height} pixels; " \
-          "use a square PNG of at least #{MINIMUM}x#{MINIMUM}"
-      end
-
-      @source = image.width
-      @sizes = { image.width => image }
-      @encoded = {} # : Hash[Integer, String]
-    end
-
-    # The icon at +size+ pixels a side, as a Fledge::Png.
+    # The PNG of the icon at +size+ pixels a side, <tt>ICON-SIZE.png</tt>.
+    # Raises Fledge::Error, saying which sizes Linux takes, when it does
+    # not exist.
     #
     # === Example
     #
@@ -128,99 +95,19 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   icon.image(16).width # => 16
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def image(size)
-      @sizes[size] ||= Resampler.shrink(image(source_side(size)), size)
-    end
-
-    # The side of the image +size+ is shrunk from: the source itself for
-    # the largest sizes, and otherwise the smallest of the halvings of
-    # MINIMUM at least twice as large, so each pixel averages whole pixels
-    # and no image is shrunk from one far larger than it needs.
-    private def source_side(size)
-      return @source if size * 2 > MINIMUM
-
-      side = MINIMUM
-      side /= 2 while side / 2 >= size * 2
-      side
-    end
-
-    # The icon at +size+ pixels a side, as PNG bytes.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   File.binwrite("256.png", icon.png(256))
+    #   icon.png(256) # => "/path/to/my_app/icons/app-256.png"
     #--
     # SPDX-SnippetEnd
     #++
     def png(size)
-      @encoded[size] ||= image(size).encode
+      found("#{base}-#{size}.png", "#{name}-#{size}.png", "png")
     end
 
-    # The icon as an <tt>.icns</tt> file: the +icns+ magic and the file's
-    # length, then each of ICNS's types with its own length and PNG, all
-    # big-endian.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   File.binwrite("MyCoolApp.icns", icon.icns)
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def icns
-      elements = ICNS.map { |type, size| type.b + [png(size).bytesize + 8].pack("N") + png(size) }
-      "icns".b + [8 + elements.sum(&:bytesize)].pack("N") + elements.join
-    end
+    private def found(path, shown, extension)
+      return path if File.file?(path)
 
-    # The images of a Windows icon, smallest first: each WINDOWS size and
-    # its image as an icon resource holds it (a 32-bit
-    # BITMAPINFOHEADER bitmap with its AND mask, or a PNG at 256 pixels).
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   icon.windows_images.first.first # => 16
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def windows_images
-      WINDOWS.map { |size| [size, (size >= 256) ? png(size) : Ico.bitmap(image(size))] }
-    end
-
-    # The icon as an <tt>.ico</tt> file, which an NSIS installer takes for
-    # its own icon: an ICONDIR, an ICONDIRENTRY for each of
-    # #windows_images, and the images after them (Microsoft's "Icons").
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   File.binwrite("MyCoolApp.ico", icon.ico)
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def ico
-      Ico.file(windows_images)
+      raise Error, "the icon #{shown} does not exist. fledge.yml's icon names the icon's files without an extension, " \
+        "as Briefcase's does. #{MAKE.fetch(extension)}"
     end
   end
 end

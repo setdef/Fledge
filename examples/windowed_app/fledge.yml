@@ -6,14 +6,15 @@
 # taskbar, or menu, which may have spaces; the identifier macOS and
 # Windows know it by, a reverse-DNS name of a domain its developer
 # controls; its version, publisher, and copyright, which Explorer's
-# Properties dialog shows; and its icon, a square PNG of at least
-# 1024x1024 pixels, which Fledge turns into each operating system's
-# icons. Like hello, it sits inside Fledge's own gem, and this file makes
-# its folder a project's root (ADR 005).
+# Properties dialog shows; and its icon, the files each operating system
+# takes it from, named as Briefcase names them: icons/icon.icns for
+# macOS, icons/icon.ico for Windows, and icons/icon-16.png to
+# icons/icon-512.png for Linux. Like hello, it sits inside Fledge's own
+# gem, and this file makes its folder a project's root (ADR 005).
 name: Hello Window
 kind: windowed
 identifier: com.setdef.fledge.HelloWindow
 version: "1.2.3"
 publisher: setdef
 copyright: © 2026 Kerrick Long
-icon: icon.png
+icon: icons/icon

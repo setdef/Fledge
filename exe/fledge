@@ -97,9 +97,12 @@
 #                          Windows know it by (needed when windowed)
 #                        version: such as "1.2.3" (default: the
 #                          gemspec's, or 0.0.0)
-#                        icon: a square PNG of at least 1024x1024
-#                          pixels, such as icon.png, made into each
-#                          system's icons
+#                        icon: the icon's files without their
+#                          extension, as Briefcase names them, such
+#                          as icons/app: icons/app.icns on macOS,
+#                          icons/app.ico on Windows (16 to 256
+#                          pixels), and icons/app-16.png, -32, -64,
+#                          -128, -256, and -512 on Linux
 #                        publisher: who makes it (default: the
 #                          gemspec's authors)
 #                        copyright: such as "© 2026 Example, Inc."

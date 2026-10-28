@@ -68,11 +68,39 @@ module FakeRuntime
   end
 
   # The launchers of +platform+'s runtime: +launcher+, and on Windows the
-  # console and windowed programs.
+  # console and windowed programs, with the rcedit a Windows runtime
+  # carries: the real runtime's (FakeRuntime.windows) where there is one,
+  # since only real programs and rcedit show what Windows makes of them.
   def self.launchers(platform, launcher)
     return [Fledge::Entry.file("launcher", launcher, mode: 0o755)] unless platform.windows?
 
-    [Fledge::Entry.file("launcher.exe", WINDOWS_CONSOLE, mode: 0o755), Fledge::Entry.file("launcherw.exe", WINDOWS_GUI, mode: 0o755)]
+    windows || [Fledge::Entry.file("launcher.exe", WINDOWS_CONSOLE, mode: 0o755), Fledge::Entry.file("launcherw.exe", WINDOWS_GUI, mode: 0o755)]
+  end
+
+  # The launchers and rcedit of the real Windows runtime, in
+  # FLEDGE_RUNTIME_DIR or tmp/runtime, on Windows, where they run; or nil.
+  def self.windows
+    return nil unless Gem.win_platform?
+    return @windows if defined?(@windows)
+
+    runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
+    archive = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")))
+    @windows = File.file?(archive) ? unpack_windows(archive) : nil
+  end
+
+  private_class_method def self.unpack_windows(archive)
+    Dir.mktmpdir("windows-runtime") do |dir|
+      Fledge::Archive.unpack(archive, into: dir)
+      top = Dir.glob(File.join(dir, "*")).first.to_s
+      %w[launcher.exe launcherw.exe tools/rcedit.exe].map { |path| Fledge::Entry.file(path, File.binread(File.join(top, path)), mode: 0o755) }
+    end
+  end
+
+  # The icon files of examples/windowed_app, named as Fledge::Icon names
+  # them, written into +root+ under +base+.
+  def self.icons(root, base = "icon")
+    source = File.expand_path("../examples/windowed_app/icons", __dir__)
+    Dir.children(source).each { |name| FileUtils.cp(File.join(source, name), File.join(root, name.sub("icon", base))) }
   end
 
   # Ruby's library folder at +lib+: a library file, +platform+'s

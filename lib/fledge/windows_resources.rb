@@ -5,8 +5,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
-require_relative "version_info"
-require_relative "windows_program"
+require "tmpdir"
+require_relative "command"
+require_relative "error"
 
 module Fledge
   # Puts an app's identity into its Windows program: its icon and its
@@ -18,14 +19,19 @@ module Fledge
   # (decision 18). Without them, every app built with Fledge would show
   # the launcher's blank icon and its bare file name.
   #
-  # This module takes the launcher's own resources, keeps its manifest
-  # (which makes it aware of long paths and runs it as the person who
-  # starts it), replaces any icon and version information with the app's,
-  # and writes them back with Fledge::WindowsProgram: an RT_ICON for each
-  # of Fledge::Icon#windows_images, an RT_GROUP_ICON numbered ICON_GROUP
-  # that lists them, which Windows takes as the program's icon, and an RT_VERSION
-  # from Fledge::VersionInfo, all in U.S. English, as a resource compiler
-  # writes them by default. A console app gets them too.
+  # This module has rcedit write them, as electron-builder and
+  # electron-packager have it write an Electron app's: Electron's own
+  # resource editor (MIT), which calls Windows' UpdateResource, so it
+  # runs on Windows, where each Windows app is built (ADR 010). The
+  # Windows runtime carries a pinned build of it in its +tools+ folder,
+  # which no app holds. It sets FileDescription, ProductName, and
+  # InternalName to the app's name, OriginalFilename to its program's,
+  # CompanyName and LegalCopyright when there are a publisher and a
+  # copyright, FileVersion and ProductVersion to the version as written,
+  # whose leading numbers rcedit makes FILEVERSION and PRODUCTVERSION,
+  # and the icon. rcedit keeps the launcher's manifest, which makes it
+  # aware of long paths and runs it as the person who starts it. A
+  # console app gets them too.
   #
   # Use it through Fledge::Assembly.
   #
@@ -37,23 +43,21 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   identity = Fledge::App.at("my_app").identity
-  #   program = Fledge::WindowsResources.apply(File.binread("launcher.exe"), identity:, file_name: "MyApp.exe")
+  #   Fledge::WindowsResources.apply("dist/MyApp-x64-mingw-ucrt/MyApp.exe", identity:, tools: "/tmp/runtime/tools")
   #--
   # SPDX-SnippetEnd
   #++
   module WindowsResources
-    # The language the resources are written in: U.S. English.
-    LANGUAGE = VersionInfo::LANGUAGE
+    # rcedit's name in the Windows runtime's +tools+ folder.
+    RCEDIT = "rcedit.exe"
 
-    # The ID of the icon group: IDI_APPLICATION (32512), the ID Tauri gives
-    # an app's icon (tauri-build's lib.rs), which a GUI library that asks
-    # the program for its application icon by that ID finds. With one
-    # group, it is also the one Explorer shows.
-    ICON_GROUP = 32_512
+    # The largest part a Windows version number holds: 16 bits.
+    MAX_PART = 65_535
 
-    # The launcher +program+, as the program called +file_name+ in an app
-    # whose identity is +identity+. Raises Fledge::Error when the program
-    # cannot take resources, or the version cannot be a Windows one.
+    # Writes the identity +identity+ into the Windows program at +program+
+    # with the rcedit in +tools+, the runtime's tools folder. Raises
+    # Fledge::Error when the runtime has no rcedit, the version cannot be
+    # a Windows one, or rcedit fails.
     #
     # === Example
     #
@@ -62,49 +66,73 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::WindowsResources.apply(launcher, identity:, file_name: "Hello.exe")
+    #   Fledge::WindowsResources.apply("dist/Hello-x64-mingw-ucrt/Hello.exe", identity:, tools:)
     #--
     # SPDX-SnippetEnd
     #++
-    def self.apply(program, identity:, file_name:)
-      windows = WindowsProgram.new(program)
-      replaced = [WindowsProgram::RT_ICON, WindowsProgram::RT_GROUP_ICON, WindowsProgram::RT_VERSION]
-      resources = windows.resources.reject { |(type, _, _), _| replaced.include?(type) }
+    def self.apply(program, identity:, tools:)
+      rcedit = tools && File.join(tools, RCEDIT)
+      raise Error, "the runtime has no tools/#{RCEDIT}, which Windows runtimes carry from Fledge 0.0.1.pre.8 on" unless rcedit && File.file?(rcedit)
+
+      numbers(identity.version)
+      arguments = strings(identity, File.basename(program)).flat_map { |key, value| ["--set-version-string", key, value] }
+      arguments += ["--set-file-version", identity.version, "--set-product-version", identity.version]
       icon = identity.icon
-      icons(icon.windows_images).each { |key, data| resources[key] = data } if icon
-      resources[[WindowsProgram::RT_VERSION, 1, LANGUAGE]] = version_info(identity, file_name).bytes
-      windows.with_resources(resources)
+      arguments += ["--set-icon", icon.file("ico")] if icon
+      Command.run(rcedit, program, *arguments, install: "Windows runtimes from Fledge 0.0.1.pre.8 on carry it.")
     end
 
-    # The RT_ICON resources for +images+, numbered from 1, and the
-    # RT_GROUP_ICON that lists them: a GRPICONDIR and, for each image, a
-    # GRPICONDIRENTRY, whose width and height of 0 mean 256 (Microsoft's
-    # "Icons" in the Win32 documentation).
-    def self.icons(images)
-      resources = {} # : Hash[[Integer, Integer, Integer], String]
-      entries = images.each_with_index.map do |(size, data), index|
-        resources[[WindowsProgram::RT_ICON, index + 1, LANGUAGE]] = data
-        side = (size >= 256) ? 0 : size
-        [side, side, 0, 0, 1, 32, data.bytesize, index + 1].pack("CCCCvvVv")
-      end
-      resources[[WindowsProgram::RT_GROUP_ICON, ICON_GROUP, LANGUAGE]] = [0, 1, images.size].pack("v3") + entries.join
-      resources
-    end
-
-    # The version information for +identity+: FileDescription, which Task
-    # Manager shows, and ProductName and InternalName are its name, and
-    # OriginalFilename its program's.
-    def self.version_info(identity, file_name)
-      VersionInfo.new(version: identity.version, strings: {
-        "CompanyName" => identity.publisher.to_s,
+    # The version information's strings for +identity+, whose program is
+    # +file_name+: FileDescription, which Task Manager shows, and
+    # ProductName and InternalName are its name, and OriginalFilename its
+    # program's.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::WindowsResources.strings(identity, "Hello.exe")["OriginalFilename"] # => "Hello.exe"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.strings(identity, file_name)
+      {
+        "CompanyName" => identity.publisher,
         "FileDescription" => identity.name,
-        "FileVersion" => identity.version,
         "InternalName" => identity.name,
-        "LegalCopyright" => identity.copyright.to_s,
+        "LegalCopyright" => identity.copyright,
         "OriginalFilename" => file_name,
         "ProductName" => identity.name,
-        "ProductVersion" => identity.version,
-      })
+      }.compact
+    end
+
+    # The four numbers of a Windows version, FILEVERSION's and
+    # VIProductVersion's, from +version+: its leading numbers, at most
+    # four, padded with zeros. Raises Fledge::Error when it begins with no
+    # number or a part is larger than MAX_PART.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::WindowsResources.numbers("1.2.3.pre.4") # => [1, 2, 3, 0]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.numbers(version)
+      parts = version.split(".").take_while { |part| part.match?(/\A\d+\z/) }.first(4).map(&:to_i)
+      raise Error, "the version #{version} does not begin with a number" if parts.empty?
+
+      too_large = parts.find { |part| part > MAX_PART }
+      raise Error, "the version #{version} has a part, #{too_large}, larger than Windows' version numbers hold (#{MAX_PART})" if too_large
+
+      parts.fill(0, (parts.size)...4)
     end
   end
 end

@@ -54,7 +54,7 @@ module Fledge
   #++
   #   setup = Fledge::Nsis.new(identity:, folder: "dist/MyApp-x64-mingw-ucrt", to: "dist/MyApp-x64-mingw-ucrt-setup.exe",
   #     makensis: "/home/you/.cache/fledge/makensis/makensis")
-  #   setup.write(kit) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
+  #   setup.write(tools) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
   #--
   # SPDX-SnippetEnd
   #++
@@ -112,8 +112,8 @@ module Fledge
       Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:).text(icon:)
     end
 
-    # Compiles the installer with the NSIS in +kit+, the runtime's
-    # installer folder (its <tt>nsis/Stubs</tt>, <tt>nsis/Plugins</tt>,
+    # Compiles the installer with the NSIS in +tools+, the runtime's
+    # tools folder (its <tt>nsis/Stubs</tt>, <tt>nsis/Plugins</tt>,
     # <tt>nsis/Include</tt>, and <tt>nsis/Contrib</tt>), and returns its
     # path. Raises Fledge::Error when the runtime has no NSIS, or makensis
     # cannot run or refuses the script.
@@ -125,20 +125,17 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   setup.write(kit) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
+    #   setup.write(tools) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
     #--
     # SPDX-SnippetEnd
     #++
-    def write(kit)
-      nsis = kit && File.join(kit, "nsis")
-      raise Error, "the runtime has no installer/nsis, which runtimes carry from Fledge 0.0.1.pre.7 on" unless nsis && File.directory?(nsis)
+    def write(tools)
+      nsis = tools && File.join(tools, "nsis")
+      raise Error, "the runtime has no tools/nsis, which Windows runtimes carry from Fledge 0.0.1.pre.8 on" unless nsis && File.directory?(nsis)
 
       Dir.mktmpdir("fledge-nsis") do |work|
-        icon = @identity.icon
-        icon_path = icon && File.join(work, "app.ico")
-        File.binwrite(icon_path, icon.ico) if icon && icon_path
         script_path = File.join(work, "setup.nsi")
-        File.binwrite(script_path, "\uFEFF#{script(icon: icon_path)}")
+        File.binwrite(script_path, "\uFEFF#{script(icon: @identity.icon&.file('ico'))}")
         compile(script_path, nsis)
       end
       @to

@@ -6,7 +6,7 @@ module Fledge
     RUNTIME: String
     ICON_SIZE: Integer
 
-    def self.write: (identity: Identity, folder: String, kit: String?, to: String) -> String
+    def self.write: (identity: Identity, folder: String, tools: String?, to: String) -> String
 
     private def self.appdir: (Identity identity) -> Array[Entry]
   end

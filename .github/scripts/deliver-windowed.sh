@@ -113,7 +113,7 @@ case "$(uname -s)" in
     expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$name\""
     expect Icon "$(sed -n 's/^Icon=//p' "$desktop")" "$identifier"
     expect Terminal "$(sed -n 's/^Terminal=//p' "$desktop")" false
-    for size in 16 24 32 48 64 128 256 512; do
+    for size in 16 32 64 128 256 512; do
       icon="$root/share/icons/hicolor/${size}x$size/apps/$identifier.png"
       file "$icon" | grep -q "PNG image data, $size x $size" || fail "$icon is not a $size-pixel PNG: $(file "$icon")"
     done

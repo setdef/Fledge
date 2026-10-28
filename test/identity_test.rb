@@ -54,14 +54,22 @@ class IdentityTest < Minitest::Test
     assert_predicate windowed, :windowed?
   end
 
-  def test_reads_the_icon_from_the_projects_root
+  # The icon names its files without an extension, from the project's
+  # root, as Briefcase's does; each platform's build takes its own file,
+  # and one that is missing says how to make it.
+  def test_the_icon_names_each_systems_file_from_the_projects_root
     Dir.mktmpdir do |dir|
-      File.binwrite(File.join(dir, "icon.png"), Fledge::Png.new(width: 1024, height: 1024, pixels: "\0".b * (1024 * 1024 * 4)).encode)
-      identity = Fledge::Identity.from(config: config(icon: "icon.png"), gemspec: nil, name: "Hi", root: dir)
-      assert_equal 16, identity.icon.image(16).width
+      FakeRuntime.icons(File.join(dir, "art").tap { |art| FileUtils.mkdir_p(art) })
+      icon = Fledge::Identity.from(config: config(icon: "art/icon"), gemspec: nil, name: "Hi", root: dir).icon
+      assert_equal File.join(dir, "art/icon.icns"), icon.file("icns")
+      assert_equal File.join(dir, "art/icon.ico"), icon.file("ico")
+      assert_equal File.join(dir, "art/icon-512.png"), icon.png(512)
 
-      error = assert_raises(Fledge::Error) { Fledge::Identity.from(config: config(icon: "missing.png"), gemspec: nil, name: "Hi", root: dir) }
-      assert_equal "the icon #{File.join(dir, 'missing.png')} does not exist", error.message
+      missing = Fledge::Identity.from(config: config(icon: "missing"), gemspec: nil, name: "Hi", root: dir).icon
+      error = assert_raises(Fledge::Error) { missing.file("icns") }
+      assert_equal "the icon missing.icns does not exist. fledge.yml's icon names the icon's files without an extension, as Briefcase's " \
+        "does. Make it from PNGs with iconutil -c icns, as a Mac app's icon is made.", error.message
+      assert_includes assert_raises(Fledge::Error) { missing.png(16) }.message, "Linux apps take one PNG of each size, -16, -32, -64,"
     end
   end
 end

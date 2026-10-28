@@ -8,6 +8,7 @@
 require_relative "test_helper"
 require_relative "support/disk_images"
 require_relative "support/gems"
+require "json"
 require "open3"
 
 # Fledge::Assembly with fake runtimes, on the computer the tests run on:
@@ -25,12 +26,10 @@ class AssemblyTest < Minitest::Test
     def self.write(dir, installers: "[]")
       root = FakeApp.write(dir, "window")
       File.write(File.join(root, "fledge.yml"),
-        "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\nicon: icon.png\n#{"installers: #{installers}\n" if installers}")
-      File.binwrite(File.join(root, "icon.png"), ICON)
+        "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\nicon: art\n#{"installers: #{installers}\n" if installers}")
+      FakeRuntime.icons(root, "art")
       root
     end
-
-    ICON = Fledge::Png.new(width: 1024, height: 1024, pixels: ([40, 80, 160, 255] * (1024 * 1024)).pack("C*")).encode
   end
 
   RUNTIME_FILES = %w[
@@ -50,7 +49,7 @@ class AssemblyTest < Minitest::Test
   ].freeze
 
   # What a runtime keeps for installers, in its installer folder.
-  APPIMAGE_RUNTIME = Fledge::Entry.file("installer/appimage-runtime", "\x7FELF runtime".b, mode: 0o755)
+  APPIMAGE_RUNTIME = Fledge::Entry.file("tools/appimage-runtime", "\x7FELF runtime".b, mode: 0o755)
 
   def assemble(dir, app_root, platform: LINUX, runtime: FakeRuntime.write(dir, platform), app_files: {}, files: [], makensis: nil)
     out = File.join(dir, "dist")
@@ -77,8 +76,32 @@ class AssemblyTest < Minitest::Test
     skip "a Unix app's symbolic links and modes are built on macOS or Linux" if Gem.win_platform?
   end
 
+  # A Windows app is built on Windows, with the real Windows runtime's
+  # launchers and rcedit (FakeRuntime.windows).
   def windows!
     skip "a Windows app is built on Windows" unless Gem.win_platform?
+    return if FakeRuntime.windows
+
+    message = "no Windows runtime in FLEDGE_RUNTIME_DIR or tmp/runtime, whose launchers and rcedit these tests run"
+    ENV["FLEDGE_REQUIRE_RUNTIME"] ? flunk(message) : skip(message)
+  end
+
+  # The PE Subsystem of the Windows program at +path+: 2 for a GUI
+  # program, 3 for a console one (Microsoft's "PE Format": the optional
+  # header starts 24 bytes into the PE header, with Subsystem at 68).
+  def subsystem(path)
+    bytes = File.binread(path, 4096)
+    bytes.byteslice(bytes.byteslice(0x3C, 4).unpack1("V") + 24 + 68, 2).unpack1("v")
+  end
+
+  # The version information Windows reads from the program at +path+, as
+  # Explorer's Properties dialog shows it.
+  def version_info(path)
+    script = "(Get-Item -LiteralPath $env:PROGRAM).VersionInfo | Select-Object FileDescription, ProductName, CompanyName, " \
+      "LegalCopyright, OriginalFilename, FileVersion, ProductVersion, FileMajorPart | ConvertTo-Json"
+    out, status = Open3.capture2e({ "PROGRAM" => path }, "powershell", "-NoProfile", "-NonInteractive", "-Command", script)
+    assert_predicate status, :success?, out
+    JSON.parse(out)
   end
 
   def mac!
@@ -177,9 +200,11 @@ class AssemblyTest < Minitest::Test
       assert_equal File.join(dir, "dist", "Hello-x64-mingw-ucrt.zip"), archive
       folder = File.join(dir, "dist", "Hello-x64-mingw-ucrt")
       assert_equal %w[Hello.exe app fledge.cfg ruby], Dir.children(folder).sort
-      program = Fledge::WindowsProgram.new(File.binread(File.join(folder, "Hello.exe")))
-      assert_equal Fledge::WindowsProgram::CONSOLE, program.subsystem
-      assert_equal [[16, 1, 1033], [24, 1, 1033]], program.resources.keys
+      program = File.join(folder, "Hello.exe")
+      assert_equal 3, subsystem(program)
+      info = version_info(program)
+      assert_equal ["Hello", "Hello", "Hello.exe", "0.0.0", "0.0.0"],
+        info.values_at("FileDescription", "ProductName", "OriginalFilename", "FileVersion", "ProductVersion")
       top = File.join(unpacked(dir, archive), "Hello-x64-mingw-ucrt")
       assert_path_exists File.join(top, "ruby/bin/x64-ucrt-ruby400.dll")
       assert_equal File.binread(File.join(folder, "Hello.exe")), File.binread(File.join(top, "Hello.exe"))
@@ -198,9 +223,9 @@ class AssemblyTest < Minitest::Test
 
       folder = File.join(dir, "dist", "Hello Window-x64-mingw-ucrt")
       assert_equal ["Hello Window.exe", "app", "fledge.cfg", "ruby"], Dir.children(folder).sort
-      program = Fledge::WindowsProgram.new(File.binread(File.join(folder, "Hello Window.exe")))
-      assert_equal Fledge::WindowsProgram::GUI, program.subsystem
-      assert_includes program.resources.keys, [14, 32_512, 1033]
+      program = File.join(folder, "Hello Window.exe")
+      assert_equal 2, subsystem(program)
+      assert_equal "Hello Window", version_info(program).fetch("FileDescription")
       assert_includes File.read(File.join(folder, "fledge.cfg")), "\nidentifier = com.example.HelloWindow\n"
     end
   end
@@ -320,7 +345,7 @@ class AssemblyTest < Minitest::Test
     Dir.mktmpdir do |dir|
       error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir, installers: nil)) }
 
-      assert_includes error.message, "the runtime has no installer/appimage-runtime"
+      assert_includes error.message, "the runtime has no tools/appimage-runtime"
       assert_empty Dir.glob(File.join(dir, "dist", "*"))
     end
   end

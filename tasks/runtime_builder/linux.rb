@@ -54,13 +54,13 @@ class RuntimeBuilder
     # Strips debug sections from extensions, and removes the RUNPATHs
     # rv-ruby's build machine left in some (zlib.so names a Linuxbrew
     # folder), so no extension looks for libraries outside the runtime.
-    # Then builds the AppImage runtime into installer/.
+    # Then builds the AppImage runtime into tools/.
     def finish(stage)
       Dir.glob(File.join(stage, "lib", "ruby", "**", "*.so")).each do |extension|
         @builder.run("strip", "--strip-debug", extension)
         @builder.run("patchelf", "--remove-rpath", extension) unless @builder.capture("patchelf", "--print-rpath", extension).strip.empty?
       end
-      AppImageRuntime.new(builder: @builder, build_dir: @build_dir).build(File.join(stage, "installer", "appimage-runtime"))
+      AppImageRuntime.new(builder: @builder, build_dir: @build_dir).build(File.join(stage, "tools", "appimage-runtime"))
     end
 
     private def build_libxcrypt

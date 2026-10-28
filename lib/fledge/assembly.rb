@@ -36,7 +36,7 @@ module Fledge
   # <tt>OUT/NAME-PLATFORM.tar.gz</tt> (<tt>.zip</tt> for Windows), to
   # ship; and a windowed app's installers (Fledge::Installers) are
   # written beside them, from the folder, with the installer files the
-  # runtime keeps in its +installer+ folder, which no app holds.
+  # runtime keeps in its +tools+ folder, which no app holds.
   #
   # This class unpacks the runtime with tar (Fledge::Archive), moves it
   # into the folder, adds CONFIG, the app's project, and the files the
@@ -80,9 +80,10 @@ module Fledge
     # +rubyw.exe+ beside +ruby.exe+.
     WINDOWED_LAUNCHER = "launcherw"
 
-    # The runtime's folder of what installers need and apps do not: the
-    # AppImage runtime in a Linux runtime, and NSIS in a Windows one.
-    INSTALLER = "installer"
+    # The runtime's folder of what fledge build runs or copies and no app
+    # holds: the AppImage runtime in a Linux runtime, and rcedit and NSIS
+    # in a Windows one.
+    TOOLS = "tools"
 
     # The file beside the launcher that says what it runs. The launcher
     # reads it as Python reads the pyvenv.cfg beside its interpreter (PEP
@@ -217,12 +218,12 @@ module Fledge
         File.write(File.join(contents, CONFIG), launch_config)
         copy_app(contents)
         @files.each { |entry| add(contents, entry) }
+        tools = runtime.tools
         launcher = runtime.launcher(launcher_name)
-        bundle ? bundle.finish(launcher) : place_launcher(launcher)
+        bundle ? bundle.finish(launcher) : place_launcher(launcher, tools)
         Archive.pack(folder, to: archive)
-        kit = runtime.kit
         @installers = Installers.formats(@app, @platform).map do |format|
-          Installers.write(format, app: @app, folder:, kit:, makensis: @makensis)
+          Installers.write(format, app: @app, folder:, tools:, makensis: @makensis)
         end
       end
       archive
@@ -232,11 +233,12 @@ module Fledge
     end
 
     # Places the launcher as the app's program: on Windows with the app's
-    # resources in it; on Linux, after a windowed app's desktop entry.
-    private def place_launcher(launcher)
+    # resources in it, which the rcedit in +tools+ writes; on Linux, after
+    # a windowed app's desktop entry.
+    private def place_launcher(launcher, tools)
       program = File.join(folder, @platform.executable(@app.name))
       FileUtils.mv(launcher, program)
-      File.binwrite(program, windows_program(File.binread(program), File.basename(program))) if @platform.windows?
+      WindowsResources.apply(program, identity: @app.identity, tools:) if @platform.windows?
       DesktopEntry.new(@app.identity).entries.each { |entry| add(folder, entry) } if @platform.os == "linux" && @app.identity.windowed?
     end
 
@@ -252,12 +254,6 @@ module Fledge
       end
 
       entry.write_into(root)
-    end
-
-    private def windows_program(content, executable)
-      WindowsResources.apply(content, identity: @app.identity, file_name: executable)
-    rescue Error => e
-      raise Error, "the runtime's #{@platform.executable(launcher_name)} #{e.message}"
     end
 
     # The runtime's launcher for this app: the windowed one on Windows for

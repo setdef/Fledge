@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Bundle
+    class Selection
+      @definition: Bundler::Definition
+      @lockfile_name: String
+      @platform: Platform
+      @ruby_version: String
+      @target: Gem::Platform
+
+      def initialize: (Bundler::Definition definition, lockfile_name: String, platform: Platform, ruby_version: String, target: Gem::Platform) -> void
+
+      def specs: () -> Array[Bundler::LazySpecification]
+
+      private def best: (Hash[String, Array[Bundler::LazySpecification]] lookup, String name, bool force_ruby) -> Bundler::LazySpecification
+
+      private def ships?: (Bundler::Dependency dependency) -> bool
+
+      private def on_platform?: (String name) -> bool
+    end
+  end
+end

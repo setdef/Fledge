@@ -9,6 +9,8 @@ require "shellwords"
 require_relative "error"
 require_relative "git_gem"
 require_relative "locked_gem"
+require_relative "bundle/selection"
+require_relative "bundle/sources"
 
 module Fledge
   # What an app's Gemfile and Gemfile.lock say it ships, for each
@@ -217,7 +219,8 @@ module Fledge
       target = Gem::Platform.new(arch)
       check_ruby(ruby_version)
       check_locked(platform, target)
-      chosen(platform, ruby_version, target).filter_map { |spec| locked_gem(spec, platform) }.sort_by(&:name)
+      specs = Selection.new(@definition, lockfile_name:, platform:, ruby_version:, target:).specs
+      specs.filter_map { |spec| sources.gem_for(spec, platform) }.sort_by(&:name)
     end
 
     private def check_ruby(ruby_version)
@@ -244,129 +247,6 @@ module Fledge
       #++
 
       raise Error, "#{lockfile_name} locks no gems for #{platform}. Run bundle lock --add-platform #{platform}, then build again."
-    end
-
-    # The locked specifications the app's dependencies reach on
-    # +platform+, each the one Bundler would choose there.
-    private def chosen(platform, ruby_version, target)
-      lookup = @definition.locked_gems.specs.group_by(&:name)
-      queue = @definition.dependencies.select { |dependency| ships?(dependency, platform, ruby_version) }
-        .map { |dependency| [dependency.name, dependency.force_ruby_platform || false] } # : Array[[String, bool]]
-      seen = {} # : Hash[String, bool]
-      specs = [] # : Array[Bundler::LazySpecification]
-      while (name, force_ruby = queue.shift)
-        next if seen[name] || name == "bundler"
-
-        seen[name] = true
-        spec = best(lookup, name, target, force_ruby, platform)
-        specs << spec
-        spec.dependencies.each { |dependency| queue << [dependency.name, false] unless dependency.type == :development }
-      end
-      specs
-    end
-
-    private def best(lookup, name, target, force_ruby, platform)
-      candidates = lookup[name] or raise Error, "#{lockfile_name} locks no #{name}. Run bundle lock, then build again."
-      Bundler::MatchPlatform.select_best_platform_match(candidates, target, force_ruby:).first or
-        raise Error, "#{lockfile_name} locks no build of #{name} for #{platform}, only for " \
-          "#{candidates.map { |spec| spec.platform.to_s }.sort.join(', ')}. If #{name} has one, run bundle lock " \
-          "--add-platform #{platform}, then build again."
-    end
-
-    # Whether the dependency is one Bundler sets up on +platform+, outside
-    # WITHOUT's groups.
-    private def ships?(dependency, platform, ruby_version)
-      return false if (dependency.groups - WITHOUT).empty?
-      return false unless dependency.should_include && dependency.current_env?
-
-      dependency.platforms.empty? || dependency.platforms.any? { |name| on_platform?(name.to_s, platform, ruby_version) }
-    end
-
-    # Whether a Gemfile's <tt>platforms:</tt> name holds on +platform+,
-    # as Bundler::CurrentRuby answers it on that platform's runtime, a
-    # CRuby: +windows+ (and its old names +mswin+, +mingw+, and
-    # +x64_mingw+) on Windows, +ruby+ and +mri+ everywhere else, never
-    # +jruby+ or +truffleruby+, each with an optional Ruby version, such
-    # as +mri_40+.
-    private def on_platform?(name, platform, ruby_version)
-      base, digits = name.match(/\A(.+?)(?:_(\d+))?\z/)&.captures
-      holds = case base
-              when "windows", "mswin", "mswin64", "mingw", "x64_mingw" then platform.windows?
-              when "ruby", "mri" then !platform.windows?
-              else false
-      end
-      holds && (digits.nil? || ruby_version.start_with?("#{digits.to_s.chars.join('.')}."))
-    end
-
-    private def locked_gem(spec, platform)
-      source = spec.source
-      case source
-      when Bundler::Source::Rubygems then rubygem(spec, source, platform)
-      when Bundler::Source::Git then git_gem(spec, source)
-      when Bundler::Source::Path then own_gem(spec, source)
-      else raise Error, "#{lockfile_name} takes #{spec.name} from #{source}, and Fledge ships only gems from a gem server or from the project."
-      end
-    end
-
-    private def rubygem(spec, source, platform)
-      platform_name = spec.platform.to_s
-      lock_name = (platform_name == "ruby") ? "#{spec.name} (#{spec.version})" : "#{spec.name} (#{spec.version}-#{platform_name})"
-      sha256 = @checksums[lock_name] or
-        raise Error, "#{lockfile_name} has no checksum for #{lock_name}, which #{platform} needs, and Fledge checks every gem " \
-          "it ships. Run bundle lock --add-checksums, then build again."
-      LockedGem.new(name: spec.name, version: spec.version.to_s, platform: platform_name, remote: source.remotes.first.to_s, sha256:)
-    end
-
-    # A gem from git, at the revision the lockfile locks, which must be a
-    # whole commit: SHA-1's 40 hexadecimal digits, or SHA-256's 64.
-    private def git_gem(spec, source)
-      revision = source.options["revision"].to_s
-      unless revision.match?(/\A(?:\h{40}|\h{64})\z/)
-        raise Error, "#{lockfile_name} takes #{spec.name} from #{source.uri} without pinning it to a commit (its revision is " \
-          "#{revision.inspect}), and Fledge ships a git gem only at the full commit the lockfile locks. Run bundle lock, then build again."
-      end
-      if source.submodules
-        raise Error, "#{lockfile_name} takes #{spec.name} from #{source.uri} with its submodules, which Fledge does not fetch yet. " \
-          "Release it to a gem server, or take it from git without submodules."
-      end
-
-      ref = %w[tag branch ref].filter_map { |kind| (value = source.options[kind]) && "#{kind} #{value}" }.first
-      GitGem.new(name: spec.name, version: spec.version.to_s, uri: source.uri.to_s, revision:, glob: source.glob.to_s, ref:)
-    end
-
-    # A gem from a folder (the project's own gemspec, or a path gem), which
-    # ships as part of the project when the folder is inside it, unless
-    # its gemspec has an extension to compile: Bundler compiles no path
-    # gem's extension (Bundler::Source::Path#install generates its
-    # executables with extensions disabled), so what bundle exec loads is
-    # what the developer last compiled there, for their own Ruby.
-    private def own_gem(spec, source)
-      folder = File.expand_path(source.path.to_s, @app.root)
-      if inside_project?(folder)
-        if path_gemspec(folder, spec.name)&.extensions&.any?
-          raise Error, "#{lockfile_name} takes #{spec.name} from #{folder}, a folder inside the project, and its gemspec has an " \
-            "extension to compile, which Bundler does not compile for a path gem (bundle exec loads whatever was last compiled " \
-            "there, for your own Ruby). Take it from git or a gem server, so Fledge can compile it for the runtime's Ruby."
-        end
-        return nil
-      end
-
-      raise Error, "#{lockfile_name} takes #{spec.name} from #{folder}, outside the project, and Fledge ships only what is " \
-        "inside #{@app.root}. Move it into the project, or take it from a gem server."
-    end
-
-    # The gemspec named +name+ in the path gem folder +folder+, as Bundler
-    # finds and evaluates it, or +nil+.
-    private def path_gemspec(folder, name)
-      Dir.glob(GEMSPECS, base: folder).each do |file|
-        spec = Bundler.load_gemspec(File.join(folder, file))
-        return spec if spec&.name == name
-      end
-      nil
-    end
-
-    private def inside_project?(folder)
-      folder == @app.root || folder.start_with?("#{@app.root}/")
     end
 
     # What the built app's +app+ folder holds in place of the project's
@@ -397,13 +277,11 @@ module Fledge
     end
 
     private def own_folders
-      @definition.locked_gems.specs.filter_map do |spec|
-        source = spec.source
-        next unless source.is_a?(Bundler::Source::Path)
+      @definition.locked_gems.specs.filter_map { |spec| sources.own_folder(spec) }.uniq
+    end
 
-        folder = File.expand_path(source.path.to_s, @app.root)
-        folder if inside_project?(folder)
-      end.uniq
+    private def sources
+      @sources ||= Sources.new(root: @app.root, lockfile_name:, checksums: @checksums)
     end
   end
 end

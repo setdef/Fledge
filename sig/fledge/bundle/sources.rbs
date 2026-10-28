@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Bundle
+    class Sources
+      @root: String
+      @lockfile_name: String
+      @checksums: Hash[String, String]
+
+      def initialize: (root: String, lockfile_name: String, checksums: Hash[String, String]) -> void
+
+      def gem_for: (Bundler::LazySpecification spec, Platform platform) -> (LockedGem | GitGem)?
+
+      private def rubygem: (Bundler::LazySpecification spec, Bundler::Source::Rubygems source, Platform platform) -> LockedGem
+
+      private def git_gem: (Bundler::LazySpecification spec, Bundler::Source::Git source) -> GitGem
+
+      private def own_gem: (Bundler::LazySpecification spec, Bundler::Source::Path source) -> nil
+
+      private def path_gemspec: (String folder, String name) -> Gem::Specification?
+
+      def own_folder: (Bundler::LazySpecification spec) -> String?
+
+      private def inside_project?: (String folder) -> bool
+    end
+  end
+end

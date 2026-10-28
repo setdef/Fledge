@@ -16,6 +16,7 @@ require_relative "../lib/fledge/cli"
 require_relative "parity/difference"
 require_relative "parity/justification"
 require_relative "parity/reports"
+require_relative "parity/mobile"
 
 # The parity check (ADR 003 and ADR 005): an app's Ruby code must see the
 # same Ruby under Fledge as it does run as its developer runs it.
@@ -111,7 +112,7 @@ class Parity
         "Ruby's own default and bundled gems."),
     Justification.new(fact: "requireable", reference: [RV_RUBY_EXTRAS], reason: "As for gems."),
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/defaults/operating_system\.rb"\z}],
-      platforms: %w[arm64-darwin x86_64-linux aarch64-linux],
+      platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", *MOBILE],
       reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems (ADR 001, section 8); " \
         "rv-ruby ships no such file."),
     Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt],
@@ -123,6 +124,7 @@ class Parity
         "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
         "encodings its messages use. Ruby loads an encoding when code first needs it, so an app " \
         "that uses one finds it either way."),
+    *MOBILE_JUSTIFIED,
   ].freeze
 
   attr_reader :platform

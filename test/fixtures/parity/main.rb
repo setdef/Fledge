@@ -58,10 +58,13 @@ def bundler_child_ruby(method, code)
 end
 
 # The child's ENV as a Hash, through +start+, a method that runs code in
-# a child Ruby, or nil when it ran none.
+# a child Ruby, or nil when it ran none, or what went wrong when no child
+# could start, as on a phone, where an app starts no programs.
 def child_env(start, *)
   output = method(start).call(*, "require 'json'; print JSON.generate(ENV.to_h)")
   output && JSON.parse(output)
+rescue JSON::ParserError
+  output
 end
 
 # The features each gem's own files provide, so a gem named io-console

@@ -1,0 +1,26 @@
+// SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// The Android host app of CI's mobile parity check
+// (tasks/mobile_parity/android.rb), and no part of a runtime. The check
+// names the Android Gradle plugin's pinned version (-Pfledge.agp), the
+// runtime's FledgeRuby.aar (-Pfledge.aar), and the folder holding the
+// app's one asset, fledge.zip, with the runtime's lib/ and libexec/ and
+// the scripts in app/ (-Pfledge.assets).
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    plugins {
+        id 'com.android.application' version providers.gradleProperty('fledge.agp').get()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = 'FledgeParity'

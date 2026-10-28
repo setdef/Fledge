@@ -7,6 +7,7 @@
 
 require "digest"
 require_relative "error"
+require_relative "ad_hoc_signature/program"
 
 module Fledge
   # Signs a macOS program ad hoc, binding it to the bundle it is in.
@@ -131,41 +132,10 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def sign(program)
-      program = program.b
-      raise Error, "is not a 64-bit Mach-O program; Fledge signs only those" unless program.byteslice(0, 4).to_s.unpack1("V") == MAGIC_64
-
-      commands = load_commands(program)
-      signature = commands.fetch(LC_CODE_SIGNATURE) { raise Error, "has no code signature to replace" }.first
-      text = segment(program, commands, "__TEXT")
-      linkedit = segment(program, commands, "__LINKEDIT")
-      limit = u32(program, signature + 8)
-      raise Error, "has a code signature that is not at the end of __LINKEDIT" unless limit + u32(program, signature + 12) <= program.bytesize
-
-      size = signature_size(limit)
-      code = program.byteslice(0, limit).to_s
-      code.bytesplice(signature + 12, 4, [size].pack("V"))
-      linkedit_size = limit + size - u64(code, linkedit + 40)
-      code.bytesplice(linkedit + 32, 8, [align(linkedit_size, SEGMENT_ALIGNMENT)].pack("Q<"))
-      code.bytesplice(linkedit + 48, 8, [linkedit_size].pack("Q<"))
-      code + superblob(code, u64(code, text + 40), u64(code, text + 48)).ljust(size, "\0")
-    end
-
-    # The load commands of +program+ by command, each the offsets of those
-    # with that command.
-    private def load_commands(program)
-      count = u32(program, 16)
-      at = 32
-      commands = Hash.new { |hash, key| hash[key] = [] } # : Hash[Integer, Array[Integer]]
-      count.times do
-        commands[u32(program, at)] << at
-        at += u32(program, at + 4)
-      end
-      commands
-    end
-
-    private def segment(program, commands, name)
-      commands.fetch(LC_SEGMENT_64, []).find { |at| program.byteslice(at + 8, 16).to_s.delete("\0") == name } or
-        raise Error, "has no #{name} segment"
+      program = Program.new(program.b)
+      size = signature_size(program.limit)
+      code, text_offset, text_size = program.resized(size)
+      code + superblob(code, text_offset, text_size).ljust(size, "\0")
     end
 
     private def signature_size(limit)
@@ -199,14 +169,6 @@ module Fledge
 
     private def requirements
       [REQUIREMENTS, 12, 0].pack("N3")
-    end
-
-    private def u32(bytes, at)
-      bytes.byteslice(at, 4).to_s.unpack1("V").to_i
-    end
-
-    private def u64(bytes, at)
-      bytes.byteslice(at, 8).to_s.unpack1("Q<").to_i
     end
 
     private def align(value, alignment)

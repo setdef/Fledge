@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class AdHocSignature
+    class Program
+      @bytes: String
+      @signature: Integer
+      @text: Integer
+      @linkedit: Integer
+
+      def initialize: (String bytes) -> void
+
+      def limit: () -> Integer
+
+      def resized: (Integer size) -> [String, Integer, Integer]
+
+      private def load_commands: () -> Hash[Integer, Array[Integer]]
+
+      private def segment: (Hash[Integer, Array[Integer]] commands, String name) -> Integer
+
+      private def u32: (String bytes, Integer at) -> Integer
+
+      private def u64: (String bytes, Integer at) -> Integer
+
+      private def align: (Integer value, Integer alignment) -> Integer
+    end
+  end
+end

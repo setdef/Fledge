@@ -13,6 +13,9 @@ require "stringio"
 require "yaml"
 require_relative "runtime_builder"
 require_relative "../lib/fledge/cli"
+require_relative "parity/difference"
+require_relative "parity/justification"
+require_relative "parity/reports"
 
 # The parity check (ADR 003 and ADR 005): an app's Ruby code must see the
 # same Ruby under Fledge as it does run as its developer runs it.
@@ -43,26 +46,6 @@ class Parity
   # The gem-shaped app whose exe/my_cool_app the probe stands in for.
   GEM_APP = File.join(ROOT, "examples", "my_cool_app")
   ARGUMENTS = ["one", "two words", "ünïcödé"].freeze
-
-  # One difference parity allows, and why. +reference+ and +app+ are
-  # patterns: an element found only in the reference run is justified
-  # when it matches one of +reference+, and one found only in the app
-  # when it matches one of +app+. +platforms+, when given, limits it to
-  # those platforms, and +checks+ to the script check (:script, against
-  # ruby main.rb) or the gem-shaped one (:bundle, against bundle exec).
-  class Justification < Data.define(:fact, :reference, :app, :reason, :platforms, :checks)
-    def self.new(fact:, reason:, reference: [], app: [], platforms: nil, checks: %i[script bundle])
-      super
-    end
-
-    def applies?(fact_name, platform, check)
-      fact == fact_name && (platforms.nil? || platforms.include?(platform)) && checks.include?(check)
-    end
-
-    def explains?(element, side)
-      ((side == :reference) ? reference : app).any? { |pattern| pattern.match?(element) }
-    end
-  end
 
   # rv-ruby installs two gems a standard Ruby 4.0.9 does not, which a
   # runtime prunes (RuntimeBuilder::Pruning.prune).
@@ -142,93 +125,6 @@ class Parity
         "that uses one finds it either way."),
   ].freeze
 
-  # A fact that differs between the two runs, and the justifications
-  # that explain every element of the difference, or none.
-  class Difference < Data.define(:fact, :only_in_reference, :only_in_app, :justifications)
-    def justified?
-      !justifications.empty?
-    end
-
-    def to_s
-      lines = ["#{justified? ? 'justified' : 'DIFFERENT'}: #{fact}"]
-      only_in_reference.each { |element| lines << "    reference only: #{element}" }
-      only_in_app.each { |element| lines << "    built app only: #{element}" }
-      lines << "    order differs" if only_in_reference.empty? && only_in_app.empty?
-      justifications.each { |justification| lines << "    why: #{justification.reason}" }
-      lines.join("\n")
-    end
-  end
-
-  # The JSON report in a probe's standard output.
-  def self.report(output)
-    line = output.lines.reverse.find { |candidate| candidate.start_with?("FLEDGE-PARITY ") }
-    raise "the probe printed no report:\n#{output}" unless line
-
-    JSON.parse(line.delete_prefix("FLEDGE-PARITY "))
-  end
-
-  # +report+ with every path it names relative to a placeholder: <app>
-  # (the probe's own folder), <project> (its project's root, when that is
-  # another), <prefix>, <home>, and <work> (+work+), with backslashes as
-  # slashes.
-  def self.normalize(report, work:)
-    paths = report.fetch("paths")
-    tokens = { paths.fetch("project", paths.fetch("app")) => "<project>" }
-    tokens[paths.fetch("app")] = "<app>"
-    tokens.merge!(paths.fetch("prefix") => "<prefix>", paths.fetch("home") => "<home>", work => "<work>")
-    replacements = tokens.flat_map { |path, token| variants(path).map { |variant| [variant, token] } }.sort_by { |path, _| -path.size }
-    rewrite(report.except("paths"), replacements)
-  end
-
-  def self.variants(path)
-    [path, path.tr("\\", "/"), File.realpath(path).tr("\\", "/")].uniq
-  rescue SystemCallError
-    [path, path.tr("\\", "/")].uniq
-  end
-
-  def self.rewrite(value, replacements)
-    case value
-    when String then replacements.reduce(value.tr("\\", "/")) { |text, (path, token)| text.gsub(path.tr("\\", "/"), token) }
-    when Array then value.map { |element| rewrite(element, replacements) }
-    when Hash then value.to_h { |key, element| [rewrite(key, replacements), rewrite(element, replacements)] }
-    else value
-    end
-  end
-
-  # A fact as a list of strings to compare: each element of an Array, in
-  # order, each KEY=VALUE of a Hash, sorted, or the one value of anything
-  # else. A Hash's order is how the environment happened to be built (the
-  # launcher puts the person's variables back after Ruby boots, and
-  # Bundler adds its own), not something Ruby promises an app.
-  def self.elements(value)
-    case value
-    when Array then value.map { |element| JSON.generate(element) }
-    when Hash then value.map { |key, element| "#{JSON.generate(key)}=#{JSON.generate(element)}" }.sort
-    else [JSON.generate(value)]
-    end
-  end
-
-  # The facts that differ between two normalized reports, for the script
-  # check or, with +check+ :bundle, the gem-shaped one. A difference is
-  # justified when every element found on one side only is explained by
-  # some justification for that fact, and the elements both sides share
-  # come in the same order.
-  def self.compare(reference, app, platform:, check: :script)
-    (reference.keys | app.keys).filter_map do |fact|
-      expected = elements(reference[fact])
-      actual = elements(app[fact])
-      next if expected == actual
-
-      only_in_reference = expected - actual
-      only_in_app = actual - expected
-      applicable = JUSTIFIED.select { |candidate| candidate.applies?(fact, platform, check) }
-      used = only_in_reference.map { |element| applicable.find { |candidate| candidate.explains?(element, :reference) } } +
-        only_in_app.map { |element| applicable.find { |candidate| candidate.explains?(element, :app) } }
-      justified = !used.empty? && used.none?(&:nil?) && (expected - only_in_reference) == (actual - only_in_app)
-      Difference.new(fact:, only_in_reference:, only_in_app:, justifications: justified ? used.compact.uniq : [])
-    end
-  end
-
   attr_reader :platform
 
   def initialize(platform: Fledge::Platform.local, work: File.join(ROOT, "tmp", "parity"),
@@ -268,7 +164,7 @@ class Parity
     launcher = build_app(File.join(project, "exe", "my_cool_app"), "MyCoolApp")
     expected = run([@ruby, bundle, "exec", @ruby, "exe/my_cool_app", *ARGUMENTS], reference, env)
     actual = run([launcher, *ARGUMENTS], File.join(File.dirname(launcher), "app"), env)
-    differences = Parity.compare(Parity.normalize(expected, work: @work), Parity.normalize(actual, work: @work),
+    differences = Reports.compare(Reports.normalize(expected, work: @work), Reports.normalize(actual, work: @work),
       platform: platform.name, check: :bundle)
     report(" of a gem-shaped app with bundle exec", env, differences)
     differences.all?(&:justified?)
@@ -300,7 +196,7 @@ class Parity
     reference, app = with_code_page(code_page) do
       [run([@ruby, "main.rb", *ARGUMENTS], @reference_app, env), run([@launcher, *ARGUMENTS], File.join(File.dirname(@launcher), "app"), env)]
     end
-    differences = Parity.compare(Parity.normalize(reference, work: @work), Parity.normalize(app, work: @work), platform: platform.name)
+    differences = Reports.compare(Reports.normalize(reference, work: @work), Reports.normalize(app, work: @work), platform: platform.name)
     report(label, env, differences)
     differences.all?(&:justified?)
   end
@@ -354,7 +250,7 @@ class Parity
     out, err, status = Open3.capture3(env, *command, chdir:, unsetenv_others: true)
     raise "#{command.join(' ')} failed (#{status}):\n#{out}\n#{err}" unless status.success?
 
-    Parity.report(out)
+    Reports.report(out)
   end
 
   # Builds +path+ (default: the probe) with fledge build into the work

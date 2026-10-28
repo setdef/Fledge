@@ -19,12 +19,12 @@ class ParityTest < Minitest::Test
   def test_the_report_is_the_last_marked_line_of_output
     output = "noise\nFLEDGE-PARITY {\"a\":1}\nmore noise\nFLEDGE-PARITY {\"a\":2}\n"
 
-    assert_equal({ "a" => 2 }, Parity.report(output))
-    assert_raises(RuntimeError) { Parity.report("no report\n") }
+    assert_equal({ "a" => 2 }, Parity::Reports.report(output))
+    assert_raises(RuntimeError) { Parity::Reports.report("no report\n") }
   end
 
   def test_normalize_replaces_the_longest_paths_first_and_backslashes
-    normalized = Parity.normalize(report("$0": "/w/app/main.rb", "Gem.path": ["/w/ruby/lib", "C:\\w\\x"],
+    normalized = Parity::Reports.normalize(report("$0": "/w/app/main.rb", "Gem.path": ["/w/ruby/lib", "C:\\w\\x"],
       ENV: { "GEM_HOME" => "/tmp/work/gems" }), work: "/tmp/work")
 
     assert_equal "<app>/main.rb", normalized.fetch("$0")
@@ -36,11 +36,11 @@ class ParityTest < Minitest::Test
   def test_equal_reports_have_no_differences
     facts = { "ARGV" => ["one"], "ENV" => { "A" => "1" }, "$stdout.sync" => false }
 
-    assert_empty Parity.compare(facts, facts, platform: "x86_64-linux")
+    assert_empty Parity::Reports.compare(facts, facts, platform: "x86_64-linux")
   end
 
   def test_a_listed_difference_is_justified_and_says_why
-    differences = Parity.compare({ "$0" => "main.rb" }, { "$0" => "<app>/main.rb" }, platform: "x86_64-linux")
+    differences = Parity::Reports.compare({ "$0" => "main.rb" }, { "$0" => "<app>/main.rb" }, platform: "x86_64-linux")
 
     assert_equal 1, differences.size
     assert_predicate differences.first, :justified?
@@ -48,7 +48,7 @@ class ParityTest < Minitest::Test
   end
 
   def test_an_unlisted_difference_is_not_justified
-    differences = Parity.compare({ "ENV" => { "A" => "1" } }, { "ENV" => { "A" => "2" } }, platform: "x86_64-linux")
+    differences = Parity::Reports.compare({ "ENV" => { "A" => "1" } }, { "ENV" => { "A" => "2" } }, platform: "x86_64-linux")
 
     refute_predicate differences.first, :justified?
     assert_equal "DIFFERENT: ENV\n    reference only: \"A\"=\"1\"\n    built app only: \"A\"=\"2\"", differences.first.to_s
@@ -59,9 +59,9 @@ class ParityTest < Minitest::Test
   def test_a_justification_does_not_cover_other_elements_of_its_fact
     reference = { "gems" => ["bootsnap 1.24.6", "csv 3.3.5", "json 2.18.0 (default)"] }
 
-    assert_predicate Parity.compare(reference, { "gems" => ["csv 3.3.5", "json 2.18.0 (default)"] }, platform: "arm64-darwin").first,
+    assert_predicate Parity::Reports.compare(reference, { "gems" => ["csv 3.3.5", "json 2.18.0 (default)"] }, platform: "arm64-darwin").first,
       :justified?
-    refute_predicate Parity.compare(reference, { "gems" => ["json 2.18.0 (default)"] }, platform: "arm64-darwin").first, :justified?
+    refute_predicate Parity::Reports.compare(reference, { "gems" => ["json 2.18.0 (default)"] }, platform: "arm64-darwin").first, :justified?
   end
 
   # rv-ruby has no RubyGems defaults file, so on macOS and Linux only the
@@ -73,14 +73,14 @@ class ParityTest < Minitest::Test
     installer = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/4.0.0/ruby_installer/runtime.rb"] }
     none = { "$LOADED_FEATURES" => [] }
 
-    assert_predicate Parity.compare(none, defaults, platform: "x86_64-linux").first, :justified?
-    refute_predicate Parity.compare(none, defaults, platform: "x64-mingw-ucrt").first, :justified?
-    assert_predicate Parity.compare(installer, none, platform: "x64-mingw-ucrt").first, :justified?
-    refute_predicate Parity.compare(installer, none, platform: "x86_64-linux").first, :justified?
+    assert_predicate Parity::Reports.compare(none, defaults, platform: "x86_64-linux").first, :justified?
+    refute_predicate Parity::Reports.compare(none, defaults, platform: "x64-mingw-ucrt").first, :justified?
+    assert_predicate Parity::Reports.compare(installer, none, platform: "x64-mingw-ucrt").first, :justified?
+    refute_predicate Parity::Reports.compare(installer, none, platform: "x86_64-linux").first, :justified?
   end
 
   def test_the_same_elements_in_another_order_differ
-    difference = Parity.compare({ "$LOAD_PATH" => %w[a b] }, { "$LOAD_PATH" => %w[b a] }, platform: "x86_64-linux").first
+    difference = Parity::Reports.compare({ "$LOAD_PATH" => %w[a b] }, { "$LOAD_PATH" => %w[b a] }, platform: "x86_64-linux").first
 
     refute_predicate difference, :justified?
     assert_includes difference.to_s, "order differs"
@@ -96,7 +96,7 @@ class ParityTest < Minitest::Test
     out, err, status = probe("a b")
 
     assert_predicate status, :success?, err
-    facts = Parity.report(out)
+    facts = Parity::Reports.report(out)
     assert_equal ["a b"], facts.fetch("ARGV")
     assert_equal "42", facts.fetch("RbConfig.ruby runs")
     assert_equal "loads", facts.fetch("requireable").fetch("csv")
@@ -150,33 +150,33 @@ class ParityTest < Minitest::Test
 ],
 }
 
-    difference = Parity.compare(reference, app, platform: "arm64-darwin", check: :bundle).first
+    difference = Parity::Reports.compare(reference, app, platform: "arm64-darwin", check: :bundle).first
 
     assert_predicate difference, :justified?
     assert_equal 3, difference.justifications.size
-    refute_predicate Parity.compare(reference, app, platform: "arm64-darwin").first, :justified?, "the bundle check's only"
+    refute_predicate Parity::Reports.compare(reference, app, platform: "arm64-darwin").first, :justified?, "the bundle check's only"
   end
 
   def test_the_gem_shaped_check_has_its_own_names_for_the_program
     reference = { "$0" => "exe/my_cool_app" }
 
-    assert_predicate Parity.compare(reference, { "$0" => "<app>/my_cool_app" }, platform: "x86_64-linux", check: :bundle).first,
+    assert_predicate Parity::Reports.compare(reference, { "$0" => "<app>/my_cool_app" }, platform: "x86_64-linux", check: :bundle).first,
       :justified?
-    refute_predicate Parity.compare(reference, { "$0" => "<app>/my_cool_app" }, platform: "x86_64-linux").first, :justified?
+    refute_predicate Parity::Reports.compare(reference, { "$0" => "<app>/my_cool_app" }, platform: "x86_64-linux").first, :justified?
   end
 
   # ENV's order is how the environment was built, not something Ruby
   # promises an app; Arrays keep their order.
   def test_a_hashs_order_does_not_count_and_an_arrays_does
-    assert_empty Parity.compare({ "ENV" => { "A" => "1", "B" => "2" } }, { "ENV" => { "B" => "2", "A" => "1" } }, platform: "x86_64-linux")
+    assert_empty Parity::Reports.compare({ "ENV" => { "A" => "1", "B" => "2" } }, { "ENV" => { "B" => "2", "A" => "1" } }, platform: "x86_64-linux")
 
-    difference = Parity.compare({ "$LOAD_PATH" => %w[a b] }, { "$LOAD_PATH" => %w[b a] }, platform: "x86_64-linux").first
+    difference = Parity::Reports.compare({ "$LOAD_PATH" => %w[a b] }, { "$LOAD_PATH" => %w[b a] }, platform: "x86_64-linux").first
     refute_predicate difference, :justified?
     assert_includes difference.to_s, "order differs"
   end
 
   def test_normalize_names_the_project_apart_from_the_programs_folder
-    normalized = Parity.normalize(report("$LOAD_PATH": ["/w/project/lib"], "$0": "/w/project/exe/app").tap do |facts|
+    normalized = Parity::Reports.normalize(report("$LOAD_PATH": ["/w/project/lib"], "$0": "/w/project/exe/app").tap do |facts|
       facts["paths"] = { "app" => "/w/project/exe", "project" => "/w/project", "prefix" => "/w/ruby", "home" => "/w/home" }
     end, work: "/tmp/work")
 

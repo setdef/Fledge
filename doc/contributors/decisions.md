@@ -199,3 +199,11 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: whether setdef should get an Apple Developer account, and real devices or a device cloud, which the mobile spike (branch `spike/mobile`, `spike/mobile/FINDINGS.txt`) needs for testing on a real device and for App Store submission; until then testing stays on simulators and emulators. Asked whether to record this, the maintainer said: "Yes, record it in decisions.md."]
 
 *Governs:* agents proceed without an Apple Developer account, and raise it in `questions.md` at the last responsible moment: when a story cannot be done without one. *Applied in:* Plan 002, which marks the stories that reach that moment.
+
+> Code is a liability and we should _not_ have 4k+ lines of things we could use existing tools for.
+
+> We already have to have target-environment-platform machines to compile on, right? If so, what value does cross-platform non-compilation building add?
+
+[re: the orchestrator's report that agents had written about 4,500 lines of Ruby for file formats existing tools handle (a DMG writer, PNG and icon codecs, Windows resource editing, Apple ad-hoc signing, ZIP and tar, SquashFS) and a libfuse shim with a patched AppImage runtime, so that one computer could build every platform, which the maintainer had never asked for. The orchestrator answered that target machines are needed only to compile gems from source, that cross-building adds little because developers need each platform to test and sign on anyway and Tauri, Electron's tooling, and Briefcase build on each OS, and recommended building each target on its own OS with that OS's maintained tools, switching NSIS to LZMA with NSIS's source published, and using the upstream AppImage runtime with its LGPL sources published. The maintainer accepted that recommendation.]
+
+*Governs:* Fledge builds each target on its own OS and uses maintained existing tools rather than code of its own wherever such tools exist; it does not build one platform's app on another. *Applied in:* AGENTS.md, How to work; the story that replaces Fledge's own format writers.

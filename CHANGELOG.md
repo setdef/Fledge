@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.5] - 2026-10-28
+
 ### Removed
 
 - `fledge build` no longer judges an app's gems by their licenses, which are the app developer's to decide: a GPL, AGPL, MPL, or LGPL gem, a gem whose license is unknown, and one that declares none all ship, and an LGPL gem no longer needs its source pinned.
@@ -87,7 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.4...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.5...HEAD
+[0.0.1.pre.5]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.5
 [0.0.1.pre.4]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.4
 [0.0.1.pre.3]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.3
 [0.0.1.pre.2]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.2

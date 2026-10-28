@@ -9,6 +9,7 @@ require "fileutils"
 require_relative "desktop_entry"
 require_relative "entry"
 require_relative "error"
+require_relative "installers"
 require_relative "mac_bundle"
 require_relative "platform"
 require_relative "tar_gz"
@@ -31,8 +32,11 @@ module Fledge
   # (Fledge::DesktopEntry). It is written twice: as
   # <tt>OUT/NAME-PLATFORM/</tt>, to try, and as
   # <tt>OUT/NAME-PLATFORM.tar.gz</tt> (<tt>.zip</tt> for Windows), to
-  # ship. Unpacking the runtime and packing the folder again would lose
-  # the launcher's executable bit on a disk that has none.
+  # ship; and a windowed app's installers (Fledge::Installers) are
+  # written beside them, from the same entries, with the installer files
+  # the runtime keeps in its +installer+ folder, which no app holds.
+  # Unpacking the runtime and packing the folder again would lose the
+  # launcher's executable bit on a disk that has none.
   #
   # This class streams each runtime entry, then CONFIG, each of the app's
   # entries, and the files the build adds (the app's gems), into the
@@ -74,6 +78,10 @@ module Fledge
     # +rubyw.exe+ beside +ruby.exe+.
     WINDOWED_LAUNCHER = "launcherw"
 
+    # The runtime's folder of what installers need and apps do not: the
+    # AppImage runtime in a Linux runtime, and NSIS in a Windows one.
+    INSTALLER = "installer"
+
     # The file beside the launcher that says what it runs. The launcher
     # reads it as Python reads the pyvenv.cfg beside its interpreter (PEP
     # 405): lines of <tt>key = value</tt>.
@@ -90,16 +98,39 @@ module Fledge
     #             beside the rest.
     # [files] More entries for the built folder, with paths relative to
     #         it, which may not replace anything the runtime holds.
-    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [])
+    # [makensis] The NSIS compiler, for a Windows app's NSIS installer, or
+    #            +nil+ when there is none to build.
+    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], makensis: nil)
       @app = app
       @platform = platform
       @runtime = runtime
       @out = out
       @app_files = app_files
       @files = files
+      @makensis = makensis
       @placed = {} # : Hash[String, bool]
       @bundle = nil # : MacBundle?
+      @writers = [] # : Array[Dmg | Nsis | AppImage]
+      @kit = {} # : Hash[String, Entry]
+      @installers = [] # : Array[String]
     end
+
+    # The paths of the installers #call wrote, after it has run, such as
+    # <tt>OUT/NAME-PLATFORM.dmg</tt>; empty for an app that has none.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   assembly.call
+    #   assembly.installers # => ["/path/to/dist/Hello Window-x86_64-linux.AppImage"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    attr_reader :installers
 
     # The built app's folder and archive name: <tt>NAME-PLATFORM</tt>.
     #
@@ -180,8 +211,12 @@ module Fledge
     private def build
       remove_output
       FileUtils.mkdir_p(folder)
+      mtime = Time.now.to_i
       @bundle = (@platform.os == "darwin" && @app.identity.windowed?) ? MacBundle.new(@app.identity) : nil
-      @platform.archive_format.write(archive) do |writer|
+      @writers = Installers.formats(@app, @platform).map do |format|
+        Installers.writer(format, app: @app, folder:, makensis: @makensis, mtime:)
+      end
+      path = @platform.archive_format.write(archive, mtime:) do |writer|
         writer.add(Entry.directory(base_name))
         launcher = copy_runtime(writer)
         add(writer, Entry.file(CONFIG, launch_config))
@@ -189,7 +224,10 @@ module Fledge
         @files.each { |entry| add(writer, entry) }
         finish(writer, launcher)
       end
+      @installers = @writers.map { |installer| installer.finish(@kit) }
+      path
     rescue
+      @writers.each(&:abort)
       remove_output
       raise
     end
@@ -235,9 +273,11 @@ module Fledge
     private def remove_output
       FileUtils.rm_rf(folder)
       FileUtils.rm_f(archive)
+      FileUtils.rm_f(Installers::SUFFIX.keys.map { |format| Installers.file_name(format, folder) })
     end
 
-    # Copies every entry of the runtime but its launchers, and returns the
+    # Copies every entry of the runtime but its launchers and its
+    # installer files, which it keeps for the installers, and returns the
     # launcher this app runs.
     private def copy_runtime(writer)
       launcher = @platform.executable(launcher_name)
@@ -252,6 +292,8 @@ module Fledge
 
         found = entry if rest == launcher
         next if launchers.include?(rest)
+        next @kit[rest.delete_prefix("#{INSTALLER}/")] = entry if rest.start_with?("#{INSTALLER}/") && entry.type == :file
+        next if rest == INSTALLER || rest.start_with?("#{INSTALLER}/")
 
         add(writer, entry.with(path: runtime_path(rest)))
       end
@@ -312,6 +354,7 @@ module Fledge
       writer.add(entry.with(path: "#{base_name}/#{entry.path}"))
       @placed[entry.path] = true
       @bundle&.seal(entry)
+      @writers.each { |installer| installer.add(entry) }
     end
   end
 end

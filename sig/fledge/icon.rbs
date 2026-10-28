@@ -26,6 +26,8 @@ module Fledge
 
     def windows_images: () -> Array[[Integer, String]]
 
+    def ico: () -> String
+
     def self.bitmap: (Png image) -> String
 
     def self.shrink: (Png image, Integer size) -> Png

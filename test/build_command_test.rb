@@ -129,6 +129,30 @@ class BuildCommandTest < Minitest::Test
       "fledge-runtime-#{Fledge::VERSION}-aarch64-linux.tar.gz\n", err
   end
 
+  # A windowed app's installer (ADR 009) is printed after its archive.
+  def test_a_windowed_apps_installer_follows_its_archive
+    linux = Fledge::Platform.find("x86_64-linux")
+    FakeRuntime.write(@runtimes, linux, extra: [Fledge::Entry.file("installer/appimage-runtime", "\x7FELF", mode: 0o755)])
+    File.write(File.join(@app, "fledge.yml"), "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\n")
+
+    out, err, status = build("-t", "x86_64-linux", "hello")
+
+    assert_equal [0, ""], [status, err]
+    assert_equal "dist/Hello Window-x86_64-linux.tar.gz\ndist/Hello Window-x86_64-linux.AppImage\n", out
+  end
+
+  # An NSIS installer needs makensis for this computer, from where the
+  # runtimes come from; without one, the build says how to go on.
+  def test_an_nsis_installer_without_makensis_says_what_to_do
+    File.write(File.join(@app, "fledge.yml"), "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\n")
+
+    _, err, status = build("-t", "x64-mingw-ucrt", "hello")
+
+    assert_equal 1, status
+    assert_equal "fledge build: FLEDGE_RUNTIME_DIR is #{@runtimes}, which has no fledge-makensis-#{Fledge::VERSION}-x86_64-linux.tar.gz\n" \
+      "fledge build: An NSIS installer needs makensis for this computer; set installers in fledge.yml to build without one.\n", err
+  end
+
   def test_the_callers_arguments_are_left_unchanged
     argv = %w[-t x86_64-linux hello].freeze
 

@@ -5,6 +5,7 @@ module Fledge
   class Assembly
     LAUNCHER: String
     WINDOWED_LAUNCHER: String
+    INSTALLER: String
     CONFIG: String
 
     @app: App
@@ -15,8 +16,14 @@ module Fledge
     @files: Array[Entry]
     @placed: Hash[String, bool]
     @bundle: MacBundle?
+    @makensis: String?
+    @writers: Array[Installers::writer]
+    @kit: Hash[String, Entry]
+    @installers: Array[String]
 
-    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry]) -> void
+    attr_reader installers: Array[String]
+
+    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?makensis: String?) -> void
 
     def base_name: () -> String
 

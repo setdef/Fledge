@@ -96,6 +96,24 @@ class IconTest < Minitest::Test
 ], found
   end
 
+  # An .ico (Microsoft's "Icons"): an ICONDIR of type 1, then an entry for
+  # each image, whose width and height are 0 for 256, saying how long it
+  # is and where, then the images themselves.
+  def test_writes_an_ico_of_the_windows_images
+    ico = icon.ico
+    images = icon.windows_images
+
+    assert_equal [0, 1, images.size], ico.unpack("vvv")
+    offset = 6 + (16 * images.size)
+    images.each_with_index do |(size, data), index|
+      width, height, colors, _, planes, bits, length, at = ico.byteslice(6 + (16 * index), 16).unpack("CCCCvvVV")
+      assert_equal [size % 256, size % 256, 0, 1, 32, data.bytesize, offset], [width, height, colors, planes, bits, length, at]
+      assert_equal data, ico.byteslice(at, length)
+      offset += length
+    end
+    assert_equal offset, ico.bytesize
+  end
+
   # A Windows icon's images: 32-bit bitmaps, bottom row first, in BGRA,
   # with an all-zero AND mask, and a PNG at 256.
   def test_writes_windows_icon_images

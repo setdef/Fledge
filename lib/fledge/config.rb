@@ -49,7 +49,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -80,14 +80,23 @@ module Fledge
     # :attr_reader: copyright
     # The app's copyright notice, or +nil+ for none.
 
+    ##
+    # :attr_reader: installers
+    # The installers to build, from INSTALLERS, or +nil+ for every one a
+    # windowed app's targets have (ADR 009).
+
     # The file's name, in the project's root.
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright installers].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, and copyright"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, and installers"
+
+    # The installers a windowed app may have: a disk image for macOS, an
+    # NSIS setup program for Windows, and an AppImage for Linux.
+    INSTALLERS = %w[dmg nsis appimage].freeze
 
     # The kinds of app (ADR 001, section 5): one that runs in a terminal,
     # and one that opens its own windows and shows none.
@@ -115,7 +124,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.none
-      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil)
+      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, installers: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -159,8 +168,30 @@ module Fledge
         version: version(data, path),
         icon: text(data, "icon", path, "icon.png"),
         publisher: text(data, "publisher", path, "Example, Inc."),
-        copyright: text(data, "copyright", path, "\"Copyright 2026 Example, Inc.\"")
+        copyright: text(data, "copyright", path, "\"Copyright 2026 Example, Inc.\""),
+        installers: installers(data, path)
       )
+    end
+
+    # The installers to build: a list of INSTALLERS, which may be empty,
+    # and only for a windowed app, since a console app gets none (ADR
+    # 009).
+    private_class_method def self.installers(data, path) # :nodoc:
+      value = data["installers"]
+      return nil if value.nil?
+
+      known = INSTALLERS.join(", ")
+      unless value.is_a?(Array) && value.all? { |item| item.is_a?(String) }
+        raise Error, "#{path}: installers must be a list of #{known}, such as installers: [dmg, nsis, appimage], or [] for none"
+      end
+
+      unknown = value - INSTALLERS
+      raise Error, "#{path}: installers has #{unknown.join(', ')}, which Fledge does not build. It builds #{known}." unless unknown.empty?
+      if !value.empty? && data["kind"] != "windowed"
+        raise Error, "#{path}: only a windowed app has installers; a console app ships as its archive, so leave out installers"
+      end
+
+      value.uniq
     end
 
     private_class_method def self.text(data, key, path, example) # :nodoc:

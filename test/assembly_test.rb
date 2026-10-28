@@ -6,6 +6,7 @@
 #++
 
 require_relative "test_helper"
+require_relative "support/disk_images"
 require_relative "support/gems"
 require_relative "support/zip_reader"
 
@@ -14,11 +15,13 @@ class AssemblyTest < Minitest::Test
   MACOS = Fledge::Platform.find("arm64-darwin")
   WINDOWS = Fledge::Platform.find("x64-mingw-ucrt")
 
-  # A windowed app with an icon, whose name has a space.
+  # A windowed app with an icon, whose name has a space, and, unless
+  # +installers+ says otherwise, no installers.
   module WindowedApp
-    def self.write(dir)
+    def self.write(dir, installers: "[]")
       root = FakeApp.write(dir, "window")
-      File.write(File.join(root, "fledge.yml"), "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\nicon: icon.png\n")
+      File.write(File.join(root, "fledge.yml"),
+        "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\nicon: icon.png\n#{"installers: #{installers}\n" if installers}")
       File.binwrite(File.join(root, "icon.png"), ICON)
       root
     end
@@ -41,10 +44,13 @@ class AssemblyTest < Minitest::Test
     lib/ruby/stdlib.rb
   ].freeze
 
-  def assemble(dir, app_root, platform: LINUX, runtime: FakeRuntime.write(dir, platform), app_files: {}, files: [])
+  def assemble(dir, app_root, platform: LINUX, runtime: FakeRuntime.write(dir, platform), app_files: {}, files: [], makensis: nil)
     out = File.join(dir, "dist")
-    Fledge::Assembly.new(app: Fledge::App.at(app_root), platform:, runtime:, out:, app_files:, files:).call
+    Fledge::Assembly.new(app: Fledge::App.at(app_root), platform:, runtime:, out:, app_files:, files:, makensis:).call
   end
+
+  # What a runtime keeps for installers, in its installer folder.
+  APPIMAGE_RUNTIME = Fledge::Entry.file("installer/appimage-runtime", "\x7FELF runtime".b, mode: 0o755)
 
   def entries(archive)
     found = {}
@@ -223,6 +229,60 @@ class AssemblyTest < Minitest::Test
       assert_includes File.read(File.join(folder, "com.example.HelloWindow.desktop")), "Exec=\"Hello Window\"\n"
       assert_path_exists File.join(folder, "share/icons/hicolor/512x512/apps/com.example.HelloWindow.png")
       assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Hello Window"))
+    end
+  end
+
+  # A windowed app gets its platform's installer by default (ADR 009),
+  # written beside its archive from the same entries and the runtime's
+  # installer folder, which neither the folder nor the archive holds.
+  def test_a_windowed_linux_app_gets_an_appimage_from_the_runtimes_installer_folder
+    Dir.mktmpdir do |dir|
+      runtime = FakeRuntime.write(dir, LINUX, extra: [Fledge::Entry.directory("installer"), APPIMAGE_RUNTIME])
+      app = Fledge::App.at(WindowedApp.write(dir, installers: nil))
+      assembly = Fledge::Assembly.new(app:, platform: LINUX, runtime:, out: File.join(dir, "dist"))
+      archive = assembly.call
+
+      image = File.join(dir, "dist", "Hello Window-x86_64-linux.AppImage")
+      assert_equal [image], assembly.installers
+      assert_equal APPIMAGE_RUNTIME.content, File.binread(image, APPIMAGE_RUNTIME.content.bytesize)
+      refute_path_exists File.join(dir, "dist", "Hello Window-x86_64-linux", "installer")
+      assert(entries(archive).keys.none? { |path| path.include?("installer") })
+    end
+  end
+
+  def test_a_windowed_macos_app_gets_a_disk_image_of_its_bundle
+    Dir.mktmpdir do |dir|
+      runtime = FakeRuntime.write(dir, MACOS, launcher: Programs.macho)
+      app = Fledge::App.at(WindowedApp.write(dir, installers: nil))
+      assembly = Fledge::Assembly.new(app:, platform: MACOS, runtime:, out: File.join(dir, "dist"))
+      assembly.call
+
+      image = File.join(dir, "dist", "Hello Window-arm64-darwin.dmg")
+      assert_equal [image], assembly.installers
+      hfs = DiskImages::Hfs.new(DiskImages.udif(image)[:volume])
+      bundle = File.join(dir, "dist", "Hello Window-arm64-darwin", "Hello Window.app", "Contents")
+      assert_equal File.binread(File.join(bundle, "MacOS", "Hello Window")), hfs.items.fetch("Hello Window.app/Contents/MacOS/Hello Window")[:content]
+      assert_equal File.read(File.join(bundle, "_CodeSignature", "CodeResources")),
+        hfs.items.fetch("Hello Window.app/Contents/_CodeSignature/CodeResources")[:content]
+      assert_equal "/Applications", hfs.items.fetch("Applications")[:content]
+    end
+  end
+
+  def test_an_nsis_installer_without_makensis_fails_and_leaves_nothing
+    Dir.mktmpdir do |dir|
+      error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir, installers: "[nsis]"), platform: WINDOWS) }
+
+      assert_includes error.message, "an NSIS installer needs makensis"
+      assert_empty Dir.glob(File.join(dir, "dist", "*"))
+    end
+  end
+
+  def test_a_build_without_the_runtimes_installer_files_fails_and_leaves_nothing
+    Dir.mktmpdir do |dir|
+      error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir, installers: nil)) }
+
+      assert_includes error.message, "the runtime has no installer/appimage-runtime"
+      assert_empty Dir.glob(File.join(dir, "dist", "*"))
     end
   end
 

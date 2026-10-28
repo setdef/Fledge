@@ -36,19 +36,28 @@ class ConfigTest < Minitest::Test
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon.png", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc."), config
+      icon: "art/icon.png", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
+  end
+
+  # A windowed app lists the installers it wants (ADR 009), once each, or
+  # none; without the key it gets every one.
+  def test_reads_the_installers_a_windowed_app_wants
+    assert_equal %w[dmg appimage], load("kind: windowed\ninstallers: [dmg, appimage, dmg]\n").installers
+    assert_equal [], load("kind: windowed\ninstallers: []\n").installers
+    assert_equal [], load("installers: []\n").installers
+    assert_nil load("kind: windowed\n").installers
   end
 
   # Fledge takes no position on an app's gems' licenses (2026-10-28; ADR
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, and copyright."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, and installers."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, and copyright\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, and installers\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -64,6 +73,9 @@ class ConfigTest < Minitest::Test
       "icon: 3\n" => /: icon must be text, such as icon: icon\.png\z/,
       "publisher: [a]\n" => /: publisher must be text/,
       "copyright: true\n" => /: copyright must be text/,
+      "kind: windowed\ninstallers: dmg\n" => /: installers must be a list of dmg, nsis, appimage, such as installers: \[dmg, nsis, appimage\], or \[\] for none\z/,
+      "kind: windowed\ninstallers: [msi]\n" => /: installers has msi, which Fledge does not build\. It builds dmg, nsis, appimage\.\z/,
+      "installers: [dmg]\n" => /: only a windowed app has installers; a console app ships as its archive/,
     }.each do |yaml, message|
       error = assert_raises(Fledge::Error, yaml) { load(yaml) }
       assert_match message, error.message, yaml

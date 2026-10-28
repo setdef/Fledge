@@ -7,6 +7,7 @@ module Fledge
     KEYS: Array[String]
     KNOWN: String
     KINDS: Array[String]
+    INSTALLERS: Array[String]
     IDENTIFIER: Regexp
     IDENTIFIER_MAX: Integer
 
@@ -17,8 +18,9 @@ module Fledge
     attr_reader icon: String?
     attr_reader publisher: String?
     attr_reader copyright: String?
+    attr_reader installers: Array[String]?
 
-    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?) -> instance
 
     def self.none: () -> Config
 
@@ -35,5 +37,7 @@ module Fledge
     private def self.identifier: (Hash[Object, Object] data, String path) -> String?
 
     private def self.version: (Hash[Object, Object] data, String path) -> String?
+
+    private def self.installers: (Hash[Object, Object] data, String path) -> Array[String]?
   end
 end

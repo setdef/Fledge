@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module Udif
+    type chunk = [Integer, Integer, Integer, Integer, Integer]
+
+    SECTOR: Integer
+    CHUNK: Integer
+    ZERO: Integer
+    RAW: Integer
+    ZLIB: Integer
+    TERMINATOR: Integer
+    CRC32: Integer
+
+    def self.write: (IO volume, to: String, partition: String) -> String
+
+    private def self.write_chunks: (IO volume, IO out) -> [Array[chunk], Integer, Integer]
+
+    private def self.blkx: (Array[chunk] chunks, Integer crc, Integer sectors) -> String
+
+    private def self.checksum: (Integer crc) -> String
+
+    private def self.trailer: (Integer data_length, Integer xml_length, Integer crc, Integer sectors, String digest) -> String
+  end
+end

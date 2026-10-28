@@ -1,0 +1,92 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Squashfs
+    type data = [Integer, Array[Integer], Integer?, Integer, Integer]
+
+    BLOCK_SIZE: Integer
+    METADATA: Integer
+    MAGIC: Integer
+    GZIP: Integer
+    NO_XATTRS: Integer
+    UNCOMPRESSED: Integer
+    METADATA_UNCOMPRESSED: Integer
+    DIRECTORY: Integer
+    FILE: Integer
+    SYMLINK: Integer
+    EXTENDED_DIRECTORY: Integer
+    NONE: Integer
+    RUN: Integer
+    NAME_MAX: Integer
+    SUPERBLOCK: Integer
+
+    class Node
+      attr_reader entry: Entry
+      attr_reader children: Hash[String, Node]
+      attr_reader data: data?
+      attr_accessor number: Integer
+      attr_accessor reference: Integer
+
+      def initialize: (Entry entry, ?data? data) -> void
+    end
+
+    class Metadata
+      @disk: String
+      @pending: String
+
+      def initialize: () -> void
+
+      def position: () -> [Integer, Integer]
+
+      def reference: () -> Integer
+
+      def <<: (String bytes) -> self
+
+      def bytes: () -> String
+
+      private def flush: (String block) -> void
+    end
+
+    @io: IO
+    @base: Integer
+    @mtime: Integer
+    @root: Node
+    @fragments: Array[[Integer, Integer]]
+    @fragment: String
+
+    def initialize: (IO io, ?mtime: Integer) -> void
+
+    def add: (Entry entry) -> void
+
+    def finish: () -> Integer
+
+    private def child_folder: (Node node, String name, String path) -> Node
+
+    private def write_file: (String bytes) -> data
+
+    private def write_block: (String block) -> Integer
+
+    private def flush_fragment: () -> void
+
+    private def post_order: (Node node, Node? parent) -> Array[[Node, Node?]]
+
+    private def write_inode: (Node node, Metadata inodes, Metadata directories, Node? parent) -> void
+
+    private def write_directory: (Node node, Metadata inodes, Metadata directories, Node? parent, Integer permissions) -> void
+
+    private def listing: (Node node) -> String
+
+    private def block_of: (Node node) -> Integer
+
+    private def run_bytes: (Array[[String, Node]] run) -> String
+
+    private def header: (Integer type, Integer permissions, Node node) -> String
+
+    private def write_tables: (String inodes, String directories) -> Hash[Symbol, Integer]
+
+    private def lookup_table: (Array[String] records) -> Integer
+
+    private def superblock: (Integer count, Integer used, Hash[Symbol, Integer] tables) -> String
+  end
+end

@@ -10,6 +10,7 @@ module Fledge
       @err: CLI::_Output
       @env: Runtimes::_Env
       @host: Gem::Platform
+      @makensis: String?
 
       def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?host: Gem::Platform) -> void
 
@@ -18,6 +19,8 @@ module Fledge
       private def build: (App app, Array[Platform] platforms, String out) -> void
 
       private def gems_for: (App app, Runtimes runtimes, String work) -> AppGems?
+
+      private def makensis: (Runtimes runtimes) -> String
 
       private def compiler: (Runtimes runtimes, String work) -> NativeBuild?
 

@@ -13,6 +13,7 @@ require_relative "../bundle"
 require_relative "../error"
 require_relative "../gem_fetcher"
 require_relative "../git_checkout"
+require_relative "../installers"
 require_relative "../native_build"
 require_relative "../platform"
 require_relative "../runtime_contents"
@@ -34,7 +35,8 @@ module Fledge
     # Fledge::AppGems), compiling those that need it when the target is
     # the platform it runs on (Fledge::NativeBuild) in a work folder it
     # removes afterwards, builds each with Fledge::Assembly, and prints the
-    # path of each archive it wrote, one per line. A failed build becomes
+    # path of each archive and installer (Fledge::Installers) it wrote, one
+    # per line, an installer after its archive. A failed build becomes
     # lines beginning <tt>fledge build:</tt> on the error stream and exit
     # status 1; a mistake in its arguments raises Fledge::UsageError,
     # which Fledge::CLI turns into the usage and exit status 2.
@@ -113,8 +115,9 @@ module Fledge
           platforms.each do |platform|
             runtime = runtimes.archive(platform)
             files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
-            archive = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:).call
-            @out.puts File.join(out, File.basename(archive))
+            makensis = Installers.formats(app, platform).include?("nsis") ? makensis(runtimes) : nil
+            assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, makensis:)
+            [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
           end
         end
       end
@@ -130,6 +133,14 @@ module Fledge
         fetcher = GemFetcher.new(cache: File.join(cache, "gems"), project: app.root, log: @err)
         checkouts = GitCheckout.new(cache: File.join(cache, "git"), work:, log: @err)
         AppGems.new(app:, bundle: Bundle.new(app), fetcher:, checkouts:, compiler: compiler(runtimes, work))
+      end
+
+      # The NSIS compiler for this computer, which Fledge downloads beside
+      # its runtimes (Runtimes#makensis).
+      private def makensis(runtimes)
+        @makensis ||= runtimes.makensis(Platform.local(@host))
+      rescue Error => e
+        raise Error, "#{e.message}\nAn NSIS installer needs makensis for this computer; set installers in fledge.yml to build without one."
       end
 
       private def compiler(runtimes, work)

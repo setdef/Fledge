@@ -42,16 +42,21 @@
 #     signed ad hoc, a program Windows starts without a console, and a
 #     folder with a desktop entry and icons on Linux. Every app carries
 #     the name, version, publisher, and icon fledge.yml gives, where
-#     each system shows them, on Windows in the program itself.
+#     each system shows them, on Windows in the program itself. A
+#     windowed app gets an installer beside each archive, too: a disk
+#     image for macOS, a setup program for Windows, which makes the
+#     Start menu shortcut Windows needs before it shows the app's
+#     notifications, and an AppImage for Linux.
 #
 # COMMANDS
 #     build              Copy the program PATH (default: the current
 #                        directory) and its project into a runtime for
 #                        each target, with the gems it needs, then
-#                        archive each result. Prints the path of each
-#                        archive it writes, one per line. A folder
-#                        means the one executable its gemspec names,
-#                        or else its main.rb.
+#                        archive each result, and for a windowed app
+#                        write its installers. Prints the path of each
+#                        archive and installer it writes, one per line.
+#                        A folder means the one executable its gemspec
+#                        names, or else its main.rb.
 #
 # OPTIONS
 #     -t, --target PLATFORM
@@ -105,6 +110,9 @@
 #                        publisher: who makes it (default: the
 #                          gemspec's authors)
 #                        copyright: such as "© 2026 Example, Inc."
+#                        installers: which of dmg, nsis, and appimage a
+#                          windowed app gets, such as [dmg] or [] for
+#                          none (default: all three)
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        NAME is the gemspec's name, or else ROOT's
 #                        folder name, camelized (my_cool_app is
@@ -124,13 +132,30 @@
 #     DIR/NAME-PLATFORM.tar.gz
 #                        The same folder, archived for download: a .zip
 #                        for Windows, a .tar.gz for macOS and Linux.
+#     DIR/NAME-arm64-darwin.dmg
+#                        A windowed app's disk image: NAME.app and a
+#                        link to Applications, to drag it onto.
+#     DIR/NAME-x64-mingw-ucrt-setup.exe
+#                        A windowed app's NSIS installer, which installs
+#                        for the person who runs it, with no
+#                        administrator, into %LOCALAPPDATA%\Programs,
+#                        makes a Start menu shortcut whose
+#                        AppUserModelID is the identifier, offers a
+#                        desktop shortcut, and registers an uninstaller.
+#                        /S installs silently.
+#     DIR/NAME-PLATFORM.AppImage
+#                        A windowed app's AppImage for Linux, which runs
+#                        from its own FUSE mount, or, on a computer with
+#                        no FUSE, extracts itself and runs
+#                        (APPIMAGE_EXTRACT_AND_RUN=1 asks for that).
 #     ~/.cache/fledge/runtimes/
 #                        Runtimes downloaded from Fledge's GitHub
 #                        Release for this version, each checked
-#                        against the release's SHA256SUMS, and, to
-#                        compile gems, each one's build-only companion
-#                        of Ruby's headers and libraries, which never
-#                        ships in an app.
+#                        against the release's SHA256SUMS; to compile
+#                        gems, each one's build-only companion of Ruby's
+#                        headers and libraries; and, for an NSIS
+#                        installer, NSIS's makensis for this computer;
+#                        none of which ships in an app.
 #     ~/.cache/fledge/gems/
 #                        Gems downloaded from the lockfile's gem
 #                        server, each checked against the lockfile's
@@ -143,8 +168,9 @@
 # ENVIRONMENT
 #     FLEDGE_RUNTIME_DIR Take runtimes from this folder of
 #                        fledge-runtime-VERSION-PLATFORM.tar.gz files
-#                        (and their -dev.tar.gz companions), and never
-#                        download them.
+#                        (and their -dev.tar.gz companions, and
+#                        fledge-makensis-VERSION-PLATFORM.tar.gz), and
+#                        never download them.
 #     XDG_CACHE_HOME     Keep downloaded runtimes and gems in
 #                        $XDG_CACHE_HOME/fledge instead.
 #

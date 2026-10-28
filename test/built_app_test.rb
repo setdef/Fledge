@@ -7,6 +7,7 @@
 
 require_relative "test_helper"
 require_relative "../tasks/parity"
+require_relative "support/disk_images"
 require "json"
 require "open3"
 require "stringio"
@@ -301,6 +302,54 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # examples/windowed_app's installer (ADR 009), built beside its archive
+  # from this computer's runtime: on macOS a disk image that hdiutil
+  # verifies and attaches, whose bundle codesign verifies, strictly and
+  # deeply, inside it, and runs from it; on Linux an AppImage that runs,
+  # extracting itself where there is no FUSE, and that --appimage-extract
+  # unpacks into an AppDir; on Windows a setup program, which Delivery
+  # installs (.github/scripts/deliver-installer.ps1). On Windows the
+  # build needs makensis for Windows in the runtime folder too, as CI's
+  # has it (rake "makensis[x64-mingw-ucrt]").
+  def test_the_windowed_apps_installer_holds_the_app_and_runs_it
+    Dir.mktmpdir do |dir|
+      out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(dir, "cache") }, RbConfig.ruby,
+        "-I", LIB, EXE, "build", "-o", File.join(dir, "dist"), WINDOWED_APP)
+      assert_predicate status, :success?, err
+      installer = File.expand_path(out.lines.fetch(1).chomp, Dir.pwd)
+      report = File.join(dir, "report.json")
+      facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app" }
+      case @platform.os
+      when "darwin"
+        assert_equal "Hello Window-arm64-darwin.dmg", File.basename(installer)
+        verified, status = Open3.capture2e("hdiutil", "verify", installer)
+        assert_predicate status, :success?, verified
+        DiskImages.mounted(installer) do |mount|
+          bundle = File.join(mount, "Hello Window.app")
+          signed, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", "--verbose=2", bundle)
+          assert_predicate status, :success?, signed
+          assert_equal "/Applications", File.readlink(File.join(mount, "Applications"))
+          _, err, status = run_app({ "HOME" => dir }, File.join(bundle, "Contents", "MacOS", "Hello Window"), report, "3")
+          assert_equal ["", 3], [err, status.exitstatus]
+        end
+      when "linux"
+        assert_equal "Hello Window-#{@platform}.AppImage", File.basename(installer)
+        _, err, status = run_app({ "HOME" => dir, "APPIMAGE_EXTRACT_AND_RUN" => "1", "TMPDIR" => dir }, installer, report, "3")
+        assert_equal ["", 3], [err, status.exitstatus]
+        extracted, status = Open3.capture2e(installer, "--appimage-extract", chdir: dir)
+        assert_predicate status, :success?, extracted
+        root = File.join(dir, "squashfs-root")
+        assert_equal "Hello Window", File.readlink(File.join(root, "AppRun"))
+        assert_path_exists File.join(root, "com.setdef.fledge.HelloWindow.desktop")
+        assert_equal "com.setdef.fledge.HelloWindow.png", File.readlink(File.join(root, ".DirIcon"))
+      else
+        assert_equal "Hello Window-x64-mingw-ucrt-setup.exe", File.basename(installer)
+        assert_equal "MZ", File.binread(installer, 2)
+      end
+      assert_equal facts, JSON.parse(File.read(report)).slice(*facts.keys) unless @platform.windows?
+    end
+  end
+
   # Builds the app in +source+ through the fledge executable, as a person
   # would, and unpacks its archive under a path with spaces and characters
   # outside ASCII. Returns the launcher's path. +name+ is the app's name,
@@ -310,7 +359,7 @@ class BuiltAppTest < Minitest::Test
     out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
       "-o", File.join(dir, "dist"), source)
     assert_predicate status, :success?, err
-    archive = File.expand_path(out.chomp, Dir.pwd)
+    archive = File.expand_path(out.lines.first.to_s.chomp, Dir.pwd)
 
     place = File.join(dir, "My Apps", "Ünïcödé 日本")
     FileUtils.mkdir_p(place)

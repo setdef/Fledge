@@ -202,6 +202,32 @@ module Fledge
       WINDOWS.map { |size| [size, (size >= 256) ? png(size) : Icon.bitmap(image(size))] }
     end
 
+    # The icon as an <tt>.ico</tt> file, which an NSIS installer takes for
+    # its own icon: an ICONDIR, an ICONDIRENTRY for each of
+    # #windows_images, and the images after them (Microsoft's "Icons").
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   File.binwrite("MyCoolApp.ico", icon.ico)
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def ico
+      images = windows_images
+      offset = 6 + (16 * images.size)
+      entries = images.map do |size, data|
+        entry = [size % 256, size % 256, 0, 0, 1, 32, data.bytesize, offset].pack("CCCCvvVV")
+        offset += data.bytesize
+        entry
+      end
+      [0, 1, images.size].pack("vvv") + entries.join + images.map(&:last).join
+    end
+
     # +image+ as the bitmap of an icon image: a BITMAPINFOHEADER whose
     # height counts the AND mask's rows too, the pixels as BGRA from the
     # bottom row up, and an AND mask of zeros, since the alpha channel

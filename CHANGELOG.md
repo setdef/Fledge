@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Installers for windowed apps, each built beside its archive from any computer: `NAME-arm64-darwin.dmg`, a disk image of the app's bundle with a link to Applications, which hdiutil verifies and whose bundle stays signed; `NAME-x64-mingw-ucrt-setup.exe`, an NSIS installer that installs for the person who runs it, with no administrator, into `%LOCALAPPDATA%\Programs\NAME`, makes a Start menu shortcut carrying the app's identifier as its AppUserModelID (so Windows shows the app's notifications), offers an unchecked desktop shortcut, registers an uninstaller, and installs silently with `/S`; and `NAME-PLATFORM.AppImage` for Linux, which runs from its own FUSE mount, or extracts itself and runs where there is no FUSE.
+- `fledge.yml` takes `installers`, a list of `dmg`, `nsis`, and `appimage`, or `[]`; a windowed app gets all three by default, and a console app none.
+- `fledge build` prints each installer's path after its archive's.
+
 ## [0.0.1.pre.6] - 2026-10-28
 
 ### Added

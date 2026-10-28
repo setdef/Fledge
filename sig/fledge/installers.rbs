@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module Installers
+    type writer = Dmg | Nsis | AppImage
+
+    OS: Hash[String, String]
+    SUFFIX: Hash[String, String]
+
+    def self.formats: (App app, Platform platform) -> Array[String]
+
+    def self.file_name: (String format, String base) -> String
+
+    def self.writer: (String format, app: App, folder: String, makensis: String?, ?mtime: Integer) -> writer
+  end
+end

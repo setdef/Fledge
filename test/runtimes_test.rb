@@ -24,6 +24,44 @@ class RuntimesTest < Minitest::Test
       Fledge::Runtimes.dev_file_name(Fledge::Platform.find("arm64-darwin"), version: "1.2.3")
   end
 
+  def test_makensis_is_named_for_the_computer_that_runs_it
+    assert_equal "fledge-makensis-1.2.3-aarch64-linux.tar.gz",
+      Fledge::Runtimes.makensis_file_name(Fledge::Platform.find("aarch64-linux"), version: "1.2.3")
+  end
+
+  # makensis comes from where the runtimes do, and runs from a folder it
+  # is unpacked into, once, beside the cache's runtimes.
+  def test_makensis_is_unpacked_once_from_where_the_runtimes_come_from
+    Dir.mktmpdir do |dir|
+      windows = Fledge::Platform.find("x64-mingw-ucrt")
+      top = "fledge-makensis-#{Fledge::VERSION}-x64-mingw-ucrt"
+      Fledge::TarGz.write(File.join(dir, "#{top}.tar.gz")) do |tar|
+        tar.add(Fledge::Entry.directory(top))
+        tar.add(Fledge::Entry.file("#{top}/makensis.exe", "MZ", mode: 0o755))
+        tar.add(Fledge::Entry.file("#{top}/zlib1.dll", "MZ"))
+      end
+      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "XDG_CACHE_HOME" => File.join(dir, "cache") })
+
+      program = runtimes.makensis(windows)
+      assert_equal File.join(dir, "cache/fledge/runtimes", top, "makensis.exe"), program
+      assert_equal "MZ", File.read(program)
+      assert_path_exists File.join(File.dirname(program), "zlib1.dll")
+      File.write(program, "kept")
+      assert_equal "kept", File.read(runtimes.makensis(windows))
+      error = assert_raises(Fledge::Error) { runtimes.makensis(LINUX) }
+      assert_includes error.message, "which has no fledge-makensis-#{Fledge::VERSION}-x86_64-linux.tar.gz"
+    end
+  end
+
+  def test_an_archive_that_is_not_makensis_is_refused
+    Dir.mktmpdir do |dir|
+      Fledge::TarGz.write(File.join(dir, Fledge::Runtimes.makensis_file_name(LINUX))) { |tar| tar.add(Fledge::Entry.file("other/makensis", "x")) }
+      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "XDG_CACHE_HOME" => File.join(dir, "cache") })
+
+      assert_match(/is not Fledge's makensis/, assert_raises(Fledge::Error) { runtimes.makensis(LINUX) }.message)
+    end
+  end
+
   # A gem compiled from source needs the runtime's C headers, which the
   # runtime itself prunes; they come from the same place it does.
   def test_the_build_only_companion_comes_from_where_the_runtime_does

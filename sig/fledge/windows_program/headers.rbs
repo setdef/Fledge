@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class WindowsProgram
+    class Headers
+      OPTIONAL_FIELDS: Hash[Symbol, Integer]
+
+      class Section < Data
+        attr_reader index: Integer
+        attr_reader name: String
+        attr_reader size: Integer
+        attr_reader address: Integer
+        attr_reader raw_size: Integer
+        attr_reader raw: Integer
+
+        def self.new: (index: Integer, name: String, size: Integer, address: Integer, raw_size: Integer, raw: Integer) -> instance
+      end
+
+      @bytes: String
+      @pe: Integer
+      @optional: Integer
+      @directories: Integer
+
+      attr_reader sections: Array[Section]
+
+      attr_reader directory_count: Integer
+
+      def initialize: (String bytes) -> void
+
+      def field: (Symbol name) -> Integer
+
+      def directory_offset: (Integer index) -> Integer
+
+      def directory: (Integer index) -> [Integer, Integer]
+
+      def section_offset: (Integer index) -> Integer
+
+      def u16: (Integer at) -> Integer
+
+      def u32: (Integer at) -> Integer
+
+      def pair: (Integer at) -> [Integer, Integer]
+
+      private def read_section: (Integer index) -> Section
+    end
+  end
+end

@@ -6,7 +6,9 @@
 #++
 
 require_relative "error"
+require_relative "windows_program/headers"
 require_relative "windows_program/resource_table"
+require_relative "windows_program/rewriter"
 
 module Fledge
   # A Windows program whose resources Fledge rewrites: the icon and
@@ -75,17 +77,6 @@ module Fledge
     # The Subsystem of a program Windows gives no console (a GUI program).
     GUI = 2
 
-    # Where the optional header keeps each field Fledge reads or writes,
-    # from its start (the PE specification's section 3.4).
-    OPTIONAL_FIELDS = {
-      initialized_data: 8,
-      section_alignment: 32,
-      file_alignment: 36,
-      image_size: 56,
-      checksum: 64,
-      subsystem: 68,
-    }.freeze
-
     # Reads the program in +bytes+. Raises Fledge::Error for anything that
     # is not a PE program.
     #
@@ -102,12 +93,7 @@ module Fledge
     #++
     def initialize(bytes)
       @bytes = bytes.b
-      raise Error, "is not a Windows program" unless @bytes.start_with?("MZ") && @bytes.bytesize >= 0x40
-
-      @pe = @bytes.byteslice(0x3C, 4).to_s.unpack1("V").to_i
-      raise Error, "is not a Windows program" unless @bytes.byteslice(@pe, 4) == "PE\0\0".b
-
-      read_headers
+      @headers = Headers.new(@bytes)
     end
 
     # The Subsystem field of the optional header: CONSOLE or GUI.
@@ -124,7 +110,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def subsystem
-      u16(field(:subsystem))
+      @headers.u16(@headers.field(:subsystem))
     end
 
     # Every resource, by its type, name, and language, each an Integer ID
@@ -150,7 +136,7 @@ module Fledge
       each_entry(section, 0) do |type, type_offset|
         each_entry(section, type_offset) do |name, name_offset|
           each_entry(section, name_offset) do |language, data_offset|
-            rva, size = pair(section.raw + data_offset)
+            rva, size = @headers.pair(section.raw + data_offset)
             found[[type, name, language]] = @bytes.byteslice(section.raw + rva - section.address, size).to_s
           end
         end
@@ -178,135 +164,13 @@ module Fledge
     def with_resources(resources)
       check_rewritable
       section = resource_section or raise Error, "has no resource section to rewrite"
-      later = @sections.select { |other| other.raw > section.raw }
+      later = @headers.sections.select { |other| other.raw > section.raw }
       unless later.all? { |other| other.name == ".reloc" }
         raise Error, "has sections after its resources (#{later.map(&:name).join(', ')}) that Fledge cannot move"
       end
 
       table = ResourceTable.new(resources).bytes(section.address)
-      rewrite(section, table, later)
-    end
-
-    # A section header: its index among the headers, name, virtual size
-    # and address, and the size and file offset of its raw data.
-    Section = Data.define(:index, :name, :size, :address, :raw_size, :raw) # :nodoc:
-
-    private def read_headers
-      @optional = @pe + 24
-      magic = u16(@optional)
-      raise Error, "is not a Windows program it can read (optional header magic 0x#{magic.to_s(16)})" unless [0x10B, 0x20B].include?(magic)
-
-      @directories = @optional + ((magic == 0x20B) ? 112 : 96)
-      @directory_count = u32(@directories - 4)
-      @sections = Array.new(u16(@pe + 6)) { |index| read_section(index) }
-    end
-
-    # Where the section headers begin, after the optional header.
-    private def section_table
-      @optional + u16(@pe + 20)
-    end
-
-    private def read_section(index)
-      at = section_table + (index * 40)
-      name = @bytes.byteslice(at, 8).to_s.delete("\0")
-      Section.new(index:, name:, size: u32(at + 8), address: u32(at + 12), raw_size: u32(at + 16), raw: u32(at + 20))
-    end
-
-    # Where the optional header keeps the field +name+.
-    private def field(name)
-      @optional + OPTIONAL_FIELDS.fetch(name)
-    end
-
-    private def directory(index)
-      return [0, 0] if index >= @directory_count
-
-      pair(@directories + (index * 8))
-    end
-
-    private def resource_section
-      rva, size = directory(RESOURCE_DIRECTORY)
-      return nil if rva.zero? || size.zero?
-
-      @sections.find { |section| section.address == rva } or raise Error, "has a resource directory that does not begin a section"
-    end
-
-    private def check_rewritable
-      raise Error, "is signed; its resources must change before it is signed, not after" unless directory(CERTIFICATE_DIRECTORY)[1].zero?
-
-      last = @sections.max_by { |section| section.raw + section.raw_size }
-      ends = last ? last.raw + last.raw_size : 0
-      raise Error, "has data after its last section, which Fledge cannot move" if @bytes.bytesize > ends
-    end
-
-    # Yields the ID or name of each entry of the resource directory at
-    # +offset+ in +section+, and the offset its entry points to.
-    private def each_entry(section, offset)
-      (u16(section.raw + offset + 12) + u16(section.raw + offset + 14)).times do |index|
-        name, target = pair(section.raw + offset + 16 + (index * 8))
-        key = name.anybits?(0x8000_0000) ? resource_name(section, name & 0x7FFF_FFFF) : name
-        yield key, target & 0x7FFF_FFFF
-      end
-    end
-
-    private def resource_name(section, offset)
-      length = u16(section.raw + offset)
-      @bytes.byteslice(section.raw + offset + 2, length * 2).to_s.force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)
-    end
-
-    # The program with +table+ as the raw data of +section+, and the
-    # sections in +later+ moved to follow it.
-    private def rewrite(section, table, later)
-      raw_size = align(table.bytesize, u32(field(:file_alignment)))
-      out = @bytes.byteslice(0, section.raw).to_s + table.ljust(raw_size, "\0")
-      write_section(out, section, size: table.bytesize, address: section.address, raw_size:, raw: section.raw)
-      write_directory(out, RESOURCE_DIRECTORY, section.address, table.bytesize)
-      image_size = append_moved(out, later, section.address + table.bytesize)
-      finish_headers(out, image_size, raw_size - section.raw_size)
-      out
-    end
-
-    # Appends the sections in +later+ to +out+, in file order, each at the
-    # next aligned virtual address after +address+, and returns the end of
-    # the last, aligned: the image's new size.
-    private def append_moved(out, later, address)
-      alignment = u32(field(:section_alignment))
-      address = align(address, alignment)
-      later.sort_by(&:raw).each do |moved|
-        raw = out.bytesize
-        out << @bytes.byteslice(moved.raw, moved.raw_size).to_s
-        move_directories(out, moved, address)
-        write_section(out, moved, size: moved.size, address:, raw_size: moved.raw_size, raw:)
-        address = align(address + moved.size, alignment)
-      end
-      address
-    end
-
-    # Writes the image's new size, its initialized data grown by +growth+
-    # bytes, and, when the program had one, its new checksum.
-    private def finish_headers(out, image_size, growth)
-      put32(out, field(:image_size), image_size)
-      put32(out, field(:initialized_data), u32(field(:initialized_data)) + growth)
-      checksum = field(:checksum)
-      put32(out, checksum, WindowsProgram.checksum(out, checksum)) unless u32(checksum).zero?
-    end
-
-    # Points every data directory inside +moved+ at its new +address+.
-    private def move_directories(out, moved, address)
-      @directory_count.times do |index|
-        rva, size = directory(index)
-        next unless rva >= moved.address && rva < moved.address + [moved.size, moved.raw_size].max
-
-        write_directory(out, index, rva - moved.address + address, size)
-      end
-    end
-
-    private def write_section(out, section, size:, address:, raw_size:, raw:)
-      at = section_table + (section.index * 40) + 8
-      out.bytesplice(at, 16, [size, address, raw_size, raw].pack("V4"))
-    end
-
-    private def write_directory(out, index, rva, size)
-      out.bytesplice(@directories + (index * 8), 8, [rva, size].pack("V2"))
+      Rewriter.new(@bytes, @headers).rewrite(section, table, later)
     end
 
     # The PE checksum of +bytes+, whose checksum field is at +field+: the
@@ -325,25 +189,35 @@ module Fledge
       sum + bytes.bytesize
     end
 
-    private def align(value, alignment)
-      ((value + alignment - 1) / alignment) * alignment
+    private def resource_section
+      rva, size = @headers.directory(RESOURCE_DIRECTORY)
+      return nil if rva.zero? || size.zero?
+
+      @headers.sections.find { |section| section.address == rva } or raise Error, "has a resource directory that does not begin a section"
     end
 
-    private def u16(at)
-      @bytes.byteslice(at, 2).to_s.unpack1("v").to_i
+    private def check_rewritable
+      raise Error, "is signed; its resources must change before it is signed, not after" unless @headers.directory(CERTIFICATE_DIRECTORY)[1].zero?
+
+      last = @headers.sections.max_by { |section| section.raw + section.raw_size }
+      ends = last ? last.raw + last.raw_size : 0
+      raise Error, "has data after its last section, which Fledge cannot move" if @bytes.bytesize > ends
     end
 
-    private def u32(at)
-      @bytes.byteslice(at, 4).to_s.unpack1("V").to_i
+    # Yields the ID or name of each entry of the resource directory at
+    # +offset+ in +section+, and the offset its entry points to.
+    private def each_entry(section, offset)
+      at = section.raw + offset
+      (@headers.u16(at + 12) + @headers.u16(at + 14)).times do |index|
+        name, target = @headers.pair(at + 16 + (index * 8))
+        key = name.anybits?(0x8000_0000) ? resource_name(section, name & 0x7FFF_FFFF) : name
+        yield key, target & 0x7FFF_FFFF
+      end
     end
 
-    # The two 32-bit values at +at+.
-    private def pair(at)
-      [u32(at), u32(at + 4)]
-    end
-
-    private def put32(out, at, value)
-      out.bytesplice(at, 4, [value].pack("V"))
+    private def resource_name(section, offset)
+      length = @headers.u16(section.raw + offset)
+      @bytes.byteslice(section.raw + offset + 2, length * 2).to_s.force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)
     end
   end
 end

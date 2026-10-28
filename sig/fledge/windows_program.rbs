@@ -15,14 +15,9 @@ module Fledge
     RELOCATION_DIRECTORY: Integer
     CONSOLE: Integer
     GUI: Integer
-    OPTIONAL_FIELDS: Hash[Symbol, Integer]
 
     @bytes: String
-    @pe: Integer
-    @optional: Integer
-    @directories: Integer
-    @directory_count: Integer
-    @sections: Array[Section]
+    @headers: Headers
 
     def initialize: (String bytes) -> void
 
@@ -32,57 +27,14 @@ module Fledge
 
     def with_resources: (Hash[resource, String] resources) -> String
 
-    class Section < Data
-      attr_reader index: Integer
-      attr_reader name: String
-      attr_reader size: Integer
-      attr_reader address: Integer
-      attr_reader raw_size: Integer
-      attr_reader raw: Integer
+    def self.checksum: (String bytes, Integer field) -> Integer
 
-      def self.new: (index: Integer, name: String, size: Integer, address: Integer, raw_size: Integer, raw: Integer) -> instance
-    end
-
-    private def read_headers: () -> void
-
-    private def section_table: () -> Integer
-
-    private def read_section: (Integer index) -> Section
-
-    private def field: (Symbol name) -> Integer
-
-    private def directory: (Integer index) -> [Integer, Integer]
-
-    private def resource_section: () -> Section?
+    private def resource_section: () -> Headers::Section?
 
     private def check_rewritable: () -> void
 
-    private def each_entry: (Section section, Integer offset) { (key, Integer) -> void } -> void
+    private def each_entry: (Headers::Section section, Integer offset) { (key, Integer) -> void } -> void
 
-    private def resource_name: (Section section, Integer offset) -> String
-
-    private def rewrite: (Section section, String table, Array[Section] later) -> String
-
-    private def append_moved: (String out, Array[Section] later, Integer address) -> Integer
-
-    private def finish_headers: (String out, Integer image_size, Integer growth) -> void
-
-    private def move_directories: (String out, Section moved, Integer address) -> void
-
-    private def write_section: (String out, Section section, size: Integer, address: Integer, raw_size: Integer, raw: Integer) -> void
-
-    private def write_directory: (String out, Integer index, Integer rva, Integer size) -> void
-
-    def self.checksum: (String bytes, Integer field) -> Integer
-
-    private def align: (Integer value, Integer alignment) -> Integer
-
-    private def u16: (Integer at) -> Integer
-
-    private def u32: (Integer at) -> Integer
-
-    private def pair: (Integer at) -> [Integer, Integer]
-
-    private def put32: (String out, Integer at, Integer value) -> void
+    private def resource_name: (Headers::Section section, Integer offset) -> String
   end
 end

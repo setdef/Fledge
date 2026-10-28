@@ -23,11 +23,14 @@ class MobileOutputTest < Minitest::Test
   # file the program is given, and a program that forwards its output and
   # then prints: a short line, an empty one, one of 2,500 bytes, one of
   # 999 ASCII bytes and 2-byte characters straddling the cut, and a line
-  # to standard error.
+  # to standard error; then it ends with exit(), which flushes every
+  # stdio stream while the forwarding threads wait on their pipes, as an
+  # app's would.
   PROGRAM = <<~C
     #include "fledge_ruby.h"
     #include "mobile.h"
     #include <stdio.h>
+    #include <stdlib.h>
     #include <string.h>
     #include <unistd.h>
 
@@ -54,11 +57,12 @@ class MobileOutputTest < Minitest::Test
         fputs("oops\\n", stderr);
         fflush(stdout);
         sleep(1);
-        return 0;
+        exit(0);
     }
   C
 
   def test_forwards_each_line_to_the_log_and_splits_long_ones_between_characters
+    skip "the mobile embedding API is for iOS and Android, which share POSIX's pipes; Windows has none" if Gem.win_platform?
     compiler = RbConfig::CONFIG.fetch("CC").split.first
     skip "no C compiler (#{compiler}) on this computer" unless system(compiler, "--version", out: File::NULL, err: File::NULL)
 
@@ -70,12 +74,27 @@ class MobileOutputTest < Minitest::Test
       assert status.success?, err
       log = File.join(dir, "log.txt")
 
-      system(program, log, exception: true)
+      assert_predicate finish(Process.spawn(program, log), seconds: 15), :success?
 
       entries = File.read(log, encoding: "UTF-8").lines.map(&:chomp)
       assert_equal "E oops", entries.find { |entry| entry.start_with?("E ") }
       out = entries.select { |entry| entry.start_with?("O ") }.map { |entry| entry.delete_prefix("O ") }
       assert_equal ["hello", "", "x" * 1000, "x" * 1000, "x" * 500, "a" * 999, "éé"], out
     end
+  end
+
+  # The status of the process +pid+, which fails the test, rather than
+  # hanging it, when the process has not exited within +seconds+.
+  def finish(pid, seconds:)
+    deadline = Time.now + seconds
+    until (done = Process.wait2(pid, Process::WNOHANG))
+      if Time.now > deadline
+        Process.kill("KILL", pid)
+        Process.wait(pid)
+        flunk "the program did not exit within #{seconds} seconds"
+      end
+      sleep 0.1
+    end
+    done.last
   end
 end

@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 size_t
@@ -38,29 +39,62 @@ fledge_log_chunk(const char *text, size_t length)
     return end > 0 ? end : FLEDGE_LOG_ENTRY_MAX;
 }
 
+/* Writes the line of length bytes to the log, in entries that fit. */
+static void
+log_line(int error, const char *line, size_t length)
+{
+    size_t offset = 0;
+
+    do {
+        size_t chunk = fledge_log_chunk(line + offset, length - offset);
+        fledge_log_write(error, line + offset, chunk);
+        offset += chunk;
+    } while (offset < length);
+}
+
+/*
+ * Reads the pipe with read(2), not stdio, so that the thread holds no
+ * FILE's lock while it waits: glibc's exit() takes every stream's lock to
+ * flush it, and would wait for ever on a thread blocked in getline.
+ */
 static void *
 forward(void *argument)
 {
     intptr_t value = (intptr_t)argument;
     int error = (int)(value & 1);
-    FILE *stream = fdopen((int)(value >> 1), "r");
-    char *line = NULL;
-    size_t capacity = 0;
+    int fd = (int)(value >> 1);
+    size_t capacity = 4096, length = 0;
+    char *line = malloc(capacity);
     ssize_t count;
 
-    if (stream == NULL) return NULL;
-    while ((count = getline(&line, &capacity, stream)) >= 0) {
-        size_t length = (size_t)count;
-        if (length > 0 && line[length - 1] == '\n') length--;
-        size_t offset = 0;
-        do {
-            size_t chunk = fledge_log_chunk(line + offset, length - offset);
-            fledge_log_write(error, line + offset, chunk);
-            offset += chunk;
-        } while (offset < length);
+    if (line == NULL) return NULL;
+    while ((count = read(fd, line + length, capacity - length)) != 0) {
+        if (count < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        length += (size_t)count;
+        char *start = line, *end;
+        while ((end = memchr(start, '\n', length - (size_t)(start - line))) != NULL) {
+            log_line(error, start, (size_t)(end - start));
+            start = end + 1;
+        }
+        length -= (size_t)(start - line);
+        memmove(line, start, length);
+        if (length == capacity) {
+            char *grown = realloc(line, capacity * 2);
+            if (grown == NULL) {
+                log_line(error, line, length);
+                length = 0;
+                continue;
+            }
+            line = grown;
+            capacity *= 2;
+        }
     }
+    if (length > 0) log_line(error, line, length);
     free(line);
-    fclose(stream);
+    close(fd);
     return NULL;
 }
 

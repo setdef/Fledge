@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module Zip
+    class Writer
+      VERSION_NEEDED: Integer
+      VERSION_MADE_BY: Integer
+      UTF8: Integer
+      STORED: Integer
+      DEFLATED: Integer
+      DOS_DIRECTORY: Integer
+      UNIX_FILE: Integer
+      UNIX_DIRECTORY: Integer
+
+      @io: _Sink
+      @offset: Integer
+      @central: Array[String]
+      @time: Integer
+      @date: Integer
+
+      def initialize: (_Sink io, mtime: Integer) -> void
+
+      def add: (Entry entry) -> void
+
+      def finish: () -> void
+
+      private def compress: (String content) -> [Integer, String]
+
+      private def external_attributes: (Entry entry) -> Integer
+
+      private def central_header: (String name, Array[Integer] record, Integer external, Integer offset) -> String
+
+      private def check_size: (String what, Array[Integer] sizes) -> void
+
+      private def emit: (*String chunks) -> void
+
+      private def dos_time: (Integer mtime) -> [Integer, Integer]
+    end
+  end
+end

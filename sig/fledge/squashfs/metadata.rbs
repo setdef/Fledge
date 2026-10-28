@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Squashfs
+    class Metadata
+      @disk: String
+      @pending: String
+
+      def initialize: () -> void
+
+      def position: () -> [Integer, Integer]
+
+      def reference: () -> Integer
+
+      def <<: (String bytes) -> self
+
+      def bytes: () -> String
+
+      private def flush: (String block) -> void
+    end
+  end
+end

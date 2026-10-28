@@ -8,6 +8,9 @@
 require "zlib"
 require_relative "entry"
 require_relative "error"
+require_relative "squashfs/inodes"
+require_relative "squashfs/metadata"
+require_relative "squashfs/node"
 
 module Fledge
   # Writes a SquashFS 4.0 file system, the one an AppImage carries.
@@ -89,61 +92,6 @@ module Fledge
     # The superblock's size.
     SUPERBLOCK = 96
 
-    # An item in the file system, while it is written: the entry it came
-    # from, a folder's children by name, where a file's data is, and its
-    # inode's number and reference once the inode table is written.
-    class Node # :nodoc:
-      attr_reader :entry, :children, :data
-      attr_accessor :number, :reference
-
-      def initialize(entry, data = nil)
-        @entry = entry
-        @children = {} # : Hash[String, Node]
-        @data = data
-        @number = 0
-        @reference = 0
-      end
-    end
-
-    # A metadata stream: records written one after another, in blocks of
-    # METADATA bytes compressed one by one. #position says where the next
-    # record goes, as a block's on-disk offset and an offset into it.
-    class Metadata # :nodoc:
-      def initialize
-        @disk = "".b
-        @pending = "".b
-      end
-
-      def position
-        [@disk.bytesize, @pending.bytesize]
-      end
-
-      def reference
-        block, offset = position
-        (block << 16) | offset
-      end
-
-      def <<(bytes)
-        @pending << bytes
-        flush(@pending.slice!(0, METADATA).to_s) while @pending.bytesize >= METADATA
-        self
-      end
-
-      def bytes
-        flush(@pending.slice!(0..).to_s) unless @pending.empty?
-        @disk
-      end
-
-      private def flush(block)
-        compressed = Zlib::Deflate.deflate(block, Zlib::BEST_COMPRESSION)
-        if compressed.bytesize < block.bytesize
-          @disk << [compressed.bytesize].pack("v") << compressed
-        else
-          @disk << [block.bytesize | METADATA_UNCOMPRESSED].pack("v") << block
-        end
-      end
-    end
-
     # Creates a file system that writes to +io+, from where +io+ is now:
     # its offsets are counted from there, so it can follow an AppImage's
     # runtime in the same file.
@@ -207,10 +155,9 @@ module Fledge
       flush_fragment
       order = post_order(@root, nil)
       order.each_with_index { |(node, _), index| node.number = index + 1 }
-      inodes = Metadata.new
-      directories = Metadata.new
-      order.each { |node, parent| write_inode(node, inodes, directories, parent) }
-      tables = write_tables(inodes.bytes, directories.bytes)
+      inodes = Inodes.new(@mtime)
+      order.each { |node, parent| inodes.write(node, parent) }
+      tables = write_tables(inodes.inode_table, inodes.directory_table)
       used = @io.pos - @base
       @io.write("\0" * (-used % 4096))
       @io.seek(@base)
@@ -273,73 +220,6 @@ module Fledge
       node.children.keys.sort.flat_map { |name| post_order(node.children.fetch(name), node) } << pair
     end
 
-    private def write_inode(node, inodes, directories, parent)
-      entry = node.entry
-      node.reference = inodes.reference
-      permissions = (entry.type == :symlink) ? 0o777 : entry.mode & 0o7777
-      case entry.type
-      when :directory then write_directory(node, inodes, directories, parent, permissions)
-      when :symlink then inodes << header(SYMLINK, permissions, node) << [1, entry.link.bytesize].pack("VV") << entry.link.b
-      else
-        start, sizes, fragment, offset, size = node.data || [0, [], nil, 0, 0]
-        inodes << header(FILE, permissions, node) <<
-          [start, fragment || 0xFFFF_FFFF, offset, size].pack("VVVV") << sizes.pack("V*")
-      end
-    end
-
-    private def write_directory(node, inodes, directories, parent, permissions)
-      block, offset = directories.position
-      listing = listing(node)
-      directories << listing
-      links = 2 + node.children.values.count { |child| child.entry.type == :directory }
-      parent_number = parent ? parent.number : 0
-      if listing.bytesize + 3 < 0x10000
-        inodes << header(DIRECTORY, permissions, node) << [block, links, listing.bytesize + 3, offset, parent_number].pack("VVvvV")
-      else
-        inodes << header(EXTENDED_DIRECTORY, permissions, node) <<
-          [links, listing.bytesize + 3, block, parent_number, 0, offset, 0xFFFF_FFFF].pack("VVVVvvV")
-      end
-    end
-
-    # A folder's listing in the directory table: runs of entries, each led
-    # by a header naming the metadata block their inodes are in.
-    private def listing(node)
-      out = "".b
-      run = [] # : Array[[String, Node]]
-      node.children.keys.sort.each do |name|
-        child = node.children.fetch(name)
-        if run.any? && (run.size == RUN || block_of(run.first.last) != block_of(child) ||
-            (child.number - run.first.last.number).abs > 32_767)
-
-          out << run_bytes(run)
-          run = []
-        end
-        run << [name, child]
-      end
-      out << run_bytes(run) unless run.empty?
-      out
-    end
-
-    private def block_of(node)
-      node.reference >> 16
-    end
-
-    private def run_bytes(run)
-      first = run.first.last
-      out = [run.size - 1, block_of(first), first.number].pack("VVV")
-      run.each do |name, child|
-        type = { directory: DIRECTORY, file: FILE, symlink: SYMLINK }.fetch(child.entry.type)
-        out << [child.reference & 0xFFFF, child.number - first.number, type, name.bytesize - 1].pack("vs<vv") << name.b
-      end
-      out
-    end
-
-    private def header(type, permissions, node)
-      [type, permissions, 0, 0, @mtime, node.number].pack("vvvvVV")
-    end
-
-    # Writes the inode, directory, fragment, and ID tables, and returns
-    # their offsets.
     private def write_tables(inodes, directories)
       inode_table = @io.pos - @base
       @io.write(inodes)

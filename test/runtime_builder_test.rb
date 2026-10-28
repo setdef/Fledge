@@ -219,7 +219,7 @@ class RuntimeBuilderTest < Minitest::Test
       cache = File.join(gems, "cache/nkf-0.2.0.gem")
       capture_io { Dir.chdir(File.join(gems, "gems/nkf-0.2.0")) { Gem::Package.build(spec, true, false, cache) } }
 
-      RuntimeBuilder.prune_jruby(gems)
+      RuntimeBuilder::Pruning.prune_jruby(gems)
 
       refute_path_exists File.join(gems, "gems/nkf-0.2.0/ext/java")
       assert_path_exists File.join(gems, "gems/nkf-0.2.0/ext/nkf/nkf.c")
@@ -303,7 +303,7 @@ class RuntimeBuilderTest < Minitest::Test
       write_spec(gems, "bigdecimal", "4.0.1")
       write_spec(gems, "bootsnap", "1.24.6", executables: %w[bootsnap])
 
-      removed = RuntimeBuilder.prune(ruby, %w[csv bigdecimal])
+      removed = RuntimeBuilder::Pruning.prune(ruby, %w[csv bigdecimal])
 
       assert_equal %w[bootsnap], removed
       assert_equal %w[
@@ -328,7 +328,7 @@ class RuntimeBuilderTest < Minitest::Test
     Dir.mktmpdir do |bin|
       make_files(bin, %w[ruby gem bundle rake bootsnap])
 
-      RuntimeBuilder.prune_bin(bin, %w[bootsnap])
+      RuntimeBuilder::Pruning.prune_bin(bin, %w[bootsnap])
 
       assert_equal %w[bundle gem rake ruby], kept(bin)
     end
@@ -374,7 +374,7 @@ class RuntimeBuilderTest < Minitest::Test
       write_spec(gems, "csv", "3.3.5")
       write_spec(gems, "fiddle", "1.1.8")
 
-      RuntimeBuilder.prune_windows(tree, %w[csv fiddle])
+      RuntimeBuilder::Pruning.prune_windows(tree, %w[csv fiddle])
 
       assert_equal %w[
         LICENSE.txt
@@ -418,11 +418,11 @@ class RuntimeBuilderTest < Minitest::Test
     armored = "-----BEGIN PGP ARMORED FILE-----\nComment: Use \"gpg --dearmor\" for unpacking\n\n" \
       "RmxlZGdl\n=jMjj\n-----END PGP ARMORED FILE-----\n"
 
-    assert_equal "Fledge", RuntimeBuilder.dearmor(armored)
-    assert_equal "Fledge", RuntimeBuilder.dearmor(armored.gsub("\n", "\r\n"))
-    error = assert_raises(RuntimeError) { RuntimeBuilder.dearmor(armored.sub("RmxlZGdl", "RmxlZGdm")) }
+    assert_equal "Fledge", RuntimeBuilder::Armor.dearmor(armored)
+    assert_equal "Fledge", RuntimeBuilder::Armor.dearmor(armored.gsub("\n", "\r\n"))
+    error = assert_raises(RuntimeError) { RuntimeBuilder::Armor.dearmor(armored.sub("RmxlZGdl", "RmxlZGdm")) }
     assert_equal "the armor's CRC-24 does not match its data", error.message
-    assert_raises(RuntimeError) { RuntimeBuilder.dearmor("not armor") }
+    assert_raises(RuntimeError) { RuntimeBuilder::Armor.dearmor("not armor") }
   end
 
   def pe(subsystem)

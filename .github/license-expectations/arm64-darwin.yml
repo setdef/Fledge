@@ -9,6 +9,6 @@
 # notice-only.
 # nkf ships JRuby's Java sources (EPL-2.0 OR LGPL-2.1-or-later) in its
 # folder and in its cached .gem; a runtime prunes them
-# (RuntimeBuilder.prune_jruby).
+# (RuntimeBuilder::Pruning.prune_jruby).
 - "copyleft-text: lib/ruby/gems/4.0.0/gems/nkf-0.2.0/ext/java/"
 - "copyleft-text: lib/ruby/gems/4.0.0/cache/nkf-0.2.0.gem!ext/java/"

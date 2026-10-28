@@ -531,7 +531,7 @@ reviewed:
     why: >-
       nkf's own gemspec adds EPL-2.0 and LGPL-2.1 to its licenses only when
       it builds JRuby's java-platform gem, from ext/java, which runtimes
-      prune (RuntimeBuilder.prune_jruby); the gem CRuby installs is Ruby OR
+      prune (RuntimeBuilder::Pruning.prune_jruby); the gem CRuby installs is Ruby OR
       BSD-2-Clause.
   - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rdoc-*/{LICENSE.rdoc,lib/rdoc/rd.rb}"]
     why: Ruby's old license, which offers the GPL-2.0 or Ruby's own conditions; Ruby's apply.

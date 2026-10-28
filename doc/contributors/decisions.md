@@ -116,7 +116,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 20. Tiny filesize is not a priority; "my ruby code just works" _is_ a (high) priority.
 
-*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* ADR 003; `RuntimeBuilder.prune`.
+*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* ADR 003; `RuntimeBuilder::Pruning.prune`.
 
 > 21. I don't understand what I'd be deciding here. [re: Windows console code pages and Ctrl-C — agents own this]
 

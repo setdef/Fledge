@@ -65,7 +65,7 @@ class Parity
   end
 
   # rv-ruby installs two gems a standard Ruby 4.0.9 does not, which a
-  # runtime prunes (RuntimeBuilder.prune).
+  # runtime prunes (RuntimeBuilder::Pruning.prune).
   RV_RUBY_EXTRAS = /\A"(?:bootsnap|msgpack)(?: |"=)/
 
   # Where bundle install puts a gem's files for the person, and where

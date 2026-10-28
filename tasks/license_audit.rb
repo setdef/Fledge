@@ -52,54 +52,6 @@ class LicenseAudit
   # The largest file whose words the audit reads.
   TEXT_LIMIT = 4_000_000
 
-  # Raised by RuntimeBuilder when a runtime it built breaks the policy,
-  # naming every violation, so that no such runtime is archived.
-  class Failure < StandardError
-    attr_reader :problems
-
-    def initialize(platform, problems)
-      @problems = problems
-      super("the #{platform} runtime breaks Fledge's license policy (runtime/licenses.yml):\n#{problems.map { |problem| "  #{problem}" }.join("\n")}")
-    end
-  end
-
-  # One way the tree breaks the policy.
-  class Violation < Data.define(:rule, :path, :message)
-    def to_s
-      "#{rule}: #{path.empty? ? '' : "#{path}: "}#{message}"
-    end
-  end
-
-  # Something the tree ships: a component from the map, or a gem.
-  class Component < Data.define(:id, :name, :version, :license, :kind, :first_party, :download, :notice, :source, :ships,
-    :supplier, :files, :binaries, :embedded, :sha256, :fallback, :gem_dir)
-    def self.from_map(entry, expand)
-      patterns = -> (key) { Array(entry[key]).map { |pattern| pattern.is_a?(Hash) ? pattern.transform_keys(&:to_s) : pattern } }
-      new(id: entry.fetch("id"), name: entry.fetch("name"), version: expand.call(entry.fetch("version").to_s),
-        license: entry.fetch("license"), kind: entry.fetch("kind"), first_party: entry.fetch("first_party", false),
-        download: entry.fetch("download"), notice: entry["notice"], source: entry["source"], ships: expand.call(entry.fetch("ships")),
-        supplier: entry["supplier"], files: patterns.call("files"), binaries: patterns.call("binaries"),
-        embedded: Array(entry["embedded"]), sha256: entry.fetch("sha256", {}), fallback: entry.fetch("fallback", false), gem_dir: nil)
-    end
-  end
-
-  # What the audit found: the components present, which file each
-  # component owns, what each compiled file links and has compiled in,
-  # and every violation.
-  class Report < Data.define(:platform, :tree, :components, :owners, :binaries, :links, :embeds, :violations)
-    def owned(component)
-      owners.select { |_path, owner| owner.equal?(component) }.keys.sort
-    end
-
-    def embedded_in(component)
-      embeds.select { |_path, ids| ids.include?(component.id) }.keys.sort
-    end
-
-    def present
-      components.select { |component| !owned(component).empty? || !embedded_in(component).empty? }
-    end
-  end
-
   attr_reader :platform, :tree, :map
 
   def initialize(platform:, tree:, map: MAP, sources: SOURCES, fledge_version: nil)
@@ -115,8 +67,9 @@ class LicenseAudit
   # Audits the tree and returns the Report.
   def call
     files = walk
-    components = map_components
-    gems = gem_components
+    inventory = Inventory.new(self)
+    components = inventory.map_components
+    gems = inventory.gem_components
     ordered = components.reject(&:fallback) + gems + components.select(&:fallback)
     owners = assign(files, ordered)
     binaries = read_binaries(files)
@@ -128,7 +81,8 @@ class LicenseAudit
     check_texts(files, owners, binaries)
     check_gem_archives(files, owners)
     report = Report.new(platform:, tree:, components: ordered, owners:, binaries:, links:, embeds:, violations: @violations)
-    report.present.each { |component| check_policy(component, report) }
+    policy = Policy.new(@sources, method(:violate))
+    report.present.each { |component| policy.check(component, report) }
     report
   end
 
@@ -183,56 +137,6 @@ class LicenseAudit
       paths << relative if File.file?(path) || File.symlink?(path)
     end
     paths.sort
-  end
-
-  private def map_components
-    @map.fetch("components").filter_map do |entry|
-      next unless entry.fetch("platforms").include?(platform)
-
-      Component.from_map(entry, method(:expand))
-    end
-  end
-
-  # A component for each gem specification in the tree, owning the
-  # gem's files where RubyGems keeps them.
-  private def gem_components
-    root = "#{prefix}lib/ruby/gems/4.0.0"
-    Dir.glob(File.join(tree, root, "specifications", "{,default/}*.gemspec")).map do |path|
-      spec = Gem::Specification.load(path) or raise "#{path}: not a gem specification"
-      full = spec.full_name
-      override = @map.fetch("gems", {}).fetch(spec.name, {})
-      default = path.include?("/specifications/default/")
-      Component.new(id: "gem-#{full}", name: "#{spec.name} (#{default ? 'default' : 'bundled'} gem)", version: spec.version.to_s,
-        license: override.fetch("license") { Fledge::LicensePolicy.gem_license(spec.licenses) }, kind: "program",
-        first_party: false, download: "https://rubygems.org/gems/#{spec.name}/versions/#{spec.version}", notice: nil, source: nil,
-        ships: default ? "Ruby's default gem; its code is in lib/ruby/4.0.0" : "files under lib/ruby/gems/4.0.0/gems/#{full}",
-        supplier: nil, files: gem_files(root, spec), binaries: gem_binaries(root, full), embedded: [], sha256: {},
-        fallback: false, gem_dir: "#{root}/gems/#{full}")
-    end
-  end
-
-  private def gem_files(root, spec)
-    full = spec.full_name
-    [
-      "#{root}/gems/#{full}/**/*",
-      "#{root}/specifications/#{full}.gemspec",
-      "#{root}/specifications/default/#{full}.gemspec",
-      "#{root}/extensions/*/*/#{full}/**/*",
-      "#{root}/cache/#{full}.gem",
-      "#{root}/build_info/#{full}.info",
-      "#{root}/doc/#{full}/**/*",
-      "#{root}/plugins/#{spec.name}_plugin.rb",
-      *spec.executables.map { |executable| "{#{root}/,#{prefix}}bin/#{executable}{,.bat,.cmd}" },
-    ]
-  end
-
-  private def gem_binaries(root, full)
-    [
-      "#{root}/gems/#{full}/**/*.{so,bundle,dll}",
-      "#{root}/gems/#{full}/ext/**/*.{o,a}",
-      "#{root}/extensions/*/*/#{full}/**/*.{so,bundle,dll}",
-      "#{root}/extensions/*/*/#{full}/**/*.dSYM/Contents/Resources/DWARF/*",
-    ]
   end
 
   # Gives each file to the first component whose files match it, and
@@ -432,37 +336,6 @@ class LicenseAudit
     end
   end
 
-  private def check_policy(component, report)
-    category = LicenseAudit.category(component.license, first_party: component.first_party)
-    where = (report.owned(component) + report.embedded_in(component)).first.to_s
-    case category
-    when :notice_only, :first_party then nil
-    when :file_level
-      return if component.kind == "files"
-
-      violate("policy", where, "#{component.id} is #{component.license}, allowed only for unmodified files, but ships as #{component.kind}")
-    when :shared_library
-      check_shared_library(component, report, where)
-    else
-      violate("policy", where, "#{component.id} is #{component.license}, which the policy does not allow in an app")
-    end
-  end
-
-  private def check_shared_library(component, report, where)
-    unless component.kind == "shared_library"
-      return violate("policy", where, "#{component.id} is #{component.license}, allowed only as a separate shared library, but ships as #{component.kind}")
-    end
-
-    violate("policy", where, "#{component.id} is #{component.license} and needs a source pin in runtime/sources.yml") unless @sources.key?(component.source.to_s)
-    report.owned(component).each do |path|
-      format = report.binaries[path]&.format
-      violate("policy", path, "#{component.id} is #{component.license}, so this file must be a shared library, not #{format.inspect}") unless %i[elf pe macho].include?(format)
-    end
-    return if report.embedded_in(component).all? { |path| report.owners[path].equal?(component) }
-
-    violate("policy", where, "#{component.id} is #{component.license} and is compiled into a file it does not own")
-  end
-
   private def violate(rule, path, message)
     @violations << Violation.new(rule:, path:, message:)
     nil
@@ -470,6 +343,12 @@ class LicenseAudit
 end
 
 require_relative "license_audit/binary"
+require_relative "license_audit/component"
+require_relative "license_audit/failure"
+require_relative "license_audit/inventory"
+require_relative "license_audit/policy"
+require_relative "license_audit/report"
+require_relative "license_audit/violation"
 require_relative "license_audit/spdx"
 require_relative "license_audit/notices"
 require_relative "license_audit/source_bundle"

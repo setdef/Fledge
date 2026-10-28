@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Icon
+    module Resampler
+      def self.shrink: (Png image, Integer size) -> Png
+
+      private def self.halve: (Png image) -> Png
+
+      private def self.blend: (Array[Integer] row, Integer x, Array[Integer] top, Array[Integer] bottom) -> void
+
+      private def self.weights: (Integer from, Integer to) -> Array[Array[[Integer, Float]]]
+
+      private def self.average: (Array[Integer] source, Integer width, Array[[Integer, Float]] row_weights, Array[[Integer, Float]] column_weights) -> Array[Integer]
+    end
+  end
+end

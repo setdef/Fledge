@@ -27,15 +27,5 @@ module Fledge
     def windows_images: () -> Array[[Integer, String]]
 
     def ico: () -> String
-
-    def self.bitmap: (Png image) -> String
-
-    def self.shrink: (Png image, Integer size) -> Png
-
-    private def self.halve: (Png image) -> Png
-
-    private def self.weights: (Integer from, Integer to) -> Array[Array[[Integer, Float]]]
-
-    private def self.average: (Array[Integer] source, Integer width, Array[[Integer, Float]] row_weights, Array[[Integer, Float]] column_weights) -> Array[Integer]
   end
 end

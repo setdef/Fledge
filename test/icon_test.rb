@@ -55,10 +55,10 @@ class IconTest < Minitest::Test
     assert_equal [0, 0, 0, 0], pixel(small, 15, 15)
 
     edge = Fledge::Png.new(width: 2, height: 2, pixels: [255, 0, 0, 255, 0, 255, 0, 0, 255, 0, 0, 255, 0, 255, 0, 0].pack("C*"))
-    assert_equal [255, 0, 0, 128], pixel(Fledge::Icon.shrink(edge, 1), 0, 0)
+    assert_equal [255, 0, 0, 128], pixel(Fledge::Icon::Resampler.shrink(edge, 1), 0, 0)
 
     thirds = Fledge::Png.new(width: 3, height: 1, pixels: [0, 0, 0, 255, 255, 255, 255, 255, 30, 60, 90, 255].pack("C*"))
-    shrunk = Fledge::Icon.shrink(thirds, 2)
+    shrunk = Fledge::Icon::Resampler.shrink(thirds, 2)
     assert_equal [[85, 85, 85, 255], [105, 125, 145, 255]], [pixel(shrunk, 0, 0), pixel(shrunk, 1, 0)]
   end
 

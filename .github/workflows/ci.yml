@@ -325,6 +325,16 @@ jobs:
       - name: Check parity in the iOS Simulator
         run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP"/runtimes/fledge-runtime-*-ios.tar.gz
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: mobile-parity-ios
+          path: |
+            tmp/mobile-parity/ios/*.ndjson
+            tmp/mobile-parity/ios/*.log
+            tmp/mobile-parity/ios/*.ips
+          retention-days: 14
+
   # The same on Android emulators of API 36 with 4 KB and with 16 KB
   # pages, after the host app is built against the runtime's AAR and
   # checked for Play's 16 KB alignment and target API. GitHub's Linux

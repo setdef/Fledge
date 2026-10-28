@@ -122,7 +122,7 @@ class MobileParity
       sleep 3
       system("xcrun", "simctl", "launch", "--terminate-running-process", udid, IDENTIFIER, "-FledgeScript", script,
         out: File::NULL, exception: true)
-      entries = wait_for_status(log, script)
+      entries = wait_for_status(udid, log, script)
       @out.puts "#{script}: Ruby exited with status #{MobileParity.status(entries)}"
       raise "#{script} exited with status #{MobileParity.status(entries)}:\n#{entries.last(40).join("\n")}" unless MobileParity.status(entries).zero?
 
@@ -132,7 +132,7 @@ class MobileParity
       Process.wait(stream) if stream
     end
 
-    private def wait_for_status(log, script)
+    private def wait_for_status(udid, log, script)
       deadline = Time.now + TIMEOUT
       loop do
         entries = messages(log)
@@ -140,10 +140,27 @@ class MobileParity
           sleep 3
           return messages(log)
         end
-        raise "#{script} did not finish in #{TIMEOUT} seconds:\n#{entries.last(40).join("\n")}" if Time.now > deadline
+        raise "#{script} did not finish in #{TIMEOUT} seconds:\n#{entries.last(40).join("\n")}\n#{diagnosis(udid)}" if Time.now > deadline
 
         sleep 2
       end
+    end
+
+    # What the simulator +udid+ says of the host app, for a script that
+    # never finished: whether it runs, everything its process logged, and
+    # the crash reports the Mac holds for it.
+    private def diagnosis(udid)
+      running = Open3.capture2e("xcrun", "simctl", "spawn", udid, "launchctl", "list").first.lines.grep(/#{Regexp.escape(IDENTIFIER)}/)
+      logged = Open3.capture2e("xcrun", "simctl", "spawn", udid, "log", "show", "--last", "10m", "--style", "compact", "--predicate",
+        'process == "FledgeParity"').first.lines.last(80)
+      crashes = Dir.glob(File.join(Dir.home, "Library", "Logs", "DiagnosticReports", "FledgeParity*"))
+      crashes.each { |crash| FileUtils.cp(crash, @work) }
+      [
+        "The host app's process: #{running.empty? ? 'not running' : running.join.strip}",
+        "What its process logged:",
+        *logged,
+        "Crash reports: #{crashes.empty? ? 'none' : crashes.join(', ')}",
+      ].join("\n")
     end
 
     private def messages(log)

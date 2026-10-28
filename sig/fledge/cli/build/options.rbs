@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class CLI
+    class Build
+      class Options < Data
+        attr_reader targets: Array[String]
+        attr_reader out: String
+        attr_reader path: String
+
+        def self.new: (targets: Array[String], out: String, path: String) -> instance
+
+        def self.parse: (Array[String] argv) -> Options
+
+        private def self.value_of: (String option, Array[String] arguments, String name) -> String
+      end
+    end
+  end
+end

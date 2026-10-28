@@ -18,6 +18,7 @@ require_relative "../native_build"
 require_relative "../platform"
 require_relative "../runtime_contents"
 require_relative "../runtimes"
+require_relative "build/options"
 
 module Fledge
   class CLI
@@ -92,10 +93,10 @@ module Fledge
       # SPDX-SnippetEnd
       #++
       def call(argv)
-        targets, out, path = parse(argv)
-        platforms = targets.uniq.map { |name| Platform.find(name) }
-        app = App.at(path)
-        build(app, platforms.empty? ? [Platform.local(@host)] : platforms, out)
+        options = Options.parse(argv)
+        platforms = options.targets.uniq.map { |name| Platform.find(name) }
+        app = App.at(options.path)
+        build(app, platforms.empty? ? [Platform.local(@host)] : platforms, options.out)
         0
       rescue UsageError
         raise
@@ -147,36 +148,6 @@ module Fledge
         NativeBuild.new(platform: Platform.local(@host), runtimes:, work:, log: @err, env: @env)
       rescue Error
         nil
-      end
-
-      # [targets, out, path] from +argv+.
-      private def parse(argv)
-        targets = [] # : Array[String]
-        out = DEFAULT_OUT
-        paths = [] # : Array[String]
-        arguments = argv.dup
-        while (argument = arguments.shift)
-          case argument
-          when "-t", "--target" then targets << value_of(argument, arguments, "PLATFORM")
-          when /\A--target=(.+)\z/ then targets << ::Regexp.last_match(1).to_s
-          when "-o", "--out" then out = value_of(argument, arguments, "DIR")
-          when /\A--out=(.+)\z/ then out = ::Regexp.last_match(1).to_s
-          when "--" then paths.concat(arguments.shift(arguments.size))
-          when /\A--(?:target|out)=\z/ then value_of(argument.delete_suffix("="), [], argument.start_with?("--t") ? "PLATFORM" : "DIR")
-          when /\A-./ then raise UsageError, "unrecognized option '#{argument}'"
-          else paths << argument
-          end
-        end
-        raise UsageError, "takes one PATH, but got #{paths.map { |p| "'#{p}'" }.join(' and ')}" if paths.size > 1
-
-        [targets, out, paths.first || "."]
-      end
-
-      private def value_of(option, arguments, name)
-        value = arguments.shift
-        raise UsageError, "#{option} needs a #{name}" if value.nil? || value.empty?
-
-        value
       end
     end
   end

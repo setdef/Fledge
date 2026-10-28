@@ -23,10 +23,6 @@ module Fledge
       private def makensis: (Runtimes runtimes) -> String
 
       private def compiler: (Runtimes runtimes, String work) -> NativeBuild?
-
-      private def parse: (Array[String] argv) -> [Array[String], String, String]
-
-      private def value_of: (String option, Array[String] arguments, String name) -> String
     end
   end
 end

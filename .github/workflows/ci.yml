@@ -547,10 +547,12 @@ jobs:
       # must print too.
       - name: Run the examples with bundle exec
         run: |
-          (cd examples/native_app && bundle install && bundle exec ruby main.rb) | tee "dist/native_app.expected"
-          if [ "${{ matrix.platform }}" = arm64-darwin ]; then
-            (cd examples/nokogiri_app && bundle install && bundle exec ruby main.rb) | tee "dist/nokogiri_app.expected"
-          fi
+          examples=native_app
+          if [ "${{ matrix.platform }}" = arm64-darwin ]; then examples="native_app nokogiri_app"; fi
+          for example in $examples; do
+            (cd "examples/$example" && bundle install)
+            (cd "examples/$example" && bundle exec ruby main.rb) | tee "dist/$example.expected"
+          done
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

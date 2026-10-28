@@ -26,7 +26,7 @@ module Fledge
 
       # Every block in use: the volume holds what it was given and no more.
       def self.bitmap(total, blocks)
-        bits = ("\xFF".b * (total / 8)) + ((total % 8).zero? ? "".b : [(0xFF << (8 - (total % 8))) & 0xFF].pack("C"))
+        bits = (0xFF.chr * (total / 8)) + ((total % 8).zero? ? "".b : [(0xFF << (8 - (total % 8))) & 0xFF].pack("C"))
         bits + ("\0".b * ((blocks * BLOCK) - bits.bytesize))
       end
     end

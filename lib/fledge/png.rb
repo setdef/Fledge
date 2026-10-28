@@ -60,7 +60,7 @@ module Fledge
     # for each, left to right, top to bottom.
 
     # The eight bytes every PNG begins with.
-    SIGNATURE = "\x89PNG\r\n\x1A\n".b
+    SIGNATURE = "#{0x89.chr}PNG\r\n\x1A\n".b
 
     # The channels each color type has: grayscale, RGB, a palette index,
     # grayscale with alpha, and RGBA.

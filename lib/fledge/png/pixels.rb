@@ -26,7 +26,7 @@ module Fledge
         if @depth == 8 && @transparency.nil? && @color == 6
           line.pack("C*")
         elsif @depth == 8 && @transparency.nil? && @color == 2
-          line.pack("C*").unpack("a3" * columns).join("\xFF".b) << "\xFF".b
+          line.pack("C*").unpack("a3" * columns).join(0xFF.chr) << 0xFF.chr
         elsif @depth == 8 && @color == 3
           table = palette_table
           line.first(columns).map { |index| table[index] || palette_color(index) }.join

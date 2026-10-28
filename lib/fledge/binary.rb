@@ -71,9 +71,9 @@ module Fledge
     # The first bytes of a static archive.
     AR_MAGIC = "!<arch>\n".b
     # The first bytes of a 64-bit and a 32-bit little-endian Mach-O file.
-    MACHO_MAGICS = ["\xCF\xFA\xED\xFE".b, "\xCE\xFA\xED\xFE".b].freeze
+    MACHO_MAGICS = [[0xCF, 0xFA, 0xED, 0xFE].pack("C*"), [0xCE, 0xFA, 0xED, 0xFE].pack("C*")].freeze
     # The first bytes of a universal (fat) Mach-O file.
-    FAT_MAGIC = "\xCA\xFE\xBA\xBE".b
+    FAT_MAGIC = [0xCA, 0xFE, 0xBA, 0xBE].pack("C*")
 
     # The Binary in the file at +path+, or nil when it holds no code.
     # Raises ArgumentError when the file looks like a binary but cannot be

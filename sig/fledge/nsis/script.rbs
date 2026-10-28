@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Nsis
+    class Script
+      @identity: Identity
+      @folder: String
+      @to: String
+      @files: Array[String]
+      @folders: Array[String]
+      @size: Integer
+
+      def initialize: (identity: Identity, folder: String, to: String, files: Array[String], folders: Array[String], size: Integer) -> void
+
+      def text: (icon: String?) -> String
+
+      private def functions: () -> Array[String]
+
+      private def install_section: () -> Array[String]
+
+      private def uninstall_section: () -> Array[String]
+
+      private def program: () -> String
+
+      private def header: (String? icon) -> Array[String]
+
+      private def aumid_macro: () -> Array[String]
+
+      private def pages: () -> Array[String]
+
+      private def registry: () -> Array[String]
+
+      private def key: () -> String
+
+      private def installed: (String path) -> String
+
+      private def nsis: (String text) -> String
+
+      private def quote: (String text) -> String
+    end
+  end
+end

@@ -27,21 +27,5 @@ module Fledge
     def self.host_path: (String path) -> String
 
     private def compile: (String script_path, String nsis) -> void
-
-    private def header: (String? icon) -> Array[String]
-
-    private def aumid_macro: () -> Array[String]
-
-    private def pages: () -> Array[String]
-
-    private def registry: (String program) -> Array[String]
-
-    private def key: () -> String
-
-    private def installed: (String path) -> String
-
-    private def nsis: (String text) -> String
-
-    private def quote: (String text) -> String
   end
 end

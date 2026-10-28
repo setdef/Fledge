@@ -84,8 +84,9 @@ jobs:
             ruby-platform: x64-mingw-ucrt
     steps:
       # Only what a developer would have of Fledge's repository: hello,
-      # my_cool_app, and the parity probe to build, and the scripts that check the result,
-      # at the tag. Fledge itself comes from Bundler.
+      # my_cool_app, native_app, windowed_app, and the parity probe to
+      # build, and the scripts that check the result, at the tag. Fledge
+      # itself comes from Bundler.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -94,6 +95,7 @@ jobs:
             examples/hello
             examples/my_cool_app
             examples/native_app
+            examples/windowed_app
             test/fixtures/parity
             .github/scripts
             mise.toml
@@ -154,7 +156,7 @@ jobs:
 
       # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
       # from the release, checked against its SHA256SUMS.
-      - name: Build hello, my_cool_app, and the parity probe with runtimes from the release
+      - name: Build hello, my_cool_app, windowed_app, and the parity probe with runtimes from the release
         env:
           PLATFORM: ${{ matrix.platform }}
           TAG: ${{ inputs.tag }}
@@ -162,7 +164,7 @@ jobs:
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
           cd "$RUNNER_TEMP/project"
-          for app in examples/hello test/fixtures/parity examples/my_cool_app; do
+          for app in examples/hello test/fixtures/parity examples/my_cool_app examples/windowed_app; do
             bundle exec fledge build -t "$PLATFORM" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
           done
           cat "$RUNNER_TEMP/build.err"
@@ -203,6 +205,22 @@ jobs:
             "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/my_cool_app.expected")"
           .github/scripts/deliver.sh "$RUNNER_TEMP/dist/NativeApp-${{ matrix.platform }}.tar.gz" \
             "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/native_app.expected")"
+
+      # The windowed app (ADR 008), as ci.yml delivers it.
+      - name: Install desktop-file-validate
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq desktop-file-utils=0.27-2build1
+
+      - name: Start Hello Window as the desktop would
+        if: runner.os != 'Windows'
+        run: .github/scripts/deliver-windowed.sh "$RUNNER_TEMP/dist/Hello Window-${{ matrix.platform }}.tar.gz"
+
+      - name: Start Hello Window.exe as Explorer would
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/dist/Hello Window-x64-mingw-ucrt.zip"
 
       - name: Run Hello.exe as someone with no Ruby would
         if: runner.os == 'Windows'

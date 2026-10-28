@@ -116,6 +116,15 @@ if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing a
 if ((Get-Subsystem $app) -ne 3) { Fail "$app is not a console program (PE subsystem $(Get-Subsystem $app))" }
 Write-Host "Unpacked to $root"
 
+# A console app carries version information too (ADR 008): Task Manager
+# and Explorer name it by its FileDescription and ProductName, which
+# default to the app's name.
+$info = (Get-Item -LiteralPath $app).VersionInfo
+foreach ($pair in @(@('FileDescription', $appName), @('ProductName', $appName), @('OriginalFilename', "$appName.exe"))) {
+  if ($info.($pair[0]) -cne $pair[1]) { Fail "$appName.exe's $($pair[0]) is '$($info.($pair[0]))', not '$($pair[1])'" }
+}
+Write-Host "ok: $appName.exe names itself $appName, version $($info.ProductVersion)"
+
 # The app carries the notices the license audit wrote (ADR 004): every
 # component and license text, GMP's replaceability and source among them,
 # and the SBOM.

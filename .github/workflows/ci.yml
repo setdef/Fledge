@@ -3,9 +3,10 @@
 
 # Plan 001's pipeline, on every push and pull request: the gate, then a
 # runtime per platform, then the tests on each platform with its own
-# runtime, then one machine building examples/hello and the gem-shaped
-# examples/my_cool_app for every platform, and each platform building
-# the examples whose gems compile from source for itself (ADR 006), then
+# runtime, then one machine building examples/hello, the gem-shaped
+# examples/my_cool_app, and the windowed examples/windowed_app for every
+# platform, and each platform building the examples whose gems compile
+# from source for itself (ADR 006), then
 # Delivery: each built app unpacked and run on a fresh computer that has
 # never had Ruby.
 #
@@ -359,12 +360,16 @@ jobs:
       # what Bundler.with_original_env and with_unbundled_env give a child.
       # my_cool_app's gems come from RubyGems.org, each checked against its
       # Gemfile.lock's checksum.
-      - name: Build hello, the parity probes, and my_cool_app for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
+      # examples/windowed_app is a windowed app (ADR 008): an .app bundle,
+      # signed ad hoc, for macOS, a GUI program for Windows, and a folder
+      # with a desktop entry for Linux, each with the identity its
+      # fledge.yml gives, all written on this Linux runner.
+      - name: Build hello, the parity probes, my_cool_app, and windowed_app for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
-          for app in examples/hello test/fixtures/parity "$RUNNER_TEMP/parity-bundle" examples/my_cool_app; do
+          for app in examples/hello test/fixtures/parity "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app; do
             ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux -t x64-mingw-ucrt -o dist "$app"
           done
 
@@ -384,6 +389,7 @@ jobs:
             dist/Parity-arm64-darwin.tar.gz
             dist/ParityBundle-arm64-darwin.tar.gz
             dist/MyCoolApp-arm64-darwin.tar.gz
+            dist/Hello Window-arm64-darwin.tar.gz
             dist/my_cool_app.expected
           if-no-files-found: error
           retention-days: 14
@@ -396,6 +402,7 @@ jobs:
             dist/Parity-x86_64-linux.tar.gz
             dist/ParityBundle-x86_64-linux.tar.gz
             dist/MyCoolApp-x86_64-linux.tar.gz
+            dist/Hello Window-x86_64-linux.tar.gz
             dist/my_cool_app.expected
           if-no-files-found: error
           retention-days: 14
@@ -408,6 +415,7 @@ jobs:
             dist/Parity-aarch64-linux.tar.gz
             dist/ParityBundle-aarch64-linux.tar.gz
             dist/MyCoolApp-aarch64-linux.tar.gz
+            dist/Hello Window-aarch64-linux.tar.gz
             dist/my_cool_app.expected
           if-no-files-found: error
           retention-days: 14
@@ -420,6 +428,7 @@ jobs:
             dist/Parity-x64-mingw-ucrt.zip
             dist/ParityBundle-x64-mingw-ucrt.zip
             dist/MyCoolApp-x64-mingw-ucrt.zip
+            dist/Hello Window-x64-mingw-ucrt.zip
             dist/my_cool_app.expected
           if-no-files-found: error
           retention-days: 14
@@ -660,6 +669,49 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
 
+  # Delivery of the windowed app (ADR 008), on a fresh runner of each
+  # platform: on macOS its .app bundle must pass codesign --verify --strict
+  # --deep, plutil must read its identity, and it must run through open -W,
+  # as Finder starts it, and through its own program; on Linux
+  # desktop-file-validate must accept its desktop entry, and its icons and
+  # program must be there and run (.github/scripts/deliver-windowed.sh).
+  delivery-windowed:
+    name: Delivery of a windowed app (${{ matrix.platform }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            platform: arm64-darwin
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: ${{ runner.temp }}/delivered
+
+      # freedesktop.org's validator, pinned to Ubuntu 24.04's build of it.
+      - name: Install desktop-file-validate
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq desktop-file-utils=0.27-2build1
+
+      - name: Start Hello Window as the desktop would
+        run: .github/scripts/deliver-windowed.sh "$RUNNER_TEMP/delivered/Hello Window-${{ matrix.platform }}.tar.gz"
+
   # Delivery again, in Debian 13 containers with no Ruby installed at all
   # (deliver.sh --no-ruby-installed checks), glibc 2.41, and no CA
   # certificates package.
@@ -713,8 +765,9 @@ jobs:
   # Delivery on a fresh Windows runner, with nothing of Fledge but the
   # .zip and the script that checks it, and no Ruby set up: the runner's
   # own Rubies and MSYS2 are kept off the app's PATH, and the script runs
-  # Hello.exe and MyCoolApp.exe from another drive, under a folder name outside ASCII, in a
-  # clean and in a hostile environment (.github/scripts/deliver.ps1).
+  # Hello.exe and MyCoolApp.exe from another drive, under a folder name
+  # outside ASCII, in a clean and in a hostile environment, and checks
+  # the version information each carries (.github/scripts/deliver.ps1).
   delivery-windows:
     name: Delivery (x64-mingw-ucrt)
     needs: build
@@ -747,6 +800,14 @@ jobs:
           -Archive "$env:RUNNER_TEMP/delivered/MyCoolApp-x64-mingw-ucrt.zip"
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected" -Raw).TrimEnd()
+
+      # The windowed app (ADR 008): a GUI program with its version
+      # information and icon, started as Explorer starts it, with no
+      # console and its identifier as its AppUserModelID
+      # (.github/scripts/deliver-windowed.ps1).
+      - name: Start Hello Window.exe as Explorer would
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello Window-x64-mingw-ucrt.zip"
 
   # The license audit's own checks on each runtime this run built: that
   # the release assets are the very notices the runtime carries, that a

@@ -4,26 +4,24 @@
 module Fledge
   class MacBundle
     LINKED: Array[String]
+    INSTALL: String
 
     @identity: Identity
-    @seal: CodeResources
-    @top: Array[String]
+    @folder: String
 
-    def initialize: (Identity identity) -> void
+    def initialize: (Identity identity, folder: String) -> void
 
-    def folder: () -> String
+    def path: () -> String
 
-    def resource: (String path) -> String
+    def resources: () -> String
 
-    def seal: (Entry entry) -> void
-
-    def info_plist: () -> String
+    def info: () -> Hash[String, String | bool]
 
     def self.bundle_version: (String version) -> String
 
-    def extras: () -> Array[Entry]
+    def finish: (String launcher) -> String
 
-    def finish: (Entry launcher) -> Array[Entry]
+    private def write_info_plist: () -> String
 
     private def icon_file: () -> String
   end

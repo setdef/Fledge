@@ -2,20 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 module Fledge
-  class Dmg
-    APPLICATIONS: Entry
-    PARTITION: String
+  module Dmg
+    APPLICATIONS: String
 
-    @to: String
-    @volume_file: Tempfile
-    @volume: HfsPlus
-
-    def initialize: (name: String, to: String, ?mtime: Integer) -> void
-
-    def add: (Entry entry) -> void
-
-    def finish: (?Hash[String, Entry] _kit) -> String
-
-    def abort: () -> void
+    def self.write: (String bundle, name: String, to: String) -> String
   end
 end

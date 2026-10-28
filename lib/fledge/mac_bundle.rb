@@ -5,21 +5,23 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
-require_relative "ad_hoc_signature"
-require_relative "code_resources"
-require_relative "entry"
+require "fileutils"
+require "json"
+require_relative "command"
 require_relative "platform"
-require_relative "plist"
 
 module Fledge
-  # A windowed app on macOS: an <tt>.app</tt> bundle.
+  # A windowed app on macOS: an <tt>.app</tt> bundle, signed ad hoc.
   #
   # macOS shows an app's name and icon in the Dock, Cmd-Tab, the menu bar,
   # and Finder only for a bundle, and knows it by the CFBundleIdentifier
   # in the bundle's <tt>Info.plist</tt>, which it checks before it
   # delivers the app's notifications (decision 18; Plan 002, "App
   # identity"). A bare program has none of that, and a double-click on it
-  # opens Terminal.
+  # opens Terminal. Apple Silicon runs only signed code, and
+  # <tt>codesign --verify --strict --deep</tt> calls a bundle broken
+  # unless its program's signature seals <tt>Info.plist</tt> and every
+  # resource.
   #
   # This class lays a built app out as Apple's Bundle Programming Guide
   # lays out a macOS app, and as Tauri's bundler and py2app do:
@@ -35,10 +37,9 @@ module Fledge
   # <tt>app/</tt> there too, but Apple's tools expect only code in
   # <tt>Contents/MacOS</tt>. So the launcher's neighbors live in
   # +Resources+, and LINKED names symbolic links in +MacOS+ that point at
-  # them, which codesign seals as links. Then it seals every file
-  # (Fledge::CodeResources) and signs the launcher ad hoc for the bundle
-  # (Fledge::AdHocSignature), so <tt>codesign --verify --strict
-  # --deep</tt> passes and Apple Silicon runs it.
+  # them. Then it writes <tt>Info.plist</tt> with +plutil+ and signs the
+  # bundle ad hoc with +codesign+, which seals every file, as Xcode's
+  # command line tools do on every Mac that builds Mac apps (ADR 010).
   #
   # Use it through Fledge::Assembly.
   #
@@ -49,9 +50,9 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   bundle = Fledge::MacBundle.new(Fledge::App.at("my_app").identity)
-  #   bundle.resource("lib/ruby") # => "MyApp.app/Contents/Resources/lib/ruby"
-  #   bundle.info_plist           # => "<?xml ..."
+  #   bundle = Fledge::MacBundle.new(Fledge::App.at("my_app").identity, folder: "dist/MyApp-arm64-darwin")
+  #   bundle.resources # => "dist/MyApp-arm64-darwin/MyApp.app/Contents/Resources"
+  #   bundle.finish("/tmp/runtime/launcher")
   #--
   # SPDX-SnippetEnd
   #++
@@ -60,17 +61,17 @@ module Fledge
     # +MacOS+ to +Resources+ when the runtime or the build has them.
     LINKED = %w[app bin fledge.cfg lib libexec].freeze
 
-    # Creates the bundle of the app whose Fledge::Identity is +identity+.
-    #
-    # [identity] The app's identity: its name, identifier, version,
-    #             copyright, and icon.
-    def initialize(identity)
+    # What to do when this Mac has no codesign or plutil.
+    INSTALL = "Install Xcode's command line tools: xcode-select --install."
+
+    # Creates the bundle of the app whose Fledge::Identity is +identity+,
+    # in the built app's folder +folder+.
+    def initialize(identity, folder:)
       @identity = identity
-      @seal = CodeResources.new
-      @top = [] # : Array[String]
+      @folder = folder
     end
 
-    # The bundle's folder: <tt>NAME.app</tt>.
+    # The bundle's path: <tt>FOLDER/NAME.app</tt>.
     #
     # === Example
     #
@@ -79,16 +80,15 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   bundle.folder # => "MyApp.app"
+    #   bundle.path # => "dist/MyApp-arm64-darwin/MyApp.app"
     #--
     # SPDX-SnippetEnd
     #++
-    def folder
-      "#{@identity.name}.app"
+    def path
+      File.join(@folder, "#{@identity.name}.app")
     end
 
-    # Where +path+, a path in a runtime or the app's folder, goes in the
-    # bundle: under <tt>Contents/Resources</tt>.
+    # Where the runtime and the app go: <tt>Contents/Resources</tt>.
     #
     # === Example
     #
@@ -97,19 +97,19 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   bundle.resource("fledge.cfg") # => "MyApp.app/Contents/Resources/fledge.cfg"
+    #   bundle.resources # => "dist/MyApp-arm64-darwin/MyApp.app/Contents/Resources"
     #--
     # SPDX-SnippetEnd
     #++
-    def resource(path)
-      first = path.split("/", 2).first.to_s
-      @top << first unless @top.include?(first)
-      "#{folder}/Contents/Resources/#{path}"
+    def resources
+      File.join(path, "Contents", "Resources")
     end
 
-    # Adds +entry+, placed in the built app's folder, to the seal when it
-    # is inside the bundle, unless it is the seal or the launcher, which
-    # the signature covers itself.
+    # The keys of the bundle's <tt>Info.plist</tt>: those Apple's
+    # Information Property List reference requires of a macOS app, its
+    # identity, the oldest macOS its runtime runs on
+    # (Platform::MACOS_MINIMUM), and that it draws at Retina resolution,
+    # as Tauri's bundler writes them.
     #
     # === Example
     #
@@ -118,35 +118,11 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   bundle.seal(Fledge::Entry.file("MyApp.app/Contents/Resources/app/main.rb", "puts 1\n"))
+    #   bundle.info["CFBundleIdentifier"] # => "com.example.MyApp"
     #--
     # SPDX-SnippetEnd
     #++
-    def seal(entry)
-      contents = "#{folder}/Contents/"
-      return unless entry.path.start_with?(contents)
-
-      path = entry.path.delete_prefix(contents)
-      @seal.add(entry.with(path:)) unless path.start_with?("_CodeSignature/") || path == "MacOS/#{@identity.name}"
-    end
-
-    # The bundle's <tt>Info.plist</tt>: the keys Apple's Information
-    # Property List reference requires of a macOS app, its identity, the
-    # oldest macOS its runtime runs on (Platform::MACOS_MINIMUM), and that
-    # it draws at Retina resolution.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   bundle.info_plist.include?("<key>CFBundleIdentifier</key>") # => true
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def info_plist
+    def info
       version = MacBundle.bundle_version(@identity.version)
       keys = {
         "CFBundleDevelopmentRegion" => "en",
@@ -164,7 +140,7 @@ module Fledge
       keys["CFBundleIconFile"] = icon_file if @identity.icon
       copyright = @identity.copyright
       keys["NSHumanReadableCopyright"] = copyright if copyright
-      Plist.write(keys)
+      keys
     end
 
     # +version+ as CFBundleShortVersionString and CFBundleVersion take it:
@@ -187,9 +163,10 @@ module Fledge
       version.split(".").take_while { |part| part.match?(/\A\d+\z/) }.first(3).join(".")
     end
 
-    # What the bundle holds besides the runtime and the app, with paths in
-    # the built app's folder: <tt>Info.plist</tt>, the icon, and the links
-    # in +MacOS+.
+    # Puts the launcher at +launcher+ into the bundle as its program,
+    # writes <tt>Info.plist</tt>, the icon, and the links in +MacOS+, and
+    # signs the bundle ad hoc. Comes last: the signature seals everything
+    # else. Raises Fledge::Error when plutil or codesign fails.
     #
     # === Example
     #
@@ -198,49 +175,31 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   bundle.extras.map(&:path).first # => "MyApp.app/Contents/Info.plist"
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def extras
-      entries = [Entry.file("#{folder}/Contents/Info.plist", info_plist)]
-      icon = @identity.icon
-      entries << Entry.file("#{folder}/Contents/Resources/#{icon_file}", icon.icns) if icon
-      LINKED.select { |name| @top.include?(name) }.each do |name|
-        entries << Entry.symlink("#{folder}/Contents/MacOS/#{name}", "../Resources/#{name}")
-      end
-      entries
-    end
-
-    # The seal and the launcher, signed for the bundle, with paths in the
-    # built app's folder. Comes last: the seal covers everything else.
-    #
-    # [launcher] The runtime's launcher, a Fledge::Entry.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   bundle.finish(launcher).map(&:path)
-    #   # => ["MyApp.app/Contents/_CodeSignature/CodeResources", "MyApp.app/Contents/MacOS/MyApp"]
+    #   bundle.finish("/tmp/runtime/launcher")
     #--
     # SPDX-SnippetEnd
     #++
     def finish(launcher)
-      resources = @seal.bytes
-      signer = AdHocSignature.new(identifier: @identity.identifier.to_s, info_plist:, code_resources: resources)
-      program = begin
-        signer.sign(launcher.content)
-      rescue Error => e
-        raise Error, "the runtime's launcher #{e.message}"
+      macos = File.join(path, "Contents", "MacOS")
+      FileUtils.mkdir_p(macos)
+      LINKED.each do |name|
+        File.symlink(File.join("..", "Resources", name), File.join(macos, name)) if File.exist?(File.join(resources, name))
       end
-      [
-        Entry.file("#{folder}/Contents/_CodeSignature/CodeResources", resources),
-        Entry.file("#{folder}/Contents/MacOS/#{@identity.name}", program, mode: 0o755),
-      ]
+      FileUtils.mv(launcher, File.join(macos, @identity.name))
+      write_info_plist
+      icon = @identity.icon
+      File.binwrite(File.join(resources, icon_file), icon.icns) if icon
+      Command.run("codesign", "--force", "--sign", "-", "--identifier", @identity.identifier.to_s, path, install: INSTALL)
+    end
+
+    # Writes the keys as XML, as +plutil+ converts them from JSON.
+    private def write_info_plist
+      plist = File.join(path, "Contents", "Info.plist")
+      json = "#{plist}.json"
+      File.write(json, JSON.generate(info))
+      Command.run("plutil", "-convert", "xml1", "-o", plist, json, install: INSTALL)
+    ensure
+      FileUtils.rm_f(json) if json
     end
 
     private def icon_file

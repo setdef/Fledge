@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Assembly
+    class RuntimeFolder
+      @path: String
+      @platform: Platform
+      @app_name: String
+      @top: String
+
+      def initialize: (String path, platform: Platform, app_name: String, work: String) -> void
+
+      def launcher: (String name) -> String
+
+      def kit: () -> String?
+
+      def move_into: (String folder) -> void
+
+      private def held: () -> Array[String]
+
+      private def check: (String name) -> void
+    end
+  end
+end

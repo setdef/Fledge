@@ -24,7 +24,7 @@ module Fledge
   # path when it is made, and refuses to write through a symlink when it
   # is written.
   #
-  # Use it to move files between folders and archives with Fledge::TarGz.
+  # Use it to write files a build adds to an app's folder.
   #
   # === Examples
   #

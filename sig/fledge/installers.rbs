@@ -3,8 +3,6 @@
 
 module Fledge
   module Installers
-    type writer = Dmg | Nsis | AppImage
-
     OS: Hash[String, String]
     SUFFIX: Hash[String, String]
 
@@ -12,6 +10,6 @@ module Fledge
 
     def self.file_name: (String format, String base) -> String
 
-    def self.writer: (String format, app: App, folder: String, makensis: String?, ?mtime: Integer) -> writer
+    def self.write: (String format, app: App, folder: String, kit: String?, makensis: String?) -> String
   end
 end

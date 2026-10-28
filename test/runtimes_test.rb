@@ -35,11 +35,7 @@ class RuntimesTest < Minitest::Test
     Dir.mktmpdir do |dir|
       windows = Fledge::Platform.find("x64-mingw-ucrt")
       top = "fledge-makensis-#{Fledge::VERSION}-x64-mingw-ucrt"
-      Fledge::TarGz.write(File.join(dir, "#{top}.tar.gz")) do |tar|
-        tar.add(Fledge::Entry.directory(top))
-        tar.add(Fledge::Entry.file("#{top}/makensis.exe", "MZ", mode: 0o755))
-        tar.add(Fledge::Entry.file("#{top}/zlib1.dll", "MZ"))
-      end
+      FakeRuntime.pack(File.join(dir, "#{top}.tar.gz"), top, [Fledge::Entry.file("makensis.exe", "MZ", mode: 0o755), Fledge::Entry.file("zlib1.dll", "MZ")])
       runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "XDG_CACHE_HOME" => File.join(dir, "cache") })
 
       program = runtimes.makensis(windows)
@@ -55,7 +51,7 @@ class RuntimesTest < Minitest::Test
 
   def test_an_archive_that_is_not_makensis_is_refused
     Dir.mktmpdir do |dir|
-      Fledge::TarGz.write(File.join(dir, Fledge::Runtimes.makensis_file_name(LINUX))) { |tar| tar.add(Fledge::Entry.file("other/makensis", "x")) }
+      FakeRuntime.pack(File.join(dir, Fledge::Runtimes.makensis_file_name(LINUX)), "other", [Fledge::Entry.file("makensis", "x")])
       runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "XDG_CACHE_HOME" => File.join(dir, "cache") })
 
       assert_match(/is not Fledge's makensis/, assert_raises(Fledge::Error) { runtimes.makensis(LINUX) }.message)

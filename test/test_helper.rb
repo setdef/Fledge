@@ -10,6 +10,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require "fledge"
 
 require "minitest/autorun"
+require "fileutils"
 require "tmpdir"
 require_relative "support/binaries"
 
@@ -46,16 +47,24 @@ module FakeRuntime
   def self.write(directory, platform, extra: [], launcher: LAUNCHER)
     top = File.basename(Fledge::Runtimes.file_name(platform), Fledge::Runtimes::EXTENSION)
     path = File.join(directory, Fledge::Runtimes.file_name(platform))
-    Fledge::TarGz.write(path) do |tar|
-      tar.add(Fledge::Entry.directory(top))
-      with_folders([
-        *launchers(platform, launcher),
-        *ruby(platform.windows? ? "ruby/lib/ruby" : "lib/ruby", platform),
-        *(platform.windows? ? [] : [Fledge::Entry.symlink("lib/current", "ruby")]),
-        *extra,
-      ]).each { |entry| tar.add(entry.with(path: "#{top}/#{entry.path}")) }
+    pack(path, top, [
+      *launchers(platform, launcher),
+      *ruby(platform.windows? ? "ruby/lib/ruby" : "lib/ruby", platform),
+      *((platform.windows? || Gem.win_platform?) ? [] : [Fledge::Entry.symlink("lib/current", "ruby")]),
+      *extra,
+    ])
+  end
+
+  # Writes +entries+ under the folder +top+ into the archive +path+, with
+  # the computer's tar, as rake runtime packs a runtime, and returns
+  # +path+.
+  def self.pack(path, top, entries)
+    Dir.mktmpdir("fake-runtime") do |stage|
+      folder = File.join(stage, top)
+      FileUtils.mkdir_p(folder)
+      entries.each { |entry| entry.write_into(folder) }
+      Fledge::Archive.pack(folder, to: path)
     end
-    path
   end
 
   # The launchers of +platform+'s runtime: +launcher+, and on Windows the
@@ -64,18 +73,6 @@ module FakeRuntime
     return [Fledge::Entry.file("launcher", launcher, mode: 0o755)] unless platform.windows?
 
     [Fledge::Entry.file("launcher.exe", WINDOWS_CONSOLE, mode: 0o755), Fledge::Entry.file("launcherw.exe", WINDOWS_GUI, mode: 0o755)]
-  end
-
-  # +entries+, each after a folder entry for every folder above it, as a
-  # runtime archive holds them.
-  def self.with_folders(entries)
-    seen = {}
-    entries.flat_map do |entry|
-      parts = entry.path.split("/")[0...-1]
-      folders = parts.each_index.map { |index| parts.first(index + 1).join("/") }.reject { |folder| seen[folder] }
-      folders.each { |folder| seen[folder] = true }
-      [*folders.map { |folder| Fledge::Entry.directory(folder) }, entry]
-    end
   end
 
   # Ruby's library folder at +lib+: a library file, +platform+'s

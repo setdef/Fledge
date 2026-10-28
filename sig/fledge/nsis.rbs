@@ -10,19 +10,12 @@ module Fledge
     @folder: String
     @to: String
     @makensis: String
-    @files: Array[String]
-    @folders: Array[String]
-    @size: Integer
 
     def initialize: (identity: Identity, folder: String, to: String, makensis: String) -> void
 
-    def add: (Entry entry) -> void
-
     def script: (icon: String?) -> String
 
-    def finish: (Hash[String, Entry] kit) -> String
-
-    def abort: () -> void
+    def write: (String? kit) -> String
 
     def self.host_path: (String path) -> String
 

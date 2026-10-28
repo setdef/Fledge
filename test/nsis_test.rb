@@ -17,17 +17,24 @@ class NsisTest < Minitest::Test
     Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.MyApp", version:, publisher:, copyright:, icon: nil)
   end
 
-  def setup_program(identity: self.identity, folder: "/dist/My App-x64-mingw-ucrt")
-    nsis = Fledge::Nsis.new(identity:, folder:, to: "/dist/My App-x64-mingw-ucrt-setup.exe", makensis: "makensis")
+  def setup
+    @dist = Dir.mktmpdir("nsis-test")
+    @folder = File.join(@dist, "My App-x64-mingw-ucrt")
     [
-      Fledge::Entry.directory("ruby"),
-      Fledge::Entry.directory("ruby/bin"),
       Fledge::Entry.file("ruby/bin/ruby.dll", "x" * 3000),
       Fledge::Entry.file("My App.exe", "MZ", mode: 0o755),
-      Fledge::Entry.directory("app"),
       Fledge::Entry.file("app/$main.rb", "puts 1\n"),
-    ].each { |entry| nsis.add(entry) }
-    nsis
+    ].each { |entry| entry.write_into(@folder) }
+  end
+
+  def teardown
+    FileUtils.rm_rf(@dist)
+  end
+
+  # The installer of the app in @folder, whose files and folders it reads
+  # from there.
+  def setup_program(identity: self.identity)
+    Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe", makensis: "makensis")
   end
 
   def script(**) = setup_program(**).script(icon: nil)
@@ -48,8 +55,8 @@ class NsisTest < Minitest::Test
     assert_includes lines, "RequestExecutionLevel user"
     assert_includes lines, "InstallDir \"$LOCALAPPDATA\\Programs\\My App\""
     assert_includes lines, "SetCompressor /SOLID zlib"
-    assert_includes lines, "  File /r \"#{Fledge::Nsis.host_path('/dist/My App-x64-mingw-ucrt/*')}\""
-    assert_includes lines, "OutFile \"#{Fledge::Nsis.host_path('/dist/My App-x64-mingw-ucrt-setup.exe')}\""
+    assert_includes lines, "  File /r \"#{Fledge::Nsis.host_path(File.join(@folder, '*'))}\""
+    assert_includes lines, "OutFile \"#{Fledge::Nsis.host_path("#{@folder}-setup.exe")}\""
   end
 
   # The Start menu shortcut, with its System.AppUserModel.ID set to the
@@ -86,7 +93,7 @@ class NsisTest < Minitest::Test
     assert_includes lines, "  WriteRegDWORD HKCU #{key} \"EstimatedSize\" 3"
     assert_includes lines, "  DeleteRegKey HKCU #{key}"
     uninstall = lines.drop_while { |line| line != "Section Uninstall" }
-    assert_equal ["  Delete \"$INSTDIR\\ruby\\bin\\ruby.dll\"", "  Delete \"$INSTDIR\\My App.exe\"", "  Delete \"$INSTDIR\\app\\$$main.rb\""],
+    assert_equal ["  Delete \"$INSTDIR\\My App.exe\"", "  Delete \"$INSTDIR\\app\\$$main.rb\"", "  Delete \"$INSTDIR\\ruby\\bin\\ruby.dll\""],
       uninstall.grep(/Delete "\$INSTDIR\\(?!uninstall)/)
     assert_equal ["  RMDir \"$INSTDIR\\ruby\\bin\"", "  RMDir \"$INSTDIR\\app\"", "  RMDir \"$INSTDIR\\ruby\"", "  RMDir $INSTDIR"], uninstall.grep(/RMDir/)
   end
@@ -120,7 +127,8 @@ class NsisTest < Minitest::Test
     Dir.mktmpdir do |dir|
       nsis = Fledge::Nsis.new(identity:, folder: dir, to: File.join(dir, "setup.exe"), makensis: "makensis")
 
-      assert_match(%r{the runtime has no installer/nsis}, assert_raises(Fledge::Error) { nsis.finish({}) }.message)
+      assert_match(%r{the runtime has no installer/nsis}, assert_raises(Fledge::Error) { nsis.write(nil) }.message)
+      assert_match(%r{the runtime has no installer/nsis}, assert_raises(Fledge::Error) { nsis.write(dir) }.message)
     end
   end
 
@@ -134,19 +142,15 @@ class NsisTest < Minitest::Test
     end
 
     Dir.mktmpdir do |dir|
-      kit = {}
-      Fledge::TarGz.each_entry(windows) do |entry|
-        rest = entry.path.split("/", 2).last.to_s
-        kit[rest.delete_prefix("installer/")] = entry if rest.start_with?("installer/") && entry.type == :file
-      end
+      Fledge::Archive.unpack(windows, into: File.join(dir, "runtime"))
+      kit = File.join(Dir.glob(File.join(dir, "runtime", "*")).first.to_s, "installer")
       folder = File.join(dir, "My App-x64-mingw-ucrt")
       Fledge::Entry.file("My App.exe", "MZ", mode: 0o755).write_into(folder)
       program = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => runtimes, "XDG_CACHE_HOME" => File.join(dir, "cache") })
         .makensis(Fledge::Platform.local)
       nsis = Fledge::Nsis.new(identity:, folder:, to: "#{folder}-setup.exe", makensis: program)
-      nsis.add(Fledge::Entry.file("My App.exe", "MZ", mode: 0o755))
 
-      path = nsis.finish(kit)
+      path = nsis.write(kit)
       assert_equal "MZ", File.binread(path, 2)
       assert_includes File.binread(path), "My App Setup".encode(Encoding::UTF_16LE).b, "its version information names it"
     end

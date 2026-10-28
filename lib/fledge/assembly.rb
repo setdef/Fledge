@@ -6,16 +6,16 @@
 #++
 
 require "fileutils"
+require "tmpdir"
+require_relative "archive"
 require_relative "desktop_entry"
 require_relative "entry"
 require_relative "error"
 require_relative "installers"
 require_relative "mac_bundle"
 require_relative "platform"
-require_relative "tar_gz"
 require_relative "windows_resources"
-require_relative "assembly/placement"
-require_relative "assembly/runtime_archive"
+require_relative "assembly/runtime_folder"
 
 module Fledge
   # Puts one app into one platform's runtime: a folder and its archive.
@@ -35,20 +35,20 @@ module Fledge
   # <tt>OUT/NAME-PLATFORM/</tt>, to try, and as
   # <tt>OUT/NAME-PLATFORM.tar.gz</tt> (<tt>.zip</tt> for Windows), to
   # ship; and a windowed app's installers (Fledge::Installers) are
-  # written beside them, from the same entries, with the installer files
-  # the runtime keeps in its +installer+ folder, which no app holds.
-  # Unpacking the runtime and packing the folder again would lose the
-  # launcher's executable bit on a disk that has none.
+  # written beside them, from the folder, with the installer files the
+  # runtime keeps in its +installer+ folder, which no app holds.
   #
-  # This class streams each runtime entry, then CONFIG, each of the app's
-  # entries, and the files the build adds (the app's gems), into the
-  # folder and the archive at once, so the archive keeps the permissions
-  # and symlinks the runtime was built with, and the launcher last, once
-  # everything it must describe or seal is known. The platform names the
-  # archive's format (Fledge::Platform#archive_format).
-  # It refuses to let an added file replace one the runtime holds,
-  # replaces a previous build of the same app and platform, and removes
-  # what it wrote if the build fails.
+  # This class unpacks the runtime with tar (Fledge::Archive), moves it
+  # into the folder, adds CONFIG, the app's project, and the files the
+  # build adds (the app's gems), and places the launcher last, once
+  # everything it must describe or seal is there; then it packs the
+  # folder with tar, which keeps the permissions and symlinks the runtime
+  # was built with, as the platform names its archive
+  # (Fledge::Platform#archive_extension). Each platform is built on its
+  # own computer (ADR 010), whose disk keeps what its archive needs. It
+  # refuses to let an added file replace one the runtime holds, replaces
+  # a previous build of the same app and platform, and removes what it
+  # wrote if the build fails.
   #
   # Use it once per target in <tt>fledge build</tt>.
   #
@@ -110,9 +110,6 @@ module Fledge
       @app_files = app_files
       @files = files
       @makensis = makensis
-      @bundle = nil # : MacBundle?
-      @writers = [] # : Array[Dmg | Nsis | AppImage]
-      @kit = {} # : Hash[String, Entry]
       @installers = [] # : Array[String]
     end
 
@@ -211,45 +208,50 @@ module Fledge
 
     private def build
       remove_output
-      FileUtils.mkdir_p(folder)
-      mtime = Time.now.to_i
-      @bundle = (@platform.os == "darwin" && @app.identity.windowed?) ? MacBundle.new(@app.identity) : nil
-      @writers = Installers.formats(@app, @platform).map do |format|
-        Installers.writer(format, app: @app, folder:, makensis: @makensis, mtime:)
+      FileUtils.mkdir_p(@out)
+      Dir.mktmpdir(".fledge-build-", @out) do |work|
+        runtime = RuntimeFolder.new(@runtime, platform: @platform, app_name: @app.name, work:)
+        bundle = (@platform.os == "darwin" && @app.identity.windowed?) ? MacBundle.new(@app.identity, folder:) : nil
+        contents = bundle ? bundle.resources : folder
+        runtime.move_into(contents)
+        File.write(File.join(contents, CONFIG), launch_config)
+        copy_app(contents)
+        @files.each { |entry| add(contents, entry) }
+        launcher = runtime.launcher(launcher_name)
+        bundle ? bundle.finish(launcher) : place_launcher(launcher)
+        Archive.pack(folder, to: archive)
+        kit = runtime.kit
+        @installers = Installers.formats(@app, @platform).map do |format|
+          Installers.write(format, app: @app, folder:, kit:, makensis: @makensis)
+        end
       end
-      path = @platform.archive_format.write(archive, mtime:) do |writer|
-        writer.add(Entry.directory(base_name))
-        placement = Placement.new(folder:, base_name:, writer:, bundle: @bundle, installers: @writers, runtime: @runtime)
-        launcher = copy_runtime(placement)
-        placement.add(Entry.file(CONFIG, launch_config))
-        copy_app(placement)
-        @files.each { |entry| placement.add(entry) }
-        finish(placement, launcher)
-      end
-      @installers = @writers.map { |installer| installer.finish(@kit) }
-      path
+      archive
     rescue
-      @writers.each(&:abort)
       remove_output
       raise
     end
 
-    # Places the launcher, last, as the app's program: on Windows with the
-    # app's resources in it; in a bundle, after the bundle's own files,
-    # signed for it; on Linux, after a windowed app's desktop entry.
-    private def finish(placement, launcher)
-      bundle = @bundle
-      if bundle
-        bundle.extras.each { |entry| placement.put(entry) }
-        bundle.finish(launcher).each { |entry| placement.put(entry) }
-        return
+    # Places the launcher as the app's program: on Windows with the app's
+    # resources in it; on Linux, after a windowed app's desktop entry.
+    private def place_launcher(launcher)
+      program = File.join(folder, @platform.executable(@app.name))
+      FileUtils.mv(launcher, program)
+      File.binwrite(program, windows_program(File.binread(program), File.basename(program))) if @platform.windows?
+      DesktopEntry.new(@app.identity).entries.each { |entry| add(folder, entry) } if @platform.os == "linux" && @app.identity.windowed?
+    end
+
+    # Writes +entry+, whose path is relative to +root+, unless it is a
+    # folder already there; any other entry already there is the
+    # runtime's, which nothing the build adds may replace.
+    private def add(root, entry)
+      target = File.join(root, entry.path)
+      return if entry.type == :directory && File.directory?(target)
+      raise Error, "#{entry.path} is in #{@runtime} already, so the build can't add its own" if File.exist?(target) || File.symlink?(target)
+      if entry.type == :symlink && @platform.windows?
+        raise Error, "#{base_name}/#{entry.path} is a symbolic link, which a .zip for Windows cannot hold. Replace it with what it points to."
       end
 
-      executable = @platform.executable(@app.name)
-      content = launcher.content
-      content = windows_program(content, executable) if @platform.windows?
-      DesktopEntry.new(@app.identity).entries.each { |entry| placement.put(entry) } if @platform.os == "linux" && @app.identity.windowed?
-      placement.put(Entry.file(executable, content, mode: launcher.mode))
+      entry.write_into(root)
     end
 
     private def windows_program(content, executable)
@@ -278,26 +280,18 @@ module Fledge
       FileUtils.rm_f(Installers::SUFFIX.keys.map { |format| Installers.file_name(format, folder) })
     end
 
-    # Copies every entry of the runtime but its launchers and its
-    # installer files, which it keeps for the installers, and returns the
-    # launcher this app runs.
-    private def copy_runtime(placement)
-      runtime = RuntimeArchive.new(@runtime, platform: @platform, app_name: @app.name)
-      runtime.copy(launcher_name, @kit) { |entry| placement.add(entry) }
-    end
-
-    # The project's entries in +app+, with the contents @app_files gives
-    # in place of a file's own, then the files of @app_files the project
-    # does not have.
-    private def copy_app(placement)
-      placement.add(Entry.directory("app"))
+    # The project's entries in +app+ under +contents+, with the contents
+    # @app_files gives in place of a file's own, then the files of
+    # @app_files the project does not have.
+    private def copy_app(contents)
+      add(contents, Entry.directory("app"))
       remaining = @app_files.dup
       @app.entries(skip: [@out]).each do |entry|
         content = remaining.delete(entry.path)
         entry = entry.with(content:) if content && entry.type == :file
-        placement.add(entry.with(path: "app/#{entry.path}"))
+        add(contents, entry.with(path: "app/#{entry.path}"))
       end
-      remaining.each { |path, content| placement.add(Entry.file("app/#{path}", content)) }
+      remaining.each { |path, content| add(contents, Entry.file("app/#{path}", content)) }
     end
   end
 end

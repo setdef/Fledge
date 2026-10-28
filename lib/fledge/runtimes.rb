@@ -9,7 +9,7 @@ require "fileutils"
 require_relative "download"
 require_relative "entry"
 require_relative "error"
-require_relative "tar_gz"
+require_relative "archive"
 require_relative "version"
 
 module Fledge
@@ -58,7 +58,7 @@ module Fledge
     # The extension of every runtime archive. Runtimes are .tar.gz on
     # every platform, Windows too, whatever a built app ships in: Fledge
     # reads them, not the person who runs the app.
-    EXTENSION = TarGz::EXTENSION
+    EXTENSION = Archive::TAR_GZ
 
     # The file name of the runtime archive for +platform+ at +version+
     # (default: this Fledge's version).
@@ -210,13 +210,10 @@ module Fledge
 
     private def unpack(archive, top, folder)
       FileUtils.rm_rf(folder)
-      TarGz.each_entry(archive) do |entry|
-        first, rest = entry.path.split("/", 2)
-        raise Error, "#{archive} is not Fledge's makensis: it holds #{first}, not #{top}/" unless first == top
-        next unless rest
+      tops = Archive.names(archive).map { |name| name.split("/", 2).first }.uniq
+      raise Error, "#{archive} is not Fledge's makensis: it holds #{tops.join(', ')}, not #{top}/" unless tops == [top]
 
-        entry.with(path: rest).write_into(folder)
-      end
+      Archive.unpack(archive, into: File.dirname(folder))
     end
 
     private def find(name)

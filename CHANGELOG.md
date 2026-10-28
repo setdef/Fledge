@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- A built app's archive is written, and a runtime unpacked, by the computer's own tar: GNU tar on Linux, bsdtar on macOS, and `System32\tar.exe` on Windows 10 and 11, which writes the `.zip`.
+- On macOS, a windowed app's `Info.plist` is written by `plutil`, the bundle is signed ad hoc by `codesign`, and its disk image is made by `hdiutil`, so building a Mac app needs Xcode's command line tools (`xcode-select --install`), as compiling a gem already did. The disk image is a Mac OS Extended volume, as create-dmg makes, rather than the case-sensitive one Fledge wrote.
+
 ### Removed
 
 - **Breaking:** `fledge build` builds only for the computer it runs on; `-t` and `--target` are gone, and say so. Build the macOS app on a Mac, the Windows app on Windows, and each Linux app on Linux, as Tauri and Briefcase do.

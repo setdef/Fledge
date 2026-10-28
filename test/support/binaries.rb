@@ -95,11 +95,9 @@ module Binaries
   end
 end
 
-# Writes the smallest Windows and macOS programs Fledge rewrites: the
-# launcher's shape, with what Fledge::WindowsProgram and
-# Fledge::AdHocSignature read and change, laid out by hand from Microsoft's
-# "PE Format" and Apple's mach-o/loader.h and cs_blobs.h, not by the code
-# under test.
+# Writes the smallest Windows programs Fledge rewrites: the launcher's
+# shape, with what Fledge::WindowsProgram reads and changes, laid out by
+# hand from Microsoft's "PE Format", not by the code under test.
 module Programs
   # A PE32+ program of Subsystem +subsystem+ with a .text section, a .rsrc
   # section holding one manifest (type 24, name 1, language 1033), and,
@@ -171,25 +169,5 @@ module Programs
     directory = -> (id, target) { [0, 0, 0, 0, 0, 1].pack("V2v4") + [id, target].pack("V2") }
     tables = directory.call(24, 0x8000_0018) + directory.call(1, 0x8000_0030) + directory.call(1033, 0x48)
     tables + [address + 0x58, manifest.bytesize, 0, 0].pack("V4") + manifest.b
-  end
-
-  # A thin 64-bit arm64 Mach-O program: a header, a __TEXT segment over
-  # the first page, a __LINKEDIT segment after it, and an LC_CODE_SIGNATURE
-  # pointing at an old signature at __LINKEDIT's end, as the linker leaves
-  # one. The code between them is +code+.
-  def self.macho(code: "\x1F\x20\x03\xD5".b * 1500)
-    text_size = 0x4000
-    linkedit_offset = text_size + code.bytesize
-    old_signature = [0xFADE0CC0, 12, 0].pack("N3").ljust(64, "\0")
-    linkedit = "\0".b * 32
-    signature_at = linkedit_offset + linkedit.bytesize
-    segment = lambda do |name, address, size, offset, file_size|
-      [0x19, 72, name.b, address, size, offset, file_size, 5, 5, 0, 0].pack("V2a16Q<4V4")
-    end
-    commands = segment.call("__TEXT", 0x1_0000_0000, text_size, 0, text_size) +
-      segment.call("__LINKEDIT", 0x1_0000_4000 + code.bytesize, 0x4000, linkedit_offset, linkedit.bytesize + old_signature.bytesize) +
-      [0x1D, 16, signature_at, old_signature.bytesize].pack("V4")
-    header = [0xFEEDFACF, 0x0100000C, 0, 2, 3, commands.bytesize, 0x0020_0085, 0].pack("V8")
-    (header + commands).ljust(text_size, "\0") + code + linkedit + old_signature
   end
 end

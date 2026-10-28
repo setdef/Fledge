@@ -14,10 +14,7 @@ module Fledge
     @out: String
     @app_files: Hash[String, String]
     @files: Array[Entry]
-    @bundle: MacBundle?
     @makensis: String?
-    @writers: Array[Installers::writer]
-    @kit: Hash[String, Entry]
     @installers: Array[String]
 
     attr_reader installers: Array[String]
@@ -34,7 +31,9 @@ module Fledge
 
     private def build: () -> String
 
-    private def finish: (Placement placement, Entry launcher) -> void
+    private def place_launcher: (String launcher) -> void
+
+    private def add: (String root, Entry entry) -> void
 
     private def windows_program: (String content, String executable) -> String
 
@@ -46,8 +45,6 @@ module Fledge
 
     private def remove_output: () -> void
 
-    private def copy_runtime: (Placement placement) -> Entry
-
-    private def copy_app: (Placement placement) -> void
+    private def copy_app: (String contents) -> void
   end
 end

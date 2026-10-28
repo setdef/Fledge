@@ -6,7 +6,7 @@
 #++
 
 require_relative "error"
-require_relative "tar_gz"
+require_relative "archive"
 
 module Fledge
   # What a runtime archive holds that an app's gems depend on: where its
@@ -104,16 +104,21 @@ module Fledge
       version = nil # : String?
       arch = nil # : String?
       libraries = [] # : Array[String]
-      TarGz.each_entry(path) do |entry|
-        inside = entry.path.split("/", 2).last.to_s
-        libraries << File.basename(inside) if entry.type == :file && inside.match?(LIBRARY)
+      rbconfig = nil # : String?
+      Archive.names(path).each do |name|
+        inside = name.split("/", 2).last.to_s
+        libraries << File.basename(inside) if inside.match?(LIBRARY)
         if (found = SPECIFICATION.match(inside))
           gem_dirs << found[:gem_dir].to_s
           gems << found[:full_name].to_s
         elsif RBCONFIG.match?(inside)
-          version ||= ruby_version_in(entry.content)
-          arch ||= entry.content[ARCH, 1]
+          rbconfig ||= name
         end
+      end
+      if rbconfig
+        content = Archive.read(path, rbconfig)
+        version = ruby_version_in(content)
+        arch = content[ARCH, 1]
       end
       raise Error, "#{path} is not a Fledge runtime: its rbconfig.rb names no arch" if version && arch.nil?
 

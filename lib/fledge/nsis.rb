@@ -43,8 +43,7 @@ module Fledge
   # module, unlike LZMA's (CPL-1.0), asks nothing of whoever ships it
   # (decision 8).
   #
-  # Use it through Fledge::Assembly, which hands it every entry of a
-  # Windows app's folder, then calls #finish with the runtime's NSIS.
+  # Use it through Fledge::Installers, once the app's folder is built.
   #
   # === Example
   #
@@ -55,8 +54,7 @@ module Fledge
   #++
   #   setup = Fledge::Nsis.new(identity:, folder: "dist/MyApp-x64-mingw-ucrt", to: "dist/MyApp-x64-mingw-ucrt-setup.exe",
   #     makensis: "/home/you/.cache/fledge/makensis/makensis")
-  #   setup.add(Fledge::Entry.file("MyApp.exe", program, mode: 0o755))
-  #   setup.finish(kit) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
+  #   setup.write(kit) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
   #--
   # SPDX-SnippetEnd
   #++
@@ -77,35 +75,10 @@ module Fledge
       @folder = folder
       @to = to
       @makensis = makensis
-      @files = [] # : Array[String]
-      @folders = [] # : Array[String]
-      @size = 0
     end
 
-    # Notes +entry+, whose path is relative to the app's folder, as one
-    # the installer installs and the uninstaller removes.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   setup.add(Fledge::Entry.directory("ruby"))
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def add(entry)
-      if entry.type == :directory
-        @folders << entry.path
-      else
-        @files << entry.path
-        @size += entry.content.bytesize
-      end
-    end
-
-    # The installer's NSIS script.
+    # The installer's NSIS script, which installs every file and folder in
+    # the app's folder, and whose uninstaller removes exactly those.
     #
     # [icon] The path of the app's icon as an <tt>.ico</tt>, or +nil+ for
     #        NSIS's own.
@@ -122,11 +95,25 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def script(icon:)
-      Script.new(identity: @identity, folder: @folder, to: @to, files: @files, folders: @folders, size: @size).text(icon:)
+      files = [] # : Array[String]
+      folders = [] # : Array[String]
+      size = 0
+      Dir.glob("**/*", File::FNM_DOTMATCH, base: @folder).sort.each do |path|
+        next if File.basename(path) == "."
+
+        full = File.join(@folder, path)
+        if File.directory?(full)
+          folders << path
+        else
+          files << path
+          size += File.size(full)
+        end
+      end
+      Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:).text(icon:)
     end
 
     # Compiles the installer with the NSIS in +kit+, the runtime's
-    # installer files by path (<tt>nsis/Stubs</tt>, <tt>nsis/Plugins</tt>,
+    # installer folder (its <tt>nsis/Stubs</tt>, <tt>nsis/Plugins</tt>,
     # <tt>nsis/Include</tt>, and <tt>nsis/Contrib</tt>), and returns its
     # path. Raises Fledge::Error when the runtime has no NSIS, or makensis
     # cannot run or refuses the script.
@@ -138,16 +125,15 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   setup.finish(kit) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
+    #   setup.write(kit) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
     #--
     # SPDX-SnippetEnd
     #++
-    def finish(kit)
-      Dir.mktmpdir("fledge-nsis") do |work|
-        nsis = File.join(work, "nsis")
-        kit.each { |path, entry| entry.with(path:).write_into(work) if path.start_with?("nsis/") }
-        raise Error, "the runtime has no installer/nsis, which runtimes carry from Fledge 0.0.1.pre.7 on" unless File.directory?(nsis)
+    def write(kit)
+      nsis = kit && File.join(kit, "nsis")
+      raise Error, "the runtime has no installer/nsis, which runtimes carry from Fledge 0.0.1.pre.7 on" unless nsis && File.directory?(nsis)
 
+      Dir.mktmpdir("fledge-nsis") do |work|
         icon = @identity.icon
         icon_path = icon && File.join(work, "app.ico")
         File.binwrite(icon_path, icon.ico) if icon && icon_path
@@ -156,11 +142,6 @@ module Fledge
         compile(script_path, nsis)
       end
       @to
-    end
-
-    # Removes what the installer has written, after a build that failed.
-    def abort
-      FileUtils.rm_f(@to)
     end
 
     # +path+ as makensis on this computer reads it: absolute, with

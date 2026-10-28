@@ -19,10 +19,7 @@ class LicensingPageTest < Minitest::Test
 
   def runtime(directory, platform, files)
     top = "fledge-runtime-0.0.0-#{platform}"
-    Fledge::TarGz.write(File.join(directory, "#{top}.tar.gz")) do |tar|
-      tar.add(Fledge::Entry.directory(top))
-      files.each { |path, bytes| tar.add(Fledge::Entry.file("#{top}/#{path}", bytes)) }
-    end
+    FakeRuntime.pack(File.join(directory, "#{top}.tar.gz"), top, files.map { |path, bytes| Fledge::Entry.file(path, bytes) })
   end
 
   def gemspec(name, version, licenses)

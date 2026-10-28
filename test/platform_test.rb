@@ -66,7 +66,6 @@ class PlatformTest < Minitest::Test
       platform = Fledge::Platform.find(name)
 
       refute_predicate platform, :windows?
-      assert_equal Fledge::TarGz, platform.archive_format
       assert_equal ".tar.gz", platform.archive_extension
       assert_equal "hello", platform.executable("hello")
     end
@@ -78,7 +77,6 @@ class PlatformTest < Minitest::Test
     platform = Fledge::Platform.find("x64-mingw-ucrt")
 
     assert_predicate platform, :windows?
-    assert_equal Fledge::Zip, platform.archive_format
     assert_equal ".zip", platform.archive_extension
     assert_equal "hello.exe", platform.executable("hello")
     assert_equal "héllo wörld.exe", platform.executable("héllo wörld")

@@ -9,7 +9,7 @@ require "fileutils"
 require "tmpdir"
 require_relative "license_audit"
 require_relative "../lib/fledge/platform"
-require_relative "../lib/fledge/tar_gz"
+require_relative "../lib/fledge/archive"
 require_relative "../lib/fledge/version"
 
 # Writes doc/licensing.md, the page that tells developers who build apps
@@ -69,7 +69,7 @@ class LicensingPage
     raise "#{@runtimes} holds no single runtime for #{platform}: #{archives}" unless archives.size == 1
 
     Dir.mktmpdir("licensing-#{platform}") do |directory|
-      Fledge::TarGz.each_entry(archives.first.to_s) { |entry| entry.write_into(directory) }
+      Fledge::Archive.unpack(archives.first.to_s, into: directory)
       tree = Dir.glob(File.join(directory, "fledge-runtime-*")).first or raise "#{archives.first} holds no runtime folder"
       report = LicenseAudit.new(platform:, tree:, fledge_version: @version).call
       raise "the #{platform} runtime breaks the license policy: #{report.violations.first}" unless report.violations.empty?
@@ -134,7 +134,7 @@ class LicensingPage
 
       Fledge takes no position on the licenses of the gems your app depends on. Which gems your app uses, and what their licenses ask of you, are your choice and your responsibility, as they are however else you ship a Ruby app. `fledge build` ships every gem your `Gemfile.lock` locks for each platform (leaving out its `development` and `test` groups), whatever its license, whether or not it declares one, and whatever its compiled files hold. Everything else on this page, the policy and the obligations alike, is about what Fledge itself puts into your app: its runtime.
 
-      Each gem ships as RubyGems or Bundler installs it, with all of its own files, its license files among them, in the app's gem folder (`lib/ruby/gems/4.0.0/` on macOS and Linux, `ruby\\lib\\ruby\\gems\\4.0.0\\` on Windows), and its specification, which declares its license, in that folder's `specifications/`. Fledge writes no notices of its own for your gems: `bundle licenses` lists the license each one's specification declares, and each gem's own notices say what it asks of you. `fledge build` refuses a gem only when it would not run where the app goes: one with an extension to compile for another platform than the one you build on, one whose `required_ruby_version` excludes Ruby #{RUBY_VERSION_SHIPPED}, or one whose compiled files need a library that neither the operating system, nor the runtime, nor the gem itself provides.
+      Each gem ships as RubyGems or Bundler installs it, with all of its own files, its license files among them, in the app's gem folder (`lib/ruby/gems/4.0.0/` on macOS and Linux, `ruby\\lib\\ruby\\gems\\4.0.0\\` on Windows), and its specification, which declares its license, in that folder's `specifications/`. Fledge writes no notices of its own for your gems: `bundle licenses` lists the license each one's specification declares, and each gem's own notices say what it asks of you. `fledge build` refuses a gem only when it would not run where the app goes: one with an extension that does not compile, one whose `required_ruby_version` excludes Ruby #{RUBY_VERSION_SHIPPED}, or one whose compiled files need a library that neither the operating system, nor the runtime, nor the gem itself provides.
     GEMS
   end
 

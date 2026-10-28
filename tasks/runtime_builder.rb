@@ -14,10 +14,8 @@ require_relative "download_cache"
 require_relative "license_audit"
 require_relative "release_archive"
 require_relative "../lib/fledge/download"
-require_relative "../lib/fledge/entry"
 require_relative "../lib/fledge/platform"
 require_relative "../lib/fledge/runtimes"
-require_relative "../lib/fledge/tar_gz"
 require_relative "../lib/fledge/version"
 
 # Builds a runtime (ADR 001, section 2).

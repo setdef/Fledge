@@ -9,7 +9,7 @@ require "fileutils"
 require "json"
 require "open3"
 require_relative "../error"
-require_relative "../tar_gz"
+require_relative "../archive"
 
 module Fledge
   class NativeBuild
@@ -54,9 +54,7 @@ module Fledge
         @ruby ||= begin
           ruby = File.join(@work, "ruby")
           FileUtils.rm_rf(ruby)
-          [@runtimes.archive(@platform), @runtimes.dev_archive(@platform)].each do |archive|
-            TarGz.each_entry(archive) { |entry| entry.write_into(ruby) unless entry.type == :directory && File.directory?(File.join(ruby, entry.path)) }
-          end
+          [@runtimes.archive(@platform), @runtimes.dev_archive(@platform)].each { |archive| Archive.unpack(archive, into: ruby) }
           top = Dir.children(ruby).first.to_s
           File.join(ruby, top, *(@platform.windows? ? %w[ruby bin ruby.exe] : %w[bin ruby]))
         end

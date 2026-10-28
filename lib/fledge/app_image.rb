@@ -24,18 +24,18 @@ module Fledge
   # on Linux; electron-builder writes its own on macOS too. Fledge writes
   # one on any computer (ADR 001).
   #
-  # This class lays the AppImage's file system out as AppImage's
+  # This module lays the AppImage's file system out as AppImage's
   # specification lays out an AppDir: the built app's folder, which
   # already has the desktop entry at its top (ADR 008, section 4), with
   # +AppRun+, a symbolic link to the app's program, which the runtime
   # runs; the 256-pixel icon at the top, named as the desktop entry's
-  # +Icon+ names it; and <tt>.DirIcon</tt>, a link to it. It streams the
-  # files into a SquashFS (Fledge::Squashfs) as they arrive, then writes
+  # +Icon+ names it; and <tt>.DirIcon</tt>, a link to it. It writes the
+  # files into a SquashFS (Fledge::Squashfs), then writes
   # the runtime the Linux runtime carries (<tt>installer/appimage-runtime</tt>,
   # Fledge's build of AppImage's type 2 runtime) and the file system
   # after it, executable.
   #
-  # Use it through Fledge::Assembly.
+  # Use it through Fledge::Installers.
   #
   # === Example
   #
@@ -44,32 +44,23 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   image = Fledge::AppImage.new(identity:, to: "dist/My App-x86_64-linux.AppImage")
-  #   image.add(Fledge::Entry.file("My App", launcher, mode: 0o755))
-  #   image.finish({ "appimage-runtime" => runtime }) # => "dist/My App-x86_64-linux.AppImage"
+  #   Fledge::AppImage.write(identity:, folder: "dist/My App-x86_64-linux", kit:, to: "dist/My App-x86_64-linux.AppImage")
+  #   # => "dist/My App-x86_64-linux.AppImage"
   #--
   # SPDX-SnippetEnd
   #++
-  class AppImage
-    # The runtime's path among the runtime's installer files.
+  module AppImage
+    # The runtime's path in the runtime's installer folder.
     RUNTIME = "appimage-runtime"
 
     # The size of the icon at the AppImage's top, as appimagetool
     # recommends it.
     ICON_SIZE = 256
 
-    # Creates the AppImage of the app whose Fledge::Identity is +identity+,
-    # written to +to+.
-    #
-    # [mtime] When everything in it was made, as Unix time.
-    def initialize(identity:, to:, mtime: Time.now.to_i)
-      @identity = identity
-      @to = to
-      @image = Tempfile.new(["fledge", ".squashfs"], binmode: true)
-      @squashfs = Squashfs.new(@image, mtime:)
-    end
-
-    # Adds +entry+, whose path is relative to the built app's folder.
+    # Writes the AppImage of the app whose Fledge::Identity is +identity+
+    # and whose built folder is +folder+ to +to+, with the runtime in
+    # +kit+, the runtime's installer folder, and returns +to+. Raises
+    # Fledge::Error when the runtime has no AppImage runtime.
     #
     # === Example
     #
@@ -78,58 +69,38 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   image.add(Fledge::Entry.directory("lib"))
+    #   Fledge::AppImage.write(identity:, folder: "dist/My App-x86_64-linux", kit:, to: "dist/My App-x86_64-linux.AppImage")
     #--
     # SPDX-SnippetEnd
     #++
-    def add(entry)
-      @squashfs.add(entry)
-    end
-
-    # Adds +AppRun+ and the icon, writes the AppImage with the runtime
-    # from +kit+, the runtime's installer files by path, and returns its
-    # path. Raises Fledge::Error when the runtime has no AppImage runtime.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   image.finish({ "appimage-runtime" => runtime }) # => "dist/My App-x86_64-linux.AppImage"
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def finish(kit)
-      runtime = kit[RUNTIME] or raise Error, "the runtime has no installer/#{RUNTIME}, which runtimes carry from Fledge 0.0.1.pre.7 on"
-      appdir.each { |entry| @squashfs.add(entry) }
-      @squashfs.finish
-      @image.rewind
-      File.open(@to, "wb") do |out|
-        out.write(runtime.content)
-        IO.copy_stream(@image, out)
+    def self.write(identity:, folder:, kit:, to:)
+      runtime = kit && File.join(kit, RUNTIME)
+      unless runtime && File.file?(runtime)
+        raise Error, "the runtime has no installer/#{RUNTIME}, which runtimes carry from Fledge 0.0.1.pre.7 on"
       end
-      File.chmod(0o755, @to)
-      @to
-    ensure
-      @image.close!
-    end
 
-    # Removes what the AppImage has written, after a build that failed.
-    def abort
-      @image.close!
-      FileUtils.rm_f(@to)
+      Tempfile.create(["fledge", ".squashfs"], binmode: true) do |image|
+        squashfs = Squashfs.new(image, mtime: Time.now.to_i)
+        [*Entry.walk(folder), *appdir(identity)].each { |entry| squashfs.add(entry) }
+        squashfs.finish
+        image.rewind
+        File.open(to, "wb") do |out|
+          out.write(File.binread(runtime))
+          IO.copy_stream(image, out)
+        end
+      end
+      File.chmod(0o755, to)
+      to
     end
 
     # What an AppDir has besides the app's folder: +AppRun+, and the icon
     # and <tt>.DirIcon</tt> when the app has an icon.
-    private def appdir
-      entries = [Entry.symlink("AppRun", @identity.name)]
-      icon = @identity.icon
+    private_class_method def self.appdir(identity)
+      entries = [Entry.symlink("AppRun", identity.name)]
+      icon = identity.icon
       return entries unless icon
 
-      name = "#{@identity.identifier}.png"
+      name = "#{identity.identifier}.png"
       entries << Entry.file(name, icon.png(ICON_SIZE))
       entries << Entry.symlink(".DirIcon", name)
     end

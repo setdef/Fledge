@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module Command
+    def self.run: (*String command, install: String, ?env: Hash[String, String?]) -> String
+
+    def self.read: (*String command, install: String) -> String
+  end
+end

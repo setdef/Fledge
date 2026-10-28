@@ -242,14 +242,12 @@ class LicenseAuditTest < Minitest::Test
       }.to_yaml)
 
       path = LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: "0.0.0", sources:, downloads: File.dirname(tarball)).write(directory)
-      entries = {}
-      Fledge::TarGz.each_entry(path) { |entry| entries[entry.path] = entry.content }
-      top = "fledge-runtime-0.0.0-x86_64-linux-lgpl-sources"
+      top = File.join(Fledge::Archive.unpack(path, into: File.join(directory, "unpacked")), "fledge-runtime-0.0.0-x86_64-linux-lgpl-sources")
 
-      assert_equal "pretend source", entries.fetch("#{top}/libxcrypt/libxcrypt-4.5.2.tar.xz")
-      assert_includes entries.fetch("#{top}/libxcrypt/BUILD.txt"), "--enable-shared --disable-static --disable-obsolete-api"
-      assert entries.key?("#{top}/libxcrypt/COPYING.LIB")
-      assert_includes entries.fetch("#{top}/README.txt"), "libxcrypt"
+      assert_equal "pretend source", File.read(File.join(top, "libxcrypt/libxcrypt-4.5.2.tar.xz"))
+      assert_includes File.read(File.join(top, "libxcrypt/BUILD.txt")), "--enable-shared --disable-static --disable-obsolete-api"
+      assert_path_exists File.join(top, "libxcrypt/COPYING.LIB")
+      assert_includes File.read(File.join(top, "README.txt")), "libxcrypt"
     end
   end
 

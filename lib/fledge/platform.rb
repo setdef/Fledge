@@ -5,9 +5,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require_relative "archive"
 require_relative "error"
-require_relative "tar_gz"
-require_relative "zip"
 
 module Fledge
   # A platform Fledge builds apps for, named as RubyGems names it.
@@ -239,24 +238,6 @@ module Fledge
       name.end_with?("-linux") ? [name, "#{name}-gnu"] : [name]
     end
 
-    # The module that writes the archive a built app ships in:
-    # Fledge::Zip for Windows, Fledge::TarGz elsewhere.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   Fledge::Platform.find("x64-mingw-ucrt").archive_format # => Fledge::Zip
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def archive_format
-      windows? ? Zip : TarGz
-    end
-
     # The extension of the archive a built app ships in.
     #
     # === Example
@@ -271,7 +252,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def archive_extension
-      archive_format.extension
+      windows? ? Archive::ZIP : Archive::TAR_GZ
     end
 
     # The file name an executable called +name+ has on this platform:

@@ -20,12 +20,16 @@ class AppImageTest < Minitest::Test
       copyright: nil, icon: icon && Fledge::Icon.new(icon))
   end
 
-  def build(dir, identity: self.identity)
-    path = File.join(dir, "My App-x86_64-linux.AppImage")
-    image = Fledge::AppImage.new(identity:, to: path, mtime: 1_700_000_000)
-    image.add(Fledge::Entry.file("My App", "#!/bin/sh\n", mode: 0o755))
-    image.add(Fledge::Entry.file("com.example.MyApp.desktop", "[Desktop Entry]\n"))
-    [image, path]
+  # Writes the AppImage of a folder with the app's program and desktop
+  # entry, with RUNTIME in its runtime's installer folder unless +kit+
+  # says otherwise, and returns its path.
+  def build(dir, identity: self.identity, kit: :runtime)
+    folder = File.join(dir, "My App-x86_64-linux")
+    Fledge::Entry.file("My App", "#!/bin/sh\n", mode: 0o755).write_into(folder)
+    Fledge::Entry.file("com.example.MyApp.desktop", "[Desktop Entry]\n").write_into(folder)
+    installer = File.join(dir, "installer")
+    RUNTIME.write_into(installer)
+    Fledge::AppImage.write(identity:, folder:, kit: (kit == :runtime) ? installer : kit, to: "#{folder}.AppImage")
   end
 
   # The first metadata block of the directory table (squashfs-tools-ng's
@@ -40,8 +44,8 @@ class AppImageTest < Minitest::Test
 
   def test_the_runtime_comes_first_and_the_file_system_after_it_and_it_runs
     Dir.mktmpdir do |dir|
-      image, path = build(dir)
-      assert_equal path, image.finish({ "appimage-runtime" => RUNTIME })
+      path = build(dir)
+      assert_equal File.join(dir, "My App-x86_64-linux.AppImage"), path
 
       bytes = File.binread(path)
       assert_equal RUNTIME.content, bytes.byteslice(0, RUNTIME.content.bytesize)
@@ -55,8 +59,7 @@ class AppImageTest < Minitest::Test
   # .DirIcon linked to it.
   def test_the_file_system_is_an_appdir_with_apprun_and_the_icon
     Dir.mktmpdir do |dir|
-      image, path = build(dir, identity: identity(icon: ICON))
-      image.finish({ "appimage-runtime" => RUNTIME })
+      path = build(dir, identity: identity(icon: ICON))
 
       squashfs = File.binread(path).byteslice((RUNTIME.content.bytesize)..).to_s
       assert_equal 6, squashfs.unpack1("x4V"), "the root, My App, its desktop entry, AppRun, the icon, and .DirIcon"
@@ -65,23 +68,12 @@ class AppImageTest < Minitest::Test
     end
   end
 
-  def test_a_runtime_without_an_appimage_runtime_is_refused_and_nothing_is_left
+  def test_a_runtime_without_an_appimage_runtime_is_refused
     Dir.mktmpdir do |dir|
-      image, path = build(dir)
-
-      error = assert_raises(Fledge::Error) { image.finish({}) }
-      assert_includes error.message, "the runtime has no installer/appimage-runtime"
-      refute_path_exists path
-    end
-  end
-
-  def test_a_build_that_failed_leaves_no_appimage
-    Dir.mktmpdir do |dir|
-      image, path = build(dir)
-      File.write(path, "partial")
-      image.abort
-
-      refute_path_exists path
+      [nil, dir].each do |kit|
+        error = assert_raises(Fledge::Error) { build(dir, kit:) }
+        assert_includes error.message, "the runtime has no installer/appimage-runtime"
+      end
     end
   end
 end

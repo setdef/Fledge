@@ -2,23 +2,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 module Fledge
-  class AppImage
+  module AppImage
     RUNTIME: String
     ICON_SIZE: Integer
 
-    @identity: Identity
-    @to: String
-    @image: Tempfile
-    @squashfs: Squashfs
+    def self.write: (identity: Identity, folder: String, kit: String?, to: String) -> String
 
-    def initialize: (identity: Identity, to: String, ?mtime: Integer) -> void
-
-    def add: (Entry entry) -> void
-
-    def finish: (Hash[String, Entry] kit) -> String
-
-    def abort: () -> void
-
-    private def appdir: () -> Array[Entry]
+    private def self.appdir: (Identity identity) -> Array[Entry]
   end
 end

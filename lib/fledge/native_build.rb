@@ -10,7 +10,7 @@ require_relative "binary"
 require_relative "compiled_gem"
 require_relative "error"
 require_relative "git_package"
-require_relative "tar_gz"
+require_relative "archive"
 require_relative "native_build/floors"
 require_relative "native_build/runtime_ruby"
 

@@ -9,9 +9,9 @@
 #   spike/permissive branch (58edf27d27912d062ccfa5c4960533a220c9eb24).
 require "fileutils"
 require "open3"
+require "tmpdir"
+require_relative "../../lib/fledge/archive"
 require_relative "../../lib/fledge/download"
-require_relative "../../lib/fledge/entry"
-require_relative "../../lib/fledge/tar_gz"
 require_relative "../download_cache"
 
 class LicenseAudit
@@ -48,25 +48,23 @@ class LicenseAudit
       top = File.basename(name, ".tar.gz")
       path = File.join(directory, name)
       FileUtils.mkdir_p(directory)
-      mtime = Integer(ENV.fetch("SOURCE_DATE_EPOCH", Time.now.to_i.to_s))
-      Fledge::TarGz.write(path, mtime:) do |tar|
-        tar.add(Fledge::Entry.directory(top))
-        tar.add(Fledge::Entry.file("#{top}/README.txt", readme))
-        components.each { |entry| add_component(tar, top, entry) }
+      Dir.mktmpdir("source-bundle") do |stage|
+        folder = File.join(stage, top)
+        FileUtils.mkdir_p(folder)
+        File.write(File.join(folder, "README.txt"), readme)
+        components.each { |entry| add_component(folder, entry) }
+        Fledge::Archive.pack(folder, to: path)
       end
       path
     end
 
-    private def add_component(tar, top, entry)
-      folder = "#{top}/#{entry.fetch('id')}"
+    private def add_component(top, entry)
+      folder = File.join(top, entry.fetch("id"))
       pin = @sources.fetch(entry.fetch("source"))
-      tar.add(Fledge::Entry.directory(folder))
-      source = fetch(pin.fetch("url"), pin.fetch("sha256"))
-      tar.add(Fledge::Entry.file("#{folder}/#{File.basename(source)}", File.binread(source)))
-      Dir.glob(File.join(Notices::NOTICES, entry.fetch("notice"), "*")).each do |notice|
-        tar.add(Fledge::Entry.file("#{folder}/#{File.basename(notice)}", File.binread(notice)))
-      end
-      tar.add(Fledge::Entry.file("#{folder}/BUILD.txt", build_text(entry, pin)))
+      FileUtils.mkdir_p(folder)
+      FileUtils.cp(fetch(pin.fetch("url"), pin.fetch("sha256")), folder)
+      FileUtils.cp(Dir.glob(File.join(Notices::NOTICES, entry.fetch("notice"), "*")), folder)
+      File.write(File.join(folder, "BUILD.txt"), build_text(entry, pin))
     end
 
     private def fetch(url, sha256)

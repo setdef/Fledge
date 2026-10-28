@@ -22,9 +22,9 @@ module Fledge
   # tool is installed by putting its program on a +PATH+, which a disk
   # image's drag, a Start menu shortcut, and an AppImage all leave undone.
   #
-  # This module chooses each target's installers and makes the object
-  # that writes each one (Fledge::Dmg, Fledge::Nsis, Fledge::AppImage),
-  # named after the archive: <tt>NAME-PLATFORM.dmg</tt>,
+  # This module chooses each target's installers and writes each one
+  # from the built app's folder (Fledge::Dmg, Fledge::Nsis,
+  # Fledge::AppImage), named after the archive: <tt>NAME-PLATFORM.dmg</tt>,
   # <tt>NAME-PLATFORM-setup.exe</tt> (as Tauri ends an NSIS installer's
   # name), and <tt>NAME-PLATFORM.AppImage</tt>.
   #
@@ -89,11 +89,11 @@ module Fledge
       "#{base}#{SUFFIX.fetch(format)}"
     end
 
-    # The object that writes +app+'s +format+ installer, whose built
-    # folder is +folder+, into the folder +out+.
+    # Writes +app+'s +format+ installer from its built folder +folder+,
+    # beside it, and returns its path.
     #
+    # [kit] The runtime's installer folder, or +nil+ when it has none.
     # [makensis] The NSIS compiler, which an NSIS installer needs.
-    # [mtime] When everything in it was made, as Unix time.
     #
     # === Example
     #
@@ -102,21 +102,21 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::Installers.writer("dmg", app:, folder: "dist/MyApp-arm64-darwin", makensis: nil)
-    #   # => a Fledge::Dmg writing dist/MyApp-arm64-darwin.dmg
+    #   Fledge::Installers.write("dmg", app:, folder: "dist/MyApp-arm64-darwin", kit: nil, makensis: nil)
+    #   # => "dist/MyApp-arm64-darwin.dmg"
     #--
     # SPDX-SnippetEnd
     #++
-    def self.writer(format, app:, folder:, makensis:, mtime: Time.now.to_i)
+    def self.write(format, app:, folder:, kit:, makensis:)
       to = file_name(format, folder)
       identity = app.identity
       case format
-      when "dmg" then Dmg.new(name: identity.name, to:, mtime:)
-      when "appimage" then AppImage.new(identity:, to:, mtime:)
+      when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:)
+      when "appimage" then AppImage.write(identity:, folder:, kit:, to:)
       else
         raise Error, "an NSIS installer needs makensis, which fledge build could not find" unless makensis
 
-        Nsis.new(identity:, folder:, to:, makensis:)
+        Nsis.new(identity:, folder:, to:, makensis:).write(kit)
       end
     end
   end

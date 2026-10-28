@@ -346,9 +346,8 @@ jobs:
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 001), through setup-ruby at
   # mise.toml's pin. test/built_app_test.rb unpacks hello and my_cool_app
-  # with Windows' own Expand-Archive and runs Hello.exe and MyCoolApp.exe;
-  # test/zip_test.rb checks that Expand-Archive reads what Fledge::Zip
-  # writes.
+  # with Windows' own Expand-Archive, from the .zip Windows' own tar
+  # wrote, and runs Hello.exe and MyCoolApp.exe.
   test-windows:
     name: Test (x64-mingw-ucrt)
     needs: [runtime, makensis]

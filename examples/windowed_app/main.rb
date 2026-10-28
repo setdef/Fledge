@@ -27,7 +27,10 @@
 # On Windows it also asks Windows, through Fiddle (one of Ruby's bundled
 # gems), whether it has a console, which a windowed app must not, and
 # what its AppUserModelID is, which Fledge's launcher sets from the
-# identifier in fledge.yml.
+# identifier in fledge.yml. Run from an AppImage, it reports the name of
+# the folder the AppImage's runtime ran it from (APPDIR), which says
+# whether it was mounted with FUSE (.mount_*) or extracted
+# (appimage_extracted_*).
 
 require "json"
 require "tmpdir"
@@ -39,6 +42,7 @@ facts = {
   "program" => File.basename($PROGRAM_NAME),
   "folder" => File.basename(__dir__),
 }
+facts["appdir"] = File.basename(ENV.fetch("APPDIR")) if ENV.key?("APPDIR")
 if Gem.win_platform?
   require "fiddle"
 

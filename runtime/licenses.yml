@@ -40,6 +40,8 @@
 # extension of a Ruby extension on that platform.
 
 # What the operating system provides, which a runtime need not ship.
+# MSVCP60.dll, which NSIS's makensis.exe needs, is Windows' own, in
+# System32 on every Windows Fledge supports.
 system_libraries:
   linux:
     - /\A(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|libgcc_s\.so\.1|ld-linux[-\w.]*\.so\.\d)\z/
@@ -48,7 +50,7 @@ system_libraries:
     - /\A\/System\/Library\/Frameworks\//
   windows:
     - /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i
-    - /\A(?:advapi32|bcrypt|comctl32|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|msvcrt|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i
+    - /\A(?:advapi32|bcrypt|comctl32|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|msvcp60|msvcrt|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i
 
 platforms:
   arm64-darwin: {os: darwin, arch: arm64-darwin23, gem_arch: arm64-darwin-23, so: bundle}

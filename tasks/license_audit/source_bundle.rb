@@ -15,10 +15,11 @@ require_relative "../../lib/fledge/download"
 require_relative "../download_cache"
 
 class LicenseAudit
-  # The complete corresponding source of a platform's LGPL libraries, and
-  # of the program an LGPL library is linked into (the AppImage runtime,
-  # ADR 010), as one .tar.gz that each release publishes beside that
-  # platform's runtime, and that the runtime's NOTICES names.
+  # The complete corresponding source of a platform's LGPL libraries, of
+  # the program an LGPL library is linked into (the AppImage runtime, ADR
+  # 010), and of a component whose license asks that its source be
+  # available (NSIS), as one .tar.gz that each release publishes beside
+  # that platform's runtime, and that the runtime's NOTICES names.
   #
   # For each component of runtime/licenses.yml that has a source pin and
   # ships on the platform, the bundle holds the pinned source exactly as
@@ -35,13 +36,13 @@ class LicenseAudit
       @downloads = downloads
     end
 
-    # The LGPL components that ship on the platform.
+    # The components that ship on the platform with a source pin.
     def components
       @map.fetch("components").select { |entry| entry["source"] && entry.fetch("platforms").include?(@platform) }
     end
 
     # Writes the bundle into +directory+ and returns its path, or nil
-    # when the platform ships no LGPL library.
+    # when the platform ships nothing whose source Fledge publishes.
     def write(directory)
       return nil if components.empty?
 
@@ -75,12 +76,15 @@ class LicenseAudit
 
     private def readme
       <<~README
-        The complete corresponding source code of the libraries under the GNU
-        Lesser General Public License that Fledge #{@version}'s #{@platform} runtime
-        ships, and so every app built with it, and of any program it ships
-        that such a library is linked into. Each folder holds one component's
-        source exactly as its publisher released it, its license, and BUILD.txt,
-        which says how the runtime's copy was built and how to replace it.
+        The complete corresponding source code of what Fledge #{@version}'s
+        #{@platform} runtime ships, and so every app or installer built with it,
+        under a license that asks for its source: its libraries under the GNU
+        Lesser General Public License, any program it ships that such a
+        library is linked into, and any component under a license that asks
+        that its source be available, such as NSIS's LZMA module, under the
+        Common Public License. Each folder holds one component's source exactly
+        as its publisher released it, its license, and BUILD.txt, which says
+        how the runtime's copy was built and how to replace it.
 
         #{components.map { |entry| "  #{entry.fetch('id')}/  #{entry.fetch('name')} #{entry.fetch('version')} (#{entry.fetch('license')})" }.join("\n")}
 

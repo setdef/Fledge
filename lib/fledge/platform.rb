@@ -25,7 +25,7 @@ module Fledge
   # where a person double-clicks one, and a .tar.gz elsewhere, which
   # keeps executable bits and symlinks) and the name of its executable.
   #
-  # Use it to turn a <tt>--target</tt> into something Fledge can build.
+  # Use it to name the computer a build is for, and the runtime it uses.
   #
   # === Examples
   #
@@ -99,7 +99,7 @@ module Fledge
     def self.find(name)
       return new(name:) if NAMES.include?(name)
 
-      raise UsageError, "'#{name}' is not a target Fledge builds for. Targets: #{NAMES.join(', ')}."
+      raise UsageError, "'#{name}' is not a platform Fledge has runtimes for. Platforms: #{NAMES.join(', ')}."
     end
 
     # The platform of the computer described by +gem_platform+ (default:
@@ -129,7 +129,7 @@ module Fledge
       return new(name:) if NAMES.include?(name)
 
       raise Error, "Fledge has no runtime for this computer's platform (#{gem_platform}). " \
-        "Choose a target with --target: #{NAMES.join(', ')}."
+        "Build on one it has: #{NAMES.join(', ')}."
     end
 
     private_class_method def self.target_name(gem_platform) # :nodoc:

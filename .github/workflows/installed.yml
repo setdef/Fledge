@@ -180,7 +180,7 @@ jobs:
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
           cd "$RUNNER_TEMP/project"
           for app in examples/hello test/fixtures/parity examples/my_cool_app examples/windowed_app; do
-            bundle exec fledge build -t "$PLATFORM" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
+            bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
           done
           cat "$RUNNER_TEMP/build.err"
           grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/build.err"
@@ -197,7 +197,7 @@ jobs:
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
           cd "$RUNNER_TEMP/project"
-          bundle exec fledge build -t "$PLATFORM" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/native_app" 2> "$RUNNER_TEMP/native.err" ||
+          bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/native_app" 2> "$RUNNER_TEMP/native.err" ||
             { cat "$RUNNER_TEMP/native.err"; exit 1; }
           grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/native.err" | grep -F -- "-dev.tar.gz"
           cd "$GITHUB_WORKSPACE/examples/native_app"

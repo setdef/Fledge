@@ -259,7 +259,7 @@ class Parity
     out = StringIO.new
     err = StringIO.new
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => @runtimes)
-    status = Fledge::CLI::Build.new(out:, err:, env:).call(["-t", platform.name, "-o", File.join(@work, "dist"), path])
+    status = Fledge::CLI::Build.new(out:, err:, env:).call(["-o", File.join(@work, "dist"), path])
     raise "fledge build failed: #{err.string}" unless status.zero?
 
     File.join(@work, "dist", "#{name}-#{platform}", platform.executable(name))

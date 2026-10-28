@@ -30,7 +30,7 @@ class BuildCommandTest < Minitest::Test
     [out.string, err.string, status]
   end
 
-  def test_the_default_target_is_this_computer_and_the_default_out_is_dist
+  def test_the_build_is_for_this_computer_and_the_default_out_is_dist
     out, err, status = build("hello", host: Gem::Platform.new("arm64-darwin-25"))
 
     assert_equal [0, ""], [status, err]
@@ -38,31 +38,10 @@ class BuildCommandTest < Minitest::Test
     assert_path_exists File.join(@dir, "dist/Hello-arm64-darwin/Hello")
   end
 
-  def test_every_target_builds_from_one_computer
-    out, err, status = build("-t", "arm64-darwin", "--target", "x86_64-linux", "--target=aarch64-linux",
-      "-t", "x64-mingw-ucrt", "-o", "builds", "hello")
+  def test_on_another_computer_the_build_is_for_that_computer
+    out, err, status = build("hello", host: Gem::Platform.new("aarch64-linux"))
 
-    assert_equal [0, ""], [status, err]
-    assert_equal "builds/Hello-arm64-darwin.tar.gz\nbuilds/Hello-x86_64-linux.tar.gz\n" \
-      "builds/Hello-aarch64-linux.tar.gz\nbuilds/Hello-x64-mingw-ucrt.zip\n", out
-    %w[arm64-darwin x86_64-linux aarch64-linux].each do |name|
-      assert_path_exists File.join(@dir, "builds/Hello-#{name}.tar.gz")
-      assert_path_exists File.join(@dir, "builds/Hello-#{name}/Hello")
-    end
-    assert_path_exists File.join(@dir, "builds/Hello-x64-mingw-ucrt.zip")
-    assert_path_exists File.join(@dir, "builds/Hello-x64-mingw-ucrt/Hello.exe")
-  end
-
-  def test_the_default_target_on_windows_is_windows
-    out, err, status = build("hello", host: Gem::Platform.new("x64-mingw-ucrt"))
-
-    assert_equal [0, "", "dist/Hello-x64-mingw-ucrt.zip\n"], [status, err, out]
-  end
-
-  def test_a_repeated_target_builds_once
-    out, = build("-t", "x86_64-linux", "-t", "x86_64-linux", "hello")
-
-    assert_equal "dist/Hello-x86_64-linux.tar.gz\n", out
+    assert_equal [0, "", "dist/Hello-aarch64-linux.tar.gz\n"], [status, err, out]
   end
 
   def test_out_and_path_take_their_equals_and_double_dash_forms
@@ -87,11 +66,10 @@ class BuildCommandTest < Minitest::Test
   # exit status 2 (Fledge::CLI), so the command raises them.
   def test_usage_mistakes_raise_a_usage_error
     {
-      %w[-t sparc-solaris hello] => "'sparc-solaris' is not a target Fledge builds for. " \
-        "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.",
-      %w[hello -t] => "-t needs a PLATFORM",
+      %w[-t x86_64-linux hello] => "-t is gone: a build is for this computer. Build each platform's app on that platform.",
+      %w[--target=x64-mingw-ucrt hello] => "--target is gone: a build is for this computer. Build each platform's app on that platform.",
       %w[--out] => "--out needs a DIR",
-      %w[--target=] => "--target needs a PLATFORM",
+      %w[--out=] => "--out needs a DIR",
       %w[--frobnicate hello] => "unrecognized option '--frobnicate'",
       %w[hello other] => "takes one PATH, but got 'hello' and 'other'",
     }.each do |argv, message|
@@ -111,18 +89,18 @@ class BuildCommandTest < Minitest::Test
     end
   end
 
-  def test_an_unsupported_computer_needs_a_target
+  def test_a_computer_with_no_runtime_cannot_build
     _, err, status = build("hello", host: Gem::Platform.new("x86_64-linux-musl"))
 
     assert_equal 1, status
     assert_equal "fledge build: Fledge has no runtime for this computer's platform (x86_64-linux-musl). " \
-      "Choose a target with --target: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n", err
+      "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n", err
   end
 
   def test_a_missing_runtime_is_an_error
     FileUtils.rm_f(File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::Platform.find("aarch64-linux"))))
 
-    _, err, status = build("-t", "aarch64-linux", "hello")
+    _, err, status = build("hello", host: Gem::Platform.new("aarch64-linux"))
 
     assert_equal 1, status
     assert_equal "fledge build: FLEDGE_RUNTIME_DIR is #{@runtimes}, which has no " \
@@ -135,7 +113,7 @@ class BuildCommandTest < Minitest::Test
     FakeRuntime.write(@runtimes, linux, extra: [Fledge::Entry.file("installer/appimage-runtime", "\x7FELF", mode: 0o755)])
     File.write(File.join(@app, "fledge.yml"), "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\n")
 
-    out, err, status = build("-t", "x86_64-linux", "hello")
+    out, err, status = build("hello")
 
     assert_equal [0, ""], [status, err]
     assert_equal "dist/Hello Window-x86_64-linux.tar.gz\ndist/Hello Window-x86_64-linux.AppImage\n", out
@@ -146,20 +124,20 @@ class BuildCommandTest < Minitest::Test
   def test_an_nsis_installer_without_makensis_says_what_to_do
     File.write(File.join(@app, "fledge.yml"), "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\n")
 
-    _, err, status = build("-t", "x64-mingw-ucrt", "hello")
+    _, err, status = build("hello", host: Gem::Platform.new("x64-mingw-ucrt"))
 
     assert_equal 1, status
-    assert_equal "fledge build: FLEDGE_RUNTIME_DIR is #{@runtimes}, which has no fledge-makensis-#{Fledge::VERSION}-x86_64-linux.tar.gz\n" \
+    assert_equal "fledge build: FLEDGE_RUNTIME_DIR is #{@runtimes}, which has no fledge-makensis-#{Fledge::VERSION}-x64-mingw-ucrt.tar.gz\n" \
       "fledge build: An NSIS installer needs makensis for this computer; set installers in fledge.yml to build without one.\n", err
   end
 
   def test_the_callers_arguments_are_left_unchanged
-    argv = %w[-t x86_64-linux hello].freeze
+    argv = %w[-o dist hello].freeze
 
     Dir.chdir(@dir) do
       Fledge::CLI::Build.new(out: StringIO.new, err: StringIO.new, env: { "FLEDGE_RUNTIME_DIR" => @runtimes }).call(argv)
     end
 
-    assert_equal %w[-t x86_64-linux hello], argv
+    assert_equal %w[-o dist hello], argv
   end
 end

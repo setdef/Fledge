@@ -45,7 +45,7 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   gems = Fledge::AppGems.new(app:, bundle: Fledge::Bundle.new(app), fetcher:, checkouts:)
+  #   gems = Fledge::AppGems.new(app:, bundle: Fledge::Bundle.new(app), fetcher:, checkouts:, compiler:)
   #   entries = gems.for(Fledge::Platform.find("x86_64-linux"), runtime: Fledge::RuntimeContents.read(archive))
   #   entries.map(&:path).grep(/sqlite3_native/) # => ["lib/ruby/gems/4.0.0/gems/sqlite3-2.10.2-x86_64-linux-gnu/lib/sqlite3/4.0/sqlite3_native.so"]
   #--
@@ -58,9 +58,9 @@ module Fledge
     # [bundle] Its Fledge::Bundle.
     # [fetcher] The Fledge::GemFetcher that finds each gem's file.
     # [checkouts] The Fledge::GitCheckout that fetches each git gem.
-    # [compiler] The Fledge::NativeBuild for the platform Fledge runs on,
-    #            or +nil+ when Fledge has no runtime for it.
-    def initialize(app:, bundle:, fetcher:, checkouts:, compiler: nil)
+    # [compiler] The Fledge::NativeBuild that compiles gems for the
+    #            platform Fledge runs on, which is the one it builds for.
+    def initialize(app:, bundle:, fetcher:, checkouts:, compiler:)
       @app = app
       @bundle = bundle
       @fetcher = fetcher
@@ -105,11 +105,10 @@ module Fledge
     #++
     def for(platform, runtime:)
       locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch).reject { |gem| runtime.gems.include?(gem.full_name) }
-      packages, uncompiled = compile(platform, locked.to_h { |gem| [gem, package_for(gem)] })
+      packages = compile(locked.to_h { |gem| [gem, package_for(gem)] })
       linkage = Linkage.new(os: platform.os, provided: runtime.libraries)
       problems = packages.flat_map do |gem, package|
         [
-          *uncompiled.fetch(gem, []),
           *package.problems(ruby_version: runtime.ruby_version),
           *linkage.problems(gem.to_s, package.contents),
 ]
@@ -126,28 +125,12 @@ module Fledge
       end
     end
 
-    # The packages with each extension compiled, when +platform+ is the
-    # one Fledge runs on, and otherwise why each gem with an extension
-    # cannot ship, by gem.
-    private def compile(platform, packages)
+    # The packages, with each one that has an extension compiled.
+    private def compile(packages)
       uncompiled = packages.select { |_, package| package.extensions? }
-      none = {} # : Hash[locked_gem, Array[String]]
-      return [packages, none] if uncompiled.empty?
+      return packages if uncompiled.empty?
 
-      compiler = @compiler
-      if compiler && compiler.platform == platform
-        [compiler.call(packages, build_args: uncompiled.keys.to_h { |gem| [gem.name, @bundle.build_args(gem.name)] }), none]
-      else
-        [packages, uncompiled.keys.to_h { |gem| [gem, [cross_problem(gem, platform, compiler&.platform)]] }]
-      end
-    end
-
-    private def cross_problem(gem, platform, host)
-      this = host ? "this computer is #{host}" : "Fledge has no runtime for this computer"
-      "#{gem} has an extension to compile, and the lockfile locks no build of it precompiled for #{platform}. Fledge compiles " \
-        "a gem only on the platform it is for, and #{this}: build for #{platform} on a computer that is #{platform}, such as " \
-        "a CI runner of that platform, or choose a version of #{gem.name} with a build for #{platform} and run bundle lock " \
-        "--add-platform #{platform}."
+      @compiler.call(packages, build_args: uncompiled.keys.to_h { |gem| [gem.name, @bundle.build_args(gem.name)] })
     end
   end
 end

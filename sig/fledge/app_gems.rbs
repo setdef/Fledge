@@ -7,9 +7,9 @@ module Fledge
     @bundle: Bundle
     @fetcher: GemFetcher
     @checkouts: GitCheckout
-    @compiler: NativeBuild?
+    @compiler: NativeBuild
 
-    def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, ?compiler: NativeBuild?) -> void
+    def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild) -> void
 
     def app_files: () -> Hash[String, String]
 
@@ -17,8 +17,6 @@ module Fledge
 
     private def package_for: (locked_gem gem) -> package
 
-    private def compile: (Platform platform, Hash[locked_gem, package] packages) -> [Hash[locked_gem, package], Hash[locked_gem, Array[String]]]
-
-    private def cross_problem: (locked_gem gem, Platform platform, Platform? host) -> String
+    private def compile: (Hash[locked_gem, package] packages) -> Hash[locked_gem, package]
   end
 end

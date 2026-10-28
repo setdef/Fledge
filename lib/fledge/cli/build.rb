@@ -29,15 +29,16 @@ module Fledge
     # that by hand means knowing where each runtime lives, renaming its
     # launcher, and archiving without losing an executable bit.
     #
-    # This command reads <tt>--target</tt>, <tt>--out</tt>, and the
-    # program to ship from its arguments (Fledge::App), finds each
-    # target's runtime through Fledge::Runtimes, adds the gems the app's
-    # Gemfile.lock locks for that target (Fledge::Bundle and
-    # Fledge::AppGems), compiling those that need it when the target is
-    # the platform it runs on (Fledge::NativeBuild) in a work folder it
-    # removes afterwards, builds each with Fledge::Assembly, and prints the
-    # path of each archive and installer (Fledge::Installers) it wrote, one
-    # per line, an installer after its archive. A failed build becomes
+    # This command builds for the computer it runs on, as Tauri's and
+    # Briefcase's builds do, since each platform's app is made with that
+    # platform's own tools (ADR 010). It reads <tt>--out</tt> and the
+    # program to ship from its arguments (Fledge::App), finds this
+    # platform's runtime through Fledge::Runtimes, adds the gems the app's
+    # Gemfile.lock locks for it (Fledge::Bundle and Fledge::AppGems),
+    # compiling those that need it (Fledge::NativeBuild) in a work folder
+    # it removes afterwards, builds the app with Fledge::Assembly, and
+    # prints the path of its archive and of each installer
+    # (Fledge::Installers) it wrote, one per line, the archive first. A failed build becomes
     # lines beginning <tt>fledge build:</tt> on the error stream and exit
     # status 1; a mistake in its arguments raises Fledge::UsageError,
     # which Fledge::CLI turns into the usage and exit status 2.
@@ -52,10 +53,10 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   # From a terminal:
-    #   #   $ fledge build -t x86_64-linux examples/my_cool_app/exe/my_cool_app
+    #   #   $ fledge build examples/my_cool_app/exe/my_cool_app
     #   #   dist/MyCoolApp-x86_64-linux.tar.gz
     #
-    #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call(["-t", "x86_64-linux", "examples/hello"]) # => 0
+    #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call(["examples/hello"]) # => 0
     #--
     # SPDX-SnippetEnd
     #++
@@ -68,7 +69,7 @@ module Fledge
       # [out] Where results go, such as <tt>$stdout</tt>.
       # [err] Where errors and progress go, such as <tt>$stderr</tt>.
       # [env] The environment Fledge::Runtimes reads (default: +ENV+).
-      # [host] The Gem::Platform the default target comes from (default:
+      # [host] The Gem::Platform of the computer it builds for (default:
       #        Gem::Platform.local).
       def initialize(out:, err:, env: ENV, host: Gem::Platform.local)
         @out = out
@@ -94,9 +95,8 @@ module Fledge
       #++
       def call(argv)
         options = Options.parse(argv)
-        platforms = options.targets.uniq.map { |name| Platform.find(name) }
         app = App.at(options.path)
-        build(app, platforms.empty? ? [Platform.local(@host)] : platforms, options.out)
+        build(app, Platform.local(@host), options.out)
         0
       rescue UsageError
         raise
@@ -105,7 +105,7 @@ module Fledge
         1
       end
 
-      private def build(app, platforms, out)
+      private def build(app, platform, out)
         out_dir = File.expand_path(out)
         raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
 
@@ -113,20 +113,18 @@ module Fledge
         Dir.mktmpdir("fledge-build") do |work|
           gems = gems_for(app, runtimes, work)
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
-          platforms.each do |platform|
-            runtime = runtimes.archive(platform)
-            files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
-            makensis = Installers.formats(app, platform).include?("nsis") ? makensis(runtimes) : nil
-            assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, makensis:)
-            [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
-          end
+          runtime = runtimes.archive(platform)
+          files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
+          makensis = Installers.formats(app, platform).include?("nsis") ? makensis(runtimes) : nil
+          assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, makensis:)
+          [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
         end
       end
 
       # The app's gems, for an app with a Gemfile: Fledge keeps the gems it
       # downloads beside its runtimes, in <tt>~/.cache/fledge/gems</tt>,
       # and the git repositories it fetches in <tt>~/.cache/fledge/git</tt>,
-      # and compiles gems only for the platform it runs on.
+      # and compiles gems for the platform it runs on.
       private def gems_for(app, runtimes, work)
         return nil unless app.gemfile
 
@@ -146,8 +144,6 @@ module Fledge
 
       private def compiler(runtimes, work)
         NativeBuild.new(platform: Platform.local(@host), runtimes:, work:, log: @err, env: @env)
-      rescue Error
-        nil
       end
     end
   end

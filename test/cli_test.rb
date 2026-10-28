@@ -47,13 +47,13 @@ class CLITest < Minitest::Test
     end
   end
 
-  # The help is the CLI's contract, so it must name every target Fledge
-  # builds for, and the archive each gets.
-  def test_help_names_every_target_and_its_archive
+  # The help is the CLI's contract, so it must name every platform Fledge
+  # builds on, and the archive each gets.
+  def test_help_names_every_platform_and_its_archive
     out, = fledge("--help")
-    options = out[/^OPTIONS\n(.*?)^FILES\n/m, 1].to_s.split.join(" ")
+    files = out[/^FILES\n(.*?)^ENVIRONMENT\n/m, 1].to_s.split.join(" ")
 
-    assert_includes options, "One of: #{Fledge::Platform.names.join(', ')} (default"
+    assert_includes files, "PLATFORM is this computer's: #{Fledge::Platform.names.join(', ')}."
     assert_includes out, "DIR/NAME-PLATFORM.zip\n"
     assert_includes out.split.join(" "), "a .zip for Windows, a .tar.gz for macOS and Linux."
   end
@@ -139,13 +139,15 @@ class CLITest < Minitest::Test
     assert_equal "fledge build: unrecognized option '--frobnicate'\n#{USAGE}", err
   end
 
-  def test_an_unknown_target_is_a_usage_error
-    out, err, status = fledge("build", "--target", "sparc-solaris", "examples/hello")
+  # Each platform's app is built on that platform (ADR 010), so the
+  # --target of Fledge 0.0.1.pre.7 is a usage error that says so.
+  def test_a_target_is_a_usage_error_that_says_to_build_on_that_platform
+    out, err, status = fledge("build", "--target", "x86_64-linux", "examples/hello")
 
     assert_equal 2, status
     assert_empty out
-    assert_equal "fledge build: 'sparc-solaris' is not a target Fledge builds for. " \
-      "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n#{USAGE}", err
+    assert_equal "fledge build: --target is gone: a build is for this computer. " \
+      "Build each platform's app on that platform.\n#{USAGE}", err
   end
 
   def test_a_build_that_fails_exits_with_status_one_and_no_usage

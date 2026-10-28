@@ -5,11 +5,10 @@ module Fledge
   class CLI
     class Build
       class Options < Data
-        attr_reader targets: Array[String]
         attr_reader out: String
         attr_reader path: String
 
-        def self.new: (targets: Array[String], out: String, path: String) -> instance
+        def self.new: (out: String, path: String) -> instance
 
         def self.parse: (Array[String] argv) -> Options
 

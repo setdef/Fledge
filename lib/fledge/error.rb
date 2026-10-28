@@ -6,7 +6,7 @@
 #++
 
 module Fledge
-  # A problem you can fix: a missing app, an unknown target, a runtime
+  # A problem you can fix: a missing app, a computer with no runtime, a runtime
   # that will not download.
   #
   # A build fails for reasons that are yours to fix, and for bugs that
@@ -38,7 +38,7 @@ module Fledge
   end
 
   # A command line Fledge cannot make sense of: an unrecognized option, a
-  # missing value, an unknown target.
+  # missing value, an unknown platform.
   #
   # A mistake in how +fledge+ was called needs a different answer from
   # a build that failed. The person needs to see how to call it, and a

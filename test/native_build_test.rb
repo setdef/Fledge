@@ -72,7 +72,7 @@ class NativeBuildTest < Minitest::Test
     out = StringIO.new
     err = StringIO.new
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache"))
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:).call(["-t", @platform.name, File.join(root, "exe/my_app")]) }
+    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:).call([File.join(root, "exe/my_app")]) }
     [status, err.string]
   end
 

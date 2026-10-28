@@ -11,32 +11,32 @@ module Fledge
   class CLI
     class Build
       # What <tt>fledge build</tt>'s arguments ask for, read as GNU's
-      # conventions read options: each <tt>--target</tt>, the <tt>--out</tt>
-      # folder, and the one PATH, with <tt>--</tt> ending the options.
-      Options = Data.define(:targets, :out, :path) do
+      # conventions read options: the <tt>--out</tt> folder and the one
+      # PATH, with <tt>--</tt> ending the options. There is no target to
+      # choose: a build is for the computer it runs on (ADR 010).
+      Options = Data.define(:out, :path) do
         # The options +argv+ gives. Raises Fledge::UsageError for an
         # option it does not know, one without its value, or more than one
-        # PATH.
+        # PATH, and for the <tt>--target</tt> Fledge 0.0.1.pre.7 and earlier
+        # took, saying why it went.
         def self.parse(argv)
-          targets = [] # : Array[String]
           out = DEFAULT_OUT
           paths = [] # : Array[String]
           arguments = argv.dup
           while (argument = arguments.shift)
             case argument
-            when "-t", "--target" then targets << value_of(argument, arguments, "PLATFORM")
-            when /\A--target=(.+)\z/ then targets << ::Regexp.last_match(1).to_s
             when "-o", "--out" then out = value_of(argument, arguments, "DIR")
             when /\A--out=(.+)\z/ then out = ::Regexp.last_match(1).to_s
             when "--" then paths.concat(arguments.shift(arguments.size))
-            when /\A--(?:target|out)=\z/ then value_of(argument.delete_suffix("="), [], argument.start_with?("--t") ? "PLATFORM" : "DIR")
+            when "--out=" then value_of("--out", [], "DIR")
+            when "-t", "--target", /\A--target=/ then raise UsageError, "#{argument[/\A[^=]+/]} is gone: a build is for this computer. Build each platform's app on that platform."
             when /\A-./ then raise UsageError, "unrecognized option '#{argument}'"
             else paths << argument
             end
           end
           raise UsageError, "takes one PATH, but got #{paths.map { |p| "'#{p}'" }.join(' and ')}" if paths.size > 1
 
-          new(targets:, out:, path: paths.first || ".")
+          new(out:, path: paths.first || ".")
         end
 
         # The value after +option+ in +arguments+, which names a +name+.

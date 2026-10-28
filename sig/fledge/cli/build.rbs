@@ -16,13 +16,13 @@ module Fledge
 
       def call: (Array[String]) -> Integer
 
-      private def build: (App app, Array[Platform] platforms, String out) -> void
+      private def build: (App app, Platform platform, String out) -> void
 
       private def gems_for: (App app, Runtimes runtimes, String work) -> AppGems?
 
       private def makensis: (Runtimes runtimes) -> String
 
-      private def compiler: (Runtimes runtimes, String work) -> NativeBuild?
+      private def compiler: (Runtimes runtimes, String work) -> NativeBuild
     end
   end
 end

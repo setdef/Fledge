@@ -25,8 +25,8 @@ class PlatformTest < Minitest::Test
   def test_find_refuses_an_unknown_platform_and_lists_the_known_ones
     error = assert_raises(Fledge::Error) { Fledge::Platform.find("x64-mingw32") }
 
-    assert_equal "'x64-mingw32' is not a target Fledge builds for. " \
-      "Targets: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.", error.message
+    assert_equal "'x64-mingw32' is not a platform Fledge has runtimes for. " \
+      "Platforms: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.", error.message
   end
 
   def test_local_drops_the_darwin_version
@@ -50,7 +50,7 @@ class PlatformTest < Minitest::Test
       error = assert_raises(Fledge::Error) { Fledge::Platform.local(Gem::Platform.new(name)) }
 
       assert_includes error.message, "Fledge has no runtime for this computer's platform (#{Gem::Platform.new(name)})"
-      assert_includes error.message, "--target: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt"
+      assert_includes error.message, "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt."
     end
   end
 

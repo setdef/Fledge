@@ -3,12 +3,9 @@
 
 # Plan 001's pipeline, on every push and pull request: the gate, then a
 # runtime per platform, then the tests on each platform with its own
-# runtime, then one machine building examples/hello, the gem-shaped
-# examples/my_cool_app, and the windowed examples/windowed_app for every
-# platform, and each platform building the examples whose gems compile
-# from source for itself (ADR 006), then
-# Delivery: each built app unpacked and run on a fresh computer that has
-# never had Ruby.
+# runtime, then each platform building the examples for itself on a
+# runner of its own (ADR 010), then Delivery: each built app unpacked and
+# run on a fresh computer that has never had Ruby.
 #
 # The gate runs once, on Linux: its lints (RuboCop, Steep, RDoc
 # coverage, REUSE, actionlint, clang-format) read the same files on
@@ -19,14 +16,13 @@
 # launchers link Ruby itself. The Windows runtime builds on Linux: its
 # launcher loads Ruby's DLL when it runs, so it cross-compiles with a
 # pinned llvm-mingw from Ruby's headers alone (runtime/sources.yml), and
-# Windows runners test it and deliver it. Apps build for every platform
-# from one Linux runner, as ADR 001 promises developers.
+# Windows runners test it, build apps with it, and deliver them. Each
+# platform's apps are built on that platform, as developers build them.
 #
-# A windowed app gets installers too (ADR 009): a disk image for macOS,
-# an NSIS setup program for Windows, and an AppImage for Linux, all
-# written on the one Linux runner, with makensis, which the makensis jobs
-# build from NSIS's source for every computer that builds apps; and
-# Delivery installs each on a fresh runner and runs the app it installed.
+# A windowed app gets an installer too (ADR 009): a disk image for macOS,
+# an NSIS setup program for Windows, and an AppImage for Linux, each
+# written on its own platform's runner; and Delivery installs each on a
+# fresh runner and runs the app it installed.
 #
 # Every runtime build runs the license audit and refuses to archive a
 # runtime that breaks Fledge's license policy (ADR 004). The Licenses
@@ -410,137 +406,28 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: bundle exec rake parity
 
-  # Every platform's app from one Linux computer, from the runtimes the
-  # runtime jobs built: the cross-building ADR 001 promises, now with each
-  # platform's build of my_cool_app's native gem (ADR 005).
+  # Each platform's apps, built on a runner of that platform from the
+  # runtime the runtime job built for it, with that platform's own tools
+  # (ADR 010), as a developer builds them: examples/hello, the parity
+  # probe (test/fixtures/parity), which Delivery asks what a child Ruby
+  # sees, and the probe as a gem-shaped app's program (Parity.gem_probe),
+  # which Delivery asks what Bundler.with_original_env and
+  # with_unbundled_env give a child; examples/my_cool_app, whose gems come
+  # from RubyGems.org, each checked against its Gemfile.lock's checksum,
+  # precompiled for the platform (ADR 005); examples/windowed_app, a
+  # windowed app (ADR 008) with its installer (ADR 009); and
+  # examples/native_app, whose gems must be compiled (ADR 006): redcarpet,
+  # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
+  # its git tag, and bigdecimal, which spreadsheet, a GPL gem, needs, each
+  # compiled against the runtime's own Ruby and its build-only companion.
+  # The Mac and Windows build examples/nokogiri_app too, nokogiri from
+  # source: with macOS's own iconv on the Mac, and with GNU libiconv
+  # linked in on Windows, which ships as any gem's compiled code does (ADR
+  # 007). Each records what bundle exec prints, which the built app must
+  # print too.
   build:
-    name: Build the examples for every platform
+    name: Build (${{ matrix.platform }})
     needs: [runtime, makensis]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      # fledge build needs only Ruby's standard library, so no bundle.
-      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
-        with:
-          version: 2026.10.11
-          install_args: ruby
-
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: runtime-*
-          merge-multiple: true
-          path: ${{ runner.temp }}/runtimes
-
-      # This runner's makensis, for windowed_app's NSIS installer.
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: makensis-x86_64-linux
-          path: ${{ runner.temp }}/runtimes
-
-      # The parity probe (test/fixtures/parity) goes to Delivery too, which
-      # asks it what a child Ruby sees, and so does the probe as a
-      # gem-shaped app's program (Parity.gem_probe), which Delivery asks
-      # what Bundler.with_original_env and with_unbundled_env give a child.
-      # my_cool_app's gems come from RubyGems.org, each checked against its
-      # Gemfile.lock's checksum.
-      # examples/windowed_app is a windowed app (ADR 008): an .app bundle,
-      # signed ad hoc, for macOS, a GUI program for Windows, and a folder
-      # with a desktop entry for Linux, each with the identity its
-      # fledge.yml gives, and each with its installer (ADR 009): a disk
-      # image, an NSIS setup program, and an AppImage, all written on this
-      # Linux runner.
-      - name: Build hello, the parity probes, my_cool_app, and windowed_app for arm64-darwin, x86_64-linux, aarch64-linux, and x64-mingw-ucrt
-        env:
-          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
-        run: |
-          ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
-          for app in examples/hello test/fixtures/parity "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app; do
-            ruby -I lib exe/fledge build -t arm64-darwin -t x86_64-linux -t aarch64-linux -t x64-mingw-ucrt -o dist "$app"
-          done
-
-      # What my_cool_app prints as its developer runs it, which every
-      # platform's built app must print too.
-      - name: Run my_cool_app with bundle exec
-        working-directory: examples/my_cool_app
-        run: |
-          bundle install
-          bundle exec ruby exe/my_cool_app | tee "$GITHUB_WORKSPACE/dist/my_cool_app.expected"
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: apps-arm64-darwin
-          path: |
-            dist/Hello-arm64-darwin.tar.gz
-            dist/Parity-arm64-darwin.tar.gz
-            dist/ParityBundle-arm64-darwin.tar.gz
-            dist/MyCoolApp-arm64-darwin.tar.gz
-            dist/Hello Window-arm64-darwin.tar.gz
-            dist/Hello Window-arm64-darwin.dmg
-            dist/my_cool_app.expected
-          if-no-files-found: error
-          retention-days: 14
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: apps-x86_64-linux
-          path: |
-            dist/Hello-x86_64-linux.tar.gz
-            dist/Parity-x86_64-linux.tar.gz
-            dist/ParityBundle-x86_64-linux.tar.gz
-            dist/MyCoolApp-x86_64-linux.tar.gz
-            dist/Hello Window-x86_64-linux.tar.gz
-            dist/Hello Window-x86_64-linux.AppImage
-            dist/my_cool_app.expected
-          if-no-files-found: error
-          retention-days: 14
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: apps-aarch64-linux
-          path: |
-            dist/Hello-aarch64-linux.tar.gz
-            dist/Parity-aarch64-linux.tar.gz
-            dist/ParityBundle-aarch64-linux.tar.gz
-            dist/MyCoolApp-aarch64-linux.tar.gz
-            dist/Hello Window-aarch64-linux.tar.gz
-            dist/Hello Window-aarch64-linux.AppImage
-            dist/my_cool_app.expected
-          if-no-files-found: error
-          retention-days: 14
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: apps-x64-mingw-ucrt
-          path: |
-            dist/Hello-x64-mingw-ucrt.zip
-            dist/Parity-x64-mingw-ucrt.zip
-            dist/ParityBundle-x64-mingw-ucrt.zip
-            dist/MyCoolApp-x64-mingw-ucrt.zip
-            dist/Hello Window-x64-mingw-ucrt.zip
-            dist/Hello Window-x64-mingw-ucrt-setup.exe
-            dist/my_cool_app.expected
-          if-no-files-found: error
-          retention-days: 14
-
-  # Gems that must be compiled compile only on the platform they are for
-  # (ADR 006), so each platform's own runner builds examples/native_app:
-  # redcarpet, a C gem published only as source, ferro-idna, a Rust gem
-  # (rb-sys) from its git tag, and bigdecimal, which spreadsheet, a GPL
-  # gem, needs, each compiled against the runtime's own Ruby and its
-  # build-only companion, which the runtime job built. The Mac and
-  # Windows build examples/nokogiri_app too, nokogiri from source: with
-  # macOS's own iconv on the Mac, and with GNU libiconv linked in on
-  # Windows, which ships as any gem's compiled code does (ADR 007). Each
-  # also builds the gem-shaped parity probe, which Delivery asks what a
-  # child Ruby sees, and records what bundle exec prints, which the built
-  # app must print too.
-  build-native:
-    name: Build from source (${{ matrix.platform }})
-    needs: runtime
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     strategy:
@@ -619,13 +506,21 @@ jobs:
           name: runtime-${{ matrix.platform }}
           path: ${{ runner.temp }}/runtimes
 
-      - name: Build native_app, and the parity probe, from source for ${{ matrix.platform }}
+      # This runner's makensis, for windowed_app's NSIS installer.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: runner.os == 'Windows'
+        with:
+          name: makensis-${{ matrix.platform }}
+          path: ${{ runner.temp }}/runtimes
+
+      - name: Build hello, the parity probes, my_cool_app, windowed_app, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
-          ruby -I lib exe/fledge build -o dist "$RUNNER_TEMP/parity-bundle"
-          ruby -I lib exe/fledge build -o dist examples/native_app
+          for app in examples/hello test/fixtures/parity "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/native_app; do
+            ruby -I lib exe/fledge build -o dist "$app"
+          done
 
       - name: Build nokogiri_app from source for ${{ matrix.platform }}
         if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x64-mingw-ucrt'
@@ -637,6 +532,8 @@ jobs:
       # must print too.
       - name: Run the examples with bundle exec
         run: |
+          (cd examples/my_cool_app && bundle install)
+          (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) | tee dist/my_cool_app.expected
           examples=native_app
           case "${{ matrix.platform }}" in arm64-darwin | x64-mingw-ucrt) examples="native_app nokogiri_app" ;; esac
           for example in $examples; do
@@ -646,20 +543,22 @@ jobs:
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: native-${{ matrix.platform }}
+          name: apps-${{ matrix.platform }}
           path: |
-            dist/NativeApp-${{ matrix.platform }}.*
-            dist/NokogiriApp-${{ matrix.platform }}.*
-            dist/ParityBundle-${{ matrix.platform }}.*
+            dist/*-${{ matrix.platform }}.tar.gz
+            dist/*-${{ matrix.platform }}.zip
+            dist/*-${{ matrix.platform }}.dmg
+            dist/*-${{ matrix.platform }}-setup.exe
+            dist/*-${{ matrix.platform }}.AppImage
             dist/*.expected
           if-no-files-found: error
           retention-days: 14
 
-  # Delivery of what Build from source built, on a fresh runner of each
-  # platform, as Delivery runs the cross-built apps.
+  # Delivery of native_app and nokogiri_app, on a fresh runner of each
+  # platform, as Delivery runs the others.
   delivery-native:
     name: Delivery from source (${{ matrix.platform }})
-    needs: build-native
+    needs: build
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -683,7 +582,7 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: native-${{ matrix.platform }}
+          name: apps-${{ matrix.platform }}
           path: ${{ runner.temp }}/delivered
 
       - name: Run native_app as someone with no Ruby would
@@ -831,7 +730,7 @@ jobs:
   # certificates package.
   delivery-debian:
     name: Delivery (${{ matrix.platform }}, debian:trixie-slim)
-    needs: [build, build-native]
+    needs: build
     runs-on: ${{ matrix.os }}
     container: debian:trixie-slim
     timeout-minutes: 10
@@ -870,15 +769,10 @@ jobs:
         run: .github/scripts/deliver-appimage.sh "delivered/Hello Window-${{ matrix.platform }}.AppImage" extract
 
       # native_app, compiled on Ubuntu 24.04, on Debian 13's newer glibc.
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: native-${{ matrix.platform }}
-          path: native
-
       - name: Run native_app on a computer with no Ruby installed
         run: >-
-          .github/scripts/deliver.sh "native/NativeApp-${{ matrix.platform }}.tar.gz"
-          "native/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat native/native_app.expected)" --no-ruby-installed
+          .github/scripts/deliver.sh "delivered/NativeApp-${{ matrix.platform }}.tar.gz"
+          "delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat delivered/native_app.expected)" --no-ruby-installed
 
   # Delivery on a fresh Windows runner, with nothing of Fledge but the
   # .zip and the script that checks it, and no Ruby set up: the runner's

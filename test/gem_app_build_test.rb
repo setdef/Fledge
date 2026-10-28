@@ -58,10 +58,11 @@ class GemAppBuildTest < Minitest::Test
     root = project(dependencies: { "foo" => "~> 1.0", "native" => ">= 0", "csv" => ">= 0" },
       locked: [bar, foo, linux, windows, csv], locked_dependencies: { foo.lock_name => ["bar (>= 0)"] })
 
-    out, err, status = build("-t", "x86_64-linux", "-t", "x64-mingw-ucrt", File.join(root, "exe/my_app"))
+    out, err, status = build(File.join(root, "exe/my_app"))
+    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
+    out, windows_err, status = build(File.join(root, "exe/my_app"), host: "x64-mingw-ucrt")
+    assert_equal [0, "dist/MyApp-x64-mingw-ucrt.zip\n"], [status, out], windows_err
 
-    assert_equal 0, status, err
-    assert_equal "dist/MyApp-x86_64-linux.tar.gz\ndist/MyApp-x64-mingw-ucrt.zip\n", out
     { "dist/MyApp-x86_64-linux" => ["lib/ruby/gems/4.0.0", linux], "dist/MyApp-x64-mingw-ucrt" => ["ruby/lib/ruby/gems/4.0.0", windows] }
       .each do |folder, (gem_dir, native)|
         gems = File.join(@dir, folder, gem_dir)
@@ -90,12 +91,12 @@ class GemAppBuildTest < Minitest::Test
     native = FakeGem.build(@gems, "native", "1.0.0", platform: "x86_64-linux-gnu")
     root = project(dependencies: { "native" => ">= 0" }, locked: [native], platforms: %w[x86_64-linux arm64-darwin])
 
-    _, err, status = build("-t", "x64-mingw-ucrt", "-t", "arm64-darwin", root)
+    _, err, status = build(root, host: "x64-mingw-ucrt")
 
     assert_equal 1, status
     assert_equal "fledge build: Gemfile.lock locks no gems for x64-mingw-ucrt. Run bundle lock --add-platform x64-mingw-ucrt, " \
       "then build again.\n", err
-    _, err, = build("-t", "arm64-darwin", root)
+    _, err, = build(root, host: "arm64-darwin-23")
     assert_equal "fledge build: Gemfile.lock locks no build of native for arm64-darwin, only for x86_64-linux-gnu. " \
       "If native has one, run bundle lock --add-platform arm64-darwin, then build again.\n", err
     refute_path_exists File.join(@dir, "dist/MyApp-arm64-darwin")
@@ -104,23 +105,16 @@ class GemAppBuildTest < Minitest::Test
   # Fledge refuses a gem only when it would not run where the app goes,
   # and names every such gem at once.
   def test_every_gem_that_would_not_run_is_named_with_what_to_do
-    needs_compiling = FakeGem.build(@gems, "needs_compiling", "1.0.0", extensions: ["ext/needs_compiling/extconf.rb"],
-      files: { "ext/needs_compiling/extconf.rb" => "", "LICENSE" => "MIT\n" })
     old = FakeGem.build(@gems, "old", "1.0.0", platform: "x86_64-linux-gnu", required_ruby_version: "< 3.5")
     unloadable = FakeGem.build(@gems, "unloadable", "1.0.0", platform: "x86_64-linux-gnu",
       files: { "lib/unloadable.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2]) })
-    root = project(dependencies: { "needs_compiling" => ">= 0", "old" => ">= 0", "unloadable" => ">= 0" },
-      locked: [needs_compiling, old, unloadable])
+    root = project(dependencies: { "old" => ">= 0", "unloadable" => ">= 0" }, locked: [old, unloadable])
 
-    out, err, status = build("-t", "x86_64-linux", root, host: "aarch64-linux")
+    out, err, status = build(root)
 
     assert_equal [1, ""], [status, out]
     assert_equal [
       "fledge build: MyApp can't ship for x86_64-linux:",
-      "fledge build:   needs_compiling 1.0.0 has an extension to compile, and the lockfile locks no build of it precompiled for " \
-        "x86_64-linux. Fledge compiles a gem only on the platform it is for, and this computer is aarch64-linux: build for " \
-        "x86_64-linux on a computer that is x86_64-linux, such as a CI runner of that platform, or choose a version of " \
-        "needs_compiling with a build for x86_64-linux and run bundle lock --add-platform x86_64-linux.",
       "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.0.9.",
       "fledge build:   unloadable 1.0.0 (x86_64-linux-gnu)'s lib/unloadable.so needs libxml2.so.2, which neither linux, nor " \
         "Fledge's runtime, nor the gem itself provides, so the app could not load it on another computer. Build the gem so " \
@@ -151,7 +145,7 @@ class GemAppBuildTest < Minitest::Test
     ]
     root = project(dependencies: gems.to_h { |gem| [gem.name, ">= 0"] }, locked: gems)
 
-    _, err, status = build("-t", "x86_64-linux", root)
+    _, err, status = build(root)
 
     assert_equal 0, status, err
     assert_empty err.lines.grep_v(/\ADownloading /), "no warnings, and no verdicts"
@@ -170,27 +164,15 @@ class GemAppBuildTest < Minitest::Test
     { "licenses:\n  unlabeled: MIT\n" => "'licenses'", "compiled:\n  mystery: []\n" => "'compiled'" }.each do |yaml, key|
       File.write(File.join(root, "fledge.yml"), yaml)
 
-      _, err, status = build("-t", "x86_64-linux", root)
+      _, err, status = build(root)
 
       assert_equal 1, status
       assert_equal "fledge build: #{File.join(root, 'fledge.yml')} has #{key}, which Fledge does not know. It knows #{Fledge::Config::KNOWN}.\n", err
     end
   end
 
-  # On a computer Fledge has no runtime for, nothing compiles.
-  def test_a_gem_with_an_extension_is_refused_on_a_computer_fledge_has_no_runtime_for
-    needs_compiling = FakeGem.build(@gems, "needs_compiling", "1.0.0", extensions: ["ext/needs_compiling/extconf.rb"],
-      files: { "ext/needs_compiling/extconf.rb" => "", "LICENSE" => "MIT\n" })
-    root = project(dependencies: { "needs_compiling" => ">= 0" }, locked: [needs_compiling])
-
-    _, err, status = build("-t", "x86_64-linux", root, host: "x86_64-freebsd")
-
-    assert_equal 1, status
-    assert_includes err, "Fledge compiles a gem only on the platform it is for, and Fledge has no runtime for this computer: build"
-  end
-
-  # A git gem ships as Bundler keeps one, for every platform, from any
-  # computer, when it has nothing to compile (ADR 006).
+  # A git gem ships as Bundler keeps one, for every platform, when it has
+  # nothing to compile (ADR 006).
   def test_a_git_gem_ships_where_bundler_keeps_it_for_every_platform
     require_relative "support/git_repos"
     repo, revision = FakeRepo.write(@dir, "Monorepo", gems: { "alpha" => { "lib/alpha.rb" => "# alpha\n", "LICENSE" => "MIT\n" } })
@@ -201,9 +183,11 @@ class GemAppBuildTest < Minitest::Test
     File.write(lock, "GIT\n  remote: #{repo}\n  revision: #{revision}\n  branch: trunk\n  glob: gems/*/*.gemspec\n  specs:\n" \
       "    alpha (1.0)\n\n#{text}")
 
-    _, err, status = build("-t", "x64-mingw-ucrt", "-t", "aarch64-linux", root)
-
+    _, err, status = build(root, host: "x64-mingw-ucrt")
     assert_equal 0, status, err
+    _, err, status = build(root, host: "aarch64-linux")
+    assert_equal 0, status, err
+
     scope = "Monorepo-#{revision[0, 12]}"
     assert_equal "# alpha\n", File.read(File.join(@dir, "dist/MyApp-x64-mingw-ucrt/ruby/lib/ruby/gems/4.0.0/bundler/gems", scope,
       "gems/alpha/lib/alpha.rb"))
@@ -217,7 +201,7 @@ class GemAppBuildTest < Minitest::Test
     root = project(dependencies: { "foo" => ">= 0" }, locked: [foo])
     @routes["/gems/foo-1.0.0.gem"] = [200, {}, "not the gem"]
 
-    _, err, status = build("-t", "x86_64-linux", root)
+    _, err, status = build(root)
 
     assert_equal 1, status
     assert_match(/\Afledge build: .*foo-1\.0\.0\.gem.*SHA-256/, err.lines.grep(/SHA-256/).first.to_s)

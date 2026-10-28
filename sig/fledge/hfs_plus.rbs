@@ -21,20 +21,6 @@ module Fledge
     UNDECOMPOSED: Array[Range[Integer]]
     NAME_MAX: Integer
 
-    class Item
-      attr_reader id: Integer
-      attr_reader parent: Integer
-      attr_reader name: String
-      attr_reader entry: Entry?
-      attr_accessor extent: [Integer, Integer, Integer]?
-      attr_accessor children: Integer
-      attr_accessor folders: Integer
-
-      def initialize: (Integer id, Integer parent, String name, Entry? entry) -> void
-    end
-
-    type node = { number: Integer, first_key: String, bytes: String }
-
     @io: IO
     @name: String
     @date: Integer
@@ -61,7 +47,7 @@ module Fledge
 
     private def bitmap: (Integer total, Integer blocks) -> String
 
-    private def fork: (Integer start, Integer blocks, Integer size) -> String
+    def self.fork_data: (Integer start, Integer blocks, Integer size) -> String
 
     private def volume_header: (Integer total, Hash[Symbol, String] forks) -> String
 
@@ -70,21 +56,5 @@ module Fledge
     private def extents_tree: () -> String
 
     private def catalog_tree: () -> String
-
-    private def catalog_records: () -> Array[[String, String]]
-
-    private def key: (Integer parent, String name) -> String
-
-    private def record: (Item item) -> String
-
-    private def folder_record: (Item item, Integer mode) -> String
-
-    private def permissions: (Integer mode) -> String
-
-    private def pack_nodes: (Array[String] records, Array[String] keys, kind: Integer, height: Integer, first: Integer) -> Array[node]
-
-    private def node: (Integer kind, Integer height, Integer forward, Integer backward, Array[String] records, ?size: Integer) -> String
-
-    private def header_node: (Integer size, depth: Integer, root: Integer, leaf_records: Integer, first_leaf: Integer, last_leaf: Integer, total: Integer, max_key: Integer, compare: Integer, attributes: Integer) -> String
   end
 end

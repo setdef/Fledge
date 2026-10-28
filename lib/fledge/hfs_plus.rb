@@ -8,6 +8,9 @@
 require "digest"
 require_relative "entry"
 require_relative "error"
+require_relative "hfs_plus/b_tree"
+require_relative "hfs_plus/catalog"
+require_relative "hfs_plus/item"
 
 module Fledge
   # Writes a Mac OS Extended volume, the file system inside a
@@ -101,25 +104,6 @@ module Fledge
     # The most UTF-16 code units a name may hold.
     NAME_MAX = 255
 
-    # An item on the volume, while it is written: its catalog node ID, its
-    # parent's, its name, the entry it came from (+nil+ for the root
-    # folder), where a file's data is, and how many items and folders a
-    # folder holds.
-    class Item # :nodoc:
-      attr_reader :id, :parent, :name, :entry
-      attr_accessor :extent, :children, :folders
-
-      def initialize(id, parent, name, entry)
-        @id = id
-        @parent = parent
-        @name = name
-        @entry = entry
-        @extent = nil
-        @children = 0
-        @folders = 0
-      end
-    end
-
     # Creates a volume that writes to +io+, an empty file opened for
     # reading and writing in binary.
     #
@@ -191,9 +175,9 @@ module Fledge
       write_at(catalog_start, catalog)
       write_at(allocation_start, bitmap(total, bitmap_blocks))
       forks = {
-        allocation: fork(allocation_start, bitmap_blocks, bitmap_blocks * BLOCK),
-        extents: fork(extents_start, extents.bytesize / BLOCK, extents.bytesize),
-        catalog: fork(catalog_start, catalog.bytesize / BLOCK, catalog.bytesize),
+        allocation: HfsPlus.fork_data(allocation_start, bitmap_blocks, bitmap_blocks * BLOCK),
+        extents: HfsPlus.fork_data(extents_start, extents.bytesize / BLOCK, extents.bytesize),
+        catalog: HfsPlus.fork_data(catalog_start, catalog.bytesize / BLOCK, catalog.bytesize),
       }
       header = volume_header(total, forks)
       @io.seek(1024)
@@ -271,8 +255,9 @@ module Fledge
       bits + ("\0".b * ((blocks * BLOCK) - bits.bytesize))
     end
 
-    # An HFSPlusForkData of one extent.
-    private def fork(start, blocks, size)
+    # An HFSPlusForkData of one extent: a file's or a special file's
+    # size, its blocks, and where they begin.
+    def self.fork_data(start, blocks, size) # :nodoc:
       extents = blocks.zero? ? [0, 0] : [start, blocks]
       [size, 0, blocks, *extents].pack("Q>NNNN") + ("\0" * 56)
     end
@@ -305,7 +290,7 @@ module Fledge
         *finder,
       ].pack("a2nNa4N NNNN NNNNNN NNNNQ> N8") +
         forks.fetch(:allocation) + forks.fetch(:extents) + forks.fetch(:catalog) +
-        fork(0, 0, 0) + fork(0, 0, 0)
+        HfsPlus.fork_data(0, 0, 0) + HfsPlus.fork_data(0, 0, 0)
     end
 
     # A 64-bit volume ID, the same for the same volume.
@@ -318,124 +303,14 @@ module Fledge
     # The extents overflow file: a B-tree with its header node and no
     # records, since every file is one extent.
     private def extents_tree
-      header_node(EXTENTS_NODE, depth: 0, root: 0, leaf_records: 0, first_leaf: 0, last_leaf: 0, total: 1,
-        max_key: 10, compare: 0, attributes: 0x2)
+      BTree.new(EXTENTS_NODE, max_key: 10, compare: 0, attributes: 0x2).empty
     end
 
+    # The catalog file: a B-tree of every item's records, whose keys
+    # compare as HFSX's binary comparison (0xBC) asks.
     private def catalog_tree
-      records = catalog_records.sort_by { |key, _| [key.byteslice(2, 4), key.byteslice(8..)] }
-      leaves = pack_nodes(records.map { |key, data| key + data }, records.map(&:first), kind: -1, height: 1, first: 1)
-      levels = [leaves]
-      until levels.last.size == 1
-        below = levels.last
-        start = below.last[:number] + 1
-        index = below.map { |node| node[:first_key] + [node[:number]].pack("N") }
-        levels << pack_nodes(index, below.map { |node| node[:first_key] }, kind: 0, height: levels.size + 1, first: start)
-      end
-      nodes = levels.flatten
-      header = header_node(CATALOG_NODE, depth: levels.size, root: nodes.last[:number], leaf_records: records.size,
-        first_leaf: leaves.first[:number], last_leaf: leaves.last[:number], total: nodes.size + 1,
-        max_key: 516, compare: 0xBC, attributes: 0x6)
-      header + nodes.map { |node| node[:bytes] }.join
-    end
-
-    # The catalog's records, <tt>[key, record]</tt>: each item's record
-    # under its parent and name, and its thread record under its own ID.
-    private def catalog_records
-      records = [] # : Array[[String, String]]
-      @items.each_value do |item|
-        name = @hfs_name.fetch(item.id)
-        entry = item.entry
-        type = (entry.nil? || entry.type == :directory) ? FOLDER_THREAD : FILE_THREAD
-        records << [key(item.parent, name), record(item)]
-        records << [key(item.id, "".b), [type, 0, item.parent, name.bytesize / 2].pack("nnNn") + name]
-      end
-      records
-    end
-
-    private def key(parent, name)
-      [6 + name.bytesize, parent, name.bytesize / 2].pack("nNn") + name
-    end
-
-    private def record(item)
-      entry = item.entry
-      return folder_record(item, 0o040755) if entry.nil?
-      return folder_record(item, 0o040000 | (entry.mode & 0o7777)) if entry.type == :directory
-
-      symlink = entry.type == :symlink
-      mode = symlink ? 0o120755 : 0o100000 | (entry.mode & 0o7777)
-      user_info = symlink ? ["slnk", "rhap", 0, 0, 0].pack("a4a4nNn") : "\0" * 16
-      start, blocks, size = item.extent || [0, 0, 0]
-      [FILE_RECORD, THREAD_EXISTS, 0, item.id, @date, @date, @date, @date, 0].pack("nnNNNNNNN") +
-        permissions(mode) + user_info + ("\0" * 16) + [0, 0].pack("NN") +
-        fork(start, blocks, size) + fork(0, 0, 0)
-    end
-
-    private def folder_record(item, mode)
-      [FOLDER_RECORD, HAS_FOLDER_COUNT, item.children, item.id, @date, @date, @date, @date, 0].pack("nnNNNNNNN") +
-        permissions(mode) + ("\0" * 32) + [0, item.folders].pack("NN")
-    end
-
-    private def permissions(mode)
-      [UNKNOWN_OWNER, UNKNOWN_OWNER, 0, 0, mode, 0].pack("NNCCnN")
-    end
-
-    # Packs +records+ into B-tree nodes of CATALOG_NODE bytes, numbered
-    # from +first+ and linked to each other, and returns each node's
-    # number, bytes, and first key.
-    private def pack_nodes(records, keys, kind:, height:, first:)
-      groups = [] # : Array[Array[Integer]]
-      used = 0
-      records.each_with_index do |record, index|
-        if groups.empty? || 14 + used + record.bytesize + (2 * (groups.last.size + 2)) > CATALOG_NODE
-          groups << []
-          used = 0
-        end
-        groups.last << index
-        used += record.bytesize
-      end
-      groups.each_with_index.map do |group, position|
-        number = first + position
-        forward = (position + 1 < groups.size) ? number + 1 : 0
-        backward = position.positive? ? number - 1 : 0
-        { number:, first_key: keys.fetch(group.first), bytes: node(kind, height, forward, backward, group.map { |index| records.fetch(index) }) }
-      end
-    end
-
-    private def node(kind, height, forward, backward, records, size: CATALOG_NODE)
-      body = [forward, backward, kind, height, records.size, 0].pack("NNcCnn")
-      offsets = [] # : Array[Integer]
-      records.each do |record|
-        offsets << body.bytesize
-        body << record
-      end
-      offsets << body.bytesize
-      body + ("\0" * (size - body.bytesize - (2 * offsets.size))) + offsets.reverse.pack("n*")
-    end
-
-    private def header_node(size, depth:, root:, leaf_records:, first_leaf:, last_leaf:, total:, max_key:, compare:, attributes:)
-      header = [
-        depth,
-        root,
-        leaf_records,
-        first_leaf,
-        last_leaf,
-        size,
-        max_key,
-        total,
-        0,
-        0,
-        size * total,
-        0,
-        compare,
-        attributes,
-].pack("nNNNNnnNNnNCCN") + ("\0" * 64)
-      map = ("\0".b * (size - 256))
-      raise Error, "the volume holds too many files for one catalog map" if total > map.bytesize * 8
-
-      (total / 8).times { |index| map.setbyte(index, 0xFF) }
-      map.setbyte(total / 8, (0xFF << (8 - (total % 8))) & 0xFF) unless (total % 8).zero?
-      node(1, 0, 0, 0, [header, "\0" * 128, map], size:)
+      records = Catalog.new(@items.values, @hfs_name, @date).records
+      BTree.new(CATALOG_NODE, max_key: 516, compare: 0xBC, attributes: 0x6).bytes(records)
     end
   end
 end

@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class NativeBuild
+    class RuntimeRuby
+      @platform: Platform
+      @runtimes: Runtimes
+      @work: String
+      @log: CLI::_Output
+      @env: Runtimes::_Env
+      @ruby: String?
+
+      def initialize: (platform: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, env: Runtimes::_Env) -> void
+
+      def run: (Array[Hash[String, String | Array[String]]] jobs) -> Array[Hash[String, String]]
+
+      private def prepare: () -> String
+
+      def home: () -> String
+
+      private def child_env: () -> Hash[String, String?]
+    end
+  end
+end

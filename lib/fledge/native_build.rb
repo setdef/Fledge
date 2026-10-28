@@ -6,13 +6,13 @@
 #++
 
 require "fileutils"
-require "json"
-require "open3"
 require_relative "binary"
 require_relative "compiled_gem"
 require_relative "error"
 require_relative "git_package"
 require_relative "tar_gz"
+require_relative "native_build/floors"
+require_relative "native_build/runtime_ruby"
 
 module Fledge
   # Compiles an app's native gems for the platform Fledge runs on, against
@@ -117,11 +117,8 @@ module Fledge
     # [env] The environment to start from (default: +ENV+).
     def initialize(platform:, runtimes:, work:, log:, env: ENV)
       @platform = platform
-      @runtimes = runtimes
       @work = File.join(work, "native-#{platform}")
-      @log = log
-      @env = env
-      @ruby = nil # : String?
+      @runtime_ruby = RuntimeRuby.new(platform:, runtimes:, work: @work, log:, env:)
     end
 
     # Compiles each of +packages+ (Fledge::GemPackage or Fledge::GitPackage,
@@ -146,7 +143,7 @@ module Fledge
       return packages if wanted.empty?
 
       jobs = install_order(packages, wanted).map { |gem| job(gem, packages.fetch(gem), build_args.fetch(gem.name, [])) }
-      results = run(jobs.map { |job| job[2] })
+      results = @runtime_ruby.run(jobs.map { |job| job[2] })
       compiled = {} # : Hash[LockedGem | GitGem, CompiledGem]
       jobs.zip(results).each do |(gem, package, _, args), result|
         compiled[gem] = compiled_gem(gem, package, args, result.to_h) if wanted.key?(gem)
@@ -187,55 +184,9 @@ module Fledge
       end
     end
 
-    # Runs SCRIPT on the runtime's Ruby for +jobs+, and returns where each
-    # gem and its extensions went.
-    private def run(jobs)
-      ruby = prepare
-      plan = File.join(@work, "plan.json")
-      result = File.join(@work, "result.json")
-      script = File.join(@work, "build.rb")
-      File.write(script, SCRIPT)
-      File.write(plan, JSON.generate({ "home" => home, "jobs" => jobs, "result" => result }))
-      @log.puts "Compiling native gems for #{platform} with the runtime's Ruby"
-      status = Open3.popen2e(child_env, ruby, script, plan) do |_, output, thread|
-        output.each_line { |line| @log.puts line }
-        thread.value
-      end
-      raise Error, "a gem's extension did not compile for #{platform}; the compiler's output is above" unless status.success?
-
-      JSON.parse(File.read(result))
-    end
-
-    # Unpacks the runtime and its build-only companion, once, and returns
-    # the path of the runtime's Ruby.
-    private def prepare
-      @ruby ||= begin
-        ruby = File.join(@work, "ruby")
-        FileUtils.rm_rf(ruby)
-        [@runtimes.archive(platform), @runtimes.dev_archive(platform)].each do |archive|
-          TarGz.each_entry(archive) { |entry| entry.write_into(ruby) unless entry.type == :directory && File.directory?(File.join(ruby, entry.path)) }
-        end
-        top = Dir.children(ruby).first.to_s
-        File.join(ruby, top, *(platform.windows? ? %w[ruby bin ruby.exe] : %w[bin ruby]))
-      end
-    end
-
     # The gem folder the runtime's Ruby installs into.
     private def home
-      File.join(@work, "gems")
-    end
-
-    # The environment the runtime's Ruby and the compiler run in: the
-    # caller's, without the developer's Ruby settings, with RubyGems
-    # pointed at the build's gem folder, and on macOS the runtime's oldest
-    # macOS as the deployment target, which clang and rustc both read.
-    private def child_env
-      env = @env.to_h.keys.grep(SCRUBBED).to_h { |name| [name, nil] } # : Hash[String, String?]
-      env["GEM_HOME"] = home
-      env["GEM_PATH"] = home
-      minimum = platform.macos_minimum
-      env["MACOSX_DEPLOYMENT_TARGET"] = minimum if minimum
-      env
+      @runtime_ruby.home
     end
 
     # +package+, compiled, with what its build wrote into the gem's folder
@@ -248,7 +199,7 @@ module Fledge
       build_info = File.join(home, "build_info", "#{package.spec.full_name}.info")
       CompiledGem.new(
         package:, built:, extensions:, extension_dir: relative_to_home(extension_dir), build_args: args,
-        build_info: File.file?(build_info) ? File.read(build_info) : nil, problems: floor_problems(gem, built + extensions),
+        build_info: File.file?(build_info) ? File.read(build_info) : nil, problems: Floors.problems(gem, built + extensions, platform),
       )
     end
 
@@ -271,28 +222,6 @@ module Fledge
 
     private def relative_to_home(path)
       File.expand_path(path).delete_prefix("#{File.expand_path(home)}/")
-    end
-
-    # Why a compiled file would not load on the oldest system the runtime
-    # runs on: a newer macOS than it, or a newer glibc, which a compiler
-    # targets when it builds on a newer computer.
-    private def floor_problems(gem, entries)
-      macos = platform.macos_minimum
-      glibc = platform.glibc_minimum
-      entries.filter_map do |entry|
-        bytes = (entry.type == :file) ? entry.content.to_s : ""
-        if macos && (found = Binary.macos_minimum(bytes)) && newer?(found, macos)
-          "#{gem}'s #{entry.path} needs macOS #{found}, and apps for #{platform} run on macOS #{macos} and later. Compile it " \
-            "with MACOSX_DEPLOYMENT_TARGET=#{macos}, which Fledge sets, so check its extconf.rb does not override it."
-        elsif glibc && (found = Binary.glibc_minimum(bytes)) && newer?(found, glibc)
-          "#{gem}'s #{entry.path} needs glibc #{found}, and apps for #{platform} run on glibc #{glibc} and later. Build on a " \
-            "Linux with glibc #{glibc}, such as Ubuntu 24.04."
-        end
-      end
-    end
-
-    private def newer?(found, floor)
-      Gem::Version.new(found) > Gem::Version.new(floor)
     end
   end
 end

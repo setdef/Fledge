@@ -7,11 +7,8 @@ module Fledge
     SCRIPT: String
     LOGS: Array[String]
 
-    @runtimes: Runtimes
     @work: String
-    @log: CLI::_Output
-    @env: Runtimes::_Env
-    @ruby: String?
+    @runtime_ruby: RuntimeRuby
 
     attr_reader platform: Platform
 
@@ -23,13 +20,7 @@ module Fledge
 
     private def job: (locked_gem gem, package package, Array[String] args) -> [locked_gem, GemPackage | GitPackage, Hash[String, String | Array[String]], Array[String]]
 
-    private def run: (Array[Hash[String, String | Array[String]]] jobs) -> Array[Hash[String, String]]
-
-    private def prepare: () -> String
-
     private def home: () -> String
-
-    private def child_env: () -> Hash[String, String?]
 
     private def compiled_gem: (locked_gem gem, GemPackage | GitPackage package, Array[String] args, Hash[String, String] result) -> CompiledGem
 
@@ -38,9 +29,5 @@ module Fledge
     private def files_in: (String folder) -> Array[Entry]
 
     private def relative_to_home: (String path) -> String
-
-    private def floor_problems: (locked_gem gem, Array[Entry] entries) -> Array[String]
-
-    private def newer?: (String found, String floor) -> bool
   end
 end

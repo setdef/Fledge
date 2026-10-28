@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class NativeBuild
+    module Floors
+      def self.problems: (locked_gem gem, Array[Entry] entries, Platform platform) -> Array[String]
+
+      private def self.macos: (locked_gem gem, Entry entry, String bytes, Platform platform) -> String?
+
+      private def self.glibc: (locked_gem gem, Entry entry, String bytes, Platform platform) -> String?
+
+      private def self.needs: (locked_gem gem, Entry entry, Platform platform, String system, String found, String floor) -> String
+
+      private def self.newer?: (String found, String floor) -> bool
+    end
+  end
+end

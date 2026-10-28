@@ -89,9 +89,10 @@ class RuntimeBuilderTest < Minitest::Test
   def test_a_release_publishes_every_platforms_assets_and_the_lgpl_sources_where_they_ship
     assets = RuntimeBuilder.release_assets(version: "1.2.3")
 
-    assert_equal 19, assets.size
+    assert_equal 23, assets.size
     assert_equal assets.sort, assets
     Fledge::Platform.names.each { |name| assert_includes assets, "fledge-runtime-1.2.3-#{name}-dev.tar.gz" }
+    Fledge::Platform.names.each { |name| assert_includes assets, "fledge-makensis-1.2.3-#{name}.tar.gz" }
     assert_includes assets, "fledge-runtime-1.2.3-x64-mingw-ucrt-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-aarch64-linux-lgpl-sources.tar.gz"
     refute_includes assets, "fledge-runtime-1.2.3-arm64-darwin-lgpl-sources.tar.gz"

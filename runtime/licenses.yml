@@ -48,7 +48,7 @@ system_libraries:
     - /\A\/System\/Library\/Frameworks\//
   windows:
     - /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i
-    - /\A(?:advapi32|bcrypt|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i
+    - /\A(?:advapi32|bcrypt|comctl32|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|msvcrt|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i
 
 platforms:
   arm64-darwin: {os: darwin, arch: arm64-darwin23, gem_arch: arm64-darwin-23, so: bundle}
@@ -64,6 +64,11 @@ signatures:
     bytes: ["yescrypt-ROMhash", "$sm3y$"]
   - component: gmp
     bytes: ["GNU MP: Cannot allocate memory"]
+  # libfuse's low-level library, which AppImage's own runtime links
+  # statically and Fledge's build of it loads from the computer instead
+  # (runtime/appimage/fuse.c).
+  - component: libfuse
+    bytes: ["fuse: unsupported protocol version: ", "fuse: failed to allocate fuse object"]
 
 # Components, in the order that decides which owns a file two of them
 # match. Gems come from the tree's own specifications and are placed
@@ -87,7 +92,9 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: "the program the app's user runs, and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"
+    ships: >-
+      the program the app's user runs, {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader
+      of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
     files:
       - launcher
@@ -95,6 +102,9 @@ components:
       - launcherw.exe
       - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
     binaries: [launcher, launcher.exe, launcherw.exe]
+    embedded:
+      - files: [installer/appimage-runtime]
+        evidence: "libfuse3.so.3"
 
   - id: rust-std
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
@@ -110,15 +120,15 @@ components:
         evidence: /rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/
 
   - id: gcc-runtime
-    name: GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc)
+    name: GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and the AppImage runtime (-static-libgcc)
     version: "13"
     license: GPL-3.0-or-later WITH GCC-exception-3.1
     kind: program
     download: https://gcc.gnu.org/
-    ships: compiled into the launcher and bin/ruby
+    ships: compiled into the launcher, bin/ruby, and installer/appimage-runtime
     platforms: [x86_64-linux, aarch64-linux]
     embedded:
-      - files: [launcher, bin/ruby]
+      - files: [launcher, bin/ruby, installer/appimage-runtime]
         evidence: "GCC: ("
 
   - id: gcc-runtime-msys2
@@ -213,17 +223,59 @@ components:
         evidence: "0.2.5\0"
 
   - id: zlib
-    name: zlib, compiled into Ruby's zlib extension
+    name: zlib, compiled into Ruby's zlib extension and the AppImage runtime
     version: 1.3.2
     license: Zlib
     kind: program
     download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
     notice: zlib
-    ships: "compiled into lib/ruby/4.0.0/{arch}/zlib.so"
+    ships: "compiled into lib/ruby/4.0.0/{arch}/zlib.so, and into installer/appimage-runtime"
     platforms: [x86_64-linux, aarch64-linux]
     embedded:
       - files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib.so"]
         evidence: "deflate 1.3.2 "
+      - files: [installer/appimage-runtime]
+        evidence: "inflate 1.3.2 "
+
+  - id: appimage-runtime
+    name: AppImage's type 2 runtime, the program at the front of an app's AppImage
+    version: fedfad51acc2860b2916a1eef32ba4a500ff31ef
+    license: MIT
+    kind: program
+    download: https://github.com/AppImage/type2-runtime/tree/fedfad51acc2860b2916a1eef32ba4a500ff31ef
+    notice: appimage-runtime
+    ships: installer/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive
+    platforms: [x86_64-linux, aarch64-linux]
+    files: [installer/appimage-runtime]
+    binaries: [installer/appimage-runtime]
+    embedded:
+      - files: [installer/appimage-runtime]
+        evidence: "fedfad5+fledge"
+
+  - id: squashfuse
+    name: squashfuse, which reads the AppImage's file system, compiled into the AppImage runtime
+    version: 0.5.2
+    license: BSD-2-Clause
+    kind: program
+    download: https://github.com/vasi/squashfuse/releases/download/0.5.2/squashfuse-0.5.2.tar.gz
+    notice: squashfuse
+    ships: compiled into installer/appimage-runtime
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [installer/appimage-runtime]
+        evidence: "fuse: cannot get old signal handler"
+
+  - id: nsis
+    name: NSIS, whose stubs, plug-ins, and Modern UI make an app's setup program
+    version: "3.13"
+    license: Zlib
+    kind: program
+    download: https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-src.tar.bz2
+    notice: nsis
+    ships: installer/nsis/, which fledge build compiles into the app's setup program, and never in its folder or archive
+    platforms: [x64-mingw-ucrt]
+    files: ["installer/nsis/**"]
+    binaries: ["installer/nsis/Stubs/zlib{,_solid}-x86-unicode", "installer/nsis/Plugins/x86-unicode/*.dll", "installer/nsis/Contrib/UIs/*.exe"]
 
   - id: zlib-dll
     name: zlib (zlib1.dll)

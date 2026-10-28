@@ -170,12 +170,15 @@ class RuntimeBuilder
 
   # Every asset a release of +version+ publishes but SHA256SUMS, sorted:
   # each platform's #assets, and its source bundle only where the
-  # platform ships an LGPL library. release.yml checks the release
-  # against it.
+  # platform ships an LGPL library, and the makensis of each computer that
+  # builds apps (tasks/makensis_builder.rb). release.yml checks the
+  # release against it.
   def self.release_assets(version: Fledge::VERSION)
     Fledge::Platform.names.flat_map do |name|
+      platform = Fledge::Platform.find(name)
       lgpl = !LicenseAudit::SourceBundle.new(platform: name, version:).components.empty?
-      new(platform: Fledge::Platform.find(name)).assets(version:).filter_map { |kind, file| file if kind != :sources || lgpl }
+      files = new(platform:).assets(version:).filter_map { |kind, file| file if kind != :sources || lgpl }
+      files << Fledge::Runtimes.makensis_file_name(platform, version:)
     end.sort
   end
 
@@ -655,11 +658,13 @@ class RuntimeBuilder
     # Strips debug sections from extensions, and removes the RUNPATHs
     # rv-ruby's build machine left in some (zlib.so names a Linuxbrew
     # folder), so no extension looks for libraries outside the runtime.
+    # Then builds the AppImage runtime into installer/.
     def finish(stage)
       Dir.glob(File.join(stage, "lib", "ruby", "**", "*.so")).each do |extension|
         @builder.run("strip", "--strip-debug", extension)
         @builder.run("patchelf", "--remove-rpath", extension) unless @builder.capture("patchelf", "--print-rpath", extension).strip.empty?
       end
+      AppImageRuntime.new(builder: @builder, build_dir: @build_dir).build(File.join(stage, "installer", "appimage-runtime"))
     end
 
     private def build_libxcrypt
@@ -701,6 +706,106 @@ class RuntimeBuilder
     end
   end
 
+  # The program at the front of every AppImage (ADR 009): AppImage's type
+  # 2 runtime, built as its own scripts build it (clang, -Os, its linker
+  # script for the sections AppImage's tools read, its magic bytes at
+  # offset 8), but against glibc instead of musl, with squashfuse and zlib
+  # linked statically, and with no libfuse: Fledge's fuse.c loads the
+  # computer's own libfuse3.so.3 when it mounts, and runtime.patch makes
+  # the runtime extract and run the AppImage where it cannot mount, so
+  # nothing LGPL is linked into it (decision 8). It needs libfuse's
+  # headers, which declare what fuse.c loads, and nothing else of
+  # libfuse; CI installs Ubuntu's libfuse3-dev for them.
+  class AppImageRuntime
+    APPIMAGE = File.join(ROOT, "runtime", "appimage")
+
+    # The magic bytes AppImage's type 2 format puts at offset 8 of the
+    # ELF header: "AI" and the type.
+    MAGIC = "AI\x02".b
+
+    # What the runtime may link: glibc, which every computer an app runs
+    # on has (ADR 001, section 3).
+    ALLOWED = /\A(?:libc\.so\.6|ld-linux[-\w.]*\.so\.\d)\z/
+
+    def initialize(builder:, build_dir:)
+      @builder = builder
+      @work = File.join(build_dir, "appimage-runtime")
+    end
+
+    def build(output)
+      FileUtils.rm_rf(@work)
+      FileUtils.mkdir_p(@work)
+      zlib = build_zlib
+      squashfuse = build_squashfuse(zlib)
+      source = unpack("appimage-runtime")
+      @builder.run("patch", "-p1", "-i", File.join(APPIMAGE, "runtime.patch"), chdir: source)
+      compile(File.join(source, "src", "runtime"), squashfuse, zlib, output)
+    end
+
+    private def pin(name)
+      @builder.sources.fetch(name)
+    end
+
+    private def unpack(name)
+      tarball = @builder.fetch(pin(name).fetch("url"), pin(name).fetch("sha256"))
+      folder = File.join(@work, name)
+      FileUtils.mkdir_p(folder)
+      @builder.run("tar", "-xzf", tarball, "-C", folder, "--strip-components=1")
+      folder
+    end
+
+    private def build_zlib
+      source = unpack("zlib")
+      prefix = File.join(@work, "zlib-prefix")
+      @builder.run({ "CFLAGS" => "-O2 -fPIC" }, "./configure", "--static", "--prefix=#{prefix}", chdir: source)
+      @builder.run("make", "-j#{Etc.nprocessors}", "install", chdir: source)
+      prefix
+    end
+
+    # squashfuse's libraries, with zlib alone of its decompressors, since
+    # Fledge::Squashfs compresses with zlib alone.
+    private def build_squashfuse(zlib)
+      source = unpack("squashfuse")
+      @builder.run({ "CFLAGS" => "-O2 -fPIC" }, "./configure", "--disable-shared", "--enable-static", "--with-zlib=#{zlib}",
+        "--without-xz", "--without-lzo", "--without-lz4", "--without-zstd", chdir: source)
+      @builder.run("make", "-j#{Etc.nprocessors}", "libsquashfuse.la", "libsquashfuse_ll.la", "libfuseprivate.la", chdir: source)
+      FileUtils.mkdir_p(File.join(@work, "include"))
+      File.symlink(source, File.join(@work, "include", "squashfuse"))
+      source
+    end
+
+    private def compile(runtime, squashfuse, zlib, output)
+      cc = ENV.fetch("APPIMAGE_CC", "clang")
+      commit = pin("appimage-runtime").fetch("commit")[0, 7]
+      headers = ["-I#{File.join(@work, 'include')}", "-I#{squashfuse}", "-isystem", "/usr/include/fuse3"]
+      flags = ["-std=gnu99", "-Os", "-D_FILE_OFFSET_BITS=64", "-fPIE", *headers]
+      fuse = File.join(APPIMAGE, "fuse.c")
+      @builder.run(cc, "--analyze", "-Xclang", "-analyzer-werror", *flags, *WARNINGS, fuse, "-o", File.join(@work, "fuse.plist"))
+      @builder.run(cc, *flags, *WARNINGS, "-c", fuse, "-o", File.join(@work, "fuse.o"))
+      @builder.run(cc, *flags, "-Wall", "-Werror", "-DGIT_COMMIT=\"#{commit}+fledge\"", "-c", "runtime.c", "-o", File.join(@work, "runtime.o"),
+        chdir: runtime)
+      libraries = %w[libsquashfuse_ll.a libfuseprivate.a libsquashfuse.a].map { |name| File.join(squashfuse, ".libs", name) }
+      FileUtils.mkdir_p(File.dirname(output))
+      @builder.run(cc, "-pie", "-T", "data_sections.ld", "-Wl,--gc-sections", "-static-libgcc", File.join(@work, "runtime.o"),
+        File.join(@work, "fuse.o"), *libraries, File.join(zlib, "lib", "libz.a"), "-o", output, chdir: runtime)
+      @builder.run("strip", "--strip-all", output)
+      File.open(output, "r+b") do |file|
+        file.seek(8)
+        file.write(MAGIC)
+      end
+      check(output)
+    end
+
+    private def check(output)
+      raise "#{output} lacks AppImage's magic bytes" unless File.binread(output, 3, 8) == MAGIC
+
+      dynamic = @builder.capture("readelf", "-d", output)
+      needed = dynamic.scan(/\(NEEDED\)\s+Shared library: \[([^\]]+)\]/).flatten
+      foreign = needed.grep_v(ALLOWED)
+      raise "#{output} links libraries a computer may lack: #{foreign.join(', ')}" unless foreign.empty?
+    end
+  end
+
   # Windows: RubyInstaller's Ruby, checked against its signature, whose
   # tree goes into ruby\ with its shape unchanged and Fledge's RubyGems
   # defaults in place of RubyInstaller's, and the launcher cross-compiled
@@ -734,6 +839,44 @@ class RuntimeBuilder
       FileUtils.chmod_R("u+w", ruby)
       RuntimeBuilder.prune_windows(ruby, @builder.bundled_gems)
       @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
+      copy_nsis(File.join(stage, "installer", "nsis"))
+    end
+
+    # What of NSIS's release an installer is compiled from (ADR 009): the
+    # stubs of zlib compression, whose module is under NSIS's zlib/libpng
+    # license (LZMA's is CPL-1.0, which asks more than notices), and the
+    # uninstaller's icon; the System plug-in, which sets the Start menu
+    # shortcut's AppUserModelID, and nsDialogs, which Modern UI's pages
+    # use; the script headers; and Modern UI 2 with its dialogs, graphics,
+    # and language files. NSIS's own makensis is not here: it runs on the
+    # computer that builds an app (Fledge::Runtimes#makensis).
+    NSIS = [
+      "Stubs/zlib-x86-unicode",
+      "Stubs/zlib_solid-x86-unicode",
+      "Stubs/uninst",
+      "Plugins/x86-unicode/System.dll",
+      "Plugins/x86-unicode/nsDialogs.dll",
+      "Include",
+      "Contrib/Modern UI 2",
+      "Contrib/UIs/modern.exe",
+      "Contrib/Graphics",
+      "Contrib/Language files",
+    ].freeze
+
+    private def copy_nsis(into)
+      pin = @builder.sources.fetch("nsis").fetch("binary")
+      archive = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      unpacked = File.join(@build_dir, "nsis")
+      FileUtils.rm_rf(unpacked)
+      FileUtils.mkdir_p(unpacked)
+      extract_7z(archive, unpacked)
+      release = File.join(unpacked, "nsis-#{@builder.sources.fetch('nsis').fetch('version')}")
+      NSIS.each do |path|
+        target = File.join(into, path)
+        FileUtils.mkdir_p(File.dirname(target))
+        FileUtils.cp_r(File.join(release, path), target)
+      end
+      FileUtils.chmod_R("u+w,go-w", into)
     end
 
     # Compiles the console launcher to +output+, and the windowed one, a

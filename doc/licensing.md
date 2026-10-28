@@ -21,6 +21,8 @@ Each app carries the same facts in `notices/NOTICES.txt` (every component, its l
 
 **The CA certificates** (`cert.pem`) are under the Mozilla Public License 2.0, whose obligations attach to the file itself. It ships unmodified, in its source form, which MPL-2.0, section 3.1, asks be distributed under the MPL with word of how to get a copy of it; `notices/NOTICES.txt` holds that copy, and the file's own notices stay intact (section 3.4).
 
+**A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `installer/`: a Windows app's setup program is made of NSIS's stubs and plug-ins (the zlib license, which asks nothing of a binary; Fledge compresses installers with NSIS's zlib module, never its LZMA module, which is under the Common Public License), and a Linux app's AppImage begins with AppImage's runtime (MIT), with squashfuse (BSD-2-Clause) and zlib compiled in, and with no libfuse: it loads the libfuse of the computer it runs on, if it has one. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/NOTICES.txt`, which it holds.
+
 **Fledge's own files** in an app are `launcher` and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb` (the first is the program your app's users run, renamed for your app). They are Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
 
 ## Your app's own gems
@@ -33,7 +35,7 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.6 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.6 | `AGPL-3.0-or-later` | the program the app's user runs, lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/arm64-darwin23/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/arm64-darwin23/openssl.bundle |
@@ -57,16 +59,18 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.6 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
-| GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.6 | `AGPL-3.0-or-later` | the program the app's user runs, lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | fedfad51acc2860b2916a1eef32ba4a500ff31ef | `MIT` | installer/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and the AppImage runtime (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and installer/appimage-runtime |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/x86_64-linux/psych.so |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/x86_64-linux/openssl.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
+| squashfuse, which reads the AppImage's file system, compiled into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | compiled into installer/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
-| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/x86_64-linux/zlib.so |
+| zlib, compiled into Ruby's zlib extension and the AppImage runtime | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/x86_64-linux/zlib.so, and into installer/appimage-runtime |
 
 Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
@@ -85,16 +89,18 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.6 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
-| GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.6 | `AGPL-3.0-or-later` | the program the app's user runs, lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | fedfad51acc2860b2916a1eef32ba4a500ff31ef | `MIT` | installer/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and the AppImage runtime (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and installer/appimage-runtime |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/aarch64-linux/psych.so |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/aarch64-linux/openssl.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
+| squashfuse, which reads the AppImage's file system, compiled into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | compiled into installer/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
-| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/aarch64-linux/zlib.so |
+| zlib, compiled into Ruby's zlib extension and the AppImage runtime | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/aarch64-linux/zlib.so, and into installer/appimage-runtime |
 
 Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
@@ -113,13 +119,14 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.6 | `AGPL-3.0-or-later` | the program the app's user runs, and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.6 | `AGPL-3.0-or-later` | the program the app's user runs, ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs | 13 to 16 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
 | libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
 | LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe and launcherw.exe |
 | Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
+| NSIS, whose stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib` | installer/nsis/, which fledge build compiles into the app's setup program, and never in its folder or archive |
 | OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
 | Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL) | 4.0.9 | `GPL-1.0-or-later OR Artistic-1.0-Perl` | compiled into ruby/bin/x64-ucrt-ruby400.dll |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |

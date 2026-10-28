@@ -149,12 +149,13 @@ namespace :lint do
     sh "shellcheck", *scripts unless scripts.empty?
   end
 
-  # The compiler checks the launcher's warnings and runs its static
-  # analyzer when rake runtime builds it, which needs rv-ruby's headers;
-  # formatting needs nothing, so it runs in the gate.
+  # The compiler checks the warnings of the launcher, and of the AppImage
+  # runtime's fuse.c, and runs its static analyzer when rake runtime
+  # builds them, which needs rv-ruby's headers and libfuse's; formatting
+  # needs nothing, so it runs in the gate.
   desc "Check the launcher's C formatting with clang-format"
   task :c do
-    sources = `git ls-files -z runtime/launcher`.split("\0").grep(/\.[ch]\z/)
+    sources = `git ls-files -z runtime/launcher runtime/appimage`.split("\0").grep(/\.[ch]\z/)
     sh "clang-format", "--dry-run", "--Werror", *sources unless sources.empty?
   end
 

@@ -117,3 +117,29 @@ path = "runtime/notices/rv-ruby/**"
 precedence = "override"
 SPDX-FileCopyrightText = "Spinel Cooperative"
 SPDX-License-Identifier = "BSD-2-Clause"
+
+# Fledge's patch to AppImage's type 2 runtime: its context lines are
+# AppImage's runtime.c (MIT), and the lines it adds are Fledge's.
+[[annotations]]
+path = "runtime/appimage/runtime.patch"
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 Kerrick Long <me@kerricklong.com>", "2004-24 Simon Peter"]
+SPDX-License-Identifier = "AGPL-3.0-or-later AND MIT"
+
+[[annotations]]
+path = "runtime/notices/nsis/**"
+precedence = "override"
+SPDX-FileCopyrightText = "1999-2026 NSIS Contributors"
+SPDX-License-Identifier = "Zlib AND bzip2-1.0.6 AND CPL-1.0"
+
+[[annotations]]
+path = "runtime/notices/appimage-runtime/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2004-23 probonopd"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "runtime/notices/squashfuse/**"
+precedence = "override"
+SPDX-FileCopyrightText = ["2012 Dave Vasilevsky <dave@vasilevsky.ca>", "2012 Phillip Lougher <phillip@squashfs.org.uk>"]
+SPDX-License-Identifier = "BSD-2-Clause"

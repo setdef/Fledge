@@ -6,6 +6,7 @@
 #++
 
 require_relative "error"
+require_relative "windows_program/resource_table"
 
 module Fledge
   # A Windows program whose resources Fledge rewrites: the icon and
@@ -74,6 +75,17 @@ module Fledge
     # The Subsystem of a program Windows gives no console (a GUI program).
     GUI = 2
 
+    # Where the optional header keeps each field Fledge reads or writes,
+    # from its start (the PE specification's section 3.4).
+    OPTIONAL_FIELDS = {
+      initialized_data: 8,
+      section_alignment: 32,
+      file_alignment: 36,
+      image_size: 56,
+      checksum: 64,
+      subsystem: 68,
+    }.freeze
+
     # Reads the program in +bytes+. Raises Fledge::Error for anything that
     # is not a PE program.
     #
@@ -112,7 +124,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def subsystem
-      u16(@optional + 68)
+      u16(field(:subsystem))
     end
 
     # Every resource, by its type, name, and language, each an Integer ID
@@ -180,20 +192,29 @@ module Fledge
     Section = Data.define(:index, :name, :size, :address, :raw_size, :raw) # :nodoc:
 
     private def read_headers
-      count = u16(@pe + 6)
-      optional_size = u16(@pe + 20)
       @optional = @pe + 24
       magic = u16(@optional)
       raise Error, "is not a Windows program it can read (optional header magic 0x#{magic.to_s(16)})" unless [0x10B, 0x20B].include?(magic)
 
       @directories = @optional + ((magic == 0x20B) ? 112 : 96)
       @directory_count = u32(@directories - 4)
-      table = @optional + optional_size
-      @sections = Array.new(count) do |index|
-        at = table + (index * 40)
-        name = @bytes.byteslice(at, 8).to_s.delete("\0")
-        Section.new(index:, name:, size: u32(at + 8), address: u32(at + 12), raw_size: u32(at + 16), raw: u32(at + 20))
-      end
+      @sections = Array.new(u16(@pe + 6)) { |index| read_section(index) }
+    end
+
+    # Where the section headers begin, after the optional header.
+    private def section_table
+      @optional + u16(@pe + 20)
+    end
+
+    private def read_section(index)
+      at = section_table + (index * 40)
+      name = @bytes.byteslice(at, 8).to_s.delete("\0")
+      Section.new(index:, name:, size: u32(at + 8), address: u32(at + 12), raw_size: u32(at + 16), raw: u32(at + 20))
+    end
+
+    # Where the optional header keeps the field +name+.
+    private def field(name)
+      @optional + OPTIONAL_FIELDS.fetch(name)
     end
 
     private def directory(index)
@@ -235,23 +256,38 @@ module Fledge
     # The program with +table+ as the raw data of +section+, and the
     # sections in +later+ moved to follow it.
     private def rewrite(section, table, later)
-      file_alignment, section_alignment = u32(@optional + 36), u32(@optional + 32)
-      raw_size = align(table.bytesize, file_alignment)
+      raw_size = align(table.bytesize, u32(field(:file_alignment)))
       out = @bytes.byteslice(0, section.raw).to_s + table.ljust(raw_size, "\0")
-      address = align(section.address + table.bytesize, section_alignment)
       write_section(out, section, size: table.bytesize, address: section.address, raw_size:, raw: section.raw)
       write_directory(out, RESOURCE_DIRECTORY, section.address, table.bytesize)
+      image_size = append_moved(out, later, section.address + table.bytesize)
+      finish_headers(out, image_size, raw_size - section.raw_size)
+      out
+    end
+
+    # Appends the sections in +later+ to +out+, in file order, each at the
+    # next aligned virtual address after +address+, and returns the end of
+    # the last, aligned: the image's new size.
+    private def append_moved(out, later, address)
+      alignment = u32(field(:section_alignment))
+      address = align(address, alignment)
       later.sort_by(&:raw).each do |moved|
         raw = out.bytesize
         out << @bytes.byteslice(moved.raw, moved.raw_size).to_s
         move_directories(out, moved, address)
         write_section(out, moved, size: moved.size, address:, raw_size: moved.raw_size, raw:)
-        address = align(address + moved.size, section_alignment)
+        address = align(address + moved.size, alignment)
       end
-      put32(out, @optional + 56, address)
-      put32(out, @optional + 8, u32(@optional + 8) + raw_size - section.raw_size)
-      put32(out, @optional + 64, WindowsProgram.checksum(out, @optional + 64)) unless u32(@optional + 64).zero?
-      out
+      address
+    end
+
+    # Writes the image's new size, its initialized data grown by +growth+
+    # bytes, and, when the program had one, its new checksum.
+    private def finish_headers(out, image_size, growth)
+      put32(out, field(:image_size), image_size)
+      put32(out, field(:initialized_data), u32(field(:initialized_data)) + growth)
+      checksum = field(:checksum)
+      put32(out, checksum, WindowsProgram.checksum(out, checksum)) unless u32(checksum).zero?
     end
 
     # Points every data directory inside +moved+ at its new +address+.
@@ -265,7 +301,7 @@ module Fledge
     end
 
     private def write_section(out, section, size:, address:, raw_size:, raw:)
-      at = @optional + u16(@pe + 20) + (section.index * 40) + 8
+      at = section_table + (section.index * 40) + 8
       out.bytesplice(at, 16, [size, address, raw_size, raw].pack("V4"))
     end
 
@@ -308,106 +344,6 @@ module Fledge
 
     private def put32(out, at, value)
       out.bytesplice(at, 4, [value].pack("V"))
-    end
-
-    # Writes a resource section: the three levels of directories Windows
-    # searches (type, name, language), then the names, the data entries,
-    # and the data, each piece aligned as the PE specification asks.
-    class ResourceTable # :nodoc:
-      def initialize(resources)
-        @tree = {} # : Hash[Integer | String, Hash[Integer | String, Hash[Integer | String, String]]]
-        resources.each do |(type, name, language), data|
-          ((@tree[type] ||= {})[name] ||= {})[language] = data
-        end
-      end
-
-      # The section's bytes, for a section at virtual address +address+.
-      def bytes(address)
-        types = sorted(@tree.keys)
-        names = types.map { |type| [type, sorted(@tree.fetch(type).keys)] } #: Array[[Integer | String, Array[Integer | String]]]
-        languages = names.flat_map do |type, keys|
-          keys.map { |name| [[type, name], sorted(@tree.fetch(type).fetch(name).keys)] }
-        end #: Array[[[Integer | String, Integer | String], Array[Integer | String]]]
-        type_at = 16 + (types.size * 8)
-        name_at = type_at + names.sum { |_, keys| 16 + (keys.size * 8) }
-        strings_at = name_at + languages.sum { |_, keys| 16 + (keys.size * 8) }
-        strings, string_offsets = name_strings(types + names.flat_map(&:last), strings_at)
-        entries_at = align(strings_at + strings.bytesize, 4)
-        leaves = languages.flat_map { |(type, name), keys| keys.map { |language| @tree.fetch(type).fetch(name).fetch(language) } }
-        data_at = entries_at + (leaves.size * 16)
-        placed = leaves.map do |data|
-          at = align(data_at, 8)
-          data_at = at + data.bytesize
-          at
-        end
-
-        out = directory(types, string_offsets) { |index| 0x8000_0000 | (type_at + names.first(index).sum { |_, keys| 16 + (keys.size * 8) }) }
-        before = 0
-        names.each do |_, keys|
-          out << directory(keys, string_offsets) do |index|
-            0x8000_0000 | (name_at + languages.first(before + index).sum { |_, langs| 16 + (langs.size * 8) })
-          end
-          before += keys.size
-        end
-        leaf = 0
-        languages.each do |_, keys|
-          first = leaf
-          out << directory(keys, string_offsets) { |index| entries_at + ((first + index) * 16) }
-          leaf += keys.size
-        end
-        out << strings
-        out = out.ljust(entries_at, "\0")
-        leaves.each_with_index { |data, index| out << [address + placed.fetch(index), data.bytesize, 0, 0].pack("V4") }
-        leaves.each_with_index { |data, index| out = out.ljust(placed.fetch(index), "\0") << data }
-        out
-      end
-
-      # The keys of a directory in the order Windows' binary search through
-      # it expects: names first, case-insensitively, then IDs.
-      private def sorted(keys)
-        names, ids = split(keys)
-        [*names.sort_by(&:upcase), *ids.sort]
-      end
-
-      # +keys+ as its names and its IDs.
-      private def split(keys)
-        names = [] # : Array[String]
-        ids = [] # : Array[Integer]
-        keys.each do |key|
-          case key
-          when String then names << key
-          else ids << key
-          end
-        end
-        [names, ids]
-      end
-
-      # The names among +keys+, each as a length and UTF-16 characters,
-      # from +at+, and where each one is.
-      private def name_strings(keys, at)
-        strings = +"".b
-        offsets = {} # : Hash[String, Integer]
-        split(keys).first.uniq.each do |name|
-          offsets[name] = at + strings.bytesize
-          utf16 = name.encode(Encoding::UTF_16LE).b
-          strings << [utf16.bytesize / 2].pack("v") << utf16
-        end
-        [strings, offsets]
-      end
-
-      # A directory of +keys+, each pointing where the block says.
-      private def directory(keys, string_offsets)
-        named = keys.count { |key| key.is_a?(String) }
-        header = [0, 0, 0, 0, named, keys.size - named].pack("V2v4")
-        header + keys.each_with_index.map do |key, index|
-          name = key.is_a?(String) ? (0x8000_0000 | string_offsets.fetch(key)) : key
-          [name, yield(index)].pack("V2")
-        end.join
-      end
-
-      private def align(value, alignment)
-        ((value + alignment - 1) / alignment) * alignment
-      end
     end
   end
 end

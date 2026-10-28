@@ -15,6 +15,7 @@ module Fledge
     RELOCATION_DIRECTORY: Integer
     CONSOLE: Integer
     GUI: Integer
+    OPTIONAL_FIELDS: Hash[Symbol, Integer]
 
     @bytes: String
     @pe: Integer
@@ -44,6 +45,12 @@ module Fledge
 
     private def read_headers: () -> void
 
+    private def section_table: () -> Integer
+
+    private def read_section: (Integer index) -> Section
+
+    private def field: (Symbol name) -> Integer
+
     private def directory: (Integer index) -> [Integer, Integer]
 
     private def resource_section: () -> Section?
@@ -55,6 +62,10 @@ module Fledge
     private def resource_name: (Section section, Integer offset) -> String
 
     private def rewrite: (Section section, String table, Array[Section] later) -> String
+
+    private def append_moved: (String out, Array[Section] later, Integer address) -> Integer
+
+    private def finish_headers: (String out, Integer image_size, Integer growth) -> void
 
     private def move_directories: (String out, Section moved, Integer address) -> void
 
@@ -73,23 +84,5 @@ module Fledge
     private def pair: (Integer at) -> [Integer, Integer]
 
     private def put32: (String out, Integer at, Integer value) -> void
-
-    class ResourceTable
-      @tree: Hash[key, Hash[key, Hash[key, String]]]
-
-      def initialize: (Hash[resource, String] resources) -> void
-
-      def bytes: (Integer address) -> String
-
-      private def sorted: (Array[key] keys) -> Array[key]
-
-      private def split: (Array[key] keys) -> [Array[String], Array[Integer]]
-
-      private def name_strings: (Array[key] keys, Integer at) -> [String, Hash[String, Integer]]
-
-      private def directory: (Array[key] keys, Hash[String, Integer] string_offsets) { (Integer) -> Integer } -> String
-
-      private def align: (Integer value, Integer alignment) -> Integer
-    end
   end
 end

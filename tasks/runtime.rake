@@ -13,6 +13,6 @@
 desc "Build this computer's runtime, or PLATFORM's, into tmp/runtime (runtime/sources.yml pins its inputs)"
 task :runtime, [:platform] do |_task, arguments|
   require_relative "runtime_builder"
-  platform = arguments[:platform] ? Fledge::Platform.find(arguments[:platform]) : Fledge::Platform.local
+  platform = arguments[:platform] ? RuntimeBuilder.platform(arguments[:platform]) : Fledge::Platform.local
   RuntimeBuilder.new(platform:).call
 end

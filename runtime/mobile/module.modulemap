@@ -1,0 +1,13 @@
+// SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// Clang's module for the embedding API, so Swift can import FledgeRuby,
+// and so linking it adds what Ruby and OpenSSL need of iOS: libz, and
+// the Security and CoreFoundation frameworks.
+module FledgeRuby {
+    header "fledge_ruby.h"
+    link "z"
+    link framework "Security"
+    link framework "CoreFoundation"
+    export *
+}

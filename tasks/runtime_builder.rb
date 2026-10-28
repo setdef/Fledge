@@ -103,8 +103,20 @@ class RuntimeBuilder
     license(stage)
     path = archive
     publish(stage)
-    write_dev(recipe.tree)
+    write_dev(recipe.tree) unless mobile?
     path
+  end
+
+  # The runtime named +name+: a desktop platform's (Fledge::Platform), or
+  # a mobile one's (Mobile::PLATFORMS, ADR 011), which fledge build does
+  # not build apps for yet. Raises Fledge::UsageError for any other name.
+  def self.platform(name)
+    Mobile::PLATFORMS.fetch(name) { Fledge::Platform.find(name) }
+  end
+
+  # Whether this is a mobile runtime (ADR 011).
+  def mobile?
+    platform.is_a?(Mobile::Platform)
   end
 
   # The file names of what a release publishes for this platform at
@@ -114,24 +126,21 @@ class RuntimeBuilder
   def assets(version: Fledge::VERSION)
     archive = Fledge::Runtimes.file_name(platform, version:)
     base = File.basename(archive, Fledge::Runtimes::EXTENSION)
-    {
-      runtime: archive,
-      sbom: "#{base}.spdx.json",
-      notices: "#{base}-NOTICES.txt",
-      sources: LicenseAudit::Notices.source_bundle(version, platform.name),
-      dev: Fledge::Runtimes.dev_file_name(platform, version:),
-    }
+    described = { runtime: archive, sbom: "#{base}.spdx.json", notices: "#{base}-NOTICES.txt" }
+    return described if mobile?
+
+    described.merge(sources: LicenseAudit::Notices.source_bundle(version, platform.name),
+      dev: Fledge::Runtimes.dev_file_name(platform, version:))
   end
 
   # Every asset a release of +version+ publishes but SHA256SUMS, sorted:
-  # each platform's #assets, and its source bundle only where the
-  # platform ships a component whose source Fledge publishes. release.yml
-  # checks the release against it.
+  # each desktop and mobile runtime's #assets, and its source bundle only
+  # where the platform ships a component whose source Fledge publishes.
+  # release.yml checks the release against it.
   def self.release_assets(version: Fledge::VERSION)
-    Fledge::Platform.names.flat_map do |name|
-      platform = Fledge::Platform.find(name)
+    [*Fledge::Platform.names, *Mobile::PLATFORMS.keys].flat_map do |name|
       lgpl = !LicenseAudit::SourceBundle.new(platform: name, version:).components.empty?
-      new(platform:).assets(version:).filter_map { |kind, file| file if kind != :sources || lgpl }
+      new(platform: platform(name)).assets(version:).filter_map { |kind, file| file if kind != :sources || lgpl }
     end.sort
   end
 
@@ -204,10 +213,13 @@ class RuntimeBuilder
     nil
   end
 
-  # Runs a command, echoing it, and raises when it fails.
-  def run(*command, chdir: ROOT, out: $stdout)
+  # Runs a command, echoing it, and raises when it fails. A Hash before
+  # the command sets (or, with nil, unsets) variables of its environment,
+  # as for Kernel#system.
+  def run(*command, chdir: ROOT, out: $stdout, err: $stderr)
+    env = command.first.is_a?(Hash) ? command.shift : {}
     puts "+ #{command.join(' ')}"
-    system(*command, chdir:, out:, exception: true)
+    system(env, *command, chdir:, out:, err:, exception: true)
   end
 
   # Runs a command and returns its standard output.
@@ -236,7 +248,9 @@ class RuntimeBuilder
   end
 
   private def recipe_class
-    if platform.windows?
+    if mobile?
+      (platform.name == "ios") ? IOS : Android
+    elsif platform.windows?
       Windows
     else
       platform.name.end_with?("-darwin") ? Darwin : Linux
@@ -257,8 +271,13 @@ require_relative "runtime_builder/unix"
 require_relative "runtime_builder/darwin"
 require_relative "runtime_builder/linux"
 require_relative "runtime_builder/windows"
+require_relative "runtime_builder/ruby_source"
+require_relative "runtime_builder/bundled_extensions"
+require_relative "runtime_builder/mobile"
+require_relative "runtime_builder/ios"
+require_relative "runtime_builder/android"
 
 if $PROGRAM_NAME == __FILE__
-  platform = ARGV.first ? Fledge::Platform.find(ARGV.first) : Fledge::Platform.local
+  platform = ARGV.first ? RuntimeBuilder.platform(ARGV.first) : Fledge::Platform.local
   puts RuntimeBuilder.new(platform:).call
 end

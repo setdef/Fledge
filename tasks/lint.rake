@@ -153,9 +153,9 @@ namespace :lint do
   # runtime's fuse.c, and runs its static analyzer when rake runtime
   # builds them, which needs rv-ruby's headers and libfuse's; formatting
   # needs nothing, so it runs in the gate.
-  desc "Check the launcher's C formatting with clang-format"
+  desc "Check the launcher's and the mobile embedding API's C formatting with clang-format"
   task :c do
-    sources = `git ls-files -z runtime/launcher`.split("\0").grep(/\.[ch]\z/)
+    sources = `git ls-files -z runtime/launcher runtime/mobile`.split("\0").grep(/\.[ch]\z/)
     sh "clang-format", "--dry-run", "--Werror", *sources unless sources.empty?
   end
 

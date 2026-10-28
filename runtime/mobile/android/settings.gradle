@@ -1,0 +1,25 @@
+// SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// The Android library that packs a mobile runtime's AAR (ADR 011): the
+// embedding API's Java class and each ABI's libfledgeruby.so, which
+// tasks/runtime_builder/android.rb builds and names with
+// -Pfledge.jniLibs. The Android Gradle plugin's version comes from
+// runtime/sources.yml (-Pfledge.agp), where it is pinned.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    plugins {
+        id 'com.android.library' version providers.gradleProperty('fledge.agp').get()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = 'FledgeRuby'

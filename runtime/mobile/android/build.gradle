@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// No CMake or ndk-build: the runtime builder links libfledgeruby.so with
+// the NDK itself, and the AAR carries it as it is, unstripped by the
+// plugin (it is stripped already), beside the Java class.
+plugins {
+    id 'com.android.library'
+}
+
+layout.buildDirectory = file(providers.gradleProperty('fledge.buildDir').get())
+
+android {
+    namespace = 'org.setdef.fledge'
+    compileSdk = 36
+
+    defaultConfig {
+        minSdk = 26
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = [providers.gradleProperty('fledge.jniLibs').get()]
+        }
+    }
+
+    packaging {
+        jniLibs {
+            keepDebugSymbols += ['**/*.so']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}

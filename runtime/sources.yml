@@ -193,6 +193,64 @@ nsis:
     url: https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-src.tar.bz2
     sha256: a8ffe024602d46b6d766f9e1ce30c324ad2a24daeacd3efc2642d436a0c157ac
 
+# The mobile runtimes (ADR 011): CRuby built from its own source for
+# iOS and iPadOS and for Android, interpreter only, with its extensions
+# linked statically, which no prebuilt Ruby offers. Each builds on its
+# own system (AGENTS.md): iOS on a Mac with the Xcode below, Android on
+# Linux with the NDK below. Their sources are Ruby's release tarball, the
+# same 4.0.9 the desktop runtimes carry; OpenSSL 3.6.5, the release
+# RubyInstaller's Windows Ruby links; libyaml 0.2.5, as every desktop
+# runtime has; libffi 3.5.2, for fiddle, on Android only (iOS leaves
+# fiddle out, as xord/cruby does for the App Store); and Mozilla's CA
+# certificates as curl publishes them, the very file rv-ruby's runtimes
+# carry as libexec/cert.pem. The NDK is pinned for each computer that
+# runs it, and Gradle, which packs the Android runtime's AAR with the
+# Android Gradle plugin at agp, by its distribution's SHA-256. Xcode is
+# chosen by version on the runner (ci.yml), since Apple publishes no
+# download to pin; XcodeGen writes the Xcode project CI's mobile parity
+# check runs, and no runtime holds it.
+mobile:
+  ruby:
+    version: 4.0.9
+    url: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+    sha256: c35350682ff050b79702d57ade4516e7336063f510155d19fb2fb5b3f3909511
+  openssl:
+    version: 3.6.5
+    url: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
+    sha256: a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98
+  libyaml:
+    version: 0.2.5
+    url: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    sha256: c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4
+  libffi:
+    version: 3.5.2
+    url: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
+    sha256: f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc
+  ca-certificates:
+    version: cacert-2026-03-19
+    url: https://curl.se/ca/cacert-2026-03-19.pem
+    sha256: b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171
+  xcode: "26.5"
+  ndk:
+    version: r30
+    revision: 30.0.16248370
+    hosts:
+      x86_64-linux:
+        url: https://dl.google.com/android/repository/android-ndk-r30-linux.zip
+        sha256: 753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2
+      arm64-darwin:
+        url: https://dl.google.com/android/repository/android-ndk-r30-darwin.zip
+        sha256: d125634de97b26deb1e1bb1a562f9d839aa5803d1784a1e414485f5ccbe6739f
+  gradle:
+    version: 9.8.2
+    url: https://services.gradle.org/distributions/gradle-9.8.2-bin.zip
+    sha256: 21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607
+  agp: 9.4.1
+  xcodegen:
+    version: 2.46.0
+    url: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+    sha256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+
 # What each runtime ships, under which license, and with which notice,
 # is runtime/licenses.yml's: the license audit derives it from each built
 # runtime and writes its notices/NOTICES.txt and SBOM (ADR 004).

@@ -39,7 +39,7 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/arm64-darwin23/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/arm64-darwin23/openssl.bundle |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
 
 Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
@@ -71,7 +71,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/x86_64-linux/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/x86_64-linux/zlib.so |
@@ -107,7 +107,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/aarch64-linux/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/aarch64-linux/zlib.so |
@@ -142,7 +142,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
 | rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and never in its folder or archive |
 | Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL) | 4.0.9 | `GPL-1.0-or-later OR Artistic-1.0-Perl` | compiled into ruby/bin/x64-ucrt-ruby400.dll |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | RubyInstaller's runtime files, manifests, and tools | 4.0.9-1 | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
 | The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL | 14.0.0 | `LicenseRef-MinGW-w64-runtime` | compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/ |
 | winpthreads (libwinpthread-1.dll), from MinGW-w64 | 14.0.0 | `MIT AND BSD-3-Clause` | a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports |

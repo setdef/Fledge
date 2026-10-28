@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Binary
+    class Reader
+      @bytes: String
+
+      def initialize: (String bytes) -> void
+
+      private def number: (Integer offset, Integer size, String format) -> Integer
+
+      private def c_string: (Integer offset) -> String
+    end
+  end
+end

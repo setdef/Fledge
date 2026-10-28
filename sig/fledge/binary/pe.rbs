@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Binary
+    class Pe < Reader
+      IMPORTS: Integer
+      DELAY_IMPORTS: Integer
+
+      class Section < Data
+        attr_reader address: Integer
+        attr_reader size: Integer
+        attr_reader raw: Integer
+
+        def self.new: (address: Integer, size: Integer, raw: Integer) -> instance
+      end
+
+      def self.pe?: (String bytes) -> bool
+
+      @optional: Integer
+      @section_table: Integer
+      @section_count: Integer
+      @directories: Integer
+      @sections: Array[Section]?
+
+      def initialize: (String bytes) -> void
+
+      def needed: () -> Array[String]
+
+      def assemblies: () -> Array[String]
+
+      private def sections: () -> Array[Section]
+
+      private def offset_of: (Integer rva) -> Integer?
+
+      private def names: (Integer directory, Integer size, Integer name_at) -> Array[String]
+    end
+  end
+end

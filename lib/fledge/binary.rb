@@ -75,38 +75,6 @@ module Fledge
     # The first bytes of a universal (fat) Mach-O file.
     FAT_MAGIC = "\xCA\xFE\xBA\xBE".b
 
-    # The ELF dynamic tag that names a needed library.
-    DT_NEEDED = 1
-
-    # The ELF dynamic tag of a search path the loader tries first.
-    DT_RPATH = 15
-
-    # The ELF dynamic tag of a search path the loader tries after
-    # LD_LIBRARY_PATH.
-    DT_RUNPATH = 29
-
-    # The ELF section type of the dynamic section.
-    SHT_DYNAMIC = 6
-
-    # The ELF section of the symbol versions a file needs from the
-    # libraries it loads (SHT_GNU_verneed, in glibc's elf.h).
-    SHT_GNU_VERNEED = 0x6FFFFFFE
-
-    # The Mach-O load commands that name a dylib: LC_LOAD_DYLIB,
-    # LC_LOAD_WEAK_DYLIB, LC_REEXPORT_DYLIB, LC_LAZY_LOAD_DYLIB, and
-    # LC_LOAD_UPWARD_DYLIB.
-    LC_DYLIBS = [0xC, 0x80000018, 0x8000001F, 0x20, 0x80000023].freeze
-    # The Mach-O load command that adds a search path.
-    LC_RPATH = 0x8000001C
-
-    # The Mach-O load command that says which macOS a file was built for,
-    # and so the oldest it loads on, in its third word, minos (Apple's
-    # mach-o/loader.h).
-    LC_BUILD_VERSION = 0x32
-
-    # The older load command that says the same, in its second word.
-    LC_VERSION_MIN_MACOSX = 0x24
-
     # The Binary in the file at +path+, or nil when it holds no code.
     # Raises ArgumentError when the file looks like a binary but cannot be
     # read as one.
@@ -145,10 +113,9 @@ module Fledge
     #++
     def self.parse(bytes)
       bytes = bytes.b
-      if bytes.start_with?(ELF_MAGIC) then elf(bytes)
-      elsif MACHO_MAGICS.any? { |magic| bytes.start_with?(magic) } then macho(bytes, 0)
-      elsif bytes.start_with?(FAT_MAGIC) && number(bytes, 4, 4, "N") < 32 then fat(bytes)
-      elsif bytes.start_with?("MZ") && pe?(bytes) then pe(bytes)
+      if bytes.start_with?(ELF_MAGIC) then from(:elf, Elf.new(bytes).links)
+      elsif MACHO_MAGICS.any? { |magic| bytes.start_with?(magic) } || MachO.fat?(bytes) then from(:macho, MachO.new(bytes).links)
+      elsif bytes.start_with?("MZ") && Pe.pe?(bytes) then pe(Pe.new(bytes))
       elsif bytes.start_with?(AR_MAGIC) then new(format: :archive, needed: [], rpaths: [], assemblies: [])
       end
     end
@@ -171,19 +138,8 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.macos_minimum(bytes)
-      bytes = bytes.b
-      base = (bytes.start_with?(FAT_MAGIC) && number(bytes, 4, 4, "N") < 32) ? number(bytes, 16, 4, "N") : 0
-      return nil unless MACHO_MAGICS.include?(bytes.byteslice(base, 4))
-
-      offset = base + ((bytes.byteslice(base, 4) == MACHO_MAGICS.first) ? 32 : 28)
-      number(bytes, base + 16, 4, "L<").times do
-        cmd = number(bytes, offset, 4, "L<")
-        at = { LC_BUILD_VERSION => 12, LC_VERSION_MIN_MACOSX => 8 }[cmd]
-        return version_text(number(bytes, offset + at, 4, "L<")) if at
-
-        offset += number(bytes, offset + 4, 4, "L<")
-      end
-      nil
+      reader = MachO.new(bytes.b)
+      reader.minimum if reader.macho?
     end
 
     # The oldest glibc the ELF file +bytes+ runs on: the newest
@@ -206,172 +162,21 @@ module Fledge
     #++
     def self.glibc_minimum(bytes)
       bytes = bytes.b
-      return nil unless bytes.start_with?(ELF_MAGIC)
-
-      wide = bytes.getbyte(4) == 2
-      little = bytes.getbyte(5) == 1
-      word = wide ? (little ? "Q<" : "Q>") : (little ? "L<" : "L>")
-      half = little ? "S<" : "S>"
-      long = little ? "L<" : "L>"
-      shoff = number(bytes, wide ? 0x28 : 0x20, wide ? 8 : 4, word)
-      shentsize = number(bytes, wide ? 0x3A : 0x2E, 2, half)
-      sections = Array.new(number(bytes, wide ? 0x3C : 0x30, 2, half)) { |index| elf_section(bytes, shoff + (index * shentsize), wide, word, long) }
-      versions = sections.select { |section| section.fetch(:type) == SHT_GNU_VERNEED }.flat_map do |section|
-        needed_versions(bytes, section.fetch(:offset), sections.fetch(section.fetch(:link)).fetch(:offset), half, long)
-      end
-      versions.filter_map { |name| name[/\AGLIBC_(\d+(?:\.\d+)+)\z/, 1] }.max_by { |version| Gem::Version.new(version) }
+      Elf.new(bytes).glibc_minimum if bytes.start_with?(ELF_MAGIC)
     end
 
-    # The version names of each Elf_Verneed at +at+ and its Elf_Vernaux
-    # entries, whose names are in the string table at +strings+.
-    private_class_method def self.needed_versions(bytes, at, strings, half, long) # :nodoc:
-      names = [] # : Array[String]
-      loop do
-        aux = at + number(bytes, at + 8, 4, long)
-        number(bytes, at + 2, 2, half).times do
-          names << c_string(bytes, strings + number(bytes, aux + 8, 4, long))
-          step = number(bytes, aux + 12, 4, long)
-          break if step.zero?
-
-          aux += step
-        end
-        step = number(bytes, at + 12, 4, long)
-        return names if step.zero?
-
-        at += step
-      end
+    private_class_method def self.from(format, links) # :nodoc:
+      needed, rpaths = links
+      new(format:, needed:, rpaths:, assemblies: [])
     end
 
-    # A Mach-O version, X.Y.Z in nibbles xxxx.yy.zz, as X.Y.
-    private_class_method def self.version_text(packed) # :nodoc:
-      "#{packed >> 16}.#{(packed >> 8) & 0xFF}"
-    end
-
-    private_class_method def self.elf(bytes) # :nodoc:
-      wide = bytes.getbyte(4) == 2
-      little = bytes.getbyte(5) == 1
-      word = wide ? (little ? "Q<" : "Q>") : (little ? "L<" : "L>")
-      half = little ? "S<" : "S>"
-      long = little ? "L<" : "L>"
-      shoff = number(bytes, wide ? 0x28 : 0x20, wide ? 8 : 4, word)
-      shentsize = number(bytes, wide ? 0x3A : 0x2E, 2, half)
-      shnum = number(bytes, wide ? 0x3C : 0x30, 2, half)
-      sections = Array.new(shnum) { |index| elf_section(bytes, shoff + (index * shentsize), wide, word, long) }
-      needed = [] # : Array[String]
-      rpaths = [] # : Array[String]
-      sections.select { |section| section.fetch(:type) == SHT_DYNAMIC }.each do |dynamic|
-        strings = sections.fetch(dynamic.fetch(:link)).fetch(:offset)
-        entry = wide ? 16 : 8
-        (dynamic.fetch(:size) / entry).times do |index|
-          at = dynamic.fetch(:offset) + (index * entry)
-          tag = number(bytes, at, entry / 2, word)
-          break if tag.zero?
-
-          next unless [DT_NEEDED, DT_RPATH, DT_RUNPATH].include?(tag)
-
-          text = c_string(bytes, strings + number(bytes, at + (entry / 2), entry / 2, word))
-          (tag == DT_NEEDED) ? needed << text : rpaths << text
-        end
-      end
-      new(format: :elf, needed:, rpaths:, assemblies: [])
-    end
-
-    private_class_method def self.elf_section(bytes, at, wide, word, long) # :nodoc:
-      if wide
-        {
-type: number(bytes, at + 4, 4, long),
-offset: number(bytes, at + 24, 8, word),
-size: number(bytes, at + 32, 8, word),
-link: number(bytes, at + 40, 4, long),
-}
-      else
-        {
-type: number(bytes, at + 4, 4, long),
-offset: number(bytes, at + 16, 4, word),
-size: number(bytes, at + 20, 4, word),
-link: number(bytes, at + 24, 4, long),
-}
-      end
-    end
-
-    private_class_method def self.macho(bytes, base) # :nodoc:
-      wide = bytes.byteslice(base, 4) == MACHO_MAGICS.first
-      ncmds = number(bytes, base + 16, 4, "L<")
-      offset = base + (wide ? 32 : 28)
-      needed = [] # : Array[String]
-      rpaths = [] # : Array[String]
-      ncmds.times do
-        cmd = number(bytes, offset, 4, "L<")
-        size = number(bytes, offset + 4, 4, "L<")
-        if LC_DYLIBS.include?(cmd)
-          needed << c_string(bytes, offset + number(bytes, offset + 8, 4, "L<"))
-        elsif cmd == LC_RPATH
-          rpaths << c_string(bytes, offset + number(bytes, offset + 8, 4, "L<"))
-        end
-        offset += size
-      end
-      new(format: :macho, needed:, rpaths:, assemblies: [])
-    end
-
-    # A universal binary: the first architecture's slice.
-    private_class_method def self.fat(bytes) # :nodoc:
-      macho(bytes, number(bytes, 16, 4, "N"))
-    end
-
-    private_class_method def self.pe?(bytes) # :nodoc:
-      header = number(bytes, 0x3C, 4, "L<")
-      bytes.byteslice(header, 4) == "PE\0\0".b
-    end
-
-    private_class_method def self.pe(bytes) # :nodoc:
-      coff = number(bytes, 0x3C, 4, "L<") + 4
-      section_count = number(bytes, coff + 2, 2, "S<")
-      optional_size = number(bytes, coff + 16, 2, "S<")
-      optional = coff + 20
-      plus = number(bytes, optional, 2, "S<") == 0x20B
-      directories = optional + (plus ? 112 : 96)
-      sections = Array.new(section_count) do |index|
-        base = optional + optional_size + (index * 40)
-        size = [number(bytes, base + 8, 4, "L<"), number(bytes, base + 16, 4, "L<")].max.to_i
-        { address: number(bytes, base + 12, 4, "L<"), size:, raw: number(bytes, base + 20, 4, "L<") }
-      end
-      at = lambda do |rva|
-        section = sections.find { |candidate| rva >= candidate.fetch(:address) && rva < candidate.fetch(:address) + candidate.fetch(:size) }
-        section && (rva - section.fetch(:address) + section.fetch(:raw))
-      end
-      needed = pe_names(bytes, at, number(bytes, directories + 8, 4, "L<"), 20, 12)
-      needed += pe_names(bytes, at, number(bytes, directories + (13 * 8), 4, "L<"), 32, 4)
-      assemblies = bytes.scan(/<dependentAssembly>\s*<assemblyIdentity[^>]*name="([^"]+)"/m).flatten.map(&:to_s).uniq
-      new(format: :pe, needed: needed.uniq, rpaths: [], assemblies:)
-    end
-
-    # The DLL names a table of +size+-byte import descriptors at +rva+
-    # holds, each naming its DLL by an RVA +name_at+ bytes into it.
-    private_class_method def self.pe_names(bytes, at, rva, size, name_at) # :nodoc:
-      return [] if rva.zero?
-
-      offset = at.call(rva) or return []
-      names = [] # : Array[String]
-      loop do
-        descriptor = bytes.byteslice(offset, size)
-        break if descriptor.nil? || descriptor.bytesize < size || descriptor.each_byte.all?(&:zero?)
-
-        name = at.call(number(descriptor, name_at, 4, "L<"))
-        names << c_string(bytes, name) if name
-        offset += size
-      end
-      names
-    end
-
-    # The unsigned number of +size+ bytes at +offset+, in the pack
-    # +format+, or 0 past the end.
-    private_class_method def self.number(bytes, offset, size, format) # :nodoc:
-      bytes.byteslice(offset, size).to_s.unpack1(format).to_i
-    end
-
-    private_class_method def self.c_string(bytes, offset) # :nodoc:
-      ending = bytes.index("\0".b, offset) || bytes.bytesize
-      bytes.byteslice(offset, ending - offset).to_s.force_encoding(Encoding::UTF_8)
+    private_class_method def self.pe(reader) # :nodoc:
+      new(format: :pe, needed: reader.needed, rpaths: [], assemblies: reader.assemblies)
     end
   end
 end
+
+require_relative "binary/reader"
+require_relative "binary/elf"
+require_relative "binary/mach_o"
+require_relative "binary/pe"

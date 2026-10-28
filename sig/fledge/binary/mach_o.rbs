@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Binary
+    class MachO < Reader
+      LC_DYLIBS: Array[Integer]
+      LC_RPATH: Integer
+      LC_BUILD_VERSION: Integer
+      LC_VERSION_MIN_MACOSX: Integer
+      MINIMUM_AT: Hash[Integer, Integer]
+
+      def self.fat?: (String bytes) -> bool
+
+      @base: Integer
+
+      def initialize: (String bytes) -> void
+
+      def macho?: () -> bool
+
+      def links: () -> [Array[String], Array[String]]
+
+      def minimum: () -> String?
+
+      private def each_command: () { (Integer command, Integer offset) -> void } -> void
+
+      private def command_string: (Integer offset) -> String
+
+      private def version_text: (Integer packed) -> String
+    end
+  end
+end

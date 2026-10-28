@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Binary
+    class Elf < Reader
+      DT_NEEDED: Integer
+      DT_RPATH: Integer
+      DT_RUNPATH: Integer
+      SHT_DYNAMIC: Integer
+      SHT_GNU_VERNEED: Integer
+      ELF32: Hash[Symbol, Integer]
+      ELF64: Hash[Symbol, Integer]
+
+      class Section < Data
+        attr_reader type: Integer
+        attr_reader offset: Integer
+        attr_reader size: Integer
+        attr_reader link: Integer
+
+        def self.new: (type: Integer, offset: Integer, size: Integer, link: Integer) -> instance
+      end
+
+      @layout: Hash[Symbol, Integer]
+      @word_size: Integer
+      @word: String
+      @half: String
+      @long: String
+      @sections: Array[Section]?
+
+      def initialize: (String bytes) -> void
+
+      def links: () -> [Array[String], Array[String]]
+
+      def glibc_minimum: () -> String?
+
+      private def sections: () -> Array[Section]
+
+      private def sections_of: (Integer type) -> Array[Section]
+
+      private def strings_of: (Section section) -> Integer
+
+      private def section: (Integer at) -> Section
+
+      private def word: (Integer at) -> Integer
+
+      private def each_dynamic_string: (Section dynamic) { (Integer tag, String text) -> void } -> void
+
+      private def needed_versions: (Integer at, Integer strings) -> Array[String]
+
+      private def auxiliary_names: (Integer at, Integer strings) -> Array[String]
+    end
+  end
+end

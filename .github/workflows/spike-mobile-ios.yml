@@ -1,0 +1,111 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Spike (throwaway, spike/mobile only): cross-build CRuby 4.0.9 for the
+# iOS Simulator and for iOS devices, embed it in the smallest UIKit app,
+# run that app's bundled main.rb on an iPhone and an iPad simulator, and
+# build an unsigned .ipa to prove the device slice links. Findings are in
+# spike/mobile/FINDINGS.md.
+
+name: Spike mobile iOS
+
+on:
+  push:
+    branches: [spike/mobile]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # Pinned: the runner image's newest Xcode 26 is used only if this one
+  # is missing, and the job says so.
+  XCODE_APP: /Applications/Xcode_26.1.app
+  XCODEGEN_URL: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+  XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+
+jobs:
+  ruby:
+    name: Ruby for ${{ matrix.sdk }}
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [iphonesimulator, iphoneos]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          ruby-version: 4.0.9
+      - name: Select Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          if [ -d "$XCODE_APP" ]; then sudo xcode-select -s "$XCODE_APP"; else
+            echo "::warning::$XCODE_APP missing; using $(xcode-select -p)"; fi
+          xcodebuild -version; xcrun --sdk ${{ matrix.sdk }} --show-sdk-version
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/fledge-spike-mobile
+          key: spike-mobile-ios-sources-${{ hashFiles('spike/mobile/sources.sh') }}
+      - name: Build Ruby
+        run: time spike/mobile/ios/build-ruby.sh ${{ matrix.sdk }}
+      - name: Archive the build
+        if: always()
+        run: tar -C spike/mobile/out/ios -czf ruby-ios-${{ matrix.sdk }}.tar.gz --exclude work ${{ matrix.sdk }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ruby-ios-${{ matrix.sdk }}
+          path: ruby-ios-${{ matrix.sdk }}.tar.gz
+
+  app:
+    name: App on iPhone and iPad simulators, and an unsigned .ipa
+    needs: ruby
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Select Xcode
+        run: |
+          if [ -d "$XCODE_APP" ]; then sudo xcode-select -s "$XCODE_APP"; else
+            echo "::warning::$XCODE_APP missing; using $(xcode-select -p)"; fi
+          xcodebuild -version
+          xcrun simctl list runtimes
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ruby-ios-*
+          merge-multiple: true
+      - name: Unpack Ruby
+        run: |
+          mkdir -p spike/mobile/out/ios
+          for f in ruby-ios-*.tar.gz; do tar -C spike/mobile/out/ios -xzf "$f"; done
+          ls -la spike/mobile/out/ios/*/
+      - name: Install XcodeGen
+        run: |
+          curl -sSfL -o xcodegen.zip "$XCODEGEN_URL"
+          echo "$XCODEGEN_SHA256  xcodegen.zip" | shasum -a 256 -c
+          unzip -q xcodegen.zip -d "$RUNNER_TEMP/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Build the simulator app
+        run: time spike/mobile/ios/build-app.sh iphonesimulator
+      - name: Run on an iPhone simulator
+        run: time spike/mobile/ios/run-sim.sh "iPhone 17"
+      - name: Run on an iPad simulator
+        run: time spike/mobile/ios/run-sim.sh "iPad Air 11-inch (M3)"
+      - name: Build the device app, unsigned, as an .ipa
+        run: time spike/mobile/ios/build-app.sh iphoneos
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ios-app
+          path: |
+            spike/mobile/out/ios/FledgeSpike-unsigned.ipa
+            spike/mobile/out/ios/sim-*
+            spike/mobile/out/ios/xcodebuild-*.log

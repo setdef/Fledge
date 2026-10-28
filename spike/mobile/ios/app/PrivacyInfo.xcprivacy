@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     Spike: the required-reason APIs CRuby calls (research 2026-10-27-mobile.md, section 5),
+     checked against the device binary's imports (nm -u): stat, fstat, lstat, and getattrlist
+     are FileTimestamp, C617.1 (files in the app container); mach_absolute_time is
+     SystemBootTime, 35F9.1 (elapsed time). No statfs or statvfs is imported, so no DiskSpace. -->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key><false/>
+	<key>NSPrivacyCollectedDataTypes</key><array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key><string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key><array><string>C617.1</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key><string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key><array><string>35F9.1</string></array>
+		</dict>
+	</array>
+</dict>
+</plist>

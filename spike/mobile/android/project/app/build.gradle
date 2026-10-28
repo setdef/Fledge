@@ -1,0 +1,40 @@
+// SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// No CMake or ndk-build here: android/build-ruby.sh links the native
+// library, and build-apk.sh puts it in src/main/jniLibs, as an AAR
+// from Fledge would carry it. Ruby's tree is one stored zip asset.
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace = 'org.setdef.fledge.spike'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = 'org.setdef.fledge.spike'
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 1
+        versionName = '0.0.1'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = false
+            signingConfig = signingConfigs.debug
+        }
+    }
+
+    androidResources {
+        noCompress += ['zip']
+    }
+
+    packaging {
+        jniLibs {
+            // Stored uncompressed and page-aligned in the APK, loaded in
+            // place (the default since minSdk 23; said here on purpose).
+            useLegacyPackaging = false
+        }
+    }
+}

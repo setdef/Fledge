@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Spike (throwaway): XcodeGen spec for the smallest iOS/iPadOS host.
+# build-app.sh stages Ruby/ (the XCFramework, headers, and lib/ruby)
+# and app/ next to this file before running xcodegen.
+name: FledgeSpike
+options:
+  bundleIdPrefix: org.setdef.fledge
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  FledgeSpike:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: main.m
+      - path: PrivacyInfo.xcprivacy
+        buildPhase: resources
+      - path: staged/lib
+        type: folder
+        buildPhase: resources
+      - path: staged/app
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - framework: staged/FledgeRuby.xcframework
+        embed: false
+    settings:
+      base:
+        INFOPLIST_FILE: Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: org.setdef.fledge.spike
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CLANG_ENABLE_OBJC_ARC: YES
+        GENERATE_INFOPLIST_FILE: NO
+        DEAD_CODE_STRIPPING: YES
+        ARCHS: arm64
+        ONLY_ACTIVE_ARCH: NO
+        GCC_TREAT_WARNINGS_AS_ERRORS: NO
+        WARNING_CFLAGS: ["-Wno-everything"]
+        OTHER_LDFLAGS: ["-lz", "-framework", "Security", "-framework", "CoreFoundation", "-lobjc"]
+        HEADER_SEARCH_PATHS[sdk=iphoneos*]: ["$(SRCROOT)/staged/include/iphoneos/ruby-4.0.0", "$(SRCROOT)/staged/include/iphoneos/ruby-4.0.0/arm64-darwin"]
+        HEADER_SEARCH_PATHS[sdk=iphonesimulator*]: ["$(SRCROOT)/staged/include/iphonesimulator/ruby-4.0.0", "$(SRCROOT)/staged/include/iphonesimulator/ruby-4.0.0/arm64-darwin"]
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO

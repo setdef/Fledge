@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+/out/
+/ios/app/staged/
+/ios/app/FledgeSpike.xcodeproj/
+/android/project/.gradle/
+/android/project/app/build/
+/android/project/build/
+/android/project/app/src/main/jniLibs/
+/android/project/app/src/main/assets/
+/android/project/local.properties

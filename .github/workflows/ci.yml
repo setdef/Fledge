@@ -163,16 +163,13 @@ jobs:
           install_args: ruby
 
       # patchelf removes the RUNPATHs rv-ruby's build left in its
-      # extensions. libfuse's headers declare what the AppImage runtime's
-      # fuse.c loads from the computer's own libfuse (ADR 009), which no
-      # runtime links. Both pinned to Ubuntu 24.04's builds; gcc, clang,
-      # make, patch, perl, and xz, which libxcrypt's and the AppImage
-      # runtime's builds need, are on the runner already.
-      - name: Install patchelf and libfuse's headers
+      # extensions, pinned to Ubuntu 24.04's build; gcc, make, perl, and
+      # xz, which libxcrypt's build needs, are on the runner already.
+      - name: Install patchelf
         if: runner.os == 'Linux' && matrix.platform != 'x64-mingw-ucrt'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq patchelf=0.18.0-1.1build1 libfuse3-dev=3.14.0-5build1
+          sudo apt-get install -y -qq patchelf=0.18.0-1.1build1
 
       # rv-ruby, RubyInstaller, llvm-mingw, and libxcrypt downloads, keyed
       # by the file that pins their SHA-256s, so a changed pin downloads
@@ -263,8 +260,8 @@ jobs:
   # The tests on each platform, with that platform's runtime, so
   # test/built_app_test.rb builds and runs a real app rather than
   # skipping (FLEDGE_REQUIRE_RUNTIME turns a skip into a failure), and its
-  # makensis; on Linux with squashfs-tools' unsquashfs, which
-  # test/squashfs_test.rb reads its file systems back with.
+  # makensis; on Linux with squashfs-tools' mksquashfs, which writes an
+  # AppImage's file system (ADR 010).
   test:
     name: Test (${{ matrix.platform }})
     needs: [runtime, makensis]
@@ -317,12 +314,12 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       # Pinned to Ubuntu 24.04's build.
-      - name: Install unsquashfs
+      - name: Install mksquashfs
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
-          echo "FLEDGE_REQUIRE_UNSQUASHFS=1" >> "$GITHUB_ENV"
+          echo "FLEDGE_REQUIRE_MKSQUASHFS=1" >> "$GITHUB_ENV"
 
       - name: Run the tests
         timeout-minutes: 10
@@ -512,6 +509,14 @@ jobs:
           name: makensis-${{ matrix.platform }}
           path: ${{ runner.temp }}/runtimes
 
+      # mksquashfs, which writes windowed_app's AppImage, pinned to Ubuntu
+      # 24.04's build, as a developer installs it.
+      - name: Install mksquashfs
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
+
       - name: Build hello, the parity probes, my_cool_app, windowed_app, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
@@ -668,9 +673,10 @@ jobs:
   # program must be there and run (.github/scripts/deliver-windowed.sh).
   # Then its installer (ADR 009): on macOS the disk image, attached,
   # verified, and dragged to an Applications folder, with the app run from
-  # both (deliver-dmg.sh); on Linux the AppImage, mounted with FUSE and
-  # extracted without, run each way and in a hostile environment, and
-  # unpacked by --appimage-extract (deliver-appimage.sh).
+  # both (deliver-dmg.sh); on Linux the AppImage, mounted with FUSE, and
+  # extracted with APPIMAGE_EXTRACT_AND_RUN=1, where there is none, run
+  # each way and in a hostile environment, and unpacked by
+  # --appimage-extract (deliver-appimage.sh).
   delivery-windowed:
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build
@@ -713,7 +719,8 @@ jobs:
         run: .github/scripts/deliver-dmg.sh "$RUNNER_TEMP/delivered/Hello Window-${{ matrix.platform }}.dmg"
 
       # FUSE 3, which desktops ship and the runner's image may not,
-      # pinned to Ubuntu 24.04's build: the AppImage loads its libfuse.
+      # pinned to Ubuntu 24.04's build: the AppImage's runtime mounts with
+      # its fusermount3.
       - name: Install FUSE
         if: runner.os == 'Linux'
         run: |
@@ -763,7 +770,8 @@ jobs:
           .github/scripts/deliver.sh "delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
           "delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat delivered/my_cool_app.expected)" --no-ruby-installed
 
-      # A container has no FUSE, so the AppImage extracts itself and runs.
+      # A container has no FUSE, so the AppImage says so, and extracts
+      # itself and runs when asked to, as AppImage documents.
       - name: Run Hello Window as an AppImage on a computer with no FUSE
         run: .github/scripts/deliver-appimage.sh "delivered/Hello Window-${{ matrix.platform }}.AppImage" extract
 

@@ -8,8 +8,14 @@
 class LicenseAudit
   # Judges each component a tree ships by Fledge's license policy
   # (Fledge::LicensePolicy, ADR 004): a notice-only license anywhere, a
-  # file-level one only for unmodified files, and an LGPL one only as its
-  # own shared library with a source pin.
+  # file-level one only for unmodified files, and an LGPL one either as
+  # its own shared library with a source pin, or linked into another
+  # component that is not Fledge's own and whose source Fledge publishes
+  # beside the LGPL library's (the AppImage runtime and its libfuse, ADR
+  # 010), so whoever receives an app can rebuild that component with
+  # another copy of the library (LGPL-2.1, section 6(a)). An LGPL library
+  # is never allowed linked into the program an app's developer ships as
+  # their own, the launcher.
   class Policy
     # A policy that reads source pins from +sources+ (runtime/sources.yml)
     # and reports each violation to +violate+, with its rule, path, and
@@ -38,6 +44,7 @@ class LicenseAudit
     end
 
     private def check_shared_library(component, report, where)
+      return check_linked(component, report, where) if component.kind != "shared_library" && !report.embedded_in(component).empty?
       unless component.kind == "shared_library"
         return @violate.call("policy", where, "#{component.id} is #{component.license}, allowed only as a separate shared library, but ships as #{component.kind}")
       end
@@ -50,6 +57,24 @@ class LicenseAudit
       return if report.embedded_in(component).all? { |path| report.owners[path].equal?(component) }
 
       @violate.call("policy", where, "#{component.id} is #{component.license} and is compiled into a file it does not own")
+    end
+
+    # An LGPL library linked into other files: each must be owned by a
+    # component whose own source Fledge publishes and which is not
+    # Fledge's, and the library's source must be published too.
+    private def check_linked(component, report, where)
+      @violate.call("policy", where, "#{component.id} is #{component.license} and needs a source pin in runtime/sources.yml") unless published?(component)
+      report.embedded_in(component).each do |path|
+        owner = report.owners[path]
+        next if owner && !owner.first_party && published?(owner)
+
+        @violate.call("policy", path, "#{component.id} is #{component.license}, linked into a file whose own source Fledge does not publish")
+      end
+    end
+
+    # Whether Fledge publishes +component+'s source beside the runtime.
+    def published?(component)
+      @sources.key?(component.source.to_s)
     end
   end
 end

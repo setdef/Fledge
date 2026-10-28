@@ -5,9 +5,11 @@ module Fledge
   module AppImage
     RUNTIME: String
     ICON_SIZE: Integer
+    INSTALL: String
+    OPTIONS: Array[String]
 
     def self.write: (identity: Identity, folder: String, tools: String?, to: String) -> String
 
-    private def self.appdir: (Identity identity) -> Array[Entry]
+    private def self.add_appdir: (String appdir, Identity identity) -> void
   end
 end

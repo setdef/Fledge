@@ -119,14 +119,6 @@ precedence = "override"
 SPDX-FileCopyrightText = "Spinel Cooperative"
 SPDX-License-Identifier = "BSD-2-Clause"
 
-# Fledge's patch to AppImage's type 2 runtime: its context lines are
-# AppImage's runtime.c (MIT), and the lines it adds are Fledge's.
-[[annotations]]
-path = "runtime/appimage/runtime.patch"
-precedence = "override"
-SPDX-FileCopyrightText = ["2026 Kerrick Long <me@kerricklong.com>", "2004-24 Simon Peter"]
-SPDX-License-Identifier = "AGPL-3.0-or-later AND MIT"
-
 [[annotations]]
 path = "runtime/notices/nsis/**"
 precedence = "override"
@@ -149,4 +141,28 @@ SPDX-License-Identifier = "BSD-2-Clause"
 path = "runtime/notices/rcedit/**"
 precedence = "override"
 SPDX-FileCopyrightText = "2013 GitHub Inc."
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "runtime/notices/libfuse/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2001-2023 Miklos Szeredi and the libfuse authors"
+SPDX-License-Identifier = "LGPL-2.1-only"
+
+[[annotations]]
+path = "runtime/notices/zstd/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Meta Platforms, Inc. and affiliates"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+[[annotations]]
+path = "runtime/notices/musl/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2005-2020 Rich Felker, et al."
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "runtime/notices/mimalloc/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2018-2021 Microsoft Corporation, Daan Leijen"
 SPDX-License-Identifier = "MIT"

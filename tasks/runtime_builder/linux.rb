@@ -7,7 +7,6 @@
 
 require "etc"
 require "fileutils"
-require_relative "app_image_runtime"
 require_relative "unix"
 
 class RuntimeBuilder
@@ -54,13 +53,25 @@ class RuntimeBuilder
     # Strips debug sections from extensions, and removes the RUNPATHs
     # rv-ruby's build machine left in some (zlib.so names a Linuxbrew
     # folder), so no extension looks for libraries outside the runtime.
-    # Then builds the AppImage runtime into tools/.
+    # Then puts AppImage's released runtime into tools/.
     def finish(stage)
       Dir.glob(File.join(stage, "lib", "ruby", "**", "*.so")).each do |extension|
         @builder.run("strip", "--strip-debug", extension)
         @builder.run("patchelf", "--remove-rpath", extension) unless @builder.capture("patchelf", "--print-rpath", extension).strip.empty?
       end
-      AppImageRuntime.new(builder: @builder, build_dir: @build_dir).build(File.join(stage, "tools", "appimage-runtime"))
+      copy_appimage_runtime(File.join(stage, "tools", "appimage-runtime"))
+    end
+
+    # AppImage's type 2 runtime, the program at the front of every
+    # AppImage (ADR 009 and ADR 010), as AppImage releases it for this
+    # platform's architecture, pinned by SHA-256: built statically
+    # against musl, with libfuse (LGPL-2.1), squashfuse, zstd, zlib, and
+    # mimalloc linked in, whose sources the release's source bundle holds.
+    private def copy_appimage_runtime(to)
+      pin = @builder.sources.fetch("appimage-runtime").fetch("platforms").fetch(@builder.platform.name)
+      FileUtils.mkdir_p(File.dirname(to))
+      FileUtils.cp(@builder.fetch(pin.fetch("url"), pin.fetch("sha256")), to)
+      FileUtils.chmod(0o755, to)
     end
 
     private def build_libxcrypt

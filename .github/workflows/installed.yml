@@ -169,6 +169,14 @@ jobs:
           bundle install
           bundle exec fledge --version
 
+      # mksquashfs, which writes windowed_app's AppImage (ADR 010), as a
+      # Linux developer installs it, pinned to Ubuntu 24.04's build.
+      - name: Install mksquashfs
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
+
       # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
       # from the release, checked against its SHA256SUMS.
       - name: Build hello, my_cool_app, windowed_app, and the parity probe with runtimes from the release

@@ -287,7 +287,8 @@ class BuiltAppTest < Minitest::Test
         out, status = Open3.capture2e("plutil", "-extract", "CFBundleIdentifier", "raw", File.join(bundle, "Contents", "Info.plist"))
         assert_equal ["com.setdef.fledge.HelloWindow\n", true], [out, status.success?]
       when "windows"
-        assert_equal Fledge::WindowsProgram::GUI, Fledge::WindowsProgram.new(File.binread(program)).subsystem
+        header = File.binread(program, 4096)
+        assert_equal 2, header.byteslice(header.byteslice(0x3C, 4).unpack1("V") + 24 + 68, 2).unpack1("v"), "its PE Subsystem is GUI"
       else
         assert_includes File.read(File.join(folder, "com.setdef.fledge.HelloWindow.desktop")), "Exec=\"Hello Window\"\n"
       end

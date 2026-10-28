@@ -64,9 +64,9 @@ signatures:
     bytes: ["yescrypt-ROMhash", "$sm3y$"]
   - component: gmp
     bytes: ["GNU MP: Cannot allocate memory"]
-  # libfuse's low-level library, which AppImage's own runtime links
-  # statically and Fledge's build of it loads from the computer instead
-  # (runtime/appimage/fuse.c).
+  # libfuse's low-level library, which AppImage's runtime links
+  # statically: allowed there only because Fledge publishes the
+  # runtime's own source and libfuse's beside each Linux runtime.
   - component: libfuse
     bytes: ["fuse: unsupported protocol version: ", "fuse: failed to allocate fuse object"]
 
@@ -92,9 +92,7 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: >-
-      the program the app's user runs, {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader
-      of the computer's libfuse and the changes to AppImage's runtime, compiled into tools/appimage-runtime
+    ships: the program the app's user runs, and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
     files:
       - launcher
@@ -102,9 +100,6 @@ components:
       - launcherw.exe
       - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
     binaries: [launcher, launcher.exe, launcherw.exe]
-    embedded:
-      - files: [tools/appimage-runtime]
-        evidence: "libfuse3.so.3"
 
   - id: rust-std
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
@@ -120,15 +115,15 @@ components:
         evidence: /rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/
 
   - id: gcc-runtime
-    name: GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and the AppImage runtime (-static-libgcc)
+    name: GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc)
     version: "13"
     license: GPL-3.0-or-later WITH GCC-exception-3.1
     kind: program
     download: https://gcc.gnu.org/
-    ships: compiled into the launcher, bin/ruby, and tools/appimage-runtime
+    ships: compiled into the launcher and bin/ruby
     platforms: [x86_64-linux, aarch64-linux]
     embedded:
-      - files: [launcher, bin/ruby, tools/appimage-runtime]
+      - files: [launcher, bin/ruby]
         evidence: "GCC: ("
 
   - id: gcc-runtime-msys2
@@ -223,47 +218,132 @@ components:
         evidence: "0.2.5\0"
 
   - id: zlib
-    name: zlib, compiled into Ruby's zlib extension and the AppImage runtime
+    name: zlib, compiled into Ruby's zlib extension
     version: 1.3.2
     license: Zlib
     kind: program
     download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
     notice: zlib
-    ships: "compiled into lib/ruby/4.0.0/{arch}/zlib.so, and into tools/appimage-runtime"
+    ships: "compiled into lib/ruby/4.0.0/{arch}/zlib.so"
     platforms: [x86_64-linux, aarch64-linux]
     embedded:
       - files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib.so"]
         evidence: "deflate 1.3.2 "
-      - files: [tools/appimage-runtime]
-        evidence: "inflate 1.3.2 "
 
+  # AppImage's type 2 runtime, as AppImage released it (runtime/sources.yml),
+  # and what its own build links into it statically (its
+  # scripts/common/install-dependencies.sh and, for Alpine 3.21's
+  # packages, scripts/docker/Dockerfile): libfuse, which is LGPL and
+  # allowed linked into the runtime only because the runtime's source and
+  # libfuse's are both published (source), so the runtime can be rebuilt
+  # with another libfuse (LGPL-2.1, section 6(a)); and permissive
+  # libraries.
   - id: appimage-runtime
     name: AppImage's type 2 runtime, the program at the front of an app's AppImage
-    version: fedfad51acc2860b2916a1eef32ba4a500ff31ef
+    version: "20251108"
     license: MIT
     kind: program
-    download: https://github.com/AppImage/type2-runtime/tree/fedfad51acc2860b2916a1eef32ba4a500ff31ef
+    download: https://github.com/AppImage/type2-runtime/releases/tag/20251108
     notice: appimage-runtime
+    source: appimage-runtime
     ships: tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive
     platforms: [x86_64-linux, aarch64-linux]
     files: [tools/appimage-runtime]
     binaries: [tools/appimage-runtime]
     embedded:
       - files: [tools/appimage-runtime]
-        evidence: "fedfad5+fledge"
+        evidence: "https://github.com/AppImage/type2-runtime/commit/dd6cebe"
 
-  - id: squashfuse
-    name: squashfuse, which reads the AppImage's file system, compiled into the AppImage runtime
-    version: 0.5.2
-    license: BSD-2-Clause
+  - id: libfuse
+    name: libfuse, which mounts the AppImage's file system, linked into the AppImage runtime
+    version: 3.15.0
+    license: LGPL-2.1-only
     kind: program
-    download: https://github.com/vasi/squashfuse/releases/download/0.5.2/squashfuse-0.5.2.tar.gz
-    notice: squashfuse
-    ships: compiled into tools/appimage-runtime
+    download: https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz
+    notice: libfuse
+    source: libfuse
+    ships: linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse
     platforms: [x86_64-linux, aarch64-linux]
     embedded:
       - files: [tools/appimage-runtime]
-        evidence: "fuse: cannot get old signal handler"
+        evidence: "3.15.0"
+
+  - id: squashfuse
+    name: squashfuse, which reads the AppImage's file system, linked into the AppImage runtime
+    version: 0.5.2
+    license: BSD-2-Clause
+    kind: program
+    download: https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz
+    notice: squashfuse
+    ships: linked into tools/appimage-runtime
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [tools/appimage-runtime]
+        evidence: "squashfuse 0.5.2"
+
+  - id: zstd
+    name: Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime
+    version: 1.5.6
+    license: BSD-3-Clause OR GPL-2.0-only
+    kind: program
+    download: https://github.com/facebook/zstd/releases/tag/v1.5.6
+    notice: zstd
+    ships: linked into tools/appimage-runtime
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [tools/appimage-runtime]
+        evidence: "1.5.6"
+
+  - id: zlib-appimage
+    name: zlib, linked into the AppImage runtime
+    version: 1.3.1
+    license: Zlib
+    kind: program
+    download: https://github.com/madler/zlib/releases/tag/v1.3.1
+    notice: zlib
+    ships: linked into tools/appimage-runtime
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [tools/appimage-runtime]
+        evidence: "inflate 1.3.1 "
+
+  - id: musl
+    name: musl, the C library the AppImage runtime is linked with
+    version: 1.2.5
+    license: MIT
+    kind: program
+    download: https://musl.libc.org/releases/musl-1.2.5.tar.gz
+    notice: musl
+    ships: linked into tools/appimage-runtime
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [tools/appimage-runtime]
+        evidence: "musl libc, licensed under the terms of"
+
+  - id: mimalloc
+    name: mimalloc, the memory allocator linked into the AppImage runtime
+    version: 2.1.7
+    license: MIT
+    kind: program
+    download: https://github.com/microsoft/mimalloc/releases/tag/v2.1.7
+    notice: mimalloc
+    ships: linked into tools/appimage-runtime
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [tools/appimage-runtime]
+        evidence: "mimalloc: "
+
+  - id: gcc-runtime-alpine
+    name: GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime
+    version: 14.2.0
+    license: GPL-3.0-or-later WITH GCC-exception-3.1
+    kind: program
+    download: https://gcc.gnu.org/
+    ships: linked into tools/appimage-runtime
+    platforms: [x86_64-linux, aarch64-linux]
+    embedded:
+      - files: [tools/appimage-runtime]
+        evidence: "GCC: (Alpine 14.2.0) 14.2.0"
 
   - id: nsis
     name: NSIS, whose stubs, plug-ins, and Modern UI make an app's setup program

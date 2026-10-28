@@ -10,15 +10,18 @@
 #   deliver-appimage.sh APPIMAGE fuse|extract
 #
 # APPIMAGE is "Hello Window-PLATFORM.AppImage". With fuse, the computer
-# has FUSE, and the AppImage must mount itself and run from the mount;
-# with extract, it has none (a container), and the AppImage must extract
-# itself and run from there, by itself, as it also must anywhere with
-# APPIMAGE_EXTRACT_AND_RUN=1. Either way, under a path with spaces and
-# characters outside ASCII, with a PATH that holds no Ruby, and in a
-# hostile Ruby environment, it must write its report and exit with the
-# status it is given; and --appimage-extract must unpack an AppDir:
-# AppRun linked to the app's program, the desktop entry and icon at the
-# top, .DirIcon, and the app's notices.
+# has FUSE, and the AppImage must mount itself and run from the mount,
+# with the computer's fusermount, which AppImage's runtime finds on the
+# PATH; with extract, it has none (a container), and the AppImage must
+# say so, as AppImage's runtime does, and then extract itself and run
+# from there when asked, with APPIMAGE_EXTRACT_AND_RUN=1 or
+# --appimage-extract-and-run, as it also must anywhere. Either way,
+# under a path with spaces and characters outside ASCII, with a PATH
+# that holds no Ruby, and in a hostile Ruby environment, it must write
+# its report and exit with the status it is given; and
+# --appimage-extract must unpack an AppDir: AppRun linked to the app's
+# program, the desktop entry and icon at the top, .DirIcon, and the
+# app's notices.
 #
 # This is POSIX sh on purpose: nothing here may need Ruby.
 
@@ -42,8 +45,13 @@ image="$place/$(basename "$appimage")"
 cp "$appimage" "$image"
 chmod +x "$image"
 
+# A PATH with nothing on it but, where there is FUSE, its fusermount.
 empty="$work/empty-path"
 mkdir -p "$empty"
+if [ "$mode" = fuse ]; then
+  fusermount=$(command -v fusermount3 || command -v fusermount) || fail "this computer has FUSE but no fusermount"
+  ln -s "$fusermount" "$empty/$(basename "$fusermount")"
+fi
 if env -i PATH="$empty" /bin/sh -c 'command -v ruby' >/dev/null 2>&1; then
   fail "ruby is still reachable on the app's PATH"
 fi
@@ -77,15 +85,27 @@ run() {
 }
 
 case "$mode" in
-  fuse) on_its_own=.mount_ ;;
-  extract) on_its_own=appimage_extracted_ ;;
+  fuse)
+    run "its own way, mounted" .mount_
+    hostile=""
+    ;;
+  extract)
+    # With no FUSE, AppImage's runtime says what to do, and does not run.
+    set +e
+    (cd / && env -i PATH="$empty" HOME="$work" TMPDIR="$work" "$image" "$work/report.json" 4) >"$work/out" 2>&1
+    status=$?
+    set -e
+    [ "$status" -ne 0 ] || fail "with no FUSE, the AppImage ran without being asked to extract itself"
+    grep -q "Cannot mount AppImage, please check your FUSE setup." "$work/out" || { cat "$work/out"; fail "with no FUSE, the AppImage did not say why"; }
+    echo "ok: with no FUSE, the AppImage says to check FUSE, as AppImage's runtime does"
+    hostile=APPIMAGE_EXTRACT_AND_RUN=1
+    ;;
   *) fail "the mode is fuse or extract, not $mode" ;;
 esac
 
-run "its own way ($mode)" "$on_its_own"
 run "APPIMAGE_EXTRACT_AND_RUN=1" appimage_extracted_ APPIMAGE_EXTRACT_AND_RUN=1
-run "a hostile Ruby environment" "$on_its_own" RUBYLIB="$evil" RUBYOPT="-rjson" GEM_HOME="$evil" GEM_PATH="$evil" \
-  BUNDLE_GEMFILE="$evil/Gemfile" LD_LIBRARY_PATH="$evil/lib"
+run "a hostile Ruby environment" "${hostile:+appimage_extracted_}${hostile:-.mount_}" $hostile RUBYLIB="$evil" RUBYOPT="-rjson" \
+  GEM_HOME="$evil" GEM_PATH="$evil" BUNDLE_GEMFILE="$evil/Gemfile" LD_LIBRARY_PATH="$evil/lib"
 # A mount goes away when the app's last process does, a moment after.
 tries=0
 while leftover=$(find "$work" -maxdepth 1 \( -name 'appimage_extracted_*' -o -name '.mount_*' \) | head -n 1) && [ -n "$leftover" ]; do

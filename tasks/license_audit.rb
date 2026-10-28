@@ -76,7 +76,7 @@ class LicenseAudit
     links = check_links(binaries, files)
     embeds = check_embedded(components, files)
     check_binary_ownership(binaries, owners)
-    check_signatures(binaries, owners)
+    check_signatures(binaries, owners, embeds)
     check_pins(components, files)
     texts = CopyleftText.new(self, method(:violate))
     texts.check_files(files, owners, binaries)
@@ -238,8 +238,10 @@ class LicenseAudit
     end
   end
 
-  # A copyleft library's code may appear only in its own shared library.
-  private def check_signatures(binaries, owners)
+  # A copyleft library's code may appear only in its own shared library,
+  # or in a file the map says it is linked into (its embedded files),
+  # which the policy then judges (LicenseAudit::Policy).
+  private def check_signatures(binaries, owners, embeds)
     @map.fetch("signatures").each do |signature|
       binaries.each_key do |path|
         bytes = File.binread(File.join(tree, path))
@@ -247,6 +249,7 @@ class LicenseAudit
 
         owner = owners[path]
         next if owner&.id == signature.fetch("component") && owner&.kind == "shared_library"
+        next if embeds.fetch(path, []).include?(signature.fetch("component"))
 
         violate("static-copyleft", path, "holds #{signature.fetch('component')}'s code, which may ship only as its own shared library")
       end

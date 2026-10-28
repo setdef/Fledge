@@ -108,6 +108,12 @@ class AssemblyTest < Minitest::Test
     skip "a Mac app is built on a Mac" unless RUBY_PLATFORM.include?("darwin")
   end
 
+  # An AppImage is built on Linux, with mksquashfs (as app_image_test.rb
+  # checks).
+  def appimage!
+    skip "an AppImage is built on Linux, with mksquashfs" unless RUBY_PLATFORM.include?("linux") && system("mksquashfs", "-version", out: File::NULL)
+  end
+
   def test_the_runtime_and_app_land_in_a_folder_and_an_archive_with_the_launcher_renamed
     unix!
     Dir.mktmpdir do |dir|
@@ -291,10 +297,10 @@ class AssemblyTest < Minitest::Test
   end
 
   # A windowed app gets its platform's installer by default (ADR 009),
-  # written beside its archive from its folder and the runtime's
-  # installer folder, which neither the folder nor the archive holds.
-  def test_a_windowed_linux_app_gets_an_appimage_from_the_runtimes_installer_folder
-    unix!
+  # written beside its archive from its folder and the runtime's tools
+  # folder, which neither the folder nor the archive holds.
+  def test_a_windowed_linux_app_gets_an_appimage_from_the_runtimes_tools_folder
+    appimage!
     Dir.mktmpdir do |dir|
       runtime = FakeRuntime.write(dir, LINUX, extra: [APPIMAGE_RUNTIME])
       app = Fledge::App.at(WindowedApp.write(dir, installers: nil))
@@ -304,8 +310,8 @@ class AssemblyTest < Minitest::Test
       image = File.join(dir, "dist", "Hello Window-x86_64-linux.AppImage")
       assert_equal [image], assembly.installers
       assert_equal APPIMAGE_RUNTIME.content, File.binread(image, APPIMAGE_RUNTIME.content.bytesize)
-      refute_path_exists File.join(dir, "dist", "Hello Window-x86_64-linux", "installer")
-      assert(tree(unpacked(dir, archive)).none? { |path| path.include?("installer") })
+      refute_path_exists File.join(dir, "dist", "Hello Window-x86_64-linux", "tools")
+      assert(tree(unpacked(dir, archive)).none? { |path| path.include?("tools") })
     end
   end
 
@@ -340,7 +346,7 @@ class AssemblyTest < Minitest::Test
     end
   end
 
-  def test_a_build_without_the_runtimes_installer_files_fails_and_leaves_nothing
+  def test_a_build_without_the_runtimes_tools_fails_and_leaves_nothing
     unix!
     Dir.mktmpdir do |dir|
       error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir, installers: nil)) }

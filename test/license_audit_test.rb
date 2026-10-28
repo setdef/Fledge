@@ -110,6 +110,47 @@ class LicenseAuditTest < Minitest::Test
     assert_includes rules(audit), ["static-copyleft", "bin/ruby"]
   end
 
+  # AppImage's runtime as AppImage builds it: static, with libfuse (LGPL)
+  # and permissive libraries linked in, each proven by its own string.
+  APPIMAGE_RUNTIME = "https://github.com/AppImage/type2-runtime/commit/dd6cebe 3.15.0 squashfuse 0.5.2 1.5.6 inflate 1.3.1 " \
+    "musl libc, licensed under the terms of mimalloc: GCC: (Alpine 14.2.0) 14.2.0 fuse: unsupported protocol version: "
+
+  # libfuse may be linked into AppImage's runtime, which is not Fledge's
+  # own, because Fledge publishes the runtime's source and libfuse's
+  # (ADR 010); the audit finds every library it says is linked in.
+  def test_libfuse_linked_into_the_appimage_runtime_whose_source_is_published_passes
+    write("tools/appimage-runtime", Binaries.elf(payload: APPIMAGE_RUNTIME))
+
+    report = audit
+    assert_empty report.violations.map(&:to_s)
+    present = report.present.map(&:id)
+    %w[appimage-runtime libfuse squashfuse zstd zlib-appimage musl mimalloc gcc-runtime-alpine].each { |id| assert_includes present, id }
+  end
+
+  # The same code in the launcher, the program an app's developer ships
+  # as their own, fails.
+  def test_libfuse_linked_into_the_launcher_fails
+    write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "ruby 4.0.9 (revision 3e93b23afc) #{RUST} GCC: (Ubuntu 13.3.0) " \
+                                                                          "fuse: unsupported protocol version: "))
+
+    assert_includes rules(audit), ["static-copyleft", "launcher"]
+  end
+
+  # An LGPL library linked into a component whose source Fledge does not
+  # publish fails the policy.
+  def test_an_lgpl_library_linked_into_a_component_whose_source_is_unpublished_fails
+    map = YAML.safe_load_file(LicenseAudit::MAP)
+    map.fetch("components").find { |entry| entry.fetch("id") == "appimage-runtime" }.delete("source")
+    path = File.join(@tree, "..", "#{File.basename(@tree)}-map.yml")
+    File.write(path, map.to_yaml)
+    write("tools/appimage-runtime", Binaries.elf(payload: APPIMAGE_RUNTIME))
+
+    report = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, map: path, fledge_version: "0.0.0").call
+    assert_includes report.violations.map { |violation| [violation.rule, violation.path] }, ["policy", "tools/appimage-runtime"]
+  ensure
+    FileUtils.rm_f(path) if path
+  end
+
   def test_a_library_neither_the_system_nor_the_runtime_provides_fails
     write("launcher", Binaries.elf(needed: %w[libreadline.so.8 libc.so.6], payload: "3e93b23afc #{RUST}"))
 
@@ -227,27 +268,43 @@ class LicenseAuditTest < Minitest::Test
     assert_empty notices.missing
   end
 
-  def test_the_source_bundle_holds_the_pinned_source_its_license_and_how_it_was_built
+  # Each Linux runtime's bundle holds libxcrypt's source, and, since
+  # libfuse is linked into AppImage's runtime, the runtime's own source
+  # and libfuse's (LGPL-2.1, section 6(a)), each with its license and how
+  # it was built.
+  def test_the_source_bundle_holds_the_pinned_sources_their_licenses_and_how_they_were_built
     Dir.mktmpdir do |directory|
-      tarball = File.join(directory, "downloads", "libxcrypt-4.5.2.tar.xz")
-      FileUtils.mkdir_p(File.dirname(tarball))
-      File.binwrite(tarball, "pretend source")
+      downloads = File.join(directory, "downloads")
+      FileUtils.mkdir_p(downloads)
+      pin = lambda do |name|
+        File.binwrite(File.join(downloads, name), "pretend #{name}")
+        { "url" => "https://example.com/#{name}", "sha256" => Digest::SHA256.hexdigest("pretend #{name}") }
+      end
       sources = File.join(directory, "sources.yml")
       File.write(sources, {
-        "libxcrypt" => {
-          "version" => "4.5.2",
-          "url" => "https://example.com/libxcrypt-4.5.2.tar.xz",
-          "sha256" => Digest::SHA256.hexdigest("pretend source"),
+        "libxcrypt" => { "version" => "4.5.2", **pin.call("libxcrypt-4.5.2.tar.xz") },
+        "appimage-runtime" => {
+          "version" => "20251108",
+          "commit" => "dd6cebedcbddde9c82f89b011e8e1d40b6e43868",
+          "platforms" => { "x86_64-linux" => { "url" => "https://example.com/runtime-x86_64", "sha256" => "0" * 64 } },
+          "source" => pin.call("type2-runtime.tar.gz"),
         },
+        "libfuse" => { "version" => "3.15.0", **pin.call("fuse-3.15.0.tar.xz") },
       }.to_yaml)
 
-      path = LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: "0.0.0", sources:, downloads: File.dirname(tarball)).write(directory)
+      path = LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: "0.0.0", sources:, downloads:).write(directory)
       top = File.join(Fledge::Archive.unpack(path, into: File.join(directory, "unpacked")), "fledge-runtime-0.0.0-x86_64-linux-lgpl-sources")
 
-      assert_equal "pretend source", File.read(File.join(top, "libxcrypt/libxcrypt-4.5.2.tar.xz"))
+      assert_equal "pretend libxcrypt-4.5.2.tar.xz", File.read(File.join(top, "libxcrypt/libxcrypt-4.5.2.tar.xz"))
       assert_includes File.read(File.join(top, "libxcrypt/BUILD.txt")), "--enable-shared --disable-static --disable-obsolete-api"
       assert_path_exists File.join(top, "libxcrypt/COPYING.LIB")
-      assert_includes File.read(File.join(top, "README.txt")), "libxcrypt"
+      assert_equal "pretend type2-runtime.tar.gz", File.read(File.join(top, "appimage-runtime/type2-runtime.tar.gz"))
+      assert_includes File.read(File.join(top, "appimage-runtime/BUILD.txt")), "section 6(a)"
+      assert_path_exists File.join(top, "appimage-runtime/LICENSE")
+      assert_equal "pretend fuse-3.15.0.tar.xz", File.read(File.join(top, "libfuse/fuse-3.15.0.tar.xz"))
+      assert_path_exists File.join(top, "libfuse/LGPL2.txt")
+      readme = File.read(File.join(top, "README.txt"))
+      %w[libxcrypt appimage-runtime libfuse].each { |id| assert_includes readme, "  #{id}/" }
     end
   end
 

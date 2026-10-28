@@ -6,10 +6,9 @@
 #++
 
 require "fileutils"
-require "tempfile"
-require_relative "entry"
+require "tmpdir"
+require_relative "command"
 require_relative "error"
-require_relative "squashfs"
 
 module Fledge
   # A Linux app as one file a person downloads and runs on any
@@ -17,23 +16,22 @@ module Fledge
   #
   # A <tt>.tar.gz</tt> has to be unpacked, and a package for one family
   # of distributions misses the rest. An AppImage is a program (its
-  # runtime) followed by a file system that holds the app; run, the
-  # runtime mounts the file system with FUSE and runs its +AppRun+, or,
-  # where there is no FUSE, extracts it and runs that (ADR 009). Tauri's
-  # bundler writes one with linuxdeploy and appimagetool, which run only
-  # on Linux; electron-builder writes its own on macOS too. Fledge writes
-  # one on any computer (ADR 001).
+  # runtime) followed by a SquashFS file system that holds the app; run,
+  # the runtime mounts the file system with FUSE and runs its +AppRun+,
+  # and where there is no FUSE, <tt>APPIMAGE_EXTRACT_AND_RUN=1</tt> has it
+  # extract the app and run that instead (ADR 009). Tauri's bundler and
+  # Briefcase make one with appimagetool, which runs mksquashfs.
   #
-  # This module lays the AppImage's file system out as AppImage's
-  # specification lays out an AppDir: the built app's folder, which
-  # already has the desktop entry at its top (ADR 008, section 4), with
-  # +AppRun+, a symbolic link to the app's program, which the runtime
-  # runs; the 256-pixel icon at the top, named as the desktop entry's
-  # +Icon+ names it; and <tt>.DirIcon</tt>, a link to it. It writes the
-  # files into a SquashFS (Fledge::Squashfs), then writes
-  # the runtime the Linux runtime carries (<tt>tools/appimage-runtime</tt>,
-  # Fledge's build of AppImage's type 2 runtime) and the file system
-  # after it, executable.
+  # This module makes one as appimagetool does (ADR 010): it copies the
+  # built app's folder, which already has the desktop entry at its top
+  # (ADR 008, section 4), into an AppDir, adds +AppRun+, a symbolic link
+  # to the app's program, the 256-pixel icon at the top, named as the
+  # desktop entry's +Icon+ names it, and <tt>.DirIcon</tt>, a link to it;
+  # has squashfs-tools' +mksquashfs+ write the file system with
+  # appimagetool's options (zstd, blocks of 128 KiB, root as every item's
+  # owner) after room for the runtime; and writes the runtime, AppImage's
+  # own released type 2 runtime, which the Linux runtime carries in
+  # <tt>tools/appimage-runtime</tt>, into that room.
   #
   # Use it through Fledge::Installers.
   #
@@ -57,10 +55,19 @@ module Fledge
     # recommends it.
     ICON_SIZE = 256
 
+    # What to do when this computer has no mksquashfs.
+    INSTALL = "Install squashfs-tools 4.4 or newer, such as with sudo apt install squashfs-tools or sudo dnf install squashfs-tools."
+
+    # mksquashfs's options, appimagetool's: zstd, which AppImage's
+    # runtime reads, in blocks of 128 KiB, every item owned by root,
+    # replacing anything there, and dated 0.
+    OPTIONS = %w[-comp zstd -b 128K -root-owned -noappend -mkfs-time 0 -quiet].freeze
+
     # Writes the AppImage of the app whose Fledge::Identity is +identity+
     # and whose built folder is +folder+ to +to+, with the runtime in
     # +tools+, the runtime's tools folder, and returns +to+. Raises
-    # Fledge::Error when the runtime has no AppImage runtime.
+    # Fledge::Error when the runtime has no AppImage runtime or mksquashfs
+    # fails.
     #
     # === Example
     #
@@ -75,34 +82,29 @@ module Fledge
     #++
     def self.write(identity:, folder:, tools:, to:)
       runtime = tools && File.join(tools, RUNTIME)
-      unless runtime && File.file?(runtime)
-        raise Error, "the runtime has no tools/#{RUNTIME}, which Linux runtimes carry from Fledge 0.0.1.pre.8 on"
-      end
+      raise Error, "the runtime has no tools/#{RUNTIME}, which Linux runtimes carry from Fledge 0.0.1.pre.8 on" unless runtime && File.file?(runtime)
 
-      Tempfile.create(["fledge", ".squashfs"], binmode: true) do |image|
-        squashfs = Squashfs.new(image, mtime: Time.now.to_i)
-        [*Entry.walk(folder), *appdir(identity)].each { |entry| squashfs.add(entry) }
-        squashfs.finish
-        image.rewind
-        File.open(to, "wb") do |out|
-          out.write(File.binread(runtime))
-          IO.copy_stream(image, out)
-        end
+      Dir.mktmpdir("fledge-appimage") do |work|
+        appdir = File.join(work, "AppDir")
+        FileUtils.cp_r(folder, appdir, preserve: true)
+        add_appdir(appdir, identity)
+        Command.run("mksquashfs", appdir, to, "-offset", File.size(runtime).to_s, *OPTIONS, install: INSTALL)
       end
+      File.open(to, "r+b") { |image| image.write(File.binread(runtime)) }
       File.chmod(0o755, to)
       to
     end
 
-    # What an AppDir has besides the app's folder: +AppRun+, and the icon
-    # and <tt>.DirIcon</tt> when the app has an icon.
-    private_class_method def self.appdir(identity)
-      entries = [Entry.symlink("AppRun", identity.name)]
+    # Adds what an AppDir has besides the app's folder: +AppRun+, and the
+    # icon and <tt>.DirIcon</tt> when the app has an icon.
+    private_class_method def self.add_appdir(appdir, identity)
+      File.symlink(identity.name, File.join(appdir, "AppRun"))
       icon = identity.icon
-      return entries unless icon
+      return unless icon
 
       name = "#{identity.identifier}.png"
-      entries << Entry.file(name, File.binread(icon.png(ICON_SIZE)))
-      entries << Entry.symlink(".DirIcon", name)
+      FileUtils.cp(icon.png(ICON_SIZE), File.join(appdir, name))
+      File.symlink(name, File.join(appdir, ".DirIcon"))
     end
   end
 end

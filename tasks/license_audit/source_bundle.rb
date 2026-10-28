@@ -15,9 +15,10 @@ require_relative "../../lib/fledge/download"
 require_relative "../download_cache"
 
 class LicenseAudit
-  # The complete corresponding source of a platform's LGPL libraries, as
-  # one .tar.gz that each release publishes beside that platform's
-  # runtime, and that the runtime's NOTICES names.
+  # The complete corresponding source of a platform's LGPL libraries, and
+  # of the program an LGPL library is linked into (the AppImage runtime,
+  # ADR 010), as one .tar.gz that each release publishes beside that
+  # platform's runtime, and that the runtime's NOTICES names.
   #
   # For each component of runtime/licenses.yml that has a source pin and
   # ships on the platform, the bundle holds the pinned source exactly as
@@ -61,8 +62,9 @@ class LicenseAudit
     private def add_component(top, entry)
       folder = File.join(top, entry.fetch("id"))
       pin = @sources.fetch(entry.fetch("source"))
+      source = pin.fetch("source", pin)
       FileUtils.mkdir_p(folder)
-      FileUtils.cp(fetch(pin.fetch("url"), pin.fetch("sha256")), folder)
+      FileUtils.cp(fetch(source.fetch("url"), source.fetch("sha256")), folder)
       FileUtils.cp(Dir.glob(File.join(Notices::NOTICES, entry.fetch("notice"), "*")), folder)
       File.write(File.join(folder, "BUILD.txt"), build_text(entry, pin))
     end
@@ -75,7 +77,8 @@ class LicenseAudit
       <<~README
         The complete corresponding source code of the libraries under the GNU
         Lesser General Public License that Fledge #{@version}'s #{@platform} runtime
-        ships, and so every app built with it. Each folder holds one library's
+        ships, and so every app built with it, and of any program it ships
+        that such a library is linked into. Each folder holds one component's
         source exactly as its publisher released it, its license, and BUILD.txt,
         which says how the runtime's copy was built and how to replace it.
 
@@ -88,6 +91,8 @@ class LicenseAudit
     private def build_text(entry, pin)
       case entry.fetch("id")
       when "libxcrypt" then libxcrypt_text(pin)
+      when "appimage-runtime" then appimage_runtime_text(pin)
+      when "libfuse" then libfuse_text(pin)
       when "gmp" then gmp_text(pin)
       else raise "no build instructions for #{entry.fetch('id')}"
       end
@@ -115,6 +120,49 @@ class LicenseAudit
         program loads it from there by its RPATH, $ORIGIN/lib, as bin/ruby does
         by $ORIGIN/../lib; both need crypt_r at the symbol version XCRYPT_2.0,
         which every libxcrypt 4 provides.
+      BUILD
+    end
+
+    private def appimage_runtime_text(pin)
+      source = pin.fetch("source")
+      binary = pin.fetch("platforms").fetch(@platform)
+      archive = File.basename(source.fetch("url"))
+      <<~BUILD
+        tools/appimage-runtime in Fledge #{@version}'s #{@platform} runtime is AppImage's
+        type 2 runtime exactly as AppImage released it, release #{pin.fetch('version')}: the
+        file #{File.basename(binary.fetch('url'))} (SHA-256 #{binary.fetch('sha256')},
+        from #{binary.fetch('url')}). fledge build puts it, unchanged, at the front
+        of every AppImage it writes.
+
+        AppImage built it from the commit #{pin.fetch('commit')} of
+        https://github.com/AppImage/type2-runtime, whose source is #{archive}
+        in this folder (SHA-256 #{source.fetch('sha256')}, from
+        #{source.fetch('url')}). Its scripts/docker/Dockerfile builds it in Alpine
+        Linux 3.21 with scripts/common/install-dependencies.sh, which builds libfuse
+        #{@sources.fetch('libfuse').fetch('version')} (with patches/libfuse/mount.c.diff, in this folder's
+        archive) and squashfuse statically, and scripts/build-runtime.sh, which
+        links them, Alpine's zstd, zlib, and mimalloc, and musl into one static
+        program, and writes AppImage's magic bytes at offset 8.
+
+        libfuse is under the GNU Lesser General Public License, version 2.1, and
+        is linked into this program, so this folder and ../libfuse/ are what its
+        section 6(a) asks for: to replace libfuse, build libfuse (modified or not)
+        as install-dependencies.sh does, run build-runtime.sh against it, and
+        put the program it writes at the front of the app's AppImage in place
+        of this one (or into tools/appimage-runtime, before fledge build runs).
+      BUILD
+    end
+
+    private def libfuse_text(pin)
+      <<~BUILD
+        libfuse #{pin.fetch('version')}, #{File.basename(pin.fetch('url'))} in this folder (SHA-256
+        #{pin.fetch('sha256')}, from #{pin.fetch('url')}), is the
+        libfuse that AppImage's type 2 runtime links statically into
+        tools/appimage-runtime, with AppImage's patch to its lib/mount.c
+        (patches/libfuse/mount.c.diff in ../appimage-runtime/'s archive). Its
+        scripts/common/install-dependencies.sh builds it with meson, as a static
+        library; ../appimage-runtime/BUILD.txt says how to rebuild the runtime
+        with it, or with another libfuse.
       BUILD
     end
 

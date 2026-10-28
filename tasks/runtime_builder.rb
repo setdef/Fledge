@@ -258,7 +258,6 @@ require_relative "runtime_builder/recipe"
 require_relative "runtime_builder/unix"
 require_relative "runtime_builder/darwin"
 require_relative "runtime_builder/linux"
-require_relative "runtime_builder/app_image_runtime"
 require_relative "runtime_builder/windows"
 
 if $PROGRAM_NAME == __FILE__

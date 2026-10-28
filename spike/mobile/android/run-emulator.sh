@@ -23,6 +23,7 @@ adb logcat -d -s FledgeRuby:V > "$log"
 adb logcat -d | grep -E 'FATAL|AndroidRuntime|DEBUG.*signal|linker' | head -40 || true
 cat "$log"
 grep -q 'FLEDGE-SPIKE-OK' "$log"
+grep -q 'FLEDGE-SPIKE-DONE' "$log"
 # A second launch reuses the extracted tree (no extraction cost).
 adb shell am force-stop org.setdef.fledge.spike
 adb logcat -c

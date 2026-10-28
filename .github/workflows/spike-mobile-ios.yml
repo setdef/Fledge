@@ -26,9 +26,11 @@ defaults:
     shell: bash
 
 env:
-  # Pinned: the runner image's newest Xcode 26 is used only if this one
-  # is missing, and the job says so.
-  XCODE_APP: /Applications/Xcode_26.1.app
+  # Pinned: Xcode 26.5, whose iOS 26.5 simulator runtime macos-26 has
+  # installed (it has 26.2, 26.4, and 26.5; Xcode 26.1.1, the default,
+  # has none). The default is used only if this one is missing, with a
+  # warning.
+  XCODE_APP: /Applications/Xcode_26.5.app
   XCODEGEN_URL: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
   XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
 

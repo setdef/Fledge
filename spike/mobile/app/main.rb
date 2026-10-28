@@ -57,11 +57,15 @@ probe("system(true)") { system("true") }
 probe("backticks") { `echo hi` }
 probe("Process.spawn") { Process.wait(Process.spawn("true")); $?.exitstatus }
 probe("IO.popen") { IO.popen(["echo", "hi"], &:read) }
-probe("fork") { pid = fork { exit!(0) }; Process.wait(pid); $?.exitstatus }
 probe("Open3") { require "open3"; Open3.capture2("echo", "hi") }
 probe("exec in thread") { :skipped }
 probe("trap INT") { trap("INT") { } ; :ok }
 probe("OpenSSL") { require "openssl"; [OpenSSL::OPENSSL_LIBRARY_VERSION, OpenSSL::X509::DEFAULT_CERT_FILE, File.exist?(OpenSSL::X509::DEFAULT_CERT_FILE)] }
+probe("HTTPS HEAD www.ruby-lang.org") do
+  require "net/http"
+  Net::HTTP.start("www.ruby-lang.org", 443, use_ssl: true, open_timeout: 5, read_timeout: 5) { |http| http.head("/").code }
+end
+probe("String#crypt") { "secret".crypt("ab") }
 probe("SecureRandom") { require "securerandom"; SecureRandom.hex(4).size }
 probe("Psych/libyaml") { require "yaml"; [Psych::LIBYAML_VERSION, YAML.load("a: 1")] }
 probe("Zlib") { require "zlib"; [Zlib::ZLIB_VERSION, Zlib.inflate(Zlib.deflate("abc"))] }
@@ -78,3 +82,7 @@ probe("GC.stat heap") { GC.stat[:heap_allocated_pages] }
 probe("RubyVM::YJIT") { defined?(RubyVM::YJIT) ? RubyVM::YJIT.enabled? : :undefined }
 probe("at_exit runs") { at_exit { puts "FLEDGE-SPIKE-AT-EXIT" }; :registered }
 puts "FLEDGE-SPIKE-DONE"
+$stdout.flush
+# Last, since forking a phone app's process (on Android, the whole ART
+# runtime and its threads) is the probe most likely to hang.
+probe("fork") { pid = fork { exit!(0) }; Process.wait(pid); $?.exitstatus }

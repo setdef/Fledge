@@ -40,7 +40,7 @@ cd "$app"
 xcodegen generate --quiet
 dd=$OUT/dd-$sdk
 xcodebuild -project FledgeSpike.xcodeproj -scheme FledgeSpike -configuration Release \
-  -sdk "$sdk" -destination "generic/platform=$([ "$sdk" = iphoneos ] && echo iOS || echo 'iOS Simulator')" \
+  -sdk "$sdk" \
   -derivedDataPath "$dd" build CODE_SIGNING_ALLOWED=NO > "$OUT/xcodebuild-$sdk.log" 2>&1 ||
   { tail -60 "$OUT/xcodebuild-$sdk.log"; exit 1; }
 product=$dd/Build/Products/Release-$sdk/FledgeSpike.app

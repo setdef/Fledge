@@ -46,5 +46,6 @@ xcrun simctl spawn "$udid" log show --start "$since" --style compact \
 echo "--- stdout/stderr (simctl launch --console-pty)"; cat "$log.stdout"
 echo "--- unified log (os_log, subsystem org.setdef.fledge.spike), first lines"; head -20 "$log.oslog"
 grep -q 'FLEDGE-SPIKE-OK' "$log.stdout"
+grep -q 'FLEDGE-SPIKE-DONE' "$log.stdout"
 grep -q 'FLEDGE-SPIKE-OK' "$log.oslog"
 echo "PASS: $want"

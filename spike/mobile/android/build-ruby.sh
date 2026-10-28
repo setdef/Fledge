@@ -86,6 +86,12 @@ absorb_bundled_c_gems "$src" "rbs"
 # path Ruby would otherwise read from dladdr.
 perl -0pi -e 's|(#elif defined\(HAVE_DLADDR\)\n    Dl_info dli;\n    VALUE fname, path;\n    const void\* addr = \(void \*\)\(VALUE\)expand_include_path;\n)|$1\n    {\n        extern const char *ruby_embed_libruby_path;\n        if (ruby_embed_libruby_path) return rb_str_new_cstr(ruby_embed_libruby_path);\n    }\n|' "$src/ruby.c"
 printf '\nconst char *ruby_embed_libruby_path;\n' >> "$src/ruby.c"
+# configure appends -android to an OS that already says android, so a
+# --host of *-linux-android gives RUBY_PLATFORM x86_64-linux-android-android
+# (configure.ac line 581); Termux guards it (android-sdk-level.patch).
+# The same guard, in the generated configure, which avoids autoreconf.
+perl -pi -e 's/^(\s*)target_os=\$\{target_os\}-android$/$1case \$target_os in *android*) ;; *) target_os=\$\{target_os\}-android ;; esac/' "$src/configure"
+grep -q 'case $target_os in \*android\*) ;;' "$src/configure"
 grep -q 'if (ruby_embed_libruby_path)' "$src/ruby.c"
 
 mkdir -p "$work/ruby-build"; cd "$work/ruby-build"

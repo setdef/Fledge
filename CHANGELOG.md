@@ -12,23 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.8] - 2026-10-28
+
 ### Changed
 
+- **Breaking:** `fledge.yml`'s `icon` names the icon's files without an extension, as Briefcase's does (`icon: icons/app`), and each platform takes its own, as you make it: `icons/app.icns` on macOS, `icons/app.ico` on Windows, and `icons/app-16.png`, `-32`, `-64`, `-128`, `-256`, and `-512` on Linux. Fledge no longer makes them from one PNG; an `icon` that ends in `.png` fails, saying what to write.
+- **Breaking:** on a computer with no FUSE, an AppImage says so and runs only when asked to extract itself (`APPIMAGE_EXTRACT_AND_RUN=1` or `--appimage-extract-and-run`), as every AppImage does; it no longer extracts itself unasked.
 - A built app's archive is written, and a runtime unpacked, by the computer's own tar: GNU tar on Linux, bsdtar on macOS, and `System32\tar.exe` on Windows 10 and 11, which writes the `.zip`.
 - On macOS, a windowed app's `Info.plist` is written by `plutil`, the bundle is signed ad hoc by `codesign`, and its disk image is made by `hdiutil`, all of which come with macOS. The disk image is a Mac OS Extended volume, as create-dmg makes, rather than the case-sensitive one Fledge wrote.
-
-- **Breaking:** `fledge.yml`'s `icon` names the icon's files without an extension, as Briefcase's does (`icon: icons/app`), and each platform takes its own, as you make it: `icons/app.icns` on macOS, `icons/app.ico` on Windows, and `icons/app-16.png`, `-32`, `-64`, `-128`, `-256`, and `-512` on Linux. Fledge no longer makes them from one PNG; an `icon` that ends in `.png` fails, saying what to write.
 - On Windows, a program's version information and icon are written by rcedit 2.0.0 (MIT), which Windows runtimes carry in `tools/rcedit.exe` and no app holds; the runtime's folder of build tools, `installer/`, is now `tools/`. Linux apps' hicolor icons are the six sizes Briefcase asks for, no longer eight.
-
 - A Linux app's AppImage begins with AppImage's own type 2 runtime, release 20251108, as AppImage publishes it (MIT, with libfuse 3.15.0, LGPL-2.1, squashfuse, zstd, zlib, mimalloc, and musl linked in), and its file system is written by `mksquashfs` with appimagetool's options, so building one needs squashfs-tools 4.4 or newer (`apt install squashfs-tools`). Each Linux release's source bundle now holds the runtime's source and libfuse's, and every Linux app's notices name them.
-- **Breaking:** on a computer with no FUSE, an AppImage says so and runs only when asked to extract itself (`APPIMAGE_EXTRACT_AND_RUN=1` or `--appimage-extract-and-run`), as every AppImage does; it no longer extracts itself unasked.
-
 - A Windows app's NSIS installer is compressed with LZMA, NSIS's default, in place of zlib, and compiled by NSIS 3.13's own `makensis.exe`, which the Windows runtime now carries in `tools/nsis` with the stub, plug-ins, and Modern UI. NSIS's LZMA module is under the Common Public License 1.0; each Windows release's source bundle now holds NSIS's source, and every Windows app's notices say where it is.
 
 ### Removed
 
-- The `fledge-makensis-VERSION-PLATFORM.tar.gz` release assets, and the download of makensis: a Windows installer is built on Windows with the runtime's NSIS.
 - **Breaking:** `fledge build` builds only for the computer it runs on; `-t` and `--target` are gone, and say so. Build the macOS app on a Mac, the Windows app on Windows, and each Linux app on Linux, as Tauri and Briefcase do.
+- The `fledge-makensis-VERSION-PLATFORM.tar.gz` release assets, and the download of makensis: a Windows installer is built on Windows with the runtime's NSIS.
 
 ## [0.0.1.pre.7] - 2026-10-28
 
@@ -127,7 +126,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.7...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.8...HEAD
+[0.0.1.pre.8]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.8
 [0.0.1.pre.7]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.7
 [0.0.1.pre.6]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.6
 [0.0.1.pre.5]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.5

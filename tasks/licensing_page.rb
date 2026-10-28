@@ -143,7 +143,7 @@ class LicensingPage
       "| #{cell(row.name)} | #{cell(row.version)} | `#{cell(row.license)}` | #{cell(row.ships)} |"
     end
     gems = summary.gems.map { |license, names| "- `#{cell(license)}`: #{names.join(', ')}" }
-    obligations = summary.lgpl.empty? ? "Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform." : summary.lgpl.map { |row| obligation(platform, row) }.join("\n")
+    obligations = summary.lgpl.empty? ? "Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform." : obligation(platform, summary.lgpl)
     <<~SECTION
       ## #{TITLES.fetch(platform)}
 
@@ -159,11 +159,13 @@ class LicensingPage
     SECTION
   end
 
-  private def obligation(platform, row)
-    where = row.files.empty? ? "linked into AppImage's runtime" : row.files.map { |file| "`#{file}`" }.join(", ")
-    "keep the notices and Fledge's own files as above, and meet the LGPL for #{row.name.sub(/,.*/, '')} " \
-      "(#{where}), as [below](#libraries-under-the-lgpl) says. Its source is " \
-      "`#{LicenseAudit::Notices.source_bundle(@version, platform)}` in Fledge's release."
+  private def obligation(platform, rows)
+    libraries = rows.map do |row|
+      where = row.files.empty? ? "linked into AppImage's runtime" : row.files.map { |file| "`#{file}`" }.join(", ")
+      "#{row.name.sub(/,.*/, '')} (#{where})"
+    end
+    "keep the notices and Fledge's own files as above, and meet the LGPL for #{libraries.join(' and for ')}, as " \
+      "[below](#libraries-under-the-lgpl) says. The source is `#{LicenseAudit::Notices.source_bundle(@version, platform)}` in Fledge's release."
   end
 
   private def lgpl(_reports)

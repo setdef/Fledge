@@ -7,7 +7,7 @@
 
 # What Ships Inside an App Built with Fledge, and What Its Licenses Ask of You
 
-This page lists, for Fledge 0.0.1.pre.7, every third-party component of the runtime that `fledge build` copies into an app on each platform, the license it is under, and what that license asks of you when you give the app to other people. Your app's own gems are yours, not Fledge's, and [their section](#your-apps-own-gems) says what Fledge does with them. Fledge's CI writes it from the same license audit that every runtime must pass before it is published (ADR 004), so it lists what the runtimes hold, not what someone remembered.
+This page lists, for Fledge 0.0.1.pre.8, every third-party component of the runtime that `fledge build` copies into an app on each platform, the license it is under, and what that license asks of you when you give the app to other people. Your app's own gems are yours, not Fledge's, and [their section](#your-apps-own-gems) says what Fledge does with them. Fledge's CI writes it from the same license audit that every runtime must pass before it is published (ADR 004), so it lists what the runtimes hold, not what someone remembered.
 
 It states facts and cites the sections of each license they come from. It is not legal advice, and it makes no claim about what any license requires of you in your situation: ask your own lawyer.
 
@@ -15,13 +15,13 @@ Each app carries the same facts in `notices/NOTICES.txt` (every component, its l
 
 ## On every platform
 
-**Your own code stays yours.** Nothing in a runtime asks for your app's source code or object files. The GPL appears in a runtime only with an exception that lifts its terms from programs compiled with the code (GCC's runtime library exception, LLVM's exception, Bison's exception) or beside a permissive license you may take instead (Perl's Artistic License, for Ruby's `win32/win32.c`); the LGPL appears only as a separate shared library. Fledge's license policy (`runtime/licenses.yml`) fails the build of any runtime that holds anything else, including an LGPL library linked into another file.
+**Your own code stays yours.** Nothing in a runtime asks for your app's source code or object files. The GPL appears in a runtime only with an exception that lifts its terms from programs compiled with the code (GCC's runtime library exception, LLVM's exception, Bison's exception) or beside a permissive license you may take instead (Perl's Artistic License, for Ruby's `win32/win32.c`); the LGPL appears only as a separate shared library, or linked into a program that is not Fledge's own and whose source Fledge publishes with the library's (AppImage's runtime, in a Linux app's AppImage). Fledge's license policy (`runtime/licenses.yml`) fails the build of any runtime that holds anything else, including an LGPL library linked into Fledge's launcher, the program your app's users run.
 
 **Keep the notices.** The permissive licenses below ask that copies of the software keep their copyright notices and license texts: MIT asks that "the above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software"; BSD-2-Clause and BSD-3-Clause ask that a redistribution in binary form "reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution"; Apache-2.0, section 4, asks for a copy of the license and the attribution notices; Ruby is under Ruby's license or, at your choice, BSD-2-Clause. Fledge puts all of them in the app's `notices/NOTICES.txt`; ship the app's folder with its `notices/` folder in it.
 
 **The CA certificates** (`cert.pem`) are under the Mozilla Public License 2.0, whose obligations attach to the file itself. It ships unmodified, in its source form, which MPL-2.0, section 3.1, asks be distributed under the MPL with word of how to get a copy of it; `notices/NOTICES.txt` holds that copy, and the file's own notices stay intact (section 3.4).
 
-**A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `installer/`: a Windows app's setup program is made of NSIS's stubs and plug-ins (the zlib license, which asks nothing of a binary; Fledge compresses installers with NSIS's zlib module, never its LZMA module, which is under the Common Public License), and a Linux app's AppImage begins with AppImage's runtime (MIT), with squashfuse (BSD-2-Clause) and zlib compiled in, and with no libfuse: it loads the libfuse of the computer it runs on, if it has one. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/NOTICES.txt`, which it holds.
+**A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `tools/`: a Windows app's setup program is made of NSIS's stub and plug-ins (the zlib license, which asks nothing of a binary) and compressed with NSIS's LZMA module, which is under the Common Public License 1.0: its section 3 asks that a program distributed in object code say that its source is available and how to get it, and Fledge does both, publishing NSIS's source in `fledge-runtime-VERSION-x64-mingw-ucrt-lgpl-sources.tar.gz` beside each Windows runtime and saying so in the app's `notices/NOTICES.txt`, which the setup program installs; and a Linux app's AppImage begins with AppImage's runtime (MIT), as AppImage releases it, with libfuse (LGPL-2.1, as [below](#libraries-under-the-lgpl) says), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib, mimalloc, and musl (MIT) linked in. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/NOTICES.txt`, which it holds.
 
 **Fledge's own files** in an app are `launcher` and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb` (the first is the program your app's users run, renamed for your app). They are Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
 
@@ -35,7 +35,7 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.7 | `AGPL-3.0-or-later` | the program the app's user runs, lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.8 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/arm64-darwin23/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/arm64-darwin23/openssl.bundle |
@@ -59,18 +59,24 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.7 | `AGPL-3.0-or-later` | the program the app's user runs, lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime |
-| AppImage's type 2 runtime, the program at the front of an app's AppImage | fedfad51acc2860b2916a1eef32ba4a500ff31ef | `MIT` | installer/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
-| GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and the AppImage runtime (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and installer/appimage-runtime |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.8 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
+| GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
+| libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/x86_64-linux/psych.so |
+| mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
+| musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/x86_64-linux/openssl.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
-| squashfuse, which reads the AppImage's file system, compiled into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | compiled into installer/appimage-runtime |
+| squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
-| zlib, compiled into Ruby's zlib extension and the AppImage runtime | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/x86_64-linux/zlib.so, and into installer/appimage-runtime |
+| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/x86_64-linux/zlib.so |
+| zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
+| Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
 
 Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
@@ -83,24 +89,30 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.7-x86_64-linux-lgpl-sources.tar.gz` in Fledge's release.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.8-x86_64-linux-lgpl-sources.tar.gz` in Fledge's release.
 
 ## Linux on ARM64 (aarch64-linux)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.7 | `AGPL-3.0-or-later` | the program the app's user runs, lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime |
-| AppImage's type 2 runtime, the program at the front of an app's AppImage | fedfad51acc2860b2916a1eef32ba4a500ff31ef | `MIT` | installer/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
-| GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and the AppImage runtime (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and installer/appimage-runtime |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.8 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
+| GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
+| libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/aarch64-linux/psych.so |
+| mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
+| musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/aarch64-linux/openssl.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
-| squashfuse, which reads the AppImage's file system, compiled into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | compiled into installer/appimage-runtime |
+| squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
-| zlib, compiled into Ruby's zlib extension and the AppImage runtime | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/aarch64-linux/zlib.so, and into installer/appimage-runtime |
+| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/aarch64-linux/zlib.so |
+| zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
+| Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
 
 Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
@@ -113,21 +125,22 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.7-aarch64-linux-lgpl-sources.tar.gz` in Fledge's release.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.8-aarch64-linux-lgpl-sources.tar.gz` in Fledge's release.
 
 ## Windows on x64 (x64-mingw-ucrt)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.7 | `AGPL-3.0-or-later` | the program the app's user runs, ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb, and, on Linux, the loader of the computer's libfuse and the changes to AppImage's runtime, compiled into installer/appimage-runtime |
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.8 | `AGPL-3.0-or-later` | the program the app's user runs, and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs | 13 to 16 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
 | libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
 | LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe and launcherw.exe |
 | Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
-| NSIS, whose stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib` | installer/nsis/, which fledge build compiles into the app's setup program, and never in its folder or archive |
+| NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive |
 | OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
+| rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and never in its folder or archive |
 | Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL) | 4.0.9 | `GPL-1.0-or-later OR Artistic-1.0-Perl` | compiled into ruby/bin/x64-ucrt-ruby400.dll |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
 | RubyInstaller's runtime files, manifests, and tools | 4.0.9-1 | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
@@ -146,11 +159,11 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. Its source is `fledge-runtime-0.0.1.pre.7-x64-mingw-ucrt-lgpl-sources.tar.gz` in Fledge's release.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.8-x64-mingw-ucrt-lgpl-sources.tar.gz` in Fledge's release.
 
 ## Libraries under the LGPL
 
-Two libraries are under the GNU Lesser General Public License: libxcrypt, in Linux apps, as `lib/libcrypt.so.2`, and GNU MP (GMP), in Windows apps, as `ruby\bin\ruby_builtin_dlls\libgmp-10.dll`. Each ships as its own shared library, which the app loads when it starts; neither is compiled into any other file, and CI proves on every push that replacing each with another build takes effect (`ci.yml`, Replace libcrypt and Replace GMP). The LGPL asks nothing of your app's own source or object files when the library is used this way. It does ask the following of whoever gives the app to others. Fledge does the parts marked as Fledge's; the rest are yours.
+Three libraries are under the GNU Lesser General Public License: libxcrypt, in Linux apps, as `lib/libcrypt.so.2`, and GNU MP (GMP), in Windows apps, as `ruby\bin\ruby_builtin_dlls\libgmp-10.dll`, each its own shared library, which the app loads when it starts, and which CI proves on every push can be replaced with another build (`ci.yml`, Replace libcrypt and Replace GMP); and libfuse, linked into AppImage's runtime, the program at the front of a Linux app's AppImage, which mounts the app's files and starts the app, never into the app itself. The LGPL asks nothing of your app's own source or object files used either way. It does ask the following of whoever gives the app to others. Fledge does the parts marked as Fledge's; the rest are yours.
 
 ### libxcrypt (LGPL-2.1-or-later)
 
@@ -159,6 +172,14 @@ Two libraries are under the GNU Lesser General Public License: libxcrypt, in Lin
 - Use a suitable shared library mechanism, so that a modified, interface-compatible version the user installs works (section 6(b)). Fledge's layout does this: leave `lib/libcrypt.so.2` a separate file.
 - Make the library's source available, in one of the ways section 6 lists: accompany the app with it (6(a)), offer access to it from the same place you offer the app (6(d)), or include a written offer, valid for at least three years, to give it (6(c)). Fledge publishes the exact source, and how its copy was built, as the release asset `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz`, and keeps every release, and so every bundle, published. You may also ship that bundle beside your app's download yourself, which section 6(a) and 6(d) describe most directly. Because the license is "or later", you may instead take LGPL-3.0's terms, which convey source by GNU GPL version 3, section 6; its section 6(d) allows the source to be "on a different server (operated by you or a third party)" with "clear directions next to the object code", while you "remain obligated to ensure that it is available for as long as needed".
 - Your app's terms must permit modification of the work for the customer's own use and reverse engineering for debugging such modifications (section 6, first paragraph). This falls on your license agreement, if your app has one.
+
+### libfuse (LGPL-2.1-only), in a Linux app's AppImage
+
+libfuse is linked into AppImage's runtime (MIT), a program of its own that is not your app and not Fledge's launcher; the app inside the AppImage is started by it, and links nothing of libfuse. The LGPL's terms for a work linked with the library apply to that runtime, and Fledge meets the ones that ask for source:
+
+- A prominent notice that the library is used and is covered by the LGPL, and a copy of the license (LGPL-2.1, section 6). Fledge's `notices/NOTICES.txt`, which the AppImage holds, does this, and so does the runtime's own `--appimage-help`.
+- The complete machine-readable source of the library, and of the runtime it is linked into, so that whoever receives the AppImage can modify libfuse and relink the runtime with it (section 6(a)). Fledge publishes both, AppImage's runtime at the commit it was built from, with its build scripts and its patch to libfuse, and libfuse's release, in `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz` beside each Linux runtime, and keeps every release published. You may ship that bundle beside your AppImage yourself, as section 6(a) describes most directly.
+- Terms that permit modification of the runtime for the customer's own use and reverse engineering for debugging such modifications (section 6, first paragraph) concern the runtime, which is MIT and permits both; your app's own terms need say nothing of it.
 
 ### GNU MP (LGPL-3.0-or-later OR GPL-2.0-or-later)
 

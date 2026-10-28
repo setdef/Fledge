@@ -8,8 +8,19 @@
 class LicenseAudit
   # What the audit found: the components present, which file each
   # component owns, what each compiled file links and has compiled in,
-  # and every violation.
-  class Report < Data.define(:platform, :tree, :components, :owners, :binaries, :links, :embeds, :violations)
+  # every violation, and the bytes of each file the audit read from
+  # inside an archive (LicenseAudit#bytes), by its ARCHIVE!ENTRY name.
+  class Report < Data.define(:platform, :tree, :components, :owners, :binaries, :links, :embeds, :violations, :archived)
+    # The bytes of the file at +path+ in the tree, or of the archive
+    # entry it names.
+    def bytes(path)
+      archived.fetch(path) { File.binread(File.join(tree, path)) }
+    end
+
+    def symlink?(path)
+      !archived.key?(path) && File.symlink?(File.join(tree, path))
+    end
+
     def owned(component)
       owners.select { |_path, owner| owner.equal?(component) }.keys.sort
     end

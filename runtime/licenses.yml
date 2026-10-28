@@ -48,6 +48,13 @@ system_libraries:
   darwin:
     - /\A\/usr\/lib\/[^\/]+\.dylib\z/
     - /\A\/System\/Library\/Frameworks\//
+  # The mobile runtimes link Ruby statically: on iOS into an archive,
+  # which needs nothing until an app links it with iOS's own libz and
+  # frameworks, and on Android into one library, which needs only what
+  # every Android provides (NDK, "Android NDK native APIs").
+  ios: []
+  android:
+    - /\A(?:libc|libm|libdl|liblog|libz)\.so\z/
   windows:
     - /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i
     - /\A(?:advapi32|bcrypt|comctl32|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|msvcp60|msvcrt|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i
@@ -57,6 +64,16 @@ platforms:
   x86_64-linux: {os: linux, arch: x86_64-linux, gem_arch: x86_64-linux, so: so}
   aarch64-linux: {os: linux, arch: aarch64-linux, gem_arch: aarch64-linux, so: so}
   x64-mingw-ucrt: {os: windows, arch: x64-mingw-ucrt, gem_arch: x64-mingw-ucrt, so: so}
+  # iOS's Ruby reports arm64-darwin on devices and in the Simulator, and
+  # each XCFramework slice carries its own (ADR 011, section 2); Android's
+  # one tree holds each ABI's arch folder, named for its platform.
+  ios:
+    os: ios
+    arch: arm64-darwin
+    gem_arch: arm64-darwin
+    so: so
+    prefixes: [FledgeRuby.xcframework/ios-arm64/, FledgeRuby.xcframework/ios-arm64-simulator/]
+  android: {os: android, arch: "{aarch64,x86_64}-linux-android", gem_arch: "{aarch64,x86_64}-linux-android", so: so}
 
 # Code of copyleft libraries that must never be compiled into another
 # file: bytes found only in that library's own code. A match anywhere but
@@ -95,13 +112,39 @@ components:
     download: https://github.com/setdef/Fledge
     notice: fledge
     ships: the program the app's user runs, and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, ios, android]
     files:
       - launcher
       - launcher.exe
       - launcherw.exe
       - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
     binaries: [launcher, launcher.exe, launcherw.exe]
+
+  # The mobile runtimes' one library (ADR 011): Fledge's embedding API
+  # (runtime/mobile/), compiled with Ruby and what Ruby links into
+  # libfledgeruby.a in each slice of the iOS XCFramework, and into
+  # libfledgeruby.so for each ABI in the Android AAR, beside the AAR's
+  # Java class and its packaging.
+  - id: fledge-embedding
+    name: Fledge's embedding API, and the library and packages it is built into
+    version: "{fledge_version}"
+    license: AGPL-3.0-or-later
+    first_party: true
+    kind: program
+    supplier: "Organization: setdef"
+    download: https://github.com/setdef/Fledge
+    notice: fledge
+    ships: libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar
+    platforms: [ios, android]
+    files:
+      - FledgeRuby.xcframework/Info.plist
+      - FledgeRuby.xcframework/*/libfledgeruby.a
+      - FledgeRuby.xcframework/*/Headers/{fledge_ruby.h,module.modulemap}
+      - include/fledge_ruby.h
+      - FledgeRuby.aar!{AndroidManifest.xml,classes.jar,R.txt,proguard.txt}
+      - FledgeRuby.aar!META-INF/**
+      - FledgeRuby.aar!jni/*/libfledgeruby.so
+    binaries: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
 
   - id: rust-std
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
@@ -176,6 +219,19 @@ components:
       - files: ["{prefix}lib/ruby/4.0.0/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.2 "
 
+  - id: openssl-mobile
+    name: OpenSSL, compiled into the mobile runtimes' library
+    version: 3.6.5
+    license: Apache-2.0
+    kind: program
+    download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
+    notice: openssl
+    ships: compiled into libfledgeruby.a and libfledgeruby.so
+    platforms: [ios, android]
+    embedded:
+      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+        evidence: "OpenSSL 3.6.5 "
+
   - id: openssl-dlls
     name: OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers)
     version: 3.6.5
@@ -202,6 +258,19 @@ components:
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
     embedded:
       - files: ["{prefix}lib/ruby/4.0.0/{arch}/psych.{so}"]
+        evidence: "0.2.5\0"
+
+  - id: libyaml-mobile
+    name: libyaml, compiled into the mobile runtimes' library
+    version: 0.2.5
+    license: MIT
+    kind: program
+    download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    notice: libyaml
+    ships: compiled into libfledgeruby.a and libfledgeruby.so
+    platforms: [ios, android]
+    embedded:
+      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
         evidence: "0.2.5\0"
 
   - id: libyaml-dll
@@ -407,6 +476,33 @@ components:
       - files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
         evidence: "3.5.2\0"
 
+  - id: libffi-mobile
+    name: libffi, compiled into the Android runtime's library for the fiddle gem
+    version: 3.5.2
+    license: MIT
+    kind: program
+    download: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
+    notice: libffi
+    ships: compiled into libfledgeruby.so
+    platforms: [android]
+    embedded:
+      - files: [FledgeRuby.aar!jni/*/libfledgeruby.so]
+        evidence: "3.5.2\0"
+
+  # The NDK's clang links its own runtime into every library it links:
+  # compiler-rt's builtins and LLVM's libunwind, under LLVM's exception,
+  # which asks nothing of a binary that holds them.
+  - id: compiler-rt-ndk
+    name: LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's library by the NDK
+    version: r30
+    license: Apache-2.0 WITH LLVM-exception
+    kind: program
+    download: https://developer.android.com/ndk/downloads
+    ships: compiled into libfledgeruby.so
+    platforms: [android]
+    embedded:
+      - files: [FledgeRuby.aar!jni/*/libfledgeruby.so]
+
   - id: libffi-dll
     name: libffi (libffi-8.dll, beside the fiddle gem's extension)
     version: 3.8.0
@@ -497,7 +593,7 @@ components:
     download: https://curl.se/ca/cacert-2026-03-19.pem
     notice: ca-certificates
     ships: libexec/cert.pem, unmodified
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, ios, android]
     files: ["{prefix}libexec/cert.pem"]
 
   - id: ca-certificates-msys2
@@ -561,11 +657,11 @@ components:
     supplier: "Organization: Ruby core team"
     download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
     notice: ruby
-    ships: "compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/"
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
+    ships: "compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/"
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, ios, android]
     fallback: true
     embedded:
-      - files: [launcher, "{prefix}bin/ruby"]
+      - files: [launcher, "{prefix}bin/ruby", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
         evidence: "3e93b23afc"
       - files: ["{prefix}bin/x64-ucrt-ruby400.dll"]
         evidence: "3e93b23afc"
@@ -573,6 +669,7 @@ components:
       - "{prefix}lib/ruby/4.0.0/**"
       - "{prefix}lib/ruby/gems/4.0.0/**/"
       - "{prefix}include/**"
+      - "{prefix}Headers/**"
       - "{prefix}share/**"
       - "{prefix}lib/pkgconfig/**"
       - "{prefix}lib/libruby*-static.a"
@@ -637,7 +734,7 @@ reviewed:
       BSD-2-Clause.
   - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rdoc-*/{LICENSE.rdoc,lib/rdoc/rd.rb}"]
     why: Ruby's old license, which offers the GPL-2.0 or Ruby's own conditions; Ruby's apply.
-  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rbs-*/core/dir.rbs", "{prefix}include/ruby-4.0.0/ruby/internal/ctype.h"]
+  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rbs-*/core/dir.rbs", "{prefix}{include/ruby-4.0.0,Headers}/ruby/internal/ctype.h"]
     why: Mentions the word (a file name in an example, a comment about compatibility); no license.
   - files: ["{prefix}share/doc/ruby/html/**"]
     why: >-

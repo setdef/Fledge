@@ -9,6 +9,7 @@
 #   spike/permissive branch (58edf27d27912d062ccfa5c4960533a220c9eb24).
 require "digest"
 require "find"
+require "open3"
 require "rubygems"
 require "rubygems/package"
 require "stringio"
@@ -62,6 +63,7 @@ class LicenseAudit
     @fledge_version = fledge_version || fledge_version_from_source
     @facts = @map.fetch("platforms").fetch(platform) { raise ArgumentError, "no platform #{platform} in #{map}" }
     @violations = []
+    @archived = {}
   end
 
   # Audits the tree and returns the Report.
@@ -81,7 +83,8 @@ class LicenseAudit
     texts = CopyleftText.new(self, method(:violate))
     texts.check_files(files, owners, binaries)
     texts.check_gem_archives(files, owners)
-    report = Report.new(platform:, tree:, components: ordered, owners:, binaries:, links:, embeds:, violations: @violations)
+    report = Report.new(platform:, tree:, components: ordered, owners:, binaries:, links:, embeds:, violations: @violations,
+      archived: @archived)
     policy = Policy.new(@sources, method(:violate))
     report.present.each { |component| policy.check(component, report) }
     report
@@ -101,9 +104,28 @@ class LicenseAudit
     Fledge::LicensePolicy.category(expression, first_party:)
   end
 
-  # Where Ruby's own tree starts: ruby/ in a Windows runtime.
+  # Where each of Ruby's own trees in the runtime starts: ruby/ in a
+  # Windows runtime, the folder itself on macOS and Linux, and each
+  # slice of an iOS runtime's XCFramework, which carries the Ruby that
+  # slice runs (runtime/licenses.yml, the platform's prefixes).
+  def prefixes
+    @prefixes ||= @facts.fetch("prefixes") { [File.directory?(File.join(tree, "ruby", "lib", "ruby")) ? "ruby/" : ""] }
+  end
+
+  # The prefixes as one pattern, which {prefix} stands for.
   def prefix
-    @prefix ||= File.directory?(File.join(tree, "ruby", "lib", "ruby")) ? "ruby/" : ""
+    (prefixes.size == 1) ? prefixes.first : "{#{prefixes.join(',')}}"
+  end
+
+  # The bytes of the file at +path+ in the tree, or of the entry of an
+  # archive the audit opened (#walk), named ARCHIVE!ENTRY.
+  def bytes(path)
+    @archived.fetch(path) { File.binread(File.join(tree, path)) }
+  end
+
+  # Whether +path+ is a symbolic link in the tree.
+  def symlink?(path)
+    !@archived.key?(path) && File.symlink?(File.join(tree, path))
   end
 
   def expand(pattern)
@@ -127,7 +149,9 @@ class LicenseAudit
   end
 
   # Every file and symlink in the tree, relative to it, except the
-  # notices this audit writes.
+  # notices this audit writes; and in place of each Android library (an
+  # .aar, which is a zip), every file in it, as AAR!ENTRY, since an app
+  # ships what the AAR holds.
   private def walk
     paths = []
     Find.find(tree) do |path|
@@ -135,9 +159,26 @@ class LicenseAudit
       next if path == tree
 
       Find.prune if relative == "notices"
-      paths << relative if File.file?(path) || File.symlink?(path)
+      next unless File.file?(path) || File.symlink?(path)
+
+      relative.end_with?(".aar") ? paths.concat(open_archive(relative)) : paths << relative
     end
     paths.sort
+  end
+
+  # The entries of the zip archive at +relative+, read with unzip, whose
+  # bytes #bytes then returns.
+  private def open_archive(relative)
+    archive = File.join(tree, relative)
+    names, status = Open3.capture2("unzip", "-Z1", archive)
+    raise "unzip could not list #{archive}" unless status.success?
+
+    names.lines.map(&:chomp).reject { |name| name.end_with?("/") }.map do |name|
+      entry, status = Open3.capture2("unzip", "-p", archive, name, binmode: true)
+      raise "unzip could not read #{name} from #{archive}" unless status.success?
+
+      "#{relative}!#{name}".tap { |label| @archived[label] = entry.b }
+    end
   end
 
   # Gives each file to the first component whose files match it, and
@@ -159,13 +200,13 @@ class LicenseAudit
     component.files.any? do |pattern|
       next matches?(pattern, path) unless pattern.is_a?(Hash)
 
-      matches?(pattern.fetch("glob"), path) && File.read(File.join(tree, path)).include?(pattern.fetch("contains"))
+      matches?(pattern.fetch("glob"), path) && bytes(path).include?(pattern.fetch("contains").b)
     end
   end
 
   private def read_binaries(files)
     files.each_with_object({}) do |path, binaries|
-      binary = Binary.read(File.join(tree, path))
+      binary = @archived.key?(path) ? Binary.parse(bytes(path)) : Binary.read(File.join(tree, path))
       binaries[path] = binary if binary
     end
   end
@@ -216,7 +257,7 @@ class LicenseAudit
       component.embedded.each do |entry|
         files.select { |path| entry.fetch("files").any? { |pattern| matches?(pattern, path) } }.each do |path|
           evidence = entry["evidence"]
-          if evidence && !File.binread(File.join(tree, path)).include?(evidence.b)
+          if evidence && !bytes(path).include?(evidence.b)
             violate("stale", path, "should hold #{component.name} #{component.version}, but #{evidence.inspect} is not in it")
           else
             embeds[path] << component.id
@@ -244,8 +285,8 @@ class LicenseAudit
   private def check_signatures(binaries, owners, embeds)
     @map.fetch("signatures").each do |signature|
       binaries.each_key do |path|
-        bytes = File.binread(File.join(tree, path))
-        next unless signature.fetch("bytes").any? { |needle| bytes.include?(needle.b) }
+        content = bytes(path)
+        next unless signature.fetch("bytes").any? { |needle| content.include?(needle.b) }
 
         owner = owners[path]
         next if owner&.id == signature.fetch("component") && owner&.kind == "shared_library"
@@ -260,7 +301,7 @@ class LicenseAudit
     components.each do |component|
       component.sha256.each do |pattern, sha256|
         files.select { |path| matches?(pattern, path) }.each do |path|
-          actual = Digest::SHA256.file(File.join(tree, path)).hexdigest
+          actual = Digest::SHA256.hexdigest(bytes(path))
           violate("stale", path, "has SHA-256 #{actual}, not the #{sha256} its source pin describes") unless actual == sha256
         end
       end

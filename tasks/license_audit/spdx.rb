@@ -126,8 +126,7 @@ class LicenseAudit
     end
 
     private def bytes(path)
-      full = File.join(@report.tree, path)
-      File.symlink?(full) ? File.readlink(full) : File.binread(full)
+      @report.symlink?(path) ? File.readlink(File.join(@report.tree, path)) : @report.bytes(path)
     end
 
     private def sha1(path)

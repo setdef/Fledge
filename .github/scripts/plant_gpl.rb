@@ -28,14 +28,19 @@ platform, tree = ARGV
 abort "usage: plant_gpl.rb PLATFORM TREE" unless platform && tree && File.directory?(tree)
 
 facts = YAML.safe_load_file(File.expand_path("../../runtime/licenses.yml", __dir__)).fetch("platforms").fetch(platform)
-prefix = File.directory?(File.join(tree, "ruby", "lib", "ruby")) ? "ruby/" : ""
+# A Windows runtime keeps Ruby in ruby/, an iOS runtime one Ruby in each
+# XCFramework slice, whose first gets the planted files, and an Android
+# runtime each ABI's arch folder, named in braces, whose first does.
+prefix = facts.fetch("prefixes") { [File.directory?(File.join(tree, "ruby", "lib", "ruby")) ? "ruby/" : ""] }.first
+arch = facts.fetch("arch").sub(/\{([^,}]+)[^}]*\}/, '\1')
 notice = "Licensed under the GNU General Public License, version 3"
 binary = case facts.fetch("os")
-when "darwin" then Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: notice)
+when "darwin", "ios" then Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: notice)
 when "windows" then Binaries.pe(needed: %w[KERNEL32.dll], payload: notice)
 else Binaries.elf(needed: %w[libc.so.6], payload: notice)
 end
-extension = "#{prefix}lib/ruby/4.0.0/#{facts.fetch('arch')}/gpl_thing.#{facts.fetch('so')}"
+extension = "#{prefix}lib/ruby/4.0.0/#{arch}/gpl_thing.#{facts.fetch('so')}"
+FileUtils.mkdir_p(File.dirname(File.join(tree, extension)))
 File.binwrite(File.join(tree, extension), binary)
 
 gems = File.join(tree, prefix, "lib", "ruby", "gems", "4.0.0")

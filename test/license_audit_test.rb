@@ -341,4 +341,79 @@ class LicenseAuditTest < Minitest::Test
   ensure
     FileUtils.rm_f(expect)
   end
+
+  # The bytes each mobile runtime's one library holds of what is linked
+  # into it (runtime/licenses.yml): Ruby's revision, OpenSSL's version
+  # string, libyaml's, and on Android libffi's.
+  MOBILE_LIBRARY = "ruby 4.0.9 (revision 3e93b23afc) OpenSSL 3.6.5 0.2.5\0"
+
+  # An iOS runtime: an XCFramework whose two slices each carry the Ruby
+  # it runs, as CPython's iOS XCFramework does (ADR 011), audited as one
+  # runtime with a Ruby tree per slice, each gem one component.
+  def test_an_ios_runtime_accounts_for_the_ruby_of_each_slice
+    Dir.mktmpdir do |tree|
+      put = lambda do |path, bytes|
+        FileUtils.mkdir_p(File.dirname(File.join(tree, path)))
+        File.binwrite(File.join(tree, path), bytes)
+      end
+      put.call("FledgeRuby.xcframework/Info.plist", "<plist/>\n")
+      %w[ios-arm64 ios-arm64-simulator].each do |slice|
+        root = "FledgeRuby.xcframework/#{slice}"
+        put.call("#{root}/libfledgeruby.a", "!<arch>\n#{MOBILE_LIBRARY}")
+        put.call("#{root}/Headers/ruby.h", "/* ruby */\n")
+        put.call("#{root}/Headers/fledge_ruby.h", "/* fledge */\n")
+        put.call("#{root}/Headers/module.modulemap", "module FledgeRuby {}\n")
+        put.call("#{root}/lib/ruby/4.0.0/set.rb", "class Set; end\n")
+        put.call("#{root}/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
+        put.call("#{root}/libexec/cert.pem", "-----BEGIN CERTIFICATE-----\n")
+        put.call("#{root}/lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec", File.read(File.join(@tree, "lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec")))
+        put.call("#{root}/lib/ruby/gems/4.0.0/gems/csv-3.3.5/lib/csv.rb", "module Csv; end\n")
+        put.call("#{root}/lib/ruby/gems/4.0.0/gems/csv-3.3.5/LICENSE.txt", "Ruby or BSD-2-Clause\n")
+      end
+
+      report = LicenseAudit.new(platform: "ios", tree:, fledge_version: "0.0.0").call
+
+      assert_empty report.violations.map(&:to_s)
+      assert_equal 1, report.present.count { |component| component.id == "gem-csv-3.3.5" }
+      owners = report.owners.transform_values(&:id)
+      assert_equal "gem-csv-3.3.5", owners.fetch("FledgeRuby.xcframework/ios-arm64-simulator/lib/ruby/gems/4.0.0/gems/csv-3.3.5/lib/csv.rb")
+      assert_equal "fledge-embedding", owners.fetch("FledgeRuby.xcframework/ios-arm64/libfledgeruby.a")
+      assert_equal "ruby", owners.fetch("FledgeRuby.xcframework/ios-arm64/Headers/ruby.h")
+      %w[ruby openssl-mobile libyaml-mobile ca-certificates].each { |id| assert_includes report.present.map(&:id), id }
+    end
+  end
+
+  # An Android runtime's AAR is a zip; the app ships what it holds, so
+  # the audit reads each entry as AAR!ENTRY, and finds a copyleft
+  # library's code in one as it would in a file.
+  def test_an_aar_is_audited_by_what_it_holds
+    Dir.mktmpdir do |tree|
+      aar = File.join(tree, "aar")
+      library = Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so], payload: "#{MOBILE_LIBRARY} 3.5.2\0")
+      { "AndroidManifest.xml" => "<manifest/>\n", "classes.jar" => "PK\x03\x04", "jni/x86_64/libfledgeruby.so" => library }.each do |path, bytes|
+        FileUtils.mkdir_p(File.dirname(File.join(aar, path)))
+        File.binwrite(File.join(aar, path), bytes)
+      end
+      system("zip", "-q", "-r", File.join(tree, "FledgeRuby.aar"), ".", chdir: aar, exception: true)
+      FileUtils.rm_rf(aar)
+      FileUtils.mkdir_p(File.join(tree, "include"))
+      File.write(File.join(tree, "include", "fledge_ruby.h"), "/* fledge */\n")
+
+      report = LicenseAudit.new(platform: "android", tree:, fledge_version: "0.0.0").call
+
+      assert_empty report.violations.map(&:to_s)
+      assert_equal "fledge-embedding", report.owners.fetch("FledgeRuby.aar!jni/x86_64/libfledgeruby.so").id
+      assert_equal :system, report.links.fetch("FledgeRuby.aar!jni/x86_64/libfledgeruby.so").fetch("liblog.so")
+      %w[ruby openssl-mobile libyaml-mobile libffi-mobile].each { |id| assert_includes report.present.map(&:id), id }
+      sbom = LicenseAudit::Spdx.new(report, version: "0.0.0", created: Time.utc(2026, 10, 28)).to_h
+      assert_includes sbom.fetch("files").map { |file| file.fetch("fileName") }, "./FledgeRuby.aar!jni/x86_64/libfledgeruby.so"
+
+      FileUtils.mkdir_p(File.join(aar, "jni", "x86_64"))
+      File.binwrite(File.join(aar, "jni", "x86_64", "libfledgeruby.so"), Binaries.elf(needed: %w[libc.so], payload: "#{MOBILE_LIBRARY} yescrypt-ROMhash"))
+      system("zip", "-q", "-r", File.join(tree, "FledgeRuby.aar"), "jni", chdir: aar, exception: true)
+      FileUtils.rm_rf(aar)
+      tampered = LicenseAudit.new(platform: "android", tree:, fledge_version: "0.0.0").call
+      assert_includes rules(tampered), ["static-copyleft", "FledgeRuby.aar!jni/x86_64/libfledgeruby.so"]
+    end
+  end
 end

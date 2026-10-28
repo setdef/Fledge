@@ -27,12 +27,12 @@ class LicenseAudit
     # component carries that license, or in one a person reviewed.
     def check_files(files, owners, binaries)
       files.each do |path|
-        next if binaries.key?(path) || File.symlink?(File.join(@audit.tree, path))
+        next if binaries.key?(path) || @audit.symlink?(path)
 
-        full = File.join(@audit.tree, path)
-        next if File.size(full) > TEXT_LIMIT
+        text = @audit.bytes(path)
+        next if text.bytesize > TEXT_LIMIT
 
-        check_text(path, [path], owners[path], File.binread(full))
+        check_text(path, [path], owners[path], text)
       end
     end
 
@@ -59,7 +59,7 @@ class LicenseAudit
     # a person reviewed them, as CACHE.gem!FILE or as the file of the same
     # name in the gem's folder.
     def check_gem_archives(files, owners)
-      files.grep(%r{\A#{Regexp.escape(@audit.prefix)}lib/ruby/gems/[^/]+/cache/[^/]+\.gem\z}).each do |path|
+      files.grep(%r{\A(?:#{@audit.prefixes.map { |prefix| Regexp.escape(prefix) }.join('|')})lib/ruby/gems/[^/]+/cache/[^/]+\.gem\z}).each do |path|
         check_gem_archive(path, owners[path])
       end
     end

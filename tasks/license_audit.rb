@@ -78,8 +78,9 @@ class LicenseAudit
     check_binary_ownership(binaries, owners)
     check_signatures(binaries, owners)
     check_pins(components, files)
-    check_texts(files, owners, binaries)
-    check_gem_archives(files, owners)
+    texts = CopyleftText.new(self, method(:violate))
+    texts.check_files(files, owners, binaries)
+    texts.check_gem_archives(files, owners)
     report = Report.new(platform:, tree:, components: ordered, owners:, binaries:, links:, embeds:, violations: @violations)
     policy = Policy.new(@sources, method(:violate))
     report.present.each { |component| policy.check(component, report) }
@@ -263,79 +264,6 @@ class LicenseAudit
     end
   end
 
-  # Text that names a copyleft license must be in a file whose own
-  # component carries that license, or in one a person reviewed.
-  private def check_texts(files, owners, binaries)
-    files.each do |path|
-      next if binaries.key?(path) || File.symlink?(File.join(tree, path))
-
-      full = File.join(tree, path)
-      next if File.size(full) > TEXT_LIMIT
-
-      check_text(path, [path], owners[path], File.binread(full))
-    end
-  end
-
-  private def check_text(label, names, owner, text)
-    return if owner && LicenseAudit.category(owner.license, first_party: owner.first_party) != :notice_only
-    return if text.byteslice(0, 8192).to_s.include?("\0")
-    return unless COPYLEFT_BYTES.match?(text)
-    return if names.any? { |name| reviewed.any? { |pattern| matches?(pattern, name) } }
-
-    word = text[COPYLEFT_BYTES]
-    violate("copyleft-text", label, "names #{word.inspect}, but #{owner&.id || 'no component'} is #{owner&.license}; review it in runtime/licenses.yml")
-  end
-
-  private def reviewed
-    @reviewed ||= @map.fetch("reviewed", []).flat_map { |entry| entry.fetch("files") }
-  end
-
-  # A gem's .gem in RubyGems' cache holds every file the gem was
-  # released with, which can be more than Ruby installed into its folder
-  # (Ruby installs a bundled gem's listed files only), and it ships too.
-  # So each file in it is checked as a file of the tree is, as
-  # CACHE.gem!FILE: it may hold no compiled code and no copyleft
-  # library's code, and its words may name a copyleft license only where
-  # a person reviewed them, as CACHE.gem!FILE or as the file of the same
-  # name in the gem's folder.
-  private def check_gem_archives(files, owners)
-    files.grep(%r{\A#{Regexp.escape(prefix)}lib/ruby/gems/[^/]+/cache/[^/]+\.gem\z}).each do |path|
-      check_gem_archive(path, owners[path])
-    end
-  end
-
-  private def check_gem_archive(path, owner)
-    installed = "#{File.dirname(path, 2)}/gems/#{File.basename(path, '.gem')}"
-    read = LicenseAudit.gem_files(File.join(tree, path)) do |name, bytes|
-      label = "#{path}!#{name}"
-      binary = Binary.parse(bytes)
-      violate("unlisted-binary", label, "is compiled code (#{binary.format}) inside a cached gem") if binary
-      signature = @map.fetch("signatures").find { |entry| entry.fetch("bytes").any? { |needle| bytes.include?(needle.b) } }
-      violate("static-copyleft", label, "holds #{signature.fetch('component')}'s code inside a cached gem") if signature
-      check_text(label, [label, "#{installed}/#{name}"], owner, bytes) unless binary || bytes.bytesize > TEXT_LIMIT
-    end
-    violate("unreadable", path, "is not a .gem the audit can read: it holds no data.tar.gz") unless read
-  rescue Gem::Package::TarInvalidError, Zlib::Error, ArgumentError => e
-    violate("unreadable", path, "is not a .gem the audit can read (#{e.message})")
-  end
-
-  # Yields the name and bytes of each file in the .gem at +path+: the
-  # entries of its data.tar.gz (RubyGems' package format, a tar holding
-  # metadata.gz, data.tar.gz, and checksums.yaml.gz). Returns whether it
-  # found a data.tar.gz at all.
-  def self.gem_files(path)
-    File.open(path, "rb") do |io|
-      Gem::Package::TarReader.new(io).each.count do |outer|
-        next false unless outer.full_name == "data.tar.gz"
-
-        Zlib::GzipReader.wrap(StringIO.new(outer.read.to_s)) do |gzip|
-          Gem::Package::TarReader.new(gzip).each { |entry| yield entry.full_name, entry.read.to_s.b if entry.file? }
-        end
-        true
-      end.positive?
-    end
-  end
-
   private def violate(rule, path, message)
     @violations << Violation.new(rule:, path:, message:)
     nil
@@ -344,6 +272,7 @@ end
 
 require_relative "license_audit/binary"
 require_relative "license_audit/component"
+require_relative "license_audit/copyleft_text"
 require_relative "license_audit/failure"
 require_relative "license_audit/inventory"
 require_relative "license_audit/policy"

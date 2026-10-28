@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Windowed apps: `kind: windowed` in `fledge.yml` builds an `.app` bundle for macOS, signed ad hoc so it runs on Apple Silicon and passes `codesign --verify --strict --deep`; a program Windows starts without a console, from the new `launcherw.exe` every Windows runtime carries; and, for Linux, the folder with `IDENTIFIER.desktop` and the icon in `share/icons/hicolor/`. Each builds from any computer.
+- `fledge.yml` takes `kind`, `identifier`, `version`, `icon`, `publisher`, and `copyright`. A windowed app needs an `identifier`; `version` defaults to the gemspec's (or `0.0.0`), and `publisher` to its authors.
+- Every Windows app's program carries version information (FileDescription, which Task Manager shows, ProductName, CompanyName, LegalCopyright, and the versions) and, with an `icon`, the app's icon.
+- `icon` is one square PNG of at least 1024x1024 pixels, which Fledge makes into an `.icns` for macOS, icon resources for Windows, and hicolor PNGs for Linux.
+- On Windows, an app with an `identifier` takes it as its AppUserModelID when it starts.
+
 ## [0.0.1.pre.5] - 2026-10-28
 
 ### Removed

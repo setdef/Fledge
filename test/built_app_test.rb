@@ -7,6 +7,7 @@
 
 require_relative "test_helper"
 require_relative "../tasks/parity"
+require "json"
 require "open3"
 require "stringio"
 
@@ -24,6 +25,7 @@ require "stringio"
 class BuiltAppTest < Minitest::Test
   HELLO = File.expand_path("../examples/hello", __dir__)
   MY_COOL_APP = File.expand_path("../examples/my_cool_app", __dir__)
+  WINDOWED_APP = File.expand_path("../examples/windowed_app", __dir__)
   PROBE = File.expand_path("fixtures/parity", __dir__)
   EXE = File.expand_path("../exe/fledge", __dir__)
   LIB = File.expand_path("../lib", __dir__)
@@ -262,6 +264,40 @@ class BuiltAppTest < Minitest::Test
       out, _, status = run_app({ "HOME" => dir }, app, "3")
 
       assert_equal [expected, 3], [out, status.exitstatus]
+    end
+  end
+
+  # examples/windowed_app, built as a windowed app (ADR 008): on macOS an
+  # .app bundle that Apple's codesign verifies, strictly and deeply, and
+  # whose Info.plist plutil reads; on Windows a GUI program; on Linux a
+  # folder with a desktop entry. Run by its program, it writes its report
+  # and exits with the status it is given; on Windows it has no console,
+  # and its AppUserModelID is its identifier.
+  def test_the_windowed_app_runs_from_its_bundle_or_folder
+    Dir.mktmpdir do |dir|
+      folder = File.dirname(build_and_unpack(dir, WINDOWED_APP, name: "Hello Window"))
+      program = File.join(folder, @platform.executable("Hello Window"))
+      case @platform.os
+      when "darwin"
+        bundle = File.join(folder, "Hello Window.app")
+        program = File.join(bundle, "Contents", "MacOS", "Hello Window")
+        out, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", "--verbose=2", bundle)
+        assert_predicate status, :success?, out
+        out, status = Open3.capture2e("plutil", "-extract", "CFBundleIdentifier", "raw", File.join(bundle, "Contents", "Info.plist"))
+        assert_equal ["com.setdef.fledge.HelloWindow\n", true], [out, status.success?]
+      when "windows"
+        assert_equal Fledge::WindowsProgram::GUI, Fledge::WindowsProgram.new(File.binread(program)).subsystem
+      else
+        assert_includes File.read(File.join(folder, "com.setdef.fledge.HelloWindow.desktop")), "Exec=\"Hello Window\"\n"
+      end
+
+      report = File.join(dir, "report.json")
+      _, err, status = run_app({ "HOME" => dir }, program, report, "4")
+
+      assert_equal ["", 4], [err, status.exitstatus]
+      facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app" }
+      facts.merge!("console" => false, "app_user_model_id" => "com.setdef.fledge.HelloWindow") if @platform.windows?
+      assert_equal facts, JSON.parse(File.read(report))
     end
   end
 

@@ -9,6 +9,7 @@ require "rubygems"
 require_relative "config"
 require_relative "entry"
 require_relative "error"
+require_relative "identity"
 
 module Fledge
   # A Ruby app Fledge can ship: the program you already run, in the
@@ -53,7 +54,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class App < Data.define(:root, :entry, :name, :gemfile, :config)
+  class App < Data.define(:root, :entry, :name, :gemfile, :config, :identity)
     ##
     # :attr_reader: root
     # The project's root folder, as an absolute path. It ships as the
@@ -78,6 +79,11 @@ module Fledge
     # :attr_reader: config
     # The project's Fledge::Config.
 
+    ##
+    # :attr_reader: identity
+    # The app's Fledge::Identity: its kind, identifier, version, publisher,
+    # copyright, and icon.
+
     # What never ships, relative to the root: version control history,
     # Bundler's own settings for the developer's computer (.bundle), and
     # the gems Bundler installed or cached there for it (vendor/bundle
@@ -94,8 +100,9 @@ module Fledge
     # The app whose entry point is the file +path+, or which the folder
     # +path+ holds. Raises Fledge::Error, saying what to do, when there is
     # no such file or folder, the folder names no one program, the
-    # project's root would be +home+, its <tt>fledge.yml</tt> is wrong, or
-    # it has a gemspec but no Gemfile.
+    # project's root would be +home+, its <tt>fledge.yml</tt> is wrong or
+    # leaves out what a windowed app needs, its icon cannot be used, or it
+    # has a gemspec but no Gemfile.
     #
     # === Example
     #
@@ -122,7 +129,9 @@ module Fledge
       gemspec = gemspec_in(root)
       entry = File.directory?(full) ? default_entry(path, full, root, gemspec) : relative(full, root)
       config = Config.load(root)
-      new(root:, entry:, name: name_for(config, gemspec, root), gemfile: gemfile_in(root, gemspec), config:)
+      name = name_for(config, gemspec, root)
+      identity = Identity.from(config:, gemspec:, name:, root:)
+      new(root:, entry:, name:, gemfile: gemfile_in(root, gemspec), config:, identity:)
     end
 
     # The nearest folder, from +start+ up, that holds one of MARKERS or a

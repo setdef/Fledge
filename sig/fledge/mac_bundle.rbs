@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MacBundle
+    LINKED: Array[String]
+
+    @identity: Identity
+    @seal: CodeResources
+    @top: Array[String]
+
+    def initialize: (Identity identity) -> void
+
+    def folder: () -> String
+
+    def resource: (String path) -> String
+
+    def seal: (Entry entry) -> void
+
+    def info_plist: () -> String
+
+    def self.bundle_version: (String version) -> String
+
+    def extras: () -> Array[Entry]
+
+    def finish: (Entry launcher) -> Array[Entry]
+
+    private def icon_file: () -> String
+  end
+end

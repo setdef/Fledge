@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+
+# A windowed app (ADR 008), with everything an app says about itself to
+# the operating system and the person who runs it: the name in a Dock,
+# taskbar, or menu, which may have spaces; the identifier macOS and
+# Windows know it by, a reverse-DNS name of a domain its developer
+# controls; its version, publisher, and copyright, which Explorer's
+# Properties dialog shows; and its icon, a square PNG of at least
+# 1024x1024 pixels, which Fledge turns into each operating system's
+# icons. Like hello, it sits inside Fledge's own gem, and this file makes
+# its folder a project's root (ADR 005).
+name: Hello Window
+kind: windowed
+identifier: com.setdef.fledge.HelloWindow
+version: "1.2.3"
+publisher: setdef
+copyright: © 2026 Kerrick Long
+icon: icon.png

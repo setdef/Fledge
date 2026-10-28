@@ -6,20 +6,29 @@
 #++
 
 require "fileutils"
+require_relative "desktop_entry"
 require_relative "entry"
 require_relative "error"
+require_relative "mac_bundle"
 require_relative "platform"
 require_relative "tar_gz"
+require_relative "windows_resources"
 
 module Fledge
   # Puts one app into one platform's runtime: a folder and its archive.
   #
   # A runtime archive holds a launcher named +launcher+ (+launcher.exe+
-  # on Windows) beside the Ruby it embeds. A built app is that runtime
-  # with the launcher renamed to the app's name, the app's project copied
-  # into its +app+ folder, and a CONFIG beside the launcher that tells it
-  # which program in +app+ to run and, for a project with a Gemfile,
-  # which Gemfile to set up (ADR 005). It is written twice: as
+  # on Windows, beside +launcherw.exe+ for windowed apps) beside the Ruby
+  # it embeds. A built app is that runtime with the launcher renamed to
+  # the app's name, the app's project copied into its +app+ folder, and a
+  # CONFIG beside the launcher that tells it which program in +app+ to run
+  # and, for a project with a Gemfile, which Gemfile to set up (ADR 005).
+  # The app's identity goes in as each operating system reads it (ADR
+  # 008): on Windows, into the program's own resources
+  # (Fledge::WindowsResources); for a windowed app on macOS, as an
+  # <tt>.app</tt> bundle that holds all of it (Fledge::MacBundle); for a
+  # windowed app on Linux, as a desktop entry and icons beside the program
+  # (Fledge::DesktopEntry). It is written twice: as
   # <tt>OUT/NAME-PLATFORM/</tt>, to try, and as
   # <tt>OUT/NAME-PLATFORM.tar.gz</tt> (<tt>.zip</tt> for Windows), to
   # ship. Unpacking the runtime and packing the folder again would lose
@@ -28,7 +37,8 @@ module Fledge
   # This class streams each runtime entry, then CONFIG, each of the app's
   # entries, and the files the build adds (the app's gems), into the
   # folder and the archive at once, so the archive keeps the permissions
-  # and symlinks the runtime was built with. The platform names the
+  # and symlinks the runtime was built with, and the launcher last, once
+  # everything it must describe or seal is known. The platform names the
   # archive's format (Fledge::Platform#archive_format).
   # It refuses to let an added file replace one the runtime holds,
   # replaces a previous build of the same app and platform, and removes
@@ -59,6 +69,11 @@ module Fledge
     # adds an extension.
     LAUNCHER = "launcher"
 
+    # The windowed launcher's name inside a Windows runtime, before its
+    # extension: a GUI-subsystem program, named as RubyInstaller names
+    # +rubyw.exe+ beside +ruby.exe+.
+    WINDOWED_LAUNCHER = "launcherw"
+
     # The file beside the launcher that says what it runs. The launcher
     # reads it as Python reads the pyvenv.cfg beside its interpreter (PEP
     # 405): lines of <tt>key = value</tt>.
@@ -83,6 +98,7 @@ module Fledge
       @app_files = app_files
       @files = files
       @placed = {} # : Hash[String, bool]
+      @bundle = nil # : MacBundle?
     end
 
     # The built app's folder and archive name: <tt>NAME-PLATFORM</tt>.
@@ -128,7 +144,9 @@ module Fledge
     end
 
     # The contents of CONFIG for the app: its entry point, and its
-    # Gemfile when it has one, relative to the +app+ folder.
+    # Gemfile when it has one, relative to the +app+ folder, and its
+    # identifier when it has one, which the Windows launcher makes its
+    # AppUserModelID.
     #
     # === Example
     #
@@ -146,6 +164,8 @@ module Fledge
       lines = ["entry = #{config_value(@app.entry)}"]
       gemfile = @app.gemfile
       lines << "gemfile = #{config_value(gemfile)}" if gemfile
+      identifier = @app.identity.identifier
+      lines << "identifier = #{identifier}" if identifier
       "# Written by fledge build: what this app's program runs (ADR 005).\n#{lines.join("\n")}\n"
     end
 
@@ -160,16 +180,48 @@ module Fledge
     private def build
       remove_output
       FileUtils.mkdir_p(folder)
+      @bundle = (@platform.os == "darwin" && @app.identity.windowed?) ? MacBundle.new(@app.identity) : nil
       @platform.archive_format.write(archive) do |writer|
         writer.add(Entry.directory(base_name))
-        copy_runtime(writer)
+        launcher = copy_runtime(writer)
         add(writer, Entry.file(CONFIG, launch_config))
         copy_app(writer)
         @files.each { |entry| add(writer, entry) }
+        finish(writer, launcher)
       end
     rescue
       remove_output
       raise
+    end
+
+    # Places the launcher, last, as the app's program: on Windows with the
+    # app's resources in it; in a bundle, after the bundle's own files,
+    # signed for it; on Linux, after a windowed app's desktop entry.
+    private def finish(writer, launcher)
+      bundle = @bundle
+      if bundle
+        bundle.extras.each { |entry| put(writer, entry) }
+        bundle.finish(launcher).each { |entry| put(writer, entry) }
+        return
+      end
+
+      executable = @platform.executable(@app.name)
+      content = launcher.content
+      content = windows_program(content, executable) if @platform.windows?
+      DesktopEntry.new(@app.identity).entries.each { |entry| put(writer, entry) } if @platform.os == "linux" && @app.identity.windowed?
+      put(writer, Entry.file(executable, content, mode: launcher.mode))
+    end
+
+    private def windows_program(content, executable)
+      WindowsResources.apply(content, identity: @app.identity, file_name: executable)
+    rescue Error => e
+      raise Error, "the runtime's #{@platform.executable(launcher_name)} #{e.message}"
+    end
+
+    # The runtime's launcher for this app: the windowed one on Windows for
+    # a windowed app, the one launcher elsewhere.
+    private def launcher_name
+      (@platform.windows? && @app.identity.windowed?) ? WINDOWED_LAUNCHER : LAUNCHER
     end
 
     private def folder
@@ -185,26 +237,29 @@ module Fledge
       FileUtils.rm_f(archive)
     end
 
+    # Copies every entry of the runtime but its launchers, and returns the
+    # launcher this app runs.
     private def copy_runtime(writer)
-      launcher = @platform.executable(LAUNCHER)
+      launcher = @platform.executable(launcher_name)
+      launchers = [launcher, @platform.executable(LAUNCHER), @platform.executable(WINDOWED_LAUNCHER)]
       top = nil # : String?
-      found = false
+      found = nil # : Entry?
       TarGz.each_entry(@runtime) do |entry|
         first, rest = entry.path.split("/", 2)
         top ||= first
         raise Error, "#{@runtime} is not a Fledge runtime: it holds both #{top}/ and #{first}" unless first == top
         next unless rest
 
-        found ||= rest == launcher
-        place(writer, entry.with(path: runtime_path(rest, launcher)))
+        found = entry if rest == launcher
+        next if launchers.include?(rest)
+
+        add(writer, entry.with(path: runtime_path(rest)))
       end
-      raise Error, "#{@runtime} is not a Fledge runtime: it has no #{launcher}" unless found
+      found or raise Error, "#{@runtime} is not a Fledge runtime: it has no #{launcher}"
     end
 
-    private def runtime_path(path, launcher)
+    private def runtime_path(path)
       executable = @platform.executable(@app.name)
-      return executable if path == launcher
-
       first = path.split("/", 2).first.to_s
       raise Error, "#{@runtime} is not a Fledge runtime: it holds an app folder" if first == "app"
       raise Error, "#{@runtime} is not a Fledge runtime: it holds a #{CONFIG}" if first == CONFIG
@@ -229,10 +284,18 @@ module Fledge
       remaining.each { |path, content| add(writer, Entry.file("app/#{path}", content)) }
     end
 
-    # Places an entry the build adds, after any folder above it that is
-    # not there yet. A folder already there stays; any other entry already
-    # there is the runtime's, which nothing the build adds may replace.
+    # Places an entry of the runtime, the app, or the build, at its place
+    # in the built app: where it is, or in a bundle's +Resources+.
     private def add(writer, entry)
+      bundle = @bundle
+      put(writer, bundle ? entry.with(path: bundle.resource(entry.path)) : entry)
+    end
+
+    # Places +entry+, whose path is in the built app's folder, after any
+    # folder above it that is not there yet. A folder already there stays;
+    # any other entry already there is the runtime's, which nothing the
+    # build adds may replace.
+    private def put(writer, entry)
       parents = entry.path.split("/")[0...-1] || []
       parents.each_index do |index|
         parent = parents.first(index + 1).join("/")
@@ -248,6 +311,7 @@ module Fledge
       entry.write_into(folder)
       writer.add(entry.with(path: "#{base_name}/#{entry.path}"))
       @placed[entry.path] = true
+      @bundle&.seal(entry)
     end
   end
 end

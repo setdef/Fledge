@@ -11,7 +11,20 @@ require_relative "support/zip_reader"
 
 class AssemblyTest < Minitest::Test
   LINUX = Fledge::Platform.find("x86_64-linux")
+  MACOS = Fledge::Platform.find("arm64-darwin")
   WINDOWS = Fledge::Platform.find("x64-mingw-ucrt")
+
+  # A windowed app with an icon, whose name has a space.
+  module WindowedApp
+    def self.write(dir)
+      root = FakeApp.write(dir, "window")
+      File.write(File.join(root, "fledge.yml"), "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\nicon: icon.png\n")
+      File.binwrite(File.join(root, "icon.png"), ICON)
+      root
+    end
+
+    ICON = Fledge::Png.new(width: 1024, height: 1024, pixels: ([40, 80, 160, 255] * (1024 * 1024)).pack("C*")).encode
+  end
   RUNTIME_FILES = %w[
     lib
     lib/current
@@ -112,8 +125,10 @@ class AssemblyTest < Minitest::Test
   end
 
   # Windows' layout differs from Unix's (Ruby's own tree in ruby\, not
-  # lib/ beside the launcher), but assembly does not care: it renames
-  # launcher.exe and copies the rest as the runtime holds it.
+  # lib/ beside the launcher), but assembly hardly cares: it renames
+  # launcher.exe, with the app's version information in it, and copies the
+  # rest as the runtime holds it, but for launcherw.exe, which a console
+  # app does not run.
   def test_a_windows_app_lands_in_a_folder_and_a_zip_with_the_exe_renamed
     Dir.mktmpdir do |dir|
       runtime = FakeRuntime.write(dir, WINDOWS, extra: [Fledge::Entry.file("ruby/bin/x64-ucrt-ruby400.dll", "MZ", mode: 0o755)])
@@ -124,13 +139,99 @@ class AssemblyTest < Minitest::Test
       assert_equal File.join(dir, "dist", "Hello-x64-mingw-ucrt.zip"), archive
       folder = File.join(dir, "dist", "Hello-x64-mingw-ucrt")
       assert_equal %w[Hello.exe app fledge.cfg ruby], Dir.children(folder).sort
-      assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Hello.exe"))
+      program = Fledge::WindowsProgram.new(File.binread(File.join(folder, "Hello.exe")))
+      assert_equal Fledge::WindowsProgram::CONSOLE, program.subsystem
+      assert_equal [[16, 1, 1033], [24, 1, 1033]], program.resources.keys
       members = ZipReader.read(archive).to_h { |member| [member.name, member] }
       assert_includes members.keys, "Hello-x64-mingw-ucrt/ruby/bin/x64-ucrt-ruby400.dll"
       assert_includes members.keys, "Hello-x64-mingw-ucrt/fledge.cfg"
-      assert_equal FakeRuntime::LAUNCHER, members.fetch("Hello-x64-mingw-ucrt/Hello.exe").data
+      assert_equal File.binread(File.join(folder, "Hello.exe")), members.fetch("Hello-x64-mingw-ucrt/Hello.exe").data
       assert_equal File.binread(File.join(app, "main.rb")), members.fetch("Hello-x64-mingw-ucrt/app/main.rb").data
       refute_path_exists File.join(dir, "dist", "Hello-x64-mingw-ucrt.tar.gz")
+    end
+  end
+
+  # A windowed app runs launcherw.exe, a GUI program, renamed, with its
+  # identity; fledge.cfg names its identifier for the launcher's
+  # AppUserModelID.
+  def test_a_windowed_windows_app_runs_the_gui_launcher
+    Dir.mktmpdir do |dir|
+      app = WindowedApp.write(dir)
+      assemble(dir, app, platform: WINDOWS)
+
+      folder = File.join(dir, "dist", "Hello Window-x64-mingw-ucrt")
+      assert_equal ["Hello Window.exe", "app", "fledge.cfg", "ruby"], Dir.children(folder).sort
+      program = Fledge::WindowsProgram.new(File.binread(File.join(folder, "Hello Window.exe")))
+      assert_equal Fledge::WindowsProgram::GUI, program.subsystem
+      assert_includes program.resources.keys, [14, 32_512, 1033]
+      assert_includes File.read(File.join(folder, "fledge.cfg")), "\nidentifier = com.example.HelloWindow\n"
+    end
+  end
+
+  def test_a_windowed_app_needs_a_runtime_with_a_windowed_launcher
+    Dir.mktmpdir do |dir|
+      runtime = File.join(dir, "old.tar.gz")
+      Fledge::TarGz.write(runtime) { |tar| tar.add(Fledge::Entry.file("top/launcher.exe", FakeRuntime::WINDOWS_CONSOLE, mode: 0o755)) }
+
+      error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir), platform: WINDOWS, runtime:) }
+      assert_equal "#{runtime} is not a Fledge runtime: it has no launcherw.exe", error.message
+    end
+  end
+
+  # A windowed app on macOS is an .app bundle: the launcher in MacOS, the
+  # runtime and the app in Resources, linked from MacOS where the launcher
+  # and Ruby look for them, an Info.plist and icon, and a seal, with the
+  # launcher signed for them.
+  def test_a_windowed_macos_app_is_a_signed_bundle
+    Dir.mktmpdir do |dir|
+      runtime = FakeRuntime.write(dir, MACOS, launcher: Programs.macho, extra: [Fledge::Entry.file("libexec/cert.pem", "pem")])
+      archive = assemble(dir, WindowedApp.write(dir), platform: MACOS, runtime:)
+
+      folder = File.join(dir, "dist", "Hello Window-arm64-darwin")
+      contents = File.join(folder, "Hello Window.app", "Contents")
+      assert_equal ["Hello Window.app"], Dir.children(folder)
+      assert_equal %w[Info.plist MacOS Resources _CodeSignature], Dir.children(contents).sort
+      assert_equal ["Hello Window", "app", "fledge.cfg", "lib", "libexec"], Dir.children(File.join(contents, "MacOS")).sort
+      %w[app fledge.cfg lib libexec].each do |name|
+        assert_equal "../Resources/#{name}", File.readlink(File.join(contents, "MacOS", name)), name unless Gem.win_platform?
+      end
+      assert_equal ["Hello Window.icns", "app", "fledge.cfg", "lib", "libexec"], Dir.children(File.join(contents, "Resources")).sort
+      plist = File.read(File.join(contents, "Info.plist"))
+      assert_includes plist, "<key>CFBundleIdentifier</key>\n\t<string>com.example.HelloWindow</string>"
+      assert_includes plist, "<key>CFBundleExecutable</key>\n\t<string>Hello Window</string>"
+      seal = File.read(File.join(contents, "_CodeSignature", "CodeResources"))
+      assert_includes seal, "<key>Resources/app/main.rb</key>"
+      assert_includes seal, "<key>MacOS/lib</key>"
+      refute_includes seal, "<key>MacOS/Hello Window</key>"
+
+      launcher = File.binread(File.join(contents, "MacOS", "Hello Window"))
+      expected = Fledge::AdHocSignature.new(identifier: "com.example.HelloWindow", info_plist: plist, code_resources: seal).sign(Programs.macho)
+      assert_equal expected, launcher
+      assert_equal 0o755, entries(archive).fetch("Hello Window-arm64-darwin/Hello Window.app/Contents/MacOS/Hello Window").mode
+      assert_equal :symlink, entries(archive).fetch("Hello Window-arm64-darwin/Hello Window.app/Contents/MacOS/lib").type
+    end
+  end
+
+  # A windowed app on Linux keeps the folder, with a desktop entry beside
+  # the program and its icons in the hicolor theme's folders.
+  def test_a_windowed_linux_app_has_a_desktop_entry_and_icons
+    Dir.mktmpdir do |dir|
+      assemble(dir, WindowedApp.write(dir))
+
+      folder = File.join(dir, "dist", "Hello Window-x86_64-linux")
+      assert_equal ["Hello Window", "app", "com.example.HelloWindow.desktop", "fledge.cfg", "lib", "share"], Dir.children(folder).sort
+      assert_includes File.read(File.join(folder, "com.example.HelloWindow.desktop")), "Exec=\"Hello Window\"\n"
+      assert_path_exists File.join(folder, "share/icons/hicolor/512x512/apps/com.example.HelloWindow.png")
+      assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Hello Window"))
+    end
+  end
+
+  # A console app on macOS stays a folder with the launcher as it came.
+  def test_a_console_macos_app_is_a_folder
+    Dir.mktmpdir do |dir|
+      assemble(dir, FakeApp.write(dir), platform: MACOS)
+
+      assert_equal FakeRuntime::LAUNCHER, File.read(File.join(dir, "dist", "Hello-arm64-darwin", "Hello"))
     end
   end
 
@@ -262,9 +363,10 @@ class AssemblyTest < Minitest::Test
   end
 
   def test_the_base_name_is_name_dash_platform
-    app = Fledge::App.new(root: "/x/hello", entry: "main.rb", name: "Hello", gemfile: nil, config: Fledge::Config.none)
-    assembly = Fledge::Assembly.new(app:, platform: LINUX, runtime: "r", out: "/o")
+    Dir.mktmpdir do |dir|
+      assembly = Fledge::Assembly.new(app: Fledge::App.at(FakeApp.write(dir)), platform: LINUX, runtime: "r", out: "/o")
 
-    assert_equal "Hello-x86_64-linux", assembly.base_name
+      assert_equal "Hello-x86_64-linux", assembly.base_name
+    end
   end
 end

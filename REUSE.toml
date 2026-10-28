@@ -13,6 +13,13 @@ path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock',
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "MIT-0"
 
+# The windowed example's icon, drawn by a script and saved as a PNG,
+# which has no place for a header.
+[[annotations]]
+path = 'examples/windowed_app/icon.png'
+SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-License-Identifier = "MIT-0"
+
 [[annotations]]
 path = 'README.rdoc'
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"

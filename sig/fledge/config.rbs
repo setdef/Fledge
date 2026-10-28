@@ -6,10 +6,19 @@ module Fledge
     FILE: String
     KEYS: Array[String]
     KNOWN: String
+    KINDS: Array[String]
+    IDENTIFIER: Regexp
+    IDENTIFIER_MAX: Integer
 
     attr_reader name: String?
+    attr_reader kind: String?
+    attr_reader identifier: String?
+    attr_reader version: String?
+    attr_reader icon: String?
+    attr_reader publisher: String?
+    attr_reader copyright: String?
 
-    def self.new: (name: String?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?) -> instance
 
     def self.none: () -> Config
 
@@ -19,6 +28,12 @@ module Fledge
 
     private def self.from: (Object data, String path) -> Config
 
-    private def self.name_from: (Object? value, String path) -> String?
+    private def self.text: (Hash[Object, Object] data, String key, String path, String example) -> String?
+
+    private def self.kind: (Hash[Object, Object] data, String path) -> String?
+
+    private def self.identifier: (Hash[Object, Object] data, String path) -> String?
+
+    private def self.version: (Hash[Object, Object] data, String path) -> String?
   end
 end

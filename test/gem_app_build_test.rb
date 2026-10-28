@@ -173,7 +173,7 @@ class GemAppBuildTest < Minitest::Test
       _, err, status = build("-t", "x86_64-linux", root)
 
       assert_equal 1, status
-      assert_equal "fledge build: #{File.join(root, 'fledge.yml')} has #{key}, which Fledge does not know. It knows only name.\n", err
+      assert_equal "fledge build: #{File.join(root, 'fledge.yml')} has #{key}, which Fledge does not know. It knows #{Fledge::Config::KNOWN}.\n", err
     end
   end
 

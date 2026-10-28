@@ -12,8 +12,9 @@ module Fledge
     attr_reader name: String
     attr_reader gemfile: String?
     attr_reader config: Config
+    attr_reader identity: Identity
 
-    def self.new: (root: String, entry: String, name: String, gemfile: String?, config: Config) -> instance
+    def self.new: (root: String, entry: String, name: String, gemfile: String?, config: Config, identity: Identity) -> instance
 
     def self.at: (String path, ?home: String) -> App
 

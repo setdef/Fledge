@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Identity < Data
+    DEFAULT_VERSION: String
+
+    attr_reader name: String
+    attr_reader kind: String
+    attr_reader identifier: String?
+    attr_reader version: String
+    attr_reader publisher: String?
+    attr_reader copyright: String?
+    attr_reader icon: Icon?
+
+    def self.new: (name: String, kind: String, identifier: String?, version: String, publisher: String?, copyright: String?, icon: Icon?) -> instance
+
+    def self.from: (config: Config, gemspec: Gem::Specification?, name: String, root: String) -> Identity
+
+    private def self.suggestion: (Gem::Specification? gemspec, String name) -> String
+
+    def windowed?: () -> bool
+  end
+end

@@ -4,6 +4,7 @@
 module Fledge
   class Assembly
     LAUNCHER: String
+    WINDOWED_LAUNCHER: String
     CONFIG: String
 
     @app: App
@@ -13,6 +14,7 @@ module Fledge
     @app_files: Hash[String, String]
     @files: Array[Entry]
     @placed: Hash[String, bool]
+    @bundle: MacBundle?
 
     def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry]) -> void
 
@@ -26,19 +28,27 @@ module Fledge
 
     private def build: () -> String
 
+    private def finish: (TarGz::Writer | Zip::Writer writer, Entry launcher) -> void
+
+    private def windows_program: (String content, String executable) -> String
+
+    private def launcher_name: () -> String
+
     private def folder: () -> String
 
     private def archive: () -> String
 
     private def remove_output: () -> void
 
-    private def copy_runtime: (TarGz::Writer | Zip::Writer writer) -> void
+    private def copy_runtime: (TarGz::Writer | Zip::Writer writer) -> Entry
 
-    private def runtime_path: (String path, String launcher) -> String
+    private def runtime_path: (String path) -> String
 
     private def copy_app: (TarGz::Writer | Zip::Writer writer) -> void
 
     private def add: (TarGz::Writer | Zip::Writer writer, Entry entry) -> void
+
+    private def put: (TarGz::Writer | Zip::Writer writer, Entry entry) -> void
 
     private def place: (TarGz::Writer | Zip::Writer writer, Entry entry) -> void
   end

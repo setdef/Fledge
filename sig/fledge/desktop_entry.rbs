@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class DesktopEntry
+    @identity: Identity
+
+    def initialize: (Identity identity) -> void
+
+    def entries: () -> Array[Entry]
+
+    def text: () -> String
+
+    def self.string: (String value) -> String
+
+    def self.exec: (String program) -> String
+  end
+end

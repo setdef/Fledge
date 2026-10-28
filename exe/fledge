@@ -37,6 +37,13 @@
 #     against the runtime's own Ruby, with your compiler, when the
 #     target is the platform you build on.
 #
+#     An app is console (it runs in a terminal) or windowed (it opens
+#     its own windows): a windowed app is an .app bundle on macOS,
+#     signed ad hoc, a program Windows starts without a console, and a
+#     folder with a desktop entry and icons on Linux. Every app carries
+#     the name, version, publisher, and icon fledge.yml gives, where
+#     each system shows them, on Windows in the program itself.
+#
 # COMMANDS
 #     build              Copy the program PATH (default: the current
 #                        directory) and its project into a runtime for
@@ -83,16 +90,32 @@
 #                        and cargo for a Rust extension. Elsewhere,
 #                        choose a precompiled build, or build on that
 #                        platform.
-#     ROOT/fledge.yml    Optional. name: the app's name, such as
-#                        name: MyCoolApp.
+#     ROOT/fledge.yml    Optional, a YAML mapping of:
+#                        name: the app's name (default: the gemspec's
+#                          name, or ROOT's folder name, camelized)
+#                        kind: console (default) or windowed
+#                        identifier: the app's reverse-DNS name, such as
+#                          com.example.MyCoolApp, which macOS and
+#                          Windows know it by (needed when windowed)
+#                        version: such as "1.2.3" (default: the
+#                          gemspec's, or 0.0.0)
+#                        icon: a square PNG of at least 1024x1024
+#                          pixels, such as icon.png, made into each
+#                          system's icons
+#                        publisher: who makes it (default: the
+#                          gemspec's authors)
+#                        copyright: such as "© 2026 Example, Inc."
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        NAME is the gemspec's name, or else ROOT's
 #                        folder name, camelized (my_cool_app is
 #                        MyCoolApp), unless fledge.yml names it. NAME
 #                        is also the program to run (NAME.exe on
-#                        Windows). It runs app/PROGRAM as ruby, or
-#                        bundle exec, would, and exits with its status,
-#                        or with 66 when it is missing and 70 when the
+#                        Windows), or, for a windowed app on macOS,
+#                        the bundle NAME.app; a windowed Linux app has
+#                        IDENTIFIER.desktop and share/icons/ beside
+#                        it. It runs app/PROGRAM as ruby, or bundle
+#                        exec, would, and exits with its status, or
+#                        with 66 when it is missing and 70 when the
 #                        rest of the folder is broken. Its notices/
 #                        holds the licenses of what Fledge put in it;
 #                        each gem keeps its own in its folder. A new

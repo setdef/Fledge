@@ -19,6 +19,7 @@ module Gem
     attr_accessor extensions: Array[String]
     attr_accessor licenses: Array[String]
     attr_accessor homepage: String?
+    attr_accessor authors: Array[String]
     attr_accessor installed_by_version: Gem::Version | String
 
     def required_ruby_version: () -> Gem::Requirement

@@ -20,6 +20,8 @@ class LicensePolicyTest < Minitest::Test
       "Unicode-DFS-2016" => :notice_only,
       "WTFPL" => :notice_only,
       "LGPL-3.0-or-later OR GPL-2.0-or-later" => :shared_library,
+      "Zlib AND bzip2-1.0.6 AND CPL-1.0" => :source_offer,
+      "CPL-1.0 AND LGPL-2.1-only" => :shared_library,
       "(MIT OR LGPL-2.1-or-later) AND Apache-2.0" => :notice_only,
       "GPL-2.0-only" => :forbidden,
       "AGPL-3.0-or-later" => :forbidden,

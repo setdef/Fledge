@@ -93,6 +93,7 @@ class LicenseAudit
       when "libxcrypt" then libxcrypt_text(pin)
       when "appimage-runtime" then appimage_runtime_text(pin)
       when "libfuse" then libfuse_text(pin)
+      when "nsis" then nsis_text(pin)
       when "gmp" then gmp_text(pin)
       else raise "no build instructions for #{entry.fetch('id')}"
       end
@@ -163,6 +164,26 @@ class LicenseAudit
         scripts/common/install-dependencies.sh builds it with meson, as a static
         library; ../appimage-runtime/BUILD.txt says how to rebuild the runtime
         with it, or with another libfuse.
+      BUILD
+    end
+
+    private def nsis_text(pin)
+      source = pin.fetch("source")
+      binary = pin.fetch("binary")
+      <<~BUILD
+        tools/nsis/ in Fledge #{@version}'s #{@platform} runtime holds files of NSIS
+        #{pin.fetch('version')}'s release for Windows, #{File.basename(binary.fetch('url'))} (SHA-256
+        #{binary.fetch('sha256')}, from #{binary.fetch('url')}),
+        unchanged: makensis, which fledge build runs to compile an app's setup
+        program, and the stub, plug-ins, and Modern UI it compiles one from.
+        NSIS built that release from #{File.basename(source.fetch('url'))}, which is in
+        this folder (SHA-256 #{source.fetch('sha256')}, from
+        #{source.fetch('url')}).
+
+        Every setup program begins with NSIS's stub for solid LZMA compression,
+        whose LZMA module is under the Common Public License, version 1.0; its
+        section 3 asks that a program distributed in object code say that its
+        source is available and how to get it. This folder is that source.
       BUILD
     end
 

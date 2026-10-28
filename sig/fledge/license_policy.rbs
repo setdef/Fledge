@@ -3,11 +3,12 @@
 
 module Fledge
   module LicensePolicy
-    type category = :notice_only | :first_party | :file_level | :shared_library | :forbidden
+    type category = :notice_only | :first_party | :file_level | :source_offer | :shared_library | :forbidden
 
     NOTICE_ONLY: Array[String]
     FILE_LEVEL: Array[String]
     SHARED_LIBRARY: Array[String]
+    SOURCE_OFFER: Array[String]
     EXCEPTIONS: Array[String]
     ALIASES: Hash[String, String]
     CATEGORIES: Array[category]

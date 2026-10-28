@@ -8,10 +8,11 @@
 require_relative "test_helper"
 require "open3"
 
-# Fledge::Nsis: the script it writes, and, where FLEDGE_RUNTIME_DIR holds
-# the Windows runtime and this computer's makensis (as CI's test jobs
-# do), the installer that makensis compiles from it. Delivery installs a
-# real one on Windows (.github/scripts/deliver-installer.ps1).
+# Fledge::Nsis: the script it writes, and, on Windows, where
+# FLEDGE_RUNTIME_DIR holds the Windows runtime (as CI's Windows test job
+# does), the installer that the runtime's makensis compiles from it.
+# Delivery installs a real one on Windows
+# (.github/scripts/deliver-installer.ps1).
 class NsisTest < Minitest::Test
   def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4")
     Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.MyApp", version:, publisher:, copyright:, icon: nil)
@@ -34,7 +35,7 @@ class NsisTest < Minitest::Test
   # The installer of the app in @folder, whose files and folders it reads
   # from there.
   def setup_program(identity: self.identity)
-    Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe", makensis: "makensis")
+    Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe")
   end
 
   def script(**) = setup_program(**).script(icon: nil)
@@ -54,7 +55,7 @@ class NsisTest < Minitest::Test
     assert_equal "Unicode true", lines.first
     assert_includes lines, "RequestExecutionLevel user"
     assert_includes lines, "InstallDir \"$LOCALAPPDATA\\Programs\\My App\""
-    assert_includes lines, "SetCompressor /SOLID zlib"
+    assert_includes lines, "SetCompressor /SOLID lzma"
     assert_includes lines, "  File /r \"#{Fledge::Nsis.host_path(File.join(@folder, '*'))}\""
     assert_includes lines, "OutFile \"#{Fledge::Nsis.host_path("#{@folder}-setup.exe")}\""
   end
@@ -125,7 +126,7 @@ class NsisTest < Minitest::Test
 
   def test_a_runtime_without_nsis_is_refused
     Dir.mktmpdir do |dir|
-      nsis = Fledge::Nsis.new(identity:, folder: dir, to: File.join(dir, "setup.exe"), makensis: "makensis")
+      nsis = Fledge::Nsis.new(identity:, folder: dir, to: File.join(dir, "setup.exe"))
 
       assert_match(%r{the runtime has no tools/nsis}, assert_raises(Fledge::Error) { nsis.write(nil) }.message)
       assert_match(%r{the runtime has no tools/nsis}, assert_raises(Fledge::Error) { nsis.write(dir) }.message)
@@ -135,22 +136,19 @@ class NsisTest < Minitest::Test
   def test_makensis_compiles_the_installer
     runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
     windows = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")))
-    makensis = File.join(runtimes, Fledge::Runtimes.makensis_file_name(Fledge::Platform.local))
-    unless File.file?(windows) && File.file?(makensis)
-      flunk "no Windows runtime and makensis in #{runtimes}" if ENV["FLEDGE_REQUIRE_MAKENSIS"]
-      skip "makensis and the Windows runtime are in CI's FLEDGE_RUNTIME_DIR"
+    unless Gem.win_platform? && File.file?(windows)
+      flunk "no Windows runtime in #{runtimes}" if ENV["FLEDGE_REQUIRE_RUNTIME"] && Gem.win_platform?
+      skip "an NSIS installer is built on Windows, with the Windows runtime's NSIS"
     end
 
     Dir.mktmpdir do |dir|
       Fledge::Archive.unpack(windows, into: File.join(dir, "runtime"))
-      kit = File.join(Dir.glob(File.join(dir, "runtime", "*")).first.to_s, "tools")
+      tools = File.join(Dir.glob(File.join(dir, "runtime", "*")).first.to_s, "tools")
       folder = File.join(dir, "My App-x64-mingw-ucrt")
       Fledge::Entry.file("My App.exe", "MZ", mode: 0o755).write_into(folder)
-      program = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => runtimes, "XDG_CACHE_HOME" => File.join(dir, "cache") })
-        .makensis(Fledge::Platform.local)
-      nsis = Fledge::Nsis.new(identity:, folder:, to: "#{folder}-setup.exe", makensis: program)
+      nsis = Fledge::Nsis.new(identity:, folder:, to: "#{folder}-setup.exe")
 
-      path = nsis.write(kit)
+      path = nsis.write(tools)
       assert_equal "MZ", File.binread(path, 2)
       assert_includes File.binread(path), "My App Setup".encode(Encoding::UTF_16LE).b, "its version information names it"
     end

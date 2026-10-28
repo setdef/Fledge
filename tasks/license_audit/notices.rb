@@ -47,6 +47,7 @@ class LicenseAudit
         *present.map { |component| entry(component) },
         *first_party(present),
         *lgpl(present),
+        *published(present),
         "LICENSE TEXTS",
         "",
         *texts(present),
@@ -174,6 +175,39 @@ class LicenseAudit
         this app on may pass that bundle along with it, too.
 
       LGPL
+    end
+
+    # The components, but LGPL shared libraries, whose source Fledge
+    # publishes because their licenses ask for it: an LGPL library linked
+    # into another component, that component, and NSIS, whose LZMA module
+    # is under the Common Public License (ADR 010). Each is in an
+    # installer, never in the app's own folder: AppImage's runtime and
+    # what it links, or NSIS's stub, at the front of the app's setup
+    # program.
+    private def published(present)
+      components = present.select { |component| component.source && component.kind != "shared_library" }
+      return [] if components.empty?
+
+      bundle = "#{RELEASES}/v#{@version}/#{Notices.source_bundle(@version, @report.platform)}"
+      [
+        "SOURCE THAT FLEDGE PUBLISHES FOR THIS APP'S INSTALLER",
+        "",
+        *components.map { |component| published_entry(component, bundle) },
+      ]
+    end
+
+    private def published_entry(component, bundle)
+      <<~PUBLISHED
+        #{component.name}, version #{component.version}, is licensed under
+        #{component.license}. It ships as #{component.ships}.
+        Its complete source code, and how this copy was built from it, are at
+
+          #{bundle}
+
+        and its authors publish it at #{component.download}. Whoever passes
+        this app on may pass that bundle along with it, too.
+
+      PUBLISHED
     end
 
     private def texts(present)

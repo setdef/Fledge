@@ -125,15 +125,13 @@ class RuntimeBuilder
 
   # Every asset a release of +version+ publishes but SHA256SUMS, sorted:
   # each platform's #assets, and its source bundle only where the
-  # platform ships an LGPL library, and the makensis of each computer that
-  # builds apps (tasks/makensis_builder.rb). release.yml checks the
-  # release against it.
+  # platform ships a component whose source Fledge publishes. release.yml
+  # checks the release against it.
   def self.release_assets(version: Fledge::VERSION)
     Fledge::Platform.names.flat_map do |name|
       platform = Fledge::Platform.find(name)
       lgpl = !LicenseAudit::SourceBundle.new(platform: name, version:).components.empty?
-      files = new(platform:).assets(version:).filter_map { |kind, file| file if kind != :sources || lgpl }
-      files << Fledge::Runtimes.makensis_file_name(platform, version:)
+      new(platform:).assets(version:).filter_map { |kind, file| file if kind != :sources || lgpl }
     end.sort
   end
 

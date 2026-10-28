@@ -13,7 +13,6 @@ require_relative "../bundle"
 require_relative "../error"
 require_relative "../gem_fetcher"
 require_relative "../git_checkout"
-require_relative "../installers"
 require_relative "../native_build"
 require_relative "../platform"
 require_relative "../runtime_contents"
@@ -115,8 +114,7 @@ module Fledge
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
           runtime = runtimes.archive(platform)
           files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
-          makensis = Installers.formats(app, platform).include?("nsis") ? makensis(runtimes) : nil
-          assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, makensis:)
+          assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:)
           [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
         end
       end
@@ -132,14 +130,6 @@ module Fledge
         fetcher = GemFetcher.new(cache: File.join(cache, "gems"), project: app.root, log: @err)
         checkouts = GitCheckout.new(cache: File.join(cache, "git"), work:, log: @err)
         AppGems.new(app:, bundle: Bundle.new(app), fetcher:, checkouts:, compiler: compiler(runtimes, work))
-      end
-
-      # The NSIS compiler for this computer, which Fledge downloads beside
-      # its runtimes (Runtimes#makensis).
-      private def makensis(runtimes)
-        @makensis ||= runtimes.makensis(Platform.local(@host))
-      rescue Error => e
-        raise Error, "#{e.message}\nAn NSIS installer needs makensis for this computer; set installers in fledge.yml to build without one."
       end
 
       private def compiler(runtimes, work)

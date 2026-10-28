@@ -19,9 +19,10 @@ module Fledge
   # Start menu carries the AppUserModelID the app gives itself (ADR 008,
   # section 3), and only an installer makes one. People also expect an app
   # they install to be in Settings' list of apps, where they can remove
-  # it. NSIS, the installer Tauri's bundler writes by default, compiles
-  # with +makensis+, which runs on Linux and macOS too, so any computer
-  # still builds every platform (ADR 001; ADR 009).
+  # it. NSIS is the installer Tauri's bundler writes by default, and on
+  # Windows, where Windows apps are built (ADR 010), Tauri runs NSIS's own
+  # release, as Fledge does: the Windows runtime carries it in its tools
+  # folder, which no app holds.
   #
   # This class writes the installer as Tauri's <tt>installer.nsi</tt> does
   # for its default, per-user mode (<tt>currentUser</tt>), with what
@@ -39,9 +40,12 @@ module Fledge
   # A new version runs the old version's uninstaller first, as
   # electron-builder's do, so files a version no longer has do not linger;
   # the uninstaller deletes exactly the files and folders it installed,
-  # then the folder if it is empty. It compresses with zlib, whose NSIS
-  # module, unlike LZMA's (CPL-1.0), asks nothing of whoever ships it
-  # (decision 8).
+  # then the folder if it is empty. It compresses with LZMA, solid, NSIS's
+  # default and Tauri's; NSIS's LZMA module is under the Common Public
+  # License, whose request that a binary say where its source is
+  # available Fledge meets by publishing NSIS's source beside each Windows
+  # runtime and naming it in the app's notices, which the installer holds
+  # (ADR 010).
   #
   # Use it through Fledge::Installers, once the app's folder is built.
   #
@@ -52,8 +56,7 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   setup = Fledge::Nsis.new(identity:, folder: "dist/MyApp-x64-mingw-ucrt", to: "dist/MyApp-x64-mingw-ucrt-setup.exe",
-  #     makensis: "/home/you/.cache/fledge/makensis/makensis")
+  #   setup = Fledge::Nsis.new(identity:, folder: "dist/MyApp-x64-mingw-ucrt", to: "dist/MyApp-x64-mingw-ucrt-setup.exe")
   #   setup.write(tools) # => "dist/MyApp-x64-mingw-ucrt-setup.exe"
   #--
   # SPDX-SnippetEnd
@@ -65,16 +68,18 @@ module Fledge
     # The uninstaller's name in the app's folder, as Tauri names it.
     UNINSTALLER = "uninstall.exe"
 
+    # makensis's path in the runtime's NSIS: the release's own Windows
+    # program, in its Bin folder, beside the zlib1.dll it loads.
+    MAKENSIS = File.join("Bin", "makensis.exe")
+
     # Creates the installer of the app whose Fledge::Identity is +identity+.
     #
     # [folder] The built app's folder, which the installer copies.
     # [to] The installer's path.
-    # [makensis] The path of the NSIS compiler to run.
-    def initialize(identity:, folder:, to:, makensis:)
+    def initialize(identity:, folder:, to:)
       @identity = identity
       @folder = folder
       @to = to
-      @makensis = makensis
     end
 
     # The installer's NSIS script, which installs every file and folder in
@@ -113,10 +118,11 @@ module Fledge
     end
 
     # Compiles the installer with the NSIS in +tools+, the runtime's
-    # tools folder (its <tt>nsis/Stubs</tt>, <tt>nsis/Plugins</tt>,
-    # <tt>nsis/Include</tt>, and <tt>nsis/Contrib</tt>), and returns its
-    # path. Raises Fledge::Error when the runtime has no NSIS, or makensis
-    # cannot run or refuses the script.
+    # tools folder: NSIS's own release, its makensis and the stubs,
+    # plug-ins, headers, and Modern UI it compiles from, in
+    # <tt>tools/nsis</tt>. Returns the installer's path. Raises
+    # Fledge::Error when the runtime has no NSIS, or makensis cannot run or
+    # refuses the script.
     #
     # === Example
     #
@@ -131,7 +137,7 @@ module Fledge
     #++
     def write(tools)
       nsis = tools && File.join(tools, "nsis")
-      raise Error, "the runtime has no tools/nsis, which Windows runtimes carry from Fledge 0.0.1.pre.8 on" unless nsis && File.directory?(nsis)
+      raise Error, "the runtime has no tools/nsis, which Windows runtimes carry from Fledge 0.0.1.pre.8 on" unless nsis && File.file?(File.join(nsis, MAKENSIS))
 
       Dir.mktmpdir("fledge-nsis") do |work|
         script_path = File.join(work, "setup.nsi")
@@ -163,7 +169,7 @@ module Fledge
     end
 
     private def compile(script_path, nsis)
-      command = [@makensis, "-V2", "-NOCD", "-NOCONFIG", "-INPUTCHARSET", "UTF8", Nsis.host_path(script_path)]
+      command = [File.join(nsis, MAKENSIS), "-V2", "-NOCD", "-NOCONFIG", "-INPUTCHARSET", "UTF8", Nsis.host_path(script_path)]
       output, status = Open3.capture2e({ "NSISDIR" => Nsis.host_path(nsis) }, *command)
       return if status.success? && File.file?(@to)
 

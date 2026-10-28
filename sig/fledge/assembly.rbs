@@ -14,12 +14,11 @@ module Fledge
     @out: String
     @app_files: Hash[String, String]
     @files: Array[Entry]
-    @makensis: String?
     @installers: Array[String]
 
     attr_reader installers: Array[String]
 
-    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?makensis: String?) -> void
+    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry]) -> void
 
     def base_name: () -> String
 

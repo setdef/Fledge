@@ -8,6 +8,7 @@
 require "fileutils"
 require "tmpdir"
 require_relative "command"
+require_relative "mac_bundle"
 
 module Fledge
   # A macOS app's disk image: the <tt>.dmg</tt> a person downloads,
@@ -63,11 +64,11 @@ module Fledge
     #++
     def self.write(bundle, name:, to:)
       Dir.mktmpdir("fledge-dmg") do |stage|
-        Command.run("ditto", bundle, File.join(stage, File.basename(bundle)), install: "It comes with macOS.")
+        Command.run("ditto", bundle, File.join(stage, File.basename(bundle)), install: MacBundle::INSTALL)
         File.symlink("/Applications", File.join(stage, APPLICATIONS))
         FileUtils.rm_f(to)
         Command.run("hdiutil", "create", "-volname", name, "-srcfolder", stage, "-fs", "HFS+", "-format", "UDZO", "-ov", to,
-          install: "It comes with macOS.")
+          install: MacBundle::INSTALL)
       end
       to
     end

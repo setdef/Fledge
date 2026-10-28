@@ -56,7 +56,9 @@ module Fledge
     # Unicode-3.0 and Unicode-DFS-2016, the Unicode data licenses that
     # ICU4X's Rust crates and unicode-ident carry, ask that the copyright
     # and permission notice go with every copy, and nothing more. WTFPL,
-    # the terminfo crate's, asks nothing at all.
+    # the terminfo crate's, asks nothing at all. bzip2-1.0.6, the license
+    # of the bzip2 module in NSIS's makensis, asks that a binary
+    # reproduce its notice, and nothing more.
     NOTICE_ONLY = %w[
       0BSD
       Apache-2.0
@@ -64,6 +66,7 @@ module Fledge
       BSD-2-Clause
       BSD-3-Clause
       BSL-1.0
+      bzip2-1.0.6
       CC-BY-2.5
       CC0-1.0
       ISC
@@ -89,8 +92,14 @@ module Fledge
     FILE_LEVEL = %w[EPL-2.0 MPL-2.0].freeze
 
     # Allowed only for a runtime component that ships as its own shared
-    # library, with its source published.
+    # library, with its source published, or that is linked into another
+    # component whose source Fledge publishes too.
     SHARED_LIBRARY = %w[LGPL-2.1-only LGPL-2.1-or-later LGPL-3.0-only LGPL-3.0-or-later].freeze
+    # Licenses that ask whoever distributes a binary to say where its
+    # source is: allowed for a runtime component whose source Fledge
+    # publishes beside the runtime and names in its notices, as NSIS's
+    # LZMA module's Common Public License asks (CPL-1.0, section 3).
+    SOURCE_OFFER = %w[CPL-1.0].freeze
 
     # Exceptions that make a GPL runtime library's code notice-only, or
     # less, inside a program compiled with it.
@@ -101,7 +110,7 @@ module Fledge
     ALIASES = { "BSDL" => "BSD-2-Clause", "PSFL" => "PSF-2.0" }.freeze
 
     # The verdicts, from least restrictive to most.
-    CATEGORIES = %i[notice_only first_party file_level shared_library forbidden].freeze
+    CATEGORIES = %i[notice_only first_party file_level source_offer shared_library forbidden].freeze
 
     # The verdict on the SPDX expression +expression+: one of CATEGORIES.
     # With +first_party+, AGPL-3.0-or-later is Fledge's own and
@@ -262,6 +271,7 @@ module Fledge
         return :notice_only if NOTICE_ONLY.include?(id)
         return :first_party if @first_party && id == "AGPL-3.0-or-later"
         return :file_level if FILE_LEVEL.include?(id)
+        return :source_offer if SOURCE_OFFER.include?(id)
         return :shared_library if SHARED_LIBRARY.include?(id)
 
         :forbidden

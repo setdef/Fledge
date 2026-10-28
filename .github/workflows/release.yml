@@ -11,13 +11,12 @@
 #   fledge-runtime-VERSION-PLATFORM.spdx.json           its SPDX 2.3 SBOM
 #   fledge-runtime-VERSION-PLATFORM-NOTICES.txt         its notices
 #   fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz the source of its
-#                                                       LGPL libraries
+#                                                       LGPL libraries and
+#                                                       of what its licenses
+#                                                       ask the source of
 #                                                       (Linux, Windows)
 #   fledge-runtime-VERSION-PLATFORM-dev.tar.gz          its build-only
 #                                                       companion
-#   fledge-makensis-VERSION-PLATFORM.tar.gz             NSIS's compiler for
-#                                                       computers of the
-#                                                       platform (ADR 009)
 #
 # and a SHA256SUMS over all of them. fledge build at that version
 # downloads its runtimes from this release, by the names
@@ -30,8 +29,8 @@
 # long as their apps are out (doc/licensing.md).
 #
 # After publishing, it installs Fledge from the tag on a fresh runner of
-# each platform and builds and delivers hello with runtimes downloaded
-# from the release itself (installed.yml).
+# each platform and builds and delivers the examples there with runtimes
+# downloaded from the release itself (installed.yml).
 #
 # Before 1.0, agents may push tags and create releases (AGENTS.md,
 # Releasing; decision 6 in doc/contributors/decisions.md), on a commit
@@ -94,12 +93,6 @@ jobs:
           merge-multiple: true
           path: release
 
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: makensis-*
-          merge-multiple: true
-          path: release
-
       # Every name fledge build and each runtime's NOTICES will ask for
       # must be here, and nothing else: the names come from
       # Fledge::Runtimes and RuntimeBuilder#assets, the code that uses
@@ -114,7 +107,7 @@ jobs:
       - name: Write SHA256SUMS
         working-directory: release
         run: |
-          sha256sum fledge-runtime-* fledge-makensis-* > SHA256SUMS
+          sha256sum fledge-runtime-* > SHA256SUMS
           cat SHA256SUMS
           sha256sum -c SHA256SUMS
 
@@ -126,8 +119,8 @@ jobs:
           prerelease=()
           case "$VERSION" in *pre*) prerelease=(--prerelease) ;; esac
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" --title "Fledge $TAG" \
-            --notes "Runtimes for fledge build at $TAG, each with its SPDX SBOM and NOTICES, and the source of the LGPL libraries the Linux and Windows runtimes ship, and makensis, which builds a Windows app's installer, for each computer that builds apps. What Fledge puts into each platform's app and installer, and what its licenses ask of you: doc/licensing.md at $TAG. What changed: CHANGELOG.md." \
-            release/fledge-runtime-* release/fledge-makensis-* release/SHA256SUMS
+            --notes "Runtimes for fledge build at $TAG, one per platform, each to build that platform's apps on a computer of that platform, with its SPDX SBOM and NOTICES; and, for Linux and Windows, the source the runtime's licenses ask for: its LGPL libraries', AppImage's runtime's, and NSIS's. What Fledge puts into each platform's app and installer, and what its licenses ask of you: doc/licensing.md at $TAG. What changed: CHANGELOG.md." \
+            release/fledge-runtime-* release/SHA256SUMS
 
   installed:
     name: Installed from the tag

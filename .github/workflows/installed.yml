@@ -8,11 +8,11 @@
 # cache, downloads that version's runtime from the GitHub Release and
 # checks it against the release's SHA256SUMS, and, to compile
 # examples/native_app's gems from source, its build-only companion; and
-# each app it builds is delivered as CI delivers every push's (.github/scripts/deliver.sh, or
-# deliver.ps1 on Windows). The windowed app's installer, which needs, on
-# Windows, the release's makensis for the computer, is installed and its
-# app run, as CI installs every push's (ADR 009). Another job downloads
-# every asset of the release and checks it against SHA256SUMS.
+# each app it builds is delivered as CI delivers every push's
+# (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the
+# runtime's own tools, is installed and its app run, as CI installs every
+# push's (ADR 009 and ADR 010). Another job downloads every asset of the
+# release and checks it against SHA256SUMS.
 #
 # release.yml calls this after it publishes a release; run it by hand
 # (workflow_dispatch) to check any published tag again.
@@ -181,7 +181,6 @@ jobs:
       # from the release, checked against its SHA256SUMS.
       - name: Build hello, my_cool_app, windowed_app, and the parity probe with runtimes from the release
         env:
-          PLATFORM: ${{ matrix.platform }}
           TAG: ${{ inputs.tag }}
         run: |
           unset FLEDGE_RUNTIME_DIR
@@ -193,14 +192,11 @@ jobs:
           cat "$RUNNER_TEMP/build.err"
           grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/build.err"
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" "$RUNNER_TEMP/build.err"
-          if [ "$PLATFORM" = x64-mingw-ucrt ]; then grep -F "Downloading fledge-makensis-" "$RUNNER_TEMP/build.err"; fi
           ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
 
       # Compiling a gem downloads the runtime's build-only companion from
       # the release too (ADR 006).
       - name: Build native_app from source with the release's build-only companion
-        env:
-          PLATFORM: ${{ matrix.platform }}
         run: |
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"

@@ -38,8 +38,8 @@ module Fledge
   # <tt>Contents/MacOS</tt>. So the launcher's neighbors live in
   # +Resources+, and LINKED names symbolic links in +MacOS+ that point at
   # them. Then it writes <tt>Info.plist</tt> with +plutil+ and signs the
-  # bundle ad hoc with +codesign+, which seals every file, as Xcode's
-  # command line tools do on every Mac that builds Mac apps (ADR 010).
+  # bundle ad hoc with +codesign+, which seals every file; both come with
+  # macOS (ADR 010).
   #
   # Use it through Fledge::Assembly.
   #
@@ -61,8 +61,9 @@ module Fledge
     # +MacOS+ to +Resources+ when the runtime or the build has them.
     LINKED = %w[app bin fledge.cfg lib libexec].freeze
 
-    # What to do when this Mac has no codesign or plutil.
-    INSTALL = "Install Xcode's command line tools: xcode-select --install."
+    # What to say when this Mac has no codesign or plutil, which every
+    # macOS has in /usr/bin.
+    INSTALL = "It comes with macOS, in /usr/bin."
 
     # Creates the bundle of the app whose Fledge::Identity is +identity+,
     # in the built app's folder +folder+.

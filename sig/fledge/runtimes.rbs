@@ -20,17 +20,11 @@ module Fledge
 
     def self.dev_file_name: (Platform platform, ?version: String) -> String
 
-    def self.makensis_file_name: (Platform host, ?version: String) -> String
-
     def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?) -> void
 
     def archive: (Platform platform) -> String
 
     def dev_archive: (Platform platform) -> String
-
-    def makensis: (Platform host) -> String
-
-    private def unpack: (String archive, String top, String folder) -> void
 
     private def find: (String name) -> String
 

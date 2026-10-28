@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
-require "fileutils"
 require_relative "download"
 require_relative "entry"
 require_relative "error"
@@ -102,30 +101,6 @@ module Fledge
       "#{File.basename(file_name(platform, version:), EXTENSION)}-dev#{EXTENSION}"
     end
 
-    # The file name of the NSIS compiler, +makensis+, for computers of the
-    # platform +host+, at +version+ (default: this Fledge's version). NSIS
-    # publishes makensis only for Windows, so Fledge's CI builds it from
-    # NSIS's source for macOS and Linux and publishes each beside the
-    # runtimes (ADR 009). It runs on the computer that builds an app, and
-    # never ships in one: what an installer holds of NSIS is in the
-    # Windows runtime.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   Fledge::Runtimes.makensis_file_name(Fledge::Platform.find("x86_64-linux"), version: "0.1.0")
-    #   # => "fledge-makensis-0.1.0-x86_64-linux.tar.gz"
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def self.makensis_file_name(host, version: VERSION)
-      "fledge-makensis-#{version}-#{host}#{EXTENSION}"
-    end
-
     # Creates the finder.
     #
     # [env] The environment to read +FLEDGE_RUNTIME_DIR+,
@@ -177,43 +152,6 @@ module Fledge
     #++
     def dev_archive(platform)
       find(self.class.dev_file_name(platform))
-    end
-
-    # The path of the NSIS compiler for computers of the platform +host+,
-    # unpacked once into a folder beside its archive
-    # (Runtimes.makensis_file_name), which is found and downloaded as
-    # #archive finds and downloads a runtime. Raises Fledge::Error when it
-    # cannot be found or downloaded.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   Fledge::Runtimes.new.makensis(Fledge::Platform.local)
-    #   # => "/home/you/.cache/fledge/runtimes/fledge-makensis-0.0.0-x86_64-linux/makensis"
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def makensis(host)
-      archive = find(self.class.makensis_file_name(host))
-      top = File.basename(archive, EXTENSION)
-      folder = File.join(cache, top)
-      program = File.join(folder, host.executable("makensis"))
-      return program if File.file?(program) && File.mtime(program) >= File.mtime(archive)
-
-      unpack(archive, top, folder)
-      program
-    end
-
-    private def unpack(archive, top, folder)
-      FileUtils.rm_rf(folder)
-      tops = Archive.names(archive).map { |name| name.split("/", 2).first }.uniq
-      raise Error, "#{archive} is not Fledge's makensis: it holds #{tops.join(', ')}, not #{top}/" unless tops == [top]
-
-      Archive.unpack(archive, into: File.dirname(folder))
     end
 
     private def find(name)

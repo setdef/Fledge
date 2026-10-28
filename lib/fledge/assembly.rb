@@ -101,16 +101,13 @@ module Fledge
     #             beside the rest.
     # [files] More entries for the built folder, with paths relative to
     #         it, which may not replace anything the runtime holds.
-    # [makensis] The NSIS compiler, for a Windows app's NSIS installer, or
-    #            +nil+ when there is none to build.
-    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], makensis: nil)
+    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [])
       @app = app
       @platform = platform
       @runtime = runtime
       @out = out
       @app_files = app_files
       @files = files
-      @makensis = makensis
       @installers = [] # : Array[String]
     end
 
@@ -223,7 +220,7 @@ module Fledge
         bundle ? bundle.finish(launcher) : place_launcher(launcher, tools)
         Archive.pack(folder, to: archive)
         @installers = Installers.formats(@app, @platform).map do |format|
-          Installers.write(format, app: @app, folder:, tools:, makensis: @makensis)
+          Installers.write(format, app: @app, folder:, tools:)
         end
       end
       archive

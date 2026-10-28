@@ -93,7 +93,6 @@ module Fledge
     # beside it, and returns its path.
     #
     # [tools] The runtime's tools folder, or +nil+ when it has none.
-    # [makensis] The NSIS compiler, which an NSIS installer needs.
     #
     # === Example
     #
@@ -102,21 +101,18 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::Installers.write("dmg", app:, folder: "dist/MyApp-arm64-darwin", tools: nil, makensis: nil)
+    #   Fledge::Installers.write("dmg", app:, folder: "dist/MyApp-arm64-darwin", tools: nil)
     #   # => "dist/MyApp-arm64-darwin.dmg"
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(format, app:, folder:, tools:, makensis:)
+    def self.write(format, app:, folder:, tools:)
       to = file_name(format, folder)
       identity = app.identity
       case format
       when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:)
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
-      else
-        raise Error, "an NSIS installer needs makensis, which fledge build could not find" unless makensis
-
-        Nsis.new(identity:, folder:, to:, makensis:).write(tools)
+      else Nsis.new(identity:, folder:, to:).write(tools)
       end
     end
   end

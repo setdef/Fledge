@@ -15,7 +15,9 @@ class LicenseAudit
   # 010), so whoever receives an app can rebuild that component with
   # another copy of the library (LGPL-2.1, section 6(a)). An LGPL library
   # is never allowed linked into the program an app's developer ships as
-  # their own, the launcher.
+  # their own, the launcher. A license that asks only that a binary say
+  # where its source is (CPL-1.0, NSIS's LZMA module's) is allowed when
+  # Fledge publishes the component's source.
   class Policy
     # A policy that reads source pins from +sources+ (runtime/sources.yml)
     # and reports each violation to +violate+, with its rule, path, and
@@ -36,6 +38,10 @@ class LicenseAudit
         return if component.kind == "files"
 
         @violate.call("policy", where, "#{component.id} is #{component.license}, allowed only for unmodified files, but ships as #{component.kind}")
+      when :source_offer
+        return if published?(component)
+
+        @violate.call("policy", where, "#{component.id} is #{component.license}, which asks for its source, and needs a source pin in runtime/sources.yml")
       when :shared_library
         check_shared_library(component, report, where)
       else

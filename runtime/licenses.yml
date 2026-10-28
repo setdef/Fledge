@@ -345,17 +345,23 @@ components:
       - files: [tools/appimage-runtime]
         evidence: "GCC: (Alpine 14.2.0) 14.2.0"
 
+  # NSIS: zlib-licensed, but for its compressors' modules, bzip2's in
+  # makensis and LZMA's, under the Common Public License, in makensis and
+  # the stub every installer begins with. The CPL asks that a binary say
+  # where its source is; Fledge publishes NSIS's source (source).
   - id: nsis
-    name: NSIS, whose stubs, plug-ins, and Modern UI make an app's setup program
+    name: NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program
     version: "3.13"
-    license: Zlib
+    license: Zlib AND bzip2-1.0.6 AND CPL-1.0
     kind: program
     download: https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-src.tar.bz2
     notice: nsis
-    ships: tools/nsis/, which fledge build compiles into the app's setup program, and never in its folder or archive
+    source: nsis
+    ships: tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive
     platforms: [x64-mingw-ucrt]
     files: ["tools/nsis/**"]
-    binaries: ["tools/nsis/Stubs/zlib{,_solid}-x86-unicode", "tools/nsis/Plugins/x86-unicode/*.dll", "tools/nsis/Contrib/UIs/*.exe"]
+    binaries: ["tools/nsis/Bin/{makensis.exe,zlib1.dll}", "tools/nsis/Stubs/lzma_solid-x86-unicode", "tools/nsis/Plugins/x86-unicode/*.dll",
+      "tools/nsis/Contrib/UIs/*.exe"]
 
   - id: rcedit
     name: rcedit, which fledge build runs to write an app's version information and icon into its program

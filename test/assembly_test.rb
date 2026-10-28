@@ -51,9 +51,9 @@ class AssemblyTest < Minitest::Test
   # What a runtime keeps for installers, in its installer folder.
   APPIMAGE_RUNTIME = Fledge::Entry.file("tools/appimage-runtime", "\x7FELF runtime".b, mode: 0o755)
 
-  def assemble(dir, app_root, platform: LINUX, runtime: FakeRuntime.write(dir, platform), app_files: {}, files: [], makensis: nil)
+  def assemble(dir, app_root, platform: LINUX, runtime: FakeRuntime.write(dir, platform), app_files: {}, files: [])
     out = File.join(dir, "dist")
-    Fledge::Assembly.new(app: Fledge::App.at(app_root), platform:, runtime:, out:, app_files:, files:, makensis:).call
+    Fledge::Assembly.new(app: Fledge::App.at(app_root), platform:, runtime:, out:, app_files:, files:).call
   end
 
   # The archive at +archive+, unpacked by the system's tar into a folder
@@ -336,12 +336,14 @@ class AssemblyTest < Minitest::Test
     end
   end
 
-  def test_an_nsis_installer_without_makensis_fails_and_leaves_nothing
+  # The fake Windows runtime has the real runtime's launchers and rcedit
+  # but no NSIS, so its installer fails, and leaves nothing behind.
+  def test_a_windows_runtime_without_nsis_fails_and_leaves_nothing
     windows!
     Dir.mktmpdir do |dir|
       error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir, installers: "[nsis]"), platform: WINDOWS) }
 
-      assert_includes error.message, "an NSIS installer needs makensis"
+      assert_includes error.message, "the runtime has no tools/nsis"
       assert_empty Dir.glob(File.join(dir, "dist", "*"))
     end
   end

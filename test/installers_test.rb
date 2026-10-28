@@ -50,14 +50,4 @@ class InstallersTest < Minitest::Test
     assert_equal ["A-arm64-darwin.dmg", "A-x64-mingw-ucrt-setup.exe", "A-aarch64-linux.AppImage"],
       [["dmg", MACOS], ["nsis", WINDOWS], ["appimage", LINUX]].map { |format, platform| Fledge::Installers.file_name(format, "A-#{platform}") }
   end
-
-  def test_nsis_needs_makensis
-    Dir.mktmpdir do |dir|
-      windowed = app(dir, "kind: windowed\nidentifier: com.example.Hello\n")
-      folder = File.join(dir, "Hello-x64-mingw-ucrt")
-
-      error = assert_raises(Fledge::Error) { Fledge::Installers.write("nsis", app: windowed, folder:, tools: nil, makensis: nil) }
-      assert_equal "an NSIS installer needs makensis, which fledge build could not find", error.message
-    end
-  end
 end

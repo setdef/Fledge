@@ -151,6 +151,27 @@ class LicenseAuditTest < Minitest::Test
     FileUtils.rm_f(path) if path
   end
 
+  # NSIS's LZMA module is under the Common Public License, which asks that
+  # a binary say where its source is: NSIS ships only with its source
+  # pinned, which Fledge publishes.
+  def test_a_component_whose_license_asks_for_its_source_needs_its_source_published
+    write("tools/nsis/COPYING", "NSIS is under the zlib/libpng license\n")
+    map = YAML.safe_load_file(LicenseAudit::MAP)
+    nsis = map.fetch("components").find { |entry| entry.fetch("id") == "nsis" }
+    nsis["platforms"] << "x86_64-linux"
+    path = File.join(@tree, "..", "#{File.basename(@tree)}-map.yml")
+    File.write(path, map.to_yaml)
+    published = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, map: path, fledge_version: "0.0.0").call
+    assert_empty published.violations.map(&:to_s)
+
+    nsis.delete("source")
+    File.write(path, map.to_yaml)
+    unpublished = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, map: path, fledge_version: "0.0.0").call
+    assert_includes unpublished.violations.map { |violation| [violation.rule, violation.path] }, ["policy", "tools/nsis/COPYING"]
+  ensure
+    FileUtils.rm_f(path) if path
+  end
+
   def test_a_library_neither_the_system_nor_the_runtime_provides_fails
     write("launcher", Binaries.elf(needed: %w[libreadline.so.8 libc.so.6], payload: "3e93b23afc #{RUST}"))
 

@@ -70,17 +70,20 @@ class RuntimeBuilder
       FileUtils.chmod(0o755, to)
     end
 
-    # What of NSIS's release an installer is compiled from (ADR 009): the
-    # stubs of zlib compression, whose module is under NSIS's zlib/libpng
-    # license (LZMA's is CPL-1.0, which asks more than notices), and the
-    # uninstaller's icon; the System plug-in, which sets the Start menu
-    # shortcut's AppUserModelID, and nsDialogs, which Modern UI's pages
-    # use; the script headers; and Modern UI 2 with its dialogs, graphics,
-    # and language files. NSIS's own makensis is not here: it runs on the
-    # computer that builds an app (Fledge::Runtimes#makensis).
+    # What of NSIS's release fledge build compiles an installer with (ADR
+    # 009 and ADR 010): its license; makensis, the release's own Windows
+    # program, and the zlib1.dll it loads; the stubs of solid LZMA
+    # compression, NSIS's default and Tauri's, and the uninstaller's icon;
+    # the System plug-in, which sets the Start menu shortcut's
+    # AppUserModelID, and nsDialogs, which Modern UI's pages use; the
+    # script headers; and Modern UI 2 with its dialogs, graphics, and
+    # language files. NSIS's source, which LZMA's license (CPL-1.0) asks
+    # be available, is in each Windows release's source bundle.
     NSIS = [
-      "Stubs/zlib-x86-unicode",
-      "Stubs/zlib_solid-x86-unicode",
+      "COPYING",
+      "Bin/makensis.exe",
+      "Bin/zlib1.dll",
+      "Stubs/lzma_solid-x86-unicode",
       "Stubs/uninst",
       "Plugins/x86-unicode/System.dll",
       "Plugins/x86-unicode/nsDialogs.dll",

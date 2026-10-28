@@ -5,13 +5,13 @@ module Fledge
   class Nsis
     UNINSTALL_KEY: String
     UNINSTALLER: String
+    MAKENSIS: String
 
     @identity: Identity
     @folder: String
     @to: String
-    @makensis: String
 
-    def initialize: (identity: Identity, folder: String, to: String, makensis: String) -> void
+    def initialize: (identity: Identity, folder: String, to: String) -> void
 
     def script: (icon: String?) -> String
 

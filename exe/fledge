@@ -48,6 +48,13 @@
 #     Start menu shortcut Windows needs before it shows the app's
 #     notifications, and an AppImage for Linux.
 #
+#     Each system's own tools do the work. macOS has them all (tar,
+#     plutil, codesign, ditto, hdiutil). Windows 10 and 11 have tar;
+#     the runtime brings rcedit, for a program's version information
+#     and icon, and NSIS, for a setup program. Linux has tar, and an
+#     AppImage needs squashfs-tools' mksquashfs (4.4 or newer). A
+#     missing tool fails the build, naming it and what to install.
+#
 # COMMANDS
 #     build              Copy the program PATH (default: the current
 #                        directory) and its project into this
@@ -143,17 +150,18 @@
 #                        /S installs silently.
 #     DIR/NAME-PLATFORM.AppImage
 #                        A windowed app's AppImage for Linux, which runs
-#                        from its own FUSE mount, or, on a computer with
-#                        no FUSE, extracts itself and runs
-#                        (APPIMAGE_EXTRACT_AND_RUN=1 asks for that).
+#                        from its own FUSE mount, as every AppImage
+#                        does; on a computer with no FUSE,
+#                        APPIMAGE_EXTRACT_AND_RUN=1 has it extract
+#                        itself and run.
 #     ~/.cache/fledge/runtimes/
 #                        Runtimes downloaded from Fledge's GitHub
 #                        Release for this version, each checked
-#                        against the release's SHA256SUMS; to compile
-#                        gems, each one's build-only companion of Ruby's
-#                        headers and libraries; and, for an NSIS
-#                        installer, NSIS's makensis for this computer;
-#                        none of which ships in an app.
+#                        against the release's SHA256SUMS, and, to
+#                        compile gems, each one's build-only companion
+#                        of Ruby's headers and libraries. A runtime's
+#                        tools/ (rcedit and NSIS on Windows, AppImage's
+#                        runtime on Linux) never ships in an app.
 #     ~/.cache/fledge/gems/
 #                        Gems downloaded from the lockfile's gem
 #                        server, each checked against the lockfile's
@@ -166,9 +174,8 @@
 # ENVIRONMENT
 #     FLEDGE_RUNTIME_DIR Take runtimes from this folder of
 #                        fledge-runtime-VERSION-PLATFORM.tar.gz files
-#                        (and their -dev.tar.gz companions, and
-#                        fledge-makensis-VERSION-PLATFORM.tar.gz), and
-#                        never download them.
+#                        (and their -dev.tar.gz companions), and never
+#                        download them.
 #     XDG_CACHE_HOME     Keep downloaded runtimes and gems in
 #                        $XDG_CACHE_HOME/fledge instead.
 #
@@ -177,7 +184,8 @@
 #     1                  The build failed (a missing app, a computer
 #                        Fledge has no runtime for, a runtime that
 #                        would not download, a gem that cannot ship or
-#                        would not compile, a full disk)
+#                        would not compile, a missing tool or icon
+#                        file, a full disk)
 #     2                  Usage error (an unrecognized option, a
 #                        missing value)
 #

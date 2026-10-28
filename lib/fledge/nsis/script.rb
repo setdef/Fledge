@@ -96,7 +96,7 @@ module Fledge
         lines = [
           "Unicode true",
           "ManifestDPIAware true",
-          "SetCompressor /SOLID zlib",
+          "SetCompressor /SOLID lzma",
           "RequestExecutionLevel user",
           "",
           "!include MUI2.nsh",

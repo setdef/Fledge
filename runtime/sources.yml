@@ -176,12 +176,14 @@ libfuse:
   sha256: 70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0
 
 # Windows: NSIS 3.13. Its release for Windows (binary) gives the Windows
-# runtime the stubs, plug-ins, headers, and Modern UI an installer is
-# compiled from, and Windows computers their makensis; its source gives
-# the makensis Fledge's CI builds for macOS and Linux (tasks/
-# makensis_builder.rb), with SCons, NSIS's build tool, from its wheel on
-# PyPI. The SHA-256s are of the files SourceForge serves for NSIS and
-# PyPI for SCons.
+# runtime what fledge build compiles an app's installer with: its
+# makensis, and the stubs, plug-ins, headers, and Modern UI an
+# installer is made from (tasks/runtime_builder/windows.rb). Installers
+# are compressed with LZMA, whose NSIS module is under the Common Public
+# License, which asks that a binary say where its source is; each
+# Windows release's source bundle holds NSIS's source (source), and
+# every Windows app's notices say so. The SHA-256s are of the files
+# SourceForge serves for NSIS.
 nsis:
   version: "3.13"
   binary:
@@ -190,10 +192,6 @@ nsis:
   source:
     url: https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-src.tar.bz2
     sha256: a8ffe024602d46b6d766f9e1ce30c324ad2a24daeacd3efc2642d436a0c157ac
-  scons:
-    version: 4.11.1
-    url: https://files.pythonhosted.org/packages/8e/43/d6285848e893c19682c06e92679dc1a07d37ff7ea148747b1df681ec496c/scons-4.11.1-py3-none-any.whl
-    sha256: 454cef364348053422696e3d2ecb4fa593c96a624f955842eaaea64f95c8d11d
 
 # What each runtime ships, under which license, and with which notice,
 # is runtime/licenses.yml's: the license audit derives it from each built

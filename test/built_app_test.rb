@@ -309,9 +309,8 @@ class BuiltAppTest < Minitest::Test
   # deeply, inside it, and runs from it; on Linux an AppImage that runs,
   # extracting itself where there is no FUSE, and that --appimage-extract
   # unpacks into an AppDir; on Windows a setup program, which Delivery
-  # installs (.github/scripts/deliver-installer.ps1). On Windows the
-  # build needs makensis for Windows in the runtime folder too, as CI's
-  # has it (rake "makensis[x64-mingw-ucrt]").
+  # installs (.github/scripts/deliver-installer.ps1), compiled by the
+  # Windows runtime's own NSIS. On Linux the build needs mksquashfs.
   def test_the_windowed_apps_installer_holds_the_app_and_runs_it
     Dir.mktmpdir do |dir|
       out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(dir, "cache") }, RbConfig.ruby,

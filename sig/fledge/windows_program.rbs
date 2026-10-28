@@ -1,0 +1,95 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class WindowsProgram
+    type key = Integer | String
+    type resource = [key, key, key]
+
+    RT_ICON: Integer
+    RT_GROUP_ICON: Integer
+    RT_VERSION: Integer
+    RT_MANIFEST: Integer
+    RESOURCE_DIRECTORY: Integer
+    CERTIFICATE_DIRECTORY: Integer
+    RELOCATION_DIRECTORY: Integer
+    CONSOLE: Integer
+    GUI: Integer
+
+    @bytes: String
+    @pe: Integer
+    @optional: Integer
+    @directories: Integer
+    @directory_count: Integer
+    @sections: Array[Section]
+
+    def initialize: (String bytes) -> void
+
+    def subsystem: () -> Integer
+
+    def resources: () -> Hash[resource, String]
+
+    def with_resources: (Hash[resource, String] resources) -> String
+
+    class Section < Data
+      attr_reader index: Integer
+      attr_reader name: String
+      attr_reader size: Integer
+      attr_reader address: Integer
+      attr_reader raw_size: Integer
+      attr_reader raw: Integer
+
+      def self.new: (index: Integer, name: String, size: Integer, address: Integer, raw_size: Integer, raw: Integer) -> instance
+    end
+
+    private def read_headers: () -> void
+
+    private def directory: (Integer index) -> [Integer, Integer]
+
+    private def resource_section: () -> Section?
+
+    private def check_rewritable: () -> void
+
+    private def each_entry: (Section section, Integer offset) { (key, Integer) -> void } -> void
+
+    private def resource_name: (Section section, Integer offset) -> String
+
+    private def rewrite: (Section section, String table, Array[Section] later) -> String
+
+    private def move_directories: (String out, Section moved, Integer address) -> void
+
+    private def write_section: (String out, Section section, size: Integer, address: Integer, raw_size: Integer, raw: Integer) -> void
+
+    private def write_directory: (String out, Integer index, Integer rva, Integer size) -> void
+
+    def self.checksum: (String bytes, Integer field) -> Integer
+
+    private def align: (Integer value, Integer alignment) -> Integer
+
+    private def u16: (Integer at) -> Integer
+
+    private def u32: (Integer at) -> Integer
+
+    private def pair: (Integer at) -> [Integer, Integer]
+
+    private def put32: (String out, Integer at, Integer value) -> void
+
+    class ResourceTable
+      @tree: Hash[key, Hash[key, Hash[key, String]]]
+
+      def initialize: (Hash[resource, String] resources) -> void
+
+      def bytes: (Integer address) -> String
+
+      private def sorted: (Array[key] keys) -> Array[key]
+
+      private def split: (Array[key] keys) -> [Array[String], Array[Integer]]
+
+      private def name_strings: (Array[key] keys, Integer at) -> [String, Hash[String, Integer]]
+
+      private def directory: (Array[key] keys, Hash[String, Integer] string_offsets) { (Integer) -> Integer } -> String
+
+      private def align: (Integer value, Integer alignment) -> Integer
+    end
+  end
+end

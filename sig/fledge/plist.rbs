@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module Plist
+    type value = String | Integer | Float | bool | Bytes | Array[value] | Hash[String, value]
+
+    class Bytes < Data
+      attr_reader bytes: String
+
+      def self.new: (bytes: String) -> instance
+    end
+
+    HEADER: String
+
+    def self.write: (value value) -> String
+
+    private def self.element: (value value, Integer depth, String out) -> void
+
+    private def self.scalar: (value value) -> String
+
+    private def self.escape: (String text) -> String
+  end
+end

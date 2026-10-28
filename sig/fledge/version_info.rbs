@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class VersionInfo < Data
+    LANGUAGE: Integer
+    CODE_PAGE: Integer
+    SIGNATURE: Integer
+    STRUCTURE_VERSION: Integer
+    FLAGS_MASK: Integer
+    OS: Integer
+    APPLICATION: Integer
+    MAX_PART: Integer
+
+    attr_reader version: String
+    attr_reader strings: Hash[String, String]
+
+    def self.new: (version: String, strings: Hash[String, String]) -> instance
+
+    def self.numbers: (String version) -> Array[Integer]
+
+    def bytes: () -> String
+
+    private def block: (String key, String value, Integer value_length, Integer type, ?Array[String] children) -> String
+
+    private def utf16: (String text) -> String
+
+    private def pad: (String bytes) -> String
+  end
+end

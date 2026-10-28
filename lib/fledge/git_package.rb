@@ -15,7 +15,7 @@ module Fledge
   # Bundler finds it.
   #
   # Bundler does not install a git gem into RubyGems' own folders. It
-  # keeps the whole checkout of the locked revision in
+  # keeps its checkout of the locked revision in
   # <tt>GEM_DIR/bundler/gems/SCOPE</tt>, with every gemspec evaluated, and
   # at run time reads the gemspecs there (Bundler::Source::Git, its
   # #install_path and #load_spec_files, at Bundler 4.0.20): the lockfile
@@ -24,10 +24,15 @@ module Fledge
   # (Fledge::NativeBuild).
   #
   # This class is the checkout Fledge::GitCheckout made, seen as one gem:
-  # its specification, the files in its own folder, which are what the
-  # license audit reads, and the entries that put the checkout, less
-  # git's own files, where Bundler keeps it. It answers the questions
-  # Fledge::GemPackage answers for a gem from a gem server.
+  # its specification, the files in its own folder (where its gemspec
+  # is), and the entries that put that folder where Bundler keeps it in
+  # the checkout. Only the gem's folder ships, not the rest of the
+  # repository: a repository holds more than its gems (Ferro's holds its
+  # own tooling, under another license than its gems', and symbolic links
+  # a Windows .zip cannot hold), and Bundler finds a gem by its gemspec,
+  # in its folder, alone. The files that ship are the files the license
+  # audit reads. It answers the questions Fledge::GemPackage answers for
+  # a gem from a gem server.
   #
   # Use it for each git gem an app ships.
   #
@@ -166,8 +171,8 @@ module Fledge
       (folder == ".") ? checkout_path(gem_dir) : "#{checkout_path(gem_dir)}/#{folder}"
     end
 
-    # The entries that put the checkout where Bundler keeps it, in the gem
-    # folder +gem_dir+, without git's own files.
+    # The entries that put the gem's folder of the checkout where Bundler
+    # keeps it, in the gem folder +gem_dir+, without git's own files.
     #
     # === Example
     #
@@ -176,13 +181,14 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   package.entries("lib/ruby/gems/4.0.0").first.path # => "lib/ruby/gems/4.0.0/bundler/gems/Ferro-21a106d0c0d6"
+    #   package.entries("lib/ruby/gems/4.0.0").first.path # => "lib/ruby/gems/4.0.0/bundler/gems/Ferro-21a106d0c0d6/gems/idna"
     #--
     # SPDX-SnippetEnd
     #++
     def entries(gem_dir)
-      top = checkout_path(gem_dir)
-      [Entry.directory(top), *Entry.walk(checkout, skip: [File.join(checkout, ".git")]).map { |entry| entry.with(path: "#{top}/#{entry.path}") }]
+      top = installed_path(gem_dir)
+      files = Entry.walk(File.join(checkout, folder), skip: [File.join(checkout, ".git")])
+      [Entry.directory(top), *files.map { |entry| entry.with(path: "#{top}/#{entry.path}") }]
     end
 
     # Every file in the gem's own folder, by its path in that folder, and

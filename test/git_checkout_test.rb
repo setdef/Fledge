@@ -51,15 +51,27 @@ class GitCheckoutTest < Minitest::Test
       error.message
   end
 
-  def test_the_package_ships_the_checkout_where_bundler_keeps_it
-    package = Fledge::GitPackage.new(gem, @checkouts.checkout(gem))
+  # A repository holds more than its gems (Ferro's holds its tooling,
+  # under another license, and symbolic links a Windows .zip cannot
+  # hold), so a gem ships its own folder of the checkout, where Bundler
+  # keeps it.
+  def test_the_package_ships_its_own_folder_of_the_checkout_where_bundler_keeps_it
+    File.write(File.join(@repo, "TOOLING.md"), "the repository's own\n")
+    FakeRepo.git(@repo, "add", ".")
+    FakeRepo.git(@repo, "-c", "user.name=Fledge", "-c", "user.email=fledge@example.com", "commit", "--quiet", "-m", "Tooling")
+    revision = FakeRepo.git(@repo, "rev-parse", "HEAD").strip
+    alpha = gem(revision:)
+    package = Fledge::GitPackage.new(alpha, @checkouts.checkout(alpha))
 
     paths = package.entries("lib/ruby/gems/4.0.0").map(&:path)
-    scope = "lib/ruby/gems/4.0.0/bundler/gems/#{gem.scope}"
+    scope = "lib/ruby/gems/4.0.0/bundler/gems/#{alpha.scope}"
     assert_includes paths, "#{scope}/gems/alpha/lib/alpha.rb"
-    assert_includes paths, "#{scope}/gems/beta/beta.gemspec"
+    assert_includes paths, "#{scope}/gems/alpha/alpha.gemspec"
+    refute_includes paths, "#{scope}/gems/beta/beta.gemspec", "another gem of the repository ships only if the app locks it"
+    refute_includes paths, "#{scope}/TOOLING.md", "the repository's own files are not the gem's"
     assert paths.none? { |path| path.include?("/.git") }, "git's own files stay behind"
     assert_equal "#{scope}/gems/alpha", package.installed_path("lib/ruby/gems/4.0.0")
+    refute_empty Dir.glob(File.join(package.checkout, "gems/beta/*")), "the checkout itself is whole"
     assert_equal ["alpha", "1.0"], [package.spec.name, package.spec.version.to_s]
     assert_equal %w[LICENSE.txt LICENSES/MIT.txt], package.license_files.keys
     assert_equal ["LICENSE.txt", "LICENSES/MIT.txt", "alpha.gemspec", "lib/alpha.rb"], package.contents.keys.sort

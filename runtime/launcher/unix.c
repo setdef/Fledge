@@ -38,7 +38,7 @@
  *      rest (see scrub.c, which windows.c shares). The runtime's own
  *      lib/ruby/4.0.0/rubygems/defaults/operating_system.rb then keeps
  *      RubyGems to the runtime's gems, away from ~/.gem.
- *   3. It turns a bare C locale into a UTF-8 one (see coerce_locale).
+ *   3. It turns a bare C locale into a UTF-8 one (locale.c).
  *   4. It runs the app with arguments equivalent to
  *        NAME --disable=rubyopt -- ROOT/app/ENTRY ARGS
  *      which is what ruby ROOT/app/ENTRY ARGS does with no RUBYOPT
@@ -80,9 +80,7 @@
 #include <ruby.h>
 
 #include <errno.h>
-#include <langinfo.h>
 #include <limits.h>
-#include <locale.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -311,38 +309,6 @@ setup_bundler(void)
     if (unsetenv("BUNDLE_USER_CONFIG") != 0) fail("could not clear the environment: %s", strerror(errno));
 }
 
-static int
-codeset_is_utf8(void)
-{
-    const char *codeset = nl_langinfo(CODESET);
-
-    return codeset != NULL && (strcasecmp(codeset, "UTF-8") == 0 || strcasecmp(codeset, "utf8") == 0);
-}
-
-/*
- * Sets LC_CTYPE from the environment, as Ruby's main.c does, so the
- * person's locale decides Encoding.default_external. When there is no
- * locale at all (LANG unset, as for an app started by a desktop, a
- * service manager, or env -i), that locale is C, whose character set is
- * ASCII, and a folder name such as "Ünïcödé" in the app's path makes
- * Ruby fail with "invalid byte sequence in US-ASCII" as it builds its
- * load path. As Python does (PEP 538), a C or POSIX locale is replaced
- * by the first UTF-8 locale the system has; a locale the person chose
- * is left alone.
- */
-static void
-coerce_locale(void)
-{
-    static const char *const utf8_locales[] = {"C.UTF-8", "C.utf8", "UTF-8", "en_US.UTF-8", NULL};
-    const char *chosen = setlocale(LC_CTYPE, "");
-
-    if (chosen != NULL && strcmp(chosen, "C") != 0 && strcmp(chosen, "POSIX") != 0) return;
-    for (const char *const *locale = utf8_locales; *locale != NULL; locale++) {
-        if (setlocale(LC_CTYPE, *locale) != NULL && codeset_is_utf8()) return;
-    }
-    setlocale(LC_CTYPE, "C");
-}
-
 /*
  * The folder the launcher sits in, refusing one that ruby.c would read
  * as a bin or lib folder.
@@ -485,7 +451,7 @@ main(int argc, char **argv)
     find_root(sizeof root);
     read_config();
     scrub_environment();
-    coerce_locale();
+    fledge_coerce_locale();
 
     ruby_sysinit(&argc, &argv);
     build_ruby_arguments(argc, argv);

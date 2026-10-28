@@ -22,7 +22,7 @@ class RuntimeBuilder
     end
 
     private def launcher_sources
-      %w[unix.c scrub.c config.c bundler.c].map { |file| File.join(LAUNCHER, file) } << File.join(LAUNCHER, os_file)
+      %w[unix.c scrub.c config.c bundler.c locale.c].map { |file| File.join(LAUNCHER, file) } << File.join(LAUNCHER, os_file)
     end
 
     private def includes

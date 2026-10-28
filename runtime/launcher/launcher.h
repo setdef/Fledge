@@ -17,7 +17,8 @@
  * operating system shares: which variables a person's own Ruby may not
  * pass to an app. config.c holds another: how to read fledge.cfg, which
  * says what the app runs. bundler.c holds a third: how an app with a
- * Gemfile gets the environment bundle exec would give it.
+ * Gemfile gets the environment bundle exec would give it. locale.c holds
+ * how macOS, Linux, and the mobile runtimes choose a UTF-8 locale.
  */
 
 #ifndef FLEDGE_LAUNCHER_H
@@ -75,6 +76,12 @@ struct fledge_config {
 int fledge_parse_config(char *text, struct fledge_config *config, const char **problem);
 
 #ifndef _WIN32
+/*
+ * Sets LC_CTYPE from the environment, as Ruby's main.c does, and turns a
+ * bare C or POSIX locale into a UTF-8 one (locale.c).
+ */
+void fledge_coerce_locale(void);
+
 /*
  * Writes the absolute, symlink-free path of the running executable into
  * out, which holds size bytes. Returns 0, or -1 with errno set.

@@ -35,17 +35,11 @@ module Fledge
 
     def finish: () -> Integer
 
-    private def hfs_name: (String name) -> String
-
     private def folder: (String path) -> Item
 
     private def write_data: (String bytes) -> [Integer, Integer, Integer]
 
     private def write_at: (Integer block, String bytes) -> void
-
-    private def layout: (Integer start) -> [Integer, Integer]
-
-    private def bitmap: (Integer total, Integer blocks) -> String
 
     def self.fork_data: (Integer start, Integer blocks, Integer size) -> String
 

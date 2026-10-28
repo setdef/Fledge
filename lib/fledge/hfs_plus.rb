@@ -8,9 +8,11 @@
 require "digest"
 require_relative "entry"
 require_relative "error"
+require_relative "hfs_plus/allocation"
 require_relative "hfs_plus/b_tree"
 require_relative "hfs_plus/catalog"
 require_relative "hfs_plus/item"
+require_relative "hfs_plus/name"
 
 module Fledge
   # Writes a Mac OS Extended volume, the file system inside a
@@ -116,7 +118,7 @@ module Fledge
       @next_block = 1
       @next_id = FIRST_ID
       @items = { "" => Item.new(ROOT, ROOT_PARENT, name, nil) }
-      @hfs_name = { ROOT => hfs_name(name) }
+      @hfs_name = { ROOT => Name.encode(name) }
     end
 
     # Adds +entry+, whose path is relative to the volume's top, writing a
@@ -143,7 +145,7 @@ module Fledge
       parent = folder(parent_path)
       item = Item.new(@next_id, parent.id, name, entry)
       @next_id += 1
-      @hfs_name[item.id] = hfs_name(name)
+      @hfs_name[item.id] = Name.encode(name)
       parent.children += 1
       parent.folders += 1 if entry.type == :directory
       item.extent = write_data((entry.type == :symlink) ? entry.link.b : entry.content.b) unless entry.type == :directory
@@ -170,10 +172,10 @@ module Fledge
       extents_start = @next_block
       catalog_start = extents_start + (extents.bytesize / BLOCK)
       allocation_start = catalog_start + (catalog.bytesize / BLOCK)
-      total, bitmap_blocks = layout(allocation_start)
+      total, bitmap_blocks = Allocation.layout(allocation_start)
       write_at(extents_start, extents)
       write_at(catalog_start, catalog)
-      write_at(allocation_start, bitmap(total, bitmap_blocks))
+      write_at(allocation_start, Allocation.bitmap(total, bitmap_blocks))
       forks = {
         allocation: HfsPlus.fork_data(allocation_start, bitmap_blocks, bitmap_blocks * BLOCK),
         extents: HfsPlus.fork_data(extents_start, extents.bytesize / BLOCK, extents.bytesize),
@@ -186,21 +188,6 @@ module Fledge
       @io.write(header, "\0" * 512)
       @io.flush
       total * BLOCK
-    end
-
-    # +name+ as HFS Plus stores it: its colons as slashes (which a name
-    # in macOS's POSIX view cannot hold, and HFS Plus can), decomposed
-    # as Apple decomposes it, in UTF-16, big-endian.
-    private def hfs_name(name)
-      decomposed = name.tr(":", "/").each_char.map do |char|
-        (UNDECOMPOSED.any? { |range| range.cover?(char.ord) }) ? char : char.unicode_normalize(:nfd)
-      end.join
-      utf16 = decomposed.encode(Encoding::UTF_16BE).b
-      raise Error, "#{name.inspect} is longer than a Mac's file system allows (#{NAME_MAX} characters)" if utf16.bytesize / 2 > NAME_MAX
-
-      utf16
-    rescue EncodingError
-      raise Error, "#{name.inspect} is not a name in UTF-8, which a Mac's file system needs"
     end
 
     private def folder(path)
@@ -233,26 +220,6 @@ module Fledge
       @io.write(bytes)
       padding = -bytes.bytesize % BLOCK
       @io.write("\0" * padding) if padding.positive?
-    end
-
-    # The volume's size in blocks and the bitmap's, for a bitmap that
-    # begins at +start+: the bitmap holds a bit for each block, itself
-    # included, and the last block holds the second volume header.
-    private def layout(start)
-      bitmap_blocks = 1
-      loop do
-        total = start + bitmap_blocks + 1
-        needed = (((total + 7) / 8) + BLOCK - 1) / BLOCK
-        return [total, bitmap_blocks] if needed <= bitmap_blocks
-
-        bitmap_blocks = needed
-      end
-    end
-
-    # Every block in use: the volume holds what it was given and no more.
-    private def bitmap(total, blocks)
-      bits = ("\xFF".b * (total / 8)) + ((total % 8).zero? ? "".b : [(0xFF << (8 - (total % 8))) & 0xFF].pack("C"))
-      bits + ("\0".b * ((blocks * BLOCK) - bits.bytesize))
     end
 
     # An HFSPlusForkData of one extent: a file's or a special file's

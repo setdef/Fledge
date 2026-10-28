@@ -17,7 +17,7 @@ class MobileParity
   # Simulator from the runtime's XCFramework, and for devices, unsigned,
   # to show that the device slice links; then, on a new simulator of
   # each kind, the app installed and launched with simctl for each
-  # script, its os_log read with log stream.
+  # script, its os_log read with log show.
   class IOS
     # The kinds of device the check runs on: an iPhone and an iPad, the
     # newest of each the newest iOS runtime supports.
@@ -113,36 +113,45 @@ class MobileParity
     end
 
     # Launches the host app on the booted simulator +udid+ with
-    # +script+, and returns the lines it logged up to Ruby's status, as
-    # log stream gave them.
+    # +script+, and returns the lines that process logged up to Ruby's
+    # status, as log show reads them from the simulator's unified log.
+    # log stream would miss a short script's lines on a slow runner, where
+    # it can attach after the script has ended; and the process's ID,
+    # which simctl launch prints, keeps an earlier launch's lines out.
     private def launch(udid, script)
-      log = File.join(@work, "#{udid}-#{script}.ndjson")
-      stream = Process.spawn("xcrun", "simctl", "spawn", udid, "log", "stream", "--style", "ndjson", "--level", "info",
-        "--predicate", "subsystem == \"#{IDENTIFIER}\"", out: log, err: File::NULL)
-      sleep 3
-      system("xcrun", "simctl", "launch", "--terminate-running-process", udid, IDENTIFIER, "-FledgeScript", script,
-        out: File::NULL, exception: true)
-      entries = wait_for_status(udid, log, script)
-      @out.puts "#{script}: Ruby exited with status #{MobileParity.status(entries)}"
-      raise "#{script} exited with status #{MobileParity.status(entries)}:\n#{entries.last(40).join("\n")}" unless MobileParity.status(entries).zero?
+      since = (Time.now - 2).strftime("%Y-%m-%d %H:%M:%S")
+      launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, IDENTIFIER, "-FledgeScript", script)
+      pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
+      entries = wait_for_status(udid, since, pid, script)
+      status = MobileParity.status(entries)
+      @out.puts "#{script}: Ruby exited with status #{status}"
+      raise "#{script} exited with status #{status}:\n#{entries.last(40).join("\n")}" unless status.zero?
 
       entries
-    ensure
-      Process.kill("TERM", stream) if stream
-      Process.wait(stream) if stream
     end
 
-    private def wait_for_status(udid, log, script)
+    private def wait_for_status(udid, since, pid, script)
       deadline = Time.now + TIMEOUT
       loop do
-        entries = messages(log)
-        if MobileParity.status(entries)
-          sleep 3
-          return messages(log)
-        end
+        entries = messages(udid, since, pid, script)
+        return entries if MobileParity.status(entries)
         raise "#{script} did not finish in #{TIMEOUT} seconds:\n#{entries.last(40).join("\n")}\n#{diagnosis(udid)}" if Time.now > deadline
 
-        sleep 2
+        sleep 5
+      end
+    end
+
+    # The messages the process +pid+ logged in the host app's subsystem
+    # since +since+, in order, kept beside the check's other files.
+    private def messages(udid, since, pid, script)
+      log = File.join(@work, "#{udid}-#{script}.ndjson")
+      system("xcrun", "simctl", "spawn", udid, "log", "show", "--start", since, "--style", "ndjson", "--info", "--predicate",
+        "subsystem == \"#{IDENTIFIER}\"", out: log, err: File::NULL)
+      File.readlines(log).filter_map do |line|
+        entry = JSON.parse(line)
+        entry["eventMessage"] if entry.is_a?(Hash) && entry["processID"] == pid
+      rescue JSON::ParserError
+        nil
       end
     end
 
@@ -161,14 +170,6 @@ class MobileParity
         *logged,
         "Crash reports: #{crashes.empty? ? 'none' : crashes.join(', ')}",
       ].join("\n")
-    end
-
-    private def messages(log)
-      File.readlines(log).filter_map do |line|
-        JSON.parse(line)["eventMessage"]
-      rescue JSON::ParserError
-        nil
-      end
     end
 
     private def capture(*command)

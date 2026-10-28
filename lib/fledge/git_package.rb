@@ -28,11 +28,10 @@ module Fledge
   # is), and the entries that put that folder where Bundler keeps it in
   # the checkout. Only the gem's folder ships, not the rest of the
   # repository: a repository holds more than its gems (Ferro's holds its
-  # own tooling, under another license than its gems', and symbolic links
-  # a Windows .zip cannot hold), and Bundler finds a gem by its gemspec,
-  # in its folder, alone. The files that ship are the files the license
-  # audit reads. It answers the questions Fledge::GemPackage answers for
-  # a gem from a gem server.
+  # own tooling, and symbolic links a Windows .zip cannot hold), and
+  # Bundler finds a gem by its gemspec, in its folder, alone. The files
+  # that ship are the files Fledge::Linkage reads. It answers the
+  # questions Fledge::GemPackage answers for a gem from a gem server.
   #
   # Use it for each git gem an app ships.
   #
@@ -211,24 +210,6 @@ module Fledge
         Entry.walk(base, skip: [File.join(checkout, ".git")]).select { |entry| entry.type == :file }
           .to_h { |entry| [entry.path, entry.content.to_s] }
       end
-    end
-
-    # The gem's license files, by their paths in its folder, and their
-    # text (Fledge::GemPackage.license_files_in).
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   package.license_files.keys # => ["LICENSES/Apache-2.0.txt", "LICENSES/MIT.txt"]
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def license_files
-      GemPackage.license_files_in(contents)
     end
   end
 end

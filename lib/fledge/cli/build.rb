@@ -112,9 +112,8 @@ module Fledge
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
           platforms.each do |platform|
             runtime = runtimes.archive(platform)
-            added = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : AppGems::Result.new(files: [], warnings: [])
-            added.warnings.each { |warning| @err.puts "fledge build: warning: #{warning}" }
-            archive = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files: added.files).call
+            files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
+            archive = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:).call
             @out.puts File.join(out, File.basename(archive))
           end
         end

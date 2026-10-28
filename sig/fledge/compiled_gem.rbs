@@ -11,9 +11,8 @@ module Fledge
 
     attr_reader package: GemPackage | GitPackage
     attr_reader build_args: Array[String]
-    attr_reader crates: RustCrates::Found?
 
-    def initialize: (package: GemPackage | GitPackage, built: Array[Entry], extensions: Array[Entry], extension_dir: String, build_args: Array[String], build_info: String?, crates: RustCrates::Found?, problems: Array[String]) -> void
+    def initialize: (package: GemPackage | GitPackage, built: Array[Entry], extensions: Array[Entry], extension_dir: String, build_args: Array[String], build_info: String?, problems: Array[String]) -> void
 
     def spec: () -> Gem::Specification
 
@@ -22,8 +21,6 @@ module Fledge
     def installed_path: (String gem_dir) -> String
 
     def problems: (ruby_version: String) -> Array[String]
-
-    def license_files: () -> Hash[String, String]
 
     def contents: () -> Hash[String, String]
 

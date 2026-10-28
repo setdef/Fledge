@@ -9,11 +9,9 @@ require "fileutils"
 require "json"
 require "open3"
 require_relative "binary"
-require_relative "compiled_code"
 require_relative "compiled_gem"
 require_relative "error"
 require_relative "git_package"
-require_relative "rust_crates"
 require_relative "tar_gz"
 
 module Fledge
@@ -42,8 +40,8 @@ module Fledge
   # glibc must be no newer than the runtime's oldest, 2.39),
   # MSYS2's UCRT64 toolchain on Windows, found as RubyInstaller finds it
   # for <tt>gem install</tt>, and cargo for a Rust extension. Then it
-  # reads, with cargo, which Rust crates each Rust extension compiled in,
-  # and returns each compiled gem as a Fledge::CompiledGem.
+  # returns each compiled gem as a Fledge::CompiledGem, with anything it
+  # compiled that needs a newer macOS or glibc than the runtime's oldest.
   #
   # Use it in <tt>fledge build</tt> when a target is the platform Fledge
   # runs on.
@@ -241,7 +239,7 @@ module Fledge
     end
 
     # +package+, compiled, with what its build wrote into the gem's folder
-    # and its extensions folder, and the Rust crates it compiled in.
+    # and its extensions folder.
     private def compiled_gem(gem, package, args, result)
       gem_dir = result.fetch("gem_dir").to_s
       extension_dir = result.fetch("extension_dir").to_s
@@ -250,8 +248,7 @@ module Fledge
       build_info = File.join(home, "build_info", "#{package.spec.full_name}.info")
       CompiledGem.new(
         package:, built:, extensions:, extension_dir: relative_to_home(extension_dir), build_args: args,
-        build_info: File.file?(build_info) ? File.read(build_info) : nil, crates: crates(gem, package, gem_dir),
-        problems: floor_problems(gem, built + extensions),
+        build_info: File.file?(build_info) ? File.read(build_info) : nil, problems: floor_problems(gem, built + extensions),
       )
     end
 
@@ -296,19 +293,6 @@ module Fledge
 
     private def newer?(found, floor)
       Gem::Version.new(found) > Gem::Version.new(floor)
-    end
-
-    # The Rust crates +package+'s Rust extensions compiled in and built
-    # with (Fledge::RustCrates), by <tt>cargo metadata</tt> of each
-    # extension's Cargo.toml, as its build resolved them (its Cargo.lock,
-    # offline), or +nil+ for a gem with no Rust extension.
-    private def crates(gem, package, gem_dir)
-      manifests = package.spec.extensions.map { |extension| File.join(gem_dir, File.dirname(extension), "Cargo.toml") }.select { |path| File.file?(path) }
-      return nil if manifests.empty?
-
-      found = manifests.map { |manifest| RustCrates.new(manifest, target: platform.rust_target, env: child_env).call(label: gem.to_s) }
-      compiled = found.flat_map(&:compiled).uniq(&:name)
-      RustCrates::Found.new(compiled:, build: found.flat_map(&:build).uniq(&:name) - compiled)
     end
   end
 end

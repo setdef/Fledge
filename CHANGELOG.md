@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- `fledge build` no longer judges an app's gems by their licenses, which are the app developer's to decide: a GPL, AGPL, MPL, or LGPL gem, a gem whose license is unknown, and one that declares none all ship, and an LGPL gem no longer needs its source pinned.
+- A native gem's compiled files may hold any library: nokogiri's precompiled builds for `arm64-darwin` and `x64-mingw-ucrt`, and its build from source on Windows, which link GNU libiconv in, now ship. Compiled code no longer needs a review in Fledge's map or a `compiled` entry in `fledge.yml`, and a Rust extension's crates are no longer read with `cargo metadata` or judged.
+- `notices/GEMS.txt`, and the warning for a gem that ships no license file. Each gem ships with its own files, its license files among them, in its own folder; `notices/` holds the notices of what Fledge itself puts in an app.
+- **Breaking:** `fledge.yml`'s `licenses` and `compiled` keys. A `fledge.yml` that still has either fails the build, as any key Fledge does not know does; `name` is the one key left.
+
 ## [0.0.1.pre.4] - 2026-10-27
 
 ### Added

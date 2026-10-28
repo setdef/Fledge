@@ -55,35 +55,6 @@ module Fledge
   # SPDX-SnippetEnd
   #++
   class GemPackage
-    # The files at a gem's top level that hold its license, as the
-    # license audit finds them in a runtime's gems.
-    LICENSE_FILE = /\A(?:LICEN[CS]E|COPYING|COPYRIGHT|NOTICE|BSDL|MIT-LICENSE|PSFL|LEGAL)/i
-
-    # The folder of license texts the REUSE specification keeps at a
-    # project's top, as Ferro's gems ship theirs.
-    LICENSES = "LICENSES/"
-
-    # The license files among +files+ (paths relative to a gem's folder,
-    # and their contents): those at its top level that LICENSE_FILE
-    # names, and those in LICENSES, sorted by path.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   Fledge::GemPackage.license_files_in({ "LICENSE" => "MIT", "LICENSES/Apache-2.0.txt" => "Apache", "lib/a.rb" => "" }).keys
-    #   # => ["LICENSE", "LICENSES/Apache-2.0.txt"]
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def self.license_files_in(files)
-      files.select { |path, _| path.start_with?(LICENSES) ? path.count("/") == 1 : path.match?(LICENSE_FILE) && !path.include?("/") }
-        .sort.to_h
-    end
-
     # Why +spec+'s gem cannot run on a runtime whose Ruby is
     # +ruby_version+, as RubyGems would refuse it, or none.
     #
@@ -236,23 +207,6 @@ module Fledge
     #++
     def contents
       @files.select { |entry| entry.type == :file }.to_h { |entry| [entry.path, entry.content.to_s] }
-    end
-
-    # The gem's license files, by their paths in the gem, and their text.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   package.license_files.keys # => ["LICENSE", "LICENSE-DEPENDENCIES"]
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def license_files
-      GemPackage.license_files_in(contents)
     end
 
     # The specification as Gem::Installer#write_spec writes it, marked as

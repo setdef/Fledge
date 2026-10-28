@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Linkage
+    SYSTEM_LIBRARIES: Hash[String, Array[Regexp]]
+    RUBY_DLL: Regexp
+
+    @system: Array[Regexp]
+    @os: String
+    @provided: Array[String]
+
+    def initialize: (os: String, ?provided: Array[String]) -> void
+
+    def problems: (String label, Hash[String, String] files) -> Array[String]
+  end
+end

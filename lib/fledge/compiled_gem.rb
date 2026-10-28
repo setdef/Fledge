@@ -23,11 +23,10 @@ module Fledge
   # Fledge::GitPackage) and what Fledge::NativeBuild compiled for it: the
   # files the build wrote into the gem's require paths, its extensions
   # folder (without the build's logs, which hold the build machine's
-  # paths), its build information, the options it was built with, and the
-  # Rust crates it compiled in. It ships all of them where RubyGems, or
-  # for a git gem Bundler, put them, and answers what the package answers,
-  # with the compiled files among the gem's contents, so the license audit
-  # reads them (Fledge::CompiledCode).
+  # paths), its build information, and the options it was built with. It
+  # ships all of them where RubyGems, or for a git gem Bundler, put them,
+  # and answers what the package answers, with the compiled files among
+  # the gem's contents, so Fledge::Linkage reads them.
   #
   # Use it as the package of a gem Fledge compiled.
   #
@@ -51,11 +50,6 @@ module Fledge
     # The options its extension was built with, as extconf.rb got them.
     attr_reader :build_args
 
-    # The Rust crates its build compiled in and built with
-    # (Fledge::RustCrates::Found), or +nil+ for a gem with no Rust
-    # extension.
-    attr_reader :crates
-
     # Creates the compiled gem.
     #
     # [package] The Fledge::GemPackage or Fledge::GitPackage compiled.
@@ -66,17 +60,15 @@ module Fledge
     # [extension_dir] Its extensions folder, relative to the gem folder.
     # [build_args] Its build options.
     # [build_info] What RubyGems wrote in its build information, or +nil+.
-    # [crates] The Rust crates it compiled in and built with, or +nil+.
     # [problems] What keeps the compiled files from running where the app
     #            goes, as sentences.
-    def initialize(package:, built:, extensions:, extension_dir:, build_args:, build_info:, crates:, problems:)
+    def initialize(package:, built:, extensions:, extension_dir:, build_args:, build_info:, problems:)
       @package = package
       @built = built
       @extensions = extensions
       @extension_dir = extension_dir
       @build_args = build_args
       @build_info = build_info
-      @crates = crates
       @problems = problems
     end
 
@@ -148,23 +140,6 @@ module Fledge
     #++
     def problems(ruby_version:)
       package.problems(ruby_version:) + @problems
-    end
-
-    # The gem's license files, as its package has them.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   compiled.license_files.keys # => ["COPYING"]
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def license_files
-      package.license_files
     end
 
     # Every file of the gem, by its path in the gem's folder, with what

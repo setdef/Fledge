@@ -73,7 +73,6 @@ class GitCheckoutTest < Minitest::Test
     assert_equal "#{scope}/gems/alpha", package.installed_path("lib/ruby/gems/4.0.0")
     refute_empty Dir.glob(File.join(package.checkout, "gems/beta/*")), "the checkout itself is whole"
     assert_equal ["alpha", "1.0"], [package.spec.name, package.spec.version.to_s]
-    assert_equal %w[LICENSE.txt LICENSES/MIT.txt], package.license_files.keys
     assert_equal ["LICENSE.txt", "LICENSES/MIT.txt", "alpha.gemspec", "lib/alpha.rb"], package.contents.keys.sort
     assert_empty package.problems(ruby_version: "4.0.9")
     refute_predicate package, :extensions?

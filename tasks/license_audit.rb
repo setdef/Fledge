@@ -140,9 +140,8 @@ class LicenseAudit
   end
 
   # The license policy's verdict on an SPDX license expression
-  # (Fledge::LicensePolicy, which fledge build applies to an app's gems
-  # too): one of :notice_only, :first_party, :file_level,
-  # :shared_library, or :forbidden.
+  # (Fledge::LicensePolicy): one of :notice_only, :first_party,
+  # :file_level, :shared_library, or :forbidden.
   def self.category(expression, first_party: false)
     Fledge::LicensePolicy.category(expression, first_party:)
   end

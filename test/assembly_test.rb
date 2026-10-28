@@ -85,14 +85,14 @@ class AssemblyTest < Minitest::Test
       gem = Fledge::Entry.file("lib/ruby/gems/4.0.0/gems/foo-1.0.0/lib/foo.rb", "# foo\n")
 
       archive = assemble(dir, app, app_files: { "hello.gemspec.txt" => "evaluated\n", ".bundle/config" => "---\n" },
-        files: [gem, Fledge::Entry.file("notices/GEMS.txt", "gems\n")])
+        files: [gem, Fledge::Entry.file("lib/ruby/gems/4.0.0/build_info/foo-1.0.0.info", "--with-foo\n")])
 
       folder = File.join(dir, "dist", "Hello-x86_64-linux")
       assert_equal "evaluated\n", File.read(File.join(folder, "app/hello.gemspec.txt"))
       assert_equal "---\n", File.read(File.join(folder, "app/.bundle/config"))
       assert_equal "# foo\n", File.read(File.join(folder, gem.path))
       found = entries(archive)
-      %w[app/.bundle lib/ruby/gems/4.0.0/gems lib/ruby/gems/4.0.0/gems/foo-1.0.0/lib notices].each do |parent|
+      %w[app/.bundle lib/ruby/gems/4.0.0/gems lib/ruby/gems/4.0.0/gems/foo-1.0.0/lib lib/ruby/gems/4.0.0/build_info].each do |parent|
         assert_equal :directory, found.fetch("Hello-x86_64-linux/#{parent}").type, parent
       end
       assert_equal 1, found.keys.count("Hello-x86_64-linux/lib/ruby/gems/4.0.0")

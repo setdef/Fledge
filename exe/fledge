@@ -68,27 +68,23 @@
 #                        test groups. It must lock each target's
 #                        platform (bundle lock --add-platform), each
 #                        gem's checksum (bundle lock --add-checksums),
-#                        and each git gem's commit. A gem must be under
-#                        a license that asks nothing beyond keeping its
-#                        notices, and its compiled files may hold no
-#                        LGPL or GPL library compiled in, nor need a
-#                        library the target's computer lacks; the build
-#                        names each one that does not, and fails.
+#                        and each git gem's commit. Every gem ships
+#                        with its own files and notices, whatever its
+#                        license, which is yours to comply with. A gem
+#                        that does not support the runtime's Ruby, or
+#                        whose compiled files need a library the
+#                        target's computer lacks, fails the build.
 #                        A gem with an extension to compile is compiled
 #                        only when the target is this computer's
 #                        platform, with bundle config build.NAME's
 #                        options: Xcode's command line tools on macOS,
 #                        a C compiler and make on Linux, RubyInstaller's
 #                        MSYS2 UCRT64 tools (ridk install) on Windows,
-#                        and cargo for a Rust extension, whose crates'
-#                        licenses are judged too. Elsewhere, choose a
-#                        precompiled build, or build on that platform.
-#     ROOT/fledge.yml    Optional. name: the app's name. licenses: the
-#                        license of a gem whose gemspec gives none, or
-#                        the wrong one, such as {some_gem: MIT}.
-#                        compiled: what a native gem Fledge has not
-#                        reviewed compiles in, such as {some_gem:
-#                        [{name: libfoo 1.2, license: MIT}]}.
+#                        and cargo for a Rust extension. Elsewhere,
+#                        choose a precompiled build, or build on that
+#                        platform.
+#     ROOT/fledge.yml    Optional. name: the app's name, such as
+#                        name: MyCoolApp.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        NAME is the gemspec's name, or else ROOT's
 #                        folder name, camelized (my_cool_app is
@@ -98,8 +94,9 @@
 #                        bundle exec, would, and exits with its status,
 #                        or with 66 when it is missing and 70 when the
 #                        rest of the folder is broken. Its notices/
-#                        holds every license, the gems' in GEMS.txt. A
-#                        new build replaces it.
+#                        holds the licenses of what Fledge put in it;
+#                        each gem keeps its own in its folder. A new
+#                        build replaces it.
 #     DIR/NAME-PLATFORM.zip
 #     DIR/NAME-PLATFORM.tar.gz
 #                        The same folder, archived for download: a .zip

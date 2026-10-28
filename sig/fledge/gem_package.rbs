@@ -3,15 +3,10 @@
 
 module Fledge
   class GemPackage
-    LICENSE_FILE: Regexp
-    LICENSES: String
-
     @files: Array[Entry]
 
     attr_reader spec: Gem::Specification
     attr_reader path: String
-
-    def self.license_files_in: (Hash[String, String] files) -> Hash[String, String]
 
     def self.ruby_problems: (Gem::Specification spec, String ruby_version) -> Array[String]
 
@@ -27,7 +22,6 @@ module Fledge
 
     def contents: () -> Hash[String, String]
 
-    def license_files: () -> Hash[String, String]
 
     private def specification: () -> String
 

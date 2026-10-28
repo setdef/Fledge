@@ -85,7 +85,6 @@ class NativeBuildTest < Minitest::Test
 
   def program(root)
     File.write(File.join(root, "exe", "my_app"), "require \"greeter\"\nputs Greeter.greet\n")
-    File.write(File.join(root, "fledge.yml"), "compiled:\n  greeter: []\n")
   end
 
   def gem_dir(folder) = File.join(folder, @platform.windows? ? "ruby/lib/ruby/gems/4.0.0" : "lib/ruby/gems/4.0.0")
@@ -112,9 +111,6 @@ class NativeBuildTest < Minitest::Test
     assert_includes File.read(File.join(gems, "build_info", "greeter-1.0.0.info")), "--with-greeting=bonjour"
     refute(Dir.glob(File.join(gems, "gems/greeter-1.0.0/ext/greeter/*")).any? { |path| path.end_with?(".o", "Makefile") },
       "the build's own leftovers stay behind")
-    notices = File.read(File.join(folder, "notices", "GEMS.txt"))
-    assert_includes notices, "  Built: compiled from source by fledge build, against the runtime's Ruby 4.0.9, with the build " \
-      "options --with-greeting=bonjour\n"
     refute_path_exists File.join(folder, @platform.windows? ? "ruby/include" : "include"), "the runtime's headers never ship"
     compiled = Dir.glob(File.join(gems, "gems/greeter-1.0.0/lib/greeter/greeter.*")).first.to_s
     assert_operator Gem::Version.new(Fledge::Binary.macos_minimum(File.binread(compiled))), :<=, Gem::Version.new("14.0") if @platform.os == "darwin"

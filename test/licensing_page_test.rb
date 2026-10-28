@@ -81,14 +81,19 @@ class LicensingPageTest < Minitest::Test
     refute_empty section(text, "Windows on x64 (x64-mingw-ucrt)")
   end
 
-  # An app's own gems meet the runtimes' policy (ADR 005); the page says
-  # which licenses pass, from the policy itself.
-  def test_it_says_what_an_apps_own_gems_must_be
+  # An app's own gems are the developer's choice and responsibility
+  # (2026-10-28; ADR 007): the page says Fledge takes no position on
+  # them, judges no gem by its license, and writes no notices of its own
+  # for them.
+  def test_it_says_an_apps_own_gems_are_the_developers_to_comply_with
     gems = section(page, "Your app's own gems")
 
-    assert_includes gems, "`BSD-3-Clause`, `BSL-1.0`"
-    assert_includes gems, "under `licenses`"
-    assert_includes gems, "`notices/GEMS.txt`"
+    assert_includes gems, "Fledge takes no position on the licenses of the gems your app depends on"
+    assert_includes gems, "your choice and your responsibility"
+    assert_includes gems, "`bundle licenses`"
+    refute_includes gems, "`BSD-3-Clause`"
+    refute_includes gems, "GEMS.txt"
+    refute_includes gems, "fledge.yml"
   end
 
   def test_it_cites_the_license_sections_and_says_to_ask_a_lawyer

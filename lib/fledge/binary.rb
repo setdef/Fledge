@@ -12,12 +12,14 @@ module Fledge
   # system loader must find for it, read from the file itself.
   #
   # Fledge copies compiled code into every app: the runtime's, and the
-  # native gems an app's Gemfile.lock locks. What that code links decides
-  # what a license asks of the app's developer, since an LGPL library may
-  # ship only as a separate shared library that another file loads, never
-  # compiled into it (decision 8 in <tt>doc/contributors/decisions.md</tt>).
-  # Tools that answer the question (readelf, otool, objdump) each read one
-  # format, on one operating system.
+  # native gems an app's Gemfile.lock locks. What a file links decides
+  # whether it loads on the computer the app goes to, and, for Fledge's
+  # own runtime, what a license asks of the app's developer, since an LGPL
+  # library may ship in a runtime only as a separate shared library that
+  # another file loads, never compiled into it (decision 8 in
+  # <tt>doc/contributors/decisions.md</tt>). Tools that answer the
+  # question (readelf, otool, objdump) each read one format, on one
+  # operating system.
   #
   # This class reads ELF's dynamic section (what <tt>readelf -d</tt>
   # prints), Mach-O's dylib load commands (<tt>otool -L</tt>), and PE's
@@ -28,7 +30,8 @@ module Fledge
   # as a binary that links nothing, because what matters about it is that
   # its code would be copied into whatever links it.
   #
-  # Use it to audit a runtime (ADR 004) or an app's native gems (ADR 005).
+  # Use it to audit a runtime (ADR 004), or to check that an app's native
+  # gems will load (Fledge::Linkage).
   #
   # === Examples
   #

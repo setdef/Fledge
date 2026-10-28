@@ -7,16 +7,17 @@
 
 require_relative "test_helper"
 
-# The map of what native gems compile in (lib/fledge/compiled_code.yml),
-# checked against the real precompiled gems it describes, downloaded from
-# RubyGems.org and pinned by SHA-256, as fledge build would fetch them.
-# They are kept in tmp/native-gems between runs.
+# Real precompiled gems, downloaded from RubyGems.org and pinned by
+# SHA-256, as fledge build would fetch them, checked as fledge build
+# checks every gem an app ships: whether their compiled files would load
+# where the app goes (Fledge::Linkage). They are kept in tmp/native-gems
+# between runs.
 #
 # nokogiri's builds for macOS and Windows compile GNU libiconv in
-# statically (nokogiri's LICENSE-DEPENDENCIES.md at 1.19.4), which
-# decision 8 forbids, so Fledge refuses them and says why; its builds for
-# Linux use the C library's iconv and ship. sqlite3's compile in SQLite,
-# which is in the public domain, on every platform.
+# statically (nokogiri's LICENSE-DEPENDENCIES.md at 1.19.4). Fledge
+# refused them for it until the maintainer ruled, on 2026-10-28, that the
+# licenses of an app's gems are its developer's to judge, not Fledge's
+# (ADR 007). Now they ship like every other build.
 class NativeGemsTest < Minitest::Test
   CACHE = File.expand_path("../tmp/native-gems", __dir__)
 
@@ -33,61 +34,52 @@ class NativeGemsTest < Minitest::Test
     "ratatui_ruby-1.5.2-x64-mingw-ucrt" => "e3279373e2cc02435a4e3a9ecfd9c72f1cf300019d946f67504f7fabbad46612",
   }.freeze
 
-  def audit(full_name, os: nil, provided: [])
+  def problems(full_name, os:, provided: [])
     path = File.join(CACHE, "#{full_name}.gem")
     Fledge::Download.save("https://rubygems.org/gems/#{full_name}.gem", to: path, sha256: GEMS.fetch(full_name)) unless File.file?(path)
-    package = Fledge::GemPackage.new(path)
-    Fledge::CompiledCode.new(os:, provided:).audit(package.spec.name, package.contents, label: full_name)
+    Fledge::Linkage.new(os:, provided:).problems(full_name, Fledge::GemPackage.new(path).contents)
   end
 
-  def test_nokogiri_for_macos_and_windows_is_refused_for_its_static_libiconv
-    %w[nokogiri-1.19.4-arm64-darwin nokogiri-1.19.4-x64-mingw-ucrt].each do |gem|
-      problems = audit(gem).problems
+  # What a runtime ships beside Ruby's own DLL on Windows, which a gem's
+  # extension may load (runtime/licenses.yml).
+  WINDOWS = %w[x64-ucrt-ruby400.dll libwinpthread-1.dll].freeze
 
-      assert_equal 1, problems.size, gem
-      assert_match(%r{\A#{gem} compiles GNU libiconv's code \(LGPL-2\.1-or-later\) into lib/nokogiri/3\.2/nokogiri\.\w+, }, problems.first)
-      assert_includes problems.first, "lib/nokogiri/4.0/nokogiri."
-      assert_includes problems.first, "Fledge ships LGPL code only as a separate shared library that a person can replace"
-      assert_includes problems.first, "nokogiri's builds for x86_64-linux and aarch64-linux use the C library's iconv"
+  def os_of(full_name)
+    case full_name
+    when /darwin\z/ then "darwin"
+    when /mingw-ucrt\z/ then "windows"
+    else "linux"
     end
   end
 
-  def test_nokogiri_for_linux_ships_with_what_it_compiles_in
-    %w[nokogiri-1.19.4-x86_64-linux-gnu nokogiri-1.19.4-aarch64-linux-gnu].each do |gem|
-      result = audit(gem)
+  def test_nokogiris_builds_ship_on_every_platform_libiconv_and_all
+    GEMS.keys.grep(/\Anokogiri-/).each do |gem|
+      os = os_of(gem)
 
-      assert_empty result.problems, gem
-      assert_equal ["GCC's runtime library (libgcc)", "libgumbo", "libxml2", "libxslt", "zlib"], result.components.map(&:name).sort, gem
-      assert_equal %w[3.2 3.3 3.4 4.0].map { |ruby| "lib/nokogiri/#{ruby}/nokogiri.so" },
-        result.components.find { |component| component.name == "libxml2" }.files
+      assert_empty problems(gem, os:, provided: (os == "windows") ? WINDOWS : []), gem
     end
   end
 
-  def test_sqlite3_ships_with_sqlite_on_every_platform
+  def test_sqlite3s_builds_ship_on_every_platform
     GEMS.keys.grep(/\Asqlite3-/).each do |gem|
-      result = audit(gem)
+      os = os_of(gem)
 
-      assert_empty result.problems, gem
-      sqlite = result.components.find { |component| component.name == "SQLite" }
-      assert_equal "blessing", sqlite&.license, gem
+      assert_empty problems(gem, os:, provided: (os == "windows") ? WINDOWS : []), gem
     end
   end
 
   # ratatui_ruby's precompiled builds are Rust extensions built for each
-  # Ruby from 3.2 to 4.0 (lib/ratatui_ruby/RUBY/), whose crates the map
-  # lists for each operating system, and whose builds for older Rubies on
-  # Windows need those Rubies' DLLs, which the runtime's Ruby never loads.
-  def test_ratatui_ruby_ships_with_the_crates_each_systems_build_compiles_in
-    darwin = audit("ratatui_ruby-1.5.2-arm64-darwin", os: "darwin")
-    windows = audit("ratatui_ruby-1.5.2-x64-mingw-ucrt", os: "windows", provided: %w[x64-ucrt-ruby400.dll libwinpthread-1.dll])
+  # Ruby from 3.2 to 4.0 (lib/ratatui_ruby/RUBY/); those for older Rubies
+  # on Windows need those Rubies' DLLs, which the runtime's Ruby never
+  # loads, and the one for Ruby 4.0 loads what the runtime ships.
+  def test_ratatui_rubys_builds_ship
+    assert_empty problems("ratatui_ruby-1.5.2-arm64-darwin", os: "darwin")
+    assert_empty problems("ratatui_ruby-1.5.2-x64-mingw-ucrt", os: "windows", provided: WINDOWS)
+  end
 
-    [darwin, windows].each { |result| assert_empty result.problems }
-    crossterm = darwin.components.find { |component| component.name.start_with?("Rust crate crossterm ") }
-    assert_includes crossterm.files, "lib/ratatui_ruby/4.0/ratatui_ruby.bundle"
-    names = -> (result) { result.components.map { |component| component.name[/\ARust crate (\S+)/, 1] }.compact }
-    assert_includes names.call(windows), "winapi"
-    refute_includes names.call(darwin), "winapi"
-    assert_includes names.call(darwin), "signal-hook"
-    assert_includes darwin.components.map(&:name), "The Rust standard library"
+  # Judged for another operating system, the same files need libraries it
+  # does not have, which shows the check reads the real files.
+  def test_a_build_for_another_system_would_not_load
+    refute_empty problems("nokogiri-1.19.4-arm64-darwin", os: "linux")
   end
 end

@@ -26,10 +26,10 @@ module Fledge
   # the launcher's executable bit on a disk that has none.
   #
   # This class streams each runtime entry, then CONFIG, each of the app's
-  # entries, and the files the build adds (the app's gems and their
-  # notices), into the folder and the archive at once, so the archive
-  # keeps the permissions and symlinks the runtime was built with. The
-  # platform names the archive's format (Fledge::Platform#archive_format).
+  # entries, and the files the build adds (the app's gems), into the
+  # folder and the archive at once, so the archive keeps the permissions
+  # and symlinks the runtime was built with. The platform names the
+  # archive's format (Fledge::Platform#archive_format).
   # It refuses to let an added file replace one the runtime holds,
   # replaces a previous build of the same app and platform, and removes
   # what it wrote if the build fails.

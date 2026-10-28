@@ -176,8 +176,8 @@ class LicenseAuditTest < Minitest::Test
     assert_includes rules(audit), ["copyleft-text", "lib/ruby/4.0.0/borrowed.rb"]
   end
 
-  # The audit judges every component by Fledge::LicensePolicy, as fledge
-  # build judges an app's gems (test/license_policy_test.rb).
+  # The audit judges every component of a runtime by
+  # Fledge::LicensePolicy (test/license_policy_test.rb).
   def test_the_audit_judges_licenses_by_fledges_policy
     assert_equal :notice_only, LicenseAudit.category("Ruby OR BSD-2-Clause")
     assert_equal :forbidden, LicenseAudit.category("AGPL-3.0-or-later")

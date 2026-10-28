@@ -74,11 +74,8 @@ class GemAppBuildTest < Minitest::Test
         assert_equal "require_relative '../gems/foo-1.0.0/lib/rubygems_plugin.rb'\n", File.read(File.join(gems, "plugins/foo_plugin.rb"))
         refute_path_exists File.join(gems, "gems/csv-3.3.5"), "the runtime's own csv 3.3.5 stays the runtime's"
 
-        notices = File.read(File.join(@dir, folder, "notices/GEMS.txt"))
-        assert_includes notices, "native 1.0.0 (#{native.platform})\n  License: BSD-3-Clause\n"
-        assert_includes notices, "  From: #{@server.url("/gems/#{native.file_name}")}\n"
-        assert_includes notices, "foo 1.0.0: LICENSE.txt\n#{'=' * 72}\n\nfoo is MIT\n"
-        refute_includes notices, "csv"
+        assert_equal "foo is MIT\n", File.read(File.join(gems, "gems/foo-1.0.0/LICENSE.txt")), "a gem's own notices ship in its folder"
+        refute_path_exists File.join(@dir, folder, "notices/GEMS.txt"), "Fledge writes no notices of its own for the app's gems"
 
         assert_equal Fledge::Bundle::SETTINGS, File.read(File.join(@dir, folder, "app/.bundle/config"))
         gemspec = File.read(File.join(@dir, folder, "app/my_app.gemspec"))
@@ -104,33 +101,80 @@ class GemAppBuildTest < Minitest::Test
     refute_path_exists File.join(@dir, "dist/MyApp-arm64-darwin")
   end
 
-  def test_every_gem_that_cannot_ship_is_named_with_what_to_do
-    gpl = FakeGem.build(@gems, "copyleft", "1.0.0", licenses: ["GPL-3.0-only"])
-    unlabeled = FakeGem.build(@gems, "unlabeled", "1.0.0", licenses: [])
+  # Fledge refuses a gem only when it would not run where the app goes,
+  # and names every such gem at once.
+  def test_every_gem_that_would_not_run_is_named_with_what_to_do
     needs_compiling = FakeGem.build(@gems, "needs_compiling", "1.0.0", extensions: ["ext/needs_compiling/extconf.rb"],
       files: { "ext/needs_compiling/extconf.rb" => "", "LICENSE" => "MIT\n" })
     old = FakeGem.build(@gems, "old", "1.0.0", platform: "x86_64-linux-gnu", required_ruby_version: "< 3.5")
-    root = project(dependencies: { "copyleft" => ">= 0", "unlabeled" => ">= 0", "needs_compiling" => ">= 0", "old" => ">= 0" },
-      locked: [gpl, unlabeled, needs_compiling, old])
+    unloadable = FakeGem.build(@gems, "unloadable", "1.0.0", platform: "x86_64-linux-gnu",
+      files: { "lib/unloadable.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2]) })
+    root = project(dependencies: { "needs_compiling" => ">= 0", "old" => ">= 0", "unloadable" => ">= 0" },
+      locked: [needs_compiling, old, unloadable])
 
     out, err, status = build("-t", "x86_64-linux", root, host: "aarch64-linux")
 
     assert_equal [1, ""], [status, out]
     assert_equal [
       "fledge build: MyApp can't ship for x86_64-linux:",
-      "fledge build:   copyleft 1.0.0 is GPL-3.0-only, and Fledge ships only gems whose licenses ask nothing beyond keeping " \
-        "their notices (doc/licensing.md). If its license is another, give it in fledge.yml, under licenses, such as " \
-        "licenses: {copyleft: MIT}.",
       "fledge build:   needs_compiling 1.0.0 has an extension to compile, and the lockfile locks no build of it precompiled for " \
         "x86_64-linux. Fledge compiles a gem only on the platform it is for, and this computer is aarch64-linux: build for " \
         "x86_64-linux on a computer that is x86_64-linux, such as a CI runner of that platform, or choose a version of " \
         "needs_compiling with a build for x86_64-linux and run bundle lock --add-platform x86_64-linux.",
       "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.0.9.",
-      "fledge build:   unlabeled 1.0.0 declares no license, and Fledge ships only gems whose licenses ask nothing beyond " \
-        "keeping their notices (doc/licensing.md). If its license is another, give it in fledge.yml, under licenses, " \
-        "such as licenses: {unlabeled: MIT}.",
+      "fledge build:   unloadable 1.0.0 (x86_64-linux-gnu)'s lib/unloadable.so needs libxml2.so.2, which neither linux, nor " \
+        "Fledge's runtime, nor the gem itself provides, so the app could not load it on another computer. Build the gem so " \
+        "that it carries the library, or links it statically.",
     ], err.lines.map(&:chomp).grep_v(/\ADownloading /)
     assert_empty Dir.glob(File.join(@dir, "dist", "*"))
+  end
+
+  # The gems an app depends on, and their licenses, are its developer's
+  # choice and responsibility, not Fledge's (the maintainer's words of
+  # 2026-10-28; ADR 007). So every one of these ships: a GPL gem, an
+  # AGPL native gem shaped like Tokra, a gem that declares no license, a
+  # precompiled LGPL gem whose source the lockfile does not pin, an MPL
+  # gem, one that names a license SPDX does not know, and a native gem
+  # with GNU libiconv's code compiled into it, as nokogiri's precompiled
+  # macOS and Windows builds have, that no one has reviewed.
+  def test_a_gem_ships_whatever_its_license_and_whatever_its_compiled_files_hold
+    gems = [
+      FakeGem.build(@gems, "copyleft", "1.0.0", licenses: ["GPL-3.0-only"]),
+      FakeGem.build(@gems, "tokraish", "1.0.0", platform: "x86_64-linux-gnu", licenses: ["AGPL-3.0-or-later"],
+        files: { "lib/tokraish/tokraish.so" => Binaries.elf(needed: ["libc.so.6"]), "LICENSE" => "AGPL-3.0-or-later\n" }),
+      FakeGem.build(@gems, "unlabeled", "1.0.0", licenses: [], files: { "lib/unlabeled.rb" => "" }),
+      FakeGem.build(@gems, "binder", "2.0.0", platform: "x86_64-linux", licenses: ["LGPL-2.1-or-later"]),
+      FakeGem.build(@gems, "mozilla", "1.0.0", licenses: ["MPL-2.0"]),
+      FakeGem.build(@gems, "unknown", "1.0.0", licenses: ["GPL-3.0", "My Own License"]),
+      FakeGem.build(@gems, "iconvy", "1.0.0", platform: "x86_64-linux-gnu",
+        files: { "lib/iconvy.so" => Binaries.elf(needed: ["libc.so.6"], payload: "UCS-4-INTERNAL MULELAO-1"), "LICENSE" => "MIT\n" }),
+    ]
+    root = project(dependencies: gems.to_h { |gem| [gem.name, ">= 0"] }, locked: gems)
+
+    _, err, status = build("-t", "x86_64-linux", root)
+
+    assert_equal 0, status, err
+    assert_empty err.lines.grep_v(/\ADownloading /), "no warnings, and no verdicts"
+    installed = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.0.0")
+    gems.each { |gem| assert_path_exists File.join(installed, "specifications", "#{File.basename(gem.file_name, '.gem')}.gemspec"), gem.name }
+    assert_path_exists File.join(installed, "gems/tokraish-1.0.0-x86_64-linux-gnu/lib/tokraish/tokraish.so")
+    assert_path_exists File.join(installed, "gems/iconvy-1.0.0-x86_64-linux-gnu/lib/iconvy.so")
+    refute_path_exists File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt")
+  end
+
+  # fledge.yml no longer says what a gem's license is or what its
+  # compiled files hold, since Fledge no longer asks; like any key it does
+  # not know, each fails the build, so a stale file is noticed.
+  def test_fledge_yml_keys_that_judged_gems_are_unknown
+    root = project(dependencies: {}, locked: [])
+    { "licenses:\n  unlabeled: MIT\n" => "'licenses'", "compiled:\n  mystery: []\n" => "'compiled'" }.each do |yaml, key|
+      File.write(File.join(root, "fledge.yml"), yaml)
+
+      _, err, status = build("-t", "x86_64-linux", root)
+
+      assert_equal 1, status
+      assert_equal "fledge build: #{File.join(root, 'fledge.yml')} has #{key}, which Fledge does not know. It knows only name.\n", err
+    end
   end
 
   # On a computer Fledge has no runtime for, nothing compiles.
@@ -165,99 +209,7 @@ class GemAppBuildTest < Minitest::Test
       "gems/alpha/lib/alpha.rb"))
     gemspec = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.0.0/bundler/gems", scope, "gems/alpha/alpha.gemspec"))
     refute_includes gemspec, "git ls-files"
-    notices = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/notices/GEMS.txt"))
-    assert_includes notices, "alpha 1.0\n  License: MIT\n"
-    assert_includes notices, "  From: #{repo} at #{revision} (branch trunk)\n"
-    assert_includes notices, "lib/ruby/gems/4.0.0/bundler/gems/#{scope}/gems/alpha/LICENSE"
-  end
-
-  # An LGPL gem is its own files, which the app loads when it runs and
-  # whoever receives it can replace, so it ships under the LGPL rule the
-  # maintainer gave for libraries (decision 8, replies of 2026-10-26,
-  # later), when its exact source is pinned: a gem built for every
-  # platform is its own source; a precompiled one needs the lockfile to
-  # pin its source package too (ADR 006).
-  def test_an_lgpl_gem_ships_as_its_own_files_when_its_source_is_pinned
-    pure = FakeGem.build(@gems, "lesser", "1.0.0", licenses: ["LGPL-3.0-or-later"])
-    linux = FakeGem.build(@gems, "binder", "2.0.0", platform: "x86_64-linux", licenses: ["LGPL-2.1-or-later"])
-    source = FakeGem.build(@gems, "binder", "2.0.0", licenses: ["LGPL-2.1-or-later"])
-    root = project(dependencies: { "lesser" => ">= 0", "binder" => ">= 0" }, locked: [pure, linux, source])
-
-    _, err, status = build("-t", "x86_64-linux", root)
-
-    assert_equal 0, status, err
-    notices = File.read(File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt"))
-    assert_includes notices, "lesser 1.0.0\n  License: LGPL-3.0-or-later\n"
-    assert_includes notices, "  Shipped as: its own files, in lib/ruby/gems/4.0.0/gems/lesser-1.0.0, which whoever receives the app may " \
-      "replace; its source: #{@server.url('/gems/lesser-1.0.0.gem')}\n"
-    assert_includes notices, "its source: #{@server.url('/gems/binder-2.0.0.gem')}\n"
-    assert_includes notices, "LGPL-2.1, sections 6 and 7; LGPL-3.0, section 4"
-  end
-
-  def test_a_precompiled_lgpl_gem_without_its_source_pinned_is_refused
-    linux = FakeGem.build(@gems, "binder", "2.0.0", platform: "x86_64-linux", licenses: ["LGPL-2.1-or-later"])
-    gpl = FakeGem.build(@gems, "strong", "1.0.0", licenses: ["GPL-3.0-only"])
-    root = project(dependencies: { "binder" => ">= 0", "strong" => ">= 0" }, locked: [linux, gpl])
-
-    _, err, status = build("-t", "x86_64-linux", root)
-
-    assert_equal 1, status
-    assert_includes err, "binder 2.0.0 (x86_64-linux) is LGPL-2.1-or-later, and Fledge ships an LGPL gem, as its own files that " \
-      "whoever receives the app may replace, only with its exact source pinned. This build is precompiled: lock its source " \
-      "package too, with bundle lock --add-platform ruby, then build again."
-    assert_includes err, "strong 1.0.0 is GPL-3.0-only, and Fledge ships only gems whose licenses"
-  end
-
-  def test_fledge_yml_gives_the_license_a_gem_does_not_declare
-    unlabeled = FakeGem.build(@gems, "unlabeled", "1.0.0", licenses: [], files: { "lib/unlabeled.rb" => "" })
-    root = project(dependencies: { "unlabeled" => ">= 0" }, locked: [unlabeled])
-    File.write(File.join(root, "fledge.yml"), "licenses:\n  unlabeled: MIT\n")
-
-    _, err, status = build("-t", "x86_64-linux", root)
-
-    assert_equal 0, status, err
-    assert_equal "fledge build: warning: unlabeled 1.0.0 ships no license file, so notices/GEMS.txt names its license but " \
-      "cannot quote it.\n", err.lines.grep(/warning/).join
-    notices = File.read(File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt"))
-    assert_includes notices, "  License: MIT (as fledge.yml gives it; the gem declares NOASSERTION)\n"
-    assert_includes notices, "  License files: none: the gem ships no license text\n"
-  end
-
-  # A native gem whose compiled code holds a copyleft library compiled
-  # in fails, naming the gem, the file, the library, and why; one whose
-  # compiled code no one reviewed fails saying how to declare it; and once
-  # fledge.yml declares what it holds, GEMS.txt says so (ADR 005,
-  # section 7).
-  def test_a_native_gems_compiled_code_is_judged_by_what_it_holds
-    iconv = FakeGem.build(@gems, "iconvy", "1.0.0", platform: "x86_64-linux-gnu",
-      files: { "lib/iconvy.so" => Binaries.elf(payload: "UCS-4-INTERNAL MULELAO-1"), "LICENSE" => "MIT\n" })
-    mystery = FakeGem.build(@gems, "mystery", "1.0.0", platform: "x86_64-linux-gnu",
-      files: { "lib/mystery.so" => Binaries.elf(needed: ["libc.so.6"], payload: "libfoo 1.2"), "LICENSE" => "MIT\n" })
-    root = project(dependencies: { "iconvy" => ">= 0", "mystery" => ">= 0" }, locked: [iconv, mystery])
-
-    _, err, status = build("-t", "x86_64-linux", root)
-
-    assert_equal 1, status
-    problems = err.lines.map(&:chomp).grep_v(/\ADownloading /)
-    assert_equal "fledge build: MyApp can't ship for x86_64-linux:", problems.first
-    assert_match(%r{\Afledge build:   iconvy 1\.0\.0 \(x86_64-linux-gnu\) compiles GNU libiconv's code \(LGPL-2\.1-or-later\) into lib/iconvy\.so\.},
-      problems[1])
-    assert_match(%r{\Afledge build:   mystery 1\.0\.0 \(x86_64-linux-gnu\) ships compiled code \(lib/mystery\.so\) that Fledge has not reviewed},
-      problems[2])
-  end
-
-  def test_fledge_yml_says_what_a_native_gems_compiled_code_holds
-    mystery = FakeGem.build(@gems, "mystery", "1.0.0", platform: "x86_64-linux-gnu",
-      files: { "lib/mystery.so" => Binaries.elf(needed: ["libc.so.6"], payload: "libfoo 1.2"), "LICENSE" => "MIT\n" })
-    root = project(dependencies: { "mystery" => ">= 0" }, locked: [mystery])
-    File.write(File.join(root, "fledge.yml"), "compiled:\n  mystery:\n    - {name: libfoo 1.2, license: BSD-3-Clause}\n")
-
-    _, err, status = build("-t", "x86_64-linux", root)
-
-    assert_equal 0, status, err
-    notices = File.read(File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt"))
-    assert_includes notices, "mystery 1.0.0 (x86_64-linux-gnu)\n  License: MIT\n"
-    assert_includes notices, "  Compiled in: libfoo 1.2 (BSD-3-Clause, as fledge.yml gives it), in lib/mystery.so\n"
+    assert_equal "MIT\n", File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.0.0/bundler/gems", scope, "gems/alpha/LICENSE"))
   end
 
   def test_a_gem_whose_file_differs_from_the_lockfile_is_refused

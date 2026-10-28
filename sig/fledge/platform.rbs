@@ -4,7 +4,6 @@
 module Fledge
   class Platform < Data
     NAMES: Array[String]
-    RUST_TARGETS: Hash[String, String]
     MACOS_MINIMUM: String
     GLIBC_MINIMUM: String
 
@@ -24,8 +23,6 @@ module Fledge
     def windows?: () -> bool
 
     def os: () -> String
-
-    def rust_target: () -> String
 
     def macos_minimum: () -> String?
 

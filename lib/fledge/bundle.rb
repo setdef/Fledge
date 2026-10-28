@@ -317,28 +317,6 @@ module Fledge
       LockedGem.new(name: spec.name, version: spec.version.to_s, platform: platform_name, remote: source.remotes.first.to_s, sha256:)
     end
 
-    # The source package of the precompiled gem +gem+ (a
-    # Fledge::LockedGem): its build for every platform, of the same
-    # version, from the same server, when the lockfile pins it by
-    # checksum, or +nil+. An LGPL gem's exact source (ADR 006).
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   bundle.source_package(ratatui_ruby_for_linux).url # => "https://rubygems.org/gems/ratatui_ruby-1.5.2.gem"
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def source_package(gem)
-      sha256 = @checksums["#{gem.name} (#{gem.version})"] or return nil
-
-      gem.with(platform: "ruby", sha256:)
-    end
-
     # A gem from git, at the revision the lockfile locks, which must be a
     # whole commit: SHA-1's 40 hexadecimal digits, or SHA-256's 64.
     private def git_gem(spec, source)

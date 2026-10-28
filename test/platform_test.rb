@@ -92,20 +92,19 @@ class PlatformTest < Minitest::Test
   end
 
   # Compiling a gem needs the operating system's name for the libraries
-  # it provides, Rust's name for the target (rb-sys's, from RbConfig),
-  # and on macOS the oldest version the runtime runs on, which a
-  # compiled extension may not raise (ADR 001, section 3; ADR 006).
-  def test_each_platform_names_its_os_its_rust_target_and_its_oldest_macos_or_glibc
+  # it provides, and on macOS the oldest version the runtime runs on,
+  # which a compiled extension may not raise (ADR 001, section 3; ADR
+  # 006).
+  def test_each_platform_names_its_os_and_its_oldest_macos_or_glibc
     {
-      "arm64-darwin" => ["darwin", "aarch64-apple-darwin", "14.0"],
-      "x86_64-linux" => ["linux", "x86_64-unknown-linux-gnu", nil],
-      "aarch64-linux" => ["linux", "aarch64-unknown-linux-gnu", nil],
-      "x64-mingw-ucrt" => ["windows", "x86_64-pc-windows-gnu", nil],
-    }.each do |name, (os, rust, macos)|
+      "arm64-darwin" => ["darwin", "14.0"],
+      "x86_64-linux" => ["linux", nil],
+      "aarch64-linux" => ["linux", nil],
+      "x64-mingw-ucrt" => ["windows", nil],
+    }.each do |name, (os, macos)|
       platform = Fledge::Platform.find(name)
 
       assert_equal os, platform.os, name
-      assert_equal rust, platform.rust_target, name
       if macos
         assert_equal macos, platform.macos_minimum
       else

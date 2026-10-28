@@ -42,7 +42,5 @@ module Fledge
     private def floor_problems: (locked_gem gem, Array[Entry] entries) -> Array[String]
 
     private def newer?: (String found, String floor) -> bool
-
-    private def crates: (locked_gem gem, GemPackage | GitPackage package, String gem_dir) -> RustCrates::Found?
   end
 end

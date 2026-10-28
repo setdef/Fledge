@@ -40,13 +40,12 @@ class GemPackageTest < Minitest::Test
     assert_equal ["tool", "1.2.0", Gem::VERSION], [spec.name, spec.version.to_s, spec.installed_by_version.to_s]
   end
 
-  def test_reads_a_platform_gems_name_and_its_license_files
-    built = FakeGem.build(@dir, "native", "2.0.0", platform: "x64-mingw-ucrt",
-      files: { "lib/native.rb" => "", "LICENSE" => "BSD\n", "LICENSE-DEPENDENCIES.md" => "SQLite is public domain\n", "docs/LICENSE.md" => "" })
+  def test_reads_a_platform_gems_name_and_its_files
+    built = FakeGem.build(@dir, "native", "2.0.0", platform: "x64-mingw-ucrt", files: { "lib/native.rb" => "", "LICENSE" => "BSD\n" })
     package = Fledge::GemPackage.new(built.path)
 
     assert_equal "native-2.0.0-x64-mingw-ucrt", package.spec.full_name
-    assert_equal({ "LICENSE" => "BSD\n", "LICENSE-DEPENDENCIES.md" => "SQLite is public domain\n" }, package.license_files)
+    assert_equal({ "LICENSE" => "BSD\n", "lib/native.rb" => "" }, package.contents)
     assert_equal "ruby/lib/ruby/gems/4.0.0/gems/native-2.0.0-x64-mingw-ucrt/lib/native.rb",
       package.entries("ruby/lib/ruby/gems/4.0.0").map(&:path).grep(/native\.rb\z/).first
   end
@@ -62,18 +61,6 @@ class GemPackageTest < Minitest::Test
     assert_empty fine.problems(ruby_version: "4.0.9")
     refute_predicate fine, :extensions?
     assert_equal "lib/ruby/gems/4.0.0/gems/fine-1.0.0", fine.installed_path("lib/ruby/gems/4.0.0")
-  end
-
-  # REUSE keeps license texts in LICENSES/, as Ferro's gems ship theirs.
-  def test_license_files_include_a_reuse_licenses_folder
-    built = FakeGem.build(@dir, "reused", files: {
-"lib/reused.rb" => "",
-"LICENSES/MIT.txt" => "MIT\n",
-"LICENSES/Apache-2.0.txt" => "Apache\n",
-"LICENSES/deep/x.txt" => "",
-})
-
-    assert_equal %w[LICENSES/Apache-2.0.txt LICENSES/MIT.txt], Fledge::GemPackage.new(built.path).license_files.keys
   end
 
   def test_a_file_that_is_not_a_gem_is_refused

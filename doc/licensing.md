@@ -118,13 +118,13 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
 | libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
-| LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe |
+| LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe and launcherw.exe |
 | Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
 | OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
 | Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL) | 4.0.9 | `GPL-1.0-or-later OR Artistic-1.0-Perl` | compiled into ruby/bin/x64-ucrt-ruby400.dll |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll), and its standard library in lib/ruby/ |
 | RubyInstaller's runtime files, manifests, and tools | 4.0.9-1 | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
-| The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL | 14.0.0 | `LicenseRef-MinGW-w64-runtime` | compiled into launcher.exe and every DLL and extension in ruby/ |
+| The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL | 14.0.0 | `LicenseRef-MinGW-w64-runtime` | compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/ |
 | winpthreads (libwinpthread-1.dll), from MinGW-w64 | 14.0.0 | `MIT AND BSD-3-Clause` | a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports |
 | zlib (zlib1.dll) | 1.3.2 | `Zlib` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
 

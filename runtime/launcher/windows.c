@@ -53,7 +53,9 @@
  *      Ruby's DLLs may be (SetDefaultDllDirectories).
  *   2. Finds the folder it lives in (GetModuleFileNameW), and reads
  *      fledge.cfg there, which names the program in app\ to run, ENTRY,
- *      and the app's Gemfile, if it has one.
+ *      the app's Gemfile, if it has one, and its identifier, if it has
+ *      one, which becomes the process's AppUserModelID
+ *      (set_app_user_model_id).
  *   3. Sets aside every environment variable scrub.c names, removing it
  *      from both copies of the environment Ruby reads (see
  *      scrub_environment). The runtime's own lib\ruby\4.0.0\rubygems\
@@ -91,8 +93,9 @@
  * file when the file is renamed.
  *
  * Built with -DFLEDGE_WINDOWED and linked with -mwindows, it is a
- * GUI-subsystem program, for windowed apps: Windows opens no console for
- * it, and its own failures appear in a message box unless whoever
+ * GUI-subsystem program, for windowed apps, which a runtime ships as
+ * launcherw.exe beside launcher.exe (ADR 008): Windows opens no console
+ * for it, and its own failures appear in a message box unless whoever
  * started it captured standard error.
  */
 
@@ -477,15 +480,24 @@ static wchar_t *entry;
 static wchar_t *gemfile;
 static char **ruby_arguments;
 
+/* The UTF-8 text from fledge.cfg as a wide string. */
+static wchar_t *
+wide_text(const char *text)
+{
+    int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, -1, NULL, 0);
+    if (length <= 0) fail(L"this app is damaged: its %hs holds text that is not UTF-8", FLEDGE_CONFIG);
+
+    wchar_t *wide = allocate((size_t)length, sizeof *wide);
+    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text, -1, wide, length);
+    return wide;
+}
+
 /* The UTF-8 path from fledge.cfg as a wide Windows path, with \ for /. */
 static wchar_t *
 windows_path(const char *path)
 {
-    int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, NULL, 0);
-    if (length <= 0) fail(L"this app is damaged: its %hs names a path that is not UTF-8", FLEDGE_CONFIG);
+    wchar_t *wide = wide_text(path);
 
-    wchar_t *wide = allocate((size_t)length, sizeof *wide);
-    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, wide, length);
     for (wchar_t *letter = wide; *letter != L'\0'; letter++) {
         if (*letter == L'/') *letter = L'\\';
     }
@@ -525,6 +537,37 @@ read_config(void)
 
     entry = windows_path(app_config.entry);
     if (app_config.gemfile != NULL) gemfile = windows_path(app_config.gemfile);
+}
+
+/*
+ * Makes the app's identifier, when fledge.cfg names one, the process's
+ * AppUserModelID, before any window opens: the taskbar groups the app's
+ * windows under it, and Windows attributes the app's notifications to
+ * it, rather than to an identity it derives from the program's path
+ * (ADR 008). SetCurrentProcessExplicitAppUserModelID lives in shell32.dll
+ * (shobjidl_core.h), which only such an app loads, from System32, when
+ * it starts. A Start menu shortcut with the same System.AppUserModel.ID,
+ * which an installer writes, is what lets Windows show the app's toasts;
+ * the launcher cannot make one. Failing to set it changes how Windows
+ * groups and names the app, never whether it runs, so a failure is
+ * ignored.
+ */
+static void
+set_app_user_model_id(void)
+{
+    typedef HRESULT(WINAPI * set_id_function)(PCWSTR);
+
+    if (app_config.identifier == NULL) return;
+
+    HMODULE shell = LoadLibraryExW(L"shell32.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (shell == NULL) return;
+
+    FARPROC address = GetProcAddress(shell, "SetCurrentProcessExplicitAppUserModelID");
+    if (address == NULL) return;
+
+    wchar_t *identifier = wide_text(app_config.identifier);
+    ((set_id_function)(any_function)address)(identifier);
+    free(identifier);
 }
 
 /*
@@ -734,6 +777,7 @@ wmain(int argc, wchar_t **argv)
     *slash = L'\0';
 
     read_config();
+    set_app_user_model_id();
     scrub_environment();
     load_ruby(root);
 

@@ -92,8 +92,9 @@ components:
     files:
       - launcher
       - launcher.exe
+      - launcherw.exe
       - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
-    binaries: [launcher, launcher.exe]
+    binaries: [launcher, launcher.exe, launcherw.exe]
 
   - id: rust-std
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
@@ -139,10 +140,10 @@ components:
     kind: program
     download: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0
     notice: mingw-w64
-    ships: compiled into launcher.exe and every DLL and extension in ruby/
+    ships: compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/
     platforms: [x64-mingw-ucrt]
     embedded:
-      - files: [launcher.exe, "{prefix}bin/*.{dll,exe}", "{prefix}lib/ruby/**/*.{dll,so}"]
+      - files: [launcher.exe, launcherw.exe, "{prefix}bin/*.{dll,exe}", "{prefix}lib/ruby/**/*.{dll,so}"]
 
   - id: compiler-rt
     name: LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw
@@ -150,10 +151,10 @@ components:
     license: Apache-2.0 WITH LLVM-exception
     kind: program
     download: https://github.com/mstorsjo/llvm-mingw/releases/tag/20261020
-    ships: compiled into launcher.exe
+    ships: compiled into launcher.exe and launcherw.exe
     platforms: [x64-mingw-ucrt]
     embedded:
-      - files: [launcher.exe]
+      - files: [launcher.exe, launcherw.exe]
 
   - id: openssl
     name: OpenSSL, compiled into Ruby's openssl extension

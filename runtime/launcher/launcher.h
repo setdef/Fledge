@@ -53,14 +53,18 @@ char *fledge_bundle_environment_code(const char *variables, size_t length);
 /* The file beside the launcher that says what the app runs (config.c). */
 #define FLEDGE_CONFIG "fledge.cfg"
 
+/* The longest identifier fledge.cfg may name: an AppUserModelID's limit. */
+#define FLEDGE_IDENTIFIER_MAX 128
+
 /*
  * What fledge.cfg says: the program to run, and the Gemfile to set up
  * first, or NULL for none, each relative to the app folder with / between
- * folders.
+ * folders, and the app's reverse-DNS identifier, or NULL for none.
  */
 struct fledge_config {
     const char *entry;
     const char *gemfile;
+    const char *identifier;
 };
 
 /*

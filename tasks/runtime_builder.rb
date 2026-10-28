@@ -736,10 +736,11 @@ class RuntimeBuilder
       @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
     end
 
-    # Compiles the console launcher to +output+, and a windowed one beside
-    # the build, which no runtime ships yet, to check that it still
-    # builds as a GUI program. Both build with warnings as errors, under
-    # clang's static analyzer, and may import only what IMPORTS allows.
+    # Compiles the console launcher to +output+, and the windowed one, a
+    # GUI program for windowed apps, beside it as launcherw.exe, as
+    # RubyInstaller ships rubyw.exe beside ruby.exe (ADR 008). Both build
+    # with warnings as errors, under clang's static analyzer, and may
+    # import only what IMPORTS allows.
     private def compile(tree, output)
       sources = %w[windows.c scrub.c config.c bundler.c].map { |file| File.join(LAUNCHER, file) }
       flags = ["-std=gnu11", *WARNINGS, "-municode", "-DFLEDGE_RUBY_DLL=L\"#{ruby_dll(tree)}\"", *includes(tree)]
@@ -750,7 +751,7 @@ class RuntimeBuilder
       end
       resources = File.join(@build_dir, "windows.res.o")
       @builder.run(tool("windres"), "windows.rc", "-O", "coff", "-o", resources, chdir: LAUNCHER)
-      windowed = File.join(@build_dir, "launcher-windowed.exe")
+      windowed = File.join(File.dirname(output), "launcherw.exe")
       @builder.run(tool("clang"), "-O2", *flags, *sources, resources, "-mconsole", "-s", "-o", output)
       @builder.run(tool("clang"), "-O2", *flags, "-DFLEDGE_WINDOWED", *sources, resources, "-mwindows", "-s", "-o", windowed)
       check(output, CONSOLE, IMPORTS)

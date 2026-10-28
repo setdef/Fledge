@@ -15,13 +15,18 @@
  *   # Written by fledge build: what this app's program runs (ADR 005).
  *   entry = exe/my_cool_app
  *   gemfile = Gemfile
+ *   identifier = com.example.MyCoolApp
  *
  * entry is the program to run and gemfile the project's Gemfile, which
  * the launcher has Bundler set up first; both are relative to the app's
- * app folder, with / between folders. Blank lines and lines that begin
+ * app folder, with / between folders. identifier is the app's reverse-DNS
+ * name, which the Windows launcher makes its AppUserModelID (ADR 008):
+ * letters, digits, hyphens, and dots, at most FLEDGE_IDENTIFIER_MAX
+ * characters. Blank lines and lines that begin
  * with # say nothing. fledge build and the launcher come from the same
  * Fledge, so a key this launcher does not know means the file is
- * damaged, and it is refused, as is a path that leaves the app folder.
+ * damaged, and it is refused, as is a path that leaves the app folder
+ * and an identifier with any other character.
  */
 
 #include "launcher.h"
@@ -61,11 +66,28 @@ safe_path(const char *path)
     }
 }
 
+/* Whether identifier is one fledge build writes: 1 to FLEDGE_IDENTIFIER_MAX
+ * letters, digits, hyphens, and dots. */
+static int
+safe_identifier(const char *identifier)
+{
+    size_t length = strlen(identifier);
+
+    if (length == 0 || length > FLEDGE_IDENTIFIER_MAX) return 0;
+    for (const char *letter = identifier; *letter != '\0'; letter++) {
+        int allowed = (*letter >= 'a' && *letter <= 'z') || (*letter >= 'A' && *letter <= 'Z') ||
+                      (*letter >= '0' && *letter <= '9') || *letter == '-' || *letter == '.';
+        if (!allowed) return 0;
+    }
+    return 1;
+}
+
 int
 fledge_parse_config(char *text, struct fledge_config *config, const char **problem)
 {
     config->entry = NULL;
     config->gemfile = NULL;
+    config->identifier = NULL;
 
     char *line = text;
     while (line != NULL) {
@@ -86,10 +108,14 @@ fledge_parse_config(char *text, struct fledge_config *config, const char **probl
         const char *key = trim(content);
         const char *value = trim(equals + 1);
         const char **slot;
+        int is_path = 1;
         if (strcmp(key, "entry") == 0) {
             slot = &config->entry;
         } else if (strcmp(key, "gemfile") == 0) {
             slot = &config->gemfile;
+        } else if (strcmp(key, "identifier") == 0) {
+            slot = &config->identifier;
+            is_path = 0;
         } else {
             *problem = "has a key this app's program does not know";
             return -1;
@@ -98,8 +124,12 @@ fledge_parse_config(char *text, struct fledge_config *config, const char **probl
             *problem = "names the same key twice";
             return -1;
         }
-        if (!safe_path(value)) {
+        if (is_path && !safe_path(value)) {
             *problem = "names a path outside the app folder";
+            return -1;
+        }
+        if (!is_path && !safe_identifier(value)) {
+            *problem = "has an identifier that is not reverse-DNS";
             return -1;
         }
         *slot = value;

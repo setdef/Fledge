@@ -163,6 +163,277 @@ gems:
     reviewed: prism 2.0.0's src/ and include/, all prism's own
     holds: []
 
+  # ratatui_ruby publishes precompiled builds for arm64-darwin, x86_64-linux,
+  # and x64-mingw-ucrt, each a Rust extension (rb-sys) built for several
+  # Ruby versions (lib/ratatui_ruby/RUBY/ratatui_ruby.bundle or .so), from
+  # the ext/ratatui_ruby/Cargo.lock its gem ships. Its crates, for each
+  # operating system, are those cargo metadata resolves from that lockfile
+  # for the target, compiled in (normal dependencies, not procedural
+  # macros), less ratatui_ruby's own crate, which is the gem's own code.
+  # Built from source, for aarch64-linux, its crates come from its own
+  # build instead (ADR 006).
+  ratatui_ruby:
+    reviewed: >-
+      ratatui_ruby 1.5.2's ext/ratatui_ruby/Cargo.lock, by cargo metadata
+      --locked --filter-platform for aarch64-apple-darwin,
+      x86_64-unknown-linux-gnu, and x86_64-pc-windows-gnu
+    holds:
+      - name: Rust crate aho-corasick 1.1.4
+        license: Unlicense OR MIT
+      - name: Rust crate allocator-api2 0.2.21
+        license: MIT OR Apache-2.0
+      - name: Rust crate anyhow 1.0.100
+        license: MIT OR Apache-2.0
+      - name: Rust crate approx 0.5.1
+        license: Apache-2.0
+      - name: Rust crate atomic 0.6.1
+        license: Apache-2.0 OR MIT
+      - name: Rust crate base64 0.22.1
+        license: MIT OR Apache-2.0
+      - name: Rust crate bit-set 0.5.3
+        license: MIT OR Apache-2.0
+      - name: Rust crate bit-vec 0.6.3
+        license: MIT OR Apache-2.0
+      - name: Rust crate bitflags 1.3.2
+        license: MIT OR Apache-2.0
+      - name: Rust crate bitflags 2.10.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate block-buffer 0.10.4
+        license: MIT OR Apache-2.0
+      - name: Rust crate bumpalo 3.19.1
+        license: MIT OR Apache-2.0
+      - name: Rust crate bytemuck 1.24.0
+        license: Zlib OR Apache-2.0 OR MIT
+      - name: Rust crate castaway 0.2.4
+        license: MIT
+      - name: Rust crate cfg-if 1.0.4
+        license: MIT OR Apache-2.0
+      - name: Rust crate compact_str 0.9.0
+        license: MIT
+      - name: Rust crate cpufeatures 0.2.17
+        license: MIT OR Apache-2.0
+      - name: Rust crate crossterm 0.29.0
+        license: MIT
+      - name: Rust crate crossterm_winapi 0.9.1
+        license: MIT
+        os: [windows]
+      - name: Rust crate crypto-common 0.1.7
+        license: MIT OR Apache-2.0
+      - name: Rust crate csscolorparser 0.6.2
+        license: MIT OR Apache-2.0
+      - name: Rust crate deltae 0.3.2
+        license: MIT
+      - name: Rust crate deranged 0.5.5
+        license: MIT OR Apache-2.0
+      - name: Rust crate derive_more 2.1.1
+        license: MIT
+      - name: Rust crate digest 0.10.7
+        license: MIT OR Apache-2.0
+      - name: Rust crate either 1.15.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate equivalent 1.0.2
+        license: Apache-2.0 OR MIT
+      - name: Rust crate errno 0.3.14
+        license: MIT OR Apache-2.0
+        os: [darwin, linux]
+      - name: Rust crate euclid 0.22.11
+        license: MIT OR Apache-2.0
+      - name: Rust crate fancy-regex 0.11.0
+        license: MIT
+      - name: Rust crate fast-srgb8 1.0.0
+        license: MIT OR Apache-2.0 OR CC0-1.0
+      - name: Rust crate filedescriptor 0.8.3
+        license: MIT
+      - name: Rust crate finl_unicode 1.4.0
+        license: "(MIT OR Apache-2.0) AND Unicode-DFS-2016"
+      - name: Rust crate fixedbitset 0.4.2
+        license: MIT OR Apache-2.0
+      - name: Rust crate fnv 1.0.7
+        license: Apache-2.0 OR MIT
+      - name: Rust crate foldhash 0.2.0
+        license: Zlib
+      - name: Rust crate generic-array 0.14.7
+        license: MIT
+      - name: Rust crate getrandom 0.3.4
+        license: MIT OR Apache-2.0
+      - name: Rust crate hashbrown 0.16.1
+        license: MIT OR Apache-2.0
+      - name: Rust crate hex 0.4.3
+        license: MIT OR Apache-2.0
+      - name: Rust crate itertools 0.13.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate itertools 0.14.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate itoa 1.0.16
+        license: MIT OR Apache-2.0
+      - name: Rust crate kasuari 0.4.11
+        license: MIT OR Apache-2.0
+      - name: Rust crate lab 0.11.0
+        license: MIT
+      - name: Rust crate lazy_static 1.5.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate libc 0.2.178
+        license: MIT OR Apache-2.0
+      - name: Rust crate line-clipping 0.3.5
+        license: MIT OR Apache-2.0
+      - name: Rust crate linux-raw-sys 0.11.0
+        license: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
+        os: [linux]
+      - name: Rust crate lock_api 0.4.14
+        license: MIT OR Apache-2.0
+      - name: Rust crate log 0.4.29
+        license: MIT OR Apache-2.0
+      - name: Rust crate lru 0.16.2
+        license: MIT
+      - name: Rust crate mac_address 1.1.8
+        license: MIT OR Apache-2.0
+      - name: Rust crate magnus 0.8.2
+        license: MIT
+      - name: Rust crate memchr 2.7.6
+        license: Unlicense OR MIT
+      - name: Rust crate memmem 0.1.1
+        license: MIT OR Apache-2.0
+      - name: Rust crate memoffset 0.9.1
+        license: MIT
+        os: [darwin, linux]
+      - name: Rust crate minimal-lexical 0.2.1
+        license: MIT OR Apache-2.0
+      - name: Rust crate mio 1.1.1
+        license: MIT
+        os: [darwin, linux]
+      - name: Rust crate nix 0.29.0
+        license: MIT
+        os: [darwin, linux]
+      - name: Rust crate nom 7.1.3
+        license: MIT
+      - name: Rust crate num-conv 0.1.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate num-traits 0.2.19
+        license: MIT OR Apache-2.0
+      - name: Rust crate num_threads 0.1.7
+        license: MIT OR Apache-2.0
+        os: [darwin, linux]
+      - name: Rust crate ordered-float 4.6.0
+        license: MIT
+      - name: Rust crate palette 0.7.6
+        license: MIT OR Apache-2.0
+      - name: Rust crate parking_lot 0.12.5
+        license: MIT OR Apache-2.0
+      - name: Rust crate parking_lot_core 0.9.12
+        license: MIT OR Apache-2.0
+      - name: Rust crate pest 2.8.4
+        license: MIT OR Apache-2.0
+      - name: Rust crate phf 0.11.3
+        license: MIT
+      - name: Rust crate phf_shared 0.11.3
+        license: MIT
+      - name: Rust crate portable-atomic 1.13.0
+        license: Apache-2.0 OR MIT
+      - name: Rust crate powerfmt 0.2.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate ratatui 0.30.0
+        license: MIT
+      - name: Rust crate ratatui-core 0.1.0
+        license: MIT
+      - name: Rust crate ratatui-crossterm 0.1.0
+        license: MIT
+      - name: Rust crate ratatui-macros 0.7.0
+        license: MIT
+      - name: Rust crate ratatui-termwiz 0.1.0
+        license: MIT
+      - name: Rust crate ratatui-widgets 0.3.0
+        license: MIT
+      - name: Rust crate rb-sys 0.9.123
+        license: MIT OR Apache-2.0
+      - name: Rust crate regex 1.12.2
+        license: MIT OR Apache-2.0
+      - name: Rust crate regex-automata 0.4.13
+        license: MIT OR Apache-2.0
+      - name: Rust crate regex-syntax 0.8.8
+        license: MIT OR Apache-2.0
+      - name: Rust crate rustix 1.1.3
+        license: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
+        os: [darwin, linux]
+      - name: Rust crate ryu 1.0.21
+        license: Apache-2.0 OR BSL-1.0
+      - name: Rust crate scopeguard 1.2.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate serde 1.0.228
+        license: MIT OR Apache-2.0
+      - name: Rust crate serde_core 1.0.228
+        license: MIT OR Apache-2.0
+      - name: Rust crate sha2 0.10.9
+        license: MIT OR Apache-2.0
+      - name: Rust crate signal-hook 0.3.18
+        license: Apache-2.0 OR MIT
+        os: [darwin, linux]
+      - name: Rust crate signal-hook-mio 0.2.5
+        license: MIT OR Apache-2.0
+        os: [darwin, linux]
+      - name: Rust crate signal-hook-registry 1.4.7
+        license: MIT OR Apache-2.0
+        os: [darwin, linux]
+      - name: Rust crate siphasher 1.0.1
+        license: MIT OR Apache-2.0
+      - name: Rust crate smallvec 1.15.1
+        license: MIT OR Apache-2.0
+      - name: Rust crate static_assertions 1.1.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate strsim 0.11.1
+        license: MIT
+      - name: Rust crate strum 0.27.2
+        license: MIT
+      - name: Rust crate terminfo 0.9.0
+        license: WTFPL
+      - name: Rust crate termios 0.3.3
+        license: MIT
+        os: [darwin, linux]
+      - name: Rust crate termwiz 0.23.3
+        license: MIT
+      - name: Rust crate thiserror 1.0.69
+        license: MIT OR Apache-2.0
+      - name: Rust crate thiserror 2.0.17
+        license: MIT OR Apache-2.0
+      - name: Rust crate time 0.3.44
+        license: MIT OR Apache-2.0
+      - name: Rust crate time-core 0.1.6
+        license: MIT OR Apache-2.0
+      - name: Rust crate typenum 1.19.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate ucd-trie 0.1.7
+        license: MIT OR Apache-2.0
+      - name: Rust crate unicode-segmentation 1.12.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate unicode-truncate 2.0.0
+        license: MIT OR Apache-2.0
+      - name: Rust crate unicode-width 0.2.2
+        license: MIT OR Apache-2.0
+      - name: Rust crate utf8parse 0.2.2
+        license: Apache-2.0 OR MIT
+      - name: Rust crate uuid 1.19.0
+        license: Apache-2.0 OR MIT
+      - name: Rust crate vtparse 0.6.2
+        license: MIT
+      - name: Rust crate wezterm-bidi 0.2.3
+        license: MIT AND Unicode-DFS-2016
+      - name: Rust crate wezterm-blob-leases 0.1.1
+        license: MIT
+      - name: Rust crate wezterm-color-types 0.3.0
+        license: MIT
+      - name: Rust crate wezterm-dynamic 0.2.1
+        license: MIT
+      - name: Rust crate wezterm-input-types 0.1.0
+        license: MIT
+      - name: Rust crate winapi 0.3.9
+        license: MIT OR Apache-2.0
+        os: [windows]
+      - name: Rust crate winapi-x86_64-pc-windows-gnu 0.4.0
+        license: MIT OR Apache-2.0
+        os: [windows]
+      - name: Rust crate windows-link 0.2.1
+        license: MIT OR Apache-2.0
+        os: [windows]
+
   # redcarpet publishes only its source; fledge build compiles it on the
   # platform it builds for (ADR 006).
   redcarpet:

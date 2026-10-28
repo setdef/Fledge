@@ -49,7 +49,7 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   bundle = Fledge::Bundle.new(Fledge::App.at("examples/my_cool_app"))
-  #   bundle.gems_for(Fledge::Platform.find("x64-mingw-ucrt"), ruby_version: "4.0.9").map(&:to_s)
+  #   bundle.gems_for(Fledge::Platform.find("x64-mingw-ucrt"), ruby_version: "4.0.9", arch: "x64-mingw-ucrt").map(&:to_s)
   #   # => ["concurrent-ruby 1.3.8", "i18n 1.15.2", "sqlite3 2.10.2 (x64-mingw-ucrt)"]
   #--
   # SPDX-SnippetEnd
@@ -189,7 +189,13 @@ module Fledge
     # dependencies reach, leaving out Bundler, the project's own gems,
     # WITHOUT's groups, and gems the Gemfile limits to other platforms.
     # +ruby_version+ is the runtime's Ruby, for a dependency limited to
-    # some Ruby versions. Raises Fledge::Error, saying what to run, when
+    # some Ruby versions, and +arch+ its architecture (RbConfig's), whose
+    # RubyGems platform is the one the built app's Bundler runs as, so a
+    # lockfile platform and a gem's build fit +platform+ exactly when they
+    # would fit there (Bundler::Definition#current_platform_locked? and
+    # Gem::Platform#===): <tt>arm64-darwin</tt> and
+    # <tt>arm64-darwin-23</tt> fit rv-ruby's <tt>arm64-darwin23</tt>, and
+    # <tt>arm64-darwin-24</tt> does not. Raises Fledge::Error, saying what to run, when
     # the lockfile does not lock +platform+, the Gemfile asks for another
     # Ruby, a git gem is not pinned to a commit or needs its submodules, a
     # gem comes from a folder outside the project or is a path gem with an
@@ -202,15 +208,16 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   bundle.gems_for(Fledge::Platform.find("x86_64-linux"), ruby_version: "4.0.9").last.platform
+    #   bundle.gems_for(Fledge::Platform.find("x86_64-linux"), ruby_version: "4.0.9", arch: "x86_64-linux").last.platform
     #   # => "x86_64-linux-gnu"
     #--
     # SPDX-SnippetEnd
     #++
-    def gems_for(platform, ruby_version:)
+    def gems_for(platform, ruby_version:, arch:)
+      target = Gem::Platform.new(arch)
       check_ruby(ruby_version)
-      check_locked(platform)
-      chosen(platform, ruby_version).filter_map { |spec| locked_gem(spec, platform) }.sort_by(&:name)
+      check_locked(platform, target)
+      chosen(platform, ruby_version, target).filter_map { |spec| locked_gem(spec, platform) }.sort_by(&:name)
     end
 
     private def check_ruby(ruby_version)
@@ -220,18 +227,29 @@ module Fledge
       raise Error, "#{@app.gemfile} asks for Ruby #{wanted.versions.join(', ')}, and Fledge's runtimes are Ruby #{ruby_version}."
     end
 
-    private def check_locked(platform)
-      locked = @definition.platforms.map(&:to_s)
-      return if locked.include?("ruby") || platform.lockfile_names.intersect?(locked)
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-License-Identifier: MIT
+    # SPDX-SnippetCopyrightText: 2010-2019 André Arko, 2009 Engine Yard
+    # SPDX-SnippetComment: Bundler::Definition#validate_platforms! and
+    #   #current_platform_locked?, adapted from bundler/definition.rb at
+    #   Bundler 4.0.20 (lines 524 to 530 and 832 to 836), with the
+    #   runtime's platform as Bundler's local one.
+    #++
+    private def check_locked(platform, target)
+      locked = @definition.platforms
+      return if locked.any? { |candidate| candidate.to_s == "ruby" || Gem::Platform.generic(target) == candidate || target === candidate }
+      #--
+      # SPDX-SnippetEnd
+      #++
 
       raise Error, "#{lockfile_name} locks no gems for #{platform}. Run bundle lock --add-platform #{platform}, then build again."
     end
 
     # The locked specifications the app's dependencies reach on
     # +platform+, each the one Bundler would choose there.
-    private def chosen(platform, ruby_version)
+    private def chosen(platform, ruby_version, target)
       lookup = @definition.locked_gems.specs.group_by(&:name)
-      target = Gem::Platform.new(platform.name)
       queue = @definition.dependencies.select { |dependency| ships?(dependency, platform, ruby_version) }
         .map { |dependency| [dependency.name, dependency.force_ruby_platform || false] } # : Array[[String, bool]]
       seen = {} # : Hash[String, bool]
@@ -297,6 +315,28 @@ module Fledge
         raise Error, "#{lockfile_name} has no checksum for #{lock_name}, which #{platform} needs, and Fledge checks every gem " \
           "it ships. Run bundle lock --add-checksums, then build again."
       LockedGem.new(name: spec.name, version: spec.version.to_s, platform: platform_name, remote: source.remotes.first.to_s, sha256:)
+    end
+
+    # The source package of the precompiled gem +gem+ (a
+    # Fledge::LockedGem): its build for every platform, of the same
+    # version, from the same server, when the lockfile pins it by
+    # checksum, or +nil+. An LGPL gem's exact source (ADR 006).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   bundle.source_package(ratatui_ruby_for_linux).url # => "https://rubygems.org/gems/ratatui_ruby-1.5.2.gem"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def source_package(gem)
+      sha256 = @checksums["#{gem.name} (#{gem.version})"] or return nil
+
+      gem.with(platform: "ruby", sha256:)
     end
 
     # A gem from git, at the revision the lockfile locks, which must be a

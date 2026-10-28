@@ -29,13 +29,15 @@ class NativeGemsTest < Minitest::Test
     "sqlite3-2.10.2-x64-mingw-ucrt" => "7fe1bf1adfca4fffeaec27371e0a20c1162d9d985681ec9560971a44fc41d198",
     "sqlite3-2.10.2-x86_64-linux-gnu" => "ca92731ab464df9cae503fa1a439a549e2724f6953c8c05a7769b59366e38f15",
     "sqlite3-2.10.2-aarch64-linux-gnu" => "e9aea2c2b3476fc875dd8a89313a9a2862818519c0186bfb5b56d6f57bb08d98",
+    "ratatui_ruby-1.5.2-arm64-darwin" => "4f61e09ec6a81c5cc557b9b17fd78a4f99974017562c7275bee06a49af3f5cf6",
+    "ratatui_ruby-1.5.2-x64-mingw-ucrt" => "e3279373e2cc02435a4e3a9ecfd9c72f1cf300019d946f67504f7fabbad46612",
   }.freeze
 
-  def audit(full_name)
+  def audit(full_name, os: nil, provided: [])
     path = File.join(CACHE, "#{full_name}.gem")
     Fledge::Download.save("https://rubygems.org/gems/#{full_name}.gem", to: path, sha256: GEMS.fetch(full_name)) unless File.file?(path)
     package = Fledge::GemPackage.new(path)
-    Fledge::CompiledCode.new.audit(package.spec.name, package.contents, label: full_name)
+    Fledge::CompiledCode.new(os:, provided:).audit(package.spec.name, package.contents, label: full_name)
   end
 
   def test_nokogiri_for_macos_and_windows_is_refused_for_its_static_libiconv
@@ -69,5 +71,23 @@ class NativeGemsTest < Minitest::Test
       sqlite = result.components.find { |component| component.name == "SQLite" }
       assert_equal "blessing", sqlite&.license, gem
     end
+  end
+
+  # ratatui_ruby's precompiled builds are Rust extensions built for each
+  # Ruby from 3.2 to 4.0 (lib/ratatui_ruby/RUBY/), whose crates the map
+  # lists for each operating system, and whose builds for older Rubies on
+  # Windows need those Rubies' DLLs, which the runtime's Ruby never loads.
+  def test_ratatui_ruby_ships_with_the_crates_each_systems_build_compiles_in
+    darwin = audit("ratatui_ruby-1.5.2-arm64-darwin", os: "darwin")
+    windows = audit("ratatui_ruby-1.5.2-x64-mingw-ucrt", os: "windows", provided: %w[x64-ucrt-ruby400.dll libwinpthread-1.dll])
+
+    [darwin, windows].each { |result| assert_empty result.problems }
+    crossterm = darwin.components.find { |component| component.name.start_with?("Rust crate crossterm ") }
+    assert_includes crossterm.files, "lib/ratatui_ruby/4.0/ratatui_ruby.bundle"
+    names = -> (result) { result.components.map { |component| component.name[/\ARust crate (\S+)/, 1] }.compact }
+    assert_includes names.call(windows), "winapi"
+    refute_includes names.call(darwin), "winapi"
+    assert_includes names.call(darwin), "signal-hook"
+    assert_includes darwin.components.map(&:name), "The Rust standard library"
   end
 end

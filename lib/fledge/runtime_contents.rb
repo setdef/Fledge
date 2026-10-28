@@ -25,7 +25,9 @@ module Fledge
   # the path of its <tt>specifications</tt> folder, the full name of every
   # gem specification in it, the Ruby version its <tt>rbconfig.rb</tt>
   # records, as RbConfig's MAJOR, MINOR, and TEENY, and the file name of
-  # every shared library it holds.
+  # every shared library it holds, and the architecture its rbconfig.rb
+  # records, which is the platform RubyGems and Bundler see when the app
+  # runs (Gem::Platform.local), whatever computer it runs on.
   #
   # Use it to plan which of an app's gems a runtime needs.
   #
@@ -40,10 +42,11 @@ module Fledge
   #   contents.gem_dir                    # => "ruby/lib/ruby/gems/4.0.0"
   #   contents.ruby_version               # => "4.0.9"
   #   contents.gems.include?("csv-3.3.5") # => true
+  #   contents.arch                       # => "x64-mingw-ucrt"
   #--
   # SPDX-SnippetEnd
   #++
-  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries)
+  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries, :arch)
     ##
     # :attr_reader: gem_dir
     # Ruby's gem folder, relative to the runtime's top folder.
@@ -58,6 +61,12 @@ module Fledge
     # The runtime's Ruby version, such as <tt>4.0.9</tt>.
 
     ##
+    # :attr_reader: arch
+    # The runtime's Ruby's architecture, RbConfig's +arch+, such as
+    # <tt>arm64-darwin23</tt>: the platform its RubyGems and Bundler call
+    # local (Gem::Platform.local).
+
+    ##
     # :attr_reader: libraries
     # The file name of every shared library the runtime holds, sorted,
     # such as <tt>x64-ucrt-ruby400.dll</tt>.
@@ -69,6 +78,8 @@ module Fledge
     RBCONFIG = %r{\A(?:[^/]+/)*lib/ruby/\d[^/]*/[^/]+/rbconfig\.rb\z}
     # The lines of rbconfig.rb that hold Ruby's version, a part each.
     VERSION_PARTS = /^\s*CONFIG\["(MAJOR|MINOR|TEENY)"\] = "(\d+)"/
+    # The line of rbconfig.rb that holds Ruby's architecture.
+    ARCH = /^\s*CONFIG\["arch"\] = "([^"]+)"/
     # The file name of a shared library: .so (with a version or not),
     # .dylib, or .dll.
     LIBRARY = /\.(?:so(?:\.\d+)*|dylib|dll)\z/i
@@ -91,6 +102,7 @@ module Fledge
       gem_dirs = [] # : Array[String]
       gems = [] # : Array[String]
       version = nil # : String?
+      arch = nil # : String?
       libraries = [] # : Array[String]
       TarGz.each_entry(path) do |entry|
         inside = entry.path.split("/", 2).last.to_s
@@ -100,9 +112,12 @@ module Fledge
           gems << found[:full_name].to_s
         elsif RBCONFIG.match?(inside)
           version ||= ruby_version_in(entry.content)
+          arch ||= entry.content[ARCH, 1]
         end
       end
-      build(path, gem_dirs.uniq, gems, version).with(libraries: libraries.uniq.sort.freeze)
+      raise Error, "#{path} is not a Fledge runtime: its rbconfig.rb names no arch" if version && arch.nil?
+
+      build(path, gem_dirs.uniq, gems, version).with(libraries: libraries.uniq.sort.freeze, arch: arch.to_s)
     end
 
     # The version rbconfig.rb's MAJOR, MINOR, and TEENY make.
@@ -115,7 +130,7 @@ module Fledge
       raise Error, "#{path} is not a Fledge runtime: it holds no one gem folder (#{gem_dirs.join(', ')})" unless gem_dirs.size == 1
       raise Error, "#{path} is not a Fledge runtime: it holds no rbconfig.rb" unless version
 
-      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [])
+      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [], arch: "")
     end
   end
 end

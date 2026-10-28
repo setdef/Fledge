@@ -19,7 +19,21 @@ require "tmpdir"
 # symlink, under one top folder.
 module FakeRuntime
   LAUNCHER = "#!/bin/sh\necho launched\n"
-  RBCONFIG = "module RbConfig\n  CONFIG = {}\n  CONFIG[\"MAJOR\"] = \"4\"\n  CONFIG[\"MINOR\"] = \"0\"\n  CONFIG[\"TEENY\"] = \"9\"\nend\n"
+
+  # Each runtime's Ruby's architecture, as its rbconfig.rb records it:
+  # rv-ruby's macOS build is for macOS 14 (Darwin 23).
+  ARCH = {
+"arm64-darwin" => "arm64-darwin23",
+"x86_64-linux" => "x86_64-linux",
+"aarch64-linux" => "aarch64-linux",
+"x64-mingw-ucrt" => "x64-mingw-ucrt",
+}.freeze
+
+  # Ruby's rbconfig.rb for +platform+'s runtime, with what Fledge reads.
+  def self.rbconfig(platform)
+    "module RbConfig\n  CONFIG = {}\n  CONFIG[\"MAJOR\"] = \"4\"\n  CONFIG[\"MINOR\"] = \"0\"\n  CONFIG[\"TEENY\"] = \"9\"\n" \
+      "  CONFIG[\"arch\"] = \"#{ARCH.fetch(platform.name)}\"\nend\n"
+  end
 
   # Writes the runtime for +platform+ into +directory+, named as
   # Fledge::Runtimes expects, and returns its path. +extra+ entries
@@ -31,7 +45,7 @@ module FakeRuntime
       tar.add(Fledge::Entry.directory(top))
       with_folders([
         Fledge::Entry.file(platform.executable("launcher"), LAUNCHER, mode: 0o755),
-        *ruby(platform.windows? ? "ruby/lib/ruby" : "lib/ruby"),
+        *ruby(platform.windows? ? "ruby/lib/ruby" : "lib/ruby", platform),
         *(platform.windows? ? [] : [Fledge::Entry.symlink("lib/current", "ruby")]),
         *extra,
       ]).each { |entry| tar.add(entry.with(path: "#{top}/#{entry.path}")) }
@@ -51,13 +65,14 @@ module FakeRuntime
     end
   end
 
-  # Ruby's library folder at +lib+: a library file, rbconfig.rb, and a
-  # default gem, json 2.18.0, and a bundled gem, csv 3.3.5.
-  def self.ruby(lib)
+  # Ruby's library folder at +lib+: a library file, +platform+'s
+  # rbconfig.rb, and a default gem, json 2.18.0, and a bundled gem, csv
+  # 3.3.5.
+  def self.ruby(lib, platform)
     gems = "#{lib}/gems/4.0.0"
     [
       Fledge::Entry.file("#{lib}/stdlib.rb", "# stdlib\n"),
-      Fledge::Entry.file("#{lib}/4.0.0/fake-arch/rbconfig.rb", RBCONFIG),
+      Fledge::Entry.file("#{lib}/4.0.0/fake-arch/rbconfig.rb", rbconfig(platform)),
       Fledge::Entry.file("#{gems}/specifications/default/json-2.18.0.gemspec", "# json\n"),
       Fledge::Entry.file("#{gems}/specifications/csv-3.3.5.gemspec", "# csv\n"),
     ]

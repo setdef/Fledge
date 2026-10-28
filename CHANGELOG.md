@@ -20,13 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Git gems ship, from any computer, at the commit the lockfile locks, fetched into `~/.cache/fledge/git`: each gem's own folder of the checkout, where Bundler keeps it, with its gemspec evaluated, and none of the rest of its repository; a git gem's extension compiles as above.
 - A Rust extension's crates, read from its build's `Cargo.lock` with `cargo metadata`, are listed in `notices/GEMS.txt` (those compiled in, and those that ran only while it compiled), and each must be under a license that asks nothing beyond notices.
 - Each release carries `fledge-runtime-VERSION-PLATFORM-dev.tar.gz`, the runtime's build-only companion of Ruby's headers and libraries, which `fledge build` downloads only to compile a gem, and never ships.
-- `Unicode-3.0` and `Unicode-DFS-2016` are notice-only licenses.
+- An LGPL gem ships, as its own files that whoever receives the app may replace, when its exact source is pinned: the gem itself when it is built for every platform or from git, and for a precompiled build its source package of the same version, which the lockfile must lock (`bundle lock --add-platform ruby`); `notices/GEMS.txt` names the source and what the LGPL asks. ratatui_ruby 1.5.2 ships this way.
+- ratatui_ruby's precompiled builds are reviewed: each one's Rust crates, for its operating system, are listed in `notices/GEMS.txt`.
+- `Unicode-3.0`, `Unicode-DFS-2016`, and `WTFPL` are notice-only licenses.
 - `notices/GEMS.txt` quotes the license texts in a gem's `LICENSES/` folder.
 
 ### Changed
 
 - A gem's compiled file that needs a shared library neither its operating system (on Linux, what manylinux_2_39 allows), the runtime, nor the gem itself provides fails the build.
 - A path gem inside the project whose gemspec has an extension fails the build, since Bundler never compiles one.
+- Which lockfile platforms, and which builds of a gem, fit a target is judged as the built app's Bundler judges it, from the runtime's own platform (`arm64-darwin-23` on macOS): a lockfile platform or gem built for `arm64-darwin-23` now fits `arm64-darwin`, and one built for `arm64-darwin-24` does not.
 
 ## [0.0.1.pre.3] - 2026-10-27
 

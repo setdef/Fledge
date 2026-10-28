@@ -128,7 +128,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def for(platform, runtime:)
-      locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version).reject { |gem| runtime.gems.include?(gem.full_name) }
+      locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch).reject { |gem| runtime.gems.include?(gem.full_name) }
       packages, uncompiled = compile(platform, locked.to_h { |gem| [gem, package_for(gem)] })
       code = CompiledCode.new(declared: @app.config.compiled, os: platform.os, provided: runtime.libraries)
       compiled = packages.to_h do |gem, package|
@@ -196,7 +196,10 @@ module Fledge
 
     private def license_problem(gem, package)
       expression = license(gem, package)
-      return [] if LicensePolicy.notice_only?(expression)
+      category = LicensePolicy.category(expression)
+      return [] if category == :notice_only
+      return lgpl_problem(gem, expression) if category == :shared_library && lgpl_source(gem, package).nil?
+      return [] if category == :shared_library
 
       said = (expression == "NOASSERTION") ? "declares no license" : "is #{expression}"
       [
@@ -205,9 +208,31 @@ module Fledge
 ]
     end
 
+    # An LGPL gem is its own files, which the app loads when it runs and
+    # whoever receives it can replace, the separate library the LGPL rule
+    # of decision 8 allows, when its exact source is published: the gem
+    # itself, when it is built for every platform or comes from git, and
+    # for a precompiled build, its source package of the same version,
+    # pinned by the lockfile (ADR 006, section 10).
+    private def lgpl_source(gem, package)
+      base = package.is_a?(CompiledGem) ? package.package : package
+      return gem.url if gem.is_a?(GitGem) || base.spec.platform.to_s == "ruby"
+
+      @bundle.source_package(gem)&.url
+    end
+
+    private def lgpl_problem(gem, expression)
+      [
+"#{gem} is #{expression}, and Fledge ships an LGPL gem, as its own files that whoever receives the app may replace, only " \
+  "with its exact source pinned. This build is precompiled: lock its source package too, with bundle lock --add-platform " \
+  "ruby, then build again.",
+]
+    end
+
     private def notices(packages, compiled, platform, runtime)
       summary = packages.map { |gem, package| entry(gem, package, compiled.fetch(gem).components, runtime) }
       shared = compiled.values.flat_map(&:components).select { |component| component.shared && component.source }
+      lgpl_gems = packages.select { |gem, package| LicensePolicy.category(license(gem, package)) == :shared_library }
       texts = packages.flat_map do |gem, package|
         package.license_files.map { |file, text| "#{'=' * 72}\n#{gem}: #{file}\n#{'=' * 72}\n\n#{text.b.force_encoding(Encoding::UTF_8).scrub}\n" }
       end
@@ -222,9 +247,10 @@ module Fledge
         that the app's fledge.yml gives, the libraries its compiled files
         hold and their licenses, where it came from, and the license files
         it ships, whose text follows. Fledge ships only gems whose licenses
-        ask nothing beyond keeping their notices, and LGPL libraries only as
-        separate shared libraries: keep this file with the app.
-        #{lgpl(shared)}
+        ask nothing beyond keeping their notices, and LGPL code only as its
+        own files or shared libraries, which whoever receives the app may
+        replace, with its source: keep this file with the app.
+        #{lgpl(shared, lgpl_gems)}
         #{summary.join("\n")}
         #{texts.join("\n")}
       NOTICES
@@ -237,7 +263,7 @@ module Fledge
       <<~ENTRY
         #{gem}
           License: #{license(gem, package)}#{corrected}
-        #{built_line(package, runtime)}#{components.map { |component| "  #{component_line(component)}\n" }.join}  Homepage: #{spec.homepage || 'none given'}
+        #{lgpl_line(gem, package, runtime)}#{built_line(package, runtime)}#{components.map { |component| "  #{component_line(component)}\n" }.join}  Homepage: #{spec.homepage || 'none given'}
           From: #{gem.url}
           License files: #{files.empty? ? 'none: the gem ships no license text' : files.join(', ')}
       ENTRY
@@ -254,6 +280,14 @@ module Fledge
         "#{gem} is built with the #{crate.name}, which #{said}, and Fledge builds gems only with code whose license asks " \
           "nothing beyond keeping its notices (doc/licensing.md)."
       end
+    end
+
+    # How an LGPL gem ships, as GEMS.txt says it.
+    private def lgpl_line(gem, package, runtime)
+      return "" unless LicensePolicy.category(license(gem, package)) == :shared_library
+
+      "  Shipped as: its own files, in #{package.installed_path(runtime.gem_dir)}, which whoever receives the app may replace; " \
+        "its source: #{lgpl_source(gem, package)}\n"
     end
 
     # How a gem Fledge compiled was built, as GEMS.txt says it, with the
@@ -278,19 +312,20 @@ module Fledge
 
     # What the LGPL asks of a developer whose app ships LGPL libraries as
     # their own shared libraries, or nothing when it ships none.
-    private def lgpl(shared)
-      return "" if shared.empty?
+    private def lgpl(shared, gems)
+      return "" if shared.empty? && gems.empty?
 
       <<~LGPL
 
-        Some of these gems ship an LGPL library as its own shared library,
-        listed below as a shared library with where its exact source is. The
-        LGPL asks you to keep this notice, to give whoever receives the app
-        that source or a written offer of it, to let them replace the library
-        with their own build, and to allow reverse engineering of the app for
-        debugging such a replacement (LGPL-2.1, sections 6 and 7; LGPL-3.0,
-        section 4). It asks nothing of your own code. doc/licensing.md says
-        more; ask your own lawyer what applies to you.
+        Some of these gems are under the LGPL, and ship as their own files,
+        or ship an LGPL library as its own shared library, each listed below
+        with where its exact source is. The LGPL asks you to keep this notice,
+        to give whoever receives the app that source or a written offer of
+        it, to let them replace the library with their own build, and to
+        allow reverse engineering of the app for debugging such a replacement
+        (LGPL-2.1, sections 6 and 7; LGPL-3.0, section 4). It asks nothing of
+        your own code. doc/licensing.md says more; ask your own lawyer what
+        applies to you.
       LGPL
     end
   end

@@ -36,7 +36,9 @@ class BundleTest < Minitest::Test
     Fledge::Bundle.new(Fledge::App.at(root))
   end
 
-  def names(bundle, platform) = bundle.gems_for(platform, ruby_version: "4.0.9").map(&:to_s)
+  def gems(bundle, platform) = bundle.gems_for(platform, ruby_version: "4.0.9", arch: FakeRuntime::ARCH.fetch(platform.name))
+
+  def names(bundle, platform) = gems(bundle, platform).map(&:to_s)
 
   def test_picks_the_build_bundler_would_pick_on_each_platform_and_follows_dependencies
     bundle = bundle(dependencies: { "foo" => ">= 0", "native" => ">= 0" },
@@ -46,8 +48,27 @@ class BundleTest < Minitest::Test
     assert_equal ["bar 2.0.0", "foo 1.0.0", "native 1.0.0 (x86_64-linux-gnu)"], names(bundle, LINUX)
     assert_equal ["bar 2.0.0", "foo 1.0.0", "native 1.0.0 (x64-mingw-ucrt)"], names(bundle, WINDOWS)
     assert_equal ["bar 2.0.0", "foo 1.0.0", "native 1.0.0 (arm64-darwin)"], names(bundle, DARWIN)
-    gem = bundle.gems_for(LINUX, ruby_version: "4.0.9").last
+    gem = gems(bundle, LINUX).last
     assert_equal ["https://rubygems.org/", @linux.sha256], [gem.remote, gem.sha256]
+  end
+
+  # A built app's Bundler takes its platform from the runtime's Ruby
+  # (Gem::Platform.local, from RbConfig's arch), arm64-darwin-23 for
+  # rv-ruby's macOS build, whatever Mac it runs on, and finds a lockfile
+  # platform or a gem's build fits as RubyGems' Gem::Platform#=== says:
+  # arm64-darwin and arm64-darwin-23 do, arm64-darwin-24 does not.
+  def test_a_macos_platform_with_a_darwin_version_counts_as_the_runtimes_bundler_counts_it
+    darwin23 = FakeGem.build(@dir, "native", "1.0.0", platform: "arm64-darwin-23")
+    darwin24 = FakeGem.build(@dir, "other", "1.0.0", platform: "arm64-darwin-24")
+    other = FakeGem.build(@dir, "other", "1.0.0")
+    here = Gem::Platform.local.to_s # Bundler, frozen, wants the computer reading the lockfile locked too
+    bundle = bundle(dependencies: { "native" => ">= 0", "other" => ">= 0" }, locked: [darwin23, darwin24, other, @source],
+      platforms: ["arm64-darwin-23", "x86_64-linux", here].uniq)
+
+    assert_equal ["native 1.0.0 (arm64-darwin-23)", "other 1.0.0"], names(bundle, DARWIN)
+    newer = bundle(name: "newer_app", dependencies: {}, locked: [], platforms: ["arm64-darwin-24", "x86_64-linux", here].uniq - ["arm64-darwin-23"])
+    error = assert_raises(Fledge::Error) { names(newer, DARWIN) }
+    assert_includes error.message, "locks no gems for arm64-darwin"
   end
 
   def test_falls_back_to_the_build_for_every_platform
@@ -145,7 +166,7 @@ class BundleTest < Minitest::Test
 
   # The lockfile's revision pins a git gem, as its checksum pins a .gem.
   def test_a_gem_from_git_is_taken_at_the_revision_the_lockfile_locks
-    gems = Fledge::Bundle.new(Fledge::App.at(git_project)).gems_for(LINUX, ruby_version: "4.0.9")
+    gems = gems(Fledge::Bundle.new(Fledge::App.at(git_project)), LINUX)
 
     assert_equal [
 Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git", revision: "a" * 40,

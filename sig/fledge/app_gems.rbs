@@ -36,6 +36,12 @@ module Fledge
 
     private def license_problem: (locked_gem gem, package package) -> Array[String]
 
+    private def lgpl_source: (locked_gem gem, package package) -> String?
+
+    private def lgpl_problem: (locked_gem gem, String expression) -> Array[String]
+
+    private def lgpl_line: (locked_gem gem, package package, RuntimeContents runtime) -> String
+
     private def notices: (Hash[locked_gem, package] packages, Hash[locked_gem, CompiledCode::Result] compiled, Platform platform, RuntimeContents runtime) -> String
 
     private def entry: (locked_gem gem, package package, Array[CompiledCode::Component] components, RuntimeContents runtime) -> String
@@ -46,6 +52,6 @@ module Fledge
 
     private def component_line: (CompiledCode::Component component) -> String
 
-    private def lgpl: (Array[CompiledCode::Component] shared) -> String
+    private def lgpl: (Array[CompiledCode::Component] shared, Hash[locked_gem, package] gems) -> String
   end
 end

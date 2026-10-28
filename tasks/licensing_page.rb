@@ -130,7 +130,7 @@ class LicensingPage
     <<~GEMS
       ## Your app's own gems
 
-      `fledge build` adds the gems your app's `Gemfile.lock` locks for each platform (leaving out its `development` and `test` groups) to Ruby's own, and holds them to the rule above: it ships a gem only when the license its specification declares asks nothing beyond keeping notices (#{Fledge::LicensePolicy::NOTICE_ONLY.map { |id| "`#{id}`" }.join(', ')}, or a choice that includes one), and otherwise fails the build, naming each gem and the license it found. A gem whose specification declares no license fails too. If a gem's specification declares no license, or the wrong one, you may give the right one in your project's `fledge.yml`, under `licenses`; that is your own statement, and the app's notices say that it came from you.
+      `fledge build` adds the gems your app's `Gemfile.lock` locks for each platform (leaving out its `development` and `test` groups) to Ruby's own, and holds them to the rule above: it ships a gem only when the license its specification declares asks nothing beyond keeping notices (#{Fledge::LicensePolicy::NOTICE_ONLY.map { |id| "`#{id}`" }.join(', ')}, or a choice that includes one), or is the LGPL, and otherwise fails the build, naming each gem and the license it found. A gem whose specification declares no license fails too. An LGPL gem ships as its own files, which the app loads when it runs and whoever receives the app may replace, only when its exact source is pinned: a gem built for every platform, or from git, is its own source, and a precompiled build's is its build for every platform of the same version, which your `Gemfile.lock` must lock (`bundle lock --add-platform ruby`). `notices/GEMS.txt` names that source, and what the LGPL asks of you (below) applies to the gem; the source is its author's download, which Fledge names but does not host. If a gem's specification declares no license, or the wrong one, you may give the right one in your project's `fledge.yml`, under `licenses`; that is your own statement, and the app's notices say that it came from you.
 
       A native gem's compiled files can hold more than its own code: libraries its build compiled in, under licenses its specification does not name. So `fledge build` reads every compiled file of every gem (`.so`, `.bundle`, `.dll`, and any other binary) as it reads a runtime's, and:
 
@@ -156,9 +156,16 @@ class LicensingPage
   end
 
   # Each gem lib/fledge/compiled_code.yml reviews, with what it holds.
+  # Rust crates, which a Rust gem's builds hold by the hundred, are
+  # counted under their licenses; lib/fledge/compiled_code.yml lists each.
   private def reviewed_gems
     Fledge::CompiledCode.map.gems.sort.map do |name, entry|
-      holds = entry.holds.map { |library| "#{library.name} (`#{library.license}`)" }
+      crates, libraries = entry.holds.partition { |library| library.name.start_with?("Rust crate ") }
+      holds = libraries.map { |library| "#{library.name} (`#{library.license}`)" }
+      unless crates.empty?
+        licenses = crates.map(&:license).tally.sort_by { |license, count| [-count, license] }.map { |license, _| "`#{license}`" }
+        holds << "#{crates.size} Rust crates, under #{sentence(licenses)} (`lib/fledge/compiled_code.yml` lists each)"
+      end
       "- **#{name}**: #{holds.empty? ? 'its own code alone' : holds.join(', ')}.#{" #{entry.advice}" if entry.advice}"
     end
   end

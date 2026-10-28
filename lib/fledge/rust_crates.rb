@@ -25,9 +25,10 @@ module Fledge
   # This class asks cargo, which knows: <tt>cargo metadata</tt>, offline
   # and locked, so it reads the very resolution the build used, filtered
   # to the target's platform. From the extension's own crate it follows
-  # every dependency that is not only for development. The crates it
-  # reaches by normal dependencies, other than procedural macros, are
-  # compiled in; the rest ran only while it compiled (build dependencies,
+  # every dependency that is not only for development. The extension's
+  # own crate is the gem's own code, which the gem's license covers. The
+  # crates it reaches by normal dependencies, other than procedural
+  # macros, are compiled in; the rest ran only while it compiled (build dependencies,
   # such as bindgen, and procedural macros and what they use), writing
   # code that is compiled in, so Fledge judges them too, as cargo-deny's
   # licenses check judges every crate by default. It gives each crate as
@@ -89,7 +90,7 @@ module Fledge
       every = reach(nodes, root_id) { |kinds, _| !kinds.empty? && kinds.all?("dev") }
       compiled = reach(nodes, root_id) { |kinds, id| !kinds.include?(nil) || proc_macro?(packages.fetch(id)) }
       found = -> (ids) { ids.map { |id| library(packages.fetch(id)) }.sort_by(&:name) }
-      Found.new(compiled: found.call(compiled), build: found.call(every - compiled))
+      Found.new(compiled: found.call(compiled - [root_id]), build: found.call(every - compiled))
     end
 
     # The crates reached from +root+ by every dependency the block does not
@@ -131,7 +132,7 @@ module Fledge
     private_class_method def self.library(package) # :nodoc:
       declared = package["license"]
       license = declared.is_a?(String) ? declared.split("/").map(&:strip).join(" OR ") : "NOASSERTION"
-      CompiledCode::Library.new(name: "Rust crate #{text(package, 'name')} #{text(package, 'version')}", license:, evidence: nil)
+      CompiledCode::Library.new(name: "Rust crate #{text(package, 'name')} #{text(package, 'version')}", license:, evidence: nil, os: nil)
     end
 
     # The objects in the list +key+ of +object+, none when it has none.

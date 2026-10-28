@@ -61,8 +61,8 @@ class RustCratesTest < Minitest::Test
 
     crates = Fledge::RustCrates.from_metadata(data, "/gem/ext/ext/Cargo.toml")
 
-    assert_equal [["Rust crate ext 0.1.0", "MIT"], ["Rust crate icu 2.4.0", "Unicode-3.0"], ["Rust crate idna 1.1.0", "MIT OR Apache-2.0"]],
-      crates.compiled.map { |crate| [crate.name, crate.license] }
+    assert_equal [["Rust crate icu 2.4.0", "Unicode-3.0"], ["Rust crate idna 1.1.0", "MIT OR Apache-2.0"]],
+      crates.compiled.map { |crate| [crate.name, crate.license] }, "the extension's own crate is the gem's own code"
     assert_equal [
       ["Rust crate bindgen 0.72.1", "BSD-3-Clause"],
       ["Rust crate derive 1.0.0", "MIT"],
@@ -99,8 +99,7 @@ class RustCratesTest < Minitest::Test
 
       crates = Fledge::RustCrates.new(manifest, target: Fledge::Platform.find("x86_64-linux").rust_target).call(label: "ext 0.1.0")
 
-      assert_equal [["Rust crate ext 0.1.0", "MIT"], ["Rust crate helper 0.2.0", "Apache-2.0"]],
-        crates.compiled.map { |crate| [crate.name, crate.license] }
+      assert_equal [["Rust crate helper 0.2.0", "Apache-2.0"]], crates.compiled.map { |crate| [crate.name, crate.license] }
       assert_empty crates.build
     end
   end

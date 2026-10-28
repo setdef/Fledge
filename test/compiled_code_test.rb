@@ -28,6 +28,7 @@ class CompiledCodeTest < Minitest::Test
         ],
         "advice" => "Its builds for Linux compile in no libiconv.",
       },
+      "portable" => { "holds" => [{ "name" => "everywhere", "license" => "MIT" }, { "name" => "winonly", "license" => "MIT", "os" => ["windows"] }] },
     },
   }.freeze
 
@@ -166,7 +167,7 @@ class CompiledCodeTest < Minitest::Test
       refute Fledge::LicensePolicy.notice_only?(signature.license), signature.library
       refute_empty signature.bytes
     end
-    assert_equal %w[ffi google-protobuf nokogiri pg prism redcarpet sqlite3], map.gems.keys.sort
+    assert_equal %w[ffi google-protobuf nokogiri pg prism ratatui_ruby redcarpet sqlite3], map.gems.keys.sort
     assert_raises(Fledge::Error) { Fledge::CompiledCode::Map.from({ "copyleft" => [{ "library" => "x" }] }) }
   end
 
@@ -219,7 +220,7 @@ class CompiledCodeTest < Minitest::Test
   # compiled in through its Cargo.lock: each crate, and its license,
   # which must ask nothing beyond notices, as a gem's must.
   def test_rust_crates_attribute_a_gems_compiled_code_and_meet_the_policy
-    crate = -> (name, license) { Fledge::CompiledCode::Library.new(name:, license:, evidence: nil) }
+    crate = -> (name, license) { Fledge::CompiledCode::Library.new(name:, license:, evidence: nil, os: nil) }
     files = { "lib/rusty/rusty.so" => Binaries.elf(needed: ["libc.so.6"]) }
 
     result = audit("rusty", files, crates: [
@@ -241,5 +242,18 @@ class CompiledCodeTest < Minitest::Test
     assert_includes copyleft.problems.first, "rusty 1.0.0 (x86_64-linux-gnu) compiles in the Rust crate readline-sys 1.0.0, which is " \
       "GPL-3.0-only"
     assert_includes copyleft.problems.last, "the Rust crate mystery 0.1.0, which declares no license"
+  end
+
+  # A library the map says only some operating systems' builds hold is
+  # listed only for those.
+  def test_a_library_the_map_names_for_some_systems_is_listed_only_there
+    files = { "lib/portable.so" => Binaries.elf }
+    map = Fledge::CompiledCode::Map.from(MAP)
+
+    linux = Fledge::CompiledCode.new(map:, os: "linux").audit("portable", files)
+    windows = Fledge::CompiledCode.new(map:, os: "windows").audit("portable", files)
+
+    assert_equal ["everywhere"], linux.components.map(&:name)
+    assert_equal %w[everywhere winonly], windows.components.map(&:name)
   end
 end

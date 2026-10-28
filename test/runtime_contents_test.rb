@@ -17,6 +17,7 @@ class RuntimeContentsTest < Minitest::Test
         contents = Fledge::RuntimeContents.read(FakeRuntime.write(dir, Fledge::Platform.find(name)))
 
         assert_equal [gem_dir, %w[csv-3.3.5 json-2.18.0], "4.0.9"], [contents.gem_dir, contents.gems, contents.ruby_version]
+        assert_equal FakeRuntime::ARCH.fetch(name), contents.arch
       end
     end
   end
@@ -45,6 +46,14 @@ class RuntimeContentsTest < Minitest::Test
       Fledge::TarGz.write(bare) { |tar| tar.add(Fledge::Entry.file("top/lib/ruby/gems/4.0.0/specifications/a-1.gemspec", "")) }
       error = assert_raises(Fledge::Error) { Fledge::RuntimeContents.read(bare) }
       assert_equal "#{bare} is not a Fledge runtime: it holds no rbconfig.rb", error.message
+
+      archless = File.join(dir, "archless.tar.gz")
+      Fledge::TarGz.write(archless) do |tar|
+        tar.add(Fledge::Entry.file("top/lib/ruby/gems/4.0.0/specifications/a-1.gemspec", ""))
+        tar.add(Fledge::Entry.file("top/lib/ruby/4.0.0/x/rbconfig.rb", "CONFIG[\"MAJOR\"] = \"4\"\nCONFIG[\"MINOR\"] = \"0\"\nCONFIG[\"TEENY\"] = \"9\"\n"))
+      end
+      error = assert_raises(Fledge::Error) { Fledge::RuntimeContents.read(archless) }
+      assert_equal "#{archless} is not a Fledge runtime: its rbconfig.rb names no arch", error.message
 
       empty = File.join(dir, "empty.tar.gz")
       Fledge::TarGz.write(empty) { |tar| tar.add(Fledge::Entry.directory("top")) }

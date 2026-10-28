@@ -171,6 +171,43 @@ class GemAppBuildTest < Minitest::Test
     assert_includes notices, "lib/ruby/gems/4.0.0/bundler/gems/#{scope}/gems/alpha/LICENSE"
   end
 
+  # An LGPL gem is its own files, which the app loads when it runs and
+  # whoever receives it can replace, so it ships under the LGPL rule the
+  # maintainer gave for libraries (decision 8, replies of 2026-10-26,
+  # later), when its exact source is pinned: a gem built for every
+  # platform is its own source; a precompiled one needs the lockfile to
+  # pin its source package too (ADR 006).
+  def test_an_lgpl_gem_ships_as_its_own_files_when_its_source_is_pinned
+    pure = FakeGem.build(@gems, "lesser", "1.0.0", licenses: ["LGPL-3.0-or-later"])
+    linux = FakeGem.build(@gems, "binder", "2.0.0", platform: "x86_64-linux", licenses: ["LGPL-2.1-or-later"])
+    source = FakeGem.build(@gems, "binder", "2.0.0", licenses: ["LGPL-2.1-or-later"])
+    root = project(dependencies: { "lesser" => ">= 0", "binder" => ">= 0" }, locked: [pure, linux, source])
+
+    _, err, status = build("-t", "x86_64-linux", root)
+
+    assert_equal 0, status, err
+    notices = File.read(File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt"))
+    assert_includes notices, "lesser 1.0.0\n  License: LGPL-3.0-or-later\n"
+    assert_includes notices, "  Shipped as: its own files, in lib/ruby/gems/4.0.0/gems/lesser-1.0.0, which whoever receives the app may " \
+      "replace; its source: #{@server.url('/gems/lesser-1.0.0.gem')}\n"
+    assert_includes notices, "its source: #{@server.url('/gems/binder-2.0.0.gem')}\n"
+    assert_includes notices, "LGPL-2.1, sections 6 and 7; LGPL-3.0, section 4"
+  end
+
+  def test_a_precompiled_lgpl_gem_without_its_source_pinned_is_refused
+    linux = FakeGem.build(@gems, "binder", "2.0.0", platform: "x86_64-linux", licenses: ["LGPL-2.1-or-later"])
+    gpl = FakeGem.build(@gems, "strong", "1.0.0", licenses: ["GPL-3.0-only"])
+    root = project(dependencies: { "binder" => ">= 0", "strong" => ">= 0" }, locked: [linux, gpl])
+
+    _, err, status = build("-t", "x86_64-linux", root)
+
+    assert_equal 1, status
+    assert_includes err, "binder 2.0.0 (x86_64-linux) is LGPL-2.1-or-later, and Fledge ships an LGPL gem, as its own files that " \
+      "whoever receives the app may replace, only with its exact source pinned. This build is precompiled: lock its source " \
+      "package too, with bundle lock --add-platform ruby, then build again."
+    assert_includes err, "strong 1.0.0 is GPL-3.0-only, and Fledge ships only gems whose licenses"
+  end
+
   def test_fledge_yml_gives_the_license_a_gem_does_not_declare
     unlabeled = FakeGem.build(@gems, "unlabeled", "1.0.0", licenses: [], files: { "lib/unlabeled.rb" => "" })
     root = project(dependencies: { "unlabeled" => ">= 0" }, locked: [unlabeled])

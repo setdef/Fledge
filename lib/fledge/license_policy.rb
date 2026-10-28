@@ -54,7 +54,8 @@ module Fledge
     # krb5-1.22.2-final), and which no single SPDX identifier names.
     # Unicode-3.0 and Unicode-DFS-2016, the Unicode data licenses that
     # ICU4X's Rust crates and unicode-ident carry, ask that the copyright
-    # and permission notice go with every copy, and nothing more.
+    # and permission notice go with every copy, and nothing more. WTFPL,
+    # the terminfo crate's, asks nothing at all.
     NOTICE_ONLY = %w[
       0BSD
       Apache-2.0
@@ -76,6 +77,7 @@ module Fledge
       Unicode-3.0
       Unicode-DFS-2016
       Unlicense
+      WTFPL
       Zlib
       blessing
     ].freeze

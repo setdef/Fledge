@@ -100,7 +100,7 @@ module Fledge
 
     # A library a gem's compiled files may hold, and the string that shows
     # it is there.
-    class Library < Data.define(:name, :license, :evidence)
+    class Library < Data.define(:name, :license, :evidence, :os)
       ##
       # :attr_reader: name
       # The library's name.
@@ -113,6 +113,11 @@ module Fledge
       # :attr_reader: evidence
       # A string found only where the library is compiled in, or +nil+
       # when every compiled file of the gem holds it.
+
+      ##
+      # :attr_reader: os
+      # The operating systems (Fledge::Platform#os) whose builds compile it
+      # in, or +nil+ for every one.
     end
 
     # What Fledge knows one gem's precompiled builds hold.
@@ -195,7 +200,11 @@ module Fledge
       end
 
       private_class_method def self.library(item) # :nodoc:
-        Library.new(name: text(item, "name"), license: text(item, "license"), evidence: item["evidence"]&.to_s)
+        os = item["os"]
+        valid = os.nil? || (os.is_a?(Array) && os.all?(String))
+        raise Error, "#{MAP}: os must be a list of operating systems" unless valid
+
+        Library.new(name: text(item, "name"), license: text(item, "license"), evidence: item["evidence"]&.to_s, os:)
       end
 
       private_class_method def self.list(item, key) # :nodoc:
@@ -377,6 +386,8 @@ module Fledge
       return [[], [unreviewed(name, label, binaries.keys)]] unless entry
 
       components = entry.holds.filter_map do |library|
+        next if (systems = library.os) && @os && !systems.include?(@os)
+
         holding = binaries.keys.select { |path| library.evidence.nil? || files.fetch(path).include?(library.evidence.to_s.b) }
         component(library.name, library.license, holding, declared: false) unless holding.empty?
       end

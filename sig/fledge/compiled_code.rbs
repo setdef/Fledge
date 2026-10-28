@@ -21,8 +21,9 @@ module Fledge
       attr_reader name: String
       attr_reader license: String
       attr_reader evidence: String?
+      attr_reader os: Array[String]?
 
-      def self.new: (name: String, license: String, evidence: String?) -> instance
+      def self.new: (name: String, license: String, evidence: String?, os: Array[String]?) -> instance
     end
 
     class Entry < Data

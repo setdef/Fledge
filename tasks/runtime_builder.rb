@@ -10,7 +10,9 @@ require "fileutils"
 require "json"
 require "open3"
 require "yaml"
+require_relative "download_cache"
 require_relative "license_audit"
+require_relative "release_archive"
 require_relative "../lib/fledge/download"
 require_relative "../lib/fledge/entry"
 require_relative "../lib/fledge/platform"
@@ -163,7 +165,7 @@ class RuntimeBuilder
     dev = File.join(build_dir, "dev", top)
     FileUtils.rm_rf(File.dirname(dev))
     DevCompanion.copy(tree, dev, windows: platform.windows?)
-    pack(dev, File.join(@work, assets.fetch(:dev)))
+    ReleaseArchive.pack(dev, File.join(@work, assets.fetch(:dev)), top:)
   end
 
   # Writes the release assets beside the archive: copies of the SBOM and
@@ -191,11 +193,7 @@ class RuntimeBuilder
   # Downloads +url+ into the download cache, checked against +sha256+,
   # unless a file with that SHA-256 is already there.
   def fetch(url, sha256)
-    path = File.join(@downloads, File.basename(url))
-    return path if File.file?(path) && Digest::SHA256.file(path).hexdigest == sha256
-
-    puts "Downloading #{url}"
-    Fledge::Download.save(url, to: path, sha256:)
+    DownloadCache.new(@downloads).fetch(url, sha256)
   end
 
   # The first of +tools+ found on PATH, as a full path, or nil.
@@ -250,19 +248,7 @@ class RuntimeBuilder
   end
 
   private def archive
-    pack(stage, File.join(@work, Fledge::Runtimes.file_name(platform)))
-  end
-
-  # Packs +folder+ as the archive at +path+, under the runtime's top
-  # folder, every entry dated SOURCE_DATE_EPOCH when it is set, so a
-  # rebuild from the same inputs writes the same archive.
-  private def pack(folder, path)
-    Fledge::TarGz.write(path, mtime: Integer(ENV.fetch("SOURCE_DATE_EPOCH", Time.now.to_i.to_s))) do |tar|
-      tar.add(Fledge::Entry.directory(top))
-      Fledge::Entry.walk(folder).each { |entry| tar.add(entry.with(path: "#{top}/#{entry.path}")) }
-    end
-    puts "Built #{path} (#{(File.size(path) / 1_000_000.0).round(1)} MB)"
-    path
+    ReleaseArchive.pack(stage, File.join(@work, Fledge::Runtimes.file_name(platform)), top:)
   end
 end
 

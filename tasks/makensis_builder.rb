@@ -16,6 +16,8 @@ require_relative "../lib/fledge/platform"
 require_relative "../lib/fledge/runtimes"
 require_relative "../lib/fledge/tar_gz"
 require_relative "../lib/fledge/version"
+require_relative "download_cache"
+require_relative "release_archive"
 
 # Builds the NSIS compiler, makensis, for one kind of computer that
 # builds apps (ADR 009), into the archive Fledge::Runtimes#makensis
@@ -88,11 +90,7 @@ class MakensisBuilder
   end
 
   private def fetch(pin)
-    path = File.join(@downloads, File.basename(pin.fetch("url")))
-    return path if File.file?(path) && Digest::SHA256.file(path).hexdigest == pin.fetch("sha256")
-
-    puts "Downloading #{pin.fetch('url')}"
-    Fledge::Download.save(pin.fetch("url"), to: path, sha256: pin.fetch("sha256"))
+    DownloadCache.new(@downloads).fetch(pin.fetch("url"), pin.fetch("sha256"))
   end
 
   private def run(*command, chdir: ROOT)
@@ -150,13 +148,7 @@ class MakensisBuilder
   end
 
   private def archive(folder)
-    path = File.join(@work, Fledge::Runtimes.makensis_file_name(host))
-    Fledge::TarGz.write(path, mtime: Integer(ENV.fetch("SOURCE_DATE_EPOCH", Time.now.to_i.to_s))) do |tar|
-      tar.add(Fledge::Entry.directory(top))
-      Fledge::Entry.walk(folder).each { |entry| tar.add(entry.with(path: "#{top}/#{entry.path}")) }
-    end
-    puts "Built #{path} (#{(File.size(path) / 1_000_000.0).round(1)} MB)"
-    path
+    ReleaseArchive.pack(folder, File.join(@work, Fledge::Runtimes.makensis_file_name(host)), top:)
   end
 end
 

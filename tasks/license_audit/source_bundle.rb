@@ -12,6 +12,7 @@ require "open3"
 require_relative "../../lib/fledge/download"
 require_relative "../../lib/fledge/entry"
 require_relative "../../lib/fledge/tar_gz"
+require_relative "../download_cache"
 
 class LicenseAudit
   # The complete corresponding source of a platform's LGPL libraries, as
@@ -69,11 +70,7 @@ class LicenseAudit
     end
 
     private def fetch(url, sha256)
-      path = File.join(@downloads, File.basename(url))
-      return path if File.file?(path) && Digest::SHA256.file(path).hexdigest == sha256
-
-      puts "Downloading #{url}"
-      Fledge::Download.save(url, to: path, sha256:)
+      DownloadCache.new(@downloads).fetch(url, sha256)
     end
 
     private def readme

@@ -7,9 +7,12 @@
 
 source "https://rubygems.org"
 
-# nokogiri's precompiled macOS and Windows builds compile GNU libiconv in
-# statically, which Fledge refuses (ADR 005, section 7). Built from source
-# on a Mac, it uses macOS's own iconv instead (ADR 006), and
-# .bundle/config's build.nokogiri option, --disable-xml2-legacy, keeps
-# libxml2 from linking the build machine's own liblzma.
+# nokogiri compiled from source, as a large C gem that vendors and
+# builds its own libraries is (ADR 006): on a Mac it uses macOS's own
+# iconv, and on Windows it builds GNU libiconv and links it in, which
+# ships like anything else an app's gems hold (ADR 007). Its precompiled
+# builds ship too; this example is for compiling. .bundle/config's
+# build.nokogiri option, --disable-xml2-legacy, keeps libxml2 from
+# linking the build machine's own liblzma, which the app's computer may
+# not have.
 gem "nokogiri", "1.19.4", force_ruby_platform: true

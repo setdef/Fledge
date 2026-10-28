@@ -14,9 +14,14 @@ gem "redcarpet", "~> 3.6"
 # A Rust extension (rb-sys) published precompiled for arm64-darwin,
 # x86_64-linux, and x64-mingw-ucrt, each built for several Rubies, and as
 # source, which fledge build compiles for aarch64-linux, the one platform
-# it has no build for. It is LGPL-3.0-or-later, which ships as its own
-# files with its source pinned (ADR 006, section 10).
+# it has no build for. It is LGPL-3.0-or-later.
 gem "ratatui_ruby", "1.5.2"
+
+# Pure Ruby, under the GPL. Which licenses an app's gems are under is its
+# developer's to decide, not Fledge's, so it ships like any other gem
+# (ADR 007). It needs bigdecimal, a C extension, newer than the one Ruby
+# 4.0.9 bundles, which fledge build compiles.
+gem "spreadsheet", "1.3.5"
 
 # A Rust extension (rb-sys) from a git tag, as Ferro's gems are consumed,
 # which fledge build fetches at the lockfile's revision and compiles, and

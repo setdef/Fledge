@@ -13,3 +13,4 @@ require "ferro/idna"
 html = Redcarpet::Markdown.new(Redcarpet::Render::HTML).render("**fledged**").strip
 domain = Ferro::Idna.domain_to_ascii("bücher.example")
 puts "NativeApp renders #{html} through redcarpet #{Redcarpet::VERSION} and spells #{domain} through ferro-idna"
+exit Integer(ARGV.fetch(0, "0"))

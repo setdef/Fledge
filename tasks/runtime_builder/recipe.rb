@@ -24,7 +24,7 @@ class RuntimeBuilder
     end
 
     # The Ruby tree the runtime was made from, once #build has unpacked
-    # it, for the build-only companion (RuntimeBuilder.copy_dev).
+    # it, for the build-only companion (RuntimeBuilder::DevCompanion.copy).
     attr_reader :tree
   end
 end

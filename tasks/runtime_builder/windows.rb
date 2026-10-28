@@ -29,6 +29,20 @@ class RuntimeBuilder
     IMPORTS = /\A(?:KERNEL32\.dll|api-ms-win-crt-[a-z0-9-]+\.dll)\z/i
     WINDOWED_IMPORTS = /\AUSER32\.dll\z/i
 
+    # The Subsystem field of the Windows program at +path+ (2 for a GUI
+    # program, 3 for a console one), from its PE optional header, which
+    # starts 24 bytes into the PE header and holds Subsystem at offset 68
+    # in both PE32 and PE32+.
+    def self.pe_subsystem(path)
+      bytes = File.binread(path, 4096).to_s
+      raise "#{path} is not a Windows program" unless bytes.start_with?("MZ") && bytes.bytesize >= 64
+
+      header = bytes.byteslice(0x3C, 4).to_s.unpack1("V").to_i
+      raise "#{path} is not a Windows program" unless bytes.byteslice(header, 4) == "PE\0\0"
+
+      bytes.byteslice(header + 24 + 68, 2).to_s.unpack1("v")
+    end
+
     def hosts
       @builder.sources.fetch("llvm-mingw").fetch("hosts").keys
     end
@@ -105,7 +119,7 @@ class RuntimeBuilder
     end
 
     private def check(program, subsystem, allowed)
-      actual = RuntimeBuilder.pe_subsystem(program)
+      actual = Windows.pe_subsystem(program)
       raise "#{program} has PE subsystem #{actual}, not #{subsystem}" unless actual == subsystem
 
       imports = @builder.capture(tool("objdump", prefix: "llvm-"), "-p", program).scan(/DLL Name: (\S+)/).flatten

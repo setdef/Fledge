@@ -123,8 +123,8 @@ class RuntimeBuilderTest < Minitest::Test
       windows = File.join(dir, "windows")
       unix = File.join(dir, "unix")
 
-      RuntimeBuilder.copy_dev(tree, windows, windows: true)
-      RuntimeBuilder.copy_dev(tree, unix, windows: false)
+      RuntimeBuilder::DevCompanion.copy(tree, windows, windows: true)
+      RuntimeBuilder::DevCompanion.copy(tree, unix, windows: false)
 
       assert_equal %w[
         DEV-NOTICES.txt
@@ -436,10 +436,10 @@ class RuntimeBuilderTest < Minitest::Test
       { "gui.exe" => 2, "console.exe" => 3 }.each do |name, subsystem|
         File.binwrite(File.join(dir, name), pe(subsystem))
 
-        assert_equal subsystem, RuntimeBuilder.pe_subsystem(File.join(dir, name))
+        assert_equal subsystem, RuntimeBuilder::Windows.pe_subsystem(File.join(dir, name))
       end
       File.binwrite(File.join(dir, "elf"), "\x7FELF".b.ljust(256, "\0"))
-      assert_raises(RuntimeError) { RuntimeBuilder.pe_subsystem(File.join(dir, "elf")) }
+      assert_raises(RuntimeError) { RuntimeBuilder::Windows.pe_subsystem(File.join(dir, "elf")) }
     end
   end
 

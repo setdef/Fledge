@@ -123,47 +123,6 @@ class RuntimeBuilder
     }
   end
 
-  # What a runtime's build-only companion explains about itself, before
-  # the text of Ruby's license (DEV-NOTICES.txt).
-  DEV_NOTICE = <<~TEXT
-    THE RUNTIME'S BUILD-ONLY FILES
-
-    This archive unpacks over the Fledge runtime of the same name. It holds
-    what that runtime prunes because no running app reads it, and what
-    compiling a gem's C or Rust extension against the runtime's own Ruby
-    needs: Ruby's C headers, and Ruby's library to link against, which is
-    static libruby on macOS and Linux (whose extension builds link test
-    programs against it) and the import library of Ruby's DLL on Windows
-    (ADR 006). fledge build uses them to compile gems on the platform it
-    builds for, and never copies them into an app.
-
-    They are Ruby's, under Ruby's license (Ruby OR BSD-2-Clause), and
-    static libruby holds the Rust standard library too, compiled into
-    YJIT (MIT OR Apache-2.0). Their texts follow.
-  TEXT
-
-  # Copies, from the Ruby tree +tree+ (rv-ruby's prefix, or RubyInstaller's
-  # tree), what the build-only companion holds into +dev+, laid out as the
-  # runtime lays out Ruby (in ruby\ on Windows): include/, and the library
-  # extension builds link against, which is lib/*.dll.a on Windows, the
-  # import library of Ruby's DLL, and lib/libruby*-static.a elsewhere. A
-  # static Ruby's extensions themselves link no libruby (mkmf leaves
-  # LIBRUBYARG empty unless Ruby is shared), but mkmf links the test
-  # programs of have_func and the rest against LIBRUBYARG_STATIC, so an
-  # extconf.rb that checks for a function (nokogiri's) fails without it.
-  # No other static library comes along: rv-ruby's lib/libcrypt.a is
-  # libxcrypt, which is LGPL. Then DEV-NOTICES.txt, with Ruby's license
-  # and, beside a static libruby, Rust's.
-  def self.copy_dev(tree, dev, windows:)
-    ruby = windows ? File.join(dev, "ruby") : dev
-    FileUtils.mkdir_p(File.join(ruby, "lib"))
-    FileUtils.cp_r(File.join(tree, "include"), File.join(ruby, "include"))
-    FileUtils.cp(Dir.glob(File.join(tree, "lib", windows ? "*.dll.a" : "libruby*-static.a")), File.join(ruby, "lib"))
-    notices = [%w[ruby COPYING], %w[ruby BSDL], *(windows ? [] : [%w[rust COPYRIGHT], %w[rust LICENSE-MIT], %w[rust LICENSE-APACHE]])]
-    licenses = notices.map { |folder, name| File.read(File.join(ROOT, "runtime", "notices", folder, name)) }
-    File.write(File.join(dev, "DEV-NOTICES.txt"), [DEV_NOTICE, *licenses].join("\n#{'=' * 72}\n\n"))
-  end
-
   # Every asset a release of +version+ publishes but SHA256SUMS, sorted:
   # each platform's #assets, and its source bundle only where the
   # platform ships an LGPL library, and the makensis of each computer that
@@ -203,7 +162,7 @@ class RuntimeBuilder
   private def write_dev(tree)
     dev = File.join(build_dir, "dev", top)
     FileUtils.rm_rf(File.dirname(dev))
-    RuntimeBuilder.copy_dev(tree, dev, windows: platform.windows?)
+    DevCompanion.copy(tree, dev, windows: platform.windows?)
     pack(dev, File.join(@work, assets.fetch(:dev)))
   end
 
@@ -270,20 +229,6 @@ class RuntimeBuilder
     sources.fetch("ruby").fetch("bundled_gems")
   end
 
-  # The Subsystem field of the Windows program at +path+ (2 for a GUI
-  # program, 3 for a console one), from its PE optional header, which
-  # starts 24 bytes into the PE header and holds Subsystem at offset 68
-  # in both PE32 and PE32+.
-  def self.pe_subsystem(path)
-    bytes = File.binread(path, 4096).to_s
-    raise "#{path} is not a Windows program" unless bytes.start_with?("MZ") && bytes.bytesize >= 64
-
-    header = bytes.byteslice(0x3C, 4).to_s.unpack1("V").to_i
-    raise "#{path} is not a Windows program" unless bytes.byteslice(header, 4) == "PE\0\0"
-
-    bytes.byteslice(header + 24 + 68, 2).to_s.unpack1("v")
-  end
-
   # Puts Fledge's rubygems/defaults/operating_system.rb into the Ruby
   # library at +ruby+ (a lib/ruby folder), replacing any there, such as
   # RubyInstaller's; see the file's own comment.
@@ -322,6 +267,7 @@ class RuntimeBuilder
 end
 
 require_relative "runtime_builder/armor"
+require_relative "runtime_builder/dev_companion"
 require_relative "runtime_builder/gem_repack"
 require_relative "runtime_builder/pruning"
 require_relative "runtime_builder/recipe"

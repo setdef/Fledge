@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge build ios` writes an Xcode project for an app on iPhone and iPad (iOS 15 and later, arm64), on a Mac with Xcode and XcodeGen, and `fledge build android` a Gradle project for Android (API 26 and later, targeting API 36, native libraries aligned for 16 KB pages), with Gradle 9.8.2's wrapper, on a Mac, x86-64 Linux, or Windows: `DIR/NAME-ios/` and `DIR/NAME-android/`, around the release's mobile runtime, with the app's project, its gems, the runtime's notices, and a small host app that runs the app's program and sends its output to os_log or logcat. Neither signs anything; you sign and submit the app.
+- A phone's app takes `fledge.yml`'s `identifier` (required) as its bundle identifier or `applicationId`, its `name`, its `version` (Android's `versionCode` from its first three numbers), and its icon: `ICON-1024.png` for iOS, and `ICON-48.png`, `-72`, `-96`, `-144`, and `-192` for Android.
+- A phone's app ships each gem's `ruby` build, set up by Bundler with `force_ruby_platform`, so its `Gemfile.lock` must lock `ruby`; a gem with an extension to compile fails the build.
+- An iOS project's privacy manifest names the required-reason APIs Ruby calls: file timestamps (C617.1) and system boot time (35F9.1).
+- The mobile runtimes' embedding API gains `fledge_ruby_run_app`, and on Android `FledgeRuby.runApp` and `startApp`, which run the app `fledge.cfg` names, with Bundler set up for its Gemfile, as the desktop launcher does.
+
 ## [0.0.1.pre.9] - 2026-10-28
 
 ### Added

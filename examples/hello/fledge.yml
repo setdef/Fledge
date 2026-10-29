@@ -5,5 +5,7 @@
 # of its own. It sits inside Fledge's own gem, so without this file
 # fledge build would take Fledge's Gemfile for hello's and ship all of
 # Fledge's repository. A fledge.yml makes its folder a project's root
-# (ADR 005); this one says nothing else, so the app is named for the
-# folder, camelized: Hello.
+# (ADR 005), and the app is named for the folder, camelized: Hello. The
+# identifier is what iOS and Android know it by, which a phone's project
+# needs (ADR 012).
+identifier: com.setdef.fledge.Hello

@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+
+# What iOS and Android show of the app, and know it by (ADR 012): a name
+# with a space in it, its identifier, and its icon, as Briefcase names
+# the files: icons/app-1024.png for iOS, icons/app-48.png to
+# icons/app-192.png for Android, and the desktop's beside them. The
+# version is the gemspec's.
+name: Mobile App
+identifier: com.setdef.fledge.MobileApp
+icon: icons/app

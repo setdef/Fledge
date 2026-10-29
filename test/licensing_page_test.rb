@@ -9,10 +9,10 @@ require_relative "test_helper"
 require_relative "support/binaries"
 require_relative "../tasks/licensing_page"
 
-# The licensing page from runtime archives for all four platforms, small
+# The licensing page from runtime archives for all six platforms, small
 # but made of real (minimal) ELF, Mach-O, and PE files, which the real
 # license audit checks against the real runtime/licenses.yml. CI runs
-# the page against the four real runtimes and fails when doc/licensing.md
+# the page against the six real runtimes and fails when doc/licensing.md
 # differs.
 class LicensingPageTest < Minitest::Test
   RUST = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
@@ -53,6 +53,10 @@ class LicensingPageTest < Minitest::Test
         ))
       end
       runtime(directory, "x64-mingw-ucrt", "launcher.exe" => Binaries.pe(needed: %w[KERNEL32.dll]), "ruby/lib/ruby/4.0.0/set.rb" => "class Set; end\n")
+      slices = %w[ios-arm64 ios-arm64-simulator].to_h { |slice| ["FledgeRuby.xcframework/#{slice}/lib/ruby/4.0.0/set.rb", "class Set; end\n"] }
+      runtime(directory, "ios", slices.merge("FledgeRuby.xcframework/Info.plist" => "<plist/>\n"))
+      runtime(directory, "android", "include/fledge_ruby.h" => "int fledge_ruby_run_app(void);\n", "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
+        "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n")
       LicensingPage.new(directory, version: "9.8.7").text
     end
   end
@@ -76,6 +80,22 @@ class LicensingPageTest < Minitest::Test
     assert_includes linux, "- `MIT`: rake"
     assert_includes linux, "- `Ruby OR BSD-2-Clause`: csv"
     refute_empty section(text, "Windows on x64 (x64-mingw-ucrt)")
+    android = section(text, "Android (aarch64-linux-android, x86_64-linux-android)")
+    assert_includes android, "| Fledge's embedding API, and the library and packages it is built into | 9.8.7 | `AGPL-3.0-or-later` |"
+    assert_includes android, "no LGPL library ships on this platform"
+    refute_empty section(text, "iOS and iPadOS (arm64-ios, arm64-ios-simulator)")
+  end
+
+  # A phone's app is built from the project fledge build writes (ADR 012),
+  # so the page says what of Fledge's goes into it, and that the host app
+  # the developer compiles is Fledge's own code too.
+  def test_it_says_what_of_fledges_a_phones_app_holds
+    phones = section(page, "On iOS and Android")
+
+    assert_includes phones, "Fledge's embedding API, compiled into the runtime's library"
+    assert_includes phones, "`Host/main.m` on iOS and `MainActivity.java` on Android"
+    assert_includes phones, "the project's `fledge/notices/` goes into the app"
+    assert_includes phones, "Gradle wrapper"
   end
 
   # An app's own gems are the developer's choice and responsibility

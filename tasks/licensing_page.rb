@@ -9,6 +9,7 @@ require "fileutils"
 require "tmpdir"
 require_relative "license_audit"
 require_relative "../lib/fledge/platform"
+require_relative "../lib/fledge/mobile_platform"
 require_relative "../lib/fledge/archive"
 require_relative "../lib/fledge/version"
 
@@ -19,8 +20,9 @@ require_relative "../lib/fledge/version"
 # The maintainer asked for this page to come from the pipeline, never by
 # hand (decisions.md, replies of 2026-10-26), so it holds only what the
 # audit finds in the runtimes, and prose that names license sections.
-# CI builds the four runtimes, runs this with --check, and fails when the
-# page in the repository differs from what the runtimes say.
+# CI builds the runtimes, the four desktops' and the two phones', runs this
+# with --check, and fails when the page in the repository differs from what
+# the runtimes say.
 #
 #   ruby tasks/licensing_page.rb RUNTIMES_DIR          # write doc/licensing.md
 #   ruby tasks/licensing_page.rb --check RUNTIMES_DIR  # exit 1 if it is stale
@@ -39,7 +41,12 @@ class LicensingPage
     "x86_64-linux" => "Linux on x86-64 (x86_64-linux)",
     "aarch64-linux" => "Linux on ARM64 (aarch64-linux)",
     "x64-mingw-ucrt" => "Windows on x64 (x64-mingw-ucrt)",
+    "ios" => "iOS and iPadOS (arm64-ios, arm64-ios-simulator)",
+    "android" => "Android (aarch64-linux-android, x86_64-linux-android)",
   }.freeze
+
+  # The platforms the page lists: every desktop's, then each phone's.
+  PLATFORMS = [*Fledge::Platform.names, *Fledge::MobilePlatform.names].freeze
 
   # The Ruby every runtime is made from, for the page's prose.
   RUBY_VERSION_SHIPPED = YAML.safe_load_file(LicenseAudit::SOURCES).fetch("ruby").fetch("version")
@@ -59,8 +66,16 @@ class LicensingPage
 
   # The page, from the audit of each platform's runtime.
   def text
-    reports = Fledge::Platform.names.to_h { |platform| [platform, audit(platform)] }
-    [header, everywhere(reports), app_gems, *reports.map { |platform, report| section(platform, report) }, lgpl(reports), footer].join("\n")
+    reports = PLATFORMS.to_h { |platform| [platform, audit(platform)] }
+    [
+      header,
+      everywhere(reports),
+      phones(reports),
+      app_gems,
+      *reports.map { |platform, report| section(platform, report) },
+      lgpl(reports),
+      footer,
+].join("\n")
   end
 
   # Audits the runtime archive for +platform+ in the runtimes folder.
@@ -123,6 +138,20 @@ class LicensingPage
 
       **Fledge's own files** in an app are #{ours.files.map { |file| "`#{file}`" }.join(' and ')} (the first is the program your app's users run, renamed for your app). They are Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
     EVERYWHERE
+  end
+
+  # What the page says of an app for a phone (ADR 012), which is not a
+  # copy of the runtime but an app the developer builds from the project
+  # fledge build writes, around the runtime's library.
+  private def phones(reports)
+    ours = reports.fetch("ios").components.find { |row| row.license == "AGPL-3.0-or-later" } or raise "no mobile runtime holds Fledge's own files"
+    <<~PHONES
+      ## On iOS and Android
+
+      For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and #{ours.name.sub(/,.*/, '')} are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so the notices and Fledge's own code are all they ask of you.
+
+      **Fledge's own code** in a phone's app is #{ours.name.sub(/,.*/, '')}, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the GNU Affero General Public License, version 3 or later, as the desktop launcher is, with the same terms above. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
+    PHONES
   end
 
   # What the page says of an app's own gems: that they, and their

@@ -26,10 +26,12 @@
 #
 # The mobile runtimes (ADR 011) build from Ruby's source, iOS's on a Mac
 # with Xcode and Android's on Linux with the NDK, and their Delivery is
-# the parity probe, and a script that requires json and a bundled gem,
-# run in the iOS Simulator on an iPhone and an iPad, and on Android
-# emulators with 4 KB and 16 KB pages, through the runtimes' embedding
-# API (tasks/mobile_parity.rb).
+# apps built with fledge build ios and fledge build android (ADR 012),
+# whose Xcode and Gradle projects build unsigned, run in the iOS
+# Simulator on an iPhone and an iPad and on Android emulators with 4 KB
+# and 16 KB pages: hello, a gem-shaped app with pure-Ruby gems, a script
+# that requires json and a bundled gem and reaches a server over HTTPS,
+# and the parity probe (tasks/mobile_parity.rb).
 #
 # Every runtime build runs the license audit and refuses to archive a
 # runtime that breaks Fledge's license policy (ADR 004). The Licenses
@@ -278,18 +280,22 @@ jobs:
           path: tmp/runtime/${{ matrix.platform }}/logs
           retention-days: 14
 
-  # Delivery for the mobile runtimes (ADR 011, section 6): the parity
-  # probe, run by the iOS runtime in the Simulator on an iPhone and an
-  # iPad, against ruby main.rb on this Mac's desktop Ruby, with every
-  # difference justified for a phone, and hello.rb, which requires json
-  # and csv, a bundled gem, and reaches rubygems.org over HTTPS; and the
-  # host app built for devices, unsigned, to show the device slice links
-  # (tasks/mobile_parity.rb).
-  mobile-parity-ios:
-    name: Mobile parity (iOS Simulator, iPhone and iPad)
+  # Delivery on phones (ADR 011, section 6; ADR 012): apps built as a
+  # developer builds them, with fledge build ios, and their Xcode projects
+  # built with xcodebuild for the Simulator and, unsigned, for devices, to
+  # show the device slice links and the privacy manifest names every
+  # category of API the app's executable imports that Apple asks a reason
+  # for; then each run in the Simulator on an iPhone and an iPad, its
+  # output read from os_log: examples/hello; examples/mobile_app, whose
+  # pure-Ruby gems Bundler sets up; a script that requires json and csv,
+  # a bundled gem, and reaches rubygems.org over HTTPS; and the parity
+  # probe, against ruby main.rb on this Mac's desktop Ruby, with every
+  # difference justified for a phone (tasks/mobile_parity.rb).
+  mobile-apps-ios:
+    name: Mobile apps (iOS Simulator, iPhone and iPad)
     needs: runtime-mobile
     runs-on: macos-26
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -311,7 +317,8 @@ jobs:
           path: tmp/downloads
           key: mobile-parity-downloads-ios-${{ hashFiles('runtime/sources.yml') }}
 
-      # XcodeGen writes the host app's Xcode project; pinned by SHA-256.
+      # XcodeGen writes each app's Xcode project in fledge build ios, as a
+      # developer installs it; pinned by SHA-256.
       - name: Install XcodeGen
         run: |
           unzip -q "$(ruby .github/scripts/fetch_pin.rb mobile xcodegen)" -d "$RUNNER_TEMP/xcodegen"
@@ -322,13 +329,13 @@ jobs:
           name: runtime-ios
           path: ${{ runner.temp }}/runtimes
 
-      - name: Check parity in the iOS Simulator
-        run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP"/runtimes/fledge-runtime-*-ios.tar.gz
+      - name: Build the apps with fledge build ios, and run them in the iOS Simulator
+        run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP/runtimes"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
-          name: mobile-parity-ios
+          name: mobile-apps-ios
           path: |
             tmp/mobile-parity/ios/*.ndjson
             tmp/mobile-parity/ios/*.log
@@ -336,15 +343,16 @@ jobs:
           retention-days: 14
 
   # The same on Android emulators of API 36 with 4 KB and with 16 KB
-  # pages, after the host app is built against the runtime's AAR and
+  # pages: the apps built with fledge build android, each Gradle project
+  # built with its own wrapper, debug and unsigned release, and each APK
   # checked for Play's 16 KB alignment and target API. GitHub's Linux
   # runners emulate x86_64 only, so the arm64-v8a library is built and
   # checked but run on no emulator here.
-  mobile-parity-android:
-    name: Mobile parity (Android emulator, API 36, ${{ matrix.target }})
+  mobile-apps-android:
+    name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
     needs: runtime-mobile
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -362,18 +370,17 @@ jobs:
       - name: Use Java 21
         run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: tmp/downloads
-          key: mobile-parity-downloads-android-${{ hashFiles('runtime/sources.yml') }}
+      # Every Gradle wrapper in a project fledge build writes must be the
+      # one Gradle released (runtime/sources.yml pins its SHA-256 too).
+      - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: runtime-android
           path: ${{ runner.temp }}/runtimes
 
-      - name: Build the host app and check it for 16 KB pages and API 36
-        run: ruby tasks/mobile_parity.rb android-build "$RUNNER_TEMP"/runtimes/fledge-runtime-*-android.tar.gz
+      - name: Build the apps with fledge build android and Gradle, and check each for 16 KB pages and API 36
+        run: ruby tasks/mobile_parity.rb android-build "$RUNNER_TEMP/runtimes"
 
       - name: Enable KVM
         run: |
@@ -381,7 +388,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Check parity on the emulator
+      - name: Run the apps on the emulator
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 36
@@ -389,14 +396,67 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: ruby tasks/mobile_parity.rb android tmp/mobile-parity/android/FledgeParity.apk
+          script: ruby tasks/mobile_parity.rb android
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
-          name: mobile-parity-android-${{ matrix.target }}
-          path: tmp/mobile-parity/android/logcat.txt
+          name: mobile-apps-android-${{ matrix.target }}
+          path: tmp/mobile-parity/android/logcat-*.txt
           retention-days: 14
+
+  # An Android app's project is built on macOS and Windows too, as Google
+  # supports its SDK there and Briefcase, Flutter, React Native, and Tauri
+  # build Android apps there (ADR 012): examples/mobile_app, written with
+  # fledge build android and built with its Gradle wrapper and the
+  # runner's Android SDK.
+  mobile-apps-android-hosts:
+    name: Mobile apps (Android project on ${{ matrix.host }})
+    needs: runtime-mobile
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            host: arm64-darwin
+          - os: windows-latest
+            host: x64-mingw-ucrt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the Ruby pin
+        id: pins
+        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+
+      # RubyInstaller's Ruby on Windows, whose platform is the
+      # x64-mingw-ucrt Fledge builds on; Ruby's own elsewhere.
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          ruby-version: ${{ steps.pins.outputs.ruby }}
+
+      - name: Use Java 21
+        run: echo "JAVA_HOME=${JAVA_HOME_21_X64:-$JAVA_HOME_21_arm64}" >> "$GITHUB_ENV"
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-android
+          path: ${{ runner.temp }}/runtimes
+
+      - name: Write examples/mobile_app's Android project with fledge build android
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: ruby -I lib exe/fledge build android -o dist examples/mobile_app
+
+      - name: Build it with its Gradle wrapper and check the APK
+        run: |
+          cd "dist/Mobile App-android"
+          if [ "$RUNNER_OS" = Windows ]; then ./gradlew.bat --no-daemon assembleDebug; else ./gradlew --no-daemon assembleDebug; fi
+          cd ../..
+          ruby tasks/mobile_parity.rb android-check "dist/Mobile App-android/build/outputs/apk/debug/Mobile App-debug.apk"
 
   # The tests on each platform, with that platform's runtime, so
   # test/built_app_test.rb builds and runs a real app rather than
@@ -1075,7 +1135,7 @@ jobs:
   # matches them.
   licensing-page:
     name: Licensing page is current
-    needs: runtime
+    needs: [runtime, runtime-mobile]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

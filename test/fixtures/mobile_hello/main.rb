@@ -8,7 +8,8 @@
 # What the mobile runtimes promise an app, in one line (ADR 011): json, a
 # default gem, and csv, a bundled gem that RubyGems activates as a gem,
 # and HTTPS to rubygems.org, which needs the CA certificates the runtime
-# carries. tasks/mobile_parity.rb runs it on each phone and checks the
+# carries. tasks/mobile_parity.rb builds it as an app with fledge build
+# ios and fledge build android, runs it on each phone, and checks the
 # line.
 require "json"
 require "csv"

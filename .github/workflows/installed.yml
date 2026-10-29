@@ -11,8 +11,9 @@
 # each app it builds is delivered as CI delivers every push's
 # (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the
 # runtime's own tools, is installed and its app run, as CI installs every
-# push's (ADR 009 and ADR 010). Another job downloads every asset of the
-# release and checks it against SHA256SUMS.
+# push's (ADR 009 and ADR 010). Another job writes phones' projects from
+# the tag and builds them with Xcode and Gradle (ADR 012), and another
+# downloads every asset of the release and checks it against SHA256SUMS.
 #
 # release.yml calls this after it publishes a release; run it by hand
 # (workflow_dispatch) to check any published tag again.
@@ -285,3 +286,105 @@ jobs:
           -Archive "$env:RUNNER_TEMP/dist/NativeApp-x64-mingw-ucrt.zip"
           -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/native_app.expected" -Raw).TrimEnd()
+
+  # A phone's project from the tag (ADR 012): fledge build ios on a Mac and
+  # fledge build android on Linux, installed from the tag with Bundler,
+  # download that version's mobile runtime from the release, checked
+  # against its SHA256SUMS, and write the projects of examples/hello and
+  # examples/mobile_app, which each system's own tools then build, as a
+  # developer builds them: xcodebuild for the iOS Simulator, unsigned,
+  # with XcodeGen installed as the README says; and each project's Gradle
+  # wrapper, with the runner's Android SDK.
+  installed-mobile:
+    name: Install, and build phones' projects (${{ matrix.phone }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            phone: ios
+          - os: ubuntu-24.04
+            phone: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.tag }}
+          sparse-checkout: |
+            examples/hello
+            examples/mobile_app
+            mise.toml
+            runtime/sources.yml
+          sparse-checkout-cone-mode: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Select the pinned Xcode, and install XcodeGen, pinned by SHA-256
+        if: matrix.phone == 'ios'
+        run: |
+          xcode=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcode")')
+          sudo xcode-select -s "/Applications/Xcode_$xcode.app"
+          url=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcodegen", "url")')
+          sha256=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcodegen", "sha256")')
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" "$url"
+          echo "$sha256  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Use Java 21
+        if: matrix.phone == 'android'
+        run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+
+      - name: Install Fledge from the tag with Bundler
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/project"
+          cat > "$RUNNER_TEMP/project/Gemfile" <<GEMFILE
+          source "https://rubygems.org"
+          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG"
+          GEMFILE
+          cd "$RUNNER_TEMP/project"
+          bundle install
+          bundle exec fledge --version
+
+      # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
+      # from the release, checked against its SHA256SUMS.
+      - name: Write hello's and mobile_app's projects with the runtime from the release
+        env:
+          TAG: ${{ inputs.tag }}
+          PHONE: ${{ matrix.phone }}
+        run: |
+          unset FLEDGE_RUNTIME_DIR
+          export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
+          cd "$RUNNER_TEMP/project"
+          for app in examples/hello examples/mobile_app; do
+            bundle exec fledge build "$PHONE" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
+          done
+          cat "$RUNNER_TEMP/build.err"
+          grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/build.err" | grep -F -- "-$PHONE.tar.gz"
+          grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" "$RUNNER_TEMP/build.err"
+          ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
+
+      - name: Build each Xcode project for the iOS Simulator and, unsigned, for devices
+        if: matrix.phone == 'ios'
+        run: |
+          for name in Hello "Mobile App"; do
+            for sdk in iphonesimulator iphoneos; do
+              xcodebuild -project "$RUNNER_TEMP/dist/$name-ios/$name.xcodeproj" -scheme "$name" -sdk "$sdk" \
+                -derivedDataPath "$RUNNER_TEMP/derived" build CODE_SIGNING_ALLOWED=NO -quiet
+            done
+          done
+
+      - name: Build each Gradle project with its wrapper
+        if: matrix.phone == 'android'
+        run: |
+          for name in Hello "Mobile App"; do
+            (cd "$RUNNER_TEMP/dist/$name-android" && ./gradlew --no-daemon --quiet assembleDebug assembleRelease)
+            ls "$RUNNER_TEMP/dist/$name-android/build/outputs/apk/debug" "$RUNNER_TEMP/dist/$name-android/build/outputs/apk/release"
+          done

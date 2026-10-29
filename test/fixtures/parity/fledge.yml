@@ -4,3 +4,7 @@
 # The parity probe is a lone main.rb inside Fledge's own gem; this file
 # makes its folder the project's root (ADR 005), so it ships alone, as
 # Parity.
+#
+# Its identifier is what iOS and Android know it by, which the mobile
+# parity check's projects need (ADR 012).
+identifier: com.setdef.fledge.Parity

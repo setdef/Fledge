@@ -8,48 +8,81 @@
 require "fileutils"
 require "json"
 require "open3"
+require "rbconfig"
 require_relative "parity"
 
-# The parity check on a phone (ADR 011, section 6): the parity probe
-# (test/fixtures/parity/main.rb), run by a mobile runtime in the iOS
-# Simulator or an Android emulator, against the same main.rb under the
-# desktop Ruby of the computer that runs the simulator (rv-ruby's, as
-# the desktop parity check runs it), and a script that requires json and
-# csv, a bundled gem (test/fixtures/mobile/app/hello.rb).
+# The mobile check (ADR 011, section 6; ADR 012): apps built as a
+# developer builds them, with fledge build ios and fledge build android,
+# their projects built with xcodebuild and Gradle, and run in the iOS
+# Simulator, on an iPhone and an iPad, and on Android emulators, each
+# app's output read back the way an app's reaches its developer: from the
+# system log the embedding API forwards it to (os_log, logcat).
 #
-# Each runs in a small host app, CI's own and no part of a runtime
-# (test/fixtures/mobile/ios and android), which starts Ruby through the
-# embedding API with the script its launch names, and whose output
-# reaches the check the way an app's reaches its developer: through the
-# system log the embedding API forwards it to (os_log, logcat). The
+# The apps (APPS) are examples/hello; examples/mobile_app, whose pure-Ruby
+# gems Bundler sets up; a script that requires json and csv, a bundled
+# gem, and reaches rubygems.org over HTTPS (test/fixtures/mobile_hello);
+# and the parity probe (test/fixtures/parity), whose report is compared
+# with the same main.rb under the desktop Ruby of the computer that runs
+# the simulator (rv-ruby's, as the desktop parity check runs it). The
 # report is one long line, which the log holds as several entries in a
 # row (MobileParity.report). Every difference from the desktop Ruby is
 # justified in Parity::JUSTIFIED for the mobile targets, or fails.
 #
-#   ruby tasks/mobile_parity.rb ios RUNTIME_ARCHIVE
-#   ruby tasks/mobile_parity.rb android-build RUNTIME_ARCHIVE
-#   ruby tasks/mobile_parity.rb android APK
+#   ruby tasks/mobile_parity.rb ios RUNTIMES_DIR
+#   ruby tasks/mobile_parity.rb android-build RUNTIMES_DIR
+#   ruby tasks/mobile_parity.rb android
+#   ruby tasks/mobile_parity.rb android-check APK
 class MobileParity
   ROOT = Parity::ROOT
-  FIXTURES = File.join(ROOT, "test", "fixtures", "mobile")
 
-  # The host apps' identifier, which is also their log's tag.
-  IDENTIFIER = "org.setdef.fledge.parity"
+  # An app the check builds and runs: its project, the name and
+  # identifier its fledge.yml gives it, and the line it must print, or
+  # nil for the parity probe, whose report is compared instead.
+  App = Data.define(:path, :name, :identifier, :prints)
 
-  # What hello.rb prints, when the runtime keeps csv a gem and can reach
-  # a server over HTTPS with the CA certificates it carries.
+  # What test/fixtures/mobile_hello prints, when the runtime keeps csv a
+  # gem and can reach a server over HTTPS with the CA certificates it
+  # carries.
   HELLO = /\AHello from Ruby 4\.0\.9 on \S+: \["csv","\d+\.\d+\.\d+"\] over HTTPS: 200\z/
 
-  # The line a host app writes, after Ruby returns, with Ruby's status.
-  STATUS = /\AFLEDGE-MOBILE-STATUS (-?\d+)\z/
+  # The apps, each built with fledge build for each phone.
+  APPS = [
+    App.new(path: "examples/hello", name: "Hello", identifier: "com.setdef.fledge.Hello",
+      prints: /\AHello from Ruby 4\.0\.9 on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
+    App.new(path: "examples/mobile_app", name: "Mobile App", identifier: "com.setdef.fledge.MobileApp",
+      prints: /\AMobileApp 1\.2\.3 says hello through i18n 1\.15\.2 and concurrent-ruby 1\.3\.8, set up by Bundler\z/),
+    App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
+    App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
+  ].freeze
+
+  # The line the host app of every project fledge build writes logs when
+  # the app's program ends, with its exit status.
+  STATUS = / exited with status (-?\d+)\z/
+
+  # Writes each app's project for +phone+ into +out+ with fledge build,
+  # as a developer would, taking the runtime from +runtimes+, and
+  # returns each app's project folder.
+  def self.projects(phone, runtimes:, out:)
+    fledge = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), File.join(ROOT, "exe", "fledge")]
+    APPS.to_h do |app|
+      printed, status = Open3.capture2e({ "FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes) }, *fledge, "build", phone, "-o", out,
+        File.join(ROOT, app.path), chdir: ROOT)
+      raise "fledge build #{phone} #{app.path} failed:\n#{printed}" unless status.success?
+
+      [app, File.expand_path(printed.strip, ROOT)]
+    end
+  end
 
   # The probe's report, from the system log's +entries+ (its lines, in
   # order): the entry that begins it, joined with those after it up to
-  # where they make a JSON object.
+  # where they make a JSON object. The host's line with the app's status
+  # may come among them, since the host logs it from Ruby's thread while
+  # the embedding API's thread is still logging what Ruby printed, so it
+  # is left out.
   def self.report(entries)
     start = entries.index { |entry| entry.start_with?("FLEDGE-PARITY ") } or raise "the probe printed no report"
     text = +""
-    entries.drop(start).each do |entry|
+    entries.drop(start).grep_v(STATUS).each do |entry|
       text << entry
       begin
         return JSON.parse(text.delete_prefix("FLEDGE-PARITY "))
@@ -100,13 +133,20 @@ class MobileParity
     differences.all?(&:justified?)
   end
 
-  # Checks hello.rb's output, from the log's +entries+.
-  def check_hello(entries, device)
-    line = entries.find { |entry| entry.start_with?("Hello from Ruby") }
-    raise "hello.rb printed no greeting on #{device}:\n#{entries.join("\n")}" unless line
-    raise "hello.rb on #{device} printed #{line.inspect}, which does not match #{HELLO.source}" unless line.match?(HELLO)
+  # Checks what +app+ logged on the device named +device+, its +entries+:
+  # that it exited with status 0 and printed its line, or, for the parity
+  # probe, that every difference its report shows is justified. Returns
+  # whether it passed.
+  def check(app, entries, device)
+    status = MobileParity.status(entries)
+    raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}" unless status&.zero?
+    return compare(MobileParity.report(entries), device) unless app.prints
 
-    @out.puts "#{device}: #{line}"
+    line = entries.find { |entry| entry.match?(app.prints) }
+    raise "#{app.name} on #{device} printed no line matching #{app.prints.source}:\n#{entries.join("\n")}" unless line
+
+    @out.puts "#{app.name} on #{device}: #{line}"
+    true
   end
 
   # The desktop platform whose Ruby the reference is: the one this
@@ -145,10 +185,11 @@ require_relative "mobile_parity/android"
 if $PROGRAM_NAME == __FILE__
   command, path = ARGV
   passed = case command
-  when "ios" then MobileParity::IOS.new(runtime: path).call
-  when "android-build" then MobileParity::Android.build(runtime: path)
-  when "android" then MobileParity::Android.new(apk: path).call
-  else abort "usage: ruby tasks/mobile_parity.rb ios RUNTIME | android-build RUNTIME | android APK"
+  when "ios" then MobileParity::IOS.new(runtimes: path).call
+  when "android-build" then MobileParity::Android.build(runtimes: path)
+  when "android" then MobileParity::Android.new.call
+  when "android-check" then MobileParity::Android.check(path, $stdout) || true
+  else abort "usage: ruby tasks/mobile_parity.rb ios RUNTIMES_DIR | android-build RUNTIMES_DIR | android | android-check APK"
   end
   exit(passed ? 0 : 1)
 end

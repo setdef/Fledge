@@ -8,18 +8,20 @@
 require_relative "test_helper"
 require_relative "../tasks/mobile_parity"
 
-# The parts of the mobile parity check (ADR 011, section 6) that need no
-# simulator or emulator: reading the probe's report back from the
-# entries of a system log, the reference Ruby's environment, and the
-# justifications for what a phone does differently. CI's mobile parity
-# jobs run the probe in the iOS Simulator and an Android emulator.
+# The parts of the mobile check (ADR 011, section 6; ADR 012) that need no
+# simulator or emulator: reading the probe's report and an app's status
+# back from the entries of a system log, the apps it builds, the
+# reference Ruby's environment, and the justifications for what a phone
+# does differently. CI's Mobile apps jobs build the apps with fledge
+# build and run them in the iOS Simulator and Android emulators.
 class MobileParityTest < Minitest::Test
   # The embedding API sends a line longer than a log entry holds as
   # several entries in a row, so the report is the entries from its
-  # first, joined, up to where they make a JSON object.
+  # first, joined, up to where they make a JSON object, but for the
+  # host's status line, which its thread may log among them.
   def test_reads_the_report_from_the_log_entries_it_was_split_into
     json = JSON.generate({ "ARGV" => [], "long" => "é" * 900 })
-    entries = ["booting", "FLEDGE-PARITY #{json[0, 700]}", json[700, 1000], json[1700..], "FLEDGE-MOBILE-STATUS 0"]
+    entries = ["booting", "FLEDGE-PARITY #{json[0, 700]}", json[700, 1000], "Parity exited with status 0", json[1700..]]
 
     assert_equal JSON.parse(json), MobileParity.report(entries)
   end
@@ -29,10 +31,21 @@ class MobileParityTest < Minitest::Test
     assert_raises(RuntimeError) { MobileParity.report(["nothing here"]) }
   end
 
+  # The host app of every project fledge build writes logs the app's
+  # exit status when its program ends (ADR 012).
   def test_the_status_is_the_hosts_last_word
-    assert_equal 0, MobileParity.status(["a", "FLEDGE-MOBILE-STATUS 0"])
-    assert_equal 1, MobileParity.status(["FLEDGE-MOBILE-STATUS 1"])
-    assert_nil MobileParity.status(["a"])
+    assert_equal 0, MobileParity.status(["a", "Mobile App exited with status 0"])
+    assert_equal 1, MobileParity.status(["Hello exited with status 1"])
+    assert_nil MobileParity.status(["a", "exited with status 0"])
+  end
+
+  # Each app the check builds names itself as its fledge.yml does, so its
+  # project, scheme, and log are found by those names.
+  def test_each_app_is_named_as_its_fledge_yml_names_it
+    MobileParity::APPS.each do |app|
+      built = Fledge::App.at(File.join(MobileParity::ROOT, app.path))
+      assert_equal [app.name, app.identifier], [built.name, built.identity.identifier], app.path
+    end
   end
 
   # The reference runs as a person runs ruby main.rb: in a UTF-8 locale,

@@ -30,10 +30,12 @@ extern "C" {
 #endif
 
 /*
- * The status fledge_ruby_run returns when it cannot start Ruby, from
- * sysexits(3), as Fledge's launcher exits (ADR 002).
+ * The statuses fledge_ruby_run and fledge_ruby_run_app return when they
+ * cannot start Ruby, from sysexits(3), as Fledge's launcher exits (ADR
+ * 002): EX_NOINPUT for an app whose fledge.cfg or program is missing,
+ * and EX_SOFTWARE for anything else.
  */
-enum { FLEDGE_RUBY_SOFTWARE = 70 };
+enum { FLEDGE_RUBY_NO_APP = 66, FLEDGE_RUBY_SOFTWARE = 70 };
 
 /*
  * Runs the Ruby program script, a file, with the argc strings of argv
@@ -50,6 +52,17 @@ enum { FLEDGE_RUBY_SOFTWARE = 70 };
  * stack, as org.setdef.fledge.FledgeRuby.start does.
  */
 int fledge_ruby_run(const char *root, const char *script, int argc, char *const *argv);
+
+/*
+ * Runs the app fledge build put in root, as Fledge's desktop launcher
+ * runs one (ADR 005): root/fledge.cfg names its program, in root/app,
+ * and, for an app with a Gemfile, the Gemfile whose gems Bundler sets up
+ * before the program runs, as bundle exec would, with Bundler's settings
+ * from root/app/.bundle/config. Otherwise as fledge_ruby_run, whose
+ * statuses it returns, and FLEDGE_RUBY_NO_APP when fledge.cfg or the
+ * program is missing.
+ */
+int fledge_ruby_run_app(const char *root, int argc, char *const *argv);
 
 /*
  * Sends what this process writes to standard output and standard error

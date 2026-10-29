@@ -33,7 +33,9 @@ import java.util.zip.ZipInputStream;
  * and standard error sent to logcat under the app's package name, and
  * {@link #start} does so on a thread of its own with the deep stack Ruby
  * needs, never the UI thread, which Android stops an app for blocking.
- * Ruby boots once per process.
+ * {@link #runApp} and {@link #startApp} run the app fledge build put in
+ * the asset instead, as its fledge.cfg says, with Bundler set up for an
+ * app with a Gemfile. Ruby boots once per process.
  */
 public final class FledgeRuby {
     /** The stack of the thread {@link #start} runs Ruby on, as the spike's host gave it. */
@@ -48,6 +50,8 @@ public final class FledgeRuby {
     private static native int nativeForwardOutput(byte[] tag);
 
     private static native int nativeRun(byte[] strings, int argc);
+
+    private static native int nativeRunApp(byte[] strings, int argc);
 
     /**
      * Unpacks the zip asset named {@code asset} into the app's files
@@ -96,6 +100,79 @@ public final class FledgeRuby {
      * as iOS sets HOME to an app's own folder, so Dir.home is writable.
      */
     public static int run(Context context, String asset, String script, String... arguments) throws IOException {
+        File root = prepare(context, asset);
+        ByteArrayOutputStream strings = new ByteArrayOutputStream();
+        append(strings, root.getPath());
+        append(strings, new File(new File(root, "app"), script).getPath());
+        for (String argument : arguments) append(strings, argument);
+        return nativeRun(strings.toByteArray(), arguments.length);
+    }
+
+    /**
+     * Unpacks {@code asset} (see {@link #unpack}), sends standard output
+     * and standard error to logcat, and runs the app fledge build put in
+     * it, with {@code arguments} as its ARGV, on the calling thread, as
+     * fledge_ruby_run_app does: the program its fledge.cfg names, after
+     * Bundler sets up the gems of the Gemfile it names. Returns its exit
+     * status.
+     */
+    public static int runApp(Context context, String asset, String... arguments) throws IOException {
+        File root = prepare(context, asset);
+        ByteArrayOutputStream strings = new ByteArrayOutputStream();
+        append(strings, root.getPath());
+        for (String argument : arguments) append(strings, argument);
+        return nativeRunApp(strings.toByteArray(), arguments.length);
+    }
+
+    /**
+     * Calls {@link #run} on a new thread with a stack of
+     * {@link #STACK_SIZE} bytes, then {@code exited} with Ruby's exit
+     * status, or with 70 (EX_SOFTWARE) when the asset could not be
+     * unpacked. Returns the started thread.
+     */
+    public static Thread start(Context context, String asset, String script, String[] arguments, IntConsumer exited) {
+        Context app = context.getApplicationContext();
+        return onRubyThread(app, exited, () -> run(app, asset, script, arguments));
+    }
+
+    /**
+     * Calls {@link #runApp} on a new thread with a stack of
+     * {@link #STACK_SIZE} bytes, then {@code exited} with the app's exit
+     * status, or with 70 (EX_SOFTWARE) when the asset could not be
+     * unpacked. Returns the started thread.
+     */
+    public static Thread startApp(Context context, String asset, String[] arguments, IntConsumer exited) {
+        Context app = context.getApplicationContext();
+        return onRubyThread(app, exited, () -> runApp(app, asset, arguments));
+    }
+
+    /** What {@link #onRubyThread} runs: Ruby, returning its exit status. */
+    private interface Runner {
+        int run() throws IOException;
+    }
+
+    private static Thread onRubyThread(Context app, IntConsumer exited, Runner runner) {
+        Thread thread = new Thread(null, () -> {
+            int status;
+            try {
+                status = runner.run();
+            } catch (IOException e) {
+                android.util.Log.e(app.getPackageName(), "could not start Ruby", e);
+                status = 70;
+            }
+            exited.accept(status);
+        }, "ruby", STACK_SIZE);
+        thread.start();
+        return thread;
+    }
+
+    /**
+     * Unpacks {@code asset}, sets HOME to the app's files folder when
+     * Android sets none, as iOS sets HOME to an app's own folder, so
+     * Dir.home is writable, and sends standard output and standard error
+     * to logcat. Returns Ruby's root.
+     */
+    private static File prepare(Context context, String asset) throws IOException {
         // Canonical, as the desktop launcher resolves its own folder: an
         // app's files folder is /data/user/0/PACKAGE/files, through a
         // link to /data/data, and Ruby resolves __dir__ through it.
@@ -108,33 +185,7 @@ public final class FledgeRuby {
         if (nativeForwardOutput(nul(context.getPackageName())) != 0) {
             throw new IOException("could not send Ruby's output to logcat");
         }
-        ByteArrayOutputStream strings = new ByteArrayOutputStream();
-        append(strings, root.getPath());
-        append(strings, new File(new File(root, "app"), script).getPath());
-        for (String argument : arguments) append(strings, argument);
-        return nativeRun(strings.toByteArray(), arguments.length);
-    }
-
-    /**
-     * Calls {@link #run} on a new thread with a stack of
-     * {@link #STACK_SIZE} bytes, then {@code exited} with Ruby's exit
-     * status, or with 70 (EX_SOFTWARE) when the asset could not be
-     * unpacked. Returns the started thread.
-     */
-    public static Thread start(Context context, String asset, String script, String[] arguments, IntConsumer exited) {
-        Context app = context.getApplicationContext();
-        Thread thread = new Thread(null, () -> {
-            int status;
-            try {
-                status = run(app, asset, script, arguments);
-            } catch (IOException e) {
-                android.util.Log.e(app.getPackageName(), "could not start Ruby", e);
-                status = 70;
-            }
-            exited.accept(status);
-        }, "ruby", STACK_SIZE);
-        thread.start();
-        return thread;
+        return root;
     }
 
     private static byte[] nul(String string) {

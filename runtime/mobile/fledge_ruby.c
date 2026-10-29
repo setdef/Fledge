@@ -34,7 +34,17 @@
  *   - Nothing is set aside from the environment: iOS and Android start
  *     an app with their own environment, which no person sets, so there
  *     is no RUBYOPT or GEM_HOME of a person's own to hide (ADR 011,
- *     section 6).
+ *     section 6), and so nothing to pin RubyGems' paths against or to
+ *     put back once Bundler is set up.
+ *
+ * fledge_ruby_run_app reads the fledge.cfg fledge build writes into an
+ * app's root with the launcher's own reader (config.c), and for an app
+ * with a Gemfile has Bundler set up its gems between ruby_options and
+ * ruby_run_node, as the desktop launcher's setup_bundler does
+ * (runtime/launcher/unix.c): BUNDLE_GEMFILE names the app's Gemfile, so
+ * Bundler reads its settings from the app's .bundle/config beside it, and
+ * bundler/setup, from Ruby's own library, sets ENV as bundle exec would
+ * (Bundler::Runtime#setup, set_bundle_environment, at Bundler 4.0.20).
  */
 
 #include "fledge_ruby.h"
@@ -47,6 +57,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 /* The runtimes' edit to ruby.c (RubySource.ruby_c). */
@@ -55,6 +66,17 @@ extern const char *ruby_embed_libruby_path;
 static int started;
 static const char *found_certificates;
 
+/* The app's Gemfile, for fledge_ruby_run_app, or NULL. */
+static const char *bundle_gemfile;
+
+static const char require_bundler[] = "require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler')";
+static const char bundler_setup[] = "begin\n"
+                                    "  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\n"
+                                    "rescue StandardError => e\n"
+                                    "  $stderr.puts(e.message)\n"
+                                    "  raise\n"
+                                    "end\n";
+
 const char *
 fledge_ruby_certificates(void)
 {
@@ -62,18 +84,41 @@ fledge_ruby_certificates(void)
 }
 
 /*
+ * Has Bundler set up the gems of bundle_gemfile, and returns 0, or prints
+ * why it could not and returns -1.
+ */
+static int
+setup_bundler(void)
+{
+    int state = 0;
+
+    rb_eval_string_protect(require_bundler, &state);
+    if (state == 0 && setenv("BUNDLE_GEMFILE", bundle_gemfile, 1) != 0) state = -1;
+    if (state == 0) rb_eval_string_protect(bundler_setup, &state);
+    if (state == 0) return 0;
+    rb_set_errinfo(Qnil);
+    fputs("fledge_ruby_run_app: could not set up this app's gems\n", stderr);
+    return -1;
+}
+
+/*
  * SPDX-SnippetBegin
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, from Ruby's main.c (lines 37 to 43) at
- *   Ruby v4.0.9 (3e93b23afc).
+ *   Ruby v4.0.9 (3e93b23afc), with setup_bundler between ruby_options and
+ *   ruby_run_node, as in the desktop launcher's run_ruby.
  */
 static int
 run_ruby(int argc, char **argv)
 {
     RUBY_INIT_STACK;
     ruby_init();
-    return ruby_run_node(ruby_options(argc, argv));
+    void *node = ruby_options(argc, argv);
+    if (bundle_gemfile != NULL && ruby_executable_node(node, NULL) && setup_bundler() != 0) {
+        return ruby_cleanup(FLEDGE_RUBY_SOFTWARE);
+    }
+    return ruby_run_node(node);
 }
 /* SPDX-SnippetEnd */
 
@@ -137,4 +182,64 @@ fledge_ruby_run(const char *root, const char *script, int argc, char *const *arg
     ruby_sysinit(&ruby_argc, &ruby_argv);
     return ruby_start_main(run_ruby, ruby_argc, ruby_argv);
     /* SPDX-SnippetEnd */
+}
+
+/*
+ * Reads root/fledge.cfg into config, whose strings point into text, a
+ * buffer of size bytes. Returns 0, or prints why it could not and returns
+ * the status fledge_ruby_run_app should.
+ */
+static int
+read_config(const char *root, char *text, size_t size, struct fledge_config *config)
+{
+    char path[PATH_MAX];
+    const char *problem = NULL;
+
+    if (join(path, root, "/" FLEDGE_CONFIG) != 0) {
+        fputs("fledge_ruby_run_app: the path to the app is too long\n", stderr);
+        return FLEDGE_RUBY_SOFTWARE;
+    }
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) {
+        fprintf(stderr, "fledge_ruby_run_app: this app is incomplete: %s is missing\n", path);
+        return FLEDGE_RUBY_NO_APP;
+    }
+    size_t length = fread(text, 1, size - 1, file);
+    int unreadable = ferror(file);
+    fclose(file);
+    if (unreadable || length == size - 1 || memchr(text, '\0', length) != NULL) {
+        fprintf(stderr, "fledge_ruby_run_app: this app is damaged: %s is not a fledge.cfg\n", path);
+        return FLEDGE_RUBY_SOFTWARE;
+    }
+    text[length] = '\0';
+    if (fledge_parse_config(text, config, &problem) != 0) {
+        fprintf(stderr, "fledge_ruby_run_app: this app is damaged: %s %s\n", path, problem);
+        return FLEDGE_RUBY_SOFTWARE;
+    }
+    return 0;
+}
+
+int
+fledge_ruby_run_app(const char *root, int argc, char *const *argv)
+{
+    static char text[4096];
+    static char script[PATH_MAX];
+    static char gemfile[PATH_MAX];
+    struct fledge_config config;
+    struct stat status;
+
+    int problem = read_config(root, text, sizeof text, &config);
+    if (problem != 0) return problem;
+    if (snprintf(script, sizeof script, "%s/app/%s", root, config.entry) >= (int)sizeof script ||
+        (config.gemfile != NULL &&
+         snprintf(gemfile, sizeof gemfile, "%s/app/%s", root, config.gemfile) >= (int)sizeof gemfile)) {
+        fputs("fledge_ruby_run_app: the path to the app is too long\n", stderr);
+        return FLEDGE_RUBY_SOFTWARE;
+    }
+    if (stat(script, &status) != 0 || !S_ISREG(status.st_mode)) {
+        fprintf(stderr, "fledge_ruby_run_app: this app is incomplete: %s is missing\n", script);
+        return FLEDGE_RUBY_NO_APP;
+    }
+    if (config.gemfile != NULL) bundle_gemfile = gemfile;
+    return fledge_ruby_run(root, script, argc, argv);
 }

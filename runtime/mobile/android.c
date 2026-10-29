@@ -41,6 +41,8 @@
 JNIEXPORT jint JNICALL Java_org_setdef_fledge_FledgeRuby_nativeForwardOutput(JNIEnv *env, jclass type, jbyteArray tag);
 JNIEXPORT jint JNICALL Java_org_setdef_fledge_FledgeRuby_nativeRun(JNIEnv *env, jclass type, jbyteArray strings_array,
                                                                    jint argc);
+JNIEXPORT jint JNICALL Java_org_setdef_fledge_FledgeRuby_nativeRunApp(JNIEnv *env, jclass type,
+                                                                      jbyteArray strings_array, jint argc);
 
 /* OpenSSL's own X509_get_default_cert_file, and the one linked in its place. */
 const char *__real_X509_get_default_cert_file(void);
@@ -128,4 +130,14 @@ Java_org_setdef_fledge_FledgeRuby_nativeRun(JNIEnv *env, jclass type, jbyteArray
     char **list = strings(env, strings_array, (size_t)argc + 2);
     if (list == NULL) return FLEDGE_RUBY_SOFTWARE;
     return fledge_ruby_run(list[0], list[1], argc, list + 2);
+}
+
+JNIEXPORT jint JNICALL
+Java_org_setdef_fledge_FledgeRuby_nativeRunApp(JNIEnv *env, jclass type, jbyteArray strings_array, jint argc)
+{
+    (void)type;
+    if (argc < 0) return FLEDGE_RUBY_SOFTWARE;
+    char **list = strings(env, strings_array, (size_t)argc + 1);
+    if (list == NULL) return FLEDGE_RUBY_SOFTWARE;
+    return fledge_ruby_run_app(list[0], argc, list + 1);
 }

@@ -153,6 +153,7 @@ class RuntimeBuilder
         File.join(MOBILE, "output.c"),
         File.join(MOBILE, "apple.c"),
         File.join(Recipe::LAUNCHER, "locale.c"),
+        File.join(Recipe::LAUNCHER, "config.c"),
       ]
     end
 

@@ -46,10 +46,11 @@ module Fledge
 
       private def best(lookup, name, force_ruby)
         candidates = lookup[name] or raise Error, "#{@lockfile_name} locks no #{name}. Run bundle lock, then build again."
+        force_ruby ||= @platform.force_ruby_platform?
         Bundler::MatchPlatform.select_best_platform_match(candidates, @target, force_ruby:).first or
           raise Error, "#{@lockfile_name} locks no build of #{name} for #{@platform}, only for " \
             "#{candidates.map { |spec| spec.platform.to_s }.sort.join(', ')}. If #{name} has one, run bundle lock " \
-            "--add-platform #{@platform}, then build again."
+            "--add-platform #{@platform.lockfile_names.first}, then build again."
       end
 
       # Whether the dependency is one Bundler sets up on the platform, outside

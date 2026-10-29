@@ -16,13 +16,13 @@ module Fledge
     @release_url: String
     @log: CLI::_Output?
 
-    def self.file_name: (Platform platform, ?version: String) -> String
+    def self.file_name: (target platform, ?version: String) -> String
 
     def self.dev_file_name: (Platform platform, ?version: String) -> String
 
     def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?) -> void
 
-    def archive: (Platform platform) -> String
+    def archive: (target platform) -> String
 
     def dev_archive: (Platform platform) -> String
 

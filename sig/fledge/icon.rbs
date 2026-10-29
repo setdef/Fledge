@@ -4,6 +4,8 @@
 module Fledge
   class Icon < Data
     LINUX: Array[Integer]
+    IOS: Integer
+    ANDROID: Hash[String, Integer]
     MAKE: Hash[String, String]
 
     attr_reader base: String
@@ -13,8 +15,8 @@ module Fledge
 
     def file: (String extension) -> String
 
-    def png: (Integer size) -> String
+    def png: (Integer size, ?String system) -> String
 
-    private def found: (String path, String shown, String extension) -> String
+    private def found: (String path, String shown, String system) -> String
   end
 end

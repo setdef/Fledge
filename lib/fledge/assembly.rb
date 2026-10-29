@@ -188,20 +188,69 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def launch_config
-      lines = ["entry = #{config_value(@app.entry)}"]
-      gemfile = @app.gemfile
+      Assembly.launch_config(@app)
+    end
+
+    # The contents of CONFIG for +app+ (#launch_config), which the
+    # launcher reads, and on a phone the embedding API's
+    # <tt>fledge_ruby_run_app</tt> (ADR 012). Raises Fledge::Error for a
+    # program or Gemfile whose name the file cannot hold.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Assembly.launch_config(Fledge::App.at("examples/hello")).lines.last
+    #   # => "entry = main.rb\n"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.launch_config(app)
+      lines = ["entry = #{config_value(app.entry)}"]
+      gemfile = app.gemfile
       lines << "gemfile = #{config_value(gemfile)}" if gemfile
-      identifier = @app.identity.identifier
+      identifier = app.identity.identifier
       lines << "identifier = #{identifier}" if identifier
       "# Written by fledge build: what this app's program runs (ADR 005).\n#{lines.join("\n")}\n"
     end
 
-    private def config_value(path)
+    private_class_method def self.config_value(path) # :nodoc:
       if path.match?(/[\r\n]/) || path != path.strip
         raise Error, "#{path.inspect} can't be an app's program or Gemfile: its name begins or ends with a space, or holds a line break"
       end
 
       path
+    end
+
+    # The entries of the built app's +app+ folder, with paths relative to
+    # the folder that holds it: the folder, +app+'s project (but each
+    # absolute path in +skip+), with the contents +app_files+ gives in
+    # place of a file's own, and then the files of +app_files+ the project
+    # does not have.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Assembly.app_entries(Fledge::App.at("examples/hello"), {}, skip: []).map(&:path)
+    #   # => ["app", "app/fledge.yml", "app/main.rb"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.app_entries(app, app_files, skip:)
+      remaining = app_files.dup
+      entries = app.entries(skip:).map do |entry|
+        content = remaining.delete(entry.path)
+        entry = entry.with(content:) if content && entry.type == :file
+        entry.with(path: "app/#{entry.path}")
+      end
+      [Entry.directory("app"), *entries, *remaining.map { |path, content| Entry.file("app/#{path}", content) }]
     end
 
     private def build
@@ -273,18 +322,9 @@ module Fledge
       FileUtils.rm_f(Installers::SUFFIX.keys.map { |format| Installers.file_name(format, folder) })
     end
 
-    # The project's entries in +app+ under +contents+, with the contents
-    # @app_files gives in place of a file's own, then the files of
-    # @app_files the project does not have.
+    # The project's entries in +app+ under +contents+ (Assembly.app_entries).
     private def copy_app(contents)
-      add(contents, Entry.directory("app"))
-      remaining = @app_files.dup
-      @app.entries(skip: [@out]).each do |entry|
-        content = remaining.delete(entry.path)
-        entry = entry.with(content:) if content && entry.type == :file
-        add(contents, entry.with(path: "app/#{entry.path}"))
-      end
-      remaining.each { |path, content| add(contents, Entry.file("app/#{path}", content)) }
+      Assembly.app_entries(@app, @app_files, skip: [@out]).each { |entry| add(contents, entry) }
     end
   end
 end

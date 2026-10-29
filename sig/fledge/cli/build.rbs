@@ -17,6 +17,8 @@ module Fledge
 
       private def build: (App app, Platform platform, String out) -> void
 
+      private def build_project: (App app, MobilePlatform phone, Platform host, String out) -> void
+
       private def gems_for: (App app, Runtimes runtimes, String work) -> AppGems?
 
       private def compiler: (Runtimes runtimes, String work) -> NativeBuild

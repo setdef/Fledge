@@ -1,0 +1,24 @@
+// SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// Written by fledge build (ADR 012): a Gradle project of one Android
+// app, which ./gradlew assembleDebug builds, or Android Studio opens.
+// The Android Gradle plugin is the version Fledge's runtime is built and
+// checked with.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    plugins {
+        id 'com.android.application' version '@@AGP@@'
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = '@@PROJECT_NAME@@'

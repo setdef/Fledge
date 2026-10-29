@@ -30,6 +30,8 @@ module Fledge
 
     def lockfile_names: () -> Array[String]
 
+    def force_ruby_platform?: () -> bool
+
     def archive_extension: () -> String
 
     def executable: (String) -> String

@@ -84,8 +84,12 @@ module Fledge
     # .dylib, or .dll.
     LIBRARY = /\.(?:so(?:\.\d+)*|dylib|dll)\z/i
 
-    # The contents of the runtime archive at +path+. Raises Fledge::Error
-    # when it holds no gem folder or no rbconfig.rb.
+    # The contents of the runtime archive at +path+, or of its folder
+    # +under+ (relative to the archive's top folder, ending in a
+    # <tt>/</tt>), such as an iOS runtime's XCFramework slice, which holds a
+    # Ruby of its own (ADR 011, section 2); its paths are then relative to
+    # that folder. Raises Fledge::Error when it holds no gem folder or no
+    # rbconfig.rb.
     #
     # === Example
     #
@@ -95,10 +99,12 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::RuntimeContents.read(runtime).gem_dir # => "lib/ruby/gems/4.0.0"
+    #   Fledge::RuntimeContents.read(ios, under: "FledgeRuby.xcframework/ios-arm64/").gem_dir
+    #   # => "lib/ruby/gems/4.0.0"
     #--
     # SPDX-SnippetEnd
     #++
-    def self.read(path)
+    def self.read(path, under: "")
       gem_dirs = [] # : Array[String]
       gems = [] # : Array[String]
       version = nil # : String?
@@ -107,6 +113,9 @@ module Fledge
       rbconfig = nil # : String?
       Archive.names(path).each do |name|
         inside = name.split("/", 2).last.to_s
+        next unless inside.start_with?(under)
+
+        inside = inside.delete_prefix(under)
         libraries << File.basename(inside) if inside.match?(LIBRARY)
         if (found = SPECIFICATION.match(inside))
           gem_dirs << found[:gem_dir].to_s

@@ -238,6 +238,25 @@ module Fledge
       name.end_with?("-linux") ? [name, "#{name}-gnu"] : [name]
     end
 
+    # Whether the app's Bundler takes only +ruby+ gems: never on a
+    # desktop, whose gems' builds for it Bundler picks
+    # (Fledge::MobilePlatform#force_ruby_platform?).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("x86_64-linux").force_ruby_platform? # => false
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def force_ruby_platform?
+      false
+    end
+
     # The extension of the archive a built app ships in.
     #
     # === Example

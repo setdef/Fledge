@@ -34,6 +34,8 @@ module FakeRuntime
 "x86_64-linux" => "x86_64-linux",
 "aarch64-linux" => "aarch64-linux",
 "x64-mingw-ucrt" => "x64-mingw-ucrt",
+"ios" => "arm64-darwin",
+"android" => "aarch64-linux-android",
 }.freeze
 
   # Ruby's rbconfig.rb for +platform+'s runtime, with what Fledge reads.
@@ -66,6 +68,23 @@ module FakeRuntime
       entries.each { |entry| entry.write_into(folder) }
       Fledge::Archive.pack(folder, to: path)
     end
+  end
+
+  # Writes the runtime for the phone +phone+ (a Fledge::MobilePlatform)
+  # into +directory+, shaped as ADR 011 describes it, and returns its
+  # path: for iOS, an XCFramework whose two slices each hold a Ruby; for
+  # Android, an AAR beside one Ruby; each with its CA certificates and
+  # notices.
+  def self.write_mobile(directory, phone)
+    top = File.basename(Fledge::Runtimes.file_name(phone), Fledge::Runtimes::EXTENSION)
+    path = File.join(directory, Fledge::Runtimes.file_name(phone))
+    rubies = (phone.name == "ios") ? %w[ios-arm64 ios-arm64-simulator].map { |slice| "FledgeRuby.xcframework/#{slice}/" } : [""]
+    library = (phone.name == "ios") ? Fledge::Entry.file("FledgeRuby.xcframework/Info.plist", "<plist/>\n") : Fledge::Entry.file("FledgeRuby.aar", "PK aar")
+    pack(path, top, [
+      library,
+      *rubies.flat_map { |prefix| [*ruby("#{prefix}lib/ruby", phone), Fledge::Entry.file("#{prefix}libexec/cert.pem", "certificates\n")] },
+      Fledge::Entry.file("notices/NOTICES.txt", "Fledge's runtime for #{phone}\n"),
+    ])
   end
 
   # The launchers of +platform+'s runtime: +launcher+, and on Windows the

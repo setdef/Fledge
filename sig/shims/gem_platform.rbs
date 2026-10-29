@@ -7,6 +7,8 @@ module Gem
 
     def self.new: (String) -> Gem::Platform
 
+    RUBY: String
+
     def self.generic: (Gem::Platform platform) -> Gem::Platform
 
     def ===: (Gem::Platform other) -> bool?

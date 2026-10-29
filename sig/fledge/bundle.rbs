@@ -6,6 +6,7 @@ module Fledge
     WITHOUT: Array[Symbol]
     SETTINGS: String
     GEMSPECS: String
+    FORCE_RUBY_PLATFORM: String
 
     @app: App
     @lockfile: String
@@ -28,13 +29,13 @@ module Fledge
 
     private def checksums: (String text) -> Hash[String, String]
 
-    def gems_for: (Platform platform, ruby_version: String, arch: String) -> Array[LockedGem | GitGem]
+    def gems_for: (target platform, ruby_version: String, arch: String) -> Array[LockedGem | GitGem]
 
     private def check_ruby: (String ruby_version) -> void
 
-    private def check_locked: (Platform platform, Gem::Platform target) -> void
+    private def check_locked: (target platform, Gem::Platform target) -> void
 
-    def app_files: () -> Hash[String, String]
+    def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
 
     private def own_folders: () -> Array[String]
 

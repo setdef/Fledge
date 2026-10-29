@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  Written by fledge build (ADR 012): the APIs Apple requires a reason
+  for that Fledge's Ruby calls. Ruby stats files (stat, fstat, fstatat,
+  lstat, getattrlist, fgetattrlist), which Apple lists among the file
+  timestamp APIs, and reads its monotonic clock with mach_absolute_time,
+  among the system boot time APIs; Fledge's CI checks this list against
+  what each built app's executable imports. The reasons are those of an
+  app that reads its own files and measures time within itself: C617.1
+  (files inside the app's container) and 35F9.1 (time elapsed between
+  events in the app). Add what your own code calls, and what your app
+  collects, before you submit it.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

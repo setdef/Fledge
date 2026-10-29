@@ -61,4 +61,17 @@ class RuntimeContentsTest < Minitest::Test
       assert_equal "#{empty} is not a Fledge runtime: it holds no one gem folder ()", error.message
     end
   end
+
+  def test_reads_one_slice_of_an_ios_runtime
+    Dir.mktmpdir do |dir|
+      runtime = FakeRuntime.write_mobile(dir, Fledge::MobilePlatform.find("ios"))
+
+      contents = Fledge::RuntimeContents.read(runtime, under: "FledgeRuby.xcframework/ios-arm64/")
+
+      assert_equal ["lib/ruby/gems/4.0.0", ["csv-3.3.5", "json-2.18.0"], "4.0.9", "arm64-darwin"],
+        [contents.gem_dir, contents.gems, contents.ruby_version, contents.arch]
+      error = assert_raises(Fledge::Error) { Fledge::RuntimeContents.read(runtime) }
+      assert_match(/holds no one gem folder/, error.message, "two slices are two Rubies")
+    end
+  end
 end

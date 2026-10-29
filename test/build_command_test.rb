@@ -62,6 +62,25 @@ class BuildCommandTest < Minitest::Test
     assert_equal "../dist/Hello-x86_64-linux.tar.gz\n", out.string
   end
 
+  # A phone's name, first, asks for its project, as Briefcase's create iOS
+  # and Flutter's build ios do (ADR 012); after the PATH, or after --, it
+  # is a path, and ./ios names a folder called ios.
+  def test_a_phone_named_first_asks_for_its_project
+    {
+      %w[ios] => [".", "ios"],
+      %w[android -o out hello] => ["hello", "android"],
+      %w[-o out ios hello] => ["hello", "ios"],
+      %w[./ios] => ["./ios", nil],
+      %w[-- ios] => ["ios", nil],
+      %w[ios -- android] => ["android", "ios"],
+    }.each do |argv, (path, phone)|
+      options = Fledge::CLI::Build::Options.parse(argv)
+      assert_equal [path, phone], [options.path, options.phone], argv.inspect
+    end
+    error = assert_raises(Fledge::UsageError) { Fledge::CLI::Build::Options.parse(%w[hello ios]) }
+    assert_equal "takes one PATH, but got 'hello' and 'ios'", error.message
+  end
+
   # Usage errors are the command line's to report, with the usage and
   # exit status 2 (Fledge::CLI), so the command raises them.
   def test_usage_mistakes_raise_a_usage_error

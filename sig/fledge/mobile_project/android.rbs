@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MobileProject
+    class Android < MobileProject
+      AGP: String
+      APPLICATION_ID: Regexp
+      VERSION_CODE_MAX: Integer
+      AAR: String
+
+      def self.version_code: (String version) -> Integer
+
+      def self.ruby_under: () -> String
+
+      private def system: () -> String
+
+      private def template_files: () -> Array[String]
+
+      private def tokens: () -> Hash[String, String]
+
+      private def application_id: () -> String
+
+      private def groovy: (String text) -> String
+
+      private def string_resource: (String text) -> String
+
+      private def place_runtime: (String tree, String project) -> void
+
+      private def ruby_root: (String project) -> String
+
+      private def place_icons: (String project) -> void
+
+      private def finish: (String project) -> void
+    end
+  end
+end

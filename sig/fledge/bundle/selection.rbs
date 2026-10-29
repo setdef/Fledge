@@ -6,11 +6,11 @@ module Fledge
     class Selection
       @definition: Bundler::Definition
       @lockfile_name: String
-      @platform: Platform
+      @platform: target
       @ruby_version: String
       @target: Gem::Platform
 
-      def initialize: (Bundler::Definition definition, lockfile_name: String, platform: Platform, ruby_version: String, target: Gem::Platform) -> void
+      def initialize: (Bundler::Definition definition, lockfile_name: String, platform: target, ruby_version: String, target: Gem::Platform) -> void
 
       def specs: () -> Array[Bundler::LazySpecification]
 

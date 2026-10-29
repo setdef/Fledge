@@ -13,6 +13,7 @@
 #
 # SYNOPSIS
 #     fledge build [OPTIONS] [PATH]
+#     fledge build ios|android [OPTIONS] [PATH]
 #     fledge --help
 #     fledge --version
 #
@@ -48,6 +49,14 @@
 #     Start menu shortcut Windows needs before it shows the app's
 #     notifications, and an AppImage for Linux.
 #
+#     For a phone, fledge build writes the project that builds the
+#     app, which you build, sign, and submit with that system's tools:
+#     an Xcode project for iPhone and iPad on a Mac, and a Gradle project
+#     for Android on a Mac, Linux, or Windows. Ruby runs there as a
+#     library linked into the app, with Bundler setting up the app's
+#     gems, which must be pure Ruby for now; what the app prints goes to
+#     the system log.
+#
 #     Each system's own tools do the work. macOS has them all (tar,
 #     plutil, codesign, ditto, hdiutil). Windows 10 and 11 have tar;
 #     the runtime brings rcedit, for a program's version information
@@ -65,6 +74,20 @@
 #                        line.
 #                        A folder means the one executable its gemspec
 #                        names, or else its main.rb.
+#     build ios          Write an Xcode project for the app, for iPhone
+#                        and iPad (iOS 15 and later, arm64), which
+#                        builds for devices and the Simulator, and print
+#                        its path. Run it on a Mac, with Xcode and
+#                        XcodeGen (brew install xcodegen), which writes
+#                        the project.
+#     build android      Write a Gradle project for the app, for Android
+#                        8.0 (API 26) and later, targeting API 36, with
+#                        Gradle's wrapper (./gradlew assembleDebug), and
+#                        print its path. Run it on a Mac, x86-64 Linux,
+#                        or Windows; building the project needs a JDK and
+#                        the Android SDK.
+#                        A phone's name comes first; for a folder named
+#                        ios or android, write ./ios.
 #
 # OPTIONS
 #     -o, --out DIR      Write builds to DIR (default: dist)
@@ -101,15 +124,19 @@
 #                        kind: console (default) or windowed
 #                        identifier: the app's reverse-DNS name, such as
 #                          com.example.MyCoolApp, which macOS and
-#                          Windows know it by (needed when windowed)
+#                          Windows know it by, and the bundle identifier
+#                          or applicationId of a phone's app (needed when
+#                          windowed, and for a phone)
 #                        version: such as "1.2.3" (default: the
 #                          gemspec's, or 0.0.0)
 #                        icon: the icon's files without their
 #                          extension, as Briefcase names them, such
 #                          as icons/app: icons/app.icns on macOS,
 #                          icons/app.ico on Windows (16 to 256
-#                          pixels), and icons/app-16.png, -32, -64,
-#                          -128, -256, and -512 on Linux
+#                          pixels), icons/app-16.png, -32, -64, -128,
+#                          -256, and -512 on Linux, icons/app-1024.png
+#                          for iOS, and icons/app-48.png, -72, -96,
+#                          -144, and -192 for Android
 #                        publisher: who makes it (default: the
 #                          gemspec's authors)
 #                        copyright: such as "© 2026 Example, Inc."
@@ -133,6 +160,28 @@
 #                        holds the licenses of what Fledge put in it;
 #                        each gem keeps its own in its folder. A new
 #                        build replaces it.
+#     DIR/NAME-ios/      An iOS app's Xcode project: NAME.xcodeproj,
+#                        which XcodeGen wrote from project.yml, beside
+#                        it; FledgeRuby.xcframework, the runtime, whose
+#                        Ruby for the SDK built for a build phase copies
+#                        into the app; fledge/, with fledge.cfg, the
+#                        project in app/, the app's gems, and notices/;
+#                        and Host/, the app's main.m, Info.plist, privacy
+#                        manifest, and icon. No signing is configured.
+#     DIR/NAME-android/  An Android app's Gradle project: build.gradle,
+#                        with the app's identity; libs/FledgeRuby.aar,
+#                        the runtime; fledge/, with the runtime's Ruby,
+#                        fledge.cfg, the project in app/, the app's gems,
+#                        and notices/, which the build stores as the
+#                        asset fledge.zip; and src/main/, the app's
+#                        MainActivity.java and icons. A debug build is
+#                        signed with the SDK's debug key, and a release
+#                        build left unsigned.
+#                        A phone's app sets up its gems with Bundler's
+#                        force_ruby_platform, so its Gemfile.lock must
+#                        lock ruby (bundle lock --add-platform ruby), and
+#                        a gem with an extension to compile fails the
+#                        build.
 #     DIR/NAME-PLATFORM.zip
 #     DIR/NAME-PLATFORM.tar.gz
 #                        The same folder, archived for download: a .zip
@@ -182,7 +231,8 @@
 # EXIT STATUS
 #     0                  Success
 #     1                  The build failed (a missing app, a computer
-#                        Fledge has no runtime for, a runtime that
+#                        Fledge has no runtime for, or that does not
+#                        build the phone's project, a runtime that
 #                        would not download, a gem that cannot ship or
 #                        would not compile, a missing tool or icon
 #                        file, a full disk)
@@ -196,6 +246,10 @@
 #     Build a gem's executable, here and on a computer of each other
 #     platform, such as a CI runner of each:
 #     fledge build exe/my_cool_app
+#
+#     Write the app's Xcode project on a Mac, and its Gradle project:
+#     fledge build ios
+#     fledge build android
 #
 #     Build a script from elsewhere, into another folder:
 #     fledge build --out /tmp/builds path/to/app/main.rb

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  Written by fledge build (ADR 012): the name fledge.yml gives the app.
+-->
+<resources>
+    <string name="app_name">@@NAME@@</string>
+</resources>

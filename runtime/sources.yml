@@ -207,8 +207,9 @@ nsis:
 # runs it, and Gradle, which packs the Android runtime's AAR with the
 # Android Gradle plugin at agp, by its distribution's SHA-256. Xcode is
 # chosen by version on the runner (ci.yml), since Apple publishes no
-# download to pin; XcodeGen writes the Xcode project CI's mobile parity
-# check runs, and no runtime holds it.
+# download to pin; XcodeGen, which fledge build ios runs to write an
+# app's Xcode project (ADR 012), is pinned for CI's Mobile apps jobs, and
+# no runtime holds it.
 mobile:
   ruby:
     version: 4.0.9
@@ -245,6 +246,10 @@ mobile:
     version: 9.8.2
     url: https://services.gradle.org/distributions/gradle-9.8.2-bin.zip
     sha256: 21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607
+    # Gradle's wrapper, which every Android project fledge build writes
+    # carries (lib/fledge/templates/android/gradle/wrapper), as Gradle
+    # publishes its SHA-256 at the distribution's URL with -wrapper.jar.sha256.
+    wrapper_sha256: 3b8a25775a69158b5ad2b1d17a80a88dc7b40a352a73eb27d06c612a7ce68e98
   agp: 9.4.1
   xcodegen:
     version: 2.46.0

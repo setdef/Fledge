@@ -5,4 +5,6 @@ module Fledge
   type locked_gem = LockedGem | GitGem
 
   type package = GemPackage | GitPackage | CompiledGem
+
+  type target = Platform | MobilePlatform
 end

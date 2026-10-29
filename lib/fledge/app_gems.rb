@@ -11,6 +11,7 @@ require_relative "gem_package"
 require_relative "git_checkout"
 require_relative "git_package"
 require_relative "linkage"
+require_relative "mobile_platform"
 require_relative "native_build"
 
 module Fledge
@@ -28,7 +29,8 @@ module Fledge
   # rest (Fledge::GemFetcher for a gem server's, Fledge::GitCheckout for
   # git's), compiles those with an extension still to compile when the
   # platform is the one Fledge runs on (Fledge::NativeBuild), and refuses
-  # them for any other platform. Then it checks that each one runs on the
+  # them for any other platform, and for a phone (Fledge::MobilePlatform),
+  # whose gems must be pure Ruby until after 1.0. Then it checks that each one runs on the
   # platform's runtime: its <tt>required_ruby_version</tt>, what its
   # compiled files need (Fledge::Linkage), and, for what Fledge compiled,
   # the oldest macOS or glibc it needs. It names every problem at once,
@@ -69,7 +71,9 @@ module Fledge
     end
 
     # What the app's +app+ folder holds in place of the project's own
-    # files: Fledge::Bundle#app_files.
+    # files: Fledge::Bundle#app_files, with Bundler's
+    # <tt>force_ruby_platform</tt> when +force_ruby_platform+ is true, as
+    # for a phone.
     #
     # === Example
     #
@@ -82,8 +86,8 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def app_files
-      @bundle.app_files
+    def app_files(force_ruby_platform: false)
+      @bundle.app_files(force_ruby_platform:)
     end
 
     # The entries, with paths relative to the built folder, that install
@@ -105,17 +109,41 @@ module Fledge
     #++
     def for(platform, runtime:)
       locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch).reject { |gem| runtime.gems.include?(gem.full_name) }
-      packages = compile(locked.to_h { |gem| [gem, package_for(gem)] })
-      linkage = Linkage.new(os: platform.os, provided: runtime.libraries)
-      problems = packages.flat_map do |gem, package|
-        [
-          *package.problems(ruby_version: runtime.ruby_version),
-          *linkage.problems(gem.to_s, package.contents),
-]
+      packages = locked.to_h { |gem| [gem, package_for(gem)] } # : Hash[locked_gem, package]
+      problems = case platform
+      when MobilePlatform then mobile_problems(packages, platform, runtime)
+      else
+        packages = compile(packages)
+        desktop_problems(packages, platform, runtime)
       end
       raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
 
       packages.values.flat_map { |package| package.entries(runtime.gem_dir) }.uniq(&:path)
+    end
+
+    # What keeps each gem from running on a desktop +platform+'s runtime:
+    # the Ruby it asks for, and what its compiled files need.
+    private def desktop_problems(packages, platform, runtime)
+      linkage = Linkage.new(os: platform.os, provided: runtime.libraries)
+      packages.flat_map do |gem, package|
+        [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.contents)]
+      end
+    end
+
+    # What keeps each gem from running on a phone: the Ruby it asks for,
+    # and an extension, which Fledge does not compile for a phone; native
+    # gems on phones come after 1.0 (Plan 002).
+    private def mobile_problems(packages, platform, runtime)
+      packages.flat_map do |gem, package|
+        native = package.extensions? ? [native_problem(gem, platform)] : [] # : Array[String]
+        [*package.problems(ruby_version: runtime.ruby_version), *native]
+      end
+    end
+
+    private def native_problem(gem, platform)
+      "#{gem} has an extension to compile, and Fledge ships only pure-Ruby gems to #{platform} for now; native gems on " \
+        "phones come after Fledge 1.0. Leave it out of the app's #{platform} build (gem \"#{gem.name}\", platforms: [...] " \
+        "in the Gemfile), or find a pure-Ruby gem in its place."
     end
 
     private def package_for(gem)

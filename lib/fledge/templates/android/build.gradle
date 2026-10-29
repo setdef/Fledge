@@ -1,0 +1,77 @@
+// SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// Written by fledge build (ADR 012): the app, with its identity from
+// fledge.yml, targeting API 36, as Google Play requires of new apps and
+// updates since 2026-08-31, and running on API 26 and later, as Fledge's
+// Android runtime does (ADR 011). Its Ruby, its program, and its gems
+// are the folder fledge/, which the task fledgeAsset stores, uncompressed,
+// as the asset fledge.zip, which org.setdef.fledge.FledgeRuby, in
+// libs/FledgeRuby.aar, unpacks on the app's first launch. Native
+// libraries are stored uncompressed and aligned for 16 KB pages. No
+// signing is configured: assembleDebug signs with the Android SDK's debug
+// key, assembleRelease leaves the app unsigned, and you sign a release
+// with your own key, in a signingConfigs block or with apksigner.
+plugins {
+    id 'com.android.application'
+}
+
+// Stores the folder fledge/ as fledge.zip, uncompressed, with Gradle's
+// own Ant, in a folder the Android Gradle plugin takes as generated
+// assets, so the asset is made again whenever the folder changes.
+abstract class FledgeAsset extends DefaultTask {
+    @InputDirectory
+    abstract DirectoryProperty getRoot()
+
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+
+    @TaskAction
+    void pack() {
+        File zip = outputDirectory.file('fledge.zip').get().asFile
+        zip.delete()
+        ant.zip(destfile: zip, basedir: root.get().asFile, compress: false, defaultexcludes: 'no')
+    }
+}
+
+def fledgeAsset = tasks.register('fledgeAsset', FledgeAsset) {
+    root = layout.projectDirectory.dir('fledge')
+}
+
+android {
+    namespace = 'org.setdef.fledge.host'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = '@@APPLICATION_ID@@'
+        minSdk = 26
+        targetSdk = 36
+        versionCode = @@VERSION_CODE@@
+        versionName = '@@VERSION_NAME@@'
+    }
+
+    androidResources {
+        noCompress += ['zip']
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.sources.assets.addGeneratedSourceDirectory(fledgeAsset) { it.outputDirectory }
+    }
+}
+
+dependencies {
+    implementation files('libs/FledgeRuby.aar')
+}

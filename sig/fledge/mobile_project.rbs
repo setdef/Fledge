@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MobileProject
+    TEMPLATES: String
+    ROOT: String
+    TOKEN: Regexp
+
+    @app: App
+    @runtime: String
+    @out: String
+    @app_files: Hash[String, String]
+    @files: Array[Entry]
+
+    def self.for: (MobilePlatform platform) -> (singleton(MobileProject::IOS) | singleton(MobileProject::Android))
+
+    def initialize: (app: App, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry]) -> void
+
+    def base_name: () -> String
+
+    def call: () -> String
+
+    private def build: (String tree, String project) -> void
+
+    private def runtime_tree: (String work) -> String
+
+    private def add: (String project, String root, Entry entry) -> void
+
+    private def fill: (String path) -> void
+
+    private def identifier: () -> String
+
+    private def platform_title: () -> String
+
+    private def folder: () -> String
+
+    private def system: () -> String
+
+    private def template_files: () -> Array[String]
+
+    private def tokens: () -> Hash[String, String]
+
+    private def place_runtime: (String tree, String project) -> void
+
+    private def ruby_root: (String project) -> String
+
+    private def place_icons: (String project) -> void
+
+    private def finish: (String project) -> void
+  end
+end

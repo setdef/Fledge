@@ -81,6 +81,14 @@ module Fledge
       BUNDLE_WITHOUT: "#{WITHOUT.join(':')}"
     YAML
 
+    # The setting a phone's app adds to SETTINGS: Bundler's own
+    # <tt>force_ruby_platform</tt>, which it documents as "Ignore the
+    # current machine's platform and install only <tt>ruby</tt> platform
+    # gems" (<tt>lib/bundler/man/bundle-config.1.ronn</tt>, at Bundler
+    # 4.0.20), so that an iOS Ruby, which reports <tt>arm64-darwin</tt>,
+    # never resolves a macOS gem (ADR 011, section 1).
+    FORCE_RUBY_PLATFORM = "BUNDLE_FORCE_RUBY_PLATFORM: \"true\"\n"
+
     # Where Bundler finds a path gem's gemspecs (Bundler::Source::Path,
     # DEFAULT_GLOB).
     GEMSPECS = "{,*,*/*}.gemspec"
@@ -197,7 +205,10 @@ module Fledge
     # would fit there (Bundler::Definition#current_platform_locked? and
     # Gem::Platform#===): <tt>arm64-darwin</tt> and
     # <tt>arm64-darwin-23</tt> fit rv-ruby's <tt>arm64-darwin23</tt>, and
-    # <tt>arm64-darwin-24</tt> does not. Raises Fledge::Error, saying what to run, when
+    # <tt>arm64-darwin-24</tt> does not. A Fledge::MobilePlatform's app
+    # runs Bundler with <tt>force_ruby_platform</tt> (ADR 011, section 1),
+    # as which the lockfile must lock +ruby+, and each gem is its +ruby+
+    # build. Raises Fledge::Error, saying what to run, when
     # the lockfile does not lock +platform+, the Gemfile asks for another
     # Ruby, a git gem is not pinned to a commit or needs its submodules, a
     # gem comes from a folder outside the project or is a path gem with an
@@ -216,7 +227,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def gems_for(platform, ruby_version:, arch:)
-      target = Gem::Platform.new(arch)
+      target = Gem::Platform.new(platform.force_ruby_platform? ? Gem::Platform::RUBY : arch)
       check_ruby(ruby_version)
       check_locked(platform, target)
       specs = Selection.new(@definition, lockfile_name:, platform:, ruby_version:, target:).specs
@@ -246,12 +257,14 @@ module Fledge
       # SPDX-SnippetEnd
       #++
 
-      raise Error, "#{lockfile_name} locks no gems for #{platform}. Run bundle lock --add-platform #{platform}, then build again."
+      raise Error, "#{lockfile_name} locks no gems for #{platform}. Run bundle lock --add-platform #{platform.lockfile_names.first}, " \
+        "then build again."
     end
 
     # What the built app's +app+ folder holds in place of the project's
     # own files, by path relative to it: Bundler's settings for the app
-    # (SETTINGS, as <tt>.bundle/config</tt>), and each gemspec of the
+    # (SETTINGS, as <tt>.bundle/config</tt>, with FORCE_RUBY_PLATFORM when
+    # +force_ruby_platform+ is true, for a phone), and each gemspec of the
     # project's own gems, evaluated now, as Bundler caches a git gem's
     # gemspecs evaluated so that one that runs git keeps working without
     # it (Bundler::Source::Git#serialize_gemspecs_in).
@@ -267,9 +280,10 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def app_files
+    def app_files(force_ruby_platform: false)
+      settings = force_ruby_platform ? "#{SETTINGS}#{FORCE_RUBY_PLATFORM}" : SETTINGS
       gemspecs = own_folders.flat_map { |folder| Dir.glob(GEMSPECS, base: folder).map { |name| File.join(folder, name) } }
-      gemspecs.uniq.sort.each_with_object({ ".bundle/config" => SETTINGS }) do |path, files|
+      gemspecs.uniq.sort.each_with_object({ ".bundle/config" => settings }) do |path, files|
         spec = Bundler.load_gemspec(path) or next
         spec.installed_by_version = Gem::VERSION
         files[path.delete_prefix("#{@app.root}/")] = spec.to_ruby

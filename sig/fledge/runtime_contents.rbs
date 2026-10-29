@@ -17,7 +17,7 @@ module Fledge
 
     def self.new: (gem_dir: String, gems: Array[String], ruby_version: String, libraries: Array[String], arch: String) -> instance
 
-    def self.read: (String path) -> RuntimeContents
+    def self.read: (String path, ?under: String) -> RuntimeContents
 
     private def self.ruby_version_in: (String rbconfig) -> String?
 

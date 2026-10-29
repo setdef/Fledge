@@ -7,8 +7,9 @@ module Fledge
       class Options < Data
         attr_reader out: String
         attr_reader path: String
+        attr_reader phone: String?
 
-        def self.new: (out: String, path: String) -> instance
+        def self.new: (out: String, path: String, phone: String?) -> instance
 
         def self.parse: (Array[String] argv) -> Options
 

@@ -13,6 +13,8 @@ require_relative "../bundle"
 require_relative "../error"
 require_relative "../gem_fetcher"
 require_relative "../git_checkout"
+require_relative "../mobile_platform"
+require_relative "../mobile_project"
 require_relative "../native_build"
 require_relative "../platform"
 require_relative "../runtime_contents"
@@ -30,7 +32,9 @@ module Fledge
     #
     # This command builds for the computer it runs on, as Tauri's and
     # Briefcase's builds do, since each platform's app is made with that
-    # platform's own tools (ADR 010). It reads <tt>--out</tt> and the
+    # platform's own tools (ADR 010), or, given a phone's name first
+    # (<tt>fledge build ios</tt>), writes that phone's project, with
+    # Fledge::MobileProject, on a computer whose tools build it (ADR 012). It reads <tt>--out</tt> and the
     # program to ship from its arguments (Fledge::App), finds this
     # platform's runtime through Fledge::Runtimes, adds the gems the app's
     # Gemfile.lock locks for it (Fledge::Bundle and Fledge::AppGems),
@@ -95,7 +99,9 @@ module Fledge
       def call(argv)
         options = Options.parse(argv)
         app = App.at(options.path)
-        build(app, Platform.local(@host), options.out)
+        host = Platform.local(@host)
+        phone = MobilePlatform.find(options.phone.to_s)
+        phone ? build_project(app, phone, host, options.out) : build(app, host, options.out)
         0
       rescue UsageError
         raise
@@ -116,6 +122,25 @@ module Fledge
           files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
           assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:)
           [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
+        end
+      end
+
+      # Writes +phone+'s project for +app+ (Fledge::MobileProject), on the
+      # computer +host+, with the app's gems, each its pure-Ruby build.
+      private def build_project(app, phone, host, out)
+        phone.check_host(host)
+        out_dir = File.expand_path(out)
+        raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
+
+        runtimes = Runtimes.new(env: @env, log: @err)
+        writer = MobileProject.for(phone)
+        Dir.mktmpdir("fledge-build") do |work|
+          gems = gems_for(app, runtimes, work)
+          runtime = runtimes.archive(phone)
+          app_files = gems ? gems.app_files(force_ruby_platform: true) : {} # : Hash[String, String]
+          files = gems ? gems.for(phone, runtime: RuntimeContents.read(runtime, under: writer.ruby_under)) : [] # : Array[Entry]
+          project = writer.new(app:, runtime:, out: out_dir, app_files:, files:).call
+          @out.puts File.join(out, File.basename(project))
         end
       end
 

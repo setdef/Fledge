@@ -1,0 +1,55 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Written by fledge build (ADR 012): XcodeGen's description of this
+# Xcode project, which fledge build generated it from; change it and run
+# xcodegen again, or change the project in Xcode. One app for iPhone and
+# iPad, iOS 15 and later, on arm64 devices and Apple silicon Simulators,
+# as Fledge's iOS runtime is (ADR 011), linking
+# FledgeRuby.xcframework, with the identity fledge.yml gives. Its Ruby
+# is the XCFramework slice's lib/ and libexec/, which the build phase
+# "Copy Ruby and the app" copies into the bundle's fledge/ folder for the
+# SDK it builds for, as CPython's iOS apps copy their slice's standard
+# library, and then the folder fledge/: the app's program, its gems, and
+# fledge.cfg. No signing is configured: choose your team under Signing &
+# Capabilities to run it on a device.
+name: @@NAME@@
+options:
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  @@NAME@@:
+    type: application
+    platform: iOS
+    sources:
+      - path: Host
+    dependencies:
+      - framework: FledgeRuby.xcframework
+        embed: false
+    postCompileScripts:
+      - name: Copy Ruby and the app
+        basedOnDependencyAnalysis: false
+        script: |
+          set -eu
+          slice=ios-arm64
+          if [ "$PLATFORM_NAME" = iphonesimulator ]; then slice=ios-arm64-simulator; fi
+          root="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/fledge"
+          rm -rf "$root"
+          ditto "$PROJECT_DIR/FledgeRuby.xcframework/$slice/lib" "$root/lib"
+          ditto "$PROJECT_DIR/FledgeRuby.xcframework/$slice/libexec" "$root/libexec"
+          ditto "$PROJECT_DIR/fledge" "$root"
+    scheme: {}
+    settings:
+      base:
+        PRODUCT_NAME: @@NAME@@
+        PRODUCT_BUNDLE_IDENTIFIER: @@IDENTIFIER@@
+        MARKETING_VERSION: @@VERSION@@
+        CURRENT_PROJECT_VERSION: @@VERSION@@
+        INFOPLIST_FILE: Host/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: @@APP_ICON@@
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ARCHS: arm64
+        CLANG_ENABLE_MODULES: YES
+        CLANG_ENABLE_OBJC_ARC: YES
+        ENABLE_USER_SCRIPT_SANDBOXING: NO

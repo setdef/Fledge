@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MobilePlatform < Data
+    HOSTS: Hash[String, Array[String]]
+    TITLES: Hash[String, String]
+    WHY: Hash[String, String]
+
+    attr_reader name: String
+
+    def self.new: (name: String) -> instance
+                | (String name) -> instance
+
+    def self.names: () -> Array[String]
+
+    def self.find: (String name) -> MobilePlatform?
+
+    def check_host: (Platform host) -> void
+
+    def windows?: () -> bool
+
+    def lockfile_names: () -> Array[String]
+
+    def force_ruby_platform?: () -> bool
+
+    def to_s: () -> String
+  end
+end

@@ -10,9 +10,9 @@ module Fledge
 
       def initialize: (root: String, lockfile_name: String, checksums: Hash[String, String]) -> void
 
-      def gem_for: (Bundler::LazySpecification spec, Platform platform) -> (LockedGem | GitGem)?
+      def gem_for: (Bundler::LazySpecification spec, target platform) -> (LockedGem | GitGem)?
 
-      private def rubygem: (Bundler::LazySpecification spec, Bundler::Source::Rubygems source, Platform platform) -> LockedGem
+      private def rubygem: (Bundler::LazySpecification spec, Bundler::Source::Rubygems source, target platform) -> LockedGem
 
       private def git_gem: (Bundler::LazySpecification spec, Bundler::Source::Git source) -> GitGem
 

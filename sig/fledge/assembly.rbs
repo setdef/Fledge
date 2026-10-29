@@ -26,7 +26,11 @@ module Fledge
 
     def launch_config: () -> String
 
-    private def config_value: (String path) -> String
+    def self.launch_config: (App app) -> String
+
+    private def self.config_value: (String path) -> String
+
+    def self.app_entries: (App app, Hash[String, String] app_files, skip: Array[String]) -> Array[Entry]
 
     private def build: () -> String
 

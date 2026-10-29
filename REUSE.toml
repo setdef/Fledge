@@ -9,7 +9,7 @@ SPDX-License-Identifier = "CC0-1.0"
 # place for a header.
 [[annotations]]
 path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock', 'examples/nokogiri_app/Gemfile.lock',
-  'examples/nokogiri_app/.bundle/config']
+  'examples/nokogiri_app/.bundle/config', 'examples/mobile_app/Gemfile.lock']
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "MIT-0"
 
@@ -17,9 +17,26 @@ SPDX-License-Identifier = "MIT-0"
 # made into each system's files with sips and iconutil, none of which
 # has a place for a header.
 [[annotations]]
-path = 'examples/windowed_app/icons/**'
+path = ['examples/windowed_app/icons/**', 'examples/mobile_app/icons/**']
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "MIT-0"
+
+# The iOS project template's asset catalog, in the JSON Xcode reads,
+# which has no place for a header.
+[[annotations]]
+path = 'lib/fledge/templates/ios/Host/Assets.xcassets/**'
+SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# Gradle's wrapper, as Gradle 9.8.2's gradle wrapper task writes it, in
+# every Android project fledge build writes (ADR 012); the jar is the one
+# Gradle publishes, whose SHA-256 runtime/sources.yml pins.
+[[annotations]]
+path = ['lib/fledge/templates/android/gradlew', 'lib/fledge/templates/android/gradlew.bat',
+  'lib/fledge/templates/android/gradle/wrapper/**']
+precedence = "override"
+SPDX-FileCopyrightText = "2015 the original authors"
+SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
 path = 'README.rdoc'

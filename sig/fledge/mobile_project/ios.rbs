@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MobileProject
+    class IOS < MobileProject
+      FRAMEWORK: String
+      SLICE: String
+      ASSETS: String
+      INSTALL: String
+
+      def self.ruby_under: () -> String
+
+      private def system: () -> String
+
+      private def template_files: () -> Array[String]
+
+      private def tokens: () -> Hash[String, String]
+
+      private def place_runtime: (String tree, String project) -> void
+
+      private def ruby_root: (String project) -> String
+
+      private def place_icons: (String project) -> void
+
+      private def finish: (String project) -> void
+    end
+  end
+end

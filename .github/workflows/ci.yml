@@ -391,6 +391,13 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: ruby tasks/mobile_parity.rb android tmp/mobile-parity/android/FledgeParity.apk
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: mobile-parity-android-${{ matrix.target }}
+          path: tmp/mobile-parity/android/logcat.txt
+          retention-days: 14
+
   # The tests on each platform, with that platform's runtime, so
   # test/built_app_test.rb builds and runs a real app rather than
   # skipping (FLEDGE_REQUIRE_RUNTIME turns a skip into a failure); on

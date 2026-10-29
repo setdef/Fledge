@@ -104,7 +104,7 @@ class MobileParity
       deadline = Time.now + TIMEOUT
       entries = logged
       until MobileParity.status(entries)
-        raise "#{script} did not finish in #{TIMEOUT} seconds:\n#{entries.last(40).join("\n")}" if Time.now > deadline
+        raise "#{script} did not finish in #{TIMEOUT} seconds:\n#{entries.last(40).join("\n")}\n#{diagnosis}" if Time.now > deadline
 
         sleep 2
         entries = logged
@@ -116,6 +116,16 @@ class MobileParity
       raise "#{script} exited with status #{MobileParity.status(entries)}:\n#{entries.last(40).join("\n")}" unless MobileParity.status(entries).zero?
 
       entries
+    end
+
+    # What the emulator says of the host app, for a script that never
+    # finished: whether its process runs, and logcat's last lines, of
+    # every tag, where Android writes why an app did not start or died.
+    private def diagnosis
+      pid = Open3.capture2e("adb", "shell", "pidof", IDENTIFIER).first.strip
+      logged = Open3.capture2e("adb", "logcat", "-d", "-t", "200").first
+      File.write(File.join(@work, "logcat.txt"), logged)
+      ["The host app's process: #{pid.empty? ? 'not running' : pid}", "logcat's last lines:", *logged.lines.last(120)].join("\n")
     end
 
     # What the app logged, one entry a line, as logcat -v raw prints it.

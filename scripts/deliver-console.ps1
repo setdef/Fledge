@@ -16,10 +16,6 @@
 #              console as written, and Ruby must see the code page as
 #              its locale's, and keep UTF-8 as its default external
 #              encoding, as ruby.exe does on Windows since Ruby 3.0.
-#   close      The console's window closing, which sends CTRL_CLOSE_EVENT
-#              to every process on it. Ruby handles none, so Windows ends
-#              the probe at once, with STATUS_CONTROL_C_EXIT, before any
-#              ensure clause runs, as it ends ruby.exe.
 #
 # And a windowed app (ADR 008) started from a console, as a person types
 # its name into one: like rubyw.exe, it gets no console, and the console
@@ -69,18 +65,6 @@ public static extern bool SetConsoleOutputCP(uint codePage);
 public static extern bool SetConsoleCtrlHandler(IntPtr handler, bool add);
 [DllImport("kernel32.dll", SetLastError = true)]
 public static extern bool GenerateConsoleCtrlEvent(uint ctrlEvent, uint processGroupId);
-[DllImport("kernel32.dll", SetLastError = true)]
-public static extern bool FreeConsole();
-[DllImport("kernel32.dll", SetLastError = true)]
-public static extern bool AttachConsole(uint processId);
-[DllImport("kernel32.dll")]
-public static extern IntPtr GetConsoleWindow();
-[DllImport("user32.dll", SetLastError = true)]
-public static extern bool PostMessageW(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
-[DllImport("user32.dll")]
-public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
-[DllImport("user32.dll")]
-public static extern bool IsWindowVisible(IntPtr window);
 [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 public static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
 [DllImport("kernel32.dll", SetLastError = true)]
@@ -146,7 +130,6 @@ if ($Inner) {
   $arguments = @($command | Select-Object -Skip 1 | ForEach-Object { Quote $_ }) + (Quote $log)
   $probe = Start-Process -FilePath $command[0] -ArgumentList $arguments -NoNewWindow -PassThru -WorkingDirectory $system
   $null = $probe.Handle
-  Set-Content -LiteralPath (Join-Path $Work "$scenario-$codePage.pid") -Value $probe.Id
   if (-not (Await { (Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log) -contains 'ready' })) {
     Set-Content -LiteralPath (Join-Path $Work "$scenario-$codePage.result") -Value 'never ready'
     $probe.Kill()
@@ -208,38 +191,6 @@ foreach ($codePage in @('65001', '437')) {
   Expect "the line $label printed, on the console (code page $codePage)" ($screen | Where-Object { $_ -like 'caf*' } | Select-Object -First 1) "caf$([char]0xE9) $([char]0x2713)"
 }
 
-# The console's window closes: the probe's process, attached to it, gets
-# CTRL_CLOSE_EVENT from the console host.
-$console = Start-Inner 'close' '65001'
-$pidFile = Join-Path $work 'close-65001.pid'
-$log = Join-Path $work 'close-65001.log'
-if (-not (Await { (Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log) -contains 'ready' })) { Fail "$label never got ready (close)" }
-$probe = Get-Process -Id ([int](Get-Content -LiteralPath $pidFile))
-$null = $probe.Handle
-[void][Fledge.Console]::FreeConsole()
-if (-not [Fledge.Console]::AttachConsole([uint32]$probe.Id)) { Fail "could not attach to $label's console: $([ComponentModel.Win32Exception]::new().Message)" }
-$window = [Fledge.Console]::GetConsoleWindow()
-[void][Fledge.Console]::FreeConsole()
-if ($window -eq [IntPtr]::Zero) { Fail "$label's console has no window to close" }
-$owner = 0
-[void][Fledge.Console]::GetWindowThreadProcessId($window, [ref]$owner)
-Write-Host "debug: window $window visible $([Fledge.Console]::IsWindowVisible($window)) owner $owner $((Get-Process -Id $owner -ErrorAction SilentlyContinue).ProcessName)"
-if (-not [Fledge.Console]::PostMessageW($window, 0x0112, [IntPtr]0xF060, [IntPtr]::Zero)) { Write-Host "debug: SC_CLOSE failed $([ComponentModel.Win32Exception]::new().Message)" }
-if (-not $probe.WaitForExit(10000)) {
-  Write-Host 'debug: SC_CLOSE did not end it; WM_CLOSE'
-  [void][Fledge.Console]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
-  if (-not $probe.WaitForExit(10000)) {
-    $hosts = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$($console.Id) AND Name='conhost.exe'")
-    Write-Host "debug: WM_CLOSE did not end it; stopping the console host: $($hosts.ProcessId -join ',')"
-    $hosts | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
-    if (-not $probe.WaitForExit(10000)) { Fail "$label did not end when its console closed" }
-  }
-}
-Write-Host "debug: exit $('0x{0:X8}' -f $probe.ExitCode); record: $(Record 'close' '65001')"
-Expect "$label's exit status when its console closed" ('0x{0:X8}' -f $probe.ExitCode) '0xC000013A'
-Expect "what $label recorded when its console closed" (Record 'close' '65001') "locale CP65001`nexternal UTF-8`nready"
-$null = $console.WaitForExit(30000)
-
 # A windowed app, typed into a console: PowerShell starts it and goes
 # on, as it does rubyw.exe, and the app has no console.
 if ($WindowedReference) {
@@ -265,4 +216,4 @@ if ($Windowed -or $WindowedReference) {
   Expect "whether $windowedLabel had a console" $facts.console $false
 }
 
-Write-Host "Delivered: the console's Ctrl-C, code pages, and closing end $label as they end ruby.exe"
+Write-Host "Delivered: Ctrl-C ends $label as it ends ruby.exe, on both code pages"

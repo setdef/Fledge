@@ -18,8 +18,7 @@ jobs:
           sh scripts/deliver-console.sh --reference "$(command -v ruby)" scripts/main.rb
           echo "=== through Open3, as the tests run it"
           timeout 120 ruby -ropen3 -e 'out, st = Open3.capture2e("scripts/deliver-console.sh", "--reference", RbConfig.ruby, "scripts/main.rb"); puts out; p st' || echo "timed out $?"
-          echo "=== through Open3 under bundle-like rake"
-          timeout 120 ruby -e 'trap("INT", "IGNORE"); system("sh", "scripts/deliver-console.sh", "--reference", RbConfig.ruby, "scripts/main.rb"); p $?' || echo "timed out $?"
+
   windows:
     runs-on: windows-latest
     timeout-minutes: 10

@@ -132,6 +132,12 @@ end_probe() {
   else
     echo "never got ready in its terminal" >"$work/timeout"
   fi
+  # A probe that did not end, as one started with SIGINT ignored would
+  # not, is stopped, so the terminal closes and the failure is reported.
+  if [ -e "$work/timeout" ]; then
+    shell=$(sed -n 's/^shell //p' "$log")
+    [ -z "$shell" ] || kill -KILL $(pgrep -P "$shell") "$shell" 2>/dev/null
+  fi
   touch "$work/done"
 }
 

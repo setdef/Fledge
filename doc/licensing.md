@@ -27,9 +27,9 @@ Each app carries the same facts in `notices/NOTICES.txt` (every component, its l
 
 ## On iOS and Android
 
-For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and Fledge launcher and RubyGems defaults are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so the notices and Fledge's own code are all they ask of you.
+For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and Fledge's embedding API are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so the notices and Fledge's own code are all they ask of you.
 
-**Fledge's own code** in a phone's app is Fledge launcher and RubyGems defaults, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the GNU Affero General Public License, version 3 or later, as the desktop launcher is, with the same terms above. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
+**Fledge's own code** in a phone's app is Fledge's embedding API, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the GNU Affero General Public License, version 3 or later, as the desktop launcher is, with the same terms above. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
 
 ## Your app's own gems
 
@@ -143,6 +143,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
 | libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
 | LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe and launcherw.exe |
+| llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import | 23.1.4 | `Apache-2.0 WITH LLVM-exception` | tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive |
 | Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
 | NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive |
 | OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
@@ -153,6 +154,8 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL | 14.0.0 | `LicenseRef-MinGW-w64-runtime` | compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/ |
 | winpthreads (libwinpthread-1.dll), from MinGW-w64 | 14.0.0 | `MIT AND BSD-3-Clause` | a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports |
 | zlib (zlib1.dll) | 1.3.2 | `Zlib` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
+| zlib, linked into llvm-readobj | 1.3.2 | `Zlib` | linked into tools/llvm-readobj.exe |
+| Zstandard (libzstd), linked into llvm-readobj | 1.5.7 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/llvm-readobj.exe |
 
 Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
@@ -171,8 +174,8 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.10 | `AGPL-3.0-or-later` | the program the app's user runs, and {FledgeRuby.xcframework/ios-arm64/,FledgeRuby.xcframework/ios-arm64-simulator/}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | Fledge's embedding API, and the library and packages it is built into | 0.0.1.pre.10 | `AGPL-3.0-or-later` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
+| Fledge's RubyGems defaults | 0.0.1.pre.10 | `AGPL-3.0-or-later` | lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
 | libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
@@ -195,8 +198,8 @@ Its 83 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.0.1.pre.10 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | Fledge's embedding API, and the library and packages it is built into | 0.0.1.pre.10 | `AGPL-3.0-or-later` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
+| Fledge's RubyGems defaults | 0.0.1.pre.10 | `AGPL-3.0-or-later` | lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
 | libffi, compiled into the Android runtime's library for the fiddle gem | 3.5.2 | `MIT` | compiled into libfledgeruby.so |
 | libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
 | LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's library by the NDK | r30 | `Apache-2.0 WITH LLVM-exception` | compiled into libfledgeruby.so |

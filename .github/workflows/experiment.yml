@@ -1,48 +1,19 @@
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# A spike for Plan 002's musl story: rake runtime for musl Linux, in
-# Alpine, from Fledge at 81bd656 with musl.patch. Not part of trunk.
-name: Spike (musl runtime)
+# Package versions in Alpine 3.24, for pinning. Not part of trunk.
+name: Spike (alpine versions)
 on:
   push:
     branches: ["experiment/signing"]
 permissions:
   contents: read
 jobs:
-  runtime:
+  versions:
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-24.04
-            platform: x86_64-linux-musl
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux-musl
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - name: Build the runtime in Alpine
-        run: |
-          git clone -q https://github.com/setdef/Fledge fledge
-          cd fledge && git checkout -q 81bd656 && git apply ../musl.patch && cd ..
-          cat > build.sh <<'SH'
-          set -eux
-          apk add --no-cache build-base linux-headers rust cargo perl git file binutils patchelf xz tar zstd
-          apk info -v | sort > /work/apk-versions.txt
-          cd /work/fledge
-          ruby -v
-          ruby -e 'require "./tasks/runtime_builder"; RuntimeBuilder.new.call' || true
-          tar -czf /work/stage.tar.gz -C /work/fledge/tmp/runtime/*/stage .
-          SH
-          docker run --rm -v "$PWD:/work" ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3 sh /work/build.sh 2>&1 | tail -300
-          ls -l fledge/tmp/runtime
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: musl-${{ matrix.platform }}
-          path: |
-            fledge/tmp/runtime/fledge-runtime-*
-            fledge/tmp/runtime/*/logs
-            apk-versions.txt
-            stage.tar.gz
+      - run: |
+          docker run --rm alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a sh -c 'apk update -q; for p in squashfs-tools desktop-file-utils util-linux-misc procps-ng fuse3 build-base linux-headers rust cargo perl binutils file git xz tar zstd; do apk policy $p | head -2 | tr "\n" " "; echo; done'
+          docker run --rm ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3 sh -c 'cat /etc/alpine-release; ruby -v; which script ps pgrep tar; apk info -v | grep -E "^(busybox|musl)-"'

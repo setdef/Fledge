@@ -1,9 +1,9 @@
 diff --git a/.github/scripts/alpine-packages.sh b/.github/scripts/alpine-packages.sh
 new file mode 100755
-index 0000000..9fadb6e
+index 0000000..7b0a4c6
 --- /dev/null
 +++ b/.github/scripts/alpine-packages.sh
-@@ -0,0 +1,43 @@
+@@ -0,0 +1,44 @@
 +#!/bin/sh
 +# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 +# SPDX-License-Identifier: AGPL-3.0-or-later
@@ -21,8 +21,9 @@ index 0000000..9fadb6e
 +#                               AppImage
 +#   alpine-packages.sh deliver  what Delivery checks a built app with, on
 +#                               a computer with no Ruby: script(1) and
-+#                               pgrep for the console, and
-+#                               desktop-file-validate
++#                               pgrep for the console,
++#                               desktop-file-validate, and file, which
++#                               reads an icon's size
 +#
 +# An Alpine branch keeps only each package's newest build, so a pin that
 +# stops resolving fails the job, and is moved on purpose.
@@ -39,7 +40,7 @@ index 0000000..9fadb6e
 +    set -- git=2.54.0-r0 binutils=2.45.1-r1 tar=1.35-r5 squashfs-tools=4.7.5-r0
 +    ;;
 +  deliver)
-+    set -- util-linux-misc=2.42.3-r1 procps-ng=4.0.6-r0 desktop-file-utils=0.28-r0
++    set -- util-linux-misc=2.42.3-r1 procps-ng=4.0.6-r0 desktop-file-utils=0.28-r0 file=5.47-r2
 +    ;;
 +  *)
 +    echo "alpine-packages.sh: unknown role $1" >&2

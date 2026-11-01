@@ -7,5 +7,5 @@
 
 module Fledge
   # The gem's version, following Semantic Versioning.
-  VERSION = "0.0.1.pre.9"
+  VERSION = "0.0.1.pre.10"
 end

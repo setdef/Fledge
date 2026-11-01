@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.10] - 2026-11-01
+
 ### Added
 
 - `fledge build ios` writes an Xcode project for an app on iPhone and iPad (iOS 15 and later, arm64), on a Mac with Xcode and XcodeGen, and `fledge build android` a Gradle project for Android (API 26 and later, targeting API 36, native libraries aligned for 16 KB pages), with Gradle 9.8.2's wrapper, on a Mac, x86-64 Linux, or Windows: `DIR/NAME-ios/` and `DIR/NAME-android/`, around the release's mobile runtime, with the app's project, its gems, the runtime's notices, and a small host app that runs the app's program and sends its output to os_log or logcat. Neither signs anything; you sign and submit the app.
@@ -144,7 +146,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.9...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.10...HEAD
+[0.0.1.pre.10]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.10
 [0.0.1.pre.9]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.9
 [0.0.1.pre.8]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.8
 [0.0.1.pre.7]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.7

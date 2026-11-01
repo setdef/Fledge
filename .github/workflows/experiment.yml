@@ -32,7 +32,8 @@ jobs:
           apk info -v | sort > /work/apk-versions.txt
           cd /work/fledge
           ruby -v
-          ruby -e 'require "./tasks/runtime_builder"; RuntimeBuilder.new.call'
+          ruby -e 'require "./tasks/runtime_builder"; RuntimeBuilder.new.call' || true
+          tar -czf /work/stage.tar.gz -C /work/fledge/tmp/runtime/*/stage .
           SH
           docker run --rm -v "$PWD:/work" ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3 sh /work/build.sh 2>&1 | tail -300
           ls -l fledge/tmp/runtime
@@ -44,3 +45,4 @@ jobs:
             fledge/tmp/runtime/fledge-runtime-*
             fledge/tmp/runtime/*/logs
             apk-versions.txt
+            stage.tar.gz

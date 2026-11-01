@@ -1,5 +1,5 @@
 diff --git a/.github/scripts/deliver-console.ps1 b/.github/scripts/deliver-console.ps1
-index 08876a0..ed953c2 100644
+index 08876a0..12c6625 100644
 --- a/.github/scripts/deliver-console.ps1
 +++ b/.github/scripts/deliver-console.ps1
 @@ -121,6 +121,11 @@ function Read-Command([string] $work) {
@@ -14,6 +14,103 @@ index 08876a0..ed953c2 100644
    [void][Fledge.Console]::SetConsoleCP([uint32]$codePage)
    [void][Fledge.Console]::SetConsoleOutputCP([uint32]$codePage)
    $command = @(Read-Command $Work)
+@@ -163,7 +168,7 @@ if ($Reference) {
+   $Archive = (Resolve-Path -LiteralPath $Archive).Path
+   $name = [IO.Path]::GetFileNameWithoutExtension($Archive)
+   Expand-Archive -LiteralPath $Archive -DestinationPath (Join-Path $work 'apps')
+-  $command = @(Join-Path (Join-Path (Join-Path $work 'apps') $name) "$($name -replace '-x64-mingw-ucrt$', '').exe")
++  $command = @(Join-Path (Join-Path (Join-Path $work 'apps') $name) "$($name -replace '-(?:x64|aarch64)-mingw-ucrt$', '').exe")
+ }
+ Set-Content -LiteralPath (Join-Path $work 'command.txt') -Value $command -Encoding utf8
+ 
+@@ -201,7 +206,7 @@ if ($WindowedReference) {
+   $Windowed = (Resolve-Path -LiteralPath $Windowed).Path
+   $name = [IO.Path]::GetFileNameWithoutExtension($Windowed)
+   Expand-Archive -LiteralPath $Windowed -DestinationPath (Join-Path $work 'windowed')
+-  $windowedCommand = @(Join-Path (Join-Path (Join-Path $work 'windowed') $name) "$($name -replace '-x64-mingw-ucrt$', '').exe")
++  $windowedCommand = @(Join-Path (Join-Path (Join-Path $work 'windowed') $name) "$($name -replace '-(?:x64|aarch64)-mingw-ucrt$', '').exe")
+ }
+ if ($Windowed -or $WindowedReference) {
+   $report = Join-Path $work 'windowed report.json'
+diff --git a/.github/scripts/deliver-installer.ps1 b/.github/scripts/deliver-installer.ps1
+index 666de9f..020f77e 100644
+--- a/.github/scripts/deliver-installer.ps1
++++ b/.github/scripts/deliver-installer.ps1
+@@ -30,6 +30,8 @@ $ErrorActionPreference = 'Stop'
+ [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+ 
+ $appName = 'Hello Window'
++# Hello Window-PLATFORM-setup.exe: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
++$platform = [IO.Path]::GetFileNameWithoutExtension($Installer) -replace "^$appName-", '' -replace '-setup$', ''
+ $identifier = 'com.setdef.fledge.HelloWindow'
+ 
+ function Fail([string] $message) {
+@@ -167,7 +169,7 @@ WaitFor { Test-Path -LiteralPath $report } 'the app writing its report after sta
+ Start-Sleep -Seconds 3
+ $facts = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+ Expect "the report's Ruby" $facts.ruby '4.0.9'
+-Expect "the report's platform" $facts.platform 'x64-mingw-ucrt'
++Expect "the report's platform" $facts.platform $platform
+ Expect 'whether it had a console' $facts.console $false
+ Expect 'the AppUserModelID the app gave itself, which its shortcut carries' $facts.app_user_model_id ([Fledge.Shell]::AppUserModelId($shortcut))
+ 
+diff --git a/.github/scripts/deliver-windowed.ps1 b/.github/scripts/deliver-windowed.ps1
+index 5c657ab..ae5414f 100644
+--- a/.github/scripts/deliver-windowed.ps1
++++ b/.github/scripts/deliver-windowed.ps1
+@@ -8,7 +8,7 @@
+ #
+ #   pwsh -NoProfile -File deliver-windowed.ps1 -Archive ARCHIVE
+ #
+-# ARCHIVE is "Hello Window-x64-mingw-ucrt.zip". The program must be a GUI
++# ARCHIVE is "Hello Window-x64-mingw-ucrt.zip", or aarch64-mingw-ucrt's. The program must be a GUI
+ # program, as Windows' shell reads it, carry the version information fledge.yml
+ # says, which (Get-Item).VersionInfo reads as Explorer and Task Manager
+ # do, and an icon, which Windows extracts as Explorer does. Started with
+@@ -26,6 +26,8 @@ $ErrorActionPreference = 'Stop'
+ [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+ 
+ $appName = 'Hello Window'
++# Hello Window-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
++$platform = [IO.Path]::GetFileNameWithoutExtension($Archive) -replace "^$appName-", ''
+ $identifier = 'com.setdef.fledge.HelloWindow'
+ 
+ function Fail([string] $message) {
+@@ -90,7 +92,7 @@ $process = Start-Process -FilePath $app -ArgumentList "`"$report`"", '4' -Workin
+ Expect 'the exit status' $process.ExitCode 4
+ $facts = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
+ Expect "the report's Ruby" $facts.ruby '4.0.9'
+-Expect "the report's platform" $facts.platform 'x64-mingw-ucrt'
++Expect "the report's platform" $facts.platform $platform
+ Expect "the report's program" $facts.program 'main.rb'
+ Expect 'whether it had a console' $facts.console $false
+ Expect 'its AppUserModelID' $facts.app_user_model_id $identifier
+diff --git a/.github/scripts/deliver.ps1 b/.github/scripts/deliver.ps1
+index d624090..f41becd 100644
+--- a/.github/scripts/deliver.ps1
++++ b/.github/scripts/deliver.ps1
+@@ -138,7 +138,7 @@ $notices = Join-Path $root 'notices\NOTICES.txt'
+ if (-not (Test-Path -LiteralPath (Join-Path $root 'notices\sbom.spdx.json') -PathType Leaf)) { Fail "the app has no notices\sbom.spdx.json" }
+ if (-not (Test-Path -LiteralPath $notices -PathType Leaf)) { Fail "the app has no notices\NOTICES.txt" }
+ $text = Get-Content -LiteralPath $notices -Raw
+-foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_dlls/libgmp-10.dll', '-x64-mingw-ucrt-lgpl-sources.tar.gz')) {
++foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_dlls/libgmp-10.dll', "-$Platform-lgpl-sources.tar.gz")) {
+   if (-not $text.Contains($line)) { Fail "notices\NOTICES.txt does not say '$line'" }
+ }
+ Write-Host "ok: the app carries its notices and SBOM"
+@@ -252,8 +252,10 @@ Check 'hostile environment' 0 $app $hostile
+ # DLLs that are not DLLs, named as Ruby's and its libraries' are, on
+ # PATH and in the current folder: Windows would load them before the
+ # runtime's own if the launcher let it search either.
+-foreach ($dll in 'x64-ucrt-ruby400.dll', 'libgmp-10.dll', 'libwinpthread-1.dll', 'zlib1.dll', 'libyaml-0-2.dll',
+-  'libssl-3-x64.dll', 'libcrypto-3-x64.dll') {
++$arch = if ($Platform -eq 'aarch64-mingw-ucrt') { 'arm64' } else { 'x64' }
++$rubyDll = if ($Platform -eq 'aarch64-mingw-ucrt') { 'aarch64-ucrt-ruby400.dll' } else { 'x64-ucrt-ruby400.dll' }
++foreach ($dll in $rubyDll, 'libgmp-10.dll', 'libwinpthread-1.dll', 'zlib1.dll', 'libyaml-0-2.dll',
++  "libssl-3-$arch.dll", "libcrypto-3-$arch.dll") {
+   Set-Content -LiteralPath (Join-Path $evil $dll) -Value 'not a DLL'
+ }
+ $planted = $hostile.Clone()
 diff --git a/examples/my_cool_app/Gemfile.lock b/examples/my_cool_app/Gemfile.lock
 index 902671c..e3ce0cb 100644
 --- a/examples/my_cool_app/Gemfile.lock
@@ -62,6 +159,32 @@ index 6316282..5fe63c1 100755
  #                        NAME is the gemspec's name, or else ROOT's
  #                        folder name, camelized (my_cool_app is
  #                        MyCoolApp), unless fledge.yml names it. NAME
+diff --git a/lib/fledge/nsis.rb b/lib/fledge/nsis.rb
+index 70ac94b..4468934 100644
+--- a/lib/fledge/nsis.rb
++++ b/lib/fledge/nsis.rb
+@@ -142,10 +142,19 @@ module Fledge
+       nsis = tools && File.join(tools, "nsis")
+       raise Error, "the runtime has no tools/nsis, which Windows runtimes carry from Fledge 0.0.1.pre.8 on" unless nsis && File.file?(File.join(nsis, MAKENSIS))
+ 
+-      Dir.mktmpdir("fledge-nsis") do |work|
++      work = Dir.mktmpdir("fledge-nsis")
++      begin
++        copy = File.join(work, "nsis")
++        FileUtils.cp_r(nsis, copy)
+         script_path = File.join(work, "setup.nsi")
+         File.binwrite(script_path, "\uFEFF#{script(icon: @identity.icon&.file('ico'))}")
+-        compile(script_path, nsis)
++        compile(script_path, copy)
++      ensure
++        # On Windows on ARM, the x86 emulator's cache service (XtaCache)
++        # keeps makensis.exe open for a while after it exits, so the copy
++        # it ran from may not delete yet; it is the system's temporary
++        # folder's to clear, never the build's own (ADR 018).
++        FileUtils.rm_rf(work)
+       end
+       @to
+     end
 diff --git a/lib/fledge/platform.rb b/lib/fledge/platform.rb
 index baec065..7fe01ef 100644
 --- a/lib/fledge/platform.rb
@@ -367,7 +490,7 @@ index 2e19d6f..1dbe326 100644
          ruby\\bin\\ruby_builtin_dlls\\libgmp-10.dll. Ruby's DLL finds it there
          through the side-by-side assembly ruby_builtin_dlls, whose manifest names
 diff --git a/tasks/parity.rb b/tasks/parity.rb
-index d2a48c5..1df27ed 100644
+index d2a48c5..3cd1044 100644
 --- a/tasks/parity.rb
 +++ b/tasks/parity.rb
 @@ -115,10 +115,10 @@ class Parity
@@ -383,6 +506,30 @@ index d2a48c5..1df27ed 100644
        ],
        reason: "Fledge's RubyGems defaults replace RubyInstaller's (ADR 001, section 8), which load " \
          "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
+@@ -149,10 +149,22 @@ class Parity
+     FileUtils.cp_r(PROBE, @reference_app)
+     results = [check("", nil)]
+     results << check(" under code page 437", "437") if platform.windows?
+-    results << check_bundle
++    results << (WITHOUT_GEM_APP.include?(platform.name) ? skip_bundle : check_bundle)
+     results.all?
+   end
+ 
++  # Platforms the gem-shaped probe cannot be bundled on: its Gemfile is
++  # examples/my_cool_app's, whose sqlite3 publishes no aarch64-mingw-ucrt
++  # build, and whose source build fails there, SQLite's own configure
++  # not knowing aarch64-w64-windows-gnu (ADR 018).
++  WITHOUT_GEM_APP = %w[aarch64-mingw-ucrt].freeze
++
++  private def skip_bundle
++    @out.puts "Parity of a gem-shaped app with bundle exec on #{platform}: not checked, as sqlite3 cannot be " \
++      "installed there (ADR 018)"
++    true
++  end
++
+   # The gem-shaped check: the probe as examples/my_cool_app's program,
+   # built with its locked gems, against bundle exec ruby
+   # exe/my_cool_app, with the bundle installed into the person's GEM_HOME.
 diff --git a/tasks/runtime_builder/windows.rb b/tasks/runtime_builder/windows.rb
 index 4f98e9e..fce0f6a 100644
 --- a/tasks/runtime_builder/windows.rb

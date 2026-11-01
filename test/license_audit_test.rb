@@ -362,12 +362,16 @@ class LicenseAuditTest < Minitest::Test
       sources = File.join(directory, "sources.yml")
       File.write(sources, {
         "nsis" => {
-          "version" => "3.13", "binary" => { "url" => "https://example.com/nsis.zip", "sha256" => "5" * 64 },
+          "version" => "3.13",
+          "binary" => { "url" => "https://example.com/nsis.zip", "sha256" => "5" * 64 },
           "source" => { "url" => "https://example.com/nsis-src.tar.bz2", "sha256" => Digest::SHA256.hexdigest("pretend nsis") },
         },
         "gmp" => {
-          "version" => "6.3.0", "url" => "https://example.com/gmp.src.tar.zst", "sha256" => Digest::SHA256.hexdigest("pretend gmp"),
-          "package" => { "url" => "https://example.com/ucrt64/gmp.pkg.tar.zst", "sha256" => "1" * 64 }, "dll_sha256" => "2" * 64,
+          "version" => "6.3.0",
+          "url" => "https://example.com/gmp.src.tar.zst",
+          "sha256" => Digest::SHA256.hexdigest("pretend gmp"),
+          "package" => { "url" => "https://example.com/ucrt64/gmp.pkg.tar.zst", "sha256" => "1" * 64 },
+          "dll_sha256" => "2" * 64,
           "arm64" => { "package" => { "url" => "https://example.com/clangarm64/gmp.pkg.tar.zst", "sha256" => "3" * 64 }, "dll_sha256" => "4" * 64 },
         },
       }.to_yaml)

@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require "fileutils"
 require "tmpdir"
 require_relative "command"
 require_relative "error"
@@ -79,7 +80,24 @@ module Fledge
       arguments += ["--set-file-version", identity.version, "--set-product-version", identity.version]
       icon = identity.icon
       arguments += ["--set-icon", icon.file("ico")] if icon
-      Command.run(rcedit, program, *arguments, install: "Windows runtimes from Fledge 0.0.1.pre.8 on carry it.")
+      run(rcedit, program, *arguments)
+    end
+
+    # Runs rcedit from a copy in the system's temporary folder. On
+    # Windows on ARM, the x86-64 emulator's cache service (XtaCache)
+    # keeps an emulated program open for a while after it exits, so the
+    # build's own folder, where the runtime's rcedit is, could not be
+    # deleted after it ran; the copy is the temporary folder's to clear,
+    # as makensis's is (Fledge::Nsis; ADR 018).
+    private_class_method def self.run(rcedit, *)
+      work = Dir.mktmpdir("fledge-rcedit")
+      begin
+        copy = File.join(work, RCEDIT)
+        FileUtils.cp(rcedit, copy)
+        Command.run(copy, *, install: "Windows runtimes from Fledge 0.0.1.pre.8 on carry it.")
+      ensure
+        FileUtils.rm_rf(work)
+      end
     end
 
     # The version information's strings for +identity+, whose program is

@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Windows on ARM64, `aarch64-mingw-ucrt`: `fledge build` on Windows 11 on ARM64 builds an app that runs there natively, from a runtime of RubyInstaller 4.0.9-1's ARM64 build, with every Windows feature: the GUI launcher, version information and icon, the NSIS installer, and `--sign`. Its tools (rcedit, NSIS, `llvm-readobj`) run under Windows' x64 emulation. A gem must publish an `aarch64-mingw-ucrt` build or compile there; sqlite3 2.10.2 does neither.
+
+### Added
+
 - musl Linux targets, `x86_64-linux-musl` and `aarch64-linux-musl`, for Alpine and other distributions built on musl: `fledge build` on such a computer builds an app (and, for a windowed one, its desktop entry and AppImage) that runs there with no Ruby, from a runtime Fledge's CI builds from Ruby 4.0.9's source in Alpine, with OpenSSL 3.6.5, libyaml 0.2.5, libffi 3.5.2, and zlib 1.3.2 compiled into its extensions, YJIT, and musl's own `crypt`. A compiled gem may need only musl's C library and zlib, as PEP 656's musllinux wheels may.
 
 ## [0.0.1.pre.14] - 2026-11-01

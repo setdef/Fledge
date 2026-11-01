@@ -43,6 +43,7 @@ class LicensingPage
     "x86_64-linux-musl" => "musl Linux, such as Alpine, on x86-64 (x86_64-linux-musl)",
     "aarch64-linux-musl" => "musl Linux, such as Alpine, on ARM64 (aarch64-linux-musl)",
     "x64-mingw-ucrt" => "Windows on x64 (x64-mingw-ucrt)",
+    "aarch64-mingw-ucrt" => "Windows on ARM64 (aarch64-mingw-ucrt)",
     "ios" => "iOS and iPadOS (arm64-ios, arm64-ios-simulator)",
     "android" => "Android (aarch64-linux-android, x86_64-linux-android)",
   }.freeze

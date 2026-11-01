@@ -34,7 +34,7 @@ class LicenseAuditTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@tree)
+    FileUtils.rm_rf(@tree) if @tree
   end
 
   def write(path, content)

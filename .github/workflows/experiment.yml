@@ -1,19 +1,165 @@
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Package versions in Alpine 3.24, for pinning. Not part of trunk.
-name: Spike (alpine versions)
-on:
+name: Spike (musl CI)
+'on':
   push:
-    branches: ["experiment/signing"]
+    branches:
+    - experiment/signing
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
+env:
+  ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
+  ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+  BUNDLE_FROZEN: 'true'
 jobs:
-  versions:
+  runtime-musl:
+    name: Runtime (${{ matrix.platform }})
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
-    runs-on: ${{ matrix.os }}
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux-musl
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux-musl
     steps:
-      - run: |
-          docker run --rm alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a sh -c 'apk update -q; for p in squashfs-tools desktop-file-utils util-linux-misc procps-ng fuse3 build-base linux-headers rust cargo perl binutils file git xz tar zstd; do apk policy $p | head -2 | tr "\n" " "; echo; done'
-          docker run --rm ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3 sh -c 'cat /etc/alpine-release; ruby -v; which script ps pgrep tar; apk info -v | grep -E "^(busybox|musl)-"'
+    - uses: actions/checkout@v4
+    - &1
+      name: Fledge at 81bd656 with musl.patch
+      run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
+        -q 81bd656 && git apply ../musl.patch && cd .. && mv musl.patch /tmp/ && shopt
+        -s dotglob && cp -R f/* . && rm -rf f
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: tmp/downloads
+        key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml')
+          }}
+    - name: Build the runtime in Alpine
+      env:
+        PLATFORM: "${{ matrix.platform }}"
+      run: |
+        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+        export SOURCE_DATE_EPOCH
+        docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e SOURCE_DATE_EPOCH -e PLATFORM "$ALPINE_RUBY" \
+          sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: runtime-${{ matrix.platform }}
+        path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
+        if-no-files-found: error
+        retention-days: 14
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      if: failure()
+      with:
+        name: runtime-${{ matrix.platform }}-logs
+        path: tmp/runtime/${{ matrix.platform }}/logs
+        retention-days: 14
+  parity-musl:
+    name: Parity (${{ matrix.platform }})
+    needs: runtime-musl
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux-musl
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux-musl
+    steps:
+    - uses: actions/checkout@v4
+    - *1
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: runtime-${{ matrix.platform }}
+        path: runtimes
+    - name: Check parity with ruby main.rb and bundle exec, in Alpine
+      run: docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes
+        "$ALPINE_RUBY" sh -c '.github/scripts/alpine-packages.sh apps && git config
+        --global --add safe.directory /fledge && ruby tasks/parity.rb'
+  build-musl:
+    name: Build (${{ matrix.platform }})
+    needs: runtime-musl
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux-musl
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux-musl
+    steps:
+    - uses: actions/checkout@v4
+    - *1
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: runtime-${{ matrix.platform }}
+        path: runtimes
+    - name: Build the examples in Alpine, and run my_cool_app with bundle exec
+      run: |
+        cat > "$RUNNER_TEMP/build-apps.sh" <<'SH'
+        set -eu
+        .github/scripts/alpine-packages.sh apps
+        git config --global --add safe.directory /fledge
+        ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
+        for app in examples/hello test/fixtures/parity test/fixtures/console /tmp/parity-bundle examples/my_cool_app examples/windowed_app; do
+          ruby -I lib exe/fledge build -o dist "$app"
+        done
+        (cd examples/my_cool_app && bundle install && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
+        cat dist/my_cool_app.expected
+        SH
+        docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes \
+          -e BUNDLE_FROZEN "$ALPINE_RUBY" sh /scripts/build-apps.sh
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: apps-${{ matrix.platform }}
+        path: |
+          dist/*-${{ matrix.platform }}.tar.gz
+          dist/*-${{ matrix.platform }}.AppImage
+          dist/*.expected
+        if-no-files-found: error
+        retention-days: 14
+  delivery-musl:
+    name: Delivery (${{ matrix.platform }}, alpine:3.24)
+    needs: build-musl
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux-musl
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux-musl
+    steps:
+    - uses: actions/checkout@v4
+    - *1
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: apps-${{ matrix.platform }}
+        path: delivered
+    - name: Run hello, my_cool_app, the console probe, and windowed_app on Alpine
+        with no Ruby installed
+      env:
+        PLATFORM: "${{ matrix.platform }}"
+      run: |
+        cat > "$RUNNER_TEMP/deliver-all.sh" <<'SH'
+        set -eu
+        .github/scripts/alpine-packages.sh deliver
+        d=delivered
+        .github/scripts/deliver.sh "$d/Hello-$PLATFORM.tar.gz" "$d/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.0.9 on $PLATFORM" --no-ruby-installed
+        .github/scripts/deliver.sh "$d/MyCoolApp-$PLATFORM.tar.gz" "$d/ParityBundle-$PLATFORM.tar.gz" "$(cat "$d/my_cool_app.expected")" --no-ruby-installed
+        .github/scripts/deliver-console.sh "$d/Console-$PLATFORM.tar.gz"
+        .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
+        .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract
+        SH
+        docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$RUNNER_TEMP:/scripts" -w /work -e PLATFORM "$ALPINE" sh /scripts/deliver-all.sh

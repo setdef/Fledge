@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.12] - 2026-11-01
+
 ### Changed
 
 - `fledge build` checks every runtime and build-only companion it downloads, and every one it finds in its cache, against the SHA-256 its own gem pins in `lib/fledge/SHA256SUMS`, never against what the release says, so a release asset replaced after its version was tagged fails the build. A cached runtime that does not match is downloaded again. A Fledge between releases, which pins no runtimes of its own version, says to install a release or set `FLEDGE_RUNTIME_DIR`.
@@ -158,7 +160,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.11...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.12...HEAD
+[0.0.1.pre.12]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.12
 [0.0.1.pre.11]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.11
 [0.0.1.pre.10]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.10
 [0.0.1.pre.9]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.9

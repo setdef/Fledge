@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.11] - 2026-11-01
+
 ### Changed
 
 - `fledge build` reads the compiled files of an app's gems with the system's own tools rather than its own readers of ELF, Mach-O, and PE: on macOS, Xcode's command line tools' `objdump`, and on Linux binutils' `objdump`, each needed only when the app's gems carry compiled files; on Windows, LLVM 23.1.4's `llvm-readobj`, which the Windows runtime carries in `tools/` (ADR 013).
@@ -151,7 +153,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.10...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.11...HEAD
+[0.0.1.pre.11]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.11
 [0.0.1.pre.10]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.10
 [0.0.1.pre.9]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.9
 [0.0.1.pre.8]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.8

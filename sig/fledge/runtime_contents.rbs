@@ -8,6 +8,7 @@ module Fledge
     VERSION_PARTS: Regexp
     LIBRARY: Regexp
     ARCH: Regexp
+    PLUGIN: Regexp
 
     attr_reader gem_dir: String
     attr_reader gems: Array[String]
@@ -15,8 +16,9 @@ module Fledge
     attr_reader libraries: Array[String]
     attr_reader arch: String
     attr_reader path: String
+    attr_reader plugins: Array[String]
 
-    def self.new: (gem_dir: String, gems: Array[String], ruby_version: String, libraries: Array[String], arch: String, path: String) -> instance
+    def self.new: (gem_dir: String, gems: Array[String], ruby_version: String, libraries: Array[String], arch: String, path: String, plugins: Array[String]) -> instance
 
     def self.read: (String path, ?under: String) -> RuntimeContents
 

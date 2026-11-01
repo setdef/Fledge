@@ -46,7 +46,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries, :arch, :path)
+  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries, :arch, :path, :plugins)
     ##
     # :attr_reader: gem_dir
     # Ruby's gem folder, relative to the runtime's top folder.
@@ -75,6 +75,13 @@ module Fledge
     # :attr_reader: path
     # The runtime archive's path.
 
+    ##
+    # :attr_reader: plugins
+    # The path of every RubyGems plugin loader the runtime's gem folder
+    # holds, such as <tt>lib/ruby/gems/4.0.0/plugins/rdoc_plugin.rb</tt>,
+    # which a gem of the same name at another version would write to
+    # (Gem::Installer#generate_plugins).
+
     # A gem specification's path in a runtime: the gem folder, and the
     # gem's full name.
     SPECIFICATION = %r{\A(?<gem_dir>(?:[^/]+/)*lib/ruby/gems/[^/]+)/specifications/(?:default/)?(?<full_name>[^/]+)\.gemspec\z}
@@ -84,6 +91,8 @@ module Fledge
     VERSION_PARTS = /^\s*CONFIG\["(MAJOR|MINOR|TEENY)"\] = "(\d+)"/
     # The line of rbconfig.rb that holds Ruby's architecture.
     ARCH = /^\s*CONFIG\["arch"\] = "([^"]+)"/
+    # A RubyGems plugin loader in a gem folder.
+    PLUGIN = %r{\A(?:[^/]+/)*lib/ruby/gems/[^/]+/plugins/[^/]+_plugin\.[^/]+\z}
     # The file name of a shared library: .so (with a version or not),
     # .dylib, or .dll.
     LIBRARY = /\.(?:so(?:\.\d+)*|dylib|dll)\z/i
@@ -114,6 +123,7 @@ module Fledge
       version = nil # : String?
       arch = nil # : String?
       libraries = [] # : Array[String]
+      plugins = [] # : Array[String]
       rbconfig = nil # : String?
       Archive.names(path).each do |name|
         inside = name.split("/", 2).last.to_s
@@ -121,6 +131,7 @@ module Fledge
 
         inside = inside.delete_prefix(under)
         libraries << File.basename(inside) if inside.match?(LIBRARY)
+        plugins << inside if inside.match?(PLUGIN)
         if (found = SPECIFICATION.match(inside))
           gem_dirs << found[:gem_dir].to_s
           gems << found[:full_name].to_s
@@ -135,7 +146,7 @@ module Fledge
       end
       raise Error, "#{path} is not a Fledge runtime: its rbconfig.rb names no arch" if version && arch.nil?
 
-      build(path, gem_dirs.uniq, gems, version).with(libraries: libraries.uniq.sort.freeze, arch: arch.to_s)
+      build(path, gem_dirs.uniq, gems, version).with(libraries: libraries.uniq.sort.freeze, arch: arch.to_s, plugins: plugins.sort.freeze)
     end
 
     # The tool +name+ the runtime keeps in its <tt>tools</tt> folder
@@ -171,7 +182,7 @@ module Fledge
       raise Error, "#{path} is not a Fledge runtime: it holds no one gem folder (#{gem_dirs.join(', ')})" unless gem_dirs.size == 1
       raise Error, "#{path} is not a Fledge runtime: it holds no rbconfig.rb" unless version
 
-      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [], arch: "", path:)
+      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [], arch: "", path:, plugins: [])
     end
   end
 end

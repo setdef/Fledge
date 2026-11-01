@@ -90,6 +90,23 @@ class GemAppBuildTest < Minitest::Test
     assert_equal 1, @server.requests.count("/gems/foo-1.0.0.gem"), "a gem downloaded once is taken from the cache"
   end
 
+  # Ruby bundles rdoc, whose RubyGems plugin has a loader in the gem
+  # folder's plugins/ already, and irb, which Rails and many other
+  # Gemfiles lock, asks for a newer rdoc. Gem::Installer#generate_plugins
+  # writes the same loader name for it; the runtime's loader stays, and
+  # the build still succeeds (Rooibos' own Gemfile locked such an rdoc).
+  def test_a_locked_gem_with_a_plugin_the_runtime_already_has_a_loader_for_ships_beside_it
+    rdoc = FakeGem.build(@gems, "rdoc", "7.1.0", plugin: true)
+    root = project(dependencies: { "rdoc" => ">= 0" }, locked: [rdoc])
+
+    out, err, status = build(File.join(root, "exe/my_app"))
+
+    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
+    gems = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.0.0")
+    assert_path_exists File.join(gems, "gems/rdoc-7.1.0/lib/rubygems_plugin.rb")
+    assert_equal "require_relative '../gems/rdoc-7.0.4/lib/rubygems_plugin.rb'\n", File.read(File.join(gems, "plugins/rdoc_plugin.rb"))
+  end
+
   def test_a_gem_the_lockfile_does_not_lock_for_the_platform_says_what_to_run
     native = FakeGem.build(@gems, "native", "1.0.0", platform: "x86_64-linux-gnu")
     root = project(dependencies: { "native" => ">= 0" }, locked: [native], platforms: %w[x86_64-linux arm64-darwin])

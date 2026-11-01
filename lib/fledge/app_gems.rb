@@ -39,7 +39,10 @@ module Fledge
   # the oldest macOS or glibc it needs. It names every problem at once,
   # then raises, so one build shows them all. Otherwise it returns the
   # entries that install each gem, each with its own files, license files
-  # among them, where RubyGems or Bundler would put them.
+  # among them, where RubyGems or Bundler would put them, except a
+  # RubyGems plugin loader the runtime already has for a gem of that
+  # name at another version (rdoc, which irb asks for): the runtime's
+  # stays, and the build does not fail on the clash (ADR 019).
   #
   # Use it once per target in <tt>fledge build</tt>.
   #
@@ -124,7 +127,7 @@ module Fledge
       end
       raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
 
-      packages.values.flat_map { |package| package.entries(runtime.gem_dir) }.uniq(&:path)
+      packages.values.flat_map { |package| package.entries(runtime.gem_dir) }.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
     end
 
     # What keeps each gem from running on a desktop +platform+'s runtime:

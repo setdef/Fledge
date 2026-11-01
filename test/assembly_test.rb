@@ -41,10 +41,13 @@ class AssemblyTest < Minitest::Test
     lib/ruby/4.0.0/fake-arch/rbconfig.rb
     lib/ruby/gems
     lib/ruby/gems/4.0.0
+    lib/ruby/gems/4.0.0/plugins
+    lib/ruby/gems/4.0.0/plugins/rdoc_plugin.rb
     lib/ruby/gems/4.0.0/specifications
     lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec
     lib/ruby/gems/4.0.0/specifications/default
     lib/ruby/gems/4.0.0/specifications/default/json-2.18.0.gemspec
+    lib/ruby/gems/4.0.0/specifications/rdoc-7.0.4.gemspec
     lib/ruby/stdlib.rb
   ].freeze
 

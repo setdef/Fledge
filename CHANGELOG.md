@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A build no longer fails when an app locks a gem with a RubyGems plugin that the runtime has a loader for, such as the `rdoc` that `irb` asks for: the runtime's loader stays.
+
 ## [0.0.1.pre.16] - 2026-11-01
 
 ### Added

@@ -138,6 +138,8 @@ module FakeRuntime
       Fledge::Entry.file("#{lib}/4.0.0/fake-arch/rbconfig.rb", rbconfig(platform)),
       Fledge::Entry.file("#{gems}/specifications/default/json-2.18.0.gemspec", "# json\n"),
       Fledge::Entry.file("#{gems}/specifications/csv-3.3.5.gemspec", "# csv\n"),
+      Fledge::Entry.file("#{gems}/specifications/rdoc-7.0.4.gemspec", "# rdoc\n"),
+      Fledge::Entry.file("#{gems}/plugins/rdoc_plugin.rb", "require_relative '../gems/rdoc-7.0.4/lib/rubygems_plugin.rb'\n"),
     ]
   end
 end

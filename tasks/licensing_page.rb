@@ -144,7 +144,8 @@ class LicensingPage
   # copy of the runtime but an app the developer builds from the project
   # fledge build writes, around the runtime's library.
   private def phones(reports)
-    ours = reports.fetch("ios").components.find { |row| row.license == "AGPL-3.0-or-later" } or raise "no mobile runtime holds Fledge's own files"
+    ours = reports.fetch("ios").components.find { |row| row.license == "AGPL-3.0-or-later" && row.ships.include?("libfledgeruby") } or
+      raise "no mobile runtime holds Fledge's embedding API"
     <<~PHONES
       ## On iOS and Android
 

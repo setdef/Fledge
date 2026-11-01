@@ -54,10 +54,16 @@ class LicensingPageTest < Minitest::Test
         ))
       end
       runtime(directory, "x64-mingw-ucrt", "launcher.exe" => Binaries.pe(needed: %w[KERNEL32.dll]), "ruby/lib/ruby/4.0.0/set.rb" => "class Set; end\n")
-      slices = %w[ios-arm64 ios-arm64-simulator].to_h { |slice| ["FledgeRuby.xcframework/#{slice}/lib/ruby/4.0.0/set.rb", "class Set; end\n"] }
+      defaults = "# Fledge's RubyGems defaults for a built app.\n"
+      slices = %w[ios-arm64 ios-arm64-simulator].flat_map do |slice|
+        [
+          ["FledgeRuby.xcframework/#{slice}/lib/ruby/4.0.0/set.rb", "class Set; end\n"],
+          ["FledgeRuby.xcframework/#{slice}/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", defaults],
+]
+      end.to_h
       runtime(directory, "ios", slices.merge("FledgeRuby.xcframework/Info.plist" => "<plist/>\n"))
       runtime(directory, "android", "include/fledge_ruby.h" => "int fledge_ruby_run_app(void);\n", "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
-        "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n")
+        "lib/ruby/4.0.0/rubygems/defaults/operating_system.rb" => defaults, "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n")
       LicensingPage.new(directory, version: "9.8.7").text
     end
   end
@@ -97,6 +103,20 @@ class LicensingPageTest < Minitest::Test
     assert_includes phones, "`Host/main.m` on iOS and `MainActivity.java` on Android"
     assert_includes phones, "the project's `fledge/notices/` goes into the app"
     assert_includes phones, "Gradle wrapper"
+  end
+
+  # A phone's app has no Fledge launcher: the host app starts Ruby, so
+  # its section names only the RubyGems defaults among Fledge's files.
+  def test_a_phones_section_names_no_launcher_the_apps_user_runs
+    text = page
+    ["iOS and iPadOS (arm64-ios, arm64-ios-simulator)", "Android (aarch64-linux-android, x86_64-linux-android)"].each do |title|
+      phone = section(text, title)
+
+      assert_includes phone, "| Fledge's RubyGems defaults |", title
+      assert_includes phone, "which RubyGems loads as the app's Ruby starts", title
+      refute_includes phone, "the program the app's user runs", title
+    end
+    assert_includes section(text, "Linux on x86-64 (x86_64-linux)"), "the program the app's user runs"
   end
 
   # An app's own gems are the developer's choice and responsibility

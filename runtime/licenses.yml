@@ -112,13 +112,31 @@ components:
     download: https://github.com/setdef/Fledge
     notice: fledge
     ships: the program the app's user runs, and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, ios, android]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
     files:
       - launcher
       - launcher.exe
       - launcherw.exe
       - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
     binaries: [launcher, launcher.exe, launcherw.exe]
+
+  # A phone's app has no Fledge launcher: the host app the project
+  # fledge build writes starts Ruby through the embedding API (ADR 012),
+  # so of this component a phone's runtime holds only the RubyGems
+  # defaults, in each Ruby it carries.
+  - id: fledge
+    name: Fledge's RubyGems defaults
+    version: "{fledge_version}"
+    license: AGPL-3.0-or-later
+    first_party: true
+    kind: files
+    supplier: "Organization: setdef"
+    download: https://github.com/setdef/Fledge
+    notice: fledge
+    ships: lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts
+    platforms: [ios, android]
+    files:
+      - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
 
   # The mobile runtimes' one library (ADR 011): Fledge's embedding API
   # (runtime/mobile/), compiled with Ruby and what Ruby links into

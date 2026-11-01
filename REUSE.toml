@@ -13,6 +13,14 @@ path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock',
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "MIT-0"
 
+# The SHA-256 of every asset of a release, as sha256sum writes them,
+# which the release workflow checks with sha256sum -c and publishes as
+# the release's SHA256SUMS (ADR 014); that format has no comments.
+[[annotations]]
+path = 'lib/fledge/SHA256SUMS'
+SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-License-Identifier = "CC0-1.0"
+
 # The windowed example's icon, drawn by a script, saved as a PNG, and
 # made into each system's files with sips and iconutil, none of which
 # has a place for a header.

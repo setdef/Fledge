@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require "digest"
 require_relative "download"
 require_relative "entry"
 require_relative "error"
@@ -28,8 +29,14 @@ module Fledge
   # build apps from runtimes they just built. Otherwise it looks in a
   # cache (<tt>$XDG_CACHE_HOME/fledge/runtimes</tt>, or
   # <tt>~/.cache/fledge/runtimes</tt>), and if the runtime is not there,
-  # it downloads it from this version's GitHub Release into the cache,
-  # checked against the release's +SHA256SUMS+.
+  # it downloads it from this version's GitHub Release into the cache.
+  #
+  # Either way, a runtime from the cache or a download must have the
+  # SHA-256 this gem pins for it in +PINS+, which the release workflow
+  # wrote from the very runtimes it then published (ADR 014). The
+  # release's own +SHA256SUMS+ catches a damaged download, but a release
+  # whose assets and sums were both replaced would pass it; the pins were
+  # fixed when this gem was, so it does not.
   #
   # Use it to get the archive Fledge::Assembly copies an app into.
   #
@@ -58,6 +65,11 @@ module Fledge
     # every platform, Windows too, whatever a built app ships in: Fledge
     # reads them, not the person who runs the app.
     EXTENSION = Archive::TAR_GZ
+
+    # The SHA-256 of every asset of this version's release, as
+    # +sha256sum+ writes them, committed before the release was tagged
+    # (ADR 014). The release's +SHA256SUMS+ is this file.
+    PINS = File.join(File.dirname(__FILE__), "SHA256SUMS")
 
     # The file name of the runtime archive for +platform+ at +version+
     # (default: this Fledge's version).
@@ -108,10 +120,13 @@ module Fledge
     # [release_url] Where this version's runtimes download from
     #               (default: its GitHub Release).
     # [log] Where to say that a download is starting, or +nil+.
-    def initialize(env: ENV, release_url: "#{RELEASES}/v#{VERSION}", log: nil)
+    # [pins] The file of SHA-256s to check runtimes against (default:
+    #        PINS).
+    def initialize(env: ENV, release_url: "#{RELEASES}/v#{VERSION}", log: nil, pins: PINS)
       @env = env
       @release_url = release_url
       @log = log
+      @pins = pins
     end
 
     # The path of the runtime archive for +platform+, downloading it
@@ -158,8 +173,11 @@ module Fledge
       directory = @env["FLEDGE_RUNTIME_DIR"].to_s
       return from_directory(directory, name) unless directory.empty?
 
+      sha256 = pin(name)
       cached = File.join(cache, name)
-      File.file?(cached) ? cached : download(name, cached)
+      return cached if File.file?(cached) && pinned?(cached, sha256)
+
+      download(name, cached, sha256)
     end
 
     # The folder downloaded runtimes are kept in.
@@ -189,18 +207,28 @@ module Fledge
       raise Error, "FLEDGE_RUNTIME_DIR is #{directory}, which has no #{name}"
     end
 
-    private def download(name, destination)
-      sums_url = "#{@release_url}/SHA256SUMS"
-      @log&.puts "Downloading #{name} from #{@release_url}"
-      Download.save("#{@release_url}/#{name}", to: destination, sha256: pinned_sha256(sums_url, name))
+    private def pinned?(cached, sha256)
+      return true if Digest::SHA256.file(cached).hexdigest == sha256
+
+      @log&.puts "#{cached} does not match the SHA-256 this Fledge pins for it; downloading it again"
+      false
     end
 
-    private def pinned_sha256(sums_url, name)
-      Download.read(sums_url).each_line do |line|
-        sha256, file = line.split(" ", 2)
-        return sha256.to_s if file.to_s.strip.delete_prefix("*") == name
+    private def download(name, destination, sha256)
+      @log&.puts "Downloading #{name} from #{@release_url}"
+      Download.save("#{@release_url}/#{name}", to: destination, sha256:)
+    end
+
+    private def pin(name)
+      if File.file?(@pins)
+        File.foreach(@pins, chomp: true) do |line|
+          sha256, file = line.split(" ", 2)
+          return sha256.to_s.downcase if file.to_s.strip.delete_prefix("*") == name
+        end
       end
-      raise Error, "#{sums_url} lists no #{name}"
+      raise Error, "Fledge #{VERSION} pins no SHA-256 for #{name}, so it is not a released Fledge and has no " \
+        "runtimes to download. Install Fledge from a release tag, or set FLEDGE_RUNTIME_DIR to a folder of " \
+        "runtimes you built (rake runtime)."
     end
   end
 end

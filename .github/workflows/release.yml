@@ -18,11 +18,20 @@
 #   fledge-runtime-VERSION-PLATFORM-dev.tar.gz          its build-only
 #                                                       companion
 #
-# and a SHA256SUMS over all of them. fledge build at that version
-# downloads its runtimes from this release, by the names
-# Fledge::Runtimes gives them, and checks them against SHA256SUMS. A
-# version with "pre" in it (RubyGems' prerelease form, such as
-# 0.0.1.pre.1) is marked a prerelease.
+# and a SHA256SUMS over all of them, which is the tagged commit's
+# lib/fledge/SHA256SUMS. fledge build at that version downloads its
+# runtimes from this release, by the names Fledge::Runtimes gives them,
+# and checks each against the SHA-256 its own gem pins. A version with
+# "pre" in it (RubyGems' prerelease form, such as 0.0.1.pre.1) is marked
+# a prerelease.
+#
+# A release takes two commits (ADR 014), as Homebrew's bottles do: the
+# release commit, whose CI run on trunk builds the runtimes, and on it a
+# commit that changes only lib/fledge/SHA256SUMS, written from those
+# runtimes by rake runtime:pin, which is the one tagged. Runtime builds
+# are not reproducible, so this publishes the runtimes the release
+# commit's CI run built, not the ones the tag's own CI run builds, and
+# only when every one matches its pin. The tag's CI run must pass too.
 #
 # Releases are never deleted: each runtime's NOTICES points at its LGPL
 # source bundle here, and app developers may rely on that link for as
@@ -62,10 +71,13 @@ jobs:
     permissions:
       # Creating a release and uploading its assets.
       contents: write
+      # Finding the release commit's CI run and downloading its runtimes.
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
@@ -87,11 +99,35 @@ jobs:
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
+      # The tagged commit pins the runtimes its parent's CI run built, and
+      # changes nothing else, so the runtimes it pins were built from the
+      # very source it tags.
+      - name: Find the CI run whose runtimes the tag pins
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          built=$(git rev-parse HEAD^)
+          changed=$(git diff --name-only "$built" HEAD)
+          if [ "$changed" != "lib/fledge/SHA256SUMS" ]; then
+            echo "::error::The tagged commit must change only lib/fledge/SHA256SUMS, written by rake runtime:pin from its parent's runtimes; it changes: $changed"
+            exit 1
+          fi
+          run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$built" --event push --status success \
+            --json databaseId --jq '.[0].databaseId')
+          if [ -z "$run" ]; then
+            echo "::error::$built has no successful CI run on push to take its runtimes from"
+            exit 1
+          fi
+          echo "Publishing the runtimes CI run $run built from $built"
+          echo "RUN=$run" >> "$GITHUB_ENV"
+
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: runtime-*
           merge-multiple: true
           path: release
+          run-id: ${{ env.RUN }}
+          github-token: ${{ github.token }}
 
       # Every name fledge build and each runtime's NOTICES will ask for
       # must be here, and nothing else: the names come from
@@ -104,12 +140,13 @@ jobs:
           diff "$RUNNER_TEMP/expected" "$RUNNER_TEMP/actual"
           cat "$RUNNER_TEMP/actual"
 
-      - name: Write SHA256SUMS
-        working-directory: release
+      # Every asset must be the one the gem pins, and the gem must pin
+      # every asset; the pins become the release's SHA256SUMS.
+      - name: Check the assets against the gem's pins
         run: |
-          sha256sum fledge-runtime-* > SHA256SUMS
-          cat SHA256SUMS
-          sha256sum -c SHA256SUMS
+          cut -c67- lib/fledge/SHA256SUMS | diff "$RUNNER_TEMP/actual" -
+          cp lib/fledge/SHA256SUMS release/SHA256SUMS
+          (cd release && sha256sum --strict -c SHA256SUMS)
 
       - name: Create the release with its assets attached
         env:

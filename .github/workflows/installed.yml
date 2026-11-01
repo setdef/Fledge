@@ -6,14 +6,15 @@
 # installs Fledge from its git tag with Bundler, as the README says, never
 # from RubyGems.org; fledge build, with no FLEDGE_RUNTIME_DIR and an empty
 # cache, downloads that version's runtime from the GitHub Release and
-# checks it against the release's SHA256SUMS, and, to compile
+# checks it against the SHA-256 the gem pins (ADR 014), and, to compile
 # examples/native_app's gems from source, its build-only companion; and
 # each app it builds is delivered as CI delivers every push's
 # (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the
 # runtime's own tools, is installed and its app run, as CI installs every
 # push's (ADR 009 and ADR 010). Another job writes phones' projects from
 # the tag and builds them with Xcode and Gradle (ADR 012), and another
-# downloads every asset of the release and checks it against SHA256SUMS.
+# downloads every asset of the release and checks it against SHA256SUMS,
+# which must be the tag's lib/fledge/SHA256SUMS, the pins the gem ships.
 #
 # release.yml calls this after it publishes a release; run it by hand
 # (workflow_dispatch) to check any published tag again.
@@ -47,7 +48,7 @@ env:
 
 jobs:
   sums:
-    name: The release's assets match its SHA256SUMS
+    name: The release's assets match its SHA256SUMS and the gem's pins
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -60,7 +61,9 @@ jobs:
           cd "$RUNNER_TEMP/release"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY"
           ls -l
-          sha256sum -c SHA256SUMS
+          sha256sum --strict -c SHA256SUMS
+          gh api -H "Accept: application/vnd.github.raw" "repos/$GITHUB_REPOSITORY/contents/lib/fledge/SHA256SUMS?ref=$TAG" |
+            diff - SHA256SUMS
           for asset in *; do
             [ "$asset" = SHA256SUMS ] || grep -q "  $asset\$" SHA256SUMS || { echo "::error::$asset is not in SHA256SUMS"; exit 1; }
           done
@@ -179,7 +182,7 @@ jobs:
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
       # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
-      # from the release, checked against its SHA256SUMS.
+      # from the release, checked against the gem's pins.
       - name: Build hello, my_cool_app, windowed_app, and the parity probe with runtimes from the release
         env:
           TAG: ${{ inputs.tag }}
@@ -290,7 +293,7 @@ jobs:
   # A phone's project from the tag (ADR 012): fledge build ios on a Mac and
   # fledge build android on Linux, installed from the tag with Bundler,
   # download that version's mobile runtime from the release, checked
-  # against its SHA256SUMS, and write the projects of examples/hello and
+  # against the gem's pins, and write the projects of examples/hello and
   # examples/mobile_app, which each system's own tools then build, as a
   # developer builds them: xcodebuild for the iOS Simulator, unsigned,
   # with XcodeGen installed as the README says; and each project's Gradle
@@ -354,7 +357,7 @@ jobs:
           bundle exec fledge --version
 
       # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
-      # from the release, checked against its SHA256SUMS.
+      # from the release, checked against the gem's pins.
       - name: Write hello's and mobile_app's projects with the runtime from the release
         env:
           TAG: ${{ inputs.tag }}

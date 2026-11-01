@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `fledge build` checks every runtime and build-only companion it downloads, and every one it finds in its cache, against the SHA-256 its own gem pins in `lib/fledge/SHA256SUMS`, never against what the release says, so a release asset replaced after its version was tagged fails the build. A cached runtime that does not match is downloaded again. A Fledge between releases, which pins no runtimes of its own version, says to install a release or set `FLEDGE_RUNTIME_DIR`.
+- Each release's `SHA256SUMS` is the gem's `lib/fledge/SHA256SUMS`, byte for byte.
+
 ## [0.0.1.pre.11] - 2026-11-01
 
 ### Changed

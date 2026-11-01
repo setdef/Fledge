@@ -38,12 +38,13 @@ class RuntimesTest < Minitest::Test
     end
   end
 
-  def test_a_missing_build_only_companion_downloads_checked_against_the_release_sums
+  def test_a_missing_build_only_companion_downloads_checked_against_the_gems_pins
     body = "headers"
     name = Fledge::Runtimes.dev_file_name(LINUX)
-    server = LoopbackServer.new("/v/SHA256SUMS" => [200, {}, "#{Digest::SHA256.hexdigest(body)}  #{name}\n"], "/v/#{name}" => [200, {}, body])
+    server = LoopbackServer.new("/v/#{name}" => [200, {}, body])
     Dir.mktmpdir do |home|
-      path = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v")).dev_archive(LINUX)
+      pins = write_pins(home, name => body)
+      path = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v"), pins:).dev_archive(LINUX)
 
       assert_equal File.join(home, ".cache/fledge/runtimes", name), path
       assert_equal body, File.binread(path)
@@ -71,58 +72,110 @@ class RuntimesTest < Minitest::Test
       Fledge::Runtimes.new(env: { "XDG_CACHE_HOME" => "", "HOME" => "/h" }).cache
   end
 
-  def test_a_cached_runtime_is_used_without_a_download
+  def test_a_cached_runtime_that_matches_its_pin_is_used_without_a_download
     Dir.mktmpdir do |home|
       cache = File.join(home, ".cache/fledge/runtimes")
       FileUtils.mkdir_p(cache)
       archive = FakeRuntime.write(cache, LINUX)
+      pins = write_pins(home, File.basename(archive) => File.binread(archive))
 
-      assert_equal archive, Fledge::Runtimes.new(env: { "HOME" => home }, release_url: "http://127.0.0.1:1").archive(LINUX)
+      assert_equal archive, Fledge::Runtimes.new(env: { "HOME" => home }, release_url: "http://127.0.0.1:1", pins:).archive(LINUX)
     end
   end
 
-  def test_a_missing_runtime_downloads_into_the_cache_checked_against_the_release_sums
+  # A cache is a folder anyone with the account can write to; what it
+  # holds is trusted only as far as the pin it matches.
+  def test_a_cached_runtime_that_does_not_match_its_pin_is_downloaded_again
+    body = "the released runtime"
+    name = Fledge::Runtimes.file_name(LINUX)
+    server = LoopbackServer.new("/v/#{name}" => [200, {}, body])
+    Dir.mktmpdir do |home|
+      cached = File.join(home, ".cache/fledge/runtimes", name)
+      FileUtils.mkdir_p(File.dirname(cached))
+      File.write(cached, "swapped in the cache")
+      log = StringIO.new
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v"), log:,
+        pins: write_pins(home, name => body))
+
+      assert_equal cached, runtimes.archive(LINUX)
+      assert_equal body, File.binread(cached)
+      assert_equal "#{cached} does not match the SHA-256 this Fledge pins for it; downloading it again\n" \
+        "Downloading #{name} from #{server.url('/v')}\n", log.string
+    end
+  ensure
+    server&.stop
+  end
+
+  def test_a_missing_runtime_downloads_into_the_cache_checked_against_the_gems_pins
     Dir.mktmpdir do |source|
       body = File.binread(FakeRuntime.write(source, LINUX))
       name = Fledge::Runtimes.file_name(LINUX)
-      sums = "#{'1' * 64}  other.tar.gz\n#{Digest::SHA256.hexdigest(body)}  #{name}\n"
-      server = LoopbackServer.new("/v/SHA256SUMS" => [200, {}, sums], "/v/#{name}" => [200, {}, body])
+      server = LoopbackServer.new("/v/#{name}" => [200, {}, body])
       log = StringIO.new
       Dir.mktmpdir do |home|
-        path = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v"), log:).archive(LINUX)
+        pins = write_pins(home, "other.tar.gz" => "other", name => body)
+        path = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v"), log:, pins:).archive(LINUX)
 
         assert_equal File.join(home, ".cache/fledge/runtimes", name), path
         assert_equal body, File.binread(path)
         assert_equal "Downloading #{name} from #{server.url('/v')}\n", log.string
+        assert_equal ["/v/#{name}"], server.requests
       end
     ensure
       server&.stop
     end
   end
 
-  def test_a_download_that_does_not_match_the_release_sums_fails
+  # The release's own SHA256SUMS would vouch for a replaced asset if it
+  # were replaced too; the gem's pins were fixed when the gem was.
+  def test_a_release_whose_assets_and_sums_were_both_replaced_fails
     name = Fledge::Runtimes.file_name(LINUX)
-    server = LoopbackServer.new("/v/SHA256SUMS" => [200, {}, "#{'0' * 64}  #{name}\n"], "/v/#{name}" => [200, {}, "tampered"])
+    tampered = "tampered"
+    server = LoopbackServer.new("/v/SHA256SUMS" => [200, {}, "#{Digest::SHA256.hexdigest(tampered)}  #{name}\n"],
+      "/v/#{name}" => [200, {}, tampered])
     Dir.mktmpdir do |home|
-      runtimes = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v"))
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v"),
+        pins: write_pins(home, name => "the released runtime"))
 
-      assert_raises(Fledge::Error) { runtimes.archive(LINUX) }
+      error = assert_raises(Fledge::Error) { runtimes.archive(LINUX) }
+      assert_includes error.message, "has SHA-256 #{Digest::SHA256.hexdigest(tampered)}"
       refute_path_exists File.join(home, ".cache/fledge/runtimes", name)
     end
   ensure
     server&.stop
   end
 
-  def test_a_release_whose_sums_omit_the_runtime_fails
-    server = LoopbackServer.new("/v/SHA256SUMS" => [200, {}, "#{'0' * 64}  other\n"])
+  def test_a_runtime_this_fledge_does_not_pin_fails_without_a_download
     Dir.mktmpdir do |home|
-      error = assert_raises(Fledge::Error) do
-        Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v")).archive(LINUX)
-      end
+      [write_pins(home, "other.tar.gz" => "other"), File.join(home, "absent")].each do |pins|
+        runtimes = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: "http://127.0.0.1:1", pins:)
 
-      assert_equal "#{server.url('/v/SHA256SUMS')} lists no #{Fledge::Runtimes.file_name(LINUX)}", error.message
+        error = assert_raises(Fledge::Error) { runtimes.archive(LINUX) }
+        assert_equal "Fledge #{Fledge::VERSION} pins no SHA-256 for #{Fledge::Runtimes.file_name(LINUX)}, " \
+          "so it is not a released Fledge and has no runtimes to download. Install Fledge from a release " \
+          "tag, or set FLEDGE_RUNTIME_DIR to a folder of runtimes you built (rake runtime).", error.message
+      end
     end
-  ensure
-    server&.stop
+  end
+
+  # The pins the gem ships are SHA256SUMS lines, as sha256sum -c reads
+  # them, for one version's release assets.
+  def test_the_shipped_pins_are_one_releases_sha256sums
+    lines = File.readlines(Fledge::Runtimes::PINS, chomp: true)
+    versions = lines.map do |line|
+      assert_match(/\A\h{64}  fledge-runtime-\S+\z/, line)
+      line[/fledge-runtime-(\d+\.\d+\.\d+(?:\.pre\.\d+)?)-/, 1]
+    end
+
+    refute_empty lines
+    assert_equal 1, versions.uniq.size, "the pins are for one version"
+    names = lines.map { |line| line.split("  ", 2).last }
+    assert_equal names.sort, names
+  end
+
+  private def write_pins(dir, bodies)
+    path = File.join(dir, "SHA256SUMS")
+    File.write(path, bodies.map { |name, body| "#{Digest::SHA256.hexdigest(body)}  #{name}\n" }.join)
+    path
   end
 end

@@ -11,16 +11,18 @@ module Fledge
 
     RELEASES: String
     EXTENSION: String
+    PINS: String
 
     @env: _Env
     @release_url: String
     @log: CLI::_Output?
+    @pins: String
 
     def self.file_name: (target platform, ?version: String) -> String
 
     def self.dev_file_name: (Platform platform, ?version: String) -> String
 
-    def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?) -> void
+    def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?, ?pins: String) -> void
 
     def archive: (target platform) -> String
 
@@ -32,8 +34,10 @@ module Fledge
 
     private def from_directory: (String directory, String name) -> String
 
-    private def download: (String name, String destination) -> String
+    private def pinned?: (String cached, String sha256) -> bool
 
-    private def pinned_sha256: (String sums_url, String name) -> String
+    private def download: (String name, String destination, String sha256) -> String
+
+    private def pin: (String name) -> String
   end
 end

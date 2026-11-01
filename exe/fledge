@@ -206,7 +206,8 @@
 #     ~/.cache/fledge/runtimes/
 #                        Runtimes downloaded from Fledge's GitHub
 #                        Release for this version, each checked
-#                        against the release's SHA256SUMS, and, to
+#                        against the SHA-256 this Fledge pins for it,
+#                        in the cache too, and, to
 #                        compile gems, each one's build-only companion
 #                        of Ruby's headers and libraries. A runtime's
 #                        tools/ (rcedit and NSIS on Windows, AppImage's

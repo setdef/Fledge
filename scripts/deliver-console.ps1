@@ -229,8 +229,9 @@ if (-not $probe.WaitForExit(10000)) {
   Write-Host 'debug: SC_CLOSE did not end it; WM_CLOSE'
   [void][Fledge.Console]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
   if (-not $probe.WaitForExit(10000)) {
-    Write-Host 'debug: WM_CLOSE did not end it; stopping the console host'
-    Stop-Process -Id $owner -Force
+    $hosts = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$($console.Id) AND Name='conhost.exe'")
+    Write-Host "debug: WM_CLOSE did not end it; stopping the console host: $($hosts.ProcessId -join ',')"
+    $hosts | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
     if (-not $probe.WaitForExit(10000)) { Fail "$label did not end when its console closed" }
   }
 }

@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An iOS project's privacy manifest names the required-reason APIs Ruby calls: file timestamps (C617.1) and system boot time (35F9.1).
 - The mobile runtimes' embedding API gains `fledge_ruby_run_app`, and on Android `FledgeRuby.runApp` and `startApp`, which run the app `fledge.cfg` names, with Bundler set up for its Gemfile, as the desktop launcher does.
 
+### Fixed
+
+- On iOS, a line of an app's output too long for one os_log entry no longer loses a space where it is split: the entries are cut before whitespace, which the unified log trims from an entry's end.
+
 ## [0.0.1.pre.9] - 2026-10-28
 
 ### Added

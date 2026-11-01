@@ -28,6 +28,13 @@
 #include <string.h>
 #include <unistd.h>
 
+/* Whitespace the unified log trims from the end of an entry. */
+static int
+is_blank(char c)
+{
+    return c == ' ' || c == '\t' || c == '\r' || c == '\v' || c == '\f';
+}
+
 size_t
 fledge_log_chunk(const char *text, size_t length)
 {
@@ -36,6 +43,15 @@ fledge_log_chunk(const char *text, size_t length)
     size_t end = FLEDGE_LOG_ENTRY_MAX;
     /* A UTF-8 continuation byte is 10xxxxxx; back up to the start of its character. */
     while (end > 0 && ((unsigned char)text[end] & 0xC0) == 0x80) end--;
+    /*
+     * The unified log drops an entry's trailing whitespace (log show
+     * prints "a " as "a"), so a cut after a space would lose it from the
+     * line the entries make; cut before the whitespace instead, which
+     * begins the next entry, where the log keeps it.
+     */
+    size_t word = end;
+    while (word > 0 && is_blank(text[word - 1])) word--;
+    if (word > 0) end = word;
     return end > 0 ? end : FLEDGE_LOG_ENTRY_MAX;
 }
 

@@ -27,7 +27,8 @@
 /*
  * How many of the length bytes of text the next log entry carries: all
  * of them when they fit in FLEDGE_LOG_ENTRY_MAX, and otherwise as many
- * as fit without cutting a UTF-8 character in two.
+ * as fit without cutting a UTF-8 character in two or ending in
+ * whitespace, which the unified log trims from an entry's end.
  */
 size_t fledge_log_chunk(const char *text, size_t length);
 

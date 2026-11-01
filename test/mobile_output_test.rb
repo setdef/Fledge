@@ -22,8 +22,9 @@ class MobileOutputTest < Minitest::Test
   # A log for output.c that writes "E " or "O " and each entry to the
   # file the program is given, and a program that forwards its output and
   # then prints: a short line, an empty one, one of 2,500 bytes, one of
-  # 999 ASCII bytes and 2-byte characters straddling the cut, and a line
-  # to standard error; then it ends with exit(), which flushes every
+  # 999 ASCII bytes and 2-byte characters straddling the cut, one whose
+  # cut would end an entry in whitespace, which the unified log trims
+  # from an entry's end, and a line to standard error; then it ends with exit(), which flushes every
   # stdio stream while the forwarding threads wait on their pipes, as an
   # app's would.
   PROGRAM = <<~C
@@ -53,7 +54,10 @@ class MobileOutputTest < Minitest::Test
         char straddling[1100];
         memset(straddling, 'a', 999);
         strcpy(straddling + 999, "\\xC3\\xA9\\xC3\\xA9");
-        printf("hello\\n\\n%s\\n%s\\n", long_line, straddling);
+        char spaced[1100];
+        memset(spaced, 'b', 998);
+        strcpy(spaced + 998, "  \\tc");
+        printf("hello\\n\\n%s\\n%s\\n%s\\n", long_line, straddling, spaced);
         fputs("oops\\n", stderr);
         fflush(stdout);
         sleep(1);
@@ -79,7 +83,7 @@ class MobileOutputTest < Minitest::Test
       entries = File.read(log, encoding: "UTF-8").lines.map(&:chomp)
       assert_equal "E oops", entries.find { |entry| entry.start_with?("E ") }
       out = entries.select { |entry| entry.start_with?("O ") }.map { |entry| entry.delete_prefix("O ") }
-      assert_equal ["hello", "", "x" * 1000, "x" * 1000, "x" * 500, "a" * 999, "éé"], out
+      assert_equal ["hello", "", "x" * 1000, "x" * 1000, "x" * 500, "a" * 999, "éé", "b" * 998, "  \tc"], out
     end
   end
 

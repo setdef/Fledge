@@ -332,6 +332,144 @@ index 152b49a..8470830 100644
      runs-on: ubuntu-24.04
      timeout-minutes: 10
      steps:
+diff --git a/.github/workflows/installed.yml b/.github/workflows/installed.yml
+index d59d80d..ea9344e 100644
+--- a/.github/workflows/installed.yml
++++ b/.github/workflows/installed.yml
+@@ -290,6 +290,75 @@ jobs:
+           -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/native_app.expected" -Raw).TrimEnd()
+ 
++  # musl Linux from the tag (ADR 017): in Alpine with Ruby, as a developer
++  # on Alpine installs Fledge, with Bundler, from the tag, fledge build
++  # downloads the musl runtime from the release, checked against the
++  # gem's pins, and builds hello and my_cool_app; then a bare Alpine with
++  # no Ruby runs each, as ci.yml's Delivery does.
++  installed-musl:
++    name: Install, build, and deliver (${{ matrix.platform }})
++    runs-on: ${{ matrix.os }}
++    timeout-minutes: 30
++    env:
++      ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
++      ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
++    strategy:
++      fail-fast: false
++      matrix:
++        include:
++          - os: ubuntu-24.04
++            platform: x86_64-linux-musl
++          - os: ubuntu-24.04-arm
++            platform: aarch64-linux-musl
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          persist-credentials: false
++          ref: ${{ inputs.tag }}
++          sparse-checkout: |
++            examples/hello
++            examples/my_cool_app
++            test/fixtures/parity
++          sparse-checkout-cone-mode: false
++
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          persist-credentials: false
++          path: checks
++          sparse-checkout: .github/scripts
++          sparse-checkout-cone-mode: false
++
++      - name: Install Fledge from the tag in Alpine, and build hello, the parity probe, and my_cool_app
++        env:
++          TAG: ${{ inputs.tag }}
++        run: |
++          cat > "$RUNNER_TEMP/install.sh" <<'SH'
++          set -eu
++          /checks/.github/scripts/alpine-packages.sh apps
++          mkdir -p /project
++          printf 'source "https://rubygems.org"\ngem "fledge", git: "https://github.com/setdef/Fledge", tag: "%s"\n' "$TAG" > /project/Gemfile
++          cd /project
++          bundle install
++          bundle exec fledge --version
++          export XDG_CACHE_HOME=/tmp/cache
++          for app in examples/hello test/fixtures/parity examples/my_cool_app; do
++            bundle exec fledge build -o /work/dist "/work/$app" 2>> /tmp/build.err
++          done
++          cat /tmp/build.err
++          grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" /tmp/build.err
++          cd /work/examples/my_cool_app && bundle install && bundle exec ruby exe/my_cool_app > /work/dist/my_cool_app.expected
++          SH
++          docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$GITHUB_WORKSPACE/checks:/checks" -v "$RUNNER_TEMP:/scripts" -e TAG \
++            "$ALPINE_RUBY" sh /scripts/install.sh
++
++      - name: Run hello and my_cool_app on Alpine with no Ruby installed
++        env:
++          PLATFORM: ${{ matrix.platform }}
++        run: >-
++          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work -e PLATFORM "$ALPINE" sh -c '
++          checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.0.9 on $PLATFORM" --no-ruby-installed &&
++          checks/.github/scripts/deliver.sh "dist/MyCoolApp-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "$(cat dist/my_cool_app.expected)" --no-ruby-installed'
++
+   # A phone's project from the tag (ADR 012): fledge build ios on a Mac and
+   # fledge build android on Linux, installed from the tag with Bundler,
+   # download that version's mobile runtime from the release, checked
+diff --git a/doc/contributors/adr/017.md b/doc/contributors/adr/017.md
+new file mode 100644
+index 0000000..a7bef50
+--- /dev/null
++++ b/doc/contributors/adr/017.md
+@@ -0,0 +1,52 @@
++<!--
++SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
++
++SPDX-License-Identifier: CC-BY-SA-4.0
++-->
++
++# ADR 017: musl Linux, From Ruby Built in Alpine
++
++## Status
++Accepted (requested). Agents wrote this ADR and may change it (AGENTS.md, Questions). It applies the maintainer's decision 12 in `doc/contributors/decisions.md` ("Many CI platforms only run on musl for Linux, so I'd like to support it eventually, but it's not a blocker to continuing to iterate. It may be a blocker to 1.0 though.") and takes up ADR 001, section 3's fallback, building Ruby in Fledge's CI, for the one family of platforms where no prebuilt Ruby fits. It is Plan 002's story "musl Linux."
++
++## Date
++2026-11-01
++
++## Context
++
++Alpine Linux, and the CI images and containers built on it, use musl's C library instead of glibc's. A program linked against glibc does not start there, so Fledge's `x86_64-linux` and `aarch64-linux` apps, whose launchers link glibc 2.39 (ADR 001, section 3), cannot run on Alpine. RubyGems names these platforms `x86_64-linux-musl` and `aarch64-linux-musl`, what `Gem::Platform.local` reports on Alpine and what precompiled gems publish for it (sqlite3 2.10.2 among them; PEP 656 names the same platforms `musllinux` for Python).
++
++rv-ruby publishes musl builds of Ruby 4.0.9 (`ruby-4.0.9.x86_64_linux_musl.tar.gz` and `arm64_linux_musl`, release 20261023), but configures them `--with-static-linked-ext` (`alpine/4.sh`, spinel-coop/rv-ruby at 7a0e584): every extension of the standard library is linked into its own `bin/ruby`, and only `libruby-static.a` ships, without them. Fledge's launcher is the interpreter (it links libruby statically and loads extensions as shared objects; ADR 001, section 1), so a launcher linked against that libruby has no `json`, `openssl`, or `psych` at all (Plan 001, spike 1, found this first).
++
++A spike (the `experiment/signing` branch's runs of 2026-11-01) built Ruby 4.0.9 from its release tarball in Alpine, configured as rv-ruby configures its glibc builds but with each extension a shared object, linked Fledge's unchanged Unix launcher against its `libruby-static.a` with `-rdynamic`, and ran an app that required `json`, `openssl`, `psych`, `fiddle`, and `bigdecimal` and enabled YJIT, on x86-64 and on ARM64, from a folder with a space in its name, in a bare Alpine with no Ruby. GitHub's `ubuntu-24.04` and `ubuntu-24.04-arm` runners run Alpine containers with `docker run`; their JavaScript actions cannot run inside an Alpine container on ARM, which rv-ruby's own `build-alpine.yml` notes too.
++
++## Decision
++
++### 1. Two targets, `x86_64-linux-musl` and `aarch64-linux-musl`
++
++`Fledge::Platform` adds both, RubyGems' names, which `Platform.local` maps from `Gem::Platform`'s `linux` with version `musl`. They are Linux (`os` is `linux`, so a windowed app gets a desktop entry and an AppImage), with no glibc floor (`glibc_minimum` is `nil`), and the libraries an app's compiled gems may assume (`Platform#libraries`, `linux-musl`) are those PEP 656 lets a `musllinux_1_2` wheel assume, auditwheel 6.8.2's `musllinux-policy.json`: musl's C library, by its own name (`libc.so`) and Alpine's (`libc.musl-ARCH.so.1`), its dynamic linker, and zlib. A Gemfile.lock locks them as Bundler writes them (`bundle lock --add-platform x86_64-linux-musl`).
++
++### 2. The runtime builds Ruby from its pinned source, in Alpine
++
++`RuntimeBuilder::Musl` (`tasks/runtime_builder/musl.rb`) builds, on a computer of each architecture, in Alpine 3.24 (CI's `ruby:4.0.9-alpine3.24` image, pinned by digest, its packages pinned by version in `.github/scripts/alpine-packages.sh`):
++
++- zlib 1.3.2, libyaml 0.2.5, libffi 3.5.2, and OpenSSL 3.6.5, from the sources `runtime/sources.yml` pins under `musl-ruby`, static and position-independent, so each links into the one extension that uses it, as rv-ruby's glibc builds link them; OpenSSL renamed to read its certificates from `PORTABLE_RUBY_SSL_CERT_FILE` and Ruby's `openssl.rb` set to point it at `libexec/cert.pem`, Mozilla's CA bundle, unless `SSL_CERT_FILE` names others, as rv-ruby does (`Formula/rv-portable-openssl.rb`, line 77; `Abstract/rv-ruby.rb`, lines 203 to 208);
++- Ruby 4.0.9 from its release tarball, `--enable-load-relative --disable-shared --enable-yjit`, every extension a shared object, with Alpine's Rust 1.96.1 for YJIT and GCC 15.2.0, and `-static-libgcc`;
++- then what every Unix runtime is (`RuntimeBuilder::Unix`): the launcher and `bin/ruby` linked against that `libruby-static.a`, the standard library, default and bundled gems, Fledge's RubyGems defaults, pruning, AppImage's own runtime in `tools/`, and the license audit.
++
++No libxcrypt ships: musl's own `crypt(3)` serves `String#crypt`, and the launcher and `bin/ruby` need nothing but musl's C library, which the build checks. musl's crypt does not know every hash yescrypt-era glibc systems use (Plan 002, "Copyleft-free runtimes"); an app that checks such hashes on Alpine meets what `ruby` does there.
++
++Building from source rather than taking Alpine's own `ruby` package keeps the runtime what every other runtime is, the same Ruby 4.0.9 at the commit `RUBY_DESCRIPTION` names, relocatable, with the same static libraries, and pinned; Alpine's package is built for `/usr` and links Alpine's shared OpenSSL and libyaml, which an app's computer may lack.
++
++### 3. Proven as every runtime is
++
++- **The license audit** reads each musl runtime with binutils' objdump in Alpine; `runtime/licenses.yml` names its components (Ruby, OpenSSL 3.6.5, libyaml, libffi, zlib, Rust's standard library at 1.96.1, GCC's runtime library at 15.2.0, Mozilla's CA bundle, AppImage's runtime and what it links), and a musl release publishes the LGPL source bundle AppImage's runtime needs, as glibc Linux's does.
++- **Parity:** `tasks/parity.rb` compares the built probe with `ruby main.rb` on the Ruby the runtime was built from, which for musl is the runtime's own `bin/ruby` (Ruby's `main.c` against the same libruby) with Fledge's RubyGems defaults taken out, and the gem-shaped probe with `bundle exec`, in Alpine (`ci.yml`, Parity).
++- **Build and Delivery:** CI builds hello, the probes, my_cool_app (sqlite3 precompiled for musl), the console probe, and windowed_app in Alpine with Ruby, as a developer on Alpine would, and delivers each in a bare `alpine:3.24` with no Ruby: `deliver.sh --no-ruby-installed`, the console's Ctrl-C and hangup (ADR 015), the desktop entry, and the AppImage, which a container runs extracted.
++- **`installed.yml`** installs Fledge from each tag in Alpine, builds with the musl runtime from the release, and delivers.
++
++## Consequences
++
++- Apps run on Alpine and other musl distributions, built on a computer of that platform (ADR 010), such as an Alpine container.
++- Fledge maintains a Ruby build of its own for these two targets, and moves its pins (Ruby, OpenSSL, the Alpine image and its packages) on purpose. rv-ruby's musl builds would serve if they kept their extensions as shared objects.
++- `examples/native_app` is not built for musl: its lockfile locks no musl platform, and its Rust gem's toolchain in Alpine is another story. Compiling a gem from source works as on glibc Linux (ADR 006), against the runtime's build-only companion.
 diff --git a/exe/fledge b/exe/fledge
 index b1d766f..52e44f9 100755
 --- a/exe/fledge
@@ -692,10 +830,25 @@ index 54dd1a8..65d86bf 100644
      embedded:
        - files: [launcher, "{prefix}bin/ruby", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
 diff --git a/runtime/sources.yml b/runtime/sources.yml
-index b38b43d..5a5ecc1 100644
+index b38b43d..535adbe 100644
 --- a/runtime/sources.yml
 +++ b/runtime/sources.yml
-@@ -273,6 +273,46 @@ mobile:
+@@ -184,6 +184,14 @@ appimage-runtime:
+     aarch64-linux:
+       url: https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-aarch64
+       sha256: 00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444
++    # The same static runtimes, which need no C library of the
++    # computer's, for musl Linux (ADR 017).
++    x86_64-linux-musl:
++      url: https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
++      sha256: 2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
++    aarch64-linux-musl:
++      url: https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-aarch64
++      sha256: 00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444
+   source:
+     url: https://github.com/AppImage/type2-runtime/archive/dd6cebedcbddde9c82f89b011e8e1d40b6e43868.tar.gz
+     sha256: f5fec23be76e50e2445ed2d018bac49b367490fc483c62c4637e99ec705d27ba
+@@ -273,6 +281,46 @@ mobile:
      url: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
      sha256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
  
@@ -838,7 +991,7 @@ index 43198c0..58ce4a7 100644
  require_relative "runtime_builder/bundled_extensions"
 diff --git a/tasks/runtime_builder/musl.rb b/tasks/runtime_builder/musl.rb
 new file mode 100644
-index 0000000..dd4b074
+index 0000000..ea46153
 --- /dev/null
 +++ b/tasks/runtime_builder/musl.rb
 @@ -0,0 +1,200 @@
@@ -873,8 +1026,8 @@ index 0000000..dd4b074
 +    # library, which is also its dynamic linker.
 +    ALLOWED = /\A(?:libc\.musl-(?:x86_64|aarch64)\.so\.1|ld-musl-(?:x86_64|aarch64)\.so\.1)\z/
 +
-+    # The architecture of each musl target, in AppImage's names and
-+    # musl's own.
++    # The architecture of each musl target, as OpenSSL's Configure names
++    # its Linux targets.
 +    ARCHES = { "x86_64-linux-musl" => "x86_64", "aarch64-linux-musl" => "aarch64" }.freeze
 +
 +    def compile(output, sources, _rpath)
@@ -1024,7 +1177,7 @@ index 0000000..dd4b074
 +    end
 +
 +    private def copy_appimage_runtime(to)
-+      pin = @builder.sources.fetch("appimage-runtime").fetch("platforms").fetch("#{ARCHES.fetch(@builder.platform.name)}-linux")
++      pin = @builder.sources.fetch("appimage-runtime").fetch("platforms").fetch(@builder.platform.name)
 +      FileUtils.mkdir_p(File.dirname(to))
 +      FileUtils.cp(@builder.fetch(pin.fetch("url"), pin.fetch("sha256")), to)
 +      FileUtils.chmod(0o755, to)

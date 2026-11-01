@@ -57,6 +57,14 @@
 #     gems, which must be pure Ruby for now; what the app prints goes to
 #     the system log.
 #
+#     An app is unsigned unless you sign it with your own identity
+#     (--sign), so that macOS's Gatekeeper and Windows' SmartScreen
+#     can trust it: on macOS every Mach-O file, the bundle, and the
+#     disk image, with the hardened runtime and a timestamp, by
+#     codesign; on Windows every program and library, and the setup
+#     program and its uninstaller, by signtool from the Windows SDK.
+#     Fledge does not notarize.
+#
 #     Each system's own tools do the work. macOS has them all (tar,
 #     plutil, codesign, ditto, hdiutil). Windows 10 and 11 have tar;
 #     the runtime brings rcedit, for a program's version information
@@ -91,6 +99,14 @@
 #
 # OPTIONS
 #     -o, --out DIR      Write builds to DIR (default: dist)
+#     --sign IDENTITY    Sign the app with your own identity: on
+#                        macOS a code signing identity in your
+#                        keychain, as codesign names it, such as
+#                        "Developer ID Application: NAME (TEAM)", or
+#                        - for ad hoc; on Windows the SHA-1 thumbprint
+#                        of a code signing certificate in your
+#                        certificate store. Not on Linux, or for a
+#                        phone, which Xcode and Gradle sign.
 #     -h, -?, --help     Show this help
 #     -v, --version      Print Fledge's version
 #
@@ -236,7 +252,8 @@
 #                        build the phone's project, a runtime that
 #                        would not download, a gem that cannot ship or
 #                        would not compile, a missing tool or icon
-#                        file, a full disk)
+#                        file, an identity that would not sign, a full
+#                        disk)
 #     2                  Usage error (an unrecognized option, a
 #                        missing value)
 #
@@ -251,6 +268,9 @@
 #     Write the app's Xcode project on a Mac, and its Gradle project:
 #     fledge build ios
 #     fledge build android
+#
+#     Build and sign with your Developer ID, on a Mac:
+#     fledge build --sign "Developer ID Application: Example (ABCDE12345)"
 #
 #     Build a script from elsewhere, into another folder:
 #     fledge build --out /tmp/builds path/to/app/main.rb

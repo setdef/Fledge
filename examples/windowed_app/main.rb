@@ -30,7 +30,10 @@
 # identifier in fledge.yml. Run from an AppImage, it reports the name of
 # the folder the AppImage's runtime ran it from (APPDIR), which says
 # whether it was mounted with FUSE (.mount_*) or extracted
-# (appimage_extracted_*).
+# (appimage_extracted_*). Where Ruby has YJIT (macOS and Linux), it
+# enables it, as Rails does, and reports whether YJIT wrote machine code,
+# which a macOS app signed with the hardened runtime may do only with the
+# entitlement Fledge signs it with.
 
 require "json"
 require "tmpdir"
@@ -43,6 +46,11 @@ facts = {
   "folder" => File.basename(__dir__),
 }
 facts["appdir"] = File.basename(ENV.fetch("APPDIR")) if ENV.key?("APPDIR")
+if defined?(RubyVM::YJIT.enable)
+  RubyVM::YJIT.enable
+  200.times { [1, 2, 3].map { |number| number * 2 }.sum }
+  facts["yjit"] = RubyVM::YJIT.runtime_stats.fetch(:inline_code_size).positive?
+end
 if Gem.win_platform?
   require "fiddle"
 

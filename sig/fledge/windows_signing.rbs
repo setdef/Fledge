@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class WindowsSigning
+    TIMESTAMP: String
+    EXTENSIONS: Array[String]
+    INSTALL: String
+
+    @thumbprint: String
+    @env: Runtimes::_Env
+
+    def initialize: (String thumbprint, ?env: Runtimes::_Env) -> void
+
+    def arguments: () -> Array[String]
+
+    def sign_folder: (String folder) -> void
+
+    def command_line: () -> String
+
+    def self.signtool: (Runtimes::_Env env) -> String
+  end
+end

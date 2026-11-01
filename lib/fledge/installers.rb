@@ -9,6 +9,7 @@ require_relative "app_image"
 require_relative "config"
 require_relative "dmg"
 require_relative "nsis"
+require_relative "signing"
 
 module Fledge
   # Which installers <tt>fledge build</tt> writes for an app, and where.
@@ -89,10 +90,18 @@ module Fledge
       "#{base}#{SUFFIX.fetch(format)}"
     end
 
+    # Writes every installer +app+ gets on +platform+ (Installers.formats)
+    # from its built folder +folder+, and returns their paths.
+    def self.write_all(app, platform, folder:, tools:, signing: nil)
+      formats(app, platform).map { |format| write(format, app:, folder:, tools:, signing:) }
+    end
+
     # Writes +app+'s +format+ installer from its built folder +folder+,
     # beside it, and returns its path.
     #
     # [tools] The runtime's tools folder, or +nil+ when it has none.
+    # [signing] The signer that signs the installer (Fledge::Signing.for),
+    #           or +nil+.
     #
     # === Example
     #
@@ -106,13 +115,13 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(format, app:, folder:, tools:)
+    def self.write(format, app:, folder:, tools:, signing: nil)
       to = file_name(format, folder)
       identity = app.identity
       case format
-      when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:)
+      when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:, signing: (signing if signing.is_a?(MacSigning)))
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
-      else Nsis.new(identity:, folder:, to:).write(tools)
+      else Nsis.new(identity:, folder:, to:, signing: (signing if signing.is_a?(WindowsSigning))).write(tools)
       end
     end
   end

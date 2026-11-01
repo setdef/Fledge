@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge build --sign IDENTITY` signs a desktop app with your own identity, after Fledge has written everything into it and before it archives it: on macOS, with a code signing identity from your keychain (or `-` for ad hoc), every Mach-O program and library, the bundle, and the disk image, by `codesign`, with the hardened runtime, a secure timestamp, and the entitlements `com.apple.security.cs.allow-unsigned-executable-memory` (for YJIT) and `com.apple.security.cs.disable-library-validation`; on Windows, with the SHA-1 thumbprint of a code signing certificate in your store, every `.exe`, `.dll`, and `.so`, and the NSIS setup program and its uninstaller, by the Windows SDK's `signtool`, with SHA-256 and a timestamp from DigiCert's server. Linux and phone builds refuse it. Unsigned builds are the default, as before. Fledge does not notarize.
+
 ## [0.0.1.pre.13] - 2026-11-01
 
 Nothing an app's developer or its users can observe changed: this release proves, on every platform, that Ctrl-C and a closed terminal end a built console app as they end `ruby main.rb`, and that a Windows console's code page reaches it as it reaches `ruby.exe`.

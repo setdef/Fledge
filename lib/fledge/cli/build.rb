@@ -19,6 +19,7 @@ require_relative "../native_build"
 require_relative "../platform"
 require_relative "../runtime_contents"
 require_relative "../runtimes"
+require_relative "../signing"
 require_relative "build/options"
 
 module Fledge
@@ -101,7 +102,7 @@ module Fledge
         app = App.at(options.path)
         host = Platform.local(@host)
         phone = MobilePlatform.find(options.phone.to_s)
-        phone ? build_project(app, phone, host, options.out) : build(app, host, options.out)
+        phone ? build_project(app, phone, host, options.out) : build(app, host, options.out, Signing.for(host, options.sign, env: @env))
         0
       rescue UsageError
         raise
@@ -110,7 +111,7 @@ module Fledge
         1
       end
 
-      private def build(app, platform, out)
+      private def build(app, platform, out, signing)
         out_dir = File.expand_path(out)
         raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
 
@@ -120,7 +121,7 @@ module Fledge
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
           runtime = runtimes.archive(platform)
           files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
-          assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:)
+          assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:)
           [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
         end
       end

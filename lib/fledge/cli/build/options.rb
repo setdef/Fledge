@@ -13,12 +13,13 @@ module Fledge
     class Build
       # What <tt>fledge build</tt>'s arguments ask for, read as GNU's
       # conventions read options: the <tt>--out</tt> folder, the phone to
-      # build a project for, if any, and the one PATH, with <tt>--</tt>
+      # build a project for, if any, the identity <tt>--sign</tt> signs a
+      # desktop app with (ADR 016), and the one PATH, with <tt>--</tt>
       # ending the options. A desktop build is for the computer it runs on
       # (ADR 010); a phone's, which no phone builds, is named first, as
       # Briefcase's <tt>briefcase create iOS</tt> and Flutter's
       # <tt>flutter build ios</tt> name it (ADR 012).
-      Options = Data.define(:out, :path, :phone) do
+      Options = Data.define(:out, :path, :phone, :sign) do
         # The options +argv+ gives. A first operand that names a phone
         # (Fledge::MobilePlatform.names) is the phone; a folder of that
         # name is <tt>./ios</tt>, or follows <tt>--</tt>. Raises
@@ -29,11 +30,15 @@ module Fledge
           out = DEFAULT_OUT
           paths = [] # : Array[String]
           phone = nil # : String?
+          sign = nil # : String?
           arguments = argv.dup
           while (argument = arguments.shift)
             case argument
             when "-o", "--out" then out = value_of(argument, arguments, "DIR")
             when /\A--out=(.+)\z/ then out = ::Regexp.last_match(1).to_s
+            when "--sign" then sign = value_of(argument, arguments, "IDENTITY")
+            when /\A--sign=(.+)\z/ then sign = ::Regexp.last_match(1).to_s
+            when "--sign=" then value_of("--sign", [], "IDENTITY")
             when *MobilePlatform.names
               if phone || !paths.empty? then paths << argument
               else phone = argument
@@ -47,13 +52,15 @@ module Fledge
           end
           raise UsageError, "takes one PATH, but got #{paths.map { |p| "'#{p}'" }.join(' and ')}" if paths.size > 1
 
-          new(out:, path: paths.first || ".", phone:)
+          raise UsageError, "--sign signs desktop apps; sign a phone's app with Xcode or Gradle" if sign && phone
+
+          new(out:, path: paths.first || ".", phone:, sign:)
         end
 
         # The value after +option+ in +arguments+, which names a +name+.
         private_class_method def self.value_of(option, arguments, name)
           value = arguments.shift
-          raise UsageError, "#{option} needs a #{name}" if value.nil? || value.empty?
+          raise UsageError, "#{option} needs #{name.match?(/\A[AEIOU]/) ? 'an' : 'a'} #{name}" if value.nil? || value.empty?
 
           value
         end

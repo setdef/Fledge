@@ -36,6 +36,7 @@ module FakeRuntime
 "x86_64-linux-musl" => "x86_64-linux-musl",
 "aarch64-linux-musl" => "aarch64-linux-musl",
 "x64-mingw-ucrt" => "x64-mingw-ucrt",
+"aarch64-mingw-ucrt" => "aarch64-mingw-ucrt",
 "ios" => "arm64-darwin",
 "android" => "aarch64-linux-android",
 }.freeze

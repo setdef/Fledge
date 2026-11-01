@@ -163,9 +163,11 @@
 #                        PLATFORM is this computer's: arm64-darwin,
 #                        x86_64-linux, aarch64-linux,
 #                        x86_64-linux-musl, aarch64-linux-musl,
-#                        x64-mingw-ucrt. A -linux app runs on Linux
-#                        with glibc 2.39 or newer, and a -linux-musl
-#                        one on Linux with musl, such as Alpine.
+#                        x64-mingw-ucrt, aarch64-mingw-ucrt. A -linux
+#                        app runs on Linux with glibc 2.39 or newer, a
+#                        -linux-musl one on Linux with musl, such as
+#                        Alpine, and aarch64-mingw-ucrt on Windows 11
+#                        on ARM64.
 #                        NAME is the gemspec's name, or else ROOT's
 #                        folder name, camelized (my_cool_app is
 #                        MyCoolApp), unless fledge.yml names it. NAME

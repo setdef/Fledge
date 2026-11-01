@@ -25,6 +25,12 @@ Each app carries the same facts in `notices/NOTICES.txt` (every component, its l
 
 **Fledge's own files** in an app are `launcher` and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb` (the first is the program your app's users run, renamed for your app). They are Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
 
+## On iOS and Android
+
+For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and Fledge launcher and RubyGems defaults are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so the notices and Fledge's own code are all they ask of you.
+
+**Fledge's own code** in a phone's app is Fledge launcher and RubyGems defaults, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the GNU Affero General Public License, version 3 or later, as the desktop launcher is, with the same terms above. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
+
 ## Your app's own gems
 
 Fledge takes no position on the licenses of the gems your app depends on. Which gems your app uses, and what their licenses ask of you, are your choice and your responsibility, as they are however else you ship a Ruby app. `fledge build` ships every gem your `Gemfile.lock` locks for each platform (leaving out its `development` and `test` groups), whatever its license, whether or not it declares one, and whatever its compiled files hold. Everything else on this page, the policy and the obligations alike, is about what Fledge itself puts into your app: its runtime.
@@ -160,6 +166,56 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.9-x64-mingw-ucrt-lgpl-sources.tar.gz` in Fledge's release.
+
+## iOS and iPadOS (arm64-ios, arm64-ios-simulator)
+
+| Component | Version | License | How it ships |
+|---|---|---|---|
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.9 | `AGPL-3.0-or-later` | the program the app's user runs, and {FledgeRuby.xcframework/ios-arm64/,FledgeRuby.xcframework/ios-arm64-simulator/}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge's embedding API, and the library and packages it is built into | 0.0.1.pre.9 | `AGPL-3.0-or-later` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
+| libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
+| Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
+| OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+
+Its 83 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+
+- `BSD-2-Clause`: rexml, rss
+- `BSD-2-Clause OR Ruby`: power_assert, rbs
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `Ruby`: json, readline
+- `Ruby AND BSD-3-Clause`: reline
+- `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
+
+**What you must do on this platform:** Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform.
+
+## Android (aarch64-linux-android, x86_64-linux-android)
+
+| Component | Version | License | How it ships |
+|---|---|---|---|
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.9 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge's embedding API, and the library and packages it is built into | 0.0.1.pre.9 | `AGPL-3.0-or-later` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
+| libffi, compiled into the Android runtime's library for the fiddle gem | 3.5.2 | `MIT` | compiled into libfledgeruby.so |
+| libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
+| LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's library by the NDK | r30 | `Apache-2.0 WITH LLVM-exception` | compiled into libfledgeruby.so |
+| Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
+| OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+
+Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+
+- `BSD-2-Clause`: rexml, rss
+- `BSD-2-Clause OR Ruby`: power_assert, rbs
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `Ruby`: json, readline
+- `Ruby AND BSD-3-Clause`: reline
+- `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
+
+**What you must do on this platform:** Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform.
 
 ## Libraries under the LGPL
 

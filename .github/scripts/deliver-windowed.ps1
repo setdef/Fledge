@@ -51,9 +51,12 @@ if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing a
 # How Windows runs it, as its shell says (SHGetFileInfo with
 # SHGFI_EXETYPE): a Win32 program (PE in the low word) that asks for a
 # Windows version (the high word) is a GUI one; a console one asks none.
+# The shell's ExtractIconExW, below, counts the program's icons.
 Add-Type -Namespace Fledge -Name Shell -MemberDefinition @'
 [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
 public static extern IntPtr SHGetFileInfo(string path, uint attributes, IntPtr info, uint size, uint flags);
+[DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+public static extern uint ExtractIconExW(string file, int index, System.IntPtr[] large, System.IntPtr[] small, uint count);
 '@
 $type = [Fledge.Shell]::SHGetFileInfo($app, 0, [IntPtr]::Zero, 0, 0x2000).ToInt64()
 Expect 'the kind of program Windows runs' $(if (($type -band 0xFFFF) -eq 0x4550 -and ($type -shr 16) -ne 0) { 'GUI' } else { "not GUI ($type)" }) 'GUI'
@@ -72,10 +75,6 @@ Expect 'the file version numbers' "$($info.FileMajorPart).$($info.FileMinorPart)
 # The icon Explorer shows: how many icon groups the program holds, and
 # the icon itself, whose middle is the white of the example's bird.
 Add-Type -AssemblyName System.Drawing
-Add-Type -Namespace Fledge -Name Shell -MemberDefinition @'
-[DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-public static extern uint ExtractIconExW(string file, int index, System.IntPtr[] large, System.IntPtr[] small, uint count);
-'@
 Expect 'the number of icons' ([Fledge.Shell]::ExtractIconExW($app, -1, $null, $null, 0)) 1
 $pixel = [Drawing.Icon]::ExtractAssociatedIcon($app).ToBitmap().GetPixel(12, 20)
 if ($pixel.R -lt 200 -or $pixel.G -lt 200 -or $pixel.B -lt 200) { Fail "the icon is not the app's: its pixel at (12, 20) is $pixel" }

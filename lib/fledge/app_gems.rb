@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require "fileutils"
 require "tmpdir"
 require_relative "binary"
 require_relative "entry"
@@ -143,8 +144,14 @@ module Fledge
     private def readers(platform, runtime)
       return yield Binary::Readers.local(platform.os) unless platform.windows?
 
-      Dir.mktmpdir("fledge-readobj") do |dir|
+      dir = Dir.mktmpdir("fledge-readobj")
+      begin
         yield Binary::Readers.local(platform.os, readobj: runtime.tool(READOBJ, into: dir))
+      ensure
+        # Windows on ARM's x86-64 emulator may hold llvm-readobj.exe open
+        # for a while after it exits, as with makensis (Fledge::Nsis); what
+        # is left is the system's temporary folder's to clear (ADR 018).
+        FileUtils.rm_rf(dir)
       end
     end
 

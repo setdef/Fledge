@@ -107,7 +107,7 @@ module FakeRuntime
     return @windows if defined?(@windows)
 
     runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
-    archive = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")))
+    archive = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.local))
     @windows = File.file?(archive) ? unpack_windows(archive) : nil
   end
 

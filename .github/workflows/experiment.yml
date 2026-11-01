@@ -1,166 +1,83 @@
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
-name: Spike (musl CI)
-'on':
+# A spike for Plan 002's Windows on ARM story. Not part of trunk.
+name: Spike (Windows on ARM)
+on:
   push:
-    branches:
-    - experiment/signing
+    branches: ["experiment/signing"]
 permissions:
   contents: read
-defaults:
-  run:
-    shell: bash
-env:
-  ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
-  ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
-  BUNDLE_FROZEN: 'true'
 jobs:
-  runtime-musl:
-    name: Runtime (${{ matrix.platform }})
-    runs-on: "${{ matrix.os }}"
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - os: ubuntu-24.04
-          platform: x86_64-linux-musl
-        - os: ubuntu-24.04-arm
-          platform: aarch64-linux-musl
-    steps:
-    - uses: actions/checkout@v4
-    - &1
-      name: Fledge at 81bd656 with musl.patch
-      run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 81bd656 && git apply ../musl.patch && cd .. && mv musl.patch /tmp/ && shopt
-        -s dotglob && cp -R f/* . && rm -rf f
-    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-      with:
-        path: tmp/downloads
-        key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml')
-          }}
-    - name: Build the runtime in Alpine
-      env:
-        PLATFORM: "${{ matrix.platform }}"
-      run: |
-        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
-        export SOURCE_DATE_EPOCH
-        docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e SOURCE_DATE_EPOCH -e PLATFORM "$ALPINE_RUBY" \
-          sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
-    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-      with:
-        name: runtime-${{ matrix.platform }}
-        path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
-        if-no-files-found: error
-        retention-days: 14
-    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-      if: failure()
-      with:
-        name: runtime-${{ matrix.platform }}-logs
-        path: tmp/runtime/${{ matrix.platform }}/logs
-        retention-days: 14
-  parity-musl:
-    name: Parity (${{ matrix.platform }})
-    needs: runtime-musl
-    runs-on: "${{ matrix.os }}"
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - os: ubuntu-24.04
-          platform: x86_64-linux-musl
-        - os: ubuntu-24.04-arm
-          platform: aarch64-linux-musl
-    steps:
-    - uses: actions/checkout@v4
-    - *1
-    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-      with:
-        name: runtime-${{ matrix.platform }}
-        path: runtimes
-    - name: Check parity with ruby main.rb and bundle exec, in Alpine
-      run: docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes
-        "$ALPINE_RUBY" sh -c '.github/scripts/alpine-packages.sh apps && git config
-        --global --add safe.directory /fledge && ruby tasks/parity.rb'
-  build-musl:
-    name: Build (${{ matrix.platform }})
-    needs: runtime-musl
-    runs-on: "${{ matrix.os }}"
+  runtime:
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - os: ubuntu-24.04
-          platform: x86_64-linux-musl
-        - os: ubuntu-24.04-arm
-          platform: aarch64-linux-musl
     steps:
-    - uses: actions/checkout@v4
-    - *1
-    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-      with:
-        name: runtime-${{ matrix.platform }}
-        path: runtimes
-    - name: Build the examples in Alpine, and run my_cool_app with bundle exec
-      run: |
-        cat > "$RUNNER_TEMP/build-apps.sh" <<'SH'
-        set -eu
-        .github/scripts/alpine-packages.sh apps
-        git config --global --add safe.directory /fledge
-        ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-        for app in examples/hello test/fixtures/parity test/fixtures/console /tmp/parity-bundle examples/my_cool_app examples/windowed_app; do
-          ruby -I lib exe/fledge build -o dist "$app"
-        done
-        (cd examples/my_cool_app && bundle install)
-        (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
-        cat dist/my_cool_app.expected
-        SH
-        docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes \
-          -e BUNDLE_FROZEN "$ALPINE_RUBY" sh /scripts/build-apps.sh
-    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-      with:
-        name: apps-${{ matrix.platform }}
-        path: |
-          dist/*-${{ matrix.platform }}.tar.gz
-          dist/*-${{ matrix.platform }}.AppImage
-          dist/*.expected
-        if-no-files-found: error
-        retention-days: 14
-  delivery-musl:
-    name: Delivery (${{ matrix.platform }}, alpine:3.24)
-    needs: build-musl
-    runs-on: "${{ matrix.os }}"
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - os: ubuntu-24.04
-          platform: x86_64-linux-musl
-        - os: ubuntu-24.04-arm
-          platform: aarch64-linux-musl
+      - uses: actions/checkout@v4
+      - name: Fledge at ac0282a with winarm.patch
+        run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout -q ac0282a && git apply ../winarm.patch
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.9"
+      - name: Build the runtime
+        working-directory: f
+        run: ruby tasks/runtime_builder.rb aarch64-mingw-ucrt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-aarch64-mingw-ucrt
+          path: f/tmp/runtime/fledge-runtime-*-aarch64-mingw-ucrt*
+  arm:
+    needs: runtime
+    runs-on: windows-11-arm
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
     steps:
-    - uses: actions/checkout@v4
-    - *1
-    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-      with:
-        name: apps-${{ matrix.platform }}
-        path: delivered
-    - name: Run hello, my_cool_app, the console probe, and windowed_app on Alpine
-        with no Ruby installed
-      env:
-        PLATFORM: "${{ matrix.platform }}"
-      run: |
-        cat > "$RUNNER_TEMP/deliver-all.sh" <<'SH'
-        set -eu
-        .github/scripts/alpine-packages.sh deliver
-        d=delivered
-        .github/scripts/deliver.sh "$d/Hello-$PLATFORM.tar.gz" "$d/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.0.9 on $PLATFORM" --no-ruby-installed
-        .github/scripts/deliver.sh "$d/MyCoolApp-$PLATFORM.tar.gz" "$d/ParityBundle-$PLATFORM.tar.gz" "$(cat "$d/my_cool_app.expected")" --no-ruby-installed
-        .github/scripts/deliver-console.sh "$d/Console-$PLATFORM.tar.gz"
-        .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
-        .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract
-        SH
-        docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$RUNNER_TEMP:/scripts" -w /work -e PLATFORM "$ALPINE" sh /scripts/deliver-all.sh
+      - uses: actions/checkout@v4
+      - name: Fledge at ac0282a with winarm.patch
+        shell: bash
+        run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout -q ac0282a && git apply ../winarm.patch
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.9"
+      - run: |
+          ruby -v
+          ruby -e 'p Gem::Platform.local.to_s, RbConfig::CONFIG["arch"]'
+          Get-Command signtool -ErrorAction SilentlyContinue
+          Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+          Get-Command 7z, tar -ErrorAction SilentlyContinue
+      - uses: actions/download-artifact@v4
+        with:
+          name: runtime-aarch64-mingw-ucrt
+          path: runtimes
+      - name: Build hello, the probes, and windowed_app
+        working-directory: f
+        shell: bash
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ github.workspace }}/runtimes
+        run: |
+          for app in examples/hello test/fixtures/parity test/fixtures/console examples/windowed_app; do
+            ruby -I lib exe/fledge build -o dist "$app"
+          done
+          ls -l dist
+      - name: Deliver hello
+        working-directory: f
+        run: pwsh -NoProfile -File .github/scripts/deliver.ps1 -Archive dist/Hello-aarch64-mingw-ucrt.zip -Probe dist/Parity-aarch64-mingw-ucrt.zip -Platform aarch64-mingw-ucrt -Expected "Hello from Ruby 4.0.9 on aarch64-mingw-ucrt"
+      - name: Console
+        if: always()
+        working-directory: f
+        run: pwsh -NoProfile -File .github/scripts/deliver-console.ps1 -Archive dist/Console-aarch64-mingw-ucrt.zip -Windowed "dist/Hello Window-aarch64-mingw-ucrt.zip"
+      - name: Windowed
+        if: always()
+        working-directory: f
+        run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "dist/Hello Window-aarch64-mingw-ucrt.zip"
+      - name: Installer
+        if: always()
+        working-directory: f
+        run: pwsh -NoProfile -File .github/scripts/deliver-installer.ps1 -Installer "dist/Hello Window-aarch64-mingw-ucrt-setup.exe"
+      - name: Parity
+        if: always()
+        working-directory: f
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ github.workspace }}/runtimes
+        run: ruby tasks/parity.rb aarch64-mingw-ucrt

@@ -1,0 +1,334 @@
+diff --git a/lib/fledge/platform.rb b/lib/fledge/platform.rb
+index baec065..7fe01ef 100644
+--- a/lib/fledge/platform.rb
++++ b/lib/fledge/platform.rb
+@@ -48,7 +48,7 @@ module Fledge
+   class Platform < Data.define(:name)
+     # The names of the platforms Fledge has runtimes for, in the order
+     # it lists them.
+-    NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt].freeze
++    NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt aarch64-mingw-ucrt].freeze
+ 
+     # The oldest macOS an arm64-darwin runtime runs on: rv-ruby's Sonoma
+     # build, and the launcher built with -mmacosx-version-min=14.0 (ADR
+diff --git a/runtime/licenses.yml b/runtime/licenses.yml
+index 54dd1a8..e22d296 100644
+--- a/runtime/licenses.yml
++++ b/runtime/licenses.yml
+@@ -64,6 +64,7 @@ platforms:
+   x86_64-linux: {os: linux, arch: x86_64-linux, gem_arch: x86_64-linux, so: so}
+   aarch64-linux: {os: linux, arch: aarch64-linux, gem_arch: aarch64-linux, so: so}
+   x64-mingw-ucrt: {os: windows, arch: x64-mingw-ucrt, gem_arch: x64-mingw-ucrt, so: so}
++  aarch64-mingw-ucrt: {os: windows, arch: aarch64-mingw-ucrt, gem_arch: aarch64-mingw-ucrt, so: so}
+   # iOS's Ruby reports arm64-darwin on devices and in the Simulator, and
+   # each XCFramework slice carries its own (ADR 011, section 2); Android's
+   # one tree holds each ABI's arch folder, named for its platform.
+@@ -112,7 +113,7 @@ components:
+     download: https://github.com/setdef/Fledge
+     notice: fledge
+     ships: the program the app's user runs, and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb
+-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
++    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files:
+       - launcher
+       - launcher.exe
+@@ -209,7 +210,7 @@ components:
+     download: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0
+     notice: mingw-w64
+     ships: compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     embedded:
+       - files: [launcher.exe, launcherw.exe, "{prefix}bin/*.{dll,exe}", "{prefix}lib/ruby/**/*.{dll,so}"]
+ 
+@@ -220,7 +221,7 @@ components:
+     kind: program
+     download: https://github.com/mstorsjo/llvm-mingw/releases/tag/20261020
+     ships: compiled into launcher.exe and launcherw.exe
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     embedded:
+       - files: [launcher.exe, launcherw.exe]
+ 
+@@ -257,12 +258,12 @@ components:
+     kind: shared_library
+     download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
+     notice: openssl
+-    ships: shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/
+-    platforms: [x64-mingw-ucrt]
+-    files: ["{prefix}lib/ruby/4.0.0/{arch}/lib{crypto,ssl}-3-x64.dll", "{prefix}lib/ruby/4.0.0/lib/{engines-3,ossl-modules}/*.dll"]
+-    binaries: ["{prefix}lib/ruby/4.0.0/{arch}/lib{crypto,ssl}-3-x64.dll", "{prefix}lib/ruby/4.0.0/lib/{engines-3,ossl-modules}/*.dll"]
++    ships: shared libraries in ruby/lib/ruby/4.0.0/{arch}/ and ruby/lib/ruby/4.0.0/lib/
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
++    files: ["{prefix}lib/ruby/4.0.0/{arch}/lib{crypto,ssl}-3-{x64,arm64}.dll", "{prefix}lib/ruby/4.0.0/lib/{engines-3,ossl-modules}/*.dll"]
++    binaries: ["{prefix}lib/ruby/4.0.0/{arch}/lib{crypto,ssl}-3-{x64,arm64}.dll", "{prefix}lib/ruby/4.0.0/lib/{engines-3,ossl-modules}/*.dll"]
+     embedded:
+-      - files: ["{prefix}lib/ruby/4.0.0/{arch}/libcrypto-3-x64.dll"]
++      - files: ["{prefix}lib/ruby/4.0.0/{arch}/libcrypto-3-{x64,arm64}.dll"]
+         evidence: "OpenSSL 3.6.5 "
+ 
+   - id: libyaml
+@@ -299,7 +300,7 @@ components:
+     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+     notice: libyaml
+     ships: a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: ["{prefix}lib/ruby/4.0.0/{arch}/libyaml-0-2.dll"]
+     binaries: ["{prefix}lib/ruby/4.0.0/{arch}/libyaml-0-2.dll"]
+     embedded:
+@@ -447,7 +448,7 @@ components:
+     notice: nsis
+     source: nsis
+     ships: tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: ["tools/nsis/**"]
+     binaries: ["tools/nsis/Bin/{makensis.exe,zlib1.dll}", "tools/nsis/Stubs/{lzma_solid,zlib}-x86-unicode", "tools/nsis/Plugins/x86-unicode/*.dll",
+       "tools/nsis/Contrib/UIs/*.exe"]
+@@ -460,7 +461,7 @@ components:
+     download: https://github.com/electron/rcedit/releases/tag/v2.0.0
+     notice: rcedit
+     ships: tools/rcedit.exe, which fledge build runs on the app's program, and never in its folder or archive
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: [tools/rcedit.exe]
+     binaries: [tools/rcedit.exe]
+     sha256:
+@@ -478,7 +479,7 @@ components:
+     download: https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.4
+     notice: llvm
+     ships: tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: [tools/llvm-readobj.exe]
+     binaries: [tools/llvm-readobj.exe]
+     sha256:
+@@ -492,7 +493,7 @@ components:
+     download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+     notice: zlib
+     ships: linked into tools/llvm-readobj.exe
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     embedded:
+       - files: [tools/llvm-readobj.exe]
+         evidence: "deflate 1.3.2 "
+@@ -507,7 +508,7 @@ components:
+     download: https://github.com/facebook/zstd/releases/tag/v1.5.7
+     notice: zstd
+     ships: linked into tools/llvm-readobj.exe
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     embedded:
+       - files: [tools/llvm-readobj.exe]
+         evidence: "Unknown frame descriptor"
+@@ -520,7 +521,7 @@ components:
+     download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+     notice: zlib
+     ships: a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib1.dll"]
+     binaries: ["{prefix}lib/ruby/4.0.0/{arch}/zlib1.dll"]
+     embedded:
+@@ -575,7 +576,7 @@ components:
+     download: https://github.com/libffi/libffi/releases/tag/v3.8.0
+     notice: libffi
+     ships: a shared library beside the fiddle gem's extension
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+     binaries: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+     embedded:
+@@ -590,7 +591,7 @@ components:
+     download: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0/mingw-w64-libraries/winpthreads
+     notice: mingw-w64
+     ships: a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/4.0.0/{arch}/libwinpthread-1.dll"]
+     binaries: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/4.0.0/{arch}/libwinpthread-1.dll"]
+ 
+@@ -639,6 +640,25 @@ components:
+     sha256:
+       "{prefix}bin/ruby_builtin_dlls/libgmp-10.dll": c2567ccf3f410c3411ba7cd4b7ba14f393a0e70a1d0c0593297df6706b5fba96
+ 
++
++  # RubyInstaller's ARM64 Ruby ships MSYS2's CLANGARM64 build of the same release.
++  - id: gmp
++    name: GNU MP, which Ruby's Integer uses for arithmetic on large numbers
++    version: 6.3.0
++    license: LGPL-3.0-or-later OR GPL-2.0-or-later
++    kind: shared_library
++    download: https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz
++    notice: gmp
++    source: gmp
++    ships: ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads
++    platforms: [aarch64-mingw-ucrt]
++    files: ["{prefix}bin/ruby_builtin_dlls/libgmp-10.dll"]
++    binaries: ["{prefix}bin/ruby_builtin_dlls/libgmp-10.dll"]
++    # MSYS2's mingw-w64-ucrt-x86_64-gmp 6.3.0-2 holds this very file, so
++    # its source package is this file's corresponding source.
++    sha256:
++      "{prefix}bin/ruby_builtin_dlls/libgmp-10.dll": bfc6046e374a27838b54bde5602851c7cc426ac9438cb65f019b9e67a961f47c
++
+   - id: msys2-keyring
+     name: MSYS2's package-signing keyring, which RubyInstaller ships for ridk
+     version: 1~20240410-1
+@@ -646,7 +666,7 @@ components:
+     kind: files
+     download: https://github.com/msys2/MSYS2-keyring
+     ships: ruby/packages/ (only in RubyInstaller's whole tree; a runtime leaves it out)
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: ["{prefix}packages/**"]
+ 
+   - id: ca-certificates
+@@ -668,7 +688,7 @@ components:
+     download: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-ca-certificates
+     notice: ca-certificates
+     ships: ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files: ["{prefix}lib/ruby/4.0.0/etc/ssl/cert.pem"]
+ 
+   - id: rubyinstaller
+@@ -679,7 +699,7 @@ components:
+     download: https://github.com/oneclick/rubyinstaller2/tree/RubyInstaller-4.0.9-1
+     notice: rubyinstaller
+     ships: the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/)
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     files:
+       - "{prefix}LICENSE.txt"
+       - "{prefix}lib/ruby/site_ruby/**"
+@@ -709,7 +729,7 @@ components:
+     download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+     notice: ruby
+     ships: compiled into ruby/bin/x64-ucrt-ruby400.dll
+-    platforms: [x64-mingw-ucrt]
++    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+     embedded:
+       - files: ["{prefix}bin/x64-ucrt-ruby400.dll"]
+ 
+@@ -722,7 +742,7 @@ components:
+     download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+     notice: ruby
+     ships: "compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/"
+-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, ios, android]
++    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, aarch64-mingw-ucrt, ios, android]
+     fallback: true
+     embedded:
+       - files: [launcher, "{prefix}bin/ruby", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+diff --git a/runtime/sources.yml b/runtime/sources.yml
+index b38b43d..e6087b7 100644
+--- a/runtime/sources.yml
++++ b/runtime/sources.yml
+@@ -58,6 +58,19 @@ ruby:
+           sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
+           fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
+           expires: "2027-06-15"
++    # RubyInstaller's build for Windows on ARM64 (ADR 018), signed with
++    # the same key.
++    aarch64-mingw-ucrt:
++      url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z
++      sha256: d13273600bff5ca349f3866a0492517b144510ceb916525e891e2e1a3f728b78
++      signature:
++        url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z.asc
++        sha256: e91c5b653c541a33ee6fb290dd2e3b3fbf651d64ab9a6dc507959c47be911d3f
++        key:
++          url: https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc
++          sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
++          fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
++          expires: "2027-06-15"
+ 
+ # llvm-mingw, the compiler that builds the Windows launcher, release
+ # 20261020, its UCRT flavor, one asset per computer that can build a
+@@ -114,6 +127,14 @@ gmp:
+     url: https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-gmp-6.3.0-2-any.pkg.tar.zst
+     sha256: e82a75968a556484a50084578238a84eb60fb93e34986fd6695c537975bd39ea
+   dll_sha256: c2567ccf3f410c3411ba7cd4b7ba14f393a0e70a1d0c0593297df6706b5fba96
++  # The same source's build for Windows on ARM64, in MSYS2's CLANGARM64
++  # environment, whose libgmp-10.dll RubyInstaller's ARM64 Ruby ships
++  # byte for byte (ADR 018).
++  arm64:
++    package:
++      url: https://repo.msys2.org/mingw/clangarm64/mingw-w64-clang-aarch64-gmp-6.3.0-2-any.pkg.tar.zst
++      sha256: edfaa0517787819ec3ad5da2cc4d691563962a576d0102e91eea507abdc3bdfb
++    dll_sha256: bfc6046e374a27838b54bde5602851c7cc426ac9438cb65f019b9e67a961f47c
+ 
+ # Inputs that no runtime ships, used only by CI's proofs that whoever
+ # receives an app can replace its LGPL libraries (ci.yml: Replace
+diff --git a/tasks/license_audit/source_bundle.rb b/tasks/license_audit/source_bundle.rb
+index 2e19d6f..1dbe326 100644
+--- a/tasks/license_audit/source_bundle.rb
++++ b/tasks/license_audit/source_bundle.rb
+@@ -191,24 +191,33 @@ class LicenseAudit
+       BUILD
+     end
+ 
++    # What MSYS2 calls each Windows target's environment, its folder, and
++    # its compiler's triple.
++    GMP_BUILDS = {
++      "x64-mingw-ucrt" => { "environment" => "UCRT64", "folder" => "ucrt64", "triple" => "x86_64-w64-mingw32" },
++      "aarch64-mingw-ucrt" => { "environment" => "CLANGARM64", "folder" => "clangarm64", "triple" => "aarch64-w64-mingw32" },
++    }.freeze
++
+     private def gmp_text(pin)
+-      package = pin.fetch("package")
++      build = GMP_BUILDS.fetch(@platform)
++      binary = (@platform == "aarch64-mingw-ucrt") ? pin.fetch("arm64") : pin
++      package = binary.fetch("package")
+       source = File.basename(pin.fetch("url"))
+       <<~BUILD
+         ruby/bin/ruby_builtin_dlls/libgmp-10.dll in Fledge #{@version}'s #{@platform}
+         runtime is GNU MP #{pin.fetch('version')} exactly as RubyInstaller ships it. It is byte
+-        for byte (SHA-256 #{pin.fetch('dll_sha256')})
+-        the file ucrt64/bin/libgmp-10.dll of MSYS2's package
++        for byte (SHA-256 #{binary.fetch('dll_sha256')})
++        the file #{build.fetch('folder')}/bin/libgmp-10.dll of MSYS2's package
+         #{File.basename(package.fetch('url'))} (SHA-256 #{package.fetch('sha256')},
+         from #{package.fetch('url')}).
+ 
+         MSYS2 built that package from #{source} (SHA-256 #{pin.fetch('sha256')},
+         from #{pin.fetch('url')}), which is in this folder: GMP's release
+         tarball, MSYS2's patches, and the PKGBUILD that builds them, with
+-        makepkg-mingw in MSYS2's UCRT64 environment. Unpack it with
++        makepkg-mingw in MSYS2's #{build.fetch('environment')} environment. Unpack it with
+         tar --zstd -xf #{source}.
+ 
+-        To replace it, build GMP (modified or not) as a DLL for x86_64-w64-mingw32
++        To replace it, build GMP (modified or not) as a DLL for #{build.fetch('triple')}
+         that uses the UCRT, name it libgmp-10.dll, and copy it over the app's
+         ruby\\bin\\ruby_builtin_dlls\\libgmp-10.dll. Ruby's DLL finds it there
+         through the side-by-side assembly ruby_builtin_dlls, whose manifest names
+diff --git a/tasks/runtime_builder/windows.rb b/tasks/runtime_builder/windows.rb
+index 4f98e9e..fce0f6a 100644
+--- a/tasks/runtime_builder/windows.rb
++++ b/tasks/runtime_builder/windows.rb
+@@ -19,7 +19,8 @@ class RuntimeBuilder
+   # (runtime/launcher/windows.c), so it needs Ruby's headers to build,
+   # and nothing to link.
+   class Windows < Recipe
+-    TARGET = "x86_64-w64-mingw32"
++    # The triple llvm-mingw compiles each Windows target's launcher for.
++    TARGETS = { "x64-mingw-ucrt" => "x86_64-w64-mingw32", "aarch64-mingw-ucrt" => "aarch64-w64-mingw32" }.freeze
+ 
+     # The PE Subsystem of a console program, which Windows gives a
+     # console, and of a GUI one, which it does not.
+@@ -165,13 +166,13 @@ class RuntimeBuilder
+       raise "#{program} imports DLLs Windows does not ship: #{foreign.join(', ')}" unless foreign.empty?
+     end
+ 
+-    private def tool(name, prefix: "#{TARGET}-")
++    private def tool(name, prefix: "#{TARGETS.fetch(@builder.platform.name)}-")
+       File.join(@toolchain, "bin", "#{prefix}#{name}")
+     end
+ 
+     private def includes(tree)
+       headers = Dir.glob(File.join(tree, "include", "ruby-*")).first or raise "#{tree} has no Ruby headers"
+-      ["-isystem", headers, "-isystem", File.join(headers, "x64-mingw-ucrt"), "-I", LAUNCHER]
++      ["-isystem", headers, "-isystem", File.join(headers, @builder.platform.name), "-I", LAUNCHER]
+     end
+ 
+     # The name of Ruby's DLL in bin\, such as x64-ucrt-ruby400.dll.

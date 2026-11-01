@@ -80,7 +80,9 @@ class MobileParity
     # probe found is justified.
     def call
       abi = adb("shell", "getprop", "ro.product.cpu.abi").strip
-      device = "#{abi} API #{adb('shell', 'getprop', 'ro.build.version.sdk').strip}, #{adb('shell', 'getconf', 'PAGE_SIZE').strip}-byte pages"
+      memory = adb("shell", "cat", "/proc/meminfo")[/\AMemTotal:\s+(\d+) kB/, 1].to_i / 1024
+      device = "#{abi} API #{adb('shell', 'getprop', 'ro.build.version.sdk').strip}, #{adb('shell', 'getconf', 'PAGE_SIZE').strip}-byte pages, " \
+        "#{memory} MB of memory"
       adb("logcat", "-G", "16M")
       parity = MobileParity.new(target: "#{abi.sub('arm64-v8a', 'aarch64')}-linux-android", work: @work, out: @out)
       APPS.map do |app|

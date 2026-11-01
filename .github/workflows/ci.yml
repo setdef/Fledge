@@ -388,12 +388,17 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # 4 GB of RAM, as the phones that ship 16 KB pages have at least
+      # twice that: with the emulator's default, the 16 KB system ran out
+      # of memory and its low-memory killer killed the app in front, one
+      # app in one run and another in the next.
       - name: Run the apps on the emulator
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 36
           target: ${{ matrix.target }}
           arch: x86_64
+          ram-size: 4096M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: ruby tasks/mobile_parity.rb android

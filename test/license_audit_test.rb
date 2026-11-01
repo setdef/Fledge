@@ -351,6 +351,39 @@ class LicenseAuditTest < Minitest::Test
     end
   end
 
+  # Windows on ARM64's GNU MP is MSYS2's CLANGARM64 build of the same
+  # source package, and its bundle says so (ADR 018).
+  def test_the_windows_on_arm_source_bundle_names_msys2s_clangarm64_build
+    Dir.mktmpdir do |directory|
+      downloads = File.join(directory, "downloads")
+      FileUtils.mkdir_p(downloads)
+      File.binwrite(File.join(downloads, "gmp.src.tar.zst"), "pretend gmp")
+      File.binwrite(File.join(downloads, "nsis-src.tar.bz2"), "pretend nsis")
+      sources = File.join(directory, "sources.yml")
+      File.write(sources, {
+        "nsis" => {
+          "version" => "3.13", "binary" => { "url" => "https://example.com/nsis.zip", "sha256" => "5" * 64 },
+          "source" => { "url" => "https://example.com/nsis-src.tar.bz2", "sha256" => Digest::SHA256.hexdigest("pretend nsis") },
+        },
+        "gmp" => {
+          "version" => "6.3.0", "url" => "https://example.com/gmp.src.tar.zst", "sha256" => Digest::SHA256.hexdigest("pretend gmp"),
+          "package" => { "url" => "https://example.com/ucrt64/gmp.pkg.tar.zst", "sha256" => "1" * 64 }, "dll_sha256" => "2" * 64,
+          "arm64" => { "package" => { "url" => "https://example.com/clangarm64/gmp.pkg.tar.zst", "sha256" => "3" * 64 }, "dll_sha256" => "4" * 64 },
+        },
+      }.to_yaml)
+
+      path = LicenseAudit::SourceBundle.new(platform: "aarch64-mingw-ucrt", version: "0.0.0", sources:, downloads:).write(directory)
+      top = File.join(Fledge::Archive.unpack(path, into: File.join(directory, "unpacked")), "fledge-runtime-0.0.0-aarch64-mingw-ucrt-lgpl-sources")
+      build = File.read(File.join(top, "gmp/BUILD.txt"))
+
+      assert_includes build, "clangarm64/bin/libgmp-10.dll"
+      assert_includes build, "#{'4' * 64})"
+      assert_includes build, "CLANGARM64 environment"
+      assert_includes build, "aarch64-w64-mingw32"
+      refute_includes build, "ucrt64"
+    end
+  end
+
   def test_the_command_fails_on_a_violation_unless_it_was_expected
     write("stray.txt", "hello\n")
     out = StringIO.new

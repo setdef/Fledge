@@ -174,9 +174,11 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
           # Cross-compiled; the runner's 7z unpacks RubyInstaller's archive
-          # and its gpgv checks the signature.
+          # and its gpgv checks the signature. Windows on ARM64 too (ADR 018).
           - os: ubuntu-24.04
             platform: x64-mingw-ucrt
+          - os: ubuntu-24.04
+            platform: aarch64-mingw-ucrt
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -193,7 +195,7 @@ jobs:
       # extensions, pinned to Ubuntu 24.04's build; gcc, make, perl, and
       # xz, which libxcrypt's build needs, are on the runner already.
       - name: Install patchelf
-        if: runner.os == 'Linux' && matrix.platform != 'x64-mingw-ucrt'
+        if: runner.os == 'Linux' && !endsWith(matrix.platform, '-mingw-ucrt')
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq patchelf=0.18.0-1.1build1
@@ -220,13 +222,18 @@ jobs:
       # if MSYS2's binary package of that build holds the very file the
       # runtime ships, byte for byte.
       - name: Check that MSYS2's GMP package holds the runtime's libgmp-10.dll
-        if: matrix.platform == 'x64-mingw-ucrt'
+        if: endsWith(matrix.platform, '-mingw-ucrt')
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          package=$(ruby .github/scripts/fetch_pin.rb gmp package)
+          case "$PLATFORM" in
+            x64-mingw-ucrt) package=$(ruby .github/scripts/fetch_pin.rb gmp package) folder=ucrt64 ;;
+            aarch64-mingw-ucrt) package=$(ruby .github/scripts/fetch_pin.rb gmp arm64 package) folder=clangarm64 ;;
+          esac
           mkdir -p "$RUNNER_TEMP/gmp-package"
-          tar --zstd -xf "$package" -C "$RUNNER_TEMP/gmp-package" ucrt64/bin/libgmp-10.dll
-          cmp "$RUNNER_TEMP/gmp-package/ucrt64/bin/libgmp-10.dll" tmp/runtime/x64-mingw-ucrt/stage/fledge-runtime-*/ruby/bin/ruby_builtin_dlls/libgmp-10.dll
-          sha256sum "$RUNNER_TEMP/gmp-package/ucrt64/bin/libgmp-10.dll"
+          tar --zstd -xf "$package" -C "$RUNNER_TEMP/gmp-package" "$folder/bin/libgmp-10.dll"
+          cmp "$RUNNER_TEMP/gmp-package/$folder/bin/libgmp-10.dll" tmp/runtime/"$PLATFORM"/stage/fledge-runtime-*/ruby/bin/ruby_builtin_dlls/libgmp-10.dll
+          sha256sum "$RUNNER_TEMP/gmp-package/$folder/bin/libgmp-10.dll"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -657,10 +664,19 @@ jobs:
   # with Windows' own Expand-Archive, from the .zip Windows' own tar
   # wrote, and runs Hello.exe and MyCoolApp.exe.
   test-windows:
-    name: Test (x64-mingw-ucrt)
+    name: Test (${{ matrix.platform }})
     needs: runtime
-    runs-on: windows-latest
-    timeout-minutes: 25
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 018).
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -677,7 +693,7 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: runtime-x64-mingw-ucrt
+          name: runtime-${{ matrix.platform }}
           path: ${{ runner.temp }}/runtimes
 
       # test/native_build_test.rb compiles a C gem with the runtime's Ruby,
@@ -764,6 +780,13 @@ jobs:
           - os: windows-latest
             platform: x64-mingw-ucrt
             rust: -x86_64-pc-windows-gnu
+          # Windows on ARM64 (ADR 018) builds what needs no gem compiled for
+          # it: sqlite3 publishes no aarch64-mingw-ucrt build and its source
+          # does not configure there, so no my_cool_app, gem-shaped probe,
+          # or native_app.
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+            rust: ""
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -788,6 +811,7 @@ jobs:
           ruby-version: ${{ steps.pins.outputs.ruby }}
 
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        if: matrix.platform != 'aarch64-mingw-ucrt'
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}${{ matrix.rust }}
 
@@ -803,7 +827,7 @@ jobs:
       #   ef2407b1f44cd3c23d98c5085042857761598b85 (setdef/Ferro), its step
       #   "Point bindgen at Ruby's MSYS2 headers".
       - name: Point bindgen and RubyInstaller at MSYS2
-        if: runner.os == 'Windows'
+        if: matrix.platform == 'x64-mingw-ucrt'
         run: |
           sysroot="${RI_DEVKIT//\\//}${MSYSTEM_PREFIX:?setup-ruby did not set MSYSTEM_PREFIX}"
           libclang="C:/Program Files/LLVM/bin"
@@ -834,7 +858,9 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
-          for app in examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/native_app; do
+          apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/native_app)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console examples/windowed_app)
+          for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
 
@@ -885,6 +911,7 @@ jobs:
       # What each app prints as its developer runs it, which its built app
       # must print too.
       - name: Run the examples with bundle exec
+        if: matrix.platform != 'aarch64-mingw-ucrt'
         run: |
           (cd examples/my_cool_app && bundle install)
           (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) | tee dist/my_cool_app.expected
@@ -1260,10 +1287,21 @@ jobs:
   # outside ASCII, in a clean and in a hostile environment, and checks
   # the version information each carries (.github/scripts/deliver.ps1).
   delivery-windows:
-    name: Delivery (x64-mingw-ucrt)
+    name: Delivery (${{ matrix.platform }})
     needs: build
-    runs-on: windows-latest
-    timeout-minutes: 10
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+          # Natively on Windows 11 on ARM64 (ADR 018).
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+    env:
+      PLATFORM: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1273,23 +1311,24 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: apps-x64-mingw-ucrt
+          name: apps-${{ matrix.platform }}
           path: ${{ runner.temp }}/delivered
 
       - name: Run Hello.exe as someone with no Ruby would
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/Hello-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/delivered/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
-          -Expected "Hello from Ruby 4.0.9 on x64-mingw-ucrt"
+          -Archive "$env:RUNNER_TEMP/delivered/Hello-$env:PLATFORM.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/Parity-$env:PLATFORM.zip" -Platform $env:PLATFORM
+          -Expected "Hello from Ruby 4.0.9 on $env:PLATFORM"
 
       - name: Run MyCoolApp.exe as someone with no Ruby would
+        if: matrix.platform == 'x64-mingw-ucrt'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/MyCoolApp-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Archive "$env:RUNNER_TEMP/delivered/MyCoolApp-$env:PLATFORM.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-$env:PLATFORM.zip" -Platform $env:PLATFORM
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected" -Raw).TrimEnd()
 
       # ADR 015: the console probe in a console of its own, ended by
@@ -1300,8 +1339,8 @@ jobs:
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver-console.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/Console-x64-mingw-ucrt.zip"
-          -Windowed "$env:RUNNER_TEMP/delivered/Hello Window-x64-mingw-ucrt.zip"
+          -Archive "$env:RUNNER_TEMP/delivered/Console-$env:PLATFORM.zip"
+          -Windowed "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
 
       # The windowed app (ADR 008): a GUI program with its version
       # information and icon, started as Explorer starts it, with no
@@ -1309,7 +1348,7 @@ jobs:
       # (.github/scripts/deliver-windowed.ps1).
       - name: Start Hello Window.exe as Explorer would
         shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello Window-x64-mingw-ucrt.zip"
+        run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
 
       # The NSIS installer (ADR 009): installed silently for this person,
       # its Start menu shortcut's AppUserModelID read back and matched to
@@ -1317,7 +1356,7 @@ jobs:
       # itself, and uninstalled (.github/scripts/deliver-installer.ps1).
       - name: Install Hello Window with its setup program, run it from the Start menu, and uninstall it
         shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-installer.ps1 -Installer "$env:RUNNER_TEMP/delivered/Hello Window-x64-mingw-ucrt-setup.exe"
+        run: pwsh -NoProfile -File .github/scripts/deliver-installer.ps1 -Installer "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM-setup.exe"
 
       # ADR 016: the signed build, refused by signtool on a fresh Windows
       # until it trusts the run's test certificate, then verified, every
@@ -1325,16 +1364,16 @@ jobs:
       # (.github/scripts/deliver-signed.ps1).
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: signed-x64-mingw-ucrt
+          name: signed-${{ matrix.platform }}
           path: ${{ runner.temp }}/signed
 
       - name: Verify, install, and run the signed apps
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver-signed.ps1
-          -Hello "$env:RUNNER_TEMP/signed/Hello-x64-mingw-ucrt.zip"
-          -Windowed "$env:RUNNER_TEMP/signed/Hello Window-x64-mingw-ucrt.zip"
-          -Installer "$env:RUNNER_TEMP/signed/Hello Window-x64-mingw-ucrt-setup.exe"
+          -Hello "$env:RUNNER_TEMP/signed/Hello-$env:PLATFORM.zip"
+          -Windowed "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM.zip"
+          -Installer "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM-setup.exe"
           -Certificate "$env:RUNNER_TEMP/signed/certificate.cer"
 
   # The license audit's own checks on each runtime this run built: that
@@ -1353,7 +1392,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, ios, android]
+        platform: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt, ios, android]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1391,7 +1430,7 @@ jobs:
           cmp "$tree/notices/sbom.spdx.json" "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM".spdx.json
           cmp "$tree/notices/NOTICES.txt" "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-NOTICES.txt
           case "$PLATFORM" in
-            *-linux | *-linux-musl | x64-mingw-ucrt) tar -tzvf "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-lgpl-sources.tar.gz ;;
+            *-linux | *-linux-musl | *-mingw-ucrt) tar -tzvf "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-lgpl-sources.tar.gz ;;
             *) if ls "$RUNNER_TEMP"/runtimes/*-lgpl-sources.tar.gz 2>/dev/null; then echo "::error::$PLATFORM ships no LGPL library"; exit 1; fi ;;
           esac
 
@@ -1427,7 +1466,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
+        platform: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, aarch64-mingw-ucrt]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1561,9 +1600,19 @@ jobs:
   # Another GNU MP for Windows, cross-built with the pinned llvm-mingw
   # against the UCRT, for Replace GMP to swap in.
   gmp-replacement:
-    name: Build a replacement libgmp-10.dll
+    name: Build a replacement libgmp-10.dll (${{ matrix.platform }})
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: x64-mingw-ucrt
+            triple: x86_64-w64-mingw32
+          - platform: aarch64-mingw-ucrt
+            triple: aarch64-w64-mingw32
+    env:
+      TRIPLE: ${{ matrix.triple }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1583,15 +1632,18 @@ jobs:
           tar -xJf "$(ruby .github/scripts/fetch_pin.rb replaceability gmp)" -C "$source" --strip-components=1
           export PATH="$toolchain/bin:$PATH"
           cd "$source"
-          ./configure --quiet --host=x86_64-w64-mingw32 CC=x86_64-w64-mingw32-clang CC_FOR_BUILD=cc \
+          # GMP 6.2.1's config.sub predates aarch64-w64-mingw32; llvm-mingw's
+          # own autoconf scripts know it.
+          cp /usr/share/misc/config.sub configfsf.sub 2>/dev/null || true
+          ./configure --quiet --host="$TRIPLE" CC="$TRIPLE-clang" CC_FOR_BUILD=cc \
             --enable-shared --disable-static --disable-assembly
           make --quiet -j"$(nproc)" > /dev/null
           cp .libs/libgmp-10.dll "$RUNNER_TEMP/gmp-dll/"
-          x86_64-w64-mingw32-objdump -p .libs/libgmp-10.dll | grep 'DLL Name'
+          "$TRIPLE-objdump" -p .libs/libgmp-10.dll | grep 'DLL Name'
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: gmp-replacement
+          name: gmp-replacement-${{ matrix.platform }}
           path: ${{ runner.temp }}/gmp-dll/libgmp-10.dll
           if-no-files-found: error
           retention-days: 14
@@ -1602,10 +1654,18 @@ jobs:
   # the replacement (Integer::GMP_VERSION changes) and compute the same
   # big numbers (.github/scripts/replace-gmp.ps1).
   replace-gmp:
-    name: Replace GMP (x64-mingw-ucrt)
+    name: Replace GMP (${{ matrix.platform }})
     needs: [build, gmp-replacement]
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1615,17 +1675,17 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: apps-x64-mingw-ucrt
+          name: apps-${{ matrix.platform }}
           path: ${{ runner.temp }}/delivered
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: gmp-replacement
+          name: gmp-replacement-${{ matrix.platform }}
           path: ${{ runner.temp }}/gmp-dll
 
       - name: Replace libgmp-10.dll and run the app
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/replace-gmp.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/Hello-x64-mingw-ucrt.zip"
+          -Archive "$env:RUNNER_TEMP/delivered/Hello-${{ matrix.platform }}.zip"
           -Dll "$env:RUNNER_TEMP/gmp-dll/libgmp-10.dll" -Version 6.2.1

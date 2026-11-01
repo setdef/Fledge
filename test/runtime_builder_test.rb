@@ -21,7 +21,7 @@ class RuntimeBuilderTest < Minitest::Test
     pins = builder("x86_64-linux").sources.fetch("ruby").fetch("platforms")
 
     assert_equal Fledge::Platform.names.reject { |name| name.end_with?("-musl") }.sort, pins.keys.sort
-    pins.except("x64-mingw-ucrt").each_value do |pin|
+    pins.except("x64-mingw-ucrt", "aarch64-mingw-ucrt").each_value do |pin|
       assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4\.0\.9\.}, pin.fetch("url"))
       assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
     end
@@ -38,6 +38,18 @@ class RuntimeBuilderTest < Minitest::Test
       assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
     end
     assert_equal builder("x86_64-linux").sources.fetch("ruby").fetch("version"), pins.fetch("ruby").fetch("version")
+  end
+
+  # Windows on ARM64 takes RubyInstaller's ARM64 build of the same release,
+  # signed with the same key (ADR 018).
+  def test_windows_on_arm_pins_rubyinstallers_arm64_build_signed_by_the_same_key
+    platforms = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms")
+    arm = platforms.fetch("aarch64-mingw-ucrt")
+
+    assert_equal "https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z",
+      arm.fetch("url")
+    assert_equal "#{arm.fetch('url')}.asc", arm.fetch("signature").fetch("url")
+    assert_equal platforms.fetch("x64-mingw-ucrt").fetch("signature").fetch("key"), arm.fetch("signature").fetch("key")
   end
 
   def test_windows_pins_rubyinstaller_its_signature_and_the_key_that_signed_it
@@ -97,16 +109,17 @@ class RuntimeBuilderTest < Minitest::Test
     assert_equal Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")), builder("x64-mingw-ucrt").assets.fetch(:runtime)
   end
 
-  # Linux, musl Linux too, and Windows ship an LGPL library, so their
+  # Linux, musl Linux too, and Windows, on ARM64 too, ship an LGPL library, so their
   # releases carry its source; macOS ships none. The mobile runtimes carry three each
   # (test/mobile_runtime_test.rb).
   def test_a_release_publishes_every_platforms_assets_and_the_lgpl_sources_where_they_ship
     assets = RuntimeBuilder.release_assets(version: "1.2.3")
 
-    assert_equal 35, assets.size
+    assert_equal 40, assets.size
     assert_equal assets.sort, assets
     Fledge::Platform.names.each { |name| assert_includes assets, "fledge-runtime-1.2.3-#{name}-dev.tar.gz" }
     assert_includes assets, "fledge-runtime-1.2.3-x64-mingw-ucrt-lgpl-sources.tar.gz"
+    assert_includes assets, "fledge-runtime-1.2.3-aarch64-mingw-ucrt-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-aarch64-linux-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-x86_64-linux-musl-lgpl-sources.tar.gz"
     refute_includes assets, "fledge-runtime-1.2.3-arm64-darwin-lgpl-sources.tar.gz"

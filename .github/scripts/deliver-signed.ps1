@@ -35,8 +35,11 @@ function Fail([string] $message) {
   exit 1
 }
 
+# Hello-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
+$platform = [IO.Path]::GetFileNameWithoutExtension($Hello) -replace '^Hello-', ''
+$arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
 $kits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
-$signtool = Get-ChildItem -LiteralPath $kits -Recurse -Filter signtool.exe | Where-Object { $_.Directory.Name -eq 'x64' } |
+$signtool = Get-ChildItem -LiteralPath $kits -Recurse -Filter signtool.exe | Where-Object { $_.Directory.Name -eq $arch } |
   Sort-Object { [version]$_.Directory.Parent.Name } | Select-Object -Last 1 -ExpandProperty FullName
 if (-not $signtool) { Fail "no signtool in $kits" }
 
@@ -56,7 +59,7 @@ function IsPE([string] $path) {
 $work = Join-Path $env:RUNNER_TEMP "signed-$PID"
 New-Item -ItemType Directory -Force $work | Out-Null
 foreach ($archive in @($Hello, $Windowed)) { Expand-Archive -LiteralPath $archive -DestinationPath $work }
-$program = Join-Path $work 'Hello-x64-mingw-ucrt\Hello.exe'
+$program = Join-Path $work "Hello-$platform\Hello.exe"
 
 $before = Verify @($program)
 if ($before.Status -eq 0) { Fail "signtool trusted the test certificate before this computer did:`n$($before.Output)" }
@@ -64,7 +67,7 @@ Write-Host 'ok: before this computer trusts the test certificate, signtool refus
 
 Import-Certificate -FilePath $Certificate -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
 
-foreach ($name in @('Hello-x64-mingw-ucrt', 'Hello Window-x64-mingw-ucrt')) {
+foreach ($name in @("Hello-$platform", "Hello Window-$platform")) {
   $folder = Join-Path $work $name
   $code = @(Get-ChildItem -LiteralPath $folder -Recurse -File | Where-Object { $_.Extension -in '.exe', '.dll', '.so' } |
     Where-Object { IsPE $_.FullName } | Select-Object -ExpandProperty FullName)
@@ -84,7 +87,7 @@ Write-Host 'ok: signtool verifies the setup program'
 $system = $env:SystemRoot
 $env:PATH = "$system\System32;$system;$system\System32\Wbem;$system\System32\WindowsPowerShell\v1.0"
 $out = & $program
-if ($LASTEXITCODE -ne 0 -or $out -notlike 'Hello from Ruby 4.0.9 on x64-mingw-ucrt') { Fail "the signed Hello.exe printed '$out', exit $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0 -or $out -notlike "Hello from Ruby 4.0.9 on $platform") { Fail "the signed Hello.exe printed '$out', exit $LASTEXITCODE" }
 Write-Host "ok: the signed Hello.exe ran: $out"
 
 $installed = Join-Path $env:LOCALAPPDATA 'Programs\Hello Window'

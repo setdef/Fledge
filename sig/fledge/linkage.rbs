@@ -5,12 +5,14 @@ module Fledge
   class Linkage
     SYSTEM_LIBRARIES: Hash[String, Array[Regexp]]
     RUBY_DLL: Regexp
+    FORMATS: Hash[String, Symbol]
 
     @system: Array[Regexp]
     @os: String
     @provided: Array[String]
+    @readers: Binary::Readers
 
-    def initialize: (os: String, ?provided: Array[String]) -> void
+    def initialize: (os: String, ?provided: Array[String], ?readers: Binary::Readers) -> void
 
     def problems: (String label, Hash[String, String] files) -> Array[String]
   end

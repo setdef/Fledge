@@ -3,6 +3,8 @@
 
 module Fledge
   class AppGems
+    READOBJ: String
+
     @app: App
     @bundle: Bundle
     @fetcher: GemFetcher
@@ -16,6 +18,8 @@ module Fledge
     def for: (target platform, runtime: RuntimeContents) -> Array[Entry]
 
     private def desktop_problems: (Hash[locked_gem, package] packages, Platform platform, RuntimeContents runtime) -> Array[String]
+
+    private def readers: (Platform platform, RuntimeContents runtime) { (Binary::Readers readers) -> Array[String] } -> Array[String]
 
     private def mobile_problems: (Hash[locked_gem, package] packages, MobilePlatform platform, RuntimeContents runtime) -> Array[String]
 

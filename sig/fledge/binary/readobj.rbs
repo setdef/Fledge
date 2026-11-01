@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Binary
+    module Readobj
+      ARGUMENTS: Array[String]
+
+      def self.arguments: () -> Array[String]
+
+      def self.sections: (String output, Array[String] paths) -> Hash[String, String]
+
+      def self.rejected?: (String error, String path) -> bool
+
+      def self.binary: (String section) -> Binary
+    end
+  end
+end

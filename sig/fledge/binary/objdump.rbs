@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Binary
+    module Objdump
+      ARGUMENTS: Array[String]
+      HEADER: Regexp
+      DYLIB_COMMANDS: Array[String]
+
+      def self.arguments: () -> Array[String]
+
+      def self.sections: (String output, Array[String] paths) -> Hash[String, String]
+
+      def self.rejected?: (String error, String path) -> bool
+
+      def self.binary: (String section) -> Binary
+
+      def self.dylibs: (Array[String] commands) -> Array[String]
+
+      def self.macos: (Array[String] commands) -> String?
+
+      def self.glibc: (String section) -> String?
+
+      def self.major_minor: (String version) -> String
+    end
+  end
+end

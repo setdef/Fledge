@@ -100,7 +100,7 @@ class RuntimeBuilder
     FileUtils.rm_f(assets.values.map { |name| File.join(@work, name) })
     FileUtils.mkdir_p(stage)
     recipe.build(stage)
-    license(stage)
+    license(stage, readers: recipe.readers)
     path = archive
     publish(stage)
     write_dev(recipe.tree) unless mobile?
@@ -147,11 +147,12 @@ class RuntimeBuilder
   # Audits the runtime folder +stage+ against runtime/licenses.yml and
   # writes what it found into +stage+/notices: NOTICES.txt, which names
   # every component and its license and holds every license text, and
-  # sbom.spdx.json. Raises LicenseAudit::Failure when the runtime breaks
+  # sbom.spdx.json, reading compiled files with +readers+
+  # (Fledge::Binary::Readers). Raises LicenseAudit::Failure when the runtime breaks
   # the policy or a component's license text is nowhere, so that no such
   # runtime is ever archived. Returns the audit's Report.
-  def license(stage)
-    audit = LicenseAudit.new(platform: platform.name, tree: stage, fledge_version: Fledge::VERSION)
+  def license(stage, readers: LicenseAudit.readers)
+    audit = LicenseAudit.new(platform: platform.name, tree: stage, fledge_version: Fledge::VERSION, readers:)
     report = audit.call
     notices = LicenseAudit::Notices.new(report, version: Fledge::VERSION, map: audit.map)
     problems = LicenseAudit.problems(report, notices)

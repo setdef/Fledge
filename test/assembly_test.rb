@@ -87,11 +87,10 @@ class AssemblyTest < Minitest::Test
   end
 
   # The PE Subsystem of the Windows program at +path+: 2 for a GUI
-  # program, 3 for a console one (Microsoft's "PE Format": the optional
-  # header starts 24 bytes into the PE header, with Subsystem at 68).
+  # program, 3 for a console one, as the runtime's llvm-readobj reads it.
   def subsystem(path)
-    bytes = File.binread(path, 4096)
-    bytes.byteslice(bytes.byteslice(0x3C, 4).unpack1("V") + 24 + 68, 2).unpack1("v")
+    TestReaders.need(self, :pe)
+    Fledge::Binary.read([path], readers: TestReaders.all).fetch(path).subsystem
   end
 
   # The version information Windows reads from the program at +path+, as

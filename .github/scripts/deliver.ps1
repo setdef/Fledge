@@ -76,12 +76,18 @@ function Check([string] $Label, [int] $Status, [string] $Program, [hashtable] $E
   Write-Host "ok: $Label"
 }
 
-# The Subsystem field of a program's PE optional header: 2 is a GUI
-# program, 3 a console one.
+# How Windows runs a program, as its shell says (SHGetFileInfo with
+# SHGFI_EXETYPE, shell32's own reading of the program's subsystem): its
+# low word is PE for a Win32 program, and its high word the Windows
+# version a GUI program asks for, or 0 for a console program.
+Add-Type -Namespace Fledge -Name Shell -MemberDefinition @'
+[DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+public static extern IntPtr SHGetFileInfo(string path, uint attributes, IntPtr info, uint size, uint flags);
+'@
 function Get-Subsystem([string] $Program) {
-  $bytes = [IO.File]::ReadAllBytes($Program)
-  $header = [BitConverter]::ToInt32($bytes, 0x3C)
-  [BitConverter]::ToUInt16($bytes, $header + 24 + 68)
+  $type = [Fledge.Shell]::SHGetFileInfo($Program, 0, [IntPtr]::Zero, 0, 0x2000).ToInt64()
+  if (($type -band 0xFFFF) -ne 0x4550) { return 'not a Windows program' }
+  if (($type -shr 16) -eq 0) { 'console' } else { 'GUI' }
 }
 
 # What is in a folder, to tell whether running the app wrote to it: a
@@ -113,7 +119,7 @@ $app = Join-Path $root "$appName.exe"
 $entry = ((Get-Content -LiteralPath (Join-Path $root 'fledge.cfg')) -match '^entry = ' | Select-Object -First 1) -replace '^entry = ', ''
 if (-not $entry) { Fail "$root\fledge.cfg names no entry" }
 if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing after unpacking $Archive" }
-if ((Get-Subsystem $app) -ne 3) { Fail "$app is not a console program (PE subsystem $(Get-Subsystem $app))" }
+if ((Get-Subsystem $app) -ne 'console') { Fail "$app is not a console program (Windows runs it as $(Get-Subsystem $app))" }
 Write-Host "Unpacked to $root"
 
 # A console app carries version information too (ADR 008): Task Manager

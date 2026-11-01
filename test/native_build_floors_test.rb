@@ -14,10 +14,11 @@ require_relative "support/binaries"
 class NativeBuildFloorsTest < Minitest::Test
   def problems(platform, files)
     entries = files.map { |path, content| Fledge::Entry.file(path, content) }
-    Fledge::NativeBuild::Floors.problems("redcarpet 3.6.1", entries, Fledge::Platform.find(platform))
+    Fledge::NativeBuild::Floors.problems("redcarpet 3.6.1", entries, Fledge::Platform.find(platform), readers: TestReaders.all)
   end
 
   def test_a_mach_o_file_for_a_newer_macos_than_the_platforms_oldest_is_a_problem
+    TestReaders.need(self, :macho)
     found = problems("arm64-darwin", {
       "lib/redcarpet.bundle" => Binaries.macho(minos: "15.0"),
       "lib/old.bundle" => Binaries.macho(minos: "14.0"),
@@ -31,6 +32,7 @@ class NativeBuildFloorsTest < Minitest::Test
   end
 
   def test_an_elf_file_that_needs_a_newer_glibc_than_the_platforms_oldest_is_a_problem
+    TestReaders.need(self, :elf)
     found = problems("x86_64-linux", {
       "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.2.5 GLIBC_2.41]),
       "lib/old.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.34]),

@@ -71,6 +71,12 @@ class RuntimeBuilder
       end
     end
 
+    # The NDK's own LLVM tools, which read the Android runtime's every
+    # file for the license audit.
+    def readers
+      Fledge::Binary::Readers.llvm(tools)
+    end
+
     private def tools
       prebuilt = Dir.glob(File.join(ndk, "toolchains", "llvm", "prebuilt", "*")).first or raise "#{ndk} has no LLVM toolchain"
       File.join(prebuilt, "bin")

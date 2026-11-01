@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Binary
+    class Readers < Data
+      DIALECTS: Hash[Symbol, singleton(Objdump) | singleton(Readobj)]
+      BATCH: Integer
+
+      attr_reader commands: Hash[Symbol, String]
+      attr_reader install: String
+
+      def self.new: (commands: Hash[Symbol, String], install: String) -> instance
+
+
+      def self.local: (String os, ?readobj: String?) -> Readers
+
+      def self.llvm: (String bin) -> Readers
+
+      def reads?: (Symbol? format) -> bool
+
+      def merge: (Readers other) -> Readers
+
+      def read: (Symbol format, Array[String] paths) -> Hash[String, Binary]
+
+      private def capture: (*String command) -> [String, String]
+    end
+  end
+end

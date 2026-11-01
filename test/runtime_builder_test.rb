@@ -152,8 +152,8 @@ class RuntimeBuilderTest < Minitest::Test
   def linux_stage(root)
     rust = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
     {
-      "launcher" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], rpath: "$ORIGIN/lib", payload: "3e93b23afc #{rust} GCC: ("),
-      "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], rpath: "$ORIGIN/../lib", payload: "3e93b23afc #{rust} GCC: ("),
+      "launcher" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{rust} GCC: ("),
+      "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{rust} GCC: ("),
       "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
       "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
       "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n",
@@ -423,24 +423,6 @@ class RuntimeBuilderTest < Minitest::Test
     error = assert_raises(RuntimeError) { RuntimeBuilder::Armor.dearmor(armored.sub("RmxlZGdl", "RmxlZGdm")) }
     assert_equal "the armor's CRC-24 does not match its data", error.message
     assert_raises(RuntimeError) { RuntimeBuilder::Armor.dearmor("not armor") }
-  end
-
-  def pe(subsystem)
-    bytes = "MZ".b.ljust(0x80, "\0")
-    bytes[0x3C, 4] = [0x80].pack("V")
-    bytes << "PE\0\0".b << ("\0" * 20) << ("\0" * 68) << [subsystem].pack("v") << ("\0" * 64)
-  end
-
-  def test_pe_subsystem_reads_a_programs_subsystem
-    Dir.mktmpdir do |dir|
-      { "gui.exe" => 2, "console.exe" => 3 }.each do |name, subsystem|
-        File.binwrite(File.join(dir, name), pe(subsystem))
-
-        assert_equal subsystem, RuntimeBuilder::Windows.pe_subsystem(File.join(dir, name))
-      end
-      File.binwrite(File.join(dir, "elf"), "\x7FELF".b.ljust(256, "\0"))
-      assert_raises(RuntimeError) { RuntimeBuilder::Windows.pe_subsystem(File.join(dir, "elf")) }
-    end
   end
 
   def test_the_runtime_is_named_for_this_fledge_version_and_platform

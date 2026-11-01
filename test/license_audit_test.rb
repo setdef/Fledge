@@ -21,8 +21,9 @@ class LicenseAuditTest < Minitest::Test
   ARCH = "lib/ruby/4.0.0/x86_64-linux"
 
   def setup
+    TestReaders.need(self, :elf)
     @tree = Dir.mktmpdir("license-audit")
-    write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2], rpath: "$ORIGIN/lib",
+    write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2],
       payload: "ruby 4.0.9 (revision 3e93b23afc) #{RUST} GCC: (Ubuntu 13.3.0)"))
     write("lib/libcrypt.so.2", Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"))
     write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.2 "))
@@ -247,16 +248,37 @@ class LicenseAuditTest < Minitest::Test
   end
 
   def test_reads_the_libraries_elf_pe_and_mach_o_files_need
-    elf = LicenseAudit::Binary.parse(Binaries.elf(needed: %w[libc.so.6 libcrypt.so.2], rpath: "$ORIGIN/lib"))
-    pe = LicenseAudit::Binary.parse(Binaries.pe(needed: %w[libgmp-10.dll KERNEL32.dll],
-      payload: '<dependentAssembly><assemblyIdentity type="win32" name="ruby_builtin_dlls" /></dependentAssembly>'))
-    macho = LicenseAudit::Binary.parse(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib @rpath/libffi.dylib]))
+    TestReaders.need(self, :elf, :macho, :pe)
+    audit = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0", readers: TestReaders.all)
+    found = audit.compiled({
+      "a.so" => Binaries.elf(needed: %w[libc.so.6 libcrypt.so.2]),
+      "b.dll" => Binaries.pe(needed: %w[libgmp-10.dll KERNEL32.dll],
+        payload: '<dependentAssembly><assemblyIdentity type="win32" name="ruby_builtin_dlls" /></dependentAssembly>'),
+      "c.bundle" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib @rpath/libffi.dylib]),
+      "d.a" => "!<arch>\nfoo.o/",
+      "e.rb" => "puts 'MZ'\n",
+    })
 
-    assert_equal [:elf, %w[libc.so.6 libcrypt.so.2], ["$ORIGIN/lib"]], [elf.format, elf.needed, elf.rpaths]
-    assert_equal [:pe, %w[libgmp-10.dll KERNEL32.dll], ["ruby_builtin_dlls"]], [pe.format, pe.needed, pe.assemblies]
-    assert_equal [:macho, %w[/usr/lib/libSystem.B.dylib @rpath/libffi.dylib]], [macho.format, macho.needed]
-    assert_equal :archive, LicenseAudit::Binary.parse("!<arch>\nfoo.o/").format
-    assert_nil LicenseAudit::Binary.parse("puts 'MZ'\n")
+    assert_equal [:elf, %w[libc.so.6 libcrypt.so.2]], [found.fetch("a.so").format, found.fetch("a.so").needed]
+    assert_equal [:pe, %w[KERNEL32.dll libgmp-10.dll], ["ruby_builtin_dlls"]], [
+      found.fetch("b.dll").format,
+      found.fetch("b.dll").needed.sort,
+      found.fetch("b.dll").assemblies,
+]
+    assert_equal [:macho, %w[/usr/lib/libSystem.B.dylib @rpath/libffi.dylib]], [found.fetch("c.bundle").format, found.fetch("c.bundle").needed]
+    assert_equal :archive, found.fetch("d.a").format
+    refute found.key?("e.rb")
+  end
+
+  # Compiled code of a format no tool on the computer reads is still
+  # compiled code: the audit says so, and fails, rather than pass it.
+  def test_compiled_code_no_tool_here_reads_fails_the_audit
+    readers = Fledge::Binary::Readers.new(commands: TestReaders.all.commands.slice(:elf), install: "Set FLEDGE_LLVM.")
+    write("#{ARCH}/stray.bundle", Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib]))
+
+    report = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0", readers:).call
+
+    assert_includes rules(report), ["unreadable", "#{ARCH}/stray.bundle"]
   end
 
   def test_writes_an_spdx_sbom_that_accounts_for_every_file_and_link
@@ -371,6 +393,7 @@ class LicenseAuditTest < Minitest::Test
         put.call("#{root}/lib/ruby/gems/4.0.0/gems/csv-3.3.5/LICENSE.txt", "Ruby or BSD-2-Clause\n")
       end
 
+      TestReaders.need(self, :macho)
       report = LicenseAudit.new(platform: "ios", tree:, fledge_version: "0.0.0").call
 
       assert_empty report.violations.map(&:to_s)

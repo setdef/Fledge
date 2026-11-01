@@ -9,7 +9,7 @@
 #   pwsh -NoProfile -File deliver-windowed.ps1 -Archive ARCHIVE
 #
 # ARCHIVE is "Hello Window-x64-mingw-ucrt.zip". The program must be a GUI
-# program (PE subsystem 2), carry the version information fledge.yml
+# program, as Windows' shell reads it, carry the version information fledge.yml
 # says, which (Get-Item).VersionInfo reads as Explorer and Task Manager
 # do, and an icon, which Windows extracts as Explorer does. Started with
 # Start-Process -Wait, through the shell as a double-click starts it, it
@@ -48,9 +48,15 @@ $root = Join-Path $place $name
 $app = Join-Path $root "$appName.exe"
 if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing after unpacking $Archive" }
 
-$bytes = [IO.File]::ReadAllBytes($app)
-$subsystem = [BitConverter]::ToUInt16($bytes, [BitConverter]::ToInt32($bytes, 0x3C) + 24 + 68)
-Expect 'the PE subsystem' $subsystem 2
+# How Windows runs it, as its shell says (SHGetFileInfo with
+# SHGFI_EXETYPE): a Win32 program (PE in the low word) that asks for a
+# Windows version (the high word) is a GUI one; a console one asks none.
+Add-Type -Namespace Fledge -Name Shell -MemberDefinition @'
+[DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+public static extern IntPtr SHGetFileInfo(string path, uint attributes, IntPtr info, uint size, uint flags);
+'@
+$type = [Fledge.Shell]::SHGetFileInfo($app, 0, [IntPtr]::Zero, 0, 0x2000).ToInt64()
+Expect 'the kind of program Windows runs' $(if (($type -band 0xFFFF) -eq 0x4550 -and ($type -shr 16) -ne 0) { 'GUI' } else { "not GUI ($type)" }) 'GUI'
 
 $info = (Get-Item -LiteralPath $app).VersionInfo
 Expect 'FileDescription' $info.FileDescription $appName

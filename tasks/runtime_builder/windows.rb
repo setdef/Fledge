@@ -5,8 +5,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require "digest"
 require "fileutils"
+require "open3"
 require_relative "recipe"
+require_relative "../../lib/fledge/binary"
 
 class RuntimeBuilder
   # Windows: RubyInstaller's Ruby, checked against its signature, whose
@@ -29,20 +32,6 @@ class RuntimeBuilder
     IMPORTS = /\A(?:KERNEL32\.dll|api-ms-win-crt-[a-z0-9-]+\.dll)\z/i
     WINDOWED_IMPORTS = /\AUSER32\.dll\z/i
 
-    # The Subsystem field of the Windows program at +path+ (2 for a GUI
-    # program, 3 for a console one), from its PE optional header, which
-    # starts 24 bytes into the PE header and holds Subsystem at offset 68
-    # in both PE32 and PE32+.
-    def self.pe_subsystem(path)
-      bytes = File.binread(path, 4096).to_s
-      raise "#{path} is not a Windows program" unless bytes.start_with?("MZ") && bytes.bytesize >= 64
-
-      header = bytes.byteslice(0x3C, 4).to_s.unpack1("V").to_i
-      raise "#{path} is not a Windows program" unless bytes.byteslice(header, 4) == "PE\0\0"
-
-      bytes.byteslice(header + 24 + 68, 2).to_s.unpack1("v")
-    end
-
     def hosts
       @builder.sources.fetch("llvm-mingw").fetch("hosts").keys
     end
@@ -58,6 +47,36 @@ class RuntimeBuilder
       @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
       copy_nsis(File.join(stage, "tools", "nsis"))
       copy_rcedit(File.join(stage, "tools", "rcedit.exe"))
+      copy_readobj(File.join(stage, "tools", "llvm-readobj.exe"))
+    end
+
+    # LLVM's own tools, which read the Windows runtime's every file for
+    # the license audit (Fledge::Binary::Readers.llvm): llvm-mingw's.
+    def readers
+      Fledge::Binary::Readers.llvm(File.join(@toolchain, "bin"))
+    end
+
+    # llvm-readobj, which fledge build runs on Windows to read what an
+    # app's compiled gems import (ADR 013): the one file of LLVM's own
+    # release, which zstd unpacks from its long-window archive, pinned by
+    # its archive's SHA-256 and its own.
+    private def copy_readobj(to)
+      pin = @builder.sources.fetch("llvm-readobj")
+      archive = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      zstd = @builder.which("zstd") or raise "unpacking #{archive} needs zstd on PATH"
+      unpacked = File.join(@build_dir, "llvm-readobj")
+      FileUtils.rm_rf(unpacked)
+      FileUtils.mkdir_p(unpacked)
+      statuses = Open3.pipeline([zstd, "-dcq", "--long=31", archive], ["tar", "-xf", "-", "-C", unpacked, pin.fetch("path")])
+      raise "could not unpack #{pin.fetch('path')} from #{archive}" unless statuses.all?(&:success?)
+
+      file = File.join(unpacked, pin.fetch("path"))
+      actual = Digest::SHA256.file(file).hexdigest
+      raise "#{file} has SHA-256 #{actual}, not #{pin.fetch('file_sha256')}" unless actual == pin.fetch("file_sha256")
+
+      FileUtils.mkdir_p(File.dirname(to))
+      FileUtils.cp(file, to)
+      FileUtils.chmod(0o755, to)
     end
 
     # rcedit, which fledge build runs on Windows to write an app's
@@ -136,10 +155,10 @@ class RuntimeBuilder
     end
 
     private def check(program, subsystem, allowed)
-      actual = Windows.pe_subsystem(program)
-      raise "#{program} has PE subsystem #{actual}, not #{subsystem}" unless actual == subsystem
+      binary = Fledge::Binary.read([program], readers:)[program] or raise "#{program} is not a Windows program"
+      raise "#{program} has PE subsystem #{binary.subsystem}, not #{subsystem}" unless binary.subsystem == subsystem
 
-      imports = @builder.capture(tool("objdump", prefix: "llvm-"), "-p", program).scan(/DLL Name: (\S+)/).flatten
+      imports = binary.needed
       raise "#{program} imports no DLLs, which is not a Windows program" if imports.empty?
 
       foreign = imports.grep_v(allowed)

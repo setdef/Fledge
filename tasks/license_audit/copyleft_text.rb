@@ -66,13 +66,15 @@ class LicenseAudit
 
     private def check_gem_archive(path, owner)
       installed = "#{File.dirname(path, 2)}/gems/#{File.basename(path, '.gem')}"
-      read = CopyleftText.gem_files(File.join(@audit.tree, path)) do |name, bytes|
-        label = "#{path}!#{name}"
-        binary = Binary.parse(bytes)
+      files = {} # : Hash[String, String]
+      read = CopyleftText.gem_files(File.join(@audit.tree, path)) { |name, bytes| files["#{path}!#{name}"] = bytes }
+      binaries = @audit.compiled(files)
+      files.each do |label, bytes|
+        binary = binaries[label]
         @violate.call("unlisted-binary", label, "is compiled code (#{binary.format}) inside a cached gem") if binary
         signature = @audit.map.fetch("signatures").find { |entry| entry.fetch("bytes").any? { |needle| bytes.include?(needle.b) } }
         @violate.call("static-copyleft", label, "holds #{signature.fetch('component')}'s code inside a cached gem") if signature
-        check_text(label, [label, "#{installed}/#{name}"], owner, bytes) unless binary || bytes.bytesize > TEXT_LIMIT
+        check_text(label, [label, "#{installed}/#{label.delete_prefix("#{path}!")}"], owner, bytes) unless binary || bytes.bytesize > TEXT_LIMIT
       end
       @violate.call("unreadable", path, "is not a .gem the audit can read: it holds no data.tar.gz") unless read
     rescue Gem::Package::TarInvalidError, Zlib::Error, ArgumentError => e

@@ -25,7 +25,8 @@ require_relative "../lib/fledge/license_policy"
 # whatever it carries, the app's developer distributes. The audit derives
 # the inventory from the tree itself rather than from what the build
 # meant to put there: it walks every file, reads every compiled file's
-# links (LicenseAudit::Binary), reads every gem's license from the
+# links (LicenseAudit::Binaries, with LLVM's tools or the computer's
+# own), reads every gem's license from the
 # specification the tree holds, and matches the rest against the
 # checked-in map. Components that cannot be seen in a file's links, such
 # as OpenSSL compiled into openssl.so or Rust's standard library in YJIT,
@@ -39,7 +40,11 @@ require_relative "../lib/fledge/license_policy"
 # Run it as
 #   ruby tasks/license_audit.rb --platform x86_64-linux --tree DIR
 # against an unpacked runtime, or rv-ruby's or RubyInstaller's whole
-# tree. It exits 1 when the tree breaks the policy.
+# tree. It exits 1 when the tree breaks the policy. With FLEDGE_LLVM
+# naming the bin folder of an LLVM, such as the llvm-mingw
+# runtime/sources.yml pins, it reads every platform's compiled files with
+# LLVM's llvm-objdump and llvm-readobj; without, with this computer's
+# objdump, which reads ELF on Linux and ELF and Mach-O on a Mac.
 class LicenseAudit
   ROOT = File.expand_path("..", __dir__)
   MAP = File.join(ROOT, "runtime", "licenses.yml")
@@ -55,8 +60,9 @@ class LicenseAudit
 
   attr_reader :platform, :tree, :map
 
-  def initialize(platform:, tree:, map: MAP, sources: SOURCES, fledge_version: nil)
+  def initialize(platform:, tree:, map: MAP, sources: SOURCES, fledge_version: nil, readers: LicenseAudit.readers)
     @platform = platform
+    @readers = readers
     @tree = File.expand_path(tree)
     @map = YAML.safe_load_file(map)
     @sources = YAML.safe_load_file(sources)
@@ -64,6 +70,21 @@ class LicenseAudit
     @facts = @map.fetch("platforms").fetch(platform) { raise ArgumentError, "no platform #{platform} in #{map}" }
     @violations = []
     @archived = {}
+  end
+
+  # The tools the audit reads compiled files with
+  # (Fledge::Binary::Readers): LLVM's, in the folder FLEDGE_LLVM names,
+  # or else this computer's own.
+  def self.readers
+    llvm = ENV.fetch("FLEDGE_LLVM", "")
+    return Fledge::Binary::Readers.llvm(llvm) unless llvm.empty?
+
+    Fledge::Binary::Readers.local(RUBY_PLATFORM.include?("darwin") ? "darwin" : "linux")
+  end
+
+  # The compiled files among +files+, labels and their bytes (LicenseAudit::Binaries).
+  def compiled(files)
+    Binaries.new(@readers, method(:violate)).in_memory(files)
   end
 
   # Audits the tree and returns the Report.
@@ -205,10 +226,10 @@ class LicenseAudit
   end
 
   private def read_binaries(files)
-    files.each_with_object({}) do |path, binaries|
-      binary = @archived.key?(path) ? Binary.parse(bytes(path)) : Binary.read(File.join(tree, path))
-      binaries[path] = binary if binary
-    end
+    archived, local = files.partition { |path| @archived.key?(path) }
+    found = Binaries.new(@readers, method(:violate)).on_disk(local.to_h { |path| [path, File.join(tree, path)] })
+      .merge(compiled(archived.to_h { |path| [path, @archived.fetch(path)] }))
+    files.filter_map { |path| (binary = found[path]) && [path, binary] }.to_h
   end
 
   # Checks that every shared library a compiled file needs is either the
@@ -314,7 +335,7 @@ class LicenseAudit
   end
 end
 
-require_relative "license_audit/binary"
+require_relative "license_audit/binaries"
 require_relative "license_audit/component"
 require_relative "license_audit/copyleft_text"
 require_relative "license_audit/failure"

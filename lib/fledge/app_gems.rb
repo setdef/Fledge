@@ -5,6 +5,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
+require "tmpdir"
+require_relative "binary"
 require_relative "entry"
 require_relative "error"
 require_relative "gem_package"
@@ -54,6 +56,9 @@ module Fledge
   # SPDX-SnippetEnd
   #++
   class AppGems
+    # The llvm-readobj a Windows runtime keeps in its tools folder.
+    READOBJ = "llvm-readobj.exe"
+
     # Creates the planner.
     #
     # [app] The Fledge::App.
@@ -124,9 +129,22 @@ module Fledge
     # What keeps each gem from running on a desktop +platform+'s runtime:
     # the Ruby it asks for, and what its compiled files need.
     private def desktop_problems(packages, platform, runtime)
-      linkage = Linkage.new(os: platform.os, provided: runtime.libraries)
-      packages.flat_map do |gem, package|
-        [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.contents)]
+      readers(platform, runtime) do |readers|
+        linkage = Linkage.new(os: platform.os, provided: runtime.libraries, readers:)
+        packages.flat_map do |gem, package|
+          [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.contents)]
+        end
+      end
+    end
+
+    # Yields the tools that read +platform+'s compiled files
+    # (Fledge::Binary::Readers): on Windows, which has none of its own,
+    # the llvm-readobj the runtime carries (ADR 013).
+    private def readers(platform, runtime)
+      return yield Binary::Readers.local(platform.os) unless platform.windows?
+
+      Dir.mktmpdir("fledge-readobj") do |dir|
+        yield Binary::Readers.local(platform.os, readobj: runtime.tool(READOBJ, into: dir))
       end
     end
 

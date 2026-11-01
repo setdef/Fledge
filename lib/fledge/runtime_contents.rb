@@ -46,7 +46,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries, :arch)
+  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries, :arch, :path)
     ##
     # :attr_reader: gem_dir
     # Ruby's gem folder, relative to the runtime's top folder.
@@ -70,6 +70,10 @@ module Fledge
     # :attr_reader: libraries
     # The file name of every shared library the runtime holds, sorted,
     # such as <tt>x64-ucrt-ruby400.dll</tt>.
+
+    ##
+    # :attr_reader: path
+    # The runtime archive's path.
 
     # A gem specification's path in a runtime: the gem folder, and the
     # gem's full name.
@@ -134,6 +138,29 @@ module Fledge
       build(path, gem_dirs.uniq, gems, version).with(libraries: libraries.uniq.sort.freeze, arch: arch.to_s)
     end
 
+    # The tool +name+ the runtime keeps in its <tt>tools</tt> folder
+    # (Fledge::Assembly::TOOLS), written into the folder +into+, where it
+    # runs; or nil when the runtime has none.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   contents.tool("llvm-readobj.exe", into: Dir.mktmpdir) # => "/tmp/d20261101-1-x/llvm-readobj.exe"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def tool(name, into:)
+      entry = Archive.names(path).find { |candidate| candidate.split("/", 2).last == "tools/#{name}" } or return nil
+      target = File.join(into, name)
+      File.binwrite(target, Archive.read(path, entry))
+      File.chmod(0o755, target)
+      target
+    end
+
     # The version rbconfig.rb's MAJOR, MINOR, and TEENY make.
     private_class_method def self.ruby_version_in(rbconfig) # :nodoc:
       parts = rbconfig.scan(VERSION_PARTS).to_h
@@ -144,7 +171,7 @@ module Fledge
       raise Error, "#{path} is not a Fledge runtime: it holds no one gem folder (#{gem_dirs.join(', ')})" unless gem_dirs.size == 1
       raise Error, "#{path} is not a Fledge runtime: it holds no rbconfig.rb" unless version
 
-      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [], arch: "")
+      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [], arch: "", path:)
     end
   end
 end

@@ -9,11 +9,12 @@ require_relative "test_helper"
 require_relative "support/binaries"
 
 # Whether a gem's compiled files would load on the computer an app goes
-# to (Fledge::Linkage; ADR 006, section 8, and ADR 007): binaries written
-# byte for byte as each format specifies (test/support/binaries.rb).
+# to (Fledge::Linkage; ADR 006, section 8, and ADR 007): files LLVM's
+# linker made (test/support/binaries.rb), read with the tools here.
 class LinkageTest < Minitest::Test
   def problems(os, files, provided: [])
-    Fledge::Linkage.new(os:, provided:).problems("linked 1.0.0", files)
+    TestReaders.need(self, Fledge::Linkage::FORMATS.fetch(os))
+    Fledge::Linkage.new(os:, provided:, readers: TestReaders.all).problems("linked 1.0.0", files)
   end
 
   def test_a_gem_without_compiled_code_has_nothing_to_load
@@ -34,7 +35,9 @@ class LinkageTest < Minitest::Test
   "provides, so the app could not load it on another computer. Build the gem so that it carries the library, or links " \
   "it statically.",
 ], linux
+  end
 
+  def test_a_dylib_no_one_ships_keeps_a_gem_from_shipping_on_macos
     macos = problems("darwin", {
 "lib/ext.bundle" => Binaries.macho(needed: [
   "/usr/lib/libSystem.B.dylib",
@@ -46,7 +49,9 @@ class LinkageTest < Minitest::Test
 })
     assert_equal 1, macos.size
     assert_includes macos.first, "needs /opt/homebrew/opt/libxml2/lib/libxml2.2.dylib, which neither darwin"
+  end
 
+  def test_a_dll_no_one_ships_keeps_a_gem_from_shipping_on_windows
     windows = problems("windows", {
 "lib/ext.so" => Binaries.pe(needed: %w[
   x64-ucrt-ruby400.dll
@@ -75,7 +80,12 @@ class LinkageTest < Minitest::Test
   def test_code_compiled_in_is_not_judged
     iconv = "UCS-4-INTERNAL MULELAO-1 GNU MP: Cannot allocate memory yescrypt-ROMhash"
 
-    assert_empty problems("windows", { "lib/ext.so" => Binaries.pe(needed: ["KERNEL32.dll"], payload: iconv) })
     assert_empty problems("linux", { "lib/ext.so" => Binaries.elf(needed: ["libc.so.6"], payload: iconv) })
+  end
+
+  # A loader loads only its own system's format, so a Linux gem's copy of
+  # a Windows DLL, say, is never loaded and never judged.
+  def test_a_file_for_another_systems_loader_is_never_judged
+    assert_empty problems("linux", { "vendor/win/ext.dll" => Binaries.pe(needed: %w[libgmp-10.dll KERNEL32.dll]) })
   end
 end

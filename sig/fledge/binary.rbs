@@ -3,28 +3,28 @@
 
 module Fledge
   class Binary < Data
-    ELF_MAGIC: String
-    AR_MAGIC: String
-    MACHO_MAGICS: Array[String]
-    FAT_MAGIC: String
+    MAGICS: Hash[Symbol, Array[String]]
+    ASSEMBLY: Regexp
 
     attr_reader format: Symbol
     attr_reader needed: Array[String]
-    attr_reader rpaths: Array[String]
     attr_reader assemblies: Array[String]
+    attr_reader macos_minimum: String?
+    attr_reader glibc_minimum: String?
+    attr_reader subsystem: Integer?
 
-    def self.new: (format: Symbol, needed: Array[String], rpaths: Array[String], assemblies: Array[String]) -> instance
+    def self.new: (format: Symbol, needed: Array[String], assemblies: Array[String], macos_minimum: String?, glibc_minimum: String?,
+      subsystem: Integer?) -> instance
 
-    def self.read: (String path) -> Binary?
 
-    def self.parse: (String bytes) -> Binary?
+    def self.format_of: (String bytes) -> Symbol?
 
-    def self.macos_minimum: (String bytes) -> String?
+    def self.read: (Array[String] paths, readers: Readers) -> Hash[String, Binary]
 
-    def self.glibc_minimum: (String bytes) -> String?
+    def self.parse: (Hash[String, String] files, readers: Readers) -> Hash[String, Binary]
 
-    private def self.from: (Symbol format, [Array[String], Array[String]] links) -> Binary
+    private def self.archive: () -> Binary
 
-    private def self.pe: (Pe reader) -> Binary
+    private def self.with_assemblies: (String path, Binary binary) -> Binary
   end
 end

@@ -112,12 +112,26 @@ jobs:
       - name: Install the bundle
         run: bundle install
 
+      # LLVM's llvm-objdump and llvm-readobj, which read every platform's
+      # compiled files on one Linux runner (Fledge::Binary::Readers.llvm):
+      # the llvm-mingw runtime/sources.yml pins, as the Windows runtime
+      # builds with.
+      - name: Unpack LLVM's tools for reading compiled files
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+          mkdir -p "$RUNNER_TEMP/llvm-mingw"
+          tar -xJf "$archive" -C "$RUNNER_TEMP/llvm-mingw" --strip-components=1
+          echo "FLEDGE_LLVM=$RUNNER_TEMP/llvm-mingw/bin" >> "$GITHUB_ENV"
+
       # Minitest prints each test's name and time (A is Minitest::TestTask's
       # argument variable), so a stuck test shows which it is.
       - name: Run the gate
         timeout-minutes: 15
         env:
           A: --verbose
+          # Every test of a compiled file runs, with this runner's GNU
+          # objdump for ELF and LLVM's for the rest (test/test_helper.rb).
+          FLEDGE_REQUIRE_READERS: "1"
         run: bundle exec rake
 
       # The gate starts with lint:fix, which corrects RuboCop offenses and
@@ -1027,8 +1041,9 @@ jobs:
   # second audit of the unpacked archive agrees with the build's, that the
   # SPDX project's own tool accepts the SBOM, and that the audit still
   # fails when a GPL library or a GPL gem is slipped into the runtime
-  # (.github/scripts/plant_gpl.rb). The audit reads binaries in Ruby, so
-  # one Linux runner checks every platform.
+  # (.github/scripts/plant_gpl.rb). The audit reads compiled files with
+  # LLVM's tools, which read every format, so one Linux runner checks
+  # every platform.
   licenses:
     name: Licenses (${{ matrix.platform }})
     needs: [runtime, runtime-mobile]
@@ -1052,6 +1067,17 @@ jobs:
         with:
           name: runtime-${{ matrix.platform }}
           path: ${{ runner.temp }}/runtimes
+
+      # LLVM's llvm-objdump and llvm-readobj, which read every platform's
+      # compiled files on one Linux runner (Fledge::Binary::Readers.llvm):
+      # the llvm-mingw runtime/sources.yml pins, as the Windows runtime
+      # builds with.
+      - name: Unpack LLVM's tools for reading compiled files
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+          mkdir -p "$RUNNER_TEMP/llvm-mingw"
+          tar -xJf "$archive" -C "$RUNNER_TEMP/llvm-mingw" --strip-components=1
+          echo "FLEDGE_LLVM=$RUNNER_TEMP/llvm-mingw/bin" >> "$GITHUB_ENV"
 
       - name: Unpack the runtime and check its release assets
         env:
@@ -1116,6 +1142,17 @@ jobs:
           path: tmp/downloads
           key: upstream-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
 
+      # LLVM's llvm-objdump and llvm-readobj, which read every platform's
+      # compiled files on one Linux runner (Fledge::Binary::Readers.llvm):
+      # the llvm-mingw runtime/sources.yml pins, as the Windows runtime
+      # builds with.
+      - name: Unpack LLVM's tools for reading compiled files
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+          mkdir -p "$RUNNER_TEMP/llvm-mingw"
+          tar -xJf "$archive" -C "$RUNNER_TEMP/llvm-mingw" --strip-components=1
+          echo "FLEDGE_LLVM=$RUNNER_TEMP/llvm-mingw/bin" >> "$GITHUB_ENV"
+
       - name: Download and unpack the pinned upstream Ruby
         env:
           PLATFORM: ${{ matrix.platform }}
@@ -1158,6 +1195,17 @@ jobs:
           pattern: runtime-*
           merge-multiple: true
           path: ${{ runner.temp }}/runtimes
+
+      # LLVM's llvm-objdump and llvm-readobj, which read every platform's
+      # compiled files on one Linux runner (Fledge::Binary::Readers.llvm):
+      # the llvm-mingw runtime/sources.yml pins, as the Windows runtime
+      # builds with.
+      - name: Unpack LLVM's tools for reading compiled files
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+          mkdir -p "$RUNNER_TEMP/llvm-mingw"
+          tar -xJf "$archive" -C "$RUNNER_TEMP/llvm-mingw" --strip-components=1
+          echo "FLEDGE_LLVM=$RUNNER_TEMP/llvm-mingw/bin" >> "$GITHUB_ENV"
 
       - name: Compare doc/licensing.md with the runtimes
         run: ruby tasks/licensing_page.rb --check "$RUNNER_TEMP/runtimes"

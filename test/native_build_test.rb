@@ -113,7 +113,10 @@ class NativeBuildTest < Minitest::Test
       "the build's own leftovers stay behind")
     refute_path_exists File.join(folder, @platform.windows? ? "ruby/include" : "include"), "the runtime's headers never ship"
     compiled = Dir.glob(File.join(gems, "gems/greeter-1.0.0/lib/greeter/greeter.*")).first.to_s
-    assert_operator Gem::Version.new(Fledge::Binary.macos_minimum(File.binread(compiled))), :<=, Gem::Version.new("14.0") if @platform.os == "darwin"
+    return unless @platform.os == "darwin"
+
+    minimum = Fledge::Binary.read([compiled], readers: Fledge::Binary::Readers.local("darwin")).fetch(compiled).macos_minimum
+    assert_operator Gem::Version.new(minimum), :<=, Gem::Version.new("14.0")
   end
 
   def test_a_git_gem_compiles_where_bundler_keeps_it_and_runs

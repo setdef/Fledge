@@ -448,6 +448,52 @@ components:
     sha256:
       tools/rcedit.exe: 3e7801db1a5edbec91b49a24a094aad776cb4515488ea5a4ca2289c400eade2a
 
+  # llvm-readobj, which fledge build runs on Windows to read what an
+  # app's compiled gems import (ADR 013): the one file of LLVM's release
+  # runtime/sources.yml pins, with zlib and Zstandard linked in, as LLVM's
+  # build_llvm_release.bat builds it.
+  - id: llvm-readobj
+    name: llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import
+    version: 23.1.4
+    license: Apache-2.0 WITH LLVM-exception
+    kind: program
+    download: https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.4
+    notice: llvm
+    ships: tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive
+    platforms: [x64-mingw-ucrt]
+    files: [tools/llvm-readobj.exe]
+    binaries: [tools/llvm-readobj.exe]
+    sha256:
+      tools/llvm-readobj.exe: a8349b85026d5468a94e8334a63bb85c6edb860f4f479c1fba29385c4ef7d36a
+
+  - id: zlib-llvm-readobj
+    name: zlib, linked into llvm-readobj
+    version: 1.3.2
+    license: Zlib
+    kind: program
+    download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+    notice: zlib
+    ships: linked into tools/llvm-readobj.exe
+    platforms: [x64-mingw-ucrt]
+    embedded:
+      - files: [tools/llvm-readobj.exe]
+        evidence: "deflate 1.3.2 "
+
+  # Zstandard names no version in its code, so its evidence is one of its
+  # own messages; LLVM's build script names 1.5.7.
+  - id: zstd-llvm-readobj
+    name: Zstandard (libzstd), linked into llvm-readobj
+    version: 1.5.7
+    license: BSD-3-Clause OR GPL-2.0-only
+    kind: program
+    download: https://github.com/facebook/zstd/releases/tag/v1.5.7
+    notice: zstd
+    ships: linked into tools/llvm-readobj.exe
+    platforms: [x64-mingw-ucrt]
+    embedded:
+      - files: [tools/llvm-readobj.exe]
+        evidence: "Unknown frame descriptor"
+
   - id: zlib-dll
     name: zlib (zlib1.dll)
     version: 1.3.2

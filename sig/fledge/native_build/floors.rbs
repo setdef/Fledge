@@ -4,13 +4,13 @@
 module Fledge
   class NativeBuild
     module Floors
-      def self.problems: (locked_gem gem, Array[Entry] entries, Platform platform) -> Array[String]
+      def self.problems: (locked_gem gem, Array[Entry] entries, Platform platform, ?readers: Binary::Readers) -> Array[String]
 
-      private def self.macos: (locked_gem gem, Entry entry, String bytes, Platform platform) -> String?
+      private def self.macos: (locked_gem gem, String path, Binary binary, Platform platform) -> String?
 
-      private def self.glibc: (locked_gem gem, Entry entry, String bytes, Platform platform) -> String?
+      private def self.glibc: (locked_gem gem, String path, Binary binary, Platform platform) -> String?
 
-      private def self.needs: (locked_gem gem, Entry entry, Platform platform, String system, String found, String floor) -> String
+      private def self.needs: (locked_gem gem, String path, Platform platform, String system, String found, String floor) -> String
 
       private def self.newer?: (String found, String floor) -> bool
     end

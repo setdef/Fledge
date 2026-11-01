@@ -112,7 +112,9 @@ module FakeRuntime
     Dir.mktmpdir("windows-runtime") do |dir|
       Fledge::Archive.unpack(archive, into: dir)
       top = Dir.glob(File.join(dir, "*")).first.to_s
-      %w[launcher.exe launcherw.exe tools/rcedit.exe].map { |path| Fledge::Entry.file(path, File.binread(File.join(top, path)), mode: 0o755) }
+      %w[launcher.exe launcherw.exe tools/rcedit.exe tools/llvm-readobj.exe].map do |path|
+        Fledge::Entry.file(path, File.binread(File.join(top, path)), mode: 0o755)
+      end
     end
   end
 
@@ -134,6 +136,54 @@ module FakeRuntime
       Fledge::Entry.file("#{gems}/specifications/default/json-2.18.0.gemspec", "# json\n"),
       Fledge::Entry.file("#{gems}/specifications/csv-3.3.5.gemspec", "# csv\n"),
     ]
+  end
+end
+
+# The tools the tests read compiled files with (Fledge::Binary::Readers):
+# this computer's own, as fledge build uses them, and for the formats
+# they do not read, LLVM's, in the folder FLEDGE_LLVM names (CI's gate
+# sets it to the pinned llvm-mingw's bin). A test of a format no tool here
+# reads skips, unless FLEDGE_REQUIRE_READERS is set, as the gate sets it.
+module TestReaders
+  # This computer's operating system, as Fledge::Platform#os names it.
+  def self.os
+    return "windows" if Gem.win_platform?
+
+    RUBY_PLATFORM.include?("darwin") ? "darwin" : "linux"
+  end
+
+  # The readers, all of them.
+  def self.all
+    @all ||= begin
+      local = Fledge::Binary::Readers.local(os, readobj:)
+      llvm = ENV.fetch("FLEDGE_LLVM", "")
+      llvm.empty? ? local : local.merge(Fledge::Binary::Readers.llvm(llvm))
+    end
+  end
+
+  # The real Windows runtime's llvm-readobj, on Windows, written where
+  # it runs, or nil.
+  def self.readobj
+    return @readobj if defined?(@readobj)
+
+    @readobj = unpack_readobj
+  end
+
+  private_class_method def self.unpack_readobj
+    entry = FakeRuntime.windows&.find { |file| file.path == "tools/llvm-readobj.exe" } or return nil
+    dir = Dir.mktmpdir("readobj")
+    Minitest.after_run { FileUtils.rm_rf(dir) }
+    entry.write_into(dir)
+    File.join(dir, entry.path)
+  end
+
+  # Skips +test+ unless a tool here reads each of +formats+.
+  def self.need(test, *formats)
+    missing = formats.reject { |format| all.reads?(format) }
+    return if missing.empty?
+
+    message = "no tool on this computer reads #{missing.join(' or ')} files; set FLEDGE_LLVM to an LLVM bin folder"
+    ENV["FLEDGE_REQUIRE_READERS"] ? test.flunk(message) : test.skip(message)
   end
 end
 

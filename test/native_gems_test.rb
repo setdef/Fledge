@@ -34,10 +34,19 @@ class NativeGemsTest < Minitest::Test
     "ratatui_ruby-1.5.2-x64-mingw-ucrt" => "e3279373e2cc02435a4e3a9ecfd9c72f1cf300019d946f67504f7fabbad46612",
   }.freeze
 
-  def problems(full_name, os:, provided: [])
+  def contents(full_name)
     path = File.join(CACHE, "#{full_name}.gem")
     Fledge::Download.save("https://rubygems.org/gems/#{full_name}.gem", to: path, sha256: GEMS.fetch(full_name)) unless File.file?(path)
-    Fledge::Linkage.new(os:, provided:).problems(full_name, Fledge::GemPackage.new(path).contents)
+    Fledge::GemPackage.new(path).contents
+  end
+
+  def problems(full_name, os:, provided: [])
+    Fledge::Linkage.new(os:, provided:, readers: TestReaders.all).problems(full_name, contents(full_name))
+  end
+
+  # Skips unless a tool here reads every format these gems hold.
+  def setup
+    TestReaders.need(self, :elf, :macho, :pe)
   end
 
   # What a runtime ships beside Ruby's own DLL on Windows, which a gem's
@@ -77,9 +86,17 @@ class NativeGemsTest < Minitest::Test
     assert_empty problems("ratatui_ruby-1.5.2-x64-mingw-ucrt", os: "windows", provided: WINDOWS)
   end
 
-  # Judged for another operating system, the same files need libraries it
-  # does not have, which shows the check reads the real files.
-  def test_a_build_for_another_system_would_not_load
-    refute_empty problems("nokogiri-1.19.4-arm64-darwin", os: "linux")
+  # The check reads the real files: each Ruby's build of nokogiri for
+  # Linux links glibc, and for macOS libSystem, and for Windows names the
+  # Ruby DLL it was built for.
+  def test_the_real_files_are_read
+    linux = Fledge::Binary.parse(contents("nokogiri-1.19.4-x86_64-linux-gnu"), readers: TestReaders.all).values
+    macos = Fledge::Binary.parse(contents("nokogiri-1.19.4-arm64-darwin"), readers: TestReaders.all).values
+    windows = Fledge::Binary.parse(contents("nokogiri-1.19.4-x64-mingw-ucrt"), readers: TestReaders.all).values
+
+    refute_empty linux
+    assert(linux.all? { |binary| binary.needed.include?("libc.so.6") && binary.glibc_minimum })
+    assert(macos.all? { |binary| binary.needed.include?("/usr/lib/libSystem.B.dylib") && binary.macos_minimum })
+    assert(windows.all? { |binary| binary.needed.any? { |library| library.match?(Fledge::Linkage::RUBY_DLL) } })
   end
 end

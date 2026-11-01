@@ -108,6 +108,7 @@ class GemAppBuildTest < Minitest::Test
   # Fledge refuses a gem only when it would not run where the app goes,
   # and names every such gem at once.
   def test_every_gem_that_would_not_run_is_named_with_what_to_do
+    TestReaders.need(self, :elf)
     old = FakeGem.build(@gems, "old", "1.0.0", platform: "x86_64-linux-gnu", required_ruby_version: "< 3.5")
     unloadable = FakeGem.build(@gems, "unloadable", "1.0.0", platform: "x86_64-linux-gnu",
       files: { "lib/unloadable.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2]) })
@@ -135,6 +136,7 @@ class GemAppBuildTest < Minitest::Test
   # with GNU libiconv's code compiled into it, as nokogiri's precompiled
   # macOS and Windows builds have, that no one has reviewed.
   def test_a_gem_ships_whatever_its_license_and_whatever_its_compiled_files_hold
+    TestReaders.need(self, :elf)
     gems = [
       FakeGem.build(@gems, "copyleft", "1.0.0", licenses: ["GPL-3.0-only"]),
       FakeGem.build(@gems, "tokraish", "1.0.0", platform: "x86_64-linux-gnu", licenses: ["AGPL-3.0-or-later"],

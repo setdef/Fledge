@@ -45,6 +45,7 @@ class LicensingPageTest < Minitest::Test
   end
 
   def page
+    TestReaders.need(self, :elf, :macho, :pe)
     Dir.mktmpdir do |directory|
       runtime(directory, "arm64-darwin", unix(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}")))
       %w[x86_64-linux aarch64-linux].each do |platform|
@@ -124,6 +125,7 @@ class LicensingPageTest < Minitest::Test
   end
 
   def test_a_runtime_that_breaks_the_policy_makes_no_page
+    TestReaders.need(self, :macho)
     Dir.mktmpdir do |directory|
       runtime(directory, "arm64-darwin", unix(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}")).merge(
         "stray.txt" => "hello\n"

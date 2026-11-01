@@ -23,6 +23,13 @@ class RuntimeBuilder
       [@builder.platform.name]
     end
 
+    # The tools the license audit reads the runtime's compiled files with
+    # (LicenseAudit.readers): the building computer's own, or LLVM's in
+    # FLEDGE_LLVM.
+    def readers
+      LicenseAudit.readers
+    end
+
     # The Ruby tree the runtime was made from, once #build has unpacked
     # it, for the build-only companion (RuntimeBuilder::DevCompanion.copy).
     attr_reader :tree

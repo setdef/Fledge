@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `fledge build` reads the compiled files of an app's gems with the system's own tools rather than its own readers of ELF, Mach-O, and PE: on macOS, Xcode's command line tools' `objdump`, and on Linux binutils' `objdump`, each needed only when the app's gems carry compiled files; on Windows, LLVM 23.1.4's `llvm-readobj`, which the Windows runtime carries in `tools/` (ADR 013).
+- `fledge build` judges only the compiled files of its own system's format (ELF on Linux, Mach-O on macOS, PE on Windows) for the libraries they need; a gem that carries another system's files no longer fails the build for them.
+
 ## [0.0.1.pre.10] - 2026-11-01
 
 ### Added

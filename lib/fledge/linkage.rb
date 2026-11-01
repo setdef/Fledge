@@ -19,9 +19,11 @@ module Fledge
   # which a person who runs the app must never meet (AGENTS.md, Design
   # precedence 1).
   #
-  # This class reads each compiled file of a gem (Fledge::Binary) and
-  # names every library one of them needs that neither the target's
-  # operating system, nor Fledge's runtime, nor the gem itself provides.
+  # This class reads each compiled file of a gem in the format of the
+  # target's own loader, ELF, Mach-O, or PE, since a loader loads no other
+  # (Fledge::Binary, with the build computer's tools), and names every
+  # library one of them needs that neither the target's operating system,
+  # nor Fledge's runtime, nor the gem itself provides.
   # What the operating system provides is SYSTEM_LIBRARIES. It judges
   # nothing else: what a gem compiles in, and under what license, is the
   # app's developer's to decide (decisions of 2026-10-28; ADR 007).
@@ -67,15 +69,21 @@ module Fledge
     # A Windows Ruby's DLL, such as x64-ucrt-ruby400.dll.
     RUBY_DLL = /\A[\w-]*-ruby\d+\.dll\z/i
 
+    # The format each operating system's loader loads.
+    FORMATS = { "linux" => :elf, "darwin" => :macho, "windows" => :pe }.freeze
+
     # Creates the check.
     #
     # [os] The operating system the app is for (Fledge::Platform#os).
     # [provided] The file names of the shared libraries the runtime
     #            ships, which a compiled file may need too.
-    def initialize(os:, provided: [])
+    # [readers] The tools that read compiled files here
+    #           (Fledge::Binary::Readers).
+    def initialize(os:, provided: [], readers: Binary::Readers.local(os))
       @system = SYSTEM_LIBRARIES.fetch(os)
       @os = os
       @provided = provided
+      @readers = readers
     end
 
     # Why the gem whose files are +files+ (paths relative to its folder,
@@ -101,7 +109,8 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def problems(label, files)
-      binaries = files.filter_map { |path, content| Binary.parse(content)&.then { |found| [path, found] } }.sort.to_h
+      loadable = files.select { |_, content| Binary.format_of(content.byteslice(0, 8).to_s) == FORMATS.fetch(@os) }
+      binaries = Binary.parse(loadable, readers: @readers).sort.to_h
       shipped = (binaries.keys.map { |path| File.basename(path) } + @provided).map(&:downcase)
       binaries.flat_map do |path, binary|
         next [] if binary.needed.any? { |library| library.match?(RUBY_DLL) && !shipped.include?(library.downcase) }

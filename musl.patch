@@ -47,11 +47,55 @@ index 0000000..9fadb6e
 +    ;;
 +esac
 +apk add --no-cache "$@"
+diff --git a/.github/scripts/deliver-console.sh b/.github/scripts/deliver-console.sh
+index 74c81cc..bfd0f22 100755
+--- a/.github/scripts/deliver-console.sh
++++ b/.github/scripts/deliver-console.sh
+@@ -51,7 +51,11 @@ else
+   folder=$(basename "$archive" .tar.gz)
+   mkdir -p "$work/apps"
+   tar -xzf "$archive" -C "$work/apps"
+-  command_line="'$work/apps/$folder/${folder%-*-*}'"
++  case "$folder" in
++    *-linux-musl) name=${folder%-*-*-*} ;;
++    *) name=${folder%-*-*} ;;
++  esac
++  command_line="'$work/apps/$folder/$name'"
+   label="the built app"
+ fi
+ 
 diff --git a/.github/scripts/deliver.sh b/.github/scripts/deliver.sh
-index 0be3cbb..d06f844 100755
+index 0be3cbb..b0a5b7a 100755
 --- a/.github/scripts/deliver.sh
 +++ b/.github/scripts/deliver.sh
-@@ -64,14 +64,19 @@ entry=$(sed -n 's/^entry = //p' "$root/fledge.cfg")
+@@ -43,9 +43,15 @@ trap 'rm -rf "$work"' EXIT
+ archive=$(cd "$(dirname "$archive")" && pwd)/$(basename "$archive")
+ probe_archive=$(cd "$(dirname "$probe_archive")" && pwd)/$(basename "$probe_archive")
+ folder=$(basename "$archive" .tar.gz)
+-# NAME-PLATFORM, where every PLATFORM here (arm64-darwin, x86_64-linux,
+-# aarch64-linux) has one hyphen.
+-name=${folder%-*-*}
++# NAME-PLATFORM, where PLATFORM is arm64-darwin, x86_64-linux, or
++# aarch64-linux, with one hyphen, or with -musl after it, two.
++app_name() {
++  case "$1" in
++    *-linux-musl) echo "${1%-*-*-*}" ;;
++    *) echo "${1%-*-*}" ;;
++  esac
++}
++name=$(app_name "$folder")
+ 
+ # Unpack somewhere the app was never built, under a path with spaces and
+ # characters outside ASCII: a C locale reads those as invalid bytes
+@@ -57,21 +63,26 @@ tar -xzf "$probe_archive" -C "$place"
+ root="$place/$folder"
+ app="$root/$name"
+ probe_folder=$(basename "$probe_archive" .tar.gz)
+-probe="$place/$probe_folder/${probe_folder%-*-*}"
++probe="$place/$probe_folder/$(app_name "$probe_folder")"
+ entry=$(sed -n 's/^entry = //p' "$root/fledge.cfg")
+ [ -n "$entry" ] || fail "$root/fledge.cfg names no entry"
+ [ -x "$app" ] || fail "$app is not executable after unpacking"
  [ -x "$probe" ] || fail "$probe is not executable after unpacking"
  
  # The app carries the notices the license audit wrote (ADR 004): every

@@ -50,7 +50,9 @@ class MobilePlatformTest < Minitest::Test
     assert_includes wrapper, "distributionSha256Sum=#{gradle.fetch('sha256')}\n"
     assert_equal gradle.fetch("wrapper_sha256"), Digest::SHA256.file(File.join(ANDROID, "gradle/wrapper/gradle-wrapper.jar")).hexdigest
     assert_equal SOURCES.fetch("agp"), Fledge::MobileProject::Android::AGP
-    assert File.executable?(File.join(ANDROID, "gradlew")), "Gradle's wrapper is executable"
+    # Windows keeps no executable bit, and runs the wrapper's batch file.
+    assert File.executable?(File.join(ANDROID, "gradlew")), "Gradle's wrapper is executable" unless Gem.win_platform?
+    assert_path_exists File.join(ANDROID, "gradlew.bat")
   end
 
   # The privacy manifest names a category for each API Apple requires a

@@ -81,7 +81,9 @@ class MobileBuildTest < Minitest::Test
     assert_equal "certificates\n", File.read(File.join(project, "fledge/libexec/cert.pem"))
     assert_equal "Fledge's runtime for android\n", File.read(File.join(project, "fledge/notices/NOTICES.txt")), "the app carries the notices"
     assert_equal "PK aar", File.read(File.join(project, "libs/FledgeRuby.aar"))
-    assert File.executable?(File.join(project, "gradlew")), "Gradle's wrapper runs as it is"
+    # Windows keeps no executable bit, and runs the wrapper's batch file.
+    assert File.executable?(File.join(project, "gradlew")), "Gradle's wrapper runs as it is" unless Gem.win_platform?
+    assert_path_exists File.join(project, "gradlew.bat")
 
     gradle = File.read(File.join(project, "build.gradle"))
     assert_includes gradle, "applicationId = 'com.example.BobsApp'"

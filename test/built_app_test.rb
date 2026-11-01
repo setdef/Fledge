@@ -320,8 +320,85 @@ class BuiltAppTest < Minitest::Test
       assert_equal ["", 4], [err, status.exitstatus]
       facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app" }
       facts.merge!("console" => false, "app_user_model_id" => "com.setdef.fledge.HelloWindow") if @platform.windows?
+      facts["yjit"] = true unless @platform.windows?
       assert_equal facts, JSON.parse(File.read(report))
     end
+  end
+
+  # ADR 016: --sign signs every compiled file of an app with the identity
+  # FLEDGE_TEST_SIGN_IDENTITY names: "-", ad hoc, on any Mac, and in CI a
+  # self-signed certificate it makes. On macOS every Mach-O program and library of a console
+  # app's folder and of a bundle carries the hardened runtime, a
+  # timestamp, and Fledge's entitlements, then the bundle and its disk
+  # image are signed, and YJIT still writes machine code. On Windows
+  # signtool verifies every PE file and the setup program, signed by
+  # makensis as it wrote it. Delivery verifies the same on fresh runners
+  # (deliver-signed.sh and deliver-signed.ps1).
+  def test_a_signed_build_signs_all_its_code
+    identity = ENV["FLEDGE_TEST_SIGN_IDENTITY"].to_s
+    skip "Linux apps are not signed" if @platform.os == "linux"
+    skip "FLEDGE_TEST_SIGN_IDENTITY names no identity to sign with (\"-\" signs ad hoc on a Mac)" if identity.empty?
+
+    Dir.mktmpdir do |dir|
+      hello = signed_build(dir, HELLO, identity)
+      windowed = signed_build(dir, WINDOWED_APP, identity)
+      @platform.windows? ? check_signed_windows(hello, windowed) : check_signed_mac(dir, hello, windowed, timestamped: identity != "-")
+    end
+  end
+
+  # Builds +source+ signed with +identity+ into DIR/dist, and returns the
+  # paths fledge build printed: the archive, and any installer.
+  def signed_build(dir, source, identity)
+    out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
+      "--sign", identity, "-o", File.join(dir, "dist"), source)
+    assert_predicate status, :success?, err
+    out.lines.map { |line| File.expand_path(line.chomp, Dir.pwd) }
+  end
+
+  def check_signed_mac(dir, hello, windowed, timestamped:)
+    hardened = timestamped ? /flags=0x10000\(runtime\).*^Timestamp=/m : /flags=0x10002\(adhoc,runtime\)/
+    folder = hello.first.delete_suffix(".tar.gz")
+    code = Fledge::Signing.code_files(folder, :macho).reject { |file| Fledge::MacSigning.object_file?(file) }
+    assert_includes code, File.join(folder, "Hello")
+    code.each { |file| assert_match(hardened, signature(file), file) }
+    assert_includes signature(File.join(folder, "Hello")), "com.apple.security.cs.allow-unsigned-executable-memory"
+    out, err, status = run_app({ "HOME" => dir }, File.join(folder, "Hello"))
+    assert_equal [expected, "", 0], [out, err, status.exitstatus]
+
+    bundle = File.join(windowed.first.delete_suffix(".tar.gz"), "Hello Window.app")
+    verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", "--verbose=2", bundle)
+    assert_predicate status, :success?, verified
+    assert_includes signature(bundle), "Identifier=com.setdef.fledge.HelloWindow"
+    assert_match(hardened, signature(bundle))
+    Fledge::Signing.code_files(File.join(bundle, "Contents", "Resources"), :macho).each do |file|
+      assert_match(hardened, signature(file), file) unless Fledge::MacSigning.object_file?(file)
+    end
+    report = File.join(dir, "report.json")
+    _, err, status = run_app({ "HOME" => dir }, File.join(bundle, "Contents", "MacOS", "Hello Window"), report, "0")
+    assert_equal ["", 0], [err, status.exitstatus]
+    assert JSON.parse(File.read(report)).fetch("yjit"), "YJIT wrote machine code under the hardened runtime"
+
+    verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--verbose=2", windowed.fetch(1))
+    assert_predicate status, :success?, verified
+  end
+
+  def check_signed_windows(hello, windowed)
+    signtool = Fledge::WindowsSigning.signtool(ENV)
+    [hello.first.delete_suffix(".zip"), windowed.first.delete_suffix(".zip")].each do |folder|
+      code = Fledge::Signing.code_files(folder, :pe).select { |file| Fledge::WindowsSigning::EXTENSIONS.include?(File.extname(file)) }
+      assert_includes code, File.join(folder, "#{File.basename(folder).delete_suffix("-#{@platform}")}.exe")
+      verified, status = Open3.capture2e(signtool, "verify", "/pa", *code)
+      assert_predicate status, :success?, verified
+    end
+    verified, status = Open3.capture2e(signtool, "verify", "/pa", windowed.fetch(1))
+    assert_predicate status, :success?, verified
+  end
+
+  # What codesign says of the signature of +path+, and its entitlements.
+  def signature(path)
+    out, status = Open3.capture2e("codesign", "--display", "--verbose=2", "--entitlements", "-", path)
+    assert_predicate status, :success?, out
+    out
   end
 
   # examples/windowed_app's installer (ADR 009), built beside its archive

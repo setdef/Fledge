@@ -48,8 +48,9 @@ module Fledge
     APPLICATIONS = "Applications"
 
     # Writes the disk image of the bundle at +bundle+ to +to+, its volume
-    # named +name+, and returns +to+. Raises Fledge::Error when ditto or
-    # hdiutil fails.
+    # named +name+, signs it with +signing+ (Fledge::MacSigning#sign_image)
+    # when given one, and returns +to+. Raises Fledge::Error when ditto,
+    # hdiutil, or codesign fails.
     #
     # === Example
     #
@@ -62,7 +63,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(bundle, name:, to:)
+    def self.write(bundle, name:, to:, signing: nil)
       Dir.mktmpdir("fledge-dmg") do |stage|
         Command.run("ditto", bundle, File.join(stage, File.basename(bundle)), install: MacBundle::INSTALL)
         File.symlink("/Applications", File.join(stage, APPLICATIONS))
@@ -70,6 +71,7 @@ module Fledge
         Command.run("hdiutil", "create", "-volname", name, "-srcfolder", stage, "-fs", "HFS+", "-format", "UDZO", "-ov", to,
           install: MacBundle::INSTALL)
       end
+      signing&.sign_image(to)
       to
     end
   end

@@ -10,8 +10,9 @@ module Fledge
     @identity: Identity
     @folder: String
     @to: String
+    @signing: WindowsSigning?
 
-    def initialize: (identity: Identity, folder: String, to: String) -> void
+    def initialize: (identity: Identity, folder: String, to: String, ?signing: WindowsSigning?) -> void
 
     def script: (icon: String?) -> String
 

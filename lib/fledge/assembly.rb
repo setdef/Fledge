@@ -14,6 +14,7 @@ require_relative "error"
 require_relative "installers"
 require_relative "mac_bundle"
 require_relative "platform"
+require_relative "signing"
 require_relative "windows_resources"
 require_relative "assembly/runtime_folder"
 
@@ -101,7 +102,10 @@ module Fledge
     #             beside the rest.
     # [files] More entries for the built folder, with paths relative to
     #         it, which may not replace anything the runtime holds.
-    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [])
+    # [signing] The signer (Fledge::Signing.for) that signs the app's code
+    #           once everything is in it, and its installers, or +nil+
+    #           for an unsigned build.
+    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil)
       @app = app
       @platform = platform
       @runtime = runtime
@@ -109,6 +113,7 @@ module Fledge
       @app_files = app_files
       @files = files
       @installers = [] # : Array[String]
+      @signing = signing
     end
 
     # The paths of the installers #call wrote, after it has run, such as
@@ -258,19 +263,16 @@ module Fledge
       FileUtils.mkdir_p(@out)
       Dir.mktmpdir(".fledge-build-", @out) do |work|
         runtime = RuntimeFolder.new(@runtime, platform: @platform, app_name: @app.name, work:)
-        bundle = (@platform.os == "darwin" && @app.identity.windowed?) ? MacBundle.new(@app.identity, folder:) : nil
+        bundle = MacBundle.for(@app.identity, platform: @platform, folder:)
         contents = bundle ? bundle.resources : folder
         runtime.move_into(contents)
         File.write(File.join(contents, CONFIG), launch_config)
         copy_app(contents)
         @files.each { |entry| add(contents, entry) }
         tools = runtime.tools
-        launcher = runtime.launcher(launcher_name)
-        bundle ? bundle.finish(launcher) : place_launcher(launcher, tools)
+        finish(bundle, runtime.launcher(launcher_name), tools)
         Archive.pack(folder, to: archive)
-        @installers = Installers.formats(@app, @platform).map do |format|
-          Installers.write(format, app: @app, folder:, tools:)
-        end
+        @installers = Installers.write_all(@app, @platform, folder:, tools:, signing: @signing)
       end
       archive
     rescue
@@ -304,6 +306,22 @@ module Fledge
 
     # The runtime's launcher for this app: the windowed one on Windows for
     # a windowed app, the one launcher elsewhere.
+    # Makes the launcher +launcher+ the app's program, last of all, and
+    # signs what the build signs (ADR 016): the bundle, which seals the
+    # rest, or the app's folder.
+    private def finish(bundle, launcher, tools)
+      return bundle.finish(launcher, signing: mac_signing) if bundle
+
+      place_launcher(launcher, tools)
+      @signing&.sign_folder(folder)
+    end
+
+    # The signer of a macOS bundle, when the build signs one.
+    private def mac_signing
+      signing = @signing
+      signing if signing.is_a?(MacSigning)
+    end
+
     private def launcher_name
       (@platform.windows? && @app.identity.windowed?) ? WINDOWED_LAUNCHER : LAUNCHER
     end

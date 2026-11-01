@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  The entitlements fledge build signs a macOS app's code with, under the
+  hardened runtime (ADR 016), Briefcase's defaults for every macOS app.
+  YJIT, which an app may enable, makes its machine code executable with
+  mprotect, without MAP_JIT (jit.c, rb_jit_reserve_addr_space and
+  rb_jit_mark_executable, at Ruby 4.0.9), which the first is for; the
+  second lets Ruby load a library its app did not sign, as a gem may.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>

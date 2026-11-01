@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MacSigning
+    ENTITLEMENTS: String
+    INSTALL: String
+
+    @identity: String
+
+    attr_reader identity: String
+
+    def initialize: (String identity) -> void
+
+    def code_options: () -> Array[String]
+
+    def sign_folder: (String folder) -> void
+
+    def self.object_file?: (String path) -> bool
+
+    def sign_bundle: (String path, identifier: String) -> String
+
+    def sign_image: (String path) -> String
+
+    private def timestamp: () -> Array[String]
+  end
+end

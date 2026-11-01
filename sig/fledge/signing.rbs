@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  module Signing
+    type signer = MacSigning | WindowsSigning
+
+    def self.for: (Platform platform, String? identity, ?env: Runtimes::_Env) -> signer?
+
+    def self.code_files: (String folder, Symbol format) -> Array[String]
+  end
+end

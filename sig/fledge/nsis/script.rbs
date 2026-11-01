@@ -10,8 +10,9 @@ module Fledge
       @files: Array[String]
       @folders: Array[String]
       @size: Integer
+      @signing: String?
 
-      def initialize: (identity: Identity, folder: String, to: String, files: Array[String], folders: Array[String], size: Integer) -> void
+      def initialize: (identity: Identity, folder: String, to: String, files: Array[String], folders: Array[String], size: Integer, ?signing: String?) -> void
 
       def text: (icon: String?) -> String
 
@@ -20,6 +21,8 @@ module Fledge
       private def install_section: () -> Array[String]
 
       private def uninstall_section: () -> Array[String]
+
+      private def finalize: () -> Array[String]
 
       private def program: () -> String
 

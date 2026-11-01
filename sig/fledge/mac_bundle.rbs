@@ -9,6 +9,8 @@ module Fledge
     @identity: Identity
     @folder: String
 
+    def self.for: (Identity identity, platform: Platform, folder: String) -> MacBundle?
+
     def initialize: (Identity identity, folder: String) -> void
 
     def path: () -> String
@@ -19,7 +21,7 @@ module Fledge
 
     def self.bundle_version: (String version) -> String
 
-    def finish: (String launcher) -> String
+    def finish: (String launcher, ?signing: MacSigning?) -> String
 
     private def write_info_plist: () -> String
 

@@ -536,6 +536,12 @@ jobs:
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
           echo "FLEDGE_REQUIRE_MKSQUASHFS=1" >> "$GITHUB_ENV"
 
+      # ADR 016: a self-signed identity for test/built_app_test.rb's
+      # signed build, which no CI runner has otherwise.
+      - name: Make a code signing identity
+        if: runner.os == 'macOS'
+        run: .github/scripts/make-test-identity.sh "$RUNNER_TEMP/certificate.pem"
+
       - name: Run the tests
         timeout-minutes: 10
         env:
@@ -594,6 +600,12 @@ jobs:
       # the tree setup-ruby set up (ADR 006).
       - name: Point RubyInstaller at setup-ruby's MSYS2
         run: echo "MSYS2_PATH=$RI_DEVKIT" >> "$GITHUB_ENV"
+
+      # ADR 016: a self-signed certificate for test/built_app_test.rb's
+      # signed build, which no CI runner has otherwise.
+      - name: Make a code signing certificate
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/make-test-identity.ps1 -Certificate "$env:RUNNER_TEMP/certificate.cer"
 
       - name: Run the tests
         timeout-minutes: 15
@@ -741,6 +753,44 @@ jobs:
             ruby -I lib exe/fledge build -o dist "$app"
           done
 
+      # ADR 016: hello and windowed_app again, signed with a self-signed
+      # identity made for this run, as a developer signs with their own;
+      # Delivery verifies them on a fresh runner with the certificate.
+      - name: Make a code signing identity
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist-signed
+          .github/scripts/make-test-identity.sh dist-signed/certificate.pem
+
+      - name: Make a code signing certificate
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist-signed | Out-Null
+          pwsh -NoProfile -File .github/scripts/make-test-identity.ps1 -Certificate dist-signed/certificate.cer
+
+      - name: Build hello and windowed_app, signed, for ${{ matrix.platform }}
+        if: runner.os != 'Linux'
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: |
+          for app in examples/hello examples/windowed_app; do
+            ruby -I lib exe/fledge build --sign "$FLEDGE_TEST_SIGN_IDENTITY" -o dist-signed "$app"
+          done
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: runner.os != 'Linux'
+        with:
+          name: signed-${{ matrix.platform }}
+          path: |
+            dist-signed/*-${{ matrix.platform }}.tar.gz
+            dist-signed/*-${{ matrix.platform }}.zip
+            dist-signed/*-${{ matrix.platform }}.dmg
+            dist-signed/*-${{ matrix.platform }}-setup.exe
+            dist-signed/certificate.*
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Build nokogiri_app from source for ${{ matrix.platform }}
         if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x64-mingw-ucrt'
         env:
@@ -885,6 +935,22 @@ jobs:
       # must end as ruby main.rb does (.github/scripts/deliver-console.sh).
       - name: Interrupt the console probe in a terminal, as a person would
         run: .github/scripts/deliver-console.sh "$RUNNER_TEMP/delivered/Console-${{ matrix.platform }}.tar.gz"
+
+      # ADR 016: the signed build, verified by Apple's codesign on a fresh
+      # Mac that trusts the run's test certificate, and run
+      # (.github/scripts/deliver-signed.sh).
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: runner.os == 'macOS'
+        with:
+          name: signed-${{ matrix.platform }}
+          path: ${{ runner.temp }}/signed
+
+      - name: Verify and run the signed apps
+        if: runner.os == 'macOS'
+        run: >-
+          .github/scripts/deliver-signed.sh "$RUNNER_TEMP/signed/Hello-arm64-darwin.tar.gz"
+          "$RUNNER_TEMP/signed/Hello Window-arm64-darwin.tar.gz" "$RUNNER_TEMP/signed/Hello Window-arm64-darwin.dmg"
+          "$RUNNER_TEMP/signed/certificate.pem"
 
   # Delivery of the windowed app (ADR 008), on a fresh runner of each
   # platform: on macOS its .app bundle must pass codesign --verify --strict
@@ -1067,6 +1133,24 @@ jobs:
       - name: Install Hello Window with its setup program, run it from the Start menu, and uninstall it
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-installer.ps1 -Installer "$env:RUNNER_TEMP/delivered/Hello Window-x64-mingw-ucrt-setup.exe"
+
+      # ADR 016: the signed build, refused by signtool on a fresh Windows
+      # until it trusts the run's test certificate, then verified, every
+      # PE file, the setup program, and the uninstaller it installs
+      # (.github/scripts/deliver-signed.ps1).
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signed-x64-mingw-ucrt
+          path: ${{ runner.temp }}/signed
+
+      - name: Verify, install, and run the signed apps
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver-signed.ps1
+          -Hello "$env:RUNNER_TEMP/signed/Hello-x64-mingw-ucrt.zip"
+          -Windowed "$env:RUNNER_TEMP/signed/Hello Window-x64-mingw-ucrt.zip"
+          -Installer "$env:RUNNER_TEMP/signed/Hello Window-x64-mingw-ucrt-setup.exe"
+          -Certificate "$env:RUNNER_TEMP/signed/certificate.cer"
 
   # The license audit's own checks on each runtime this run built: that
   # the release assets are the very notices the runtime carries, that a

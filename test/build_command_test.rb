@@ -51,6 +51,21 @@ class BuildCommandTest < Minitest::Test
     assert_equal "elsewhere/Hello-x86_64-linux.tar.gz\n", out
   end
 
+  # ADR 016: --sign names the identity a desktop build signs with.
+  def test_sign_takes_an_identity_in_either_form
+    assert_equal "Developer ID Application: Example", Fledge::CLI::Build::Options.parse(["--sign", "Developer ID Application: Example", "hello"]).sign
+    assert_equal "-", Fledge::CLI::Build::Options.parse(%w[--sign=- hello]).sign
+    assert_nil Fledge::CLI::Build::Options.parse(%w[hello]).sign
+  end
+
+  # Linux apps carry no signature for their system to check.
+  def test_a_linux_build_with_an_identity_fails
+    out, err, status = build("--sign", "me", "hello")
+
+    assert_equal [1, ""], [status, out]
+    assert_includes err, "fledge build: --sign signs apps for macOS and Windows"
+  end
+
   def test_the_path_defaults_to_the_current_directory
     out = StringIO.new
     status = Dir.chdir(@app) do
@@ -91,6 +106,9 @@ class BuildCommandTest < Minitest::Test
       %w[--out=] => "--out needs a DIR",
       %w[--frobnicate hello] => "unrecognized option '--frobnicate'",
       %w[hello other] => "takes one PATH, but got 'hello' and 'other'",
+      %w[--sign] => "--sign needs an IDENTITY",
+      %w[--sign=] => "--sign needs an IDENTITY",
+      %w[ios --sign me] => "--sign signs desktop apps; sign a phone's app with Xcode or Gradle",
     }.each do |argv, message|
       error = assert_raises(Fledge::UsageError, argv.inspect) { build(*argv) }
       assert_equal message, error.message, argv.inspect

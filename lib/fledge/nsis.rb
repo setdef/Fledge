@@ -76,10 +76,13 @@ module Fledge
     #
     # [folder] The built app's folder, which the installer copies.
     # [to] The installer's path.
-    def initialize(identity:, folder:, to:)
+    # [signing] The Fledge::WindowsSigning that makensis signs the
+    #           installer and its uninstaller with, or +nil+.
+    def initialize(identity:, folder:, to:, signing: nil)
       @identity = identity
       @folder = folder
       @to = to
+      @signing = signing
     end
 
     # The installer's NSIS script, which installs every file and folder in
@@ -114,7 +117,7 @@ module Fledge
           size += File.size(full)
         end
       end
-      Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:).text(icon:)
+      Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:, signing: @signing&.command_line).text(icon:)
     end
 
     # Compiles the installer with the NSIS in +tools+, the runtime's

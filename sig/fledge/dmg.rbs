@@ -5,6 +5,6 @@ module Fledge
   module Dmg
     APPLICATIONS: String
 
-    def self.write: (String bundle, name: String, to: String) -> String
+    def self.write: (String bundle, name: String, to: String, ?signing: MacSigning?) -> String
   end
 end

@@ -65,6 +65,12 @@ module Fledge
     # macOS has in /usr/bin.
     INSTALL = "It comes with macOS, in /usr/bin."
 
+    # The bundle an app with +identity+ is on +platform+, built in
+    # +folder+: one for a windowed macOS app, and +nil+ for any other.
+    def self.for(identity, platform:, folder:)
+      new(identity, folder:) if platform.os == "darwin" && identity.windowed?
+    end
+
     # Creates the bundle of the app whose Fledge::Identity is +identity+,
     # in the built app's folder +folder+.
     def initialize(identity, folder:)
@@ -166,8 +172,9 @@ module Fledge
 
     # Puts the launcher at +launcher+ into the bundle as its program,
     # writes <tt>Info.plist</tt>, the icon, and the links in +MacOS+, and
-    # signs the bundle ad hoc. Comes last: the signature seals everything
-    # else. Raises Fledge::Error when plutil or codesign fails.
+    # signs the bundle: ad hoc, or with +signing+'s identity
+    # (Fledge::MacSigning#sign_bundle). Comes last: the signature seals
+    # everything else. Raises Fledge::Error when plutil or codesign fails.
     #
     # === Example
     #
@@ -180,7 +187,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def finish(launcher)
+    def finish(launcher, signing: nil)
       macos = File.join(path, "Contents", "MacOS")
       FileUtils.mkdir_p(macos)
       LINKED.each do |name|
@@ -190,6 +197,8 @@ module Fledge
       write_info_plist
       icon = @identity.icon
       FileUtils.cp(icon.file("icns"), File.join(resources, icon_file)) if icon
+      return signing.sign_bundle(path, identifier: @identity.identifier.to_s) if signing
+
       Command.run("codesign", "--force", "--sign", "-", "--identifier", @identity.identifier.to_s, path, install: INSTALL)
     end
 

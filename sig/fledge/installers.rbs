@@ -10,6 +10,8 @@ module Fledge
 
     def self.file_name: (String format, String base) -> String
 
-    def self.write: (String format, app: App, folder: String, tools: String?) -> String
+    def self.write_all: (App app, Platform platform, folder: String, tools: String?, ?signing: Signing::signer?) -> Array[String]
+
+    def self.write: (String format, app: App, folder: String, tools: String?, ?signing: Signing::signer?) -> String
   end
 end

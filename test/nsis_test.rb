@@ -118,6 +118,20 @@ class NsisTest < Minitest::Test
 
   # A dollar sign doubled and a double quote as $\", so NSIS reads the
   # name as it is.
+  # ADR 016: a signed build's installer has makensis sign the uninstaller
+  # it writes into it, and then itself, with the signing command, and
+  # fail unless it exits 0; an unsigned build's has neither.
+  def test_a_signed_installer_and_its_uninstaller_are_signed_as_makensis_writes_them
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "signtool.exe"), "")
+      signing = Fledge::WindowsSigning.new("0123456789ABCDEF0123456789ABCDEF01234567", env: { "PATH" => dir })
+      text = Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe", signing:).script(icon: nil)
+
+      assert_includes text, "\n!uninstfinalize '#{signing.command_line}' = 0\n!finalize '#{signing.command_line}' = 0\n"
+      refute_includes script, "finalize"
+    end
+  end
+
   def test_names_are_escaped_as_nsis_strings
     text = script(identity: identity(name: "Say \"$1\""))
 

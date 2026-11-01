@@ -16,13 +16,14 @@ module Fledge
       # The script that installs the app of +identity+ from +folder+ into
       # the setup program +to+, and uninstalls +files+ and +folders+,
       # whose contents are +size+ bytes.
-      def initialize(identity:, folder:, to:, files:, folders:, size:)
+      def initialize(identity:, folder:, to:, files:, folders:, size:, signing: nil)
         @identity = identity
         @folder = folder
         @to = to
         @files = files
         @folders = folders
         @size = size
+        @signing = signing
       end
 
       # The installer's NSIS script, with the app's icon at +icon+, or
@@ -87,6 +88,15 @@ module Fledge
       end
 
       # The app's program, as the installed folder holds it.
+      # NSIS 3.08's !uninstfinalize and !finalize: makensis runs the
+      # signing command on the uninstaller it writes into the installer,
+      # and then on the installer, failing unless it exits 0 (ADR 016).
+      private def finalize
+        return [] unless @signing
+
+        ["!uninstfinalize '#{@signing}' = 0", "!finalize '#{@signing}' = 0"]
+      end
+
       private def program
         "#{@identity.name}.exe"
       end
@@ -106,6 +116,7 @@ module Fledge
           "",
           "Name #{quote(@identity.name)}",
           "OutFile #{quote(Nsis.host_path(@to))}",
+          *finalize,
           "InstallDir \"$LOCALAPPDATA\\Programs\\#{nsis(@identity.name)}\"",
           "BrandingText #{quote(@identity.copyright || @identity.name)}",
           "",

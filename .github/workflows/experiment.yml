@@ -1,54 +1,46 @@
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# A spike for Plan 002's musl story: can Fledge's launcher embed a Ruby
-# built from source on Alpine, with its extensions as shared objects?
-# Not part of trunk.
-name: Spike (musl)
+# A spike for Plan 002's musl story: rake runtime for musl Linux, in
+# Alpine, from Fledge at 81bd656 with musl.patch. Not part of trunk.
+name: Spike (musl runtime)
 on:
   push:
     branches: ["experiment/signing"]
 permissions:
   contents: read
 jobs:
-  musl:
+  runtime:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux-musl
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
-      - name: Build Ruby 4.0.9 from source in Alpine, and a launcher against it
+      - uses: actions/checkout@v4
+      - name: Build the runtime in Alpine
         run: |
+          git clone -q https://github.com/setdef/Fledge fledge
+          cd fledge && git checkout -q 81bd656 && git apply ../musl.patch && cd ..
           cat > build.sh <<'SH'
           set -eux
-          apk add --no-cache build-base linux-headers rust cargo git file openssl-dev openssl-libs-static yaml-dev yaml-static libffi-dev zlib-dev zlib-static curl tar xz
-          cd /work
-          curl -fsSLO https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
-          sha256sum ruby-4.0.9.tar.gz
-          tar -xzf ruby-4.0.9.tar.gz
-          cd ruby-4.0.9
-          ./configure --prefix=/opt/ruby --enable-load-relative --disable-shared --enable-yjit --disable-install-doc --without-gmp LDFLAGS=-static-libgcc > /work/configure.log
-          make -j"$(nproc)" > /work/make.log 2>&1 || { tail -50 /work/make.log; exit 1; }
-          make install > /work/install.log 2>&1
-          ls /opt/ruby/lib; find /opt/ruby -name "*.so" | head; find /opt/ruby -name "*.so" | wc -l
-          cd /work
-          git clone -q https://github.com/setdef/Fledge fledge
-          inc="-I/opt/ruby/include/ruby-4.0.0 -I/opt/ruby/include/ruby-4.0.0/$(ls /opt/ruby/include/ruby-4.0.0 | grep linux)"
-          cc -std=gnu11 -O2 $inc fledge/runtime/launcher/unix.c fledge/runtime/launcher/scrub.c fledge/runtime/launcher/config.c fledge/runtime/launcher/bundler.c fledge/runtime/launcher/locale.c fledge/runtime/launcher/linux.c \
-            -rdynamic -static-libgcc -Wl,--whole-archive /opt/ruby/lib/libruby-static.a -Wl,--no-whole-archive -lz -lrt -ldl -lm -lpthread -o /work/launcher
-          file /work/launcher; readelf -d /work/launcher | grep NEEDED
-          mkdir -p "/tmp/My App/Hello/app"
-          cp /work/launcher "/tmp/My App/Hello/Hello"
-          cp -R /opt/ruby/lib "/tmp/My App/Hello/lib"
-          cp -R /opt/ruby/bin "/tmp/My App/Hello/bin"
-          printf 'entry = main.rb\n' > "/tmp/My App/Hello/fledge.cfg"
-          printf 'require "json"\nrequire "openssl"\nrequire "psych"\nrequire "fiddle"\nrequire "bigdecimal"\nRubyVM::YJIT.enable\nputs JSON.generate(ruby: RUBY_VERSION, platform: RUBY_PLATFORM, ssl: OpenSSL::OPENSSL_LIBRARY_VERSION, yaml: Psych::LIBYAML_VERSION, yjit: RubyVM::YJIT.enabled?, crypt: "x".crypt("ab"), gem: Gem::Platform.local.to_s)\n' > "/tmp/My App/Hello/app/main.rb"
-          cd / && env -i "/tmp/My App/Hello/Hello"
-          "/tmp/My App/Hello/bin/ruby" -e 'p RbConfig.ruby, Gem::Platform.local.to_s'
-          tar -czf /work/hello.tar.gz -C "/tmp/My App" Hello
+          apk add --no-cache build-base linux-headers rust cargo perl git file binutils patchelf xz tar zstd
+          apk info -v | sort > /work/apk-versions.txt
+          cd /work/fledge
+          ruby -v
+          ruby -e 'require "./tasks/runtime_builder"; RuntimeBuilder.new.call'
           SH
-          docker run --rm -v "$PWD:/work" alpine:3.22 sh /work/build.sh
-      - name: Run it in a fresh Alpine with no Ruby
-        run: |
-          docker run --rm -v "$PWD:/work" alpine:3.22 sh -c 'mkdir -p /x && tar -xzf /work/hello.tar.gz -C /x && cd / && env -i /x/Hello/Hello && ldd /x/Hello/Hello'
+          docker run --rm -v "$PWD:/work" ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3 sh /work/build.sh 2>&1 | tail -300
+          ls -l fledge/tmp/runtime
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: musl-${{ matrix.platform }}
+          path: |
+            fledge/tmp/runtime/fledge-runtime-*
+            fledge/tmp/runtime/*/logs
+            apk-versions.txt

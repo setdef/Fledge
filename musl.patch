@@ -1,0 +1,660 @@
+diff --git a/exe/fledge b/exe/fledge
+index b1d766f..52e44f9 100755
+--- a/exe/fledge
++++ b/exe/fledge
+@@ -145,7 +145,11 @@
+ #                          none (default: all three)
+ #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
+ #                        PLATFORM is this computer's: arm64-darwin,
+-#                        x86_64-linux, aarch64-linux, x64-mingw-ucrt.
++#                        x86_64-linux, aarch64-linux,
++#                        x86_64-linux-musl, aarch64-linux-musl,
++#                        x64-mingw-ucrt. A -linux app runs on Linux
++#                        with glibc 2.39 or newer, and a -linux-musl
++#                        one on Linux with musl, such as Alpine.
+ #                        NAME is the gemspec's name, or else ROOT's
+ #                        folder name, camelized (my_cool_app is
+ #                        MyCoolApp), unless fledge.yml names it. NAME
+diff --git a/lib/fledge/app_gems.rb b/lib/fledge/app_gems.rb
+index dfcba14..82d5139 100644
+--- a/lib/fledge/app_gems.rb
++++ b/lib/fledge/app_gems.rb
+@@ -130,7 +130,7 @@ module Fledge
+     # the Ruby it asks for, and what its compiled files need.
+     private def desktop_problems(packages, platform, runtime)
+       readers(platform, runtime) do |readers|
+-        linkage = Linkage.new(os: platform.os, provided: runtime.libraries, readers:)
++        linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, readers:)
+         packages.flat_map do |gem, package|
+           [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.contents)]
+         end
+diff --git a/lib/fledge/binary/readers.rb b/lib/fledge/binary/readers.rb
+index 88de4c6..6a449da 100644
+--- a/lib/fledge/binary/readers.rb
++++ b/lib/fledge/binary/readers.rb
+@@ -71,7 +71,7 @@ module Fledge
+         when "darwin"
+           new(commands: { elf: "objdump", macho: "objdump" },
+             install: "Install Xcode's command line tools (xcode-select --install), whose objdump reads compiled files.")
+-        when "linux"
++        when "linux", "linux-musl"
+           new(commands: { elf: "objdump" },
+             install: "Install binutils, whose objdump reads compiled files (sudo apt install binutils, sudo dnf install binutils).")
+         else
+diff --git a/lib/fledge/linkage.rb b/lib/fledge/linkage.rb
+index d8c83dd..f7d8747 100644
+--- a/lib/fledge/linkage.rb
++++ b/lib/fledge/linkage.rb
+@@ -43,8 +43,11 @@ module Fledge
+   # SPDX-SnippetEnd
+   #++
+   class Linkage
+-    # By operating system (Fledge::Platform#os), the patterns of the
+-    # libraries it provides, which an app need not ship. On Linux, the
++    # By system (Fledge::Platform#libraries), the patterns of the
++    # libraries it provides, which an app need not ship. On musl Linux,
++    # those PEP 656 lets a musllinux_1_2 wheel assume, auditwheel 6.8.2's
++    # <tt>musllinux-policy.json</tt>: musl's C library, by its own name
++    # and Alpine's, and zlib (ADR 017). On Linux, the
+     # libraries PEP 600 lets a manylinux_2_39 wheel assume of every
+     # distribution with glibc 2.39, Fledge's floor (decision 7):
+     # auditwheel 6.4.2's <tt>manylinux-policy.json</tt>,
+@@ -59,6 +62,7 @@ module Fledge
+         /\A(?:libGL\.so\.1|libICE\.so\.6|libSM\.so\.6|libX11\.so\.6|libXext\.so\.6|libXrender\.so\.1|libanl\.so\.1|libatomic\.so\.1|libc\.so\.6|libdl\.so\.2|libexpat\.so\.1|libgcc_s\.so\.1|libglib-2\.0\.so\.0|libgobject-2\.0\.so\.0|libgthread-2\.0\.so\.0|libm\.so\.6|libnsl\.so\.1|libpthread\.so\.0|libresolv\.so\.2|librt\.so\.1|libstdc\+\+\.so\.6|libutil\.so\.1|libz\.so\.1)\z/,
+         /\Ald-linux[-\w.]*\.so\.\d\z/,
+       ],
++      "linux-musl" => [/\A(?:libc\.so|libc\.musl-(?:x86_64|aarch64)\.so\.1|libz\.so\.1)\z/, /\Ald-musl-(?:x86_64|aarch64)\.so\.1\z/],
+       "darwin" => [%r{\A/usr/lib/[^/]+\.dylib\z}, %r{\A/System/Library/Frameworks/}],
+       "windows" => [
+         /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i,
+@@ -70,7 +74,7 @@ module Fledge
+     RUBY_DLL = /\A[\w-]*-ruby\d+\.dll\z/i
+ 
+     # The format each operating system's loader loads.
+-    FORMATS = { "linux" => :elf, "darwin" => :macho, "windows" => :pe }.freeze
++    FORMATS = { "linux" => :elf, "linux-musl" => :elf, "darwin" => :macho, "windows" => :pe }.freeze
+ 
+     # Creates the check.
+     #
+diff --git a/lib/fledge/platform.rb b/lib/fledge/platform.rb
+index baec065..efa561b 100644
+--- a/lib/fledge/platform.rb
++++ b/lib/fledge/platform.rb
+@@ -48,7 +48,7 @@ module Fledge
+   class Platform < Data.define(:name)
+     # The names of the platforms Fledge has runtimes for, in the order
+     # it lists them.
+-    NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt].freeze
++    NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt].freeze
+ 
+     # The oldest macOS an arm64-darwin runtime runs on: rv-ruby's Sonoma
+     # build, and the launcher built with -mmacosx-version-min=14.0 (ADR
+@@ -137,6 +137,7 @@ module Fledge
+       version = gem_platform.version
+       return "#{cpu}-darwin" if os == "darwin"
+       return "#{cpu}-linux" if os == "linux" && [nil, "gnu"].include?(version)
++      return "#{cpu}-linux-musl" if os == "linux" && version == "musl"
+ 
+       gem_platform.to_s
+     end
+@@ -196,8 +197,45 @@ module Fledge
+       (os == "darwin") ? MACOS_MINIMUM : nil
+     end
+ 
++    # Whether the platform is Linux with musl's C library in place of
++    # glibc's, as Alpine is (ADR 017).
++    #
++    # === Example
++    #
++    #--
++    # SPDX-SnippetBegin
++    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
++    # SPDX-License-Identifier: MIT-0
++    #++
++    #   Fledge::Platform.find("x86_64-linux-musl").musl? # => true
++    #--
++    # SPDX-SnippetEnd
++    #++
++    def musl?
++      name.end_with?("-linux-musl")
++    end
++
++    # Which system's libraries an app's compiled gems may assume on the
++    # platform (Fledge::Linkage): "linux-musl" on musl Linux, which has
++    # none of glibc's, and otherwise the platform's #os.
++    #
++    # === Example
++    #
++    #--
++    # SPDX-SnippetBegin
++    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
++    # SPDX-License-Identifier: MIT-0
++    #++
++    #   Fledge::Platform.find("aarch64-linux-musl").libraries # => "linux-musl"
++    #--
++    # SPDX-SnippetEnd
++    #++
++    def libraries
++      musl? ? "linux-musl" : os
++    end
++
+     # The oldest glibc the platform's apps run on (GLIBC_MINIMUM), or +nil+
+-    # for a platform that is not Linux.
++    # for a platform that is not Linux with glibc.
+     #
+     # === Example
+     #
+@@ -211,7 +249,7 @@ module Fledge
+     # SPDX-SnippetEnd
+     #++
+     def glibc_minimum
+-      (os == "linux") ? GLIBC_MINIMUM : nil
++      (os == "linux" && !musl?) ? GLIBC_MINIMUM : nil
+     end
+ 
+     # The names a Gemfile.lock's PLATFORMS section gives this platform,
+diff --git a/runtime/sources.yml b/runtime/sources.yml
+index b38b43d..5a5ecc1 100644
+--- a/runtime/sources.yml
++++ b/runtime/sources.yml
+@@ -273,6 +273,46 @@ mobile:
+     url: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+     sha256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+ 
++# The musl Linux runtimes (x86_64-linux-musl, aarch64-linux-musl; ADR
++# 017): CRuby built from its release tarball on a computer of each, in
++# Alpine, because rv-ruby's musl builds link the standard library's
++# extensions into their own bin/ruby, where Fledge's launcher cannot
++# reach them. Configured as rv-ruby's glibc builds are (a static libruby,
++# --enable-load-relative, YJIT), with every extension a shared object,
++# and OpenSSL, libyaml, libffi, and zlib built from these sources and
++# linked statically into the extensions that use them: the OpenSSL the
++# mobile runtimes and RubyInstaller link, the libyaml and libffi every
++# other runtime has, the zlib rv-ruby's runtimes compile in, and Mozilla's
++# CA certificates as curl publishes them, the file rv-ruby's runtimes
++# carry as libexec/cert.pem. alpine is the image CI builds and delivers
++# them in, pinned by digest, and its packages, which build them, by
++# version (ci.yml).
++musl-ruby:
++  ruby:
++    version: 4.0.9
++    url: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
++    sha256: c35350682ff050b79702d57ade4516e7336063f510155d19fb2fb5b3f3909511
++  openssl:
++    version: 3.6.5
++    url: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
++    sha256: a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98
++  libyaml:
++    version: 0.2.5
++    url: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
++    sha256: c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4
++  libffi:
++    version: 3.5.2
++    url: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
++    sha256: f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc
++  zlib:
++    version: 1.3.2
++    url: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
++    sha256: bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16
++  ca-certificates:
++    version: cacert-2026-03-19
++    url: https://curl.se/ca/cacert-2026-03-19.pem
++    sha256: b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171
++
+ # What each runtime ships, under which license, and with which notice,
+ # is runtime/licenses.yml's: the license audit derives it from each built
+ # runtime and writes its notices/NOTICES.txt and SBOM (ADR 004).
+diff --git a/sig/fledge/platform.rbs b/sig/fledge/platform.rbs
+index 0bcfac0..ac582dc 100644
+--- a/sig/fledge/platform.rbs
++++ b/sig/fledge/platform.rbs
+@@ -26,6 +26,10 @@ module Fledge
+ 
+     def macos_minimum: () -> String?
+ 
++    def musl?: () -> bool
++
++    def libraries: () -> String
++
+     def glibc_minimum: () -> String?
+ 
+     def lockfile_names: () -> Array[String]
+diff --git a/tasks/runtime_builder.rb b/tasks/runtime_builder.rb
+index 43198c0..58ce4a7 100644
+--- a/tasks/runtime_builder.rb
++++ b/tasks/runtime_builder.rb
+@@ -253,6 +253,8 @@ class RuntimeBuilder
+       (platform.name == "ios") ? IOS : Android
+     elsif platform.windows?
+       Windows
++    elsif platform.musl?
++      Musl
+     else
+       platform.name.end_with?("-darwin") ? Darwin : Linux
+     end
+@@ -271,6 +273,7 @@ require_relative "runtime_builder/recipe"
+ require_relative "runtime_builder/unix"
+ require_relative "runtime_builder/darwin"
+ require_relative "runtime_builder/linux"
++require_relative "runtime_builder/musl"
+ require_relative "runtime_builder/windows"
+ require_relative "runtime_builder/ruby_source"
+ require_relative "runtime_builder/bundled_extensions"
+diff --git a/tasks/runtime_builder/musl.rb b/tasks/runtime_builder/musl.rb
+new file mode 100644
+index 0000000..dd4b074
+--- /dev/null
++++ b/tasks/runtime_builder/musl.rb
+@@ -0,0 +1,200 @@
++# frozen_string_literal: true
++
++#--
++# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
++# SPDX-License-Identifier: AGPL-3.0-or-later
++#++
++
++require "etc"
++require "fileutils"
++require "rbconfig"
++require_relative "unix"
++
++class RuntimeBuilder
++  # musl Linux (Alpine and the CI images built on it): CRuby built from
++  # its pinned source on the computer it is for, as ADR 001's fallback
++  # and python-build-standalone build Python, because rv-ruby's musl
++  # builds link the standard library's extensions into their own
++  # bin/ruby, where a launcher linked against their libruby cannot reach
++  # them (Plan 001, spike 1; ADR 017). It is configured as rv-ruby's
++  # glibc builds are, a static libruby that finds its library from the
++  # program that holds it, with YJIT, but with each extension a shared
++  # object, as on glibc, and OpenSSL, libyaml, libffi, and zlib built
++  # from their pinned sources and linked statically into the extensions
++  # that use them. musl itself is the computer's: every musl Linux has
++  # it, as every glibc Linux has glibc, and its own crypt(3) serves
++  # String#crypt, so no libxcrypt ships.
++  class Musl < Unix
++    # The only libraries the launcher and bin/ruby may need: musl's C
++    # library, which is also its dynamic linker.
++    ALLOWED = /\A(?:libc\.musl-(?:x86_64|aarch64)\.so\.1|ld-musl-(?:x86_64|aarch64)\.so\.1)\z/
++
++    # The architecture of each musl target, in AppImage's names and
++    # musl's own.
++    ARCHES = { "x86_64-linux-musl" => "x86_64", "aarch64-linux-musl" => "aarch64" }.freeze
++
++    def compile(output, sources, _rpath)
++      cc = ENV.fetch("CC", "cc")
++      static = File.join(@prefix, "lib", "libruby-static.a")
++      FileUtils.mkdir_p(File.dirname(output))
++      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *includes, *sources, "-rdynamic", "-static-libgcc",
++        "-Wl,--whole-archive", static, "-Wl,--no-whole-archive", *libruby_libraries, "-o", output)
++      @builder.run("strip", "--strip-unneeded", output)
++      check_dynamic_section(output)
++    end
++
++    def finish(stage)
++      Dir.glob(File.join(stage, "lib", "ruby", "**", "*.so")).each do |extension|
++        @builder.run("strip", "--strip-debug", extension)
++      end
++      copy_appimage_runtime(File.join(stage, "tools", "appimage-runtime"))
++    end
++
++    # Builds Ruby, and the libraries its extensions link statically, from
++    # their pinned sources, installs it into a prefix of its own, with
++    # Mozilla's CA certificates as libexec/cert.pem where rv-ruby keeps
++    # them, and returns the prefix, which the Unix recipe copies a runtime
++    # from as it copies rv-ruby's.
++    private def unpack_ruby
++      deps = File.join(@build_dir, "deps")
++      %w[zlib libyaml libffi].each { |name| build_autotools(name, deps) }
++      build_openssl(deps)
++      prefix = File.join(@build_dir, "prefix")
++      source = unpack(pin("ruby"), "ruby")
++      build = File.join(@build_dir, "ruby-build")
++      FileUtils.rm_rf([build, prefix])
++      FileUtils.mkdir_p(build)
++      logged("ruby-configure", File.join(source, "configure"), *configure_options(prefix, deps), chdir: build)
++      logged("ruby-make", "make", "-j#{Etc.nprocessors}", chdir: build)
++      logged("ruby-install", "make", "install-nodoc", chdir: build)
++      ca = pin("ca-certificates")
++      FileUtils.mkdir_p(File.join(prefix, "libexec"))
++      FileUtils.cp(@builder.fetch(ca.fetch("url"), ca.fetch("sha256")), File.join(prefix, "libexec", "cert.pem"))
++      find_certificates(prefix)
++      prefix
++    end
++
++    #--
++    # SPDX-SnippetBegin
++    # SPDX-License-Identifier: BSD-2-Clause
++    # SPDX-SnippetCopyrightText: Homebrew contributors
++    # SPDX-SnippetComment: Adapted from rv-ruby's Formula/rv-portable-openssl.rb
++    #   (line 77) and Abstract/rv-ruby.rb (lines 203 to 208) at
++    #   spinel-coop/rv-ruby 7a0e584a71246aaaf5572547b53670267935aaed.
++    #++
++    # OpenSSL bakes its certificate folder in when it is built, so a Ruby
++    # that moves finds no certificates. rv-ruby renames the variable
++    # OpenSSL reads them from, so that no other program's OpenSSL takes
++    # it, and has Ruby's openssl.rb point it at libexec/cert.pem beside
++    # the Ruby, unless SSL_CERT_FILE names others; every glibc runtime
++    # carries that, so the musl runtimes do too.
++    PORTABLE_CERT_FILE = "PORTABLE_RUBY_SSL_CERT_FILE"
++
++    private def rename_certificate_variable(source)
++      header = File.join(source, "include", "internal", "common.h")
++      text = File.read(header)
++      raise "#{header} no longer names SSL_CERT_FILE" unless text.include?('"SSL_CERT_FILE"')
++
++      File.write(header, text.sub('"SSL_CERT_FILE"', "\"#{PORTABLE_CERT_FILE}\""))
++    end
++
++    private def find_certificates(prefix)
++      openssl_rb = File.join(prefix, "lib", "ruby", "4.0.0", "openssl.rb")
++      text = File.read(openssl_rb)
++      raise "#{openssl_rb} no longer requires 'openssl.so'" unless text.include?("require 'openssl.so'")
++
++      File.write(openssl_rb, text.sub("require 'openssl.so'", <<~RUBY.chomp))
++        ENV["#{PORTABLE_CERT_FILE}"] = ENV["SSL_CERT_FILE"] || File.expand_path("../../libexec/cert.pem", RbConfig.ruby)
++        require 'openssl.so'
++      RUBY
++    end
++    #--
++    # SPDX-SnippetEnd
++    #++
++
++    private def configure_options(prefix, deps)
++      [
++        "--prefix=#{prefix}",
++        "--enable-load-relative",
++        "--disable-shared",
++        "--enable-yjit",
++        "--disable-install-doc",
++        "--disable-install-rdoc",
++        "--with-baseruby=#{RbConfig.ruby}",
++        "--with-openssl-dir=#{deps}",
++        "--with-libyaml-dir=#{deps}",
++        "--with-libffi-dir=#{deps}",
++        "--with-zlib-dir=#{deps}",
++        "--without-gmp",
++        "--with-out-ext=win32,win32ole",
++        "LDFLAGS=-static-libgcc",
++      ]
++    end
++
++    # The libraries libruby-static.a needs, as its own Ruby links them
++    # (RbConfig's LIBS), which on musl are all in its C library.
++    private def libruby_libraries
++      %w[-lm -lpthread]
++    end
++
++    private def build_autotools(name, prefix)
++      source = unpack(pin(name), name)
++      options = (name == "zlib") ? ["--static"] : ["--disable-shared", "--enable-static", "--with-pic"]
++      options += %w[--disable-docs --disable-multi-os-directory] if name == "libffi"
++      logged("#{name}-configure", "./configure", "--prefix=#{prefix}", "--libdir=#{File.join(prefix, 'lib')}", *options,
++        chdir: source, env: { "CFLAGS" => "-O2 -fPIC" })
++      logged("#{name}-make", "make", "-j#{Etc.nprocessors}", chdir: source)
++      logged("#{name}-install", "make", "install", chdir: source)
++    end
++
++    private def build_openssl(prefix)
++      source = unpack(pin("openssl"), "openssl")
++      rename_certificate_variable(source)
++      target = "linux-#{ARCHES.fetch(@builder.platform.name)}"
++      logged("openssl-configure", "./Configure", target, "no-shared", "no-tests", "no-apps", "no-docs", "no-module", "-fPIC",
++        "--prefix=#{prefix}", "--libdir=lib", "--openssldir=/etc/ssl", chdir: source)
++      logged("openssl-make", "make", "-j#{Etc.nprocessors}", "build_libs", chdir: source)
++      logged("openssl-install", "make", "install_dev", chdir: source)
++    end
++
++    private def pin(name)
++      @builder.sources.fetch("musl-ruby").fetch(name)
++    end
++
++    private def unpack(pin, name)
++      tarball = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
++      folder = File.join(@build_dir, "sources", name)
++      FileUtils.rm_rf(folder)
++      FileUtils.mkdir_p(folder)
++      @builder.run("tar", "-xzf", tarball, "-C", folder, "--strip-components=1")
++      folder
++    end
++
++    private def logged(name, *command, chdir:, env: {})
++      path = File.join(@build_dir, "logs", "#{name}.log")
++      FileUtils.mkdir_p(File.dirname(path))
++      @builder.run(env, *command, chdir:, out: path, err: [:child, :out])
++    rescue RuntimeError
++      warn File.readlines(path).last(150).join
++      raise
++    end
++
++    private def copy_appimage_runtime(to)
++      pin = @builder.sources.fetch("appimage-runtime").fetch("platforms").fetch("#{ARCHES.fetch(@builder.platform.name)}-linux")
++      FileUtils.mkdir_p(File.dirname(to))
++      FileUtils.cp(@builder.fetch(pin.fetch("url"), pin.fetch("sha256")), to)
++      FileUtils.chmod(0o755, to)
++    end
++
++    private def os_file
++      "linux.c"
++    end
++
++    private def check_dynamic_section(output)
++      dynamic = @builder.capture("readelf", "-d", output)
++      needed = dynamic.scan(/\(NEEDED\)\s+Shared library: \[([^\]]+)\]/).flatten
++      foreign = needed.grep_v(ALLOWED)
++      raise "#{output} needs libraries a musl Linux does not have: #{foreign.join(', ')}" unless foreign.empty?
++    end
++  end
++end
+diff --git a/test/build_command_test.rb b/test/build_command_test.rb
+index f8b9d05..4c7295e 100644
+--- a/test/build_command_test.rb
++++ b/test/build_command_test.rb
+@@ -109,11 +109,11 @@ class BuildCommandTest < Minitest::Test
+   end
+ 
+   def test_a_computer_with_no_runtime_cannot_build
+-    _, err, status = build("hello", host: Gem::Platform.new("x86_64-linux-musl"))
++    _, err, status = build("hello", host: Gem::Platform.new("x86_64-darwin-23"))
+ 
+     assert_equal 1, status
+-    assert_equal "fledge build: Fledge has no runtime for this computer's platform (x86_64-linux-musl). " \
+-      "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n", err
++    assert_equal "fledge build: Fledge has no runtime for this computer's platform (x86_64-darwin-23). " \
++      "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt.\n", err
+   end
+ 
+   def test_a_missing_runtime_is_an_error
+diff --git a/test/platform_test.rb b/test/platform_test.rb
+index 23664df..d028020 100644
+--- a/test/platform_test.rb
++++ b/test/platform_test.rb
+@@ -9,7 +9,7 @@ require_relative "test_helper"
+ 
+ class PlatformTest < Minitest::Test
+   def test_names_are_the_rubygems_platforms_fledge_has_runtimes_for
+-    assert_equal %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt], Fledge::Platform.names
++    assert_equal %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt], Fledge::Platform.names
+     assert_predicate Fledge::Platform.names, :frozen?
+   end
+ 
+@@ -26,7 +26,7 @@ class PlatformTest < Minitest::Test
+     error = assert_raises(Fledge::Error) { Fledge::Platform.find("x64-mingw32") }
+ 
+     assert_equal "'x64-mingw32' is not a platform Fledge has runtimes for. " \
+-      "Platforms: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.", error.message
++      "Platforms: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt.", error.message
+   end
+ 
+   def test_local_drops_the_darwin_version
+@@ -40,17 +40,25 @@ class PlatformTest < Minitest::Test
+     assert_equal "x86_64-linux", Fledge::Platform.local(Gem::Platform.new("x86_64-linux-gnu")).name
+   end
+ 
++  # A Ruby built against musl, as on Alpine, reports linux-musl, which
++  # RubyGems and precompiled gems call it too (ADR 017).
++  def test_local_maps_musl_linux
++    assert_equal "x86_64-linux-musl", Fledge::Platform.local(Gem::Platform.new("x86_64-linux-musl")).name
++    assert_equal "aarch64-linux-musl", Fledge::Platform.local(Gem::Platform.new("aarch64-linux-musl")).name
++  end
++
+   # RubyInstaller's Ruby reports exactly the target's name.
+   def test_local_maps_windows_with_the_ucrt
+     assert_equal "x64-mingw-ucrt", Fledge::Platform.local(Gem::Platform.new("x64-mingw-ucrt")).name
+   end
+ 
+   def test_local_refuses_platforms_without_runtimes
+-    %w[x86_64-darwin-23 x86_64-linux-musl x64-mingw32 aarch64-mingw-ucrt].each do |name|
++    %w[x86_64-darwin-23 arm-linux-musleabihf x64-mingw32 aarch64-mingw-ucrt].each do |name|
+       error = assert_raises(Fledge::Error) { Fledge::Platform.local(Gem::Platform.new(name)) }
+ 
+       assert_includes error.message, "Fledge has no runtime for this computer's platform (#{Gem::Platform.new(name)})"
+-      assert_includes error.message, "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt."
++      assert_includes error.message,
++        "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt."
+     end
+   end
+ 
+@@ -62,7 +70,7 @@ class PlatformTest < Minitest::Test
+   end
+ 
+   def test_unix_platforms_ship_tar_gz_and_unadorned_executables
+-    %w[arm64-darwin x86_64-linux aarch64-linux].each do |name|
++    %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl].each do |name|
+       platform = Fledge::Platform.find(name)
+ 
+       refute_predicate platform, :windows?
+@@ -87,6 +95,8 @@ class PlatformTest < Minitest::Test
+     assert_equal %w[aarch64-linux aarch64-linux-gnu], Fledge::Platform.find("aarch64-linux").lockfile_names
+     assert_equal %w[arm64-darwin], Fledge::Platform.find("arm64-darwin").lockfile_names
+     assert_equal %w[x64-mingw-ucrt], Fledge::Platform.find("x64-mingw-ucrt").lockfile_names
++    assert_equal %w[x86_64-linux-musl], Fledge::Platform.find("x86_64-linux-musl").lockfile_names
++    assert_equal %w[aarch64-linux-musl], Fledge::Platform.find("aarch64-linux-musl").lockfile_names
+   end
+ 
+   # Compiling a gem needs the operating system's name for the libraries
+@@ -98,6 +108,8 @@ class PlatformTest < Minitest::Test
+       "arm64-darwin" => ["darwin", "14.0"],
+       "x86_64-linux" => ["linux", nil],
+       "aarch64-linux" => ["linux", nil],
++      "x86_64-linux-musl" => ["linux", nil],
++      "aarch64-linux-musl" => ["linux", nil],
+       "x64-mingw-ucrt" => ["windows", nil],
+     }.each do |name, (os, macos)|
+       platform = Fledge::Platform.find(name)
+@@ -108,11 +120,22 @@ class PlatformTest < Minitest::Test
+       else
+         assert_nil platform.macos_minimum, name
+       end
+-      if os == "linux"
++      if os == "linux" && !platform.musl?
+         assert_equal "2.39", platform.glibc_minimum
+       else
+         assert_nil platform.glibc_minimum, name
+       end
+     end
+   end
++
++  # musl Linux is Linux, with musl's C library in place of glibc's: no
++  # glibc floor, and its own libraries (ADR 017).
++  def test_musl_linux_is_linux_with_musls_c_library
++    assert_predicate Fledge::Platform.find("x86_64-linux-musl"), :musl?
++    assert_predicate Fledge::Platform.find("aarch64-linux-musl"), :musl?
++    %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt].each { |name| refute_predicate Fledge::Platform.find(name), :musl? }
++    assert_equal "linux-musl", Fledge::Platform.find("aarch64-linux-musl").libraries
++    assert_equal "linux", Fledge::Platform.find("aarch64-linux").libraries
++    assert_equal "windows", Fledge::Platform.find("x64-mingw-ucrt").libraries
++  end
+ end
+diff --git a/test/runtime_builder_test.rb b/test/runtime_builder_test.rb
+index a15cbe9..575c9b7 100644
+--- a/test/runtime_builder_test.rb
++++ b/test/runtime_builder_test.rb
+@@ -20,13 +20,27 @@ class RuntimeBuilderTest < Minitest::Test
+   def test_every_platform_pins_a_ruby_build_by_sha256
+     pins = builder("x86_64-linux").sources.fetch("ruby").fetch("platforms")
+ 
+-    assert_equal Fledge::Platform.names.sort, pins.keys.sort
++    assert_equal Fledge::Platform.names.reject { |name| name.end_with?("-musl") }.sort, pins.keys.sort
+     pins.except("x64-mingw-ucrt").each_value do |pin|
+       assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4\.0\.9\.}, pin.fetch("url"))
+       assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
+     end
+   end
+ 
++  # musl Linux builds its Ruby from source (ADR 017), from pins of its
++  # own: Ruby's release, and what its extensions link statically.
++  def test_musl_pins_the_sources_its_ruby_builds_from
++    pins = builder("x86_64-linux").sources.fetch("musl-ruby")
++
++    assert_equal %w[ca-certificates libffi libyaml openssl ruby zlib], pins.keys.sort
++    pins.each_value do |pin|
++      assert_match(%r{\Ahttps://}, pin.fetch("url"))
++      assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
++    end
++    assert_equal builder("x86_64-linux").sources.fetch("ruby").fetch("version"), pins.fetch("ruby").fetch("version")
++    assert_equal RuntimeBuilder::Musl, RuntimeBuilder.new(platform: Fledge::Platform.find("x86_64-linux-musl")).send(:recipe_class)
++  end
++
+   def test_windows_pins_rubyinstaller_its_signature_and_the_key_that_signed_it
+     pin = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms").fetch("x64-mingw-ucrt")
+     signature = pin.fetch("signature")
+@@ -84,17 +98,18 @@ class RuntimeBuilderTest < Minitest::Test
+     assert_equal Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")), builder("x64-mingw-ucrt").assets.fetch(:runtime)
+   end
+ 
+-  # Linux and Windows ship an LGPL library, so their releases carry its
+-  # source; macOS ships none. The mobile runtimes carry three each
++  # Linux, musl Linux too, and Windows ship an LGPL library, so their
++  # releases carry its source; macOS ships none. The mobile runtimes carry three each
+   # (test/mobile_runtime_test.rb).
+   def test_a_release_publishes_every_platforms_assets_and_the_lgpl_sources_where_they_ship
+     assets = RuntimeBuilder.release_assets(version: "1.2.3")
+ 
+-    assert_equal 25, assets.size
++    assert_equal 35, assets.size
+     assert_equal assets.sort, assets
+     Fledge::Platform.names.each { |name| assert_includes assets, "fledge-runtime-1.2.3-#{name}-dev.tar.gz" }
+     assert_includes assets, "fledge-runtime-1.2.3-x64-mingw-ucrt-lgpl-sources.tar.gz"
+     assert_includes assets, "fledge-runtime-1.2.3-aarch64-linux-lgpl-sources.tar.gz"
++    assert_includes assets, "fledge-runtime-1.2.3-x86_64-linux-musl-lgpl-sources.tar.gz"
+     refute_includes assets, "fledge-runtime-1.2.3-arm64-darwin-lgpl-sources.tar.gz"
+     assert_includes assets, "fledge-runtime-1.2.3-arm64-darwin.spdx.json"
+   end
+diff --git a/test/runtime_pins_test.rb b/test/runtime_pins_test.rb
+index 043f10c..a8d9d83 100644
+--- a/test/runtime_pins_test.rb
++++ b/test/runtime_pins_test.rb
+@@ -56,12 +56,16 @@ class RuntimePinsTest < Minitest::Test
+     end
+   end
+ 
+-  # What the gem ships pins exactly one release's assets.
+-  def test_the_shipped_pins_name_every_asset_of_one_release
++  # What the gem ships pins one release's assets, each of them a name
++  # Fledge still asks for. A platform added since that release has no
++  # pins until the next, whose release.yml checks the pins are exactly
++  # its assets.
++  def test_the_shipped_pins_name_assets_of_one_release
+     names = File.readlines(Fledge::Runtimes::PINS, chomp: true).map { |line| line.split("  ", 2).last }
+     version = names.first[/\Afledge-runtime-(.+?)-(?:aarch64|x86_64|arm64|x64|ios|android)/, 1]
+ 
+-    assert_equal RuntimeBuilder.release_assets(version:), names
++    assert_empty names - RuntimeBuilder.release_assets(version:)
++    assert_operator names.size, :>=, 25
+   end
+ 
+   private def write_assets(dir, version)
+diff --git a/test/test_helper.rb b/test/test_helper.rb
+index 61eff47..53a4442 100644
+--- a/test/test_helper.rb
++++ b/test/test_helper.rb
+@@ -33,6 +33,8 @@ module FakeRuntime
+ "arm64-darwin" => "arm64-darwin23",
+ "x86_64-linux" => "x86_64-linux",
+ "aarch64-linux" => "aarch64-linux",
++"x86_64-linux-musl" => "x86_64-linux-musl",
++"aarch64-linux-musl" => "aarch64-linux-musl",
+ "x64-mingw-ucrt" => "x64-mingw-ucrt",
+ "ios" => "arm64-darwin",
+ "android" => "aarch64-linux-android",

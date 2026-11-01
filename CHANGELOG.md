@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.16] - 2026-11-01
+
 ### Added
 
 - Windows on ARM64, `aarch64-mingw-ucrt`: `fledge build` on Windows 11 on ARM64 builds an app that runs there natively, from a runtime of RubyInstaller 4.0.9-1's ARM64 build, with every Windows feature: the GUI launcher, version information and icon, the NSIS installer, and `--sign`. Its tools (rcedit, NSIS, `llvm-readobj`) run under Windows' x64 emulation. A gem must publish an `aarch64-mingw-ucrt` build or compile there; sqlite3 2.10.2 does neither.
@@ -180,7 +182,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.15...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.16...HEAD
+[0.0.1.pre.16]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.16
 [0.0.1.pre.15]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.15
 [0.0.1.pre.14]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.14
 [0.0.1.pre.13]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.13

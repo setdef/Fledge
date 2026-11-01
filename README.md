@@ -18,13 +18,13 @@ You build the program you already run: `exe/my_cool_app` in a gem, `bin/server` 
 
 ## Status
 
-Fledge is a walking skeleton under construction, and its latest pre-release is `v0.0.1.pre.15`. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), for Linux with musl, such as Alpine (`x86_64-linux-musl`, `aarch64-linux-musl`; [ADR 017](doc/contributors/adr/017.md)), for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), and for Windows 11 on ARM64 (`aarch64-mingw-ucrt`; [ADR 018](doc/contributors/adr/018.md)), each on a computer of that platform. [Plan 001](doc/contributors/plan/001.md)'s walking skeleton shipped a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby; [Plan 002](doc/contributors/plan/002.md) is the road to 1.0, and Fledge now ships gem-shaped apps with their gems ([ADR 005](doc/contributors/adr/005.md)), compiling those that need it on the platform they are for and taking gems from git ([ADR 006](doc/contributors/adr/006.md)), whatever their licenses, which are the developer's to judge ([ADR 007](doc/contributors/adr/007.md)), as console or windowed apps that show the name, icon, and version their developer chose ([ADR 008](doc/contributors/adr/008.md)), and windowed apps with installers for every platform, a disk image, an NSIS setup program, and an AppImage ([ADR 009](doc/contributors/adr/009.md)), each built on its own platform with that platform's own tools ([ADR 010](doc/contributors/adr/010.md)). [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
+Fledge is a walking skeleton under construction, and its latest pre-release is `v0.0.1.pre.16`. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), for Linux with musl, such as Alpine (`x86_64-linux-musl`, `aarch64-linux-musl`; [ADR 017](doc/contributors/adr/017.md)), for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), and for Windows 11 on ARM64 (`aarch64-mingw-ucrt`; [ADR 018](doc/contributors/adr/018.md)), each on a computer of that platform. [Plan 001](doc/contributors/plan/001.md)'s walking skeleton shipped a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby; [Plan 002](doc/contributors/plan/002.md) is the road to 1.0, and Fledge now ships gem-shaped apps with their gems ([ADR 005](doc/contributors/adr/005.md)), compiling those that need it on the platform they are for and taking gems from git ([ADR 006](doc/contributors/adr/006.md)), whatever their licenses, which are the developer's to judge ([ADR 007](doc/contributors/adr/007.md)), as console or windowed apps that show the name, icon, and version their developer chose ([ADR 008](doc/contributors/adr/008.md)), and windowed apps with installers for every platform, a disk image, an NSIS setup program, and an AppImage ([ADR 009](doc/contributors/adr/009.md)), each built on its own platform with that platform's own tools ([ADR 010](doc/contributors/adr/010.md)). [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
 
 **iOS, iPadOS, and Android, for pure-Ruby apps.** `fledge build ios` on a Mac writes an Xcode project for iPhone and iPad, and `fledge build android` on a Mac, Linux, or Windows writes a Gradle project for Android, around the mobile runtimes each release carries: CRuby 4.0.9 as `FledgeRuby.xcframework` and `FledgeRuby.aar`, an interpreter with its standard library and its default and bundled gems ([ADR 011](doc/contributors/adr/011.md), [ADR 012](doc/contributors/adr/012.md)). You build, sign, and submit the app with Xcode or Gradle; CI builds each project unsigned and runs its apps in the iOS Simulator on an iPhone and an iPad and on Android emulators. Gems with extensions to compile come to phones after 1.0, and running on a real iPhone waits for an Apple Developer account.
 
 ## Installing
 
-Fledge is not on RubyGems.org, and never will be under this plan. Each release is a git tag, such as `v0.0.1.pre.15`, with a [GitHub Release](https://github.com/setdef/Fledge/releases) that carries its runtimes, so take the gem from its tag:
+Fledge is not on RubyGems.org, and never will be under this plan. Each release is a git tag, such as `v0.0.1.pre.16`, with a [GitHub Release](https://github.com/setdef/Fledge/releases) that carries its runtimes, so take the gem from its tag:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -33,7 +33,7 @@ Fledge is not on RubyGems.org, and never will be under this plan. Each release i
 -->
 ```ruby
 # Gemfile
-gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.0.1.pre.15"
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.0.1.pre.16"
 ```
 <!-- SPDX-SnippetEnd -->
 

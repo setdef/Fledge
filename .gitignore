@@ -17,3 +17,5 @@
 *.dll
 *.o
 *.exe
+# The compiled files the tests read (test/fixtures/binaries/build.rb).
+!/test/fixtures/binaries/*

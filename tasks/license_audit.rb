@@ -79,7 +79,11 @@ class LicenseAudit
     llvm = ENV.fetch("FLEDGE_LLVM", "")
     return Fledge::Binary::Readers.llvm(llvm) unless llvm.empty?
 
-    Fledge::Binary::Readers.local(RUBY_PLATFORM.include?("darwin") ? "darwin" : "linux")
+    os = if Gem.win_platform? then "windows"
+    elsif RUBY_PLATFORM.include?("darwin") then "darwin"
+    else "linux"
+    end
+    Fledge::Binary::Readers.local(os)
   end
 
   # The compiled files among +files+, labels and their bytes (LicenseAudit::Binaries).

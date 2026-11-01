@@ -147,9 +147,10 @@ class RuntimeBuilderTest < Minitest::Test
     Dir.glob("**/*", base: root).select { |path| File.file?(File.join(root, path)) }.sort
   end
 
-  # A small Linux runtime made of real (minimal) ELF files, shaped like
-  # the one the Linux recipe stages.
+  # A small Linux runtime made of real (small) ELF files, shaped like
+  # the one the Linux recipe stages, which a tool here must read.
   def linux_stage(root)
+    TestReaders.need(self, :elf)
     rust = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
     {
       "launcher" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{rust} GCC: ("),

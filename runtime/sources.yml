@@ -58,6 +58,19 @@ ruby:
           sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
           fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
           expires: "2027-06-15"
+    # RubyInstaller's build for Windows on ARM64 (ADR 018), signed with
+    # the same key.
+    aarch64-mingw-ucrt:
+      url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z
+      sha256: d13273600bff5ca349f3866a0492517b144510ceb916525e891e2e1a3f728b78
+      signature:
+        url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z.asc
+        sha256: e91c5b653c541a33ee6fb290dd2e3b3fbf651d64ab9a6dc507959c47be911d3f
+        key:
+          url: https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc
+          sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
+          fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
+          expires: "2027-06-15"
 
 # llvm-mingw, the compiler that builds the Windows launcher, release
 # 20261020, its UCRT flavor, one asset per computer that can build a
@@ -114,6 +127,14 @@ gmp:
     url: https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-gmp-6.3.0-2-any.pkg.tar.zst
     sha256: e82a75968a556484a50084578238a84eb60fb93e34986fd6695c537975bd39ea
   dll_sha256: c2567ccf3f410c3411ba7cd4b7ba14f393a0e70a1d0c0593297df6706b5fba96
+  # The same source's build for Windows on ARM64, in MSYS2's CLANGARM64
+  # environment, whose libgmp-10.dll RubyInstaller's ARM64 Ruby ships
+  # byte for byte (ADR 018).
+  arm64:
+    package:
+      url: https://repo.msys2.org/mingw/clangarm64/mingw-w64-clang-aarch64-gmp-6.3.0-2-any.pkg.tar.zst
+      sha256: edfaa0517787819ec3ad5da2cc4d691563962a576d0102e91eea507abdc3bdfb
+    dll_sha256: bfc6046e374a27838b54bde5602851c7cc426ac9438cb65f019b9e67a961f47c
 
 # Inputs that no runtime ships, used only by CI's proofs that whoever
 # receives an app can replace its LGPL libraries (ci.yml: Replace

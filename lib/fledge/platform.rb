@@ -48,7 +48,7 @@ module Fledge
   class Platform < Data.define(:name)
     # The names of the platforms Fledge has runtimes for, in the order
     # it lists them.
-    NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt].freeze
+    NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt aarch64-mingw-ucrt].freeze
 
     # The oldest macOS an arm64-darwin runtime runs on: rv-ruby's Sonoma
     # build, and the launcher built with -mmacosx-version-min=14.0 (ADR

@@ -19,7 +19,8 @@ class RuntimeBuilder
   # (runtime/launcher/windows.c), so it needs Ruby's headers to build,
   # and nothing to link.
   class Windows < Recipe
-    TARGET = "x86_64-w64-mingw32"
+    # The triple llvm-mingw compiles each Windows target's launcher for.
+    TARGETS = { "x64-mingw-ucrt" => "x86_64-w64-mingw32", "aarch64-mingw-ucrt" => "aarch64-w64-mingw32" }.freeze
 
     # The PE Subsystem of a console program, which Windows gives a
     # console, and of a GUI one, which it does not.
@@ -165,13 +166,13 @@ class RuntimeBuilder
       raise "#{program} imports DLLs Windows does not ship: #{foreign.join(', ')}" unless foreign.empty?
     end
 
-    private def tool(name, prefix: "#{TARGET}-")
+    private def tool(name, prefix: "#{TARGETS.fetch(@builder.platform.name)}-")
       File.join(@toolchain, "bin", "#{prefix}#{name}")
     end
 
     private def includes(tree)
       headers = Dir.glob(File.join(tree, "include", "ruby-*")).first or raise "#{tree} has no Ruby headers"
-      ["-isystem", headers, "-isystem", File.join(headers, "x64-mingw-ucrt"), "-I", LAUNCHER]
+      ["-isystem", headers, "-isystem", File.join(headers, @builder.platform.name), "-I", LAUNCHER]
     end
 
     # The name of Ruby's DLL in bin\, such as x64-ucrt-ruby400.dll.

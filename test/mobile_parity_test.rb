@@ -114,4 +114,24 @@ class MobileParityTest < Minitest::Test
     end
     assert_raises(RuntimeError) { MobileParity::Android.build_tools(File.join(Dir.tmpdir, "no-sdk-here")) }
   end
+
+  # An app that never finished is diagnosed from logcat's lines about it:
+  # those naming it, those of its process, by the ID ActivityManager
+  # started it with, and the crash reporters', not the system's chatter.
+  def test_an_unfinished_apps_diagnosis_is_what_logcat_says_of_it
+    app = MobileParity::APPS.fetch(1)
+    log = <<~LOG
+      11-01 05:26:40.100   745   859 I ActivityManager: Start proc 8123:com.setdef.fledge.MobileApp/u0a213 for next-top-activity {com.setdef.fledge.MobileApp/org.setdef.fledge.host.MainActivity}
+      11-01 05:26:40.300   745  1024 D WifiScoreCard: txRate: 1 txSpeed: 11
+      11-01 05:26:41.000  8123  8140 F libc    : Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR) in tid 8140 (ruby)
+      11-01 05:26:41.200  8150  8150 F DEBUG   : pid: 8123, tid: 8140, name: ruby  >>> com.setdef.fledge.MobileApp <<<
+      11-01 05:26:41.300  8150  8150 F DEBUG   :       #00 pc 0000000000123456  libfledgeruby.so
+      11-01 05:26:41.400  8123  8123 W setdef.fledge.MobileAp: something of its own
+      11-01 05:26:42.000  9000  9000 I chatty  : uid=1000 expire 3 lines
+    LOG
+
+    lines = MobileParity::Android.about(app, log)
+
+    assert_equal [0, 2, 3, 4, 5], lines.map { |line| log.lines.map(&:chomp).index(line) }
+  end
 end

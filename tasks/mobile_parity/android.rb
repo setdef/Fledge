@@ -105,13 +105,31 @@ class MobileParity
     end
 
     # What the emulator says of +app+, for one that never finished:
-    # whether its process runs, and logcat's last lines, of every tag,
+    # whether its process runs, and what logcat holds of it since its
+    # launch cleared the log, kept whole for the job's artifact: the lines
+    # that name it, those its processes logged, by the process IDs
+    # ActivityManager gave them, and those of Android's crash reporters,
     # where Android writes why an app did not start or died.
     private def diagnosis(app)
       pid = Open3.capture2e("adb", "shell", "pidof", app.identifier).first.strip
-      everything = Open3.capture2e("adb", "logcat", "-d", "-t", "200").first
+      everything = Open3.capture2e("adb", "logcat", "-d", "-v", "threadtime").first
       File.write(File.join(@work, "logcat-#{app.identifier}.txt"), everything)
-      ["The app's process: #{pid.empty? ? 'not running' : pid}", "logcat's last lines:", *everything.lines.last(120)].join("\n")
+      [
+        "The app's process: #{pid.empty? ? 'not running' : pid}",
+        "What logcat says of it:",
+        *MobileParity::Android.about(app, everything).last(150),
+      ].join("\n")
+    end
+
+    # The lines of +log+, logcat's threadtime format, about +app+: those
+    # that name it, those of its processes, and those of the crash
+    # reporters (DEBUG, AndroidRuntime, libc).
+    def self.about(app, log)
+      started = log.scan(%r{Start proc (\d+):#{Regexp.escape(app.identifier)}[/:]}).flatten
+      log.lines.map(&:chomp).select do |line|
+        fields = line.split(" ", 6)
+        line.include?(app.identifier) || started.include?(fields[2]) || %w[DEBUG AndroidRuntime libc].include?(fields[5]&.split(":")&.first&.strip)
+      end
     end
 
     # What +app+ logged under its identifier, one entry a line, as logcat

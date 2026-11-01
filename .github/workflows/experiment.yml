@@ -45,50 +45,51 @@ jobs:
           echo "--- before trust"; security find-identity -p codesigning "$RUNNER_TEMP/fledge.keychain" || true
           sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain cert.pem
           echo "--- after trust"; security find-identity -v -p codesigning "$RUNNER_TEMP/fledge.keychain" || true
-      - name: Try signing variants
+      - name: Try entitlements
         run: |
           cd "$RUNNER_TEMP/dist"
           mkdir -p try && cd try
-          cat > yjit.plist <<'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/></dict></plist>
-          PLIST
-          cat > unsigned.plist <<'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/></dict></plist>
-          PLIST
-          cat > nolv.plist <<'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/><key>com.apple.security.cs.disable-library-validation</key><true/></dict></plist>
-          PLIST
-          for ent in yjit unsigned nolv; do
-            for ts in --timestamp --timestamp=none; do
-              echo "======== entitlements $ent, $ts"
-              rm -rf h && mkdir h && tar -xzf ../Hello-arm64-darwin.tar.gz -C h
-              find h -type f | while read -r f; do
-                if file "$f" | grep -q Mach-O; then
-                  codesign --force --sign "Fledge Test Signing" --keychain "$RUNNER_TEMP/fledge.keychain" --options runtime \
-                    --entitlements "$ent.plist" "$ts" "$f" 2>&1 | grep -v "replacing existing" | tail -1 || true
-                fi
-              done
-              codesign -dvv h/Hello-arm64-darwin/Hello 2>&1 | grep -E "Authority|TeamIdentifier|Timestamp|flags|Signed Time" || true
-              codesign --verify --strict --verbose=2 h/Hello-arm64-darwin/Hello 2>&1 || true
-              echo "--- run"
-              h/Hello-arm64-darwin/Hello; echo "status $?"
-              echo "--- json and yjit"
-              cp h/Hello-arm64-darwin/app/main.rb h/Hello-arm64-darwin/app/main.rb.orig
-              printf 'require "json"\nrequire "openssl"\nRubyVM::YJIT.enable\ndef f(n) = n < 2 ? n : f(n-1) + f(n-2)\np [JSON.generate(a: 1), f(25), RubyVM::YJIT.enabled?, RubyVM::YJIT.runtime_stats[:compiled_iseq_count]]\n' > h/Hello-arm64-darwin/app/main.rb
-              h/Hello-arm64-darwin/Hello; echo "status $?"
-              log show --last 1m --predicate 'subsystem == "com.apple.kernel" OR process == "amfid" OR eventMessage CONTAINS "Library Validation"' 2>/dev/null | grep -i -E "valid|team|hello" | tail -5 || true
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict></dict></plist>\n' > none.plist
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/></dict></plist>\n' > jit.plist
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/></dict></plist>\n' > unsigned.plist
+          for ent in none jit unsigned; do
+            echo "======== entitlements $ent"
+            rm -rf h && mkdir h && tar -xzf ../Hello-arm64-darwin.tar.gz -C h
+            find h -type f -print0 | while IFS= read -r -d '' f; do
+              if file "$f" | grep -q Mach-O; then
+                codesign --force --sign "Fledge Test Signing" --options runtime --entitlements "$ent.plist" --timestamp "$f" 2>&1 | grep -v "replacing existing" || true
+              fi
             done
+            codesign -d --entitlements - h/Hello-arm64-darwin/Hello 2>&1 | tail -3
+            printf 'require "json"\nrequire "socket"\nRubyVM::YJIT.enable\ndef f(n) = n < 2 ? n : f(n-1) + f(n-2)\n200.times { f(15); [1,2,3].map { |x| x * 2 }.sum; "a#{1}b" }\ns = RubyVM::YJIT.runtime_stats\np [JSON.generate(a: 1), RubyVM::YJIT.enabled?, s[:compiled_iseq_count], s[:code_region_size], s[:inline_code_size]]\n' > h/Hello-arm64-darwin/app/main.rb
+            h/Hello-arm64-darwin/Hello; echo "status $?"
+            /usr/bin/log show --last 30s --predicate 'eventMessage CONTAINS[c] "hello" OR eventMessage CONTAINS[c] "code signing" OR eventMessage CONTAINS[c] "cs_" OR eventMessage CONTAINS[c] "AMFI"' 2>/dev/null | grep -v "log run" | tail -4 || true
           done
-      - name: spctl
+      - name: Sign the windowed app, its Mach-O inside out, and its disk image
         run: |
-          cd "$RUNNER_TEMP/dist/try"
-          spctl --assess --type execute -vv h/Hello-arm64-darwin/Hello || true
+          cd "$RUNNER_TEMP/dist"
+          rm -rf w && mkdir w && tar -xzf "Hello Window-arm64-darwin.tar.gz" -C w
+          app="w/Hello Window-arm64-darwin/Hello Window.app"
+          find "$app/Contents/Resources" -type f -print0 | while IFS= read -r -d '' f; do
+            if file "$f" | grep -q Mach-O; then codesign --force --sign "Fledge Test Signing" --options runtime --entitlements try/jit.plist --timestamp "$f" 2>&1 | grep -v "replacing existing" || true; fi
+          done
+          codesign --force --sign "Fledge Test Signing" --options runtime --entitlements try/jit.plist --timestamp --identifier com.setdef.fledge.HelloWindow "$app"
+          codesign --verify --strict --deep --verbose=2 "$app"; echo "verify $?"
+          codesign -dvv "$app" 2>&1 | grep -E "Identifier|Authority|Timestamp|flags|Sealed"
+          spctl --assess --type execute -vv "$app" || true
+          open -W "$app" --args "$RUNNER_TEMP/report.json" 0; cat "$RUNNER_TEMP/report.json"
+          "$app/Contents/MacOS/Hello Window" "$RUNNER_TEMP/report2.json" 3; echo "status $?"
+          mkdir -p stage && ditto "$app" "stage/Hello Window.app" && ln -s /Applications stage/Applications
+          hdiutil create -volname "Hello Window" -srcfolder stage -fs HFS+ -format UDZO -ov hw.dmg
+          codesign --force --sign "Fledge Test Signing" --timestamp hw.dmg
+          codesign --verify --strict --verbose=2 hw.dmg; echo "dmg verify $?"
+          codesign -dvv hw.dmg 2>&1 | grep -E "Identifier|Authority|Timestamp|format"
+          spctl --assess --type open --context context:primary-signature -vv hw.dmg || true
+          echo "--- tamper"
+          echo x >> "$app/Contents/Resources/app/main.rb"
+          codesign --verify --strict --deep --verbose=2 "$app"; echo "verify after tamper $?"
+          echo "--- unknown identity"
+          codesign --force --sign "Nobody" "$RUNNER_TEMP/dist/w/x" 2>&1; echo "status $?"
   windows:
     runs-on: windows-latest
     timeout-minutes: 20

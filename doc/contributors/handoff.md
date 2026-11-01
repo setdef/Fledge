@@ -36,7 +36,7 @@ Plan 003 holds it. In short:
 
 - **Waiting on the maintainer** (`questions.md`): an Apple Developer account, for a real iPhone and iPad and for App Review (entry A); and the accounts and certificates for notarization, Developer ID, and Windows code signing (entry B). Work proceeds on each entry's default.
 - **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner emulates; Gatekeeper's and SmartScreen's verdicts on a real certificate; closing a Windows console window (ADR 015).
-- **Open problems from the ADRs**: a framework wrapper (Lota, Tokra, or Rooibos) shipping through Fledge; path gems outside the project, credentialed gem servers and mirrors, git submodules, path gems with extensions (ADR 005, ADR 006); installer polish and `diskutil image create` on macOS 26 (ADR 009, ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
+- **Open problems from the ADRs**: a wrapper's own CI building and delivering its app (Rooibos's ships through Fledge by hand, ADR 019; Tokra and Lota have not tried); path gems outside the project, credentialed gem servers and mirrors, git submodules, path gems with extensions (ADR 005, ADR 006); installer polish and `diskutil image create` on macOS 26 (ADR 009, ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
 
 ## How to check it
 
@@ -68,6 +68,6 @@ Spike code is thrown away; findings are kept. The mobile and permissive spikes' 
 
 ## Where to start next
 
-1. Read Plan 003 and take its first story not waiting on an account: a framework wrapper shipping through Fledge.
+1. Read Plan 003 and take its first story not waiting on an account: a framework wrapper shipping through Fledge is in progress (ADR 019); it is done when Rooibos's own CI builds and delivers an app with a tagged Fledge, which is the maintainer's to relay to Rooibos's session. The experiment's workflow and delivery scripts (`wrapper.yml`, `deliver-tui.py`, `deliver-tui.ps1`) are on the `experiment/wrapper` branch.
 2. Then the gems real apps lock, one kind of gem at a time.
 3. Watch `questions.md`: when the maintainer answers an entry, quote the answer in `decisions.md`, apply it, and take the story it unblocks.

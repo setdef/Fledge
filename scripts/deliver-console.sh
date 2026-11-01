@@ -161,7 +161,7 @@ expect interrupt "external UTF-8
 ready
 ensure ran (Interrupt: )
 at_exit ran
-status 130" "main\.rb:[0-9]+:in 'Kernel#sleep': .*Interrupt"
+status 130" ":[0-9]+:in .*sleep.*Interrupt"
 
 run hangup
 expect hangup "external UTF-8

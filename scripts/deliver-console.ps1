@@ -35,7 +35,9 @@
 # handling as it does in ruby.exe.
 #
 # -Inner is how the script runs itself in a new console; it is not for
-# callers.
+# callers. PowerShell's variables ignore case, so no variable here shares
+# a parameter's name: assigning to it would convert the value to the
+# parameter's type.
 
 param(
   [string] $Archive,
@@ -191,10 +193,10 @@ function Record([string] $scenario, [string] $codePage) {
 
 foreach ($case in @(@('65001', 'UTF-8'), @('437', 'IBM437'))) {
   $codePage, $encoding = $case
-  $inner = Start-Inner 'interrupt' $codePage
-  if (-not $inner.WaitForExit(90000)) { Fail "$label's console did not finish (interrupt, code page $codePage)" }
+  $console = Start-Inner 'interrupt' $codePage
+  if (-not $console.WaitForExit(90000)) { Fail "$label's console did not finish (interrupt, code page $codePage)" }
   $result = Get-Content -LiteralPath (Join-Path $work "interrupt-$codePage.result") -ErrorAction SilentlyContinue
-  if ($inner.ExitCode -ne 0) { Fail "$label, interrupted on code page ${codePage}: $result" }
+  if ($console.ExitCode -ne 0) { Fail "$label, interrupted on code page ${codePage}: $result" }
   Expect "$label's exit status on Ctrl-C (code page $codePage)" $result '3'
   Expect "what $label recorded on Ctrl-C (code page $codePage)" (Record 'interrupt' $codePage) `
     "external $encoding`nready`nensure ran (Interrupt: )`nat_exit ran"
@@ -204,7 +206,7 @@ foreach ($case in @(@('65001', 'UTF-8'), @('437', 'IBM437'))) {
 
 # The console's window closes: the probe's process, attached to it, gets
 # CTRL_CLOSE_EVENT from the console host.
-$inner = Start-Inner 'close' '65001'
+$console = Start-Inner 'close' '65001'
 $pidFile = Join-Path $work 'close-65001.pid'
 $log = Join-Path $work 'close-65001.log'
 if (-not (Await { (Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log) -contains 'ready' })) { Fail "$label never got ready (close)" }
@@ -219,24 +221,24 @@ if (-not [Fledge.Console]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr
 if (-not $probe.WaitForExit(30000)) { Fail "$label did not end when its console closed" }
 Expect "$label's exit status when its console closed" ('0x{0:X8}' -f $probe.ExitCode) '0xC000013A'
 Expect "what $label recorded when its console closed" (Record 'close' '65001') "external UTF-8`nready"
-$null = $inner.WaitForExit(30000)
+$null = $console.WaitForExit(30000)
 
 # A windowed app, typed into a console: PowerShell starts it and goes
 # on, as it does rubyw.exe, and the app has no console.
 if ($WindowedReference) {
   $windowedLabel = 'rubyw.exe main.rb'
-  $windowed = @((Resolve-Path -LiteralPath $WindowedReference[0]).Path, (Resolve-Path -LiteralPath $WindowedReference[1]).Path)
+  $windowedCommand = @((Resolve-Path -LiteralPath $WindowedReference[0]).Path, (Resolve-Path -LiteralPath $WindowedReference[1]).Path)
 } elseif ($Windowed) {
   $windowedLabel = 'the built windowed app'
   $Windowed = (Resolve-Path -LiteralPath $Windowed).Path
   $name = [IO.Path]::GetFileNameWithoutExtension($Windowed)
   Expand-Archive -LiteralPath $Windowed -DestinationPath (Join-Path $work 'windowed')
-  $windowed = @(Join-Path (Join-Path (Join-Path $work 'windowed') $name) "$($name -replace '-x64-mingw-ucrt$', '').exe")
+  $windowedCommand = @(Join-Path (Join-Path (Join-Path $work 'windowed') $name) "$($name -replace '-x64-mingw-ucrt$', '').exe")
 }
 if ($Windowed -or $WindowedReference) {
   $report = Join-Path $work 'windowed report.json'
   $clock = [Diagnostics.Stopwatch]::StartNew()
-  & $windowed[0] @($windowed | Select-Object -Skip 1) $report 4
+  & $windowedCommand[0] @($windowedCommand | Select-Object -Skip 1) $report 4
   $returned = $clock.Elapsed.TotalSeconds
   if ($returned -ge 1.5) { Fail "the console waited $returned seconds for $windowedLabel, which lives for 2" }
   Write-Host "ok: the console went on after $([math]::Round($returned, 2)) seconds"

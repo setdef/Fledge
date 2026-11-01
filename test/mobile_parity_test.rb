@@ -76,6 +76,11 @@ class MobileParityTest < Minitest::Test
   # result apart from its diagnostics, so the check takes the folder from
   # the output alone, even when the app's gems are downloaded first.
   def test_each_project_is_the_folder_fledge_build_prints_while_it_reports_downloads
+    begin
+      Fledge::MobilePlatform.find("android").check_host(Fledge::Platform.local)
+    rescue Fledge::Error => e
+      skip e.message
+    end
     Dir.mktmpdir do |dir|
       FileUtils.mkdir_p([File.join(dir, ".git"), File.join(dir, "runtimes"), File.join(dir, "gems")])
       FakeRuntime.write_mobile(File.join(dir, "runtimes"), Fledge::MobilePlatform.find("android"))

@@ -65,7 +65,7 @@ index 74c81cc..bfd0f22 100755
  fi
  
 diff --git a/.github/scripts/deliver.sh b/.github/scripts/deliver.sh
-index 0be3cbb..b0a5b7a 100755
+index 0be3cbb..dd997b8 100755
 --- a/.github/scripts/deliver.sh
 +++ b/.github/scripts/deliver.sh
 @@ -43,9 +43,15 @@ trap 'rm -rf "$work"' EXIT
@@ -119,6 +119,49 @@ index 0be3cbb..b0a5b7a 100755
      ;;
  esac
  echo "ok: the app carries its notices and SBOM"
+@@ -247,19 +258,29 @@ echo "ok: an app without app/$entry says so and exits 66"
+ 
+ case "$(uname -s)" in
+   Linux)
+-    # The launcher and Ruby's own bin/ruby both load the runtime's
+-    # libcrypt, the LGPL library a person may replace, and neither has
+-    # one of its own. bin/ruby finds it through $ORIGIN/../lib, so the
+-    # loader's path is compared by the folder it really is.
+-    lib=$(cd "$root/lib" && pwd -P)
+-    for program in "$app" "$root/bin/ruby"; do
+-      crypt=$(ldd "$program" | sed -n 's/^[[:space:]]*libcrypt\.so\.[0-9]* => \(.*\) (0x[0-9a-f]*)$/\1/p')
+-      folder=$( (cd "$(dirname "$crypt")" 2>/dev/null && pwd -P) || echo none)
+-      case "$folder/$(basename "$crypt")" in
+-        "$lib/libcrypt.so."*) echo "ok: $(basename "$program") loads libcrypt from the runtime ($crypt)" ;;
+-        *) ldd "$program"; fail "$program resolves libcrypt to '$crypt', not the runtime's lib/" ;;
+-      esac
+-    done
++    # On musl Linux, the launcher and bin/ruby need musl's C library and
++    # nothing else, which ldd lists as the dynamic linker (ADR 017).
++    if [ ! -e "$root/lib/libcrypt.so.2" ]; then
++      for program in "$app" "$root/bin/ruby"; do
++        others=$(ldd "$program" | grep -v -e 'ld-musl-' -e 'libc\.musl-' || true)
++        [ -z "$others" ] || { ldd "$program"; fail "$program needs libraries besides musl's C library"; }
++        echo "ok: $(basename "$program") needs only musl's C library"
++      done
++    else
++      # The launcher and Ruby's own bin/ruby both load the runtime's
++      # libcrypt, the LGPL library a person may replace, and neither has
++      # one of its own. bin/ruby finds it through $ORIGIN/../lib, so the
++      # loader's path is compared by the folder it really is.
++      lib=$(cd "$root/lib" && pwd -P)
++      for program in "$app" "$root/bin/ruby"; do
++        crypt=$(ldd "$program" | sed -n 's/^[[:space:]]*libcrypt\.so\.[0-9]* => \(.*\) (0x[0-9a-f]*)$/\1/p')
++        folder=$( (cd "$(dirname "$crypt")" 2>/dev/null && pwd -P) || echo none)
++        case "$folder/$(basename "$crypt")" in
++          "$lib/libcrypt.so."*) echo "ok: $(basename "$program") loads libcrypt from the runtime ($crypt)" ;;
++          *) ldd "$program"; fail "$program resolves libcrypt to '$crypt', not the runtime's lib/" ;;
++        esac
++      done
++    fi
+     ;;
+   Darwin)
+     otool -L "$app" | tail -n +2 | while read -r library _; do
 diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
 index 152b49a..8470830 100644
 --- a/.github/workflows/ci.yml
@@ -456,6 +499,55 @@ index d59d80d..ea9344e 100644
    # A phone's project from the tag (ADR 012): fledge build ios on a Mac and
    # fledge build android on Linux, installed from the tag with Bundler,
    # download that version's mobile runtime from the release, checked
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index ac72c74..edbcdc5 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
+ 
+ ## [Unreleased]
+ 
++### Added
++
++- musl Linux targets, `x86_64-linux-musl` and `aarch64-linux-musl`, for Alpine and other distributions built on musl: `fledge build` on such a computer builds an app (and, for a windowed one, its desktop entry and AppImage) that runs there with no Ruby, from a runtime Fledge's CI builds from Ruby 4.0.9's source in Alpine, with OpenSSL 3.6.5, libyaml 0.2.5, libffi 3.5.2, and zlib 1.3.2 compiled into its extensions, YJIT, and musl's own `crypt`. A compiled gem may need only musl's C library and zlib, as PEP 656's musllinux wheels may.
++
+ ## [0.0.1.pre.13] - 2026-11-01
+ 
+ Nothing an app's developer or its users can observe changed: this release proves, on every platform, that Ctrl-C and a closed terminal end a built console app as they end `ruby main.rb`, and that a Windows console's code page reaches it as it reaches `ruby.exe`.
+diff --git a/README.md b/README.md
+index b3694e8..4dbba86 100644
+--- a/README.md
++++ b/README.md
+@@ -18,7 +18,7 @@ You build the program you already run: `exe/my_cool_app` in a gem, `bin/server`
+ 
+ ## Status
+ 
+-Fledge is a walking skeleton under construction, and its latest pre-release is `v0.0.1.pre.13`. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), and for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), each on a computer of that platform. [Plan 001](doc/contributors/plan/001.md)'s walking skeleton shipped a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby; [Plan 002](doc/contributors/plan/002.md) is the road to 1.0, and Fledge now ships gem-shaped apps with their gems ([ADR 005](doc/contributors/adr/005.md)), compiling those that need it on the platform they are for and taking gems from git ([ADR 006](doc/contributors/adr/006.md)), whatever their licenses, which are the developer's to judge ([ADR 007](doc/contributors/adr/007.md)), as console or windowed apps that show the name, icon, and version their developer chose ([ADR 008](doc/contributors/adr/008.md)), and windowed apps with installers for every platform, a disk image, an NSIS setup program, and an AppImage ([ADR 009](doc/contributors/adr/009.md)), each built on its own platform with that platform's own tools ([ADR 010](doc/contributors/adr/010.md)). [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
++Fledge is a walking skeleton under construction, and its latest pre-release is `v0.0.1.pre.13`. `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), for Linux with musl, such as Alpine (`x86_64-linux-musl`, `aarch64-linux-musl`; [ADR 017](doc/contributors/adr/017.md)), and for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), each on a computer of that platform. [Plan 001](doc/contributors/plan/001.md)'s walking skeleton shipped a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby; [Plan 002](doc/contributors/plan/002.md) is the road to 1.0, and Fledge now ships gem-shaped apps with their gems ([ADR 005](doc/contributors/adr/005.md)), compiling those that need it on the platform they are for and taking gems from git ([ADR 006](doc/contributors/adr/006.md)), whatever their licenses, which are the developer's to judge ([ADR 007](doc/contributors/adr/007.md)), as console or windowed apps that show the name, icon, and version their developer chose ([ADR 008](doc/contributors/adr/008.md)), and windowed apps with installers for every platform, a disk image, an NSIS setup program, and an AppImage ([ADR 009](doc/contributors/adr/009.md)), each built on its own platform with that platform's own tools ([ADR 010](doc/contributors/adr/010.md)). [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
+ 
+ **iOS, iPadOS, and Android, for pure-Ruby apps.** `fledge build ios` on a Mac writes an Xcode project for iPhone and iPad, and `fledge build android` on a Mac, Linux, or Windows writes a Gradle project for Android, around the mobile runtimes each release carries: CRuby 4.0.9 as `FledgeRuby.xcframework` and `FledgeRuby.aar`, an interpreter with its standard library and its default and bundled gems ([ADR 011](doc/contributors/adr/011.md), [ADR 012](doc/contributors/adr/012.md)). You build, sign, and submit the app with Xcode or Gradle; CI builds each project unsigned and runs its apps in the iOS Simulator on an iPhone and an iPad and on Android emulators. Gems with extensions to compile come to phones after 1.0, and running on a real iPhone waits for an Apple Developer account.
+ 
+@@ -42,6 +42,7 @@ Then `bundle install`, and run it as `bundle exec fledge`. Fledge needs Ruby 4.0
+ - **macOS 14 or newer** on Apple Silicon: `tar`, `plutil`, `codesign`, `ditto`, and `hdiutil` come with macOS; and when your app's gems carry compiled files, Xcode's command line tools (`xcode-select --install`), whose `objdump` reads them.
+ - **Windows 10 or 11** (x64): nothing more. Windows' own `tar.exe` writes the `.zip`, and the Windows runtime brings [rcedit](https://github.com/electron/rcedit), which writes a program's version information and icon, [NSIS](https://nsis.sourceforge.io/), which compiles a setup program, and LLVM's `llvm-readobj`, which reads the DLLs your gems' compiled files need.
+ - **Linux** with glibc 2.39 or newer: `tar`; when your app's gems carry compiled files, binutils' `objdump`, which reads them (`sudo apt install binutils`, `sudo dnf install binutils`); and, for a windowed app's AppImage, squashfs-tools' `mksquashfs` 4.4 or newer (`sudo apt install squashfs-tools`, `sudo dnf install squashfs-tools`).
++- **Linux with musl**, such as Alpine 3.24 (`ruby:4.0-alpine` gives you Ruby 4.0 there): the same, from Alpine's packages (`apk add binutils squashfs-tools`, and `git` for gems from git). Your `Gemfile.lock` locks `x86_64-linux-musl` or `aarch64-linux-musl`, as `bundle lock --add-platform` writes them.
+ 
+ For a phone's project, `fledge build ios` needs a Mac on Apple Silicon with Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`), which writes the Xcode project; `fledge build android` needs nothing more, and building the project it writes needs a JDK 17 or newer and the Android SDK, as Android Studio installs them.
+ 
+diff --git a/doc/contributors/adr/001.md b/doc/contributors/adr/001.md
+index 05689af..addd0b1 100644
+--- a/doc/contributors/adr/001.md
++++ b/doc/contributors/adr/001.md
+@@ -7,7 +7,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
+ # ADR 001: What Fledge Is
+ 
+ ## Status
+-Accepted (requested). Agents wrote this ADR and may change it (AGENTS.md, Questions; the maintainer's decision 14 in `doc/contributors/decisions.md`). What the maintainer has decided is in `decisions.md`; ADR 002 settles how `fledge` and the launcher talk to people, ADR 003 how close a built app stays to `ruby main.rb`, ADR 005 what an app is: the program its developer already runs, with the gems its Gemfile.lock locks, ADR 006 how gems that must be compiled, and gems from git, ship, ADR 008 how windowed apps ship and how every app shows its identity, ADR 009 the installers a windowed app gets, ADR 010 that each platform's app is built on that platform with its own tools, which supersedes this ADR's promise, in section 2, that one machine builds every platform, and ADR 011 the mobile runtimes, which are Ruby as a library built from source rather than a launcher beside a prebuilt Ruby, and ADR 014 how a version pins its runtimes by SHA-256, which supersedes section 2's second paragraph.
++Accepted (requested). Agents wrote this ADR and may change it (AGENTS.md, Questions; the maintainer's decision 14 in `doc/contributors/decisions.md`). What the maintainer has decided is in `decisions.md`; ADR 002 settles how `fledge` and the launcher talk to people, ADR 003 how close a built app stays to `ruby main.rb`, ADR 005 what an app is: the program its developer already runs, with the gems its Gemfile.lock locks, ADR 006 how gems that must be compiled, and gems from git, ship, ADR 008 how windowed apps ship and how every app shows its identity, ADR 009 the installers a windowed app gets, ADR 010 that each platform's app is built on that platform with its own tools, which supersedes this ADR's promise, in section 2, that one machine builds every platform, and ADR 011 the mobile runtimes, which are Ruby as a library built from source rather than a launcher beside a prebuilt Ruby, and ADR 014 how a version pins its runtimes by SHA-256, which supersedes section 2's second paragraph, and ADR 017 the musl Linux runtimes, the first whose Ruby Fledge's CI builds from source, as section 3's fallback foresaw.
+ 
+ ## Date
+ 2026-10-26
 diff --git a/doc/contributors/adr/017.md b/doc/contributors/adr/017.md
 new file mode 100644
 index 0000000..a7bef50
@@ -514,6 +606,19 @@ index 0000000..a7bef50
 +- Apps run on Alpine and other musl distributions, built on a computer of that platform (ADR 010), such as an Alpine container.
 +- Fledge maintains a Ruby build of its own for these two targets, and moves its pins (Ruby, OpenSSL, the Alpine image and its packages) on purpose. rv-ruby's musl builds would serve if they kept their extensions as shared objects.
 +- `examples/native_app` is not built for musl: its lockfile locks no musl platform, and its Rust gem's toolchain in Alpine is another story. Compiling a gem from source works as on glibc Linux (ADR 006), against the runtime's build-only companion.
+diff --git a/doc/contributors/plan/002.md b/doc/contributors/plan/002.md
+index e1b055d..a95a85e 100644
+--- a/doc/contributors/plan/002.md
++++ b/doc/contributors/plan/002.md
+@@ -134,6 +134,8 @@ Tauri's bundler, the prior art for a desktop app's packages, produces `.app` and
+ 
+ **Done when.** `x86_64-linux-musl` and `aarch64-linux-musl` targets build, pass the parity check, and deliver in Alpine containers.
+ 
++**Status.** Done (requested), ADR 017. A spike showed rv-ruby's musl builds still link their extensions into `bin/ruby`, and that Fledge's unchanged launcher runs every extension of a Ruby built from source in Alpine with its extensions as shared objects; so each musl runtime builds Ruby 4.0.9 from its pinned source in Alpine 3.24 (`RuntimeBuilder::Musl`), with OpenSSL, libyaml, libffi, and zlib from pinned sources linked statically into its extensions, Alpine's Rust for YJIT, and musl's own `crypt`, then passes the license audit. CI builds both runtimes in Alpine on runners of each architecture, checks parity with `ruby main.rb` and `bundle exec` on the Ruby it built, builds hello, the probes, my_cool_app (sqlite3 precompiled for musl), the console probe, and windowed_app with its AppImage in Alpine with Ruby, and delivers each in a bare `alpine:3.24` with no Ruby, the console's Ctrl-C and hangup included; `installed.yml` installs Fledge from each tag in Alpine and delivers with the runtime from the release. Not built for musl: `examples/native_app`, whose lockfile locks no musl platform.
++
+ ### iOS, iPadOS, and Android **1.0 if feasible**
+ 
+ **Why.** The maintainer wants Fledge to support iOS, iPadOS, and Android, ideally before 1.0, unless that proves incredibly burdensome (decisions, 2026-10-27). Lota wants its games there. The store rules and what CRuby needs on each are in `doc/contributors/research/2026-10-27-mobile.md`.
 diff --git a/exe/fledge b/exe/fledge
 index b1d766f..52e44f9 100755
 --- a/exe/fledge

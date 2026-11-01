@@ -8,7 +8,7 @@
 #
 #   pwsh -NoProfile -File deliver-windowed.ps1 -Archive ARCHIVE
 #
-# ARCHIVE is "Hello Window-x64-mingw-ucrt.zip". The program must be a GUI
+# ARCHIVE is "Hello Window-x64-mingw-ucrt.zip", or aarch64-mingw-ucrt's. The program must be a GUI
 # program, as Windows' shell reads it, carry the version information fledge.yml
 # says, which (Get-Item).VersionInfo reads as Explorer and Task Manager
 # do, and an icon, which Windows extracts as Explorer does. Started with
@@ -26,6 +26,8 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
 $appName = 'Hello Window'
+# Hello Window-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
+$platform = [IO.Path]::GetFileNameWithoutExtension($Archive) -replace "^$appName-", ''
 $identifier = 'com.setdef.fledge.HelloWindow'
 
 function Fail([string] $message) {
@@ -90,7 +92,7 @@ $process = Start-Process -FilePath $app -ArgumentList "`"$report`"", '4' -Workin
 Expect 'the exit status' $process.ExitCode 4
 $facts = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
 Expect "the report's Ruby" $facts.ruby '4.0.9'
-Expect "the report's platform" $facts.platform 'x64-mingw-ucrt'
+Expect "the report's platform" $facts.platform $platform
 Expect "the report's program" $facts.program 'main.rb'
 Expect 'whether it had a console' $facts.console $false
 Expect 'its AppUserModelID' $facts.app_user_model_id $identifier

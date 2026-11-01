@@ -121,6 +121,11 @@ function Read-Command([string] $work) {
 # writes what happened for the outer run to read.
 if ($Inner) {
   $scenario, $codePage = $Inner -split ':'
+  # Whatever fails in here, the outer run reads why.
+  trap {
+    Set-Content -LiteralPath (Join-Path $Work "$scenario-$codePage.result") -Value "failed: $_"
+    exit 1
+  }
   [void][Fledge.Console]::SetConsoleCP([uint32]$codePage)
   [void][Fledge.Console]::SetConsoleOutputCP([uint32]$codePage)
   $command = @(Read-Command $Work)
@@ -163,7 +168,7 @@ if ($Reference) {
   $Archive = (Resolve-Path -LiteralPath $Archive).Path
   $name = [IO.Path]::GetFileNameWithoutExtension($Archive)
   Expand-Archive -LiteralPath $Archive -DestinationPath (Join-Path $work 'apps')
-  $command = @(Join-Path (Join-Path (Join-Path $work 'apps') $name) "$($name -replace '-x64-mingw-ucrt$', '').exe")
+  $command = @(Join-Path (Join-Path (Join-Path $work 'apps') $name) "$($name -replace '-(?:x64|aarch64)-mingw-ucrt$', '').exe")
 }
 Set-Content -LiteralPath (Join-Path $work 'command.txt') -Value $command -Encoding utf8
 
@@ -201,7 +206,7 @@ if ($WindowedReference) {
   $Windowed = (Resolve-Path -LiteralPath $Windowed).Path
   $name = [IO.Path]::GetFileNameWithoutExtension($Windowed)
   Expand-Archive -LiteralPath $Windowed -DestinationPath (Join-Path $work 'windowed')
-  $windowedCommand = @(Join-Path (Join-Path (Join-Path $work 'windowed') $name) "$($name -replace '-x64-mingw-ucrt$', '').exe")
+  $windowedCommand = @(Join-Path (Join-Path (Join-Path $work 'windowed') $name) "$($name -replace '-(?:x64|aarch64)-mingw-ucrt$', '').exe")
 }
 if ($Windowed -or $WindowedReference) {
   $report = Join-Path $work 'windowed report.json'

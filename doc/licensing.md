@@ -240,6 +240,41 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 **What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.15-x64-mingw-ucrt-lgpl-sources.tar.gz` in Fledge's release.
 
+## Windows on ARM64 (aarch64-mingw-ucrt)
+
+| Component | Version | License | How it ships |
+|---|---|---|---|
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.15 | `AGPL-3.0-or-later` | the program the app's user runs, and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
+| libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
+| libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
+| LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe and launcherw.exe |
+| llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import | 23.1.4 | `Apache-2.0 WITH LLVM-exception` | tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive |
+| Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
+| NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive |
+| OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/aarch64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
+| rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and never in its folder or archive |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| RubyInstaller's runtime files, manifests, and tools | 4.0.9-1 | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
+| The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL | 14.0.0 | `LicenseRef-MinGW-w64-runtime` | compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/ |
+| winpthreads (libwinpthread-1.dll), from MinGW-w64 | 14.0.0 | `MIT AND BSD-3-Clause` | a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports |
+| zlib (zlib1.dll) | 1.3.2 | `Zlib` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
+| zlib, linked into llvm-readobj | 1.3.2 | `Zlib` | linked into tools/llvm-readobj.exe |
+| Zstandard (libzstd), linked into llvm-readobj | 1.5.7 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/llvm-readobj.exe |
+
+Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+
+- `BSD-2-Clause`: rexml, rss
+- `BSD-2-Clause OR Ruby`: power_assert, rbs
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `Ruby`: json, readline
+- `Ruby AND BSD-3-Clause`: reline
+- `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
+- `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
+
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.15-aarch64-mingw-ucrt-lgpl-sources.tar.gz` in Fledge's release.
+
 ## iOS and iPadOS (arm64-ios, arm64-ios-simulator)
 
 | Component | Version | License | How it ships |

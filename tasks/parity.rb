@@ -115,10 +115,10 @@ class Parity
       platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", "x86_64-linux-musl", "aarch64-linux-musl", *MOBILE],
       reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems (ADR 001, section 8); " \
         "rv-ruby ships no such file, nor does the Ruby a musl runtime is built from."),
-    Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt],
+    Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reference: [
         %r{\A"<prefix>/lib/ruby/site_ruby/4\.0\.0/ruby_installer/},
-        %r{\A"<prefix>/lib/ruby/4\.0\.0/x64-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)},
+        %r{\A"<prefix>/lib/ruby/4\.0\.0/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)},
       ],
       reason: "Fledge's RubyGems defaults replace RubyInstaller's (ADR 001, section 8), which load " \
         "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
@@ -149,8 +149,20 @@ class Parity
     FileUtils.cp_r(PROBE, @reference_app)
     results = [check("", nil)]
     results << check(" under code page 437", "437") if platform.windows?
-    results << check_bundle
+    results << (WITHOUT_GEM_APP.include?(platform.name) ? skip_bundle : check_bundle)
     results.all?
+  end
+
+  # Platforms the gem-shaped probe cannot be bundled on: its Gemfile is
+  # examples/my_cool_app's, whose sqlite3 publishes no aarch64-mingw-ucrt
+  # build, and whose source build fails there, SQLite's own configure
+  # not knowing aarch64-w64-windows-gnu (ADR 018).
+  WITHOUT_GEM_APP = %w[aarch64-mingw-ucrt].freeze
+
+  private def skip_bundle
+    @out.puts "Parity of a gem-shaped app with bundle exec on #{platform}: not checked, as sqlite3 cannot be " \
+      "installed there (ADR 018)"
+    true
   end
 
   # The gem-shaped check: the probe as examples/my_cool_app's program,

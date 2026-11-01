@@ -36,6 +36,7 @@ module FakeRuntime
 "x86_64-linux-musl" => "x86_64-linux-musl",
 "aarch64-linux-musl" => "aarch64-linux-musl",
 "x64-mingw-ucrt" => "x64-mingw-ucrt",
+"aarch64-mingw-ucrt" => "aarch64-mingw-ucrt",
 "ios" => "arm64-darwin",
 "android" => "aarch64-linux-android",
 }.freeze
@@ -106,7 +107,7 @@ module FakeRuntime
     return @windows if defined?(@windows)
 
     runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
-    archive = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")))
+    archive = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.local))
     @windows = File.file?(archive) ? unpack_windows(archive) : nil
   end
 

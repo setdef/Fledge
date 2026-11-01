@@ -142,10 +142,19 @@ module Fledge
       nsis = tools && File.join(tools, "nsis")
       raise Error, "the runtime has no tools/nsis, which Windows runtimes carry from Fledge 0.0.1.pre.8 on" unless nsis && File.file?(File.join(nsis, MAKENSIS))
 
-      Dir.mktmpdir("fledge-nsis") do |work|
+      work = Dir.mktmpdir("fledge-nsis")
+      begin
+        copy = File.join(work, "nsis")
+        FileUtils.cp_r(nsis, copy)
         script_path = File.join(work, "setup.nsi")
         File.binwrite(script_path, "\uFEFF#{script(icon: @identity.icon&.file('ico'))}")
-        compile(script_path, nsis)
+        compile(script_path, copy)
+      ensure
+        # On Windows on ARM, the x86 emulator's cache service (XtaCache)
+        # keeps makensis.exe open for a while after it exits, so the copy
+        # it ran from may not delete yet; it is the system's temporary
+        # folder's to clear, never the build's own (ADR 018).
+        FileUtils.rm_rf(work)
       end
       @to
     end

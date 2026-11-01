@@ -8,6 +8,8 @@ module Fledge
 
     def self.apply: (String program, identity: Identity, tools: String?) -> String
 
+    private def self.run: (String rcedit, *String arguments) -> String
+
     def self.strings: (Identity identity, String file_name) -> Hash[String, String]
 
     def self.numbers: (String version) -> Array[Integer]

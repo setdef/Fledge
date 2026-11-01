@@ -191,24 +191,33 @@ class LicenseAudit
       BUILD
     end
 
+    # What MSYS2 calls each Windows target's environment, its folder, and
+    # its compiler's triple.
+    GMP_BUILDS = {
+      "x64-mingw-ucrt" => { "environment" => "UCRT64", "folder" => "ucrt64", "triple" => "x86_64-w64-mingw32" },
+      "aarch64-mingw-ucrt" => { "environment" => "CLANGARM64", "folder" => "clangarm64", "triple" => "aarch64-w64-mingw32" },
+    }.freeze
+
     private def gmp_text(pin)
-      package = pin.fetch("package")
+      build = GMP_BUILDS.fetch(@platform)
+      binary = (@platform == "aarch64-mingw-ucrt") ? pin.fetch("arm64") : pin
+      package = binary.fetch("package")
       source = File.basename(pin.fetch("url"))
       <<~BUILD
         ruby/bin/ruby_builtin_dlls/libgmp-10.dll in Fledge #{@version}'s #{@platform}
         runtime is GNU MP #{pin.fetch('version')} exactly as RubyInstaller ships it. It is byte
-        for byte (SHA-256 #{pin.fetch('dll_sha256')})
-        the file ucrt64/bin/libgmp-10.dll of MSYS2's package
+        for byte (SHA-256 #{binary.fetch('dll_sha256')})
+        the file #{build.fetch('folder')}/bin/libgmp-10.dll of MSYS2's package
         #{File.basename(package.fetch('url'))} (SHA-256 #{package.fetch('sha256')},
         from #{package.fetch('url')}).
 
         MSYS2 built that package from #{source} (SHA-256 #{pin.fetch('sha256')},
         from #{pin.fetch('url')}), which is in this folder: GMP's release
         tarball, MSYS2's patches, and the PKGBUILD that builds them, with
-        makepkg-mingw in MSYS2's UCRT64 environment. Unpack it with
+        makepkg-mingw in MSYS2's #{build.fetch('environment')} environment. Unpack it with
         tar --zstd -xf #{source}.
 
-        To replace it, build GMP (modified or not) as a DLL for x86_64-w64-mingw32
+        To replace it, build GMP (modified or not) as a DLL for #{build.fetch('triple')}
         that uses the UCRT, name it libgmp-10.dll, and copy it over the app's
         ruby\\bin\\ruby_builtin_dlls\\libgmp-10.dll. Ruby's DLL finds it there
         through the side-by-side assembly ruby_builtin_dlls, whose manifest names

@@ -69,7 +69,7 @@ module FakeProject
   # +gemfile+ adds lines to the Gemfile and +lock_dependencies+ to its
   # DEPENDENCIES; +checksums+ false leaves the CHECKSUMS section out.
   def self.write(directory, name: "my_app", dependencies: {}, locked: [], remote: "https://rubygems.org/",
-    platforms: %w[arm64-darwin x64-mingw-ucrt x86_64-linux aarch64-linux], gemfile: "", lock_dependencies: [],
+    platforms: %w[arm64-darwin x64-mingw-ucrt aarch64-mingw-ucrt x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl], gemfile: "", lock_dependencies: [],
     locked_dependencies: {}, checksums: true
   )
     root = File.join(directory, name)

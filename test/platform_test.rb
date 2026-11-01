@@ -9,7 +9,7 @@ require_relative "test_helper"
 
 class PlatformTest < Minitest::Test
   def test_names_are_the_rubygems_platforms_fledge_has_runtimes_for
-    assert_equal %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt], Fledge::Platform.names
+    assert_equal %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt aarch64-mingw-ucrt], Fledge::Platform.names
     assert_predicate Fledge::Platform.names, :frozen?
   end
 
@@ -26,7 +26,7 @@ class PlatformTest < Minitest::Test
     error = assert_raises(Fledge::Error) { Fledge::Platform.find("x64-mingw32") }
 
     assert_equal "'x64-mingw32' is not a platform Fledge has runtimes for. " \
-      "Platforms: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt.", error.message
+      "Platforms: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt.", error.message
   end
 
   def test_local_drops_the_darwin_version
@@ -47,18 +47,21 @@ class PlatformTest < Minitest::Test
     assert_equal "aarch64-linux-musl", Fledge::Platform.local(Gem::Platform.new("aarch64-linux-musl")).name
   end
 
-  # RubyInstaller's Ruby reports exactly the target's name.
+  # RubyInstaller's Ruby reports exactly the target's name, on x64 and
+  # on ARM64 (ADR 018).
   def test_local_maps_windows_with_the_ucrt
     assert_equal "x64-mingw-ucrt", Fledge::Platform.local(Gem::Platform.new("x64-mingw-ucrt")).name
+    assert_equal "aarch64-mingw-ucrt", Fledge::Platform.local(Gem::Platform.new("aarch64-mingw-ucrt")).name
+    assert_predicate Fledge::Platform.find("aarch64-mingw-ucrt"), :windows?
   end
 
   def test_local_refuses_platforms_without_runtimes
-    %w[x86_64-darwin-23 arm-linux-musleabihf x64-mingw32 aarch64-mingw-ucrt].each do |name|
+    %w[x86_64-darwin-23 arm-linux-musleabihf x64-mingw32 x86-mingw-ucrt].each do |name|
       error = assert_raises(Fledge::Error) { Fledge::Platform.local(Gem::Platform.new(name)) }
 
       assert_includes error.message, "Fledge has no runtime for this computer's platform (#{Gem::Platform.new(name)})"
       assert_includes error.message,
-        "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt."
+        "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt."
     end
   end
 

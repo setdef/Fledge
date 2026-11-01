@@ -149,7 +149,7 @@ class NsisTest < Minitest::Test
 
   def test_makensis_compiles_the_installer
     runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
-    windows = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")))
+    windows = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.local))
     unless Gem.win_platform? && File.file?(windows)
       flunk "no Windows runtime in #{runtimes}" if ENV["FLEDGE_REQUIRE_RUNTIME"] && Gem.win_platform?
       skip "an NSIS installer is built on Windows, with the Windows runtime's NSIS"

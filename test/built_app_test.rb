@@ -68,13 +68,25 @@ class BuiltAppTest < Minitest::Test
   # One build of each app serves every test: building takes seconds.
   def app = built(HELLO)
 
-  def my_cool_app = built(MY_COOL_APP)
+  def my_cool_app
+    gem_shaped!
+    built(MY_COOL_APP)
+  end
+
+  # examples/my_cool_app's Gemfile, which the gem-shaped probe shares,
+  # locks sqlite3, which has no build for some platforms and does not
+  # compile there (Parity::WITHOUT_GEM_APP; ADR 018).
+  def gem_shaped!
+    skip "sqlite3, which examples/my_cool_app locks, does not install on #{@platform} (ADR 018)" if
+      Parity::WITHOUT_GEM_APP.include?(@platform.name)
+  end
 
   def probe = built(PROBE)
 
   # The probe as a gem-shaped app's program (Parity.gem_probe), run with
   # Bundler as bundle exec would.
   def bundled_probe
+    gem_shaped!
     self.class.built[:bundled_probe] ||= begin
       dir = Dir.mktmpdir
       Minitest.after_run { FileUtils.rm_rf(dir) }
@@ -441,7 +453,7 @@ class BuiltAppTest < Minitest::Test
         assert_path_exists File.join(root, "com.setdef.fledge.HelloWindow.desktop")
         assert_equal "com.setdef.fledge.HelloWindow.png", File.readlink(File.join(root, ".DirIcon"))
       else
-        assert_equal "Hello Window-x64-mingw-ucrt-setup.exe", File.basename(installer)
+        assert_equal "Hello Window-#{@platform}-setup.exe", File.basename(installer)
         assert_equal "MZ", File.binread(installer, 2)
       end
       assert_equal facts, JSON.parse(File.read(report)).slice(*facts.keys) unless @platform.windows?

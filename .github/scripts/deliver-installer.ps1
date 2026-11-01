@@ -30,6 +30,8 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
 $appName = 'Hello Window'
+# Hello Window-PLATFORM-setup.exe: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
+$platform = [IO.Path]::GetFileNameWithoutExtension($Installer) -replace "^$appName-", '' -replace '-setup$', ''
 $identifier = 'com.setdef.fledge.HelloWindow'
 
 function Fail([string] $message) {
@@ -167,7 +169,7 @@ WaitFor { Test-Path -LiteralPath $report } 'the app writing its report after sta
 Start-Sleep -Seconds 3
 $facts = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
 Expect "the report's Ruby" $facts.ruby '4.0.9'
-Expect "the report's platform" $facts.platform 'x64-mingw-ucrt'
+Expect "the report's platform" $facts.platform $platform
 Expect 'whether it had a console' $facts.console $false
 Expect 'the AppUserModelID the app gave itself, which its shortcut carries' $facts.app_user_model_id ([Fledge.Shell]::AppUserModelId($shortcut))
 

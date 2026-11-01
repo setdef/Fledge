@@ -88,6 +88,11 @@ jobs:
           - os: windows-latest
             platform: x64-mingw-ucrt
             ruby-platform: x64-mingw-ucrt
+          # Windows on ARM64 (ADR 018), whose apps here need no gem
+          # compiled for it: no my_cool_app or native_app.
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+            ruby-platform: aarch64-mingw-ucrt
     steps:
       # Only what a developer would have of Fledge's repository: hello,
       # my_cool_app, native_app, windowed_app, and the parity probe to
@@ -140,6 +145,7 @@ jobs:
       # ci.yml's Build from source jobs, which say why Windows takes Rust's
       # GNU toolchain and how bindgen finds MSYS2.
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        if: matrix.platform != 'aarch64-mingw-ucrt'
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}${{ runner.os == 'Windows' && '-x86_64-pc-windows-gnu' || '' }}
 
@@ -150,7 +156,7 @@ jobs:
       #   ef2407b1f44cd3c23d98c5085042857761598b85 (setdef/Ferro), its step
       #   "Point bindgen at Ruby's MSYS2 headers".
       - name: Point bindgen and RubyInstaller at MSYS2
-        if: runner.os == 'Windows'
+        if: matrix.platform == 'x64-mingw-ucrt'
         run: |
           sysroot="${RI_DEVKIT//\\//}${MSYSTEM_PREFIX:?setup-ruby did not set MSYSTEM_PREFIX}"
           {
@@ -190,7 +196,9 @@ jobs:
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
           cd "$RUNNER_TEMP/project"
-          for app in examples/hello test/fixtures/parity examples/my_cool_app examples/windowed_app; do
+          apps="examples/hello test/fixtures/parity examples/my_cool_app examples/windowed_app"
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps="examples/hello test/fixtures/parity examples/windowed_app"
+          for app in $apps; do
             bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
           done
           cat "$RUNNER_TEMP/build.err"
@@ -201,6 +209,7 @@ jobs:
       # Compiling a gem downloads the runtime's build-only companion from
       # the release too (ADR 006).
       - name: Build native_app from source with the release's build-only companion
+        if: matrix.platform != 'aarch64-mingw-ucrt'
         run: |
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
@@ -215,6 +224,7 @@ jobs:
       # What my_cool_app prints as its developer runs it, which the built
       # app must print too.
       - name: Run my_cool_app with bundle exec
+        if: matrix.platform != 'aarch64-mingw-ucrt'
         working-directory: examples/my_cool_app
         run: |
           bundle install
@@ -256,24 +266,24 @@ jobs:
       - name: Install Hello Window with its setup program, run it from the Start menu, and uninstall it
         if: runner.os == 'Windows'
         shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-installer.ps1 -Installer "$env:RUNNER_TEMP/dist/Hello Window-x64-mingw-ucrt-setup.exe"
+        run: pwsh -NoProfile -File .github/scripts/deliver-installer.ps1 -Installer "$env:RUNNER_TEMP/dist/Hello Window-${{ matrix.platform }}-setup.exe"
 
       - name: Start Hello Window.exe as Explorer would
         if: runner.os == 'Windows'
         shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/dist/Hello Window-x64-mingw-ucrt.zip"
+        run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/dist/Hello Window-${{ matrix.platform }}.zip"
 
       - name: Run Hello.exe as someone with no Ruby would
         if: runner.os == 'Windows'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/dist/Hello-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
-          -Expected "Hello from Ruby 4.0.9 on x64-mingw-ucrt"
+          -Archive "$env:RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.zip"
+          -Probe "$env:RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.zip" -Platform ${{ matrix.platform }}
+          -Expected "Hello from Ruby 4.0.9 on ${{ matrix.platform }}"
 
       - name: Run MyCoolApp.exe as someone with no Ruby would
-        if: runner.os == 'Windows'
+        if: matrix.platform == 'x64-mingw-ucrt'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
@@ -282,7 +292,7 @@ jobs:
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/my_cool_app.expected" -Raw).TrimEnd()
 
       - name: Run NativeApp.exe as someone with no Ruby would
-        if: runner.os == 'Windows'
+        if: matrix.platform == 'x64-mingw-ucrt'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1

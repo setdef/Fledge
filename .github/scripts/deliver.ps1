@@ -138,7 +138,7 @@ $notices = Join-Path $root 'notices\NOTICES.txt'
 if (-not (Test-Path -LiteralPath (Join-Path $root 'notices\sbom.spdx.json') -PathType Leaf)) { Fail "the app has no notices\sbom.spdx.json" }
 if (-not (Test-Path -LiteralPath $notices -PathType Leaf)) { Fail "the app has no notices\NOTICES.txt" }
 $text = Get-Content -LiteralPath $notices -Raw
-foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_dlls/libgmp-10.dll', '-x64-mingw-ucrt-lgpl-sources.tar.gz')) {
+foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_dlls/libgmp-10.dll', "-$Platform-lgpl-sources.tar.gz")) {
   if (-not $text.Contains($line)) { Fail "notices\NOTICES.txt does not say '$line'" }
 }
 Write-Host "ok: the app carries its notices and SBOM"
@@ -252,8 +252,10 @@ Check 'hostile environment' 0 $app $hostile
 # DLLs that are not DLLs, named as Ruby's and its libraries' are, on
 # PATH and in the current folder: Windows would load them before the
 # runtime's own if the launcher let it search either.
-foreach ($dll in 'x64-ucrt-ruby400.dll', 'libgmp-10.dll', 'libwinpthread-1.dll', 'zlib1.dll', 'libyaml-0-2.dll',
-  'libssl-3-x64.dll', 'libcrypto-3-x64.dll') {
+$arch = if ($Platform -eq 'aarch64-mingw-ucrt') { 'arm64' } else { 'x64' }
+$rubyDll = if ($Platform -eq 'aarch64-mingw-ucrt') { 'aarch64-ucrt-ruby400.dll' } else { 'x64-ucrt-ruby400.dll' }
+foreach ($dll in $rubyDll, 'libgmp-10.dll', 'libwinpthread-1.dll', 'zlib1.dll', 'libyaml-0-2.dll',
+  "libssl-3-$arch.dll", "libcrypto-3-$arch.dll") {
   Set-Content -LiteralPath (Join-Path $evil $dll) -Value 'not a DLL'
 }
 $planted = $hostile.Clone()

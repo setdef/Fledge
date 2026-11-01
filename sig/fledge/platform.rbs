@@ -26,6 +26,10 @@ module Fledge
 
     def macos_minimum: () -> String?
 
+    def musl?: () -> bool
+
+    def libraries: () -> String
+
     def glibc_minimum: () -> String?
 
     def lockfile_names: () -> Array[String]

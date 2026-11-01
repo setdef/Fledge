@@ -20,11 +20,24 @@ class RuntimeBuilderTest < Minitest::Test
   def test_every_platform_pins_a_ruby_build_by_sha256
     pins = builder("x86_64-linux").sources.fetch("ruby").fetch("platforms")
 
-    assert_equal Fledge::Platform.names.sort, pins.keys.sort
+    assert_equal Fledge::Platform.names.reject { |name| name.end_with?("-musl") }.sort, pins.keys.sort
     pins.except("x64-mingw-ucrt").each_value do |pin|
       assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4\.0\.9\.}, pin.fetch("url"))
       assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
     end
+  end
+
+  # musl Linux builds its Ruby from source (ADR 017), from pins of its
+  # own: Ruby's release, and what its extensions link statically.
+  def test_musl_pins_the_sources_its_ruby_builds_from
+    pins = builder("x86_64-linux").sources.fetch("musl-ruby")
+
+    assert_equal %w[ca-certificates libffi libyaml openssl ruby zlib], pins.keys.sort
+    pins.each_value do |pin|
+      assert_match(%r{\Ahttps://}, pin.fetch("url"))
+      assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
+    end
+    assert_equal builder("x86_64-linux").sources.fetch("ruby").fetch("version"), pins.fetch("ruby").fetch("version")
   end
 
   def test_windows_pins_rubyinstaller_its_signature_and_the_key_that_signed_it
@@ -84,17 +97,18 @@ class RuntimeBuilderTest < Minitest::Test
     assert_equal Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")), builder("x64-mingw-ucrt").assets.fetch(:runtime)
   end
 
-  # Linux and Windows ship an LGPL library, so their releases carry its
-  # source; macOS ships none. The mobile runtimes carry three each
+  # Linux, musl Linux too, and Windows ship an LGPL library, so their
+  # releases carry its source; macOS ships none. The mobile runtimes carry three each
   # (test/mobile_runtime_test.rb).
   def test_a_release_publishes_every_platforms_assets_and_the_lgpl_sources_where_they_ship
     assets = RuntimeBuilder.release_assets(version: "1.2.3")
 
-    assert_equal 25, assets.size
+    assert_equal 35, assets.size
     assert_equal assets.sort, assets
     Fledge::Platform.names.each { |name| assert_includes assets, "fledge-runtime-1.2.3-#{name}-dev.tar.gz" }
     assert_includes assets, "fledge-runtime-1.2.3-x64-mingw-ucrt-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-aarch64-linux-lgpl-sources.tar.gz"
+    assert_includes assets, "fledge-runtime-1.2.3-x86_64-linux-musl-lgpl-sources.tar.gz"
     refute_includes assets, "fledge-runtime-1.2.3-arm64-darwin-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-arm64-darwin.spdx.json"
   end

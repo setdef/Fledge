@@ -127,11 +127,11 @@ class BuildCommandTest < Minitest::Test
   end
 
   def test_a_computer_with_no_runtime_cannot_build
-    _, err, status = build("hello", host: Gem::Platform.new("x86_64-linux-musl"))
+    _, err, status = build("hello", host: Gem::Platform.new("x86_64-darwin-23"))
 
     assert_equal 1, status
-    assert_equal "fledge build: Fledge has no runtime for this computer's platform (x86_64-linux-musl). " \
-      "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.\n", err
+    assert_equal "fledge build: Fledge has no runtime for this computer's platform (x86_64-darwin-23). " \
+      "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt.\n", err
   end
 
   def test_a_missing_runtime_is_an_error

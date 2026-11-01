@@ -253,6 +253,8 @@ class RuntimeBuilder
       (platform.name == "ios") ? IOS : Android
     elsif platform.windows?
       Windows
+    elsif platform.musl?
+      Musl
     else
       platform.name.end_with?("-darwin") ? Darwin : Linux
     end
@@ -271,6 +273,7 @@ require_relative "runtime_builder/recipe"
 require_relative "runtime_builder/unix"
 require_relative "runtime_builder/darwin"
 require_relative "runtime_builder/linux"
+require_relative "runtime_builder/musl"
 require_relative "runtime_builder/windows"
 require_relative "runtime_builder/ruby_source"
 require_relative "runtime_builder/bundled_extensions"

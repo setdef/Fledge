@@ -75,6 +75,10 @@ env:
   RUST_TOOLCHAIN: "1.99.1"
   # Install exactly what Gemfile.lock locks, or fail.
   BUNDLE_FROZEN: "true"
+  # musl Linux (ADR 017): the Alpine a developer with Ruby builds apps
+  # on, and the bare Alpine Delivery runs them on, pinned by digest.
+  ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
+  ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 jobs:
   gate:
@@ -229,6 +233,56 @@ jobs:
           name: runtime-${{ matrix.platform }}
           path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
           if-no-files-found: error
+          retention-days: 14
+
+  # The musl Linux runtimes (ADR 017): CRuby built from its pinned source
+  # in Alpine, on a runner of each architecture, as rv-ruby builds its
+  # own musl Rubies, with docker run rather than a job container, since
+  # GitHub's JavaScript actions cannot run in an Alpine container on an
+  # ARM runner (rv-ruby's build-alpine.yml says the same).
+  runtime-musl:
+    name: Runtime (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux-musl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/downloads
+          key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
+
+      - name: Build the runtime in Alpine
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          export SOURCE_DATE_EPOCH
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e SOURCE_DATE_EPOCH -e PLATFORM "$ALPINE_RUBY" \
+            sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: runtime-${{ matrix.platform }}-logs
+          path: tmp/runtime/${{ matrix.platform }}/logs
           retention-days: 14
 
   # The mobile runtimes (ADR 011): CRuby built from its pinned source for
@@ -566,6 +620,37 @@ jobs:
       - name: Interrupt ruby main.rb in a terminal
         run: .github/scripts/deliver-console.sh --reference "$(command -v ruby)" test/fixtures/console/main.rb
 
+  # ADR 003 on musl Linux (ADR 017): the probe app, built from this
+  # runtime in Alpine, against the Ruby the runtime build compiled, as
+  # ruby main.rb, then as my_cool_app's program against bundle exec.
+  parity-musl:
+    name: Parity (${{ matrix.platform }})
+    needs: runtime-musl
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux-musl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: runtimes
+
+      - name: Check parity with ruby main.rb and bundle exec, in Alpine
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes "$ALPINE_RUBY"
+          sh -c '.github/scripts/alpine-packages.sh apps && git config --global --add safe.directory /fledge && ruby tasks/parity.rb'
+
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 001), through setup-ruby at
   # mise.toml's pin. test/built_app_test.rb unpacks hello and my_cool_app
@@ -823,6 +908,60 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # musl Linux's apps (ADR 017), built in Alpine with Ruby, as a developer
+  # on Alpine builds them: hello, the parity and console probes, the
+  # probe as a gem-shaped app's program, my_cool_app, whose sqlite3 is
+  # precompiled for musl, and windowed_app, with its AppImage.
+  build-musl:
+    name: Build (${{ matrix.platform }})
+    needs: runtime-musl
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux-musl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: runtimes
+
+      - name: Build the examples in Alpine, and run my_cool_app with bundle exec
+        run: |
+          cat > "$RUNNER_TEMP/build-apps.sh" <<'SH'
+          set -eu
+          .github/scripts/alpine-packages.sh apps
+          git config --global --add safe.directory /fledge
+          ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
+          for app in examples/hello test/fixtures/parity test/fixtures/console /tmp/parity-bundle examples/my_cool_app examples/windowed_app; do
+            ruby -I lib exe/fledge build -o dist "$app"
+          done
+          (cd examples/my_cool_app && bundle install)
+          (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
+          cat dist/my_cool_app.expected
+          SH
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes \
+            -e BUNDLE_FROZEN "$ALPINE_RUBY" sh /scripts/build-apps.sh
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: |
+            dist/*-${{ matrix.platform }}.tar.gz
+            dist/*-${{ matrix.platform }}.AppImage
+            dist/*.expected
+          if-no-files-found: error
+          retention-days: 14
+
   # Delivery of native_app and nokogiri_app, on a fresh runner of each
   # platform, as Delivery runs the others.
   delivery-native:
@@ -1068,6 +1207,52 @@ jobs:
           .github/scripts/deliver.sh "delivered/NativeApp-${{ matrix.platform }}.tar.gz"
           "delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat delivered/native_app.expected)" --no-ruby-installed
 
+  # Delivery on musl Linux (ADR 017): each app in a bare Alpine container,
+  # with no Ruby at all, as deliver.sh --no-ruby-installed checks: hello
+  # and my_cool_app, the console probe interrupted in a terminal, and the
+  # windowed app, its desktop entry, and its AppImage, which has no FUSE
+  # in a container, so says so and runs extracted.
+  delivery-musl:
+    name: Delivery (${{ matrix.platform }}, alpine:3.24)
+    needs: build-musl
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux-musl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: delivered
+
+      - name: Run hello, my_cool_app, the console probe, and windowed_app on Alpine with no Ruby installed
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          cat > "$RUNNER_TEMP/deliver-all.sh" <<'SH'
+          set -eu
+          .github/scripts/alpine-packages.sh deliver
+          d=delivered
+          .github/scripts/deliver.sh "$d/Hello-$PLATFORM.tar.gz" "$d/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.0.9 on $PLATFORM" --no-ruby-installed
+          .github/scripts/deliver.sh "$d/MyCoolApp-$PLATFORM.tar.gz" "$d/ParityBundle-$PLATFORM.tar.gz" "$(cat "$d/my_cool_app.expected")" --no-ruby-installed
+          .github/scripts/deliver-console.sh "$d/Console-$PLATFORM.tar.gz"
+          .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
+          .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract
+          SH
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$RUNNER_TEMP:/scripts" -w /work -e PLATFORM "$ALPINE" sh /scripts/deliver-all.sh
+
   # Delivery on a fresh Windows runner, with nothing of Fledge but the
   # .zip and the script that checks it, and no Ruby set up: the runner's
   # own Rubies and MSYS2 are kept off the app's PATH, and the script runs
@@ -1162,13 +1347,13 @@ jobs:
   # every platform.
   licenses:
     name: Licenses (${{ matrix.platform }})
-    needs: [runtime, runtime-mobile]
+    needs: [runtime, runtime-musl, runtime-mobile]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        platform: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, ios, android]
+        platform: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, ios, android]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1206,7 +1391,7 @@ jobs:
           cmp "$tree/notices/sbom.spdx.json" "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM".spdx.json
           cmp "$tree/notices/NOTICES.txt" "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-NOTICES.txt
           case "$PLATFORM" in
-            *-linux | x64-mingw-ucrt) tar -tzvf "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-lgpl-sources.tar.gz ;;
+            *-linux | *-linux-musl | x64-mingw-ucrt) tar -tzvf "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-lgpl-sources.tar.gz ;;
             *) if ls "$RUNNER_TEMP"/runtimes/*-lgpl-sources.tar.gz 2>/dev/null; then echo "::error::$PLATFORM ships no LGPL library"; exit 1; fi ;;
           esac
 
@@ -1293,7 +1478,7 @@ jobs:
   # matches them.
   licensing-page:
     name: Licensing page is current
-    needs: [runtime, runtime-mobile]
+    needs: [runtime, runtime-musl, runtime-mobile]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

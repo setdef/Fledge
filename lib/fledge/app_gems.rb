@@ -130,7 +130,7 @@ module Fledge
     # the Ruby it asks for, and what its compiled files need.
     private def desktop_problems(packages, platform, runtime)
       readers(platform, runtime) do |readers|
-        linkage = Linkage.new(os: platform.os, provided: runtime.libraries, readers:)
+        linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, readers:)
         packages.flat_map do |gem, package|
           [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.contents)]
         end

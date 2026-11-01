@@ -56,12 +56,16 @@ class RuntimePinsTest < Minitest::Test
     end
   end
 
-  # What the gem ships pins exactly one release's assets.
-  def test_the_shipped_pins_name_every_asset_of_one_release
+  # What the gem ships pins one release's assets, each of them a name
+  # Fledge still asks for. A platform added since that release has no
+  # pins until the next, whose release.yml checks the pins are exactly
+  # its assets.
+  def test_the_shipped_pins_name_assets_of_one_release
     names = File.readlines(Fledge::Runtimes::PINS, chomp: true).map { |line| line.split("  ", 2).last }
     version = names.first[/\Afledge-runtime-(.+?)-(?:aarch64|x86_64|arm64|x64|ios|android)/, 1]
 
-    assert_equal RuntimeBuilder.release_assets(version:), names
+    assert_empty names - RuntimeBuilder.release_assets(version:)
+    assert_operator names.size, :>=, 25
   end
 
   private def write_assets(dir, version)

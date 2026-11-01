@@ -40,6 +40,8 @@ class LicensingPage
     "arm64-darwin" => "macOS on Apple Silicon (arm64-darwin)",
     "x86_64-linux" => "Linux on x86-64 (x86_64-linux)",
     "aarch64-linux" => "Linux on ARM64 (aarch64-linux)",
+    "x86_64-linux-musl" => "musl Linux, such as Alpine, on x86-64 (x86_64-linux-musl)",
+    "aarch64-linux-musl" => "musl Linux, such as Alpine, on ARM64 (aarch64-linux-musl)",
     "x64-mingw-ucrt" => "Windows on x64 (x64-mingw-ucrt)",
     "ios" => "iOS and iPadOS (arm64-ios, arm64-ios-simulator)",
     "android" => "Android (aarch64-linux-android, x86_64-linux-android)",

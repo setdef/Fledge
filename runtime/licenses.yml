@@ -45,6 +45,10 @@
 system_libraries:
   linux:
     - /\A(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|libgcc_s\.so\.1|ld-linux[-\w.]*\.so\.\d)\z/
+  # musl Linux's C library, by its own name and Alpine's, and its
+  # dynamic linker (ADR 017).
+  linux-musl:
+    - /\A(?:libc\.so|libc\.musl-(?:x86_64|aarch64)\.so\.1|ld-musl-(?:x86_64|aarch64)\.so\.1)\z/
   darwin:
     - /\A\/usr\/lib\/[^\/]+\.dylib\z/
     - /\A\/System\/Library\/Frameworks\//
@@ -63,6 +67,8 @@ platforms:
   arm64-darwin: {os: darwin, arch: arm64-darwin23, gem_arch: arm64-darwin-23, so: bundle}
   x86_64-linux: {os: linux, arch: x86_64-linux, gem_arch: x86_64-linux, so: so}
   aarch64-linux: {os: linux, arch: aarch64-linux, gem_arch: aarch64-linux, so: so}
+  x86_64-linux-musl: {os: linux-musl, arch: x86_64-linux-musl, gem_arch: x86_64-linux-musl, so: so}
+  aarch64-linux-musl: {os: linux-musl, arch: aarch64-linux-musl, gem_arch: aarch64-linux-musl, so: so}
   x64-mingw-ucrt: {os: windows, arch: x64-mingw-ucrt, gem_arch: x64-mingw-ucrt, so: so}
   # iOS's Ruby reports arm64-darwin on devices and in the Simulator, and
   # each XCFramework slice carries its own (ADR 011, section 2); Android's
@@ -112,7 +118,7 @@ components:
     download: https://github.com/setdef/Fledge
     notice: fledge
     ships: the program the app's user runs, and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt]
     files:
       - launcher
       - launcher.exe
@@ -189,6 +195,33 @@ components:
       - files: [launcher, bin/ruby]
         evidence: "GCC: ("
 
+  # The musl runtimes build their Ruby from source in Alpine (ADR 017),
+  # with Alpine's Rust and GCC, whose versions ci.yml pins.
+  - id: rust-std
+    name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
+    version: 1.96.1
+    license: MIT OR Apache-2.0
+    kind: program
+    download: https://github.com/rust-lang/rust/tree/1.96.1
+    notice: rust
+    ships: compiled into the launcher and bin/ruby
+    platforms: [x86_64-linux-musl, aarch64-linux-musl]
+    embedded:
+      - files: [launcher, "{prefix}bin/ruby"]
+        evidence: /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/
+
+  - id: gcc-runtime
+    name: GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc)
+    version: 15.2.0
+    license: GPL-3.0-or-later WITH GCC-exception-3.1
+    kind: program
+    download: https://gcc.gnu.org/
+    ships: compiled into the launcher, bin/ruby, and the extensions in lib/ruby/
+    platforms: [x86_64-linux-musl, aarch64-linux-musl]
+    embedded:
+      - files: [launcher, bin/ruby]
+        evidence: "GCC: (Alpine 15.2.0) 15.2.0"
+
   - id: gcc-runtime-msys2
     name: GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs
     version: "13 to 16"
@@ -237,6 +270,19 @@ components:
       - files: ["{prefix}lib/ruby/4.0.0/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.2 "
 
+  - id: openssl
+    name: OpenSSL, compiled into Ruby's openssl extension
+    version: 3.6.5
+    license: Apache-2.0
+    kind: program
+    download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
+    notice: openssl
+    ships: "compiled into lib/ruby/4.0.0/{arch}/openssl.{so}"
+    platforms: [x86_64-linux-musl, aarch64-linux-musl]
+    embedded:
+      - files: ["{prefix}lib/ruby/4.0.0/{arch}/openssl.{so}"]
+        evidence: "OpenSSL 3.6.5 "
+
   - id: openssl-mobile
     name: OpenSSL, compiled into the mobile runtimes' library
     version: 3.6.5
@@ -273,7 +319,7 @@ components:
     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
     notice: libyaml
     ships: "compiled into lib/ruby/4.0.0/{arch}/psych.{so}"
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: ["{prefix}lib/ruby/4.0.0/{arch}/psych.{so}"]
         evidence: "0.2.5\0"
@@ -314,7 +360,7 @@ components:
     download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
     notice: zlib
     ships: "compiled into lib/ruby/4.0.0/{arch}/zlib.so"
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib.so"]
         evidence: "deflate 1.3.2 "
@@ -336,7 +382,7 @@ components:
     notice: appimage-runtime
     source: appimage-runtime
     ships: tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     files: [tools/appimage-runtime]
     binaries: [tools/appimage-runtime]
     embedded:
@@ -352,7 +398,7 @@ components:
     notice: libfuse
     source: libfuse
     ships: linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: [tools/appimage-runtime]
         evidence: "3.15.0"
@@ -365,7 +411,7 @@ components:
     download: https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz
     notice: squashfuse
     ships: linked into tools/appimage-runtime
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: [tools/appimage-runtime]
         evidence: "squashfuse 0.5.2"
@@ -378,7 +424,7 @@ components:
     download: https://github.com/facebook/zstd/releases/tag/v1.5.6
     notice: zstd
     ships: linked into tools/appimage-runtime
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: [tools/appimage-runtime]
         evidence: "1.5.6"
@@ -391,7 +437,7 @@ components:
     download: https://github.com/madler/zlib/releases/tag/v1.3.1
     notice: zlib
     ships: linked into tools/appimage-runtime
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: [tools/appimage-runtime]
         evidence: "inflate 1.3.1 "
@@ -404,7 +450,7 @@ components:
     download: https://musl.libc.org/releases/musl-1.2.5.tar.gz
     notice: musl
     ships: linked into tools/appimage-runtime
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: [tools/appimage-runtime]
         evidence: "musl libc, licensed under the terms of"
@@ -417,7 +463,7 @@ components:
     download: https://github.com/microsoft/mimalloc/releases/tag/v2.1.7
     notice: mimalloc
     ships: linked into tools/appimage-runtime
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: [tools/appimage-runtime]
         evidence: "mimalloc: "
@@ -429,7 +475,7 @@ components:
     kind: program
     download: https://gcc.gnu.org/
     ships: linked into tools/appimage-runtime
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: [tools/appimage-runtime]
         evidence: "GCC: (Alpine 14.2.0) 14.2.0"
@@ -535,7 +581,7 @@ components:
     download: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
     notice: libffi
     ships: compiled into the fiddle gem's extension
-    platforms: [x86_64-linux, aarch64-linux]
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
         evidence: "3.5.2\0"
@@ -657,7 +703,7 @@ components:
     download: https://curl.se/ca/cacert-2026-03-19.pem
     notice: ca-certificates
     ships: libexec/cert.pem, unmodified
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, ios, android]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, ios, android]
     files: ["{prefix}libexec/cert.pem"]
 
   - id: ca-certificates-msys2
@@ -722,7 +768,7 @@ components:
     download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
     notice: ruby
     ships: "compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/"
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt, ios, android]
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, ios, android]
     fallback: true
     embedded:
       - files: [launcher, "{prefix}bin/ruby", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]

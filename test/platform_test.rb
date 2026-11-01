@@ -9,7 +9,7 @@ require_relative "test_helper"
 
 class PlatformTest < Minitest::Test
   def test_names_are_the_rubygems_platforms_fledge_has_runtimes_for
-    assert_equal %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt], Fledge::Platform.names
+    assert_equal %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt], Fledge::Platform.names
     assert_predicate Fledge::Platform.names, :frozen?
   end
 
@@ -26,7 +26,7 @@ class PlatformTest < Minitest::Test
     error = assert_raises(Fledge::Error) { Fledge::Platform.find("x64-mingw32") }
 
     assert_equal "'x64-mingw32' is not a platform Fledge has runtimes for. " \
-      "Platforms: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt.", error.message
+      "Platforms: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt.", error.message
   end
 
   def test_local_drops_the_darwin_version
@@ -40,17 +40,25 @@ class PlatformTest < Minitest::Test
     assert_equal "x86_64-linux", Fledge::Platform.local(Gem::Platform.new("x86_64-linux-gnu")).name
   end
 
+  # A Ruby built against musl, as on Alpine, reports linux-musl, which
+  # RubyGems and precompiled gems call it too (ADR 017).
+  def test_local_maps_musl_linux
+    assert_equal "x86_64-linux-musl", Fledge::Platform.local(Gem::Platform.new("x86_64-linux-musl")).name
+    assert_equal "aarch64-linux-musl", Fledge::Platform.local(Gem::Platform.new("aarch64-linux-musl")).name
+  end
+
   # RubyInstaller's Ruby reports exactly the target's name.
   def test_local_maps_windows_with_the_ucrt
     assert_equal "x64-mingw-ucrt", Fledge::Platform.local(Gem::Platform.new("x64-mingw-ucrt")).name
   end
 
   def test_local_refuses_platforms_without_runtimes
-    %w[x86_64-darwin-23 x86_64-linux-musl x64-mingw32 aarch64-mingw-ucrt].each do |name|
+    %w[x86_64-darwin-23 arm-linux-musleabihf x64-mingw32 aarch64-mingw-ucrt].each do |name|
       error = assert_raises(Fledge::Error) { Fledge::Platform.local(Gem::Platform.new(name)) }
 
       assert_includes error.message, "Fledge has no runtime for this computer's platform (#{Gem::Platform.new(name)})"
-      assert_includes error.message, "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x64-mingw-ucrt."
+      assert_includes error.message,
+        "Build on one it has: arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt."
     end
   end
 
@@ -62,7 +70,7 @@ class PlatformTest < Minitest::Test
   end
 
   def test_unix_platforms_ship_tar_gz_and_unadorned_executables
-    %w[arm64-darwin x86_64-linux aarch64-linux].each do |name|
+    %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl].each do |name|
       platform = Fledge::Platform.find(name)
 
       refute_predicate platform, :windows?
@@ -87,6 +95,8 @@ class PlatformTest < Minitest::Test
     assert_equal %w[aarch64-linux aarch64-linux-gnu], Fledge::Platform.find("aarch64-linux").lockfile_names
     assert_equal %w[arm64-darwin], Fledge::Platform.find("arm64-darwin").lockfile_names
     assert_equal %w[x64-mingw-ucrt], Fledge::Platform.find("x64-mingw-ucrt").lockfile_names
+    assert_equal %w[x86_64-linux-musl], Fledge::Platform.find("x86_64-linux-musl").lockfile_names
+    assert_equal %w[aarch64-linux-musl], Fledge::Platform.find("aarch64-linux-musl").lockfile_names
   end
 
   # Compiling a gem needs the operating system's name for the libraries
@@ -98,6 +108,8 @@ class PlatformTest < Minitest::Test
       "arm64-darwin" => ["darwin", "14.0"],
       "x86_64-linux" => ["linux", nil],
       "aarch64-linux" => ["linux", nil],
+      "x86_64-linux-musl" => ["linux", nil],
+      "aarch64-linux-musl" => ["linux", nil],
       "x64-mingw-ucrt" => ["windows", nil],
     }.each do |name, (os, macos)|
       platform = Fledge::Platform.find(name)
@@ -108,11 +120,22 @@ class PlatformTest < Minitest::Test
       else
         assert_nil platform.macos_minimum, name
       end
-      if os == "linux"
+      if os == "linux" && !platform.musl?
         assert_equal "2.39", platform.glibc_minimum
       else
         assert_nil platform.glibc_minimum, name
       end
     end
+  end
+
+  # musl Linux is Linux, with musl's C library in place of glibc's: no
+  # glibc floor, and its own libraries (ADR 017).
+  def test_musl_linux_is_linux_with_musls_c_library
+    assert_predicate Fledge::Platform.find("x86_64-linux-musl"), :musl?
+    assert_predicate Fledge::Platform.find("aarch64-linux-musl"), :musl?
+    %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt].each { |name| refute_predicate Fledge::Platform.find(name), :musl? }
+    assert_equal "linux-musl", Fledge::Platform.find("aarch64-linux-musl").libraries
+    assert_equal "linux", Fledge::Platform.find("aarch64-linux").libraries
+    assert_equal "windows", Fledge::Platform.find("x64-mingw-ucrt").libraries
   end
 end

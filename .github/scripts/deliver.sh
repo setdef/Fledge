@@ -43,9 +43,15 @@ trap 'rm -rf "$work"' EXIT
 archive=$(cd "$(dirname "$archive")" && pwd)/$(basename "$archive")
 probe_archive=$(cd "$(dirname "$probe_archive")" && pwd)/$(basename "$probe_archive")
 folder=$(basename "$archive" .tar.gz)
-# NAME-PLATFORM, where every PLATFORM here (arm64-darwin, x86_64-linux,
-# aarch64-linux) has one hyphen.
-name=${folder%-*-*}
+# NAME-PLATFORM, where PLATFORM is arm64-darwin, x86_64-linux, or
+# aarch64-linux, with one hyphen, or with -musl after it, two.
+app_name() {
+  case "$1" in
+    *-linux-musl) echo "${1%-*-*-*}" ;;
+    *) echo "${1%-*-*}" ;;
+  esac
+}
+name=$(app_name "$folder")
 
 # Unpack somewhere the app was never built, under a path with spaces and
 # characters outside ASCII: a C locale reads those as invalid bytes
@@ -57,21 +63,26 @@ tar -xzf "$probe_archive" -C "$place"
 root="$place/$folder"
 app="$root/$name"
 probe_folder=$(basename "$probe_archive" .tar.gz)
-probe="$place/$probe_folder/${probe_folder%-*-*}"
+probe="$place/$probe_folder/$(app_name "$probe_folder")"
 entry=$(sed -n 's/^entry = //p' "$root/fledge.cfg")
 [ -n "$entry" ] || fail "$root/fledge.cfg names no entry"
 [ -x "$app" ] || fail "$app is not executable after unpacking"
 [ -x "$probe" ] || fail "$probe is not executable after unpacking"
 
 # The app carries the notices the license audit wrote (ADR 004): every
-# component and license text, and the SBOM; on Linux, libxcrypt's
-# replaceability and where its source is.
+# component and license text, and the SBOM; on Linux with glibc,
+# libxcrypt's replaceability and where its source is. musl Linux's apps
+# ship no libxcrypt: musl's own crypt(3) serves (ADR 017).
 [ -s "$root/notices/sbom.spdx.json" ] || fail "the app has no notices/sbom.spdx.json"
 grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the app has no notices/NOTICES.txt from the license audit"
 case "$(uname -s)" in
   Linux)
-    grep -qx "  lib/libcrypt.so.2" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say lib/libcrypt.so.2 is replaceable"
-    grep -q -- "-lgpl-sources.tar.gz$" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say where libxcrypt's source is"
+    if [ -e "$root/lib/libcrypt.so.2" ]; then
+      grep -qx "  lib/libcrypt.so.2" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say lib/libcrypt.so.2 is replaceable"
+      grep -q -- "-lgpl-sources.tar.gz$" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say where libxcrypt's source is"
+    elif [ ! -e /lib/ld-musl-"$(uname -m)".so.1 ]; then
+      fail "the app has no lib/libcrypt.so.2, which every app for Linux with glibc ships"
+    fi
     ;;
 esac
 echo "ok: the app carries its notices and SBOM"
@@ -247,19 +258,29 @@ echo "ok: an app without app/$entry says so and exits 66"
 
 case "$(uname -s)" in
   Linux)
-    # The launcher and Ruby's own bin/ruby both load the runtime's
-    # libcrypt, the LGPL library a person may replace, and neither has
-    # one of its own. bin/ruby finds it through $ORIGIN/../lib, so the
-    # loader's path is compared by the folder it really is.
-    lib=$(cd "$root/lib" && pwd -P)
-    for program in "$app" "$root/bin/ruby"; do
-      crypt=$(ldd "$program" | sed -n 's/^[[:space:]]*libcrypt\.so\.[0-9]* => \(.*\) (0x[0-9a-f]*)$/\1/p')
-      folder=$( (cd "$(dirname "$crypt")" 2>/dev/null && pwd -P) || echo none)
-      case "$folder/$(basename "$crypt")" in
-        "$lib/libcrypt.so."*) echo "ok: $(basename "$program") loads libcrypt from the runtime ($crypt)" ;;
-        *) ldd "$program"; fail "$program resolves libcrypt to '$crypt', not the runtime's lib/" ;;
-      esac
-    done
+    # On musl Linux, the launcher and bin/ruby need musl's C library and
+    # nothing else, which ldd lists as the dynamic linker (ADR 017).
+    if [ ! -e "$root/lib/libcrypt.so.2" ]; then
+      for program in "$app" "$root/bin/ruby"; do
+        others=$(ldd "$program" | grep -v -e 'ld-musl-' -e 'libc\.musl-' || true)
+        [ -z "$others" ] || { ldd "$program"; fail "$program needs libraries besides musl's C library"; }
+        echo "ok: $(basename "$program") needs only musl's C library"
+      done
+    else
+      # The launcher and Ruby's own bin/ruby both load the runtime's
+      # libcrypt, the LGPL library a person may replace, and neither has
+      # one of its own. bin/ruby finds it through $ORIGIN/../lib, so the
+      # loader's path is compared by the folder it really is.
+      lib=$(cd "$root/lib" && pwd -P)
+      for program in "$app" "$root/bin/ruby"; do
+        crypt=$(ldd "$program" | sed -n 's/^[[:space:]]*libcrypt\.so\.[0-9]* => \(.*\) (0x[0-9a-f]*)$/\1/p')
+        folder=$( (cd "$(dirname "$crypt")" 2>/dev/null && pwd -P) || echo none)
+        case "$folder/$(basename "$crypt")" in
+          "$lib/libcrypt.so."*) echo "ok: $(basename "$program") loads libcrypt from the runtime ($crypt)" ;;
+          *) ldd "$program"; fail "$program resolves libcrypt to '$crypt', not the runtime's lib/" ;;
+        esac
+      done
+    fi
     ;;
   Darwin)
     otool -L "$app" | tail -n +2 | while read -r library _; do

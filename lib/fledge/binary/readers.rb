@@ -71,7 +71,7 @@ module Fledge
         when "darwin"
           new(commands: { elf: "objdump", macho: "objdump" },
             install: "Install Xcode's command line tools (xcode-select --install), whose objdump reads compiled files.")
-        when "linux"
+        when "linux", "linux-musl"
           new(commands: { elf: "objdump" },
             install: "Install binutils, whose objdump reads compiled files (sudo apt install binutils, sudo dnf install binutils).")
         else

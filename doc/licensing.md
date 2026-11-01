@@ -133,6 +133,76 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 **What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.14-aarch64-linux-lgpl-sources.tar.gz` in Fledge's release.
 
+## musl Linux, such as Alpine, on x86-64 (x86_64-linux-musl)
+
+| Component | Version | License | How it ships |
+|---|---|---|---|
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.14 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
+| GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
+| libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
+| libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
+| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/x86_64-linux-musl/psych.so |
+| mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
+| Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
+| musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
+| OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.0.0/x86_64-linux-musl/openssl.so |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
+| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby |
+| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/x86_64-linux-musl/zlib.so |
+| zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
+| Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
+
+Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+
+- `BSD-2-Clause`: rexml, rss
+- `BSD-2-Clause OR Ruby`: power_assert, rbs
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `Ruby`: json, readline
+- `Ruby AND BSD-3-Clause`: reline
+- `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
+
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.14-x86_64-linux-musl-lgpl-sources.tar.gz` in Fledge's release.
+
+## musl Linux, such as Alpine, on ARM64 (aarch64-linux-musl)
+
+| Component | Version | License | How it ships |
+|---|---|---|---|
+| Fledge launcher and RubyGems defaults | 0.0.1.pre.14 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
+| GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
+| libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
+| libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
+| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/aarch64-linux-musl/psych.so |
+| mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
+| Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
+| musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
+| OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.0.0/aarch64-linux-musl/openssl.so |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
+| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby |
+| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/aarch64-linux-musl/zlib.so |
+| zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
+| Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
+
+Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+
+- `BSD-2-Clause`: rexml, rss
+- `BSD-2-Clause OR Ruby`: power_assert, rbs
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `Ruby`: json, readline
+- `Ruby AND BSD-3-Clause`: reline
+- `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
+
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is `fledge-runtime-0.0.1.pre.14-aarch64-linux-musl-lgpl-sources.tar.gz` in Fledge's release.
+
 ## Windows on x64 (x64-mingw-ucrt)
 
 | Component | Version | License | How it ships |

@@ -51,7 +51,11 @@ else
   folder=$(basename "$archive" .tar.gz)
   mkdir -p "$work/apps"
   tar -xzf "$archive" -C "$work/apps"
-  command_line="'$work/apps/$folder/${folder%-*-*}'"
+  case "$folder" in
+    *-linux-musl) name=${folder%-*-*-*} ;;
+    *) name=${folder%-*-*} ;;
+  esac
+  command_line="'$work/apps/$folder/$name'"
   label="the built app"
 fi
 

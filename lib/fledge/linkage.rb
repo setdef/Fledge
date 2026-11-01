@@ -43,8 +43,11 @@ module Fledge
   # SPDX-SnippetEnd
   #++
   class Linkage
-    # By operating system (Fledge::Platform#os), the patterns of the
-    # libraries it provides, which an app need not ship. On Linux, the
+    # By system (Fledge::Platform#libraries), the patterns of the
+    # libraries it provides, which an app need not ship. On musl Linux,
+    # those PEP 656 lets a musllinux_1_2 wheel assume, auditwheel 6.8.2's
+    # <tt>musllinux-policy.json</tt>: musl's C library, by its own name
+    # and Alpine's, and zlib (ADR 017). On Linux, the
     # libraries PEP 600 lets a manylinux_2_39 wheel assume of every
     # distribution with glibc 2.39, Fledge's floor (decision 7):
     # auditwheel 6.4.2's <tt>manylinux-policy.json</tt>,
@@ -59,6 +62,7 @@ module Fledge
         /\A(?:libGL\.so\.1|libICE\.so\.6|libSM\.so\.6|libX11\.so\.6|libXext\.so\.6|libXrender\.so\.1|libanl\.so\.1|libatomic\.so\.1|libc\.so\.6|libdl\.so\.2|libexpat\.so\.1|libgcc_s\.so\.1|libglib-2\.0\.so\.0|libgobject-2\.0\.so\.0|libgthread-2\.0\.so\.0|libm\.so\.6|libnsl\.so\.1|libpthread\.so\.0|libresolv\.so\.2|librt\.so\.1|libstdc\+\+\.so\.6|libutil\.so\.1|libz\.so\.1)\z/,
         /\Ald-linux[-\w.]*\.so\.\d\z/,
       ],
+      "linux-musl" => [/\A(?:libc\.so|libc\.musl-(?:x86_64|aarch64)\.so\.1|libz\.so\.1)\z/, /\Ald-musl-(?:x86_64|aarch64)\.so\.1\z/],
       "darwin" => [%r{\A/usr/lib/[^/]+\.dylib\z}, %r{\A/System/Library/Frameworks/}],
       "windows" => [
         /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i,
@@ -70,7 +74,7 @@ module Fledge
     RUBY_DLL = /\A[\w-]*-ruby\d+\.dll\z/i
 
     # The format each operating system's loader loads.
-    FORMATS = { "linux" => :elf, "darwin" => :macho, "windows" => :pe }.freeze
+    FORMATS = { "linux" => :elf, "linux-musl" => :elf, "darwin" => :macho, "windows" => :pe }.freeze
 
     # Creates the check.
     #

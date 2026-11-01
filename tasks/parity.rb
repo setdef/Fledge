@@ -112,9 +112,9 @@ class Parity
         "Ruby's own default and bundled gems."),
     Justification.new(fact: "requireable", reference: [RV_RUBY_EXTRAS], reason: "As for gems."),
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/defaults/operating_system\.rb"\z}],
-      platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", *MOBILE],
+      platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", "x86_64-linux-musl", "aarch64-linux-musl", *MOBILE],
       reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems (ADR 001, section 8); " \
-        "rv-ruby ships no such file."),
+        "rv-ruby ships no such file, nor does the Ruby a musl runtime is built from."),
     Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt],
       reference: [
         %r{\A"<prefix>/lib/ruby/site_ruby/4\.0\.0/ruby_installer/},
@@ -269,9 +269,17 @@ class Parity
 
   # Unpacks the pinned Ruby the runtime was made from, as it ships, and
   # returns its ruby program.
+  # The Ruby the runtime came from, unpacked as it ships: rv-ruby's or
+  # RubyInstaller's release, or for musl Linux, whose Ruby the runtime
+  # build compiles from source (ADR 017), the runtime itself, whose
+  # bin/ruby is Ruby's own main.c linked against the same libruby.
   private def unpack_reference
-    pin = @builder.sources.fetch("ruby").fetch("platforms").fetch(platform.name)
-    archive = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+    archive = if platform.musl?
+      File.join(@runtimes, Fledge::Runtimes.file_name(platform))
+    else
+      pin = @builder.sources.fetch("ruby").fetch("platforms").fetch(platform.name)
+      @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+    end
     into = File.join(@work, "reference")
     FileUtils.mkdir_p(into)
     if platform.windows?
@@ -282,6 +290,8 @@ class Parity
     else
       system("tar", "-xzf", archive, "-C", into, exception: true)
     end
+    # Fledge's RubyGems defaults are Fledge's, not the Ruby's it built.
+    FileUtils.rm_f(Dir.glob(File.join(into, "**", "rubygems", "defaults", "operating_system.rb"))) if platform.musl?
     rubies = Dir.glob(File.join(into, "**", "bin", platform.executable("ruby")))
     raise "#{archive} holds no single ruby: #{rubies}" unless rubies.size == 1
 

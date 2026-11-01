@@ -48,7 +48,7 @@ module Fledge
   class Platform < Data.define(:name)
     # The names of the platforms Fledge has runtimes for, in the order
     # it lists them.
-    NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt].freeze
+    NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt].freeze
 
     # The oldest macOS an arm64-darwin runtime runs on: rv-ruby's Sonoma
     # build, and the launcher built with -mmacosx-version-min=14.0 (ADR
@@ -137,6 +137,7 @@ module Fledge
       version = gem_platform.version
       return "#{cpu}-darwin" if os == "darwin"
       return "#{cpu}-linux" if os == "linux" && [nil, "gnu"].include?(version)
+      return "#{cpu}-linux-musl" if os == "linux" && version == "musl"
 
       gem_platform.to_s
     end
@@ -196,8 +197,45 @@ module Fledge
       (os == "darwin") ? MACOS_MINIMUM : nil
     end
 
+    # Whether the platform is Linux with musl's C library in place of
+    # glibc's, as Alpine is (ADR 017).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("x86_64-linux-musl").musl? # => true
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def musl?
+      name.end_with?("-linux-musl")
+    end
+
+    # Which system's libraries an app's compiled gems may assume on the
+    # platform (Fledge::Linkage): "linux-musl" on musl Linux, which has
+    # none of glibc's, and otherwise the platform's #os.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("aarch64-linux-musl").libraries # => "linux-musl"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def libraries
+      musl? ? "linux-musl" : os
+    end
+
     # The oldest glibc the platform's apps run on (GLIBC_MINIMUM), or +nil+
-    # for a platform that is not Linux.
+    # for a platform that is not Linux with glibc.
     #
     # === Example
     #
@@ -211,7 +249,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def glibc_minimum
-      (os == "linux") ? GLIBC_MINIMUM : nil
+      (os == "linux" && !musl?) ? GLIBC_MINIMUM : nil
     end
 
     # The names a Gemfile.lock's PLATFORMS section gives this platform,

@@ -13,8 +13,9 @@
 #              exit code 3. Once with the console's code page UTF-8 (65001)
 #              and once with 437, the default of an English Windows
 #              console: the probe's line outside ASCII must appear on the
-#              console as written, and Ruby must choose the encoding
-#              ruby.exe chooses for that code page.
+#              console as written, and Ruby must see the code page as
+#              its locale's, and keep UTF-8 as its default external
+#              encoding, as ruby.exe does on Windows since Ruby 3.0.
 #   close      The console's window closing, which sends CTRL_CLOSE_EVENT
 #              to every process on it. Ruby handles none, so Windows ends
 #              the probe at once, with STATUS_CONTROL_C_EXIT, before any
@@ -64,8 +65,6 @@ public struct BufferInfo { public Coord Size; public Coord Cursor; public ushort
 public static extern bool SetConsoleCP(uint codePage);
 [DllImport("kernel32.dll", SetLastError = true)]
 public static extern bool SetConsoleOutputCP(uint codePage);
-[DllImport("kernel32.dll")]
-public static extern uint GetConsoleCP();
 [DllImport("kernel32.dll", SetLastError = true)]
 public static extern bool SetConsoleCtrlHandler(IntPtr handler, bool add);
 [DllImport("kernel32.dll", SetLastError = true)]
@@ -141,10 +140,7 @@ if ($Inner) {
   $system = $env:SystemRoot
   $env:PATH = "$system\System32;$system;$system\System32\Wbem"
   $arguments = @($command | Select-Object -Skip 1 | ForEach-Object { Quote $_ }) + (Quote $log)
-  Write-Host "console code page before: $([Fledge.Console]::GetConsoleCP())" *>> (Join-Path $Work 'debug.txt')
-  Add-Content -LiteralPath (Join-Path $Work 'debug.txt') -Value "before $([Fledge.Console]::GetConsoleCP())"
   $probe = Start-Process -FilePath $command[0] -ArgumentList $arguments -NoNewWindow -PassThru -WorkingDirectory $system
-  Add-Content -LiteralPath (Join-Path $Work 'debug.txt') -Value "after $([Fledge.Console]::GetConsoleCP())"
   $null = $probe.Handle
   Set-Content -LiteralPath (Join-Path $Work "$scenario-$codePage.pid") -Value $probe.Id
   if (-not (Await { (Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log) -contains 'ready' })) {
@@ -196,16 +192,14 @@ function Record([string] $scenario, [string] $codePage) {
   (Get-Content -LiteralPath (Join-Path $work "$scenario-$codePage.log") -Encoding utf8) -join "`n"
 }
 
-foreach ($case in @(@('65001', 'UTF-8'), @('437', 'IBM437'))) {
-  $codePage, $encoding = $case
+foreach ($codePage in @('65001', '437')) {
   $console = Start-Inner 'interrupt' $codePage
   if (-not $console.WaitForExit(90000)) { Fail "$label's console did not finish (interrupt, code page $codePage)" }
   $result = Get-Content -LiteralPath (Join-Path $work "interrupt-$codePage.result") -ErrorAction SilentlyContinue
-  Get-Content -LiteralPath (Join-Path $work 'debug.txt') -ErrorAction SilentlyContinue | Write-Host
   if ($console.ExitCode -ne 0) { Fail "$label, interrupted on code page ${codePage}: $result" }
   Expect "$label's exit status on Ctrl-C (code page $codePage)" $result '3'
   Expect "what $label recorded on Ctrl-C (code page $codePage)" (Record 'interrupt' $codePage) `
-    "external $encoding`nready`nensure ran (Interrupt: )`nat_exit ran"
+    "locale CP$codePage`nexternal UTF-8`nready`nensure ran (Interrupt: )`nat_exit ran"
   $screen = Get-Content -LiteralPath (Join-Path $work "interrupt-$codePage.screen") -Encoding utf8
   Expect "the line $label printed, on the console (code page $codePage)" ($screen | Where-Object { $_ -like 'caf*' } | Select-Object -First 1) "caf$([char]0xE9) $([char]0x2713)"
 }
@@ -226,7 +220,7 @@ if ($window -eq [IntPtr]::Zero) { Fail "$label's console has no window to close"
 if (-not [Fledge.Console]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { Fail 'could not close the console window' }
 if (-not $probe.WaitForExit(30000)) { Fail "$label did not end when its console closed" }
 Expect "$label's exit status when its console closed" ('0x{0:X8}' -f $probe.ExitCode) '0xC000013A'
-Expect "what $label recorded when its console closed" (Record 'close' '65001') "external UTF-8`nready"
+Expect "what $label recorded when its console closed" (Record 'close' '65001') "locale CP65001`nexternal UTF-8`nready"
 $null = $console.WaitForExit(30000)
 
 # A windowed app, typed into a console: PowerShell starts it and goes

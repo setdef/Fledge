@@ -121,11 +121,11 @@ end_probe() {
     case "$1" in
       interrupt) touch "$work/type" ;;
       hangup)
-        # The terminal's foreground process group: the shell's, which
-        # script(1) made a session of its own, and the probe's.
+        # The terminal's foreground process group: the shell and the
+        # probe it started, each by its process ID, which every shell's
+        # kill takes alike.
         shell=$(sed -n 's/^shell //p' "$log")
-        group=$(ps -o pgid= -p "$shell" | tr -d ' ')
-        kill -HUP -- "-${group:-$shell}" || echo "could not hang up process group ${group:-$shell}" >"$work/timeout"
+        kill -HUP "$shell" $(pgrep -P "$shell") || echo "could not hang up the shell, $shell, and the probe" >"$work/timeout"
         ;;
     esac
     await '^status ' "$log" || echo "did not end" >>"$work/timeout"
@@ -165,14 +165,16 @@ expect() {
 }
 
 run interrupt
-expect interrupt "external UTF-8
+expect interrupt "locale UTF-8
+external UTF-8
 ready
 ensure ran (Interrupt: )
 at_exit ran
 status 130" ":[0-9]+:in .*sleep.*Interrupt"
 
 run hangup
-expect hangup "external UTF-8
+expect hangup "locale UTF-8
+external UTF-8
 ready
 ensure ran (SignalException: SIGHUP)
 at_exit ran

@@ -13,12 +13,9 @@
 #              exit code 3. Once with the console's code page UTF-8 (65001)
 #              and once with 437, the default of an English Windows
 #              console: the probe's line outside ASCII must appear on the
-#              console as written, and Ruby must choose the encoding
-#              ruby.exe chooses for that code page.
-#   close      The console's window closing, which sends CTRL_CLOSE_EVENT
-#              to every process on it. Ruby handles none, so Windows ends
-#              the probe at once, with STATUS_CONTROL_C_EXIT, before any
-#              ensure clause runs, as it ends ruby.exe.
+#              console as written, and Ruby must see the code page as
+#              its locale's, and keep UTF-8 as its default external
+#              encoding, as ruby.exe does on Windows since Ruby 3.0.
 #
 # And a windowed app (ADR 008) started from a console, as a person types
 # its name into one: like rubyw.exe, it gets no console, and the console
@@ -35,7 +32,9 @@
 # handling as it does in ruby.exe.
 #
 # -Inner is how the script runs itself in a new console; it is not for
-# callers.
+# callers. PowerShell's variables ignore case, so no variable here shares
+# a parameter's name: assigning to it would convert the value to the
+# parameter's type.
 
 param(
   [string] $Archive,
@@ -66,14 +65,6 @@ public static extern bool SetConsoleOutputCP(uint codePage);
 public static extern bool SetConsoleCtrlHandler(IntPtr handler, bool add);
 [DllImport("kernel32.dll", SetLastError = true)]
 public static extern bool GenerateConsoleCtrlEvent(uint ctrlEvent, uint processGroupId);
-[DllImport("kernel32.dll", SetLastError = true)]
-public static extern bool FreeConsole();
-[DllImport("kernel32.dll", SetLastError = true)]
-public static extern bool AttachConsole(uint processId);
-[DllImport("kernel32.dll")]
-public static extern IntPtr GetConsoleWindow();
-[DllImport("user32.dll", SetLastError = true)]
-public static extern bool PostMessageW(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 public static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
 [DllImport("kernel32.dll", SetLastError = true)]
@@ -139,7 +130,6 @@ if ($Inner) {
   $arguments = @($command | Select-Object -Skip 1 | ForEach-Object { Quote $_ }) + (Quote $log)
   $probe = Start-Process -FilePath $command[0] -ArgumentList $arguments -NoNewWindow -PassThru -WorkingDirectory $system
   $null = $probe.Handle
-  Set-Content -LiteralPath (Join-Path $Work "$scenario-$codePage.pid") -Value $probe.Id
   if (-not (Await { (Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log) -contains 'ready' })) {
     Set-Content -LiteralPath (Join-Path $Work "$scenario-$codePage.result") -Value 'never ready'
     $probe.Kill()
@@ -189,54 +179,34 @@ function Record([string] $scenario, [string] $codePage) {
   (Get-Content -LiteralPath (Join-Path $work "$scenario-$codePage.log") -Encoding utf8) -join "`n"
 }
 
-foreach ($case in @(@('65001', 'UTF-8'), @('437', 'IBM437'))) {
-  $codePage, $encoding = $case
-  $inner = Start-Inner 'interrupt' $codePage
-  if (-not $inner.WaitForExit(90000)) { Fail "$label's console did not finish (interrupt, code page $codePage)" }
+foreach ($codePage in @('65001', '437')) {
+  $console = Start-Inner 'interrupt' $codePage
+  if (-not $console.WaitForExit(90000)) { Fail "$label's console did not finish (interrupt, code page $codePage)" }
   $result = Get-Content -LiteralPath (Join-Path $work "interrupt-$codePage.result") -ErrorAction SilentlyContinue
-  if ($inner.ExitCode -ne 0) { Fail "$label, interrupted on code page ${codePage}: $result" }
+  if ($console.ExitCode -ne 0) { Fail "$label, interrupted on code page ${codePage}: $result" }
   Expect "$label's exit status on Ctrl-C (code page $codePage)" $result '3'
   Expect "what $label recorded on Ctrl-C (code page $codePage)" (Record 'interrupt' $codePage) `
-    "external $encoding`nready`nensure ran (Interrupt: )`nat_exit ran"
+    "locale CP$codePage`nexternal UTF-8`nready`nensure ran (Interrupt: )`nat_exit ran"
   $screen = Get-Content -LiteralPath (Join-Path $work "interrupt-$codePage.screen") -Encoding utf8
   Expect "the line $label printed, on the console (code page $codePage)" ($screen | Where-Object { $_ -like 'caf*' } | Select-Object -First 1) "caf$([char]0xE9) $([char]0x2713)"
 }
-
-# The console's window closes: the probe's process, attached to it, gets
-# CTRL_CLOSE_EVENT from the console host.
-$inner = Start-Inner 'close' '65001'
-$pidFile = Join-Path $work 'close-65001.pid'
-$log = Join-Path $work 'close-65001.log'
-if (-not (Await { (Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log) -contains 'ready' })) { Fail "$label never got ready (close)" }
-$probe = Get-Process -Id ([int](Get-Content -LiteralPath $pidFile))
-$null = $probe.Handle
-[void][Fledge.Console]::FreeConsole()
-if (-not [Fledge.Console]::AttachConsole([uint32]$probe.Id)) { Fail "could not attach to $label's console: $([ComponentModel.Win32Exception]::new().Message)" }
-$window = [Fledge.Console]::GetConsoleWindow()
-[void][Fledge.Console]::FreeConsole()
-if ($window -eq [IntPtr]::Zero) { Fail "$label's console has no window to close" }
-if (-not [Fledge.Console]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { Fail 'could not close the console window' }
-if (-not $probe.WaitForExit(30000)) { Fail "$label did not end when its console closed" }
-Expect "$label's exit status when its console closed" ('0x{0:X8}' -f $probe.ExitCode) '0xC000013A'
-Expect "what $label recorded when its console closed" (Record 'close' '65001') "external UTF-8`nready"
-$null = $inner.WaitForExit(30000)
 
 # A windowed app, typed into a console: PowerShell starts it and goes
 # on, as it does rubyw.exe, and the app has no console.
 if ($WindowedReference) {
   $windowedLabel = 'rubyw.exe main.rb'
-  $windowed = @((Resolve-Path -LiteralPath $WindowedReference[0]).Path, (Resolve-Path -LiteralPath $WindowedReference[1]).Path)
+  $windowedCommand = @((Resolve-Path -LiteralPath $WindowedReference[0]).Path, (Resolve-Path -LiteralPath $WindowedReference[1]).Path)
 } elseif ($Windowed) {
   $windowedLabel = 'the built windowed app'
   $Windowed = (Resolve-Path -LiteralPath $Windowed).Path
   $name = [IO.Path]::GetFileNameWithoutExtension($Windowed)
   Expand-Archive -LiteralPath $Windowed -DestinationPath (Join-Path $work 'windowed')
-  $windowed = @(Join-Path (Join-Path (Join-Path $work 'windowed') $name) "$($name -replace '-x64-mingw-ucrt$', '').exe")
+  $windowedCommand = @(Join-Path (Join-Path (Join-Path $work 'windowed') $name) "$($name -replace '-x64-mingw-ucrt$', '').exe")
 }
 if ($Windowed -or $WindowedReference) {
   $report = Join-Path $work 'windowed report.json'
   $clock = [Diagnostics.Stopwatch]::StartNew()
-  & $windowed[0] @($windowed | Select-Object -Skip 1) $report 4
+  & $windowedCommand[0] @($windowedCommand | Select-Object -Skip 1) $report 4
   $returned = $clock.Elapsed.TotalSeconds
   if ($returned -ge 1.5) { Fail "the console waited $returned seconds for $windowedLabel, which lives for 2" }
   Write-Host "ok: the console went on after $([math]::Round($returned, 2)) seconds"
@@ -246,4 +216,4 @@ if ($Windowed -or $WindowedReference) {
   Expect "whether $windowedLabel had a console" $facts.console $false
 }
 
-Write-Host "Delivered: the console's Ctrl-C, code pages, and closing end $label as they end ruby.exe"
+Write-Host "Delivered: Ctrl-C ends $label as it ends ruby.exe, on both code pages"

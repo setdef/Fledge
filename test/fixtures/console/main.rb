@@ -19,8 +19,8 @@
 #   main.rb LOG
 #
 # It prints a line outside ASCII to its terminal, which the scripts read
-# back from the terminal, records the encoding Ruby chose for it and
-# "ready" in LOG, and sleeps. Whatever ends the sleep, it records the
+# back from the terminal, records the locale's character set and the
+# encoding Ruby chose for it, and "ready", in LOG, and sleeps. Whatever ends the sleep, it records the
 # exception that did in its ensure clause, and "at_exit ran" from its
 # at_exit hook, as an app that cleans up on the way out does.
 
@@ -30,6 +30,7 @@ log.sync = true
 at_exit { log.puts "at_exit ran" }
 
 puts "café ✓"
+log.puts "locale #{Encoding.locale_charmap}"
 log.puts "external #{Encoding.default_external}"
 log.puts "ready"
 begin

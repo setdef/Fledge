@@ -620,9 +620,9 @@ jobs:
       - name: Interrupt ruby.exe main.rb in a console, and close it
         shell: pwsh
         run: >-
-          pwsh -NoProfile -File .github/scripts/deliver-console.ps1
-          -Reference (Get-Command ruby.exe).Source,test/fixtures/console/main.rb
-          -WindowedReference (Get-Command rubyw.exe).Source,examples/windowed_app/main.rb
+          & .github/scripts/deliver-console.ps1
+          -Reference @((Get-Command ruby.exe).Source, 'test/fixtures/console/main.rb')
+          -WindowedReference @((Get-Command rubyw.exe).Source, 'examples/windowed_app/main.rb')
 
   # Each platform's apps, built on a runner of that platform from the
   # runtime the runtime job built for it, with that platform's own tools

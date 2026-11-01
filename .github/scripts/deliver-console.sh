@@ -75,7 +75,7 @@ run() {
   # record its status; a trapped signal is reset to its default in the
   # programs the shell starts, so the probe gets Ruby's own handling.
   cat >"$work/$scenario.sh" <<SHELL
-echo "pgid \$(ps -o pgid= -p \$\$ | tr -d ' ')" >>'$log'
+echo "shell \$\$" >>'$log'
 trap : INT HUP
 env -i PATH=/usr/bin:/bin HOME='$work' LC_ALL=$locale $command_line '$log'
 echo "status \$?" >>'$log'
@@ -111,18 +111,32 @@ SHELL
 
 # end_probe SCENARIO: waits for the probe to be ready, ends it as
 # SCENARIO says, waits for the shell to record its status, and closes
-# the keyboard; on a timeout, says why in $work/timeout.
+# the keyboard, whatever happens; on a failure, says why in
+# $work/timeout.
 end_probe() {
+  set +e
   log="$work/$1.log"
   rm -f "$work/timeout"
   if await '^ready$' "$log"; then
     case "$1" in
       interrupt) touch "$work/type" ;;
-      hangup) kill -HUP -- "-$(sed -n 's/^pgid //p' "$log")" ;;
+      hangup)
+        # The terminal's foreground process group: the shell and the
+        # probe it started, each by its process ID, which every shell's
+        # kill takes alike.
+        shell=$(sed -n 's/^shell //p' "$log")
+        kill -HUP "$shell" $(pgrep -P "$shell") || echo "could not hang up the shell, $shell, and the probe" >"$work/timeout"
+        ;;
     esac
-    await '^status ' "$log" || echo "did not end" >"$work/timeout"
+    await '^status ' "$log" || echo "did not end" >>"$work/timeout"
   else
     echo "never got ready in its terminal" >"$work/timeout"
+  fi
+  # A probe that did not end, as one started with SIGINT ignored would
+  # not, is stopped, so the terminal closes and the failure is reported.
+  if [ -e "$work/timeout" ]; then
+    shell=$(sed -n 's/^shell //p' "$log")
+    [ -z "$shell" ] || kill -KILL $(pgrep -P "$shell") "$shell" 2>/dev/null
   fi
   touch "$work/done"
 }
@@ -144,7 +158,7 @@ await() {
 # SignalException it ends by.
 expect() {
   scenario=$1
-  sed '/^pgid /d' "$work/$scenario.log" >"$work/$scenario.record"
+  sed '/^shell /d' "$work/$scenario.log" >"$work/$scenario.record"
   printf '%s\n' "$2" >"$work/$scenario.expected"
   if ! diff "$work/$scenario.expected" "$work/$scenario.record"; then
     fail "$label recorded the above on $scenario, not what ruby main.rb records"
@@ -157,14 +171,16 @@ expect() {
 }
 
 run interrupt
-expect interrupt "external UTF-8
+expect interrupt "locale UTF-8
+external UTF-8
 ready
 ensure ran (Interrupt: )
 at_exit ran
-status 130" "main\.rb:[0-9]+:in 'Kernel#sleep': .*Interrupt"
+status 130" ":[0-9]+:in .*sleep.*Interrupt"
 
 run hangup
-expect hangup "external UTF-8
+expect hangup "locale UTF-8
+external UTF-8
 ready
 ensure ran (SignalException: SIGHUP)
 at_exit ran

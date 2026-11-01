@@ -9,10 +9,10 @@ require_relative "test_helper"
 require_relative "support/binaries"
 require_relative "../tasks/licensing_page"
 
-# The licensing page from runtime archives for all six platforms, small
+# The licensing page from runtime archives for all eight platforms, small
 # but made of real (minimal) ELF, Mach-O, and PE files, which the real
 # license audit checks against the real runtime/licenses.yml. CI runs
-# the page against the six real runtimes and fails when doc/licensing.md
+# the page against the eight real runtimes and fails when doc/licensing.md
 # differs.
 class LicensingPageTest < Minitest::Test
   RUST = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
@@ -52,6 +52,10 @@ class LicensingPageTest < Minitest::Test
         runtime(directory, platform, unix(Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{RUST} GCC: (")).merge(
           "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash")
         ))
+      end
+      %w[x86_64-linux-musl aarch64-linux-musl].each do |platform|
+        runtime(directory, platform, unix(Binaries.elf(needed: %w[libc.so],
+          payload: "3e93b23afc /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/ GCC: (Alpine 15.2.0) 15.2.0")))
       end
       runtime(directory, "x64-mingw-ucrt", "launcher.exe" => Binaries.pe(needed: %w[KERNEL32.dll]), "ruby/lib/ruby/4.0.0/set.rb" => "class Set; end\n")
       defaults = "# Fledge's RubyGems defaults for a built app.\n"

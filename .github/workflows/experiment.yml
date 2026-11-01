@@ -1,0 +1,115 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# An experiment for Plan 002's "Signing and notarization": what a
+# self-signed identity can prove on GitHub's runners. Not part of trunk.
+name: Experiment (signing)
+on:
+  push:
+    branches: ["experiment/signing"]
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Get Fledge and a runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git clone -q https://github.com/setdef/Fledge fledge
+          cd fledge && git checkout -q v0.0.1.pre.11
+          mkdir -p "$RUNNER_TEMP/rt"
+          gh release download v0.0.1.pre.11 --repo setdef/Fledge -p 'fledge-runtime-0.0.1.pre.11-arm64-darwin.tar.gz' -D "$RUNNER_TEMP/rt"
+      - name: Build hello and windowed_app
+        run: |
+          cd fledge
+          FLEDGE_RUNTIME_DIR="$RUNNER_TEMP/rt" ruby -Ilib exe/fledge build -o "$RUNNER_TEMP/dist" examples/hello
+          FLEDGE_RUNTIME_DIR="$RUNNER_TEMP/rt" ruby -Ilib exe/fledge build -o "$RUNNER_TEMP/dist" examples/windowed_app
+          ls -l "$RUNNER_TEMP/dist"
+      - name: Make a self-signed code signing identity in a temporary keychain
+        run: |
+          cd "$RUNNER_TEMP"
+          /usr/bin/openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 2 -nodes \
+            -subj "/CN=Fledge Test Signing/OU=FLEDGETEST1" \
+            -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=critical,codeSigning" -addext "basicConstraints=critical,CA:false"
+          /usr/bin/openssl pkcs12 -export -inkey key.pem -in cert.pem -out id.p12 -passout pass:test
+          security create-keychain -p test fledge.keychain
+          security set-keychain-settings fledge.keychain
+          security unlock-keychain -p test fledge.keychain
+          security import id.p12 -k fledge.keychain -P test -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k test fledge.keychain >/dev/null
+          security list-keychains -d user -s "$RUNNER_TEMP/fledge.keychain" $(security list-keychains -d user | tr -d '"')
+          echo "--- before trust"; security find-identity -p codesigning "$RUNNER_TEMP/fledge.keychain" || true
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain cert.pem
+          echo "--- after trust"; security find-identity -v -p codesigning "$RUNNER_TEMP/fledge.keychain" || true
+      - name: Try signing variants
+        run: |
+          cd "$RUNNER_TEMP/dist"
+          mkdir -p try && cd try
+          cat > yjit.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/></dict></plist>
+          PLIST
+          cat > unsigned.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/></dict></plist>
+          PLIST
+          cat > nolv.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/><key>com.apple.security.cs.disable-library-validation</key><true/></dict></plist>
+          PLIST
+          for ent in yjit unsigned nolv; do
+            for ts in --timestamp --timestamp=none; do
+              echo "======== entitlements $ent, $ts"
+              rm -rf h && mkdir h && tar -xzf ../Hello-arm64-darwin.tar.gz -C h
+              find h -type f | while read -r f; do
+                if file "$f" | grep -q Mach-O; then
+                  codesign --force --sign "Fledge Test Signing" --keychain "$RUNNER_TEMP/fledge.keychain" --options runtime \
+                    --entitlements "$ent.plist" "$ts" "$f" 2>&1 | tail -2 || true
+                fi
+              done
+              codesign -dvv h/Hello-arm64-darwin/Hello 2>&1 | grep -E "Authority|TeamIdentifier|Timestamp|flags|Signed Time" || true
+              codesign --verify --strict --verbose=2 h/Hello-arm64-darwin/Hello 2>&1 || true
+              echo "--- run"
+              h/Hello-arm64-darwin/Hello; echo "status $?"
+              echo "--- json and yjit"
+              cp h/Hello-arm64-darwin/app/main.rb h/Hello-arm64-darwin/app/main.rb.orig
+              printf 'require "json"\nrequire "openssl"\nRubyVM::YJIT.enable\ndef f(n) = n < 2 ? n : f(n-1) + f(n-2)\np [JSON.generate(a: 1), f(25), RubyVM::YJIT.enabled?, RubyVM::YJIT.runtime_stats[:compiled_iseq_count]]\n' > h/Hello-arm64-darwin/app/main.rb
+              h/Hello-arm64-darwin/Hello; echo "status $?"
+              log show --last 1m --predicate 'subsystem == "com.apple.kernel" OR process == "amfid" OR eventMessage CONTAINS "Library Validation"' 2>/dev/null | grep -i -E "valid|team|hello" | tail -5 || true
+            done
+          done
+      - name: spctl
+        run: |
+          cd "$RUNNER_TEMP/dist/try"
+          spctl --assess --type execute -vv h/Hello-arm64-darwin/Hello || true
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Find signtool
+        run: |
+          Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Select-Object -ExpandProperty FullName
+          Get-Command signtool -ErrorAction SilentlyContinue
+      - name: Make a self-signed code signing certificate and sign
+        run: |
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Fledge Test Signing' -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(2)
+          $cert.Thumbprint
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object FullName -like '*x64*' | Sort-Object FullName | Select-Object -Last 1 -ExpandProperty FullName
+          Copy-Item "$env:SystemRoot\System32\where.exe" "$env:RUNNER_TEMP\test.exe"
+          & $signtool sign /sha1 $cert.Thumbprint /fd sha256 /tr http://timestamp.digicert.com /td sha256 "$env:RUNNER_TEMP\test.exe"
+          "sign: $LASTEXITCODE"
+          & $signtool verify /pa /v "$env:RUNNER_TEMP\test.exe"
+          "verify before trust: $LASTEXITCODE"
+          $store = [Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine')
+          $store.Open('ReadWrite'); $store.Add($cert); $store.Close()
+          & $signtool verify /pa /v "$env:RUNNER_TEMP\test.exe"
+          "verify after trust: $LASTEXITCODE"
+          (Get-AuthenticodeSignature "$env:RUNNER_TEMP\test.exe") | Format-List *

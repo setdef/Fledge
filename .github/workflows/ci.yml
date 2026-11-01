@@ -555,6 +555,11 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: bundle exec rake parity
 
+      # ADR 015: Ctrl-C and a hangup, in a terminal of the probe's own,
+      # end ruby main.rb as the console Delivery expects of a built app.
+      - name: Interrupt ruby main.rb in a terminal
+        run: .github/scripts/deliver-console.sh --reference "$(command -v ruby)" test/fixtures/console/main.rb
+
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 001), through setup-ruby at
   # mise.toml's pin. test/built_app_test.rb unpacks hello and my_cool_app
@@ -608,6 +613,16 @@ jobs:
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: bundle exec rake parity
+
+      # ADR 015: Ctrl-C on two code pages and closing the console end
+      # ruby.exe main.rb as the console Delivery expects of a built app,
+      # and rubyw.exe, typed into a console, gets none.
+      - name: Interrupt ruby.exe main.rb in a console, and close it
+        shell: pwsh
+        run: >-
+          & .github/scripts/deliver-console.ps1
+          -Reference @((Get-Command ruby.exe).Source, 'test/fixtures/console/main.rb')
+          -WindowedReference @((Get-Command rubyw.exe).Source, 'examples/windowed_app/main.rb')
 
   # Each platform's apps, built on a runner of that platform from the
   # runtime the runtime job built for it, with that platform's own tools
@@ -717,12 +732,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
-      - name: Build hello, the parity probes, my_cool_app, windowed_app, and native_app for ${{ matrix.platform }}
+      - name: Build hello, the parity and console probes, my_cool_app, windowed_app, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
-          for app in examples/hello test/fixtures/parity "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/native_app; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/native_app; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
 
@@ -864,6 +879,12 @@ jobs:
         run: >-
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
+
+      # ADR 015: the console probe in a terminal of its own, a
+      # pseudo-terminal, ended by Ctrl-C typed into it and by a hangup,
+      # must end as ruby main.rb does (.github/scripts/deliver-console.sh).
+      - name: Interrupt the console probe in a terminal, as a person would
+        run: .github/scripts/deliver-console.sh "$RUNNER_TEMP/delivered/Console-${{ matrix.platform }}.tar.gz"
 
   # Delivery of the windowed app (ADR 008), on a fresh runner of each
   # platform: on macOS its .app bundle must pass codesign --verify --strict
@@ -1019,6 +1040,17 @@ jobs:
           -Archive "$env:RUNNER_TEMP/delivered/MyCoolApp-x64-mingw-ucrt.zip"
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected" -Raw).TrimEnd()
+
+      # ADR 015: the console probe in a console of its own, ended by
+      # Ctrl-C on code pages 65001 and 437 and by its window closing, and
+      # the windowed app typed into a console, which gets none, each as
+      # ruby.exe and rubyw.exe do (.github/scripts/deliver-console.ps1).
+      - name: Interrupt the console probe in a console, close it, and start the windowed app from one
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver-console.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/Console-x64-mingw-ucrt.zip"
+          -Windowed "$env:RUNNER_TEMP/delivered/Hello Window-x64-mingw-ucrt.zip"
 
       # The windowed app (ADR 008): a GUI program with its version
       # information and icon, started as Explorer starts it, with no

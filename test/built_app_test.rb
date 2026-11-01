@@ -28,6 +28,8 @@ class BuiltAppTest < Minitest::Test
   MY_COOL_APP = File.expand_path("../examples/my_cool_app", __dir__)
   WINDOWED_APP = File.expand_path("../examples/windowed_app", __dir__)
   PROBE = File.expand_path("fixtures/parity", __dir__)
+  CONSOLE = File.expand_path("fixtures/console", __dir__)
+  DELIVER_CONSOLE = File.expand_path("../.github/scripts/deliver-console.sh", __dir__)
   EXE = File.expand_path("../exe/fledge", __dir__)
   LIB = File.expand_path("../lib", __dir__)
 
@@ -90,6 +92,25 @@ class BuiltAppTest < Minitest::Test
 
   class << self
     def built = (@built ||= {})
+  end
+
+  # ADR 015: Ctrl-C typed into a terminal, and a hangup, end the built
+  # console probe as they end ruby main.rb, through Ruby's own handlers
+  # (.github/scripts/deliver-console.sh, which CI's Delivery runs too).
+  # Windows' console is CI's to check, with deliver-console.ps1.
+  def test_ctrl_c_and_a_hangup_end_the_built_app_as_they_end_ruby
+    skip "deliver-console.ps1 checks Windows' console in CI" if @platform.windows?
+
+    Dir.mktmpdir do |dir|
+      out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
+        "-o", dir, CONSOLE)
+      assert_predicate status, :success?, err
+
+      [[out.lines.first.to_s.chomp], ["--reference", RbConfig.ruby, File.join(CONSOLE, "main.rb")]].each do |arguments|
+        report, status = Open3.capture2e(DELIVER_CONSOLE, *arguments)
+        assert_predicate status, :success?, report
+      end
+    end
   end
 
   def test_the_built_app_runs_with_no_ruby_environment

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.15] - 2026-11-01
+
 ### Added
 
 - musl Linux targets, `x86_64-linux-musl` and `aarch64-linux-musl`, for Alpine and other distributions built on musl: `fledge build` on such a computer builds an app (and, for a windowed one, its desktop entry and AppImage) that runs there with no Ruby, from a runtime Fledge's CI builds from Ruby 4.0.9's source in Alpine, with OpenSSL 3.6.5, libyaml 0.2.5, libffi 3.5.2, and zlib 1.3.2 compiled into its extensions, YJIT, and musl's own `crypt`. A compiled gem may need only musl's C library and zlib, as PEP 656's musllinux wheels may.
@@ -174,7 +176,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.14...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.15...HEAD
+[0.0.1.pre.15]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.15
 [0.0.1.pre.14]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.14
 [0.0.1.pre.13]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.13
 [0.0.1.pre.12]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.12

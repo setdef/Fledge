@@ -64,6 +64,8 @@ public struct BufferInfo { public Coord Size; public Coord Cursor; public ushort
 public static extern bool SetConsoleCP(uint codePage);
 [DllImport("kernel32.dll", SetLastError = true)]
 public static extern bool SetConsoleOutputCP(uint codePage);
+[DllImport("kernel32.dll")]
+public static extern uint GetConsoleCP();
 [DllImport("kernel32.dll", SetLastError = true)]
 public static extern bool SetConsoleCtrlHandler(IntPtr handler, bool add);
 [DllImport("kernel32.dll", SetLastError = true)]
@@ -139,7 +141,10 @@ if ($Inner) {
   $system = $env:SystemRoot
   $env:PATH = "$system\System32;$system;$system\System32\Wbem"
   $arguments = @($command | Select-Object -Skip 1 | ForEach-Object { Quote $_ }) + (Quote $log)
+  Write-Host "console code page before: $([Fledge.Console]::GetConsoleCP())" *>> (Join-Path $Work 'debug.txt')
+  Add-Content -LiteralPath (Join-Path $Work 'debug.txt') -Value "before $([Fledge.Console]::GetConsoleCP())"
   $probe = Start-Process -FilePath $command[0] -ArgumentList $arguments -NoNewWindow -PassThru -WorkingDirectory $system
+  Add-Content -LiteralPath (Join-Path $Work 'debug.txt') -Value "after $([Fledge.Console]::GetConsoleCP())"
   $null = $probe.Handle
   Set-Content -LiteralPath (Join-Path $Work "$scenario-$codePage.pid") -Value $probe.Id
   if (-not (Await { (Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log) -contains 'ready' })) {
@@ -196,6 +201,7 @@ foreach ($case in @(@('65001', 'UTF-8'), @('437', 'IBM437'))) {
   $console = Start-Inner 'interrupt' $codePage
   if (-not $console.WaitForExit(90000)) { Fail "$label's console did not finish (interrupt, code page $codePage)" }
   $result = Get-Content -LiteralPath (Join-Path $work "interrupt-$codePage.result") -ErrorAction SilentlyContinue
+  Get-Content -LiteralPath (Join-Path $work 'debug.txt') -ErrorAction SilentlyContinue | Write-Host
   if ($console.ExitCode -ne 0) { Fail "$label, interrupted on code page ${codePage}: $result" }
   Expect "$label's exit status on Ctrl-C (code page $codePage)" $result '3'
   Expect "what $label recorded on Ctrl-C (code page $codePage)" (Record 'interrupt' $codePage) `

@@ -75,7 +75,7 @@ run() {
   # record its status; a trapped signal is reset to its default in the
   # programs the shell starts, so the probe gets Ruby's own handling.
   cat >"$work/$scenario.sh" <<SHELL
-echo "pgid \$(ps -o pgid= -p \$\$ | tr -d ' ')" >>'$log'
+echo "shell \$\$" >>'$log'
 trap : INT HUP
 env -i PATH=/usr/bin:/bin HOME='$work' LC_ALL=$locale $command_line '$log'
 echo "status \$?" >>'$log'
@@ -111,16 +111,24 @@ SHELL
 
 # end_probe SCENARIO: waits for the probe to be ready, ends it as
 # SCENARIO says, waits for the shell to record its status, and closes
-# the keyboard; on a timeout, says why in $work/timeout.
+# the keyboard, whatever happens; on a failure, says why in
+# $work/timeout.
 end_probe() {
+  set +e
   log="$work/$1.log"
   rm -f "$work/timeout"
   if await '^ready$' "$log"; then
     case "$1" in
       interrupt) touch "$work/type" ;;
-      hangup) kill -HUP -- "-$(sed -n 's/^pgid //p' "$log")" ;;
+      hangup)
+        # The terminal's foreground process group: the shell's, which
+        # script(1) made a session of its own, and the probe's.
+        shell=$(sed -n 's/^shell //p' "$log")
+        group=$(ps -o pgid= -p "$shell" | tr -d ' ')
+        kill -HUP -- "-${group:-$shell}" || echo "could not hang up process group ${group:-$shell}" >"$work/timeout"
+        ;;
     esac
-    await '^status ' "$log" || echo "did not end" >"$work/timeout"
+    await '^status ' "$log" || echo "did not end" >>"$work/timeout"
   else
     echo "never got ready in its terminal" >"$work/timeout"
   fi
@@ -144,7 +152,7 @@ await() {
 # SignalException it ends by.
 expect() {
   scenario=$1
-  sed '/^pgid /d' "$work/$scenario.log" >"$work/$scenario.record"
+  sed '/^shell /d' "$work/$scenario.log" >"$work/$scenario.record"
   printf '%s\n' "$2" >"$work/$scenario.expected"
   if ! diff "$work/$scenario.expected" "$work/$scenario.record"; then
     fail "$label recorded the above on $scenario, not what ruby main.rb records"

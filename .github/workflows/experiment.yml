@@ -29,10 +29,10 @@ jobs:
           platform: aarch64-mingw-ucrt
     steps:
     - uses: actions/checkout@v4
-    - name: Fledge at 1b98636 with winarm.patch
+    - name: Fledge at 0b03b79 with winarm.patch
       shell: bash
       run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 1b98636 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
+        -q 0b03b79 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
         && shopt -s dotglob && cp -R f/* . && rm -rf f
     - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
       with:
@@ -86,10 +86,10 @@ jobs:
           platform: aarch64-mingw-ucrt
     steps:
     - uses: actions/checkout@v4
-    - name: Fledge at 1b98636 with winarm.patch
+    - name: Fledge at 0b03b79 with winarm.patch
       shell: bash
       run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 1b98636 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
+        -q 0b03b79 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
         && shopt -s dotglob && cp -R f/* . && rm -rf f
     - name: Read the Ruby pin
       id: pins
@@ -140,10 +140,10 @@ jobs:
           rust: ''
     steps:
     - uses: actions/checkout@v4
-    - name: Fledge at 1b98636 with winarm.patch
+    - name: Fledge at 0b03b79 with winarm.patch
       shell: bash
       run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 1b98636 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
+        -q 0b03b79 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
         && shopt -s dotglob && cp -R f/* . && rm -rf f
     - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
       if: runner.os != 'Windows'
@@ -269,10 +269,10 @@ jobs:
       PLATFORM: "${{ matrix.platform }}"
     steps:
     - uses: actions/checkout@v4
-    - name: Fledge at 1b98636 with winarm.patch
+    - name: Fledge at 0b03b79 with winarm.patch
       shell: bash
       run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 1b98636 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
+        -q 0b03b79 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
         && shopt -s dotglob && cp -R f/* . && rm -rf f
     - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
       with:
@@ -328,10 +328,10 @@ jobs:
       TRIPLE: "${{ matrix.triple }}"
     steps:
     - uses: actions/checkout@v4
-    - name: Fledge at 1b98636 with winarm.patch
+    - name: Fledge at 0b03b79 with winarm.patch
       shell: bash
       run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 1b98636 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
+        -q 0b03b79 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
         && shopt -s dotglob && cp -R f/* . && rm -rf f
     - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
       with:
@@ -375,10 +375,10 @@ jobs:
           platform: aarch64-mingw-ucrt
     steps:
     - uses: actions/checkout@v4
-    - name: Fledge at 1b98636 with winarm.patch
+    - name: Fledge at 0b03b79 with winarm.patch
       shell: bash
       run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 1b98636 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
+        -q 0b03b79 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
         && shopt -s dotglob && cp -R f/* . && rm -rf f
     - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
       with:
@@ -406,10 +406,10 @@ jobs:
         - aarch64-mingw-ucrt
     steps:
     - uses: actions/checkout@v4
-    - name: Fledge at 1b98636 with winarm.patch
+    - name: Fledge at 0b03b79 with winarm.patch
       shell: bash
       run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 1b98636 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
+        -q 0b03b79 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
         && shopt -s dotglob && cp -R f/* . && rm -rf f
     - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
       with:
@@ -467,10 +467,10 @@ jobs:
         - aarch64-mingw-ucrt
     steps:
     - uses: actions/checkout@v4
-    - name: Fledge at 1b98636 with winarm.patch
+    - name: Fledge at 0b03b79 with winarm.patch
       shell: bash
       run: git clone -q https://github.com/setdef/Fledge f && cd f && git checkout
-        -q 1b98636 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
+        -q 0b03b79 && git apply ../winarm.patch && cd .. && mv winarm.patch "$RUNNER_TEMP/"
         && shopt -s dotglob && cp -R f/* . && rm -rf f
     - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
       with:

@@ -61,13 +61,14 @@ class MobileParity
 
   # Writes each app's project for +phone+ into +out+ with fledge build,
   # as a developer would, taking the runtime from +runtimes+, and
-  # returns each app's project folder.
-  def self.projects(phone, runtimes:, out:)
+  # returns each app's project folder: what fledge build prints on
+  # standard output, as what it downloads goes to standard error.
+  def self.projects(phone, runtimes:, out:, apps: APPS, env: {})
     fledge = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), File.join(ROOT, "exe", "fledge")]
-    APPS.to_h do |app|
-      printed, status = Open3.capture2e({ "FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes) }, *fledge, "build", phone, "-o", out,
-        File.join(ROOT, app.path), chdir: ROOT)
-      raise "fledge build #{phone} #{app.path} failed:\n#{printed}" unless status.success?
+    apps.to_h do |app|
+      printed, logged, status = Open3.capture3(env.merge("FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes)), *fledge, "build", phone,
+        "-o", out, File.expand_path(app.path, ROOT), chdir: ROOT)
+      raise "fledge build #{phone} #{app.path} failed:\n#{printed}#{logged}" unless status.success?
 
       [app, File.expand_path(printed.strip, ROOT)]
     end

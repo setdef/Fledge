@@ -6,6 +6,8 @@
 #++
 
 require_relative "test_helper"
+require_relative "support/gems"
+require_relative "support/loopback_server"
 require_relative "../tasks/mobile_parity"
 
 # The parts of the mobile check (ADR 011, section 6; ADR 012) that need no
@@ -67,5 +69,44 @@ class MobileParityTest < Minitest::Test
       assert Parity::Reports.compare(reference, app, platform: target).all?(&:justified?), target
     end
     refute Parity::Reports.compare(reference, app, platform: "x86_64-linux").all?(&:justified?)
+  end
+
+  # fledge build prints the project's folder on standard output and what
+  # it downloads on standard error, as GNU's conventions keep a command's
+  # result apart from its diagnostics, so the check takes the folder from
+  # the output alone, even when the app's gems are downloaded first.
+  def test_each_project_is_the_folder_fledge_build_prints_while_it_reports_downloads
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p([File.join(dir, ".git"), File.join(dir, "runtimes"), File.join(dir, "gems")])
+      FakeRuntime.write_mobile(File.join(dir, "runtimes"), Fledge::MobilePlatform.find("android"))
+      gem = FakeGem.build(File.join(dir, "gems"), "pure", "1.0.0")
+      server = LoopbackServer.new({ "/gems/#{gem.file_name}" => [200, {}, File.binread(gem.path)] })
+      begin
+        root = FakeProject.write(dir, dependencies: { "pure" => ">= 0" }, locked: [gem], remote: server.url("/"), platforms: %w[ruby])
+        File.write(File.join(root, "fledge.yml"), "identifier: com.example.MyApp\n")
+        app = MobileParity::App.new(path: root, name: "MyApp", identifier: "com.example.MyApp", prints: nil)
+
+        projects = MobileParity.projects("android", runtimes: File.join(dir, "runtimes"), out: File.join(dir, "dist"), apps: [app],
+          env: { "XDG_CACHE_HOME" => File.join(dir, "cache") })
+
+        assert_equal({ app => File.join(dir, "dist", "MyApp-android") }, projects)
+        assert_path_exists File.join(dir, "cache"), "the gem was downloaded"
+      ensure
+        server.stop
+      end
+    end
+  end
+
+  # The Android SDK's newest build tools, found from ANDROID_HOME as the
+  # runner sets it: with Windows's separators on Windows, which Dir.glob
+  # reads as escapes, so the check finds them from the path made plain.
+  def test_the_build_tools_are_the_sdks_newest_wherever_its_path_comes_from
+    Dir.mktmpdir do |sdk|
+      %w[35.0.0 36.1.0 36.0.0].each { |version| FileUtils.mkdir_p(File.join(sdk, "build-tools", version)) }
+      native = File::ALT_SEPARATOR ? File.expand_path(sdk).tr("/", File::ALT_SEPARATOR) : sdk
+
+      assert_equal File.join(File.expand_path(sdk), "build-tools", "36.1.0"), MobileParity::Android.build_tools(native)
+    end
+    assert_raises(RuntimeError) { MobileParity::Android.build_tools(File.join(Dir.tmpdir, "no-sdk-here")) }
   end
 end

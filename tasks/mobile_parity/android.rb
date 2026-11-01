@@ -50,15 +50,24 @@ class MobileParity
     # (aapt2 dump badging), with the Android SDK's own build tools.
     def self.check(apk, out)
       sdk = ENV["ANDROID_HOME"] || ENV["ANDROID_SDK_ROOT"] or raise "the check needs ANDROID_HOME, the Android SDK"
-      tools = Dir.glob(File.join(sdk, "build-tools", "*")).max_by { |path| Gem::Version.new(File.basename(path)[/\A[\d.]+/]) }
-      aligned, status = Open3.capture2e(File.join(tools, "zipalign"), "-c", "-P", "16", "-v", "4", apk)
+      tools = build_tools(sdk)
+      host = Fledge::Platform.local
+      aligned, status = Open3.capture2e(File.join(tools, host.executable("zipalign")), "-c", "-P", "16", "-v", "4", apk)
       raise "#{apk} is not aligned for 16 KB pages:\n#{aligned}" unless status.success?
 
       out.puts aligned.lines.grep(/\.so|Verification/).join
-      badging = Open3.capture2(File.join(tools, "aapt2"), "dump", "badging", apk).first
+      badging = Open3.capture2(File.join(tools, host.executable("aapt2")), "dump", "badging", apk).first
       raise "#{apk} does not target API 36 from API 26:\n#{badging}" unless badging.include?("targetSdkVersion:'36'") && badging.include?("minSdkVersion:'26'")
 
       out.puts badging.lines.grep(/\Apackage:|sdkversion|native-code|application-label:/i).join
+    end
+
+    # The newest of the build tools in the Android SDK at +sdk+. The path
+    # is made plain first: on Windows, ANDROID_HOME has backslashes, which
+    # Dir.glob reads as escapes, and File.expand_path turns into slashes.
+    def self.build_tools(sdk)
+      Dir.glob(File.join(File.expand_path(sdk), "build-tools", "*"))
+        .max_by { |path| Gem::Version.new(File.basename(path)[/\A[\d.]+/]) } or raise "#{sdk} has no build tools"
     end
 
     def initialize(work: File.join(ROOT, "tmp", "mobile-parity", "android"), out: $stdout)

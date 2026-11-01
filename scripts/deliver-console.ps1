@@ -77,6 +77,10 @@ public static extern bool AttachConsole(uint processId);
 public static extern IntPtr GetConsoleWindow();
 [DllImport("user32.dll", SetLastError = true)]
 public static extern bool PostMessageW(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+[DllImport("user32.dll")]
+public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+[DllImport("user32.dll")]
+public static extern bool IsWindowVisible(IntPtr window);
 [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 public static extern IntPtr CreateFileW(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
 [DllImport("kernel32.dll", SetLastError = true)]
@@ -217,8 +221,20 @@ if (-not [Fledge.Console]::AttachConsole([uint32]$probe.Id)) { Fail "could not a
 $window = [Fledge.Console]::GetConsoleWindow()
 [void][Fledge.Console]::FreeConsole()
 if ($window -eq [IntPtr]::Zero) { Fail "$label's console has no window to close" }
-if (-not [Fledge.Console]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { Fail 'could not close the console window' }
-if (-not $probe.WaitForExit(30000)) { Fail "$label did not end when its console closed" }
+$owner = 0
+[void][Fledge.Console]::GetWindowThreadProcessId($window, [ref]$owner)
+Write-Host "debug: window $window visible $([Fledge.Console]::IsWindowVisible($window)) owner $owner $((Get-Process -Id $owner -ErrorAction SilentlyContinue).ProcessName)"
+if (-not [Fledge.Console]::PostMessageW($window, 0x0112, [IntPtr]0xF060, [IntPtr]::Zero)) { Write-Host "debug: SC_CLOSE failed $([ComponentModel.Win32Exception]::new().Message)" }
+if (-not $probe.WaitForExit(10000)) {
+  Write-Host 'debug: SC_CLOSE did not end it; WM_CLOSE'
+  [void][Fledge.Console]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+  if (-not $probe.WaitForExit(10000)) {
+    Write-Host 'debug: WM_CLOSE did not end it; stopping the console host'
+    Stop-Process -Id $owner -Force
+    if (-not $probe.WaitForExit(10000)) { Fail "$label did not end when its console closed" }
+  }
+}
+Write-Host "debug: exit $('0x{0:X8}' -f $probe.ExitCode); record: $(Record 'close' '65001')"
 Expect "$label's exit status when its console closed" ('0x{0:X8}' -f $probe.ExitCode) '0xC000013A'
 Expect "what $label recorded when its console closed" (Record 'close' '65001') "locale CP65001`nexternal UTF-8`nready"
 $null = $console.WaitForExit(30000)

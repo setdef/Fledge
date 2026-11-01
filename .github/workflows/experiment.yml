@@ -56,11 +56,25 @@ jobs:
         env:
           FLEDGE_RUNTIME_DIR: ${{ github.workspace }}/runtimes
         run: |
-          for app in examples/hello test/fixtures/parity test/fixtures/console examples/windowed_app; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           ls -l dist
+      - name: Build windowed_app
+        working-directory: f
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ github.workspace }}/runtimes
+        run: |
+          ruby -I lib exe/fledge build -o dist examples/windowed_app
+          if ($LASTEXITCODE -ne 0) {
+            Get-Process | Where-Object { $_.ProcessName -match 'makensis|rcedit|Msmp|xta' } | Format-Table ProcessName, Id, Path
+            Start-Sleep -Seconds 20
+            Get-ChildItem -Recurse dist -Filter makensis.exe | Select-Object FullName
+            ruby -I lib exe/fledge build -o dist examples/windowed_app
+          }
+          Get-ChildItem dist
       - name: Deliver hello
+        if: always()
         working-directory: f
         run: pwsh -NoProfile -File .github/scripts/deliver.ps1 -Archive dist/Hello-aarch64-mingw-ucrt.zip -Probe dist/Parity-aarch64-mingw-ucrt.zip -Platform aarch64-mingw-ucrt -Expected "Hello from Ruby 4.0.9 on aarch64-mingw-ucrt"
       - name: Console

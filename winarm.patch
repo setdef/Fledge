@@ -1,3 +1,67 @@
+diff --git a/.github/scripts/deliver-console.ps1 b/.github/scripts/deliver-console.ps1
+index 08876a0..ed953c2 100644
+--- a/.github/scripts/deliver-console.ps1
++++ b/.github/scripts/deliver-console.ps1
+@@ -121,6 +121,11 @@ function Read-Command([string] $work) {
+ # writes what happened for the outer run to read.
+ if ($Inner) {
+   $scenario, $codePage = $Inner -split ':'
++  # Whatever fails in here, the outer run reads why.
++  trap {
++    Set-Content -LiteralPath (Join-Path $Work "$scenario-$codePage.result") -Value "failed: $_"
++    exit 1
++  }
+   [void][Fledge.Console]::SetConsoleCP([uint32]$codePage)
+   [void][Fledge.Console]::SetConsoleOutputCP([uint32]$codePage)
+   $command = @(Read-Command $Work)
+diff --git a/examples/my_cool_app/Gemfile.lock b/examples/my_cool_app/Gemfile.lock
+index 902671c..e3ce0cb 100644
+--- a/examples/my_cool_app/Gemfile.lock
++++ b/examples/my_cool_app/Gemfile.lock
+@@ -11,7 +11,10 @@ GEM
+     concurrent-ruby (1.3.8)
+     i18n (1.15.2)
+       concurrent-ruby (~> 1.0)
++    mini_portile2 (2.8.9)
+     rake (13.4.2)
++    sqlite3 (2.10.2)
++      mini_portile2 (~> 2.8.0)
+     sqlite3 (2.10.2-aarch64-linux-gnu)
+     sqlite3 (2.10.2-aarch64-linux-musl)
+     sqlite3 (2.10.2-arm-linux-gnu)
+@@ -28,6 +31,7 @@ PLATFORMS
+   aarch64-linux
+   aarch64-linux-gnu
+   aarch64-linux-musl
++  aarch64-mingw-ucrt
+   arm-linux-gnu
+   arm-linux-musl
+   arm64-darwin
+@@ -48,8 +52,10 @@ CHECKSUMS
+   bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+   concurrent-ruby (1.3.8) sha256=b2f1be836e968ccc78ccfce277ea79c72a88633f22306782c16ff23fb415d1e1
+   i18n (1.15.2) sha256=00f9eb62412fe593b2a65a97daa75300d37abb8f7202ec748e94b6d46a9dd1b5
++  mini_portile2 (2.8.9) sha256=0cd7c7f824e010c072e33f68bc02d85a00aeb6fce05bb4819c03dfd3c140c289
+   my_cool_app (0.1.0)
+   rake (13.4.2) sha256=cb825b2bd5f1f8e91ca37bddb4b9aaf345551b4731da62949be002fa89283701
++  sqlite3 (2.10.2) sha256=f1ea68cd3287f8a49f39a088ac9e4bd0ef4e7f394c3d4a60dd4c7e44b0566964
+   sqlite3 (2.10.2-aarch64-linux-gnu) sha256=e9aea2c2b3476fc875dd8a89313a9a2862818519c0186bfb5b56d6f57bb08d98
+   sqlite3 (2.10.2-aarch64-linux-musl) sha256=4986fc40cdf21342362b72a941df28e95cfe0e644f3ad2532d948b157c39dbee
+   sqlite3 (2.10.2-arm-linux-gnu) sha256=762f609ef891463226b472d3df66aea84d5466ff4376d3ccf4a059718c4ce9c9
+diff --git a/exe/fledge b/exe/fledge
+index 6316282..5fe63c1 100755
+--- a/exe/fledge
++++ b/exe/fledge
+@@ -161,7 +161,8 @@
+ #                          none (default: all three)
+ #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
+ #                        PLATFORM is this computer's: arm64-darwin,
+-#                        x86_64-linux, aarch64-linux, x64-mingw-ucrt.
++#                        x86_64-linux, aarch64-linux, x64-mingw-ucrt,
++#                        aarch64-mingw-ucrt.
+ #                        NAME is the gemspec's name, or else ROOT's
+ #                        folder name, camelized (my_cool_app is
+ #                        MyCoolApp), unless fledge.yml names it. NAME
 diff --git a/lib/fledge/platform.rb b/lib/fledge/platform.rb
 index baec065..7fe01ef 100644
 --- a/lib/fledge/platform.rb
@@ -302,6 +366,23 @@ index 2e19d6f..1dbe326 100644
          that uses the UCRT, name it libgmp-10.dll, and copy it over the app's
          ruby\\bin\\ruby_builtin_dlls\\libgmp-10.dll. Ruby's DLL finds it there
          through the side-by-side assembly ruby_builtin_dlls, whose manifest names
+diff --git a/tasks/parity.rb b/tasks/parity.rb
+index d2a48c5..1df27ed 100644
+--- a/tasks/parity.rb
++++ b/tasks/parity.rb
+@@ -115,10 +115,10 @@ class Parity
+       platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", *MOBILE],
+       reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems (ADR 001, section 8); " \
+         "rv-ruby ships no such file."),
+-    Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt],
++    Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
+       reference: [
+         %r{\A"<prefix>/lib/ruby/site_ruby/4\.0\.0/ruby_installer/},
+-        %r{\A"<prefix>/lib/ruby/4\.0\.0/x64-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)},
++        %r{\A"<prefix>/lib/ruby/4\.0\.0/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)},
+       ],
+       reason: "Fledge's RubyGems defaults replace RubyInstaller's (ADR 001, section 8), which load " \
+         "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
 diff --git a/tasks/runtime_builder/windows.rb b/tasks/runtime_builder/windows.rb
 index 4f98e9e..fce0f6a 100644
 --- a/tasks/runtime_builder/windows.rb
@@ -332,3 +413,15 @@ index 4f98e9e..fce0f6a 100644
      end
  
      # The name of Ruby's DLL in bin\, such as x64-ucrt-ruby400.dll.
+diff --git a/test/test_helper.rb b/test/test_helper.rb
+index 61eff47..5c453c1 100644
+--- a/test/test_helper.rb
++++ b/test/test_helper.rb
+@@ -34,6 +34,7 @@ module FakeRuntime
+ "x86_64-linux" => "x86_64-linux",
+ "aarch64-linux" => "aarch64-linux",
+ "x64-mingw-ucrt" => "x64-mingw-ucrt",
++"aarch64-mingw-ucrt" => "aarch64-mingw-ucrt",
+ "ios" => "arm64-darwin",
+ "android" => "aarch64-linux-android",
+ }.freeze

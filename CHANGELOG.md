@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.14] - 2026-11-01
+
 ### Added
 
 - `fledge build --sign IDENTITY` signs a desktop app with your own identity, after Fledge has written everything into it and before it archives it: on macOS, with a code signing identity from your keychain (or `-` for ad hoc), every Mach-O program and library, the bundle, and the disk image, by `codesign`, with the hardened runtime, a secure timestamp, and the entitlements `com.apple.security.cs.allow-unsigned-executable-memory` (for YJIT) and `com.apple.security.cs.disable-library-validation`; on Windows, with the SHA-1 thumbprint of a code signing certificate in your store, every `.exe`, `.dll`, and `.so`, and the NSIS setup program and its uninstaller, by the Windows SDK's `signtool`, with SHA-256 and a timestamp from DigiCert's server. Linux and phone builds refuse it. Unsigned builds are the default, as before. Fledge does not notarize.
@@ -168,7 +170,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.13...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.14...HEAD
+[0.0.1.pre.14]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.14
 [0.0.1.pre.13]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.13
 [0.0.1.pre.12]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.12
 [0.0.1.pre.11]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.11

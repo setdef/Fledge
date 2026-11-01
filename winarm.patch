@@ -897,6 +897,44 @@ index efa561b..c9afbda 100644
  
      # The oldest macOS an arm64-darwin runtime runs on: rv-ruby's Sonoma
      # build, and the launcher built with -mmacosx-version-min=14.0 (ADR
+diff --git a/lib/fledge/windows_resources.rb b/lib/fledge/windows_resources.rb
+index 7fce9ef..ba4e26b 100644
+--- a/lib/fledge/windows_resources.rb
++++ b/lib/fledge/windows_resources.rb
+@@ -5,6 +5,7 @@
+ # SPDX-License-Identifier: AGPL-3.0-or-later
+ #++
+ 
++require "fileutils"
+ require "tmpdir"
+ require_relative "command"
+ require_relative "error"
+@@ -79,7 +80,24 @@ module Fledge
+       arguments += ["--set-file-version", identity.version, "--set-product-version", identity.version]
+       icon = identity.icon
+       arguments += ["--set-icon", icon.file("ico")] if icon
+-      Command.run(rcedit, program, *arguments, install: "Windows runtimes from Fledge 0.0.1.pre.8 on carry it.")
++      run(rcedit, program, *arguments)
++    end
++
++    # Runs rcedit from a copy in the system's temporary folder. On
++    # Windows on ARM, the x86-64 emulator's cache service (XtaCache)
++    # keeps an emulated program open for a while after it exits, so the
++    # build's own folder, where the runtime's rcedit is, could not be
++    # deleted after it ran; the copy is the temporary folder's to clear,
++    # as makensis's is (Fledge::Nsis; ADR 018).
++    private_class_method def self.run(rcedit, *)
++      work = Dir.mktmpdir("fledge-rcedit")
++      begin
++        copy = File.join(work, RCEDIT)
++        FileUtils.cp(rcedit, copy)
++        Command.run(copy, *, install: "Windows runtimes from Fledge 0.0.1.pre.8 on carry it.")
++      ensure
++        FileUtils.rm_rf(work)
++      end
+     end
+ 
+     # The version information's strings for +identity+, whose program is
 diff --git a/runtime/licenses.yml b/runtime/licenses.yml
 index 65d86bf..a88d5b2 100644
 --- a/runtime/licenses.yml
@@ -1145,6 +1183,19 @@ index 535adbe..87c3612 100644
  
  # Inputs that no runtime ships, used only by CI's proofs that whoever
  # receives an app can replace its LGPL libraries (ci.yml: Replace
+diff --git a/sig/fledge/windows_resources.rbs b/sig/fledge/windows_resources.rbs
+index e2da0e2..15e1ad6 100644
+--- a/sig/fledge/windows_resources.rbs
++++ b/sig/fledge/windows_resources.rbs
+@@ -8,6 +8,8 @@ module Fledge
+ 
+     def self.apply: (String program, identity: Identity, tools: String?) -> String
+ 
++    private def self.run: (String rcedit, *String arguments) -> String
++
+     def self.strings: (Identity identity, String file_name) -> Hash[String, String]
+ 
+     def self.numbers: (String version) -> Array[Integer]
 diff --git a/tasks/license_audit/source_bundle.rb b/tasks/license_audit/source_bundle.rb
 index 2e19d6f..1dbe326 100644
 --- a/tasks/license_audit/source_bundle.rb
@@ -1325,7 +1376,7 @@ index 038c197..ebbe57a 100644
        end
        assert_equal facts, JSON.parse(File.read(report)).slice(*facts.keys) unless @platform.windows?
 diff --git a/test/license_audit_test.rb b/test/license_audit_test.rb
-index 8d0d0c3..4b3815e 100644
+index 8d0d0c3..e7b118d 100644
 --- a/test/license_audit_test.rb
 +++ b/test/license_audit_test.rb
 @@ -34,7 +34,7 @@ class LicenseAuditTest < Minitest::Test
@@ -1337,7 +1388,7 @@ index 8d0d0c3..4b3815e 100644
    end
  
    def write(path, content)
-@@ -351,6 +351,39 @@ class LicenseAuditTest < Minitest::Test
+@@ -351,6 +351,43 @@ class LicenseAuditTest < Minitest::Test
      end
    end
  
@@ -1352,12 +1403,16 @@ index 8d0d0c3..4b3815e 100644
 +      sources = File.join(directory, "sources.yml")
 +      File.write(sources, {
 +        "nsis" => {
-+          "version" => "3.13", "binary" => { "url" => "https://example.com/nsis.zip", "sha256" => "5" * 64 },
++          "version" => "3.13",
++          "binary" => { "url" => "https://example.com/nsis.zip", "sha256" => "5" * 64 },
 +          "source" => { "url" => "https://example.com/nsis-src.tar.bz2", "sha256" => Digest::SHA256.hexdigest("pretend nsis") },
 +        },
 +        "gmp" => {
-+          "version" => "6.3.0", "url" => "https://example.com/gmp.src.tar.zst", "sha256" => Digest::SHA256.hexdigest("pretend gmp"),
-+          "package" => { "url" => "https://example.com/ucrt64/gmp.pkg.tar.zst", "sha256" => "1" * 64 }, "dll_sha256" => "2" * 64,
++          "version" => "6.3.0",
++          "url" => "https://example.com/gmp.src.tar.zst",
++          "sha256" => Digest::SHA256.hexdigest("pretend gmp"),
++          "package" => { "url" => "https://example.com/ucrt64/gmp.pkg.tar.zst", "sha256" => "1" * 64 },
++          "dll_sha256" => "2" * 64,
 +          "arm64" => { "package" => { "url" => "https://example.com/clangarm64/gmp.pkg.tar.zst", "sha256" => "3" * 64 }, "dll_sha256" => "4" * 64 },
 +        },
 +      }.to_yaml)

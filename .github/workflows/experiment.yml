@@ -113,7 +113,8 @@ jobs:
         for app in examples/hello test/fixtures/parity test/fixtures/console /tmp/parity-bundle examples/my_cool_app examples/windowed_app; do
           ruby -I lib exe/fledge build -o dist "$app"
         done
-        (cd examples/my_cool_app && bundle install && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
+        (cd examples/my_cool_app && bundle install)
+        (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
         cat dist/my_cool_app.expected
         SH
         docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes \

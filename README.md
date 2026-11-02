@@ -5,28 +5,58 @@
 
 # Fledge
 
-[![Certified Shovelware](https://justin.searls.co/img/shovelware.svg)](https://justin.searls.co/shovelware/)
-[![CI](https://github.com/setdef/Fledge/actions/workflows/ci.yml/badge.svg?branch=trunk)](https://github.com/setdef/Fledge/actions)
+Fledge ships a Ruby app to people who have never installed Ruby. Point it at the program you already run, such as `main.rb`, `bin/server`, or a gem's `exe/my_app`. Fledge copies the program, its project, and the gems its `Gemfile.lock` locks into a Ruby built to be moved, and writes a folder that runs where it lands. A windowed app also gets its platform's installer.
 
-Fledge ships a Ruby app to people who don't have Ruby.
+Fledge is pre-1.0. Version 0.1.0 is the latest release.
 
-Almost nobody who would play your game, open your desktop app, or run your terminal tool has Ruby installed. Asking them to install it, at the right version, with the right gems, loses most of them before your app starts. And the Ruby on your own computer can't travel with the app: it was built for your machine, with your machine's paths and libraries baked in, so a copy breaks anywhere else.
+## What the people who run your app get
 
-Fledge starts from a *runtime* instead: a Ruby built to be moved, plus a small launcher that embeds it and runs your app, prebuilt for each platform. `fledge build` copies your app into the runtime for the computer it runs on and archives the result; build on a Mac for macOS, on Windows for Windows, and on Linux for Linux, as CI runners of each can. Whoever downloads it unpacks a folder and runs it. They never meet Ruby.
+They download one file and run the program in it. They install no Ruby, and a Ruby they happen to have changes nothing: the launcher clears `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, `BUNDLE_GEMFILE`, and the rest before Ruby starts.
 
-You build the program you already run: `exe/my_cool_app` in a gem, `bin/server` in an app with a Gemfile, or a lone `main.rb`. Its project ships with it, and so do the gems its `Gemfile.lock` locks, each as built for the platform it ships to, which Bundler sets up before your program runs, as `bundle exec` would. Your code runs the same either way: the same requires, the same globals, the same standard library, bundled gems, and locked gems.
+| Kind | macOS | Windows | Linux |
+| --- | --- | --- | --- |
+| `console` (default) | `NAME-arm64-darwin.tar.gz` with the program `NAME` | `NAME-x64-mingw-ucrt.zip` with `NAME.exe` | `NAME-x86_64-linux.tar.gz` with `NAME` |
+| `windowed` | `NAME.app`, signed ad hoc, and a `.dmg` to drag it from | `NAME.exe`, which opens no console, and an NSIS `-setup.exe` that installs without an administrator | a folder with a desktop entry and icons, an `.AppImage`, and, on glibc Linux, a `.deb` when `fledge.yml` lists it |
 
-## Status
+Every app carries the name, version, publisher, and icon you give it, where each system shows them. Its `notices/` folder holds `NOTICES.txt` and an SPDX software bill of materials for everything Fledge put in it.
 
-Fledge is a walking skeleton under construction, and its latest release is `v0.1.0` (versions are ordinary 0.MINOR.PATCH from here, and 1.0 waits until some of what is not yet proven below is). `fledge build` builds apps for macOS on Apple Silicon (`arm64-darwin`), for Linux with glibc 2.39 or newer (`x86_64-linux`, `aarch64-linux`), for Linux with musl, such as Alpine (`x86_64-linux-musl`, `aarch64-linux-musl`; [ADR 017](doc/contributors/adr/017.md)), for 64-bit Windows 10 and 11 (`x64-mingw-ucrt`), and for Windows 11 on ARM64 (`aarch64-mingw-ucrt`; [ADR 018](doc/contributors/adr/018.md)), each on a computer of that platform. [Plan 001](doc/contributors/plan/001.md)'s walking skeleton shipped a "hello" app for macOS, Linux, and Windows, run on fresh machines with no Ruby; [Plan 002](doc/contributors/plan/002.md) is the road to 1.0, and Fledge now ships gem-shaped apps with their gems ([ADR 005](doc/contributors/adr/005.md)), compiling those that need it on the platform they are for and taking gems from git ([ADR 006](doc/contributors/adr/006.md)), whatever their licenses, which are the developer's to judge ([ADR 007](doc/contributors/adr/007.md)), as console or windowed apps that show the name, icon, and version their developer chose ([ADR 008](doc/contributors/adr/008.md)), and windowed apps with installers for every platform, a disk image, an NSIS setup program, and an AppImage ([ADR 009](doc/contributors/adr/009.md)), each built on its own platform with that platform's own tools ([ADR 010](doc/contributors/adr/010.md)). [ADR 001](doc/contributors/adr/001.md) records what Fledge is and why.
+A lone `main.rb` builds to an archive of 19 MB, 60 MB unpacked, for `arm64-darwin`.
 
-**iOS, iPadOS, and Android, for pure-Ruby apps.** `fledge build ios` on a Mac writes an Xcode project for iPhone and iPad, and `fledge build android` on a Mac, Linux, or Windows writes a Gradle project for Android, around the mobile runtimes each release carries: CRuby 4.0.9 as `FledgeRuby.xcframework` and `FledgeRuby.aar`, an interpreter with its standard library and its default and bundled gems ([ADR 011](doc/contributors/adr/011.md), [ADR 012](doc/contributors/adr/012.md)). You build, sign, and submit the app with Xcode or Gradle; CI builds each project unsigned and runs its apps in the iOS Simulator on an iPhone and an iPad and on Android emulators. Gems with extensions to compile come to phones after 1.0, and running on a real iPhone waits for an Apple Developer account.
+## Other ways to ship Ruby, and where Fledge differs
 
-**Not yet proven.** Fledge's own checks have not shown four things, and each waits on an account or a device that setdef has not opened: an app on a real iPhone or iPad, and App Review's verdict on one; Gatekeeper's verdict on a notarized app and SmartScreen's on a setup program signed through a real trust chain (`--sign` is proven with a self-signed certificate); Android's arm64-v8a build running in CI (it is built and its APK checked on every push, and it ran once by hand on an Apple-silicon Mac); and Fledge notarizing for you. You sign, notarize, and submit your own app with your own accounts, as the sections below say. If you have, and something differed from what this page says, please open an issue.
+- **A gem** asks the person to install Ruby first, at a version your gems accept.
+- **A Docker image** asks the person to install Docker, and runs your program in Linux.
+- **Single-file packers**, such as OCRAN and Tebako, unpack the app to a temporary folder or mount a virtual file system each time it starts. A Fledge app is a folder that runs in place, with Ruby's usual layout inside it. CI checks it with each system's tools: `codesign --verify` and Finder's `open` on macOS, Explorer and the Start menu on Windows, and `desktop-file-validate` on Linux.
 
-## Installing
+Fledge follows prior art from other languages: LÖVE's fused games (a folder joined to a runtime), PyInstaller and Briefcase (console and windowed apps), python-build-standalone (prebuilt, relocatable interpreters), and the Tauri bundler (installers). [ADR 001](doc/contributors/adr/001.md) compares them.
 
-Fledge is not on RubyGems.org, and never will be under this plan. Each release is a git tag, such as `v0.1.0`, with a [GitHub Release](https://github.com/setdef/Fledge/releases) that carries its runtimes, so take the gem from its tag:
+## What CI checks on every push
+
+[CI](.github/workflows/ci.yml) builds each platform's apps on a runner of that platform, then copies them to a fresh runner and runs them there. The Delivery jobs unpack each app under a path with spaces and non-ASCII characters, run it with no Ruby on `PATH`, and run it again with `RUBYOPT`, `RUBYLIB`, and `GEM_HOME` set to values that would break a Ruby that read them ([`deliver.sh`](.github/scripts/deliver.sh), [`deliver.ps1`](.github/scripts/deliver.ps1)). On Debian and Alpine, the apps run in containers with no Ruby installed at all. The Test jobs on each platform compare what a built app's Ruby sees with what `ruby main.rb` and `bundle exec` see on the same Ruby ([`tasks/parity.rb`](tasks/parity.rb)).
+
+After each release, [`installed.yml`](.github/workflows/installed.yml) installs Fledge from the new git tag with Bundler, as you would, builds the examples with runtimes downloaded from the release, and delivers them the same way.
+
+| Platform | Runs on | Delivered in CI on |
+| --- | --- | --- |
+| `arm64-darwin` | macOS 14 or newer, Apple silicon | `macos-15` |
+| `x86_64-linux` | Linux with glibc 2.39 or newer | `ubuntu-24.04`, `debian:trixie-slim` |
+| `aarch64-linux` | Linux with glibc 2.39 or newer | `ubuntu-24.04-arm`, `debian:trixie-slim` |
+| `x86_64-linux-musl` | musl Linux, such as Alpine | `alpine:3.24` |
+| `aarch64-linux-musl` | musl Linux, such as Alpine | `alpine:3.24` |
+| `x64-mingw-ucrt` | Windows on x64 | `windows-latest` |
+| `aarch64-mingw-ucrt` | Windows 11 on ARM64 | `windows-11-arm` |
+
+## Where Fledge does not fit yet
+
+- Each platform's app is built on a computer of that platform. A Mac builds the macOS app and a Windows computer builds the Windows app. A CI runner of each works ([ADR 010](doc/contributors/adr/010.md)).
+- Fledge has no runtime for Intel Macs or 32-bit systems. On those, `fledge build` stops with `Fledge has no runtime for this computer's platform`.
+- Gems compiled from source are proven on `arm64-darwin`, both glibc Linux platforms, and `x64-mingw-ucrt`. CI compiles none on musl Linux, and none on Windows on ARM64, where sqlite3 publishes no build and does not compile.
+- On iPhone, iPad, and Android, an app's gems are pure Ruby for now, and what it prints goes to the system log.
+- Fledge does not notarize macOS apps.
+
+## Get started
+
+Building takes Ruby 4.0.1 or newer and Bundler. Fledge installs from a git tag. Make a folder named `greeter` and give it this `Gemfile`, with Fledge in the development group, which `fledge build` leaves out of the app:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -34,133 +64,121 @@ Fledge is not on RubyGems.org, and never will be under this plan. Each release i
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
-# Gemfile
-gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.1.0"
+source "https://rubygems.org"
+
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.1.0", group: :development
 ```
 <!-- SPDX-SnippetEnd -->
 
-Then `bundle install`, and run it as `bundle exec fledge`. Fledge needs Ruby 4.0, and on each platform what that platform's apps are made with ([ADR 010](doc/contributors/adr/010.md)):
-
-- **macOS 14 or newer** on Apple Silicon: `tar`, `plutil`, `codesign`, `ditto`, and `hdiutil` come with macOS; and when your app's gems carry compiled files, Xcode's command line tools (`xcode-select --install`), whose `objdump` reads them.
-- **Windows 10 or 11** (x64), or **Windows 11 on ARM64**: nothing more. Windows' own `tar.exe` writes the `.zip`, and the Windows runtime brings [rcedit](https://github.com/electron/rcedit), which writes a program's version information and icon, [NSIS](https://nsis.sourceforge.io/), which compiles a setup program, and LLVM's `llvm-readobj`, which reads the DLLs your gems' compiled files need.
-- **Linux** with glibc 2.39 or newer: `tar`; when your app's gems carry compiled files, binutils' `objdump`, which reads them (`sudo apt install binutils`, `sudo dnf install binutils`); for a windowed app's AppImage, squashfs-tools' `mksquashfs` 4.4 or newer (`sudo apt install squashfs-tools`, `sudo dnf install squashfs-tools`); and, for a `.deb`, `dpkg-deb` from dpkg (`sudo apt install dpkg`, `sudo dnf install dpkg`).
-- **Linux with musl**, such as Alpine 3.24 (`ruby:4.0-alpine` gives you Ruby 4.0 there): the same, from Alpine's packages (`apk add binutils squashfs-tools`, and `git` for gems from git). Your `Gemfile.lock` locks `x86_64-linux-musl` or `aarch64-linux-musl`, as `bundle lock --add-platform` writes them.
-
-For a phone's project, `fledge build ios` needs a Mac on Apple Silicon with Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`), which writes the Xcode project; `fledge build android` needs nothing more, and building the project it writes needs a JDK 17 or newer and the Android SDK, as Android Studio installs them.
-
-To compile a gem with an extension you also need a compiler: Xcode's command line tools on macOS (`xcode-select --install`), a C compiler and `make` on Linux, RubyInstaller's MSYS2 tools (`ridk install`) on Windows, and cargo for a Rust gem. A missing tool fails the build, naming it and what to install. The first `fledge build` for a platform downloads that version's runtime from its GitHub Release into `~/.cache/fledge/runtimes` (or `$XDG_CACHE_HOME/fledge/runtimes`), checked against the SHA-256 that Fledge's gem pins for it, so a replaced release asset fails the build; later builds use the cache, checked the same way. With `FLEDGE_RUNTIME_DIR` naming a folder of runtimes, it uses those instead.
-
-## Using Fledge
-
-Building looks like this:
+Write the program beside it:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
   SPDX-License-Identifier: MIT-0
 -->
-```bash
-cd my_cool_app       # a gem: my_cool_app.gemspec, Gemfile, Gemfile.lock, exe/my_cool_app
-bundle lock --add-platform arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt
-fledge build exe/my_cool_app              # on a Mac
-ls dist
-# MyCoolApp-arm64-darwin/      MyCoolApp-arm64-darwin.tar.gz
-./dist/MyCoolApp-arm64-darwin/MyCoolApp   # on a Mac, with or without Ruby
+```ruby
+# main.rb
+puts "Hello, #{ARGV.first || "world"}!"
 ```
 <!-- SPDX-SnippetEnd -->
 
-Platforms use RubyGems' names. Build on each platform you ship to, as Tauri and Briefcase do: each one's app is made with that system's own tools ([ADR 010](doc/contributors/adr/010.md)). `fledge build` with no path builds the one executable your gemspec names, or a folder's `main.rb`. The project is the nearest folder, from your program's up, with a `Gemfile`, `gems.rb`, gemspec, or `fledge.yml`; everything in it ships but `.git`, `.bundle`, `vendor/bundle`, `vendor/cache`, and the build's output. The app's name is your gemspec's name, or else the project folder's, camelized (`my_cool_app` is `MyCoolApp`). `fledge --help` (or `-h`, or `-?`) prints the full usage, and `fledge -v` the version. `fledge` exits 0 when it succeeds, 1 when a build fails, and 2 when it cannot make sense of its arguments. [examples/hello](examples/hello) is a lone script, [examples/my_cool_app](examples/my_cool_app) a gem with a pure-Ruby and a native dependency, and [examples/windowed_app](examples/windowed_app) a windowed app with an icon; CI builds all three on a runner of each platform. [examples/mobile_app](examples/mobile_app) is a gem whose gems are pure Ruby, which CI builds for iOS and Android and runs, with hello, in the iOS Simulator and Android emulators. [examples/native_app](examples/native_app) needs a C gem published only as source, a Rust gem from git, ratatui_ruby, precompiled for three platforms and compiled for the fourth, and spreadsheet, a GPL gem, and [examples/nokogiri_app](examples/nokogiri_app) nokogiri compiled from source; CI builds each on the platform it is for.
-
-Your `Gemfile.lock` must lock each platform you build for (`bundle lock --add-platform`) and each gem's checksum, which Bundler 4 does and `bundle lock --add-checksums` adds. Fledge leaves out the `development` and `test` groups, and downloads each gem's build for each platform from your lockfile's gem server, checked against its checksum, into `~/.cache/fledge/gems` (it looks in `vendor/cache` first, where `bundle cache --all-platforms` keeps them). A gem may be pure Ruby or locked precompiled for the platform, as sqlite3 and many other native gems are published. A gem with an extension to compile, one published only as source (redcarpet) or a Rust gem built with rb-sys (Tokra's, Ferro's), is compiled as you build, against the runtime's own Ruby, with your compiler (cargo, with libclang, for rb-sys); `bundle config build.NAME` options reach its `extconf.rb` ([ADR 006](doc/contributors/adr/006.md)). A precompiled build is always taken when there is one that fits; compiling only fills the gaps. Gems from git ship at the commit your lockfile locks, fetched into `~/.cache/fledge/git`. Fledge takes no position on your gems' licenses ([ADR 007](doc/contributors/adr/007.md)): every gem ships with its own files and notices, whatever its license and whatever its compiled files hold, and whether those licenses suit your app is yours to decide. Fledge refuses a gem only when it would not run where the app goes, such as a compiled file that needs a library the computer it goes to may not have. Most projects need no configuration. A `fledge.yml` at the project's root says what Fledge cannot know: whether your app opens windows, and how it presents itself to the people who run it ([ADR 008](doc/contributors/adr/008.md)):
+Install Fledge, build, and run the result from somewhere else. On an Apple-silicon Mac:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
   SPDX-License-Identifier: MIT-0
 -->
-```yaml
-# fledge.yml
-name: Cool App                       # default: the gemspec's name, or the folder's, camelized
-kind: windowed                       # or console, the default
-identifier: com.example.CoolApp      # reverse-DNS; a windowed app needs one
-version: "1.2.3"                     # default: the gemspec's, or 0.0.0
-icon: icons/app                      # icons/app.icns, icons/app.ico, icons/app-16.png to -512.png
-publisher: Example, Inc.             # default: the gemspec's authors
-copyright: © 2026 Example, Inc.
-installers: [dmg, nsis, appimage]    # the default for a windowed app; add deb for Debian and Ubuntu; [] for none
+```console
+$ bundle install
+$ bundle exec fledge build
+Downloading fledge-runtime-0.1.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.1.0
+dist/Greeter-arm64-darwin.tar.gz
+$ tar -xzf dist/Greeter-arm64-darwin.tar.gz -C /tmp
+$ /tmp/Greeter-arm64-darwin/Greeter Ruby
+Hello, Ruby!
 ```
 <!-- SPDX-SnippetEnd -->
 
-A *console* app runs in a terminal. A *windowed* app opens its own windows and shows no terminal: on macOS it is an `.app` bundle, `Cool App.app`, with your name, icon, version, and identifier in its `Info.plist`, signed ad hoc so it runs on Apple Silicon and passes `codesign --verify --strict --deep`; on Windows it is a program Windows starts without a console, which makes your identifier its AppUserModelID; on Linux it is the same folder with a desktop entry, `com.example.CoolApp.desktop`, and your icon in `share/icons/hicolor/`. Every Windows app, console or windowed, carries your name, version, publisher, copyright, and icon in its program, where Explorer and Task Manager show them. Your icon comes in each system's own format, named as Briefcase names them: `icons/app.icns` for macOS (`iconutil -c icns` makes one from PNGs), `icons/app.ico` for Windows, with images of 16, 32, 48, 64, and 256 pixels, and `icons/app-16.png`, `-32`, `-64`, `-128`, `-256`, and `-512` for Linux; each platform's build takes its own, made with that platform's tools. Gatekeeper and SmartScreen trust none of that until you sign with your own identity (below).
+The first build downloads this platform's runtime from the release and checks it against the SHA-256 that your version of Fledge pins. The app takes its name from the folder, camelized: `greeter` becomes `Greeter`. Send the `.tar.gz` (a `.zip` on Windows) to anyone with that platform.
 
-A windowed app also gets an installer beside each archive ([ADR 009](doc/contributors/adr/009.md)), made with its platform's own tools ([ADR 010](doc/contributors/adr/010.md)): `Cool App-arm64-darwin.dmg`, a disk image `hdiutil` makes of `Cool App.app`, still signed, and a link to Applications to drag it onto; `Cool App-x64-mingw-ucrt-setup.exe`, an NSIS installer, compiled by the NSIS the Windows runtime carries and compressed with LZMA, that installs for the person who runs it, with no administrator, into `%LOCALAPPDATA%\Programs\Cool App`, makes a Start menu shortcut whose AppUserModelID is your identifier, which Windows needs before it shows your app's notifications, offers a desktop shortcut (unchecked), registers an uninstaller in Settings, and installs silently with `/S`; and `Cool App-x86_64-linux.AppImage` (and `aarch64-linux`), one file that runs on any distribution once it is executable (`chmod +x`), with AppImage's own runtime at its front and a file system `mksquashfs` wrote, which mounts itself with FUSE, as every AppImage does, and on a computer with no FUSE runs with `APPIMAGE_EXTRACT_AND_RUN=1`. On glibc Linux, `installers: [appimage, deb]` also builds `Cool App-x86_64-linux.deb` ([ADR 021](doc/contributors/adr/021.md)), which `dpkg-deb` packs: `sudo apt install ./"Cool App-x86_64-linux.deb"` puts the app in `/usr/lib/com.example.coolapp` with its desktop entry and icons where desktops look, needs glibc 2.39 or newer (so apt refuses an older Debian or Ubuntu), and `sudo apt remove com.example.coolapp` removes all of it; the package is named for your identifier in lower case, its version is yours (a pre-release such as `1.0.0.pre.1` becomes `1.0.0~pre.1`, which sorts before `1.0.0`), and its maintainer is your `publisher`. A `.deb` is not in the default list, since not every Linux computer has `dpkg-deb`. `installers: [dmg]` in `fledge.yml` builds only those you list, and `installers: []` none; a console app gets none.
+`bundle exec fledge --help` prints the whole manual: every option, every `fledge.yml` key and its default, every file Fledge writes, and the exit statuses.
 
-### Signing
+## From the first build to a release
 
-macOS's Gatekeeper and Windows' SmartScreen warn about, or refuse, an app downloaded from the internet that no one they trust has signed. If you have an identity from Apple or a certificate from a certificate authority, `fledge build --sign IDENTITY` signs your app with it, after Fledge has written everything into the app and before it archives it ([ADR 016](doc/contributors/adr/016.md)). Without `--sign`, your app is unsigned, and still runs.
+1. **First build.** `fledge build` with no argument builds the current folder: the one executable its gemspec names, or else its `main.rb`. Pass a path to build a different program, and `--out DIR` to write somewhere other than `dist`. [ADR 005](doc/contributors/adr/005.md) says how Fledge finds the project and runs the program as `bundle exec` would.
+2. **Other platforms.** Run the same command on a computer of each platform. The Build jobs in [`ci.yml`](.github/workflows/ci.yml) are one way to do it on GitHub Actions.
+3. **Windowed apps and installers.** Add a `fledge.yml` beside your `Gemfile`. Give a windowed app an `identifier`, the reverse-DNS name macOS and Windows know it by. `installers` picks which of `dmg`, `nsis`, `appimage`, and `deb` to build; the default is the first three. See [`examples/windowed_app`](examples/windowed_app), [ADR 008](doc/contributors/adr/008.md), and [ADR 009](doc/contributors/adr/009.md).
 
-- **macOS:** `IDENTITY` is a code signing identity in your keychain, as `codesign` names it, such as `"Developer ID Application: Example, Inc. (ABCDE12345)"` (`security find-identity -v -p codesigning` lists yours). Fledge signs every Mach-O program and library in the app, then the bundle and its disk image, with the hardened runtime and a timestamp from Apple, which notarization asks for, and with two entitlements, as Briefcase grants every app: executable memory without MAP_JIT, which YJIT needs, and libraries your app did not sign. Fledge does not notarize yet; `xcrun notarytool submit --wait` and `xcrun stapler staple` on the disk image do it, with your Apple Developer account.
-- **Windows:** `IDENTITY` is the SHA-1 thumbprint of a code signing certificate in your certificate store, as `signtool sign /sha1` takes it (`(Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert).Thumbprint` lists yours). Fledge signs every program and library in the app, and the setup program and its uninstaller, with SHA-256 and a timestamp from DigiCert's server, using `signtool` from the Windows SDK (`winget install Microsoft.WindowsSDK.10.0.26100`).
-- **Linux** has no signature for its system to check, so `--sign` fails there.
+   <!-- SPDX-SnippetBegin -->
+   <!--
+     SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+     SPDX-License-Identifier: MIT-0
+   -->
+   ```yaml
+   name: My Cool App
+   kind: windowed
+   identifier: com.example.MyCoolApp
+   version: "1.0.0"
+   icon: icons/app # icons/app.icns, icons/app.ico, icons/app-16.png to -512.png
+   ```
+   <!-- SPDX-SnippetEnd -->
 
-CI signs with a self-signed certificate it makes in each run, and verifies the result with `codesign` and `signtool` on fresh computers; notarization and a real trust chain wait for Apple and Microsoft accounts.
+4. **Signing.** An app is unsigned unless you pass `--sign IDENTITY`: a keychain identity on macOS, such as `"Developer ID Application: NAME (TEAM)"`, or a certificate's SHA-1 thumbprint on Windows. Fledge signs every program and library, the bundle, and the installer. Gatekeeper and SmartScreen warn the people who download an unsigned app; how they judge a signed one is not yet proven (below). Fledge does not notarize. [ADR 016](doc/contributors/adr/016.md) has the details.
+5. **Gems and native extensions.** Your `Gemfile.lock` lists the gems that ship, without the development and test groups. If the build asks, run `bundle lock --add-platform` for this platform and `bundle lock --add-checksums`. Precompiled platform gems ship as they are. Gems with an extension to compile are compiled against the runtime's Ruby, with your compiler: Xcode's command line tools on macOS, a C compiler and `make` on Linux, RubyInstaller's MSYS2 tools (`ridk install`) on Windows, and `cargo` for Rust. A gem that would not load on another computer stops the build with a message that names it. [ADR 006](doc/contributors/adr/006.md) and [ADR 020](doc/contributors/adr/020.md) cover git gems, path gems, mirrors, and credentials.
+6. **Phones.** `fledge build ios` (on a Mac, with Xcode and XcodeGen) writes an Xcode project for iPhone and iPad. `fledge build android` (on a Mac, x86-64 Linux, or Windows) writes a Gradle project. You build, sign, and submit them with those tools. Gems are pure Ruby, and the lockfile locks `ruby` (`bundle lock --add-platform ruby`). See [`examples/mobile_app`](examples/mobile_app) and [ADR 012](doc/contributors/adr/012.md).
+7. **Updating Fledge.** Change the tag in your `Gemfile` and run `bundle update fledge`. Each version downloads its runtimes and checks them against the SHA-256s it pins ([ADR 014](doc/contributors/adr/014.md)). The runtimes carry Ruby 4.0.9 today, and the CHANGELOG records each change to the pinned Ruby. Read the [CHANGELOG](CHANGELOG.md) first: before 1.0, a minor version can break your build.
 
-### Opening an unsigned app
+## What is proven, and what is not yet
 
-Tell the people you send an unsigned app how to open it:
+Proven in CI on every push:
 
-- **macOS:** open the app (double-click it, or run its program in Terminal); macOS says it cannot check it for malicious software. Open **System Settings**, then **Privacy & Security**, scroll to the message about the app, and click **Open Anyway**, then **Open**. Once is enough. In Terminal, `xattr -dr com.apple.quarantine "Cool App.app"` does the same, for an app you trust.
-- **Windows:** when SmartScreen says "Windows protected your PC", click **More info**, then **Run anyway**. For a `.zip`, right-click it before unpacking, choose **Properties**, and check **Unblock**, so the programs in it carry no mark of the internet.
-- **Linux:** an AppImage needs to be executable once downloaded: `chmod +x "Cool App-x86_64-linux.AppImage"`, or the file's **Properties**, **Allow executing file as program**.
+- Console and windowed apps on all seven desktop platforms.
+- Each installer installed on a fresh runner, and its app run.
+- Gems compiled from source, with C and Rust extensions and from git, on `arm64-darwin`, both glibc Linux platforms, and `x64-mingw-ucrt`.
+- iOS projects built and run in the iOS Simulator on an iPhone and an iPad.
+- Android projects built with Gradle on Linux, macOS, and Windows, and run on x86-64 emulators with 4 KB and 16 KB pages.
+- Apps signed with a test certificate, and verified by `codesign` and `signtool`.
 
-A built app is a folder (on macOS, for a windowed app, a folder holding the bundle, whose `Contents/Resources` holds the rest): the program, named for your app (`MyCoolApp.exe` on Windows), and `fledge.cfg`, which says what it runs; your project in `app/`; Ruby, with its standard library, default gems, bundled gems, your app's gems, and its own `ruby` program, in `bin/` and `lib/` on macOS and Linux and in `ruby\` on Windows; and the licenses of everything Fledge put there, with an SBOM, in `notices/` (each gem keeps its own notices in its own folder). It ships as a `.zip` for Windows, which opens with a double-click, and as a `.tar.gz` elsewhere, which keeps the program executable. Whoever runs it needs no Ruby, and a Ruby they do have (`RUBYOPT`, `GEM_HOME`, `BUNDLE_GEMFILE`, `~/.bundle/config`, gems in `~/.gem`, and the rest) does not change how your app starts or which gems it loads. Your app's `ENV`, and any Ruby it starts through `RbConfig.ruby`, still see their settings, as under `ruby main.rb`, with Bundler's over them for your bundle, as under `bundle exec`, where `Bundler.with_original_env` and `with_unbundled_env` give them back whole. The program exits with your app's status, or with 66 when its program is missing and 70 when the rest of the folder is broken.
+Not yet proven:
 
-### Phones
+- An app on a physical iPhone or iPad, and App Review.
+- Signing with a certificate from Apple or a certificate authority, the verdicts Gatekeeper and SmartScreen give it, and notarization.
+- Android's arm64-v8a library running on a device or emulator. CI builds and checks it, but no free runner boots an arm64-v8a emulator.
 
-A phone builds no app, so for iOS and Android `fledge build` writes the project that builds one, as Briefcase's `briefcase create iOS` and Flutter's templates do, and you take it from there with each system's own tools ([ADR 012](doc/contributors/adr/012.md)):
+These wait on accounts and hardware that cost money. [Plan 003](doc/contributors/plan/003.md) lists what remains before 1.0.
 
-<!-- SPDX-SnippetBegin -->
-<!--
-  SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-  SPDX-License-Identifier: MIT-0
--->
-```bash
-cd my_cool_app
-bundle lock --add-platform ruby       # a phone's gems are their pure-Ruby builds
-fledge build ios                      # on a Mac: dist/MyCoolApp-ios/MyCoolApp.xcodeproj
-open dist/MyCoolApp-ios/MyCoolApp.xcodeproj
-fledge build android                  # on a Mac, Linux, or Windows: dist/MyCoolApp-android/
-cd dist/MyCoolApp-android && ./gradlew assembleDebug
-```
-<!-- SPDX-SnippetEnd -->
+## Cost and licensing
 
-`fledge.yml` needs an `identifier`, which is the app's bundle identifier on iOS and its `applicationId` on Android (where each part begins with a letter and holds letters, digits, and underscores). Its `name`, `version`, and `icon` are what the phone shows: `icons/app-1024.png` for iOS, from which Xcode makes the rest, and `icons/app-48.png`, `-72`, `-96`, `-144`, and `-192` for Android's screen densities. Each project holds the runtime, your project in `fledge/app/`, your gems, and the runtime's notices, which the app carries; a host app, `Host/main.m` or `MainActivity.java`, which shows the app's name, runs your program on a thread of its own with Bundler set up as `bundle exec` would, and sends what it prints to the system log (os_log, logcat) under your identifier; and on iOS a privacy manifest naming the APIs Ruby calls that Apple asks a reason for. Every gem ships its `ruby` build, with Bundler's `force_ruby_platform`, so the lockfile must lock `ruby`; a gem with an extension to compile fails the build until native gems come to phones after 1.0. Neither project signs anything: choose your team in Xcode to run on a device, and sign an Android release with your own key. Fledge never submits an app for you; App Store guideline 4.2.6 asks that you submit your own.
+Fledge costs nothing to use. It is licensed AGPL-3.0-or-later, and setdef may also offer it under a commercial license; none is offered yet.
 
-Game, desktop, and terminal frameworks (Lota, Tokra, and Rooibos) are expected to call Fledge for their own packaging commands.
+What this means for an app you build:
 
-## What ships in your app, and what it asks of you
+- Nothing Fledge puts in your app asks for your app's source code.
+- Two files in a desktop app are Fledge's, under the AGPL: the launcher, which is the program your users run, and one RubyGems defaults file. On a phone, Fledge's embedding API and the host app template take their place. If you give the app to others, the AGPL asks you to convey the source of those files. The app's `NOTICES.txt` names it: Fledge's source at the tag that built the app.
+- The rest of the runtime is under permissive licenses that ask you to keep their notices, which every app carries in `notices/`. Two LGPL libraries ship as separate shared libraries a person can replace: libxcrypt on glibc Linux and GNU MP on Windows. An AppImage's runtime links libfuse (LGPL), and a Windows setup program carries NSIS's LZMA module (CPL-1.0). Each release publishes their source beside the runtimes that carry them.
+- Every runtime build runs a license audit against [`runtime/licenses.yml`](runtime/licenses.yml) and refuses to archive a runtime with anything it does not account for ([ADR 004](doc/contributors/adr/004.md)).
 
-Everything Fledge copies into your app besides your own code and gems is either under a permissive license (MIT, BSD, Apache-2.0, Zlib, Ruby's, and the like), or is one of two libraries under the LGPL, each shipped as a separate shared library that whoever receives your app may replace: libxcrypt in Linux apps, and GNU MP in Windows apps. A Linux app's AppImage begins with AppImage's own runtime, which has a third, libfuse, linked in; it is not your app, and Fledge publishes its source and libfuse's, as the LGPL asks. A Windows app's setup program is compressed with NSIS's LZMA module, under the Common Public License, which asks only that its source be available, and Fledge publishes NSIS's. Fledge never needs your app's source or object files. Fledge publishes the exact source of each of these with every release, and keeps every release published. Your app's own gems are another matter: which gems you use, and what their licenses ask of you, are your choice and your responsibility, and `fledge build` ships each one with its own notices, whatever its license (`bundle licenses` lists them). The launcher, the program your users run, and the RubyGems defaults Fledge adds are Fledge's own code, under the AGPL-3.0-or-later, and so are the mobile runtimes' embedding API and the host app in a phone's project, which your phone app links and compiles in; a commercial license will likely be offered for apps that don't want to follow the AGPL.
+[`doc/licensing.md`](doc/licensing.md) lists every component on each platform and what its license asks of you. The licenses of your app's gems are your business: Fledge ships every gem you lock, whatever its license ([ADR 007](doc/contributors/adr/007.md)).
 
-Every built app carries `notices/NOTICES.txt`, with every component, its license, and the full text of each license, and `notices/sbom.spdx.json`, an SPDX 2.3 software bill of materials. [doc/licensing.md](doc/licensing.md) lists, per platform, what ships and what each license asks of you, with the sections it comes from. CI writes all three from a license audit that every runtime must pass before it is archived, and fails when the page goes stale ([ADR 004](doc/contributors/adr/004.md)). They state facts, not legal advice: ask your own lawyer what any license requires of you.
+## Depending on Fledge
 
-## Development
+- Releases are git tags and [GitHub Releases](https://github.com/setdef/Fledge/releases). Each release carries every runtime with its NOTICES, SBOM, and LGPL sources, and a `SHA256SUMS` that matches the pins in the tagged gem, which `installed.yml` checks.
+- Fledge downloads gems from your lockfile's server and checks each against the lockfile's checksum. A git gem ships at the commit the lockfile locks.
+- Before 1.0, breaking changes come in minor versions, and the [CHANGELOG](CHANGELOG.md) records each one.
+- AI agents wrote Fledge's code, tests, and documents with little line-by-line human review. The CI gates and the Delivery jobs are the review. [AGENTS.md](AGENTS.md) describes how the work is done and checked.
 
-```bash
-git clone https://github.com/setdef/Fledge.git
-cd Fledge
-bin/setup
-bundle exec rake
-```
+## Documentation
 
-`bin/setup` installs the tools pinned in `mise.toml` (Ruby, the REUSE tool, actionlint, shellcheck, and clang-format), installs the bundle, and installs the pre-commit hook. `bundle exec rake` is the gate: it fixes what RuboCop and the REUSE tool can fix, then runs the tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck over the workflows and shellcheck over `bin/setup` and `.github/scripts`, clang-format over the launcher's C, signature checks (no `untyped`, `rbs validate`, and parity between `sig/` and `lib/`), Steep, and the package check, which builds the gem, installs it into an empty `GEM_HOME`, and runs `fledge` from there. It passes with zero errors and zero warnings. The tests of compiled files read them with this computer's own `objdump`, and other platforms' formats with LLVM's `llvm-objdump` and `llvm-readobj` in the folder `FLEDGE_LLVM` names, such as the `bin` of the llvm-mingw `bundle exec rake "runtime[x64-mingw-ucrt]"` unpacks into `tmp/runtime/x64-mingw-ucrt/llvm-mingw`; without it, those tests skip ([ADR 013](doc/contributors/adr/013.md)).
+- `bundle exec fledge --help`: the manual, including the `fledge.yml` reference.
+- [`doc/licensing.md`](doc/licensing.md): what ships in an app on each platform, and what its licenses ask of you.
+- [`examples/`](examples): apps CI builds and delivers. Start with [`hello`](examples/hello), [`my_cool_app`](examples/my_cool_app) (a gem), [`windowed_app`](examples/windowed_app), and [`native_app`](examples/native_app) (gems compiled from source).
+- [`doc/contributors/adr/`](doc/contributors/adr): the decisions behind each behavior. For app developers, start with [ADR 005](doc/contributors/adr/005.md) (which program ships, with which gems), [ADR 008](doc/contributors/adr/008.md) (windowed apps and identity), [ADR 010](doc/contributors/adr/010.md) (building on each platform), [ADR 012](doc/contributors/adr/012.md) (phones), and [ADR 016](doc/contributors/adr/016.md) (signing).
+- [CHANGELOG.md](CHANGELOG.md): what changed in each release.
 
-`bundle exec rake runtime` builds this computer's runtime into `tmp/runtime/` from the sources pinned in `runtime/sources.yml`, with the release assets that describe it beside it, and `FLEDGE_RUNTIME_DIR=tmp/runtime` makes `fledge build` use it; it needs a C compiler, and on Linux `make`, `perl`, and `patchelf`; the Linux runtime carries AppImage's released runtime, and the Windows runtime NSIS's release and rcedit, each downloaded and checked against its pinned SHA-256. `bundle exec rake "runtime[x64-mingw-ucrt]"` builds the Windows runtime on macOS or Linux, with a pinned llvm-mingw it downloads; it needs `gpgv` (GnuPG), to check RubyInstaller's signature, `7z` or `bsdtar`, and `zstd`, which unpacks the `llvm-readobj` the runtime carries from LLVM's release. With a runtime there, `bundle exec rake test` also builds `examples/hello` and `examples/my_cool_app` (downloading its gems) and runs them in a clean and a hostile environment, and `bundle exec rake parity` builds the probe in `test/fixtures/parity` and compares what it sees with `ruby main.rb` on the Ruby the runtime came from, then builds it as `examples/my_cool_app`'s program and compares it with `bundle exec` ([ADR 003](doc/contributors/adr/003.md), [ADR 005](doc/contributors/adr/005.md)). The launcher's C is in `runtime/launcher/`.
+No guides exist yet. For what is coming, read [Plan 003](doc/contributors/plan/003.md) and the [handoff](doc/contributors/handoff.md), which says where the work stands.
 
-GitHub Actions runs `.github/workflows/ci.yml` on every push and pull request. The **Gate** job runs `bundle exec rake` on Linux and fails if the gate changed a file. The **Runtime** jobs build a runtime on macOS 15 (Apple Silicon), Ubuntu 24.04, and Ubuntu 24.04 on arm64, and the Windows runtime, whose launcher a pinned llvm-mingw cross-compiles, on Ubuntu 24.04, each with its build-only companion of Ruby's headers and libraries. The **Test** jobs run the tests and the parity check on each platform, Windows included, with its runtime. The **Build** jobs build `examples/hello`, `examples/my_cool_app`, `examples/windowed_app`, the parity probes, and `examples/native_app` (redcarpet, compiled from source, ferro-idna, a Rust gem from git, ratatui_ruby, and spreadsheet) on a runner of each platform, as a developer on that platform would, and `examples/nokogiri_app` on macOS and Windows; and the **Delivery** jobs run each on a fresh runner, and in Debian 13 containers with no Ruby installed, with `.github/scripts/deliver.sh`, or on Windows `.github/scripts/deliver.ps1`, and the windowed app with `.github/scripts/deliver-windowed.sh` (codesign, plutil, and `open -W` on macOS, desktop-file-validate on Linux) and `deliver-windowed.ps1` (its version information, icon, subsystem, and AppUserModelID on Windows), and its installers: `deliver-dmg.sh` attaches the disk image, verifies the bundle in it, drags it to an Applications folder, and runs it; `deliver-installer.ps1` installs the setup program silently, reads back its Start menu shortcut's AppUserModelID through the shell's IPropertyStore, starts the app from that shortcut, checks the app's own AppUserModelID matches, reinstalls, and uninstalls; and `deliver-appimage.sh` runs the AppImage mounted with FUSE on Ubuntu, and in Debian containers, with no FUSE, checks that it says so and runs it extracted with `APPIMAGE_EXTRACT_AND_RUN=1`. `deliver-console.sh` runs the console probe (`test/fixtures/console`) in a pseudo-terminal of its own and ends it with Ctrl-C and with a hangup, and `deliver-console.ps1` in a console of its own on two code pages, ended with Ctrl-C, closes its pseudoconsole as a closing window does, and types the windowed app into a console; each requires what Ruby itself does, which the Test jobs check with `ruby main.rb` ([ADR 015](doc/contributors/adr/015.md)). For musl Linux ([ADR 017](doc/contributors/adr/017.md)), **Runtime** jobs build Ruby from its pinned source in Alpine on a runner of each architecture, **Parity** checks it as on every platform, **Build** builds the examples in Alpine with Ruby, and **Delivery** runs them, the console probe, the desktop entry, and the AppImage in a bare `alpine:3.24` with no Ruby. For Windows on ARM64 ([ADR 018](doc/contributors/adr/018.md)), the runtime builds on Linux as x64's does, and the **Test**, **Build**, **Delivery**, and **Replace GMP** jobs run natively on `windows-11-arm`. Every runtime build runs the license audit (`tasks/license_audit.rb`, against `runtime/licenses.yml`), and refuses to archive a runtime that breaks the policy. The **Licenses** jobs validate each runtime's SBOM with the SPDX tools and prove the audit still fails when a GPL library and a GPL gem are slipped in; the **Licenses of the whole upstream tree** jobs audit rv-ruby's and RubyInstaller's whole trees, which must fail exactly as `.github/license-expectations/` says; **Licensing page is current** regenerates `doc/licensing.md` from the four runtimes (`bundle exec rake "licensing[DIR]"` does it locally) and fails if it differs; and **Replace libcrypt** and **Replace GMP** prove that whoever receives an app can replace its LGPL libraries. A release is two commits (ADR 014): the release commit, whose CI builds the runtimes, and on it a commit that pins their SHA-256s in `lib/fledge/SHA256SUMS` (`bundle exec rake runtime:pin`), which is tagged. `.github/workflows/release.yml` publishes the runtimes the release commit's CI built, their SBOMs and NOTICES, and the source bundles, each checked against those pins, with the pins as the release's `SHA256SUMS`, when a `v*` tag is pushed, then `.github/workflows/installed.yml` installs Fledge from that tag on a fresh runner of each platform and builds and delivers the examples, and installs the windowed app's installer, with what it downloads from the release.
+## Contributing
 
-Contributors, people and agents alike, start with [AGENTS.md](AGENTS.md) and the [documentation style guide](doc/contributors/documentation_style.md). The maintainer's decisions are in [doc/contributors/decisions.md](doc/contributors/decisions.md), open questions in [doc/contributors/questions.md](doc/contributors/questions.md), where things stand in [the handoff](doc/contributors/handoff.md), and the rest of the road to 1.0 in [Plan 003](doc/contributors/plan/003.md).
-
-## Copyright & License
-
-Fledge is copyright 2026, Kerrick Long. The code is [AGPL-3.0-or-later](LICENSES/AGPL-3.0-or-later.txt), the launcher and the other files Fledge copies into your app included, the documentation is [CC-BY-SA-4.0](LICENSES/CC-BY-SA-4.0.txt), and code examples in the documentation are [MIT-0](LICENSES/MIT-0.txt). Code adapted from elsewhere, such as Ruby's own `main.c`, keeps its source's license, marked with SPDX snippets. A commercial license is likely to be offered for apps that don't want to follow the AGPL. Each built app carries the licenses of the Ruby and libraries inside it in `notices/NOTICES.txt`, and [doc/licensing.md](doc/licensing.md) spells out, per platform, what each asks of you. Ask your own lawyer what any license requires of you.
+Agents and people working on Fledge start with [AGENTS.md](AGENTS.md), then [`doc/contributors/`](doc/contributors): the handoff, the plans, the ADRs, and the [documentation style guide](doc/contributors/documentation_style.md). `bundle exec rake` runs the full gate. Issues are turned off on the GitHub repository for now.

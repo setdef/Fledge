@@ -19,3 +19,6 @@
 *.exe
 # The compiled files the tests read (test/fixtures/binaries/build.rb).
 !/test/fixtures/binaries/*
+
+# Claude Code worktrees and local settings
+/.claude/

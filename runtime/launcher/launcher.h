@@ -69,11 +69,31 @@ struct fledge_config {
 };
 
 /*
- * Reads fledge.cfg's NUL-terminated text, changing it in place, into
- * config, whose strings point into text. Returns 0, or -1 with problem
- * set to what is wrong, as words that follow "fledge.cfg ".
+ * What fledge_parse_config returns when fledge.cfg holds a section for
+ * each of several programs, and none for this one (ADR 024).
  */
-int fledge_parse_config(char *text, struct fledge_config *config, const char **problem);
+enum { FLEDGE_CONFIG_NO_PROGRAM = 1 };
+
+/*
+ * Whether two program names are the same, as same_name compares them:
+ * ignoring case, as the file systems of Windows and macOS do.
+ */
+typedef int (*fledge_same_name)(const char *one, const char *other);
+
+/* The names compared byte by byte, ignoring ASCII case (config.c). */
+int fledge_same_ascii_name(const char *one, const char *other);
+
+/*
+ * Reads fledge.cfg's NUL-terminated text, changing it in place, into
+ * config, whose strings point into text. A file of several programs has
+ * a section for each, headed [NAME]; this reads the one whose NAME is
+ * program, as same_name compares them, or none when program is NULL.
+ * Returns 0; FLEDGE_CONFIG_NO_PROGRAM when the file has sections and
+ * none is program's; or -1 with problem set to what is wrong, as words
+ * that follow "fledge.cfg ".
+ */
+int fledge_parse_config(char *text, const char *program, fledge_same_name same_name, struct fledge_config *config,
+                        const char **problem);
 
 #ifndef _WIN32
 /*

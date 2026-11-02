@@ -17,11 +17,11 @@ module Fledge
     # runtime, and one whose files the app's own would collide with.
     class RuntimeFolder # :nodoc:
       # Unpacks the runtime archive at +path+ into +work+, for
-      # +platform+'s app named +app_name+.
-      def initialize(path, platform:, app_name:, work:)
+      # +platform+'s app whose programs are named +app_names+.
+      def initialize(path, platform:, app_names:, work:)
         @path = path
         @platform = platform
-        @app_name = app_name
+        @app_names = app_names
         unpacked = Archive.unpack(path, into: File.join(work, "runtime"))
         tops = Dir.children(unpacked).sort
         raise Error, "#{path} is not a Fledge runtime: it holds both #{tops[0]}/ and #{tops[1]}" if tops.size > 1
@@ -61,9 +61,10 @@ module Fledge
       private def check(name)
         raise Error, "#{@path} is not a Fledge runtime: it holds an app folder" if name == "app"
         raise Error, "#{@path} is not a Fledge runtime: it holds a #{CONFIG}" if name == CONFIG
-        return unless name.casecmp?(@platform.executable(@app_name))
+        taken = @app_names.find { |app_name| name.casecmp?(@platform.executable(app_name)) }
+        return unless taken
 
-        raise Error, "an app named #{@app_name} would collide with the runtime's #{name}. Give it another name."
+        raise Error, "an app named #{taken} would collide with the runtime's #{name}. Give it another name."
       end
     end
   end

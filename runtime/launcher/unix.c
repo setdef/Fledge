@@ -32,6 +32,8 @@
  *   1. It finds the folder it lives in (fledge_executable_path, one file
  *      per operating system), and reads fledge.cfg there, which names the
  *      program in app/ to run, ENTRY, and the app's Gemfile, if it has one.
+ *      In an app of several programs, each a copy of this launcher, it
+ *      reads the section of fledge.cfg named as its own file is (ADR 024).
  *   2. It sets aside every environment variable through which a Ruby
  *      that happens to be installed on the computer could change how
  *      Ruby boots: RUBYOPT, RUBYLIB, GEM_HOME, BUNDLE_GEMFILE, and the
@@ -368,7 +370,11 @@ read_config(void)
     if (size == sizeof text - 1 || memchr(text, '\0', size) != NULL)
         fail("this app is damaged: %s is not a fledge.cfg", path);
     text[size] = '\0';
-    if (fledge_parse_config(text, &app_config, &problem) != 0) fail("this app is damaged: %s %s", path, problem);
+    int parsed = fledge_parse_config(text, program_name, fledge_same_ascii_name, &app_config, &problem);
+    if (parsed == FLEDGE_CONFIG_NO_PROGRAM) {
+        fail_with(FLEDGE_EXIT_NO_APP, "this app is incomplete: %s has no program named %s", path, program_name);
+    }
+    if (parsed != 0) fail("this app is damaged: %s %s", path, problem);
 }
 
 /* Ruby's argument vector, built in main and handed to ruby_options. */

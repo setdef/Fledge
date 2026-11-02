@@ -103,7 +103,8 @@ module Fledge
         app = App.at(options.path)
         host = Platform.local(@host)
         phone = MobilePlatform.find(options.phone.to_s)
-        phone ? build_project(app, phone, host, options.out) : build(app, host, options.out, Signing.for(host, options.sign, env: @env))
+        # A phone's app runs one program: App#main (ADR 024, section 6).
+        phone ? build_project(app.with(programs: [app.main]), phone, host, options.out) : build(app, host, options.out, Signing.for(host, options.sign, env: @env))
         0
       rescue UsageError
         raise

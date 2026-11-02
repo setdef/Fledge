@@ -12,6 +12,7 @@ module Fledge
     DEFAULT_INSTALLERS: Array[String]
     IDENTIFIER: Regexp
     IDENTIFIER_MAX: Integer
+    PER_PROGRAM: Array[String]
 
     attr_reader name: String?
     attr_reader kind: String?
@@ -21,8 +22,9 @@ module Fledge
     attr_reader publisher: String?
     attr_reader copyright: String?
     attr_reader installers: Array[String]?
+    attr_reader programs: Array[Config::Program]?
 
-    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?, programs: Array[Config::Program]?) -> instance
 
     def self.none: () -> Config
 
@@ -32,15 +34,23 @@ module Fledge
 
     private def self.from: (Object data, String path) -> Config
 
-    private def self.text: (Hash[Object, Object] data, String key, String path, String example) -> String?
+    def for_program: (Config::Program program) -> Config
 
-    private def self.kind: (Hash[Object, Object] data, String path) -> String?
+    private def self.programs: (Hash[Object, Object] data, String path) -> Array[Config::Program]?
 
-    private def self.identifier: (Hash[Object, Object] data, String path) -> String?
+    private def self.unique: (Array[Config::Program] programs, String path, String what) { (Config::Program) -> String } -> void
+
+    private def self.windowed?: (Hash[Object, Object] data) -> bool
+
+    def self.text: (Hash[Object, Object] data, String key, String path, String example) -> String?
+
+    def self.kind: (Hash[Object, Object] data, String path) -> String?
+
+    def self.identifier: (Hash[Object, Object] data, String path) -> String?
 
     private def self.version: (Hash[Object, Object] data, String path) -> String?
 
-    private def self.icon: (Hash[Object, Object] data, String path) -> String?
+    def self.icon: (Hash[Object, Object] data, String path) -> String?
 
     private def self.installers: (Hash[Object, Object] data, String path) -> Array[String]?
   end

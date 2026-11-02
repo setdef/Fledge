@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# Shared Save's console program: prints each entry of the save at the
+# path it is given, one JSON line each, oldest first, then adds its own.
+#
+#   bin/shared-save SAVE
+
+require_relative "../lib/shared_save"
+
+save = ARGV.fetch(0) { abort "usage: shared-save SAVE" }
+SharedSave.entries(save).each { |entry| puts JSON.generate(entry) }
+SharedSave.record(save, "shared-save")

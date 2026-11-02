@@ -112,6 +112,25 @@ module Fledge
       File.join(path, "Contents", "Resources")
     end
 
+    # Where the bundle's programs go: <tt>Contents/MacOS</tt>, which holds
+    # its own program and any console program that shares its runtime
+    # (ADR 024), as a bundle's helper tools do.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   bundle.executables # => "dist/MyApp-arm64-darwin/MyApp.app/Contents/MacOS"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def executables
+      File.join(path, "Contents", "MacOS")
+    end
+
     # The keys of the bundle's <tt>Info.plist</tt>: those Apple's
     # Information Property List reference requires of a macOS app, its
     # identity, the oldest macOS its runtime runs on
@@ -173,8 +192,10 @@ module Fledge
     # Puts the launcher at +launcher+ into the bundle as its program,
     # writes <tt>Info.plist</tt>, the icon, and the links in +MacOS+, and
     # signs the bundle: ad hoc, or with +signing+'s identity
-    # (Fledge::MacSigning#sign_bundle). Comes last: the signature seals
-    # everything else. Raises Fledge::Error when plutil or codesign fails.
+    # (Fledge::MacSigning#sign_bundle), which signs each of +helpers+, the
+    # console programs already in #executables, first. Comes last: the
+    # signature seals everything else. Raises Fledge::Error when plutil or
+    # codesign fails.
     #
     # === Example
     #
@@ -187,8 +208,8 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def finish(launcher, signing: nil)
-      macos = File.join(path, "Contents", "MacOS")
+    def finish(launcher, helpers: [], signing: nil)
+      macos = executables
       FileUtils.mkdir_p(macos)
       LINKED.each do |name|
         File.symlink(File.join("..", "Resources", name), File.join(macos, name)) if File.exist?(File.join(resources, name))
@@ -197,7 +218,7 @@ module Fledge
       write_info_plist
       icon = @identity.icon
       FileUtils.cp(icon.file("icns"), File.join(resources, icon_file)) if icon
-      return signing.sign_bundle(path, identifier: @identity.identifier.to_s) if signing
+      return signing.sign_bundle(path, identifier: @identity.identifier.to_s, helpers:) if signing
 
       Command.run("codesign", "--force", "--sign", "-", "--identifier", @identity.identifier.to_s, path, install: INSTALL)
     end

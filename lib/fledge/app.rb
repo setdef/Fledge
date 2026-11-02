@@ -54,21 +54,16 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class App < Data.define(:root, :entry, :name, :gemfile, :config, :identity)
+  class App < Data.define(:root, :name, :gemfile, :config, :programs)
     ##
     # :attr_reader: root
     # The project's root folder, as an absolute path. It ships as the
     # built app's +app+ folder.
 
     ##
-    # :attr_reader: entry
-    # The program the launcher runs, relative to #root, with <tt>/</tt>
-    # between folders.
-
-    ##
     # :attr_reader: name
-    # What the person who runs the app sees: the program's name, and the
-    # name of the folder and archive it ships in.
+    # What the person who runs the app sees: the name of the folder and
+    # archive it ships in, and for one program, the program's name.
 
     ##
     # :attr_reader: gemfile
@@ -80,9 +75,9 @@ module Fledge
     # The project's Fledge::Config.
 
     ##
-    # :attr_reader: identity
-    # The app's Fledge::Identity: its kind, identifier, version, publisher,
-    # copyright, and icon.
+    # :attr_reader: programs
+    # The App::Program list the app ships, in the folder they share: one,
+    # or each of those <tt>fledge.yml</tt> lists (ADR 024).
 
     # What never ships, relative to the root: version control history,
     # Bundler's own settings for the developer's computer (.bundle), and
@@ -127,11 +122,43 @@ module Fledge
       end
 
       gemspec = gemspec_in(root)
-      entry = File.directory?(full) ? default_entry(path, full, root, gemspec) : relative(full, root)
       config = Config.load(root)
+      gemfile = gemfile_in(root, gemspec)
+      return listed(path, full, root, config, gemspec, gemfile) if config.programs
+
+      entry = File.directory?(full) ? default_entry(path, full, root, gemspec) : relative(full, root)
       name = name_for(config, gemspec, root)
-      identity = Identity.from(config:, gemspec:, name:, root:)
-      new(root:, entry:, name:, gemfile: gemfile_in(root, gemspec), config:, identity:)
+      program = Program.new(name:, entry:, identity: Identity.from(config:, gemspec:, name:, root:))
+      new(root:, name:, gemfile:, config:, programs: [program])
+    end
+
+    # The app of a project whose <tt>fledge.yml</tt> lists its programs
+    # (ADR 024): every one, for a folder, named as the project is, or the
+    # one whose file +full+ is, named as it is.
+    private_class_method def self.listed(path, full, root, config, gemspec, gemfile) # :nodoc:
+      listed = config.programs.to_a
+      programs = listed.map { |program| program_of(program, root, config, gemspec) }
+      return new(root:, name: name_for(config, gemspec, root), gemfile:, config:, programs:) if File.directory?(full)
+
+      index = listed.index { |program| program.path == relative(full, root) }
+      if index.nil?
+        raise Error, "#{path} is not one of the programs #{File.join(root, Config::FILE)} lists. " \
+          "Build the project, or one of #{listed.map(&:path).join(', ')}."
+      end
+
+      program = programs.fetch(index)
+      new(root:, name: program.name, gemfile:, config: config.for_program(listed.fetch(index)), programs: [program])
+    end
+
+    # The App::Program that +program+, one of +config+'s, describes.
+    private_class_method def self.program_of(program, root, config, gemspec) # :nodoc:
+      file = File.join(root, Config::FILE)
+      unless File.file?(File.join(root, program.path))
+        raise Error, "#{file} lists the program #{program.path}, but the project has no such file. List the program you run, such as path: bin/cli."
+      end
+
+      name = valid_name(program.name, "#{file} names the program #{program.path} #{program.name.inspect}, but that")
+      Program.new(name:, entry: program.path, identity: Identity.from(config: config.for_program(program), gemspec:, name:, root:))
     end
 
     # The nearest folder, from +start+ up, that holds one of MARKERS or a
@@ -251,5 +278,61 @@ module Fledge
     def entries(skip: [])
       Entry.walk(root, skip: skip + NEVER_SHIPPED.map { |name| File.join(root, name) })
     end
+
+    # The program installers and phones show: the windowed one, or else
+    # the first (ADR 024).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::App.at("examples/programs").main.name # => "Shared Save"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def main
+      programs.find { |program| program.identity.windowed? } || programs.fetch(0)
+    end
+
+    # The file #main runs, relative to #root, with <tt>/</tt> between
+    # folders.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::App.at("bin/server").entry # => "bin/server"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def entry
+      main.entry
+    end
+
+    # The Fledge::Identity of #main: its name, kind, identifier, version,
+    # publisher, copyright, and icon.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::App.at("examples/windowed_app").identity.windowed? # => true
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def identity
+      main.identity
+    end
   end
 end
+
+require_relative "app/program"

@@ -20,7 +20,11 @@ module Fledge
   # itself to the person who runs it: whether it opens windows or runs in
   # a terminal, the identifier the operating system knows it by, its
   # icon, and its copyright (decision 18). A project that needs none of
-  # it needs no file.
+  # it needs no file. Nor can it know which of a project's programs ship
+  # together: list them under +programs+ (Config::Program), each with its
+  # own path, name, kind, identifier, and icon, and they ship as one
+  # folder that shares one runtime, one copy of the project, and one set
+  # of gems (ADR 024).
   #
   # This class reads <tt>fledge.yml</tt> from the project's root, a YAML
   # mapping as RuboCop's and Kamal's configuration are, checks each value,
@@ -66,7 +70,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers, :programs)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -104,14 +108,22 @@ module Fledge
     # The installers to build, from INSTALLERS, or +nil+ for every one a
     # windowed app's targets have (ADR 009).
 
+    ##
+    # :attr_reader: programs
+    # The project's programs (Config::Program), when it ships several
+    # from one folder, or +nil+ for the one program you build (ADR 024).
+
     # The file's name, in the project's root.
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright installers].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright installers programs].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, and installers"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, installers, and programs"
+
+    # The keys that, beside +programs+, belong to each program instead.
+    PER_PROGRAM = %w[kind identifier icon].freeze
 
     # The installers a windowed app may have: a disk image for macOS, an
     # NSIS setup program for Windows, an AppImage for Linux, and a
@@ -149,7 +161,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.none
-      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, installers: nil)
+      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, installers: nil, programs: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -194,14 +206,69 @@ module Fledge
         icon: icon(data, path),
         publisher: text(data, "publisher", path, "Example, Inc."),
         copyright: text(data, "copyright", path, "\"Copyright 2026 Example, Inc.\""),
-        installers: installers(data, path)
+        installers: installers(data, path),
+        programs: programs(data, path)
       )
+    end
+
+    # The configuration of +program+, one of #programs: its name, kind,
+    # identifier, and icon, with the project's version, publisher,
+    # copyright, and installers, and no programs of its own.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   config = Fledge::Config.load("examples/programs")
+    #   config.for_program(config.programs.first).kind # => "windowed"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def for_program(program)
+      with(name: program.name, kind: program.kind, identifier: program.identifier, icon: program.icon, programs: nil)
+    end
+
+    # The programs under +programs+ (ADR 024): a list of at least one,
+    # with names and identifiers no two share, at most one windowed, and
+    # no kind, identifier, or icon beside them, which belong to each
+    # program.
+    private_class_method def self.programs(data, path) # :nodoc:
+      value = data["programs"]
+      return nil if value.nil?
+      unless value.is_a?(Array) && !value.empty?
+        raise Error, "#{path}: programs must be a list of at least one program, each a mapping such as - path: bin/cli"
+      end
+
+      misplaced = PER_PROGRAM.find { |key| !data[key].nil? }
+      raise Error, "#{path}: with programs, #{misplaced} belongs to each program; move it into the program it describes" if misplaced
+
+      programs = value.each_with_index.map { |item, index| Program.from(item, index + 1, path) }
+      unique(programs, path, "named", &:name)
+      unique(programs.select(&:identifier), path, "identified as") { |program| program.identifier.to_s }
+      windowed = programs.select(&:windowed?)
+      return programs if windowed.size < 2
+
+      raise Error, "#{path}: #{windowed.map(&:path).join(' and ')} are both windowed, and a project has one windowed program; " \
+        "build another on its own, with fledge build #{windowed.last&.path}"
+    end
+
+    # Refuses two of +programs+ for which the block gives the same text,
+    # ignoring case, as Windows' and macOS's file systems do.
+    private_class_method def self.unique(programs, path, what, &value) # :nodoc:
+      programs.group_by { |program| value.call(program).downcase }.each_value do |same|
+        next if same.size < 2
+
+        raise Error, "#{path}: #{same.map(&:path).join(' and ')} are both #{what} #{value.call(same.first)}; give each its own"
+      end
     end
 
     # The icon's path without an extension, as Briefcase's +icon+ is.
     # One that ends in an icon's extension, as 0.0.1.pre.7's one PNG did,
     # is refused with what to write instead.
-    private_class_method def self.icon(data, path) # :nodoc:
+    def self.icon(data, path) # :nodoc:
       value = text(data, "icon", path, "icons/app")
       return value unless value&.match?(/\.(?:png|icns|ico)\z/i)
 
@@ -223,14 +290,25 @@ module Fledge
 
       unknown = value - INSTALLERS
       raise Error, "#{path}: installers has #{unknown.join(', ')}, which Fledge does not build. It builds #{known}." unless unknown.empty?
-      if !value.empty? && data["kind"] != "windowed"
+      if !value.empty? && !windowed?(data)
         raise Error, "#{path}: only a windowed app has installers; a console app ships as its archive, so leave out installers"
       end
 
       value.uniq
     end
 
-    private_class_method def self.text(data, key, path, example) # :nodoc:
+    # Whether the app, or one of its programs, is windowed.
+    private_class_method def self.windowed?(data) # :nodoc:
+      programs = data["programs"]
+      return data["kind"] == "windowed" unless programs.is_a?(Array)
+
+      programs.any? { |item| item.is_a?(Hash) && item["kind"] == "windowed" }
+    end
+
+    # The text at +key+ in +data+, or +nil+ when there is none. Raises
+    # Fledge::Error, beginning with +path+ and suggesting +example+, for
+    # anything else. Config::Program reads its keys with it too.
+    def self.text(data, key, path, example) # :nodoc:
       value = data[key]
       return nil if value.nil?
       raise Error, "#{path}: #{key} must be text, such as #{key}: #{example}" unless value.is_a?(String) && !value.strip.empty?
@@ -238,14 +316,16 @@ module Fledge
       value
     end
 
-    private_class_method def self.kind(data, path) # :nodoc:
+    # The kind at +data+'s +kind+, one of KINDS, or +nil+.
+    def self.kind(data, path) # :nodoc:
       value = text(data, "kind", path, "windowed")
       return value if value.nil? || KINDS.include?(value)
 
       raise Error, "#{path}: kind must be console or windowed, not #{value}"
     end
 
-    private_class_method def self.identifier(data, path) # :nodoc:
+    # The reverse-DNS identifier at +data+'s +identifier+, or +nil+.
+    def self.identifier(data, path) # :nodoc:
       value = text(data, "identifier", path, "com.example.MyCoolApp")
       return value if value.nil? || (value.match?(IDENTIFIER) && value.length <= IDENTIFIER_MAX)
 
@@ -268,3 +348,5 @@ module Fledge
     end
   end
 end
+
+require_relative "config/program"

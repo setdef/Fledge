@@ -27,6 +27,26 @@
  * Fledge, so a key this launcher does not know means the file is
  * damaged, and it is refused, as is a path that leaves the app folder
  * and an identifier with any other character.
+ *
+ * An app of several programs (ADR 024) is several copies of the
+ * launcher, each renamed to its program's name, sharing one fledge.cfg.
+ * Its Gemfile stays at the top, and each program has a section, headed
+ * by its name, as an INI file heads one:
+ *
+ *   # Written by fledge build: what this app's programs run (ADR 024).
+ *   gemfile = Gemfile
+ *
+ *   [Deckbuilder]
+ *   entry = gui/main.rb
+ *   identifier = com.example.Deckbuilder
+ *
+ *   [deckbuilder-cli]
+ *   entry = bin/cli
+ *
+ * Each copy reads the section whose name is its own file's name. A
+ * section holds only entry and identifier, and a file with sections
+ * holds neither outside them. A copy renamed by hand finds no section,
+ * which is a missing input, as a missing entry is.
  */
 
 #include "launcher.h"
@@ -83,8 +103,26 @@ safe_identifier(const char *identifier)
 }
 
 int
-fledge_parse_config(char *text, struct fledge_config *config, const char **problem)
+fledge_same_ascii_name(const char *one, const char *other)
 {
+    for (;; one++, other++) {
+        char a = *one >= 'A' && *one <= 'Z' ? (char)(*one - 'A' + 'a') : *one;
+        char b = *other >= 'A' && *other <= 'Z' ? (char)(*other - 'A' + 'a') : *other;
+        if (a != b) return 0;
+        if (a == '\0') return 1;
+    }
+}
+
+int
+fledge_parse_config(char *text, const char *program, fledge_same_name same_name, struct fledge_config *config,
+                    const char **problem)
+{
+    /* Whether the file has sections, whether the last heading was this
+     * program's, and whether any was. */
+    int sectioned = 0;
+    int mine = 0;
+    int found = 0;
+
     config->entry = NULL;
     config->gemfile = NULL;
     config->identifier = NULL;
@@ -97,6 +135,23 @@ fledge_parse_config(char *text, struct fledge_config *config, const char **probl
         char *content = trim(line);
         line = newline != NULL ? newline + 1 : NULL;
         if (*content == '\0' || *content == '#') continue;
+
+        if (*content == '[') {
+            size_t length = strlen(content);
+            if (length < 3 || content[length - 1] != ']') {
+                *problem = "has a section heading that is not [NAME]";
+                return -1;
+            }
+            if (!sectioned && (config->entry != NULL || config->identifier != NULL)) {
+                *problem = "names an entry or identifier outside its programs' sections";
+                return -1;
+            }
+            content[length - 1] = '\0';
+            sectioned = 1;
+            mine = program != NULL && same_name(content + 1, program);
+            found = found || mine;
+            continue;
+        }
 
         char *equals = strchr(content, '=');
         if (equals == NULL) {
@@ -112,16 +167,16 @@ fledge_parse_config(char *text, struct fledge_config *config, const char **probl
         if (strcmp(key, "entry") == 0) {
             slot = &config->entry;
         } else if (strcmp(key, "gemfile") == 0) {
+            if (sectioned) {
+                *problem = "names a gemfile inside a program's section";
+                return -1;
+            }
             slot = &config->gemfile;
         } else if (strcmp(key, "identifier") == 0) {
             slot = &config->identifier;
             is_path = 0;
         } else {
             *problem = "has a key this app's program does not know";
-            return -1;
-        }
-        if (*slot != NULL) {
-            *problem = "names the same key twice";
             return -1;
         }
         if (is_path && !safe_path(value)) {
@@ -132,9 +187,15 @@ fledge_parse_config(char *text, struct fledge_config *config, const char **probl
             *problem = "has an identifier that is not reverse-DNS";
             return -1;
         }
+        if (sectioned && !mine) continue;
+        if (*slot != NULL) {
+            *problem = "names the same key twice";
+            return -1;
+        }
         *slot = value;
     }
 
+    if (sectioned && !found) return FLEDGE_CONFIG_NO_PROGRAM;
     if (config->entry == NULL) {
         *problem = "names no entry";
         return -1;

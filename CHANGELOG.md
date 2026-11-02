@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1.pre.17] - 2026-11-01
+
 ### Added
 
 - Gem servers that need a login, or that Bundler mirrors, work as under Bundler: `fledge build` asks each server through the mirror (`bundle config mirror.URL`) and with the login (`bundle config HOST USER:PASSWORD`, or one in the Gemfile's source URL) Bundler's settings give it, and a server that refuses the login fails the build with the gem's name and how to set one.
@@ -198,7 +200,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.16...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.0.1.pre.17...HEAD
+[0.0.1.pre.17]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.17
 [0.0.1.pre.16]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.16
 [0.0.1.pre.15]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.15
 [0.0.1.pre.14]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.14

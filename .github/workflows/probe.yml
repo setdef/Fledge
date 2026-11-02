@@ -42,7 +42,9 @@ jobs:
             export ANDROID_HOME="$HOME/android-sdk"
             echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
             mkdir -p "$ANDROID_HOME/cmdline-tools" "$RUNNER_TEMP/dl"
-            curl -fsSL -o "$RUNNER_TEMP/dl/t.zip" https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
+            os=linux
+            [ "$RUNNER_OS" = Windows ] && os=win
+            curl -fsSL -o "$RUNNER_TEMP/dl/t.zip" "https://dl.google.com/android/repository/commandlinetools-${os}-11076708_latest.zip"
             unzip -q "$RUNNER_TEMP/dl/t.zip" -d "$RUNNER_TEMP/dl"
             mv "$RUNNER_TEMP/dl/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
           fi

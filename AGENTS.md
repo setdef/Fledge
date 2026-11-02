@@ -34,6 +34,7 @@ Pre-1.0, zero external users. Prefer good design over backward compatibility; re
 - Proceed through the plan of record without checking in with the maintainer. Decide what is the agents' to decide (Questions, below), record it, and go on to the next story; come back to the maintainer only when truly blocked, and record what only the maintainer can answer in `questions.md` while the work proceeds on its default.
 - A session that orchestrates others delegates each story to a subagent and verifies what the subagent reports before passing it on: its commits with `git log` and `git show`, its CI runs and releases with `gh run view` and `gh release view`. A claim nobody checked is not reported as done.
 - A session that starts with no memory of earlier ones begins with `doc/contributors/handoff.md`, then the plan of record.
+- `doc/contributors/decisions.md` holds only the maintainer's meaningful decisions, the ones that shape what Fledge is or does. Corrections, wording changes, and asides go into the document they touch, not into that file, which would grow too long to read.
 - Messages to another project's agent session are brief: what is needed, from which file or commit, and nothing else.
 
 ## Ruby, RBS, and docs

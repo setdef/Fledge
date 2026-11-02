@@ -296,9 +296,13 @@ module Fledge
     # The linker flags in +text+, the <tt>$libs</tt> and
     # <tt>$LOCAL_LIBS</tt> an extconf.rb gave mkmf, that an app's link
     # needs: libraries (<tt>-l</tt>), their folders (<tt>-L</tt>), frameworks,
-    # and archives the gem built, whose relative paths are made absolute
-    # from +dir+, the folder it built them in. Compiler flags and the like
-    # are the extension's own, already compiled in. Each appears once.
+    # and static libraries, the gem's own or another's (SDL3's libSDL3.a),
+    # whose relative paths are made absolute from +dir+, the folder it
+    # built them in. Compiler flags and the like are the extension's own,
+    # already compiled in. Each appears once. A framework is one flag,
+    # <tt>-Wl,-framework,NAME</tt>, the form SDL3's sdl3.pc writes and
+    # clang passes to the linker, so that merging flags never parts a
+    # framework from its name.
     #
     # === Example
     #
@@ -308,7 +312,7 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::MobileExtensions.link_flags("-lz -framework Security ./libx.a -O2", dir: "/work")
-    #   # => ["-lz", "-framework", "Security", "/work/libx.a"]
+    #   # => ["-lz", "-Wl,-framework,Security", "/work/libx.a"]
     #--
     # SPDX-SnippetEnd
     #++
@@ -318,13 +322,97 @@ module Fledge
       until tokens.empty?
         token = tokens.shift.to_s
         case token
-        when "-framework", "-weak_framework" then units << [token, tokens.shift.to_s]
+        when "-framework", "-weak_framework" then units << ["-Wl,#{token},#{tokens.shift}"]
+        when /\A-Wl,-(?:weak_)?framework,[^,]+\z/ then units << [token]
         when /\A-L(.+)/ then units << ["-L#{File.expand_path(::Regexp.last_match(1).to_s, dir)}"]
         when /\A-l./ then units << [token]
         when /\.a\z/ then units << [File.expand_path(token, dir)]
         end
       end
       units.uniq.flatten
+    end
+
+    # What +target+ links of its extensions' +reports+, a TargetBuild: each
+    # extension's archive and then the static libraries its extconf.rb
+    # named, which are that target's alone (an iOS slice's libSDL3.a), as
+    # its archives; and the rest of the flags, which every target may
+    # share, once each.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   build = Fledge::MobileExtensions.target_build(target, reports)
+    #   build.archives # => ["/work/x/x.a", "/sdl/ios-arm64/lib/libSDL3.a"]
+    #   build.flags # => ["-Wl,-framework,UIKit", "-lm"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.target_build(target, reports)
+      archives = [] # : Array[String]
+      flags = [] # : Array[String]
+      reports.each do |report|
+        libraries, rest = report.flags.partition { |flag| flag.end_with?(".a") }
+        archives.push(report.archive, *libraries)
+        flags.concat(rest)
+      end
+      TargetBuild.new(target:, archives: archives.uniq, flags: flags.uniq, cxx: reports.any?(&:cxx))
+    end
+
+    # The shared libraries +flags+ link from the folders they name, each
+    # <tt>-lNAME</tt> found as <tt>libNAME.so</tt> in a <tt>-L</tt> folder,
+    # such as SDL3's <tt>libSDL3.so</tt>. An Android app loads native
+    # code only from the libraries its package holds, so these go into
+    # it beside <tt>libfledgeext.so</tt>; a name found in no such folder
+    # is the system's, as <tt>-llog</tt> is.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::MobileExtensions.shared_libraries(["-L/sdl/x86_64/lib", "-lSDL3", "-llog"])
+    #   # => ["/sdl/x86_64/lib/libSDL3.so"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.shared_libraries(flags)
+      folders = flags.filter_map { |flag| flag.delete_prefix("-L") if flag.start_with?("-L") }
+      flags.filter_map do |flag|
+        next unless flag.start_with?("-l")
+
+        folders.map { |folder| File.join(folder, "lib#{flag.delete_prefix('-l')}.so") }.find { |path| File.file?(path) }
+      end.uniq
+    end
+
+    # Copies the shared libraries +flags+ link (MobileExtensions.shared_libraries)
+    # into the folder +into+, an ABI's <tt>jniLibs</tt>, where the
+    # Android Gradle plugin packs them as it packs
+    # <tt>libfledgeext.so</tt>, and returns their copies' paths.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::MobileExtensions.carry_shared_libraries(["-L/sdl/x86_64/lib", "-lSDL3"], into: "src/main/jniLibs/x86_64")
+    #   # => ["src/main/jniLibs/x86_64/libSDL3.so"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.carry_shared_libraries(flags, into:)
+      shared_libraries(flags).map do |library|
+        copy = File.join(into, File.basename(library))
+        FileUtils.cp(library, copy)
+        copy
+      end
     end
 
     # Creates the compiler.
@@ -376,19 +464,12 @@ module Fledge
       targets = targets(tree, ndk)
       registrations = [] # : Array[[String, String]]
       builds = targets.to_h do |target|
-        archives = [] # : Array[String]
-        flags = [] # : Array[String]
-        cxx = false
-        registrations = [] # : Array[[String, String]]
+        reports = [] # : Array[Report]
         wanted.each do |gem, package|
-          compile(target, gem, package, @build_args.fetch(gem.name, []), registrations.size).each do |report|
-            archives << report.archive
-            flags.concat(report.flags)
-            cxx ||= report.cxx
-            registrations << [report.feature, report.init]
-          end
+          reports.concat(compile(target, gem, package, @build_args.fetch(gem.name, []), reports.size))
         end
-        [target.name, TargetBuild.new(target:, archives:, flags: flags.uniq, cxx:)]
+        registrations = reports.map { |report| [report.feature, report.init] }
+        [target.name, MobileExtensions.target_build(target, reports)]
       end
       Built.new(registrations:, targets: builds, ndk:)
     end

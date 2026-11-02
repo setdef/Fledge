@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# A path gem with a C extension that links SDL3 (ADR 025). fledge build
+# ios and fledge build android compile it for each phone's targets, with
+# the SDL3 builds that bundle config build.sdl_demo names.
+source "https://rubygems.org"
+
+gem "sdl_demo", path: "gems/sdl_demo"

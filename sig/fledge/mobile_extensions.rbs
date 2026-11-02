@@ -69,6 +69,12 @@ module Fledge
 
     def self.link_flags: (String text, dir: String) -> Array[String]
 
+    def self.target_build: (Target target, Array[Report] reports) -> TargetBuild
+
+    def self.shared_libraries: (Array[String] flags) -> Array[String]
+
+    def self.carry_shared_libraries: (Array[String] flags, into: String) -> Array[String]
+
     def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, ?env: Runtimes::_Env) -> void
 
     def call: (String tree) -> Built

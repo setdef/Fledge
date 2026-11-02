@@ -22,8 +22,9 @@
 # lib/fledge/SHA256SUMS. fledge build at that version downloads its
 # runtimes from this release, by the names Fledge::Runtimes gives them,
 # and checks each against the SHA-256 its own gem pins. A version with
-# "pre" in it (RubyGems' prerelease form, such as 0.0.1.pre.1) is marked
-# a prerelease.
+# "pre" in it (RubyGems' prerelease form, such as 0.0.1.pre.1, which
+# the versions before 0.1.0 had) is marked a prerelease; an ordinary
+# 0.MINOR.PATCH version, such as 0.1.0, is not.
 #
 # A release takes two commits (ADR 014), as Homebrew's bottles do: the
 # release commit, whose CI run on trunk builds the runtimes, and on it a

@@ -12,7 +12,7 @@ Read these next, in order: `AGENTS.md` (how to work here, and binding), `doc/con
 
 ## Where Fledge stands
 
-The latest release is [`v0.0.1.pre.17`](https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.17). Every release is a git tag and a GitHub Release carrying the prebuilt runtimes; Fledge is never published to RubyGems.org.
+The latest release is [`v0.1.0`](https://github.com/setdef/Fledge/releases/tag/v0.1.0); releases before it were `0.0.1.pre.N`, and versions are ordinary 0.MINOR.PATCH from `v0.1.0` on (decisions, 2026-11-02). Every release is a git tag and a GitHub Release carrying the prebuilt runtimes; Fledge is never published to RubyGems.org.
 
 `fledge build` builds an app on the computer it runs on, for that computer's platform, with that platform's own tools (ADR 010): `arm64-darwin`, `x86_64-linux`, `aarch64-linux`, `x86_64-linux-musl`, `aarch64-linux-musl`, `x64-mingw-ucrt`, and `aarch64-mingw-ucrt`. `fledge build ios` and `fledge build android` write an Xcode or Gradle project around the mobile runtimes for a pure-Ruby app (ADR 012).
 
@@ -27,6 +27,7 @@ Plan 001 (the walking skeleton) and Plan 002 (toward 1.0) are done. What each Pl
 - **Each target on its own system, with its own tools** (ADR 010 and ADR 013, `pre.8` and `pre.11`): Fledge's own format writers were replaced by maintained tools.
 - **musl Linux** (ADR 017, `pre.15`): Ruby built from source in Alpine.
 - **iOS, iPadOS, and Android**, **Mobile runtimes**, **Mobile apps from fledge build** (ADR 011 and ADR 012, `pre.9` on): proven in the iOS Simulator and on x86-64 Android emulators.
+- **A `.deb` for windowed apps on glibc Linux** (ADR 021, `v0.1.0`): `dpkg-deb`, asked for with `installers: [appimage, deb]`, delivered by apt in Debian and Ubuntu containers.
 - **Windows on ARM** (ADR 018, `pre.16`): RubyInstaller's ARM64 Ruby, delivered natively on `windows-11-arm`.
 - **Ctrl-C and the console** (ADR 015, `pre.13`; closing a Windows console, proven through a pseudoconsole, `pre.17`).
 - **The gems real apps lock** (ADR 020, `pre.17`): credentialed and mirrored gem servers, git submodules, path gems outside the project and with extensions, Bundler's optional groups, and gems' executables in the runtime's `bin/`; `examples/real_gems` needs a loopback mirror (`.github/scripts/gem-mirror.rb`) and a fixture branch, `experiment/submodule-gem`, which must stay.

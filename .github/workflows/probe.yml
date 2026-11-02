@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04-arm, macos-15, macos-26, windows-11-arm]
+        os: [ubuntu-24.04-arm, windows-11-arm]
     steps:
       - name: Find the Android SDK
         run: |
@@ -52,7 +52,12 @@ jobs:
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           [ -e "$sdk" ] || sdk="$sdk.bat"
           yes | "$sdk" --licenses >/dev/null || true
-          "$sdk" "emulator" "platform-tools" "system-images;android-36;google_apis;arm64-v8a" 2>&1 | tail -15
+          for ch in 0 1 2 3; do
+            echo "--- channel $ch"
+            "$sdk" --channel=$ch --list 2>&1 | grep -i -E "^ *emulator|Loading|Warning|Error" | head -5
+          done
+          "$sdk" --channel=3 emulator 2>&1 | tail -5
+          "$sdk" --channel=3 "emulator" "platform-tools" "system-images;android-36;google_apis;arm64-v8a" 2>&1 | tail -15
           ls "$ANDROID_HOME/emulator" | head -30
 
       - name: Ask the emulator about acceleration
@@ -70,7 +75,7 @@ jobs:
           avd="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
           [ -e "$avd" ] || avd="$avd.bat"
           echo no | "$avd" create avd -n probe -k "system-images;android-36;google_apis;arm64-v8a" --force
-          "$ANDROID_HOME/emulator/emulator" -avd probe -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -verbose > emulator.log 2>&1 &
+          "$ANDROID_HOME/emulator/emulator" -avd probe -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -accel off -verbose > emulator.log 2>&1 &
           pid=$!
           start=$SECONDS
           export PATH="$ANDROID_HOME/platform-tools:$PATH"

@@ -67,8 +67,6 @@ module Fledge
 
     private def self.c_string: (String text) -> String
 
-    def self.link_flags: (String text, dir: String) -> Array[String]
-
     def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, ?env: Runtimes::_Env) -> void
 
     def call: (String tree) -> Built

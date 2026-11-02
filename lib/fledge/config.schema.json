@@ -54,9 +54,64 @@
         "enum": ["dmg", "nsis", "appimage", "deb"]
       },
       "default": ["dmg", "nsis", "appimage"]
+    },
+    "programs": {
+      "description": "The programs the project ships in one folder, sharing one runtime, one copy of the project, and one set of gems, such as a windowed game and its command line (default: the one program you build). Each has a path, and a name, kind, identifier, and icon of its own; at most one is windowed, and no two share a name or an identifier. With programs, kind, identifier, and icon belong to each program, and name, version, publisher, copyright, and installers to the project.",
+      "type": ["array", "null"],
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": {
+            "description": "The program's file, relative to the project's root, with / between folders, such as bin/cli or gui/main.rb.",
+            "type": "string",
+            "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
+          },
+          "name": {
+            "description": "The program's name, its file's name in the built folder, and what people see (default: its path's file name without the extension, such as cli for bin/cli).",
+            "type": ["string", "null"],
+            "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
+          },
+          "kind": {
+            "description": "console (default), a program that runs in a terminal, or windowed, one that opens its own windows and gets the project's installers.",
+            "type": ["string", "null"],
+            "enum": ["console", "windowed", null],
+            "default": "console"
+          },
+          "identifier": {
+            "$ref": "#/properties/identifier"
+          },
+          "icon": {
+            "$ref": "#/properties/icon"
+          }
+        },
+        "if": {
+          "properties": { "kind": { "const": "windowed" } },
+          "required": ["kind"]
+        },
+        "then": {
+          "properties": { "identifier": { "type": "string" } },
+          "required": ["identifier"]
+        }
+      }
     }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": { "programs": { "type": "array" } },
+        "required": ["programs"]
+      },
+      "then": {
+        "properties": {
+          "kind": { "type": "null" },
+          "identifier": { "type": "null" },
+          "icon": { "type": "null" }
+        }
+      }
+    },
     {
       "if": {
         "properties": { "kind": { "const": "windowed" } },
@@ -73,8 +128,24 @@
         "required": ["installers"]
       },
       "then": {
-        "properties": { "kind": { "const": "windowed" } },
-        "required": ["kind"]
+        "anyOf": [
+          {
+            "properties": { "kind": { "const": "windowed" } },
+            "required": ["kind"]
+          },
+          {
+            "properties": {
+              "programs": {
+                "type": "array",
+                "contains": {
+                  "properties": { "kind": { "const": "windowed" } },
+                  "required": ["kind"]
+                }
+              }
+            },
+            "required": ["programs"]
+          }
+        ]
       }
     }
   ]

@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class App
+    class Program < Data
+      attr_reader name: String
+      attr_reader entry: String
+      attr_reader identity: Identity
+
+      def self.new: (name: String, entry: String, identity: Identity) -> instance
+    end
+  end
+end

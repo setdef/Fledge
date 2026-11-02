@@ -29,21 +29,23 @@ module Fledge
 
     def self.launch_config: (App app) -> String
 
+    private def self.single_config: (App app) -> String
+
     private def self.config_value: (String path) -> String
 
     def self.app_entries: (App app, Hash[String, String] app_files, skip: Array[String]) -> Array[Entry]
 
     private def build: () -> String
 
-    private def place_launcher: (String launcher, String? tools) -> void
+    private def place_launcher: (RuntimeFolder runtime, App::Program program, String? tools, ?into: String) -> String
 
     private def add: (String root, Entry entry) -> void
 
-    private def finish: (MacBundle? bundle, String launcher, String? tools) -> void
+    private def finish: (MacBundle? bundle, RuntimeFolder runtime, String? tools) -> void
 
     private def mac_signing: () -> MacSigning?
 
-    private def launcher_name: () -> String
+    private def launcher_name: (App::Program program) -> String
 
     private def folder: () -> String
 

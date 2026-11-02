@@ -36,7 +36,7 @@ class ConfigTest < Minitest::Test
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil), config
+      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil, programs: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
   end
@@ -54,10 +54,10 @@ class ConfigTest < Minitest::Test
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, copyright, and installers."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, installers, and programs."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, and installers\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, installers, and programs\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -82,5 +82,82 @@ class ConfigTest < Minitest::Test
       assert_match message, error.message, yaml
       assert_includes error.message, "fledge.yml", yaml
     end
+  end
+
+  # ADR 024: programs lists each program's path, name, kind, identifier,
+  # and icon, in order; a name defaults to the path's file name without
+  # its extension.
+  def test_reads_a_projects_programs
+    config = load(<<~YAML)
+      name: MyGame
+      version: "1.0.0"
+      installers: [dmg]
+      programs:
+        - path: gui/main.rb
+          name: MyGame
+          kind: windowed
+          identifier: com.example.MyGame
+          icon: icons/deck
+        - path: bin/cli
+        - path: bin/tui.rb
+          name: my-game-tui
+    YAML
+
+    program = Fledge::Config::Program
+    assert_equal [
+      program.new(path: "gui/main.rb", name: "MyGame", kind: "windowed", identifier: "com.example.MyGame", icon: "icons/deck"),
+      program.new(path: "bin/cli", name: "cli", kind: nil, identifier: nil, icon: nil),
+      program.new(path: "bin/tui.rb", name: "my-game-tui", kind: nil, identifier: nil, icon: nil),
+    ], config.programs
+    assert_equal [true, false, false], config.programs.to_a.map(&:windowed?)
+    assert_equal %w[MyGame 1.0.0], [config.name, config.version]
+    assert_equal ["dmg"], config.installers
+  end
+
+  # A program's configuration is the project's with the program's own
+  # name, kind, identifier, and icon.
+  def test_a_programs_configuration_is_the_projects_with_its_own_identity
+    config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
+
+    assert_equal Fledge::Config.new(name: "w", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
+      publisher: "Me", copyright: nil, installers: nil, programs: nil), config.for_program(config.programs.to_a.first)
+  end
+
+  def test_refuses_programs_it_cannot_ship
+    {
+      "programs: []\n" => %r{: programs must be a list of at least one program, each a mapping such as - path: bin/cli\z},
+      "programs: bin/cli\n" => /: programs must be a list/,
+      "programs:\n  - bin/cli\n" => %r{: program 1 must be a mapping of path, name, kind, identifier, and icon, such as - path: bin/cli\z},
+      "programs:\n  - name: cli\n" => %r{: program 1 has no path, the program's file in the project, such as path: bin/cli\z},
+      "programs:\n  - path: a\n  - path: [b]\n" => %r{: program 2: path must be text, such as path: bin/cli\z},
+      "programs:\n  - path: ../elsewhere/cli\n" => %r{: program 1's path, "\.\./elsewhere/cli", must name a file in the project},
+      "programs:\n  - path: /usr/bin/cli\n" => %r{: program 1's path, "/usr/bin/cli", must name a file in the project},
+      "programs:\n  - path: bin\\\\cli\n" => /: program 1's path, .* must name a file in the project/,
+      "programs:\n  - path: \"bin/cli \"\n" => /: program 1's path, .* must name a file in the project/,
+      "programs:\n  - path: bin/cli\n    paht: x\n" => %r{: the program bin/cli has 'paht', which Fledge does not know\. A program knows path, name, kind, identifier, and icon\.\z},
+      "programs:\n  - path: bin/cli\n    kind: gui\n" => %r{: the program bin/cli: kind must be console or windowed, not gui\z},
+      "programs:\n  - path: bin/cli\n    identifier: cli\n" => %r{: the program bin/cli: identifier must be reverse-DNS},
+      "programs:\n  - path: bin/cli\n    icon: cli.png\n" => %r{: the program bin/cli: icon names the icon's files without an extension},
+      "programs:\n  - path: a/cli\n  - path: b/CLI.rb\n" => %r{: a/cli and b/CLI\.rb are both named cli; give each its own\z},
+      "programs:\n  - path: a\n    identifier: com.example.A\n  - path: b\n    identifier: com.example.a\n" =>
+        /: a and b are both identified as com\.example\.A; give each its own\z/,
+      "programs:\n  - path: a\n    kind: windowed\n    identifier: com.example.A\n  - path: b\n    kind: windowed\n    identifier: com.example.B\n" =>
+        /: a and b are both windowed, and a project has one windowed program; build another on its own, with fledge build b\z/,
+      "kind: windowed\nprograms:\n  - path: a\n" => /: with programs, kind belongs to each program; move it into the program it describes\z/,
+      "identifier: com.example.A\nprograms:\n  - path: a\n" => /: with programs, identifier belongs to each program/,
+      "icon: art\nprograms:\n  - path: a\n" => /: with programs, icon belongs to each program/,
+      "installers: [dmg]\nprograms:\n  - path: a\n" => /: only a windowed app has installers/,
+    }.each do |yaml, message|
+      error = assert_raises(Fledge::Error, yaml) { load(yaml) }
+      assert_match message, error.message, yaml
+      assert_includes error.message, "fledge.yml", yaml
+    end
+  end
+
+  # A windowed program among them is what installers are for.
+  def test_installers_need_a_windowed_program
+    yaml = "installers: [dmg]\nprograms:\n  - path: a\n  - path: b\n    kind: windowed\n    identifier: com.example.B\n"
+
+    assert_equal ["dmg"], load(yaml).installers
   end
 end

@@ -167,9 +167,11 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def call
-      executable = @platform.executable(@app.name)
-      { "app" => "its own app folder", CONFIG => "the file that says what it runs" }.each do |taken, what|
-        raise Error, "an app named #{@app.name} would collide with #{what}. Give it another name." if executable.casecmp?(taken)
+      @app.programs.each do |program|
+        executable = @platform.executable(program.name)
+        { "app" => "its own app folder", CONFIG => "the file that says what it runs" }.each do |taken, what|
+          raise Error, "an app named #{program.name} would collide with #{what}. Give it another name." if executable.casecmp?(taken)
+        end
       end
 
       build
@@ -213,7 +215,43 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
+    #
+    # An app of several programs (ADR 024) keeps its Gemfile at the top
+    # and gives each program a section headed by the program's name, which
+    # the launcher matches with its own file name:
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   puts Fledge::Assembly.launch_config(Fledge::App.at("examples/programs")).lines.drop(1).join
+    #   # [Shared Save]
+    #   # entry = window.rb
+    #   # identifier = com.setdef.fledge.SharedSave
+    #   #
+    #   # [shared-save]
+    #   # entry = bin/shared-save
+    #--
+    # SPDX-SnippetEnd
+    #++
     def self.launch_config(app)
+      programs = app.programs
+      return single_config(app) if programs.size == 1
+
+      lines = [] # : Array[String]
+      gemfile = app.gemfile
+      lines.push("gemfile = #{config_value(gemfile)}", "") if gemfile
+      programs.each do |program|
+        lines.push("[#{program.name}]", "entry = #{config_value(program.entry)}")
+        identifier = program.identity.identifier
+        lines << "identifier = #{identifier}" if identifier
+        lines << ""
+      end
+      "# Written by fledge build: what this app's programs run (ADR 024).\n#{lines.join("\n").chomp}\n"
+    end
+
+    private_class_method def self.single_config(app) # :nodoc:
       lines = ["entry = #{config_value(app.entry)}"]
       gemfile = app.gemfile
       lines << "gemfile = #{config_value(gemfile)}" if gemfile
@@ -262,7 +300,7 @@ module Fledge
       remove_output
       FileUtils.mkdir_p(@out)
       Dir.mktmpdir(".fledge-build-", @out) do |work|
-        runtime = RuntimeFolder.new(@runtime, platform: @platform, app_name: @app.name, work:)
+        runtime = RuntimeFolder.new(@runtime, platform: @platform, app_names: [@app.name, *@app.programs.map(&:name)].uniq, work:)
         bundle = MacBundle.for(@app.identity, platform: @platform, folder:)
         contents = bundle ? bundle.resources : folder
         runtime.move_into(contents)
@@ -270,7 +308,7 @@ module Fledge
         copy_app(contents)
         @files.each { |entry| add(contents, entry) }
         tools = runtime.tools
-        finish(bundle, runtime.launcher(launcher_name), tools)
+        finish(bundle, runtime, tools)
         Archive.pack(folder, to: archive)
         @installers = Installers.write_all(@app, @platform, folder:, tools:, signing: @signing)
       end
@@ -280,14 +318,18 @@ module Fledge
       raise
     end
 
-    # Places the launcher as the app's program: on Windows with the app's
-    # resources in it, which the rcedit in +tools+ writes; on Linux, after
-    # a windowed app's desktop entry.
-    private def place_launcher(launcher, tools)
-      program = File.join(folder, @platform.executable(@app.name))
-      FileUtils.mv(launcher, program)
-      WindowsResources.apply(program, identity: @app.identity, tools:) if @platform.windows?
-      DesktopEntry.new(@app.identity).entries.each { |entry| add(folder, entry) } if @platform.os == "linux" && @app.identity.windowed?
+    # Places a copy of the runtime's launcher for +program+ in +into+:
+    # on Windows with the program's resources in it, which the rcedit in
+    # +tools+ writes; on Linux, after a windowed program's desktop entry.
+    private def place_launcher(runtime, program, tools, into: folder)
+      path = File.join(into, @platform.executable(program.name))
+      raise Error, "an app named #{program.name} would collide with the runtime's #{File.basename(path)}. Give it another name." if File.exist?(path) || File.symlink?(path)
+
+      FileUtils.cp(runtime.launcher(launcher_name(program)), path, preserve: true)
+      identity = program.identity
+      WindowsResources.apply(path, identity:, tools:) if @platform.windows?
+      DesktopEntry.new(identity).entries.each { |entry| add(folder, entry) } if @platform.os == "linux" && identity.windowed?
+      path
     end
 
     # Writes +entry+, whose path is relative to +root+, unless it is a
@@ -304,16 +346,29 @@ module Fledge
       entry.write_into(root)
     end
 
-    # The runtime's launcher for this app: the windowed one on Windows for
-    # a windowed app, the one launcher elsewhere.
-    # Makes the launcher +launcher+ the app's program, last of all, and
-    # signs what the build signs (ADR 016): the bundle, which seals the
-    # rest, or the app's folder.
-    private def finish(bundle, launcher, tools)
-      return bundle.finish(launcher, signing: mac_signing) if bundle
+    # Makes a copy of +runtime+'s launcher each of the app's programs,
+    # last of all, and signs what the build signs (ADR 016): the bundle,
+    # which seals the rest, or the app's folder.
+    #
+    # A bundle's program is the windowed one (App#main); a console program
+    # beside it lives in the bundle's +MacOS+ folder, as a bundle's helper
+    # tools do, linked from the app's folder (ADR 024).
+    private def finish(bundle, runtime, tools)
+      unless bundle
+        @app.programs.each { |program| place_launcher(runtime, program, tools) }
+        @signing&.sign_folder(folder)
+        return
+      end
 
-      place_launcher(launcher, tools)
-      @signing&.sign_folder(folder)
+      main = @app.main
+      helpers = @app.programs.reject { |program| program == main }
+      macos = bundle.executables
+      FileUtils.mkdir_p(macos)
+      helpers = helpers.map { |program| place_launcher(runtime, program, tools, into: macos) }
+      bundle.finish(runtime.launcher(LAUNCHER), helpers:, signing: mac_signing)
+      helpers.each do |helper|
+        File.symlink(File.join(File.basename(bundle.path), "Contents", "MacOS", File.basename(helper)), File.join(folder, File.basename(helper)))
+      end
     end
 
     # The signer of a macOS bundle, when the build signs one.
@@ -322,8 +377,10 @@ module Fledge
       signing if signing.is_a?(MacSigning)
     end
 
-    private def launcher_name
-      (@platform.windows? && @app.identity.windowed?) ? WINDOWED_LAUNCHER : LAUNCHER
+    # The runtime's launcher for +program+: the windowed one on Windows
+    # for a windowed program, the one launcher elsewhere.
+    private def launcher_name(program)
+      (@platform.windows? && program.identity.windowed?) ? WINDOWED_LAUNCHER : LAUNCHER
     end
 
     private def folder

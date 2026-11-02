@@ -16,8 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fledge build ios` and `fledge build android` compile a gem's C and C++ extension (an `extconf.rb`) for the phone's targets and link it into the app, where `require` finds it by the name `create_makefile` gave. iOS needs Xcode; Android needs the NDK (`ANDROID_NDK_ROOT`, or the SDK's `ndk/` folder) on a Mac or Linux. The mobile runtimes gain `fledge_ruby_add_extension` for a host that registers its own extensions.
 - A JSON Schema of `fledge.yml`, `lib/fledge/config.schema.json` in the gem, for editors that run Red Hat's YAML language server: put `# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/trunk/lib/fledge/config.schema.json` on the file's first line to complete its keys and values and mark what `fledge build` would refuse.
+- `programs` in `fledge.yml` lists several programs of one project, each with a `path` and its own `name`, `kind`, `identifier`, and `icon`; `fledge build` builds them all into one folder that shares one runtime, one copy of the project, and one set of gems. At most one is windowed, and the installers are its; on macOS the console programs live in its bundle's `Contents/MacOS`, linked from the folder. A path that names one of the programs builds it alone. A project without `programs` builds as before.
 
 ### Changed
+
+- `fledge.cfg` gives each program of a multi-program app a section, `[NAME]`, which each copy of the launcher finds by its own file name; a copy renamed by hand exits with 66. Launchers from 0.1.0 and earlier refuse such a file.
 
 - A phone's gem with an extension that no `extconf.rb` builds (Rake, CMake, Cargo) or that is Rust fails the build with a message naming the gem, as every extension did before.
 

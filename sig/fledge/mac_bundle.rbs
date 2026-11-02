@@ -21,7 +21,9 @@ module Fledge
 
     def self.bundle_version: (String version) -> String
 
-    def finish: (String launcher, ?signing: MacSigning?) -> String
+    def executables: () -> String
+
+    def finish: (String launcher, ?helpers: Array[String], ?signing: MacSigning?) -> String
 
     private def write_info_plist: () -> String
 

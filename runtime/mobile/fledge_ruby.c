@@ -271,7 +271,11 @@ read_config(const char *root, char *text, size_t size, struct fledge_config *con
         return FLEDGE_RUBY_SOFTWARE;
     }
     text[length] = '\0';
-    if (fledge_parse_config(text, config, &problem) != 0) {
+    /* fledge build gives a phone one program, so a file of several
+     * programs' sections (ADR 024) is one this app was not built with. */
+    int parsed = fledge_parse_config(text, NULL, fledge_same_ascii_name, config, &problem);
+    if (parsed == FLEDGE_CONFIG_NO_PROGRAM) problem = "has several programs' sections, and a phone's app runs one";
+    if (parsed != 0) {
         fprintf(stderr, "fledge_ruby_run_app: this app is damaged: %s %s\n", path, problem);
         return FLEDGE_RUBY_SOFTWARE;
     }

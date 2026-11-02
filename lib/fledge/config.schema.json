@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/setdef/Fledge/trunk/lib/fledge/config.schema.json",
+  "title": "fledge.yml",
+  "description": "What a project tells Fledge about its app: how it presents itself to the person who runs it. Every key is optional, and an unknown key fails the build.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "description": "The app's name (default: the gemspec's name, or the project folder's name, camelized). It may have spaces.",
+      "type": ["string", "null"],
+      "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
+    },
+    "kind": {
+      "description": "console (default), an app that runs in a terminal, or windowed, one that opens its own windows.",
+      "type": ["string", "null"],
+      "enum": ["console", "windowed", null],
+      "default": "console"
+    },
+    "identifier": {
+      "description": "The app's reverse-DNS name, such as com.example.MyCoolApp, which macOS and Windows know it by, and the bundle identifier or applicationId of a phone's app (needed when windowed, and for a phone): letters, digits, and hyphens, in two or more parts between dots, in at most 128 characters.",
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*(?:\\.[A-Za-z0-9][A-Za-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "version": {
+      "description": "The app's version, such as \"1.2.3\" (default: the gemspec's, or 0.0.0): a version RubyGems reads that begins with a number. Quote it, since YAML reads 1.10 as the number 1.1.",
+      "type": ["string", "null"],
+      "pattern": "^[0-9]+(?:\\.[0-9a-zA-Z]+)*(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?[ \\t\\n\\u000b\\f\\r]*$"
+    },
+    "icon": {
+      "description": "The icon's files without their extension, relative to the project's root, such as icons/app: icons/app.icns on macOS, icons/app.ico on Windows (16 to 256 pixels), icons/app-16.png, -32, -64, -128, -256, and -512 on Linux, icons/app-1024.png for iOS, and icons/app-48.png, -72, -96, -144, and -192 for Android.",
+      "type": ["string", "null"],
+      "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]",
+      "not": {
+        "type": "string",
+        "pattern": "\\.(?:[Pp][Nn][Gg]|[Ii][Cc][Nn][Ss]|[Ii][Cc][Oo])$"
+      }
+    },
+    "publisher": {
+      "description": "Who makes the app (default: the gemspec's authors).",
+      "type": ["string", "null"],
+      "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
+    },
+    "copyright": {
+      "description": "The app's copyright notice, such as \"© 2026 Example, Inc.\" (default: none).",
+      "type": ["string", "null"],
+      "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
+    },
+    "installers": {
+      "description": "Which of dmg, nsis, appimage, and deb a windowed app gets, such as [dmg] or [] for none (default: dmg, nsis, and appimage). A console app gets none.",
+      "type": ["array", "null"],
+      "items": {
+        "enum": ["dmg", "nsis", "appimage", "deb"]
+      },
+      "default": ["dmg", "nsis", "appimage"]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "kind": { "const": "windowed" } },
+        "required": ["kind"]
+      },
+      "then": {
+        "properties": { "identifier": { "type": "string" } },
+        "required": ["identifier"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "installers": { "type": "array", "minItems": 1 } },
+        "required": ["installers"]
+      },
+      "then": {
+        "properties": { "kind": { "const": "windowed" } },
+        "required": ["kind"]
+      }
+    }
+  ]
+}

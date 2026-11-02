@@ -37,6 +37,13 @@ path = 'lib/fledge/templates/ios/Host/Assets.xcassets/**'
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
+# The JSON Schema of fledge.yml (ADR 023), which editors read as JSON,
+# which has no comments.
+[[annotations]]
+path = 'lib/fledge/config.schema.json'
+SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
 # Gradle's wrapper, as Gradle 9.8.2's gradle wrapper task writes it, in
 # every Android project fledge build writes (ADR 012); the jar is the one
 # Gradle publishes, whose SHA-256 runtime/sources.yml pins.

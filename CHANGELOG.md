@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A JSON Schema of `fledge.yml`, `lib/fledge/config.schema.json` in the gem, for editors that run Red Hat's YAML language server: put `# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/trunk/lib/fledge/config.schema.json` on the file's first line to complete its keys and values and mark what `fledge build` would refuse.
+
 ## [0.1.0] - 2026-11-02
 
 Versions now follow ordinary 0.MINOR.PATCH numbering; the `0.0.1.pre.N` form ended at 0.0.1.pre.17. Nothing else about how releases are made or fetched changed: a release is still a git tag and a GitHub Release with the runtimes, and `fledge build` downloads the runtimes for its own version.

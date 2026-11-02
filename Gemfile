@@ -24,3 +24,7 @@ gem "inch", "~> 0.4"
 gem "flog", "4.8.0"
 gem "steep"
 gem "rdoc", "~> 7.0"
+
+# Checks lib/fledge/config.schema.json and the examples against it
+# (ADR 023). Development only: nothing Fledge ships loads it.
+gem "json_schemer", "~> 2.5", group: :development

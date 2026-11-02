@@ -38,6 +38,14 @@ jobs:
 
       - name: Install the emulator and an arm64-v8a system image
         run: |
+          if [ -z "$ANDROID_HOME" ]; then
+            export ANDROID_HOME="$HOME/android-sdk"
+            echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+            mkdir -p "$ANDROID_HOME/cmdline-tools" "$RUNNER_TEMP/dl"
+            curl -fsSL -o "$RUNNER_TEMP/dl/t.zip" https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
+            unzip -q "$RUNNER_TEMP/dl/t.zip" -d "$RUNNER_TEMP/dl"
+            mv "$RUNNER_TEMP/dl/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          fi
           export JAVA_HOME="${JAVA_HOME_21_X64:-${JAVA_HOME_21_arm64:-$JAVA_HOME}}"
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           [ -e "$sdk" ] || sdk="$sdk.bat"

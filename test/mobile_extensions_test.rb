@@ -94,10 +94,62 @@ class MobileExtensionsTest < Minitest::Test
   # tests run on, Windows' drive letters included.
   def test_link_flags_keep_libraries_frameworks_and_the_gems_own_archives
     root = File.expand_path(@dir)
-    flags = Fledge::MobileExtensions.link_flags("-lz -framework Security -L../vendor/lib ./libvendored.a -fno-common -lz -Wl,-rpath,. -lc++",
+    flags = Fledge::MobileExtensions::Linking.link_flags("-lz -framework Security -L../vendor/lib ./libvendored.a -fno-common -lz -Wl,-rpath,. -lc++",
       dir: File.join(root, "ext"))
 
-    assert_equal ["-lz", "-framework", "Security", "-L#{File.join(root, 'vendor', 'lib')}", File.join(root, "ext", "libvendored.a"), "-lc++"], flags
+    assert_equal ["-lz", "-Wl,-framework,Security", "-L#{File.join(root, 'vendor', 'lib')}", File.join(root, "ext", "libvendored.a"), "-lc++"], flags
+  end
+
+  # SDL3's sdl3.pc names fifteen frameworks; each must stay a framework
+  # once the flags of two extensions, or two slices, are merged.
+  def test_each_framework_stays_whole_through_merging
+    flags = Fledge::MobileExtensions::Linking.link_flags("-framework UIKit -Wl,-framework,Metal -weak_framework CoreHaptics -framework UIKit", dir: "/work")
+
+    assert_equal ["-Wl,-framework,UIKit", "-Wl,-framework,Metal", "-Wl,-weak_framework,CoreHaptics"], flags
+  end
+
+  def report(archive, flags, cxx: false)
+    Fledge::MobileExtensions::Report.new(feature: "x/x", init: "Init_fledge_0", archive:, flags:, cxx:)
+  end
+
+  # A static library an extconf.rb links, such as SDL3's libSDL3.a for one
+  # iOS slice, is linked with that target's archives, never with the
+  # flags every target of the project shares.
+  def test_a_target_links_its_own_static_libraries_with_its_archives
+    target = Fledge::MobileExtensions::Target.new(name: "ios-arm64", root: "/r", arch_dir: "/r/a", libdir: "/r", environment: {}, abi: nil)
+    build = Fledge::MobileExtensions::Linking.target_build(target, [
+      report("/w/x.a", ["/sdl/ios-arm64/lib/libSDL3.a", "-Wl,-framework,UIKit", "-lm"]),
+      report("/w/y.a", ["-Wl,-framework,UIKit", "-lm"], cxx: true),
+    ])
+
+    assert_equal ["/w/x.a", "/sdl/ios-arm64/lib/libSDL3.a", "/w/y.a"], build.archives
+    assert_equal ["-Wl,-framework,UIKit", "-lm"], build.flags
+    assert build.cxx
+  end
+
+  # Android loads native code only from the libraries its package holds,
+  # so a shared library an extension links from its own folders, such as
+  # libSDL3.so, goes into the package beside libfledgeext.so; the NDK's
+  # own libraries, which the system has, do not.
+  def test_the_shared_libraries_an_extension_links_from_its_folders_are_found
+    lib = File.join(@dir, "sdl", "lib")
+    FileUtils.mkdir_p(lib)
+    FileUtils.touch([File.join(lib, "libSDL3.so"), File.join(lib, "libSDL3.a")])
+
+    assert_equal [File.join(lib, "libSDL3.so")], Fledge::MobileExtensions::Linking.shared_libraries(["-L#{lib}", "-lSDL3", "-llog", "-lm"])
+    assert_empty Fledge::MobileExtensions::Linking.shared_libraries(["-llog", "-lm"])
+  end
+
+  def test_the_shared_libraries_an_extension_links_go_beside_its_library
+    lib = File.join(@dir, "sdl", "lib")
+    jni = File.join(@dir, "src", "main", "jniLibs", "x86_64")
+    FileUtils.mkdir_p([lib, jni])
+    File.write(File.join(lib, "libSDL3.so"), "ELF")
+
+    copied = Fledge::MobileExtensions::Linking.carry_shared_libraries(["-L#{lib}", "-lSDL3", "-llog"], into: jni)
+
+    assert_equal [File.join(jni, "libSDL3.so")], copied
+    assert_equal "ELF", File.read(File.join(jni, "libSDL3.so"))
   end
 
   def test_the_ndk_is_found_where_android_tools_keep_it

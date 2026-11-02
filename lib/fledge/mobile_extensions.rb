@@ -16,6 +16,7 @@ require_relative "gem_package"
 require_relative "git_package"
 require_relative "path_package"
 require_relative "native_build"
+require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
 
 module Fledge
@@ -293,40 +294,6 @@ module Fledge
     end
     private_class_method :c_string
 
-    # The linker flags in +text+, the <tt>$libs</tt> and
-    # <tt>$LOCAL_LIBS</tt> an extconf.rb gave mkmf, that an app's link
-    # needs: libraries (<tt>-l</tt>), their folders (<tt>-L</tt>), frameworks,
-    # and archives the gem built, whose relative paths are made absolute
-    # from +dir+, the folder it built them in. Compiler flags and the like
-    # are the extension's own, already compiled in. Each appears once.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   Fledge::MobileExtensions.link_flags("-lz -framework Security ./libx.a -O2", dir: "/work")
-    #   # => ["-lz", "-framework", "Security", "/work/libx.a"]
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def self.link_flags(text, dir:)
-      tokens = text.shellsplit
-      units = [] # : Array[Array[String]]
-      until tokens.empty?
-        token = tokens.shift.to_s
-        case token
-        when "-framework", "-weak_framework" then units << [token, tokens.shift.to_s]
-        when /\A-L(.+)/ then units << ["-L#{File.expand_path(::Regexp.last_match(1).to_s, dir)}"]
-        when /\A-l./ then units << [token]
-        when /\.a\z/ then units << [File.expand_path(token, dir)]
-        end
-      end
-      units.uniq.flatten
-    end
-
     # Creates the compiler.
     #
     # [platform] The Fledge::MobilePlatform compiled for.
@@ -376,19 +343,12 @@ module Fledge
       targets = targets(tree, ndk)
       registrations = [] # : Array[[String, String]]
       builds = targets.to_h do |target|
-        archives = [] # : Array[String]
-        flags = [] # : Array[String]
-        cxx = false
-        registrations = [] # : Array[[String, String]]
+        reports = [] # : Array[Report]
         wanted.each do |gem, package|
-          compile(target, gem, package, @build_args.fetch(gem.name, []), registrations.size).each do |report|
-            archives << report.archive
-            flags.concat(report.flags)
-            cxx ||= report.cxx
-            registrations << [report.feature, report.init]
-          end
+          reports.concat(compile(target, gem, package, @build_args.fetch(gem.name, []), reports.size))
         end
-        [target.name, TargetBuild.new(target:, archives:, flags: flags.uniq, cxx:)]
+        registrations = reports.map { |report| [report.feature, report.init] }
+        [target.name, Linking.target_build(target, reports)]
       end
       Built.new(registrations:, targets: builds, ndk:)
     end
@@ -522,7 +482,7 @@ module Fledge
       raise Error, "#{gem}'s extension made no #{File.basename(archive)} for #{target.name}" unless File.file?(archive)
 
       Report.new(
-        feature: report.fetch("feature"), init:, archive:, flags: MobileExtensions.link_flags(report.fetch("libs"), dir: folder),
+        feature: report.fetch("feature"), init:, archive:, flags: Linking.link_flags(report.fetch("libs"), dir: folder),
         cxx: File.read(File.join(folder, "Makefile")).match?(/^ORIG_SRCS = .*\.(?:cc|cpp|cxx|C)(?:\s|$)/)
       )
     end

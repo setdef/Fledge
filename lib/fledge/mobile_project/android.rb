@@ -173,7 +173,8 @@ module Fledge
       # Links the extensions into a shared library for each ABI, against
       # the runtime's <tt>libfledgeruby.so</tt>, in <tt>src/main/jniLibs/</tt>,
       # where Gradle's plugin packs it into the APK aligned for 16 KB pages,
-      # and which the host loads next to Ruby's. The registration unit is
+      # and which the host loads next to Ruby's, with the shared libraries
+      # the extensions link from their own folders (ADR 025). The registration unit is
       # kept in <tt>extensions/</tt> for whoever reads the project.
       private def place_extensions(project)
         built = @built or return
@@ -184,6 +185,7 @@ module Fledge
         built.targets.each_value do |build|
           into = File.join(project, "src", "main", "jniLibs", build.target.abi.to_s, "lib#{EXTENSIONS}.so")
           compiler.shared_library(built, build, registration: source, into:)
+          MobileExtensions::Linking.carry_shared_libraries(build.flags, into: File.dirname(into))
         end
       end
 

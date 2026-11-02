@@ -89,10 +89,15 @@ class MobileExtensionsTest < Minitest::Test
     assert_includes source, 'fledge_ruby_add_extension("a\\"b\\\\c", Init_fledge_0)'
   end
 
+  # The gem's build folder is a folder of this computer, as in a real
+  # build, so its relative paths resolve the same way on every system the
+  # tests run on, Windows' drive letters included.
   def test_link_flags_keep_libraries_frameworks_and_the_gems_own_archives
-    flags = Fledge::MobileExtensions.link_flags("-lz -framework Security -L/opt/x/lib ./libvendored.a -fno-common -lz -Wl,-rpath,. -lc++", dir: "/work/ext")
+    root = File.expand_path(@dir)
+    flags = Fledge::MobileExtensions.link_flags("-lz -framework Security -L../vendor/lib ./libvendored.a -fno-common -lz -Wl,-rpath,. -lc++",
+      dir: File.join(root, "ext"))
 
-    assert_equal ["-lz", "-framework", "Security", "-L/opt/x/lib", "/work/ext/libvendored.a", "-lc++"], flags
+    assert_equal ["-lz", "-framework", "Security", "-L#{File.join(root, 'vendor', 'lib')}", File.join(root, "ext", "libvendored.a"), "-lc++"], flags
   end
 
   def test_the_ndk_is_found_where_android_tools_keep_it
@@ -127,6 +132,12 @@ class MobileExtensionsTest < Minitest::Test
 
   # The real tools: Xcode and a built iOS runtime, as rake runtime writes
   # it, and the desktop runtime of this Mac, whose Ruby runs mkmf.
+  # Without the iOS runtime they skip even where FLEDGE_REQUIRE_RUNTIME
+  # is set, since that asks for this computer's own runtime, the one CI's
+  # Test jobs download. Those jobs run on macos-15, which has neither the
+  # Xcode runtime/sources.yml pins nor XcodeGen. The Mobile apps (iOS
+  # Simulator) job has both, and builds examples/native_phone with fledge
+  # build ios, compiles it with Xcode for both slices, and runs it.
   def test_a_c_extension_is_compiled_for_the_device_and_the_simulator
     runtimes = real_runtimes("ios")
     greeter = File.expand_path("../examples/native_phone/gems/adder", __dir__)
@@ -167,11 +178,7 @@ class MobileExtensionsTest < Minitest::Test
     skip "Xcode builds the iOS slices on a Mac only" unless Fledge::Platform.local.name == "arm64-darwin" || name != "ios"
     dir = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
     phone = File.join(dir, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(name)))
-    message = "no #{File.basename(phone)} in #{dir}; run bundle exec rake runtime[#{name}]"
-    unless File.file?(phone)
-      flunk message if ENV["FLEDGE_REQUIRE_RUNTIME"]
-      skip message
-    end
+    skip "no #{File.basename(phone)} in #{dir}; run bundle exec rake runtime[#{name}]" unless File.file?(phone)
     dir
   end
 

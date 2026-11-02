@@ -108,7 +108,9 @@ module Fledge
     # gems: ones that find the ruby beside them (Gem::Installer#shebang and
     # #bash_prolog_script, for a Ruby built to be relocated, and
     # #windows_stub_script, when ruby.exe is in the folder they are written
-    # to), so they go in the unpacked runtime's own bin folder. Their
+    # to), so they go in the unpacked runtime's own bin folder
+    # (Gem.default_bindir; Gem.bindir is the build's gem folder's, as
+    # GEM_HOME names it). Their
     # interpreter line is the one the runtime's own wrappers have,
     # <tt>#!/usr/bin/env ruby</tt>, which <tt>ruby -x</tt> skips, so
     # that no path of this computer is in them.
@@ -131,9 +133,9 @@ module Fledge
         end
         spec.extensions = []
         built = Dir.chdir(dir) { File.expand_path(Gem::Package.build(spec, true)) }
-        Gem::Installer.at(built, install_dir: File.join(File.dirname(plan.fetch("home")), "stub-gems"), bin_dir: Gem.bindir,
+        Gem::Installer.at(built, install_dir: File.join(File.dirname(plan.fetch("home")), "stub-gems"), bin_dir: Gem.default_bindir,
           ignore_dependencies: true, document: [], wrappers: true, env_shebang: false, force: true).install
-        { "executables" => spec.executables, "bin" => Gem.bindir }
+        { "executables" => spec.executables, "bin" => Gem.default_bindir }
       end
       File.write(plan.fetch("result"), JSON.generate(results))
     RUBY

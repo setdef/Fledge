@@ -45,7 +45,8 @@ end
 
 size, main_thread = SdlDemo.stack
 puts "SdlDemo runs Ruby on #{main_thread ? 'the main thread' : 'a thread of its own'} with a stack of " \
-  "#{size / 1024} KB, and recurses #{depth} levels deep, on #{RUBY_PLATFORM} with SDL #{SdlDemo.sdl_version}"
+  "#{size / 1024} KB, on #{RUBY_PLATFORM} with SDL #{SdlDemo.sdl_version}"
+puts "SdlDemo recurses #{depth} levels deep"
 
 point = nil
 touched_at = nil

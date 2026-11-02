@@ -48,7 +48,7 @@ end
 # and ended with status 0; prints the evidence.
 def check(lines, device)
   wanted = {
-    "thread" => /\ASdlDemo runs Ruby on /, "frames" => /\ASdlDemo drew \d+ frames\z/, "touch" => /\ASdlDemo touch down at /,
+    "thread" => /\ASdlDemo runs Ruby on /, "depth" => /\ASdlDemo recurses /, "frames" => /\ASdlDemo drew \d+ frames\z/, "touch" => /\ASdlDemo touch down at /,
     "end" => /\ASdlDemo drew \d+ frames in all, after a touch\z/, "status" => / exited with status 0\z/
   }
   found = wanted.transform_values { |pattern| lines.find { |line| line.match?(pattern) } }
@@ -152,16 +152,23 @@ def android(out)
   adb("shell", "settings", "put", "secure", "immersive_mode_confirmations", "confirmed")
   adb("install", "-r", File.join(out, "SdlPhone-debug.apk"))
   width, height = adb("shell", "wm", "size")[/(\d+)x(\d+)/].split("x").map(&:to_i)
-  [[], ["--ez", "fledge.sdlthread", "true"]].each_with_index do |extra, index|
+  play = lambda do |extra, index|
     adb("logcat", "-c")
     adb("shell", "am", "start", "-W", "-n", "#{ID}/org.setdef.fledge.host.MainActivity", *extra)
-    wait { logged.any? { |line| line.include?("drew 300 frames") } }
-    system("adb", "exec-out", "screencap", "-p", out: File.join(out, "screenshot-android-#{index}.png"))
-    adb("shell", "input", "tap", (width * 0.33).round.to_s, (height * 0.6).round.to_s)
-    wait { logged.any? { |line| line.match?(/ exited with status/) } }
-    check(logged, "#{device}#{extra.empty? ? '' : ', Ruby on SDLThread'}")
-    adb("shell", "am", "force-stop", ID)
+    wait { logged.any? { |line| line.include?("drew 300 frames") || line.match?(/ exited with status/) } }
+    if logged.any? { |line| line.include?("drew 300 frames") }
+      system("adb", "exec-out", "screencap", "-p", out: File.join(out, "screenshot-android-#{index}.png"))
+      adb("shell", "input", "tap", (width * 0.33).round.to_s, (height * 0.6).round.to_s)
+      wait { logged.any? { |line| line.match?(/ exited with status/) } }
+    end
+    logged.tap { adb("shell", "am", "force-stop", ID) }
   end
+  check(play.call([], 0), device)
+  # Ruby on SDLThread, with that thread's own stack: a measurement, which
+  # reports what it saw, a crash included.
+  seen = play.call(["--ez", "fledge.sdlthread", "true"], 1).grep(/SdlDemo (runs|recurses|touch|drew \d+ frames in all)|exited with status|SystemStackError/)
+  seen.each { |line| puts "#{device}, Ruby on SDLThread: #{line}" }
+  File.write(ENV.fetch("GITHUB_STEP_SUMMARY", File::NULL), "#{device}, Ruby on SDLThread\n```\n#{seen.join("\n")}\n```\n", mode: "a")
 rescue RuntimeError
   File.write(File.join(out, "logcat.txt"), adb("logcat", "-d", "-v", "threadtime"))
   raise

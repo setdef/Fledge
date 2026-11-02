@@ -9,7 +9,7 @@
 # part comes from a different kind of gem; the last runs a gem's
 # executable the way a program finds one, in Gem.bindir, with no Ruby on
 # the PATH.
-require "rainbow"
+require "wisper"
 require "shared"
 require "greeter"
 require "fledge_submodule_gem"
@@ -17,7 +17,7 @@ require "paint"
 
 program = File.join(Gem.bindir, Gem.win_platform? ? "shared-cli.bat" : "shared-cli")
 puts [
-  "rainbow #{Gem.loaded_specs.fetch('rainbow').version} through a mirror that wanted a login",
+  "wisper #{Gem.loaded_specs.fetch('wisper').version} through a mirror that wanted a login",
   Shared.greeting,
   Greeter.greet,
   "fledge_submodule_gem says #{FledgeSubmoduleGem::README}",

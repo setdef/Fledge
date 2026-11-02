@@ -20,7 +20,7 @@ GEM
   remote: https://rubygems.org/
   specs:
     paint (2.3.0)
-    rainbow (3.1.1)
+    wisper (2.0.1)
 
 PLATFORMS
   aarch64-linux
@@ -33,16 +33,16 @@ DEPENDENCIES
   fledge_submodule_gem!
   greeter!
   paint (= 2.3.0)
-  rainbow (= 3.1.1)
   shared!
+  wisper (= 2.0.1)
 
 CHECKSUMS
   bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
   fledge_submodule_gem (1.0.0)
   greeter (1.0.0)
   paint (2.3.0) sha256=327d623e4038619d5bd99ae5db07973859cd78400c7f0329eea283cef8e83be5
-  rainbow (3.1.1) sha256=039491aa3a89f42efa1d6dec2fc4e62ede96eb6acd95e52f1ad581182b79bc6a
   shared (1.0.0)
+  wisper (2.0.1) sha256=ce17bc5c3a166f241a2e6613848b025c8146fce2defba505920c1d1f3f88fae6
 
 BUNDLED WITH
   4.0.20

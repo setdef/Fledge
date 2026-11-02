@@ -12,7 +12,7 @@
 source "https://rubygems.org"
 
 # From the credentialed mirror.
-gem "rainbow", "3.1.1"
+gem "wisper", "2.0.1"
 
 # From a folder outside the project, with an executable.
 gem "shared", path: "../real_gems_shared"

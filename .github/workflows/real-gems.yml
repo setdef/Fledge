@@ -77,14 +77,11 @@ jobs:
             --pattern "fledge-runtime-$version-${{ matrix.platform }}.tar.gz" --pattern "fledge-runtime-$version-${{ matrix.platform }}-dev.tar.gz"
           ls -l "$RUNNER_TEMP/runtimes"
 
-      - name: Run the native build tests with the released runtime
+      - name: Run the tests with the released runtime
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_REQUIRE_RUNTIME: "1"
-        run: |
-          for test in native_build_test bundle_test git_checkout_test gem_fetcher_test download_test; do
-            bundle exec ruby -Ilib:test "test/$test.rb"
-          done
+        run: bundle exec rake test
 
       - name: Build real_gems through a credentialed mirror for ${{ matrix.platform }}
         env:
@@ -100,10 +97,10 @@ jobs:
           kill "$mirror" || true
           cat "$RUNNER_TEMP/mirror.log"
           [ "$status" = 0 ] || exit "$status"
-          for gem in rainbow-3.1.1 paint-2.3.0; do
+          for gem in wisper-2.0.1 paint-2.3.0; do
             grep -q "^GET /gems/$gem.gem 200\$" "$RUNNER_TEMP/mirror.log" || { echo "::error::$gem did not come through the mirror, with its login"; exit 1; }
           done
-          echo "rainbow 3.1.1 through a mirror that wanted a login; shared from outside the project; greeter compiled for the runtime's Ruby; fledge_submodule_gem says Hello World!; paint 2.3.0 from an optional group; shared-cli says shared from outside the project" > dist/real_gems.expected
+          echo "wisper 2.0.1 through a mirror that wanted a login; shared from outside the project; greeter compiled for the runtime's Ruby; fledge_submodule_gem says Hello World!; paint 2.3.0 from an optional group; shared-cli says shared from outside the project" > dist/real_gems.expected
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

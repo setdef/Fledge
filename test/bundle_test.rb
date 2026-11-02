@@ -118,7 +118,8 @@ class BundleTest < Minitest::Test
   end
 
   def test_a_platform_the_lockfile_does_not_lock_is_refused
-    bundle = bundle(dependencies: {}, locked: [], platforms: %w[arm64-darwin-25 x86_64-linux-gnu])
+    here = Gem::Platform.local.to_s # Bundler, frozen, wants the computer reading the lockfile locked too
+    bundle = bundle(dependencies: {}, locked: [], platforms: ["arm64-darwin-25", "x86_64-linux-gnu", here].uniq)
 
     assert_empty names(bundle, LINUX)
     error = assert_raises(Fledge::Error) { names(bundle, DARWIN) }

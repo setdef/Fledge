@@ -769,7 +769,9 @@ jobs:
   # with_unbundled_env give a child; examples/my_cool_app, whose gems come
   # from RubyGems.org, each checked against its Gemfile.lock's checksum,
   # precompiled for the platform (ADR 005); examples/windowed_app, a
-  # windowed app (ADR 008) with its installer (ADR 009); and
+  # windowed app (ADR 008) with its installer (ADR 009); examples/programs,
+  # a windowed and a console program of one project in one folder (ADR
+  # 024); and
   # examples/native_app, whose gems must be compiled (ADR 006): redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
   # its git tag, and bigdecimal, which spreadsheet, a GPL gem, needs, each
@@ -879,13 +881,13 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
-      - name: Build hello, the parity and console probes, my_cool_app, windowed_app, and native_app for ${{ matrix.platform }}
+      - name: Build hello, the parity and console probes, my_cool_app, windowed_app, programs, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/native_app)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console examples/windowed_app)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs examples/native_app)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console examples/windowed_app examples/programs)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -992,7 +994,7 @@ jobs:
   # musl Linux's apps (ADR 017), built in Alpine with Ruby, as a developer
   # on Alpine builds them: hello, the parity and console probes, the
   # probe as a gem-shaped app's program, my_cool_app, whose sqlite3 is
-  # precompiled for musl, and windowed_app, with its AppImage.
+  # precompiled for musl, windowed_app, with its AppImage, and programs.
   build-musl:
     name: Build (${{ matrix.platform }})
     needs: runtime-musl
@@ -1023,7 +1025,7 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console /tmp/parity-bundle examples/my_cool_app examples/windowed_app; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console /tmp/parity-bundle examples/my_cool_app examples/windowed_app examples/programs; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd examples/my_cool_app && bundle install)
@@ -1198,7 +1200,9 @@ jobs:
   # both (deliver-dmg.sh); on Linux the AppImage, mounted with FUSE, and
   # extracted with APPIMAGE_EXTRACT_AND_RUN=1, where there is none, run
   # each way and in a hostile environment, and unpacked by
-  # --appimage-extract (deliver-appimage.sh).
+  # --appimage-extract (deliver-appimage.sh). And examples/programs (ADR
+  # 024): a windowed and a console program from one folder, with one
+  # project and one Ruby, sharing one save (deliver-programs.sh).
   delivery-windowed:
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build
@@ -1235,6 +1239,9 @@ jobs:
 
       - name: Start Hello Window as the desktop would
         run: .github/scripts/deliver-windowed.sh "$RUNNER_TEMP/delivered/Hello Window-${{ matrix.platform }}.tar.gz"
+
+      - name: Run Shared Save and shared-save from one folder, with one save
+        run: .github/scripts/deliver-programs.sh "$RUNNER_TEMP/delivered/Shared Save-${{ matrix.platform }}.tar.gz"
 
       - name: Install Hello Window from its disk image as a person would
         if: runner.os == 'macOS'
@@ -1376,7 +1383,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      - name: Run hello, my_cool_app, the console probe, and windowed_app on Alpine with no Ruby installed
+      - name: Run hello, my_cool_app, the console probe, windowed_app, and programs on Alpine with no Ruby installed
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -1389,6 +1396,7 @@ jobs:
           .github/scripts/deliver-console.sh "$d/Console-$PLATFORM.tar.gz"
           .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
           .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract
+          .github/scripts/deliver-programs.sh "$d/Shared Save-$PLATFORM.tar.gz"
           SH
           docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$RUNNER_TEMP:/scripts" -w /work -e PLATFORM "$ALPINE" sh /scripts/deliver-all.sh
 
@@ -1461,6 +1469,13 @@ jobs:
       - name: Start Hello Window.exe as Explorer would
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
+
+      # examples/programs (ADR 024): a GUI and a console program from one
+      # folder, with one project and one Ruby, sharing one save
+      # (.github/scripts/deliver-programs.ps1).
+      - name: Run Shared Save.exe and shared-save.exe from one folder, with one save
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-programs.ps1 -Archive "$env:RUNNER_TEMP/delivered/Shared Save-$env:PLATFORM.zip"
 
       # The NSIS installer (ADR 009): installed silently for this person,
       # its Start menu shortcut's AppUserModelID read back and matched to

@@ -217,3 +217,9 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: `questions.md` entry C, which asked for a device cloud account or an Apple-silicon Mac with hardware virtualization so CI could run Android's arm64-v8a build, after no free GitHub-hosted runner could boot an arm64-v8a emulator.]
 
 *Governs:* agents spend no money on Android's arm64-v8a proof: no device cloud, paid runner, or machine; the story waits for a free way to run it. *Applied in:* Plan 003, "Android on arm64"; ADR 011 and ADR 012; the handoff.
+
+> We can't spend money on this right now.
+
+[re: `questions.md` entries A and B, asked in the same session as the Android answer above: an Apple Developer account for a real iPhone and iPad, App Review, Developer ID, and notarization, and a Windows code signing certificate or Azure Trusted Signing account. The orchestrator had said the Apple account was probably due, and the Windows half was not. The maintainer's words follow the question of whether it was the last responsible moment for each.]
+
+*Governs:* agents open and pay for no account, certificate, device, or service, including Apple's, Microsoft's, and a certificate authority's, until the maintainer says otherwise; the stories that need one wait. *Applied in:* Plan 003, "iOS on a real device, and App Review" and "Notarization and real trust chains"; ADR 012 and ADR 016, which already list what is unproven; the handoff; `questions.md`, entry D.

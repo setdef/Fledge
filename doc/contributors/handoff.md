@@ -35,9 +35,9 @@ Plan 001 (the walking skeleton) and Plan 002 (toward 1.0) are done. What each Pl
 
 Plan 003 holds it. In short:
 
-- **Waiting on money** (decisions, 2026-11-02: none is spent now): an Apple Developer account, for a real iPhone and iPad and for App Review; the accounts and certificates for notarization, Developer ID, and Windows code signing; and a way to run Android's arm64-v8a build. Whether 1.0 ships without those proofs is `questions.md` entry D. Work proceeds on the default.
+- **Waiting on money** (decisions, 2026-11-02: none is spent now): an Apple Developer account, for a real iPhone and iPad and for App Review; the accounts and certificates for notarization, Developer ID, and Windows code signing; and a way to run Android's arm64-v8a build. The maintainer ruled that 1.0 waits until at least some of those proofs exist (decisions, 2026-11-02); until then releases are ordinary 0.MINOR.PATCH versions, from `v0.1.0`.
 - **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner can emulate with hardware acceleration (tried 2026-11-02, ADR 011; no money is spent on a device cloud or a machine, decisions 2026-11-02); Gatekeeper's and SmartScreen's verdicts on a real certificate.
-- **Open problems from the ADRs**: a wrapper's own CI building and delivering its app (Rooibos's ships through Fledge by hand, ADR 019; Tokra and Lota have not tried); the musl and ARM64 Windows builds of `examples/real_gems`, and `Gem.bindir` on an app's `PATH` (ADR 020); installer polish, which Plan 003 defers past 1.0 until a developer asks, and `diskutil image create`, which waits for `hdiutil create` to stop working (it still works on macOS 26 and 27; ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
+- **Open problems from the ADRs**: the musl and ARM64 Windows builds of `examples/real_gems`, and `Gem.bindir` on an app's `PATH` (ADR 020); installer polish, which Plan 003 defers past 1.0 until a developer asks, and `diskutil image create`, which waits for `hdiutil create` to stop working (it still works on macOS 26 and 27; ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
 
 ## How to check it
 
@@ -69,6 +69,6 @@ Spike code is thrown away; findings are kept. The mobile and permissive spikes' 
 
 ## Where to start next
 
-1. Read Plan 003 and take its first story not waiting on an account: a framework wrapper shipping through Fledge is in progress (ADR 019); it is done when Rooibos's own CI builds and delivers an app with a tagged Fledge, which is the maintainer's to relay to Rooibos's session. The experiment's workflow and delivery scripts (`wrapper.yml`, `deliver-tui.py`, `deliver-tui.ps1`) are on the `experiment/wrapper` branch.
+1. Read Plan 003 and take its first story not waiting on money. The wrapper story is done on Fledge's side (ADR 019): wrappers depend on Fledge, and Fledge depends on no wrapper's repository, so nothing here waits on Rooibos, Tokra, or Lota. The unsent drafts in `doc/contributors/drafts/` are optional FYIs. The experiment's workflow and delivery scripts (`wrapper.yml`, `deliver-tui.py`, `deliver-tui.ps1`) are on the `experiment/wrapper` branch.
 2. The gems real apps lock are done for the desktop platforms CI compiles on (ADR 020, `examples/real_gems`); what is left of that story is in its plan entry. Take the next story not waiting on an account.
-3. Watch `questions.md`: when the maintainer answers an entry, quote the answer in `decisions.md`, apply it, and take the story it unblocks.
+3. Watch `questions.md` (empty now): when the maintainer answers an entry, quote the answer in `decisions.md`, apply it, and take the story it unblocks.

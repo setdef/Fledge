@@ -223,3 +223,15 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: `questions.md` entries A and B, asked in the same session as the Android answer above: an Apple Developer account for a real iPhone and iPad, App Review, Developer ID, and notarization, and a Windows code signing certificate or Azure Trusted Signing account. The orchestrator had said the Apple account was probably due, and the Windows half was not. The maintainer's words follow the question of whether it was the last responsible moment for each.]
 
 *Governs:* agents open and pay for no account, certificate, device, or service, including Apple's, Microsoft's, and a certificate authority's, until the maintainer says otherwise; the stories that need one wait. *Applied in:* Plan 003, "iOS on a real device, and App Review" and "Notarization and real trust chains"; ADR 012 and ADR 016, which already list what is unproven; the handoff; `questions.md`, entry D.
+
+## 2026-11-02
+
+The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
+
+> 1. No 1.0 until at least some of these things are proven. But we can go from A.B.C.pre.D to 0.1.0 sem-ver style.
+> 2. We really shouldn't have external dependencies on those repos; they are expected to depend upon us, not the other way around.
+> 3. Go for .deb
+
+[re: the orchestrator's briefing of what it needed: (1) `questions.md` entry D, whether 1.0 may ship with iOS on a real device and App Review, real signing trust chains, and Android arm64 unproven; (2) two unsent drafts, one asking Rooibos to add CI jobs that build its app with a tagged Fledge and one telling Tokra what Fledge now has, the first of which completed Plan 003's wrapper story only if Rooibos's own CI ran it; (3) optional work, of which the `.deb` installer was the cheapest. The numbering is the maintainer's, answering that briefing.]
+
+*Governs:* 1.0 waits until at least some of the unproven things are proven; releases may move from the `0.0.1.pre.N` form to ordinary 0.MINOR.PATCH versions, beginning with 0.1.0; Fledge depends on no wrapper's repository, wrappers depend on Fledge; a `.deb` installer is built. *Applied in:* Plan 003; the handoff; `questions.md` (entry D removed); the drafts; the next release.

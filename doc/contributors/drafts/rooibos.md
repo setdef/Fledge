@@ -4,16 +4,14 @@ SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-# Draft: for Rooibos's session
+# Draft: FYI for Rooibos's session
 
-Not sent. The maintainer relays it. Pin: Fledge `v0.0.1.pre.17`.
+Not sent, and Fledge needs nothing from it. The maintainer may relay it. Pin: Fledge `v0.0.1.pre.17` (the next release is `v0.1.0`; use the newest tag).
 
 ---
 
-Fledge `v0.0.1.pre.17` is tagged. Needed from Rooibos: CI jobs that build and deliver your first app with it.
+For information only: Rooibos's first app builds with Fledge, and you may depend on a tag if you want CI to do it. Rooibos depends on Fledge; Fledge depends on nothing of Rooibos's.
 
-- On `arm64-darwin`, `x86_64-linux`, `aarch64-linux`, and `x64-mingw-ucrt`, a build job and a delivery job each. Build on a runner of that platform; deliver on a fresh one with no Ruby.
-- A small ship project whose Gemfile has `fledge` in the `development` group, pinned by git tag `v0.0.1.pre.17`.
-- A Ruby 4.0 step in the build job, to run Fledge.
-
-A working version is `.github/workflows/wrapper.yml`, with `.github/scripts/deliver-tui.py` and `deliver-tui.ps1`, on branch `experiment/wrapper` of setdef/Fledge (it pins `pre.16`; use `pre.17`). What you may rely on is in `doc/contributors/adr/019.md`.
+- Put `fledge` in the `development` group of a ship project's Gemfile, pinned by git tag (`gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.0.1.pre.17"`), and run `bundle exec fledge build` on a runner of each platform.
+- What you may rely on (the command, `fledge.yml`, exit statuses, output) is in `doc/contributors/adr/019.md`.
+- A working example workflow, `.github/workflows/wrapper.yml` with `.github/scripts/deliver-tui.py` and `deliver-tui.ps1`, is on branch `experiment/wrapper` of setdef/Fledge, for copying.

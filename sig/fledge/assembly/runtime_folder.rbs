@@ -6,10 +6,10 @@ module Fledge
     class RuntimeFolder
       @path: String
       @platform: Platform
-      @app_name: String
+      @app_names: Array[String]
       @top: String
 
-      def initialize: (String path, platform: Platform, app_name: String, work: String) -> void
+      def initialize: (String path, platform: Platform, app_names: Array[String], work: String) -> void
 
       def launcher: (String name) -> String
 

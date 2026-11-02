@@ -283,6 +283,147 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # A project of several programs (ADR 024): a windowed one, with an
+  # icon, and two console ones, sharing one project.
+  module Programs
+    def self.write(dir, installers: "[]")
+      root = FakeApp.write(dir, "game")
+      FileUtils.mkdir_p(File.join(root, "bin"))
+      %w[gui.rb bin/cli bin/tui].each { |path| File.write(File.join(root, path), "") }
+      File.write(File.join(root, "fledge.yml"), <<~YAML)
+        name: Game
+        version: "1.2.3"
+        installers: #{installers}
+        programs:
+          - path: gui.rb
+            name: Play Game
+            kind: windowed
+            identifier: com.example.Game
+            icon: art
+          - path: bin/cli
+            name: game-cli
+          - path: bin/tui
+            identifier: com.example.GameTui
+      YAML
+      FakeRuntime.icons(root, "art")
+      root
+    end
+  end
+
+  # Each program is a copy of the launcher in the one folder, beside one
+  # runtime and one app folder, and fledge.cfg gives each its section.
+  def test_several_programs_share_one_folder_runtime_and_project
+    unix!
+    Dir.mktmpdir do |dir|
+      archive = assemble(dir, Programs.write(dir))
+
+      folder = File.join(dir, "dist", "Game-x86_64-linux")
+      assert_equal File.join(dir, "dist", "Game-x86_64-linux.tar.gz"), archive
+      assert_equal ["Play Game", "app", "com.example.Game.desktop", "fledge.cfg", "game-cli", "lib", "share", "tui"], Dir.children(folder).sort
+      ["Play Game", "game-cli", "tui"].each do |program|
+        assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, program)), program
+        assert_equal 0o755, File.stat(File.join(folder, program)).mode & 0o777, program
+      end
+      assert_includes File.read(File.join(folder, "com.example.Game.desktop")), "Exec=\"Play Game\"\n"
+      assert_equal <<~CFG, File.read(File.join(folder, "fledge.cfg"))
+        # Written by fledge build: what this app's programs run (ADR 024).
+        [Play Game]
+        entry = gui.rb
+        identifier = com.example.Game
+
+        [game-cli]
+        entry = bin/cli
+
+        [tui]
+        entry = bin/tui
+        identifier = com.example.GameTui
+      CFG
+      assert_equal ["Play Game", "app", "com.example.Game.desktop", "fledge.cfg", "game-cli", "lib", "share", "tui"],
+        Dir.children(File.join(unpacked(dir, archive), "Game-x86_64-linux")).sort
+    end
+  end
+
+  # The Gemfile all the programs share stays above their sections.
+  def test_several_programs_share_one_gemfile
+    Dir.mktmpdir do |dir|
+      root = Programs.write(dir)
+      File.write(File.join(root, "Gemfile"), "")
+
+      text = Fledge::Assembly.launch_config(Fledge::App.at(root))
+      assert text.start_with?("# Written by fledge build: what this app's programs run (ADR 024).\ngemfile = Gemfile\n\n[Play Game]\n"), text
+      assert_equal 1, text.scan("gemfile").size
+    end
+  end
+
+  # One of the programs, built on its own, is an app of one program, as
+  # a project with no programs builds.
+  def test_one_of_several_programs_builds_alone
+    unix!
+    Dir.mktmpdir do |dir|
+      assemble(dir, File.join(Programs.write(dir), "bin/cli"))
+
+      folder = File.join(dir, "dist", "game-cli-x86_64-linux")
+      assert_equal %w[app fledge.cfg game-cli lib], Dir.children(folder).sort
+      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = bin/cli\n", File.read(File.join(folder, "fledge.cfg"))
+    end
+  end
+
+  # No program may take a name the runtime holds.
+  def test_a_program_named_as_the_runtimes_files_is_refused
+    unix!
+    Dir.mktmpdir do |dir|
+      root = Programs.write(dir)
+      File.write(File.join(root, "fledge.yml"), File.read(File.join(root, "fledge.yml")).sub("name: game-cli", "name: Lib"))
+
+      error = assert_raises(Fledge::Error) { assemble(dir, root) }
+      assert_equal "an app named Lib would collide with the runtime's lib. Give it another name.", error.message
+      assert_empty Dir.children(File.join(dir, "dist"))
+    end
+  end
+
+  # On macOS the windowed program's bundle holds everything: the console
+  # programs are copies of the launcher in its MacOS folder, sealed by
+  # its signature, and linked from the app's folder.
+  def test_on_macos_console_programs_live_in_the_windowed_programs_bundle
+    mac!
+    Dir.mktmpdir do |dir|
+      runtime = FakeRuntime.write(dir, MACOS, launcher: File.binread("/usr/bin/true"), extra: [Fledge::Entry.file("libexec/cert.pem", "pem")])
+      archive = assemble(dir, Programs.write(dir), platform: MACOS, runtime:)
+
+      folder = File.join(dir, "dist", "Game-arm64-darwin")
+      assert_equal ["Play Game.app", "game-cli", "tui"], Dir.children(folder).sort
+      macos = File.join(folder, "Play Game.app", "Contents", "MacOS")
+      assert_equal ["Play Game", "app", "fledge.cfg", "game-cli", "lib", "libexec", "tui"], Dir.children(macos).sort
+      %w[game-cli tui].each do |program|
+        assert_equal "Play Game.app/Contents/MacOS/#{program}", File.readlink(File.join(folder, program)), program
+        assert_equal File.binread("/usr/bin/true"), File.binread(File.join(macos, program)), program
+      end
+      assert_includes File.read(File.join(macos, "fledge.cfg")), "\n[game-cli]\nentry = bin/cli\n"
+
+      place = File.join(unpacked(dir, archive), "Game-arm64-darwin")
+      assert_equal "Play Game.app/Contents/MacOS/tui", File.readlink(File.join(place, "tui"))
+      verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", "--verbose=2", File.join(place, "Play Game.app"))
+      assert_predicate status, :success?, verified
+      assert_includes verified, "MacOS/game-cli", "the bundle's signature covers its console programs"
+    end
+  end
+
+  # On Windows each program is its own launcher: the GUI one for the
+  # windowed program, the console one for the rest, each with its own
+  # name in its version information.
+  def test_on_windows_each_program_is_its_kinds_launcher
+    windows!
+    Dir.mktmpdir do |dir|
+      assemble(dir, Programs.write(dir), platform: WINDOWS)
+
+      folder = File.join(dir, "dist", "Game-x64-mingw-ucrt")
+      assert_equal ["Play Game.exe", "app", "fledge.cfg", "game-cli.exe", "ruby", "tui.exe"], Dir.children(folder).sort
+      assert_equal [2, 3, 3], ["Play Game.exe", "game-cli.exe", "tui.exe"].map { |program| subsystem(File.join(folder, program)) }
+      assert_equal ["Play Game", "game-cli", "tui"],
+        ["Play Game.exe", "game-cli.exe", "tui.exe"].map { |program| version_info(File.join(folder, program)).fetch("FileDescription") }
+    end
+  end
+
   # A windowed app on Linux keeps the folder, with a desktop entry beside
   # the program and its icons in the hicolor theme's folders.
   def test_a_windowed_linux_app_has_a_desktop_entry_and_icons

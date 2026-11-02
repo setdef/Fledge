@@ -55,7 +55,9 @@
  *      fledge.cfg there, which names the program in app\ to run, ENTRY,
  *      the app's Gemfile, if it has one, and its identifier, if it has
  *      one, which becomes the process's AppUserModelID
- *      (set_app_user_model_id).
+ *      (set_app_user_model_id). In an app of several programs, each a
+ *      copy of this launcher, it reads the section of fledge.cfg named as
+ *      its own file is, less .exe (ADR 024).
  *   3. Sets aside every environment variable scrub.c names, removing it
  *      from both copies of the environment Ruby reads (see
  *      scrub_environment). The runtime's own lib\ruby\4.0.0\rubygems\
@@ -505,6 +507,47 @@ windows_path(const char *path)
 }
 
 /*
+ * The launcher's file name less its .exe, which names its section of a
+ * fledge.cfg of several programs (ADR 024), as a new string.
+ */
+static wchar_t *
+program_stem(void)
+{
+    wchar_t *stem = join(program_name, L"");
+    size_t length = wcslen(stem);
+
+    if (length > 4 && CompareStringOrdinal(stem + length - 4, 4, L".exe", 4, TRUE) == CSTR_EQUAL)
+        stem[length - 4] = L'\0';
+    return stem;
+}
+
+/* program_stem, as UTF-8 for config.c. */
+static const char *
+program_utf8(void)
+{
+    char *narrow = utf8_or_null(program_stem());
+    if (narrow == NULL) fail(L"out of memory");
+    return narrow;
+}
+
+/*
+ * Whether two UTF-8 program names are the same to Windows, whose file
+ * names ignore case: compared as CompareStringOrdinal compares them,
+ * ignoring case, as NTFS does.
+ */
+static int
+same_program_name(const char *one, const char *other)
+{
+    wchar_t *wide_one = wide_text(one);
+    wchar_t *wide_other = wide_text(other);
+    int same = CompareStringOrdinal(wide_one, -1, wide_other, -1, TRUE) == CSTR_EQUAL;
+
+    free(wide_one);
+    free(wide_other);
+    return same;
+}
+
+/*
  * Reads ROOT\fledge.cfg into app_config (config.c). A missing file is a
  * missing input, as a missing ENTRY is (EX_NOINPUT); one that cannot be
  * read or says something wrong is a damaged app.
@@ -532,7 +575,11 @@ read_config(void)
         fail(L"this app is damaged: %ls is not a fledge.cfg", path);
     }
     text[size] = '\0';
-    if (fledge_parse_config(text, &app_config, &problem) != 0) fail(L"this app is damaged: %ls %hs", path, problem);
+    int parsed = fledge_parse_config(text, program_utf8(), same_program_name, &app_config, &problem);
+    if (parsed == FLEDGE_CONFIG_NO_PROGRAM) {
+        fail_with(FLEDGE_EXIT_NO_APP, L"this app is incomplete: %ls has no program named %ls", path, program_stem());
+    }
+    if (parsed != 0) fail(L"this app is damaged: %ls %hs", path, problem);
     free(path);
 
     entry = windows_path(app_config.entry);

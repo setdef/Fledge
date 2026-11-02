@@ -84,7 +84,9 @@
 #                        the archive and installer it writes, one per
 #                        line.
 #                        A folder means the one executable its gemspec
-#                        names, or else its main.rb.
+#                        names, or else its main.rb; when fledge.yml
+#                        lists programs, every one of them, and a file
+#                        it lists means that program alone.
 #     build ios          Write an Xcode project for the app, for iPhone
 #                        and iPad (iOS 15 and later, arm64), which
 #                        builds for devices and the Simulator, and print
@@ -162,6 +164,14 @@
 #                        installers: which of dmg, nsis, appimage, and
 #                          deb a windowed app gets, such as [dmg] or []
 #                          for none (default: dmg, nsis, and appimage)
+#                        programs: the programs to ship in one folder,
+#                          sharing one runtime, project, and set of
+#                          gems, each a mapping of path (its file, such
+#                          as bin/cli), name (default: the file's name
+#                          without its extension), kind, identifier,
+#                          and icon; at most one is windowed, and gets
+#                          the installers. Beside programs, kind,
+#                          identifier, and icon belong to each program.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        PLATFORM is this computer's: arm64-darwin,
 #                        x86_64-linux, aarch64-linux,
@@ -185,6 +195,12 @@
 #                        holds the licenses of what Fledge put in it;
 #                        each gem keeps its own in its folder. A new
 #                        build replaces it.
+#                        With programs, each is a program of its own
+#                        name beside the one runtime and app/, but on
+#                        macOS with a windowed program, whose bundle
+#                        holds the rest in Contents/MacOS, linked from
+#                        the folder. A program renamed by hand exits
+#                        with 66.
 #     DIR/NAME-ios/      An iOS app's Xcode project: NAME.xcodeproj,
 #                        which XcodeGen wrote from project.yml, beside
 #                        it; FledgeRuby.xcframework, the runtime, whose

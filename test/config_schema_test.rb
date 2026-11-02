@@ -78,11 +78,55 @@ class ConfigSchemaTest < Minitest::Test
     "installers: []\n" => true,
     "installers: [dmg]\n" => false,
     "kind: console\ninstallers: [dmg]\n" => false,
+    "programs:\n  - path: bin/cli\n" => true,
+    "programs:\n  - path: bin/cli\n    name: cli\n    kind: console\n    identifier: com.example.Cli\n    icon: icons/cli\n" => true,
+    "programs:\n  - path: gui/main.rb\n    kind: windowed\n    identifier: com.example.Gui\n  - path: bin/cli\n" => true,
+    "programs:\n  - path: gui/main.rb\n    kind: windowed\n" => false,
+    "programs:\n  - path: bin/cli\n    name:\n    kind:\n    identifier:\n    icon:\n" => true,
+    "programs: []\n" => false,
+    "programs: bin/cli\n" => false,
+    "programs:\n  - bin/cli\n" => false,
+    "programs:\n  - name: cli\n" => false,
+    "programs:\n  - path:\n" => false,
+    "programs:\n  - path: bin/cli\n    paht: x\n" => false,
+    "programs:\n  - path: bin/cli\n    kind: gui\n" => false,
+    "programs:\n  - path: bin/cli\n    identifier: cli\n" => false,
+    "programs:\n  - path: bin/cli\n    icon: cli.png\n" => false,
+    "programs:\n  - path: bin/cli\n    name: \" \"\n" => false,
+    "programs:\n  - path: \"bin/my cli\"\n" => true,
+    "programs:\n  - path: .hidden/cli\n" => true,
+    "programs:\n  - path: ../cli\n" => false,
+    "programs:\n  - path: bin/./cli\n" => false,
+    "programs:\n  - path: bin/..\n" => false,
+    "programs:\n  - path: /bin/cli\n" => false,
+    "programs:\n  - path: bin//cli\n" => false,
+    "programs:\n  - path: bin/\n" => false,
+    "programs:\n  - path: bin\\\\cli\n" => false,
+    "programs:\n  - path: \" bin/cli\"\n" => false,
+    "programs:\n  - path: \"bin/cli\\t\"\n" => false,
+    "programs:\n  - path: \"bin/cli\\nx\"\n" => false,
+    "kind: windowed\nidentifier: com.example.A\nprograms:\n  - path: a\n" => false,
+    "identifier: com.example.A\nprograms:\n  - path: a\n" => false,
+    "icon: art\nprograms:\n  - path: a\n" => false,
+    "kind:\nprograms:\n  - path: a\n" => true,
+    "installers: [dmg]\nprograms:\n  - path: a\n" => false,
+    "installers: [dmg]\nprograms:\n  - path: a\n  - path: b\n    kind: windowed\n    identifier: com.example.B\n" => true,
   }.merge(
     # Every key may be empty, which Config reads as absent, and none may
     # be blank or a number.
     *Fledge::Config::KEYS.map { |key| { "#{key}:\n" => true, "#{key}: \" \\t\"\n" => false, "#{key}: 7\n" => false } }
   ).freeze
+
+  # Documents Config refuses and no draft-07 schema can: draft-07 has no
+  # way to say that at most one item of a list matches, or that items
+  # differ in one property (ADR 024, section 2). An editor takes them; the
+  # build refuses them, naming what to change.
+  CONFIG_ONLY = [
+    "programs:\n  - path: a\n    kind: windowed\n    identifier: com.example.A\n  - path: b\n    kind: windowed\n    identifier: com.example.B\n",
+    "programs:\n  - path: a/cli\n  - path: b/cli\n",
+    "programs:\n  - path: a\n    name: Same\n  - path: b\n    name: same\n",
+    "programs:\n  - path: a\n    identifier: com.example.A\n  - path: b\n    identifier: com.example.A\n",
+  ].freeze
 
   def schema
     @schema ||= JSON.parse(File.read(PATH))
@@ -104,7 +148,9 @@ class ConfigSchemaTest < Minitest::Test
     Dir.mktmpdir do |dir|
       File.write(File.join(dir, Fledge::Config::FILE), yaml)
       config = Fledge::Config.load(dir)
-      Fledge::Identity.from(config:, gemspec: nil, name: "CoolApp", root: dir)
+      [config, *config.programs.to_a.map { |program| config.for_program(program) }].each do |each|
+        Fledge::Identity.from(config: each, gemspec: nil, name: "CoolApp", root: dir)
+      end
     end
     true
   rescue Fledge::Error
@@ -129,6 +175,26 @@ class ConfigSchemaTest < Minitest::Test
   def test_kinds_are_configs
     assert_equal [*Fledge::Config::KINDS, nil], schema.dig("properties", "kind", "enum")
     assert_equal "console", schema.dig("properties", "kind", "default")
+  end
+
+  # A program's keys and kinds are Config::Program's, and its identifier
+  # and icon follow the app's rules.
+  def test_programs_are_configs
+    item = schema.dig("properties", "programs", "items")
+    assert_equal Fledge::Config::Program::KEYS, item.fetch("properties").keys
+    assert_equal ["path"], item.fetch("required")
+    refute item.fetch("additionalProperties")
+    assert_equal [*Fledge::Config::KINDS, nil], item.dig("properties", "kind", "enum")
+    assert_equal({ "$ref" => "#/properties/identifier" }, item.dig("properties", "identifier"))
+    assert_equal({ "$ref" => "#/properties/icon" }, item.dig("properties", "icon"))
+    assert_equal Fledge::Config::PER_PROGRAM, schema.fetch("allOf").first.dig("then", "properties").keys
+  end
+
+  def test_only_config_refuses_what_draft_07_cannot_say
+    CONFIG_ONLY.each do |yaml|
+      refute fledge_accepts?(yaml), "fledge build took #{yaml.inspect}"
+      assert schema_accepts?(yaml), "the schema refused #{yaml.inspect}"
+    end
   end
 
   def test_installers_are_configs

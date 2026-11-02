@@ -8,15 +8,18 @@ module Fledge
     RESERVED: Regexp
 
     attr_reader root: String
-    attr_reader entry: String
     attr_reader name: String
     attr_reader gemfile: String?
     attr_reader config: Config
-    attr_reader identity: Identity
+    attr_reader programs: Array[App::Program]
 
-    def self.new: (root: String, entry: String, name: String, gemfile: String?, config: Config, identity: Identity) -> instance
+    def self.new: (root: String, name: String, gemfile: String?, config: Config, programs: Array[App::Program]) -> instance
 
     def self.at: (String path, ?home: String) -> App
+
+    private def self.listed: (String path, String full, String root, Config config, Gem::Specification? gemspec, String? gemfile) -> App
+
+    private def self.program_of: (Config::Program program, String root, Config config, Gem::Specification? gemspec) -> App::Program
 
     private def self.project_root: (String start) -> String?
 
@@ -39,5 +42,11 @@ module Fledge
     private def self.valid_name: (String name, String what) -> String
 
     def entries: (?skip: Array[String]) -> Array[Entry]
+
+    def main: () -> App::Program
+
+    def entry: () -> String
+
+    def identity: () -> Identity
   end
 end

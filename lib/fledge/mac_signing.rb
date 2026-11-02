@@ -98,10 +98,13 @@ module Fledge
     end
 
     # Signs the bundle at +path+ in place of the ad hoc signature Fledge
-    # gives every bundle: its resources' Mach-O files first, then the
-    # bundle itself, as +identifier+, which seals them.
-    def sign_bundle(path, identifier:)
+    # gives every bundle: its resources' Mach-O files and its +helpers+
+    # (the console programs in <tt>Contents/MacOS</tt> beside its own
+    # program, ADR 024) first, inside out as Apple asks of nested code,
+    # then the bundle itself, as +identifier+, which seals them.
+    def sign_bundle(path, identifier:, helpers: [])
       sign_folder(File.join(path, "Contents", "Resources"))
+      Command.run("codesign", *code_options, *helpers, install: INSTALL) unless helpers.empty?
       Command.run("codesign", *code_options, "--identifier", identifier, path, install: INSTALL)
     end
 

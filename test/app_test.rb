@@ -176,4 +176,96 @@ class AppTest < Minitest::Test
 
     assert_equal %w[.env.example helper.rb main.rb vendor vendor/keep.rb], paths
   end
+
+  # A project of several programs (ADR 024): a console one and a
+  # windowed one, each with its own entry and identity, and the project's
+  # version and publisher.
+  def write_programs
+    write("game/fledge.yml", <<~YAML)
+      name: MyGame
+      version: "1.2.0"
+      publisher: Example
+      programs:
+        - path: bin/cli
+        - path: gui/main.rb
+          name: MyGame
+          kind: windowed
+          identifier: com.example.MyGame
+    YAML
+    write("game/bin/cli")
+    write("game/gui/main.rb")
+    write("game/bin/protocol")
+    File.join(@dir, "game")
+  end
+
+  def test_a_folder_of_a_project_with_programs_means_all_of_them
+    app = at(write_programs)
+
+    assert_equal "MyGame", app.name
+    assert_equal [%w[cli bin/cli console], %w[MyGame gui/main.rb windowed]],
+      app.programs.map { |program| [program.name, program.entry, program.identity.kind] }
+    assert_equal [nil, "com.example.MyGame"], app.programs.map { |program| program.identity.identifier }
+    assert_equal [%w[1.2.0 Example]] * 2, app.programs.map { |program| [program.identity.version, program.identity.publisher] }
+    assert_equal ["MyGame", "gui/main.rb", "MyGame"], [app.main.name, app.entry, app.identity.name]
+    assert_equal "MyGame", at(File.join(@dir, "game", "bin")).name, "any folder of the project means the project"
+  end
+
+  # Without a windowed program, the first is the one a phone runs.
+  def test_the_main_program_is_the_windowed_one_or_else_the_first
+    write("tools/fledge.yml", "programs:\n  - path: b.rb\n  - path: a.rb\n")
+    write("tools/a.rb")
+    write("tools/b.rb")
+
+    app = at(File.join(@dir, "tools"))
+
+    assert_equal %w[b a], app.programs.map(&:name)
+    assert_equal ["b", "Tools"], [app.main.name, app.name]
+  end
+
+  # A path that names one of the programs builds it alone, as an app of
+  # one program named after it.
+  def test_a_file_one_of_the_programs_names_is_that_program_alone
+    root = write_programs
+
+    app = at(File.join(root, "gui/main.rb"))
+
+    assert_equal ["MyGame", ["MyGame"], "com.example.MyGame"], [app.name, app.programs.map(&:name), app.identity.identifier]
+    assert_equal "windowed", app.config.kind
+    assert_nil app.config.programs
+    cli = at(File.join(root, "bin/cli"))
+    assert_equal ["cli", "bin/cli", "console", "1.2.0"], [cli.name, cli.entry, cli.identity.kind, cli.identity.version]
+  end
+
+  def test_a_file_the_programs_do_not_name_is_refused
+    root = write_programs
+
+    error = assert_raises(Fledge::Error) { at(File.join(root, "bin/protocol")) }
+    assert_equal "#{File.join(root, 'bin/protocol')} is not one of the programs #{File.join(root, 'fledge.yml')} lists. " \
+      "Build the project, or one of bin/cli, gui/main.rb.", error.message
+  end
+
+  def test_a_program_with_no_file_is_refused
+    root = write_programs
+    File.delete(File.join(root, "bin/cli"))
+
+    error = assert_raises(Fledge::Error) { at(root) }
+    assert_equal "#{File.join(root, 'fledge.yml')} lists the program bin/cli, but the project has no such file. " \
+      "List the program you run, such as path: bin/cli.", error.message
+  end
+
+  def test_a_program_with_a_name_no_system_can_hold_is_refused
+    write("odd/fledge.yml", "programs:\n  - path: main.rb\n    name: con\n")
+    write("odd/main.rb")
+
+    error = assert_raises(Fledge::Error) { at(File.join(@dir, "odd")) }
+    assert_match(/names the program main\.rb "con", but that is a name Windows keeps for itself/, error.message)
+  end
+
+  def test_a_windowed_program_needs_an_identifier
+    write("win/fledge.yml", "programs:\n  - path: main.rb\n    kind: windowed\n")
+    write("win/main.rb")
+
+    error = assert_raises(Fledge::Error) { at(File.join(@dir, "win")) }
+    assert_match(/a windowed app needs an identifier/, error.message)
+  end
 end

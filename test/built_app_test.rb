@@ -27,6 +27,7 @@ class BuiltAppTest < Minitest::Test
   HELLO = File.expand_path("../examples/hello", __dir__)
   MY_COOL_APP = File.expand_path("../examples/my_cool_app", __dir__)
   WINDOWED_APP = File.expand_path("../examples/windowed_app", __dir__)
+  PROGRAMS = File.expand_path("../examples/programs", __dir__)
   PROBE = File.expand_path("fixtures/parity", __dir__)
   CONSOLE = File.expand_path("fixtures/console", __dir__)
   DELIVER_CONSOLE = File.expand_path("../.github/scripts/deliver-console.sh", __dir__)
@@ -334,6 +335,40 @@ class BuiltAppTest < Minitest::Test
       facts.merge!("console" => false, "app_user_model_id" => "com.setdef.fledge.HelloWindow") if @platform.windows?
       facts["yjit"] = true unless @platform.windows?
       assert_equal facts, JSON.parse(File.read(report))
+    end
+  end
+
+  # examples/programs (ADR 024): a console program and a windowed one,
+  # built into one folder, each run by its own name, open one save, and
+  # say they run one project on one Ruby. A copy renamed by hand finds no
+  # program of its name in fledge.cfg, and exits with EX_NOINPUT.
+  def test_several_programs_share_one_folder_and_one_save
+    Dir.mktmpdir do |dir|
+      folder = File.dirname(build_and_unpack(dir, PROGRAMS, name: "Shared Save"))
+      console = File.join(folder, @platform.executable("shared-save"))
+      windowed = File.join(folder, @platform.executable("Shared Save"))
+      windowed = File.join(folder, "Shared Save.app", "Contents", "MacOS", "Shared Save") if @platform.os == "darwin"
+      save = File.join(dir, "save.jsonl")
+      report = File.join(dir, "report.json")
+
+      assert_equal ["", "", 0], run_app({ "HOME" => dir }, console, save).then { |out, err, status| [out, err, status.exitstatus] }
+      _, err, status = run_app({ "HOME" => dir }, windowed, save, report)
+      assert_equal ["", 0], [err, status.exitstatus]
+      out, err, status = run_app({ "HOME" => dir }, console, save)
+      assert_equal ["", 0], [err, status.exitstatus]
+
+      read = JSON.parse(File.read(report)).fetch("read")
+      entries = out.lines.map { |line| JSON.parse(line) }
+      assert_equal [["shared-save"], ["shared-save", "Shared Save"]], [read.map { |entry| entry["by"] }, entries.map { |entry| entry["by"] }]
+      assert_equal read.first, entries.first, "the windowed program read what the console one saved"
+      assert_equal [1, 1], %w[project ruby].map { |key| entries.map { |entry| entry.fetch(key) }.uniq.size }
+      assert entries.first.fetch("project").start_with?(File.realpath(folder)), "the project is the one in the built folder"
+
+      renamed = File.join(File.dirname(File.realpath(console)), @platform.executable("renamed"))
+      FileUtils.cp(File.realpath(console), renamed)
+      _, err, status = run_app({ "HOME" => dir }, renamed, save)
+      assert_equal 66, status.exitstatus
+      assert_includes err, "has no program named renamed"
     end
   end
 

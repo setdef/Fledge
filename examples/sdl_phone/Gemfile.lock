@@ -1,0 +1,25 @@
+PATH
+  remote: gems/sdl_demo
+  specs:
+    sdl_demo (1.0.0)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+
+PLATFORMS
+  aarch64-linux
+  arm64-darwin
+  ruby
+  x64-mingw-ucrt
+  x86_64-linux
+
+DEPENDENCIES
+  sdl_demo!
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  sdl_demo (1.0.0)
+
+BUNDLED WITH
+  4.0.20

@@ -508,14 +508,19 @@ windows_path(const char *path)
 
 /*
  * The launcher's file name less its .exe, which names its section of a
- * fledge.cfg of several programs (ADR 024), as a new string.
+ * fledge.cfg of several programs (ADR 024), kept for the life of the
+ * process, as the launcher's other names are.
  */
-static wchar_t *
+static wchar_t *stem;
+static char *stem_utf8;
+
+static const wchar_t *
 program_stem(void)
 {
-    wchar_t *stem = join(program_name, L"");
-    size_t length = wcslen(stem);
+    if (stem != NULL) return stem;
 
+    stem = join(program_name, L"");
+    size_t length = wcslen(stem);
     if (length > 4 && CompareStringOrdinal(stem + length - 4, 4, L".exe", 4, TRUE) == CSTR_EQUAL)
         stem[length - 4] = L'\0';
     return stem;
@@ -525,9 +530,11 @@ program_stem(void)
 static const char *
 program_utf8(void)
 {
-    char *narrow = utf8_or_null(program_stem());
-    if (narrow == NULL) fail(L"out of memory");
-    return narrow;
+    if (stem_utf8 != NULL) return stem_utf8;
+
+    stem_utf8 = utf8_or_null(program_stem());
+    if (stem_utf8 == NULL) fail(L"out of memory");
+    return stem_utf8;
 }
 
 /*

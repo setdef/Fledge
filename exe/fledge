@@ -47,7 +47,8 @@
 #     windowed app gets an installer beside each archive, too: a disk
 #     image for macOS, a setup program for Windows, which makes the
 #     Start menu shortcut Windows needs before it shows the app's
-#     notifications, and an AppImage for Linux.
+#     notifications, and an AppImage for Linux, and, when fledge.yml
+#     asks for it, a .deb for Debian and Ubuntu.
 #
 #     For a phone, fledge build writes the project that builds the
 #     app, which you build, sign, and submit with that system's tools:
@@ -69,7 +70,8 @@
 #     plutil, codesign, ditto, hdiutil). Windows 10 and 11 have tar;
 #     the runtime brings rcedit, for a program's version information
 #     and icon, and NSIS, for a setup program. Linux has tar, and an
-#     AppImage needs squashfs-tools' mksquashfs (4.4 or newer). A
+#     AppImage needs squashfs-tools' mksquashfs (4.4 or newer), and a
+#     .deb needs dpkg-deb, from dpkg. A
 #     missing tool fails the build, naming it and what to install.
 #
 # COMMANDS
@@ -156,9 +158,9 @@
 #                        publisher: who makes it (default: the
 #                          gemspec's authors)
 #                        copyright: such as "© 2026 Example, Inc."
-#                        installers: which of dmg, nsis, and appimage a
-#                          windowed app gets, such as [dmg] or [] for
-#                          none (default: all three)
+#                        installers: which of dmg, nsis, appimage, and
+#                          deb a windowed app gets, such as [dmg] or []
+#                          for none (default: dmg, nsis, and appimage)
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        PLATFORM is this computer's: arm64-darwin,
 #                        x86_64-linux, aarch64-linux,
@@ -225,6 +227,13 @@
 #                        does; on a computer with no FUSE,
 #                        APPIMAGE_EXTRACT_AND_RUN=1 has it extract
 #                        itself and run.
+#     DIR/NAME-PLATFORM.deb
+#                        A windowed app's .deb for x86_64-linux and
+#                        aarch64-linux, when fledge.yml lists deb:
+#                        apt install ./FILE puts the app in
+#                        /usr/lib/IDENTIFIER, with its desktop entry
+#                        and icons where desktops look, and needs
+#                        glibc 2.39 or newer; apt remove removes it.
 #     ~/.cache/fledge/runtimes/
 #                        Runtimes downloaded from Fledge's GitHub
 #                        Release for this version, each checked

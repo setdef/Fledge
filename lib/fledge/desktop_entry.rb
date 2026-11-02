@@ -73,7 +73,9 @@ module Fledge
       [Entry.file("#{id}.desktop", text), *icons]
     end
 
-    # The desktop entry's text.
+    # The desktop entry's text, whose +Exec+ runs +program+: the program's
+    # name, for an entry in the app's own folder, or its full path, for
+    # one installed elsewhere (Fledge::Deb).
     #
     # === Example
     #
@@ -83,16 +85,17 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   desktop.text.include?("Type=Application\n") # => true
+    #   desktop.text(program: "/usr/lib/my-app/My App").include?("Exec=\"/usr/lib/my-app/My App\"\n") # => true
     #--
     # SPDX-SnippetEnd
     #++
-    def text
+    def text(program: @identity.name)
       lines = [
         "[Desktop Entry]",
         "Type=Application",
         "Version=1.5",
         "Name=#{DesktopEntry.string(@identity.name)}",
-        "Exec=#{DesktopEntry.string(DesktopEntry.exec(@identity.name))}",
+        "Exec=#{DesktopEntry.string(DesktopEntry.exec(program))}",
       ]
       lines << "Icon=#{@identity.identifier}" if @identity.icon
       lines << "Terminal=false"

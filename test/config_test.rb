@@ -44,7 +44,7 @@ class ConfigTest < Minitest::Test
   # A windowed app lists the installers it wants (ADR 009), once each, or
   # none; without the key it gets every one.
   def test_reads_the_installers_a_windowed_app_wants
-    assert_equal %w[dmg appimage], load("kind: windowed\ninstallers: [dmg, appimage, dmg]\n").installers
+    assert_equal %w[dmg appimage deb], load("kind: windowed\ninstallers: [dmg, appimage, dmg, deb]\n").installers
     assert_equal [], load("kind: windowed\ninstallers: []\n").installers
     assert_equal [], load("installers: []\n").installers
     assert_nil load("kind: windowed\n").installers
@@ -74,8 +74,8 @@ class ConfigTest < Minitest::Test
       "icon: art/icon.png\n" => %r{: icon names the icon's files without an extension, such as icon: art/icon for art/icon\.icns, \.ico, and -16\.png to -512\.png\z},
       "publisher: [a]\n" => /: publisher must be text/,
       "copyright: true\n" => /: copyright must be text/,
-      "kind: windowed\ninstallers: dmg\n" => /: installers must be a list of dmg, nsis, appimage, such as installers: \[dmg, nsis, appimage\], or \[\] for none\z/,
-      "kind: windowed\ninstallers: [msi]\n" => /: installers has msi, which Fledge does not build\. It builds dmg, nsis, appimage\.\z/,
+      "kind: windowed\ninstallers: dmg\n" => /: installers must be a list of dmg, nsis, appimage, deb, such as installers: \[dmg, nsis, appimage, deb\], or \[\] for none\z/,
+      "kind: windowed\ninstallers: [msi]\n" => /: installers has msi, which Fledge does not build\. It builds dmg, nsis, appimage, deb\.\z/,
       "installers: [dmg]\n" => /: only a windowed app has installers; a console app ships as its archive/,
     }.each do |yaml, message|
       error = assert_raises(Fledge::Error, yaml) { load(yaml) }

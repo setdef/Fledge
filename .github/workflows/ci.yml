@@ -20,8 +20,9 @@
 # platform's apps are built on that platform, as developers build them.
 #
 # A windowed app gets an installer too (ADR 009): a disk image for macOS,
-# an NSIS setup program for Windows, and an AppImage for Linux, each
-# written on its own platform's runner; and Delivery installs each on a
+# an NSIS setup program for Windows, and an AppImage for Linux (and a
+# .deb, which windowed_app asks for), each written on its own platform's
+# runner; and Delivery installs each on a
 # fresh runner and runs the app it installed.
 #
 # The mobile runtimes (ADR 011) build from Ruby's source, iOS's on a Mac
@@ -597,6 +598,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
           echo "FLEDGE_REQUIRE_MKSQUASHFS=1" >> "$GITHUB_ENV"
+          echo "FLEDGE_REQUIRE_DPKG_DEB=1" >> "$GITHUB_ENV"
 
       # ADR 016: a self-signed identity for test/built_app_test.rb's
       # signed build, which no CI runner has otherwise.
@@ -962,6 +964,7 @@ jobs:
             dist/*-${{ matrix.platform }}.dmg
             dist/*-${{ matrix.platform }}-setup.exe
             dist/*-${{ matrix.platform }}.AppImage
+            dist/*-${{ matrix.platform }}.deb
             dist/*.expected
           if-no-files-found: error
           retention-days: 14
@@ -1279,6 +1282,49 @@ jobs:
         run: >-
           .github/scripts/deliver.sh "delivered/NativeApp-${{ matrix.platform }}.tar.gz"
           "delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat delivered/native_app.expected)" --no-ruby-installed
+
+  # Delivery of the windowed app's .deb (ADR 021), in a fresh Debian and a
+  # fresh Ubuntu container of each architecture, with no Ruby installed:
+  # apt installs it as a person would, its dependency on glibc 2.39 met by
+  # Ubuntu 24.04's, which is the oldest there is, and by Debian 13's; the
+  # app runs from /usr/lib, as root and as an ordinary user; and removing
+  # the package leaves nothing of it (.github/scripts/deliver-deb.sh).
+  delivery-deb:
+    name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.image }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        image: ["debian:trixie-slim", "ubuntu:24.04"]
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: delivered
+
+      # freedesktop.org's validator, which a desktop has.
+      - name: Install desktop-file-validate
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq desktop-file-utils
+
+      - name: Install Hello Window from its .deb with apt, run it, and remove it
+        run: .github/scripts/deliver-deb.sh "delivered/Hello Window-${{ matrix.platform }}.deb"
 
   # Delivery on musl Linux (ADR 017): each app in a bare Alpine container,
   # with no Ruby at all, as deliver.sh --no-ruby-installed checks: hello

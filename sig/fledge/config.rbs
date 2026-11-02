@@ -8,6 +8,8 @@ module Fledge
     KNOWN: String
     KINDS: Array[String]
     INSTALLERS: Array[String]
+
+    DEFAULT_INSTALLERS: Array[String]
     IDENTIFIER: Regexp
     IDENTIFIER_MAX: Integer
 

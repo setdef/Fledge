@@ -18,3 +18,4 @@ version: "1.2.3"
 publisher: setdef
 copyright: © 2026 Kerrick Long
 icon: icons/icon
+installers: [dmg, nsis, appimage, deb]

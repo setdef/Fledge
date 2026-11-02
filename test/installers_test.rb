@@ -40,6 +40,18 @@ class InstallersTest < Minitest::Test
     end
   end
 
+  # A .deb needs dpkg-deb, which not every Linux computer has, so it is
+  # asked for; and it is for glibc Linux, so a list that asks for it
+  # builds none on musl, as it builds no setup program on a Mac.
+  def test_a_deb_is_asked_for_and_is_for_glibc_linux
+    Dir.mktmpdir do |dir|
+      chosen = app(dir, "kind: windowed\nidentifier: com.example.Hello\ninstallers: [dmg, nsis, appimage, deb]\n")
+      musl = Fledge::Platform.find("x86_64-linux-musl")
+
+      assert_equal [["dmg"], ["appimage", "deb"], ["nsis"], ["appimage"]], [MACOS, LINUX, WINDOWS, musl].map { |platform| Fledge::Installers.formats(chosen, platform) }
+    end
+  end
+
   def test_a_console_app_gets_none
     Dir.mktmpdir do |dir|
       assert_empty Fledge::Installers.formats(Fledge::App.at(FakeApp.write(dir)), MACOS)
@@ -47,7 +59,7 @@ class InstallersTest < Minitest::Test
   end
 
   def test_each_is_named_after_the_archive
-    assert_equal ["A-arm64-darwin.dmg", "A-x64-mingw-ucrt-setup.exe", "A-aarch64-linux.AppImage"],
-      [["dmg", MACOS], ["nsis", WINDOWS], ["appimage", LINUX]].map { |format, platform| Fledge::Installers.file_name(format, "A-#{platform}") }
+    assert_equal ["A-arm64-darwin.dmg", "A-x64-mingw-ucrt-setup.exe", "A-aarch64-linux.AppImage", "A-aarch64-linux.deb"],
+      [["dmg", MACOS], ["nsis", WINDOWS], ["appimage", LINUX], ["deb", LINUX]].map { |format, platform| Fledge::Installers.file_name(format, "A-#{platform}") }
   end
 end

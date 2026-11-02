@@ -97,8 +97,14 @@ module Fledge
     KNOWN = "name, kind, identifier, version, icon, publisher, copyright, and installers"
 
     # The installers a windowed app may have: a disk image for macOS, an
-    # NSIS setup program for Windows, and an AppImage for Linux.
-    INSTALLERS = %w[dmg nsis appimage].freeze
+    # NSIS setup program for Windows, an AppImage for Linux, and a
+    # <tt>.deb</tt> for Debian and Ubuntu.
+    INSTALLERS = %w[dmg nsis appimage deb].freeze
+
+    # The installers a windowed app gets when <tt>fledge.yml</tt> lists
+    # none of its own: every one but +deb+, which needs dpkg-deb, a tool
+    # not every Linux computer has, so a developer asks for it (ADR 021).
+    DEFAULT_INSTALLERS = %w[dmg nsis appimage].freeze
 
     # The kinds of app (ADR 001, section 5): one that runs in a terminal,
     # and one that opens its own windows and shows none.
@@ -195,7 +201,7 @@ module Fledge
 
       known = INSTALLERS.join(", ")
       unless value.is_a?(Array) && value.all? { |item| item.is_a?(String) }
-        raise Error, "#{path}: installers must be a list of #{known}, such as installers: [dmg, nsis, appimage], or [] for none"
+        raise Error, "#{path}: installers must be a list of #{known}, such as installers: [dmg, nsis, appimage, deb], or [] for none"
       end
 
       unknown = value - INSTALLERS

@@ -12,6 +12,6 @@ module Fledge
 
     def self.write_all: (App app, Platform platform, folder: String, tools: String?, ?signing: Signing::signer?) -> Array[String]
 
-    def self.write: (String format, app: App, folder: String, tools: String?, ?signing: Signing::signer?) -> String
+    def self.write: (String format, app: App, folder: String, platform: Platform, tools: String?, ?signing: Signing::signer?) -> String
   end
 end

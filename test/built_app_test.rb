@@ -420,7 +420,9 @@ class BuiltAppTest < Minitest::Test
   # extracting itself where there is no FUSE, and that --appimage-extract
   # unpacks into an AppDir; on Windows a setup program, which Delivery
   # installs (.github/scripts/deliver-installer.ps1), compiled by the
-  # Windows runtime's own NSIS. On Linux the build needs mksquashfs.
+  # Windows runtime's own NSIS. On Linux a .deb follows the AppImage
+  # (ADR 021), and dpkg-deb reads it back. On Linux the build needs
+  # mksquashfs and dpkg-deb.
   def test_the_windowed_apps_installer_holds_the_app_and_runs_it
     Dir.mktmpdir do |dir|
       out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(dir, "cache") }, RbConfig.ruby,
@@ -452,12 +454,23 @@ class BuiltAppTest < Minitest::Test
         assert_equal "Hello Window", File.readlink(File.join(root, "AppRun"))
         assert_path_exists File.join(root, "com.setdef.fledge.HelloWindow.desktop")
         assert_equal "com.setdef.fledge.HelloWindow.png", File.readlink(File.join(root, ".DirIcon"))
+        assert_deb(out.lines.fetch(2).chomp) if Fledge::Deb::ARCHITECTURES.key?(@platform.name)
       else
         assert_equal "Hello Window-#{@platform}-setup.exe", File.basename(installer)
         assert_equal "MZ", File.binread(installer, 2)
       end
       assert_equal facts, JSON.parse(File.read(report)).slice(*facts.keys) unless @platform.windows?
     end
+  end
+
+  # The .deb at +path+, which dpkg-deb reads back as examples/windowed_app's
+  # package for this platform.
+  def assert_deb(path)
+    deb = File.expand_path(path, Dir.pwd)
+    assert_equal "Hello Window-#{@platform}.deb", File.basename(deb)
+    fields, status = Open3.capture2e("dpkg-deb", "--showformat", "${Package} ${Version} ${Architecture}", "--show", deb)
+    assert_predicate status, :success?, fields
+    assert_equal "com.setdef.fledge.hellowindow 1.2.3 #{Fledge::Deb::ARCHITECTURES.fetch(@platform.name)}", fields
   end
 
   # Builds the app in +source+ through the fledge executable, as a person

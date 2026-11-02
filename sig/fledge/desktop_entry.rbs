@@ -9,7 +9,7 @@ module Fledge
 
     def entries: () -> Array[Entry]
 
-    def text: () -> String
+    def text: (?program: String) -> String
 
     def self.string: (String value) -> String
 

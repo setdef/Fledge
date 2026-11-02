@@ -7,6 +7,7 @@
 
 require_relative "app_image"
 require_relative "config"
+require_relative "deb"
 require_relative "dmg"
 require_relative "nsis"
 require_relative "signing"
@@ -18,6 +19,8 @@ module Fledge
   # builds for has (<tt>bundle.targets: "all"</tt>), and so does Fledge
   # (ADR 009): a windowed app gets, beside each archive, a disk image for
   # macOS, an NSIS setup program for Windows, and an AppImage for Linux,
+  # and a <tt>.deb</tt> for Debian and Ubuntu when <tt>fledge.yml</tt> asks
+  # for one, since not every Linux computer has dpkg-deb (ADR 021),
   # unless <tt>fledge.yml</tt> lists the ones it wants under +installers+,
   # or none (<tt>installers: []</tt>). A console app gets none: a terminal
   # tool is installed by putting its program on a +PATH+, which a disk
@@ -25,9 +28,9 @@ module Fledge
   #
   # This module chooses each target's installers and writes each one
   # from the built app's folder (Fledge::Dmg, Fledge::Nsis,
-  # Fledge::AppImage), named after the archive: <tt>NAME-PLATFORM.dmg</tt>,
+  # Fledge::AppImage, Fledge::Deb), named after the archive: <tt>NAME-PLATFORM.dmg</tt>,
   # <tt>NAME-PLATFORM-setup.exe</tt> (as Tauri ends an NSIS installer's
-  # name), and <tt>NAME-PLATFORM.AppImage</tt>.
+  # name), <tt>NAME-PLATFORM.AppImage</tt>, and <tt>NAME-PLATFORM.deb</tt>.
   #
   # Use it through Fledge::Assembly and <tt>fledge build</tt>.
   #
@@ -46,14 +49,16 @@ module Fledge
   #++
   module Installers
     # The operating system each installer is for.
-    OS = { "dmg" => "darwin", "nsis" => "windows", "appimage" => "linux" }.freeze
+    OS = { "dmg" => "darwin", "nsis" => "windows", "appimage" => "linux", "deb" => "linux" }.freeze
 
     # What follows an archive's base name in each installer's name.
-    SUFFIX = { "dmg" => ".dmg", "nsis" => "-setup.exe", "appimage" => ".AppImage" }.freeze
+    SUFFIX = { "dmg" => ".dmg", "nsis" => "-setup.exe", "appimage" => ".AppImage", "deb" => ".deb" }.freeze
 
     # The installers +app+ gets for +platform+: those its
-    # <tt>fledge.yml</tt> lists, or every one, for a windowed app, that is
-    # for the platform's operating system.
+    # <tt>fledge.yml</tt> lists, or Config::DEFAULT_INSTALLERS, for a
+    # windowed app, that are for the platform's operating system. A
+    # +deb+ is for Debian and Ubuntu, which have glibc, so a musl platform
+    # gets none, as a Mac gets no setup program from the same list.
     #
     # === Example
     #
@@ -69,7 +74,9 @@ module Fledge
     def self.formats(app, platform)
       return [] unless app.identity.windowed?
 
-      (app.config.installers || Config::INSTALLERS).select { |format| OS.fetch(format) == platform.os }
+      (app.config.installers || Config::DEFAULT_INSTALLERS).select do |format|
+        OS.fetch(format) == platform.os && (format != "deb" || Deb::ARCHITECTURES.key?(platform.name))
+      end
     end
 
     # The file name of the +format+ installer of the archive whose base
@@ -93,12 +100,13 @@ module Fledge
     # Writes every installer +app+ gets on +platform+ (Installers.formats)
     # from its built folder +folder+, and returns their paths.
     def self.write_all(app, platform, folder:, tools:, signing: nil)
-      formats(app, platform).map { |format| write(format, app:, folder:, tools:, signing:) }
+      formats(app, platform).map { |format| write(format, app:, folder:, platform:, tools:, signing:) }
     end
 
     # Writes +app+'s +format+ installer from its built folder +folder+,
     # beside it, and returns its path.
     #
+    # [platform] The Fledge::Platform the app is built for.
     # [tools] The runtime's tools folder, or +nil+ when it has none.
     # [signing] The signer that signs the installer (Fledge::Signing.for),
     #           or +nil+.
@@ -110,17 +118,18 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::Installers.write("dmg", app:, folder: "dist/MyApp-arm64-darwin", tools: nil)
+    #   Fledge::Installers.write("dmg", app:, folder: "dist/MyApp-arm64-darwin", platform:, tools: nil)
     #   # => "dist/MyApp-arm64-darwin.dmg"
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(format, app:, folder:, tools:, signing: nil)
+    def self.write(format, app:, folder:, platform:, tools:, signing: nil)
       to = file_name(format, folder)
       identity = app.identity
       case format
       when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:, signing: (signing if signing.is_a?(MacSigning)))
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
+      when "deb" then Deb.write(identity:, folder:, platform:, to:)
       else Nsis.new(identity:, folder:, to:, signing: (signing if signing.is_a?(WindowsSigning))).write(tools)
       end
     end

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A windowed app on glibc Linux (`x86_64-linux`, `aarch64-linux`) can have a `.deb` installer, `NAME-PLATFORM.deb`, which `dpkg-deb` builds; ask for it with `installers: [appimage, deb]` in `fledge.yml` (it is not in the default list). `apt install ./NAME-PLATFORM.deb` installs the app in `/usr/lib/IDENTIFIER` with its desktop entry and icons where desktops look, needing glibc 2.39 or newer, and removing the package removes them. Without `dpkg-deb` the build fails, saying to install dpkg.
+
 ## [0.0.1.pre.17] - 2026-11-01
 
 ### Added

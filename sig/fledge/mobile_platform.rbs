@@ -6,6 +6,7 @@ module Fledge
     HOSTS: Hash[String, Array[String]]
     TITLES: Hash[String, String]
     WHY: Hash[String, String]
+    GEM_PLATFORMS: Hash[String, Array[String]]
 
     attr_reader name: String
 
@@ -17,6 +18,8 @@ module Fledge
     def self.find: (String name) -> MobilePlatform?
 
     def check_host: (Platform host) -> void
+
+    def gem_platforms: () -> Array[String]
 
     def windows?: () -> bool
 

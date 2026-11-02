@@ -7,6 +7,7 @@ module Fledge
       FRAMEWORK: String
       SLICE: String
       ASSETS: String
+      EXTENSIONS: String
       INSTALL: String
 
       def self.ruby_under: () -> String
@@ -16,6 +17,10 @@ module Fledge
       private def template_files: () -> Array[String]
 
       private def tokens: () -> Hash[String, String]
+
+      private def extension_flags: () -> Array[String]
+
+      private def place_extensions: (String project) -> void
 
       private def place_runtime: (String tree, String project) -> void
 

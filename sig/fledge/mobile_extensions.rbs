@@ -1,0 +1,106 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MobileExtensions
+    FOREIGN: Array[String]
+    INSTALL_XCODE: String
+    SHIM: String
+    IOS_SLICES: Array[String]
+    ANDROID_ABIS: Hash[String, String]
+
+    class TargetBuild < Data
+      attr_reader target: Target
+      attr_reader archives: Array[String]
+      attr_reader flags: Array[String]
+      attr_reader cxx: bool
+
+      def self.new: (target: Target, archives: Array[String], flags: Array[String], cxx: bool) -> instance
+                  | (Target target, Array[String] archives, Array[String] flags, bool cxx) -> instance
+    end
+
+    class Report < Data
+      attr_reader feature: String
+      attr_reader init: String
+      attr_reader archive: String
+      attr_reader flags: Array[String]
+      attr_reader cxx: bool
+
+      def self.new: (feature: String, init: String, archive: String, flags: Array[String], cxx: bool) -> instance
+                  | (String feature, String init, String archive, Array[String] flags, bool cxx) -> instance
+    end
+
+    class Target < Data
+      attr_reader name: String
+      attr_reader root: String
+      attr_reader arch_dir: String
+      attr_reader libdir: String
+      attr_reader environment: Hash[String, String]
+      attr_reader abi: String?
+
+      def self.new: (name: String, root: String, arch_dir: String, libdir: String, environment: Hash[String, String], abi: String?) -> instance
+                  | (String name, String root, String arch_dir, String libdir, Hash[String, String] environment, String? abi) -> instance
+    end
+
+    class Built < Data
+      attr_reader registrations: Array[[String, String]]
+      attr_reader targets: Hash[String, TargetBuild]
+      attr_reader ndk: NDK?
+
+      def self.new: (registrations: Array[[String, String]], targets: Hash[String, TargetBuild], ndk: NDK?) -> instance
+                  | (Array[[String, String]] registrations, Hash[String, TargetBuild] targets, NDK? ndk) -> instance
+    end
+
+    @platform: MobilePlatform
+    @packages: Hash[locked_gem, package]
+    @build_args: Hash[String, Array[String]]
+    @host: Platform
+    @runtimes: Runtimes
+    @work: String
+    @log: CLI::_Output
+    @env: Runtimes::_Env
+    @ruby: String?
+
+    def self.problems: (locked_gem gem, package package, MobilePlatform platform, Platform host) -> Array[String]
+
+    def self.registration_source: (Array[[String, String]] registrations) -> String
+
+    private def self.c_string: (String text) -> String
+
+    def self.link_flags: (String text, dir: String) -> Array[String]
+
+    def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, ?env: Runtimes::_Env) -> void
+
+    def call: (String tree) -> Built
+
+    def shared_library: (Built built, TargetBuild build, registration: String, into: String) -> String
+
+    private def targets: (String tree, NDK? ndk) -> Array[Target]
+
+    private def ios_target: (String slice, String root) -> Target
+
+    private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
+
+    private def xcrun: (String sdk, *String arguments) -> String
+
+    private def rbconfig_dir: (String root) -> String
+
+    private def recorded_compiler: (String arch_dir) -> String
+
+    private def unpack_aar: (String aar) -> String
+
+    private def compile: (Target target, locked_gem gem, package package, Array[String] args, Integer first) -> Array[Report]
+
+    private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target) -> Report
+
+    private def source_root: (package package, String dir) -> String
+
+    private def ruby: () -> String
+
+    private def shim_path: () -> String
+
+    private def clean_env: () -> Hash[String, String?]
+
+    private def run: (Hash[String, String?] env, *String command, what: String, ?chdir: String?) -> void
+  end
+end

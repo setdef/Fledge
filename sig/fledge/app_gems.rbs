@@ -11,12 +11,17 @@ module Fledge
     @checkouts: GitCheckout
     @compiler: NativeBuild
     @path_files: Hash[String, String]
+    @extension_packages: Hash[locked_gem, package]
 
     def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild) -> void
 
     def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
 
     def for: (target platform, runtime: RuntimeContents) -> Array[Entry]
+
+    def extension_packages: () -> Hash[locked_gem, package]
+
+    def extension_build_args: () -> Hash[String, Array[String]]
 
     private def executables: (Hash[locked_gem, package] packages, RuntimeContents runtime) -> Array[Entry]
 
@@ -28,7 +33,11 @@ module Fledge
 
     private def mobile_problems: (Hash[locked_gem, package] packages, MobilePlatform platform, RuntimeContents runtime) -> Array[String]
 
-    private def native_problem: (locked_gem gem, MobilePlatform platform) -> String
+    private def mark_extensions: (Hash[locked_gem, package] packages, MobilePlatform platform, RuntimeContents runtime) -> Hash[locked_gem, package]
+
+    private def extension_folder: (package package, String api) -> [String, String]?
+
+    private def extension_marks: (String path) -> Array[Entry]
 
     private def package_for: (locked_gem gem) -> package
 

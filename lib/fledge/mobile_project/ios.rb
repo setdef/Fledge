@@ -48,6 +48,9 @@ module Fledge
       # are checked against; the Simulator's has the same files.
       SLICE = "ios-arm64"
 
+      # The XCFramework of the app's gems' extensions, for an app that has any.
+      EXTENSIONS = "FledgeExtensions.xcframework"
+
       # The asset catalog the template holds for an app with an icon.
       ASSETS = "Host/Assets.xcassets"
 
@@ -82,11 +85,51 @@ module Fledge
       end
 
       # The values for <tt>project.yml</tt>'s marks, each a JSON string,
-      # which YAML reads as a quoted one.
+      # which YAML reads as a quoted one, but for the dependency of an
+      # app whose gems have extensions, a block of the file's own.
       private def tokens
         icon = @app.identity.icon ? "AppIcon" : ""
         version = MacBundle.bundle_version(@app.identity.version)
-        { "NAME" => @app.name, "IDENTIFIER" => identifier, "VERSION" => version, "APP_ICON" => icon }.transform_values { |value| JSON.generate(value) }
+        strings = {
+"NAME" => @app.name,
+"IDENTIFIER" => identifier,
+"VERSION" => version,
+"APP_ICON" => icon,
+"LDFLAGS" => ["$(inherited)", *extension_flags].join(" "),
+}.transform_values { |value| JSON.generate(value) }
+        strings.merge("EXTENSIONS" => @built ? "- framework: #{EXTENSIONS}\n        embed: false" : "")
+      end
+
+      # The linker flags the extensions' extconf.rb files asked for, and
+      # the C++ runtime for an extension that has C++, for both slices.
+      private def extension_flags
+        built = @built or return []
+        builds = built.targets.values
+        [
+          *builds.flat_map(&:flags),
+          *(builds.any?(&:cxx) ? ["-lc++"] : [] # : Array[String]
+           ),
+].uniq
+      end
+
+      # Links the extensions into the app (ADR 022): one static library
+      # for each slice, made by Apple's libtool from the archives mkmf made,
+      # packed by <tt>xcodebuild -create-xcframework</tt> as the
+      # runtime's is, which the project links; and the registration unit
+      # in <tt>Host/</tt>, which Xcode compiles with the host app, so its
+      # constructor registers each extension when the app starts.
+      private def place_extensions(project)
+        built = @built or return
+        Dir.mktmpdir("fledge-extensions") do |work|
+          libraries = built.targets.flat_map do |name, build|
+            library = File.join(work, name, "libFledgeExtensions.a")
+            FileUtils.mkdir_p(File.dirname(library))
+            Command.run("xcrun", "libtool", "-static", "-no_warning_for_no_symbols", "-o", library, *build.archives, install: Fledge::MobileExtensions::INSTALL_XCODE)
+            ["-library", library]
+          end
+          Command.run("xcodebuild", "-create-xcframework", *libraries, "-output", File.join(project, EXTENSIONS), install: Fledge::MobileExtensions::INSTALL_XCODE)
+        end
+        File.write(File.join(project, "Host", "fledge_extensions.c"), MobileExtensions.registration_source(built.registrations))
       end
 
       private def place_runtime(tree, project)

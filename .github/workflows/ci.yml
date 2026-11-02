@@ -369,7 +369,7 @@ jobs:
   # difference justified for a phone (tasks/mobile_parity.rb).
   mobile-apps-ios:
     name: Mobile apps (iOS Simulator, iPhone and iPad)
-    needs: runtime-mobile
+    needs: [runtime, runtime-mobile]
     runs-on: macos-26
     timeout-minutes: 50
     steps:
@@ -405,6 +405,13 @@ jobs:
           name: runtime-ios
           path: ${{ runner.temp }}/runtimes
 
+      # The runtime of this Mac, whose Ruby runs mkmf to compile a gem's
+      # extension for the phone (ADR 022).
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-arm64-darwin
+          path: ${{ runner.temp }}/runtimes
+
       - name: Build the apps with fledge build ios, and run them in the iOS Simulator
         run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP/runtimes"
 
@@ -427,7 +434,7 @@ jobs:
   # emulator here.
   mobile-apps-android:
     name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
-    needs: runtime-mobile
+    needs: [runtime, runtime-mobile]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
@@ -455,6 +462,19 @@ jobs:
         with:
           name: runtime-android
           path: ${{ runner.temp }}/runtimes
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-x86_64-linux
+          path: ${{ runner.temp }}/runtimes
+
+      # fledge build android compiles a gem's extension with the NDK on the
+      # computer (ADR 022), as a developer's own: the very NDK the runtime
+      # is built with, pinned by SHA-256.
+      - name: Install the pinned NDK
+        run: |
+          unzip -q "$(ruby .github/scripts/fetch_pin.rb mobile ndk hosts x86_64-linux)" -d "$RUNNER_TEMP/ndk"
+          echo "ANDROID_NDK_ROOT=$(echo "$RUNNER_TEMP"/ndk/android-ndk-*)" >> "$GITHUB_ENV"
 
       - name: Build the apps with fledge build android and Gradle, and check each for 16 KB pages and API 36
         run: ruby tasks/mobile_parity.rb android-build "$RUNNER_TEMP/runtimes"

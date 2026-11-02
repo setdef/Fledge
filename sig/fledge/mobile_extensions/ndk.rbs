@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MobileExtensions
+    class NDK
+      TAGS: Hash[String, String]
+      VARIABLES: Array[String]
+      RECOMMENDED: String
+
+      @root: String
+      @host: Platform
+
+      attr_reader root: String
+
+      def self.find: (Runtimes::_Env env, host: Platform) -> NDK
+
+      private def self.sdks: (Runtimes::_Env env) -> Array[String]
+
+      def initialize: (String root, host: Platform) -> void
+
+      def bin: () -> String
+
+      def usable?: () -> bool
+    end
+  end
+end

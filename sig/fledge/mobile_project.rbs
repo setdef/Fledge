@@ -12,10 +12,12 @@ module Fledge
     @out: String
     @app_files: Hash[String, String]
     @files: Array[Entry]
+    @extensions: MobileExtensions?
+    @built: MobileExtensions::Built?
 
     def self.for: (MobilePlatform platform) -> (singleton(MobileProject::IOS) | singleton(MobileProject::Android))
 
-    def initialize: (app: App, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry]) -> void
+    def initialize: (app: App, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?extensions: MobileExtensions?) -> void
 
     def base_name: () -> String
 
@@ -42,6 +44,8 @@ module Fledge
     private def tokens: () -> Hash[String, String]
 
     private def place_runtime: (String tree, String project) -> void
+
+    private def place_extensions: (String project) -> void
 
     private def ruby_root: (String project) -> String
 

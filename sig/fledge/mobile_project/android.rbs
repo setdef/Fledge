@@ -8,6 +8,7 @@ module Fledge
       APPLICATION_ID: Regexp
       VERSION_CODE_MAX: Integer
       AAR: String
+      EXTENSIONS: String
 
       def self.version_code: (String version) -> Integer
 
@@ -26,6 +27,8 @@ module Fledge
       private def string_resource: (String text) -> String
 
       private def place_runtime: (String tree, String project) -> void
+
+      private def place_extensions: (String project) -> void
 
       private def ruby_root: (String project) -> String
 

@@ -23,6 +23,10 @@ import org.setdef.fledge.FledgeRuby;
 public class MainActivity extends Activity {
     private static boolean started;
 
+    // Loads the library that holds the app's gems' extensions, when it has
+    // any (ADR 022); its constructor registers them with Ruby.
+    @@LOAD_EXTENSIONS@@
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);

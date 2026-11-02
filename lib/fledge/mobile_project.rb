@@ -11,6 +11,7 @@ require_relative "archive"
 require_relative "assembly"
 require_relative "entry"
 require_relative "error"
+require_relative "mobile_extensions"
 require_relative "mobile_platform"
 
 module Fledge
@@ -31,9 +32,10 @@ module Fledge
   #
   # This class does what both projects share: it unpacks the runtime with
   # tar, copies the project's template (<tt>lib/fledge/templates/</tt>),
-  # fills in the app's identity where the template marks it
-  # (<tt>@@NAME@@</tt>), and writes ROOT, with the runtime's notices, so
-  # the app carries them. Fledge::MobileProject::IOS and
+  # has Fledge::MobileExtensions compile the app's gems' extensions
+  # against it when the app has any, fills in the app's identity where the
+  # template marks it (<tt>@@NAME@@</tt>), and writes ROOT, with the
+  # runtime's notices, so the app carries them. Fledge::MobileProject::IOS and
   # Fledge::MobileProject::Android place the runtime and the icons as each
   # system's tools expect, and IOS has XcodeGen write the Xcode project.
   # It writes <tt>OUT/NAME-ios/</tt> or <tt>OUT/NAME-android/</tt>,
@@ -99,12 +101,17 @@ module Fledge
     # [files] More entries for ROOT, such as the app's gems, with paths
     #         relative to it, which may not replace anything the runtime
     #         holds.
-    def initialize(app:, runtime:, out:, app_files: {}, files: [])
+    # [extensions] The Fledge::MobileExtensions that compiles the gems'
+    #              extensions against the runtime, which the project links
+    #              into the app, or +nil+ for an app with none (ADR 022).
+    def initialize(app:, runtime:, out:, app_files: {}, files: [], extensions: nil)
       @app = app
       @runtime = runtime
       @out = out
       @app_files = app_files
       @files = files
+      @extensions = extensions
+      @built = nil # : MobileExtensions::Built?
     end
 
     # The project's folder name: <tt>NAME-ios</tt> or <tt>NAME-android</tt>.
@@ -157,7 +164,9 @@ module Fledge
 
     private def build(tree, project)
       FileUtils.cp_r(File.join(TEMPLATES, system), project, preserve: true)
+      @built = @extensions&.call(tree)
       place_runtime(tree, project)
+      place_extensions(project) if @built
       root = File.join(project, ROOT)
       FileUtils.mkdir_p(root)
       File.write(File.join(root, Assembly::CONFIG), Assembly.launch_config(@app))
@@ -223,6 +232,12 @@ module Fledge
 
     private def place_runtime(_tree, _project)
       raise(NotImplementedError, "#{self.class} places no runtime")
+    end
+
+    # Links the compiled extensions (@built) into the project, as each
+    # system needs them linked.
+    private def place_extensions(_project)
+      raise(NotImplementedError, "#{self.class} links no extensions")
     end
 
     private def ruby_root(_project)

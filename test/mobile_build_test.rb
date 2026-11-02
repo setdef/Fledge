@@ -219,9 +219,9 @@ class MobileBuildTest < Minitest::Test
       "identifier = com.example.MyApp\n", read("dist/MyApp-android/fledge/fledge.cfg")
   end
 
-  def test_a_phone_needs_the_lockfile_to_lock_ruby_and_refuses_native_gems
-    native = FakeGem.build(@gems, "native", "1.0.0", extensions: ["ext/native/extconf.rb"],
-      files: { "ext/native/extconf.rb" => "# extconf\n", "lib/native.rb" => "" })
+  def test_a_phone_needs_the_lockfile_to_lock_ruby_and_refuses_extensions_mkmf_does_not_build
+    native = FakeGem.build(@gems, "native", "1.0.0", extensions: ["ext/native/Rakefile"],
+      files: { "ext/native/Rakefile" => "# rake\n", "lib/native.rb" => "" })
     root = gem_project(dependencies: { "native" => ">= 0" }, locked: [native])
 
     _, err, status = build("android", root)
@@ -233,9 +233,9 @@ class MobileBuildTest < Minitest::Test
     assert_equal 1, status
     assert_equal [
       "fledge build: MyApp can't ship for android:",
-      "fledge build:   native 1.0.0 has an extension to compile, and Fledge ships only pure-Ruby gems to android for now; native " \
-        "gems on phones come after Fledge 1.0. Leave it out of the app's android build (gem \"native\", platforms: [...] in the " \
-        "Gemfile), or find a pure-Ruby gem in its place.",
+      "fledge build:   native 1.0.0 has an extension built by ext/native/Rakefile, and Fledge compiles for android only extensions " \
+        "that an extconf.rb builds, with mkmf, as Ruby's own tools do. Leave it out of the app's android build (gem \"native\", " \
+        "platforms: [...] in the Gemfile), or ask its author for an extconf.rb.",
     ], err.lines.map(&:chomp).grep_v(/\ADownloading /)
     refute_path_exists File.join(@dir, "dist/MyApp-android")
   end

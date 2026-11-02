@@ -11,7 +11,9 @@
 # "Copy Ruby and the app" copies into the bundle's fledge/ folder for the
 # SDK it builds for, as CPython's iOS apps copy their slice's standard
 # library, and then the folder fledge/: the app's program, its gems, and
-# fledge.cfg. No signing is configured: choose your team under Signing &
+# fledge.cfg. When the app's gems have C or C++ extensions (ADR 022), they
+# are compiled for both slices into FledgeExtensions.xcframework, linked
+# the same way, and Host/fledge_extensions.c registers them. No signing is configured: choose your team under Signing &
 # Capabilities to run it on a device.
 name: @@NAME@@
 options:
@@ -26,6 +28,7 @@ targets:
     dependencies:
       - framework: FledgeRuby.xcframework
         embed: false
+      @@EXTENSIONS@@
     postCompileScripts:
       - name: Copy Ruby and the app
         basedOnDependencyAnalysis: false
@@ -53,3 +56,4 @@ targets:
         CLANG_ENABLE_MODULES: YES
         CLANG_ENABLE_OBJC_ARC: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
+        OTHER_LDFLAGS: @@LDFLAGS@@

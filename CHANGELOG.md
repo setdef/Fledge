@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge build ios` and `fledge build android` compile a gem's C and C++ extension (an `extconf.rb`) for the phone's targets and link it into the app, where `require` finds it by the name `create_makefile` gave. iOS needs Xcode; Android needs the NDK (`ANDROID_NDK_ROOT`, or the SDK's `ndk/` folder) on a Mac or Linux. The mobile runtimes gain `fledge_ruby_add_extension` for a host that registers its own extensions.
+
+### Changed
+
+- A phone's gem with an extension that no `extconf.rb` builds (Rake, CMake, Cargo) or that is Rust fails the build with a message naming the gem, as every extension did before.
+
 ## [0.1.0] - 2026-11-02
 
 Versions now follow ordinary 0.MINOR.PATCH numbering; the `0.0.1.pre.N` form ended at 0.0.1.pre.17. Nothing else about how releases are made or fetched changed: a release is still a git tag and a GitHub Release with the runtimes, and `fledge build` downloads the runtimes for its own version.

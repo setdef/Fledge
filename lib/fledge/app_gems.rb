@@ -14,6 +14,7 @@ require_relative "gem_package"
 require_relative "git_checkout"
 require_relative "git_package"
 require_relative "linkage"
+require_relative "mobile_extensions"
 require_relative "mobile_platform"
 require_relative "native_build"
 require_relative "path_gem"
@@ -135,6 +136,7 @@ module Fledge
       end
       raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
 
+      packages = mark_extensions(packages, platform, runtime) if platform.is_a?(MobilePlatform)
       entries = [*packages.flat_map { |gem, package| entries_for(gem, package, runtime.gem_dir) }, *stubs]
       entries.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
     end
@@ -195,19 +197,62 @@ module Fledge
     end
 
     # What keeps each gem from running on a phone: the Ruby it asks for,
-    # and an extension, which Fledge does not compile for a phone; native
-    # gems on phones come after 1.0 (Plan 002).
+    # and an extension Fledge does not compile there
+    # (Fledge::MobileExtensions.problems).
     private def mobile_problems(packages, platform, runtime)
       packages.flat_map do |gem, package|
-        native = package.extensions? ? [native_problem(gem, platform)] : [] # : Array[String]
-        [*package.problems(ruby_version: runtime.ruby_version), *native]
+        [*package.problems(ruby_version: runtime.ruby_version), *MobileExtensions.problems(gem, package, platform, @compiler.platform)]
       end
     end
 
-    private def native_problem(gem, platform)
-      "#{gem} has an extension to compile, and Fledge ships only pure-Ruby gems to #{platform} for now; native gems on " \
-        "phones come after Fledge 1.0. Leave it out of the app's #{platform} build (gem \"#{gem.name}\", platforms: [...] " \
-        "in the Gemfile), or find a pure-Ruby gem in its place."
+    # +packages+ with each gem from a server or git that has an extension
+    # marked built, as RubyGems and Bundler mark one they compiled
+    # (<tt>gem.build_complete</tt> in its extension folder, for each
+    # platform of the phone's Ruby), so that neither ignores the gem for
+    # its extensions not being built: the extension itself is linked into
+    # the app (Fledge::MobileExtensions), not in a file. A path gem is
+    # not marked, as a desktop's is not (#entries_for).
+    private def mark_extensions(packages, platform, runtime)
+      @extension_packages = packages.select { |_, package| package.extensions? }
+      api = "#{File.basename(runtime.gem_dir)}-static"
+      packages.to_h do |gem, package|
+        root, folder = extension_folder(package, api)
+        next [gem, package] unless package.extensions? && root && !package.is_a?(CompiledGem)
+
+        marks = platform.gem_platforms.flat_map { |name| extension_marks(format(folder.to_s, name)) }
+        [gem, CompiledGem.new(package:, built: [], extensions: marks, extension_dir: root, build_args: [], build_info: nil, problems: [])]
+      end
+    end
+
+    # Where RubyGems (for a gem from a server) and Bundler (for one from
+    # git) keep a built gem's extensions: the folder below the gem folder
+    # that holds them all, and the path below it with a <tt>%s</tt> for
+    # the platform; neither for a path gem.
+    private def extension_folder(package, api)
+      case package
+      when GemPackage then ["extensions", "%s/#{api}/#{package.spec.full_name}"]
+      when GitPackage then ["bundler/gems/extensions", "%s/#{api}/#{package.scope}"]
+      end
+    end
+
+    # The entries below the extension folder for +path+: each of its
+    # folders, and the empty file that marks it built.
+    private def extension_marks(path)
+      parts = path.split("/")
+      [*(1..(parts.size)).map { |count| Entry.directory(parts.first(count).join("/")) }, Entry.file("#{path}/gem.build_complete", "")]
+    end
+
+    # The gems with an extension that fledge build linked into the app,
+    # as #for found them, by gem, for Fledge::MobileExtensions to compile:
+    # empty before #for, and for a desktop.
+    def extension_packages
+      @extension_packages ||= {} # : Hash[locked_gem, package]
+    end
+
+    # The build options the app's Bundler settings give each of the
+    # gems of #extension_packages, by gem name.
+    def extension_build_args
+      extension_packages.keys.to_h { |gem| [gem.name, @bundle.build_args(gem.name)] }
     end
 
     private def package_for(gem)

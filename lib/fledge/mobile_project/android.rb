@@ -58,6 +58,10 @@ module Fledge
       # Ruby, in ROOT.
       AAR = "FledgeRuby.aar"
 
+      # The name of the library that holds the app's gems' extensions and
+      # their registration, <tt>libfledgeext.so</tt> (ADR 022).
+      EXTENSIONS = "fledgeext"
+
       # The <tt>versionCode</tt> for +version+: each of its first three
       # numbers in three digits, as Briefcase pads a version's parts into
       # one, so that each later version has a greater code, and 1 for
@@ -112,7 +116,13 @@ module Fledge
       end
 
       private def template_files
-        %w[settings.gradle build.gradle src/main/AndroidManifest.xml src/main/res/values/strings.xml]
+        %w[
+          settings.gradle
+          build.gradle
+          src/main/AndroidManifest.xml
+          src/main/res/values/strings.xml
+          src/main/java/org/setdef/fledge/host/MainActivity.java
+]
       end
 
       # The values for the templates' marks, each written as the file that
@@ -128,6 +138,7 @@ module Fledge
           "VERSION_NAME" => groovy(version),
           "NAME" => string_resource(@app.name),
           "ICON" => @app.identity.icon ? ' android:icon="@mipmap/ic_launcher"' : "",
+          "LOAD_EXTENSIONS" => @built ? "static { System.loadLibrary(\"fledgeruby\"); System.loadLibrary(\"#{EXTENSIONS}\"); }" : "",
         }
       end
 
@@ -157,6 +168,23 @@ module Fledge
         FileUtils.mkdir_p([root, File.join(project, "libs")])
         %w[lib libexec].each { |folder| FileUtils.mv(File.join(tree, folder), root) }
         FileUtils.mv(File.join(tree, AAR), File.join(project, "libs"))
+      end
+
+      # Links the extensions into a shared library for each ABI, against
+      # the runtime's <tt>libfledgeruby.so</tt>, in <tt>src/main/jniLibs/</tt>,
+      # where Gradle's plugin packs it into the APK aligned for 16 KB pages,
+      # and which the host loads next to Ruby's. The registration unit is
+      # kept in <tt>extensions/</tt> for whoever reads the project.
+      private def place_extensions(project)
+        built = @built or return
+        compiler = @extensions or return
+        source = File.join(project, "extensions", "fledge_extensions.c")
+        FileUtils.mkdir_p(File.dirname(source))
+        File.write(source, MobileExtensions.registration_source(built.registrations))
+        built.targets.each_value do |build|
+          into = File.join(project, "src", "main", "jniLibs", build.target.abi.to_s, "lib#{EXTENSIONS}.so")
+          compiler.shared_library(built, build, registration: source, into:)
+        end
       end
 
       private def ruby_root(project)

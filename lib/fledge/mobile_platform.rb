@@ -66,6 +66,15 @@ module Fledge
       "android" => "with the Android SDK, which Google supports on macOS, Windows, and x86-64 Linux",
     }.freeze
 
+    # The platform each system's Ruby reports for its extensions' folders
+    # (<tt>Gem::Platform.local</tt> there), which RubyGems and Bundler
+    # name a built gem's extension folder by: iOS's two slices report the
+    # same, and Android's one tree serves both ABIs (ADR 011, section 2).
+    GEM_PLATFORMS = {
+      "ios" => %w[arm64-darwin],
+      "android" => %w[aarch64-linux-android x86_64-linux-android],
+    }.freeze
+
     # The names of the systems Fledge builds apps' projects for.
     #
     # === Example
@@ -121,6 +130,24 @@ module Fledge
 
       raise Error, "#{TITLES.fetch(name)} is built #{WHY.fetch(name)}, and this computer is #{host}. " \
         "Build it on #{hosts.join(', ')}."
+    end
+
+    # The platforms of the phone's Ruby, by which RubyGems and Bundler
+    # keep a gem's built extensions.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::MobilePlatform.find("ios").gem_platforms # => ["arm64-darwin"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def gem_platforms
+      GEM_PLATFORMS.fetch(name)
     end
 
     # Never: a phone is not Windows. Fledge::Bundle asks, for a Gemfile's

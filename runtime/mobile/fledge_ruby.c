@@ -53,6 +53,7 @@
 
 #include <ruby.h>
 
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,6 +64,22 @@
 /* The runtimes' edit to ruby.c (RubySource.ruby_c). */
 extern const char *ruby_embed_libruby_path;
 
+/*
+ * Ruby's registry of statically linked extensions, load.c at 4.0.9
+ * (line 1480): the one extinit.c fills for Ruby's own, by the feature
+ * with its ".so", which require looks a name up in when it finds no file
+ * (search_required, lines 1126 to 1145).
+ */
+void ruby_init_ext(const char *name, void (*init)(void));
+
+/* An extension fledge_ruby_add_extension was told of. */
+struct extension {
+    char *feature;
+    void (*init)(void);
+};
+
+static struct extension *extensions;
+static size_t extension_count;
 static int started;
 static const char *found_certificates;
 
@@ -101,6 +118,47 @@ setup_bundler(void)
     return -1;
 }
 
+int
+fledge_ruby_add_extension(const char *feature, void (*init)(void))
+{
+    if (feature == NULL || feature[0] == '\0' || init == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+    if (started) {
+        errno = EALREADY;
+        return -1;
+    }
+    struct extension *grown = realloc(extensions, (extension_count + 1) * sizeof *extensions);
+    if (grown == NULL) return -1;
+    extensions = grown;
+    /* Ruby keeps the name it is given, so it is never freed; ".so" as extinit.c writes it. */
+    size_t length = strlen(feature);
+    char *name = malloc(length + sizeof ".so");
+    if (name == NULL) return -1;
+    memcpy(name, feature, length);
+    memcpy(name + length, ".so", sizeof ".so");
+    extensions[extension_count].feature = name;
+    extensions[extension_count].init = init;
+    extension_count++;
+    return 0;
+}
+
+/*
+ * Hands Ruby every extension fledge_ruby_add_extension was told of, as
+ * Init_ext hands it Ruby's own (Ruby's ruby_opt_init calls Init_ext once
+ * the VM is up, ruby.c line 1828 at 4.0.9): after ruby_options, so that
+ * the main namespace they register in exists, and before the program or
+ * Bundler's setup requires any of them.
+ */
+static void
+register_extensions(void)
+{
+    for (size_t index = 0; index < extension_count; index++) {
+        ruby_init_ext(extensions[index].feature, extensions[index].init);
+    }
+}
+
 /*
  * SPDX-SnippetBegin
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
@@ -115,6 +173,7 @@ run_ruby(int argc, char **argv)
     RUBY_INIT_STACK;
     ruby_init();
     void *node = ruby_options(argc, argv);
+    register_extensions();
     if (bundle_gemfile != NULL && ruby_executable_node(node, NULL) && setup_bundler() != 0) {
         return ruby_cleanup(FLEDGE_RUBY_SOFTWARE);
     }

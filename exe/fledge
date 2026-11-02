@@ -55,8 +55,9 @@
 #     an Xcode project for iPhone and iPad on a Mac, and a Gradle project
 #     for Android on a Mac, Linux, or Windows. Ruby runs there as a
 #     library linked into the app, with Bundler setting up the app's
-#     gems, which must be pure Ruby for now; what the app prints goes to
-#     the system log.
+#     gems; a gem with a C or C++ extension (an extconf.rb) is compiled
+#     for each of the phone's targets with Xcode or the Android NDK and
+#     linked into the app; what the app prints goes to the system log.
 #
 #     An app is unsigned unless you sign it with your own identity
 #     (--sign), so that macOS's Gatekeeper and Windows' SmartScreen
@@ -203,9 +204,12 @@
 #                        build left unsigned.
 #                        A phone's app sets up its gems with Bundler's
 #                        force_ruby_platform, so its Gemfile.lock must
-#                        lock ruby (bundle lock --add-platform ruby), and
-#                        a gem with an extension to compile fails the
-#                        build.
+#                        lock ruby (bundle lock --add-platform ruby). A
+#                        gem with a C or C++ extension is compiled for
+#                        the phone and linked into the app (Android needs
+#                        the NDK: ANDROID_NDK_ROOT or the SDK's ndk/
+#                        folder); a gem whose extension is not built by an
+#                        extconf.rb, or is Rust, fails the build, naming it.
 #     DIR/NAME-PLATFORM.zip
 #     DIR/NAME-PLATFORM.tar.gz
 #                        The same folder, archived for download: a .zip

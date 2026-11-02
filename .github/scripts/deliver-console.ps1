@@ -17,6 +17,15 @@
 #              its locale's, and keep UTF-8 as its default external
 #              encoding, as ruby.exe does on Windows since Ruby 3.0.
 #
+#   close      Closing the console's window. Windows sends CTRL_CLOSE_EVENT to
+#              every program on a console its window closes, and a program
+#              with no handler of its own is ended at once, with the status
+#              STATUS_CONTROL_C_EXIT (0xC000013A), before any ensure clause
+#              or at_exit hook runs. GitHub's runners would not close a
+#              console window from a script (ADR 015), but ClosePseudoConsole
+#              does the same to a program on a pseudoconsole, as Windows
+#              Terminal does when a tab closes.
+#
 # And a windowed app (ADR 008) started from a console, as a person types
 # its name into one: like rubyw.exe, it gets no console, and the console
 # does not wait for it.
@@ -87,6 +96,66 @@ public static string[] Screen() {
   }
   return rows;
 }
+'@
+
+# A pseudoconsole (ConPTY), the console Windows Terminal and OpenSSH give a
+# program, which a script can close: ClosePseudoConsole ends it as a person
+# closing its window does.
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+namespace Fledge { public static class PseudoConsole {
+  [StructLayout(LayoutKind.Sequential)] public struct Coord { public short X, Y; }
+  [StructLayout(LayoutKind.Sequential)] public struct StartupInfo {
+    public int cb; public IntPtr lpReserved, lpDesktop, lpTitle;
+    public int dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars, dwFillAttribute, dwFlags;
+    public short wShowWindow, cbReserved2; public IntPtr lpReserved2, hStdInput, hStdOutput, hStdError; }
+  [StructLayout(LayoutKind.Sequential)] public struct StartupInfoEx { public StartupInfo StartupInfo; public IntPtr lpAttributeList; }
+  [StructLayout(LayoutKind.Sequential)] public struct ProcessInfo { public IntPtr hProcess, hThread; public int dwProcessId, dwThreadId; }
+  [DllImport("kernel32.dll", SetLastError=true)] static extern bool CreatePipe(out IntPtr r, out IntPtr w, IntPtr a, int size);
+  [DllImport("kernel32.dll")] static extern int CreatePseudoConsole(Coord size, IntPtr input, IntPtr output, uint flags, out IntPtr pc);
+  [DllImport("kernel32.dll")] static extern void ClosePseudoConsole(IntPtr pc);
+  [DllImport("kernel32.dll", SetLastError=true)] static extern bool InitializeProcThreadAttributeList(IntPtr l, int n, int f, ref IntPtr size);
+  [DllImport("kernel32.dll", SetLastError=true)] static extern bool UpdateProcThreadAttribute(IntPtr l, uint f, IntPtr a, IntPtr v, IntPtr s, IntPtr p, IntPtr r);
+  [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)] static extern bool CreateProcessW(string app, string cmd, IntPtr pa, IntPtr ta, bool inherit, uint flags, IntPtr env, string dir, ref StartupInfoEx si, out ProcessInfo pi);
+  [DllImport("kernel32.dll", SetLastError=true)] static extern bool ReadFile(IntPtr h, byte[] b, int n, out int read, IntPtr o);
+  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+  [DllImport("kernel32.dll")] static extern uint WaitForSingleObject(IntPtr h, uint ms);
+  [DllImport("kernel32.dll")] static extern bool GetExitCodeProcess(IntPtr h, out uint code);
+  [DllImport("kernel32.dll")] static extern bool TerminateProcess(IntPtr h, uint code);
+
+  public static IntPtr Pc, Process, OutRead;
+  // Starts a program on a new pseudoconsole; returns its process id.
+  public static int Start(string commandLine, string dir) {
+    IntPtr inRead, inWrite, outRead, outWrite;
+    CreatePipe(out inRead, out inWrite, IntPtr.Zero, 0);
+    CreatePipe(out outRead, out outWrite, IntPtr.Zero, 0);
+    if (CreatePseudoConsole(new Coord { X = 120, Y = 30 }, inRead, outWrite, 0, out Pc) != 0) throw new Exception("CreatePseudoConsole");
+    CloseHandle(inRead); CloseHandle(outWrite);
+    OutRead = outRead;
+    var drain = new Thread(() => { var b = new byte[4096]; int n; while (ReadFile(outRead, b, b.Length, out n, IntPtr.Zero) && n > 0) {} });
+    drain.IsBackground = true; drain.Start();
+    IntPtr size = IntPtr.Zero;
+    InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
+    var si = new StartupInfoEx(); si.StartupInfo.cb = Marshal.SizeOf(typeof(StartupInfoEx));
+    si.lpAttributeList = Marshal.AllocHGlobal(size);
+    if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, ref size)) throw new Exception("Initialize");
+    if (!UpdateProcThreadAttribute(si.lpAttributeList, 0, (IntPtr)0x20016, Pc, (IntPtr)IntPtr.Size, IntPtr.Zero, IntPtr.Zero)) throw new Exception("Update");
+    ProcessInfo pi;
+    if (!CreateProcessW(null, commandLine, IntPtr.Zero, IntPtr.Zero, false, 0x80000, IntPtr.Zero, dir, ref si, out pi))
+      throw new System.ComponentModel.Win32Exception();
+    Process = pi.hProcess;
+    return pi.dwProcessId;
+  }
+  public static void Close() { ClosePseudoConsole(Pc); }
+  // Waits for the program to end; returns its exit code, or -1 if it did not.
+  public static long Await(int seconds) {
+    if (WaitForSingleObject(Process, (uint)(seconds * 1000)) != 0) return -1;
+    uint code; GetExitCodeProcess(Process, out code); return code;
+  }
+  public static void Kill() { TerminateProcess(Process, 99); }
+} }
 '@
 
 function Fail([string] $message) {
@@ -196,6 +265,26 @@ foreach ($codePage in @('65001', '437')) {
   Expect "the line $label printed, on the console (code page $codePage)" ($screen | Where-Object { $_ -like 'caf*' } | Select-Object -First 1) "caf$([char]0xE9) $([char]0x2713)"
 }
 
+# Closes a pseudoconsole with the program on it, as closing a console
+# window does: the program ends at once, with STATUS_CONTROL_C_EXIT,
+# without running ensure clauses or at_exit hooks.
+$closeLog = Join-Path $work 'close.log'
+$closePath = $env:PATH
+$system = $env:SystemRoot
+$env:PATH = "$system\System32;$system;$system\System32\Wbem"
+$closeLine = (@($command | ForEach-Object { Quote $_ }) + (Quote $closeLog)) -join ' '
+[void][Fledge.PseudoConsole]::Start($closeLine, $system)
+$env:PATH = $closePath
+if (-not (Await { (Test-Path -LiteralPath $closeLog) -and (Get-Content -LiteralPath $closeLog) -contains 'ready' })) {
+  [Fledge.PseudoConsole]::Kill()
+  Fail "$label never became ready on a pseudoconsole"
+}
+[Fledge.PseudoConsole]::Close()
+Expect "$label's exit status when its console is closed" ([Fledge.PseudoConsole]::Await(30)) 3221225786
+$recorded = Get-Content -LiteralPath $closeLog -Encoding utf8
+Expect "when $label was closed, what it recorded" (($recorded | Select-Object -Skip 1) -join "`n") "external UTF-8`nready"
+if ($recorded[0] -cnotmatch '^locale CP\d+$') { Fail "$label's locale on a pseudoconsole is '$($recorded[0])'" }
+
 # A windowed app, typed into a console: PowerShell starts it and goes
 # on, as it does rubyw.exe, and the app has no console.
 if ($WindowedReference) {
@@ -221,4 +310,4 @@ if ($Windowed -or $WindowedReference) {
   Expect "whether $windowedLabel had a console" $facts.console $false
 }
 
-Write-Host "Delivered: Ctrl-C ends $label as it ends ruby.exe, on both code pages"
+Write-Host "Delivered: Ctrl-C ends $label as it ends ruby.exe, on both code pages, and so does closing its console"

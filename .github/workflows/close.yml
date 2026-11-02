@@ -43,15 +43,32 @@ jobs:
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
           ruby -I lib exe/fledge build -o dist test/fixtures/console
           ls dist
-      - name: Close a pseudoconsole under ruby.exe
+      - name: deliver-console.ps1 with ruby.exe
         shell: pwsh
-        continue-on-error: true
         run: >-
-          .github/scripts/close-console.ps1 -Log "$env:RUNNER_TEMP/ruby.log"
-          -Program (Get-Command ruby.exe).Source -Argument "$PWD/test/fixtures/console/main.rb"
-      - name: Close a pseudoconsole under the built app
+          & .github/scripts/deliver-console.ps1
+          -Reference @((Get-Command ruby.exe).Source, 'test/fixtures/console/main.rb')
+      - name: deliver-console.ps1 with the built app, on a PATH without Ruby
         shell: pwsh
-        continue-on-error: true
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver-console.ps1
+          -Archive "dist/Console-${{ matrix.platform }}.zip"
+  disk-image:
+    name: Disk image (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    steps:
+      - name: hdiutil create, as Fledge runs it
         run: |
-          Expand-Archive dist/Console-${{ matrix.platform }}.zip "$env:RUNNER_TEMP/app"
-          .github/scripts/close-console.ps1 -Log "$env:RUNNER_TEMP/app.log" -Program "$env:RUNNER_TEMP/app/Console-${{ matrix.platform }}/Console.exe"
+          sw_vers
+          mkdir -p stage/A.app && echo hi > stage/A.app/f && ln -s /Applications stage/Applications
+          hdiutil create -volname T -srcfolder stage -fs HFS+ -format UDZO -ov t.dmg; echo "exit=$?"
+          hdiutil verify t.dmg | tail -1
+          hdiutil attach t.dmg -nobrowse -mountpoint mnt | tail -1
+          ls -l mnt
+          hdiutil detach mnt
+          diskutil image create from --format UDZO --volumeName T stage d.dmg; echo "diskutil exit=$?"

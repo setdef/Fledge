@@ -157,8 +157,13 @@ module Fledge
       at_project(gemfile) do
         dsl = Bundler::Dsl.new
         dsl.eval_gemfile(gemfile)
-        definition = dsl.to_definition(Pathname.new(@lockfile), {})
-        Bundler.settings.temporary(frozen: true) { definition.ensure_equivalent_gemfile_and_lockfile(true) }
+        # Frozen as the built app is, whatever the environment says: Bundler
+        # adds the computer's own platform to a definition it may rewrite
+        # (Bundler::Definition#initialize), and that platform is no more
+        # locked for the app than the lockfile says.
+        definition = Bundler.settings.temporary(frozen: true) do
+          dsl.to_definition(Pathname.new(@lockfile), {}).tap { |read| read.ensure_equivalent_gemfile_and_lockfile(true) }
+        end
         @build_args = build_settings
         read_groups(definition)
         definition

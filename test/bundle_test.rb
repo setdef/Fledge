@@ -127,6 +127,16 @@ class BundleTest < Minitest::Test
       error.message
   end
 
+  def test_the_lockfile_is_read_as_a_frozen_one_whatever_the_environment_says
+    frozen = ENV.delete("BUNDLE_FROZEN")
+    bundle = bundle(dependencies: {}, locked: [], platforms: ["java"])
+
+    error = assert_raises(Fledge::Error) { names(bundle, LINUX) }
+    assert_includes error.message, "Gemfile.lock locks no gems for x86_64-linux"
+  ensure
+    ENV["BUNDLE_FROZEN"] = frozen if frozen
+  end
+
   def test_a_gem_without_a_checksum_is_refused
     bundle = bundle(dependencies: { "foo" => ">= 0" }, locked: [@foo], checksums: false)
 

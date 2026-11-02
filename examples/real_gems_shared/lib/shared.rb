@@ -9,6 +9,7 @@
 # private gems often are, which fledge build copies where Bundler looks
 # for a copy of a path gem (vendor/cache/NAME).
 module Shared
+  # What the gem says, so that the app can show it came from here.
   def self.greeting
     "shared from outside the project"
   end

@@ -236,6 +236,12 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 *Governs:* 1.0 waits until at least some of the unproven things are proven; releases may move from the `0.0.1.pre.N` form to ordinary 0.MINOR.PATCH versions, beginning with 0.1.0; Fledge depends on no wrapper's repository, wrappers depend on Fledge; a `.deb` installer is built. *Applied in:* Plan 003; the handoff; `questions.md` (entry D removed); the drafts; the next release.
 
+> iPadOS, iOS, and Android are our priorities for 0.2.0.
+
+[re: the Lota session's questions about native extensions on phones, which Plan 003 had placed after 1.0, and the maintainer's wish for Lota games on iPhone, iPad, and Android.]
+
+*Governs:* the work for release 0.2.0 is phones: iPadOS, iOS, and Android, ahead of the stories that wait on money. *Applied in:* Plan 003; the handoff.
+
 ## 2026-11-02, later
 
 The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.

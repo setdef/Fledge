@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Experiment (Plan 003, "Closing a Windows console"): ways to close a
+# console that GitHub's Windows runners honor.
+name: Close experiment
+
+on:
+  push:
+    branches:
+      - experiment/windows-close
+
+permissions:
+  contents: read
+
+jobs:
+  close:
+    name: Close (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read the Ruby pin
+        id: pins
+        shell: bash
+        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          ruby-version: ${{ steps.pins.outputs.ruby }}
+      - name: Build the console probe with the release's runtime
+        shell: bash
+        run: |
+          export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
+          ruby -I lib exe/fledge build -o dist test/fixtures/console
+          ls dist
+      - name: Close a pseudoconsole under ruby.exe
+        shell: pwsh
+        continue-on-error: true
+        run: >-
+          .github/scripts/close-console.ps1 -Log "$env:RUNNER_TEMP/ruby.log"
+          -Program (Get-Command ruby.exe).Source -Argument "$PWD/test/fixtures/console/main.rb"
+      - name: Close a pseudoconsole under the built app
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Expand-Archive dist/Console-${{ matrix.platform }}.zip "$env:RUNNER_TEMP/app"
+          .github/scripts/close-console.ps1 -Log "$env:RUNNER_TEMP/app.log" -Program "$env:RUNNER_TEMP/app/Console-${{ matrix.platform }}/Console.exe"

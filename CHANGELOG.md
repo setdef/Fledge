@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `fledge build ios` and `fledge build android` compile a gem's C and C++ extension (an `extconf.rb`) for the phone's targets and link it into the app, where `require` finds it by the name `create_makefile` gave. iOS needs Xcode; Android needs the NDK (`ANDROID_NDK_ROOT`, or the SDK's `ndk/` folder) on a Mac or Linux. The mobile runtimes gain `fledge_ruby_add_extension` for a host that registers its own extensions.
+- A JSON Schema of `fledge.yml`, `lib/fledge/config.schema.json` in the gem, for editors that run Red Hat's YAML language server: put `# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/trunk/lib/fledge/config.schema.json` on the file's first line to complete its keys and values and mark what `fledge build` would refuse.
 
 ### Changed
 

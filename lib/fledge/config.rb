@@ -28,6 +28,23 @@ module Fledge
   # of being ignored. The file also marks its folder as a project's root,
   # for a script with no Gemfile or gemspec of its own.
   #
+  # An editor can check the file as you type, before a build does.
+  # <tt>config.schema.json</tt>, beside this file, is a JSON Schema of
+  # these keys and rules (ADR 023). Name it on the file's first line, and
+  # an editor that runs Red Hat's YAML language server, such as VS Code
+  # with Red Hat's YAML extension, completes each key and value, shows
+  # what each means, and marks a typo:
+  #
+  #--
+  # SPDX-SnippetBegin
+  # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  # SPDX-License-Identifier: MIT-0
+  #++
+  #   # yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/trunk/lib/fledge/config.schema.json
+  #--
+  # SPDX-SnippetEnd
+  #++
+  #
   # Use it through Fledge::App.
   #
   # === Example

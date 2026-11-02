@@ -36,7 +36,7 @@ Plan 001 (the walking skeleton) and Plan 002 (toward 1.0) are done. What each Pl
 Plan 003 holds it. In short:
 
 - **Waiting on the maintainer** (`questions.md`): an Apple Developer account, for a real iPhone and iPad and for App Review (entry A); and the accounts and certificates for notarization, Developer ID, and Windows code signing (entry B). Work proceeds on each entry's default.
-- **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner emulates; Gatekeeper's and SmartScreen's verdicts on a real certificate; closing a Windows console window (ADR 015).
+- **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner can emulate with hardware acceleration (tried 2026-11-02, ADR 011; a device cloud is `questions.md` entry C); Gatekeeper's and SmartScreen's verdicts on a real certificate; closing a Windows console window (ADR 015).
 - **Open problems from the ADRs**: a wrapper's own CI building and delivering its app (Rooibos's ships through Fledge by hand, ADR 019; Tokra and Lota have not tried); the musl and ARM64 Windows builds of `examples/real_gems`, and `Gem.bindir` on an app's `PATH` (ADR 020); installer polish and `diskutil image create` on macOS 26 (ADR 009, ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
 
 ## How to check it

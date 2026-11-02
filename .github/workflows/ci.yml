@@ -420,9 +420,10 @@ jobs:
   # The same on Android emulators of API 36 with 4 KB and with 16 KB
   # pages: the apps built with fledge build android, each Gradle project
   # built with its own wrapper, debug and unsigned release, and each APK
-  # checked for Play's 16 KB alignment and target API. GitHub's Linux
-  # runners emulate x86_64 only, so the arm64-v8a library is built and
-  # checked but run on no emulator here.
+  # checked for Play's 16 KB alignment and target API. No GitHub-hosted
+  # runner boots an arm64-v8a emulator with hardware acceleration (ADR
+  # 011), so the arm64-v8a library is built and checked but run on no
+  # emulator here.
   mobile-apps-android:
     name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
     needs: runtime-mobile

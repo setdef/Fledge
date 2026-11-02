@@ -56,7 +56,7 @@ Pre-1.0, zero external users. Prefer good design over backward compatibility; re
 
 ## Provenance
 
-The maintainer uses three words for how work comes to exist. *Written* means typed by hand, with nothing generated. *Wrought* means an agent generated it while the maintainer iterated with it and reviewed every change before committing it. *Requested* means an agent built it with little or no review.
+The maintainer uses three words for how code comes to exist (decisions, 2026-11-02, later again). *Written* means the maintainer typed it by hand, with nothing generated. *Wrought* means an AI agent generated it while the maintainer iterated with it, and the maintainer reviewed every change before committing it, so the maintainer takes responsibility for every diff. *Requested* means an agent built it with little or no review from the maintainer, in the style of a "dark factory."
 
 - **In Fledge, everything is requested:** ADRs, plans, this file, the README, `lib/`, `sig/`, `exe/`, `tasks/`, `test/`, the launcher's C, the workflows. Nothing here is written or wrought. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass.
 - **The maintainer's words** are in `doc/contributors/decisions.md`, quoted verbatim with the date. That file is the only record of what the maintainer said. Everything else here, ADRs, plans, and this file included, was written by agents, and agents change it freely, as long as it stays true to `decisions.md`.

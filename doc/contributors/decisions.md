@@ -251,3 +251,19 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: a draft line saying Fledge is "never" installed from RubyGems.org, which followed AGENTS.md's "Never publish to RubyGems.org" as if that rule were a position of the project.]
 
 *Governs:* publishing to RubyGems.org is a human-only activity, whether or not Fledge is on RubyGems.org; the earlier "Never publish to RubyGems.org" and decision 6's "you may not release to rubygems" bind agents and say nothing about the project, so documents for developers do not say Fledge is never published there. *Applied in:* AGENTS.md, Releasing; Plan 003, "1.0"; ADR 001, section 7.
+
+## 2026-11-02, later again
+
+The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
+
+> I use three words for how code and prose comes to exist. Code or prose I wrote, I typed by hand, with nothing generated. Code or prose I wrought, an AI agent generated while I iterated with it, and I reviewed every change before committing it, so I take responsibility for every diff. Code or prose I requested, an agent built with little or no review from me, in the style of a "dark factory."
+
+[re: the orchestrator's question whether it had the maintainer's exact words for written, wrought, and requested, which AGENTS.md, Provenance, had only as an agent's paraphrase, asked while the README's disclosure of how Fledge was made was being written.]
+
+*Governs:* what *written*, *wrought*, and *requested* mean wherever Fledge uses them: the `Provenance:` trailer, AGENTS.md, and the README's disclosure. *Applied in:* AGENTS.md, Provenance; the README.
+
+> You can drop "or prose" from it.
+
+[re: the maintainer's definitions of written, wrought, and requested above, which the orchestrator had applied to AGENTS.md and the README as "code and prose".]
+
+*Governs:* *written*, *wrought*, and *requested* describe how code comes to exist, with "or prose" struck from each definition. *Applied in:* AGENTS.md, Provenance; the README.

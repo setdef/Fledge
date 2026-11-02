@@ -13,31 +13,67 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  probe:
-    name: Probe (${{ matrix.os }})
+  emulator:
+    name: Emulator (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04-arm, ubuntu-24.04, macos-14, macos-15, macos-26, windows-11-arm]
+        os: [ubuntu-24.04-arm, macos-15, macos-26, windows-11-arm]
     steps:
-      - name: Facts
-        shell: bash
+      - name: Find the Android SDK
         run: |
-          uname -a
-          if [ "$RUNNER_OS" = Linux ]; then
-            ls -l /dev/kvm || echo "no /dev/kvm"
-            grep -c -E 'vmx|svm' /proc/cpuinfo || true
-            lscpu | head -20
-            dmesg 2>/dev/null | grep -i -E 'kvm|hyp' | head || true
-            sudo dmesg 2>/dev/null | grep -i -E 'kvm|hyp' | head || true
-          elif [ "$RUNNER_OS" = macOS ]; then
-            sysctl kern.hv_support kern.hv_vmm_present machdep.cpu.brand_string hw.model hw.ncpu hw.memsize || true
-            sw_vers
-          else
-            systeminfo | grep -i -E 'hyper|virtual|System Type|OS Name' || true
-            powershell -c "Get-ComputerInfo -Property HyperV*,CsProcessors | Format-List" || true
-            powershell -c "Get-WindowsOptionalFeature -Online -FeatureName HypervisorPlatform,Microsoft-Hyper-V-All | Format-List" || true
-          fi
+          echo "ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls "$ANDROID_HOME" || true
+          ls "$ANDROID_HOME/cmdline-tools" || true
+          ls "$ANDROID_HOME/emulator" 2>&1 | head -3 || true
+          ls "$ANDROID_HOME/system-images" 2>&1 | head || true
+          echo "JAVA_HOME_21_X64=${JAVA_HOME_21_X64:-} JAVA_HOME_21_arm64=${JAVA_HOME_21_arm64:-}"
+
+      - name: Install the emulator and an arm64-v8a system image
+        run: |
+          export JAVA_HOME="${JAVA_HOME_21_X64:-${JAVA_HOME_21_arm64:-$JAVA_HOME}}"
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -e "$sdk" ] || sdk="$sdk.bat"
+          yes | "$sdk" --licenses >/dev/null || true
+          "$sdk" "emulator" "platform-tools" "system-images;android-36;google_apis;arm64-v8a" 2>&1 | tail -15
+          ls "$ANDROID_HOME/emulator" | head -30
+
+      - name: Ask the emulator about acceleration
+        continue-on-error: true
+        run: |
+          "$ANDROID_HOME/emulator/emulator" -version 2>&1 | head -5
+          "$ANDROID_HOME/emulator/emulator" -accel-check 2>&1 | head -10
+          "$ANDROID_HOME/emulator/emulator" -help-accel 2>&1 | head -30 || true
+
+      - name: Try to boot an arm64-v8a emulator
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          export JAVA_HOME="${JAVA_HOME_21_X64:-${JAVA_HOME_21_arm64:-$JAVA_HOME}}"
+          avd="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+          [ -e "$avd" ] || avd="$avd.bat"
+          echo no | "$avd" create avd -n probe -k "system-images;android-36;google_apis;arm64-v8a" --force
+          "$ANDROID_HOME/emulator/emulator" -avd probe -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -verbose > emulator.log 2>&1 &
+          pid=$!
+          start=$SECONDS
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          adb wait-for-device
+          until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; do
+            if [ $((SECONDS - start)) -gt 600 ]; then echo "NOT BOOTED after 600 s"; break; fi
+            if ! kill -0 $pid 2>/dev/null; then echo "emulator exited"; break; fi
+            sleep 10
+          done
+          echo "elapsed $((SECONDS - start)) s"
+          adb shell getprop ro.product.cpu.abi || true
+          grep -i -E "accel|hvf|kvm|whpx|hypervisor|HAXM|failed|error|cannot|not " emulator.log | head -30
+
+      - name: Emulator log
+        if: always()
+        run: tail -40 emulator.log || true

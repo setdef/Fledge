@@ -28,7 +28,7 @@ Plan 001 (the walking skeleton) and Plan 002 (toward 1.0) are done. What each Pl
 - **musl Linux** (ADR 017, `pre.15`): Ruby built from source in Alpine.
 - **iOS, iPadOS, and Android**, **Mobile runtimes**, **Mobile apps from fledge build** (ADR 011 and ADR 012, `pre.9` on): proven in the iOS Simulator and on x86-64 Android emulators.
 - **Windows on ARM** (ADR 018, `pre.16`): RubyInstaller's ARM64 Ruby, delivered natively on `windows-11-arm`.
-- **Ctrl-C and the console** (ADR 015, `pre.13`).
+- **Ctrl-C and the console** (ADR 015, `pre.13`; closing a Windows console, proven through a pseudoconsole, since).
 - **The gems real apps lock** (ADR 020, not yet released): credentialed and mirrored gem servers, git submodules, path gems outside the project and with extensions, Bundler's optional groups, and gems' executables in the runtime's `bin/`; `examples/real_gems` needs a loopback mirror (`.github/scripts/gem-mirror.rb`) and a fixture branch, `experiment/submodule-gem`, which must stay.
 
 ## What is left before 1.0
@@ -36,8 +36,8 @@ Plan 001 (the walking skeleton) and Plan 002 (toward 1.0) are done. What each Pl
 Plan 003 holds it. In short:
 
 - **Waiting on the maintainer** (`questions.md`): an Apple Developer account, for a real iPhone and iPad and for App Review (entry A); and the accounts and certificates for notarization, Developer ID, and Windows code signing (entry B). Work proceeds on each entry's default.
-- **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner can emulate with hardware acceleration (tried 2026-11-02, ADR 011; a device cloud is `questions.md` entry C); Gatekeeper's and SmartScreen's verdicts on a real certificate; closing a Windows console window (ADR 015).
-- **Open problems from the ADRs**: a wrapper's own CI building and delivering its app (Rooibos's ships through Fledge by hand, ADR 019; Tokra and Lota have not tried); the musl and ARM64 Windows builds of `examples/real_gems`, and `Gem.bindir` on an app's `PATH` (ADR 020); installer polish and `diskutil image create` on macOS 26 (ADR 009, ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
+- **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner can emulate with hardware acceleration (tried 2026-11-02, ADR 011; a device cloud is `questions.md` entry C); Gatekeeper's and SmartScreen's verdicts on a real certificate.
+- **Open problems from the ADRs**: a wrapper's own CI building and delivering its app (Rooibos's ships through Fledge by hand, ADR 019; Tokra and Lota have not tried); the musl and ARM64 Windows builds of `examples/real_gems`, and `Gem.bindir` on an app's `PATH` (ADR 020); installer polish, which Plan 003 defers past 1.0 until a developer asks, and `diskutil image create`, which waits for `hdiutil create` to stop working (it still works on macOS 26 and 27; ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
 
 ## How to check it
 

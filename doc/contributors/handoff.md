@@ -38,7 +38,7 @@ Plan 003 holds it. In short:
 
 - **Waiting on money** (decisions, 2026-11-02: none is spent now): an Apple Developer account, for a real iPhone and iPad and for App Review; the accounts and certificates for notarization, Developer ID, and Windows code signing; and a way to run Android's arm64-v8a build. The maintainer ruled that 1.0 waits until at least some of those proofs exist (decisions, 2026-11-02); until then releases are ordinary 0.MINOR.PATCH versions, from `v0.1.0`.
 - **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner can emulate with hardware acceleration (tried 2026-11-02, ADR 011; no money is spent on a device cloud or a machine, decisions 2026-11-02); Gatekeeper's and SmartScreen's verdicts on a real certificate.
-- **0.2.0, the maintainer's priority (decisions, 2026-11-02): phones.** Native gems on phones (ADR 022, Plan 003) are built; the ADR says what CI proved and what is left (an SDL3 spike, Rust extensions, `require_relative`).
+- **0.2.0, the maintainer's priority (decisions, 2026-11-02): phones.** Native gems on phones (ADR 022, Plan 003) are done for C and C++ extensions (run 41492629986 on experiment/phones); what is left is in the ADR (an SDL3 spike, Rust extensions, `require_relative`).
 - **Open problems from the ADRs**: the musl and ARM64 Windows builds of `examples/real_gems`, and `Gem.bindir` on an app's `PATH` (ADR 020); installer polish, which Plan 003 defers past 1.0 until a developer asks, and `diskutil image create`, which waits for `hdiutil create` to stop working (it still works on macOS 26 and 27; ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones are in 0.2.0 (ADR 022).
 
 ## How to check it

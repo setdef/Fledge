@@ -262,8 +262,8 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 *Governs:* what *written*, *wrought*, and *requested* mean wherever Fledge uses them: the `Provenance:` trailer, AGENTS.md, and the README's disclosure. *Applied in:* AGENTS.md, Provenance; the README.
 
-> I want to get to "I can playtest [a game] on [a tablet] and [a phone]" as the litmus test for "phones and tablets" (0.2.0).
+> I want to get to "I can playtest [a game written in Ruby using Lota] on [an M1 iPad Pro running iPadOS 27] and [a OnePlus Nord N30 5G running Android 13]" as the litmus test for "phones and tablets" (0.2.0).
 
-[re: the orchestrator's report that native gems with C and C++ extensions now run on phones in CI, and its answer that a Lota game could not yet be deployed to a tablet. The maintainer's words named the game and the devices; brackets stand for them.]
+[re: the orchestrator's report that native gems with C and C++ extensions now run on phones in CI, and its answer that a Lota game could not yet be deployed to a tablet. The maintainer's words named the game and the devices, and then made them specific; the brackets stand for what the maintainer named.]
 
 *Governs:* release 0.2.0 means a Ruby game on Lota can be playtested on an iPad and on an Android phone, built through Fledge. *Applied in:* Plan 003, "A game plays on a tablet and a phone".

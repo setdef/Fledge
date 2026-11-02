@@ -29,7 +29,11 @@ end
 # The link flags sdl3.pc in +lib+ names, in the form mkmf passes on: a
 # static library by its path, and each framework as -framework NAME.
 def sdl3_libs(lib, static:)
-  libs = File.read(File.join(lib, "pkgconfig", "sdl3.pc"))[/^Libs: (.*)$/, 1].to_s.split
+  text = File.read(File.join(lib, "pkgconfig", "sdl3.pc"))
+  variables = {} # The .pc file's own variables, such as libdir=${prefix}/lib.
+  expand = ->(value) { value.gsub(/\$\{(\w+)\}/) { variables.fetch(Regexp.last_match(1), "") } }
+  text.scan(/^(\w+)=(.*)$/) { |name, value| variables[name] = expand.call(value) }
+  libs = expand.call(text[/^Libs: (.*)$/, 1].to_s).split
   libs.map do |flag|
     case flag
     when /\A-Wl,-(weak_framework|framework),(\S+)\z/ then "-#{Regexp.last_match(1)} #{Regexp.last_match(2)}"

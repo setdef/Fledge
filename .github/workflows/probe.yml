@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Experiment (Plan 003, "Android on arm64"): can a GitHub-hosted runner
-# run an arm64-v8a Android emulator with hardware acceleration?
+# Experiment (Plan 003, "Android on arm64"): does Windows on ARM64 expose
+# the Windows Hypervisor Platform that an emulator would need?
 name: Android arm64 probe
 
 on:
@@ -13,82 +13,18 @@ on:
 permissions:
   contents: read
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
-  emulator:
-    name: Emulator (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04-arm, windows-11-arm]
+  whp:
+    name: Windows Hypervisor Platform (windows-11-arm)
+    runs-on: windows-11-arm
+    timeout-minutes: 15
     steps:
-      - name: Find the Android SDK
+      - shell: pwsh
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls "$ANDROID_HOME" || true
-          ls "$ANDROID_HOME/cmdline-tools" || true
-          ls "$ANDROID_HOME/emulator" 2>&1 | head -3 || true
-          ls "$ANDROID_HOME/system-images" 2>&1 | head || true
-          echo "JAVA_HOME_21_X64=${JAVA_HOME_21_X64:-} JAVA_HOME_21_arm64=${JAVA_HOME_21_arm64:-}"
-
-      - name: Install the emulator and an arm64-v8a system image
-        run: |
-          if [ -z "$ANDROID_HOME" ]; then
-            export ANDROID_HOME="$HOME/android-sdk"
-            echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
-            mkdir -p "$ANDROID_HOME/cmdline-tools" "$RUNNER_TEMP/dl"
-            os=linux
-            [ "$RUNNER_OS" = Windows ] && os=win
-            curl -fsSL -o "$RUNNER_TEMP/dl/t.zip" "https://dl.google.com/android/repository/commandlinetools-${os}-11076708_latest.zip"
-            unzip -q "$RUNNER_TEMP/dl/t.zip" -d "$RUNNER_TEMP/dl"
-            mv "$RUNNER_TEMP/dl/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
-          fi
-          export JAVA_HOME="${JAVA_HOME_21_X64:-${JAVA_HOME_21_arm64:-$JAVA_HOME}}"
-          sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          [ -e "$sdk" ] || sdk="$sdk.bat"
-          yes | "$sdk" --licenses >/dev/null || true
-          for ch in 0 1 2 3; do
-            echo "--- channel $ch"
-            "$sdk" --channel=$ch --list 2>&1 | grep -i -E "^ *emulator|Loading|Warning|Error" | head -5
-          done
-          "$sdk" --channel=3 emulator 2>&1 | tail -5
-          "$sdk" --channel=3 "emulator" "platform-tools" "system-images;android-36;google_apis;arm64-v8a" 2>&1 | tail -15
-          ls "$ANDROID_HOME/emulator" | head -30
-
-      - name: Ask the emulator about acceleration
-        continue-on-error: true
-        run: |
-          "$ANDROID_HOME/emulator/emulator" -version 2>&1 | head -5
-          "$ANDROID_HOME/emulator/emulator" -accel-check 2>&1 | head -10
-          "$ANDROID_HOME/emulator/emulator" -help-accel 2>&1 | head -30 || true
-
-      - name: Try to boot an arm64-v8a emulator
-        continue-on-error: true
-        timeout-minutes: 15
-        run: |
-          export JAVA_HOME="${JAVA_HOME_21_X64:-${JAVA_HOME_21_arm64:-$JAVA_HOME}}"
-          avd="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
-          [ -e "$avd" ] || avd="$avd.bat"
-          echo no | "$avd" create avd -n probe -k "system-images;android-36;google_apis;arm64-v8a" --force
-          "$ANDROID_HOME/emulator/emulator" -avd probe -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -accel off -verbose > emulator.log 2>&1 &
-          pid=$!
-          start=$SECONDS
-          export PATH="$ANDROID_HOME/platform-tools:$PATH"
-          adb wait-for-device
-          until [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ]; do
-            if [ $((SECONDS - start)) -gt 600 ]; then echo "NOT BOOTED after 600 s"; break; fi
-            if ! kill -0 $pid 2>/dev/null; then echo "emulator exited"; break; fi
-            sleep 10
-          done
-          echo "elapsed $((SECONDS - start)) s"
-          adb shell getprop ro.product.cpu.abi || true
-          grep -i -E "accel|hvf|kvm|whpx|hypervisor|HAXM|failed|error|cannot|not " emulator.log | head -30
-
-      - name: Emulator log
-        if: always()
-        run: tail -40 emulator.log || true
+          Get-WindowsOptionalFeature -Online -FeatureName HypervisorPlatform | Format-List
+          Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Hypervisor | Format-List
+          Add-Type -Namespace Probe -Name Whp -MemberDefinition '[DllImport("WinHvPlatform.dll")] public static extern int WHvGetCapability(int code, IntPtr buf, int size, out int written);'
+          $buf = [Runtime.InteropServices.Marshal]::AllocHGlobal(64)
+          $w = 0
+          $hr = [Probe.Whp]::WHvGetCapability(0, $buf, 64, [ref]$w)
+          "WHvGetCapability(HypervisorPresent) hr=0x{0:X8} present={1}" -f $hr, [Runtime.InteropServices.Marshal]::ReadInt32($buf)

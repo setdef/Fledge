@@ -9,17 +9,18 @@ require "fileutils"
 require "open3"
 require "rbconfig"
 
-# Fledge is installed from its git tags and GitHub Releases, never from
-# RubyGems.org (ADR 001). Bundler's gem tasks define release, which
+# Fledge is installed from its git tags and GitHub Releases (ADR 001),
+# and publishing to RubyGems.org is done by a person, never by a rake
+# task or an agent. Bundler's gem tasks define release, which
 # pushes the branch and a tag to git and the gem to RubyGems.org; this
 # removes all three steps and leaves a refusal, and the gemspec's
 # allowed_push_host stops a hand-run gem push.
 %w[release release:guard_clean release:source_control_push release:rubygem_push].each do |name|
   Rake::Task[name].clear if Rake::Task.task_defined?(name)
 end
-desc "Refuse: Fledge never publishes to RubyGems.org (ADR 001)"
+desc "Refuse: publishing to RubyGems.org is done by hand (ADR 001)"
 task :release do
-  abort "❌ Fledge never publishes to RubyGems.org. Releases are git tags and GitHub Releases (ADR 001)."
+  abort "❌ rake release is disabled: a person publishes to RubyGems.org by hand. Releases are git tags and GitHub Releases (ADR 001)."
 end
 
 namespace :package do

@@ -20,8 +20,9 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 4.0.1"
   spec.required_rubygems_version = ">= 3.3.11"
 
-  # Fledge is not on RubyGems.org; releases are tags and GitHub Releases
-  # (ADR 001). This host keeps a stray gem push from publishing it.
+  # Releases are tags and GitHub Releases (ADR 001), and a person publishes
+  # to RubyGems.org by hand. This host keeps a stray gem push from
+  # publishing the gem.
   spec.metadata["allowed_push_host"] = "https://fledge.invalid"
   spec.metadata["rubygems_mfa_required"] = "true"
   spec.metadata["source_code_uri"] = spec.homepage

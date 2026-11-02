@@ -44,7 +44,7 @@
 #
 # Before 1.0, agents may push tags and create releases (AGENTS.md,
 # Releasing; decision 6 in doc/contributors/decisions.md), on a commit
-# whose CI is green. Nothing here publishes to RubyGems.org, ever.
+# whose CI is green. Nothing here publishes to RubyGems.org.
 
 name: Release
 

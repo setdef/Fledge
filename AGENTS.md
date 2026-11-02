@@ -94,7 +94,7 @@ Before 1.0, agents may push `trunk`, create and push tags (`vX.Y.Z`), and create
 
 A release is two commits (ADR 014). First the release commit (`chore: release X.Y.Z`: `Fledge::VERSION`, the CHANGELOG's new section, and the plan's statuses), pushed to `trunk`; wait for its CI to pass on every job. Then run `bundle exec rake runtime:pin`, which downloads the runtimes that CI run built and writes their SHA-256s into `lib/fledge/SHA256SUMS`; commit that file alone (`chore: pin X.Y.Z's runtimes`), push it, wait for its CI, and tag that commit. `release.yml` refuses a tag whose commit changes anything else, or whose pins do not match the runtimes it would publish. Do both within 14 days, while CI keeps the runtimes.
 
-Fledge never publishes to RubyGems.org: no `gem push`, ever, by anyone working in this repository. The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses.
+Agents never publish to RubyGems.org: no `gem push`, ever. Publishing there is a human-only activity, now and after Fledge is on RubyGems.org (decisions, 2026-11-02); this rule binds agents and is not a position of the project, so documents for developers do not say Fledge is never published there. The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses.
 
 ## Changelog
 

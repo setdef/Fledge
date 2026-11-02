@@ -147,6 +147,9 @@ def android(out)
   abi = adb("shell", "getprop", "ro.product.cpu.abi").strip
   device = "Android #{abi} API #{adb('shell', 'getprop', 'ro.build.version.sdk').strip}, #{adb('shell', 'getconf', 'PAGE_SIZE').strip}-byte pages"
   adb("logcat", "-G", "16M")
+  # Android shows a full-screen app a notice the first time, over the
+  # top of the screen; a person dismisses it once, and so does this.
+  adb("shell", "settings", "put", "secure", "immersive_mode_confirmations", "confirmed")
   adb("install", "-r", File.join(out, "SdlPhone-debug.apk"))
   width, height = adb("shell", "wm", "size")[/(\d+)x(\d+)/].split("x").map(&:to_i)
   [[], ["--ez", "fledge.sdlthread", "true"]].each_with_index do |extra, index|
@@ -154,7 +157,7 @@ def android(out)
     adb("shell", "am", "start", "-W", "-n", "#{ID}/org.setdef.fledge.host.MainActivity", *extra)
     wait { logged.any? { |line| line.include?("drew 300 frames") } }
     system("adb", "exec-out", "screencap", "-p", out: File.join(out, "screenshot-android-#{index}.png"))
-    adb("shell", "input", "tap", (width * 0.33).round.to_s, (height * 0.33).round.to_s)
+    adb("shell", "input", "tap", (width * 0.33).round.to_s, (height * 0.6).round.to_s)
     wait { logged.any? { |line| line.match?(/ exited with status/) } }
     check(logged, "#{device}#{extra.empty? ? '' : ', Ruby on SDLThread'}")
     adb("shell", "am", "force-stop", ID)

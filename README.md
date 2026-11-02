@@ -87,7 +87,7 @@ Hello, Ruby!
 
 The first time you build, Fledge downloads the runtime for your platform from the release, and checks it against a SHA-256 that it carries. The app takes its name from the folder, camelized. Send the `.tar.gz` (a `.zip` on Windows) to anyone on that platform.
 
-With no argument, `fledge build` builds the folder you are in: the one executable its gemspec names, or else its `main.rb`. Pass a path to build another program, and `--out DIR` to write somewhere other than `dist`. `bundle exec fledge --help` prints the whole manual.
+With no argument, `fledge build` builds the folder you are in: the one executable its gemspec names, or else its `main.rb`; if `fledge.yml` lists `programs`, every one of them. Pass a path to build another program, and `--out DIR` to write somewhere other than `dist`. `bundle exec fledge --help` prints the whole manual.
 
 ### Windowed apps and installers
 
@@ -109,6 +109,29 @@ installers: [dmg, nsis, appimage, deb]
 <!-- SPDX-SnippetEnd -->
 
 macOS, Windows, and Linux show your app's name, icon, and version in their usual places. Set `installers` to choose which of `dmg`, `nsis`, `appimage`, and `deb` to build. The default is the first three; `deb` takes `dpkg-deb` on your computer. [`examples/windowed_app`](examples/windowed_app) is a complete example, and `--help` lists every key.
+
+### Several programs in one app
+
+If your app has more than one way in, such as a window, a terminal interface, and a command line that all open the same save file, list them under `programs` in `fledge.yml`. Fledge builds them into one folder that shares one Ruby runtime, one copy of your project, and one set of gems:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+name: Shared Save
+programs:
+  - path: window.rb
+    name: Shared Save
+    kind: windowed
+    identifier: com.example.SharedSave
+  - path: bin/shared-save
+    kind: console
+```
+<!-- SPDX-SnippetEnd -->
+
+At most one program is windowed. It gets the installers, and on macOS the console programs live inside its `.app` bundle. `fledge build PATH` with one of the listed files builds that program alone. [`examples/programs`](examples/programs) is a complete example.
 
 ### Signing
 
@@ -155,7 +178,7 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. Each version pi
 | Resource | Description |
 | --- | --- |
 | `bundle exec fledge --help` | The manual: every option, every `fledge.yml` key, every file Fledge writes, and the exit statuses |
-| [`examples/`](examples) | Apps that CI builds and runs. Start with [`hello`](examples/hello), [`my_cool_app`](examples/my_cool_app) (a gem), [`windowed_app`](examples/windowed_app), and [`native_app`](examples/native_app) (gems compiled from source) |
+| [`examples/`](examples) | Apps that CI builds and runs. Start with [`hello`](examples/hello), [`my_cool_app`](examples/my_cool_app) (a gem), [`windowed_app`](examples/windowed_app), [`programs`](examples/programs) (several programs in one app), and [`native_app`](examples/native_app) (gems compiled from source) |
 | [What ships in your app](doc/licensing.md) | Every component Fledge puts in an app, on each platform, and what its license asks of you |
 | [CHANGELOG](CHANGELOG.md) | What changed in each release |
 | [Releases](https://github.com/setdef/Fledge/releases) | Each release's runtimes, with their notices and software bills of materials |

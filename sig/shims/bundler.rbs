@@ -8,15 +8,20 @@ module Bundler
 
   def self.load_gemspec: (String file) -> Gem::Specification?
 
+  def self.app_cache: (?String? custom_path) -> Pathname
+
   class BundlerError < StandardError
   end
 
   class Settings
-    def temporary: [T] (Hash[Symbol, bool] update) { () -> T } -> T
+    def temporary: [T] (Hash[Symbol, bool | Array[String]] update) { () -> T } -> T
 
     def all: () -> Array[String]
 
-    def []: (String name) -> (String | bool | Integer)?
+    def app_cache_path: () -> String
+
+    def []: (:with | :without) -> Array[Symbol]
+         | (String | Symbol name) -> (String | bool | Integer)?
   end
 
   class Dsl
@@ -37,6 +42,8 @@ module Bundler
     def locked_gems: () -> LockfileParser
 
     def dependencies: () -> Array[Dependency]
+
+    private def requested_groups: () -> Array[Symbol]
   end
 
   class LockfileParser
@@ -82,10 +89,20 @@ module Bundler
   class Source
     class Rubygems < Source
       def remotes: () -> Array[URI::Generic]
+
+      class Remote
+        def initialize: (URI::Generic uri) -> void
+
+        def uri: () -> URI::Generic
+
+        def anonymized_uri: () -> URI::Generic
+      end
     end
 
     class Path < Source
       def path: () -> Pathname
+
+      def options: () -> Hash[String, String]
     end
 
     class Git < Path

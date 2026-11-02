@@ -10,6 +10,7 @@ require_relative "binary"
 require_relative "compiled_gem"
 require_relative "error"
 require_relative "git_package"
+require_relative "path_package"
 require_relative "archive"
 require_relative "native_build/floors"
 require_relative "native_build/runtime_ruby"
@@ -98,6 +99,45 @@ module Fledge
       File.write(plan.fetch("result"), JSON.generate(results))
     RUBY
 
+    # What the runtime's Ruby runs to write each gem's executables, given
+    # the path of a plan: for each gem, a copy of it with its extensions
+    # taken out (already compiled, or compiled elsewhere, by now), packed
+    # as <tt>gem build</tt> packs it and installed as <tt>gem install</tt>
+    # installs it, into a gem folder and bin folder of its own, so that
+    # RubyGems writes the very wrappers it writes for the runtime's own
+    # gems: ones that find the ruby beside them (Gem::Installer#shebang and
+    # #bash_prolog_script, for a Ruby built to be relocated, and
+    # #windows_stub_script, when ruby.exe is in the folder they are written
+    # to), so they go in the unpacked runtime's own bin folder. Their
+    # interpreter line is the one the runtime's own wrappers have,
+    # <tt>#!/usr/bin/env ruby</tt>, which <tt>ruby -x</tt> skips, so
+    # that no path of this computer is in them.
+    STUBS = <<~RUBY
+      require "fileutils"
+      require "json"
+      require "rubygems/installer"
+      require "rubygems/package"
+      def Gem.ruby = "/usr/bin/env ruby"
+      plan = JSON.parse(File.read(ARGV.fetch(0)))
+      results = plan.fetch("jobs").each_with_index.map do |job, index|
+        if job["gem"]
+          package = Gem::Package.new(job.fetch("gem"))
+          dir = File.join(File.dirname(plan.fetch("home")), "stubs", index.to_s)
+          package.extract_files(dir)
+          spec = package.spec
+        else
+          dir = job.fetch("dir")
+          spec = Gem::Specification.load(job.fetch("gemspec"))
+        end
+        spec.extensions = []
+        built = Dir.chdir(dir) { File.expand_path(Gem::Package.build(spec, true)) }
+        Gem::Installer.at(built, install_dir: File.join(File.dirname(plan.fetch("home")), "stub-gems"), bin_dir: Gem.bindir,
+          ignore_dependencies: true, document: [], wrappers: true, env_shebang: false, force: true).install
+        { "executables" => spec.executables, "bin" => Gem.bindir }
+      end
+      File.write(plan.fetch("result"), JSON.generate(results))
+    RUBY
+
     # The files RubyGems writes into an extension's folder that only a
     # person reading why a build failed needs, and which hold the build
     # machine's paths.
@@ -121,8 +161,8 @@ module Fledge
       @runtime_ruby = RuntimeRuby.new(platform:, runtimes:, work: @work, log:, env:)
     end
 
-    # Compiles each of +packages+ (Fledge::GemPackage or Fledge::GitPackage,
-    # by gem) with an extension, and returns +packages+ with each compiled
+    # Compiles each of +packages+ (Fledge::GemPackage, Fledge::GitPackage, or
+    # Fledge::PathPackage, by gem) with an extension, and returns +packages+ with each compiled
     # one as a Fledge::CompiledGem. +build_args+ holds each gem's build
     # options by its name. Raises Fledge::Error when a gem does not
     # compile, saying which; the compiler's output is in the log.
@@ -144,11 +184,64 @@ module Fledge
 
       jobs = install_order(packages, wanted).map { |gem| job(gem, packages.fetch(gem), build_args.fetch(gem.name, [])) }
       results = @runtime_ruby.run(jobs.map { |job| job[2] })
-      compiled = {} # : Hash[LockedGem | GitGem, CompiledGem]
+      compiled = {} # : Hash[locked_gem, CompiledGem]
       jobs.zip(results).each do |(gem, package, _, args), result|
         compiled[gem] = compiled_gem(gem, package, args, result.to_h) if wanted.key?(gem)
       end
       packages.to_h { |gem, package| [gem, compiled.fetch(gem, package)] }
+    end
+
+    # The executables of the gems in +packages+, as the runtime's RubyGems
+    # writes them (STUBS): for each gem with executables, an Entry for each
+    # program with its path relative to the runtime's bin folder, by gem.
+    # +packages+ are as #call returns them, compiled or not.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   build.binstubs(packages).transform_values { |entries| entries.map(&:path) } # => {tool => ["tool-cli"]}
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def binstubs(packages)
+      jobs = packages.filter_map { |gem, package| stub_job(gem, package) }
+      return {} if jobs.empty?
+
+      results = @runtime_ruby.run(jobs.map { |_, job| job }, source: STUBS, message: "Writing the gems' executables for #{@platform}",
+        failure: "the runtime's RubyGems could not write a gem's executables; its output is above")
+      jobs.zip(results).to_h do |(gem, _), result|
+        result = result.to_h
+        names = Array(result.fetch("executables")).flat_map { |name| [name.to_s, "#{name}.bat"] }
+        [gem, names.filter_map { |name| program(result.fetch("bin").to_s, name) }]
+      end
+    end
+
+    # The plan's job that writes +package+'s executables, or +nil+ when it
+    # has none.
+    private def stub_job(gem, package)
+      base = package.is_a?(CompiledGem) ? package.package : package
+      return nil if base.spec.executables.empty?
+
+      case base
+      when GemPackage then [gem, { "gem" => base.path }]
+      when GitPackage then [gem, { "dir" => File.dirname(File.join(base.checkout, base.gemspec)), "gemspec" => File.join(base.checkout, base.gemspec) }]
+      when PathPackage
+        copy = base.copy_to(File.join(home, "..", "stub-copies", base.scope))
+        [gem, { "dir" => copy, "gemspec" => File.join(copy, base.gemspec) }]
+      else raise Error, "#{gem} is not a gem from a gem server, from git, or from a folder"
+      end
+    end
+
+    # The program +name+ the stubs run wrote, as an Entry with the name for
+    # its path, or +nil+ when it wrote none (a Windows wrapper
+    # that a platform does not write).
+    private def program(bin, name)
+      path = File.join(bin, name)
+      Entry.file(name, File.binread(path), mode: File.executable?(path) ? 0o755 : 0o644) if File.file?(path)
     end
 
     # The gems to install for the build, each after the gems it depends on:
@@ -157,7 +250,7 @@ module Fledge
     # mini_portile2).
     private def install_order(packages, wanted)
       by_name = packages.keys.to_h { |gem| [gem.name, gem] }
-      order = [] # : Array[LockedGem | GitGem]
+      order = [] # : Array[locked_gem]
       visit = lambda do |gem|
         next if order.include?(gem)
 
@@ -165,7 +258,7 @@ module Fledge
         order << gem
       end
       wanted.each_key { |gem| visit.call(gem) }
-      order.reject { |gem| gem.is_a?(GitGem) && !packages.fetch(gem).extensions? }
+      order.reject { |gem| !gem.is_a?(LockedGem) && !packages.fetch(gem).extensions? }
     end
 
     # [gem, package, the plan's job for it, its build options].
@@ -179,6 +272,9 @@ module Fledge
           FileUtils.cp_r(package.checkout, checkout)
           FileUtils.rm_rf(File.join(checkout, ".git"))
         end
+        [gem, package, { "gemspec" => File.join(checkout, package.gemspec), "scope" => package.scope, "build_args" => args }, args]
+      when PathPackage
+        checkout = package.copy_to(File.join(home, "bundler", "gems", package.scope))
         [gem, package, { "gemspec" => File.join(checkout, package.gemspec), "scope" => package.scope, "build_args" => args }, args]
       else raise Error, "#{gem} is neither a gem from a gem server nor one from git"
       end
@@ -205,12 +301,16 @@ module Fledge
 
     # The files the build wrote into the gem's require paths, which is
     # where RubyGems puts what an extension installs, beside the gem's own,
-    # with paths relative to the gem's folder.
+    # with paths relative to the gem's folder: those the package does not
+    # have, and those whose bytes differ from the package's (a path gem's
+    # own copy of what the build wrote there, compiled by its developer for
+    # their Ruby).
     private def new_files(package, gem_dir)
       own = package.contents
       package.spec.require_paths.flat_map do |folder|
         files_in(File.join(gem_dir, folder)).filter_map do |entry|
-          entry.with(path: "#{folder}/#{entry.path}") unless entry.type == :directory || own.key?("#{folder}/#{entry.path}")
+          path = "#{folder}/#{entry.path}"
+          entry.with(path:) unless entry.type == :directory || own[path] == entry.content.to_s
         end
       end
     end

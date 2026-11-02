@@ -8,8 +8,9 @@ module Fledge
     attr_reader platform: String
     attr_reader remote: String
     attr_reader sha256: String
+    attr_reader credentials: String?
 
-    def self.new: (name: String, version: String, platform: String, remote: String, sha256: String) -> instance
+    def self.new: (name: String, version: String, platform: String, remote: String, sha256: String, credentials: String?) -> instance
 
     def full_name: () -> String
 

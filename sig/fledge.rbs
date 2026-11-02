@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 module Fledge
-  type locked_gem = LockedGem | GitGem
+  type locked_gem = LockedGem | GitGem | PathGem
 
-  type package = GemPackage | GitPackage | CompiledGem
+  type package = GemPackage | GitPackage | PathPackage | CompiledGem
 
   type target = Platform | MobilePlatform
 end

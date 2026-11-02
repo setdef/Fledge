@@ -9,7 +9,7 @@ require_relative "test_helper"
 
 class LockedGemTest < Minitest::Test
   def test_names_a_gem_as_rubygems_and_a_person_do
-    native = Fledge::LockedGem.new(name: "sqlite3", version: "2.10.2", platform: "x64-mingw-ucrt", remote: "https://rubygems.org/", sha256: "")
+    native = Fledge::LockedGem.new(name: "sqlite3", version: "2.10.2", platform: "x64-mingw-ucrt", remote: "https://rubygems.org/", sha256: "", credentials: nil)
     pure = native.with(name: "i18n", version: "1.15.2", platform: "ruby", remote: "https://gems.example.com")
 
     assert_equal ["sqlite3-2.10.2-x64-mingw-ucrt", "sqlite3-2.10.2-x64-mingw-ucrt.gem", "sqlite3 2.10.2 (x64-mingw-ucrt)"],

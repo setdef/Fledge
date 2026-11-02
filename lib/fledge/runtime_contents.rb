@@ -46,7 +46,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries, :arch, :path, :plugins)
+  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries, :arch, :path, :plugins, :binaries)
     ##
     # :attr_reader: gem_dir
     # Ruby's gem folder, relative to the runtime's top folder.
@@ -81,6 +81,31 @@ module Fledge
     # holds, such as <tt>lib/ruby/gems/4.0.0/plugins/rdoc_plugin.rb</tt>,
     # which a gem of the same name at another version would write to
     # (Gem::Installer#generate_plugins).
+
+    ##
+    # :attr_reader: binaries
+    # The path of every file in the runtime's bin folder (#bin_dir), such
+    # as <tt>bin/rake</tt>: the programs of the gems it ships, which a gem
+    # of the same name at another version would write over.
+
+    # The runtime's bin folder, where RubyGems writes a gem's executables
+    # (Gem.bindir): beside the gem folder's <tt>lib</tt>, at <tt>bin</tt>,
+    # or <tt>ruby/bin</tt> on Windows.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   contents.bin_dir # => "ruby/bin"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def bin_dir
+      [gem_dir.sub(%r{/?lib/ruby/gems/[^/]+\z}, ""), "bin"].reject(&:empty?).join("/")
+    end
 
     # A gem specification's path in a runtime: the gem folder, and the
     # gem's full name.
@@ -124,6 +149,7 @@ module Fledge
       arch = nil # : String?
       libraries = [] # : Array[String]
       plugins = [] # : Array[String]
+      inside_all = [] # : Array[String]
       rbconfig = nil # : String?
       Archive.names(path).each do |name|
         inside = name.split("/", 2).last.to_s
@@ -132,6 +158,7 @@ module Fledge
         inside = inside.delete_prefix(under)
         libraries << File.basename(inside) if inside.match?(LIBRARY)
         plugins << inside if inside.match?(PLUGIN)
+        inside_all << inside
         if (found = SPECIFICATION.match(inside))
           gem_dirs << found[:gem_dir].to_s
           gems << found[:full_name].to_s
@@ -146,7 +173,10 @@ module Fledge
       end
       raise Error, "#{path} is not a Fledge runtime: its rbconfig.rb names no arch" if version && arch.nil?
 
-      build(path, gem_dirs.uniq, gems, version).with(libraries: libraries.uniq.sort.freeze, arch: arch.to_s, plugins: plugins.sort.freeze)
+      contents = build(path, gem_dirs.uniq, gems, version)
+      prefix = "#{contents.bin_dir}/"
+      binaries = inside_all.select { |inside| inside.start_with?(prefix) && !inside.end_with?("/") }
+      contents.with(libraries: libraries.uniq.sort.freeze, arch: arch.to_s, plugins: plugins.sort.freeze, binaries: binaries.sort.freeze)
     end
 
     # The tool +name+ the runtime keeps in its <tt>tools</tt> folder
@@ -182,7 +212,7 @@ module Fledge
       raise Error, "#{path} is not a Fledge runtime: it holds no one gem folder (#{gem_dirs.join(', ')})" unless gem_dirs.size == 1
       raise Error, "#{path} is not a Fledge runtime: it holds no rbconfig.rb" unless version
 
-      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [], arch: "", path:, plugins: [])
+      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [], arch: "", path:, plugins: [], binaries: [])
     end
   end
 end

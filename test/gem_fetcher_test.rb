@@ -14,8 +14,8 @@ class GemFetcherTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir
     @built = FakeGem.build(@dir, "foo")
-    @server = LoopbackServer.new("/gems/foo-1.0.0.gem" => [200, {}, File.binread(@built.path)])
-    @gem = Fledge::LockedGem.new(name: "foo", version: "1.0.0", platform: "ruby", remote: @server.url("/"), sha256: @built.sha256)
+    @server = LoopbackServer.new({ "/gems/foo-1.0.0.gem" => [200, {}, File.binread(@built.path)] })
+    @gem = Fledge::LockedGem.new(name: "foo", version: "1.0.0", platform: "ruby", remote: @server.url("/"), sha256: @built.sha256, credentials: nil)
     @project = File.join(@dir, "project")
     @log = StringIO.new
   end
@@ -68,5 +68,41 @@ class GemFetcherTest < Minitest::Test
     error = assert_raises(Fledge::Error) { fetcher.fetch(gem) }
     assert_includes error.message, "SHA-256"
     refute_path_exists File.join(@dir, "cache", "foo-1.0.0.gem")
+  end
+
+  def test_a_server_that_wants_a_login_gets_the_one_the_gem_carries_and_the_log_never_shows_it
+    server = LoopbackServer.new({ "/gems/foo-1.0.0.gem" => [200, {}, File.binread(@built.path)] }, credentials: "me:secret")
+    gem = @gem.with(remote: server.url("/"), credentials: "me:secret")
+
+    path = fetcher.fetch(gem)
+
+    assert_equal File.binread(@built.path), File.binread(path)
+    assert_equal "Downloading foo-1.0.0.gem from #{server.url('/')}\n", @log.string
+    refute_includes @log.string, "secret"
+  ensure
+    server&.stop
+  end
+
+  def test_a_server_that_wants_a_login_nobody_set_says_how_to_set_it_as_bundler_reads_it
+    server = LoopbackServer.new({ "/gems/foo-1.0.0.gem" => [200, {}, File.binread(@built.path)] }, credentials: "me:secret")
+
+    error = assert_raises(Fledge::Error) { fetcher.fetch(@gem.with(remote: server.url("/"))) }
+
+    assert_equal "foo 1.0.0 comes from #{server.url('/')}, which answered 401 for it, and there is no login for it. Set one as " \
+      "Bundler reads it: bundle config set --local 127.0.0.1 USER:PASSWORD (or the environment variable BUNDLE_127__0__0__1), " \
+      "then build again.", error.message
+  ensure
+    server&.stop
+  end
+
+  def test_a_login_the_server_refuses_is_named_without_its_password
+    server = LoopbackServer.new({ "/gems/foo-1.0.0.gem" => [200, {}, File.binread(@built.path)] }, credentials: "me:secret")
+
+    error = assert_raises(Fledge::Error) { fetcher.fetch(@gem.with(remote: server.url("/"), credentials: "me:wrong")) }
+
+    assert_includes error.message, "answered 401 for it, and Bundler's login for 127.0.0.1 was refused"
+    refute_includes error.message, "wrong"
+  ensure
+    server&.stop
   end
 end

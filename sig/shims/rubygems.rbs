@@ -17,6 +17,7 @@ module Gem
     attr_accessor bindir: String
     attr_accessor executables: Array[String]
     attr_accessor extensions: Array[String]
+    attr_accessor files: Array[String]
     attr_accessor licenses: Array[String]
     attr_accessor homepage: String?
     attr_accessor authors: Array[String]

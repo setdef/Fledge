@@ -50,9 +50,14 @@ module Fledge
     # The options its extension was built with, as extconf.rb got them.
     attr_reader :build_args
 
+    # The Entry of each file the build wrote into the gem's require paths,
+    # with paths relative to the gem's folder.
+    attr_reader :built
+
     # Creates the compiled gem.
     #
-    # [package] The Fledge::GemPackage or Fledge::GitPackage compiled.
+    # [package] The Fledge::GemPackage, Fledge::GitPackage, or
+    #          Fledge::PathPackage compiled.
     # [built] The Entry of each file the build wrote into the gem's
     #         require paths, with paths relative to the gem's folder.
     # [extensions] The Entry of each file in its extensions folder, with

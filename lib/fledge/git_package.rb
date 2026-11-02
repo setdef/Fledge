@@ -186,7 +186,7 @@ module Fledge
     #++
     def entries(gem_dir)
       top = installed_path(gem_dir)
-      files = Entry.walk(File.join(checkout, folder), skip: [File.join(checkout, ".git")])
+      files = Entry.walk(File.join(checkout, folder), skip: git_files)
       [Entry.directory(top), *files.map { |entry| entry.with(path: "#{top}/#{entry.path}") }]
     end
 
@@ -207,9 +207,15 @@ module Fledge
     def contents
       @contents ||= begin
         base = File.join(checkout, folder)
-        Entry.walk(base, skip: [File.join(checkout, ".git")]).select { |entry| entry.type == :file }
+        Entry.walk(base, skip: git_files).select { |entry| entry.type == :file }
           .to_h { |entry| [entry.path, entry.content.to_s] }
       end
+    end
+
+    # Git's own files in the checkout: its <tt>.git</tt> folder, and the
+    # <tt>.git</tt> file of each submodule.
+    private def git_files
+      Dir.glob("**/.git", File::FNM_DOTMATCH, base: checkout).map { |relative| File.join(checkout, relative) }
     end
   end
 end

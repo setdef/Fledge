@@ -9,8 +9,9 @@ module Fledge
       @platform: target
       @ruby_version: String
       @target: Gem::Platform
+      @groups: Array[Symbol]
 
-      def initialize: (Bundler::Definition definition, lockfile_name: String, platform: target, ruby_version: String, target: Gem::Platform) -> void
+      def initialize: (Bundler::Definition definition, lockfile_name: String, platform: target, ruby_version: String, target: Gem::Platform, groups: Array[Symbol]) -> void
 
       def specs: () -> Array[Bundler::LazySpecification]
 

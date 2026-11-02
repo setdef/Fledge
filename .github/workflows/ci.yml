@@ -751,7 +751,10 @@ jobs:
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
   # its git tag, and bigdecimal, which spreadsheet, a GPL gem, needs, each
   # compiled against the runtime's own Ruby and its build-only companion.
-  # The Mac and Windows build examples/nokogiri_app too, nokogiri from
+  # examples/real_gems (ADR 020): the gems real apps lock, from a credentialed
+  # mirror, a folder outside the project, a path gem with an extension, git
+  # with a submodule, and an optional group. The Mac and Windows build
+  # examples/nokogiri_app too, nokogiri from
   # source: with macOS's own iconv on the Mac, and with GNU libiconv
   # linked in on Windows, which ships as any gem's compiled code does (ADR
   # 007). Each records what bundle exec prints, which the built app must
@@ -908,6 +911,33 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: ruby -I lib exe/fledge build -o dist examples/nokogiri_app
 
+      # ADR 020: the gems real apps lock. examples/real_gems takes RubyGems.org
+      # through a mirror that wants a login, as its .bundle/config says in
+      # Bundler's own settings, from a loopback server of ours
+      # (.github/scripts/gem-mirror.rb); a gem from a folder outside its
+      # project, with an executable; a path gem with a C extension; a gem from
+      # git with a submodule (the experiment/submodule-gem branch); and an
+      # optional group. Its Delivery prints what a person with no Ruby sees,
+      # which no bundle exec can: Bundler compiles no path gem's extension.
+      - name: Build real_gems through a credentialed mirror for ${{ matrix.platform }}
+        if: matrix.platform != 'aarch64-mingw-ucrt'
+        shell: bash
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: |
+          ruby .github/scripts/gem-mirror.rb 9292 fledge:mirror-password "$RUNNER_TEMP/mirror.log" &
+          mirror=$!
+          sleep 3
+          status=0
+          ruby -I lib exe/fledge build -o dist examples/real_gems || status=$?
+          kill "$mirror" || true
+          cat "$RUNNER_TEMP/mirror.log"
+          [ "$status" = 0 ] || exit "$status"
+          for gem in rainbow-3.1.1 paint-2.3.0; do
+            grep -q "^GET /gems/$gem.gem 200\$" "$RUNNER_TEMP/mirror.log" || { echo "::error::$gem did not come through the mirror, with its login"; exit 1; }
+          done
+          echo "rainbow 3.1.1 through a mirror that wanted a login; shared from outside the project; greeter compiled for the runtime's Ruby; fledge_submodule_gem says Hello World!; paint 2.3.0 from an optional group; shared-cli says shared from outside the project" > dist/real_gems.expected
+
       # What each app prints as its developer runs it, which its built app
       # must print too.
       - name: Run the examples with bundle exec
@@ -1032,6 +1062,12 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/NokogiriApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/nokogiri_app.expected")"
 
+      - name: Run real_gems as someone with no Ruby would
+        if: runner.os != 'Windows'
+        run: >-
+          .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/RealGems-${{ matrix.platform }}.tar.gz"
+          "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/real_gems.expected")"
+
       - name: Run NativeApp.exe as someone with no Ruby would
         if: runner.os == 'Windows'
         shell: pwsh
@@ -1040,6 +1076,15 @@ jobs:
           -Archive "$env:RUNNER_TEMP/delivered/NativeApp-x64-mingw-ucrt.zip"
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/native_app.expected" -Raw).TrimEnd()
+
+      - name: Run RealGems.exe as someone with no Ruby would
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/RealGems-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/real_gems.expected" -Raw).TrimEnd()
 
       - name: Run NokogiriApp.exe as someone with no Ruby would
         if: runner.os == 'Windows'

@@ -11,7 +11,7 @@ class GitGemTest < Minitest::Test
   REVISION = "21a106d0c0d6c7f822476ab12102f31efcaa17d1"
 
   def gem(uri, ref: nil)
-    Fledge::GitGem.new(name: "ferro-idna", version: "0.1.0.pre.1", uri:, revision: REVISION, glob: "gems/*/*.gemspec", ref:)
+    Fledge::GitGem.new(name: "ferro-idna", version: "0.1.0.pre.1", uri:, revision: REVISION, glob: "gems/*/*.gemspec", ref:, submodules: false)
   end
 
   # Bundler's own folder names for a checkout, which a built app's

@@ -118,9 +118,9 @@ module Fledge
         runtimes = Runtimes.new(env: @env, log: @err)
         Dir.mktmpdir("fledge-build") do |work|
           gems = gems_for(app, runtimes, work)
-          app_files = gems ? gems.app_files : {} # : Hash[String, String]
           runtime = runtimes.archive(platform)
           files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
+          app_files = gems ? gems.app_files : {} # : Hash[String, String]
           assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:)
           [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
         end
@@ -138,8 +138,8 @@ module Fledge
         Dir.mktmpdir("fledge-build") do |work|
           gems = gems_for(app, runtimes, work)
           runtime = runtimes.archive(phone)
-          app_files = gems ? gems.app_files(force_ruby_platform: true) : {} # : Hash[String, String]
           files = gems ? gems.for(phone, runtime: RuntimeContents.read(runtime, under: writer.ruby_under)) : [] # : Array[Entry]
+          app_files = gems ? gems.app_files(force_ruby_platform: true) : {} # : Hash[String, String]
           project = writer.new(app:, runtime:, out: out_dir, app_files:, files:).call
           @out.puts File.join(out, File.basename(project))
         end

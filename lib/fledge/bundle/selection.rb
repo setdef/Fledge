@@ -10,19 +10,20 @@ require_relative "../error"
 module Fledge
   class Bundle
     # The gems a lockfile locks that one platform's app ships: each gem the
-    # Gemfile's dependencies reach there, outside WITHOUT's groups and the
-    # gems the Gemfile limits to other platforms, each the build Bundler
+    # Gemfile's dependencies reach there, in the groups the app sets up and
+    # not the gems the Gemfile limits to other platforms, each the build Bundler
     # would choose on that platform's runtime (Bundler::MatchPlatform).
     class Selection # :nodoc:
       # A selection from +definition+'s lockfile, named +lockfile_name+,
       # for +platform+, whose runtime is Ruby +ruby_version+ on the RubyGems
-      # platform +target+.
-      def initialize(definition, lockfile_name:, platform:, ruby_version:, target:)
+      # platform +target+, setting up +groups+ (symbols).
+      def initialize(definition, lockfile_name:, platform:, ruby_version:, target:, groups:)
         @definition = definition
         @lockfile_name = lockfile_name
         @platform = platform
         @ruby_version = ruby_version
         @target = target
+        @groups = groups
       end
 
       # The locked specifications the app's dependencies reach on the
@@ -53,10 +54,10 @@ module Fledge
             "--add-platform #{@platform.lockfile_names.first}, then build again."
       end
 
-      # Whether the dependency is one Bundler sets up on the platform, outside
-      # WITHOUT's groups.
+      # Whether the dependency is one Bundler sets up on the platform, in
+      # one of the groups the app sets up.
       private def ships?(dependency)
-        return false if (dependency.groups - WITHOUT).empty?
+        return false if (dependency.groups & @groups).empty?
         return false unless dependency.should_include && dependency.current_env?
 
         dependency.platforms.empty? || dependency.platforms.any? { |name| on_platform?(name.to_s) }

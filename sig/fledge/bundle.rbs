@@ -10,9 +10,13 @@ module Fledge
 
     @app: App
     @lockfile: String
+    @gemfile: String
     @definition: Bundler::Definition
     @checksums: Hash[String, String]
     @build_args: Hash[String, Array[String]]
+    @with: Array[String]
+    @without: Array[String]
+    @groups: Array[Symbol]
     @sources: Sources?
 
     def initialize: (App app) -> void
@@ -20,6 +24,8 @@ module Fledge
     def build_args: (String name) -> Array[String]
 
     def lockfile_name: () -> String
+
+    private def read_groups: (Bundler::Definition definition) -> void
 
     private def build_settings: () -> Hash[String, Array[String]]
 
@@ -29,13 +35,15 @@ module Fledge
 
     private def checksums: (String text) -> Hash[String, String]
 
-    def gems_for: (target platform, ruby_version: String, arch: String) -> Array[LockedGem | GitGem]
+    def gems_for: (target platform, ruby_version: String, arch: String) -> Array[locked_gem]
 
     private def check_ruby: (String ruby_version) -> void
 
     private def check_locked: (target platform, Gem::Platform target) -> void
 
     def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
+
+    private def group_settings: () -> String
 
     private def own_folders: () -> Array[String]
 

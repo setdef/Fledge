@@ -10,12 +10,17 @@ module Fledge
     @fetcher: GemFetcher
     @checkouts: GitCheckout
     @compiler: NativeBuild
+    @path_files: Hash[String, String]
 
     def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild) -> void
 
     def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
 
     def for: (target platform, runtime: RuntimeContents) -> Array[Entry]
+
+    private def executables: (Hash[locked_gem, package] packages, RuntimeContents runtime) -> Array[Entry]
+
+    private def entries_for: (locked_gem gem, package package, String gem_dir) -> Array[Entry]
 
     private def desktop_problems: (Hash[locked_gem, package] packages, Platform platform, RuntimeContents runtime) -> Array[String]
 

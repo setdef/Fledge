@@ -29,21 +29,25 @@ module Fledge
         @ruby = nil # : String?
       end
 
-      # Runs SCRIPT on the runtime's Ruby for +jobs+, and returns where each
-      # gem and its extensions went.
-      def run(jobs)
+      # Runs +source+ (default: SCRIPT) on the runtime's Ruby for +jobs+, and
+      # returns what it wrote for each: where each gem and its extensions
+      # went, for SCRIPT. +message+ says what it is doing, and +failure+
+      # what went wrong when it fails.
+      def run(jobs, source: SCRIPT, message: "Compiling native gems for #{@platform} with the runtime's Ruby",
+        failure: "a gem's extension did not compile for #{@platform}; the compiler's output is above"
+      )
         ruby = prepare
         plan = File.join(@work, "plan.json")
         result = File.join(@work, "result.json")
         script = File.join(@work, "build.rb")
-        File.write(script, SCRIPT)
+        File.write(script, source)
         File.write(plan, JSON.generate({ "home" => home, "jobs" => jobs, "result" => result }))
-        @log.puts "Compiling native gems for #{@platform} with the runtime's Ruby"
+        @log.puts message
         status = Open3.popen2e(child_env, ruby, script, plan) do |_, output, thread|
           output.each_line { |line| @log.puts line }
           thread.value
         end
-        raise Error, "a gem's extension did not compile for #{@platform}; the compiler's output is above" unless status.success?
+        raise Error, failure unless status.success?
 
         JSON.parse(File.read(result))
       end

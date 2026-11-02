@@ -86,6 +86,29 @@ class BundleTest < Minitest::Test
     assert_equal ["foo 1.0.0", "native 1.0.0 (x64-mingw-ucrt)"], names(bundle, WINDOWS)
   end
 
+  # Bundler leaves out the gems of an optional group unless `with` names
+  # it (Bundler::Definition#requested_groups), and a built app's Bundler
+  # reads its own .bundle/config, so what the build ships and what that
+  # file says must come from the same settings.
+  def test_an_optional_group_is_left_out_unless_the_project_asks_for_it_with_bundlers_own_setting
+    gemfile = "group :extras, optional: true do\n  gem \"foo\"\nend\ngroup :docs do\n  gem \"bar\"\nend\n"
+    plain = bundle(dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar])
+
+    assert_equal ["bar 2.0.0"], names(plain, LINUX)
+    assert_includes plain.app_files.fetch(".bundle/config"), "BUNDLE_WITHOUT: \"development:test\"\n"
+    refute_includes plain.app_files.fetch(".bundle/config"), "BUNDLE_WITH:"
+
+    root = FakeProject.write(@dir, name: "with_app", dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar])
+    FileUtils.mkdir_p(File.join(root, ".bundle"))
+    File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_WITH: \"extras:development\"\nBUNDLE_WITHOUT: \"docs\"\n")
+    chosen = Fledge::Bundle.new(Fledge::App.at(root))
+
+    assert_equal ["foo 1.0.0"], names(chosen, LINUX)
+    config = chosen.app_files.fetch(".bundle/config")
+    assert_includes config, "BUNDLE_WITHOUT: \"development:test:docs\"\n"
+    assert_includes config, "BUNDLE_WITH: \"extras\"\n"
+  end
+
   def test_a_gem_limited_to_a_ruby_version_follows_the_runtimes
     bundle = bundle(dependencies: {}, locked: [@foo, @bar],
       gemfile: "gem \"foo\", platforms: :mri_40\ngem \"bar\", platforms: :ruby_33\n", lock_dependencies: %w[bar foo])
@@ -95,12 +118,23 @@ class BundleTest < Minitest::Test
   end
 
   def test_a_platform_the_lockfile_does_not_lock_is_refused
-    bundle = bundle(dependencies: {}, locked: [], platforms: %w[arm64-darwin-25 x86_64-linux-gnu])
+    here = Gem::Platform.local.to_s # Bundler, frozen, wants the computer reading the lockfile locked too
+    bundle = bundle(dependencies: {}, locked: [], platforms: ["arm64-darwin-25", "x86_64-linux-gnu", here].uniq)
 
     assert_empty names(bundle, LINUX)
     error = assert_raises(Fledge::Error) { names(bundle, DARWIN) }
     assert_equal "Gemfile.lock locks no gems for arm64-darwin. Run bundle lock --add-platform arm64-darwin, then build again.",
       error.message
+  end
+
+  def test_the_lockfile_is_read_as_a_frozen_one_whatever_the_environment_says
+    frozen = ENV.delete("BUNDLE_FROZEN")
+    bundle = bundle(dependencies: {}, locked: [], platforms: ["java"])
+
+    error = assert_raises(Fledge::Error) { names(bundle, LINUX) }
+    assert_includes error.message, "Gemfile.lock locks no gems for x86_64-linux"
+  ensure
+    ENV["BUNDLE_FROZEN"] = frozen if frozen
   end
 
   def test_a_gem_without_a_checksum_is_refused
@@ -137,19 +171,77 @@ class BundleTest < Minitest::Test
     assert_equal "#{root} has Gemfile but no Gemfile.lock. Run bundle lock, then build again.", error.message
   end
 
-  def test_a_gem_from_a_folder_outside_the_project_is_refused
-    FileUtils.mkdir_p(File.join(@dir, "elsewhere"))
-    File.write(File.join(@dir, "elsewhere", "elsewhere.gemspec"),
-      "Gem::Specification.new { |s| s.name = 'elsewhere'; s.version = '1.0'; s.summary = 'x'; s.authors = ['x'] }\n")
-    root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "gem \"elsewhere\", path: \"../elsewhere\"\n",
+  # A project whose Gemfile takes "elsewhere" from the folder +path+, which
+  # the lockfile's PATH section names.
+  def path_project(path: "../elsewhere", folder: "elsewhere", extensions: [])
+    FileUtils.mkdir_p(File.join(@dir, folder))
+    File.write(File.join(@dir, folder, "elsewhere.gemspec"),
+      "Gem::Specification.new { |s| s.name = 'elsewhere'; s.version = '1.0'; s.summary = 'x'; s.authors = ['x']; " \
+        "s.extensions = #{extensions.inspect}; s.files = [] }\n")
+    root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "gem \"elsewhere\", path: #{path.inspect}\n",
       lock_dependencies: ["elsewhere!"])
     lock = File.join(root, "Gemfile.lock")
     text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  elsewhere (1.0)\n")
-    File.write(lock, "PATH\n  remote: ../elsewhere\n  specs:\n    elsewhere (1.0)\n\n#{text}")
+    File.write(lock, "PATH\n  remote: #{path}\n  specs:\n    elsewhere (1.0)\n\n#{text}")
+    root
+  end
+
+  # Bundler's own way to ship a path gem from outside the project is to
+  # copy it to vendor/cache/NAME (bundle cache --all), which a Bundler that
+  # finds it uses in place of the original path.
+  def test_a_gem_from_a_folder_outside_the_project_ships_where_bundler_looks_for_its_copy
+    gem = gems(Fledge::Bundle.new(Fledge::App.at(path_project)), LINUX).last
+
+    assert_equal Fledge::PathGem.new(name: "elsewhere", version: "1.0", folder: File.join(@dir, "elsewhere"),
+      app_path: "vendor/cache/elsewhere", glob: "{,*,*/*}.gemspec", inside: false), gem
+  end
+
+  def test_a_gem_outside_the_project_comes_from_the_developers_own_copy_in_vendor_cache_when_there_is_one
+    root = path_project
+    FileUtils.mkdir_p(File.join(root, "vendor", "cache"))
+    FileUtils.mv(File.join(@dir, "elsewhere"), File.join(root, "vendor", "cache", "elsewhere"))
+
+    gem = gems(Fledge::Bundle.new(Fledge::App.at(root)), LINUX).last
+
+    assert_equal [File.join(root, "vendor", "cache", "elsewhere"), "vendor/cache/elsewhere"], [gem.folder, gem.app_path]
+  end
+
+  def test_a_gem_outside_the_project_that_is_not_there_names_the_gem_and_what_to_do
+    root = path_project
+    FileUtils.rm_rf(File.join(@dir, "elsewhere"))
 
     error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(root)), LINUX) }
-    assert_equal "Gemfile.lock takes elsewhere from #{File.join(@dir, 'elsewhere')}, outside the project, and Fledge ships only " \
-      "what is inside #{root}. Move it into the project, or take it from a gem server.", error.message
+    assert_equal "Gemfile.lock takes elsewhere from #{File.join(@dir, 'elsewhere')}, outside the project, and that folder is not " \
+      "there. Check out elsewhere there, or move it into the project, or take it from a gem server.", error.message
+  end
+
+  def test_a_gem_outside_the_project_whose_path_names_no_folder_is_refused
+    root = path_project(path: "../elsewhere/..", folder: "elsewhere")
+
+    error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(root)), LINUX) }
+    assert_includes error.message, "takes elsewhere from ../elsewhere/.., outside the project, and a path that ends in \"..\" names no folder"
+  end
+
+  def test_a_path_gem_inside_the_project_ships_with_it_unless_it_has_an_extension
+    root = path_project(path: "gems/elsewhere", folder: "my_app/gems/elsewhere")
+
+    assert_empty gems(Fledge::Bundle.new(Fledge::App.at(root)), LINUX)
+  end
+
+  # Bundler never compiles a path gem's extension; bundle exec loads what
+  # the developer last compiled there, for their own Ruby.
+  def test_a_path_gem_with_an_extension_is_compiled_for_the_runtimes_ruby_wherever_it_is
+    inside = path_project(path: "gems/elsewhere", folder: "my_app/gems/elsewhere", extensions: ["ext/e/extconf.rb"])
+    gem = gems(Fledge::Bundle.new(Fledge::App.at(inside)), LINUX).grep(Fledge::PathGem).first
+
+    assert_equal [true, "gems/elsewhere"], [gem.inside, gem.app_path]
+
+    root = FakeProject.write(@dir, name: "ext_app", dependencies: {}, locked: [])
+    File.write(File.join(root, "ext_app.gemspec"), File.read(File.join(root, "ext_app.gemspec"))
+      .sub("spec.bindir", "spec.extensions = [\"ext/ext_app/extconf.rb\"]\n  spec.bindir"))
+    own = gems(Fledge::Bundle.new(Fledge::App.at(root)), LINUX)
+
+    assert_equal [[".", true]], own.map { |candidate| [candidate.app_path, candidate.inside] }
   end
 
   # A project whose Gemfile takes "g" from git, locked at +revision+,
@@ -170,7 +262,7 @@ class BundleTest < Minitest::Test
 
     assert_equal [
 Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git", revision: "a" * 40,
-  glob: "gems/*/*.gemspec", ref: "tag v1.0",),
+  glob: "gems/*/*.gemspec", ref: "tag v1.0", submodules: false,),
 ], gems
   end
 
@@ -182,12 +274,12 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
       error.message
   end
 
-  def test_a_git_gem_with_submodules_is_refused_for_now
+  def test_a_git_gem_that_asks_for_submodules_carries_the_request_to_its_checkout
     root = git_project(options: "  tag: v1.0\n  glob: gems/*/*.gemspec\n  submodules: true\n")
     File.write(File.join(root, "Gemfile"), File.read(File.join(root, "Gemfile")).sub("glob: \"gems/*/*.gemspec\"", "glob: \"gems/*/*.gemspec\", submodules: true"))
 
-    error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(root)), LINUX) }
-    assert_includes error.message, "takes g from https://example.com/repo.git with its submodules, which Fledge does not fetch yet"
+    assert_equal [true], gems(Fledge::Bundle.new(Fledge::App.at(root)), LINUX).map(&:submodules)
+    assert_equal [false], gems(Fledge::Bundle.new(Fledge::App.at(git_project)), LINUX).map(&:submodules)
   end
 
   # bundle config build.NAME, at any level Bundler reads, as Bundler
@@ -201,19 +293,6 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
 
     assert_equal ["--use-system-libraries", "--with-opt=a b"], bundle.build_args("nokogiri")
     assert_empty bundle.build_args("other")
-  end
-
-  # Bundler never compiles a path gem's extension; bundle exec loads what
-  # the developer last compiled there, for their own Ruby.
-  def test_a_path_gem_with_an_extension_is_refused
-    root = FakeProject.write(@dir, dependencies: {}, locked: [])
-    File.write(File.join(root, "my_app.gemspec"), File.read(File.join(root, "my_app.gemspec"))
-      .sub("spec.bindir", "spec.extensions = [\"ext/my_app/extconf.rb\"]\n  spec.bindir"))
-
-    error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(root)), LINUX) }
-    assert_equal "Gemfile.lock takes my_app from #{root}, a folder inside the project, and its gemspec has an extension to " \
-      "compile, which Bundler does not compile for a path gem (bundle exec loads whatever was last compiled there, for your own " \
-      "Ruby). Take it from git or a gem server, so Fledge can compile it for the runtime's Ruby.", error.message
   end
 
   def test_the_app_folder_gets_bundlers_settings_and_evaluated_gemspecs

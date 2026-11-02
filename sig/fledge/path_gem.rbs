@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class PathGem < Data
+    attr_reader name: String
+    attr_reader version: String
+    attr_reader folder: String
+    attr_reader app_path: String
+    attr_reader glob: String
+    attr_reader inside: bool
+
+    def self.new: (name: String, version: String, folder: String, app_path: String, glob: String, inside: bool) -> instance
+
+    def full_name: () -> String
+
+    def scope: () -> String
+
+    def to_s: () -> String
+  end
+end

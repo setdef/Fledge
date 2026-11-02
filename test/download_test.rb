@@ -14,12 +14,12 @@ class DownloadTest < Minitest::Test
   SHA = Digest::SHA256.hexdigest(BODY)
 
   def setup
-    @server = LoopbackServer.new(
+    @server = LoopbackServer.new({
       "/file" => [200, {}, BODY],
       "/hop" => [302, { "Location" => "/file" }, ""],
       "/loop" => [302, { "Location" => "/loop" }, ""],
-      "/downgrade" => [302, { "Location" => "http://127.0.0.1:1/file" }, ""]
-    )
+      "/downgrade" => [302, { "Location" => "http://127.0.0.1:1/file" }, ""],
+    })
   end
 
   def teardown
@@ -55,6 +55,37 @@ class DownloadTest < Minitest::Test
         "The file changed since it was pinned, or the download was damaged; nothing was saved.", error.message
       assert_empty Dir.children(dir)
     end
+  end
+
+  def test_save_logs_in_with_the_credentials_it_is_given_and_a_server_that_wants_them_refuses_without
+    server = LoopbackServer.new({ "/file" => [200, {}, BODY] }, credentials: "me:p@ss:word")
+    Dir.mktmpdir do |dir|
+      to = File.join(dir, "f")
+
+      Fledge::Download.save(server.url("/file"), to:, sha256: SHA, credentials: "me:p%40ss:word")
+
+      assert_equal BODY, File.read(to)
+      error = assert_raises(Fledge::Download::Refused) { Fledge::Download.save(server.url("/file"), to: File.join(dir, "g"), sha256: SHA) }
+      assert_equal 401, error.status
+      assert_equal "could not download #{server.url('/file')}: 401 X", error.message
+      assert_equal [nil, "Basic #{['me:p@ss:word'].pack('m0')}"], server.authorizations.reverse
+    end
+  ensure
+    server&.stop
+  end
+
+  def test_credentials_go_only_to_the_host_that_asked_for_them
+    other = LoopbackServer.new({ "/file" => [200, {}, BODY] })
+    server = LoopbackServer.new({ "/away" => [302, { "Location" => "http://localhost:#{other.url('/').split(':').last.delete('/')}/file" }, ""] })
+    Dir.mktmpdir do |dir|
+      Fledge::Download.save(server.url("/away"), to: File.join(dir, "f"), sha256: SHA, credentials: "me:secret")
+    end
+
+    assert_equal ["Basic #{['me:secret'].pack('m0')}"], server.authorizations
+    assert_equal [nil], other.authorizations
+  ensure
+    server&.stop
+    other&.stop
   end
 
   def test_redirects_are_followed

@@ -76,10 +76,15 @@ class NativeBuildTest < Minitest::Test
     [status, err.string]
   end
 
-  # Runs the built app with nothing of this computer's Ruby around it.
+  # Runs the built app with nothing of this computer's Ruby around it: on
+  # Windows, which needs the rest of the environment, without the variables
+  # bundle exec sets for the Ruby that runs the tests, which a Ruby the app
+  # starts would otherwise load beside its own Bundler.
   def run_app
     folder = File.join(@dir, "dist", "MyApp-#{@platform}")
-    out, status = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }, File.join(folder, @platform.executable("MyApp")), unsetenv_others: !Gem.win_platform?)
+    scrubbed = ENV.keys.grep(Fledge::NativeBuild::SCRUBBED).to_h { |name| [name, nil] }
+    out, status = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }.merge(scrubbed), File.join(folder, @platform.executable("MyApp")),
+      unsetenv_others: !Gem.win_platform?)
     [out, status, folder]
   end
 
@@ -138,5 +143,128 @@ class NativeBuildTest < Minitest::Test
     scope = "Greeters-#{revision[0, 12]}"
     built = Dir.glob(File.join(gem_dir(folder), "bundler/gems/extensions/*/*/#{scope}-greeter/gem.build_complete"))
     assert_equal 1, built.size, "Bundler's own extensions folder for a git gem"
+  end
+
+  # A project whose Gemfile takes greeter from the folder +path+ (relative
+  # to the project), holding FILES at @dir/+folder+. +stale+ is a file the
+  # developer compiled there for their own Ruby, in the gem's lib.
+  def path_project(path:, folder:, stale: nil)
+    source = File.join(@dir, folder)
+    FILES.merge(stale || {}).each do |file, content|
+      FileUtils.mkdir_p(File.dirname(File.join(source, file)))
+      File.write(File.join(source, file), content)
+    end
+    File.write(File.join(source, "greeter.gemspec"), <<~GEMSPEC)
+      Gem::Specification.new do |s|
+        s.name = "greeter"
+        s.version = "1.0"
+        s.summary = "A path gem for Fledge's tests"
+        s.authors = ["Fledge"]
+        s.files = #{FILES.keys.inspect}
+        s.extensions = ["ext/greeter/extconf.rb"]
+      end
+    GEMSPEC
+    root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "gem \"greeter\", path: #{path.inspect}\n", lock_dependencies: ["greeter!"])
+    lock = File.join(root, "Gemfile.lock")
+    text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  greeter (1.0)\n")
+    File.write(lock, "PATH\n  remote: #{path}\n  specs:\n    greeter (1.0)\n\n#{text}")
+    program(root)
+    root
+  end
+
+  # Bundler compiles no path gem's extension, so bundle exec loads what the
+  # developer compiled; the built app has the runtime's Ruby, so Fledge
+  # compiles it, and it ships in Bundler's place for a copy of a gem from
+  # outside the project. The original folder is gone by the time it runs.
+  def test_a_path_gem_outside_the_project_with_an_extension_compiles_and_ships_in_bundlers_copy
+    root = path_project(path: "../greeter", folder: "greeter")
+
+    status, err = build(root)
+
+    assert_equal 0, status, err
+    FileUtils.rm_rf(File.join(@dir, "greeter"))
+    out, ran, folder = run_app
+    assert_predicate ran, :success?, out
+    assert_equal "hello\n", out
+    copy = File.join(folder, "app", "vendor", "cache", "greeter")
+    assert_path_exists File.join(copy, "ext/greeter/greeter.c")
+    assert_includes File.read(File.join(copy, "greeter.gemspec")), "s.name = \"greeter\""
+    refute_path_exists File.join(copy, "ext/greeter/Makefile"), "the build's own leftovers stay behind"
+  end
+
+  def test_a_path_gem_inside_the_project_with_an_extension_replaces_what_the_developer_compiled_for_their_ruby
+    extension = RbConfig::CONFIG["DLEXT"]
+    stale = "lib/greeter/greeter.#{extension}"
+    root = path_project(path: "gems/greeter", folder: "my_app/gems/greeter", stale: { stale => "compiled for another Ruby" })
+
+    status, err = build(root)
+
+    assert_equal 0, status, err
+    out, ran, folder = run_app
+    assert_predicate ran, :success?, out
+    assert_equal "hello\n", out
+    refute_equal "compiled for another Ruby", File.binread(File.join(folder, "app", "gems", "greeter", stale))
+  end
+
+  # Under bundle exec a gem's executables are in the bundle's bin folder,
+  # as RubyGems wrote them. A built app has them in the runtime's bin
+  # folder, written by the runtime's own RubyGems like the runtime's own,
+  # which find the runtime's ruby beside them.
+  def test_a_gems_executables_ship_in_the_runtimes_bin_folder_and_run_without_ruby_on_path
+    cli = FakeGem.build(@dir, "tool", "1.0.0", executables: ["tool-cli"],
+      files: { "lib/tool.rb" => "module Tool; def self.name = 'tool'; end\n", "exe/tool-cli" => "#!/usr/bin/env ruby\nrequire 'tool'\nputs \"tool-cli says \#{Tool.name}\"\n" })
+    @routes["/gems/#{cli.file_name}"] = [200, {}, File.binread(cli.path)]
+    root = FakeProject.write(@dir, dependencies: { "tool" => ">= 0" }, locked: [cli], remote: @server.url("/"))
+    File.write(File.join(root, "exe", "my_app"), "puts IO.popen([File.join(Gem.bindir, Gem.win_platform? ? 'tool-cli.bat' : 'tool-cli')], &:read)\n")
+
+    status, err = build(root)
+
+    assert_equal 0, status, err
+    out, ran, folder = run_app
+    assert_predicate ran, :success?, out
+    assert_equal "tool-cli says tool\n", out
+    stub = File.read(File.join(folder, @platform.windows? ? "ruby/bin" : "bin", "tool-cli"))
+    refute_includes stub, @dir, "the build machine's paths stay behind"
+  end
+
+  def test_a_path_gems_executables_ship_too_and_a_runtime_gems_stay_the_runtimes
+    source = File.join(@dir, "my_app", "gems", "tool")
+    FileUtils.mkdir_p(File.join(source, "exe"))
+    File.write(File.join(source, "exe", "tool-cli"), "#!/usr/bin/env ruby\nputs 'from a path gem'\n")
+    File.chmod(0o755, File.join(source, "exe", "tool-cli"))
+    File.write(File.join(source, "tool.gemspec"), "Gem::Specification.new { |s| s.name = 'tool'; s.version = '1.0'; s.summary = 'x'; " \
+      "s.authors = ['x']; s.files = ['exe/tool-cli']; s.bindir = 'exe'; s.executables = ['tool-cli', 'rake'] }\n")
+    File.write(File.join(source, "exe", "rake"), "#!/usr/bin/env ruby\nputs 'not the runtime rake'\n")
+    root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "gem \"tool\", path: \"gems/tool\"\n", lock_dependencies: ["tool!"])
+    lock = File.join(root, "Gemfile.lock")
+    File.write(lock, "PATH\n  remote: gems/tool\n  specs:\n    tool (1.0)\n\n#{File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  tool (1.0)\n")}")
+    File.write(File.join(root, "exe", "my_app"), "puts IO.popen([File.join(Gem.bindir, Gem.win_platform? ? 'tool-cli.bat' : 'tool-cli')], &:read)\n")
+
+    status, err = build(root)
+
+    assert_equal 0, status, err
+    out, ran, folder = run_app
+    assert_predicate ran, :success?, out
+    assert_equal "from a path gem\n", out
+    refute_includes File.read(File.join(folder, @platform.windows? ? "ruby/bin" : "bin", "rake")), "not the runtime rake"
+  end
+
+  def test_a_git_gems_executables_ship_in_the_runtimes_bin_folder
+    files = { "lib/tool.rb" => "", "exe/tool-cli" => "#!/usr/bin/env ruby\nputs 'from a git gem'\n" }
+    repo, revision = FakeRepo.write(@dir, "Tools", gems: { "tool" => files }, executables: { "tool" => ["tool-cli"] })
+    root = FakeProject.write(@dir, dependencies: {}, locked: [], remote: @server.url("/"),
+      gemfile: "gem \"tool\", git: #{repo.inspect}, branch: \"trunk\", glob: \"gems/*/*.gemspec\"\n", lock_dependencies: ["tool!"])
+    lock = File.join(root, "Gemfile.lock")
+    text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  tool (1.0)\n")
+    File.write(lock, "GIT\n  remote: #{repo}\n  revision: #{revision}\n  branch: trunk\n  glob: gems/*/*.gemspec\n  specs:\n" \
+      "    tool (1.0)\n\n#{text}")
+    File.write(File.join(root, "exe", "my_app"), "puts IO.popen([File.join(Gem.bindir, Gem.win_platform? ? 'tool-cli.bat' : 'tool-cli')], &:read)\n")
+
+    status, err = build(root)
+
+    assert_equal 0, status, err
+    out, ran, = run_app
+    assert_predicate ran, :success?, out
+    assert_equal "from a git gem\n", out
   end
 end

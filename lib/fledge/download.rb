@@ -50,6 +50,19 @@ module Fledge
     # How many redirects a download follows before giving up.
     REDIRECTS = 5
 
+    # A server that answered 401 or 403: it wants a login, or refused the
+    # one it was given.
+    class Refused < Error
+      # The HTTP status, 401 or 403.
+      attr_reader :status
+
+      # Creates the error for +message+ and +status+.
+      def initialize(message, status)
+        super(message)
+        @status = status
+      end
+    end
+
     # The body at +url+, as a String. Raises Fledge::Error when the
     # server does not answer with success.
     #
@@ -72,7 +85,12 @@ module Fledge
 
     # Saves the file at +url+ to the path +to+, creating its folder, and
     # returns +to+. Raises Fledge::Error, and leaves nothing at +to+,
-    # when the download fails or its SHA-256 is not +sha256+.
+    # when the download fails or its SHA-256 is not +sha256+. +credentials+
+    # (<tt>USER:PASSWORD</tt>, each percent-encoded as in a URL's userinfo,
+    # as Bundler's Source::Rubygems::Remote applies them) log in with HTTP
+    # Basic authentication to the server at +url+, and to no other host a
+    # redirect leads to. Raises Fledge::Download::Refused when the server
+    # answers 401 or 403.
     #
     # === Example
     #
@@ -85,12 +103,12 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.save(url, to:, sha256:)
+    def self.save(url, to:, sha256:, credentials: nil)
       FileUtils.mkdir_p(File.dirname(to))
       partial = "#{to}.part"
       digest = Digest::SHA256.new
       File.open(partial, "wb") do |file|
-        get(url) do |response|
+        get(url, credentials:) do |response|
           response.read_body do |chunk|
             digest << chunk
             file.write(chunk)
@@ -111,15 +129,22 @@ module Fledge
         "The file changed since it was pinned, or the download was damaged; nothing was saved."
     end
 
-    private_class_method def self.get(url, redirects = REDIRECTS, &block) # :nodoc:
+    private_class_method def self.get(url, redirects = REDIRECTS, credentials: nil, &block) # :nodoc:
       uri = URI(url)
       raise Error, "#{url} is not an http or https URL" unless uri.is_a?(URI::HTTP) && uri.host
 
       Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
-        http.request_get(uri.request_uri) do |response|
+        request = Net::HTTP::Get.new(uri.request_uri)
+        if credentials
+          user, password = login(credentials)
+          request.basic_auth(user, password)
+        end
+        http.request(request) do |response|
           case response
           when Net::HTTPSuccess then block.call(response)
-          when Net::HTTPRedirection then follow(uri, response["location"].to_s, redirects, &block)
+          when Net::HTTPRedirection then follow(uri, response["location"].to_s, redirects, credentials, &block)
+          when Net::HTTPUnauthorized, Net::HTTPForbidden
+            raise Refused.new("could not download #{url}: #{response.code} #{response.message}", response.code.to_i)
           else raise Error, "could not download #{url}: #{response.code} #{response.message}"
           end
         end
@@ -128,13 +153,19 @@ module Fledge
       raise Error, "could not download #{url}: #{e.message}"
     end
 
-    private_class_method def self.follow(from, location, redirects, &) # :nodoc:
+    private_class_method def self.follow(from, location, redirects, credentials, &) # :nodoc:
       raise Error, "#{from} redirected more than #{REDIRECTS} times" if redirects.zero?
 
       to = from.merge(location)
       raise Error, "#{from} redirected from HTTPS to plain HTTP (#{to}); refusing" if from.scheme == "https" && to.scheme != "https"
 
-      get(to.to_s, redirects - 1, &)
+      get(to.to_s, redirects - 1, credentials: (credentials if to.host == from.host && to.port == from.port), &)
+    end
+
+    # The user and password in +credentials+, decoded as a URL's are.
+    private_class_method def self.login(credentials) # :nodoc:
+      user, password = credentials.split(":", 2)
+      [URI.decode_www_form_component(user.to_s), URI.decode_www_form_component(password.to_s)]
     end
   end
 end

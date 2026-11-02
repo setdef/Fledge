@@ -83,10 +83,35 @@ module Fledge
         FileUtils.mkdir_p(File.dirname(folder))
         git("clone", "--quiet", "--no-checkout", "--", mirror, folder)
         git("-C", folder, "checkout", "--quiet", "--detach", gem.revision)
+        submodules(folder, gem)
         serialize_gemspecs(folder, gem.glob)
         folder
       end
     end
+
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-License-Identifier: MIT
+    # SPDX-SnippetCopyrightText: 2010-2019 André Arko, 2009 Engine Yard
+    # SPDX-SnippetComment: Bundler::Source::Git::GitProxy#copy_to, adapted
+    #   from bundler/source/git/git_proxy.rb at Bundler 4.0.20 (lines 171
+    #   to 172): a source with submodules: true runs git submodule update
+    #   --init --recursive in the checkout.
+    #++
+    # Checks out the submodules of +gem+'s repository in +folder+ at the
+    # commits its revision records, when the Gemfile asked for them
+    # (<tt>submodules: true</tt>), before the gemspecs are evaluated, since
+    # a gemspec may list the files of a submodule. Without the option
+    # Bundler leaves them out, as the checkout does here.
+    private def submodules(folder, gem)
+      return unless gem.submodules
+
+      @log&.puts "Fetching the submodules of #{gem.uri}"
+      git("-C", folder, "submodule", "update", "--init", "--recursive", "--quiet")
+    end
+    #--
+    # SPDX-SnippetEnd
+    #++
 
     # The bare clone of +gem+'s repository in the cache, holding its
     # revision.

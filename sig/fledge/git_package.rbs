@@ -26,5 +26,7 @@ module Fledge
     def entries: (String gem_dir) -> Array[Entry]
 
     def contents: () -> Hash[String, String]
+
+    private def git_files: () -> Array[String]
   end
 end

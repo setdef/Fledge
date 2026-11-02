@@ -7,6 +7,7 @@
 
 require "digest"
 require "rubygems"
+require "uri"
 require_relative "download"
 
 module Fledge
@@ -25,7 +26,8 @@ module Fledge
   # (<tt>$XDG_CACHE_HOME/fledge/gems</tt>, or <tt>~/.cache/fledge/gems</tt>).
   # It uses a copy only if its SHA-256 is the lockfile's, and otherwise
   # downloads the file from the gem's server into its own cache, checked
-  # the same way.
+  # the same way, with the mirror and the login Bundler's settings give
+  # that server (Fledge::Bundle resolves them as Bundler does).
   #
   # Use it to get the files Fledge::GemPackage unpacks into an app.
   #
@@ -77,7 +79,22 @@ module Fledge
       return found if found
 
       @log&.puts "Downloading #{gem.file_name} from #{gem.remote}"
-      Download.save(gem.url, to: cached, sha256: gem.sha256)
+      Download.save(gem.url, to: cached, sha256: gem.sha256, credentials: gem.credentials)
+    rescue Download::Refused => e
+      raise Error, refused(gem, e)
+    end
+
+    # What to do when the gem's server wanted a login, or refused the one
+    # Bundler's settings gave: set it as Bundler reads it.
+    private def refused(gem, error)
+      host = URI(gem.remote).host.to_s
+      "#{gem} comes from #{gem.remote}, which answered #{error.status} for it, " + if gem.credentials
+        "and Bundler's login for #{host} was refused. Check it with bundle config get #{host}, or set it with " \
+          "bundle config set --local #{host} USER:PASSWORD, then build again."
+      else
+        "and there is no login for it. Set one as Bundler reads it: bundle config set --local #{host} USER:PASSWORD " \
+          "(or the environment variable BUNDLE_#{host.upcase.gsub('-', '___').gsub('.', '__')}), then build again."
+      end
     end
 
     private def candidates(gem, cached)

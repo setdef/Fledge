@@ -32,7 +32,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class LockedGem < Data.define(:name, :version, :platform, :remote, :sha256)
+  class LockedGem < Data.define(:name, :version, :platform, :remote, :sha256, :credentials)
     ##
     # :attr_reader: name
     # The gem's name.
@@ -48,7 +48,14 @@ module Fledge
 
     ##
     # :attr_reader: remote
-    # The server it comes from, ending in <tt>/</tt>.
+    # The server it comes from, ending in <tt>/</tt>, as Bundler would ask
+    # it (a mirror of the lockfile's server, when <tt>bundle config
+    # mirror.URL</tt> names one), without any login.
+
+    ##
+    # :attr_reader: credentials
+    # The login Bundler would give that server, <tt>USER:PASSWORD</tt> as
+    # in a URL's userinfo, or +nil+.
 
     ##
     # :attr_reader: sha256

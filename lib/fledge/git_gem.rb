@@ -39,7 +39,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class GitGem < Data.define(:name, :version, :uri, :revision, :glob, :ref)
+  class GitGem < Data.define(:name, :version, :uri, :revision, :glob, :ref, :submodules)
     ##
     # :attr_reader: name
     # The gem's name.
@@ -63,6 +63,12 @@ module Fledge
     ##
     # :attr_reader: ref
     # What the Gemfile asked for, such as <tt>tag v1.0</tt>, or +nil+.
+
+    ##
+    # :attr_reader: submodules
+    # Whether the Gemfile asked for the repository's submodules
+    # (<tt>submodules: true</tt>), which Bundler checks out at the commits
+    # the revision records.
 
     # The name RubyGems gives the gem's files: <tt>NAME-VERSION</tt>.
     #

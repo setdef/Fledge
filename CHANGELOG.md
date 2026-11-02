@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Gem servers that need a login, or that Bundler mirrors, work as under Bundler: `fledge build` asks each server through the mirror (`bundle config mirror.URL`) and with the login (`bundle config HOST USER:PASSWORD`, or one in the Gemfile's source URL) Bundler's settings give it, and a server that refuses the login fails the build with the gem's name and how to set one.
+- A gem from git with `submodules: true` ships with its submodules checked out.
+- A gem from a folder outside the project (`path: "../shared"`) ships in `app/vendor/cache/NAME`, where Bundler looks for a copy of a path gem.
+- A path gem with an extension, inside the project or outside, and a project that is a gem with an extension, is compiled for the runtime's Ruby, and its compiled files replace those compiled for the developer's own.
+- The executables of the gems an app ships, other than the project's own, are written into the runtime's `bin/` (`ruby/bin` on Windows) as the runtime's own gems' are, and run with no Ruby on the person's computer; find one at `File.join(Gem.bindir, NAME)` (`NAME.bat` on Windows).
+
+### Changed
+
+- The groups an app ships follow Bundler's `with` and `without` settings: a group declared `optional: true` ships only when the project's settings (`BUNDLE_WITH`) name it, and the app's `.bundle/config` carries both settings, so its Bundler sets up the groups that shipped.
+
 ### Fixed
 
 - A build no longer fails when an app locks a gem with a RubyGems plugin that the runtime has a loader for, such as the `rdoc` that `irb` asks for: the runtime's loader stays.

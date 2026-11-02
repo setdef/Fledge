@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# The gems real apps lock that need more than a gem server's file (ADR
+# 020). The .bundle/config beside this file sends RubyGems.org through a
+# mirror that wants a login (Bundler's own mirror and credential
+# settings), and asks for the optional group.
+source "https://rubygems.org"
+
+# From the credentialed mirror.
+gem "wisper", "2.0.1"
+
+# From a folder outside the project, with an executable.
+gem "shared", path: "../real_gems_shared"
+
+# From a folder in the project, with a C extension Bundler would not
+# compile.
+gem "greeter", path: "gems/greeter"
+
+# From git, with a submodule (github.com/octocat/Hello-World), a fixture
+# on the experiment/submodule-gem branch.
+gem "fledge_submodule_gem", git: "https://github.com/setdef/Fledge", ref: "862e38b09c6ccce4d421caaa4c7e7c5b65f818a2", submodules: true
+
+# An optional group, which Bundler sets up only because .bundle/config says
+# BUNDLE_WITH.
+group :extras, optional: true do
+  gem "paint", "2.3.0"
+end

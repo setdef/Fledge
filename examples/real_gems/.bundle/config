@@ -1,0 +1,4 @@
+---
+BUNDLE_MIRROR__HTTPS://RUBYGEMS__ORG/: "http://127.0.0.1:9292/"
+BUNDLE_127__0__0__1: "fledge:mirror-password"
+BUNDLE_WITH: "extras"

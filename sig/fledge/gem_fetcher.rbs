@@ -12,6 +12,8 @@ module Fledge
 
     def fetch: (LockedGem gem) -> String
 
+    private def refused: (LockedGem gem, Download::Refused error) -> String
+
     private def candidates: (LockedGem gem, String cached) -> Array[String]
   end
 end

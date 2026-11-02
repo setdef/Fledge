@@ -70,15 +70,15 @@ module Fledge
     # that has moved past its lockfile and never rewrite or touch the
     # lockfile (frozen), take the gems from Ruby's own gem folder, where
     # fledge build put them (path.system), and never install at boot
-    # (auto_install); and Fledge's own: leave out WITHOUT, whose gems the
-    # app does not ship.
+    # (auto_install). Fledge adds the groups the app leaves out
+    # (+without+) and those it asks for (+with+), as Bundler's own
+    # settings of those names (see #groups).
     SETTINGS = <<~YAML
       ---
       BUNDLE_VERSION: "system"
       BUNDLE_FROZEN: "true"
       BUNDLE_PATH__SYSTEM: "true"
       BUNDLE_AUTO_INSTALL: "false"
-      BUNDLE_WITHOUT: "#{WITHOUT.join(':')}"
     YAML
 
     # The setting a phone's app adds to SETTINGS: Bundler's own
@@ -106,6 +106,10 @@ module Fledge
       end
 
       @build_args = {} # : Hash[String, Array[String]]
+      @with = [] # : Array[String]
+      @without = [] # : Array[String]
+      @groups = [] # : Array[Symbol]
+      @gemfile = gemfile
       @definition = definition(gemfile)
       @checksums = checksums(File.read(@lockfile))
     end
@@ -153,13 +157,33 @@ module Fledge
       at_project(gemfile) do
         dsl = Bundler::Dsl.new
         dsl.eval_gemfile(gemfile)
-        definition = dsl.to_definition(Pathname.new(@lockfile), {})
-        Bundler.settings.temporary(frozen: true) { definition.ensure_equivalent_gemfile_and_lockfile(true) }
+        # Frozen as the built app is, whatever the environment says: Bundler
+        # adds the computer's own platform to a definition it may rewrite
+        # (Bundler::Definition#initialize), and that platform is no more
+        # locked for the app than the lockfile says.
+        definition = Bundler.settings.temporary(frozen: true) do
+          dsl.to_definition(Pathname.new(@lockfile), {}).tap { |read| read.ensure_equivalent_gemfile_and_lockfile(true) }
+        end
         @build_args = build_settings
+        read_groups(definition)
         definition
       end
     rescue Bundler::BundlerError => e
       raise Error, "Bundler can't read #{gemfile} and #{lockfile_name}:\n#{e.message}"
+    end
+
+    # The groups the app sets up, as Bundler sets them up
+    # (Bundler::Definition#requested_groups at Bundler 4.0.20: the
+    # Gemfile's groups, less <tt>without</tt> and the optional groups,
+    # plus <tt>with</tt>), with WITHOUT left out whatever the settings
+    # say, since a built app has no development or test gems. The
+    # settings Bundler reads are the project's <tt>.bundle/config</tt>,
+    # BUNDLE_WITH and BUNDLE_WITHOUT, and the developer's own.
+    private def read_groups(definition)
+      settings = Bundler.settings
+      @with = settings[:with].map(&:to_s) - WITHOUT.map(&:to_s)
+      @without = (WITHOUT.map(&:to_s) + settings[:without].map(&:to_s)).uniq
+      @groups = settings.temporary(with: @with, without: @without) { definition.__send__(:requested_groups) }.map(&:to_sym)
     end
 
     # Every build.NAME setting Bundler has, by NAME.
@@ -230,8 +254,10 @@ module Fledge
       target = Gem::Platform.new(platform.force_ruby_platform? ? Gem::Platform::RUBY : arch)
       check_ruby(ruby_version)
       check_locked(platform, target)
-      specs = Selection.new(@definition, lockfile_name:, platform:, ruby_version:, target:).specs
-      specs.filter_map { |spec| sources.gem_for(spec, platform) }.sort_by(&:name)
+      specs = Selection.new(@definition, lockfile_name:, platform:, ruby_version:, target:, groups: @groups).specs
+      # Bundler's settings (a mirror, a login) are read from the project's
+      # own folder, so the sources ask for them there.
+      at_project(@gemfile) { specs.filter_map { |spec| sources.gem_for(spec, platform) }.sort_by(&:name) }
     end
 
     private def check_ruby(ruby_version)
@@ -281,13 +307,19 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def app_files(force_ruby_platform: false)
-      settings = force_ruby_platform ? "#{SETTINGS}#{FORCE_RUBY_PLATFORM}" : SETTINGS
+      settings = "#{SETTINGS}#{group_settings}#{FORCE_RUBY_PLATFORM if force_ruby_platform}"
       gemspecs = own_folders.flat_map { |folder| Dir.glob(GEMSPECS, base: folder).map { |name| File.join(folder, name) } }
       gemspecs.uniq.sort.each_with_object({ ".bundle/config" => settings }) do |path, files|
         spec = Bundler.load_gemspec(path) or next
         spec.installed_by_version = Gem::VERSION
         files[path.delete_prefix("#{@app.root}/")] = spec.to_ruby
       end
+    end
+
+    # The groups the app leaves out and asks for, as the settings of those
+    # names in the app's own <tt>.bundle/config</tt>.
+    private def group_settings
+      "BUNDLE_WITHOUT: \"#{@without.join(':')}\"\n#{"BUNDLE_WITH: \"#{@with.join(':')}\"\n" unless @with.empty?}"
     end
 
     private def own_folders

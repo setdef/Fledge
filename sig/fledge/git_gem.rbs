@@ -9,8 +9,9 @@ module Fledge
     attr_reader revision: String
     attr_reader glob: String
     attr_reader ref: String?
+    attr_reader submodules: bool
 
-    def self.new: (name: String, version: String, uri: String, revision: String, glob: String, ref: String?) -> instance
+    def self.new: (name: String, version: String, uri: String, revision: String, glob: String, ref: String?, submodules: bool) -> instance
 
     def full_name: () -> String
 

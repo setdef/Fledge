@@ -14,6 +14,8 @@ module Fledge
 
     def checkout: (GitGem gem) -> String
 
+    private def submodules: (String folder, GitGem gem) -> void
+
     private def mirror: (GitGem gem) -> String
 
     private def fetch: (GitGem gem, String path) -> void

@@ -18,7 +18,7 @@ module FakeRepo
   # contents) in gems/NAME/, commits it, and returns [its path, the
   # commit]. +extensions+ names, by gem, the extconf.rb its gemspec
   # lists.
-  def self.write(directory, name, gems:, version: "1.0", extensions: {}, licenses: ["MIT"])
+  def self.write(directory, name, gems:, version: "1.0", extensions: {}, licenses: ["MIT"], executables: {})
     root = File.join(directory, name)
     gems.each do |gem, files|
       folder = File.join(root, "gems", gem)
@@ -26,7 +26,7 @@ module FakeRepo
         FileUtils.mkdir_p(File.dirname(File.join(folder, path)))
         File.write(File.join(folder, path), content)
       end
-      File.write(File.join(folder, "#{gem}.gemspec"), gemspec(gem, version, extensions.fetch(gem, []), licenses))
+      File.write(File.join(folder, "#{gem}.gemspec"), gemspec(gem, version, extensions.fetch(gem, []), licenses, executables.fetch(gem, [])))
     end
     git(root, "init", "--quiet", "--initial-branch=trunk")
     git(root, "add", ".")
@@ -34,7 +34,7 @@ module FakeRepo
     [root, git(root, "rev-parse", "HEAD").strip]
   end
 
-  def self.gemspec(name, version, extensions, licenses)
+  def self.gemspec(name, version, extensions, licenses, executables = [])
     <<~GEMSPEC
       Gem::Specification.new do |spec|
         spec.name = #{name.inspect}
@@ -44,6 +44,8 @@ module FakeRepo
         spec.licenses = #{licenses.inspect}
         spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) { |ls| ls.readlines("\\x0", chomp: true) }
         spec.extensions = #{extensions.inspect}
+        spec.bindir = "exe"
+        spec.executables = #{executables.inspect}
       end
     GEMSPEC
   end

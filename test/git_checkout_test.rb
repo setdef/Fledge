@@ -27,7 +27,7 @@ class GitCheckoutTest < Minitest::Test
   end
 
   def gem(name = "alpha", revision: @revision, version: "1.0")
-    Fledge::GitGem.new(name:, version:, uri: @repo, revision:, glob: "gems/*/*.gemspec", ref: "branch trunk")
+    Fledge::GitGem.new(name:, version:, uri: @repo, revision:, glob: "gems/*/*.gemspec", ref: "branch trunk", submodules: false)
   end
 
   def test_checks_out_the_locked_revision_with_its_gemspecs_evaluated_as_bundler_does
@@ -83,5 +83,30 @@ class GitCheckoutTest < Minitest::Test
 
     assert_equal "#{@repo} at #{@revision} holds alpha 1.0, but the lockfile locks alpha 2.0. Run bundle lock, then build again.",
       error.message
+  end
+
+  # Bundler's GitProxy#copy_to runs `git submodule update --init
+  # --recursive` for a source with submodules: true, and takes the
+  # submodules out otherwise. git blocks the file transport for submodules
+  # by default, which only a test's local repositories need allowed.
+  def test_a_gem_that_asks_for_its_submodules_gets_them_at_the_commit_the_repository_locks
+    sub, = FakeRepo.write(@dir, "Sub", gems: { "inner" => { "lib/inner.rb" => "# inner\n" } })
+    identity = ["-c", "user.name=Fledge", "-c", "user.email=fledge@example.com"]
+    FakeRepo.git(@repo, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", sub, "vendor/sub")
+    FakeRepo.git(@repo, *identity, "commit", "--quiet", "-m", "A submodule")
+    revision = FakeRepo.git(@repo, "rev-parse", "HEAD").strip
+    allowed = ENV.values_at("GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0")
+    ENV.update("GIT_CONFIG_COUNT" => "1", "GIT_CONFIG_KEY_0" => "protocol.file.allow", "GIT_CONFIG_VALUE_0" => "always")
+
+    with = gem(revision:).with(submodules: true)
+    folder = @checkouts.checkout(with)
+    assert_equal "# inner\n", File.read(File.join(folder, "vendor/sub/gems/inner/lib/inner.rb"))
+    package = Fledge::GitPackage.new(with, folder)
+    assert package.entries("g").none? { |entry| entry.path.end_with?("/.git") }, "a submodule's own .git file stays behind"
+
+    without = Fledge::GitCheckout.new(cache: File.join(@dir, "cache"), work: File.join(@dir, "work2"), log: @log).checkout(gem(revision:))
+    assert_empty Dir.children(File.join(without, "vendor/sub")), "without submodules: true the submodule's folder is empty, as Bundler leaves it"
+  ensure
+    %w[GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0].zip(allowed.to_a).each { |key, value| ENV[key] = value }
   end
 end

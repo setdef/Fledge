@@ -29,6 +29,7 @@ Plan 001 (the walking skeleton) and Plan 002 (toward 1.0) are done. What each Pl
 - **iOS, iPadOS, and Android**, **Mobile runtimes**, **Mobile apps from fledge build** (ADR 011 and ADR 012, `pre.9` on): proven in the iOS Simulator and on x86-64 Android emulators.
 - **Windows on ARM** (ADR 018, `pre.16`): RubyInstaller's ARM64 Ruby, delivered natively on `windows-11-arm`.
 - **Ctrl-C and the console** (ADR 015, `pre.13`).
+- **The gems real apps lock** (ADR 020, not yet released): credentialed and mirrored gem servers, git submodules, path gems outside the project and with extensions, Bundler's optional groups, and gems' executables in the runtime's `bin/`; `examples/real_gems` needs a loopback mirror (`.github/scripts/gem-mirror.rb`) and a fixture branch, `experiment/submodule-gem`, which must stay.
 
 ## What is left before 1.0
 
@@ -36,7 +37,7 @@ Plan 003 holds it. In short:
 
 - **Waiting on the maintainer** (`questions.md`): an Apple Developer account, for a real iPhone and iPad and for App Review (entry A); and the accounts and certificates for notarization, Developer ID, and Windows code signing (entry B). Work proceeds on each entry's default.
 - **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner emulates; Gatekeeper's and SmartScreen's verdicts on a real certificate; closing a Windows console window (ADR 015).
-- **Open problems from the ADRs**: a wrapper's own CI building and delivering its app (Rooibos's ships through Fledge by hand, ADR 019; Tokra and Lota have not tried); path gems outside the project, credentialed gem servers and mirrors, git submodules, path gems with extensions (ADR 005, ADR 006); installer polish and `diskutil image create` on macOS 26 (ADR 009, ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
+- **Open problems from the ADRs**: a wrapper's own CI building and delivering its app (Rooibos's ships through Fledge by hand, ADR 019; Tokra and Lota have not tried); the musl and ARM64 Windows builds of `examples/real_gems`, and `Gem.bindir` on an app's `PATH` (ADR 020); installer polish and `diskutil image create` on macOS 26 (ADR 009, ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones, after 1.0.
 
 ## How to check it
 
@@ -69,5 +70,5 @@ Spike code is thrown away; findings are kept. The mobile and permissive spikes' 
 ## Where to start next
 
 1. Read Plan 003 and take its first story not waiting on an account: a framework wrapper shipping through Fledge is in progress (ADR 019); it is done when Rooibos's own CI builds and delivers an app with a tagged Fledge, which is the maintainer's to relay to Rooibos's session. The experiment's workflow and delivery scripts (`wrapper.yml`, `deliver-tui.py`, `deliver-tui.ps1`) are on the `experiment/wrapper` branch.
-2. Then the gems real apps lock, one kind of gem at a time.
+2. The gems real apps lock are done for the desktop platforms CI compiles on (ADR 020, `examples/real_gems`); what is left of that story is in its plan entry. Take the next story not waiting on an account.
 3. Watch `questions.md`: when the maintainer answers an entry, quote the answer in `decisions.md`, apply it, and take the story it unblocks.

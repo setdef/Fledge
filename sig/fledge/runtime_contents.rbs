@@ -17,10 +17,13 @@ module Fledge
     attr_reader arch: String
     attr_reader path: String
     attr_reader plugins: Array[String]
+    attr_reader binaries: Array[String]
 
-    def self.new: (gem_dir: String, gems: Array[String], ruby_version: String, libraries: Array[String], arch: String, path: String, plugins: Array[String]) -> instance
+    def self.new: (gem_dir: String, gems: Array[String], ruby_version: String, libraries: Array[String], arch: String, path: String, plugins: Array[String], binaries: Array[String]) -> instance
 
     def self.read: (String path, ?under: String) -> RuntimeContents
+
+    def bin_dir: () -> String
 
     def tool: (String name, into: String) -> String?
 

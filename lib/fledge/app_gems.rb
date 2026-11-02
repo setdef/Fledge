@@ -16,6 +16,8 @@ require_relative "git_package"
 require_relative "linkage"
 require_relative "mobile_platform"
 require_relative "native_build"
+require_relative "path_gem"
+require_relative "path_package"
 
 module Fledge
   # The gems one platform's build of an app adds to its runtime.
@@ -77,12 +79,15 @@ module Fledge
       @fetcher = fetcher
       @checkouts = checkouts
       @compiler = compiler
+      @path_files = {} # : Hash[String, String]
     end
 
     # What the app's +app+ folder holds in place of the project's own
     # files: Fledge::Bundle#app_files, with Bundler's
     # <tt>force_ruby_platform</tt> when +force_ruby_platform+ is true, as
-    # for a phone.
+    # for a phone; and the files #for compiled for the project's own path
+    # gems, which replace the ones the developer compiled for their Ruby, so
+    # ask after #for.
     #
     # === Example
     #
@@ -96,7 +101,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def app_files(force_ruby_platform: false)
-      @bundle.app_files(force_ruby_platform:)
+      @bundle.app_files(force_ruby_platform:).merge(@path_files)
     end
 
     # The entries, with paths relative to the built folder, that install
@@ -117,17 +122,48 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def for(platform, runtime:)
-      locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch).reject { |gem| runtime.gems.include?(gem.full_name) }
+      locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch)
+        .reject { |gem| !gem.is_a?(PathGem) && runtime.gems.include?(gem.full_name) }
       packages = locked.to_h { |gem| [gem, package_for(gem)] } # : Hash[locked_gem, package]
+      stubs = [] # : Array[Entry]
       problems = case platform
       when MobilePlatform then mobile_problems(packages, platform, runtime)
       else
         packages = compile(packages)
+        stubs = executables(packages, runtime)
         desktop_problems(packages, platform, runtime)
       end
       raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
 
-      packages.values.flat_map { |package| package.entries(runtime.gem_dir) }.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
+      entries = [*packages.flat_map { |gem, package| entries_for(gem, package, runtime.gem_dir) }, *stubs]
+      entries.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
+    end
+
+    # The wrappers of the executables of the gems in +packages+, as the
+    # runtime's RubyGems writes them (Fledge::NativeBuild#binstubs), in the
+    # runtime's bin folder, where it keeps its own gems' (ADR 020): all but
+    # a program the runtime already has under that name, whose wrapper
+    # finds whichever version of its gem the app's Bundler activates.
+    private def executables(packages, runtime)
+      @compiler.binstubs(packages).values.flatten.map { |entry| entry.with(path: "#{runtime.bin_dir}/#{entry.path}") }
+        .reject { |entry| runtime.binaries.include?(entry.path) }
+    end
+
+    # The entries that install +gem+ (as +package+, compiled or not) in a
+    # built app whose runtime's gem folder is +gem_dir+. A path gem is not
+    # installed in the gem folder: Bundler loads it from the folder the
+    # lockfile names, in the app, so one outside the project ships whole in
+    # Bundler's place for a copy of it, and one inside has what was
+    # compiled for it noted as files that replace the project's own.
+    private def entries_for(gem, package, gem_dir)
+      path = package.is_a?(CompiledGem) ? package.package : package
+      return package.entries(gem_dir) unless gem.is_a?(PathGem) && path.is_a?(PathPackage)
+
+      built = package.is_a?(CompiledGem) ? package.built : [] # : Array[Entry]
+      return path.app_entries(built) unless gem.inside
+
+      @path_files.merge!(path.app_files(built))
+      []
     end
 
     # What keeps each gem from running on a desktop +platform+'s runtime:
@@ -177,6 +213,7 @@ module Fledge
     private def package_for(gem)
       case gem
       when LockedGem then GemPackage.new(@fetcher.fetch(gem))
+      when PathGem then PathPackage.new(gem)
       else GitPackage.new(gem, @checkouts.checkout(gem))
       end
     end

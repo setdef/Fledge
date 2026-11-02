@@ -10,15 +10,21 @@ module Fledge
 
       def initialize: (root: String, lockfile_name: String, checksums: Hash[String, String]) -> void
 
-      def gem_for: (Bundler::LazySpecification spec, target platform) -> (LockedGem | GitGem)?
+      def gem_for: (Bundler::LazySpecification spec, target platform) -> locked_gem?
 
       private def rubygem: (Bundler::LazySpecification spec, Bundler::Source::Rubygems source, target platform) -> LockedGem
 
       private def git_gem: (Bundler::LazySpecification spec, Bundler::Source::Git source) -> GitGem
 
-      private def own_gem: (Bundler::LazySpecification spec, Bundler::Source::Path source) -> nil
+      private def own_gem: (Bundler::LazySpecification spec, Bundler::Source::Path source) -> PathGem?
 
-      private def path_gemspec: (String folder, String name) -> Gem::Specification?
+      private def copy_of: (Bundler::LazySpecification spec, String original) -> String
+
+      private def outside_app_path: (Bundler::LazySpecification spec, String original, Bundler::Source::Path source) -> String
+
+      private def relative_to_root: (String folder) -> String
+
+      private def path_gemspec: (String folder, String name, Bundler::Source::Path source) -> Gem::Specification?
 
       def own_folder: (Bundler::LazySpecification spec) -> String?
 

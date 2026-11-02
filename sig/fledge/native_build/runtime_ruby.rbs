@@ -13,7 +13,7 @@ module Fledge
 
       def initialize: (platform: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, env: Runtimes::_Env) -> void
 
-      def run: (Array[Hash[String, String | Array[String]]] jobs) -> Array[Hash[String, String]]
+      def run: (Array[Hash[String, String | Array[String]]] jobs, ?source: String, ?message: String, ?failure: String) -> Array[Hash[String, String | Array[String]]]
 
       private def prepare: () -> String
 

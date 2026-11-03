@@ -24,7 +24,11 @@ module Fledge
   # together: list them under +programs+ (Config::Program), each with its
   # own path, name, kind, identifier, and icon, and they ship as one
   # folder that shares one runtime, one copy of the project, and one set
-  # of gems (ADR 024).
+  # of gems (ADR 024). Nor can it know the files a phone's project needs
+  # that no gem supplies, such as SDL3's host for a game whose SDL owns
+  # the main loop: name a folder of them under +ios+ or +android+
+  # (Config::Phone), and <tt>fledge build ios</tt> or <tt>fledge build
+  # android</tt> copies them over the project it writes (ADR 025).
   #
   # This class reads <tt>fledge.yml</tt> from the project's root, a YAML
   # mapping as RuboCop's and Kamal's configuration are, checks each value,
@@ -70,7 +74,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers, :programs)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers, :programs, :ios, :android)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -113,17 +117,31 @@ module Fledge
     # The project's programs (Config::Program), when it ships several
     # from one folder, or +nil+ for the one program you build (ADR 024).
 
+    ##
+    # :attr_reader: ios
+    # What <tt>fledge build ios</tt> lays over the project it writes
+    # (Config::Phone), or +nil+ for nothing (ADR 025).
+
+    ##
+    # :attr_reader: android
+    # What <tt>fledge build android</tt> lays over the project it writes
+    # (Config::Phone), or +nil+ for nothing (ADR 025).
+
     # The file's name, in the project's root.
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright installers programs].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright installers programs ios android].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, installers, and programs"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, and android"
 
     # The keys that, beside +programs+, belong to each program instead.
     PER_PROGRAM = %w[kind identifier icon].freeze
+
+    # The phones whose projects a project's own files may change, each a
+    # key of its own (Config::Phone).
+    PHONES = %w[ios android].freeze
 
     # The installers a windowed app may have: a disk image for macOS, an
     # NSIS setup program for Windows, an AppImage for Linux, and a
@@ -161,7 +179,8 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.none
-      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, installers: nil, programs: nil)
+      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, installers: nil, programs: nil, ios: nil,
+        android: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -207,7 +226,9 @@ module Fledge
         publisher: text(data, "publisher", path, "Example, Inc."),
         copyright: text(data, "copyright", path, "\"Copyright 2026 Example, Inc.\""),
         installers: installers(data, path),
-        programs: programs(data, path)
+        programs: programs(data, path),
+        ios: Phone.from(data, "ios", path),
+        android: Phone.from(data, "android", path)
       )
     end
 
@@ -316,6 +337,15 @@ module Fledge
       value
     end
 
+    # Whether +path+ names a file or folder in the project: relative to
+    # its root, with <tt>/</tt> between folders, none of them empty,
+    # <tt>.</tt>, or <tt>..</tt>, no backslash or line break, and no space
+    # at either end. Config::Program and Config::Phone check their paths
+    # with it.
+    def self.inside?(path) # :nodoc:
+      path == path.strip && !path.match?(/[\r\n\\]/) && path.split("/", -1).none? { |segment| ["", ".", ".."].include?(segment) }
+    end
+
     # The kind at +data+'s +kind+, one of KINDS, or +nil+.
     def self.kind(data, path) # :nodoc:
       value = text(data, "kind", path, "windowed")
@@ -349,4 +379,5 @@ module Fledge
   end
 end
 
+require_relative "config/phone"
 require_relative "config/program"

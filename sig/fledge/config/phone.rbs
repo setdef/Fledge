@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Config
+    class Phone < Data
+      KEYS: Array[String]
+
+      attr_reader host: String?
+
+      def self.new: (host: String?) -> instance
+
+      def self.from: (Hash[Object, Object] data, String phone, String file) -> Phone?
+
+      private def self.host: (Hash[Object, Object] item, String phone, String file) -> String?
+    end
+  end
+end

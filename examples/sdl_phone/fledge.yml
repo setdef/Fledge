@@ -6,6 +6,13 @@
 # owns the screen and the frame loop (ADR 025). It sits inside Fledge's
 # own gem, so without this file fledge build would take Fledge's Gemfile
 # for its own (ADR 005). The identifier is what iOS and Android know it
-# by (ADR 012).
+# by (ADR 012). Each phone's host is SDL's, whose files fledge build
+# copies over the project it writes: on iOS SDL's main.m, Info.plist,
+# and project.yml; on Android an SDLActivity under Fledge's name, and
+# SDL's own Java, which sdl3/build.sh android puts in host/android.
 name: SdlPhone
 identifier: com.setdef.fledge.SdlPhone
+ios:
+  host: host/ios
+android:
+  host: host/android

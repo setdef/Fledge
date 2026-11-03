@@ -19,8 +19,11 @@
 # by name (SDLActivity.getLibraries) and SDL registers its Java methods
 # from that library's JNI_OnLoad (src/core/android/SDL_android.c, lines
 # 578 to 606). For Android it also copies SDL's Java classes, which the
-# Gradle project compiles, to OUT/java, as SDL's own android-project
-# holds them (docs/README-android.md, line 124).
+# Gradle project compiles, into the example's Android host, at
+# host/android/src/main/java/org/libsdl/app, where SDL's own
+# android-project holds them (docs/README-android.md, line 124), so that
+# fledge build android copies them into the project with the host's
+# MainActivity (ADR 025). Git ignores them there.
 #
 # Point the gem at OUT with Bundler: bundle config build.sdl_demo
 # --with-sdl3-builds=OUT, or BUNDLE_BUILD__SDL_DEMO in the environment.
@@ -75,9 +78,10 @@ case "$system" in
       build "$abi" -DCMAKE_TOOLCHAIN_FILE="$toolchain" -DANDROID_ABI="$abi" -DANDROID_PLATFORM=26 \
         -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_ANDROID_JAR=OFF
     done
-    rm -rf "$out/java"
-    mkdir -p "$out/java/org/libsdl"
-    cp -R "$source/android-project/app/src/main/java/org/libsdl/app" "$out/java/org/libsdl/app"
+    java="$(cd "$(dirname "$0")/.." && pwd)/host/android/src/main/java/org/libsdl"
+    rm -rf "$java"
+    mkdir -p "$java"
+    cp -R "$source/android-project/app/src/main/java/org/libsdl/app" "$java/app"
     ;;
   *)
     echo "build.sh: $system is not ios or android" >&2

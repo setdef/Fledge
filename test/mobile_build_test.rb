@@ -253,6 +253,74 @@ class MobileBuildTest < Minitest::Test
 ], [status, err]
   end
 
+  # Writes +files+, by path, into the project's folder +host+.
+  def host_files(root, host, files)
+    files.each do |path, text|
+      file = File.join(root, host, path)
+      FileUtils.mkdir_p(File.dirname(file))
+      File.write(file, text)
+    end
+  end
+
+  # ADR 025, section 5: the files in android's host replace Fledge's at
+  # the same paths, or join them, before Fledge fills its marks, and the
+  # build says which of Fledge's it replaced. ios's host is not android's
+  # to check.
+  def test_an_android_hosts_files_replace_fledges_and_join_them
+    root = script_app("identifier: com.example.Hello\nandroid:\n  host: host/android\nios:\n  host: missing\n")
+    activity = "src/main/java/org/setdef/fledge/host/MainActivity.java"
+    host_files(root, "host/android", {
+      activity => "// the host's own\n",
+      "src/main/java/org/libsdl/app/SDLActivity.java" => "// SDL's\n",
+      "build.gradle" => "applicationId = '@@APPLICATION_ID@@'\n",
+    })
+
+    out, err, status = build("android", root)
+
+    assert_equal [0, "dist/Hello-android\n", "host/android replaces Fledge's build.gradle, #{activity}\n"], [status, out, err]
+    assert_equal "// the host's own\n", read("dist/Hello-android", activity)
+    assert_equal "// SDL's\n", read("dist/Hello-android/src/main/java/org/libsdl/app/SDLActivity.java")
+    assert_equal "applicationId = 'com.example.Hello'\n", read("dist/Hello-android/build.gradle"), "Fledge fills its marks in the host's copy"
+    assert_includes read("dist/Hello-android/settings.gradle"), "rootProject.name = 'Hello'", "what the host leaves is Fledge's"
+    assert_path_exists File.join(@dir, "dist/Hello-android/fledge/app/main.rb")
+    refute_path_exists File.join(@dir, "dist/Hello-android/fledge/app/host/android"), "the host is the project's, not the app's"
+  end
+
+  def test_a_phones_host_must_be_a_folder_in_the_project
+    root = script_app("identifier: com.example.Hello\nandroid:\n  host: host/android\n")
+
+    _, err, status = build("android", root)
+
+    assert_equal [1, "fledge build: #{File.join(root, 'fledge.yml')}: android's host, host/android, is not a folder in the project\n"],
+      [status, err]
+    refute_path_exists File.join(@dir, "dist/Hello-android")
+    return if Gem.win_platform?
+
+    FileUtils.mkdir_p([File.join(@dir, "elsewhere"), File.join(root, "host")])
+    File.symlink(File.join(@dir, "elsewhere"), File.join(root, "host/android"))
+    _, err, = build("android", root)
+    assert_equal "fledge build: #{File.join(root, 'fledge.yml')}: android's host, host/android, is not a folder in the project\n", err
+  end
+
+  # On iOS the host's files are in place before XcodeGen writes the
+  # project, so a host's project.yml is the one XcodeGen reads.
+  def test_an_ios_hosts_files_are_in_place_before_xcodegen_runs
+    skip "this computer has no XcodeGen" unless xcodegen?
+    root = script_app("identifier: com.example.Hello\nios:\n  host: host/ios\n")
+    spec = File.read(File.join(Fledge::MobileProject::TEMPLATES, "ios", "project.yml"))
+    host_files(root, "host/ios", {
+      "Host/main.m" => "int main(void) { return 0; }\n",
+      "project.yml" => spec.sub("        OTHER_LDFLAGS:", "        ENABLE_DEBUG_DYLIB: NO\n        OTHER_LDFLAGS:"),
+    })
+
+    out, err, status = build("ios", root, host: "arm64-darwin-24")
+
+    assert_equal [0, "dist/Hello-ios\n", "host/ios replaces Fledge's Host/main.m, project.yml\n"], [status, out, err]
+    assert_equal "int main(void) { return 0; }\n", read("dist/Hello-ios/Host/main.m")
+    assert_includes read("dist/Hello-ios/Hello.xcodeproj/project.pbxproj"), "ENABLE_DEBUG_DYLIB = NO;"
+    assert_includes read("dist/Hello-ios/Hello.xcodeproj/project.pbxproj"), "PRODUCT_BUNDLE_IDENTIFIER = com.example.Hello;"
+  end
+
   def test_the_version_code_grows_with_the_version
     assert_equal [1, 1000, 1_002_003, 2_100_000_000], %w[0.0.0 0.1.0.pre.1 1.2.3 2100.0.0].map { |version|
       Fledge::MobileProject::Android.version_code(version)

@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Publishes a Fledge release when a vX.Y.Z tag is pushed (ADR 001,
-# section 7; ADR 004; AGENTS.md, Releasing). Only when the tagged commit
-# has a run of CI on a push to trunk in which every job passed, the
-# license audit and Delivery included, does it create the GitHub
-# Release, with, for each platform:
+# section 7; ADR 004; AGENTS.md, Releasing). Only when CI passed on a
+# push to trunk on every job, the license audit and Delivery included,
+# for the tagged commit's parent, and for the tagged commit the short CI
+# a pin commit runs, does it create the GitHub Release, with, for each
+# platform:
 #
 #   fledge-runtime-VERSION-PLATFORM.tar.gz              the runtime
 #   fledge-runtime-VERSION-PLATFORM.spdx.json           its SPDX 2.3 SBOM
@@ -35,8 +36,8 @@
 #
 # It does not run CI again. CI ran on both commits when they were pushed
 # to trunk, and this looks those runs up (tasks/ci_runs.rb) and refuses
-# a tag whose commit has none that is green, naming the run and its
-# failed jobs, or that has one still running. A second run of the same
+# the tag unless both are green, naming a run still going, or a run and
+# the jobs in it that did not pass. A second run of the same
 # commit would test the same files, throw its runtimes away, and draw
 # every flaky download again; that is how 0.2.0 went unpublished.
 #
@@ -115,16 +116,20 @@ jobs:
       # AGENTS.md, Releasing: tag only a commit whose CI is green. Its run
       # on a push to trunk must have finished with the latest attempt of
       # every job a success, so failed jobs run again and passed count.
+      # A pin commit's run is the short one: the gate and ci.yml's Changes
+      # job, which checks the pins, pass, and every other job is skipped.
       - name: Check the tagged commit passed CI on trunk
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          run=$(ruby tasks/ci_runs.rb green "$(git rev-parse HEAD)" --every-job)
+          run=$(ruby tasks/ci_runs.rb green "$(git rev-parse HEAD)")
           echo "The tagged commit passed CI run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run"
 
       # The parent's run, in which every job ran and passed, built the
       # runtimes the tag pins: the newest such run, as rake runtime:pin
-      # takes it.
+      # and the pin commit's Changes job take it. With the short CI that
+      # skipped the rest of the pin commit's jobs, this is what makes the
+      # tagged commit green on every job (ADR 014, section 5).
       - name: Find the CI run whose runtimes the tag pins
         env:
           GH_TOKEN: ${{ github.token }}
@@ -145,21 +150,13 @@ jobs:
       # Every name fledge build and each runtime's NOTICES will ask for
       # must be here, and nothing else: the names come from
       # Fledge::Runtimes and RuntimeBuilder#assets, the code that uses
-      # them (RuntimeBuilder.release_assets).
-      - name: Check the assets are exactly the ones Fledge asks for
-        run: |
-          ruby -e 'require "./tasks/runtime_builder"; puts RuntimeBuilder.release_assets' > "$RUNNER_TEMP/expected"
-          (cd release && ls) | LC_ALL=C sort > "$RUNNER_TEMP/actual"
-          diff "$RUNNER_TEMP/expected" "$RUNNER_TEMP/actual"
-          cat "$RUNNER_TEMP/actual"
-
-      # Every asset must be the one the gem pins, and the gem must pin
-      # every asset; the pins become the release's SHA256SUMS.
+      # them (RuntimeBuilder.release_assets). Every asset must be the one
+      # the gem pins, and the gem must pin every asset; the pins become
+      # the release's SHA256SUMS.
       - name: Check the assets against the gem's pins
         run: |
-          cut -c67- lib/fledge/SHA256SUMS | diff "$RUNNER_TEMP/actual" -
+          .github/scripts/check-pins.sh release lib/fledge/SHA256SUMS
           cp lib/fledge/SHA256SUMS release/SHA256SUMS
-          (cd release && sha256sum --strict -c SHA256SUMS)
 
       - name: Create the release with its assets attached
         env:

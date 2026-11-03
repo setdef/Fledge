@@ -105,4 +105,64 @@ class GemFetcherTest < Minitest::Test
   ensure
     server&.stop
   end
+
+  def test_a_server_without_the_file_says_so_and_where_else_the_file_can_come_from
+    error = assert_raises(Fledge::Error) { fetcher.fetch(@gem.with(version: "2.0.0")) }
+
+    assert_equal "foo 2.0.0 comes from #{@server.url('/')}, which has no foo-2.0.0.gem (it answered 404). Put that file in the " \
+      "project's vendor/cache, as bundle cache --all-platforms does, or point the Gemfile at the source that has it and run " \
+      "bundle lock, then build again.", error.message
+  end
+
+  # A server other than RubyGems.org that forbids a download nobody logged
+  # in for is taken at its word, as Bundler takes a 403
+  # (Bundler::Fetcher::AuthenticationForbiddenError).
+  def test_a_private_server_that_forbids_a_download_without_a_login_says_how_to_set_one
+    server = LoopbackServer.new({ "/gems/foo-1.0.0.gem" => [403, {}, "forbidden"] })
+
+    error = assert_raises(Fledge::Error) { fetcher.fetch(@gem.with(remote: server.url("/"))) }
+
+    assert_includes error.message, "which answered 403 for it, and there is no login for it. Set one as Bundler reads it"
+  ensure
+    server&.stop
+  end
+
+  def test_a_login_a_server_forbids_is_named_as_refused
+    server = LoopbackServer.new({ "/gems/foo-1.0.0.gem" => [403, {}, "forbidden"] })
+
+    error = assert_raises(Fledge::Error) { fetcher.fetch(@gem.with(remote: server.url("/"), credentials: "me:wrong")) }
+
+    assert_includes error.message, "answered 403 for it, and Bundler's login for 127.0.0.1 was refused"
+  ensure
+    server&.stop
+  end
+
+  # RubyGems.org serves gem files from a bucket that answers 403, not 404,
+  # for a file it does not have, and needs no login for any file it has.
+  # The loopback server stands in for it as an HTTP proxy, which Net::HTTP
+  # finds in http_proxy, so the request still goes to the host
+  # rubygems.org.
+  def test_rubygems_org_forbidding_a_file_without_a_login_means_it_does_not_have_it
+    proxy = LoopbackServer.new({
+      "http://rubygems.org/gems/foo-1.0.0-arm64-darwin.gem" => [403, {}, "AccessDenied"],
+      "http://rubygems.org/gems/foo-1.0.0.gem" => [401, {}, "login"],
+    })
+    gem = @gem.with(remote: "http://rubygems.org/", platform: "arm64-darwin")
+    saved = %w[http_proxy HTTP_PROXY no_proxy NO_PROXY].to_h { |name| [name, ENV.fetch(name, nil)] }
+    ENV.update(saved.transform_values { nil }.merge("http_proxy" => proxy.url("")))
+
+    error = assert_raises(Fledge::Error) { fetcher.fetch(gem) }
+
+    assert_equal ["http://rubygems.org/gems/foo-1.0.0-arm64-darwin.gem"], proxy.requests
+    assert_equal "foo 1.0.0 (arm64-darwin) comes from http://rubygems.org/, which has no foo-1.0.0-arm64-darwin.gem " \
+      "(it answered 403). Put that file in the project's vendor/cache, as bundle cache --all-platforms does, or point the " \
+      "Gemfile at the source that has it and run bundle lock, then build again.", error.message
+    error = assert_raises(Fledge::Error) { fetcher.fetch(gem.with(credentials: "me:token")) }
+    assert_includes error.message, "answered 403 for it, and Bundler's login for rubygems.org was refused"
+    error = assert_raises(Fledge::Error) { fetcher.fetch(gem.with(platform: "ruby")) }
+    assert_includes error.message, "answered 401 for it, and there is no login for it"
+  ensure
+    ENV.update(saved) if saved
+    proxy&.stop
+  end
 end

@@ -5,10 +5,16 @@ module Fledge
   module Download
     REDIRECTS: Integer
 
-    class Refused < Error
+    class Unsuccessful < Error
       attr_reader status: Integer
 
       def initialize: (String message, Integer status) -> void
+    end
+
+    class Refused < Unsuccessful
+    end
+
+    class Missing < Unsuccessful
     end
 
     def self.read: (String url) -> String

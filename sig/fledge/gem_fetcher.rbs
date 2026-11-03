@@ -3,6 +3,8 @@
 
 module Fledge
   class GemFetcher
+    PUBLIC_SERVERS: Array[String]
+
     @cache: String
     @project: String
     @gem_path: Array[String]
@@ -11,6 +13,10 @@ module Fledge
     def initialize: (cache: String, project: String, ?gem_path: Array[String], ?log: CLI::_Output?) -> void
 
     def fetch: (LockedGem gem) -> String
+
+    private def forbids_only_what_it_lacks?: (LockedGem gem, Download::Refused error) -> bool
+
+    private def missing: (LockedGem gem, Integer status) -> String
 
     private def refused: (LockedGem gem, Download::Refused error) -> String
 

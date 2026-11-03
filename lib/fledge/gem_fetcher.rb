@@ -44,6 +44,12 @@ module Fledge
   # SPDX-SnippetEnd
   #++
   class GemFetcher
+    # The servers that answer 403 for a gem file they do not have, and need
+    # no login for any file they have: RubyGems.org, whose files come from
+    # a storage bucket that answers 403 (AccessDenied) for a name it does
+    # not hold (ADR 020, section 2).
+    PUBLIC_SERVERS = ["rubygems.org"].freeze
+
     # Creates the fetcher.
     #
     # [cache] Fledge's own folder of downloaded gems.
@@ -80,8 +86,24 @@ module Fledge
 
       @log&.puts "Downloading #{gem.file_name} from #{gem.remote}"
       Download.save(gem.url, to: cached, sha256: gem.sha256, credentials: gem.credentials)
+    rescue Download::Missing => e
+      raise Error, missing(gem, e.status)
     rescue Download::Refused => e
-      raise Error, refused(gem, e)
+      raise Error, forbids_only_what_it_lacks?(gem, e) ? missing(gem, e.status) : refused(gem, e)
+    end
+
+    # Whether +error+, a 403 from a public server that was sent no login,
+    # means only that the server has no such file.
+    private def forbids_only_what_it_lacks?(gem, error)
+      error.status == 403 && !gem.credentials && PUBLIC_SERVERS.include?(URI(gem.remote).host.to_s.downcase)
+    end
+
+    # What to do when the gem's server has no file for it: bring the file,
+    # or lock the gem to the source that has it.
+    private def missing(gem, status)
+      "#{gem} comes from #{gem.remote}, which has no #{gem.file_name} (it answered #{status}). Put that file in the project's " \
+        "vendor/cache, as bundle cache --all-platforms does, or point the Gemfile at the source that has it and run bundle lock, " \
+        "then build again."
     end
 
     # What to do when the gem's server wanted a login, or refused the one

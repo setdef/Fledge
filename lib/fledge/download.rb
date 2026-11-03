@@ -50,10 +50,9 @@ module Fledge
     # How many redirects a download follows before giving up.
     REDIRECTS = 5
 
-    # A server that answered 401 or 403: it wants a login, or refused the
-    # one it was given.
-    class Refused < Error
-      # The HTTP status, 401 or 403.
+    # A server that answered with a status its caller may act on.
+    class Unsuccessful < Error
+      # The HTTP status.
       attr_reader :status
 
       # Creates the error for +message+ and +status+.
@@ -62,6 +61,13 @@ module Fledge
         @status = status
       end
     end
+
+    # A server that answered 401 or 403: it wants a login, or refused the
+    # one it was given.
+    class Refused < Unsuccessful; end
+
+    # A server that answered 404 or 410: it has no file at that address.
+    class Missing < Unsuccessful; end
 
     # The body at +url+, as a String. Raises Fledge::Error when the
     # server does not answer with success.
@@ -90,7 +96,8 @@ module Fledge
     # as Bundler's Source::Rubygems::Remote applies them) log in with HTTP
     # Basic authentication to the server at +url+, and to no other host a
     # redirect leads to. Raises Fledge::Download::Refused when the server
-    # answers 401 or 403.
+    # answers 401 or 403, and Fledge::Download::Missing when it answers
+    # 404 or 410.
     #
     # === Example
     #
@@ -145,6 +152,8 @@ module Fledge
           when Net::HTTPRedirection then follow(uri, response["location"].to_s, redirects, credentials, &block)
           when Net::HTTPUnauthorized, Net::HTTPForbidden
             raise Refused.new("could not download #{url}: #{response.code} #{response.message}", response.code.to_i)
+          when Net::HTTPNotFound, Net::HTTPGone
+            raise Missing.new("could not download #{url}: #{response.code} #{response.message}", response.code.to_i)
           else raise Error, "could not download #{url}: #{response.code} #{response.message}"
           end
         end

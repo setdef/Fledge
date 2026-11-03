@@ -74,6 +74,16 @@ class DownloadTest < Minitest::Test
     server&.stop
   end
 
+  def test_save_raises_missing_with_the_status_of_a_server_that_has_no_such_file
+    Dir.mktmpdir do |dir|
+      error = assert_raises(Fledge::Download::Missing) { Fledge::Download.save(@server.url("/nothing"), to: File.join(dir, "f"), sha256: SHA) }
+
+      assert_equal 404, error.status
+      assert_equal "could not download #{@server.url('/nothing')}: 404 X", error.message
+      assert_empty Dir.children(dir)
+    end
+  end
+
   def test_credentials_go_only_to_the_host_that_asked_for_them
     other = LoopbackServer.new({ "/file" => [200, {}, BODY] })
     server = LoopbackServer.new({ "/away" => [302, { "Location" => "http://localhost:#{other.url('/').split(':').last.delete('/')}/file" }, ""] })

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `fledge build` says that a gem's server has no file for the gem, and to put it in `vendor/cache` or lock the gem to the source that has it, when the server answers 404 or 410, or when RubyGems.org answers 403 to a request without a login; it had told the developer to set a login.
 - `fledge build` no longer copies RubyGems' "Successfully built RubyGem" report into its log for each gem whose executables it writes.
 
 ## [0.2.1] - 2026-11-03

@@ -12,9 +12,11 @@ require "socket"
 class LoopbackServer
   attr_reader :requests, :authorizations
 
-  # +routes+ is the table of paths (as a Hash, or written inline). With +credentials+ ("user:password"),
-  # every request without that HTTP Basic login gets 401, as a credentialed
-  # gem server answers.
+  # +routes+ is the table of paths (as a Hash, or written inline), each to
+  # [status, headers, body], or to something whose call returns one, for a
+  # route whose answer changes from one request to the next. With
+  # +credentials+ ("user:password"), every request without that HTTP
+  # Basic login gets 401, as a credentialed gem server answers.
   def initialize(routes = {}, credentials: nil, **inline)
     @routes = inline.empty? ? routes : routes.merge(inline)
     @credentials = credentials
@@ -45,7 +47,8 @@ class LoopbackServer
       authorization = line.split(": ", 2).last if line.downcase.start_with?("authorization:")
     end
     @authorizations << authorization
-    status, headers, body = @routes.fetch(path) { [404, {}, "missing"] }
+    answer = @routes.fetch(path) { [404, {}, "missing"] }
+    status, headers, body = answer.respond_to?(:call) ? answer.call : answer
     status, headers, body = [401, { "WWW-Authenticate" => "Basic realm=\"gems\"" }, "login"] if @credentials && authorization != login
     headers = headers.merge("Content-Length" => body.bytesize.to_s, "Connection" => "close")
     client.write("HTTP/1.1 #{status} X\r\n#{headers.map { |k, v| "#{k}: #{v}\r\n" }.join}\r\n#{body}")

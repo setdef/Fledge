@@ -42,18 +42,19 @@
 # the runtimes; and the Replace jobs prove that whoever receives an app
 # can replace its LGPL libraries, as that page tells developers.
 #
-# release.yml calls this workflow on a v* tag and publishes the runtimes
-# it built once Delivery passes. Nothing here, or ever, publishes to
+# release.yml, on a v* tag, publishes the runtimes this workflow built
+# from the release commit, once it has passed on trunk on the release
+# commit and on the pin commit tagged (ADR 014). It looks those runs up
+# and does not run this again. Nothing here, or ever, publishes to
 # RubyGems.org (ADR 001).
 
 name: CI
 
 on:
   push:
-    # Tags run through release.yml, which calls this workflow itself.
+    # Not on tags: release.yml looks up the tagged commit's run on trunk.
     branches: ["**"]
   pull_request:
-  workflow_call:
 
 permissions:
   contents: read

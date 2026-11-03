@@ -12,17 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-03
+
 ### Added
 
 - `fledge build ios` and `fledge build android` compile a gem's C and C++ extension (an `extconf.rb`) for the phone's targets and link it into the app, where `require` finds it by the name `create_makefile` gave. iOS needs Xcode; Android needs the NDK (`ANDROID_NDK_ROOT`, or the SDK's `ndk/` folder) on a Mac or Linux. The mobile runtimes gain `fledge_ruby_add_extension` for a host that registers its own extensions. A library the `extconf.rb` links, such as SDL3, links too: a static library with each iOS slice's own extensions, each framework whole, and a shared library from the extension's `-L` folders into the APK beside the extensions.
 - A JSON Schema of `fledge.yml`, `lib/fledge/config.schema.json` in the gem, for editors that run Red Hat's YAML language server: put `# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/trunk/lib/fledge/config.schema.json` on the file's first line to complete its keys and values and mark what `fledge build` would refuse.
 - `programs` in `fledge.yml` lists several programs of one project, each with a `path` and its own `name`, `kind`, `identifier`, and `icon`; `fledge build` builds them all into one folder that shares one runtime, one copy of the project, and one set of gems. At most one is windowed, and the installers are its; on macOS the console programs live in its bundle's `Contents/MacOS`, linked from the folder. A path that names one of the programs builds it alone. A project without `programs` builds as before.
-- `ios: { host: DIR }` and `android: { host: DIR }` in `fledge.yml` name a folder in the project whose files `fledge build ios` or `fledge build android` copies over the project it writes, before XcodeGen runs, so they survive every build: each replaces Fledge's file at its path, such as `Host/main.m` or `MainActivity.java`, or joins the project, and the build names the files it replaced on the error stream. Fledge fills its `@@NAME@@` marks in a copy of its `project.yml`, Gradle files, manifest, `strings.xml`, or `MainActivity.java`. A host that is not a folder in the project fails the phone's build; desktop builds ignore both keys.
+- `ios: { host: DIR }` and `android: { host: DIR }` in `fledge.yml` name a folder in the project whose files `fledge build ios` or `fledge build android` copies over the project it writes, before XcodeGen runs, so they survive every build: each replaces Fledge's file at its path, such as `Host/main.m` or `MainActivity.java`, or joins the project, and the build names the files it replaced on the error stream; the host folder itself is left out of the app's copy of the project. Fledge fills its `@@NAME@@` marks in a copy of its `project.yml`, Gradle files, manifest, `strings.xml`, or `MainActivity.java`. A host that is not a folder in the project fails the phone's build; desktop builds ignore both keys.
 
 ### Changed
 
 - `fledge.cfg` gives each program of a multi-program app a section, `[NAME]`, which each copy of the launcher finds by its own file name; a copy renamed by hand exits with 66. Launchers from 0.1.0 and earlier refuse such a file.
-
 - A phone's gem with an extension that no `extconf.rb` builds (Rake, CMake, Cargo) or that is Rust fails the build with a message naming the gem, as every extension did before.
 
 ## [0.1.0] - 2026-11-02
@@ -221,7 +222,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/setdef/Fledge/releases/tag/v0.2.0
 [0.1.0]: https://github.com/setdef/Fledge/releases/tag/v0.1.0
 [0.0.1.pre.17]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.17
 [0.0.1.pre.16]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.16

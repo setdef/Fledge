@@ -866,7 +866,15 @@ jobs:
   # linked in on Windows, which ships as any gem's compiled code does (ADR
   # 007). Each records what bundle exec prints, which the built app must
   # print too.
-  build:
+  #
+  # Each platform's build is a job of its own, and so is each platform's
+  # leg of every job that delivers what a build made, the steps written
+  # once and shared through a YAML anchor (&build-steps, *build-steps).
+  # A job's needs cannot name one leg of a matrix, so with one Build
+  # matrix the Mac's and Linux's Delivery waited for Windows' build,
+  # fifteen minutes after their own had finished; now each waits for its
+  # own platform's build only.
+  build-arm64-darwin:
     name: Build (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -878,26 +886,7 @@ jobs:
           - os: macos-15
             platform: arm64-darwin
             rust: ""
-          - os: ubuntu-24.04
-            platform: x86_64-linux
-            rust: ""
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux
-            rust: ""
-          # RubyInstaller's Ruby is a MinGW build, and rb-sys refuses to
-          # build for it with Rust's MSVC target (Ferro's ci.yml), so
-          # Windows takes the GNU host toolchain.
-          - os: windows-latest
-            platform: x64-mingw-ucrt
-            rust: -x86_64-pc-windows-gnu
-          # Windows on ARM64 (ADR 018) builds what needs no gem compiled for
-          # it: sqlite3 publishes no aarch64-mingw-ucrt build and its source
-          # does not configure there, so no my_cool_app, gem-shaped probe,
-          # or native_app.
-          - os: windows-11-arm
-            platform: aarch64-mingw-ucrt
-            rust: ""
-    steps:
+    steps: &build-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1045,10 +1034,31 @@ jobs:
           done
           echo "wisper 2.0.1 through a mirror that wanted a login; shared from outside the project; greeter compiled for the runtime's Ruby; fledge_submodule_gem says Hello World!; paint 2.3.0 from an optional group; shared-cli says shared from outside the project" > dist/real_gems.expected
 
+      # The gems bundle exec runs the examples with below, installed for
+      # this runner's own Ruby, kept between runs: on Windows, compiling
+      # nokogiri and the Rust gems for that Ruby took most of nine
+      # minutes of the longest chain in CI. They only make the .expected
+      # files; fledge build compiled each app's gems afresh above, for the
+      # runtime's Ruby, which is the check (ADR 006). The key names the
+      # Ruby, the Rust, and each lockfile and Bundler setting, and only an
+      # exact match restores.
+      - name: Read the runner's Ruby
+        if: matrix.platform != 'aarch64-mingw-ucrt'
+        id: host
+        run: echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: matrix.platform != 'aarch64-mingw-ucrt'
+        with:
+          path: ${{ runner.temp }}/examples-bundle
+          key: examples-bundle-${{ runner.os }}-${{ runner.arch }}-${{ steps.host.outputs.ruby }}-rust-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock', 'examples/nokogiri_app/Gemfile.lock', 'examples/nokogiri_app/.bundle/config') }}
+
       # What each app prints as its developer runs it, which its built app
       # must print too.
       - name: Run the examples with bundle exec
         if: matrix.platform != 'aarch64-mingw-ucrt'
+        env:
+          BUNDLE_PATH: ${{ runner.temp }}/examples-bundle
         run: |
           (cd examples/my_cool_app && bundle install)
           (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) | tee dist/my_cool_app.expected
@@ -1072,6 +1082,69 @@ jobs:
             dist/*.expected
           if-no-files-found: error
           retention-days: 14
+
+  build-x86_64-linux:
+    name: Build (${{ matrix.platform }})
+    needs: runtime
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+            rust: ""
+    steps: *build-steps
+
+  build-aarch64-linux:
+    name: Build (${{ matrix.platform }})
+    needs: runtime
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+            rust: ""
+    steps: *build-steps
+
+  build-x64-mingw-ucrt:
+    name: Build (${{ matrix.platform }})
+    needs: runtime
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # RubyInstaller's Ruby is a MinGW build, and rb-sys refuses to
+          # build for it with Rust's MSVC target (Ferro's ci.yml), so
+          # Windows takes the GNU host toolchain.
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+            rust: -x86_64-pc-windows-gnu
+    steps: *build-steps
+
+  build-aarch64-mingw-ucrt:
+    name: Build (${{ matrix.platform }})
+    needs: runtime
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows on ARM64 (ADR 018) builds what needs no gem compiled for
+          # it: sqlite3 publishes no aarch64-mingw-ucrt build and its source
+          # does not configure there, so no my_cool_app, gem-shaped probe,
+          # or native_app.
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+            rust: ""
+    steps: *build-steps
 
   # musl Linux's apps (ADR 017), built in Alpine with Ruby, as a developer
   # on Alpine builds them: hello, the parity and console probes, the
@@ -1129,9 +1202,9 @@ jobs:
 
   # Delivery of native_app and nokogiri_app, on a fresh runner of each
   # platform, as Delivery runs the others.
-  delivery-native:
+  delivery-native-arm64-darwin:
     name: Delivery from source (${{ matrix.platform }})
-    needs: build
+    needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -1140,13 +1213,7 @@ jobs:
         include:
           - os: macos-15
             platform: arm64-darwin
-          - os: ubuntu-24.04
-            platform: x86_64-linux
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux
-          - os: windows-latest
-            platform: x64-mingw-ucrt
-    steps:
+    steps: &delivery-native-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1203,15 +1270,54 @@ jobs:
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/nokogiri_app.expected" -Raw).TrimEnd()
 
+  delivery-native-x86_64-linux:
+    name: Delivery from source (${{ matrix.platform }})
+    needs: build-x86_64-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+    steps: *delivery-native-steps
+
+  delivery-native-aarch64-linux:
+    name: Delivery from source (${{ matrix.platform }})
+    needs: build-aarch64-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps: *delivery-native-steps
+
+  delivery-native-x64-mingw-ucrt:
+    name: Delivery from source (${{ matrix.platform }})
+    needs: build-x64-mingw-ucrt
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+    steps: *delivery-native-steps
+
   # Delivery (Plan 001): each app on a fresh runner of its platform, with
   # nothing of Fledge but the archive and the script that checks it, and
   # no Ruby set up. Runners come with Rubies installed, so the script runs
   # the app with an empty PATH and checks that no ruby is on it, then
   # runs it in a clean and in a hostile environment
   # (.github/scripts/deliver.sh).
-  delivery:
+  delivery-arm64-darwin:
     name: Delivery (${{ matrix.platform }})
-    needs: build
+    needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -1221,13 +1327,7 @@ jobs:
           - os: macos-15
             platform: arm64-darwin
             ruby-platform: arm64-darwin23
-          - os: ubuntu-24.04
-            platform: x86_64-linux
-            ruby-platform: x86_64-linux
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux
-            ruby-platform: aarch64-linux
-    steps:
+    steps: &delivery-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1271,6 +1371,34 @@ jobs:
           "$RUNNER_TEMP/signed/Hello Window-arm64-darwin.tar.gz" "$RUNNER_TEMP/signed/Hello Window-arm64-darwin.dmg"
           "$RUNNER_TEMP/signed/certificate.pem"
 
+  delivery-x86_64-linux:
+    name: Delivery (${{ matrix.platform }})
+    needs: build-x86_64-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+            ruby-platform: x86_64-linux
+    steps: *delivery-steps
+
+  delivery-aarch64-linux:
+    name: Delivery (${{ matrix.platform }})
+    needs: build-aarch64-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+            ruby-platform: aarch64-linux
+    steps: *delivery-steps
+
   # Delivery of the windowed app (ADR 008), on a fresh runner of each
   # platform: on macOS its .app bundle must pass codesign --verify --strict
   # --deep, plutil must read its identity, and it must run through open -W,
@@ -1285,9 +1413,9 @@ jobs:
   # --appimage-extract (deliver-appimage.sh). And examples/programs (ADR
   # 024): a windowed and a console program from one folder, with one
   # project and one Ruby, sharing one save (deliver-programs.sh).
-  delivery-windowed:
+  delivery-windowed-arm64-darwin:
     name: Delivery of a windowed app (${{ matrix.platform }})
-    needs: build
+    needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -1296,11 +1424,7 @@ jobs:
         include:
           - os: macos-15
             platform: arm64-darwin
-          - os: ubuntu-24.04
-            platform: x86_64-linux
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux
-    steps:
+    steps: &delivery-windowed-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1342,12 +1466,38 @@ jobs:
         if: runner.os == 'Linux'
         run: .github/scripts/deliver-appimage.sh "$RUNNER_TEMP/delivered/Hello Window-${{ matrix.platform }}.AppImage" fuse
 
+  delivery-windowed-x86_64-linux:
+    name: Delivery of a windowed app (${{ matrix.platform }})
+    needs: build-x86_64-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+    steps: *delivery-windowed-steps
+
+  delivery-windowed-aarch64-linux:
+    name: Delivery of a windowed app (${{ matrix.platform }})
+    needs: build-aarch64-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps: *delivery-windowed-steps
+
   # Delivery again, in Debian 13 containers with no Ruby installed at all
   # (deliver.sh --no-ruby-installed checks), glibc 2.41, and no CA
   # certificates package.
-  delivery-debian:
+  delivery-debian-x86_64-linux:
     name: Delivery (${{ matrix.platform }}, debian:trixie-slim)
-    needs: build
+    needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     container: debian:trixie-slim
     timeout-minutes: 10
@@ -1357,9 +1507,7 @@ jobs:
         include:
           - os: ubuntu-24.04
             platform: x86_64-linux
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux
-    steps:
+    steps: &delivery-debian-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1392,29 +1540,40 @@ jobs:
           .github/scripts/deliver.sh "delivered/NativeApp-${{ matrix.platform }}.tar.gz"
           "delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat delivered/native_app.expected)" --no-ruby-installed
 
+  delivery-debian-aarch64-linux:
+    name: Delivery (${{ matrix.platform }}, debian:trixie-slim)
+    needs: build-aarch64-linux
+    runs-on: ${{ matrix.os }}
+    container: debian:trixie-slim
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps: *delivery-debian-steps
+
   # Delivery of the windowed app's .deb (ADR 021), in a fresh Debian and a
   # fresh Ubuntu container of each architecture, with no Ruby installed:
   # apt installs it as a person would, its dependency on glibc 2.39 met by
   # Ubuntu 24.04's, which is the oldest there is, and by Debian 13's; the
   # app runs from /usr/lib, as root and as an ordinary user; and removing
   # the package leaves nothing of it (.github/scripts/deliver-deb.sh).
-  delivery-deb:
+  delivery-deb-x86_64-linux:
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
-    needs: build
+    needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.image }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
         image: ["debian:trixie-slim", "ubuntu:24.04"]
         include:
           - os: ubuntu-24.04
             platform: x86_64-linux
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux
-    steps:
+    steps: &delivery-deb-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1434,6 +1593,21 @@ jobs:
 
       - name: Install Hello Window from its .deb with apt, run it, and remove it
         run: .github/scripts/deliver-deb.sh "delivered/Hello Window-${{ matrix.platform }}.deb"
+
+  delivery-deb-aarch64-linux:
+    name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
+    needs: build-aarch64-linux
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.image }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:trixie-slim", "ubuntu:24.04"]
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps: *delivery-deb-steps
 
   # Delivery on musl Linux (ADR 017): each app in a bare Alpine container,
   # with no Ruby at all, as deliver.sh --no-ruby-installed checks: hello
@@ -1488,9 +1662,9 @@ jobs:
   # Hello.exe and MyCoolApp.exe from another drive, under a folder name
   # outside ASCII, in a clean and in a hostile environment, and checks
   # the version information each carries (.github/scripts/deliver.ps1).
-  delivery-windows:
+  delivery-windows-x64-mingw-ucrt:
     name: Delivery (${{ matrix.platform }})
-    needs: build
+    needs: build-x64-mingw-ucrt
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -1499,12 +1673,9 @@ jobs:
         include:
           - os: windows-latest
             platform: x64-mingw-ucrt
-          # Natively on Windows 11 on ARM64 (ADR 018).
-          - os: windows-11-arm
-            platform: aarch64-mingw-ucrt
     env:
       PLATFORM: ${{ matrix.platform }}
-    steps:
+    steps: &delivery-windows-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1584,6 +1755,22 @@ jobs:
           -Windowed "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM.zip"
           -Installer "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM-setup.exe"
           -Certificate "$env:RUNNER_TEMP/signed/certificate.cer"
+
+  delivery-windows-aarch64-mingw-ucrt:
+    name: Delivery (${{ matrix.platform }})
+    needs: build-aarch64-mingw-ucrt
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Natively on Windows 11 on ARM64 (ADR 018).
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+    env:
+      PLATFORM: ${{ matrix.platform }}
+    steps: *delivery-windows-steps
 
   # The license audit's own checks on each runtime this run built: that
   # the release assets are the very notices the runtime carries, that a
@@ -1774,9 +1961,9 @@ jobs:
   # musl's crypt in its place, must load each and behave as each does
   # (.github/scripts/replace-libcrypt.sh), which also measures what
   # String#crypt loses without libxcrypt.
-  replace-libcrypt:
+  replace-libcrypt-x86_64-linux:
     name: Replace libcrypt (${{ matrix.platform }})
-    needs: build
+    needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -1785,9 +1972,7 @@ jobs:
         include:
           - os: ubuntu-24.04
             platform: x86_64-linux
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux
-    steps:
+    steps: &replace-libcrypt-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1810,6 +1995,19 @@ jobs:
           xcrypt=$(ruby .github/scripts/fetch_pin.rb libxcrypt)
           musl=$(ruby .github/scripts/fetch_pin.rb replaceability musl)
           sh .github/scripts/replace-libcrypt.sh "$RUNNER_TEMP/Hello-${{ matrix.platform }}" Hello "$xcrypt" "$musl"
+
+  replace-libcrypt-aarch64-linux:
+    name: Replace libcrypt (${{ matrix.platform }})
+    needs: build-aarch64-linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps: *replace-libcrypt-steps
 
   # Another GNU MP for Windows, cross-built with the pinned llvm-mingw
   # against the UCRT, for Replace GMP to swap in.
@@ -1871,9 +2069,9 @@ jobs:
   # as doc/licensing.md tells app developers: the built hello must load
   # the replacement (Integer::GMP_VERSION changes) and compute the same
   # big numbers (.github/scripts/replace-gmp.ps1).
-  replace-gmp:
+  replace-gmp-x64-mingw-ucrt:
     name: Replace GMP (${{ matrix.platform }})
-    needs: [build, gmp-replacement]
+    needs: [build-x64-mingw-ucrt, gmp-replacement]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -1882,9 +2080,7 @@ jobs:
         include:
           - os: windows-latest
             platform: x64-mingw-ucrt
-          - os: windows-11-arm
-            platform: aarch64-mingw-ucrt
-    steps:
+    steps: &replace-gmp-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -1907,3 +2103,16 @@ jobs:
           pwsh -NoProfile -File .github/scripts/replace-gmp.ps1
           -Archive "$env:RUNNER_TEMP/delivered/Hello-${{ matrix.platform }}.zip"
           -Dll "$env:RUNNER_TEMP/gmp-dll/libgmp-10.dll" -Version 6.2.1
+
+  replace-gmp-aarch64-mingw-ucrt:
+    name: Replace GMP (${{ matrix.platform }})
+    needs: [build-aarch64-mingw-ucrt, gmp-replacement]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+    steps: *replace-gmp-steps

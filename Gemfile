@@ -28,3 +28,9 @@ gem "rdoc", "~> 7.0"
 # Checks lib/fledge/config.schema.json and the examples against it
 # (ADR 023). Development only: nothing Fledge ships loads it.
 gem "json_schemer", "~> 2.5", group: :development
+
+# Takes the desktop input lock around local runs that can take focus or
+# the pointer, such as a phone simulator (AGENTS.md, Commands). Pinned to
+# a commit, which Gemfile.lock records; nothing Fledge ships loads it.
+gem "desktop_input_lock", git: "https://github.com/setdef/DesktopInputLock.git",
+  ref: "2bb238b4764dd6511e3305621c60090c8bc97b6b", group: :development

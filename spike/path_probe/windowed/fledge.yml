@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: Windowed Probe
+kind: windowed
+identifier: com.setdef.fledge.WindowedProbe
+version: "1.0.0"
+installers: [appimage]

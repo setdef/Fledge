@@ -56,7 +56,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Binary < Data.define(:format, :needed, :assemblies, :macos_minimum, :glibc_minimum, :subsystem)
+  class Binary < Data.define(:format, :needed, :rpaths, :assemblies, :macos_minimum, :glibc_minimum, :subsystem)
     ##
     # :attr_reader: format
     # The file's format: <tt>:elf</tt>, <tt>:macho</tt>, <tt>:pe</tt>, or
@@ -66,6 +66,12 @@ module Fledge
     # :attr_reader: needed
     # The shared libraries the file needs, as the file names them, once
     # each.
+
+    ##
+    # :attr_reader: rpaths
+    # The run paths a Mach-O file's LC_RPATH commands name, in order,
+    # where dyld looks for a library the file names as
+    # <tt>@rpath/NAME</tt>; empty for other formats.
 
     ##
     # :attr_reader: assemblies
@@ -179,7 +185,7 @@ module Fledge
     end
 
     private_class_method def self.archive # :nodoc:
-      new(format: :archive, needed: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil)
+      new(format: :archive, needed: [], rpaths: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil)
     end
 
     # +binary+, with the assemblies the manifest in the PE file at +path+

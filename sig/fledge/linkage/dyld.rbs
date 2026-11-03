@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Linkage
+    class Dyld
+      PREFIXES: Array[String]
+
+      @binaries: Hash[String, Binary]
+      @shipped: Hash[String, String]
+      @chains: Hash[String, Array[[String, String]]]
+
+      def initialize: (Hash[String, Binary] binaries) -> void
+
+      def self.relative?: (String library) -> bool
+
+      def run_paths: (String path) -> Array[String]
+
+      def resolve: (String path, String library) -> (String | :unknown)?
+
+      private def inherit: () -> void
+
+      private def resolve_through: (Array[[String, String]] chain, String path, String library) -> (String | :unknown)?
+
+      private def locate: (String holder, String folder, String rest) -> (String | :unknown)?
+
+      private def normalize: (Array[String] segments) -> Array[String]?
+    end
+  end
+end

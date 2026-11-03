@@ -15,5 +15,9 @@ module Fledge
     def initialize: (os: String, ?provided: Array[String], ?readers: Binary::Readers) -> void
 
     def problems: (String label, Hash[String, String] files) -> Array[String]
+
+    private def unreached: (String label, String path, String library, Dyld dyld, Array[String] paths) -> String?
+
+    private def loader_path: (String path, String target) -> String
   end
 end

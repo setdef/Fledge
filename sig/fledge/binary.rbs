@@ -8,12 +8,13 @@ module Fledge
 
     attr_reader format: Symbol
     attr_reader needed: Array[String]
+    attr_reader rpaths: Array[String]
     attr_reader assemblies: Array[String]
     attr_reader macos_minimum: String?
     attr_reader glibc_minimum: String?
     attr_reader subsystem: Integer?
 
-    def self.new: (format: Symbol, needed: Array[String], assemblies: Array[String], macos_minimum: String?, glibc_minimum: String?,
+    def self.new: (format: Symbol, needed: Array[String], rpaths: Array[String], assemblies: Array[String], macos_minimum: String?, glibc_minimum: String?,
       subsystem: Integer?) -> instance
 
 

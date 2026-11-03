@@ -44,6 +44,7 @@ module Fledge
       def self.binary(section)
         subsystem = section[/^\s*Subsystem: \S+ \(0x(\h+)\)\s*$/, 1]
         Binary.new(format: :pe, needed: section.scan(/^(?:Import|DelayImport) \{\s*\n\s*Name: (.+?)\s*$/).flatten.map(&:to_s).uniq,
+          rpaths: [],
           assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: subsystem&.to_i(16))
       end
     end

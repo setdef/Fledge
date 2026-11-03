@@ -24,7 +24,12 @@ module Fledge
   # (Fledge::Binary, with the build computer's tools), and names every
   # library one of them needs that neither the target's operating system,
   # nor Fledge's runtime, nor the gem itself provides.
-  # What the operating system provides is SYSTEM_LIBRARIES. It judges
+  # What the operating system provides is SYSTEM_LIBRARIES. On macOS a
+  # library the gem carries must also be where its name leads: a file that
+  # names <tt>@rpath/libfoo.dylib</tt> or
+  # <tt>@loader_path/libfoo.dylib</tt> loads the gem's copy only if dyld
+  # would find it there (Fledge::Linkage::Dyld), so a run path into
+  # Homebrew's folder does not count, however the copy is named. It judges
   # nothing else: what a gem compiles in, and under what license, is the
   # app's developer's to decide (decisions of 2026-10-28; ADR 007).
   #
@@ -116,15 +121,50 @@ module Fledge
       loadable = files.select { |_, content| Binary.format_of(content.byteslice(0, 8).to_s) == FORMATS.fetch(@os) }
       binaries = Binary.parse(loadable, readers: @readers).sort.to_h
       shipped = (binaries.keys.map { |path| File.basename(path) } + @provided).map(&:downcase)
+      dyld = Dyld.new(binaries) if @os == "darwin"
       binaries.flat_map do |path, binary|
         next [] if binary.needed.any? { |library| library.match?(RUBY_DLL) && !shipped.include?(library.downcase) }
 
-        binary.needed.reject { |library| @system.any? { |pattern| pattern.match?(library) } || shipped.include?(File.basename(library).downcase) }
-          .map do |library|
+        binary.needed.reject { |library| @system.any? { |pattern| pattern.match?(library) } }.filter_map do |library|
+          if !shipped.include?(File.basename(library).downcase)
             "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \
               "the app could not load it on another computer. Build the gem so that it carries the library, or links it statically."
+          elsif dyld && !@provided.map(&:downcase).include?(File.basename(library).downcase)
+            unreached(label, path, library, dyld, binaries.keys)
           end
+        end
       end
+    end
+
+    # Why dyld would not find +library+, which the file at +path+ names
+    # and the gem carries among +paths+, or +nil+ when it would, or when
+    # where it looks depends on where the gem sits in the app
+    # (Fledge::Linkage::Dyld).
+    private def unreached(label, path, library, dyld, paths)
+      return unless Dyld.relative?(library) && dyld.resolve(path, library).nil?
+
+      copies = paths.select { |copy| File.basename(copy).casecmp?(File.basename(library)) }
+      if library.start_with?("@rpath/")
+        searched = dyld.run_paths(path)
+        folder = copies.first.to_s.delete_suffix("/#{library.delete_prefix('@rpath/')}")
+        "#{label}'s #{path} needs #{library}, which the gem carries at #{copies.join(', ')}, but none of the run paths dyld would " \
+          "search for it (#{searched.empty? ? 'it has none' : searched.join(', ')}) leads there, so the app could not load it on " \
+          "another computer. Give the file a run path that does, such as #{loader_path(path, folder)} (install_name_tool -add_rpath), " \
+          "or build the gem so that it has one."
+      else
+        "#{label}'s #{path} needs #{library}, which is not there: the gem carries #{File.basename(library)} at #{copies.join(', ')}, " \
+          "so the app could not load it on another computer. Build the gem so that the file names the library where it is, such as " \
+          "#{loader_path(path, copies.first.to_s)}."
+      end
+    end
+
+    # +target+, a path in the gem's folder, as the file at +path+ reaches
+    # it from <tt>@loader_path</tt>.
+    private def loader_path(path, target)
+      relative = Pathname(target).relative_path_from(Pathname(File.dirname(path))).to_s
+      (relative == ".") ? "@loader_path" : "@loader_path/#{relative}"
     end
   end
 end
+
+require_relative "linkage/dyld"

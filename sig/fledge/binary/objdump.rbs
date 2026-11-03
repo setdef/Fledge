@@ -18,6 +18,8 @@ module Fledge
 
       def self.dylibs: (Array[String] commands) -> Array[String]
 
+      def self.rpaths: (Array[String] commands) -> Array[String]
+
       def self.macos: (Array[String] commands) -> String?
 
       def self.glibc: (String section) -> String?

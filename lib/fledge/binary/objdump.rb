@@ -56,12 +56,17 @@ module Fledge
         format = section[/file format (\S+)/, 1].to_s
         if format.start_with?("mach-o")
           commands = section.split(/^Load command \d+\s*$/)
-          Binary.new(format: :macho, needed: dylibs(commands), assemblies: [], macos_minimum: macos(commands), glibc_minimum: nil,
-            subsystem: nil)
+          Binary.new(format: :macho, needed: dylibs(commands), rpaths: rpaths(commands), assemblies: [], macos_minimum: macos(commands),
+            glibc_minimum: nil, subsystem: nil)
         else
-          Binary.new(format: :elf, needed: section.scan(/^\s+NEEDED\s+(\S+)\s*$/).flatten.map(&:to_s).uniq, assemblies: [],
+          Binary.new(format: :elf, needed: section.scan(/^\s+NEEDED\s+(\S+)\s*$/).flatten.map(&:to_s).uniq, rpaths: [], assemblies: [],
             macos_minimum: nil, glibc_minimum: glibc(section), subsystem: nil)
         end
+      end
+
+      # The run paths the LC_RPATH load +commands+ name, in order.
+      def self.rpaths(commands)
+        commands.filter_map { |command| command[/^\s*path (.+?) \(offset \d+\)\s*$/, 1] if command[/^\s*cmd (\S+)\s*$/, 1] == "LC_RPATH" }
       end
 
       # The dylibs the load +commands+ name, once each.

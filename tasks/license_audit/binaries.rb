@@ -49,7 +49,7 @@ class LicenseAudit
 
     private def unreadable(label, format)
       @violate.call("unreadable", label, "is compiled code (#{format}) that no tool on this computer reads. #{@readers.install}")
-      Fledge::Binary.new(format:, needed: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil)
+      Fledge::Binary.new(format:, needed: [], rpaths: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil)
     end
   end
 end

@@ -8,13 +8,16 @@
 # those, and each asset must match its pin, as GNU's sha256sum --strict
 # -c reads them. release.yml runs it on the runtimes it is about to
 # publish, and a pin commit's CI on the runtimes of its parent's run.
+# CHECKOUT, the repository root by default, is the checkout whose
+# RuntimeBuilder names the assets: release.yml's dry run checks an older
+# tag with this script, and the tag's own code says what it asks for.
 #
-#   .github/scripts/check-pins.sh FOLDER PINS
+#   .github/scripts/check-pins.sh FOLDER PINS [CHECKOUT]
 set -eu
 
 folder=$1
 pins=$(cd "$(dirname "$2")" && pwd)/$(basename "$2")
-root=$(cd "$(dirname "$0")/../.." && pwd)
+root=$(cd "${3:-$(dirname "$0")/../..}" && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 

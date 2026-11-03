@@ -127,6 +127,29 @@ class ReleaseChecksTest < Minitest::Test
     end
   end
 
+  # A dry run of release.yml checks an older tag with today's scripts,
+  # so the assets it asks for are the ones the tagged checkout's own
+  # RuntimeBuilder names, given as a third argument.
+  def test_the_assets_asked_for_come_from_the_checkout_given
+    Dir.mktmpdir do |dir|
+      tagged = File.join(dir, "tagged")
+      FileUtils.mkdir_p(File.join(tagged, "tasks"))
+      File.write(File.join(tagged, "tasks", "runtime_builder.rb"),
+        "module RuntimeBuilder\n  def self.release_assets = %w[fledge-runtime-9.9.9-x.tar.gz fledge-runtime-9.9.9-x.spdx.json]\nend\n")
+      assets = File.join(dir, "assets")
+      FileUtils.mkdir_p(assets)
+      %w[fledge-runtime-9.9.9-x.tar.gz fledge-runtime-9.9.9-x.spdx.json].each { |name| File.write(File.join(assets, name), name) }
+      pins = File.join(dir, "SHA256SUMS")
+      File.write(pins, Dir.children(assets).sort.map { |name| "#{Digest::SHA256.file(File.join(assets, name)).hexdigest}  #{name}\n" }.join)
+
+      out, status = Open3.capture2e("sh", CHECK_PINS, assets, pins, tagged, chdir: dir)
+      assert_predicate status, :success?, out
+
+      out, status = Open3.capture2e("sh", CHECK_PINS, assets, pins, chdir: dir)
+      refute_predicate status, :success?, out
+    end
+  end
+
   # release.yml requires the release commit's run to have skipped no
   # job, so no job of ci.yml may be skipped on any commit but a pin
   # commit; and a pin commit's run stays short only while every job with
@@ -139,6 +162,22 @@ class ReleaseChecksTest < Minitest::Test
     assert_equal ["needs.changes.outputs.pins-only != 'true'"], conditions
     assert_equal %w[changes gate], roots.sort
     assert jobs.select { |_, job| job["needs"] == "changes" }.all? { |_, job| job.key?("if") }
+  end
+
+  # A dry run of release.yml writes nothing: the one job that may write
+  # to the repository creates the release, and runs only on a pushed tag
+  # or when asked to publish, which a dry run is not by default.
+  def test_only_the_publish_job_writes_and_a_dry_run_skips_it
+    workflow = YAML.load_file(File.join(ROOT, ".github", "workflows", "release.yml"))
+    jobs = workflow.fetch("jobs")
+    writers = jobs.select { |_, job| job.dig("permissions", "contents") == "write" }
+    creates = jobs.select { |_, job| job.fetch("steps", []).any? { |step| step["run"].to_s.include?("gh release create") } }
+
+    assert_equal %w[release], writers.keys
+    assert_equal %w[release], creates.keys
+    assert_equal "github.event_name == 'push' || inputs.publish", jobs.dig("release", "if")
+    assert_equal "read", workflow.dig("permissions", "contents")
+    assert_equal false, workflow.dig(true, "workflow_dispatch", "inputs", "publish", "default")
   end
 
   private def with_pinned_assets

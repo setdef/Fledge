@@ -172,6 +172,13 @@
 #                          and icon; at most one is windowed, and gets
 #                          the installers. Beside programs, kind,
 #                          identifier, and icon belong to each program.
+#                        ios, android: a mapping of host, a folder in
+#                          ROOT, such as host/ios, whose files build ios
+#                          or build android copies over the project it
+#                          writes, before XcodeGen runs: each replaces
+#                          Fledge's file at its path, or joins them, and
+#                          the build says which it replaced. Desktop
+#                          builds ignore them.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        PLATFORM is this computer's: arm64-darwin,
 #                        x86_64-linux, aarch64-linux,

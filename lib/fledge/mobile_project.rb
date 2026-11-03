@@ -35,7 +35,11 @@ module Fledge
   # has Fledge::MobileExtensions compile the app's gems' extensions
   # against it when the app has any, fills in the app's identity where the
   # template marks it (<tt>@@NAME@@</tt>), and writes ROOT, with the
-  # runtime's notices, so the app carries them. Fledge::MobileProject::IOS and
+  # runtime's notices, so the app carries them. When <tt>fledge.yml</tt>
+  # names a host for the system (Config::Phone), it copies that folder's
+  # files over the project, and leaves the folder out of the app's copy
+  # of the project, before it fills the marks, so they replace Fledge's
+  # own; and it says which they replaced. Fledge::MobileProject::IOS and
   # Fledge::MobileProject::Android place the runtime and the icons as each
   # system's tools expect, and IOS has XcodeGen write the Xcode project.
   # It writes <tt>OUT/NAME-ios/</tt> or <tt>OUT/NAME-android/</tt>,
@@ -104,13 +108,16 @@ module Fledge
     # [extensions] The Fledge::MobileExtensions that compiles the gems'
     #              extensions against the runtime, which the project links
     #              into the app, or +nil+ for an app with none (ADR 022).
-    def initialize(app:, runtime:, out:, app_files: {}, files: [], extensions: nil)
+    # [log] Where to say which of Fledge's files the project's host
+    #       replaced, such as <tt>$stderr</tt>, or +nil+ for nowhere.
+    def initialize(app:, runtime:, out:, app_files: {}, files: [], extensions: nil, log: nil)
       @app = app
       @runtime = runtime
       @out = out
       @app_files = app_files
       @files = files
       @extensions = extensions
+      @log = log
       @built = nil # : MobileExtensions::Built?
     end
 
@@ -132,7 +139,8 @@ module Fledge
     end
 
     # Writes the project and returns its folder. Raises Fledge::Error when
-    # the app has no identifier, or one the system cannot take, an icon
+    # the app has no identifier, or one the system cannot take, the host
+    # <tt>fledge.yml</tt> names is not a folder in the project, an icon
     # file is missing, the runtime is not the phone's, an added file would
     # replace one of the runtime's, or a tool fails.
     #
@@ -149,11 +157,12 @@ module Fledge
     #++
     def call
       identifier
+      host = host_folder
       FileUtils.rm_rf(folder)
       FileUtils.mkdir_p(@out)
       Dir.mktmpdir(".fledge-build-", @out) do |work|
         project = File.join(work, base_name)
-        build(runtime_tree(work), project)
+        build(runtime_tree(work), project, host)
         FileUtils.mv(project, folder)
       end
       folder
@@ -162,7 +171,7 @@ module Fledge
       raise
     end
 
-    private def build(tree, project)
+    private def build(tree, project, host)
       FileUtils.cp_r(File.join(TEMPLATES, system), project, preserve: true)
       @built = @extensions&.call(tree)
       place_runtime(tree, project)
@@ -171,10 +180,41 @@ module Fledge
       FileUtils.mkdir_p(root)
       File.write(File.join(root, Assembly::CONFIG), Assembly.launch_config(@app))
       FileUtils.cp_r(File.join(tree, "notices"), root)
-      [*Assembly.app_entries(@app, @app_files, skip: [@out]), *@files].each { |entry| add(project, root, entry) }
+      skip = [@out, *(host ? [File.join(@app.root, host)] : [])]
+      [*Assembly.app_entries(@app, @app_files, skip:), *@files].each { |entry| add(project, root, entry) }
+      place_host(host, project) if host
       template_files.each { |path| fill(File.join(project, path)) }
       place_icons(project)
       finish(project)
+    end
+
+    # The folder of the project's own files for this system's project,
+    # relative to the project's root, which <tt>fledge.yml</tt> names
+    # under +ios+ or +android+ (ADR 025), or +nil+ for none. Raises
+    # Fledge::Error when it is not a folder, or leads out of the project
+    # through a link.
+    private def host_folder
+      host = ((system == "ios") ? @app.config.ios : @app.config.android)&.host or return nil
+
+      root = File.realpath(@app.root)
+      path = File.join(root, host)
+      return host if File.directory?(path) && File.realpath(path).start_with?(File.join(root, ""))
+
+      raise Error, "#{File.join(@app.root, Config::FILE)}: #{system}'s host, #{host}, is not a folder in the project"
+    end
+
+    # Copies the files in the project's folder +host+ over +project+,
+    # Generation Gap's hand-written half laid over the generated one (ADR
+    # 025): each replaces Fledge's file at its path, or joins the
+    # project, before Fledge fills its marks, so a host's copy of one of
+    # #template_files keeps them. Says which of Fledge's files it
+    # replaced.
+    private def place_host(host, project)
+      from = File.join(@app.root, host)
+      files = Dir.glob("**/*", File::FNM_DOTMATCH, base: from).select { |path| File.file?(File.join(from, path)) }.sort
+      replaced = files.select { |path| File.exist?(File.join(project, path)) }
+      FileUtils.cp_r(File.join(from, "."), project)
+      @log&.puts "#{host} replaces Fledge's #{replaced.join(', ')}" unless replaced.empty?
     end
 
     # The runtime archive, unpacked into +work+: its one top folder.

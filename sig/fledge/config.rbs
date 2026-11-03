@@ -13,6 +13,7 @@ module Fledge
     IDENTIFIER: Regexp
     IDENTIFIER_MAX: Integer
     PER_PROGRAM: Array[String]
+    PHONES: Array[String]
 
     attr_reader name: String?
     attr_reader kind: String?
@@ -23,8 +24,10 @@ module Fledge
     attr_reader copyright: String?
     attr_reader installers: Array[String]?
     attr_reader programs: Array[Config::Program]?
+    attr_reader ios: Config::Phone?
+    attr_reader android: Config::Phone?
 
-    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?, programs: Array[Config::Program]?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?) -> instance
 
     def self.none: () -> Config
 
@@ -43,6 +46,8 @@ module Fledge
     private def self.windowed?: (Hash[Object, Object] data) -> bool
 
     def self.text: (Hash[Object, Object] data, String key, String path, String example) -> String?
+
+    def self.inside?: (String path) -> bool
 
     def self.kind: (Hash[Object, Object] data, String path) -> String?
 

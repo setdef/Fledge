@@ -120,8 +120,7 @@ module Fledge
         raise Error, "#{file}: program #{number} has no path, the program's file in the project, #{fix}" if value.nil?
 
         value = Config.text(item, "path", "#{file}: program #{number}", "bin/cli").to_s
-        segments = value.split("/", -1)
-        if value != value.strip || value.match?(/[\r\n\\]/) || segments.any? { |segment| ["", ".", ".."].include?(segment) }
+        unless Config.inside?(value)
           raise Error, "#{file}: program #{number}'s path, #{value.inspect}, must name a file in the project, with / between folders, #{fix}"
         end
 

@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-03
+
+### Fixed
+
+- The first published release of the 0.2.0 changes: `v0.2.0`'s tag has no release, because a host of a runtime's pinned source was down. Downloads of pinned sources now fall back to hash-checked mirrors.
+
 ## [0.2.0] - 2026-11-03
 
 ### Added
@@ -222,7 +228,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/setdef/Fledge/releases/tag/v0.2.1
 [0.2.0]: https://github.com/setdef/Fledge/releases/tag/v0.2.0
 [0.1.0]: https://github.com/setdef/Fledge/releases/tag/v0.1.0
 [0.0.1.pre.17]: https://github.com/setdef/Fledge/releases/tag/v0.0.1.pre.17

@@ -59,7 +59,7 @@ Add Fledge to your `Gemfile`, in the `development` group so that `fledge build` 
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
-gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.2.0", group: :development
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.2.1", group: :development
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -77,7 +77,7 @@ Run `fledge build` in your project's folder. Here, the project is a folder named
 ```console
 $ bundle install
 $ bundle exec fledge build
-Downloading fledge-runtime-0.2.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.2.0
+Downloading fledge-runtime-0.2.1-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.2.1
 dist/Greeter-arm64-darwin.tar.gz
 $ tar -xzf dist/Greeter-arm64-darwin.tar.gz -C /tmp
 $ /tmp/Greeter-arm64-darwin/Greeter

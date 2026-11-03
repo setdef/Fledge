@@ -95,6 +95,26 @@ class RuntimeBuilderTest < Minitest::Test
     assert_equal pin.fetch("dll_sha256"), licensed.fetch("sha256").values.first
   end
 
+  # Only .github/scripts/fetch_pin.rb passes a pin's mirrors to the
+  # download, and it alone reads the replaceability pins; mirrors named
+  # anywhere else would never be tried.
+  def test_only_the_pins_fetch_pin_reads_name_mirrors_and_each_is_https
+    mirrored = mirrored_pins(builder("x86_64-linux").sources)
+
+    assert_equal [%w[replaceability gmp], %w[replaceability musl]], mirrored.keys.sort
+    mirrored.each_value do |urls|
+      refute_empty urls
+      urls.each { |url| assert_match(%r{\Ahttps://}, url) }
+    end
+  end
+
+  def mirrored_pins(node, path = [])
+    return {} unless node.is_a?(Hash)
+
+    own = node.key?("mirrors") ? { path => node.fetch("mirrors") } : {}
+    node.except("mirrors").reduce(own) { |found, (key, child)| found.merge(mirrored_pins(child, path + [key])) }
+  end
+
   # A release publishes these beside each runtime, and fledge build
   # downloads the first by the name Fledge::Runtimes gives it.
   def test_the_assets_are_named_for_the_version_and_platform

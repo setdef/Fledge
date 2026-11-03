@@ -141,15 +141,29 @@ gmp:
 # libcrypt, Replace GMP): musl, whose crypt (MIT, BSD-3-Clause, and
 # public domain) stands in for libxcrypt, and an older GNU MP, which
 # stands in for RubyInstaller's and reports another version.
+#
+# Each names mirrors, which .github/scripts/fetch_pin.rb (the only
+# reader of these pins) tries in order when the url does not serve the
+# file. Every download is checked against the one sha256, so a mirror
+# serves these exact bytes or is refused. musl's mirrors are Alpine's
+# distfiles for its 3.22 release and Debian's original tarball, and
+# GMP's is kernel.org's copy of the GNU archive; each was downloaded
+# and matched against the sha256 on 2026-11-03, when musl.libc.org had
+# stopped answering.
 replaceability:
   musl:
     version: 1.2.5
     url: https://musl.libc.org/releases/musl-1.2.5.tar.gz
     sha256: a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4
+    mirrors:
+      - https://distfiles.alpinelinux.org/distfiles/v3.22/musl-1.2.5.tar.gz
+      - https://deb.debian.org/debian/pool/main/m/musl/musl_1.2.5.orig.tar.gz
   gmp:
     version: 6.2.1
     url: https://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz
     sha256: fd4829912cddd12f84181c3451cc752be224643e87fac497b69edddadc49b4f2
+    mirrors:
+      - https://mirrors.kernel.org/gnu/gmp/gmp-6.2.1.tar.xz
 
 # What fledge build runs or copies (ADR 009 and ADR 010), which a
 # runtime keeps in its tools/ folder and no app holds.

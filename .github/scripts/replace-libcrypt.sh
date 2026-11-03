@@ -22,6 +22,17 @@
 
 set -eu
 
+fail() {
+  echo "replace-libcrypt: $*" >&2
+  exit 1
+}
+
+# An empty or missing tarball means its download failed before this
+# script ran; say so here rather than in tar's error about a folder.
+[ "$#" -eq 4 ] || fail "usage: replace-libcrypt.sh APP_DIR PROGRAM LIBXCRYPT_TARBALL MUSL_TARBALL"
+[ -f "$3" ] || fail "no libxcrypt tarball at '$3': was it downloaded (fetch_pin.rb libxcrypt)?"
+[ -f "$4" ] || fail "no musl tarball at '$4': was it downloaded (fetch_pin.rb replaceability musl)?"
+
 app_dir=$(cd "$1" && pwd)
 program="$app_dir/$2"
 xcrypt_tarball=$(cd "$(dirname "$3")" && pwd)/$(basename "$3")
@@ -29,11 +40,6 @@ musl_tarball=$(cd "$(dirname "$4")" && pwd)/$(basename "$4")
 here=$(cd "$(dirname "$0")" && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-
-fail() {
-  echo "replace-libcrypt: $*" >&2
-  exit 1
-}
 
 cp "$here/crypt_formats.rb" "$app_dir/app/main.rb"
 cp "$app_dir/lib/libcrypt.so.2" "$work/libcrypt-runtime.so.2"

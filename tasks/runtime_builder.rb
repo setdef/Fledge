@@ -197,9 +197,10 @@ class RuntimeBuilder
   end
 
   # Downloads +url+ into the download cache, checked against +sha256+,
-  # unless a file with that SHA-256 is already there.
-  def fetch(url, sha256)
-    DownloadCache.new(@downloads).fetch(url, sha256)
+  # unless a file with that SHA-256 is already there, trying each of
+  # +mirrors+ in order when +url+ fails (DownloadCache#fetch).
+  def fetch(url, sha256, mirrors: [])
+    DownloadCache.new(@downloads).fetch(url, sha256, mirrors:)
   end
 
   # The first of +tools+ found on PATH, as a full path, or nil.

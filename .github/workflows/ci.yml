@@ -397,7 +397,8 @@ jobs:
       # developer installs it; pinned by SHA-256.
       - name: Install XcodeGen
         run: |
-          unzip -q "$(ruby .github/scripts/fetch_pin.rb mobile xcodegen)" -d "$RUNNER_TEMP/xcodegen"
+          archive=$(ruby .github/scripts/fetch_pin.rb mobile xcodegen)
+          unzip -q "$archive" -d "$RUNNER_TEMP/xcodegen"
           echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -473,7 +474,8 @@ jobs:
       # is built with, pinned by SHA-256.
       - name: Install the pinned NDK
         run: |
-          unzip -q "$(ruby .github/scripts/fetch_pin.rb mobile ndk hosts x86_64-linux)" -d "$RUNNER_TEMP/ndk"
+          archive=$(ruby .github/scripts/fetch_pin.rb mobile ndk hosts x86_64-linux)
+          unzip -q "$archive" -d "$RUNNER_TEMP/ndk"
           echo "ANDROID_NDK_ROOT=$(echo "$RUNNER_TEMP"/ndk/android-ndk-*)" >> "$GITHUB_ENV"
 
       - name: Build the apps with fledge build android and Gradle, and check each for 16 KB pages and API 36
@@ -1721,8 +1723,11 @@ jobs:
       - name: Replace lib/libcrypt.so.2 and run the app with each replacement
         run: |
           tar -xzf "$RUNNER_TEMP/delivered/Hello-${{ matrix.platform }}.tar.gz" -C "$RUNNER_TEMP"
-          sh .github/scripts/replace-libcrypt.sh "$RUNNER_TEMP/Hello-${{ matrix.platform }}" Hello \
-            "$(ruby .github/scripts/fetch_pin.rb libxcrypt)" "$(ruby .github/scripts/fetch_pin.rb replaceability musl)"
+          # Assigned first, so a download that fails stops the step here:
+          # bash -e ignores a failed $(...) inside another command's arguments.
+          xcrypt=$(ruby .github/scripts/fetch_pin.rb libxcrypt)
+          musl=$(ruby .github/scripts/fetch_pin.rb replaceability musl)
+          sh .github/scripts/replace-libcrypt.sh "$RUNNER_TEMP/Hello-${{ matrix.platform }}" Hello "$xcrypt" "$musl"
 
   # Another GNU MP for Windows, cross-built with the pinned llvm-mingw
   # against the UCRT, for Replace GMP to swap in.
@@ -1755,8 +1760,10 @@ jobs:
           toolchain="$RUNNER_TEMP/llvm-mingw"
           source="$RUNNER_TEMP/gmp"
           mkdir -p "$toolchain" "$source" "$RUNNER_TEMP/gmp-dll"
-          tar -xJf "$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)" -C "$toolchain" --strip-components=1
-          tar -xJf "$(ruby .github/scripts/fetch_pin.rb replaceability gmp)" -C "$source" --strip-components=1
+          llvm_mingw=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+          gmp=$(ruby .github/scripts/fetch_pin.rb replaceability gmp)
+          tar -xJf "$llvm_mingw" -C "$toolchain" --strip-components=1
+          tar -xJf "$gmp" -C "$source" --strip-components=1
           export PATH="$toolchain/bin:$PATH"
           cd "$source"
           # GMP 6.2.1's config.sub predates aarch64-w64-mingw32; llvm-mingw's

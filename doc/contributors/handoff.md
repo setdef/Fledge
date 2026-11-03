@@ -57,7 +57,7 @@ A release is two commits and a tag (AGENTS.md, Releasing; ADR 014):
 2. **The pin commit**, `chore: pin X.Y.Z's runtimes`: `bundle exec rake runtime:pin` downloads the runtimes the release commit's CI run built and writes `lib/fledge/SHA256SUMS`. Commit that file alone (`git commit lib/fledge/SHA256SUMS`), push, and wait for CI.
 3. **The tag**: `git tag -a vX.Y.Z -m "Fledge X.Y.Z" PIN_COMMIT && git push origin vX.Y.Z`. `release.yml` refuses a tag whose commit changes anything but the pins, or whose pins do not match. Watch its run, then `gh release view vX.Y.Z`.
 
-Do all three within 14 days, while CI keeps the runtimes. Never delete a release: each runtime's NOTICES links its LGPL sources there. Pushing to `trunk` cancels the CI run in progress there, so do not push between a commit and its CI run's end.
+Do all three within 14 days, while CI keeps the runtimes. Never delete a release: each runtime's NOTICES links its LGPL sources there. During a release, pushing to `trunk` cancels the CI run in progress there, and the pin commit needs that run's runtimes, so do not push between the release commit and its CI run's end. Outside a release, push whenever a step is done.
 
 ## Known CI flakes, and what to do
 

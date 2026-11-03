@@ -109,7 +109,7 @@ Fledge is AGPL-3.0-or-later (decision 1), and setdef may offer it under a commer
 ## Committing
 
 - Commit on `trunk` in coherent steps, each after the gate passes, with the plan, ADR, or question each step produced.
-- Pushing `trunk` to `origin` (github.com/setdef/Fledge) is allowed once the gate passes. Do not push between a commit and the end of its CI run, because a push cancels the run in progress.
+- Pushing `trunk` to `origin` (github.com/setdef/Fledge) is allowed once the gate passes. A push cancels the CI run in progress on `trunk`, and the newer run covers what the older one did, so push when a step is done. Only a release is different: do not push between a release's commit and the end of its CI run, because the pin commit needs that run's runtimes (ADR 014).
 - Never force-push, unless the maintainer authorizes it, and then only for commits not yet tagged or released. Never push or tag in any other repository, or to another agent's branch.
 - Conventional Commits, plain text, wrapped at 72. The body explains why this approach over alternatives, in prose (no lists, no markdown, no file inventories). Types: `lib`/`sig`/`exe`/launcher feat/fix/refactor/perf; `bin`/`tasks`/CI chore; `examples/` and `doc/` docs; `test/` test. End with the `Provenance: requested` trailer, then the AI footer shown by `git log -n1`.
 

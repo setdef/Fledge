@@ -17,6 +17,7 @@ class MobileParity
   # API Apple asks a reason for that the app's executable imports
   # (PRIVACY_APIS); then, on a new simulator of each kind, each app
   # installed and launched with simctl, its os_log read with log show.
+  # Both simulators boot while the apps build (Simulator).
   class IOS
     # The kinds of device the check runs on: an iPhone and an iPad, the
     # newest of each the newest iOS runtime supports.
@@ -49,6 +50,20 @@ class MobileParity
     def call
       FileUtils.rm_rf(@work)
       FileUtils.mkdir_p(@work)
+      simulators = []
+      FAMILIES.each do |family|
+        simulators << Simulator.boot(family, work: @work)
+        @out.puts "Booting #{simulators.last.name} while the apps build"
+      end
+      apps = build_apps
+      simulators.map { |simulator| on_simulator(simulator, apps) }.all?
+    ensure
+      simulators&.each(&:delete)
+    end
+
+    # Each app, built for devices and checked, then built for the
+    # Simulator: the bundle to install, by app.
+    private def build_apps
       projects = MobileParity.projects("ios", runtimes: @runtimes, out: File.join(@work, "projects"))
       projects.each do |app, project|
         device = build_app(app, project, "iphoneos")
@@ -56,8 +71,7 @@ class MobileParity
         @out.puts "Built #{app.name} for devices, unsigned: #{capture('xcrun', 'vtool', '-show-build', executable).lines.grep(/minos|sdk/).map(&:strip).join(', ')}"
         check_privacy(device, executable)
       end
-      apps = projects.to_h { |app, project| [app, build_app(app, project, "iphonesimulator")] }
-      FAMILIES.map { |family| on_simulator(family, apps) }.all?
+      projects.to_h { |app, project| [app, build_app(app, project, "iphonesimulator")] }
     end
 
     # The app built from +project+ for +sdk+, unsigned, with xcodebuild,
@@ -92,40 +106,17 @@ class MobileParity
         "its privacy manifest names #{needed.keys.join(' and ')}"
     end
 
-    # Runs each app on a new simulator of +family+, and returns whether
-    # all passed.
-    private def on_simulator(family, apps)
-      runtime, device_type = newest(family)
-      udid = capture("xcrun", "simctl", "create", "fledge-mobile-#{family}", device_type, runtime).strip
-      begin
-        system("xcrun", "simctl", "bootstatus", udid, "-b", out: File::NULL, exception: true)
-        name = "#{family} (#{device_type.split('.').last}, #{runtime.split('.').last})"
-        parity = MobileParity.new(target: "arm64-ios-simulator", work: @work, out: @out)
-        apps.map do |app, bundle|
-          system("xcrun", "simctl", "install", udid, bundle, exception: true)
-          parity.check(app, launch(udid, app), name)
-        end.all?
-      ensure
-        system("xcrun", "simctl", "shutdown", udid, out: File::NULL, err: File::NULL)
-        system("xcrun", "simctl", "delete", udid, out: File::NULL, err: File::NULL)
-      end
-    end
-
-    # The newest available iOS runtime, and a device type of +family+
-    # for it: that of the first simulator of the family Xcode set up for
-    # the runtime, which is a current model, or else the last the runtime
-    # supports.
-    private def newest(family)
-      runtimes = JSON.parse(capture("xcrun", "simctl", "list", "runtimes", "-j")).fetch("runtimes")
-      runtime = runtimes.select { |candidate| candidate["platform"] == "iOS" && candidate["isAvailable"] }
-        .max_by { |candidate| Gem::Version.new(candidate.fetch("version")) } or raise "this Mac has no iOS Simulator runtime"
-      identifier = runtime.fetch("identifier")
-      devices = JSON.parse(capture("xcrun", "simctl", "list", "devices", "available", "-j")).fetch("devices").fetch(identifier, [])
-      set_up = devices.map { |device| device.fetch("deviceTypeIdentifier") }
-      types = runtime.fetch("supportedDeviceTypes").select { |candidate| candidate["productFamily"] == family }
-      type = types.find { |candidate| set_up.include?(candidate.fetch("identifier")) } || types.last or
-        raise "#{identifier} supports no #{family}"
-      [identifier, type.fetch("identifier")]
+    # Waits for +simulator+ to boot, runs each app on it, and deletes it,
+    # so the next one has its memory; returns whether every app passed.
+    private def on_simulator(simulator, apps)
+      udid = simulator.wait.udid
+      parity = MobileParity.new(target: "arm64-ios-simulator", work: @work, out: @out)
+      apps.map do |app, bundle|
+        system("xcrun", "simctl", "install", udid, bundle, exception: true)
+        parity.check(app, launch(udid, app), simulator.name)
+      end.all?
+    ensure
+      simulator.delete
     end
 
     # Launches +app+ on the booted simulator +udid+, and returns the lines

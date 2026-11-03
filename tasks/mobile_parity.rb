@@ -183,6 +183,7 @@ class MobileParity
   end
 end
 
+require_relative "mobile_parity/simulator"
 require_relative "mobile_parity/ios"
 require_relative "mobile_parity/android"
 

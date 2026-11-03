@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Publishes a Fledge release when a vX.Y.Z tag is pushed (ADR 001,
-# section 7; ADR 004; AGENTS.md, Releasing). It runs all of CI on the
-# tagged commit, and only when every job passes, the license audit and
-# Delivery included, does it create the GitHub Release, with, for each
-# platform (macOS, two Linux, and Windows):
+# section 7; ADR 004; AGENTS.md, Releasing). Only when the tagged commit
+# has a run of CI on a push to trunk in which every job passed, the
+# license audit and Delivery included, does it create the GitHub
+# Release, with, for each platform:
 #
 #   fledge-runtime-VERSION-PLATFORM.tar.gz              the runtime
 #   fledge-runtime-VERSION-PLATFORM.spdx.json           its SPDX 2.3 SBOM
@@ -31,8 +31,14 @@
 # commit that changes only lib/fledge/SHA256SUMS, written from those
 # runtimes by rake runtime:pin, which is the one tagged. Runtime builds
 # are not reproducible, so this publishes the runtimes the release
-# commit's CI run built, not the ones the tag's own CI run builds, and
-# only when every one matches its pin. The tag's CI run must pass too.
+# commit's CI run built, and only when every one matches its pin.
+#
+# It does not run CI again. CI ran on both commits when they were pushed
+# to trunk, and this looks those runs up (tasks/ci_runs.rb) and refuses
+# a tag whose commit has none that is green, naming the run and its
+# failed jobs, or that has one still running. A second run of the same
+# commit would test the same files, throw its runtimes away, and draw
+# every flaky download again; that is how 0.2.0 went unpublished.
 #
 # Releases are never deleted: each runtime's NOTICES points at its LGPL
 # source bundle here, and app developers may rely on that link for as
@@ -60,19 +66,14 @@ defaults:
     shell: bash
 
 jobs:
-  ci:
-    name: CI
-    uses: ./.github/workflows/ci.yml
-
   release:
     name: Publish the GitHub Release
-    needs: ci
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       # Creating a release and uploading its assets.
       contents: write
-      # Finding the release commit's CI run and downloading its runtimes.
+      # Finding both commits' CI runs and downloading the runtimes.
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -103,23 +104,34 @@ jobs:
       # The tagged commit pins the runtimes its parent's CI run built, and
       # changes nothing else, so the runtimes it pins were built from the
       # very source it tags.
+      - name: Check the tagged commit changes only the pins
+        run: |
+          changed=$(git diff --name-only HEAD^ HEAD)
+          if [ "$changed" != "lib/fledge/SHA256SUMS" ]; then
+            echo "::error::The tagged commit must change only lib/fledge/SHA256SUMS, written by rake runtime:pin from its parent's runtimes; it changes: $changed"
+            exit 1
+          fi
+
+      # AGENTS.md, Releasing: tag only a commit whose CI is green. Its run
+      # on a push to trunk must have finished with the latest attempt of
+      # every job a success, so failed jobs run again and passed count.
+      - name: Check the tagged commit passed CI on trunk
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=$(ruby tasks/ci_runs.rb green "$(git rev-parse HEAD)" --every-job)
+          echo "The tagged commit passed CI run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run"
+
+      # The parent's run, in which every job ran and passed, built the
+      # runtimes the tag pins: the newest such run, as rake runtime:pin
+      # takes it.
       - name: Find the CI run whose runtimes the tag pins
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           built=$(git rev-parse HEAD^)
-          changed=$(git diff --name-only "$built" HEAD)
-          if [ "$changed" != "lib/fledge/SHA256SUMS" ]; then
-            echo "::error::The tagged commit must change only lib/fledge/SHA256SUMS, written by rake runtime:pin from its parent's runtimes; it changes: $changed"
-            exit 1
-          fi
-          run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$built" --event push --status success \
-            --json databaseId --jq '.[0].databaseId')
-          if [ -z "$run" ]; then
-            echo "::error::$built has no successful CI run on push to take its runtimes from"
-            exit 1
-          fi
-          echo "Publishing the runtimes CI run $run built from $built"
+          run=$(ruby tasks/ci_runs.rb green "$built" --every-job)
+          echo "Publishing the runtimes CI run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run built from $built"
           echo "RUN=$run" >> "$GITHUB_ENV"
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

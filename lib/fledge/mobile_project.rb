@@ -180,7 +180,8 @@ module Fledge
       FileUtils.mkdir_p(root)
       File.write(File.join(root, Assembly::CONFIG), Assembly.launch_config(@app))
       FileUtils.cp_r(File.join(tree, "notices"), root)
-      skip = [@out, *(host ? [File.join(@app.root, host)] : [])]
+      skip = [@out]
+      skip << File.join(@app.root, host) if host
       [*Assembly.app_entries(@app, @app_files, skip:), *@files].each { |entry| add(project, root, entry) }
       place_host(host, project) if host
       template_files.each { |path| fill(File.join(project, path)) }

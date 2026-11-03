@@ -22,9 +22,10 @@
 # a 64 MB main thread stack, the stack Fledge's host gives Ruby's own
 # thread; ld takes -stack_size only for the main executable, so the
 # Debug configuration keeps the app's code in it (ENABLE_DEBUG_DYLIB).
-# The target's OTHER_LDFLAGS inherits the project's. SdlPhoneUITests
-# taps the screen once the game draws, from the app's scheme, as Fledge's
-# CI checks the game (host/ios/UITests/TapTest.m).
+# The app's OTHER_LDFLAGS inherits the project's. SdlPhoneUITests taps
+# the screen once the game draws, from the app's scheme, as Fledge's CI
+# checks the game (host/ios/UITests/TapTest.m); it is a bundle, not a
+# main executable, so it takes none of the project's linker flags.
 name: @@NAME@@
 options:
   deploymentTarget:
@@ -47,6 +48,7 @@ targets:
         TEST_TARGET_NAME: SdlPhone
         PRODUCT_BUNDLE_IDENTIFIER: com.setdef.fledge.SdlPhoneUITests
         CLANG_ENABLE_MODULES: YES
+        OTHER_LDFLAGS: ""
   @@NAME@@:
     type: application
     platform: iOS

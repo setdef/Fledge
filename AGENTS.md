@@ -85,9 +85,9 @@ Every commit carries a `Provenance: requested` trailer.
 `doc/contributors/questions.md` holds only two kinds of question:
 
 1. An apparent conflict with, or ambiguity in, `doc/contributors/decisions.md`.
-2. Direction only the maintainer can give: product scope, what app developers control, licensing and commercial terms, money, and external accounts (Apple, Microsoft, certificate authorities, package registries).
+2. Direction only the maintainer can give: product scope (what Fledge is for, and what it is not), licensing and commercial terms, money, and external accounts (Apple, Microsoft, certificate authorities, package registries).
 
-Everything agents invented is the agents' to decide: ADR and plan content, CLI details, the help header, error messages, internal layouts, and names inside the runtime. Decide it by prior art and industry standards (Design precedence, above), record the rationale and citations in an ADR, and change it freely when a better reason arrives. Never ask the maintainer to second-guess an agent's invention; ask only where the maintainer's words leave something open.
+Everything agents invented is the agents' to decide: ADR and plan content, CLI details, `fledge.yml` keys, the help header, error messages, internal layouts, and names inside the runtime. Decide it by prior art and industry standards (Design precedence, above), record the rationale and citations in an ADR, and change it freely when a better reason arrives. Never ask the maintainer to second-guess an agent's invention; ask only where the maintainer's words leave something open.
 
 A question names its context, the default the work proceeds on, and how to reverse that default. Do not wait for an answer: build on the default. When the maintainer answers, add the answer verbatim to `decisions.md` if it is a decision, apply it, and remove the question.
 

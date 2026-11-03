@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `fledge build` no longer copies RubyGems' "Successfully built RubyGem" report into its log for each gem whose executables it writes.
+
 ## [0.2.1] - 2026-11-03
 
 ### Fixed

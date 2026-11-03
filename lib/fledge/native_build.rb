@@ -113,7 +113,11 @@ module Fledge
     # GEM_HOME names it). Their
     # interpreter line is the one the runtime's own wrappers have,
     # <tt>#!/usr/bin/env ruby</tt>, which <tt>ruby -x</tt> skips, so
-    # that no path of this computer is in them.
+    # that no path of this computer is in them. It packs each gem under
+    # RubyGems' silent interface (Gem::SilentUI), since
+    # Gem::Package#build reports what it packed through +say+
+    # (<tt>rubygems/package.rb</tt>, line 314, at RubyGems 4.0.20), and
+    # that report is no business of the build's log.
     STUBS = <<~RUBY
       require "fileutils"
       require "json"
@@ -132,7 +136,7 @@ module Fledge
           spec = Gem::Specification.load(job.fetch("gemspec"))
         end
         spec.extensions = []
-        built = Dir.chdir(dir) { File.expand_path(Gem::Package.build(spec, true)) }
+        built = Gem::DefaultUserInteraction.use_ui(Gem::SilentUI.new) { Dir.chdir(dir) { File.expand_path(Gem::Package.build(spec, true)) } }
         Gem::Installer.at(built, install_dir: File.join(File.dirname(plan.fetch("home")), "stub-gems"), bin_dir: Gem.default_bindir,
           ignore_dependencies: true, document: [], wrappers: true, env_shebang: false, force: true).install
         { "executables" => spec.executables, "bin" => Gem.default_bindir }

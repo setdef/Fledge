@@ -225,6 +225,7 @@ class NativeBuildTest < Minitest::Test
     assert_equal "tool-cli says tool\n", out
     stub = File.read(File.join(folder, @platform.windows? ? "ruby/bin" : "bin", "tool-cli"))
     refute_includes stub, @dir, "the build machine's paths stay behind"
+    refute_match(/Successfully built RubyGem|^\s*File: tool-1\.0\.0\.gem$/, err, "RubyGems' report of packing the gem stays out of the build's log")
   end
 
   def test_a_path_gems_executables_ship_too_and_a_runtime_gems_stay_the_runtimes

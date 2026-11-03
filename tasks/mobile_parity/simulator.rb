@@ -13,11 +13,13 @@ class MobileParity
   # background.
   #
   # A simulator takes minutes to boot on a CI runner, about six for the
-  # iPad in run 41649344171, and the check used to boot each one only
-  # after every app was built, then wait. Booting needs nothing the
-  # builds make, so the check creates both devices first and builds
-  # while they boot (doc/contributors/research/2026-11-03-ci-speed.md,
-  # section 4).
+  # iPad in run 41649344171, and the check used to boot the iPad only
+  # once the iPhone was done with. The check now starts both booting once
+  # its apps are built, and runs the iPhone's apps while the iPad boots.
+  # It does not boot them while the apps build: in run 41685351197, two
+  # first boots beside xcodebuild on the runner's three cores made the
+  # device builds take 13 minutes instead of under 2, more than the boots
+  # saved (doc/contributors/research/2026-11-03-ci-speed.md, section 4).
   #
   # Each device is created for the check alone and deleted after it, so
   # no state is shared with another run's devices or with the ones Xcode

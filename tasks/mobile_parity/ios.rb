@@ -17,7 +17,7 @@ class MobileParity
   # API Apple asks a reason for that the app's executable imports
   # (PRIVACY_APIS); then, on a new simulator of each kind, each app
   # installed and launched with simctl, its os_log read with log show.
-  # Both simulators boot while the apps build (Simulator).
+  # The iPad boots while the iPhone runs the apps (Simulator).
   class IOS
     # The kinds of device the check runs on: an iPhone and an iPad, the
     # newest of each the newest iOS runtime supports.
@@ -50,12 +50,12 @@ class MobileParity
     def call
       FileUtils.rm_rf(@work)
       FileUtils.mkdir_p(@work)
+      apps = build_apps
       simulators = []
       FAMILIES.each do |family|
         simulators << Simulator.boot(family, work: @work)
-        @out.puts "Booting #{simulators.last.name} while the apps build"
+        @out.puts "Booting #{simulators.last.name}"
       end
-      apps = build_apps
       simulators.map { |simulator| on_simulator(simulator, apps) }.all?
     ensure
       simulators&.each(&:delete)

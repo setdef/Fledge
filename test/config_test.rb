@@ -36,7 +36,7 @@ class ConfigTest < Minitest::Test
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil, programs: nil), config
+      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil, programs: nil, ios: nil, android: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
   end
@@ -54,10 +54,10 @@ class ConfigTest < Minitest::Test
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, copyright, installers, and programs."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, and android."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, installers, and programs\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, and android\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -120,7 +120,7 @@ class ConfigTest < Minitest::Test
     config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
 
     assert_equal Fledge::Config.new(name: "w", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
-      publisher: "Me", copyright: nil, installers: nil, programs: nil), config.for_program(config.programs.to_a.first)
+      publisher: "Me", copyright: nil, installers: nil, programs: nil, ios: nil, android: nil), config.for_program(config.programs.to_a.first)
   end
 
   def test_refuses_programs_it_cannot_ship
@@ -159,5 +159,37 @@ class ConfigTest < Minitest::Test
     yaml = "installers: [dmg]\nprograms:\n  - path: a\n  - path: b\n    kind: windowed\n    identifier: com.example.B\n"
 
     assert_equal ["dmg"], load(yaml).installers
+  end
+
+  # ADR 025, section 5: ios and android each name the folder of the
+  # project's own host files, which fledge build ios or fledge build
+  # android copies over the project it writes. The folder is checked when
+  # that phone's project is built, so a desktop build never needs it.
+  def test_reads_each_phones_host
+    config = load("ios:\n  host: host/ios\nandroid:\n  host: host/android\n")
+
+    assert_equal [Fledge::Config::Phone.new(host: "host/ios"), Fledge::Config::Phone.new(host: "host/android")], [config.ios, config.android]
+    assert_equal [nil, nil], [load("ios:\n").ios, load("android:\n  host:\n").android&.host]
+    assert_equal "missing", load("ios:\n  host: missing\n").ios&.host, "the folder is a phone build's to check"
+    program = Fledge::Config::Program.from({ "path" => "a" }, 1, "fledge.yml")
+    assert_equal config.ios, config.for_program(program).ios
+  end
+
+  def test_refuses_a_host_it_cannot_copy
+    {
+      "ios: host/ios\n" => %r{: ios must be a mapping of host, such as ios: \{ host: host/ios \}\z},
+      "android: [host]\n" => %r{: android must be a mapping of host, such as android: \{ host: host/android \}\z},
+      "ios:\n  hots: host/ios\n" => /: ios has 'hots', which Fledge does not know\. It knows host\.\z/,
+      "ios:\n  host: 3\n" => %r{: ios: host must be text, such as host: host/ios\z},
+      "android:\n  host: ../shared/android\n" =>
+        %r{: android's host, "\.\./shared/android", must name a folder in the project, with / between folders, such as host: host/android\z},
+      "ios:\n  host: /Users/me/host\n" => %r{: ios's host, "/Users/me/host", must name a folder in the project},
+      "ios:\n  host: .\n" => /: ios's host, "\.", must name a folder in the project/,
+      "ios:\n  host: host/\n" => %r{: ios's host, "host/", must name a folder in the project},
+    }.each do |yaml, message|
+      error = assert_raises(Fledge::Error, yaml) { load(yaml) }
+      assert_match message, error.message, yaml
+      assert_includes error.message, "fledge.yml", yaml
+    end
   end
 end

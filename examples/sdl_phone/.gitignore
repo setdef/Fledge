@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+#
+# SPDX-License-Identifier: MIT-0
+
+# SDL's Java classes, which sdl3/build.sh android copies from SDL's
+# release into the Android host.
+/host/android/src/main/java/org/libsdl/

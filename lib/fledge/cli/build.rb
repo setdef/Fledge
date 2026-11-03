@@ -142,7 +142,8 @@ module Fledge
           runtime = runtimes.archive(phone)
           files = gems ? gems.for(phone, runtime: RuntimeContents.read(runtime, under: writer.ruby_under)) : [] # : Array[Entry]
           app_files = gems ? gems.app_files(force_ruby_platform: true) : {} # : Hash[String, String]
-          project = writer.new(app:, runtime:, out: out_dir, app_files:, files:, extensions: extensions(gems, phone, host, runtimes, work)).call
+          project = writer.new(app:, runtime:, out: out_dir, app_files:, files:, extensions: extensions(gems, phone, host, runtimes, work),
+            log: @err).call
           @out.puts File.join(out, File.basename(project))
         end
       end

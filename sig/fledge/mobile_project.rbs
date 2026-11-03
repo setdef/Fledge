@@ -14,16 +14,21 @@ module Fledge
     @files: Array[Entry]
     @extensions: MobileExtensions?
     @built: MobileExtensions::Built?
+    @log: CLI::_Output?
 
     def self.for: (MobilePlatform platform) -> (singleton(MobileProject::IOS) | singleton(MobileProject::Android))
 
-    def initialize: (app: App, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?extensions: MobileExtensions?) -> void
+    def initialize: (app: App, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?extensions: MobileExtensions?, ?log: CLI::_Output?) -> void
 
     def base_name: () -> String
 
     def call: () -> String
 
-    private def build: (String tree, String project) -> void
+    private def build: (String tree, String project, String? host) -> void
+
+    private def host_folder: () -> String?
+
+    private def place_host: (String host, String project) -> void
 
     private def runtime_tree: (String work) -> String
 

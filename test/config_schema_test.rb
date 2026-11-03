@@ -111,6 +111,19 @@ class ConfigSchemaTest < Minitest::Test
     "kind:\nprograms:\n  - path: a\n" => true,
     "installers: [dmg]\nprograms:\n  - path: a\n" => false,
     "installers: [dmg]\nprograms:\n  - path: a\n  - path: b\n    kind: windowed\n    identifier: com.example.B\n" => true,
+    "ios:\n  host: host/ios\nandroid:\n  host: host/android\n" => true,
+    "ios:\n  host:\n" => true,
+    "ios: {}\n" => true,
+    "ios: host/ios\n" => false,
+    "android: [host]\n" => false,
+    "ios:\n  hots: host/ios\n" => false,
+    "ios:\n  host: 3\n" => false,
+    "ios:\n  host: \" \"\n" => false,
+    "android:\n  host: ../android\n" => false,
+    "android:\n  host: /host/android\n" => false,
+    "android:\n  host: .\n" => false,
+    "android:\n  host: host/\n" => false,
+    "android:\n  host: host\\\\android\n" => false,
   }.merge(
     # Every key may be empty, which Config reads as absent, and none may
     # be blank or a number.
@@ -188,6 +201,17 @@ class ConfigSchemaTest < Minitest::Test
     assert_equal({ "$ref" => "#/properties/identifier" }, item.dig("properties", "identifier"))
     assert_equal({ "$ref" => "#/properties/icon" }, item.dig("properties", "icon"))
     assert_equal Fledge::Config::PER_PROGRAM, schema.fetch("allOf").first.dig("then", "properties").keys
+  end
+
+  # Each phone's mapping holds Config::Phone's keys, and its host is a
+  # path as a program's is.
+  def test_phones_are_configs
+    Fledge::Config::PHONES.each do |phone|
+      property = schema.dig("properties", phone)
+      assert_equal Fledge::Config::Phone::KEYS, property.fetch("properties").keys
+      refute property.fetch("additionalProperties")
+      assert_equal schema.dig("properties", "programs", "items", "properties", "path", "pattern"), property.dig("properties", "host", "pattern")
+    end
   end
 
   def test_only_config_refuses_what_draft_07_cannot_say

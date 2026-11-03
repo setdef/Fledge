@@ -96,6 +96,30 @@
           "required": ["identifier"]
         }
       }
+    },
+    "ios": {
+      "description": "What fledge build ios lays over the Xcode project it writes (default: nothing). Desktop builds ignore it.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "description": "A folder in the project, such as host/ios, whose files fledge build ios copies over the project before XcodeGen reads it: each replaces Fledge's file at the same path, such as Host/main.m, Host/Info.plist, or project.yml, or joins the project. Fledge fills its @@NAME@@ marks in a copy of project.yml.",
+          "type": ["string", "null"],
+          "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
+        }
+      }
+    },
+    "android": {
+      "description": "What fledge build android lays over the Gradle project it writes (default: nothing). Desktop builds ignore it.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "description": "A folder in the project, such as host/android, whose files fledge build android copies over the project: each replaces Fledge's file at the same path, such as src/main/java/org/setdef/fledge/host/MainActivity.java, or joins the project. Fledge fills its @@NAME@@ marks in a copy of one of its Gradle files, the manifest, strings.xml, or MainActivity.java.",
+          "type": ["string", "null"],
+          "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
+        }
+      }
     }
   },
   "allOf": [

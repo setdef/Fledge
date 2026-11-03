@@ -67,7 +67,7 @@ Where to look:
 - Approved exceptions live in `rbs_exceptions.rb`; adding one needs a justification that it is impossible otherwise.
 - Rake tasks use `git ls-files`: stage new or deleted files before they count.
 - `bundle exec rake parity` compares an app built from this computer's runtime with `ruby main.rb` on the Ruby that runtime came from, and a gem-shaped one with `bundle exec`. Run it after `bundle exec rake runtime`. CI runs it on every platform.
-- Run anything that can take focus or the pointer on this computer, such as a phone simulator, under the desktop input lock: `bundle exec desktop_input_lock hold -- COMMAND`. It is silent, and the lock is held only while COMMAND runs. CI needs no lock.
+- Run anything that opens a window, takes focus or the pointer, or launches a simulator on this computer in the hidden test session, not in the maintainer's own: `hidden-run --account fledgetest [--cwd DIR] [--env K=V] -- COMMAND` from the `hidden_session` folder beside this checkout. Its `RECIPE.txt` says how to copy this repository into the account (`mirror`), which environment a job gets, and the caveats for Fledge. The account's own lock keeps its runs from disturbing other projects, and `hidden-status` shows every account. CI needs none of this.
 - Always `PAGER=cat` for git.
 
 ## Provenance

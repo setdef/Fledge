@@ -27,7 +27,7 @@ set -eu
 case "${1:?usage: alpine-packages.sh build|apps|deliver}" in
   build)
     set -- build-base=0.5-r4 gcc=15.2.0-r5 musl-dev=1.2.6-r3 make=4.4.1-r4 linux-headers=7.0.0-r1 \
-      rust=1.96.1-r0 cargo=1.96.1-r0 perl=5.42.2-r1 binutils=2.45.1-r1 file=5.47-r2 tar=1.35-r5 xz=5.8.4-r0 \
+      rust=1.96.1-r0 cargo=1.96.1-r0 perl=5.42.3-r0 binutils=2.45.1-r1 file=5.47-r2 tar=1.35-r5 xz=5.8.4-r0 \
       zstd=1.5.7-r2
     ;;
   apps)

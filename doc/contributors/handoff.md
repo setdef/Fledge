@@ -64,6 +64,8 @@ Do all three within 14 days, while CI keeps the runtimes. Never delete a release
 - **A macOS job cancelled before any step ran**: the runner never started. Re-run the failed jobs with `gh run rerun RUN --failed`.
 - **A run cancelled outright**: a later push to the same branch superseded it (`concurrency` in `ci.yml`); the later run is the one that counts.
 - **Mobile jobs that time out**: the iOS Simulator and Android emulators sometimes boot slowly. Read the log; if the app never started, re-run the job, and if it did start, it is a real failure.
+- **`apk` says `unable to select packages` and `breaks: world[NAME=VERSION]`** in a musl job: not a flake. Alpine keeps only the newest build of each package in a branch, so when it publishes a new one, the pin in `.github/scripts/alpine-packages.sh` stops resolving. A re-run fails the same way. Find the version Alpine now has (`apk policy NAME` in the pinned image), move the pin, and run each role of the script in that image before pushing.
+- **mise's Ruby download timing out after 20 seconds**: a flake of the download; re-run the failed jobs.
 - **Anything else**: root-cause it before re-running (AGENTS.md, How to work). A failure that passes on a re-run is still worth a sentence in this list once you know why.
 
 ## Spikes and their branches

@@ -1,0 +1,230 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Experiment only (experiment/lota-windows-trial), never for trunk: does a
+# Lota 0.1.2 game ship through fledge build on Windows, x64 and ARM64,
+# and run on a runner with no Ruby on its PATH? It builds with Fledge at
+# trunk and at the fix to its Windows system DLLs, runs the game with no
+# window, then with a window on Windows' own OpenGL and on Mesa's
+# software OpenGL, and installs it with its setup program. CI's own
+# workflow is left out so the push runs only this.
+
+name: Lota Windows trial
+
+on:
+  push:
+    branches: ["experiment/lota-windows-trial"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # Fledge at trunk, and at fix/windows-system-dlls, which takes the
+  # System32 DLLs Lota's engine and OpenAL Soft import.
+  FLEDGE_TRUNK: 054fd66aeaca7dff0c58449fd944b7863bc06263
+  FLEDGE_FIX: c20a6293091bef9ef19a18c7fd2c0cb7042b2fd0
+  # Lota 0.1.2's Windows gems, as its release's SHA256SUMS gives them.
+  LOTA_X64: 61a60b6ad45cb5205b29f56f1bb9fadd6937c7540b912c232b06b3ee9b4e93bb
+  LOTA_ARM64: b5fa27429b64f9306257224e11dfab050e873fe594ea4f45d58dd20da0c94bba
+
+jobs:
+  # Mesa 26.2.6's opengl32.dll and the DLLs it needs, from MSYS2's UCRT64
+  # and CLANGARM64 packages, each pinned in trial/mesa.sha256. Unpacked
+  # here, where tar reads zstd, for the Windows jobs to put beside the
+  # program: a runner has no GPU, and Windows' own OpenGL is 1.1.
+  mesa:
+    name: Mesa
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download Mesa's packages and check them
+        run: |
+          mkdir -p "$RUNNER_TEMP/packages"
+          while read -r sum path; do
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/packages/$(basename "$path")" "https://repo.msys2.org/mingw/$path"
+            echo "$sum  $RUNNER_TEMP/packages/$(basename "$path")" | sha256sum -c
+          done < trial/mesa.sha256
+
+      - name: Unpack the DLLs each platform needs
+        run: |
+          unpack() {
+            platform=$1 prefix=$2; shift 2
+            mkdir -p "mesa/$platform" "$RUNNER_TEMP/unpacked-$platform"
+            for package in "$RUNNER_TEMP"/packages/"$prefix"-*.pkg.tar.zst; do
+              tar --zstd -xf "$package" -C "$RUNNER_TEMP/unpacked-$platform"
+            done
+            for dll in "$@"; do
+              found=$(find "$RUNNER_TEMP/unpacked-$platform" -path '*/bin/*' -iname "$dll" | head -1)
+              [ -n "$found" ] || { echo "::error::no $dll for $platform"; exit 1; }
+              cp "$found" "mesa/$platform/"
+            done
+            ls -la "mesa/$platform"
+          }
+          unpack x64-mingw-ucrt mingw-w64-ucrt-x86_64 opengl32.dll libgallium_wgl.dll libffi-8.dll libgcc_s_seh-1.dll \
+            libiconv-2.dll libintl-8.dll libLLVM-23.dll libSPIRV-Tools.dll libstdc++-6.dll libsystre-0.dll libtre-5.dll \
+            libwinpthread-1.dll libxml2-16.dll libzstd.dll zlib1.dll
+          unpack aarch64-mingw-ucrt mingw-w64-clang-aarch64 opengl32.dll libgallium_wgl.dll libc++.dll libffi-8.dll \
+            libiconv-2.dll libintl-8.dll libLLVM-23.dll libSPIRV-Tools.dll libsystre-0.dll libtre-5.dll libxml2-16.dll \
+            libzstd.dll zlib1.dll
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mesa-x64-mingw-ucrt
+          path: mesa/x64-mingw-ucrt
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mesa-aarch64-mingw-ucrt
+          path: mesa/aarch64-mingw-ucrt
+          if-no-files-found: error
+
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the Ruby pin
+        id: pins
+        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          ruby-version: ${{ steps.pins.outputs.ruby }}
+
+      - name: Download Lota 0.1.2's Windows gems and check them
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/lota" trial/vendor/cache
+          gh release download v0.1.2 -R setdef/Lota -D "$RUNNER_TEMP/lota" -p 'lota-0.1.2-*-mingw-ucrt.gem' -p SHA256SUMS
+          cd "$RUNNER_TEMP/lota"
+          sha256sum -c --ignore-missing SHA256SUMS
+          echo "$LOTA_X64  lota-0.1.2-x64-mingw-ucrt.gem" | sha256sum -c
+          echo "$LOTA_ARM64  lota-0.1.2-aarch64-mingw-ucrt.gem" | sha256sum -c
+          cp lota-0.1.2-*-mingw-ucrt.gem "$GITHUB_WORKSPACE/trial/vendor/cache/"
+
+      # Bundler leaves the checksum of the gem for the platform it is not
+      # running on empty when the gems come from vendor/cache, and
+      # Fledge's frozen Bundler refuses such a lockfile; each is filled in
+      # from Lota's SHA256SUMS, checked above.
+      - name: Lock the Windows platforms with Fledge at trunk and at the fix
+        run: |
+          for label in trunk fix; do
+            ref=FLEDGE_${label^^}
+            cp -R trial "$RUNNER_TEMP/trial-$label"
+            cd "$RUNNER_TEMP/trial-$label"
+            sed -i "s/ref: \"[0-9a-f]*\"/ref: \"${!ref}\"/" Gemfile
+            bundle lock --add-platform x64-mingw-ucrt aarch64-mingw-ucrt
+            bundle lock --add-checksums
+            ruby -e 'sums = File.readlines(ARGV[0]).to_h { |l| s, f = l.split; [File.basename(f, ".gem"), s] }
+              lock = File.read("Gemfile.lock").gsub(/^  lota \((0\.1\.2-[^)]+)\)( sha256=\h+)?$/) { "  lota (#{$1}) sha256=#{sums.fetch("lota-#{$1}")}" }
+              File.write("Gemfile.lock", lock)' "$RUNNER_TEMP/lota/SHA256SUMS"
+            bundle install
+            echo "=== the lockfile fledge build reads ($label)"
+            cat Gemfile.lock
+            bundle exec fledge --version
+            cd "$GITHUB_WORKSPACE"
+          done
+
+      - name: fledge build, with Fledge at trunk
+        working-directory: ${{ runner.temp }}/trial-trunk
+        run: |
+          status=0
+          bundle exec fledge build -o "$RUNNER_TEMP/dist-trunk" > "$RUNNER_TEMP/build-trunk.out" 2> "$RUNNER_TEMP/build-trunk.err" || status=$?
+          echo "exit status: $status"; echo "--- stdout"; cat "$RUNNER_TEMP/build-trunk.out"; echo "--- stderr"; cat "$RUNNER_TEMP/build-trunk.err"
+          ls -la "$RUNNER_TEMP/dist-trunk" || true
+          echo "$status" > "$RUNNER_TEMP/build-trunk.status"
+
+      - name: fledge build, with Fledge at the fix
+        working-directory: ${{ runner.temp }}/trial-fix
+        run: |
+          status=0
+          bundle exec fledge build -o "$RUNNER_TEMP/dist-fix" > "$RUNNER_TEMP/build-fix.out" 2> "$RUNNER_TEMP/build-fix.err" || status=$?
+          echo "exit status: $status"; echo "--- stdout"; cat "$RUNNER_TEMP/build-fix.out"; echo "--- stderr"; cat "$RUNNER_TEMP/build-fix.err"
+          ls -la "$RUNNER_TEMP/dist-fix" || true
+          exit "$status"
+
+      - name: Run the game with no window on the build computer, as bundle exec would
+        if: always()
+        working-directory: ${{ runner.temp }}/trial-fix
+        run: |
+          status=0
+          bundle exec ruby main.rb quiet || status=$?
+          echo "exit status: $status"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lota-trial-${{ matrix.platform }}
+          path: |
+            ${{ runner.temp }}/dist-fix/*.zip
+            ${{ runner.temp }}/dist-fix/*-setup.exe
+            ${{ runner.temp }}/dist-trunk/*
+            ${{ runner.temp }}/build-*
+            ${{ runner.temp }}/trial-fix/Gemfile.lock
+          if-no-files-found: warn
+
+  run:
+    name: Run (${{ matrix.platform }})
+    needs: [build, mesa]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: x64-mingw-ucrt
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: trial
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lota-trial-${{ matrix.platform }}
+          path: ${{ runner.temp }}/delivered
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mesa-${{ matrix.platform }}
+          path: ${{ runner.temp }}/mesa
+
+      - name: Run the game, in stages
+        shell: pwsh
+        run: |
+          Get-ChildItem -LiteralPath "$env:RUNNER_TEMP/delivered" -Recurse | ForEach-Object { $_.FullName }
+          pwsh -NoProfile -File trial/run-on-windows.ps1 -Dist "$env:RUNNER_TEMP/delivered/dist-fix" -Platform ${{ matrix.platform }} `
+            -Results "$env:RUNNER_TEMP/results" -Mesa "$env:RUNNER_TEMP/mesa"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: results-${{ matrix.platform }}
+          path: ${{ runner.temp }}/results
+          if-no-files-found: warn

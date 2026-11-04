@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "lota", "0.1.2"
+
+group :development do
+  gem "fledge", git: "https://github.com/setdef/Fledge", ref: "054fd66aeaca7dff0c58449fd944b7863bc06263"
+end

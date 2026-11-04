@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-04
+
 ### Added
 
 - `fledge build ios` and `fledge build android` run a gem's `extconf.rb` with `CMAKE_TOOLCHAIN_FILE` naming a CMake toolchain file for each of the phone's targets, so a library the `extconf.rb` builds with CMake (3.21 or later) is built for each iOS slice and Android ABI and linked into the app; such a library had been built for the computer running the build.
@@ -255,7 +257,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/setdef/Fledge/releases/tag/v0.4.0
 [0.3.0]: https://github.com/setdef/Fledge/releases/tag/v0.3.0
 [0.2.1]: https://github.com/setdef/Fledge/releases/tag/v0.2.1
 [0.2.0]: https://github.com/setdef/Fledge/releases/tag/v0.2.0

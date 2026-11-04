@@ -58,6 +58,7 @@ Where to look:
 - The help `fledge --help` prints is the comment header in `exe/fledge`, between the `####` and `###` lines. Change the CLI and that header together.
 - `lib/fledge/config.schema.json` describes `fledge.yml`. Change `Fledge::Config` and the schema together; a test fails when they disagree.
 - Architectural decisions get an ADR; plans live in `doc/contributors/plan/`.
+- Before you edit `README.md` or `README.rdoc`, read both in full, start to finish, not a section found by `grep`. They are one story told twice: the README for people who read it on GitHub, the RDoc for the gem's description. An edit changes what the whole page says, so rewrite the paragraphs it touches until the page reads as one piece, and keep the two files true to each other and to the code. Appending a sentence or a section that the rest of the page does not know about is how those files grew unreadable; do not do it.
 
 ## Commands
 

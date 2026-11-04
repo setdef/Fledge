@@ -41,3 +41,41 @@ end
 #--
 # SPDX-SnippetEnd
 #++
+
+# A bundled gem that the app's Gemfile does not name, such as irb for
+# binding.irb, activates under Bundler as it does under bundle exec.
+#
+# Ruby's prelude.rb answers a binding.irb whose require "irb" fails with
+# Gem::BUNDLED_GEMS.force_activate("irb"), which sets up a temporary
+# bundle of the Gemfile's gems and irb, and never writes it to the
+# lockfile (Definition.no_lock; prelude.rb lines 8 to 11 and
+# bundled_gems.rb lines 214 to 259, at Ruby 4.0.9). In a frozen bundle
+# that fails: Runtime#setup refuses a Gemfile with a gem the lockfile
+# lacks ("You have added to the Gemfile: * irb"), and a frozen
+# Definition#resolve takes only the lockfile's gems. A built app's
+# .bundle/config freezes its bundle (Fledge::Bundle::SETTINGS), so that
+# Bundler never touches the lockfile in a folder that may be read-only,
+# where bundle exec on the developer's computer is not frozen. So while
+# force_activate runs, and only on its thread, Bundler is told its bundle
+# is not frozen; the temporary bundle is still never locked.
+#
+# The modules are anonymous, so an app sees no constant of Fledge's
+# (ADR 003, section 1).
+unfrozen = Module.new do
+  def frozen_bundle?
+    Thread.current[:__fledge_force_activate] ? false : super
+  end
+end
+# bundled_gems.rb, which defines Gem::BUNDLED_GEMS, loads after this
+# file, and reopens the module.
+Gem.const_set(:BUNDLED_GEMS, Module.new) unless Gem.const_defined?(:BUNDLED_GEMS, false)
+Gem::BUNDLED_GEMS.singleton_class.prepend(Module.new do
+  define_method(:force_activate) do |gem|
+    require "bundler"
+    Bundler.singleton_class.prepend(unfrozen)
+    Thread.current[:__fledge_force_activate] = true
+    super(gem)
+  ensure
+    Thread.current[:__fledge_force_activate] = nil
+  end
+end)

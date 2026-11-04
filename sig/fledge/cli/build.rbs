@@ -10,14 +10,19 @@ module Fledge
       @err: CLI::_Output
       @env: Runtimes::_Env
       @host: Gem::Platform
+      @ruby: String
 
-      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?host: Gem::Platform) -> void
+      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?host: Gem::Platform, ?ruby: String) -> void
 
       def call: (Array[String]) -> Integer
 
       private def build: (App app, Platform platform, String out, Signing::signer? signing) -> void
 
       private def build_project: (App app, MobilePlatform phone, Platform host, String out) -> void
+
+      private def same_ruby: (RuntimeContents contents, Platform | MobilePlatform platform) -> RuntimeContents
+
+      private def minor: (String version) -> String
 
       private def extensions: (AppGems? gems, MobilePlatform phone, Platform host, Runtimes runtimes, String work) -> MobileExtensions?
 

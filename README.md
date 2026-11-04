@@ -43,7 +43,7 @@ Fledge follows designs that other languages have settled: [LÖVE](https://love2d
 
 On every push, Fledge's CI builds each platform's apps on a computer of that platform, copies them to a clean one that has no Ruby, and runs them there ([`ci.yml`](.github/workflows/ci.yml), [`deliver.sh`](.github/scripts/deliver.sh), [`deliver.ps1`](.github/scripts/deliver.ps1)). After each release, [`installed.yml`](.github/workflows/installed.yml) installs Fledge from the new tag the way you would, and builds and runs the examples.
 
-The Ruby badge at the top shows the version of Ruby inside your app.
+Your app gets the Ruby you run Fledge with. Fledge has a runtime for each Ruby it supports, Ruby 4.0 today, at the patch level the Ruby badge at the top shows, and on a Ruby it has no runtime for, `fledge build` stops and says so. Name your Ruby in a `.ruby-version` file, which version managers and CI's `setup-ruby` read, so that every computer that builds your app builds it with the same Ruby. A Gemfile that says `ruby file: ".ruby-version"` makes Bundler hold every computer to it as well.
 
 Before you start:
 
@@ -223,7 +223,7 @@ Fledge's CI runs phone apps in the iOS Simulator on an iPhone and an iPad, and o
 
 ### Updating Fledge
 
-Change the tag in your `Gemfile` and run `bundle update fledge`. Each version pins the SHA-256 of every runtime it downloads. The Ruby badge at the top shows the Ruby inside your app, and the [CHANGELOG](CHANGELOG.md) records each change to it. Fledge is 0.x: a minor version can break your build, so read the CHANGELOG before you update. From 1.0, only a major version will change what [ADR 029](doc/contributors/adr/029.md) freezes: the command, `fledge.yml`, and what a built app holds.
+Change the tag in your `Gemfile` and run `bundle update fledge`. Each version pins the SHA-256 of every runtime it downloads. A new version of Fledge may move your app's Ruby to a newer patch, such as 4.0.9 to 4.0.10, and the [CHANGELOG](CHANGELOG.md) records each move; only you move it to another minor version, by running Fledge with that Ruby. Fledge is 0.x: a minor version can break your build, so read the CHANGELOG before you update. From 1.0, only a major version will change what [ADR 029](doc/contributors/adr/029.md) freezes: the command, `fledge.yml`, and what a built app holds.
 
 ## Documentation
 

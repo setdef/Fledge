@@ -23,11 +23,32 @@ class BuildCommandTest < Minitest::Test
     FileUtils.rm_rf(@dir)
   end
 
-  def build(*argv, host: Gem::Platform.new("x86_64-linux"), env: { "FLEDGE_RUNTIME_DIR" => @runtimes })
+  def build(*argv, host: Gem::Platform.new("x86_64-linux"), env: { "FLEDGE_RUNTIME_DIR" => @runtimes }, ruby: RUBY_VERSION)
     out = StringIO.new
     err = StringIO.new
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host:).call(argv) }
+    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host:, ruby:).call(argv) }
     [out.string, err.string, status]
+  end
+
+  # ADR 028, section 3: an app runs on the Ruby minor version that runs
+  # fledge build, as Briefcase and PyInstaller package the Python that
+  # runs them. The fake runtimes are Ruby 4.0.9.
+  def test_a_build_on_another_ruby_minor_than_the_runtimes_fails
+    out, err, status = build("hello", ruby: "4.1.0")
+
+    assert_equal [1, ""], [status, out]
+    assert_equal "fledge build: You are running Ruby 4.1.0, and Fledge #{Fledge::VERSION}'s runtime for x86_64-linux is Ruby 4.0.9.\n" \
+      "fledge build: An app runs on the Ruby you build it with: run fledge build with Ruby 4.0, or use a Fledge release that has a runtime for Ruby 4.1.\n",
+      err
+    refute_path_exists File.join(@dir, "dist/Hello-x86_64-linux")
+  end
+
+  # The runtime carries the newest patch of its Ruby minor, which is
+  # Fledge's to move (ADR 028, section 3).
+  def test_a_build_on_another_patch_of_the_runtimes_ruby_builds
+    out, err, status = build("hello", ruby: "4.0.1")
+
+    assert_equal [0, "", "dist/Hello-x86_64-linux.tar.gz\n"], [status, err, out]
   end
 
   def test_the_build_is_for_this_computer_and_the_default_out_is_dist

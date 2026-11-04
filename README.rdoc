@@ -17,7 +17,8 @@ x86-64 and ARM64), and Windows (x64 and ARM64), each on a computer of
 that platform. For iPhone, iPad, and Android it writes the Xcode or
 Gradle project that builds the app, with C and C++ gems compiled in.
 
-A built app runs your code as +ruby main.rb+ does. A few differences are
+A built app runs your code as +ruby main.rb+ does, on the Ruby you run
+Fledge with, at the patch level Fledge ships. A few differences are
 listed, with their reasons, in the README: the program's path is
 absolute, your users' Ruby settings do not change how the app boots, and
 a bare C locale becomes UTF-8.

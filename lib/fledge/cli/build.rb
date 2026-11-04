@@ -76,11 +76,15 @@ module Fledge
       # [env] The environment Fledge::Runtimes reads (default: +ENV+).
       # [host] The Gem::Platform of the computer it builds for (default:
       #        Gem::Platform.local).
-      def initialize(out:, err:, env: ENV, host: Gem::Platform.local)
+      # [ruby] The version of the Ruby running the build (default:
+      #        +RUBY_VERSION+), whose minor version the runtime's Ruby
+      #        must have (ADR 028, section 3).
+      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION)
         @out = out
         @err = err
         @env = env
         @host = host
+        @ruby = ruby
       end
 
       # Runs the command with the arguments after +build+, and returns
@@ -121,7 +125,8 @@ module Fledge
         Dir.mktmpdir("fledge-build") do |work|
           gems = gems_for(app, runtimes, work)
           runtime = runtimes.archive(platform)
-          files = gems ? gems.for(platform, runtime: RuntimeContents.read(runtime)) : [] # : Array[Entry]
+          contents = same_ruby(RuntimeContents.read(runtime), platform)
+          files = gems ? gems.for(platform, runtime: contents) : [] # : Array[Entry]
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
           assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:)
           [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
@@ -140,12 +145,32 @@ module Fledge
         Dir.mktmpdir("fledge-build") do |work|
           gems = gems_for(app, runtimes, work)
           runtime = runtimes.archive(phone)
-          files = gems ? gems.for(phone, runtime: RuntimeContents.read(runtime, under: writer.ruby_under)) : [] # : Array[Entry]
+          contents = same_ruby(RuntimeContents.read(runtime, under: writer.ruby_under), phone)
+          files = gems ? gems.for(phone, runtime: contents) : [] # : Array[Entry]
           app_files = gems ? gems.app_files(force_ruby_platform: true) : {} # : Hash[String, String]
           project = writer.new(app:, runtime:, out: out_dir, app_files:, files:, extensions: extensions(gems, phone, host, runtimes, work),
             log: @err).call
           @out.puts File.join(out, File.basename(project))
         end
+      end
+
+      # The runtime +contents+ for +platform+, when its Ruby has the minor
+      # version of the Ruby running the build. Fledge has no default Ruby:
+      # an app runs on the Ruby its developer runs it with, as Briefcase
+      # and PyInstaller package the Python that runs them, at the patch
+      # level of Fledge's runtime (ADR 028, section 3). Raises
+      # Fledge::Error otherwise.
+      private def same_ruby(contents, platform)
+        return contents if minor(contents.ruby_version) == minor(@ruby)
+
+        raise Error, "You are running Ruby #{@ruby}, and Fledge #{VERSION}'s runtime for #{platform} is Ruby #{contents.ruby_version}.\n" \
+          "An app runs on the Ruby you build it with: run fledge build with Ruby #{minor(contents.ruby_version)}, " \
+          "or use a Fledge release that has a runtime for Ruby #{minor(@ruby)}."
+      end
+
+      # The major and minor version of the Ruby version +version+.
+      private def minor(version)
+        version.split(".").first(2).join(".")
       end
 
       # The compiler of the app's gems' extensions for +phone+ (ADR 022), or

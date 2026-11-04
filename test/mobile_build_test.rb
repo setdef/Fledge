@@ -33,12 +33,23 @@ class MobileBuildTest < Minitest::Test
     FileUtils.rm_rf(@dir)
   end
 
-  def build(*argv, host: "x86_64-linux")
+  def build(*argv, host: "x86_64-linux", ruby: RUBY_VERSION)
     out = StringIO.new
     err = StringIO.new
     env = { "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache") }
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host)).call(argv) }
+    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host), ruby:).call(argv) }
     [out.string, err.string, status]
+  end
+
+  # A phone's Ruby is the minor version that runs fledge build too (ADR
+  # 028, section 3); the fake runtimes are Ruby 4.0.9.
+  def test_a_phone_project_on_another_ruby_minor_than_the_runtimes_fails
+    script_app("identifier: com.example.Hello\n")
+    out, err, status = build("android", "hello", ruby: "4.1.0")
+
+    assert_equal [1, ""], [status, out]
+    assert_includes err, "fledge build: You are running Ruby 4.1.0, and Fledge #{Fledge::VERSION}'s runtime for android is Ruby 4.0.9.\n"
+    refute_path_exists File.join(@dir, "dist/Hello-android")
   end
 
   # A lone script with the fledge.yml +config+ and, when +icons+ names

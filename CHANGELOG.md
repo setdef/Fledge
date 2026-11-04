@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Breaking: an app gets the Ruby that runs `fledge build`, its minor version at the patch level Fledge ships, so `fledge build` on a Ruby whose minor version has no runtime, such as a 4.1 preview, fails and says so, instead of building the app with Ruby 4.0.
 - `fledge --help` says that a PATH that is a bare word Fledge reads as a platform, `ios` and `android` today and any platform a later release adds, is read as that platform, so write `./NAME` for a folder of that name; and that changing `identifier` makes a new app to each system.
 - Breaking: a windowed program under `programs` in `fledge.yml` with no `name` takes the app's name (`name`, else the gemspec's or the folder's, camelized), not its file's, so `gui/main.rb` builds `MyGame.app` and `MyGame.exe` instead of `main.app` and `main.exe`. A console program keeps its file's name. Give the windowed program `name:` to keep the old one; a project whose windowed program would now share a name with another program fails the build, naming both.
 - The schema of `fledge.yml` names itself by the release's tag, `https://raw.githubusercontent.com/setdef/Fledge/vX.Y.Z/lib/fledge/config.schema.json`, not by `trunk`, and that is the modeline to use, with the tag your `Gemfile` names: `trunk`'s schema describes what comes next, which your Fledge may refuse. A modeline that names `trunk` still works.

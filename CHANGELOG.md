@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On macOS and Linux, the launcher and the runtime's `bin/ruby` keep an explicit `LC_ALL` or `LC_CTYPE`, `C` included, as `ruby` does; they had turned it into a UTF-8 locale. A C locale from `LANG`, or from no locale variable at all, still becomes UTF-8.
+- `require "mkmf"` works in a built app on macOS, Linux, and Windows: runtimes now carry Ruby's C headers (`include/`), and the build-only companion no longer does. Runtimes grow by about 0.4 MB.
+- `binding.irb` opens IRB in an app with a Gemfile that does not lock irb, as under `bundle exec`; it had failed with Bundler's frozen-lockfile error naming `Gemfile.lock`.
 - `fledge build` leaves every folder an earlier build went to out of the app, not only the current `--out`, so a build into `dist` and then one into `out` no longer ships the first build inside the second. The folder a build makes, or finds empty, gets a `CACHEDIR.TAG`, and any folder in the project that holds a valid one stays out of the app.
 - On a phone, a C extension whose `extconf.rb` names the C++ runtime (`-lc++` or `-lstdc++`), as one over a C++ library does, links as a C++ one: with `-lc++` on iOS, and on Android with the NDK's C++ runtime linked in, instead of a `libc++_shared.so` the app does not carry.
 

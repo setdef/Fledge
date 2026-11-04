@@ -21,7 +21,7 @@ Fledge writes these for you, for each platform you build on:
 | `console` (the default) | `.tar.gz` holding the program | `.zip` holding `NAME.exe` | `.tar.gz` holding the program |
 | `windowed` | `NAME.app` and a `.dmg` | `NAME.exe`, which opens no console, and a `-setup.exe` that installs without an administrator | a folder with a desktop entry and icons, an AppImage, and a `.deb` if you ask for one |
 
-A program that prints one line builds to a 19 MB archive (60 MB unpacked) on `arm64-darwin`. Your users run it with no Ruby on their `PATH`, and a Ruby they installed makes no difference: the launcher hides `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the other variables a Ruby reads from the app's boot.
+A program that prints one line builds to a 20 MB archive (62 MB unpacked) on `arm64-darwin`. Your users run it with no Ruby on their `PATH`, and a Ruby they installed makes no difference: the launcher hides `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the other variables a Ruby reads from the app's boot.
 
 ### Compared with other ways to ship a Ruby program
 
@@ -51,17 +51,17 @@ Before you start:
 - There is no runtime for Intel Macs or 32-bit systems.
 - Run Fledge with Bundler, on Ruby 4.0.1 or newer.
 
-### How a Fledge app differs from `ruby main.rb`
+### How a Fledge app differs from running `ruby main.rb`
 
 An app runs your code as `ruby main.rb` does, with the same requires, globals, `ENV`, and standard library. Fledge's CI runs a built app and `ruby main.rb` side by side on every platform and fails on any difference that [`tasks/parity.rb`](tasks/parity.rb) does not list with a reason. The listed differences that your code can see:
 
 - **Your program's path.** `$0`, `__FILE__`, and `$PROGRAM_NAME` are the absolute path of the program inside the app, where `ruby main.rb` gives the path as typed. Your users can start the app from any folder, so a relative path would not hold. Ruby's other answers stay true: `__dir__`, `RbConfig.ruby`, and `Gem.dir` name where your program, its Ruby, and its gems are.
 - **Your users' Ruby settings.** `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the like do not change how the app boots, so a Ruby your users installed cannot break it. They still appear in `ENV` and reach every program your app starts. `$VERBOSE` is the visible effect: `RUBYOPT=-W0` sets it to `nil` under `ruby main.rb` and not in the app.
-- **Your gems.** The app's gems are the runtime's, so `Gem.dir` and `Gem.path` name the runtime's gem folder and never your users' `GEM_HOME` or `~/.gem`. The `development` and `test` groups are left out, and `.bundle/config` marks the bundle frozen.
-- **The locale.** A bare C locale, which a double-click launch gives on macOS and many Linux desktops, becomes UTF-8 for the launcher and for the Ruby that `RbConfig.ruby` names. Without it, a user whose home folder has a non-ASCII name would see `Encoding.default_external` as US-ASCII and Bundler fail on the path. Nothing is added to `ENV`. If this ever surprises you, open an issue.
+- **Your gems.** The app's gems are the runtime's, so `Gem.dir` and `Gem.path` name the runtime's gem folder and never your users' `GEM_HOME` or `~/.gem`. The `development` and `test` groups are left out. `.bundle/config` marks the bundle frozen, so Bundler never writes `Gemfile.lock`, even in a read-only folder, and Fledge's RubyGems defaults file loads at start. A bundled gem your lockfile does not lock, such as `irb`, still activates when Ruby asks for it, so `binding.irb` works in an app with a Gemfile as it does under `bundle exec`.
+- **The locale.** On macOS and Linux, when no locale variable is set, or `LANG` is `C` or `POSIX`, as a double-click launch gives, the launcher and the Ruby that `RbConfig.ruby` names use UTF-8, where `ruby` would stay in C. `Encoding.default_external`, `Encoding.find("locale")`, and `Encoding.find("filesystem")` are then UTF-8, not US-ASCII. Without it, a user whose home folder has a non-ASCII name would see Ruby and Bundler fail on the path. An `LC_ALL` or `LC_CTYPE` your user sets, `C` included, is used as `ruby` uses it, and nothing is added to `ENV`. To see it, print `Encoding.default_external` from your program and run the app with `env -i` and again with `env -i LC_ALL=C`. If this ever surprises you, open an issue.
 - **Restarts.** On macOS and Linux, `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first started, with the same setup. On Windows, start the app's `NAME.exe` again.
-
-Two gaps are known and being fixed: `require "mkmf"` fails in a built app because the runtime leaves out Ruby's headers, and `binding.irb` fails in an app that has a Gemfile.
+- **Headers.** The runtime carries Ruby's C headers, so `require "mkmf"` and `find_executable` work. It leaves out the static and import libraries, so an app cannot compile an extension. On a phone, `mkmf` cannot load.
+- **What a standard Ruby installs and the runtime does not.** On macOS and Linux, the runtime has no `bootsnap` or `msgpack`, which the Ruby builds it starts from add. On Windows, RubyInstaller's own files do not load at start.
 
 ## Installation
 

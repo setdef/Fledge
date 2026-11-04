@@ -284,3 +284,9 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 *Governs:* from 1.0.0, Fledge is released on RubyGems.org, by a human; the release does not rely on a GitHub Release or a git tag. Agents prepare a release and never publish it. *Applied in:* Plan 003, "Fledge as gems on RubyGems.org" and "1.0"; AGENTS.md, Releasing.
 
+> I can buy that for now, but will easily be swayed by the first app dev who gets upset by the deviation. And we shouldn't be cagey about it or hide it.
+
+[re: the orchestrator's argument for keeping the launcher's turning a bare C locale into a UTF-8 one, a deviation from plain Ruby that Design precedence 1 justifies.]
+
+*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; ADR 026; `Parity::JUSTIFIED`.
+

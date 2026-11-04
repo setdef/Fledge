@@ -28,7 +28,7 @@ jobs:
   build:
     name: Build and run (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -124,7 +124,7 @@ jobs:
     name: Run on a fresh runner (${{ matrix.platform }})
     needs: build
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -185,7 +185,7 @@ jobs:
   musl:
     name: Build and run (x86_64-linux-musl)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
       ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a

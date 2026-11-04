@@ -46,6 +46,19 @@ def executable_of_this_process
     IO.popen({ "LC_ALL" => "en_US.UTF-8" }, ["/bin/ps", "-o", "comm=", "-p", Process.pid.to_s], in: File::NULL, &:read)
       .force_encoding(Encoding::UTF_8).strip
   elsif Gem.win_platform?
+    begin
+      require "fiddle"
+      kernel32 = Fiddle.dlopen("kernel32")
+      get_name = Fiddle::Function.new(kernel32["GetModuleFileNameW"],
+        [Fiddle::TYPE_VOIDP, Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT], Fiddle::TYPE_INT)
+      buffer = Fiddle::Pointer.malloc(65_536, Fiddle::RUBY_FREE)
+      length = get_name.call(nil, buffer, 32_768)
+      return buffer.to_str(length * 2).force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)
+    rescue LoadError
+      # Under Bundler, fiddle (a bundled gem) is not in the lockfile:
+      # ask PowerShell, which is slow, only when the restart needs it.
+      return "(not looked up)" unless ARGV[1] == "launcher"
+    end
     command = "[Console]::OutputEncoding = [Text.Encoding]::UTF8; (Get-Process -Id #{Process.pid}).Path"
     IO.popen(["powershell", "-NoProfile", "-NonInteractive", "-InputFormat", "None", "-Command", command], in: File::NULL, &:read)
       .force_encoding(Encoding::UTF_8).strip

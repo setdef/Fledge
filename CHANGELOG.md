@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge build ios` and `fledge build android` run a gem's `extconf.rb` with `CMAKE_TOOLCHAIN_FILE` naming a CMake toolchain file for each of the phone's targets, so a library the `extconf.rb` builds with CMake (3.21 or later) is built for each iOS slice and Android ABI and linked into the app; such a library had been built for the computer running the build.
+
+### Changed
+
+- When `Gemfile.lock` has an empty `CHECKSUMS` entry, which `bundle lock --add-checksums` leaves for a gem only `vendor/cache` holds, `fledge build` says after Bundler's message how to fill it: write the SHA-256 of each of the gem's `.gem` files into its entry.
+
+### Fixed
+
+- `fledge build` leaves every folder an earlier build went to out of the app, not only the current `--out`, so a build into `dist` and then one into `out` no longer ships the first build inside the second. The folder a build makes, or finds empty, gets a `CACHEDIR.TAG`, and any folder in the project that holds a valid one stays out of the app.
+- On a phone, a C extension whose `extconf.rb` names the C++ runtime (`-lc++` or `-lstdc++`), as one over a C++ library does, links as a C++ one: with `-lc++` on iOS, and on Android with the NDK's C++ runtime linked in, instead of a `libc++_shared.so` the app does not carry.
+
 ## [0.3.0] - 2026-11-03
 
 ### Fixed

@@ -163,6 +163,24 @@ class BundleTest < Minitest::Test
     assert_includes error.message, "* foo"
   end
 
+  # bundle lock --add-checksums leaves the entry of a gem's build empty
+  # when Bundler did not install that build and its gem server lists no
+  # checksum for it, as for a gem only in vendor/cache (Bundler 4.0.20's
+  # Bundler::Definition#add_checksums); Bundler's own advice, to run
+  # bundle install elsewhere, does not fill it.
+  def test_an_empty_checksum_entry_says_how_to_fill_it
+    root = FakeProject.write(@dir, dependencies: { "native" => ">= 0" }, locked: [@linux, @darwin])
+    lockfile = File.join(root, "Gemfile.lock")
+    File.write(lockfile, File.read(lockfile).sub(" sha256=#{@linux.sha256}", ""))
+
+    error = assert_raises(Fledge::Error) { Fledge::Bundle.new(Fledge::App.at(root)) }
+
+    assert_includes error.message, "Your lockfile has an empty CHECKSUMS entry for \"native\""
+    assert error.message.end_with?("\nbundle lock --add-checksums fills a gem's entry only for a build Bundler installed on this computer, " \
+      "or one its gem server lists a checksum for. Write the SHA-256 of each of native's .gem files after its entry in Gemfile.lock's " \
+      "CHECKSUMS section, as sha256=HEX (shasum -a 256 vendor/cache/native-*.gem prints them), then build again."), error.message
+  end
+
   def test_a_gemfile_without_a_lockfile_says_to_lock_it
     root = FakeProject.write(@dir, dependencies: {}, locked: [])
     File.delete(File.join(root, "Gemfile.lock"))

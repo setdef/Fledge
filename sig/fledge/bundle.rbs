@@ -31,6 +31,8 @@ module Fledge
 
     private def definition: (String gemfile) -> Bundler::Definition
 
+    private def empty_checksum_advice: (String message) -> String
+
     private def at_project: [T] (String gemfile) { () -> T } -> T
 
     private def checksums: (String text) -> Hash[String, String]

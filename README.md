@@ -156,6 +156,25 @@ $ bundle lock --add-checksums
 ```
 <!-- SPDX-SnippetEnd -->
 
+A gem that only your `vendor/cache` holds, such as one from a GitHub release that is not on rubygems.org, needs one more step. `bundle lock --add-checksums` takes a checksum from the gem server, or computes one for a gem Bundler installed on your computer, so it leaves an empty entry for each other platform's build of that gem, and `fledge build` refuses the lockfile. Print each `.gem` file's SHA-256 and write it after that build's entry in the `CHECKSUMS` section of `Gemfile.lock`:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```console
+$ shasum -a 256 vendor/cache/my_gem-*.gem
+a40dd10e0d71ed27d8ad95aa0db9bb17f7076adaa8fdf45fefd712266759f102  vendor/cache/my_gem-1.0.0-x86_64-linux-gnu.gem
+```
+```
+CHECKSUMS
+  my_gem (1.0.0-x86_64-linux-gnu) sha256=a40dd10e0d71ed27d8ad95aa0db9bb17f7076adaa8fdf45fefd712266759f102
+```
+<!-- SPDX-SnippetEnd -->
+
+If the gem's publisher lists a SHA-256 for each file, compare it with yours. Bundler keeps the checksums you write, and Bundler and Fledge both refuse a `.gem` that does not match.
+
 Precompiled gems ship as they are. Gems that ship as source, and gems from git, are compiled on your computer against the runtime's Ruby. Install a compiler first: Xcode's command line tools on macOS, a C compiler and `make` on Linux, or RubyInstaller's MSYS2 tools (`ridk install`) on Windows, and `cargo` for a Rust extension. If a gem would not load on another computer, the build fails and the error names the gem. Git gems, git submodules, path gems, mirrors, and credentials work as they do in Bundler; [`examples/real_gems`](examples/real_gems) uses each.
 
 ### iPhone, iPad, and Android

@@ -266,6 +266,10 @@
 #                        /usr/lib/IDENTIFIER, with its desktop entry
 #                        and icons where desktops look, and needs
 #                        glibc 2.39 or newer; apt remove removes it.
+#                        It depends on libc6 alone: a library a gem
+#                        opens at run time, such as the X11, Wayland,
+#                        or OpenGL that SDL opens, is the desktop's,
+#                        and apt does not check for it.
 #     DIR/CACHEDIR.TAG   A cache directory tag (bford.info/cachedir),
 #                        written when the build makes DIR or finds it
 #                        empty, which keeps DIR out of every later

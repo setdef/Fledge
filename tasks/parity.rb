@@ -38,7 +38,10 @@ require_relative "parity/mobile"
 #
 # Every difference is either listed in JUSTIFIED, with the reason it is
 # right, or fails the check. On Windows it runs the script check again
-# under code page 437, as a console in the United States starts.
+# under code page 437, as a console in the United States starts. On
+# macOS and Linux it runs it again with no locale at all, as a desktop
+# starts an app, and under LC_ALL=C and LC_CTYPE=C, which a person sets
+# on purpose (ADR 026, section 1).
 #
 # Run it as rake parity, after rake runtime or with FLEDGE_RUNTIME_DIR set.
 class Parity
@@ -60,6 +63,10 @@ class Parity
   # The variables Bundler sets for the bundle it set up, whose values
   # name where the gems are (ADR 005).
   BUNDLE_LOCATIONS = /\A"(?:GEM_HOME|PATH)"=/
+
+  # The facts a C locale decides: the character set Ruby reads text,
+  # paths, and arguments in.
+  LOCALE_FACTS = ["Encoding.default_external", "Encoding.find('locale')", "Encoding.find('filesystem')"].freeze
 
   JUSTIFIED = [
     *%w[$0 __FILE__ $PROGRAM_NAME].map do |fact|
@@ -124,6 +131,15 @@ class Parity
         "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
         "encodings its messages use. Ruby loads an encoding when code first needs it, so an app " \
         "that uses one finds it either way."),
+    *LOCALE_FACTS.map do |fact|
+      Justification.new(fact:, reference: [/\A"US-ASCII"\z/], app: [/\A"UTF-8"\z/], checks: %i[no_locale],
+        reason: "With no locale at all (no LC_ALL, LC_CTYPE, or LANG, or LANG=C), as a desktop, a service manager, " \
+          "or env -i starts an app, ruby takes the C locale, whose character set is ASCII; the launcher and the " \
+          "runtime's bin/ruby take a UTF-8 locale instead, as Python does under PEP 538, so that a folder name " \
+          "outside ASCII in the app's path, or the person's home, cannot break Ruby's boot and Bundler's setup " \
+          "(ADR 026, section 1). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
+          "nothing is exported: ENV and every program the app starts see the person's own locale.")
+    end,
     *MOBILE_JUSTIFIED,
   ].freeze
 
@@ -149,6 +165,11 @@ class Parity
     FileUtils.cp_r(PROBE, @reference_app)
     results = [check("", nil)]
     results << check(" under code page 437", "437") if platform.windows?
+    unless platform.windows?
+      results << check(" with no locale", nil, locale: {}, check: :no_locale)
+      results << check(" under LC_ALL=C", nil, locale: { "LC_ALL" => "C" })
+      results << check(" under LC_CTYPE=C", nil, locale: { "LC_CTYPE" => "C" })
+    end
     results << (WITHOUT_GEM_APP.include?(platform.name) ? skip_bundle : check_bundle)
     results.all?
   end
@@ -203,14 +224,17 @@ class Parity
     project
   end
 
-  # Runs both, on Windows under +code_page+ when it is given, reports the
-  # differences, and returns whether all are justified.
-  private def check(label, code_page)
-    env = environment
+  # Runs both, on Windows under +code_page+ when it is given, and with
+  # +locale+, when it is given, in place of the caller's locale variables
+  # (LANG and LC_*), reports the differences, and returns whether all are
+  # justified for +check+.
+  private def check(label, code_page, locale: nil, check: :script)
+    env = environment(locale)
     reference, app = with_code_page(code_page) do
       [run([@ruby, "main.rb", *ARGUMENTS], @reference_app, env), run([@launcher, *ARGUMENTS], File.join(File.dirname(@launcher), "app"), env)]
     end
-    differences = Reports.compare(Reports.normalize(reference, work: @work), Reports.normalize(app, work: @work), platform: platform.name)
+    differences = Reports.compare(Reports.normalize(reference, work: @work), Reports.normalize(app, work: @work), platform: platform.name,
+      check:)
     report(label, env, differences)
     differences.all?(&:justified?)
   end
@@ -251,9 +275,12 @@ class Parity
 
   # The caller's environment without their own Ruby settings (as for a
   # person who has none), with an empty home folder, so the caller's own
-  # gems stay out of both runs, plus PERSON.
-  private def environment
+  # gems stay out of both runs, plus PERSON. With +locale+, the caller's
+  # LANG and LC_* variables give way to it: {} stands for an app a
+  # desktop starts, with no locale at all.
+  private def environment(locale = nil)
     clean = ENV.to_h.reject { |name, _| name.upcase.start_with?("RUBY", "GEM_", "GEMRC", "BUNDLE_", "BUNDLER_") }
+    clean = clean.reject { |name, _| name == "LANG" || name.start_with?("LC_") }.merge(locale) if locale
     home = File.join(@work, "home")
     person_gems = File.join(@work, "person-gems")
     FileUtils.mkdir_p([home, person_gems])

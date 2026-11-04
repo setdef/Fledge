@@ -88,6 +88,75 @@ env:
   ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 jobs:
+  gate:
+    name: Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # mise.toml pins the tools contributors use (bin/setup): Ruby, the
+      # REUSE tool, actionlint, shellcheck, and clang-format. CI installs
+      # the same pins the same way. Its cache is keyed by mise.toml's hash.
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+
+      # Bundler keeps its files outside the checkout, where RuboCop and
+      # the REUSE tool would read them.
+      - name: Place Bundler outside the checkout
+        id: paths
+        run: |
+          echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
+          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+
+      # Gems with native extensions compile against one Ruby on one OS, so
+      # the key names both, with the lockfile. Only an exact match
+      # restores.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/fledge/bundle
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
+
+      - name: Install the bundle
+        run: bundle install
+
+      # LLVM's llvm-objdump and llvm-readobj, which read every platform's
+      # compiled files on one Linux runner (Fledge::Binary::Readers.llvm):
+      # the llvm-mingw runtime/sources.yml pins, as the Windows runtime
+      # builds with.
+      - name: Unpack LLVM's tools for reading compiled files
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+          mkdir -p "$RUNNER_TEMP/llvm-mingw"
+          tar -xJf "$archive" -C "$RUNNER_TEMP/llvm-mingw" --strip-components=1
+          echo "FLEDGE_LLVM=$RUNNER_TEMP/llvm-mingw/bin" >> "$GITHUB_ENV"
+
+      # Minitest prints each test's name and time (A is Minitest::TestTask's
+      # argument variable), so a stuck test shows which it is.
+      - name: Run the gate
+        timeout-minutes: 15
+        env:
+          A: --verbose
+          # Every test of a compiled file runs, with this runner's GNU
+          # objdump for ELF and LLVM's for the rest (test/test_helper.rb).
+          FLEDGE_REQUIRE_READERS: "1"
+        run: bundle exec rake
+
+      # The gate starts with lint:fix, which corrects RuboCop offenses and
+      # adds missing license headers, so an offense would pass as a fix
+      # nobody committed. A changed or new file fails here instead.
+      - name: Fail if the gate changed a file
+        run: |
+          changes=$(git status --porcelain)
+          if [ -n "$changes" ]; then
+            echo "$changes"
+            git diff
+            echo "::error::bundle exec rake changed files; run it locally and commit what it changes"
+            exit 1
+          fi
 
   # A pin commit (ADR 014, section 5) changes only lib/fledge/SHA256SUMS
   # from a parent whose run built and delivered every runtime it pins.

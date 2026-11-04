@@ -301,6 +301,22 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # binding.irb in an app with a Gemfile that does not lock irb opens
+  # IRB, as under bundle exec: Ruby activates irb in a temporary bundle,
+  # which the app's frozen bundle would refuse without Fledge's RubyGems
+  # defaults (runtime/rubygems/operating_system.rb). Ruby warns that irb
+  # is no longer a default gem, as it warns under bundle exec; Bundler
+  # says nothing of the lockfile.
+  def test_binding_irb_opens_irb_in_an_app_with_a_gemfile
+    Dir.mktmpdir do |dir|
+      out, err, status = run_app({ "HOME" => dir }, bundled_probe, "irb", stdin: "answer\nexit\n")
+
+      assert_equal 0, status.exitstatus, err
+      assert_includes out.lines.map(&:strip), "42", out
+      refute_match(/lockfile|Gemfile\.lock|frozen/, err)
+    end
+  end
+
   # A program restarts itself as Ruby programs do, with exec
   # RbConfig.ruby, $0, *ARGV, and the runtime's bin/ruby hands the app's
   # own program back to its launcher (ADR 026, section 3). So the restart
@@ -699,11 +715,11 @@ class BuiltAppTest < Minitest::Test
   # Runs the app, never through a shell, with nothing in its environment
   # but +env+. Windows' network and cryptography libraries need
   # SystemRoot, so on Windows that stays, with a PATH of System32.
-  def run_app(env, app, *argv, chdir: Dir.tmpdir)
+  def run_app(env, app, *argv, chdir: Dir.tmpdir, stdin: "")
     if @platform.windows?
       system_root = ENV.fetch("SystemRoot", "C:\\Windows")
       env = { "SystemRoot" => system_root, "PATH" => File.join(system_root, "System32") }.merge(env)
     end
-    Open3.capture3(env, [app, app], *argv, unsetenv_others: true, chdir:)
+    Open3.capture3(env, [app, app], *argv, unsetenv_others: true, chdir:, stdin_data: stdin)
   end
 end

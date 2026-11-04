@@ -35,6 +35,8 @@
 #                           Bundler.with_original_env or
 #                           Bundler.with_unbundled_env, or (no Bundler)
 #   parity gem-path         prints Gem.path, one folder per line
+#   parity irb              opens IRB with binding.irb, with a local
+#                           variable, answer, of 42 in scope
 #   parity restart          restarts itself as a Ruby program does, with
 #                           exec RbConfig.ruby, $0, and prints what the
 #                           restarted probe found different from the
@@ -215,6 +217,9 @@ when "original-child-env", "unbundled-child-env"
   puts bundler_child_ruby(method, "print ENV.fetch(#{ARGV.fetch(1).inspect}, '(unset)')") || "(no Bundler)"
 when "gem-path"
   puts Gem.path
+when "irb"
+  answer = 6 * 7
+  binding.irb # rubocop:disable Lint/Debugger
 when "restart"
   exec(RbConfig.ruby, $0, "restarted", JSON.generate(restart_facts))
 when "restarted"

@@ -16,6 +16,7 @@ require_relative "gem_package"
 require_relative "git_package"
 require_relative "path_package"
 require_relative "native_build"
+require_relative "mobile_extensions/cmake"
 require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
 
@@ -38,7 +39,9 @@ module Fledge
   # two extensions cannot clash, as extmk does (<tt>-DInit_cparse=Init_racc_cparse</tt>),
   # and the registration unit (.registration_source) names the new
   # ones. Fledge::MobileProject::IOS and Fledge::MobileProject::Android
-  # link the archives into the app as each system needs.
+  # link the archives into the app as each system needs. An
+  # <tt>extconf.rb</tt> that runs CMake first finds the target's CMake
+  # toolchain file in <tt>CMAKE_TOOLCHAIN_FILE</tt> (CMake, ADR 027).
   #
   # It compiles for every target of the phone, one after the other: the
   # device and the Simulator slices for iOS, which Xcode builds on a Mac;
@@ -65,8 +68,13 @@ module Fledge
   #++
   class MobileExtensions
     # The environment variables of the developer's own toolchain that
-    # must not reach a cross compile.
-    FOREIGN = %w[CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT IPHONEOS_DEPLOYMENT_TARGET MACOSX_DEPLOYMENT_TARGET MAKEFLAGS].freeze
+    # must not reach a cross compile: those mkmf and make read, and those
+    # CMake reads besides (cmake-env-variables(7)) that would aim a CMake
+    # build an extconf.rb runs at this computer.
+    FOREIGN = %w[
+      CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT IPHONEOS_DEPLOYMENT_TARGET MACOSX_DEPLOYMENT_TARGET MAKEFLAGS
+      CMAKE_OSX_ARCHITECTURES OBJC OBJCXX OBJCFLAGS OBJCXXFLAGS
+    ].freeze
 
     # How to get Xcode, for the message when its tools are missing.
     INSTALL_XCODE = "Install Xcode from the App Store or developer.apple.com, and run xcode-select --install."
@@ -231,7 +239,8 @@ module Fledge
       unless other.empty?
         return [
 "#{gem} has an extension built by #{other.join(', ')}, and Fledge compiles for #{platform} only extensions that an " \
-  "extconf.rb builds, with mkmf, as Ruby's own tools do. #{advice}, or ask its author for an extconf.rb.",
+  "extconf.rb builds, with mkmf, as Ruby's own tools do (an extconf.rb may run CMake first). #{advice}, or ask its " \
+  "author for an extconf.rb.",
 ]
       end
       if platform.name == "android" && host.windows?
@@ -393,25 +402,28 @@ module Fledge
 
     # The slice's tools: Xcode's clang for the slice's SDK, aimed at the
     # triple the runtime was built for (which its rbconfig.rb records),
-    # and the slice's headers, which sit beside its library and not where
-    # rbconfig.rb says.
+    # the slice's headers, which sit beside its library and not where
+    # rbconfig.rb says, and a CMake toolchain file for the same.
     private def ios_target(slice, root)
       sdk = slice.end_with?("-simulator") ? "iphonesimulator" : "iphoneos"
       arch_dir = rbconfig_dir(root)
       triple = recorded_compiler(arch_dir)[/-target (\S+)/, 1] or raise Error, "#{arch_dir}/rbconfig.rb records no target triple"
       sysroot = xcrun(sdk, "--show-sdk-path")
+      cc = xcrun(sdk, "--find", "clang")
+      cxx = xcrun(sdk, "--find", "clang++")
       environment = {
-        "FLEDGE_CC" => "#{xcrun(sdk, '--find', 'clang')} -target #{triple} -isysroot #{sysroot}",
-        "FLEDGE_CXX" => "#{xcrun(sdk, '--find', 'clang++')} -target #{triple} -isysroot #{sysroot}",
+        "FLEDGE_CC" => "#{cc} -target #{triple} -isysroot #{sysroot}",
+        "FLEDGE_CXX" => "#{cxx} -target #{triple} -isysroot #{sysroot}",
         "FLEDGE_HEADERS" => File.join(root, "Headers"),
         "FLEDGE_LIBRUBYARG" => "-L#{root} -lfledgeruby -lz $(MAINLIBS) -framework Security -framework CoreFoundation",
+        "CMAKE_TOOLCHAIN_FILE" => toolchain_file(slice, CMake.ios(triple:, sysroot:, cc:, cxx:)),
       }
       Target.new(name: slice, root:, arch_dir:, libdir: root, environment:, abi: nil)
     end
 
     # The ABI's tools: the NDK's clang of the very name the runtime was
-    # built with, its llvm-ar and llvm-ranlib, and the library that holds
-    # Ruby, from the AAR.
+    # built with, its llvm-ar and llvm-ranlib, the library that holds
+    # Ruby, from the AAR, and a CMake toolchain file for the same.
     private def android_target(arch, abi, tree, aar, ndk)
       arch_dir = File.join(tree, "lib", "ruby", Dir.children(File.join(tree, "lib", "ruby")).grep(/\A\d/).first.to_s, arch)
       compiler = File.basename(recorded_compiler(arch_dir))
@@ -425,8 +437,18 @@ module Fledge
         "FLEDGE_AR" => File.join(ndk.bin, "llvm-ar"),
         "FLEDGE_RANLIB" => File.join(ndk.bin, "llvm-ranlib"),
         "FLEDGE_LIBRUBYARG" => "-L#{libdir} -lfledgeruby",
+        "CMAKE_TOOLCHAIN_FILE" => toolchain_file(arch, CMake.android(ndk: ndk.root, abi:, compiler:)),
       }
       Target.new(name: arch, root: tree, arch_dir:, libdir:, environment:, abi:)
+    end
+
+    # Writes +text+, the CMake toolchain file of the target +name+, into
+    # the build's folder, and returns its path.
+    private def toolchain_file(name, text)
+      path = File.join(@work, "toolchains", "#{name}.cmake")
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, text)
+      path
     end
 
     private def xcrun(sdk, *)
@@ -481,9 +503,10 @@ module Fledge
       archive = File.join(folder, report.fetch("archive"))
       raise Error, "#{gem}'s extension made no #{File.basename(archive)} for #{target.name}" unless File.file?(archive)
 
+      libs = report.fetch("libs")
       Report.new(
-        feature: report.fetch("feature"), init:, archive:, flags: Linking.link_flags(report.fetch("libs"), dir: folder),
-        cxx: File.read(File.join(folder, "Makefile")).match?(/^ORIG_SRCS = .*\.(?:cc|cpp|cxx|C)(?:\s|$)/)
+        feature: report.fetch("feature"), init:, archive:, flags: Linking.link_flags(libs, dir: folder),
+        cxx: File.read(File.join(folder, "Makefile")).match?(/^ORIG_SRCS = .*\.(?:cc|cpp|cxx|C)(?:\s|$)/) || Linking.cxx_runtime?(libs)
       )
     end
 

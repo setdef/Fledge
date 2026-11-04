@@ -20,7 +20,9 @@ require_relative "parity"
 #
 # The apps (APPS) are examples/hello; examples/mobile_app, whose pure-Ruby
 # gems Bundler sets up; examples/native_phone, whose gem has a C and C++
-# extension compiled for the phone and linked into the app (ADR 022); a script that requires json and csv, a bundled
+# extension compiled for the phone and linked into the app (ADR 022);
+# examples/cmake_phone, whose gem's extconf.rb builds a C++ library with
+# CMake for each of the phone's targets (ADR 027); a script that requires json and csv, a bundled
 # gem, and reaches rubygems.org over HTTPS (test/fixtures/mobile_hello);
 # and the parity probe (test/fixtures/parity), whose report is compared
 # with the same main.rb under the desktop Ruby of the computer that runs
@@ -54,6 +56,8 @@ class MobileParity
       prints: /\AMobileApp 1\.2\.3 says hello through i18n 1\.15\.2 and concurrent-ruby 1\.3\.8, set up by Bundler\z/),
     App.new(path: "examples/native_phone", name: "NativePhone", identifier: "com.setdef.fledge.NativePhone",
       prints: /\ANativePhone adds 5 and totals 10 with a C extension \(C and C\+\+\) on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
+    App.new(path: "examples/cmake_phone", name: "CmakePhone", identifier: "com.setdef.fledge.CmakePhone",
+      prints: /\ACmakePhone totals 10 in C\+\+ that CMake \d+\.\d+\.\d+ built for (?:iOS Simulator on arm64, on arm64-darwin|Android on x86_64, on x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
   ].freeze

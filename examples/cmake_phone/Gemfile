@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# A path gem whose extconf.rb builds a C++ library with CMake (ADR 027).
+# fledge build ios and fledge build android run that extconf.rb for each
+# phone's targets, and CMake builds the library for each of them.
+source "https://rubygems.org"
+
+gem "tally", path: "gems/tally"

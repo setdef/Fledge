@@ -79,6 +79,8 @@ module Fledge
 
     private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
 
+    private def toolchain_file: (String name, String text) -> String
+
     private def xcrun: (String sdk, *String arguments) -> String
 
     private def rbconfig_dir: (String root) -> String

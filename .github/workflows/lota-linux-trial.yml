@@ -57,7 +57,16 @@ jobs:
           sed -i "s/ref: \"[0-9a-f]*\"/ref: \"$FLEDGE_REF\"/" Gemfile
           bundle lock --add-platform x86_64-linux aarch64-linux
           bundle lock --add-checksums
+          echo "=== the lockfile as Bundler wrote it"
+          cat Gemfile.lock
+          # Bundler leaves the other platform's lota checksum empty, and
+          # Fledge's frozen Bundler then refuses (run 41775328515); fill
+          # each in from Lota's SHA256SUMS, checked above.
+          ruby -e 'sums = File.readlines(ARGV[0]).to_h { |l| s, f = l.split; [File.basename(f, ".gem"), s] }
+            lock = File.read("Gemfile.lock").gsub(/^  lota \((0\.1\.1-[^)]+)\)$/) { "  lota (#{$1}) sha256=#{sums.fetch("lota-#{$1}")}" }
+            File.write("Gemfile.lock", lock)' "$RUNNER_TEMP/lota/SHA256SUMS"
           bundle install
+          echo "=== the lockfile fledge build reads"
           cat Gemfile.lock
           bundle exec fledge --version
 
@@ -141,54 +150,3 @@ jobs:
         with:
           name: results-${{ matrix.platform }}-${{ matrix.image == 'ubuntu:24.04' && 'ubuntu' || 'debian' }}
           path: results
-
-  musl:
-    name: musl (${{ matrix.platform }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            platform: x86_64-linux-musl
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux-musl
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Download Lota 0.1.1 and check its SHA256SUMS
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/lota"
-          gh release download v0.1.1 -R setdef/Lota -D "$RUNNER_TEMP/lota"
-          (cd "$RUNNER_TEMP/lota" && sha256sum -c SHA256SUMS)
-          mkdir -p trial/vendor/cache
-          cp "$RUNNER_TEMP"/lota/lota-0.1.1-*-linux-gnu.gem trial/vendor/cache/
-
-      - name: Lock musl, then build with a glibc-only lockfile, in Alpine
-        run: |
-          cat > "$RUNNER_TEMP/musl.sh" <<'SH'
-          set -u
-          apk add --no-cache git binutils squashfs-tools >/dev/null
-          cd /trial
-          sed -i "s/ref: \"[0-9a-f]*\"/ref: \"$FLEDGE_REF\"/" Gemfile
-          cp fledge-appimage.yml fledge.yml
-          echo "=== bundle lock --add-platform $PLATFORM"
-          bundle lock --add-platform "$PLATFORM"; echo "exit status: $?"
-          echo "=== a lockfile with the glibc platforms only"
-          rm -f Gemfile.lock
-          bundle lock --add-platform x86_64-linux aarch64-linux --remove-platform "$PLATFORM"; echo "exit status: $?"
-          bundle lock --add-checksums
-          cat Gemfile.lock
-          echo "=== bundle install"
-          bundle install; echo "exit status: $?"
-          echo "=== fledge build"
-          bundle exec fledge build -o dist; echo "exit status: $?"
-          SH
-          docker run --rm -v "$GITHUB_WORKSPACE/trial:/trial" -v "$RUNNER_TEMP:/scripts" \
-            -e FLEDGE_REF -e PLATFORM=${{ matrix.platform }} \
-            ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3 sh /scripts/musl.sh

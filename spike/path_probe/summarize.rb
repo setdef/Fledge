@@ -41,7 +41,7 @@ ARGV.each do |dir|
     root = gens.first && gens.first.dig("__FILE__", "value")&.sub(%r{[/\\]app[/\\]main\.rb\z}, "")
     puts "=== #{File.basename(result, '.result')}: status #{head['status']}, generations #{gens.count { |g| g.key?('pid') }}"
     puts "    ROOT=#{root}"
-    stderr = lines.drop(1).reject { |l| l.match?(/csv used to be loaded|You can add csv/) }.join.strip
+    stderr = lines.drop(1).reject { |l| l.match?(/(csv|fiddle) used to be loaded|You can add (csv|fiddle)/) }.join.strip
     puts "    stderr: #{stderr.gsub(root.to_s, 'ROOT')[0, 600]}" unless stderr.empty?
     gens.each do |g|
       if g.key?("exec failed")

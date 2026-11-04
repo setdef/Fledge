@@ -43,11 +43,11 @@ def executable_of_this_process
   if File.exist?("/proc/self/exe")
     File.readlink("/proc/self/exe")
   elsif RbConfig::CONFIG["host_os"].include?("darwin")
-    IO.popen({ "LC_ALL" => "en_US.UTF-8" }, ["/bin/ps", "-o", "comm=", "-p", Process.pid.to_s], &:read)
+    IO.popen({ "LC_ALL" => "en_US.UTF-8" }, ["/bin/ps", "-o", "comm=", "-p", Process.pid.to_s], in: File::NULL, &:read)
       .force_encoding(Encoding::UTF_8).strip
   elsif Gem.win_platform?
     command = "[Console]::OutputEncoding = [Text.Encoding]::UTF8; (Get-Process -Id #{Process.pid}).Path"
-    IO.popen(["powershell", "-NoProfile", "-NonInteractive", "-Command", command], &:read)
+    IO.popen(["powershell", "-NoProfile", "-NonInteractive", "-InputFormat", "None", "-Command", command], in: File::NULL, &:read)
       .force_encoding(Encoding::UTF_8).strip
   end
 end

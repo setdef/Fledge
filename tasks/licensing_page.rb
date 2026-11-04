@@ -60,7 +60,7 @@ class LicensingPage
   class Summary < Data.define(:components, :gems, :lgpl); end
 
   # A component, as the page shows it.
-  class Row < Data.define(:name, :version, :license, :ships, :files); end
+  class Row < Data.define(:name, :version, :license, :ships, :files, :embedded); end
 
   def initialize(runtimes, version: Fledge::VERSION)
     @runtimes = runtimes
@@ -100,7 +100,7 @@ class LicensingPage
     present = report.present
     rows = present.reject(&:gem_dir).sort_by { |component| [component.first_party ? 0 : 1, component.name.downcase] }.map do |component|
       Row.new(name: component.name, version: component.version, license: component.license, ships: component.ships,
-        files: report.owned(component))
+        files: report.owned(component), embedded: report.embedded_in(component))
     end
     gems = present.select(&:gem_dir).group_by(&:license).transform_values { |list| list.map { |gem| gem.name[/\A\S+/] }.sort }
     lgpl = rows.select { |row| row.license.include?("LGPL") }
@@ -139,8 +139,21 @@ class LicensingPage
 
       **A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `tools/`: a Windows app's setup program is made of NSIS's stub and plug-ins (the zlib license, which asks nothing of a binary) and compressed with NSIS's LZMA module, which is under the Common Public License 1.0: its section 3 asks that a program distributed in object code say that its source is available and how to get it, and Fledge does both, publishing NSIS's source in `fledge-runtime-VERSION-x64-mingw-ucrt-lgpl-sources.tar.gz` beside each Windows runtime and saying so in the app's `notices/NOTICES.txt`, which the setup program installs; and a Linux app's AppImage begins with AppImage's runtime (MIT), as AppImage releases it, with libfuse (LGPL-2.1, as [below](#libraries-under-the-lgpl) says), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib, mimalloc, and musl (MIT) linked in. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/NOTICES.txt`, which it holds.
 
-      **Fledge's own files** in an app are #{ours.files.map { |file| "`#{file}`" }.join(' and ')} (the first is the program your app's users run, renamed for your app). They are Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
+      **Fledge's own files** in an app are #{own_files(ours)}. Fledge's code in them is Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
     EVERYWHERE
+  end
+
+  # Fledge's files in a desktop app, as a sentence: the launcher it owns,
+  # each file its code is compiled into beside Ruby's (bin/ruby, ADR
+  # 026), and its other files.
+  private def own_files(ours)
+    launcher, *rest = ours.files
+    parts = ["`#{launcher}`, the program your app's users run, renamed for your app"]
+    parts.concat(ours.embedded.map { |file| "`#{file}`, the Ruby that `RbConfig.ruby` names, which is Ruby's `main.c` with Fledge's code compiled in" })
+    parts.concat(rest.map { |file| "`#{file}`" })
+    return parts.join if parts.size == 1
+
+    "#{parts[0...-1].to_a.join('; ')}; and #{parts.last}"
   end
 
   # What the page says of an app for a phone (ADR 012), which is not a

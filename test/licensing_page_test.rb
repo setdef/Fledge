@@ -32,9 +32,14 @@ class LicensingPageTest < Minitest::Test
     end.to_ruby
   end
 
-  def unix(launcher)
+  # A macOS or Linux runtime: its launcher, and its bin/ruby, which is
+  # Ruby's main.c with Fledge's code compiled in (ADR 026), so the same
+  # binary with the string runtime/licenses.yml looks for.
+  def unix(binary)
     {
-      "launcher" => launcher,
+      "launcher" => binary.call(""),
+      "bin/ruby" => binary.call(" ruby: could not run "),
+      "lib/ruby/4.0.0/rubygems/defaults/operating_system.rb" => "# Fledge's RubyGems defaults for a built app.\n",
       "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
       "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n",
       "lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec" => gemspec("csv", "3.3.5", %w[Ruby BSD-2-Clause]),
@@ -47,15 +52,16 @@ class LicensingPageTest < Minitest::Test
   def page
     TestReaders.need(self, :elf, :macho, :pe)
     Dir.mktmpdir do |directory|
-      runtime(directory, "arm64-darwin", unix(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}")))
+      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}#{more}") }))
       %w[x86_64-linux aarch64-linux].each do |platform|
-        runtime(directory, platform, unix(Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{RUST} GCC: (")).merge(
+        runtime(directory, platform, unix(-> (more) { Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{RUST} GCC: (#{more}") }).merge(
           "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash")
         ))
       end
       %w[x86_64-linux-musl aarch64-linux-musl].each do |platform|
-        runtime(directory, platform, unix(Binaries.elf(needed: %w[libc.so],
-          payload: "3e93b23afc /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/ GCC: (Alpine 15.2.0) 15.2.0")))
+        runtime(directory, platform, unix(lambda do |more|
+          Binaries.elf(needed: %w[libc.so], payload: "3e93b23afc /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/ GCC: (Alpine 15.2.0) 15.2.0#{more}")
+        end))
       end
       %w[x64-mingw-ucrt aarch64-mingw-ucrt].each do |platform|
         runtime(directory, platform, "launcher.exe" => Binaries.pe(needed: %w[KERNEL32.dll]), "ruby/lib/ruby/4.0.0/set.rb" => "class Set; end\n")
@@ -97,6 +103,19 @@ class LicensingPageTest < Minitest::Test
     assert_includes android, "| Fledge's embedding API, and the library and packages it is built into | 9.8.7 | `AGPL-3.0-or-later` |"
     assert_includes android, "no LGPL library ships on this platform"
     refute_empty section(text, "iOS and iPadOS (arm64-ios, arm64-ios-simulator)")
+  end
+
+  # bin/ruby on macOS and Linux carries Fledge's AGPL code (ADR 026), so
+  # the page counts it among Fledge's files, which the AGPL asks the
+  # source of, and the desktop rows say so.
+  def test_it_counts_bin_ruby_among_fledges_own_files
+    text = page
+    everywhere = section(text, "On every platform").split.join(" ")
+
+    assert_includes everywhere, "**Fledge's own files** in an app are `launcher`, the program your app's users run, renamed for your app; " \
+      "`bin/ruby`, the Ruby that `RbConfig.ruby` names, which is Ruby's `main.c` with Fledge's code compiled in; " \
+      "and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb`."
+    assert_includes section(text, "Linux on x86-64 (x86_64-linux)"), "; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's;"
   end
 
   # A phone's app is built from the project fledge build writes (ADR 012),
@@ -153,7 +172,7 @@ class LicensingPageTest < Minitest::Test
   def test_a_runtime_that_breaks_the_policy_makes_no_page
     TestReaders.need(self, :macho)
     Dir.mktmpdir do |directory|
-      runtime(directory, "arm64-darwin", unix(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}")).merge(
+      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}#{more}") }).merge(
         "stray.txt" => "hello\n"
       ))
 

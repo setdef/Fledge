@@ -23,7 +23,7 @@ Each app carries the same facts in `notices/NOTICES.txt` (every component, its l
 
 **A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `tools/`: a Windows app's setup program is made of NSIS's stub and plug-ins (the zlib license, which asks nothing of a binary) and compressed with NSIS's LZMA module, which is under the Common Public License 1.0: its section 3 asks that a program distributed in object code say that its source is available and how to get it, and Fledge does both, publishing NSIS's source in `fledge-runtime-VERSION-x64-mingw-ucrt-lgpl-sources.tar.gz` beside each Windows runtime and saying so in the app's `notices/NOTICES.txt`, which the setup program installs; and a Linux app's AppImage begins with AppImage's runtime (MIT), as AppImage releases it, with libfuse (LGPL-2.1, as [below](#libraries-under-the-lgpl) says), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib, mimalloc, and musl (MIT) linked in. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/NOTICES.txt`, which it holds.
 
-**Fledge's own files** in an app are `launcher` and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb` (the first is the program your app's users run, renamed for your app). They are Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
+**Fledge's own files** in an app are `launcher`, the program your app's users run, renamed for your app; `bin/ruby`, the Ruby that `RbConfig.ruby` names, which is Ruby's `main.c` with Fledge's code compiled in; and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb`. Fledge's code in them is Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
 
 ## On iOS and Android
 
@@ -41,7 +41,7 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/arm64-darwin23/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/arm64-darwin23/openssl.bundle |
@@ -65,7 +65,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
@@ -101,7 +101,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
@@ -137,7 +137,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
@@ -172,7 +172,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs, and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
@@ -207,7 +207,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs, and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs | 13 to 16 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
@@ -244,7 +244,7 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs, and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.4.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
 | libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |

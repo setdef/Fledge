@@ -118,7 +118,7 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: the program the app's user runs, and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb
+    ships: "the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt]
     files:
       - launcher

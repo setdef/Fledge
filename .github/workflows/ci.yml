@@ -443,7 +443,10 @@ jobs:
   # category of API the app's executable imports that Apple asks a reason
   # for; then each run in the Simulator on an iPhone and an iPad, its
   # output read from os_log: examples/hello; examples/mobile_app, whose
-  # pure-Ruby gems Bundler sets up; a script that requires json and csv,
+  # pure-Ruby gems Bundler sets up; examples/native_phone and
+  # examples/cmake_phone, whose gems' extensions are compiled for the
+  # phone, the second's C++ library by CMake from its extconf.rb, with
+  # the runner's CMake (ADR 022, ADR 027); a script that requires json and csv,
   # a bundled gem, and reaches rubygems.org over HTTPS; and the parity
   # probe, against ruby main.rb on this Mac's desktop Ruby, with every
   # difference justified for a phone (tasks/mobile_parity.rb).
@@ -467,6 +470,7 @@ jobs:
           xcode=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcode")')
           sudo xcode-select -s "/Applications/Xcode_$xcode.app"
           xcrun simctl list runtimes
+          cmake --version
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -533,7 +537,9 @@ jobs:
           install_args: ruby
 
       - name: Use Java 21
-        run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          cmake --version
 
       # Every Gradle wrapper in a project fledge build writes must be the
       # one Gradle released (runtime/sources.yml pins its SHA-256 too).

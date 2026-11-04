@@ -10,7 +10,8 @@ SPDX-License-Identifier = "CC0-1.0"
 [[annotations]]
 path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock', 'examples/nokogiri_app/Gemfile.lock',
   'examples/nokogiri_app/.bundle/config', 'examples/mobile_app/Gemfile.lock', 'examples/real_gems/Gemfile.lock',
-  'examples/real_gems/.bundle/config', 'examples/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock']
+  'examples/real_gems/.bundle/config', 'examples/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock',
+  'examples/cmake_phone/Gemfile.lock']
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "MIT-0"
 

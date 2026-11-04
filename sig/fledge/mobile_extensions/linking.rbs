@@ -4,7 +4,11 @@
 module Fledge
   class MobileExtensions
     module Linking
+      CXX_RUNTIMES: Array[String]
+
       def self.link_flags: (String text, dir: String) -> Array[String]
+
+      def self.cxx_runtime?: (String text) -> bool
 
       def self.target_build: (Target target, Array[Report] reports) -> TargetBuild
 

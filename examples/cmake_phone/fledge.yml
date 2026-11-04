@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/trunk/lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+
+# cmake_phone is a lone script with a gem whose extconf.rb runs CMake to
+# build a C++ library, and then mkmf to build the C extension that links
+# it (ADR 027). It sits inside Fledge's own gem, so without this file
+# fledge build would take Fledge's Gemfile for its own (ADR 005). The
+# identifier is what iOS and Android know it by (ADR 012).
+name: CmakePhone
+identifier: com.setdef.fledge.CmakePhone

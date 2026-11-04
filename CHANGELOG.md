@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-03
+
 ### Fixed
 
 - On macOS and Linux, a runtime's `bin/ruby`, the Ruby `RbConfig.ruby` names, turns a bare C locale into a UTF-8 one as the launcher does, so a Ruby an app starts, a restart, or a gem's executable reads a folder whose name is not ASCII as UTF-8, and sets up the app's gems there; it had read such a folder as US-ASCII, and Bundler failed.
@@ -237,7 +239,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/setdef/Fledge/releases/tag/v0.3.0
 [0.2.1]: https://github.com/setdef/Fledge/releases/tag/v0.2.1
 [0.2.0]: https://github.com/setdef/Fledge/releases/tag/v0.2.0
 [0.1.0]: https://github.com/setdef/Fledge/releases/tag/v0.1.0

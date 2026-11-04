@@ -12,7 +12,7 @@ Read these next, in order: `AGENTS.md` (how to work here, and binding), `doc/con
 
 ## Where Fledge stands
 
-The latest release is [`v0.2.1`](https://github.com/setdef/Fledge/releases/tag/v0.2.1), the first published release of the 0.2.0 changes: `v0.2.0` is a tag without a GitHub Release, because its release run failed when a runtime source's host was down, and it is neither used nor deleted. Releases before `v0.1.0` were `0.0.1.pre.N`, and versions are ordinary 0.MINOR.PATCH from `v0.1.0` on (decisions, 2026-11-02). Every release is a git tag and a GitHub Release carrying the prebuilt runtimes; Fledge is never published to RubyGems.org.
+The latest release is [`v0.3.0`](https://github.com/setdef/Fledge/releases/tag/v0.3.0), which restarts an app through `RbConfig.ruby` as it first started (ADR 026). The one before it, [`v0.2.1`](https://github.com/setdef/Fledge/releases/tag/v0.2.1), is the first published release of the 0.2.0 changes: `v0.2.0` is a tag without a GitHub Release, because its release run failed when a runtime source's host was down, and it is neither used nor deleted. Releases before `v0.1.0` were `0.0.1.pre.N`, and versions are ordinary 0.MINOR.PATCH from `v0.1.0` on (decisions, 2026-11-02). Every release is a git tag and a GitHub Release carrying the prebuilt runtimes; Fledge is never published to RubyGems.org.
 
 `fledge build` builds an app on the computer it runs on, for that computer's platform, with that platform's own tools (ADR 010): `arm64-darwin`, `x86_64-linux`, `aarch64-linux`, `x86_64-linux-musl`, `aarch64-linux-musl`, `x64-mingw-ucrt`, and `aarch64-mingw-ucrt`. `fledge build ios` and `fledge build android` write an Xcode or Gradle project around the mobile runtimes for a pure-Ruby app (ADR 012).
 

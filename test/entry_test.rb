@@ -97,4 +97,23 @@ class EntryTest < Minitest::Test
       assert_equal ["main.rb"], Fledge::Entry.walk(root, skip: [File.join(root, "dist")]).map(&:path)
     end
   end
+
+  def test_walk_skips_each_folder_prune_picks_and_what_it_holds
+    Dir.mktmpdir do |root|
+      FileUtils.mkdir_p(File.join(root, "a/out/x"))
+      FileUtils.mkdir_p(File.join(root, "out"))
+      File.write(File.join(root, "a/out/x/f"), "f")
+      File.write(File.join(root, "out.rb"), "")
+      asked = []
+      prune = lambda do |folder|
+        asked << folder.delete_prefix("#{root}/")
+        File.basename(folder) == "out"
+      end
+
+      paths = Fledge::Entry.walk(root, prune:).map(&:path)
+
+      assert_equal %w[a out.rb], paths
+      assert_equal %w[a a/out out], asked.sort, "prune is asked of folders only"
+    end
+  end
 end

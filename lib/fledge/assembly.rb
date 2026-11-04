@@ -8,6 +8,7 @@
 require "fileutils"
 require "tmpdir"
 require_relative "archive"
+require_relative "cache_tag"
 require_relative "desktop_entry"
 require_relative "entry"
 require_relative "error"
@@ -298,7 +299,7 @@ module Fledge
 
     private def build
       remove_output
-      FileUtils.mkdir_p(@out)
+      CacheTag.make_folder(@out)
       Dir.mktmpdir(".fledge-build-", @out) do |work|
         runtime = RuntimeFolder.new(@runtime, platform: @platform, app_names: [@app.name, *@app.programs.map(&:name)].uniq, work:)
         bundle = MacBundle.for(@app.identity, platform: @platform, folder:)

@@ -23,9 +23,9 @@ module Fledge
 
     def self.symlink: (String path, String link) -> Entry
 
-    def self.walk: (String root, ?skip: Array[String]) -> Array[Entry]
+    def self.walk: (String root, ?skip: Array[String], ?prune: ^(String) -> bool) -> Array[Entry]
 
-    private def self.walk_into: (String root, String relative, Array[String] skipped, Array[Entry] entries) -> void
+    private def self.walk_into: (String root, String relative, Array[String] skipped, ^(String) -> bool prune, Array[Entry] entries) -> void
 
     private def self.from_disk: (String full, String path) -> Entry
 

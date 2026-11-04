@@ -122,7 +122,9 @@
 #                        above a git repository's top; else the
 #                        program's own folder. Everything in it ships,
 #                        as app/, except .git, .bundle, vendor/bundle,
-#                        vendor/cache, and DIR.
+#                        vendor/cache, DIR, and every folder that holds
+#                        a CACHEDIR.TAG, as each folder a build went to
+#                        does.
 #     ROOT/Gemfile.lock  The gems to ship, without the development and
 #                        test groups. It must lock this computer's
 #                        platform (bundle lock --add-platform), each
@@ -264,6 +266,10 @@
 #                        /usr/lib/IDENTIFIER, with its desktop entry
 #                        and icons where desktops look, and needs
 #                        glibc 2.39 or newer; apt remove removes it.
+#     DIR/CACHEDIR.TAG   A cache directory tag (bford.info/cachedir),
+#                        written when the build makes DIR or finds it
+#                        empty, which keeps DIR out of every later
+#                        build's app/, and out of backups that honor it.
 #     ~/.cache/fledge/runtimes/
 #                        Runtimes downloaded from Fledge's GitHub
 #                        Release for this version, each checked

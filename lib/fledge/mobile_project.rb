@@ -9,6 +9,7 @@ require "fileutils"
 require "tmpdir"
 require_relative "archive"
 require_relative "assembly"
+require_relative "cache_tag"
 require_relative "entry"
 require_relative "error"
 require_relative "mobile_extensions"
@@ -159,7 +160,7 @@ module Fledge
       identifier
       host = host_folder
       FileUtils.rm_rf(folder)
-      FileUtils.mkdir_p(@out)
+      CacheTag.make_folder(@out)
       Dir.mktmpdir(".fledge-build-", @out) do |work|
         project = File.join(work, base_name)
         build(runtime_tree(work), project, host)

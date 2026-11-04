@@ -267,3 +267,10 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: the orchestrator's report that native gems with C and C++ extensions now run on phones in CI, and its answer that a Lota game could not yet be deployed to a tablet. The maintainer's words named the game and the devices, and then made them specific; the brackets stand for what the maintainer named.]
 
 *Governs:* release 0.2.0 means a Ruby game on Lota can be playtested on an iPad and on an Android phone, built through Fledge. *Applied in:* Plan 003, "A game plays on a tablet and a phone".
+
+> Remember: this entire rule is because _Fledge should never surprise an app dev with how it behaves or causes Ruby or its globals, built-ins, and standard library to behave compared to not using Fledge_.
+
+[re: Design precedence 2, in the discussion of whether a restart through `RbConfig.ruby` in a built app differs from `ruby main.rb`.]
+
+*Governs:* the purpose of Design precedence 2 and of the parity check: a difference between a Fledge app and the same program run without Fledge is a bug unless it is justified and documented. *Applied in:* AGENTS.md, Design precedence 2; ADR 026.
+

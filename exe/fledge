@@ -173,10 +173,12 @@
 #                          sharing one runtime, project, and set of
 #                          gems, each a mapping of path (its file, such
 #                          as bin/cli), name (default: the file's name
-#                          without its extension), kind, identifier,
-#                          and icon; at most one is windowed, and gets
-#                          the installers. Beside programs, kind,
-#                          identifier, and icon belong to each program.
+#                          without its extension for a console program,
+#                          and the app's name for a windowed one), kind,
+#                          identifier, and icon; at most one is
+#                          windowed, and gets the installers. Beside
+#                          programs, kind, identifier, and icon belong
+#                          to each program.
 #                        ios, android: a mapping of host, a folder in
 #                          ROOT, such as host/ios, whose files build ios
 #                          or build android copies over the project it

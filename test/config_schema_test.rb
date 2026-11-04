@@ -8,7 +8,6 @@
 require_relative "test_helper"
 require "json"
 require "json_schemer"
-require "pathname"
 
 # lib/fledge/config.schema.json is written by hand, and Fledge::Config
 # is what fledge build obeys (ADR 023). These tests hold the two

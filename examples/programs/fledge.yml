@@ -8,7 +8,8 @@
 # other. They ship in one folder, Shared Save-PLATFORM, with one runtime,
 # one copy of this project, and one set of gems. The project keeps the
 # name of that folder, its version, and its publisher; each program has
-# its own path, name, and kind, and the windowed one its identifier.
+# its own path and kind, and the windowed one its identifier. The
+# windowed one takes the project's name, and the console one its file's.
 # Like hello, it sits inside Fledge's own gem, and this file makes its
 # folder a project's root (ADR 005).
 name: Shared Save
@@ -16,7 +17,6 @@ version: "1.0.0"
 publisher: setdef
 programs:
   - path: window.rb
-    name: Shared Save
     kind: windowed
     identifier: com.setdef.fledge.SharedSave
   - path: bin/shared-save

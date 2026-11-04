@@ -53,8 +53,11 @@ module Fledge
 
       ##
       # :attr_reader: name
-      # The program's name: the one <tt>fledge.yml</tt> gives, or else
-      # its file's name without the extension.
+      # The program's name: the one <tt>fledge.yml</tt> gives, or else,
+      # for a console program, its file's name without the extension,
+      # the command someone types. A windowed program with no name is
+      # +nil+ here, and Fledge::App gives it the project's name, which is
+      # what the Dock, the Start menu, and the window list show.
 
       ##
       # :attr_reader: kind
@@ -101,10 +104,11 @@ module Fledge
         unknown = item.keys - KEYS
         raise Error, "#{where} has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. A program knows #{KNOWN}." unless unknown.empty?
 
+        kind = Config.kind(item, where)
         new(
           path:,
-          name: Config.text(item, "name", where, "MyCoolApp") || File.basename(path, ".*"),
-          kind: Config.kind(item, where),
+          name: Config.text(item, "name", where, "MyCoolApp") || (File.basename(path, ".*") unless kind == "windowed"),
+          kind:,
           identifier: Config.identifier(item, where),
           icon: Config.icon(item, where)
         )

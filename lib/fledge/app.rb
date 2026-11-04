@@ -138,8 +138,10 @@ module Fledge
     # one whose file +full+ is, named as it is.
     private_class_method def self.listed(path, full, root, config, gemspec, gemfile) # :nodoc:
       listed = config.programs.to_a
-      programs = listed.map { |program| program_of(program, root, config, gemspec) }
-      return new(root:, name: name_for(config, gemspec, root), gemfile:, config:, programs:) if File.directory?(full)
+      project = (name_for(config, gemspec, root) if File.directory?(full) || listed.any? { |program| program.name.nil? })
+      programs = listed.map { |program| program_of(program, root, config, gemspec, project) }
+      unique(programs, File.join(root, Config::FILE))
+      return new(root:, name: project.to_s, gemfile:, config:, programs:) if File.directory?(full)
 
       index = listed.index { |program| program.path == relative(full, root) }
       if index.nil?
@@ -148,18 +150,33 @@ module Fledge
       end
 
       program = programs.fetch(index)
-      new(root:, name: program.name, gemfile:, config: config.for_program(listed.fetch(index)), programs: [program])
+      new(root:, name: program.name, gemfile:, config: config.for_program(listed.fetch(index).with(name: program.name)), programs: [program])
     end
 
-    # The App::Program that +program+, one of +config+'s, describes.
-    private_class_method def self.program_of(program, root, config, gemspec) # :nodoc:
+    # The App::Program that +program+, one of +config+'s, describes: a
+    # windowed program with no name of its own takes +project+, the
+    # project's name, which is +nil+ only when every program has a name.
+    private_class_method def self.program_of(program, root, config, gemspec, project) # :nodoc:
       file = File.join(root, Config::FILE)
       unless File.file?(File.join(root, program.path))
         raise Error, "#{file} lists the program #{program.path}, but the project has no such file. List the program you run, such as path: bin/cli."
       end
 
-      name = valid_name(program.name, "#{file} names the program #{program.path} #{program.name.inspect}, but that")
-      Program.new(name:, entry: program.path, identity: Identity.from(config: config.for_program(program), gemspec:, name:, root:))
+      name = program.name
+      name = name ? valid_name(name, "#{file} names the program #{program.path} #{name.inspect}, but that") : project.to_s
+      Program.new(name:, entry: program.path, identity: Identity.from(config: config.for_program(program.with(name:)), gemspec:, name:, root:))
+    end
+
+    # Refuses two of +programs+ with one name, ignoring case, as Windows'
+    # and macOS's file systems do. Config refuses the names fledge.yml
+    # gives; this finds the project's name, which a windowed program
+    # takes, on another program too.
+    private_class_method def self.unique(programs, file) # :nodoc:
+      programs.group_by { |program| program.name.downcase }.each_value do |same|
+        next if same.size < 2
+
+        raise Error, "#{file}: #{same.map(&:entry).join(' and ')} are both named #{same.first&.name}; give each its own"
+      end
     end
 
     # The nearest folder, from +start+ up, that holds one of MARKERS or a

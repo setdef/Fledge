@@ -19,7 +19,9 @@ module Fledge
 
     private def self.listed: (String path, String full, String root, Config config, Gem::Specification? gemspec, String? gemfile) -> App
 
-    private def self.program_of: (Config::Program program, String root, Config config, Gem::Specification? gemspec) -> App::Program
+    private def self.program_of: (Config::Program program, String root, Config config, Gem::Specification? gemspec, String? project) -> App::Program
+
+    private def self.unique: (Array[App::Program] programs, String file) -> void
 
     private def self.project_root: (String start) -> String?
 

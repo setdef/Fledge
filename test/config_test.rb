@@ -114,12 +114,21 @@ class ConfigTest < Minitest::Test
     assert_equal ["dmg"], config.installers
   end
 
+  # A windowed program with no name has none in fledge.yml's reading:
+  # Fledge::App gives it the project's, which only it knows.
+  def test_a_windowed_program_with_no_name_is_left_for_the_project_to_name
+    config = load("programs:\n  - path: gui/main.rb\n    kind: windowed\n    identifier: com.example.W\n  - path: bin/cli\n")
+
+    assert_equal [nil, "cli"], config.programs.to_a.map(&:name)
+    assert_nil config.for_program(config.programs.to_a.first).name
+  end
+
   # A program's configuration is the project's with the program's own
   # name, kind, identifier, and icon.
   def test_a_programs_configuration_is_the_projects_with_its_own_identity
-    config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
+    config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    name: W\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
 
-    assert_equal Fledge::Config.new(name: "w", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
+    assert_equal Fledge::Config.new(name: "W", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
       publisher: "Me", copyright: nil, installers: nil, programs: nil, ios: nil, android: nil), config.for_program(config.programs.to_a.first)
   end
 

@@ -226,6 +226,35 @@ class AppTest < Minitest::Test
     assert_equal "MyGame", at(File.join(@dir, "game", "bin")).name, "any folder of the project means the project"
   end
 
+  # A windowed program is what a person sees in the Dock, the Start
+  # menu, and the window list, so with no name of its own it takes the
+  # project's (decision 5's camelized folder or gemspec name, or
+  # fledge.yml's), as an app of one program does, not its file's: a
+  # gui/main.rb is not "main". A console program keeps its file's name,
+  # the command someone types.
+  def test_a_windowed_program_with_no_name_takes_the_projects
+    write("my_game/fledge.yml", "programs:\n  - path: gui/main.rb\n    kind: windowed\n    identifier: com.example.MyGame\n  - path: bin/cli\n")
+    write("my_game/gui/main.rb")
+    write("my_game/bin/cli")
+    root = File.join(@dir, "my_game")
+
+    assert_equal [%w[MyGame gui/main.rb], %w[cli bin/cli]], at(root).programs.map { |program| [program.name, program.entry] }
+    assert_equal %w[MyGame MyGame], [at(root).identity.name, at(File.join(root, "gui/main.rb")).name]
+    write("my_game/fledge.yml", "name: My Game\nprograms:\n  - path: gui/main.rb\n    kind: windowed\n    identifier: com.example.MyGame\n")
+    assert_equal ["My Game", "My Game"], [at(root).main.name, at(File.join(root, "gui/main.rb")).name]
+  end
+
+  # The project's name, taken by the windowed program, still may not be
+  # another program's, ignoring case.
+  def test_a_windowed_program_named_for_the_project_may_not_share_a_name
+    write("cli/fledge.yml", "programs:\n  - path: gui.rb\n    kind: windowed\n    identifier: com.example.Cli\n  - path: bin/cli\n")
+    write("cli/gui.rb")
+    write("cli/bin/cli")
+
+    error = assert_raises(Fledge::Error) { at(File.join(@dir, "cli")) }
+    assert_equal "#{File.join(@dir, 'cli', 'fledge.yml')}: gui.rb and bin/cli are both named Cli; give each its own", error.message
+  end
+
   # Without a windowed program, the first is the one a phone runs.
   def test_the_main_program_is_the_windowed_one_or_else_the_first
     write("tools/fledge.yml", "programs:\n  - path: b.rb\n  - path: a.rb\n")

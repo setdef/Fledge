@@ -268,7 +268,7 @@ module Fledge
       raise Error, "#{path}: with programs, #{misplaced} belongs to each program; move it into the program it describes" if misplaced
 
       programs = value.each_with_index.map { |item, index| Program.from(item, index + 1, path) }
-      unique(programs, path, "named", &:name)
+      unique(programs.select(&:name), path, "named") { |program| program.name.to_s }
       unique(programs.select(&:identifier), path, "identified as") { |program| program.identifier.to_s }
       windowed = programs.select(&:windowed?)
       return programs if windowed.size < 2

@@ -8,12 +8,12 @@ module Fledge
       KNOWN: String
 
       attr_reader path: String
-      attr_reader name: String
+      attr_reader name: String?
       attr_reader kind: String?
       attr_reader identifier: String?
       attr_reader icon: String?
 
-      def self.new: (path: String, name: String, kind: String?, identifier: String?, icon: String?) -> instance
+      def self.new: (path: String, name: String?, kind: String?, identifier: String?, icon: String?) -> instance
 
       def self.from: (Object item, Integer number, String file) -> Program
 

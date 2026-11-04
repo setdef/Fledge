@@ -151,7 +151,6 @@ If your app has more than one way in, such as a window, a terminal interface, an
 name: Shared Save
 programs:
   - path: window.rb
-    name: Shared Save
     kind: windowed
     identifier: com.example.SharedSave
   - path: bin/shared-save
@@ -159,7 +158,7 @@ programs:
 ```
 <!-- SPDX-SnippetEnd -->
 
-At most one program is windowed. It gets the installers, and on macOS the console programs live inside its `.app` bundle. [`examples/programs`](examples/programs) is a complete example.
+At most one program is windowed. It takes the app's name unless you give it a `name` of its own, gets the installers, and on macOS holds the console programs inside its `.app` bundle. A console program takes its file's name, such as `shared-save`, the command your users type. [`examples/programs`](examples/programs) is a complete example.
 
 ### Signing
 

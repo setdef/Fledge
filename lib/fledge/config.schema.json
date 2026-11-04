@@ -70,7 +70,7 @@
             "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
           },
           "name": {
-            "description": "The program's name, its file's name in the built folder, and what people see (default: its path's file name without the extension, such as cli for bin/cli).",
+            "description": "The program's name, its file's name in the built folder, and what people see (default: for a console program, its path's file name without the extension, such as cli for bin/cli; for a windowed one, the project's name).",
             "type": ["string", "null"],
             "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
           },

@@ -15,3 +15,11 @@ This file holds only what agents cannot decide (AGENTS.md, Questions): an appare
 **Default.** ADR 028 as drafted, which ADR 029, section 6, applies: a 1.x keeps Ruby 4.0.x and moves only its patch; a later Ruby minor arrives in a minor release as an extra runtime, under the reserved asset name `fledge-runtime-VERSION-ruby-X.Y.Z-PLATFORM.tar.gz`, and becomes the default only in a major. The platform floors (macOS 14, glibc 2.39, iOS 15, Android API 26) are raised only in a major, unless the platform's owner forces it.
 
 **To reverse.** Say that a 1.y may move the default Ruby, or raise a floor, with an entry under "Changed" in the CHANGELOG; agents then amend ADR 028 and ADR 029, section 6, and drop the reserved name if nothing else needs it.
+
+## B. Whether a release from 1.0 on still gets a git tag
+
+**Context.** The maintainer said on 2026-11-03 that from 1.0.0 Fledge is released on RubyGems.org, "not relying on GitHub Releases and git tags" (decisions, 2026-11-03). The schema of `fledge.yml` now names itself by the release's tag (`https://raw.githubusercontent.com/setdef/Fledge/vX.Y.Z/lib/fledge/config.schema.json`, ADR 023, section 3), and ADR 029 freezes that address, so a developer's modeline keeps reading their release's schema after `trunk` moves to the next major. That address exists only if the release's commit is tagged. The words leave open whether "not relying on" means no tag, or a tag the release does not depend on.
+
+**Default.** Every release, 1.0 and later, keeps its tag `vX.Y.Z` on the commit published, pushed by the agent that prepares the release, as Bundler's `rake release` tags each version of a gem it publishes; the release itself, the gem on RubyGems.org, does not depend on it.
+
+**To reverse.** Say that releases from 1.0 have no tag; agents then move the schema's address to one that needs none (a branch per major, or a host of its own), amend ADR 023, section 3, and ADR 029, before 1.0.

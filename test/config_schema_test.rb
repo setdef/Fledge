@@ -8,6 +8,7 @@
 require_relative "test_helper"
 require "json"
 require "json_schemer"
+require "pathname"
 
 # lib/fledge/config.schema.json is written by hand, and Fledge::Config
 # is what fledge build obeys (ADR 023). These tests hold the two
@@ -17,8 +18,10 @@ require "json_schemer"
 class ConfigSchemaTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   PATH = File.join(ROOT, "lib", "fledge", "config.schema.json")
-  URL = "https://raw.githubusercontent.com/setdef/Fledge/trunk/lib/fledge/config.schema.json"
-  HEADER = "# yaml-language-server: $schema=#{URL}".freeze
+  # The schema at this release's tag (ADR 023, section 3), which a
+  # developer's editor keeps reading after trunk moves on to the next
+  # major.
+  URL = "https://raw.githubusercontent.com/setdef/Fledge/v#{Fledge::VERSION}/lib/fledge/config.schema.json".freeze
 
   # Each document, and whether fledge build takes it. Both the schema and
   # Fledge::Config (with Fledge::Identity, which refuses a windowed app
@@ -173,6 +176,9 @@ class ConfigSchemaTest < Minitest::Test
   def test_is_a_draft_07_schema
     assert_equal "http://json-schema.org/draft-07/schema#", schema.fetch("$schema")
     assert_equal URL, schema.fetch("$id")
+    %w[lib/fledge/config.rb README.md].each do |file|
+      assert_includes File.read(File.join(ROOT, file)), "$schema=#{URL}", "#{file} gives developers a modeline of another release"
+    end
     assert_empty JSONSchemer.draft7.validate(schema).to_a
   end
 
@@ -242,14 +248,17 @@ class ConfigSchemaTest < Minitest::Test
     end
   end
 
-  # Every fledge.yml in the repository names the schema, and both the
-  # schema and fledge build take it.
+  # Every fledge.yml in the repository names the schema beside it by a
+  # relative path, which Red Hat's language server resolves from the
+  # file's folder, so trunk's examples check against trunk's schema; and
+  # both the schema and fledge build take it.
   def test_every_fledge_yml_names_the_schema_and_passes_it
     files = IO.popen(["git", "ls-files", "-z", "--", "*fledge.yml"], chdir: ROOT, &:read).split("\x0")
     assert_includes files, "examples/windowed_app/fledge.yml"
     files.each do |file|
       yaml = File.read(File.join(ROOT, file))
-      assert_includes yaml.lines.map(&:chomp), HEADER, "#{file} does not name the schema"
+      relative = Pathname(PATH).relative_path_from(Pathname(File.join(ROOT, file)).dirname).to_s
+      assert_equal "# yaml-language-server: $schema=#{relative}", yaml.lines.first&.chomp, "#{file} does not name the schema"
       assert schema_accepts?(yaml), "the schema refused #{file}: #{schemer.validate(YAML.safe_load(yaml)).map { |e| e['error'] }}"
       assert fledge_accepts?(yaml), "fledge build refused #{file}"
     end

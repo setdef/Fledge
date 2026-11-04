@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The schema of `fledge.yml` names itself by the release's tag, `https://raw.githubusercontent.com/setdef/Fledge/vX.Y.Z/lib/fledge/config.schema.json`, not by `trunk`, and that is the modeline to use, with the tag your `Gemfile` names: `trunk`'s schema describes what comes next, which your Fledge may refuse. A modeline that names `trunk` still works.
+
 ## [0.4.0] - 2026-11-04
 
 ### Added

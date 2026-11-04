@@ -124,6 +124,18 @@ installers: [dmg, nsis, appimage, deb]
 
 macOS, Windows, and Linux show your app's name, icon, and version in their usual places. [`examples/windowed_app`](examples/windowed_app) is a complete example, and `--help` lists every key.
 
+Your editor can check `fledge.yml` as you type. With Red Hat's YAML language server, which VS Code's YAML extension runs, make this the file's first line, with the tag your `Gemfile` names, and the editor completes each key and marks what `fledge build` would refuse:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.4.0/lib/fledge/config.schema.json
+```
+<!-- SPDX-SnippetEnd -->
+
 `installers` chooses which of `dmg`, `nsis`, `appimage`, and `deb` to build. The default is the first three, and `deb` needs `dpkg-deb` on your computer. A `.deb` depends only on `libc6`, so `apt` installs it on a computer without a desktop too. A library a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there.
 
 ### Several programs in one app

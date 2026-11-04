@@ -281,6 +281,26 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # require "mkmf" loads in a built app, as under ruby, since the runtime
+  # keeps Ruby's headers (ADR 003, section 2), and some gems require it
+  # at run time for MakeMakefile#find_executable.
+  def test_mkmf_loads_in_a_built_app_and_finds_an_executable
+    Dir.mktmpdir do |dir|
+      project = File.join(dir, "mkmf-app")
+      FileUtils.mkdir_p(project)
+      File.write(File.join(project, "main.rb"), "require \"mkmf\"\nputs \"found \#{find_executable(ARGV.fetch(0))}\"\n")
+      File.write(File.join(project, "fledge.yml"), "name: MkmfApp\n")
+      launcher = build_and_unpack(dir, project, name: "MkmfApp")
+      program, folder = @platform.windows? ? ["cmd", ENV.fetch("SystemRoot", "C:\\Windows")] : ["sh", "/bin"]
+      env = { "HOME" => dir, "PATH" => @platform.windows? ? File.join(folder, "System32") : folder }
+
+      out, err, status = run_app(env, launcher, program, chdir: dir)
+
+      assert_equal [0, ""], [status.exitstatus, err]
+      assert_match(/^found .*#{Regexp.escape(program)}(?:\.exe)?$/i, out)
+    end
+  end
+
   # A program restarts itself as Ruby programs do, with exec
   # RbConfig.ruby, $0, *ARGV, and the runtime's bin/ruby hands the app's
   # own program back to its launcher (ADR 026, section 3). So the restart
@@ -679,11 +699,11 @@ class BuiltAppTest < Minitest::Test
   # Runs the app, never through a shell, with nothing in its environment
   # but +env+. Windows' network and cryptography libraries need
   # SystemRoot, so on Windows that stays, with a PATH of System32.
-  def run_app(env, app, *argv)
+  def run_app(env, app, *argv, chdir: Dir.tmpdir)
     if @platform.windows?
       system_root = ENV.fetch("SystemRoot", "C:\\Windows")
       env = { "SystemRoot" => system_root, "PATH" => File.join(system_root, "System32") }.merge(env)
     end
-    Open3.capture3(env, [app, app], *argv, unsetenv_others: true, chdir: Dir.tmpdir)
+    Open3.capture3(env, [app, app], *argv, unsetenv_others: true, chdir:)
   end
 end

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - On macOS and Linux, the launcher and the runtime's `bin/ruby` keep an explicit `LC_ALL` or `LC_CTYPE`, `C` included, as `ruby` does; they had turned it into a UTF-8 locale. A C locale from `LANG`, or from no locale variable at all, still becomes UTF-8.
+- `require "mkmf"` works in a built app on macOS, Linux, and Windows: runtimes now carry Ruby's C headers (`include/`), and the build-only companion no longer does. Runtimes grow by about 0.4 MB.
 
 ## [0.3.0] - 2026-11-03
 

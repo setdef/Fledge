@@ -51,8 +51,10 @@ require_relative "../lib/fledge/version"
 # keeps everything such a Ruby installs that running Ruby code can
 # reach (every default and bundled gem, its executables, the gem cache,
 # the C extensions, RbConfig.ruby) and prunes only what no running Ruby
-# code reads: documentation, man pages, headers, static and import
-# libraries, and debug information. Size matters less than that rule.
+# code reads: documentation, man pages, the headers of gems' extensions,
+# static and import libraries, and debug information. Ruby's own headers
+# stay, since require "mkmf" reads them. Size matters less than that
+# rule.
 #
 # Run it as rake runtime (or rake "runtime[x64-mingw-ucrt]"), or as ruby
 # tasks/runtime_builder.rb [PLATFORM] in a container that has a C

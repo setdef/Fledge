@@ -51,13 +51,15 @@ class RuntimeBuilder
 
     # Copies rv-ruby's bin/ (whose ruby compile then replaces with one
     # built from the same libruby as the launcher; the rest are the gems'
-    # executables), lib/ruby, and the CA bundle.
+    # executables), lib/ruby, Ruby's headers (include/, which require
+    # "mkmf" looks for; Pruning.prune), and the CA bundle.
     private def copy_ruby(stage)
       FileUtils.mkdir_p(File.join(stage, "lib"))
       FileUtils.cp_r(File.join(@prefix, "bin"), File.join(stage, "bin"))
       FileUtils.rm_f(File.join(stage, "bin", "ruby"))
       FileUtils.cp_r(File.join(@prefix, "lib", "ruby"), File.join(stage, "lib", "ruby"))
-      FileUtils.chmod_R("u+w", [File.join(stage, "lib"), File.join(stage, "bin")])
+      FileUtils.cp_r(File.join(@prefix, "include"), File.join(stage, "include"))
+      FileUtils.chmod_R("u+w", [File.join(stage, "lib"), File.join(stage, "bin"), File.join(stage, "include")])
       removed = Pruning.prune(File.join(stage, "lib", "ruby"), @builder.bundled_gems)
       Pruning.prune_bin(File.join(stage, "bin"), removed)
       @builder.install_rubygems_defaults(File.join(stage, "lib", "ruby"))

@@ -91,10 +91,12 @@ module Fledge
     end
 
     # The file name of the runtime's build-only companion for +platform+
-    # at +version+ (default: this Fledge's version): Ruby's C headers, and
-    # on Windows its import library, which a runtime prunes because no
-    # running app reads them, and which compiling a gem's extension
-    # against the runtime's own Ruby needs (ADR 006). Its top folder is
+    # at +version+ (default: this Fledge's version): the library a gem's
+    # extension links against (static libruby, or on Windows the import
+    # library of Ruby's DLL), which a runtime prunes because no running
+    # app reads it, and which compiling a gem's extension against the
+    # runtime's own Ruby needs beside the headers the runtime holds (ADR
+    # 006). Its top folder is
     # the runtime's, so it unpacks over it. It never ships in an app.
     #
     # === Example

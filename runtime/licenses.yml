@@ -126,6 +126,12 @@ components:
       - launcherw.exe
       - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
     binaries: [launcher, launcher.exe, launcherw.exe]
+    # bin/ruby on macOS and Linux is Ruby's main.c with Fledge's code that
+    # chooses its locale and hands an app's own program back to its
+    # launcher (runtime/launcher/ruby_main.c, ADR 026).
+    embedded:
+      - files: ["{prefix}bin/ruby"]
+        evidence: "ruby: could not run "
 
   # A phone's app has no Fledge launcher: the host app the project
   # fledge build writes starts Ruby through the embedding API (ADR 012),

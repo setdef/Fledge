@@ -20,6 +20,8 @@
  * Gemfile gets the environment bundle exec would give it. locale.c holds
  * how macOS, Linux, and the mobile runtimes choose a UTF-8 locale, for
  * the launcher and for the runtime's bin/ruby (ruby_main.c) alike.
+ * relaunch.c holds how bin/ruby hands an app's own program back to the
+ * app's launcher.
  */
 
 #ifndef FLEDGE_LAUNCHER_H
@@ -108,6 +110,14 @@ void fledge_coerce_locale(void);
  * out, which holds size bytes. Returns 0, or -1 with errno set.
  */
 int fledge_executable_path(char *out, size_t size);
+
+/*
+ * In the runtime's bin/ruby: when argv[1] is the program a launcher of
+ * this app runs, runs that launcher in this process with the arguments
+ * after it, and does not return; otherwise returns, and bin/ruby is
+ * plain Ruby (relaunch.c).
+ */
+void fledge_relaunch(int argc, char **argv);
 #endif
 
 #endif

@@ -5,8 +5,8 @@
  * SPDX-FileComment: Adapted from Ruby's main.c at Ruby v4.0.9
  *   (3e93b23afcec3433f6aecc34b5d832799d754238), without its developer-only
  *   RUBY_DEBUG_ENV and sanitizer hooks, whose headers Ruby does not install,
- *   and with Fledge's fledge_coerce_locale (locale.c) in place of its
- *   setlocale.
+ *   with Fledge's fledge_relaunch (relaunch.c) first, and with Fledge's
+ *   fledge_coerce_locale (locale.c) in place of its setlocale.
  */
 
 /*
@@ -19,12 +19,17 @@
  * libruby the launcher links, with the same link line, so the two
  * programs carry exactly the same Ruby and the same libraries. This is
  * Ruby's main.c, and it is the ruby a person runs, not an app's
- * launcher: it neither scrubs the environment nor runs app/main.rb.
+ * launcher: it neither scrubs the environment nor runs app/main.rb on
+ * its own.
  * Built with --enable-load-relative, it finds its standard library from
  * its own folder, bin, whose parent is the runtime (ruby.c,
  * ruby_init_loadpath).
  *
- * It differs from main.c in one call. Where main.c sets LC_CTYPE from
+ * It differs from main.c in two calls. First, when its first argument is
+ * the program a launcher of this app runs, as in a restart with exec
+ * RbConfig.ruby, $0, *ARGV, it runs that launcher in its place
+ * (fledge_relaunch, ADR 026, section 3), so the restarted app boots as
+ * it booted the first time. Second, where main.c sets LC_CTYPE from
  * the environment, it calls the launcher's fledge_coerce_locale, which
  * does the same and then turns a bare C or POSIX locale into a UTF-8
  * one, as Python does (PEP 538). The launcher sets the locale only in
@@ -36,7 +41,9 @@
  * (ADR 026, section 1).
  *
  * Its license is Ruby's, like the rest of what it is made of; the
- * runtime's notices/ruby/ covers it. locale.c is Fledge's own.
+ * runtime's notices/ruby/ covers it. relaunch.c, config.c, locale.c, and
+ * the file that finds this program (darwin.c or linux.c) are Fledge's
+ * own.
  */
 
 #include "launcher.h"
@@ -56,6 +63,7 @@ rb_main(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
+    fledge_relaunch(argc, argv);
     fledge_coerce_locale();
 
     ruby_sysinit(&argc, &argv);

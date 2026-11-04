@@ -11,7 +11,8 @@
 #
 # ARCHIVE is NAME-PLATFORM.tar.gz as fledge build wrote it, and
 # PROBE_ARCHIVE the parity probe (test/fixtures/parity) built the same
-# way, which reports what a child Ruby sees: Parity-PLATFORM.tar.gz, a
+# way, which reports what a child Ruby sees and what a restart through
+# RbConfig.ruby changes: Parity-PLATFORM.tar.gz, a
 # lone script, for hello, and ParityBundle-PLATFORM.tar.gz, the probe as
 # a gem-shaped app's program (Parity.gem_probe), for my_cool_app. EXPECTED
 # is the one line the app must print: for hello, "Hello from Ruby 4.0.9
@@ -235,6 +236,38 @@ case "$gem_path" in
   *"$person_gems"*) fail "the app's own Gem.path holds the person's GEM_HOME: $gem_path" ;;
 esac
 echo "ok: the app's own gems ignore the person's GEM_HOME"
+
+# A program restarts itself as Ruby programs do, with exec RbConfig.ruby,
+# $0, *ARGV, and the runtime's bin/ruby hands the app's own program back
+# to its launcher (ADR 026). The probe restarts from this folder, whose
+# name is not ASCII, with no locale, in a clean environment, the
+# person's, and the hostile one, and prints what changed across the
+# restart: nothing, not even the process.
+# restarts LABEL VARIABLE=VALUE...
+restarts() {
+  label=$1
+  shift
+  set +e
+  (cd / && env -i PATH="$empty" "$@" "$probe" restart) >"$work/out" 2>"$work/err"
+  actual=$?
+  set -e
+  if [ "$actual" -ne 0 ] || [ -s "$work/err" ] || [ "$(cat "$work/out")" != "restarted as itself" ]; then
+    echo "--- stdout"; cat "$work/out"
+    echo "--- stderr"; cat "$work/err"
+    fail "$label: exit status $actual, output above"
+  fi
+  echo "ok: $label"
+}
+restarts "a restart through RbConfig.ruby is the same app" HOME="$home"
+restarts "a restart in the person's environment is the same app" HOME="$home" GEM_HOME="$person_gems" RUBYOPT=-W0 \
+  RUBYLIB="$evil"
+restarts "a restart in a hostile environment is the same app" HOME="$dot_gem_home" \
+  RUBYLIB="$evil" RUBYOPT="-rnonexistent" RUBYSHELL=/bin/false \
+  GEM_HOME="$dot_gem_home/.gem/ruby/4.0.0" GEM_PATH="$dot_gem_home/.gem/ruby/4.0.0" \
+  GEM_SPEC_CACHE="$evil" GEMRC="$evil/json.rb" \
+  BUNDLE_GEMFILE="$evil/Gemfile" BUNDLE_PATH="$evil" BUNDLER_SETUP="$evil/bundler_setup.rb" \
+  BUNDLE_APP_CONFIG="$evil" BUNDLE_FROZEN=false BUNDLE_WITHOUT=default BUNDLER_VERSION=2.1.0 \
+  RUBYGEMS_GEMDEPS=- RUBY_YJIT_ENABLE=0 LD_LIBRARY_PATH="$evil/lib"
 
 # A broken app names itself, not Ruby, on standard error, and exits with
 # EX_NOINPUT (66) when the program it runs, app/ENTRY, is missing (ADR

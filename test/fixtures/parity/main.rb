@@ -35,6 +35,11 @@
 #                           Bundler.with_original_env or
 #                           Bundler.with_unbundled_env, or (no Bundler)
 #   parity gem-path         prints Gem.path, one folder per line
+#   parity restart          restarts itself as a Ruby program does, with
+#                           exec RbConfig.ruby, $0, and prints what the
+#                           restarted probe found different from the
+#                           first start, a line each, or "restarted as
+#                           itself" (ADR 026)
 #
 # It uses nothing but Ruby's standard library, so it runs under any Ruby
 # 4.0.
@@ -103,6 +108,66 @@ def project_root
   (defined?(Bundler) && Bundler.respond_to?(:root)) ? Bundler.root.to_s : __dir__
 end
 
+# The program this process runs, as the operating system knows it, by
+# its real path: the launcher, or bin/ruby. Windows and phones are not
+# asked.
+def running_program
+  return File.realpath("/proc/self/exe") if File.exist?("/proc/self/exe")
+  return unless RUBY_PLATFORM.include?("darwin")
+
+  File.realpath(IO.popen({ "LC_ALL" => "en_US.UTF-8" }, ["/bin/ps", "-o", "comm=", "-p", Process.pid.to_s], &:read).strip)
+end
+
+# The identifier of the bundle macOS takes this process to be part of
+# (NSBundle.mainBundle), which an .app's Info.plist names, or nil. Fiddle
+# is a bundled gem that a Gemfile's bundle leaves out, so under Bundler
+# it is not asked.
+def main_bundle
+  return unless RUBY_PLATFORM.include?("darwin") && !defined?(Bundler)
+
+  require "fiddle"
+  objc = Fiddle.dlopen("/usr/lib/libobjc.A.dylib")
+  Fiddle.dlopen("/System/Library/Frameworks/Foundation.framework/Foundation")
+  pointer = Fiddle::TYPE_VOIDP
+  find_class = Fiddle::Function.new(objc["objc_getClass"], [pointer], pointer)
+  selector = Fiddle::Function.new(objc["sel_registerName"], [pointer], pointer)
+  message = Fiddle::Function.new(objc["objc_msgSend"], [pointer, pointer], pointer)
+  bundle = message.call(find_class.call("NSBundle"), selector.call("mainBundle"))
+  identifier = message.call(bundle, selector.call("bundleIdentifier"))
+  identifier.null? ? nil : message.call(identifier, selector.call("UTF8String")).to_s
+end
+
+# +value+ with every string as valid UTF-8, for JSON: a path read in a C
+# locale is US-ASCII with bytes outside it, which is itself what a
+# restart compares, in "encoding".
+def utf8(value)
+  case value
+  when Hash then value.to_h { |key, item| [utf8(key), utf8(item)] }
+  when Array then value.map { |item| utf8(item) }
+  when String then value.dup.force_encoding(Encoding::UTF_8).scrub
+  else value
+  end
+end
+
+# What a restart keeps: the process, the program it runs, where the app
+# and Ruby are, the locale, the gems, and the environment.
+def restart_facts
+  utf8(
+    "pid" => Process.pid,
+    "program" => running_program,
+    "main bundle" => main_bundle,
+    "$0" => $0,
+    "__FILE__" => __FILE__,
+    "__dir__" => __dir__,
+    "encoding" => [Encoding.default_external.name, __FILE__.encoding.name],
+    "RbConfig.ruby" => RbConfig.ruby,
+    "Gem.path" => Gem.path,
+    "Gem.loaded_specs" => Gem.loaded_specs.keys.sort,
+    "Bundler.original_env" => defined?(Bundler) ? Bundler.original_env : nil,
+    "ENV" => ENV.to_h,
+  )
+end
+
 def facts
   {
     "paths" => { "app" => __dir__, "project" => project_root, "prefix" => RbConfig::TOPDIR, "home" => Dir.home },
@@ -150,6 +215,13 @@ when "original-child-env", "unbundled-child-env"
   puts bundler_child_ruby(method, "print ENV.fetch(#{ARGV.fetch(1).inspect}, '(unset)')") || "(no Bundler)"
 when "gem-path"
   puts Gem.path
+when "restart"
+  exec(RbConfig.ruby, $0, "restarted", JSON.generate(restart_facts))
+when "restarted"
+  before = JSON.parse(ARGV.fetch(1))
+  after = JSON.parse(JSON.generate(restart_facts))
+  changed = before.keys.reject { |key| before[key] == after[key] }
+  puts(changed.empty? ? "restarted as itself" : changed.map { |key| "#{key}: #{before[key].inspect} became #{after[key].inspect}" })
 else
   report = facts
   # Last, since requiring changes $LOADED_FEATURES.

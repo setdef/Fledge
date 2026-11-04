@@ -249,6 +249,55 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # A program restarts itself as Ruby programs do, with exec
+  # RbConfig.ruby, $0, *ARGV, and the runtime's bin/ruby hands the app's
+  # own program back to its launcher (ADR 026, section 3). So the restart
+  # is the same process running the same program, in the same locale,
+  # with the same gems and environment: with no locale, from a folder
+  # whose name is not ASCII, in the person's environment and in a hostile
+  # one, with a Gemfile and without, and in a macOS .app, in the same
+  # bundle. The probe compares what it sees after the restart with what
+  # it saw before.
+  def test_a_restart_through_rbconfig_ruby_is_the_same_app_again
+    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026, section 4)" if @platform.windows?
+
+    Dir.mktmpdir do |dir|
+      evil = File.join(dir, "evil")
+      FileUtils.mkdir_p(evil)
+      %w[json nonexistent bundler_setup].each { |name| File.write(File.join(evil, "#{name}.rb"), "raise 'the caller\\'s Ruby environment leaked into the restart'\n") }
+      person = { "HOME" => dir, "GEM_HOME" => File.join(dir, "person gems"), "RUBYOPT" => "-W0", "RUBYLIB" => evil }
+      hostile = person.merge("RUBYOPT" => "-rnonexistent", "BUNDLER_SETUP" => File.join(evil, "bundler_setup.rb"),
+        "BUNDLE_GEMFILE" => File.join(evil, "Gemfile"), "RUBYGEMS_GEMDEPS" => "-")
+      programs = [probe]
+      programs << windowed_probe if @platform.os == "darwin"
+      programs << bundled_probe unless Parity::WITHOUT_GEM_APP.include?(@platform.name)
+
+      programs.product([{ "HOME" => dir }, person, hostile]).each do |program, env|
+        out, err, status = run_app(env, program, "restart")
+        assert_equal ["restarted as itself\n", "", 0], [out, err, status.exitstatus], "#{program} with #{env.keys.join(', ')}"
+      end
+    end
+  end
+
+  # bin/ruby hands only its first argument to the launcher, and only when
+  # it is an app's program (ADR 026, section 3): with an option before
+  # the program, it is plain Ruby, whose RubyGems reads the person's
+  # GEM_HOME, as ruby -W1 main.rb would.
+  def test_bin_ruby_runs_an_apps_program_through_its_launcher_unless_an_option_comes_first
+    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026, section 4)" if @platform.windows?
+
+    ruby = File.join(File.dirname(probe), "bin", "ruby")
+    main = File.join(File.dirname(probe), "app", "main.rb")
+    Dir.mktmpdir do |dir|
+      gems = File.join(dir, "person gems")
+      env = { "HOME" => dir, "GEM_HOME" => gems }
+      seen = -> (*argv) { run_app(env, ruby, *argv).then { |out, err, status| [out.include?(gems), err, status.exitstatus] } }
+
+      assert_equal [false, "", 0], seen.call(main, "gem-path")
+      assert_equal [true, "", 0], seen.call("-W1", main, "gem-path")
+    end
+  end
+
   def test_a_missing_main_rb_exits_with_ex_noinput
     main = File.join(File.realpath(File.dirname(app)), "app", "main.rb")
     File.rename(main, "#{main}.away")

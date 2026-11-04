@@ -1,0 +1,194 @@
+# A trial, on an experiment branch only: does a Lota 0.1.1 game ship
+# through fledge build on Linux, and run on a computer with no Ruby?
+name: Lota Linux trial
+
+on:
+  push:
+    branches: [experiment/lota-linux-trial]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLEDGE_REF: 19efbfaa8d8812328f7fd96502a8e93e1915e294
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          ruby-version: "4.0.9"
+
+      - name: Install mksquashfs
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq squashfs-tools
+          command -v dpkg-deb mksquashfs
+
+      - name: Download Lota 0.1.1 and check its SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/lota"
+          gh release download v0.1.1 -R setdef/Lota -D "$RUNNER_TEMP/lota"
+          (cd "$RUNNER_TEMP/lota" && sha256sum -c SHA256SUMS)
+          mkdir -p trial/vendor/cache
+          cp "$RUNNER_TEMP"/lota/lota-0.1.1-*-linux-gnu.gem trial/vendor/cache/
+
+      - name: Install Fledge from trunk and lock the Linux platforms
+        working-directory: trial
+        run: |
+          sed -i "s/ref: \"[0-9a-f]*\"/ref: \"$FLEDGE_REF\"/" Gemfile
+          bundle lock --add-platform x86_64-linux aarch64-linux
+          bundle lock --add-checksums
+          bundle install
+          cat Gemfile.lock
+          bundle exec fledge --version
+
+      - name: fledge build, installers [appimage, deb]
+        working-directory: trial
+        run: |
+          cp fledge-deb.yml fledge.yml
+          status=0
+          bundle exec fledge build -o dist-deb > build-deb.out 2> build-deb.err || status=$?
+          echo "exit status: $status"; echo "--- stdout"; cat build-deb.out; echo "--- stderr"; cat build-deb.err
+          ls -la dist-deb || true
+          exit "$status"
+
+      - name: fledge build, installers [appimage]
+        if: always()
+        working-directory: trial
+        run: |
+          cp fledge-appimage.yml fledge.yml
+          status=0
+          bundle exec fledge build -o dist-appimage > build-appimage.out 2> build-appimage.err || status=$?
+          echo "exit status: $status"; echo "--- stdout"; cat build-appimage.out; echo "--- stderr"; cat build-appimage.err
+          ls -la dist-appimage || true
+          exit "$status"
+
+      - name: Run the game on the build computer, under Xvfb
+        if: always()
+        working-directory: trial
+        run: |
+          sudo apt-get install -y -qq xvfb
+          mkdir -p /tmp/onbuild
+          tar -xzf "dist-deb/LotaTrial-${{ matrix.platform }}.tar.gz" -C /tmp/onbuild
+          status=0
+          LIBGL_ALWAYS_SOFTWARE=1 timeout 40 xvfb-run -a "/tmp/onbuild/LotaTrial-${{ matrix.platform }}/LotaTrial" || status=$?
+          echo "exit status: $status"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lota-trial-${{ matrix.platform }}
+          path: |
+            trial/dist-deb/*.tar.gz
+            trial/dist-deb/*.deb
+            trial/dist-deb/*.AppImage
+            trial/dist-appimage/*
+            trial/Gemfile.lock
+            trial/build-*.out
+            trial/build-*.err
+            trial/run-on-desktop.sh
+          if-no-files-found: warn
+
+  run:
+    name: Run (${{ matrix.platform }}, ${{ matrix.image }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.image }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:trixie-slim", "ubuntu:24.04"]
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lota-trial-${{ matrix.platform }}
+          path: delivered
+
+      - name: Run the game in stages
+        run: |
+          mkdir -p dist
+          cp delivered/dist-deb/* dist/
+          RESULTS="$PWD/results" sh delivered/run-on-desktop.sh dist "${{ matrix.platform }}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: results-${{ matrix.platform }}-${{ matrix.image == 'ubuntu:24.04' && 'ubuntu' || 'debian' }}
+          path: results
+
+  musl:
+    name: musl (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux-musl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download Lota 0.1.1 and check its SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/lota"
+          gh release download v0.1.1 -R setdef/Lota -D "$RUNNER_TEMP/lota"
+          (cd "$RUNNER_TEMP/lota" && sha256sum -c SHA256SUMS)
+          mkdir -p trial/vendor/cache
+          cp "$RUNNER_TEMP"/lota/lota-0.1.1-*-linux-gnu.gem trial/vendor/cache/
+
+      - name: Lock musl, then build with a glibc-only lockfile, in Alpine
+        run: |
+          cat > "$RUNNER_TEMP/musl.sh" <<'SH'
+          set -u
+          apk add --no-cache git binutils squashfs-tools >/dev/null
+          cd /trial
+          sed -i "s/ref: \"[0-9a-f]*\"/ref: \"$FLEDGE_REF\"/" Gemfile
+          cp fledge-appimage.yml fledge.yml
+          echo "=== bundle lock --add-platform $PLATFORM"
+          bundle lock --add-platform "$PLATFORM"; echo "exit status: $?"
+          echo "=== a lockfile with the glibc platforms only"
+          rm -f Gemfile.lock
+          bundle lock --add-platform x86_64-linux aarch64-linux --remove-platform "$PLATFORM"; echo "exit status: $?"
+          bundle lock --add-checksums
+          cat Gemfile.lock
+          echo "=== bundle install"
+          bundle install; echo "exit status: $?"
+          echo "=== fledge build"
+          bundle exec fledge build -o dist; echo "exit status: $?"
+          SH
+          docker run --rm -v "$GITHUB_WORKSPACE/trial:/trial" -v "$RUNNER_TEMP:/scripts" \
+            -e FLEDGE_REF -e PLATFORM=${{ matrix.platform }} \
+            ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3 sh /scripts/musl.sh

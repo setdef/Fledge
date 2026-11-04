@@ -1,0 +1,5 @@
+name: LotaTrial
+kind: windowed
+identifier: com.example.LotaTrial
+version: "0.0.1"
+installers: [appimage, deb]

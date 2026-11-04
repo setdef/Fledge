@@ -108,7 +108,7 @@ installers: [dmg, nsis, appimage, deb]
 ```
 <!-- SPDX-SnippetEnd -->
 
-macOS, Windows, and Linux show your app's name, icon, and version in their usual places. Set `installers` to choose which of `dmg`, `nsis`, `appimage`, and `deb` to build. The default is the first three; `deb` takes `dpkg-deb` on your computer. [`examples/windowed_app`](examples/windowed_app) is a complete example, and `--help` lists every key.
+macOS, Windows, and Linux show your app's name, icon, and version in their usual places. Set `installers` to choose which of `dmg`, `nsis`, `appimage`, and `deb` to build. The default is the first three; `deb` takes `dpkg-deb` on your computer. Your `.deb` depends only on `libc6`, so `apt` installs it on a computer without a desktop too. A library a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, which Fledge cannot check. [`examples/windowed_app`](examples/windowed_app) is a complete example, and `--help` lists every key.
 
 ### Several programs in one app
 

@@ -169,7 +169,22 @@ module Fledge
         definition
       end
     rescue Bundler::BundlerError => e
-      raise Error, "Bundler can't read #{gemfile} and #{lockfile_name}:\n#{e.message}"
+      raise Error, "Bundler can't read #{gemfile} and #{lockfile_name}:\n#{e.message.rstrip}#{empty_checksum_advice(e.message)}"
+    end
+
+    # What fills the empty CHECKSUMS entry Bundler's +message+ names, if
+    # it names one, which Bundler's own advice, to run bundle install
+    # elsewhere, does not: <tt>bundle lock --add-checksums</tt> computes
+    # a checksum only for a build installed on this computer, or takes
+    # one from the gem server (Bundler::Definition#add_checksums at
+    # Bundler 4.0.20), so a gem only in vendor/cache keeps an empty entry
+    # for each other platform's build.
+    private def empty_checksum_advice(message)
+      name = message[/empty CHECKSUMS entry for "([^"]+)"/, 1] or return ""
+
+      "\nbundle lock --add-checksums fills a gem's entry only for a build Bundler installed on this computer, or one its gem server " \
+        "lists a checksum for. Write the SHA-256 of each of #{name}'s .gem files after its entry in #{lockfile_name}'s CHECKSUMS " \
+        "section, as sha256=HEX (shasum -a 256 vendor/cache/#{name}-*.gem prints them), then build again."
     end
 
     # The groups the app sets up, as Bundler sets them up

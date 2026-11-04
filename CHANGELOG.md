@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- When `Gemfile.lock` has an empty `CHECKSUMS` entry, which `bundle lock --add-checksums` leaves for a gem only `vendor/cache` holds, `fledge build` says after Bundler's message how to fill it: write the SHA-256 of each of the gem's `.gem` files into its entry.
+
 ### Fixed
 
 - `fledge build` leaves every folder an earlier build went to out of the app, not only the current `--out`, so a build into `dist` and then one into `out` no longer ships the first build inside the second. The folder a build makes, or finds empty, gets a `CACHEDIR.TAG`, and any folder in the project that holds a valid one stays out of the app.

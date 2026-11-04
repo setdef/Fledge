@@ -102,8 +102,11 @@
 #                        print its path. Run it on a Mac, x86-64 Linux,
 #                        or Windows; building the project needs a JDK and
 #                        the Android SDK.
-#                        A phone's name comes first; for a folder named
-#                        ios or android, write ./ios.
+#                        A phone's name comes first. A PATH that is a
+#                        bare word Fledge reads as a platform, today
+#                        ios and android, is read as one, and so is
+#                        each platform's word a later release adds;
+#                        write ./NAME for a folder of that name.
 #
 # OPTIONS
 #     -o, --out DIR      Write builds to DIR (default: dist)
@@ -152,7 +155,10 @@
 #                          com.example.MyCoolApp, which macOS and
 #                          Windows know it by, and the bundle identifier
 #                          or applicationId of a phone's app (needed when
-#                          windowed, and for a phone)
+#                          windowed, and for a phone). Changing
+#                          identifier makes a new app to each system,
+#                          so Windows and apt register it beside the
+#                          old one.
 #                        version: such as "1.2.3" (default: the
 #                          gemspec's, or 0.0.0)
 #                        icon: the icon's files without their

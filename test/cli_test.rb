@@ -48,6 +48,18 @@ class CLITest < Minitest::Test
     end
   end
 
+  # A bare word Fledge reads as a platform is read so by every later
+  # release, and the help says to write ./NAME for a folder of that name
+  # (ADR 029, section 5), naming each word the parser takes today.
+  def test_help_reserves_the_words_it_reads_as_platforms
+    out, = fledge("--help")
+    words = out.split.join(" ")
+
+    assert_includes words, "A PATH that is a bare word Fledge reads as a platform, today #{Fledge::MobilePlatform.names.join(' and ')}, " \
+      "is read as one, and so is each platform's word a later release adds; write ./NAME for a folder of that name."
+    assert_includes words, "Changing identifier makes a new app to each system"
+  end
+
   # The help is the CLI's contract, so it must name every platform Fledge
   # builds on, and the archive each gets.
   def test_help_names_every_platform_and_its_archive

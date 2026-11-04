@@ -22,7 +22,9 @@ module Fledge
       Options = Data.define(:out, :path, :phone, :sign) do
         # The options +argv+ gives. A first operand that names a phone
         # (Fledge::MobilePlatform.names) is the phone; a folder of that
-        # name is <tt>./ios</tt>, or follows <tt>--</tt>. Raises
+        # name is <tt>./ios</tt>, or follows <tt>--</tt>. A platform added
+        # later takes its word here too, which the help reserves (ADR 029,
+        # section 5). Raises
         # Fledge::UsageError for an option it does not know, one without
         # its value, or more than one PATH, and for the <tt>--target</tt>
         # Fledge 0.0.1.pre.7 and earlier took, saying why it went.

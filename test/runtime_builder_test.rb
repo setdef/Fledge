@@ -201,7 +201,7 @@ class RuntimeBuilderTest < Minitest::Test
     rust = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
     {
       "launcher" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{rust} GCC: ("),
-      "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{rust} GCC: ("),
+      "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{rust} GCC: ( ruby: could not run "),
       "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
       "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
       "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n",

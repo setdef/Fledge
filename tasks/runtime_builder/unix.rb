@@ -21,10 +21,10 @@ class RuntimeBuilder
       finish(stage)
     end
 
-    # Ruby's own main.c, which chooses its locale as the launcher does
-    # (ADR 026, section 1).
+    # Ruby's own main.c, which chooses its locale as the launcher does,
+    # and hands an app's own program back to its launcher (ADR 026).
     private def ruby_sources
-      %w[ruby_main.c locale.c].map { |file| File.join(LAUNCHER, file) }
+      %w[ruby_main.c relaunch.c config.c locale.c].map { |file| File.join(LAUNCHER, file) } << File.join(LAUNCHER, os_file)
     end
 
     private def launcher_sources

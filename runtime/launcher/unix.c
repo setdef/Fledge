@@ -11,7 +11,9 @@
  *
  *   NAME                       this program
  *   fledge.cfg                 what it runs (config.c)
- *   bin/ruby                   Ruby's own program, for RbConfig.ruby
+ *   bin/ruby                   Ruby's own program, for RbConfig.ruby,
+ *                              which runs this program again when it
+ *                              is given ENTRY (relaunch.c)
  *   lib/ruby/4.0.0/            Ruby's standard library
  *   lib/ruby/gems/4.0.0/       Ruby's default and bundled gems, and the
  *                              app's own

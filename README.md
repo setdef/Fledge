@@ -21,7 +21,7 @@ Fledge writes these for you, for each platform you build on:
 | `console` (the default) | `.tar.gz` holding the program | `.zip` holding `NAME.exe` | `.tar.gz` holding the program |
 | `windowed` | `NAME.app` and a `.dmg` | `NAME.exe`, which opens no console, and a `-setup.exe` that installs without an administrator | a folder with a desktop entry and icons, an AppImage, and a `.deb` if you ask for one |
 
-Building a program that prints one line gives you a 19 MB archive (60 MB unpacked) on `arm64-darwin`. Your users run the app with no Ruby on their `PATH`. If they have a Ruby of their own, it makes no difference: the launcher clears `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the other variables a Ruby reads before Ruby starts.
+Building a program that prints one line gives you a 19 MB archive (60 MB unpacked) on `arm64-darwin`. Your users run the app with no Ruby on their `PATH`. If they have a Ruby of their own, it makes no difference: the launcher clears `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the other variables a Ruby reads before Ruby starts. Ruby's own answers stay true inside the app: `$0`, `__dir__`, `RbConfig.ruby`, and `Gem.dir` name where your program, its Ruby, and its gems are, and on macOS and Linux `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first started. On Windows, start the app's own `NAME.exe` again instead.
 
 ### Compared with other ways to ship a Ruby program
 

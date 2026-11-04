@@ -290,3 +290,19 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 *Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; ADR 026; `Parity::JUSTIFIED`.
 
+> A minor release can make additional rubies available, but can only change the defaults' patch versions--unless we abandon the concept of default entirely, and require app devs to specify a version (maybe better?); then it's limited to e.g. generated config files, which can change in a minor version because they don't get re-generated on upgrade.
+>
+> Ruby doesn't follow SemVer, so 4.1 is expected to have breaking changes from 4.0.
+>
+> I require a major version bump to drop support for a ruby, or to drop support for an OS "version" (the thing that differentiates MacOS 26 from MacOS 27, not patches etc.).
+
+[re: question A in `questions.md`, whether a 1.x release may change the Ruby inside apps or raise the minimum operating system.]
+
+*Governs:* a minor release may add Rubies and may change only a default Ruby's patch version; the maintainer is open to having no default Ruby, with the app developer naming the version (the orchestrator is to weigh it); generated config files may change in a minor release because an upgrade does not regenerate them; a new Ruby minor is expected to break (Ruby does not follow SemVer); dropping a Ruby, or an operating system version (macOS 26 against 27, not a patch), requires a major version. *Applied in:* ADR 028; ADR 029.
+
+> We'll be reusing the git/ruby version stuff from RatatuiRuby and Rooibos. How tags work (and release branches, backports, etc.) differ before and after 1.0.0.
+
+[re: question B in `questions.md`, whether a release from 1.0 on still gets a git tag.]
+
+*Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it. *Applied in:* ADR 028; Plan 003, "Fledge as gems on RubyGems.org" and "1.0".
+

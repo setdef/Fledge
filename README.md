@@ -223,7 +223,7 @@ Fledge's CI runs phone apps in the iOS Simulator on an iPhone and an iPad, and o
 
 ### Updating Fledge
 
-Change the tag in your `Gemfile` and run `bundle update fledge`. Each version pins the SHA-256 of every runtime it downloads. A new version of Fledge may move your app's Ruby to a newer patch, such as 4.0.9 to 4.0.10, and the [CHANGELOG](CHANGELOG.md) records each move; only you move it to another minor version, by running Fledge with that Ruby. Fledge is 0.x: a minor version can break your build, so read the CHANGELOG before you update. From 1.0, only a major version will change what [ADR 029](doc/contributors/adr/029.md) freezes: the command, `fledge.yml`, and what a built app holds.
+Change the tag in your `Gemfile` and run `bundle update fledge`. Each version pins the SHA-256 of every runtime it downloads. A new version of Fledge may move your app's Ruby to a newer patch, such as 4.0.9 to 4.0.10, and the [CHANGELOG](CHANGELOG.md) records each move; only you move it to another minor version, by running Fledge with that Ruby. Fledge is 0.x: a minor version can break your build, so read the CHANGELOG before you update. From 1.0, only a major version will change the command, `fledge.yml`, or what a built app holds.
 
 ## Documentation
 

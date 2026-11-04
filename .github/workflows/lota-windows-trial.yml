@@ -90,6 +90,7 @@ jobs:
 
   build:
     name: Build (${{ matrix.platform }})
+    needs: mesa
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     strategy:
@@ -166,13 +167,18 @@ jobs:
           ls -la "$RUNNER_TEMP/dist-fix" || true
           exit "$status"
 
-      - name: Run the game with no window on the build computer, as bundle exec would
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: always()
-        working-directory: ${{ runner.temp }}/trial-fix
-        run: |
-          status=0
-          bundle exec ruby main.rb quiet || status=$?
-          echo "exit status: $status"
+        with:
+          name: mesa-${{ matrix.platform }}
+          path: ${{ runner.temp }}/mesa
+
+      - name: Run the game on the build computer, as bundle exec would
+        if: always()
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File trial/reference.ps1 -Project "$env:RUNNER_TEMP/trial-fix"
+          -Results "$env:RUNNER_TEMP/reference" -Mesa "$env:RUNNER_TEMP/mesa"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -184,6 +190,7 @@ jobs:
             ${{ runner.temp }}/dist-trunk/*
             ${{ runner.temp }}/build-*
             ${{ runner.temp }}/trial-fix/Gemfile.lock
+            ${{ runner.temp }}/reference
           if-no-files-found: warn
 
   run:

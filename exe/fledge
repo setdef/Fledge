@@ -36,7 +36,10 @@
 #     each as built for this platform, which Bundler sets up before the
 #     program runs, as bundle exec would. A gem with an extension to
 #     compile (published only as source, or from git) is compiled
-#     against the runtime's own Ruby, with your compiler.
+#     against the runtime's own Ruby, with your compiler. Your code
+#     runs as it does under ruby main.rb or bundle exec; README.md
+#     lists each difference, and why, under "How a Fledge app differs
+#     from running ruby main.rb".
 #
 #     An app is console (it runs in a terminal) or windowed (it opens
 #     its own windows): a windowed app is an .app bundle on macOS,

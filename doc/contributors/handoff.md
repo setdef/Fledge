@@ -78,4 +78,4 @@ Spike code is thrown away; findings are kept. The mobile and permissive spikes' 
 
 1. Read Plan 003 and take its first story not waiting on money. The wrapper story is done on Fledge's side (ADR 019): wrappers depend on Fledge, and Fledge depends on no wrapper's repository, so nothing here waits on Rooibos, Tokra, or Lota. The unsent drafts in `doc/contributors/drafts/` are optional FYIs. The experiment's workflow and delivery scripts (`wrapper.yml`, `deliver-tui.py`, `deliver-tui.ps1`) are on the `experiment/wrapper` branch.
 2. The gems real apps lock are done for the desktop platforms CI compiles on (ADR 020, `examples/real_gems`); what is left of that story is in its plan entry. Take the next story not waiting on an account.
-3. Watch `questions.md` (entries A, Ruby's version across 1.x, and B, tags from 1.0, are open, and work proceeds on their defaults): when the maintainer answers an entry, quote the answer in `decisions.md`, apply it, and take the story it unblocks.
+3. Watch `questions.md` (none is open): when the maintainer answers an entry, quote the answer in `decisions.md`, apply it, and take the story it unblocks.

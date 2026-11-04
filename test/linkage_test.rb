@@ -65,6 +65,33 @@ class LinkageTest < Minitest::Test
     assert_includes windows.first, "needs libxml2-16.dll"
   end
 
+  # A game's engine, its window and input library, and its audio library
+  # link DLLs that are in System32 on every Windows a Fledge app runs on,
+  # x64 and ARM64, as a 2D game gem's precompiled Windows build links
+  # them: the Desktop Window Manager's, the input method editor's, the
+  # device installer's, the multimedia scheduler's, and Direct3D's,
+  # DirectInput's, DirectSound's, and the HID class driver's.
+  def test_the_dlls_every_windows_has_for_windows_input_and_sound_need_no_shipping
+    windows = problems("windows", {
+"lib/game/native.so" => Binaries.pe(needed: %w[
+  x64-ucrt-ruby400.dll
+  dwmapi.dll
+  IMM32.dll
+  SETUPAPI.dll
+  cfgmgr32.dll
+  HID.dll
+  d3d9.dll
+  d3d11.dll
+  dxgi.dll
+  DINPUT8.dll
+  DSOUND.dll
+  OpenAL32.dll
+]),
+"lib/game/libraries/OpenAL32.dll" => Binaries.pe(needed: %w[KERNEL32.dll AVRT.dll ole32.dll WINMM.dll]),
+}, provided: ["x64-ucrt-ruby400.dll"])
+    assert_empty windows
+  end
+
   def test_a_file_for_another_ruby_is_never_loaded_and_never_judged
     assert_empty problems("windows", { "lib/ext/3.4/ext.so" => Binaries.pe(needed: %w[x64-ucrt-ruby340.dll libother.dll]) },
       provided: ["x64-ucrt-ruby400.dll"])

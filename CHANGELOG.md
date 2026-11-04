@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Windows, `fledge build` takes a gem whose compiled files link DLLs every Windows has in System32 for windows, input, graphics, and sound (`avrt`, `cfgmgr32`, `comctl32`, `d3d9`, `d3d11`, `dinput8`, `dsound`, `dwmapi`, `dxgi`, `hid`, `imm32`, `setupapi`), as a game library's precompiled Windows gem does; it had refused such a gem, saying the app could not load the DLL on another computer.
 - On macOS and Linux, an app's `notices/NOTICES.txt` and SBOM, and `doc/licensing.md`, count `bin/ruby` among the files that hold Fledge's AGPL code, beside the launcher and the RubyGems defaults file; they had named only those two, though `bin/ruby` has carried Fledge's code since 0.3.0.
 
 ## [0.4.0] - 2026-11-04

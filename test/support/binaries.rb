@@ -62,6 +62,24 @@ needed: [
     { format: "pe", needed: %w[KERNEL32.dll] },
     { format: "pe", needed: %w[x64-ucrt-ruby400.dll KERNEL32.dll api-ms-win-crt-heap-l1-1-0.dll libxml2-16.dll] },
     { format: "pe", needed: %w[x64-ucrt-ruby340.dll libother.dll] },
+    {
+      format: "pe",
+      needed: %w[
+        x64-ucrt-ruby400.dll
+        dwmapi.dll
+        IMM32.dll
+        SETUPAPI.dll
+        cfgmgr32.dll
+        HID.dll
+        d3d9.dll
+        d3d11.dll
+        dxgi.dll
+        DINPUT8.dll
+        DSOUND.dll
+        OpenAL32.dll
+      ],
+    },
+    { format: "pe", needed: %w[KERNEL32.dll AVRT.dll ole32.dll WINMM.dll] },
     { format: "pe", needed: %w[KERNEL32.dll], delayed: %w[USER32.dll] },
     { format: "pe", needed: %w[KERNEL32.dll], program: "console" },
     { format: "pe", needed: %w[KERNEL32.dll], program: "windows" },

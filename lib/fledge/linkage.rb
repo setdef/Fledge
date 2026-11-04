@@ -61,7 +61,16 @@ module Fledge
     # <tt>system_libraries</tt>, which a runtime's own files meet, and on
     # Windows <tt>bcryptprimitives.dll</tt> too, whose ProcessPrng the Rust
     # standard library imports for random numbers (its
-    # x86_64-pc-windows-gnu libstd rlib names both, at Rust 1.99.1).
+    # x86_64-pc-windows-gnu libstd rlib names both, at Rust 1.99.1), and
+    # the DLLs a game's or a windowed program's own libraries link for
+    # windows, input, graphics, and sound, as SDL, OpenAL Soft, and LÖVE's
+    # engine do: avrt, cfgmgr32, comctl32, d3d9, d3d11, dinput8, dsound,
+    # dwmapi, dxgi, hid, imm32, and setupapi. Each is in System32 on every
+    # x64 Windows from 7 SP1 and every ARM64 Windows from 10, as
+    # delvewheel 1.13.2, which repairs Python's Windows wheels as
+    # auditwheel repairs Linux's, lists them (<tt>ignore_names_x64</tt>
+    # and <tt>ignore_names_arm64</tt> in its <tt>delvewheel/_dll_list.py</tt>,
+    # lines 1338 to 2761 and 2767 to 5535).
     SYSTEM_LIBRARIES = {
       "linux" => [
         /\A(?:libGL\.so\.1|libICE\.so\.6|libSM\.so\.6|libX11\.so\.6|libXext\.so\.6|libXrender\.so\.1|libanl\.so\.1|libatomic\.so\.1|libc\.so\.6|libdl\.so\.2|libexpat\.so\.1|libgcc_s\.so\.1|libglib-2\.0\.so\.0|libgobject-2\.0\.so\.0|libgthread-2\.0\.so\.0|libm\.so\.6|libnsl\.so\.1|libpthread\.so\.0|libresolv\.so\.2|librt\.so\.1|libstdc\+\+\.so\.6|libutil\.so\.1|libz\.so\.1)\z/,
@@ -72,6 +81,7 @@ module Fledge
       "windows" => [
         /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i,
         /\A(?:advapi32|bcrypt|bcryptprimitives|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i,
+        /\A(?:avrt|cfgmgr32|comctl32|d3d9|d3d11|dinput8|dsound|dwmapi|dxgi|hid|imm32|setupapi)\.dll\z/i,
       ],
     }.freeze
 

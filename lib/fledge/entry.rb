@@ -122,7 +122,8 @@ module Fledge
 
     # The entries under +root+, folders before what they hold, in name
     # order, with paths relative to +root+. Skips any path in +skip+
-    # (absolute paths) and everything under it.
+    # (absolute paths), and any folder under +root+ whose absolute path
+    # +prune+ answers true for, with everything under it.
     #
     # Permissions are normalized: <tt>0o755</tt> for folders and
     # executable files, <tt>0o644</tt> for other files. A built app then
@@ -140,21 +141,24 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.walk(root, skip: [])
+    def self.walk(root, skip: [], prune: -> (_folder) { false })
       skipped = skip.map { |path| File.expand_path(path) }
       entries = [] # : Array[Entry]
-      walk_into(File.expand_path(root), "", skipped, entries)
+      walk_into(File.expand_path(root), "", skipped, prune, entries)
       entries
     end
 
-    private_class_method def self.walk_into(root, relative, skipped, entries) # :nodoc:
+    private_class_method def self.walk_into(root, relative, skipped, prune, entries) # :nodoc:
       Dir.children(File.join(root, relative)).sort.each do |child|
         path = relative.empty? ? child : "#{relative}/#{child}"
         full = File.join(root, path)
         next if skipped.include?(full)
 
+        folder = File.directory?(full) && !File.symlink?(full)
+        next if folder && prune.call(full)
+
         entries << from_disk(full, path)
-        walk_into(root, path, skipped, entries) if File.directory?(full) && !File.symlink?(full)
+        walk_into(root, path, skipped, prune, entries) if folder
       end
     end
 

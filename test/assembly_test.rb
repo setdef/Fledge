@@ -59,6 +59,12 @@ class AssemblyTest < Minitest::Test
     Fledge::Assembly.new(app: Fledge::App.at(app_root), platform:, runtime:, out:, app_files:, files:).call
   end
 
+  # What a build left in +dir+'s dist folder, but the cache directory
+  # tag the folder keeps.
+  def left_in(dir)
+    Dir.children(File.join(dir, "dist")) - [Fledge::CacheTag::FILE]
+  end
+
   # The archive at +archive+, unpacked by the system's tar into a folder
   # of +dir+, whose path it returns.
   def unpacked(dir, archive)
@@ -130,7 +136,8 @@ class AssemblyTest < Minitest::Test
       assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Hello"))
       assert_equal "puts 'hi'\n", File.read(File.join(folder, "app/main.rb"))
       assert_equal "ruby", File.readlink(File.join(folder, "lib/current"))
-      assert_equal ["Hello-x86_64-linux"], Dir.children(File.join(dir, "dist")) - [File.basename(archive)], "no work folder is left"
+      assert_equal ["Hello-x86_64-linux"], left_in(dir) - [File.basename(archive)], "no work folder is left"
+      assert Fledge::CacheTag.tagged?(File.join(dir, "dist")), "the folder the build made is tagged"
 
       place = unpacked(dir, archive)
       top = File.join(place, "Hello-x86_64-linux")
@@ -188,7 +195,7 @@ class AssemblyTest < Minitest::Test
       error = assert_raises(Fledge::Error) { assemble(dir, FakeApp.write(dir), runtime:, files: [clash]) }
 
       assert_equal "#{clash.path} is in #{runtime} already, so the build can't add its own", error.message
-      assert_empty Dir.children(File.join(dir, "dist"))
+      assert_empty left_in(dir)
     end
   end
 
@@ -377,7 +384,7 @@ class AssemblyTest < Minitest::Test
 
       error = assert_raises(Fledge::Error) { assemble(dir, root) }
       assert_equal "an app named Lib would collide with the runtime's lib. Give it another name.", error.message
-      assert_empty Dir.children(File.join(dir, "dist"))
+      assert_empty left_in(dir)
     end
   end
 
@@ -487,7 +494,7 @@ class AssemblyTest < Minitest::Test
       error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir, installers: "[nsis]"), platform: WINDOWS) }
 
       assert_includes error.message, "the runtime has no tools/nsis"
-      assert_empty Dir.glob(File.join(dir, "dist", "*"))
+      assert_empty left_in(dir)
     end
   end
 
@@ -497,7 +504,7 @@ class AssemblyTest < Minitest::Test
       error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir, installers: nil)) }
 
       assert_includes error.message, "the runtime has no tools/appimage-runtime"
-      assert_empty Dir.glob(File.join(dir, "dist", "*"))
+      assert_empty left_in(dir)
     end
   end
 
@@ -518,7 +525,7 @@ class AssemblyTest < Minitest::Test
 
       error = assert_raises(Fledge::Error) { assemble(dir, FakeApp.write(dir), platform: WINDOWS, runtime:) }
       assert_equal "#{runtime} is not a Fledge runtime: it has no launcher.exe", error.message
-      assert_empty Dir.children(File.join(dir, "dist"))
+      assert_empty left_in(dir)
     end
   end
 
@@ -534,7 +541,7 @@ class AssemblyTest < Minitest::Test
 
       assert_equal "Hello-x64-mingw-ucrt/app/link.rb is a symbolic link, which a .zip for Windows cannot hold. " \
         "Replace it with what it points to.", error.message
-      assert_empty Dir.children(File.join(dir, "dist"))
+      assert_empty left_in(dir)
     end
   end
 
@@ -564,6 +571,64 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # The names of what +archive+ holds, as the system's tar lists them.
+  def archived(archive)
+    out, status = Open3.capture2e(Fledge::Archive.tar, "-tzf", archive)
+    assert_predicate status, :success?, out
+    out.lines.map { |line| line.chomp.delete_suffix("/") }
+  end
+
+  # ADR 005, section 1: a build into dist, and then one into out, a
+  # folder of its own, ships the project, not the first build.
+  def test_a_build_into_another_folder_leaves_out_the_earlier_builds
+    unix!
+    Dir.mktmpdir do |dir|
+      app = FakeApp.write(dir)
+      runtime = FakeRuntime.write(dir, LINUX)
+      first = Fledge::Assembly.new(app: Fledge::App.at(app), platform: LINUX, runtime:, out: File.join(app, "dist")).call
+
+      second = Fledge::Assembly.new(app: Fledge::App.at(app), platform: LINUX, runtime:, out: File.join(app, "out")).call
+
+      assert_equal ["main.rb"], Dir.children(File.join(app, "out/Hello-x86_64-linux/app"))
+      assert_equal %w[Hello-x86_64-linux/app Hello-x86_64-linux/app/main.rb], archived(second).grep(%r{\AHello-x86_64-linux/app(/|\z)})
+      assert_equal archived(first).sort, archived(second).sort
+      assert_in_delta File.size(first), File.size(second), File.size(first) * 0.05
+    end
+  end
+
+  def test_builds_into_two_new_folders_ship_neither_in_the_other
+    unix!
+    Dir.mktmpdir do |dir|
+      app = FakeApp.write(dir)
+      runtime = FakeRuntime.write(dir, LINUX)
+      %w[dist-deb dist-appimage dist-deb].each do |out|
+        Fledge::Assembly.new(app: Fledge::App.at(app), platform: LINUX, runtime:, out: File.join(app, out)).call
+      end
+
+      %w[dist-deb dist-appimage].each do |out|
+        assert_equal ["main.rb"], Dir.children(File.join(app, out, "Hello-x86_64-linux/app")), out
+        assert_equal %w[CACHEDIR.TAG Hello-x86_64-linux Hello-x86_64-linux.tar.gz], Dir.children(File.join(app, out)).sort, out
+      end
+    end
+  end
+
+  # A dist folder of the project's own, which no build went to, ships as
+  # any other folder does when the build goes elsewhere.
+  def test_a_folder_named_dist_that_holds_no_build_ships
+    unix!
+    Dir.mktmpdir do |dir|
+      app = FakeApp.write(dir)
+      FileUtils.mkdir_p(File.join(app, "dist"))
+      File.write(File.join(app, "dist/index.html"), "the app's own")
+      runtime = FakeRuntime.write(dir, LINUX)
+
+      Fledge::Assembly.new(app: Fledge::App.at(app), platform: LINUX, runtime:, out: File.join(dir, "builds")).call
+
+      assert_equal "the app's own", File.read(File.join(dir, "builds/Hello-x86_64-linux/app/dist/index.html"))
+      refute_path_exists File.join(app, "dist/CACHEDIR.TAG")
+    end
+  end
+
   def test_an_app_named_like_a_runtime_folder_is_refused_and_nothing_is_left
     unix!
     Dir.mktmpdir do |dir|
@@ -573,7 +638,7 @@ class AssemblyTest < Minitest::Test
       error = assert_raises(Fledge::Error) { assemble(dir, app) }
 
       assert_equal "an app named LIB would collide with the runtime's lib. Give it another name.", error.message
-      assert_empty Dir.children(File.join(dir, "dist"))
+      assert_empty left_in(dir)
     end
   end
 

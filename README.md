@@ -87,7 +87,7 @@ Hello, Ruby!
 
 The first time you build, Fledge downloads the runtime for your platform from the release, and checks it against a SHA-256 that it carries. The app takes its name from the folder, camelized. Send the `.tar.gz` (a `.zip` on Windows) to anyone on that platform.
 
-With no argument, `fledge build` builds the folder you are in: the one executable its gemspec names, or else its `main.rb`; if `fledge.yml` lists `programs`, every one of them. Pass a path to build another program, and `--out DIR` to write somewhere other than `dist`. `bundle exec fledge --help` prints the whole manual.
+With no argument, `fledge build` builds the folder you are in: the one executable its gemspec names, or else its `main.rb`; if `fledge.yml` lists `programs`, every one of them. Pass a path to build another program, and `--out DIR` to write somewhere other than `dist`. Your whole project ships as the app's `app/` folder, except `.git`, `.bundle`, `vendor/bundle`, `vendor/cache`, and the folders builds went to: Fledge puts a [`CACHEDIR.TAG`](https://bford.info/cachedir/) in each folder it makes for builds, and leaves out any folder that holds one. `bundle exec fledge --help` prints the whole manual.
 
 ### Windowed apps and installers
 

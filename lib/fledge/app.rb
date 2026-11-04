@@ -6,6 +6,7 @@
 #++
 
 require "rubygems"
+require_relative "cache_tag"
 require_relative "config"
 require_relative "entry"
 require_relative "error"
@@ -261,8 +262,9 @@ module Fledge
     end
 
     # The files, folders, and symlinks to ship, with paths relative to
-    # the root. Leaves out NEVER_SHIPPED and each path in +skip+ (absolute
-    # paths, such as the folder builds go to).
+    # the root. Leaves out NEVER_SHIPPED, each path in +skip+ (absolute
+    # paths, such as the folder builds go to), and each folder a
+    # Fledge::CacheTag marks, such as one an earlier build went to.
     #
     # === Example
     #
@@ -276,7 +278,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def entries(skip: [])
-      Entry.walk(root, skip: skip + NEVER_SHIPPED.map { |name| File.join(root, name) })
+      Entry.walk(root, skip: skip + NEVER_SHIPPED.map { |name| File.join(root, name) }, prune: -> (folder) { CacheTag.tagged?(folder) })
     end
 
     # The program installers and phones show: the windowed one, or else

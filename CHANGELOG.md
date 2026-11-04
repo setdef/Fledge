@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `fledge build` leaves every folder an earlier build went to out of the app, not only the current `--out`, so a build into `dist` and then one into `out` no longer ships the first build inside the second. The folder a build makes, or finds empty, gets a `CACHEDIR.TAG`, and any folder in the project that holds a valid one stays out of the app.
 - On macOS and Linux, a runtime's `bin/ruby`, the Ruby `RbConfig.ruby` names, turns a bare C locale into a UTF-8 one as the launcher does, so a Ruby an app starts, a restart, or a gem's executable reads a folder whose name is not ASCII as UTF-8, and sets up the app's gems there; it had read such a folder as US-ASCII, and Bundler failed.
 - On macOS and Linux, `exec RbConfig.ruby, $0, *ARGV`, and any other start of the app's own program through `RbConfig.ruby`, runs the app's launcher again, in the same process, so the restarted app has its gems set up and the person's `RUBYOPT`, `RUBYLIB`, and `GEM_HOME` hidden from its boot, and on macOS keeps its bundle; it had run as plain Ruby, which those settings could break. A script other than the app's program, or one after a Ruby option, still runs as plain Ruby. On Windows, start the app's `NAME.exe` again to restart it.
 - In a macOS `.app`, `$0` and `__FILE__` name the app's program in `Contents/Resources/app`, the folder `__dir__` and Ruby's prefix name, so `File.dirname(__FILE__)` is `__dir__`; they had named it through the link in `Contents/MacOS`.

@@ -177,6 +177,22 @@ class AppTest < Minitest::Test
     assert_equal %w[.env.example helper.rb main.rb vendor vendor/keep.rb], paths
   end
 
+  # ADR 005, section 1: a folder a build went to holds a cache directory
+  # tag, and stays out of every later build, wherever that one goes.
+  def test_entries_leave_out_each_folder_a_cache_directory_tag_marks
+    write("app/main.rb")
+    write("app/dist/index.html", "the app's own")
+    write("app/dist-deb/CACHEDIR.TAG", "Signature: 8a477f597d28d172789f06886806bc55\n")
+    write("app/dist-deb/App-x86_64-linux.deb")
+    write("app/tmp/builds/CACHEDIR.TAG", "Signature: 8a477f597d28d172789f06886806bc55\n")
+    write("app/tmp/builds/App-x86_64-linux/fledge.cfg")
+    write("app/notes/CACHEDIR.TAG", "not a tag\n")
+
+    paths = at(File.join(@dir, "app")).entries.map(&:path)
+
+    assert_equal %w[dist dist/index.html main.rb notes notes/CACHEDIR.TAG tmp], paths
+  end
+
   # A project of several programs (ADR 024): a console one and a
   # windowed one, each with its own entry and identity, and the project's
   # version and publisher.

@@ -95,6 +95,22 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # The probe as a windowed app, which on macOS is an .app bundle
+  # (Fledge::MacBundle). Returns the program a person runs.
+  def windowed_probe
+    self.class.built[:windowed_probe] ||= begin
+      dir = Dir.mktmpdir
+      Minitest.after_run { FileUtils.rm_rf(dir) }
+      project = File.join(dir, "windowed-parity")
+      FileUtils.mkdir_p(project)
+      FileUtils.cp(File.join(PROBE, "main.rb"), project)
+      File.write(File.join(project, "fledge.yml"), "name: WindowedParity\nkind: windowed\nidentifier: com.setdef.fledge.WindowedParity\n")
+      program = build_and_unpack(dir, project, name: "WindowedParity")
+      bundle = File.join(File.dirname(program), "WindowedParity.app", "Contents", "MacOS", "WindowedParity")
+      (@platform.os == "darwin") ? bundle : program
+    end
+  end
+
   def built(source)
     self.class.built[source] ||= begin
       dir = Dir.mktmpdir
@@ -355,6 +371,23 @@ class BuiltAppTest < Minitest::Test
       facts["yjit"] = true unless @platform.windows?
       assert_equal facts, JSON.parse(File.read(report))
     end
+  end
+
+  # In a macOS .app the launcher runs from Contents/MacOS, beside links
+  # to the runtime and the app in Contents/Resources (Fledge::MacBundle).
+  # $0, __FILE__, __dir__, and Ruby's prefix all name the app's real
+  # folder there, so File.dirname(__FILE__) is __dir__, as under ruby
+  # (ADR 026, section 2).
+  def test_a_mac_apps_program_runs_from_the_folder_it_really_is_in
+    skip "only a macOS .app runs its program through links" unless @platform.os == "darwin"
+
+    out, err, status = run_app({ "HOME" => Dir.tmpdir }, windowed_probe)
+    assert_equal ["", 0], [err, status.exitstatus]
+    report = JSON.parse(out[/^FLEDGE-PARITY (.*)$/, 1].to_s)
+    resources = File.realpath(File.join(File.dirname(windowed_probe, 2), "Resources"))
+
+    assert_equal [File.join(resources, "app", "main.rb")] * 3, report.values_at("$0", "__FILE__", "$PROGRAM_NAME")
+    assert_equal [File.join(resources, "app"), resources], [report["__dir__"], report.dig("paths", "prefix")]
   end
 
   # examples/programs (ADR 024): a console program and a windowed one,

@@ -46,7 +46,9 @@
  *      which is what ruby ROOT/app/ENTRY ARGS does with no RUBYOPT
  *      (ADR 003): no -I, so the app loads its own files with
  *      require_relative, and no --yjit, so RubyVM::YJIT.enabled? is
- *      false until the app enables it, as under ruby.
+ *      false until the app enables it, as under ruby. ROOT/app is named
+ *      by its real path, which in a macOS .app is Contents/Resources/app
+ *      (find_app_folder).
  *   5. Once Ruby has booted and before ENTRY runs, it fixes RubyGems'
  *      paths, and for an app with a Gemfile has Bundler set up the app's
  *      gems, as bundle exec would (setup_bundler, ADR 005).
@@ -254,9 +256,11 @@ pin_rubygems(void)
     if (state != 0) fail("could not start RubyGems");
 }
 
-/* The folder this program lives in, and what its fledge.cfg says. */
+/* The folder this program lives in, what its fledge.cfg says, and the
+ * app folder beside it, ROOT/app, as it really is (find_app_folder). */
 static char root[PATH_MAX];
 static struct fledge_config app_config;
+static char app_folder[PATH_MAX];
 
 /*
  * The Ruby that loads Bundler, and that has Bundler set up the app's
@@ -293,8 +297,8 @@ setup_bundler(void)
 {
     static char gemfile[PATH_MAX];
     static char settings[PATH_MAX];
-    int gemfile_length = snprintf(gemfile, sizeof gemfile, "%s/app/%s", root, app_config.gemfile);
-    int settings_length = snprintf(settings, sizeof settings, "%s/app/.bundle/config", root);
+    int gemfile_length = snprintf(gemfile, sizeof gemfile, "%s/%s", app_folder, app_config.gemfile);
+    int settings_length = snprintf(settings, sizeof settings, "%s/.bundle/config", app_folder);
     int state = 0;
 
     if (gemfile_length < 0 || (size_t)gemfile_length >= sizeof gemfile || settings_length < 0 ||
@@ -377,6 +381,27 @@ read_config(void)
     if (parsed != 0) fail("this app is damaged: %s %s", path, problem);
 }
 
+/*
+ * Finds the app folder beside the launcher, ROOT/app, by its real path.
+ * In a macOS .app, ROOT is Contents/MacOS and its app is a link to
+ * Contents/Resources/app (Fledge::MacBundle), where Ruby's prefix is
+ * too. Ruby resolves links for __dir__ but not for $0 or __FILE__, so
+ * an entry run through the link would put File.dirname(__FILE__) in
+ * one folder and __dir__ in another (ADR 026, section 2). Everywhere
+ * else ROOT is already a real path and app a real folder, so this
+ * changes nothing. A missing app folder stays ROOT/app, for
+ * build_ruby_arguments to name.
+ */
+static void
+find_app_folder(void)
+{
+    char linked[PATH_MAX];
+    int length = snprintf(linked, sizeof linked, "%s/app", root);
+
+    if (length < 0 || (size_t)length >= sizeof linked) fail("the path to this app is too long");
+    if (realpath(linked, app_folder) == NULL) strcpy(app_folder, linked);
+}
+
 /* Ruby's argument vector, built in main and handed to ruby_options. */
 static char **ruby_argv;
 static int ruby_argc;
@@ -421,7 +446,7 @@ static void
 build_ruby_arguments(int argc, char **argv)
 {
     static char entry[PATH_MAX];
-    int entry_length = snprintf(entry, sizeof entry, "%s/app/%s", root, app_config.entry);
+    int entry_length = snprintf(entry, sizeof entry, "%s/%s", app_folder, app_config.entry);
 
     if (entry_length < 0 || (size_t)entry_length >= sizeof entry) fail("the path to this app is too long");
 
@@ -456,6 +481,7 @@ main(int argc, char **argv)
 {
     find_root(sizeof root);
     read_config();
+    find_app_folder();
     scrub_environment();
     fledge_coerce_locale();
 

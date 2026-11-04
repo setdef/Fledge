@@ -37,7 +37,9 @@ module Fledge
   # <tt>app/</tt> there too, but Apple's tools expect only code in
   # <tt>Contents/MacOS</tt>. So the launcher's neighbors live in
   # +Resources+, and LINKED names symbolic links in +MacOS+ that point at
-  # them. Then it writes <tt>Info.plist</tt> with +plutil+ and signs the
+  # them. The launcher runs the app by its real path, in +Resources+, so
+  # <tt>$0</tt>, <tt>__FILE__</tt>, and <tt>__dir__</tt> name the folder
+  # Ruby's prefix is in (ADR 026). Then it writes <tt>Info.plist</tt> with +plutil+ and signs the
   # bundle ad hoc with +codesign+, which seals every file; both come with
   # macOS (ADR 010).
   #

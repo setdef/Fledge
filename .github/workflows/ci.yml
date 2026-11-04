@@ -1,6 +1,5 @@
-# Experiment only, never for trunk: the Windows Test jobs alone, on the
-# runtimes of CI run 41795141088, and binding.irb under bundle exec on
-# stock Ruby.
+# Experiment only, never for trunk: binding.irb under bundle exec on
+# stock Ruby, on Windows and on Linux for comparison.
 name: CI
 
 on:
@@ -16,97 +15,37 @@ defaults:
     shell: bash
 
 env:
-  BUNDLE_FROZEN: "true"
+  BUNDLE_FROZEN: "false"
 
 jobs:
-  test-windows:
-    name: Test (${{ matrix.platform }})
+  stock-irb:
+    name: Stock binding.irb (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            platform: x64-mingw-ucrt
-          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 018).
-          - os: windows-11-arm
-            platform: aarch64-mingw-ucrt
+        os: [windows-latest, windows-11-arm, ubuntu-24.04]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Read the Ruby pin
-        id: pins
-        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
-
       - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         with:
-          ruby-version: ${{ steps.pins.outputs.ruby }}
-          bundler-cache: true
+          ruby-version: "4.0.9"
 
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: runtime-${{ matrix.platform }}
-          path: ${{ runner.temp }}/runtimes
-          run-id: "41795141088"
-          github-token: ${{ github.token }}
-
-      # test/native_build_test.rb compiles a C gem with the runtime's Ruby,
-      # which finds MSYS2's tools as RubyInstaller does, MSYS2_PATH first:
-      # the tree setup-ruby set up (ADR 006).
-      - name: Point RubyInstaller at setup-ruby's MSYS2
-        run: echo "MSYS2_PATH=$RI_DEVKIT" >> "$GITHUB_ENV"
-
-      # ADR 016: a self-signed certificate for test/built_app_test.rb's
-      # signed build, which no CI runner has otherwise.
-      - name: Make a code signing certificate
-        shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/make-test-identity.ps1 -Certificate "$env:RUNNER_TEMP/certificate.cer"
-
-      # Stock Ruby under bundle exec, in a bundle that does not name irb
-      # or fiddle: does binding.irb open IRB on Windows?
+      # Stock Ruby under bundle exec, in a bundle of the system's gems that
+      # names neither irb nor fiddle, then one that names fiddle.
       - name: binding.irb under bundle exec on stock Ruby
-        continue-on-error: true
-        env:
-          BUNDLE_FROZEN: "false"
         run: |
-          dir="$RUNNER_TEMP/stock-irb"
-          mkdir -p "$dir"
-          cd "$dir"
-          printf 'source "https://rubygems.org"\ngem "json"\n' > Gemfile
-          BUNDLE_PATH= bundle install --local
-          printf 'answer = 42\nanswer\nexit\n' > input.txt
-          set +e
-          BUNDLE_PATH= bundle exec ruby -e 'answer = 42; binding.irb' < input.txt
-          echo "exit status $?"
-
-      - name: Run the tests
-        timeout-minutes: 15
-        env:
-          A: --verbose
-          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
-          FLEDGE_REQUIRE_RUNTIME: "1"
-        run: bundle exec rake test
-
-      # ADR 003 and ADR 005: the probe app, built from this runtime,
-      # against RubyInstaller's own ruby.exe running the same main.rb, then
-      # both again under code page 437, then the probe as
-      # examples/my_cool_app's program against bundle exec. The report
-      # lands in the job summary; an unjustified difference fails the job.
-      - name: Check parity with ruby main.rb and bundle exec
-        timeout-minutes: 10
-        env:
-          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
-        run: bundle exec rake parity
-
-      # ADR 015: Ctrl-C on two code pages and closing the console end
-      # ruby.exe main.rb as the console Delivery expects of a built app,
-      # and rubyw.exe, typed into a console, gets none.
-      - name: Interrupt ruby.exe main.rb in a console, and close it
-        shell: pwsh
-        run: >-
-          & .github/scripts/deliver-console.ps1
-          -Reference @((Get-Command ruby.exe).Source, 'test/fixtures/console/main.rb')
-          -WindowedReference @((Get-Command rubyw.exe).Source, 'examples/windowed_app/main.rb')
+          unset BUNDLE_FROZEN BUNDLE_PATH BUNDLE_GEMFILE
+          gem list "^(irb|reline|fiddle|json)$"
+          for extra in "" 'gem "fiddle"'; do
+            dir="$RUNNER_TEMP/stock-irb-${#extra}"
+            mkdir -p "$dir"
+            cd "$dir"
+            printf 'source "https://rubygems.org"\ngem "json"\n%s\n' "$extra" > Gemfile
+            bundle install --local
+            bundle config
+            set +e
+            printf 'answer\nexit\n' | bundle exec ruby -e 'answer = 42; binding.irb'
+            echo "exit status $? with Gemfile extra: ${extra:-none}"
+            set -e
+          done

@@ -25,8 +25,8 @@ class GemFetcherTest < Minitest::Test
     FileUtils.rm_rf(@dir)
   end
 
-  def fetcher(gem_path: [])
-    Fledge::GemFetcher.new(cache: File.join(@dir, "cache"), project: @project, gem_path:, log: @log)
+  def fetcher(gem_path: [], **)
+    Fledge::GemFetcher.new(cache: File.join(@dir, "cache"), project: @project, gem_path:, log: @log, **)
   end
 
   def place(folder)
@@ -137,32 +137,35 @@ class GemFetcherTest < Minitest::Test
     server&.stop
   end
 
-  # RubyGems.org serves gem files from a bucket that answers 403, not 404,
-  # for a file it does not have, and needs no login for any file it has.
-  # The loopback server stands in for it as an HTTP proxy, which Net::HTTP
-  # finds in http_proxy, so the request still goes to the host
-  # rubygems.org.
-  def test_rubygems_org_forbidding_a_file_without_a_login_means_it_does_not_have_it
-    proxy = LoopbackServer.new({
-      "http://rubygems.org/gems/foo-1.0.0-arm64-darwin.gem" => [403, {}, "AccessDenied"],
-      "http://rubygems.org/gems/foo-1.0.0.gem" => [401, {}, "login"],
+  # A public server, such as RubyGems.org, needs no login for any file it
+  # has, so its 403 to a request without one means it has no such file.
+  # The loopback server is named a public server here, as RubyGems.org is
+  # by default.
+  def test_a_public_server_forbidding_a_file_without_a_login_means_it_does_not_have_it
+    server = LoopbackServer.new({
+      "/gems/foo-1.0.0-arm64-darwin.gem" => [403, {}, "AccessDenied"],
+      "/gems/foo-1.0.0.gem" => [401, {}, "login"],
     })
-    gem = @gem.with(remote: "http://rubygems.org/", platform: "arm64-darwin")
-    saved = %w[http_proxy HTTP_PROXY no_proxy NO_PROXY].to_h { |name| [name, ENV.fetch(name, nil)] }
-    ENV.update(saved.transform_values { nil }.merge("http_proxy" => proxy.url("")))
+    gem = @gem.with(remote: server.url("/"), platform: "arm64-darwin")
+    public = fetcher(public_servers: ["127.0.0.1"])
 
-    error = assert_raises(Fledge::Error) { fetcher.fetch(gem) }
+    error = assert_raises(Fledge::Error) { public.fetch(gem) }
 
-    assert_equal ["http://rubygems.org/gems/foo-1.0.0-arm64-darwin.gem"], proxy.requests
-    assert_equal "foo 1.0.0 (arm64-darwin) comes from http://rubygems.org/, which has no foo-1.0.0-arm64-darwin.gem " \
+    assert_equal ["/gems/foo-1.0.0-arm64-darwin.gem"], server.requests
+    assert_equal "foo 1.0.0 (arm64-darwin) comes from #{server.url('/')}, which has no foo-1.0.0-arm64-darwin.gem " \
       "(it answered 403). Put that file in the project's vendor/cache, as bundle cache --all-platforms does, or point the " \
       "Gemfile at the source that has it and run bundle lock, then build again.", error.message
-    error = assert_raises(Fledge::Error) { fetcher.fetch(gem.with(credentials: "me:token")) }
-    assert_includes error.message, "answered 403 for it, and Bundler's login for rubygems.org was refused"
-    error = assert_raises(Fledge::Error) { fetcher.fetch(gem.with(platform: "ruby")) }
+    error = assert_raises(Fledge::Error) { public.fetch(gem.with(credentials: "me:token")) }
+    assert_includes error.message, "answered 403 for it, and Bundler's login for 127.0.0.1 was refused"
+    error = assert_raises(Fledge::Error) { public.fetch(gem.with(platform: "ruby")) }
     assert_includes error.message, "answered 401 for it, and there is no login for it"
   ensure
-    ENV.update(saved) if saved
-    proxy&.stop
+    server&.stop
+  end
+
+  # RubyGems.org serves gem files from a bucket that answers 403, not 404,
+  # for a file it does not have (ADR 020, section 2).
+  def test_rubygems_org_is_the_public_server_by_default
+    assert_equal ["rubygems.org"], Fledge::GemFetcher.new(cache: File.join(@dir, "cache"), project: @project).public_servers
   end
 end

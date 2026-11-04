@@ -50,6 +50,10 @@ module Fledge
     # not hold (ADR 020, section 2).
     PUBLIC_SERVERS = ["rubygems.org"].freeze
 
+    # The hosts whose 403 to a request without a login means they have no
+    # such file.
+    attr_reader :public_servers
+
     # Creates the fetcher.
     #
     # [cache] Fledge's own folder of downloaded gems.
@@ -57,11 +61,15 @@ module Fledge
     # [gem_path] The folders whose <tt>cache</tt> it looks in (default:
     #            RubyGems' path).
     # [log] Where to say that a download is starting, or +nil+.
-    def initialize(cache:, project:, gem_path: Gem.path, log: nil)
+    # [public_servers] The hosts whose 403 to a request without a login
+    #                  means they have no such file (default:
+    #                  PUBLIC_SERVERS).
+    def initialize(cache:, project:, gem_path: Gem.path, log: nil, public_servers: PUBLIC_SERVERS)
       @cache = cache
       @project = project
       @gem_path = gem_path
       @log = log
+      @public_servers = public_servers
     end
 
     # The path of a <tt>.gem</tt> file for +gem+ (a Fledge::LockedGem)
@@ -95,7 +103,7 @@ module Fledge
     # Whether +error+, a 403 from a public server that was sent no login,
     # means only that the server has no such file.
     private def forbids_only_what_it_lacks?(gem, error)
-      error.status == 403 && !gem.credentials && PUBLIC_SERVERS.include?(URI(gem.remote).host.to_s.downcase)
+      error.status == 403 && !gem.credentials && @public_servers.include?(URI(gem.remote).host.to_s.downcase)
     end
 
     # What to do when the gem's server has no file for it: bring the file,

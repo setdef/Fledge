@@ -39,6 +39,11 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     module Linking
+      # The names of the C++ runtime a desktop's link takes, which an
+      # extconf.rb gives when its extension is C and a library it links is
+      # C++: a Mac's and Linux's (ADR 027).
+      CXX_RUNTIMES = %w[-lc++ -lstdc++].freeze
+
       # The linker flags in +text+, the <tt>$libs</tt> and
       # <tt>$LOCAL_LIBS</tt> an extconf.rb gave mkmf, that an app's link
       # needs: libraries (<tt>-l</tt>), their folders (<tt>-L</tt>), frameworks,
@@ -48,7 +53,8 @@ module Fledge
       # already compiled in. Each appears once. A framework is one flag,
       # <tt>-Wl,-framework,NAME</tt>, the form SDL3's sdl3.pc writes and
       # clang passes to the linker, so that merging flags never parts a
-      # framework from its name.
+      # framework from its name. The C++ runtime (CXX_RUNTIMES) is left
+      # out: each phone links its own (.cxx_runtime?).
       #
       # === Example
       #
@@ -68,6 +74,7 @@ module Fledge
         until tokens.empty?
           token = tokens.shift.to_s
           case token
+          when *CXX_RUNTIMES then next
           when "-framework", "-weak_framework" then flags << "-Wl,#{token},#{tokens.shift}"
           when /\A-Wl,-(?:weak_)?framework,[^,]+\z/, /\A-l./ then flags << token
           when /\A-L(.+)/ then flags << "-L#{File.expand_path(::Regexp.last_match(1).to_s, dir)}"
@@ -75,6 +82,29 @@ module Fledge
           end
         end
         flags.uniq
+      end
+
+      # Whether +text+, the <tt>$libs</tt> and <tt>$LOCAL_LIBS</tt> an
+      # extconf.rb gave mkmf, names the C++ runtime (CXX_RUNTIMES), as a C
+      # extension over a C++ library does. Such an extension links as one
+      # with C++ sources does: with <tt>-lc++</tt> on iOS, and on Android
+      # with the NDK's C++ runtime linked in statically, since the
+      # <tt>libc++_shared.so</tt> that <tt>-lc++</tt> names there is a
+      # library the package does not carry.
+      #
+      # === Example
+      #
+      #--
+      # SPDX-SnippetBegin
+      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-License-Identifier: MIT-0
+      #++
+      #   Fledge::MobileExtensions::Linking.cxx_runtime?("/work/libtally.a -lstdc++") # => true
+      #--
+      # SPDX-SnippetEnd
+      #++
+      def self.cxx_runtime?(text)
+        text.shellsplit.intersect?(CXX_RUNTIMES)
       end
 
       # What +target+ links of its extensions' +reports+, a TargetBuild: each

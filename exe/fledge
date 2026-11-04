@@ -236,8 +236,11 @@
 #                        gem with a C or C++ extension is compiled for
 #                        the phone and linked into the app (Android needs
 #                        the NDK: ANDROID_NDK_ROOT or the SDK's ndk/
-#                        folder); a gem whose extension is not built by an
-#                        extconf.rb, or is Rust, fails the build, naming it.
+#                        folder). An extconf.rb that runs cmake finds
+#                        each target's toolchain file in
+#                        CMAKE_TOOLCHAIN_FILE. A gem whose extension is
+#                        not built by an extconf.rb, or is Rust, fails the
+#                        build, naming it.
 #     DIR/NAME-PLATFORM.zip
 #     DIR/NAME-PLATFORM.tar.gz
 #                        The same folder, archived for download: a .zip

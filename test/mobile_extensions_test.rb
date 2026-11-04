@@ -94,10 +94,10 @@ class MobileExtensionsTest < Minitest::Test
   # tests run on, Windows' drive letters included.
   def test_link_flags_keep_libraries_frameworks_and_the_gems_own_archives
     root = File.expand_path(@dir)
-    flags = Fledge::MobileExtensions::Linking.link_flags("-lz -framework Security -L../vendor/lib ./libvendored.a -fno-common -lz -Wl,-rpath,. -lc++",
+    flags = Fledge::MobileExtensions::Linking.link_flags("-lz -framework Security -L../vendor/lib ./libvendored.a -fno-common -lz -Wl,-rpath,. -lsqlite3",
       dir: File.join(root, "ext"))
 
-    assert_equal ["-lz", "-Wl,-framework,Security", "-L#{File.join(root, 'vendor', 'lib')}", File.join(root, "ext", "libvendored.a"), "-lc++"], flags
+    assert_equal ["-lz", "-Wl,-framework,Security", "-L#{File.join(root, 'vendor', 'lib')}", File.join(root, "ext", "libvendored.a"), "-lsqlite3"], flags
   end
 
   # SDL3's sdl3.pc names fifteen frameworks; each must stay a framework
@@ -150,6 +150,67 @@ class MobileExtensionsTest < Minitest::Test
 
     assert_equal [File.join(jni, "libSDL3.so")], copied
     assert_equal "ELF", File.read(File.join(jni, "libSDL3.so"))
+  end
+
+  # A C extension over a C++ library names the C++ runtime as it must on
+  # a desktop, -lc++ on a Mac and -lstdc++ on Linux. Neither is the
+  # runtime a phone's link takes (on Android, -lc++ is libc++_shared.so,
+  # which the package does not carry), so the name marks the extension
+  # as C++ and Fledge links each phone's C++ runtime itself.
+  def test_the_cpp_runtime_an_extconf_names_marks_its_extension_as_cpp
+    assert_equal ["-lm"], Fledge::MobileExtensions::Linking.link_flags("-lc++ -lstdc++ -lm", dir: "/work")
+    assert Fledge::MobileExtensions::Linking.cxx_runtime?("-lstdc++ -lm")
+    assert Fledge::MobileExtensions::Linking.cxx_runtime?("/work/libtally.a -lc++")
+    refute Fledge::MobileExtensions::Linking.cxx_runtime?("-lc++abi -lm /work/libc++.a")
+  end
+
+  # CMake reads a toolchain file from CMAKE_TOOLCHAIN_FILE in the
+  # environment when a build folder is new (ADR 027): for an iOS slice,
+  # CMake's own iOS support, aimed at the slice's SDK, processor, and
+  # deployment target with Xcode's compilers.
+  def test_an_ios_slice_toolchain_file_aims_cmake_at_the_slice
+    text = Fledge::MobileExtensions::CMake.ios(triple: "arm64-apple-ios15.0-simulator", sysroot: "/Xcode/iPhoneSimulator.sdk",
+      cc: "/Xcode/clang", cxx: "/Xcode/clang++")
+
+    assert_includes text, "set(CMAKE_SYSTEM_NAME iOS)"
+    assert_includes text, 'set(CMAKE_OSX_SYSROOT "/Xcode/iPhoneSimulator.sdk")'
+    assert_includes text, "set(CMAKE_OSX_ARCHITECTURES arm64)"
+    assert_includes text, "set(CMAKE_OSX_DEPLOYMENT_TARGET 15.0)"
+    assert_includes text, 'set(CMAKE_C_COMPILER "/Xcode/clang")'
+    assert_includes text, 'set(CMAKE_CXX_COMPILER "/Xcode/clang++")'
+    assert_includes text, 'set(CMAKE_OBJC_COMPILER "/Xcode/clang")'
+    assert_includes text, 'set(CMAKE_OBJCXX_COMPILER "/Xcode/clang++")'
+  end
+
+  def test_a_triple_that_is_not_ios_has_no_ios_toolchain_file
+    error = assert_raises(Fledge::Error) { Fledge::MobileExtensions::CMake.ios(triple: "arm64-apple-macos11", sysroot: "/s", cc: "cc", cxx: "c++") }
+
+    assert_includes error.message, "arm64-apple-macos11"
+  end
+
+  # For an Android ABI, the NDK's own toolchain file, given the ABI and
+  # the API level the runtime was built for, as Gradle gives it.
+  def test_an_android_toolchain_file_takes_the_ndks_with_the_abi_and_api_level
+    text = Fledge::MobileExtensions::CMake.android(ndk: "/sdk/ndk/30", abi: "x86_64", compiler: "x86_64-linux-android26-clang")
+
+    assert_includes text, "set(ANDROID_ABI x86_64)"
+    assert_includes text, "set(ANDROID_PLATFORM android-26)"
+    assert_includes text, 'include("/sdk/ndk/30/build/cmake/android.toolchain.cmake")'
+  end
+
+  def test_a_path_in_a_toolchain_file_stays_one_cmake_string
+    text = Fledge::MobileExtensions::CMake.android(ndk: '/my "ndk" $HOME\\x', abi: "x86_64", compiler: "x86_64-linux-android26-clang")
+
+    assert_includes text, 'include("/my \\"ndk\\" \\$HOME\\\\x/build/cmake/android.toolchain.cmake")'
+  end
+
+  # The variables CMake reads from the environment that would aim it at
+  # this computer instead of the phone, or give it this computer's
+  # flags, are not passed to an extconf.rb.
+  def test_cmakes_own_variables_for_this_computer_do_not_reach_an_extconf
+    %w[CMAKE_OSX_ARCHITECTURES OBJC OBJCXX OBJCFLAGS OBJCXXFLAGS CC CXX CFLAGS LDFLAGS SDKROOT].each do |name|
+      assert_includes Fledge::MobileExtensions::FOREIGN, name
+    end
   end
 
   def test_the_ndk_is_found_where_android_tools_keep_it
@@ -205,6 +266,63 @@ class MobileExtensionsTest < Minitest::Test
       Open3.capture2("xcrun", "vtool", "-show-build", object).first[/platform (\S+)/, 1]
     end
     assert_equal({ "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }, platforms)
+  end
+
+  # examples/cmake_phone's extconf.rb runs CMake, which builds its C++
+  # library from CMAKE_TOOLCHAIN_FILE for each slice (ADR 027): the
+  # device's objects are for iOS and the Simulator's for the Simulator,
+  # as each slice's extension is.
+  def test_a_cmake_library_an_extconf_builds_is_built_for_each_ios_slice
+    runtimes = real_runtimes("ios")
+    skip "examples/cmake_phone needs CMake on the PATH" unless cmake?
+    built = compile(runtimes, ios, { tally_gem => Fledge::PathPackage.new(tally_gem) })
+
+    assert_equal [["tally/tally", "Init_fledge_0"]], built.registrations
+    platforms = built.targets.transform_values do |target|
+      library = target.archives.find { |archive| File.basename(archive) == "libtally.a" } or flunk "no libtally.a in #{target.archives}"
+      assert target.cxx, "the extension names the C++ runtime"
+      refute_includes target.flags, "-lc++"
+      object = Dir.glob(File.join(File.dirname(library), "**", "tally.cc.o")).first.to_s
+      Open3.capture2("xcrun", "vtool", "-show-build", object).first[/platform (\S+)/, 1]
+    end
+    assert_equal({ "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }, platforms)
+  end
+
+  # The same for each Android ABI with the NDK, where this computer has
+  # one: libfledgeext.so holds the library's code, and needs no C++
+  # runtime the package does not carry.
+  def test_a_cmake_library_an_extconf_builds_is_linked_for_each_android_abi
+    runtimes = real_runtimes("android")
+    skip "examples/cmake_phone needs CMake on the PATH" unless cmake?
+    ndk = begin
+      Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local)
+    rescue Fledge::Error => e
+      skip e.message
+    end
+    built = compile(runtimes, android, { tally_gem => Fledge::PathPackage.new(tally_gem) })
+    registration = File.join(@dir, "registration.c")
+    File.write(registration, Fledge::MobileExtensions.registration_source(built.registrations))
+    compiler = Fledge::MobileExtensions.new(platform: android, packages: {}, build_args: {}, host: Fledge::Platform.local,
+      runtimes: Fledge::Runtimes.new(env: ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes)), work: File.join(@dir, "work"), log: StringIO.new)
+    machines = built.targets.to_h do |name, build|
+      library = compiler.shared_library(built, build, registration:, into: File.join(@dir, name, "libfledgeext.so"))
+      readelf = File.join(ndk.bin, "llvm-readelf")
+      dynamic = Open3.capture2(readelf, "-d", "--dyn-syms", library).first
+      refute_match(/UND\s+tally_/, dynamic, "#{name}: the library's code is linked in")
+      refute_includes dynamic, "libc++_shared.so", "#{name}: the C++ runtime is linked in statically"
+      refute_match(/UND\s+(?:_ZNSt|_Znwm|_ZdlPv|__gxx_personality)/, dynamic, "#{name}: the C++ runtime is linked in")
+      [name, Open3.capture2(readelf, "-h", library).first[/Machine:\s+(.+)$/, 1]]
+    end
+    assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)
+  end
+
+  def tally_gem
+    folder = File.expand_path("../examples/cmake_phone/gems/tally", __dir__)
+    Fledge::PathGem.new(name: "tally", version: "1.0.0", folder:, app_path: "vendor/cache/tally", glob: "{,*,*/*}.gemspec", inside: true)
+  end
+
+  def cmake?
+    system("cmake", "--version", out: File::NULL, err: File::NULL) || false
   end
 
   def test_fledge_build_ios_links_the_extensions_into_the_project

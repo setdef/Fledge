@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class MobileExtensions
+    module CMake
+      HEADER: String
+
+      def self.ios: (triple: String, sysroot: String, cc: String, cxx: String) -> String
+
+      def self.android: (ndk: String, abi: String, compiler: String) -> String
+
+      private def self.string: (String text) -> String
+    end
+  end
+end

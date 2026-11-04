@@ -79,6 +79,29 @@ class ParityTest < Minitest::Test
     refute_predicate Parity::Reports.compare(installer, none, platform: "x86_64-linux").first, :justified?
   end
 
+  # The launcher's UTF-8 in place of a bare C locale is justified only in
+  # the run with no locale at all; under LC_ALL=C it would be a
+  # difference, and the no-locale run still allows what the script check
+  # allows.
+  def test_a_utf8_locale_in_place_of_c_is_justified_only_with_no_locale
+    reference = { "Encoding.default_external" => "US-ASCII", "$0" => "main.rb" }
+    app = { "Encoding.default_external" => "UTF-8", "$0" => "<app>/main.rb" }
+
+    assert Parity::Reports.compare(reference, app, platform: "x86_64-linux", check: :no_locale).all?(&:justified?)
+    refute_predicate Parity::Reports.compare(reference, app, platform: "x86_64-linux").first, :justified?
+    refute_predicate Parity::Reports.compare(app, reference, platform: "x86_64-linux", check: :no_locale).first, :justified?,
+      "a C locale where ruby has UTF-8 is not"
+  end
+
+  # In a C locale an argument outside ASCII is a US-ASCII string with
+  # bytes outside it; the probe still reports.
+  def test_the_probe_reports_in_a_c_locale
+    out, err, status = probe("ünïcödé", env: { "LC_ALL" => "C" })
+
+    assert_predicate status, :success?, err
+    assert_equal "US-ASCII", Parity::Reports.report(out).fetch("Encoding.default_external")
+  end
+
   def test_the_same_elements_in_another_order_differ
     difference = Parity::Reports.compare({ "$LOAD_PATH" => %w[a b] }, { "$LOAD_PATH" => %w[b a] }, platform: "x86_64-linux").first
 

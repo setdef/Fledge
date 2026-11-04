@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- On macOS and Linux, the launcher and the runtime's `bin/ruby` keep an explicit `LC_ALL` or `LC_CTYPE`, `C` included, as `ruby` does; they had turned it into a UTF-8 locale. A C locale from `LANG`, or from no locale variable at all, still becomes UTF-8.
+
 ## [0.3.0] - 2026-11-03
 
 ### Fixed

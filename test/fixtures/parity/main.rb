@@ -226,5 +226,8 @@ else
   report = facts
   # Last, since requiring changes $LOADED_FEATURES.
   report["requireable"] = Gem::Specification.to_h { |spec| [spec.name, requireable(spec)] }.sort.to_h
-  puts "FLEDGE-PARITY #{JSON.generate(report)}"
+  # In a C locale, ARGV and paths outside ASCII are US-ASCII strings with
+  # bytes outside it, which JSON refuses; the encodings are among the
+  # facts.
+  puts "FLEDGE-PARITY #{JSON.generate(utf8(report))}"
 end

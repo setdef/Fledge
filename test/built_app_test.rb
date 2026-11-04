@@ -249,6 +249,38 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # The launcher and bin/ruby keep a character set the person chose, C
+  # included, as ruby does, and turn only a C locale that comes from LANG
+  # or from no variable at all into a UTF-8 one (ADR 026, section 1;
+  # PEP 538 never coerces under LC_ALL). The probe and the script run
+  # from a folder whose name is ASCII, where ruby itself runs in a C
+  # locale.
+  def test_an_explicit_c_locale_is_kept_and_only_a_bare_one_becomes_utf8
+    skip "Windows takes its encoding from the console's code page (ADR 003, section 5)" if @platform.windows?
+
+    Dir.mktmpdir do |dir|
+      launcher = build_and_unpack(dir, PROBE, place: File.join(dir, "ascii"))
+      ruby = File.join(File.dirname(launcher), "bin", "ruby")
+      script = File.join(dir, "encoding.rb")
+      File.write(script, "print Encoding.default_external\n")
+      {
+        {} => "UTF-8",
+        { "LANG" => "C" } => "UTF-8",
+        { "LC_ALL" => "", "LANG" => "POSIX" } => "UTF-8",
+        { "LC_ALL" => "C" } => "US-ASCII",
+        { "LC_CTYPE" => "C" } => "US-ASCII",
+        { "LC_ALL" => "C", "LANG" => "en_US.UTF-8" } => "US-ASCII",
+      }.each do |locale, expected|
+        env = { "HOME" => dir }.merge(locale)
+        out, err, status = run_app(env, ruby, script)
+        assert_equal [expected, "", 0], [out, err, status.exitstatus], "bin/ruby with #{locale}"
+        out, err, status = run_app(env, launcher)
+        assert_equal [expected, 0], [Parity::Reports.report(out).fetch("Encoding.default_external"), status.exitstatus],
+          "the launcher with #{locale}: #{err}"
+      end
+    end
+  end
+
   # A program restarts itself as Ruby programs do, with exec
   # RbConfig.ruby, $0, *ARGV, and the runtime's bin/ruby hands the app's
   # own program back to its launcher (ADR 026, section 3). So the restart
@@ -610,17 +642,17 @@ class BuiltAppTest < Minitest::Test
   end
 
   # Builds the app in +source+ through the fledge executable, as a person
-  # would, and unpacks its archive under a path with spaces and characters
-  # outside ASCII. Returns the launcher's path. +name+ is the app's name,
-  # when the caller knows it; reading it from the project would load a
-  # copy of my_cool_app's gemspec, and so its version constant, again.
-  def build_and_unpack(dir, source, name: Fledge::App.at(source).name)
+  # would, and unpacks its archive into +place+, by default under a path
+  # with spaces and characters outside ASCII. Returns the launcher's path.
+  # +name+ is the app's name, when the caller knows it; reading it from
+  # the project would load a copy of my_cool_app's gemspec, and so its
+  # version constant, again.
+  def build_and_unpack(dir, source, name: Fledge::App.at(source).name, place: File.join(dir, "My Apps", "Ünïcödé 日本"))
     out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
       "-o", File.join(dir, "dist"), source)
     assert_predicate status, :success?, err
     archive = File.expand_path(out.lines.first.to_s.chomp, Dir.pwd)
 
-    place = File.join(dir, "My Apps", "Ünïcödé 日本")
     FileUtils.mkdir_p(place)
     unpack(archive, place)
     File.join(place, "#{name}-#{@platform}", @platform.executable(name))

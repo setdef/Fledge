@@ -295,8 +295,10 @@ class Parity
   end
 
   # Builds +path+ (default: the probe) with fledge build into the work
-  # folder and returns its launcher, the program +name+.
-  private def build_app(path = PROBE, name = "Parity")
+  # folder, which must exist, and returns its launcher, the program
+  # +name+. The ruby/spec comparison (tasks/ruby_spec.rb) builds its app
+  # with it too.
+  def build_app(path = PROBE, name = "Parity")
     out = StringIO.new
     err = StringIO.new
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => @runtimes)
@@ -306,13 +308,13 @@ class Parity
     File.join(@work, "dist", "#{name}-#{platform}", platform.executable(name))
   end
 
-  # Unpacks the pinned Ruby the runtime was made from, as it ships, and
-  # returns its ruby program.
-  # The Ruby the runtime came from, unpacked as it ships: rv-ruby's or
+  # Unpacks the Ruby the runtime came from into the work folder, which
+  # must exist, as it ships, and returns its ruby program: rv-ruby's or
   # RubyInstaller's release, or for musl Linux, whose Ruby the runtime
   # build compiles from source (ADR 017), the runtime itself, whose
-  # bin/ruby is Ruby's own main.c linked against the same libruby.
-  private def unpack_reference
+  # bin/ruby is Ruby's own main.c linked against the same libruby. The
+  # ruby/spec comparison runs its stock Ruby with it.
+  def unpack_reference
     archive = if platform.musl?
       File.join(@runtimes, Fledge::Runtimes.file_name(platform))
     else

@@ -47,6 +47,10 @@
 # the runtimes; and the Replace jobs prove that whoever receives an app
 # can replace its LGPL libraries, as that page tells developers.
 #
+# ruby/spec runs on stock Ruby and in a built app from each runtime, and
+# any example that fails on one side only, unless justified, fails the
+# job (ruby-spec.yml, tasks/ruby_spec.rb).
+#
 # release.yml, on a v* tag, publishes the runtimes this workflow built
 # from the release commit, once it has passed on trunk on the release
 # commit and on the pin commit tagged (ADR 014). It looks those runs up
@@ -768,6 +772,19 @@ jobs:
         run: >-
           docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes "$ALPINE_RUBY"
           sh -c '.github/scripts/alpine-packages.sh apps && git config --global --add safe.directory /fledge && ruby tasks/parity.rb'
+
+  # ruby/spec on stock Ruby and in a built app (ruby-spec.yml): on every
+  # push for x86_64-linux and arm64-darwin, and on a release commit for
+  # all seven desktop platforms, which also run every night.
+  ruby-spec:
+    name: ruby/spec
+    needs: [runtime, runtime-musl]
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/ruby-spec.yml
+    with:
+      full: "${{ startsWith(github.event.head_commit.message, 'chore: release ') }}"
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 001), through setup-ruby at

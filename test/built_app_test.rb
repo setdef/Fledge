@@ -307,7 +307,16 @@ class BuiltAppTest < Minitest::Test
   # defaults (runtime/rubygems/operating_system.rb). Ruby warns that irb
   # is no longer a default gem, as it warns under bundle exec; Bundler
   # says nothing of the lockfile.
+  #
+  # On Windows, bundle exec cannot open IRB this way either: reline 0.6.3,
+  # which irb requires, requires fiddle/import there (lib/reline/io/windows.rb,
+  # line 1), and fiddle, a bundled gem since Ruby 4.0, is neither in the
+  # Gemfile nor a dependency of irb or reline, so the temporary bundle
+  # leaves it out and require raises LoadError, in the app and under
+  # bundle exec alike.
   def test_binding_irb_opens_irb_in_an_app_with_a_gemfile
+    skip "bundle exec cannot open IRB either: reline needs fiddle on Windows, and the bundle lacks it" if @platform.windows?
+
     Dir.mktmpdir do |dir|
       out, err, status = run_app({ "HOME" => dir }, bundled_probe, "irb", stdin: "answer\nexit\n")
 

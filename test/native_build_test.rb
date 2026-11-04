@@ -116,7 +116,9 @@ class NativeBuildTest < Minitest::Test
     assert_includes File.read(File.join(gems, "build_info", "greeter-1.0.0.info")), "--with-greeting=bonjour"
     refute(Dir.glob(File.join(gems, "gems/greeter-1.0.0/ext/greeter/*")).any? { |path| path.end_with?(".o", "Makefile") },
       "the build's own leftovers stay behind")
-    refute_path_exists File.join(folder, @platform.windows? ? "ruby/include" : "include"), "the runtime's headers never ship"
+    assert_empty Dir.glob(File.join(folder, @platform.windows? ? "ruby/lib/*.dll.a" : "lib/libruby*-static.a")),
+      "the build-only companion's library never ships"
+    assert_path_exists File.join(folder, @platform.windows? ? "ruby/include" : "include"), "Ruby's headers ship, for require \"mkmf\""
     compiled = Dir.glob(File.join(gems, "gems/greeter-1.0.0/lib/greeter/greeter.*")).first.to_s
     return unless @platform.os == "darwin"
 

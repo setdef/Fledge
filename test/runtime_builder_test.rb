@@ -147,12 +147,12 @@ class RuntimeBuilderTest < Minitest::Test
   end
 
   # The build-only companion holds what compiling an extension against
-  # the runtime's Ruby needs and the runtime prunes (ADR 006): Ruby's
-  # headers and the library to link against, the import library of Ruby's
-  # DLL on Windows and static libruby elsewhere, with their licenses
-  # beside them. Nothing else of Ruby's tree, and never libxcrypt's
-  # static archive.
-  def test_copy_dev_takes_rubys_headers_and_the_library_to_link_against
+  # the runtime's Ruby needs and the runtime prunes (ADR 006): the
+  # library to link against, the import library of Ruby's DLL on Windows
+  # and static libruby elsewhere, with their licenses beside it. Ruby's
+  # headers are in the runtime itself (ADR 003, section 2). Nothing else
+  # of Ruby's tree, and never libxcrypt's static archive.
+  def test_copy_dev_takes_the_library_to_link_against
     Dir.mktmpdir do |dir|
       tree = File.join(dir, "tree")
       {
@@ -173,16 +173,10 @@ class RuntimeBuilderTest < Minitest::Test
       RuntimeBuilder::DevCompanion.copy(tree, windows, windows: true)
       RuntimeBuilder::DevCompanion.copy(tree, unix, windows: false)
 
-      assert_equal %w[
-        DEV-NOTICES.txt
-        ruby/include/ruby-4.0.0/ruby.h
-        ruby/include/ruby-4.0.0/x64-mingw-ucrt/ruby/config.h
-        ruby/lib/libx64-ucrt-ruby400.dll.a
-], files(windows)
-      assert_equal %w[DEV-NOTICES.txt include/ruby-4.0.0/ruby.h include/ruby-4.0.0/x64-mingw-ucrt/ruby/config.h lib/libruby-static.a],
-        files(unix)
+      assert_equal %w[DEV-NOTICES.txt ruby/lib/libx64-ucrt-ruby400.dll.a], files(windows)
+      assert_equal %w[DEV-NOTICES.txt lib/libruby-static.a], files(unix)
       notices = File.read(File.join(unix, "DEV-NOTICES.txt"))
-      assert_includes notices, "never copies them into an app"
+      assert_includes notices, "never copies it into\nan app"
       %w[ruby/COPYING ruby/BSDL rust/LICENSE-MIT rust/LICENSE-APACHE].each do |notice|
         assert_includes notices, File.read(File.join(RuntimeBuilder::ROOT, "runtime/notices", notice))
       end
@@ -434,6 +428,7 @@ class RuntimeBuilderTest < Minitest::Test
         bin/ruby_builtin_dlls/ruby_builtin_dlls.manifest
         bin/rubyw.exe
         bin/x64-ucrt-ruby400.dll
+        include/ruby-4.0.0/ruby.h
         lib/ruby/4.0.0/etc/ssl/cert.pem
         lib/ruby/4.0.0/json.rb
         lib/ruby/4.0.0/x64-mingw-ucrt/zlib.so

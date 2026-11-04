@@ -28,8 +28,8 @@ module Fledge
   # cross-compiling to later work (ADR 006).
   #
   # This class unpacks the runtime and its build-only companion
-  # (Fledge::Runtimes#dev_archive: Ruby's headers, and on Windows its
-  # import library) into the build's work folder, and runs the runtime's
+  # (Fledge::Runtimes#dev_archive: the library to link against) into the
+  # build's work folder, and runs the runtime's
   # own Ruby, with none of the developer's Ruby settings, to install each
   # gem as RubyGems installs one (Gem::Installer, with the options
   # <tt>bundle config build.NAME</tt> gives) into a gem folder of its own,

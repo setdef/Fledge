@@ -21,9 +21,13 @@ class RuntimeBuilder
     #
     # [*.dSYM] macOS debug symbols, read by debuggers and crash reporters,
     #          never by Ruby.
-    # [*.a, *.h, pkgconfig] Static libraries, C headers, and pkg-config
-    #          files, for compiling against Ruby; a runtime compiles
-    #          nothing, and Ruby code never loads them.
+    # [*.a, *.h, pkgconfig] Static libraries, the C headers of gems'
+    #          extensions, and pkg-config files, for compiling against
+    #          Ruby; a runtime compiles nothing, and Ruby code never loads
+    #          them. Ruby's own headers, in include/ beside lib/ruby, stay:
+    #          require "mkmf", which some gems do at run time for
+    #          MakeMakefile#find_executable, aborts without ruby/ruby.h
+    #          (mkmf.rb, "can't find header files for ruby").
     # [gems/4.0.0/doc] RDoc and ri documentation, read by the rdoc and ri
     #          tools a developer runs, never by an app's requires.
     # [portable_ruby_gems.rb, and gems no standard Ruby installs] rv-ruby's
@@ -98,8 +102,9 @@ class RuntimeBuilder
     #
     # [share\] Ruby's HTML documentation and ri data, for the rdoc and ri
     #          tools.
-    # [include\, lib\*.a, lib\pkgconfig] Headers and import libraries,
-    #          for compiling against Ruby.
+    # [lib\*.a, lib\pkgconfig] Import libraries and pkg-config files, for
+    #          compiling against Ruby. Ruby's headers (include\) stay, as
+    #          prune says.
     # [packages\, ridk_use\, bin\ridk.cmd, bin\ridk.ps1,
     #          bin\setrbvars.cmd, bin\startmenu.rb] The MSYS2 keyring and
     #          ridk, which install and select MSYS2 compilers for a
@@ -112,7 +117,7 @@ class RuntimeBuilder
     # do the gems' command-line wrappers (gem.cmd, bundle.bat, ...) and
     # RubyInstaller's own Ruby library in site_ruby.
     def self.prune_windows(tree, bundled)
-      FileUtils.rm_rf(%w[share include packages ridk_use lib/pkgconfig].map { |path| File.join(tree, path) })
+      FileUtils.rm_rf(%w[share packages ridk_use lib/pkgconfig].map { |path| File.join(tree, path) })
       FileUtils.rm_f(Dir.glob(File.join(tree, "lib", "*.a")))
       FileUtils.rm_f(%w[ridk.cmd ridk.ps1 setrbvars.cmd startmenu.rb].map { |name| File.join(tree, "bin", name) })
       prune_bin(File.join(tree, "bin"), prune(File.join(tree, "lib", "ruby"), bundled))

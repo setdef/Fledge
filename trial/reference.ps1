@@ -1,6 +1,6 @@
 # Runs the Lota trial's windowed game as its developer runs it, under
 # bundle exec on the build computer's own Ruby, with no Fledge in the
-# way: on Windows' own OpenGL, then with Mesa's software OpenGL beside
+# way: on Windows' own OpenGL, then with Mesa's software OpenGL and Vulkan beside
 # ruby.exe, as the app had it beside its program. What it shows tells a
 # failure of the app from one of the game or the computer.
 #
@@ -29,7 +29,7 @@ $null = Run-App 'reference-window-windows-opengl' $ruby $environment @($main) 2.
 Collect-Frame 'reference-window-windows-opengl'
 
 $copied = @()
-foreach ($dll in Get-ChildItem -LiteralPath $Mesa -Filter '*.dll') {
+foreach ($dll in Get-ChildItem -LiteralPath $Mesa -File) {
   $target = Join-Path $bin $dll.Name
   if (Test-Path -LiteralPath $target) { Write-Host "kept Ruby's own $($dll.Name)"; continue }
   Copy-Item -LiteralPath $dll.FullName -Destination $target
@@ -41,6 +41,13 @@ $llvmpipe = $environment.Clone()
 $llvmpipe['GALLIUM_DRIVER'] = 'llvmpipe'
 $null = Run-App 'reference-window-mesa-llvmpipe' $ruby $llvmpipe @($main) 2.5 90
 Collect-Frame 'reference-window-mesa-llvmpipe'
+$lavapipe = $environment.Clone()
+$manifest = Join-Path $bin 'lvp_icd.json'
+$lavapipe['VK_DRIVER_FILES'] = $manifest
+$lavapipe['VK_ICD_FILENAMES'] = $manifest
+$lavapipe['LOTA_TRIAL_RENDERERS'] = 'vulkan'
+$null = Run-App 'reference-window-mesa-lavapipe' $ruby $lavapipe @($main) 2.5 90
+Collect-Frame 'reference-window-mesa-lavapipe'
 $copied | ForEach-Object { Remove-Item -LiteralPath $_ }
 
 Section 'statuses'

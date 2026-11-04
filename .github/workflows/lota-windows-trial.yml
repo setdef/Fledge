@@ -67,6 +67,13 @@ jobs:
               [ -n "$found" ] || { echo "::error::no $dll for $platform"; exit 1; }
               cp "$found" "mesa/$platform/"
             done
+            # lavapipe, Mesa's software Vulkan, and a driver manifest
+            # beside it that names it there, for the Vulkan loader
+            # (VK_DRIVER_FILES).
+            cp "$(find "$RUNNER_TEMP/unpacked-$platform" -path '*/bin/*' -iname vulkan_lvp.dll | head -1)" "mesa/$platform/"
+            sed 's/"library_path": "[^"]*"/"library_path": "vulkan_lvp.dll"/' \
+              "$(find "$RUNNER_TEMP/unpacked-$platform" -iname 'lvp_icd.*.json' | head -1)" > "mesa/$platform/lvp_icd.json"
+            cat "mesa/$platform/lvp_icd.json"
             ls -la "mesa/$platform"
           }
           unpack x64-mingw-ucrt mingw-w64-ucrt-x86_64 opengl32.dll libgallium_wgl.dll libffi-8.dll libgcc_s_seh-1.dll \

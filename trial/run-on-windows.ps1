@@ -1,14 +1,15 @@
 # Runs the Lota trial's built app on a Windows runner with no Ruby on
 # its PATH, in stages, recording each and going on: the game with no
 # window, the windowed game on Windows' own OpenGL, the windowed game
-# with Mesa's software OpenGL beside the program, the same started
-# through the shell, and the setup program installed, run, and
+# with Mesa's software OpenGL and Vulkan beside the program, the same
+# started through the shell, and the setup program installed, run, and
 # uninstalled. Every stage writes to RESULTS; screenshots are PNGs there.
 #
 #   pwsh -NoProfile -File run-on-windows.ps1 -Dist DIST -Platform PLATFORM -Results RESULTS [-Mesa MESA]
 #
-# MESA is a folder of Mesa's opengl32.dll and the DLLs it needs, or
-# nothing to skip the stages that need it.
+# MESA is a folder of Mesa's opengl32.dll, vulkan_lvp.dll, lavapipe's
+# driver manifest, and the DLLs they need, or nothing to skip the stages
+# that need it.
 
 param(
   [Parameter(Mandatory)] [string] $Dist,
@@ -83,52 +84,83 @@ Expect "the game with no window plays a sound through OpenAL Soft's null backend
 $plain = Run-App 'window-windows-opengl' $app $nullAudio @() 2.5 60
 Collect-Frame 'window-windows-opengl'
 
+
+# The software renderers Mesa gives a computer with no GPU, as the
+# settings that choose each for the program in $Folder: llvmpipe, its
+# OpenGL, and lavapipe, its Vulkan, named to the Vulkan loader by the
+# driver manifest beside the program (VK_DRIVER_FILES) and asked of the
+# game by its conf.rb (LOTA_TRIAL_RENDERERS). Lota's ARM64 build has no
+# OpenGL (its SDL is built with SDL_OPENGL off), so there the game is
+# expected to draw with lavapipe, and elsewhere with llvmpipe.
+function Soft-Settings([string] $Kind, [string] $Folder) {
+  if ($Kind -eq 'llvmpipe') { return @{ GALLIUM_DRIVER = 'llvmpipe' } }
+  $manifest = Join-Path $Folder 'lvp_icd.json'
+  @{ VK_DRIVER_FILES = $manifest; VK_ICD_FILENAMES = $manifest; LOTA_TRIAL_RENDERERS = 'vulkan' }
+}
+$expected = if ($Platform -eq 'aarch64-mingw-ucrt') { 'lavapipe' } else { 'llvmpipe' }
+$expectedRenderer = if ($expected -eq 'lavapipe') { 'renderer: Vulkan' } else { 'renderer: OpenGL' }
+
+function With-Settings([hashtable] $Base, [hashtable] $Extra) {
+  $copy = $Base.Clone()
+  foreach ($key in $Extra.Keys) { $copy[$key] = $Extra[$key] }
+  $copy
+}
+
+# Starts $Target through the shell, as Explorer or the Start menu starts
+# it, with $Extra in the environment it inherits, and reads what the
+# game said from its log file.
+function Run-Shell([string] $Label, [string] $Target, [hashtable] $Extra) {
+  Section "run: $Label"
+  $log = Join-Path $Results "$Label.log"
+  $env:LOTA_TRIAL_LOG = $log
+  $env:ALSOFT_DRIVERS = 'null'
+  foreach ($key in $Extra.Keys) { Set-Item -Path "Env:\$key" -Value $Extra[$key] }
+  Start-Process -FilePath $Target -WorkingDirectory $system
+  Start-Sleep -Seconds 3
+  Save-Screen (Join-Path $Results "$Label.png")
+  $deadline = (Get-Date).AddSeconds(90)
+  while ((Get-Date) -lt $deadline -and -not ((Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log -Raw) -match 'exiting with')) {
+    Start-Sleep -Milliseconds 500
+  }
+  Get-Process LotaTrial -ErrorAction SilentlyContinue | ForEach-Object {
+    Save-Windows $Label $_
+    $_.Kill($true)
+    Write-Host "killed LotaTrial ($($_.Id)), still running after 90 s"
+  }
+  Remove-Item Env:\LOTA_TRIAL_LOG, Env:\ALSOFT_DRIVERS
+  foreach ($key in $Extra.Keys) { Remove-Item -Path "Env:\$key" }
+  $said = if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Raw } else { '' }
+  Write-Host $said
+  Add-Content -LiteralPath $statuses -Value "$Label $(if ($said -match 'exiting with (\d+)') { $Matches[1] } else { 'no exit line' })"
+  Collect-Frame $Label
+  $said
+}
+
 if ($Mesa) {
-  Section "Mesa's software OpenGL beside the program"
-  $mesaFiles = Get-ChildItem -LiteralPath $Mesa -Filter '*.dll'
+  Section "Mesa's software renderers beside the program"
+  $mesaFiles = Get-ChildItem -LiteralPath $Mesa -File
   $mesaFiles | ForEach-Object { Write-Host $_.Name }
   $mesaFiles | Copy-Item -Destination $root
-  Section 'whether the OpenGL DLLs load here'
-  Test-Load @((Join-Path $env:SystemRoot 'System32\opengl32.dll'), (Join-Path $root 'opengl32.dll'),
-    (Join-Path $root 'libgallium_wgl.dll'), (Join-Path $root 'libLLVM-23.dll'))
-  $llvmpipe = $nullAudio.Clone()
-  $llvmpipe['GALLIUM_DRIVER'] = 'llvmpipe'
-  $soft = Run-App 'window-mesa-llvmpipe' $app $llvmpipe @() 2.5 90
-  Collect-Frame 'window-mesa-llvmpipe'
-  Expect 'the windowed game draws with llvmpipe, plays its tone, and quits by itself with 0' ($soft.Code -eq 0 -and
-    $soft.Out -match 'renderer: OpenGL' -and $soft.Out -match 'audio: 1 source playing' -and $soft.Out -match 'frames in')
+  Section 'whether the Mesa DLLs load here'
+  Test-Load @((Join-Path $env:SystemRoot 'System32\opengl32.dll'), (Join-Path $env:SystemRoot 'System32\vulkan-1.dll'),
+    (Join-Path $root 'opengl32.dll'), (Join-Path $root 'libgallium_wgl.dll'), (Join-Path $root 'vulkan_lvp.dll'))
 
-  # SDL told which OpenGL to load, by its full path (SDL_OPENGL_LIBRARY,
-  # SDL_HINT_OPENGL_LIBRARY), instead of looking for OPENGL32.DLL.
-  $named = $llvmpipe.Clone()
-  $named['SDL_OPENGL_LIBRARY'] = Join-Path $root 'opengl32.dll'
-  $null = Run-App 'window-mesa-named' $app $named @() 2.5 60
-  Collect-Frame 'window-mesa-named'
+  foreach ($kind in 'llvmpipe', 'lavapipe') {
+    $run = Run-App "window-$kind" $app (With-Settings $nullAudio (Soft-Settings $kind $root)) @() 2.5 90
+    Collect-Frame "window-$kind"
+    if ($kind -eq $expected) {
+      Expect "the windowed game draws with $kind, plays its tone, and quits by itself with 0" ($run.Code -eq 0 -and
+        $run.Out -match $expectedRenderer -and $run.Out -match 'audio: 1 source playing' -and $run.Out -match 'frames in')
+    }
+  }
 
   # Mesa's OpenGL on Direct3D 12, on WARP, Windows' own software
   # Direct3D, for comparison; not expected of anything.
-  $d3d12 = $nullAudio.Clone()
-  $d3d12['GALLIUM_DRIVER'] = 'd3d12'
-  $null = Run-App 'window-mesa-d3d12' $app $d3d12 @() 2.5 60
+  $null = Run-App 'window-mesa-d3d12' $app (With-Settings $nullAudio @{ GALLIUM_DRIVER = 'd3d12' }) @() 2.5 60
   Collect-Frame 'window-mesa-d3d12'
 
-  # As Explorer starts it: through the shell, no streams, the log file.
-  Section 'run: window-mesa-shell'
-  $log = Join-Path $Results 'window-mesa-shell.log'
-  $env:LOTA_TRIAL_LOG = $log
-  $env:GALLIUM_DRIVER = 'llvmpipe'
-  $env:ALSOFT_DRIVERS = 'null'
-  $process = Start-Process -FilePath $app -WorkingDirectory $system -PassThru
-  Start-Sleep -Seconds 2.5
-  Save-Screen (Join-Path $Results 'window-mesa-shell.png')
-  if (-not $process.HasExited) { Save-Windows 'window-mesa-shell' $process }
-  if (-not $process.WaitForExit(90000)) { $process.Kill($true) }
-  Remove-Item Env:\LOTA_TRIAL_LOG, Env:\GALLIUM_DRIVER, Env:\ALSOFT_DRIVERS
-  $shellLog = if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Raw } else { '' }
-  Write-Host "exit status: $($process.ExitCode)"; Write-Host $shellLog
-  Add-Content -LiteralPath $statuses -Value "window-mesa-shell $($process.ExitCode)"
-  Collect-Frame 'window-mesa-shell'
-  Expect 'started through the shell, it draws and quits with 0' ($process.ExitCode -eq 0 -and $shellLog -match 'frames in')
+  $said = Run-Shell "window-$expected-shell" $app (Soft-Settings $expected $root)
+  Expect "started through the shell, it draws with $expected and quits with 0" ($said -match 'exiting with 0' -and $said -match 'frames in')
   $mesaFiles | ForEach-Object { Remove-Item -LiteralPath (Join-Path $root $_.Name) }
 }
 
@@ -142,34 +174,15 @@ if (Test-Path -LiteralPath $installer) {
   Expect 'the setup program installs LotaTrial.exe' ($setup.ExitCode -eq 0 -and (Test-Path -LiteralPath $installed))
   $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'LotaTrial.lnk'
   Write-Host "Start menu shortcut: $(Test-Path -LiteralPath $shortcut)"
-  $installedQuiet = Run-App 'installed-quiet' $installed $clean @('quiet')
-  Expect 'installed, the game with no window exits 3' ($installedQuiet.Code -eq 3)
+  $installedQuiet = Run-App 'installed-quiet' $installed $nullAudio @('quiet')
+  Expect 'installed, the game with no window plays a sound and exits 3' ($installedQuiet.Code -eq 3 -and
+    $installedQuiet.Out -match 'Windows: 1 source playing')
   if ($Mesa) {
-    Get-ChildItem -LiteralPath $Mesa -Filter '*.dll' | Copy-Item -Destination $folder
-    Section 'run: installed-shortcut-mesa'
-    $log = Join-Path $Results 'installed-shortcut-mesa.log'
-    $env:LOTA_TRIAL_LOG = $log
-    $env:GALLIUM_DRIVER = 'llvmpipe'
-    $env:ALSOFT_DRIVERS = 'null'
-    Start-Process -FilePath $shortcut
-    Start-Sleep -Seconds 3
-    Save-Screen (Join-Path $Results 'installed-shortcut-mesa.png')
-    $deadline = (Get-Date).AddSeconds(90)
-    while ((Get-Date) -lt $deadline -and -not ((Test-Path -LiteralPath $log) -and (Get-Content -LiteralPath $log -Raw) -match 'exiting with')) {
-      Start-Sleep -Milliseconds 500
-    }
-    Get-Process LotaTrial -ErrorAction SilentlyContinue | ForEach-Object {
-      Save-Windows 'installed-shortcut-mesa' $_
-      $_.Kill($true)
-      Write-Host "killed LotaTrial ($($_.Id)), still running after 90 s"
-    }
-    Remove-Item Env:\LOTA_TRIAL_LOG, Env:\GALLIUM_DRIVER, Env:\ALSOFT_DRIVERS
-    $shortcutLog = if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Raw } else { '' }
-    Write-Host $shortcutLog
-    Add-Content -LiteralPath $statuses -Value "installed-shortcut-mesa $(if ($shortcutLog -match 'exiting with (\d+)') { $Matches[1] } else { 'no exit line' })"
-    Collect-Frame 'installed-shortcut-mesa'
-    Expect 'started from its Start menu shortcut, it draws and quits' ($shortcutLog -match 'exiting with 0')
-    Get-ChildItem -LiteralPath $Mesa -Filter '*.dll' | ForEach-Object { Remove-Item -LiteralPath (Join-Path $folder $_.Name) }
+    $mesaFiles = Get-ChildItem -LiteralPath $Mesa -File
+    $mesaFiles | Copy-Item -Destination $folder
+    $said = Run-Shell "installed-shortcut-$expected" $shortcut (Soft-Settings $expected $folder)
+    Expect "started from its Start menu shortcut, it draws with $expected and quits with 0" ($said -match 'exiting with 0' -and $said -match 'frames in')
+    $mesaFiles | ForEach-Object { Remove-Item -LiteralPath (Join-Path $folder $_.Name) }
   }
   $uninstall = Start-Process -FilePath (Join-Path $folder 'uninstall.exe') -ArgumentList '/S' -Wait -PassThru
   Write-Host "silent uninstall exit status: $($uninstall.ExitCode)"

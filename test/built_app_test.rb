@@ -191,15 +191,15 @@ class BuiltAppTest < Minitest::Test
   # app's bundle with the person's RUBYOPT after Bundler's own, and
   # Bundler.with_original_env and with_unbundled_env, which a Bundler app
   # uses to start a person's own tools, give the person's environment
-  # back. The app's own gems stay the runtime's. The child runs in a
-  # UTF-8 locale: under a C locale, Bundler 4.0.20 itself fails to set up
-  # a bundle whose path is not ASCII (SharedHelpers#clean_load_path), as
-  # bundle exec would there.
+  # back. The app's own gems stay the runtime's. The environment names no
+  # locale, so the child's is C, which bin/ruby makes a UTF-8 one as the
+  # launcher does (ADR 026, section 1): in a C locale, Bundler 4.0.20
+  # cannot set up a bundle in a folder whose name is not ASCII, and the
+  # app is unpacked in one.
   def test_a_bundler_apps_children_see_the_persons_ruby_settings_as_under_bundle_exec
     Dir.mktmpdir do |dir|
       gems = File.join(dir, "person-gems")
-      locale = @platform.name.end_with?("darwin") ? "en_US.UTF-8" : "C.UTF-8"
-      env = { "HOME" => dir, "LC_ALL" => locale, "GEM_HOME" => gems, "RUBYOPT" => "-W0", "BUNDLE_PERSON" => "1" }
+      env = { "HOME" => dir, "GEM_HOME" => gems, "RUBYOPT" => "-W0", "BUNDLE_PERSON" => "1" }
       seen = -> (*argv) { run_app(env, bundled_probe, *argv).then { |out, err, status| [out.chomp, err, status.exitstatus] } }
 
       %w[original-child-env unbundled-child-env].each do |command|
@@ -211,6 +211,25 @@ class BuiltAppTest < Minitest::Test
       assert_match %r{\A-r(?:\S*/)?bundler/setup -W0\z}, seen.call("child-env", "RUBYOPT").first
       refute_equal gems, seen.call("child-env", "GEM_HOME").first
       refute_includes seen.call("gem-path").first, gems
+    end
+  end
+
+  # The runtime's own bin/ruby, the Ruby an app restarts or a gem's
+  # executable runs on, chooses its locale as the launcher does (ADR 026,
+  # section 1, after PEP 538): with no locale in the environment, which is
+  # C, it reads a folder whose name is not ASCII as UTF-8. Windows keeps
+  # RubyInstaller's ruby.exe, which reads the console's code page (ADR
+  # 003, section 5).
+  def test_the_runtimes_own_ruby_turns_a_c_locale_into_utf8_as_the_launcher_does
+    skip "Windows keeps RubyInstaller's ruby.exe (ADR 001, section 8)" if @platform.windows?
+
+    Dir.mktmpdir do |dir|
+      script = File.join(dir, "Ünïcödé", "encoding.rb")
+      FileUtils.mkdir_p(File.dirname(script))
+      File.write(script, "print Encoding.default_external, ' ', __dir__.encoding, ' ', __dir__.valid_encoding?\n")
+      out, err, status = run_app({ "HOME" => dir }, File.join(File.dirname(app), "bin", "ruby"), script)
+
+      assert_equal ["UTF-8 UTF-8 true", "", 0], [out, err, status.exitstatus]
     end
   end
 

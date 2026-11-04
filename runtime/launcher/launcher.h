@@ -18,7 +18,8 @@
  * pass to an app. config.c holds another: how to read fledge.cfg, which
  * says what the app runs. bundler.c holds a third: how an app with a
  * Gemfile gets the environment bundle exec would give it. locale.c holds
- * how macOS, Linux, and the mobile runtimes choose a UTF-8 locale.
+ * how macOS, Linux, and the mobile runtimes choose a UTF-8 locale, for
+ * the launcher and for the runtime's bin/ruby (ruby_main.c) alike.
  */
 
 #ifndef FLEDGE_LAUNCHER_H

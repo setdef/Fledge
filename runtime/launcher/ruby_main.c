@@ -4,7 +4,9 @@
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-FileComment: Adapted from Ruby's main.c at Ruby v4.0.9
  *   (3e93b23afcec3433f6aecc34b5d832799d754238), without its developer-only
- *   RUBY_DEBUG_ENV and sanitizer hooks, whose headers Ruby does not install.
+ *   RUBY_DEBUG_ENV and sanitizer hooks, whose headers Ruby does not install,
+ *   and with Fledge's fledge_coerce_locale (locale.c) in place of its
+ *   setlocale.
  */
 
 /*
@@ -16,19 +18,30 @@
  * that program, but the runtime builds its own from the same static
  * libruby the launcher links, with the same link line, so the two
  * programs carry exactly the same Ruby and the same libraries. This is
- * Ruby's main.c, unchanged in what it does: it is the ruby a person
- * runs, not an app's launcher, so it neither scrubs the environment nor
- * runs app/main.rb. Built with --enable-load-relative, it finds its
- * standard library from its own folder, bin, whose parent is the
- * runtime (ruby.c, ruby_init_loadpath).
+ * Ruby's main.c, and it is the ruby a person runs, not an app's
+ * launcher: it neither scrubs the environment nor runs app/main.rb.
+ * Built with --enable-load-relative, it finds its standard library from
+ * its own folder, bin, whose parent is the runtime (ruby.c,
+ * ruby_init_loadpath).
+ *
+ * It differs from main.c in one call. Where main.c sets LC_CTYPE from
+ * the environment, it calls the launcher's fledge_coerce_locale, which
+ * does the same and then turns a bare C or POSIX locale into a UTF-8
+ * one, as Python does (PEP 538). The launcher sets the locale only in
+ * its own process and exports nothing, so a Ruby the app starts, a
+ * restart of the app, and a gem's executable start from the locale the
+ * person has, which for an app a desktop started is C; with main.c's
+ * setlocale they would read the app's folder, whose name need not be
+ * ASCII, as US-ASCII, and Bundler would fail to set up the app's gems
+ * (ADR 026, section 1).
  *
  * Its license is Ruby's, like the rest of what it is made of; the
- * runtime's notices/ruby/ covers it.
+ * runtime's notices/ruby/ covers it. locale.c is Fledge's own.
  */
 
-#include <ruby.h>
+#include "launcher.h"
 
-#include <locale.h>
+#include <ruby.h>
 
 RUBY_GLOBAL_SETUP
 
@@ -43,7 +56,7 @@ rb_main(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-    setlocale(LC_CTYPE, "");
+    fledge_coerce_locale();
 
     ruby_sysinit(&argc, &argv);
     return ruby_start_main(rb_main, argc, argv);

@@ -17,8 +17,14 @@ class RuntimeBuilder
       @prefix = @tree = unpack_ruby
       copy_ruby(stage)
       compile(File.join(stage, "launcher"), launcher_sources, "$ORIGIN/lib")
-      compile(File.join(stage, "bin", "ruby"), [File.join(LAUNCHER, "ruby_main.c")], "$ORIGIN/../lib")
+      compile(File.join(stage, "bin", "ruby"), ruby_sources, "$ORIGIN/../lib")
       finish(stage)
+    end
+
+    # Ruby's own main.c, which chooses its locale as the launcher does
+    # (ADR 026, section 1).
+    private def ruby_sources
+      %w[ruby_main.c locale.c].map { |file| File.join(LAUNCHER, file) }
     end
 
     private def launcher_sources

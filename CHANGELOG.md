@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On macOS and Linux, a runtime's `bin/ruby`, the Ruby `RbConfig.ruby` names, turns a bare C locale into a UTF-8 one as the launcher does, so a Ruby an app starts, a restart, or a gem's executable reads a folder whose name is not ASCII as UTF-8, and sets up the app's gems there; it had read such a folder as US-ASCII, and Bundler failed.
 - On macOS, `fledge build` refuses a gem whose compiled file names a library the gem carries as `@rpath/NAME` or `@loader_path/NAME` that dyld would not find there, such as one reached only through a run path of `/opt/homebrew/lib`, naming the file and the run paths it searched; it had accepted any library of the same file name.
 - `fledge build` says that a gem's server has no file for the gem, and to put it in `vendor/cache` or lock the gem to the source that has it, when the server answers 404 or 410, or when RubyGems.org answers 403 to a request without a login; it had told the developer to set a login.
 - `fledge build` no longer copies RubyGems' "Successfully built RubyGem" report into its log for each gem whose executables it writes.

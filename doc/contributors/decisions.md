@@ -274,3 +274,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 *Governs:* the purpose of Design precedence 2 and of the parity check: a difference between a Fledge app and the same program run without Fledge is a bug unless it is justified and documented. *Applied in:* AGENTS.md, Design precedence 2; ADR 026.
 
+## 2026-11-03
+
+The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
+
+> Once we hit 1.0.0, we will be releasing via RubyGems (human only), not relying on GitHub Releases and git tags.
+
+[re: the orchestrator's question whether major versions after 1.0 are the maintainer's decision, and its comparison of four ways to release them.]
+
+*Governs:* from 1.0.0, Fledge is released on RubyGems.org, by a human; the release does not rely on a GitHub Release or a git tag. Agents prepare a release and never publish it. *Applied in:* Plan 003, "Fledge as gems on RubyGems.org" and "1.0"; AGENTS.md, Releasing.
+

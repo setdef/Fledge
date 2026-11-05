@@ -10,6 +10,7 @@ require_relative "../app"
 require_relative "../app_gems"
 require_relative "../assembly"
 require_relative "../bundle"
+require_relative "../checksum"
 require_relative "../error"
 require_relative "../gem_fetcher"
 require_relative "../git_checkout"
@@ -43,7 +44,9 @@ module Fledge
     # compiling those that need it (Fledge::NativeBuild) in a work folder
     # it removes afterwards, builds the app with Fledge::Assembly, and
     # prints the path of its archive and of each installer
-    # (Fledge::Installers) it wrote, one per line, the archive first. A failed build becomes
+    # (Fledge::Installers) it wrote, one per line, the archive first,
+    # writing beside each its checksum file (Fledge::Checksum), which it
+    # does not print. A failed build becomes
     # lines beginning <tt>fledge build:</tt> on the error stream and exit
     # status 1; a mistake in its arguments raises Fledge::UsageError,
     # which Fledge::CLI turns into the usage and exit status 2.
@@ -129,7 +132,10 @@ module Fledge
           files = gems ? gems.for(platform, runtime: contents) : [] # : Array[Entry]
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
           assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:)
-          [assembly.call, *assembly.installers].each { |path| @out.puts File.join(out, File.basename(path)) }
+          [assembly.call, *assembly.installers].each do |path|
+            Checksum.write(path)
+            @out.puts File.join(out, File.basename(path))
+          end
         end
       end
 

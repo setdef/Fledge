@@ -6,6 +6,7 @@
 #++
 
 require_relative "test_helper"
+require "digest"
 require "stringio"
 
 # fledge build's arguments, through real streams, with runtimes from a
@@ -57,6 +58,28 @@ class BuildCommandTest < Minitest::Test
     assert_equal [0, ""], [status, err]
     assert_equal "dist/Hello-arm64-darwin.tar.gz\n", out
     assert_path_exists File.join(@dir, "dist/Hello-arm64-darwin/Hello")
+  end
+
+  # Beside each file it prints, the build writes that file's SHA-256 in
+  # sha256sum's format, which a package manager's recipe needs, and does
+  # not print it (ADR 029, section 4).
+  def test_the_archive_gets_a_checksum_file_beside_it_that_is_not_printed
+    out, err, status = build("hello")
+
+    archive = File.join(@dir, "dist/Hello-x86_64-linux.tar.gz")
+    assert_equal [0, "", "dist/Hello-x86_64-linux.tar.gz\n"], [status, err, out]
+    assert_equal "#{Digest::SHA256.file(archive).hexdigest}  Hello-x86_64-linux.tar.gz\n",
+      File.binread("#{archive}.sha256")
+  end
+
+  def test_the_checksum_file_checks_with_sha256sum
+    tool = %w[sha256sum shasum].find { |name| system(name, "--version", out: File::NULL, err: File::NULL) }
+    skip "neither sha256sum nor shasum is on this computer" unless tool
+
+    build("hello")
+
+    arguments = (tool == "shasum") ? ["shasum", "-a", "256", "-c"] : ["sha256sum", "-c"]
+    assert system(*arguments, "Hello-x86_64-linux.tar.gz.sha256", chdir: File.join(@dir, "dist"), out: File::NULL)
   end
 
   def test_on_another_computer_the_build_is_for_that_computer
@@ -176,6 +199,8 @@ class BuildCommandTest < Minitest::Test
 
     assert_equal [0, ""], [status, err]
     assert_equal "dist/Hello Window-x86_64-linux.tar.gz\ndist/Hello Window-x86_64-linux.AppImage\n", out
+    image = File.join(@dir, "dist/Hello Window-x86_64-linux.AppImage")
+    assert_equal "#{Digest::SHA256.file(image).hexdigest}  Hello Window-x86_64-linux.AppImage\n", File.binread("#{image}.sha256")
   end
 
   def test_the_callers_arguments_are_left_unchanged

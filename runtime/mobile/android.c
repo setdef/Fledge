@@ -58,6 +58,13 @@ __wrap_X509_get_default_cert_file(void)
 
 static char *log_tag;
 
+/* logcat copies nothing to an app's standard error. */
+int
+fledge_log_echoes(void)
+{
+    return 0;
+}
+
 int
 fledge_log_open(const char *tag)
 {

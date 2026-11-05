@@ -135,6 +135,8 @@ class MobileParity
     # program has ended; and the process's ID, which simctl launch prints,
     # keeps an earlier launch's lines out.
     private def launch(udid, app)
+      return launch_with_console(udid, app) unless ENV.fetch("EXPERIMENT_DT_MODE", "").empty?
+
       since = (Time.now - 2).strftime("%Y-%m-%d %H:%M:%S")
       launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier)
       pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
@@ -149,6 +151,40 @@ class MobileParity
       end
       sleep 2
       messages(udid, since, pid, app).tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
+    end
+
+    # experiment/ios-output: launches +app+ with OS_ACTIVITY_DT_MODE set to
+    # EXPERIMENT_DT_MODE, its streams read by simctl launch --console as a
+    # developer tool reads them, and returns what the streams carried and
+    # what its process logged. Each line the app prints must reach the
+    # streams once; the host's status line is logged with os_log.
+    private def launch_with_console(udid, app)
+      since = (Time.now - 2).strftime("%Y-%m-%d %H:%M:%S")
+      console = File.join(@work, "#{udid}-#{app.identifier}.console")
+      simctl = Process.spawn({ "SIMCTL_CHILD_OS_ACTIVITY_DT_MODE" => ENV.fetch("EXPERIMENT_DT_MODE") },
+        "xcrun", "simctl", "launch", "--console", "--terminate-running-process", udid, app.identifier,
+        out: console, err: [:child, :out])
+      deadline = Time.now + TIMEOUT
+      pid = nil
+      until pid && MobileParity.status(messages(udid, since, pid, app))
+        pid ||= File.read(console)[/^#{Regexp.escape(app.identifier)}: (\d+)$/, 1]&.then { |found| Integer(found) }
+        if Time.now > deadline
+          raise "#{app.name} did not finish in #{TIMEOUT} seconds with OS_ACTIVITY_DT_MODE set.\nIts streams:\n" \
+            "#{File.readlines(console).last(40).join}\nIts log:\n#{pid ? messages(udid, since, pid, app).last(40).join("\n") : 'no process ID'}"
+        end
+
+        sleep 5
+      end
+      sleep 2
+      system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL)
+      Process.wait(simctl)
+      streams = File.readlines(console, chomp: true)
+      @out.puts "#{app.name} with OS_ACTIVITY_DT_MODE=#{ENV.fetch('EXPERIMENT_DT_MODE')}, its streams:", *streams.map { |line| "  #{line}" }
+      if app.prints && streams.count { |line| line.match?(app.prints) } != 1
+        raise "#{app.name} printed its line #{streams.count { |line| line.match?(app.prints) }} times on its streams"
+      end
+
+      streams + messages(udid, since, pid, app)
     end
 
     # The messages the process +pid+ logged in the app's subsystem since

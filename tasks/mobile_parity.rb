@@ -60,7 +60,7 @@ class MobileParity
       prints: /\ACmakePhone totals 10 in C\+\+ that CMake \d+\.\d+\.\d+ built for (?:iOS Simulator on arm64, on arm64-darwin|Android on x86_64, on x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
-  ].freeze
+  ].reject { |app| !ENV.fetch("EXPERIMENT_DT_MODE", "").empty? && %w[NativePhone CmakePhone Parity].include?(app.name) }.freeze # experiment/ios-output
 
   # The line the host app of every project fledge build writes logs when
   # the app's program ends, with its exit status.

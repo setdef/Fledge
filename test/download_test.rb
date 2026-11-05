@@ -49,10 +49,12 @@ class DownloadTest < Minitest::Test
       to = File.join(dir, "runtime.tar.gz")
       wrong = "0" * 64
 
-      error = assert_raises(Fledge::Error) { Fledge::Download.save(@server.url("/file"), to:, sha256: wrong) }
+      error = assert_raises(Fledge::Download::Mismatch) { Fledge::Download.save(@server.url("/file"), to:, sha256: wrong) }
 
       assert_equal "#{@server.url('/file')} has SHA-256 #{SHA}, but #{wrong} was expected. " \
         "The file changed since it was pinned, or the download was damaged; nothing was saved.", error.message
+      assert_equal [SHA, wrong], [error.actual, error.expected]
+      assert_kind_of Fledge::Error, error
       assert_empty Dir.children(dir)
     end
   end

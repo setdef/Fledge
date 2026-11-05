@@ -30,13 +30,19 @@ module Fledge
   # cache (<tt>$XDG_CACHE_HOME/fledge/runtimes</tt>, or
   # <tt>~/.cache/fledge/runtimes</tt>), and if the runtime is not there,
   # it downloads it from this version's GitHub Release into the cache.
+  # When +FLEDGE_RUNTIME_MIRROR+ names a base URL, the download comes
+  # from there instead, as <tt>MIRROR/vVERSION/NAME</tt>, the path the
+  # release has under <tt>https://github.com/setdef/Fledge/releases/download</tt>,
+  # and from nowhere else: a mirror that lacks a file fails the build
+  # rather than sending it to a host its owner chose to avoid.
   #
   # Either way, a runtime from the cache or a download must have the
   # SHA-256 this gem pins for it in +PINS+, which the release workflow
   # wrote from the very runtimes it then published (ADR 014). The
   # release's own +SHA256SUMS+ catches a damaged download, but a release
   # whose assets and sums were both replaced would pass it; the pins were
-  # fixed when this gem was, so it does not.
+  # fixed when this gem was, so it does not, and neither does a mirror
+  # that serves other bytes.
   #
   # Use it to get the archive Fledge::Assembly copies an app into.
   #
@@ -118,9 +124,10 @@ module Fledge
     # Creates the finder.
     #
     # [env] The environment to read +FLEDGE_RUNTIME_DIR+,
-    #       +XDG_CACHE_HOME+, and +HOME+ from (default: +ENV+).
-    # [release_url] Where this version's runtimes download from
-    #               (default: its GitHub Release).
+    #       +FLEDGE_RUNTIME_MIRROR+, +XDG_CACHE_HOME+, and +HOME+ from
+    #       (default: +ENV+).
+    # [release_url] Where this version's runtimes download from when no
+    #               mirror is set (default: its GitHub Release).
     # [log] Where to say that a download is starting, or +nil+.
     # [pins] The file of SHA-256s to check runtimes against (default:
     #        PINS).
@@ -217,8 +224,25 @@ module Fledge
     end
 
     private def download(name, destination, sha256)
+      mirror = @env["FLEDGE_RUNTIME_MIRROR"].to_s.sub(%r{/+\z}, "")
+      return from_mirror(mirror, name, destination, sha256) unless mirror.empty?
+
       @log&.puts "Downloading #{name} from #{@release_url}"
       Download.save("#{@release_url}/#{name}", to: destination, sha256:)
+    end
+
+    # Downloads +name+ from the mirror, where this version's release
+    # keeps it under the mirror's base: MIRROR/vVERSION/NAME. A mirror
+    # that fails is not passed over for the release (ADR 031).
+    private def from_mirror(mirror, name, destination, sha256)
+      base = "#{mirror}/v#{VERSION}"
+      @log&.puts "Downloading #{name} from #{base}"
+      Download.save("#{base}/#{name}", to: destination, sha256:)
+    rescue Download::Mismatch => e
+      raise Error, "FLEDGE_RUNTIME_MIRROR is #{mirror}, whose #{name} has SHA-256 #{e.actual}, but Fledge #{VERSION} " \
+        "pins #{e.expected} for it. The mirror does not hold the file this Fledge released; nothing was saved."
+    rescue Error => e
+      raise Error, "FLEDGE_RUNTIME_MIRROR is #{mirror}: #{e.message}"
     end
 
     private def pin(name)

@@ -40,16 +40,29 @@ module Check
     # sent to it, HUP when the terminal is gone), or nil while it runs.
     attr_accessor :ending
 
-    # Has Ruby's own handling of TERM and HUP stand aside while the screen
-    # is up, so the screen can be restored before the signal ends the app.
+    # Has TERM and HUP only note that they came, so the screen can be
+    # restored before the signal ends the app, and starts a watcher that
+    # notes when the terminal has gone away. A closed terminal does not
+    # always send HUP, and the app must not spin on it: the watcher gives
+    # the app three seconds to leave, then ends it.
     def watch_signals
       %w[TERM HUP].each { |name| trap(name) { self.ending ||= name } if Signal.list.key?(name) }
+      watcher = Thread.new do
+        sleep 1 until terminal_gone?
+        self.ending ||= "HUP"
+        sleep 3
+        exit!(129)
+      end
+      watcher.report_on_exception = false
     end
 
-    # True when the terminal has gone away, as when its window is closed.
+    # True when the terminal has gone away, as when its window is closed:
+    # there is no console to open, or a harmless reset cannot be written.
     def terminal_gone?
-      IO.console.nil?
-    rescue SystemCallError
+      return true if IO.console.nil?
+
+      $stdout.syswrite("\e[0m").nil?
+    rescue SystemCallError, IOError
       true
     end
 
@@ -208,6 +221,8 @@ module FledgeCheck
 
   # A key changes the model or ends the app; every other frame advances the clock and counter.
   Update = lambda { |message, model|
+    next Rooibos::Command.exit if Check.ending
+
     case message
     in { type: :key, code: "c", modifiers: ["ctrl"] }
       Check.ending = "INT"
@@ -219,9 +234,6 @@ module FledgeCheck
     in { type: :key, code:, modifiers: }
       model.with(key: (modifiers + [code]).join("+"))
     else
-      Check.ending ||= "HUP" if (model.frame % 10).zero? && Check.terminal_gone?
-      return Rooibos::Command.exit if Check.ending
-
       model.with(time: Time.now, frame: model.frame + 1)
     end
   }

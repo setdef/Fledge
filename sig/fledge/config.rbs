@@ -26,6 +26,7 @@ module Fledge
     attr_reader description: String?
     attr_reader long_description: String?
     attr_reader homepage: String?
+    attr_reader license_file: String?
     attr_reader installers: Array[String]?
     attr_reader programs: Array[Config::Program]?
     attr_reader ios: Config::Phone?
@@ -33,7 +34,7 @@ module Fledge
     attr_reader linux: Config::Linux?
     attr_reader macos: Config::Macos?
 
-    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, description: String?, long_description: String?, homepage: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?, macos: Config::Macos?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, description: String?, long_description: String?, homepage: String?, license_file: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?, macos: Config::Macos?) -> instance
 
     def self.none: () -> Config
 
@@ -54,6 +55,8 @@ module Fledge
     private def self.windowed?: (Hash[Object, Object] data) -> bool
 
     def self.text: (Hash[Object, Object] data, String key, String path, String example) -> String?
+
+    def self.file: (Hash[Object, Object] data, String key, String path, String example) -> String?
 
     def self.inside?: (String path) -> bool
 

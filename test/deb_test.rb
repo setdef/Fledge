@@ -114,6 +114,33 @@ class DebTest < Minitest::Test
     Dir.mktmpdir { |dir| assert_equal "", field(build(dir), "Homepage") }
   end
 
+  # Policy 12.5 and 12.7: the license text, uncompressed, as the
+  # package's copyright file, and the changelog as changelog.gz, by
+  # gzip -9 -n, with no name or time in it; neither without the keys.
+  def test_the_license_and_changelog_are_the_packages_documents
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      changelog = File.join(dir, "CHANGES.txt")
+      File.write(changelog, "My App 1.2.3\n\n  * Says hello.\n")
+      deb = Fledge::Deb.write(identity:, folder: folder(dir, identity), platform: X86, to: File.join(dir, "My App.deb"),
+        license: "Copyright © 2026 Me\n", changelog:)
+      listed = contents(deb)
+      assert_match %r{^-rw-r--r-- root/root .* \./usr/share/doc/com\.example\.myapp/copyright$}, listed
+      assert_match %r{^-rw-r--r-- root/root .* \./usr/share/doc/com\.example\.myapp/changelog\.gz$}, listed
+      refute_match %r{doc/com\.example\.myapp/changelog$}, listed
+
+      out = File.join(dir, "out")
+      _, status = Open3.capture2e("dpkg-deb", "-x", deb, out)
+      assert_predicate status, :success?
+      doc = File.join(out, "usr/share/doc/com.example.myapp")
+      assert_equal "Copyright © 2026 Me\n", File.read(File.join(doc, "copyright"))
+      gz = File.binread(File.join(doc, "changelog.gz"))
+      assert_equal [0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 2], gz.bytes.first(9), "gzip -n -9: no name, no time, the best compression"
+      assert_equal File.read(changelog), Zlib.gunzip(gz)
+    end
+    Dir.mktmpdir { |dir| refute_match %r{usr/share/doc}, contents(build(dir)) }
+  end
+
   def test_an_extended_description_is_written_as_policy_asks
     assert_equal " One.\n .\n Two,\n   indented.\n", Fledge::Deb.extended("\nOne.\n\nTwo,\n  indented.  \n")
     assert_equal "", Fledge::Deb.extended(nil)

@@ -45,14 +45,14 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    class Linux < Data.define(:system_libraries)
+    class Linux < Data.define(:system_libraries, :deb_changelog)
       ##
       # :attr_reader: system_libraries
       # The names of the libraries the project's gems load from the
       # distribution, as their compiled files give them, or none.
 
       # The keys the mapping may hold.
-      KEYS = %w[system_libraries].freeze
+      KEYS = %w[system_libraries deb_changelog].freeze
 
       # A library's name as an ELF file's <tt>DT_NEEDED</tt> gives it: a
       # file name, in letters, digits, and <tt>. _ + -</tt>, that ends in
@@ -79,15 +79,16 @@ module Fledge
         item = data["linux"]
         return nil if item.nil?
         unless item.is_a?(Hash)
-          raise Error, "#{file}: linux must be a mapping of system_libraries, such as linux: { system_libraries: [libgtk-3.so.0] }"
+          raise Error, "#{file}: linux must be a mapping of system_libraries and deb_changelog, such as linux: { system_libraries: [libgtk-3.so.0] }"
         end
 
         unknown = item.keys - KEYS
         unless unknown.empty?
-          raise Error, "#{file}: linux has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. It knows system_libraries."
+          raise Error, "#{file}: linux has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. " \
+            "It knows system_libraries and deb_changelog."
         end
 
-        new(system_libraries: libraries(item["system_libraries"], file))
+        new(system_libraries: libraries(item["system_libraries"], file), deb_changelog: Config.file(item, "deb_changelog", "#{file}: linux", "CHANGELOG.md"))
       end
 
       # The list at +system_libraries+, each a SONAME, once each.

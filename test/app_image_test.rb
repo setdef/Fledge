@@ -77,6 +77,30 @@ class AppImageTest < Minitest::Test
     end
   end
 
+  # The top icon is the 256-pixel PNG, or else the largest there is.
+  def test_the_top_icon_is_the_256_pixel_one_or_else_the_largest
+    Dir.mktmpdir do |dir|
+      FakeRuntime.icons(dir)
+      icon = Fledge::Icon.new(base: File.join(dir, "icon"), name: "icon")
+      assert_equal File.binread(File.join(dir, "icon-256.png")), top_icon(dir, icon)
+
+      [256, 512].each { |size| File.delete(File.join(dir, "icon-#{size}.png")) }
+      assert_equal File.binread(File.join(dir, "icon-128.png")), top_icon(dir, icon)
+    end
+  end
+
+  # The icon at the top of the AppImage built for +icon+ in +dir+, as
+  # unsquashfs extracts it.
+  def top_icon(dir, icon)
+    image = build(dir, identity: identity(icon:))
+    out = File.join(dir, "extracted")
+    FileUtils.rm_rf(out)
+    log, status = Open3.capture2e("unsquashfs", "-o", RUNTIME.content.bytesize.to_s, "-d", out, image, "com.example.MyApp.png")
+    assert_predicate status, :success?, log
+    FileUtils.rm_rf(File.join(dir, "My App-x86_64-linux"))
+    File.binread(File.join(out, "com.example.MyApp.png"))
+  end
+
   def test_a_runtime_without_an_appimage_runtime_is_refused
     Dir.mktmpdir do |dir|
       [nil, dir].each do |tools|

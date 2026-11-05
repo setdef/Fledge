@@ -29,7 +29,7 @@
       "pattern": "^[0-9]+(?:\\.[0-9a-zA-Z]+)*(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?[ \\t\\n\\u000b\\f\\r]*$"
     },
     "icon": {
-      "description": "The icon's files without their extension, relative to the project's root, such as icons/app: icons/app.icns on macOS, icons/app.ico on Windows (16 to 256 pixels), icons/app-16.png, -32, -64, -128, -256, and -512 on Linux, icons/app-1024.png for iOS, and icons/app-48.png, -72, -96, -144, and -192 for Android.",
+      "description": "The icon's files without their extension, relative to the project's root, such as icons/app: icons/app.icns on macOS, icons/app.ico on Windows (16 to 256 pixels), icons/app-16.png, -32, -64, -128, -256, and -512 on Linux (those there are, at least one), icons/app-1024.png for iOS, and icons/app-48.png, -72, -96, -144, and -192 for Android.",
       "type": ["string", "null"],
       "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]",
       "not": {

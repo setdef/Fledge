@@ -41,6 +41,18 @@ class DesktopEntryTest < Minitest::Test
     end
   end
 
+  # A project with some of the six sizes, as icon tools make them (32,
+  # 128, and 256), ships those, each in its own size's folder.
+  def test_writes_only_the_icon_sizes_there_are
+    Dir.mktmpdir do |dir|
+      FakeRuntime.icons(dir)
+      [16, 64, 512].each { |size| File.delete(File.join(dir, "icon-#{size}.png")) }
+      entries = Fledge::DesktopEntry.new(identity(icon: Fledge::Icon.new(base: File.join(dir, "icon"), name: "icon"))).entries
+      assert_equal %w[32x32 128x128 256x256].map { |size| "share/icons/hicolor/#{size}/apps/com.example.HelloWindow.png" }, entries.drop(1).map(&:path)
+      assert_equal File.binread(File.join(dir, "icon-128.png")), entries[2].content
+    end
+  end
+
   def test_escapes_values_and_quotes_the_program
     assert_equal "HelloWindow", Fledge::DesktopEntry.exec("HelloWindow")
     assert_equal '"Hello Window"', Fledge::DesktopEntry.exec("Hello Window")

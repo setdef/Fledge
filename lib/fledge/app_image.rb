@@ -25,7 +25,8 @@ module Fledge
   # This module makes one as appimagetool does (ADR 010): it copies the
   # built app's folder, which already has the desktop entry at its top
   # (ADR 008, section 4), into an AppDir, adds +AppRun+, a symbolic link
-  # to the app's program, the 256-pixel icon at the top, named as the
+  # to the app's program, the 256-pixel icon at the top (else the
+  # largest the app has), named as the
   # desktop entry's +Icon+ names it, and <tt>.DirIcon</tt>, a link to it;
   # has squashfs-tools' +mksquashfs+ write the file system with
   # appimagetool's options (zstd, blocks of 128 KiB, root as every item's
@@ -52,7 +53,9 @@ module Fledge
     RUNTIME = "appimage-runtime"
 
     # The size of the icon at the AppImage's top, as appimagetool
-    # recommends it.
+    # recommends it. An app with no PNG of that size has its largest
+    # there, as Tauri's bundler picks the largest square
+    # (<tt>linux/appimage/linuxdeploy.rs</tt>, lines 97 to 101).
     ICON_SIZE = 256
 
     # What to do when this computer has no mksquashfs.
@@ -103,7 +106,8 @@ module Fledge
       return unless icon
 
       name = "#{identity.identifier}.png"
-      FileUtils.cp(icon.png(ICON_SIZE), File.join(appdir, name))
+      pngs = icon.linux
+      FileUtils.cp(pngs.fetch(ICON_SIZE) { pngs.fetch(pngs.keys.max) }, File.join(appdir, name))
       File.symlink(name, File.join(appdir, ".DirIcon"))
     end
   end

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The Gradle wrapper in an `fledge build android` project retries its Gradle download four times (`retries=4`, `retryBackOffMs=5000` in `gradle-wrapper.properties`) instead of failing on the first 5xx.
+- A windowed Linux app takes the icon PNGs its project has, at least one of `-16`, `-32`, `-64`, `-128`, `-256`, and `-512`, instead of needing all six; `fledge build` warns on standard error naming each one missing, and the AppImage's top icon is the 256-pixel one, or else the largest.
 
 ### Fixed
 

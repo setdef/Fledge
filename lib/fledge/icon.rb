@@ -28,7 +28,10 @@ module Fledge
   # * <tt>ICON.ico</tt> on Windows, holding the sizes Windows shows, 16,
   #   32, 48, 64, and 256 pixels a side, as Briefcase asks;
   # * <tt>ICON-16.png</tt> to <tt>ICON-512.png</tt> on Linux, one for
-  #   each of LINUX's sizes;
+  #   each of LINUX's sizes you have, and at least one (#linux): a
+  #   desktop scales the nearest size it finds, as the Icon Theme
+  #   Specification's lookup does, so a set without 16 pixels, as other
+  #   icon tools make them, still ships;
   # * <tt>ICON-1024.png</tt> for iOS and iPadOS, the one size an asset
   #   catalog's app icon has needed since Xcode 14, which makes the rest
   #   (IOS);
@@ -76,7 +79,7 @@ module Fledge
     MAKE = {
       "icns" => "Make it from PNGs with iconutil -c icns, as a Mac app's icon is made.",
       "ico" => "Make it with the sizes Windows shows, 16, 32, 48, 64, and 256 pixels a side.",
-      "png" => "Linux apps take one PNG of each size, #{LINUX.map { |size| "-#{size}" }.join(', ')}.",
+      "png" => "Linux apps take a PNG of at least one of the sizes #{LINUX.map { |size| "-#{size}" }.join(', ')}, and ship each there is.",
       "ios" => "iOS apps take one PNG of #{IOS} pixels a side, -#{IOS}, from which Xcode makes the rest.",
       "android" => "Android apps take one PNG of each size, #{ANDROID.values.map { |size| "-#{size}" }.join(', ')}, " \
         "one for each screen density.",
@@ -119,6 +122,44 @@ module Fledge
     #++
     def png(size, system = "png")
       found("#{base}-#{size}.png", "#{name}-#{size}.png", system)
+    end
+
+    # The icon's Linux PNGs that exist, by size, of LINUX's sizes,
+    # smallest first. A size is the file name's claim: Fledge reads no
+    # image (ADR 010, section 4). Raises Fledge::Error, as #png does for
+    # the smallest size, when there is none at all.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   icon.linux # => {32 => "/path/to/my_app/icons/app-32.png", 256 => "/path/to/my_app/icons/app-256.png"}
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def linux
+      pngs = LINUX.to_h { |size| [size, "#{base}-#{size}.png"] }.select { |_, path| File.file?(path) }
+      pngs.empty? ? { LINUX.first => png(LINUX.first) } : pngs
+    end
+
+    # The sizes of LINUX the icon has no PNG for, smallest first.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   icon.linux_missing # => [16, 64, 128, 512]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def linux_missing
+      LINUX - linux.keys
     end
 
     private def found(path, shown, system)

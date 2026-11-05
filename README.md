@@ -185,7 +185,7 @@ At most one program is windowed. It takes the app's name unless you give it a `n
 
 ### Building from an app already built
 
-An app Fledge built already holds a Ruby runtime and your gems, each built for its platform. A project that needs no other gems can become an app of its own by copying that one, with nothing else on the computer: no Bundler, no network, no compiler. A framework can publish such an app for its users to build from, with Fledge in its `Gemfile` as an ordinary gem, and run `fledge build --from` from inside it:
+An app Fledge built already holds a Ruby runtime and your gems, each built for its platform. A project that needs no other gems can become an app of its own by copying that one, with nothing else on the computer: no Bundler, no network, no compiler. A framework can publish such an app for its users to build from, with Fledge in its `Gemfile` as an ordinary gem and `build_tools: true` in its `fledge.yml`, and run `fledge build --from` from inside it:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -198,7 +198,7 @@ dist/MyGame-arm64-darwin.tar.gz
 ```
 <!-- SPDX-SnippetEnd -->
 
-The new app runs `my_game`'s program with the `Gemfile`, `Gemfile.lock`, and gems of `Player`, and gets `my_game`'s own name, identity, archive, and installers, as `fledge build` would write them; nothing of `Player`'s project or identity stays. `my_game` may have no `Gemfile` or gemspec, and its `fledge.yml` no `programs`, `linux: system_libraries`, `ios`, or `android`, since those change the runtime or the gems. `--from` takes only an app built by the same Fledge release, for the platform you build on. On Windows it also needs that release's runtime on the computer, in `FLEDGE_RUNTIME_DIR` or Fledge's cache, for a fresh program and rcedit, which no app holds yet. An app with Fledge in its `Gemfile` carries Fledge's own Ruby code, under the same terms as its launcher (see [Copyright & License](#copyright--license)).
+The new app runs `my_game`'s program with the `Gemfile`, `Gemfile.lock`, and gems of `Player`, and gets `my_game`'s own name, identity, archive, and installers, as `fledge build` would write them; nothing of `Player`'s project or identity stays. `my_game` may have no `Gemfile` or gemspec, and its `fledge.yml` no `programs`, `linux: system_libraries`, `ios`, or `android`, since those change the runtime or the gems. `--from` takes only an app built by the same Fledge release, for the platform you build on. On Windows it needs a fresh program, rcedit, and NSIS, and on Linux an AppImage needs AppImage's runtime. An app whose `fledge.yml` sets `build_tools: true` carries them in its `tools` folder, and otherwise they come from that release's runtime, which must then be in `FLEDGE_RUNTIME_DIR` or Fledge's cache. An app built `--from` carries them only if its own `fledge.yml` sets `build_tools` too. An AppImage also needs `mksquashfs` on the computer, which no app may carry, since it is under the GPL. An app with Fledge in its `Gemfile` carries Fledge's own Ruby code, and on Windows with `build_tools` two more copies of its launcher, under the same terms as the launcher (see [Copyright & License](#copyright--license)).
 
 ### Signing
 

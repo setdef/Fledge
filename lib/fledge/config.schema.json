@@ -241,6 +241,11 @@
           ]
         }
       }
+    },
+    "build_tools": {
+      "description": "true to put in the app the tools fledge build --from runs that a system lacks, so that the app, with Fledge in its Gemfile as an ordinary gem, builds an app from itself on a computer with no Ruby and no runtime (default: false): on Windows the runtime's launchers, rcedit, and NSIS, and on Linux the AppImage runtime, in its tools folder; on macOS nothing, since macOS has its tools. An app fledge build --from writes keeps them only when its own fledge.yml sets build_tools.",
+      "type": ["boolean", "null"],
+      "default": false
     }
   },
   "allOf": [

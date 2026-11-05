@@ -35,7 +35,10 @@ module Fledge
   # depends on them (ADR 030). Nor can it know which files and folders a
   # windowed app opens: list them under +file_associations+
   # (Config::FileAssociation), and each system offers the app for them
-  # (ADR 032, section 3).
+  # (ADR 032, section 3). Nor can it know whether the app builds others
+  # from itself where nothing else is installed: set +build_tools+, and
+  # it carries the tools <tt>fledge build --from</tt> needs (ADR 032,
+  # section 4).
   #
   # This class reads <tt>fledge.yml</tt> from the project's root, a YAML
   # mapping as RuboCop's and Kamal's configuration are, checks each value,
@@ -82,7 +85,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :license_file, :installers, :programs, :ios, :android, :linux, :macos, :file_associations)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :license_file, :installers, :programs, :ios, :android, :linux, :macos, :file_associations, :build_tools)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -169,14 +172,20 @@ module Fledge
     # The files and folders a windowed app opens
     # (Config::FileAssociation), or +nil+ for none (ADR 032, section 3).
 
+    ##
+    # :attr_reader: build_tools
+    # Whether the app carries the tools <tt>fledge build --from</tt> runs
+    # that a system lacks, so that it can build an app from itself with
+    # no runtime at hand (ADR 032, section 4); +nil+ for no.
+
     # The file's name, in the project's root.
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage license_file installers programs ios android linux macos file_associations].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage license_file installers programs ios android linux macos file_associations build_tools].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, and file_associations"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, file_associations, and build_tools"
 
     # The keys that, beside +programs+, belong to each program instead.
     PER_PROGRAM = %w[kind identifier icon].freeze
@@ -226,7 +235,7 @@ module Fledge
     #++
     def self.none
       new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil,
-        android: nil, linux: nil, macos: nil, file_associations: nil)
+        android: nil, linux: nil, macos: nil, file_associations: nil, build_tools: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -281,7 +290,8 @@ module Fledge
         android: Phone.from(data, "android", path),
         linux: Linux.from(data, path),
         macos: Macos.from(data, path),
-        file_associations: file_associations(data, path)
+        file_associations: file_associations(data, path),
+        build_tools: build_tools(data, path)
       )
     end
 
@@ -424,6 +434,17 @@ module Fledge
       end
 
       list
+    end
+
+    # Whether the app carries the tools <tt>fledge build --from</tt> needs:
+    # +true+, +false+, or +nil+ for no.
+    private_class_method def self.build_tools(data, path) # :nodoc:
+      case data["build_tools"]
+      when true then true
+      when false then false
+      when nil then nil
+      else raise Error, "#{path}: build_tools must be true or false, such as build_tools: true"
+      end
     end
 
     # Whether the app, or one of its programs, is windowed.

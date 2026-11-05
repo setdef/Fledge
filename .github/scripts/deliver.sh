@@ -221,9 +221,52 @@ mkdir -p "$links"
 ln -s "$app" "$links/app-link"
 check "run through a symlink on PATH" 0 env -i PATH="$links" HOME="$home" app-link
 
+# As a package manager puts a console app on PATH (doc/contributors/
+# research/2026-11-04-package-managers.md, section 2): Homebrew's
+# bin.install_symlink makes a relative link in the keg's bin to the
+# program in libexec, and links that into its prefix's bin, relative
+# again, so the launcher is two relative links away, the first of them
+# in a folder named bin; Homebrew's write_exec_script, and the shims of
+# other managers, are a shell script that execs the program by its full
+# path. Both carry the arguments and the exit status through.
+keg="$place/keg/bin"
+prefix_bin="$work/prefix/bin"
+mkdir -p "$keg" "$prefix_bin"
+ln -s "../../$folder/$name" "$keg/$name"
+ln -s "../../My Apps/Ünïcödé 日本/keg/bin/$name" "$prefix_bin/app-link"
+check "run through two relative symlinks, the first in a folder named bin" 3 \
+  env -i PATH="$prefix_bin" HOME="$home" app-link 3
+shims="$work/shims"
+mkdir -p "$shims"
+printf '#!/bin/sh\nexec "%s" "$@"\n' "$app" >"$shims/app-shim"
+chmod +x "$shims/app-shim"
+check "run through a #!/bin/sh shim that execs it" 3 env -i PATH="$shims:/usr/bin:/bin" HOME="$home" app-shim 3
+
 changed=$(find "$root" -newer "$untouched" | head -n 5)
 [ -z "$changed" ] || fail "running the app changed files in its folder: $changed"
 echo "ok: the app wrote nothing into its own folder"
+
+# A package recipe that unpacks the whole app into a folder named bin,
+# as a manager's bin folder on PATH, gets a launcher that refuses to run
+# there and says why, with EX_SOFTWARE (70): Ruby would take that
+# folder's parent as its prefix and look for its standard library there
+# (unix.c, find_root). The README tells recipes to keep the app in a
+# folder of its own and link the launcher.
+flat="$work/flat/bin"
+mkdir -p "$work/flat"
+cp -R "$root" "$flat"
+set +e
+(cd / && env -i PATH="$empty" HOME="$home" "$flat/$name") >"$work/out" 2>"$work/err"
+actual=$?
+set -e
+if [ "$actual" -ne 70 ] || [ -s "$work/out" ] ||
+  [ "$(cat "$work/err")" != "$name: this app cannot run from a folder named \"bin\"; rename the folder or move the app out of it" ]; then
+  echo "--- stdout"; cat "$work/out"
+  echo "--- stderr"; cat "$work/err"
+  fail "the app unpacked into a folder named bin: exit status $actual (expected 70), output above"
+fi
+rm -rf "$work/flat"
+echo "ok: the app unpacked into a folder named bin refuses to run there, and says why"
 
 # The person's own Ruby settings are hidden from the app's boot only
 # (ADR 003): the app's gems stay the runtime's, and what the app starts

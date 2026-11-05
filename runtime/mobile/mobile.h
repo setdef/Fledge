@@ -32,6 +32,14 @@
  */
 size_t fledge_log_chunk(const char *text, size_t length);
 
+/*
+ * Nonzero when the system's log already copies each entry to standard
+ * error, for a developer tool that reads the app's streams (apple.c,
+ * android.c): forwarding standard error to the log would then feed the
+ * log its own entries.
+ */
+int fledge_log_echoes(void);
+
 /* Opens the system's log for the app named tag (apple.c, android.c). */
 int fledge_log_open(const char *tag);
 

@@ -15,6 +15,14 @@
  * writes each line to the log: standard error's as errors, so a
  * developer reading the log sees which is which. A line longer than an
  * entry holds goes as several entries in a row (fledge_log_chunk).
+ *
+ * When the log itself copies each entry to standard error for a
+ * developer tool (fledge_log_echoes), the tool already reads the
+ * streams, and forwarding standard error would send each entry back to
+ * the log, which would copy it to the pipe again, until the pipe filled
+ * and the app blocked writing to it. Then the streams are left alone,
+ * as CPython's iOS support leaves the process's own descriptors: it
+ * replaces only Python's sys.stdout and sys.stderr.
  */
 
 #include "fledge_ruby.h"
@@ -143,6 +151,7 @@ forward_descriptor(int fd, int error)
 int
 fledge_ruby_forward_output(const char *tag)
 {
+    if (fledge_log_echoes()) return 0;
     if (fledge_log_open(tag) != 0) return -1;
     fflush(stdout);
     fflush(stderr);

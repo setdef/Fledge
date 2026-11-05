@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+
+name: Spiel
+kind: windowed
+identifier: com.example.Spiel
+version: "2.3.4"
+publisher: Spielwerk
+installers: [dmg, nsis, appimage, deb]
+file_associations:
+  - name: Spiel folder
+    folders: true

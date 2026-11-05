@@ -28,7 +28,13 @@ module Fledge
   # On macOS it asks bsdtar for no AppleDouble files (+COPYFILE_DISABLE+),
   # which no other computer reads. On Windows it names
   # <tt>System32\\tar.exe</tt> itself, since another tar on the +PATH+,
-  # such as Git's GNU tar, writes no ZIP.
+  # such as Git's GNU tar, writes no ZIP. That tar reads its arguments in
+  # the system's ANSI code page, which turns a folder named
+  # <tt>Prüfung 日本</tt> into <tt>Pr?fung ??</tt>, so no path of a
+  # folder goes to it as an argument there: it packs in the folder that
+  # holds what it packs, and unpacks in the folder it unpacks into, with
+  # the archive on its standard input, which Ruby opens by its UTF-16
+  # name.
   #
   # Use it to unpack a runtime and to pack a built app.
   #
@@ -73,7 +79,9 @@ module Fledge
     def self.pack(folder, to:)
       format = to.end_with?(ZIP) ? ["--format", "zip", "-cf"] : ["-czf"]
       FileUtils.rm_f(to)
-      Command.run(tar, *format, to, "-C", File.dirname(folder), File.basename(folder), env: { "COPYFILE_DISABLE" => "1" }, install: INSTALL)
+      parent = File.dirname(folder)
+      file = (File.dirname(to) == parent) ? File.basename(to) : File.expand_path(to)
+      Command.run(tar, *format, file, File.basename(folder), env: { "COPYFILE_DISABLE" => "1" }, chdir: parent, install: INSTALL)
       to
     end
 
@@ -93,7 +101,11 @@ module Fledge
     #++
     def self.unpack(archive, into:)
       FileUtils.mkdir_p(into)
-      Command.run(tar, "-xf", archive, "-C", into, install: INSTALL)
+      if Gem.win_platform?
+        Command.run(tar, "-xf", "-", chdir: into, input: archive, install: INSTALL)
+      else
+        Command.run(tar, "-xf", archive, "-C", into, install: INSTALL)
+      end
       into
     end
 
@@ -113,7 +125,8 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.names(archive)
-      Command.read(tar, "-tf", archive, install: INSTALL).force_encoding(Encoding::UTF_8).lines(chomp: true)
+      listing = Gem.win_platform? ? Command.read(tar, "-tf", "-", input: archive, install: INSTALL) : Command.read(tar, "-tf", archive, install: INSTALL)
+      listing.force_encoding(Encoding::UTF_8).lines(chomp: true)
     end
 
     # The contents of the file +name+ in +archive+, as bytes.
@@ -130,6 +143,8 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.read(archive, name)
+      return Command.read(tar, "-xOf", "-", name, input: archive, install: INSTALL) if Gem.win_platform?
+
       Command.read(tar, "-xOf", archive, name, install: INSTALL)
     end
 

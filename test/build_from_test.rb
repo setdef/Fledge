@@ -144,7 +144,7 @@ class BuildFromTest < Minitest::Test
     assert_equal files(from).reject { |path| path.start_with?("app/") || path == "Player" }.sort,
       files(folder).reject { |path| path.start_with?("app/") || path == "Game" }.sort
     assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Game"))
-    assert File.executable?(File.join(folder, "Game"))
+    assert File.executable?(File.join(folder, "Game")) unless Gem.win_platform? # Windows knows a program by its extension
     assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\n" \
       "entry = main.rb\ngemfile = Gemfile\n", File.read(File.join(folder, "fledge.cfg"))
     assert_path_exists File.join(@dir, "dist", "Game-x86_64-linux.tar.gz.sha256")

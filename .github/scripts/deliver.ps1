@@ -202,13 +202,14 @@ Check "a renamed copy, $folderName.exe" 0 $renamed $clean
 # link named as its command, on another drive here, and Scoop reaches
 # the version it installed through a junction, its current folder. The
 # launcher must find the folder it really lives in through either, and
-# carry the arguments and the exit status through.
-$links = Join-Path $work 'Links'
+# carry the arguments and the exit status through. Each app gets links
+# of its own, since CI delivers several apps in one job, into one $work.
+$links = Join-Path $work "Links $appName"
 New-Item -ItemType Directory -Force $links | Out-Null
 $link = New-Item -ItemType SymbolicLink -Path (Join-Path $links 'app-link.exe') -Target $app
 Write-Host "$($link.FullName) links to $($link.Target)"
 Check 'run through a symbolic link in another folder' 3 $link.FullName $clean @('3')
-$junction = New-Item -ItemType Junction -Path (Join-Path $work 'current') -Target $root
+$junction = New-Item -ItemType Junction -Path (Join-Path $work "current $appName") -Target $root
 Write-Host "$($junction.FullName) is a junction to $($junction.Target)"
 Check 'run through a junction to its folder' 3 (Join-Path $junction.FullName "$appName.exe") $clean @('3')
 

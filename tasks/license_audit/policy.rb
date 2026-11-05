@@ -17,7 +17,9 @@ class LicenseAudit
   # is never allowed linked into the program an app's developer ships as
   # their own, the launcher. A license that asks only that a binary say
   # where its source is (CPL-1.0, NSIS's LZMA module's) is allowed when
-  # Fledge publishes the component's source.
+  # Fledge publishes the component's source. That source itself, which
+  # the runtime carries in notices/sources/, is allowed under its own
+  # license, since carrying source asks nothing of the app.
   class Policy
     # A policy that reads source pins from +sources+ (runtime/sources.yml)
     # and reports each violation to +violate+, with its rule, path, and
@@ -30,8 +32,10 @@ class LicenseAudit
     # Reports each way +component+, which +report+ found in the tree,
     # breaks the policy.
     def check(component, report)
-      category = LicenseAudit.category(component.license, first_party: component.first_party)
       where = (report.owned(component) + report.embedded_in(component)).first.to_s
+      return check_source(component, report, where) if component.kind == "source"
+
+      category = LicenseAudit.category(component.license, first_party: component.first_party)
       case category
       when :notice_only, :first_party then nil
       when :file_level
@@ -75,6 +79,20 @@ class LicenseAudit
         next if owner && !owner.first_party && published?(owner)
 
         @violate.call("policy", path, "#{component.id} is #{component.license}, linked into a file whose own source Fledge does not publish")
+      end
+    end
+
+    # A component's source, carried so that the app passes it on with the
+    # component's object code (LGPL-2.1, section 6(a)): its license is the
+    # component's, which asks nothing of the app for carrying it, but it
+    # must be the source of a pin Fledge publishes, and lie in the
+    # runtime's notices/sources/, where no program loads it.
+    private def check_source(component, report, where)
+      @violate.call("policy", where, "#{component.id} is the source of nothing runtime/sources.yml pins") unless published?(component)
+      report.owned(component).each do |path|
+        next if path.start_with?("#{SourceBundle::FOLDER}/") && !report.binaries.key?(path)
+
+        @violate.call("policy", path, "#{component.id} is source, so this file must be a file of #{SourceBundle::FOLDER}/ that is not compiled code")
       end
     end
 

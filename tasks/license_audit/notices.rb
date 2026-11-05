@@ -11,7 +11,8 @@ class LicenseAudit
   # The NOTICES.txt a runtime ships in notices/, written from the audit's
   # Report: every component, its license, how it ships and where its
   # source is; where the source of Fledge's own files is; for each LGPL
-  # library, what its recipient may do and where its exact source is;
+  # library, what its recipient may do and where its exact source is,
+  # first in the app's own notices/sources/ and then in the release;
   # then the full text of every license, so the file stands alone when
   # it is copied out of the app, as the release copies it.
   #
@@ -166,15 +167,38 @@ class LicenseAudit
 
         You may replace that file with another build of the library, including
         one you modified, as long as it keeps the same interface, and the app
-        will use it. The library's complete corresponding source code, and
-        how this copy was built from it, are at
-
-          #{bundle}
-
-        and its authors publish it at #{library.download}. Whoever passes
-        this app on may pass that bundle along with it, too.
+        will use it. #{where_source(library, bundle)}
+        and its authors publish it at #{library.download}.
 
       LGPL
+    end
+
+    # Where +component+'s complete source is, and how this copy was built
+    # from it: in the app's own notices/sources/, when the runtime
+    # carries it there (SourceBundle), and in the release's +bundle+.
+    private def where_source(component, bundle)
+      folder = in_app(component)
+      return "Its complete source code, and how this copy was built from it,\nare at\n\n  #{bundle}\n" unless folder
+
+      <<~WHERE
+        Its complete source code, and how this copy was built from it,
+        are in this app, in
+
+          #{folder}
+
+        which whoever passes this app on passes on with it, as long as they
+        keep this app's notices/ folder whole; and in Fledge's release, at
+
+          #{bundle}
+      WHERE
+    end
+
+    # The folder of the app's notices/sources/ that holds +component+'s
+    # source, or nil when the runtime does not carry it.
+    private def in_app(component)
+      source = @report.present.find { |entry| entry.kind == "source" && entry.source == component.source }
+      path = source && @report.owned(source).first
+      path && "#{File.dirname(path)}/"
     end
 
     # The components, but LGPL shared libraries, whose source Fledge
@@ -185,7 +209,7 @@ class LicenseAudit
     # what it links, or NSIS's stub, at the front of the app's setup
     # program.
     private def published(present)
-      components = present.select { |component| component.source && component.kind != "shared_library" }
+      components = present.select { |component| component.source && !%w[shared_library source].include?(component.kind) }
       return [] if components.empty?
 
       bundle = "#{RELEASES}/v#{@version}/#{Notices.source_bundle(@version, @report.platform)}"
@@ -200,12 +224,8 @@ class LicenseAudit
       <<~PUBLISHED
         #{component.name}, version #{component.version}, is licensed under
         #{component.license}. It ships as #{component.ships}.
-        Its complete source code, and how this copy was built from it, are at
-
-          #{bundle}
-
-        and its authors publish it at #{component.download}. Whoever passes
-        this app on may pass that bundle along with it, too.
+        #{where_source(component, bundle)}
+        and its authors publish it at #{component.download}.
 
       PUBLISHED
     end

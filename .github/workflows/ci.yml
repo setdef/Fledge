@@ -1884,9 +1884,20 @@ jobs:
           echo "TREE=$tree" >> "$GITHUB_ENV"
           cmp "$tree/notices/sbom.spdx.json" "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM".spdx.json
           cmp "$tree/notices/NOTICES.txt" "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-NOTICES.txt
+          # The runtime's notices/sources/ holds the same folders, byte for
+          # byte, as the release's source bundle, but its README.
           case "$PLATFORM" in
-            *-linux | *-linux-musl | *-mingw-ucrt) tar -tzvf "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-lgpl-sources.tar.gz ;;
-            *) if ls "$RUNNER_TEMP"/runtimes/*-lgpl-sources.tar.gz 2>/dev/null; then echo "::error::$PLATFORM ships no LGPL library"; exit 1; fi ;;
+            *-linux | *-linux-musl | *-mingw-ucrt)
+              mkdir -p "$RUNNER_TEMP/bundle"
+              tar -xzvf "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-lgpl-sources.tar.gz -C "$RUNNER_TEMP/bundle"
+              bundle=$(echo "$RUNNER_TEMP"/bundle/fledge-runtime-*-lgpl-sources)
+              rm "$bundle/README.txt"
+              diff -r "$bundle" "$tree/notices/sources"
+              ;;
+            *)
+              if ls "$RUNNER_TEMP"/runtimes/*-lgpl-sources.tar.gz 2>/dev/null; then echo "::error::$PLATFORM ships no LGPL library"; exit 1; fi
+              if [ -e "$tree/notices/sources" ]; then echo "::error::$PLATFORM's runtime holds notices/sources/, but ships nothing that asks for its source"; exit 1; fi
+              ;;
           esac
 
       - name: Audit the unpacked runtime
@@ -2016,7 +2027,8 @@ jobs:
 
   # Whoever receives a Linux app may replace lib/libcrypt.so.2 (LGPL-2.1,
   # section 6(b)), as doc/licensing.md tells app developers. The built
-  # hello, with libxcrypt rebuilt with only its strong hashes, and with
+  # hello, with libxcrypt rebuilt with only its strong hashes from the
+  # source the app carries in notices/sources/libxcrypt/, and with
   # musl's crypt in its place, must load each and behave as each does
   # (.github/scripts/replace-libcrypt.sh), which also measures what
   # String#crypt loses without libxcrypt.
@@ -2049,9 +2061,12 @@ jobs:
       - name: Replace lib/libcrypt.so.2 and run the app with each replacement
         run: |
           tar -xzf "$RUNNER_TEMP/delivered/Hello-${{ matrix.platform }}.tar.gz" -C "$RUNNER_TEMP"
-          # Assigned first, so a download that fails stops the step here:
-          # bash -e ignores a failed $(...) inside another command's arguments.
-          xcrypt=$(ruby .github/scripts/fetch_pin.rb libxcrypt)
+          # Assigned first, so a missing file or a download that fails stops
+          # the step here: bash -e ignores a failed $(...) inside another
+          # command's arguments. libxcrypt's source is the one the app
+          # itself carries, so the replacement is built as a person who
+          # received only the app would build it (LGPL-2.1, section 6(a)).
+          xcrypt=$(ls "$RUNNER_TEMP/Hello-${{ matrix.platform }}"/notices/sources/libxcrypt/libxcrypt-*.tar.xz)
           musl=$(ruby .github/scripts/fetch_pin.rb replaceability musl)
           sh .github/scripts/replace-libcrypt.sh "$RUNNER_TEMP/Hello-${{ matrix.platform }}" Hello "$xcrypt" "$musl"
 

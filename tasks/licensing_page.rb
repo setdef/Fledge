@@ -56,8 +56,9 @@ class LicensingPage
 
   # What the page needs of a platform's Report, read before its tree is
   # deleted: its components but gems, its gems' names by license, and
-  # its LGPL libraries.
-  class Summary < Data.define(:components, :gems, :lgpl); end
+  # its LGPL libraries, and whether the runtime carries their source in
+  # notices/sources/.
+  class Summary < Data.define(:components, :gems, :lgpl, :sources); end
 
   # A component, as the page shows it.
   class Row < Data.define(:name, :version, :license, :ships, :files, :embedded); end
@@ -98,13 +99,15 @@ class LicensingPage
 
   private def summarize(report)
     present = report.present
-    rows = present.reject(&:gem_dir).sort_by { |component| [component.first_party ? 0 : 1, component.name.downcase] }.map do |component|
+    components = present.reject(&:gem_dir).sort_by { |component| [component.first_party ? 0 : 1, component.name.downcase] }
+    row = lambda do |component|
       Row.new(name: component.name, version: component.version, license: component.license, ships: component.ships,
         files: report.owned(component), embedded: report.embedded_in(component))
     end
     gems = present.select(&:gem_dir).group_by(&:license).transform_values { |list| list.map { |gem| gem.name[/\A\S+/] }.sort }
-    lgpl = rows.select { |row| row.license.include?("LGPL") }
-    Summary.new(components: rows, gems: gems.sort.to_h, lgpl:)
+    sources, libraries = components.partition { |component| component.kind == "source" }
+    lgpl = libraries.select { |component| component.license.include?("LGPL") }.map(&row)
+    Summary.new(components: components.map(&row), gems: gems.sort.to_h, lgpl:, sources: !sources.empty?)
   end
 
   private def header
@@ -137,7 +140,7 @@ class LicensingPage
 
       **The CA certificates** (`cert.pem`) are under the Mozilla Public License 2.0, whose obligations attach to the file itself. It ships unmodified, in its source form, which MPL-2.0, section 3.1, asks be distributed under the MPL with word of how to get a copy of it; `notices/NOTICES.txt` holds that copy, and the file's own notices stay intact (section 3.4).
 
-      **A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `tools/`: a Windows app's setup program is made of NSIS's stub and plug-ins (the zlib license, which asks nothing of a binary) and compressed with NSIS's LZMA module, which is under the Common Public License 1.0: its section 3 asks that a program distributed in object code say that its source is available and how to get it, and Fledge does both, publishing NSIS's source in `fledge-runtime-VERSION-x64-mingw-ucrt-lgpl-sources.tar.gz` beside each Windows runtime and saying so in the app's `notices/NOTICES.txt`, which the setup program installs; and a Linux app's AppImage begins with AppImage's runtime (MIT), as AppImage releases it, with libfuse (LGPL-2.1, as [below](#libraries-under-the-lgpl) says), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib, mimalloc, and musl (MIT) linked in. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/NOTICES.txt`, which it holds.
+      **A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `tools/`: a Windows app's setup program is made of NSIS's stub and plug-ins (the zlib license, which asks nothing of a binary) and compressed with NSIS's LZMA module, which is under the Common Public License 1.0: its section 3 asks that a program distributed in object code say that its source is available and how to get it, and Fledge does both, putting NSIS's source in the app's `notices/sources/nsis/`, which the setup program installs with the app, publishing it in `fledge-runtime-VERSION-x64-mingw-ucrt-lgpl-sources.tar.gz` beside each Windows runtime, and saying so in the app's `notices/NOTICES.txt`; and a Linux app's AppImage begins with AppImage's runtime (MIT), as AppImage releases it, with libfuse (LGPL-2.1, as [below](#libraries-under-the-lgpl) says), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib, mimalloc, and musl (MIT) linked in. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/`, which it holds: `NOTICES.txt`, and on Linux and Windows the sources in `notices/sources/`.
 
       **Fledge's own files** in an app are #{own_files(ours)}. Fledge's code in them is Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
     EVERYWHERE
@@ -189,7 +192,7 @@ class LicensingPage
       "| #{cell(row.name)} | #{cell(row.version)} | `#{cell(row.license)}` | #{cell(row.ships)} |"
     end
     gems = summary.gems.map { |license, names| "- `#{cell(license)}`: #{names.join(', ')}" }
-    obligations = summary.lgpl.empty? ? "Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform." : obligation(platform, summary.lgpl)
+    obligations = summary.lgpl.empty? ? "Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform." : obligation(platform, summary)
     <<~SECTION
       ## #{TITLES.fetch(platform)}
 
@@ -205,13 +208,20 @@ class LicensingPage
     SECTION
   end
 
-  private def obligation(platform, rows)
-    libraries = rows.map do |row|
+  private def obligation(platform, summary)
+    libraries = summary.lgpl.map do |row|
       where = row.files.empty? ? "linked into AppImage's runtime" : row.files.map { |file| "`#{file}`" }.join(", ")
       "#{row.name.sub(/,.*/, '')} (#{where})"
     end
     "keep the notices and Fledge's own files as above, and meet the LGPL for #{libraries.join(' and for ')}, as " \
-      "[below](#libraries-under-the-lgpl) says. The source is `#{LicenseAudit::Notices.source_bundle(@version, platform)}` in Fledge's release."
+      "[below](#libraries-under-the-lgpl) says. The source is #{source_place(platform, summary)}."
+  end
+
+  private def source_place(platform, summary)
+    bundle = "`#{LicenseAudit::Notices.source_bundle(@version, platform)}`"
+    return "#{bundle} in Fledge's release" unless summary.sources
+
+    "in every app, in `#{LicenseAudit::SourceBundle::FOLDER}/`, and in Fledge's release as #{bundle}"
   end
 
   private def lgpl(_reports)
@@ -225,7 +235,7 @@ class LicensingPage
       - A prominent notice that the library is used in the app and that it and its use are covered by the LGPL, and a copy of the license (LGPL-2.1, section 6). Fledge's `notices/NOTICES.txt` does this.
       - If your app displays copyright notices while it runs, include the library's among them, with a reference to the license (section 6).
       - Use a suitable shared library mechanism, so that a modified, interface-compatible version the user installs works (section 6(b)). Fledge's layout does this: leave `lib/libcrypt.so.2` a separate file.
-      - Make the library's source available, in one of the ways section 6 lists: accompany the app with it (6(a)), offer access to it from the same place you offer the app (6(d)), or include a written offer, valid for at least three years, to give it (6(c)). Fledge publishes the exact source, and how its copy was built, as the release asset `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz`, and keeps every release, and so every bundle, published. You may also ship that bundle beside your app's download yourself, which section 6(a) and 6(d) describe most directly. Because the license is "or later", you may instead take LGPL-3.0's terms, which convey source by GNU GPL version 3, section 6; its section 6(d) allows the source to be "on a different server (operated by you or a third party)" with "clear directions next to the object code", while you "remain obligated to ensure that it is available for as long as needed".
+      - Make the library's source available, in one of the ways section 6 lists: accompany the app with it (6(a)), offer access to it from the same place you offer the app (6(d)), or include a written offer, valid for at least three years, to give it (6(c)). Fledge puts the exact source, and how its copy was built, into every app, in `notices/sources/libxcrypt/`, so an app that keeps its `notices/` folder is accompanied by the source wherever it goes, as section 6(a) describes, whatever becomes of any server. Fledge also publishes the same folders as the release asset `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz`, and keeps every release published. Because the license is "or later", you may instead take LGPL-3.0's terms, which convey source by GNU GPL version 3, section 6; its section 6(d) allows the source to be "on a different server (operated by you or a third party)" with "clear directions next to the object code", while you "remain obligated to ensure that it is available for as long as needed".
       - Your app's terms must permit modification of the work for the customer's own use and reverse engineering for debugging such modifications (section 6, first paragraph). This falls on your license agreement, if your app has one.
 
       ### libfuse (LGPL-2.1-only), in a Linux app's AppImage
@@ -233,7 +243,7 @@ class LicensingPage
       libfuse is linked into AppImage's runtime (MIT), a program of its own that is not your app and not Fledge's launcher; the app inside the AppImage is started by it, and links nothing of libfuse. The LGPL's terms for a work linked with the library apply to that runtime, and Fledge meets the ones that ask for source:
 
       - A prominent notice that the library is used and is covered by the LGPL, and a copy of the license (LGPL-2.1, section 6). Fledge's `notices/NOTICES.txt`, which the AppImage holds, does this, and so does the runtime's own `--appimage-help`.
-      - The complete machine-readable source of the library, and of the runtime it is linked into, so that whoever receives the AppImage can modify libfuse and relink the runtime with it (section 6(a)). Fledge publishes both, AppImage's runtime at the commit it was built from, with its build scripts and its patch to libfuse, and libfuse's release, in `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz` beside each Linux runtime, and keeps every release published. You may ship that bundle beside your AppImage yourself, as section 6(a) describes most directly.
+      - The complete machine-readable source of the library, and of the runtime it is linked into, so that whoever receives the AppImage can modify libfuse and relink the runtime with it (section 6(a)). Fledge puts both into every Linux app, and so into its AppImage, in `notices/sources/appimage-runtime/` (AppImage's runtime at the commit it was built from, with its build scripts and its patch to libfuse) and `notices/sources/libfuse/` (libfuse's release), which is section 6(a)'s way, and publishes the same folders in `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz` beside each Linux runtime.
       - Terms that permit modification of the runtime for the customer's own use and reverse engineering for debugging such modifications (section 6, first paragraph) concern the runtime, which is MIT and permits both; your app's own terms need say nothing of it.
 
       ### GNU MP (LGPL-3.0-or-later OR GPL-2.0-or-later)
@@ -243,7 +253,7 @@ class LicensingPage
       - A prominent notice that the library is used and is covered by the LGPL (LGPL-3.0, section 4(a)), and copies of the GNU GPL and the LGPL (4(b)). Fledge's `notices/NOTICES.txt` does this.
       - If your app displays copyright notices while it runs, include the library's, with a reference to those licenses (4(c)).
       - Use a suitable shared library mechanism (4(d)(1)). Fledge's layout does this: leave `libgmp-10.dll` a separate file in `ruby\\bin\\ruby_builtin_dlls\\`.
-      - Convey the library's Corresponding Source as GNU GPL version 3, section 6 describes, as for libxcrypt above. Fledge's Windows release asset holds MSYS2's source package of the very build RubyInstaller ships, which CI checks byte for byte.
+      - Convey the library's Corresponding Source as GNU GPL version 3, section 6 describes, as for libxcrypt above; the source then reaches each person in the same download, or on the same medium, as the app. Every Windows app holds, in `notices\\sources\\gmp\\`, MSYS2's source package of the very build RubyInstaller ships, which CI checks byte for byte, and Fledge's Windows release asset holds it too.
       - Installation Information (4(e)) is needed only where GPL-3.0, section 6, would require it, which is when the app is conveyed in, with, or specifically for use in a "User Product", such as a consumer device it comes installed on.
       - Your app's terms must not restrict modification of the library's portions and reverse engineering for debugging such modifications (section 4, first paragraph).
 

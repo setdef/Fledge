@@ -18,6 +18,10 @@ Fledge builds apps for macOS on Apple silicon, Linux (glibc and musl,
 x86-64 and ARM64), and Windows (x64 and ARM64), each on a computer of
 that platform. For iPhone, iPad, and Android it writes the Xcode or
 Gradle project that builds the app, with C and C++ gems compiled in.
+An app Fledge built can be the start of another: <tt>fledge build
+--from</tt> copies it, with a project that needs no other gems in place
+of its own, on a computer of the same platform with nothing else
+installed.
 
 A built app runs your code as +ruby main.rb+ does, on the Ruby you run
 Fledge with, at the patch level Fledge ships. A few differences are

@@ -178,6 +178,35 @@ module Fledge
       find(self.class.dev_file_name(platform))
     end
 
+    # The path of the runtime archive for +platform+ when this computer
+    # has it, in FLEDGE_RUNTIME_DIR or, matching its pin, in the cache, or
+    # +nil+. Downloads nothing: <tt>fledge build --from</tt> needs nothing
+    # but the app it builds from, and takes from a runtime at hand only
+    # what no app holds yet (ADR 032).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Runtimes.new(env: {}).at_hand(Fledge::Platform.local) # => nil
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def at_hand(platform)
+      name = self.class.file_name(platform)
+      directory = @env["FLEDGE_RUNTIME_DIR"].to_s
+      path = directory.empty? ? File.join(cache, name) : File.join(File.expand_path(directory), name)
+      return nil unless File.file?(path)
+      return path unless directory.empty?
+
+      path if Digest::SHA256.file(path).hexdigest == pin(name)
+    rescue Error
+      nil
+    end
+
     private def find(name)
       directory = @env["FLEDGE_RUNTIME_DIR"].to_s
       return from_directory(directory, name) unless directory.empty?

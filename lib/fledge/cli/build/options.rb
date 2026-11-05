@@ -14,12 +14,12 @@ module Fledge
       # What <tt>fledge build</tt>'s arguments ask for, read as GNU's
       # conventions read options: the <tt>--out</tt> folder, the phone to
       # build a project for, if any, the identity <tt>--sign</tt> signs a
-      # desktop app with (ADR 016), and the one PATH, with <tt>--</tt>
-      # ending the options. A desktop build is for the computer it runs on
+      # desktop app with (ADR 016), the app <tt>--from</tt> builds from
+      # (ADR 032), and the one PATH, with <tt>--</tt> ending the options. A desktop build is for the computer it runs on
       # (ADR 010); a phone's, which no phone builds, is named first, as
       # Briefcase's <tt>briefcase create iOS</tt> and Flutter's
       # <tt>flutter build ios</tt> name it (ADR 012).
-      Options = Data.define(:out, :path, :phone, :sign) do
+      Options = Data.define(:out, :path, :phone, :sign, :from) do
         # The options +argv+ gives. A first operand that names a phone
         # (Fledge::MobilePlatform.names) is the phone; a folder of that
         # name is <tt>./ios</tt>, or follows <tt>--</tt>. A platform added
@@ -33,6 +33,7 @@ module Fledge
           paths = [] # : Array[String]
           phone = nil # : String?
           sign = nil # : String?
+          from = nil # : String?
           arguments = argv.dup
           while (argument = arguments.shift)
             case argument
@@ -41,6 +42,9 @@ module Fledge
             when "--sign" then sign = value_of(argument, arguments, "IDENTITY")
             when /\A--sign=(.+)\z/ then sign = ::Regexp.last_match(1).to_s
             when "--sign=" then value_of("--sign", [], "IDENTITY")
+            when "--from" then from = value_of(argument, arguments, "APP")
+            when /\A--from=(.+)\z/ then from = ::Regexp.last_match(1).to_s
+            when "--from=" then value_of("--from", [], "APP")
             when *MobilePlatform.names
               if phone || !paths.empty? then paths << argument
               else phone = argument
@@ -55,8 +59,9 @@ module Fledge
           raise UsageError, "takes one PATH, but got #{paths.map { |p| "'#{p}'" }.join(' and ')}" if paths.size > 1
 
           raise UsageError, "--sign signs desktop apps; sign a phone's app with Xcode or Gradle" if sign && phone
+          raise UsageError, "--from builds for this computer; a phone's project is written with fledge build ios or android" if from && phone
 
-          new(out:, path: paths.first || ".", phone:, sign:)
+          new(out:, path: paths.first || ".", phone:, sign:, from:)
         end
 
         # The value after +option+ in +arguments+, which names a +name+.

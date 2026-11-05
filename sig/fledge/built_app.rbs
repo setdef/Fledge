@@ -1,0 +1,67 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class BuiltApp
+    HEADER: Regexp
+    LOCKFILES: Hash[String, String]
+    GEMS: String
+
+    @given: String
+    @contents: String
+    @bundle: String?
+    @platform: Platform
+    @runtimes: Runtimes
+    @gemfile: String?
+    @system_libraries: Array[String]
+    @identifiers: Array[String]
+    @programs: Array[String]
+
+    def self.at: (String path, platform: Platform, runtimes: Runtimes) -> BuiltApp
+
+    private def self.bundle_in: (String folder) -> String?
+
+    def initialize: (given: String, contents: String, bundle: String?, config: String, platform: Platform, runtimes: Runtimes) -> void
+
+    def path: () -> String
+
+    def adopt: (App app) -> App
+
+    def files: () -> Array[Entry]
+
+    def unpack: (app_names: Array[String], work: String) -> Tree
+
+    def copy_into: (String folder, Array[String] app_names) -> void
+
+    private def held: () -> Array[String]
+
+    private def remove_icons: (String folder, String identifier) -> void
+
+    private def launcher_copy: (String work) -> String
+
+    private def program: () -> String
+
+    private def project: () -> String
+
+    private def kept: () -> Array[String]
+
+    private def gem_folders: (String lockfile) -> Array[String]
+
+    private def check: (String? version, String? platform) -> void
+
+    class Tree
+      @built_app: BuiltApp
+      @runtime: Assembly::RuntimeFolder?
+      @launcher: String?
+      @app_names: Array[String]
+
+      def initialize: (BuiltApp built_app, runtime: Assembly::RuntimeFolder?, launcher: String?, app_names: Array[String]) -> void
+
+      def launcher: (String name) -> String
+
+      def tools: () -> String?
+
+      def move_into: (String folder) -> void
+    end
+  end
+end

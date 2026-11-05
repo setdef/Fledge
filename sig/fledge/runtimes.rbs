@@ -28,6 +28,8 @@ module Fledge
 
     def dev_archive: (Platform platform) -> String
 
+    def at_hand: (Platform platform) -> String?
+
     private def find: (String name) -> String
 
     def cache: () -> String

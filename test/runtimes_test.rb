@@ -65,6 +65,27 @@ class RuntimesTest < Minitest::Test
     end
   end
 
+  # fledge build --from downloads nothing: it takes a runtime only when
+  # this computer has it, from FLEDGE_RUNTIME_DIR, or from the cache when
+  # it matches its pin (ADR 032).
+  def test_a_runtime_at_hand_is_one_this_computer_has_and_nothing_is_downloaded
+    Dir.mktmpdir do |home|
+      archive = FakeRuntime.write(home, LINUX)
+      assert_equal archive, Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => home }).at_hand(LINUX)
+      assert_nil Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => home }).at_hand(Fledge::Platform.find("aarch64-linux"))
+
+      cache = File.join(home, ".cache/fledge/runtimes")
+      FileUtils.mkdir_p(cache)
+      cached = FakeRuntime.write(cache, LINUX)
+      pins = write_pins(home, File.basename(cached) => File.binread(cached))
+      assert_equal cached, Fledge::Runtimes.new(env: { "HOME" => home }, release_url: "http://127.0.0.1:1", pins:).at_hand(LINUX)
+
+      File.write(cached, "swapped in the cache")
+      assert_nil Fledge::Runtimes.new(env: { "HOME" => home }, release_url: "http://127.0.0.1:1", pins:).at_hand(LINUX)
+      assert_nil Fledge::Runtimes.new(env: { "HOME" => home }, pins: File.join(home, "none")).at_hand(LINUX)
+    end
+  end
+
   def test_the_cache_follows_xdg_cache_home_then_home
     assert_equal File.expand_path("/x/fledge/runtimes"),
       Fledge::Runtimes.new(env: { "XDG_CACHE_HOME" => "/x", "HOME" => "/h" }).cache

@@ -155,13 +155,13 @@ class AssemblyTest < Minitest::Test
       FileUtils.mkdir_p(File.join(dir, ".git"))
       hello = FakeApp.write(dir)
       assemble(dir, hello)
-      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = main.rb\n",
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\nentry = main.rb\n",
         File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
 
       project = FakeProject.write(dir, name: "my_cool_app")
       assemble(dir, File.join(project, "exe/my_cool_app"))
-      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = exe/my_cool_app\ngemfile = Gemfile\n",
-        File.read(File.join(dir, "dist/MyCoolApp-x86_64-linux/fledge.cfg"))
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\n" \
+        "entry = exe/my_cool_app\ngemfile = Gemfile\n", File.read(File.join(dir, "dist/MyCoolApp-x86_64-linux/fledge.cfg"))
     end
   end
 
@@ -333,7 +333,7 @@ class AssemblyTest < Minitest::Test
       end
       assert_includes File.read(File.join(folder, "com.example.Game.desktop")), "Exec=\"Play Game\"\n"
       assert_equal <<~CFG, File.read(File.join(folder, "fledge.cfg"))
-        # Written by fledge build: what this app's programs run (ADR 024).
+        # Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's programs run (ADR 024).
         [Play Game]
         entry = gui.rb
         identifier = com.example.Game
@@ -372,7 +372,7 @@ class AssemblyTest < Minitest::Test
       hello = FakeApp.write(dir)
       File.write(File.join(hello, "fledge.yml"), "linux:\n  system_libraries: [libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
       assemble(dir, hello)
-      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = main.rb\n" \
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\nentry = main.rb\n" \
         "system_libraries = libgtk-3.so.0 libwebkit2gtk-4.1.so.0\n", File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
       assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = main.rb\n",
         Fledge::Assembly.launch_config(Fledge::App.at(hello))
@@ -395,7 +395,8 @@ class AssemblyTest < Minitest::Test
 
       folder = File.join(dir, "dist", "game-cli-x86_64-linux")
       assert_equal %w[app fledge.cfg game-cli lib], Dir.children(folder).sort
-      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = bin/cli\n", File.read(File.join(folder, "fledge.cfg"))
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\nentry = bin/cli\n",
+        File.read(File.join(folder, "fledge.cfg"))
     end
   end
 

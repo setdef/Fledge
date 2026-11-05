@@ -47,6 +47,10 @@ module Bundler
   end
 
   class LockfileParser
+    def initialize: (String lockfile) -> void
+
+    def sources: () -> Array[Source]
+
     def specs: () -> Array[LazySpecification]
   end
 

@@ -3,6 +3,14 @@
 
 module Fledge
   class Assembly
+    interface _RuntimeTree
+      def launcher: (String name) -> String
+
+      def tools: () -> String?
+
+      def move_into: (String folder) -> void
+    end
+
     LAUNCHER: String
     WINDOWED_LAUNCHER: String
     TOOLS: String
@@ -16,10 +24,11 @@ module Fledge
     @files: Array[Entry]
     @installers: Array[String]
     @signing: Signing::signer?
+    @from: BuiltApp?
 
     attr_reader installers: Array[String]
 
-    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?signing: Signing::signer?) -> void
+    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?signing: Signing::signer?, ?from: BuiltApp?) -> void
 
     def base_name: () -> String
 
@@ -27,7 +36,7 @@ module Fledge
 
     def launch_config: () -> String
 
-    def self.launch_config: (App app, ?system_libraries: Array[String]) -> String
+    def self.launch_config: (App app, ?system_libraries: Array[String], ?built: String?) -> String
 
     private def self.single_config: (App app, Array[String] system_libraries) -> String
 
@@ -37,11 +46,13 @@ module Fledge
 
     private def build: () -> String
 
-    private def place_launcher: (RuntimeFolder runtime, App::Program program, String? tools, ?into: String) -> String
+    private def runtime_folder: (String work) -> _RuntimeTree
+
+    private def place_launcher: (_RuntimeTree runtime, App::Program program, String? tools, ?into: String) -> String
 
     private def add: (String root, Entry entry) -> void
 
-    private def finish: (MacBundle? bundle, RuntimeFolder runtime, String? tools) -> void
+    private def finish: (MacBundle? bundle, _RuntimeTree runtime, String? tools) -> void
 
     private def mac_signing: () -> MacSigning?
 

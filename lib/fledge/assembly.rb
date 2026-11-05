@@ -16,6 +16,7 @@ require_relative "installers"
 require_relative "mac_bundle"
 require_relative "platform"
 require_relative "signing"
+require_relative "version"
 require_relative "windows_resources"
 require_relative "assembly/runtime_folder"
 
@@ -106,8 +107,12 @@ module Fledge
     # [signing] The signer (Fledge::Signing.for) that signs the app's code
     #           once everything is in it, and its installers, or +nil+
     #           for an unsigned build.
-    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil)
+    # [from] The Fledge::BuiltApp whose runtime and gems the app takes in
+    #        place of the runtime archive's (<tt>fledge build --from</tt>),
+    #        or +nil+; +runtime+ is then that app's path.
+    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil, from: nil)
       @app = app
+      @from = from
       @platform = platform
       @runtime = runtime
       @out = out
@@ -181,7 +186,9 @@ module Fledge
     # The contents of CONFIG for the app: its entry point, and its
     # Gemfile when it has one, relative to the +app+ folder, and its
     # identifier when it has one, which the Windows launcher makes its
-    # AppUserModelID.
+    # AppUserModelID. Its first line, a comment the launcher skips, names
+    # the Fledge release and the platform the app was built with, which
+    # <tt>fledge build --from</tt> reads (Fledge::BuiltApp; ADR 032).
     #
     # === Example
     #
@@ -190,19 +197,24 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
     # SPDX-License-Identifier: MIT-0
     #++
+    #   assembly.launch_config.lines.first
+    #   # => "# Written by fledge build 0.5.0 for x86_64-linux: what this app's program runs (ADR 005).\n"
     #   assembly.launch_config.lines.drop(1)
     #   # => ["entry = exe/my_cool_app\n", "gemfile = Gemfile\n"]
     #--
     # SPDX-SnippetEnd
     #++
     def launch_config
-      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os))
+      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os), built: "#{VERSION} for #{@platform}")
     end
 
     # The contents of CONFIG for +app+ (#launch_config), which the
     # launcher reads, and on a phone the embedding API's
-    # <tt>fledge_ruby_run_app</tt> (ADR 012). Raises Fledge::Error for a
-    # program or Gemfile whose name the file cannot hold.
+    # <tt>fledge_ruby_run_app</tt> (ADR 012), whose first line says it was
+    # written by fledge build, and, given +built+, which release and for
+    # which platform, such as <tt>0.5.0 for x86_64-linux</tt>. Raises
+    # Fledge::Error for a program or Gemfile whose name the file cannot
+    # hold.
     #
     # === Example
     #
@@ -236,9 +248,10 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.launch_config(app, system_libraries: [])
+    def self.launch_config(app, system_libraries: [], built: nil)
+      by = built ? "fledge build #{built}" : "fledge build"
       programs = app.programs
-      return single_config(app, system_libraries) if programs.size == 1
+      return "# Written by #{by}: what this app's program runs (ADR 005).\n#{single_config(app, system_libraries)}" if programs.size == 1
 
       lines = [] # : Array[String]
       gemfile = app.gemfile
@@ -251,7 +264,7 @@ module Fledge
         lines << "identifier = #{identifier}" if identifier
         lines << ""
       end
-      "# Written by fledge build: what this app's programs run (ADR 024).\n#{lines.join("\n").chomp}\n"
+      "# Written by #{by}: what this app's programs run (ADR 024).\n#{lines.join("\n").chomp}\n"
     end
 
     private_class_method def self.single_config(app, system_libraries) # :nodoc:
@@ -261,7 +274,7 @@ module Fledge
       identifier = app.identity.identifier
       lines << "identifier = #{identifier}" if identifier
       lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
-      "# Written by fledge build: what this app's program runs (ADR 005).\n#{lines.join("\n")}\n"
+      "#{lines.join("\n")}\n"
     end
 
     private_class_method def self.config_value(path) # :nodoc:
@@ -304,7 +317,7 @@ module Fledge
       remove_output
       CacheTag.make_folder(@out)
       Dir.mktmpdir(".fledge-build-", @out) do |work|
-        runtime = RuntimeFolder.new(@runtime, platform: @platform, app_names: [@app.name, *@app.programs.map(&:name)].uniq, work:)
+        runtime = runtime_folder(work)
         bundle = MacBundle.for(@app.identity, platform: @platform, folder:)
         contents = bundle ? bundle.resources : folder
         runtime.move_into(contents)
@@ -320,6 +333,14 @@ module Fledge
     rescue
       remove_output
       raise
+    end
+
+    # The runtime, unpacked into +work+: the archive's, or the runtime of
+    # the app the build is from.
+    private def runtime_folder(work)
+      app_names = [@app.name, *@app.programs.map(&:name)].uniq
+      from = @from
+      from ? from.unpack(app_names:, work:) : RuntimeFolder.new(@runtime, platform: @platform, app_names:, work:)
     end
 
     # Places a copy of the runtime's launcher for +program+ in +into+:

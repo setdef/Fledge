@@ -89,7 +89,7 @@ case "$(uname -s)" in
     expect CFBundleDisplayName "$(plutil -extract CFBundleDisplayName raw "$plist")" "$name"
     expect CFBundleExecutable "$(plutil -extract CFBundleExecutable raw "$plist")" "$name"
     expect CFBundleShortVersionString "$(plutil -extract CFBundleShortVersionString raw "$plist")" "$version"
-    expect CFBundleVersion "$(plutil -extract CFBundleVersion raw "$plist")" "$version"
+    expect CFBundleVersion "$(plutil -extract CFBundleVersion raw "$plist")" 1.2.417
     expect CFBundlePackageType "$(plutil -extract CFBundlePackageType raw "$plist")" APPL
     expect LSMinimumSystemVersion "$(plutil -extract LSMinimumSystemVersion raw "$plist")" 14.0
     expect NSHighResolutionCapable "$(plutil -extract NSHighResolutionCapable raw "$plist")" true
@@ -145,6 +145,7 @@ case "$(uname -s)" in
     desktop-file-validate "$desktop" || fail "desktop-file-validate rejects $identifier.desktop"
     echo "ok: desktop-file-validate accepts $identifier.desktop"
     expect Name "$(sed -n 's/^Name=//p' "$desktop")" "$name"
+    expect Comment "$(sed -n 's/^Comment=//p' "$desktop")" "Says hello from a window"
     expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$name\" %F"
     expect MimeType "$(sed -n 's/^MimeType=//p' "$desktop")" "inode/directory;application/x-hellowindow;"
     expect Icon "$(sed -n 's/^Icon=//p' "$desktop")" "$identifier"

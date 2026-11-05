@@ -14,8 +14,9 @@ require "open3"
 # Delivery installs a real one on Windows
 # (.github/scripts/deliver-installer.ps1).
 class NsisTest < Minitest::Test
-  def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4", file_associations: [])
-    Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.MyApp", version:, publisher:, copyright:, icon: nil, file_associations:)
+  def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4", homepage: nil, file_associations: [])
+    Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.MyApp", version:, publisher:, copyright:, icon: nil,
+      description: nil, long_description: nil, homepage:, file_associations:)
   end
 
   def setup
@@ -97,6 +98,27 @@ class NsisTest < Minitest::Test
     assert_equal ["  Delete \"$INSTDIR\\My App.exe\"", "  Delete \"$INSTDIR\\app\\$$main.rb\"", "  Delete \"$INSTDIR\\ruby\\bin\\ruby.dll\""],
       uninstall.grep(/Delete "\$INSTDIR\\(?!uninstall)/)
     assert_equal ["  RMDir \"$INSTDIR\\ruby\\bin\"", "  RMDir \"$INSTDIR\\app\"", "  RMDir \"$INSTDIR\\ruby\"", "  RMDir $INSTDIR"], uninstall.grep(/RMDir/)
+  end
+
+  # Settings' "Installed apps" links a homepage from the uninstall key.
+  def test_the_homepage_is_the_uninstall_keys_links
+    key = "\"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\com.example.MyApp\""
+    refute_match(/URLInfoAbout|HelpLink/, script)
+    lines = script(identity: identity(homepage: "https://example.com/$app")).lines.map(&:chomp)
+    assert_includes lines, "  WriteRegStr HKCU #{key} \"URLInfoAbout\" \"https://example.com/$$app\""
+    assert_includes lines, "  WriteRegStr HKCU #{key} \"HelpLink\" \"https://example.com/$$app\""
+  end
+
+  # A license text is Modern UI's license page, before the folder page,
+  # read from a file with a byte order mark and DOS line endings; with
+  # none there is no such page.
+  def test_a_license_is_a_page_before_the_folder
+    refute_match(/MUI_PAGE_LICENSE/, script)
+    lines = setup_program.script(icon: nil, license: File.join(@dist, "license.txt")).lines.map(&:chomp)
+    page = lines.index("!insertmacro MUI_PAGE_LICENSE #{"\"#{Fledge::Nsis.host_path(File.join(@dist, 'license.txt'))}\""}")
+    assert page
+    assert_equal "!insertmacro MUI_PAGE_DIRECTORY", lines[page.to_i + 1]
+    assert_equal "#{Fledge::Nsis::BOM}MIT\r\n\r\nCopyright ©\r\n", Fledge::Nsis.license_text("MIT\n\r\nCopyright ©\n")
   end
 
   def test_a_new_version_runs_the_old_uninstaller_first

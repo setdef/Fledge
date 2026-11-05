@@ -8,12 +8,14 @@
 #   pwsh -NoProfile -File deliver-installer.ps1 -Installer INSTALLER
 #
 # INSTALLER is "Hello Window-x64-mingw-ucrt-setup.exe". It must carry the
-# app's icon and version information. Installed silently (/S), as the
+# app's icon and version information, and, run as a person runs it, show
+# the app's license on its first page. Installed silently (/S), as the
 # person who runs it, with no administrator, it must put the app in
 # %LOCALAPPDATA%\Programs\Hello Window, make a Start menu shortcut to it
 # whose System.AppUserModel.ID, read back through the shell's
 # IPropertyStore, is the app's identifier, make no desktop shortcut, and
-# register an uninstaller under HKCU. Started from that shortcut, as the
+# register an uninstaller under HKCU, with the homepage as its links.
+# Started from that shortcut, as the
 # Start menu starts it, the app must write its report, which says it had
 # no console and the AppUserModelID it gave itself: the shortcut's, which
 # is what lets Windows show its notifications. What it opens must be in
@@ -153,6 +155,56 @@ Expect "the installer's version numbers" "$($info.FileMajorPart).$($info.FileMin
 if ([Fledge.Shell]::ExtractIconExW($Installer, -1, $null, $null, 0) -lt 1) { Fail 'the installer has no icon' }
 Write-Host 'ok: the installer has an icon'
 
+# The license page (fledge.yml's license_file), the first page a person
+# sees: started without /S, the setup program's window holds a rich edit
+# control whose text, read back with WM_GETTEXT, is the example's license.
+# Nothing is installed before the page is accepted, so closing it here
+# leaves the computer as it was.
+Add-Type -Namespace Fledge -Name Window -MemberDefinition @'
+public delegate bool EnumProc(System.IntPtr window, System.IntPtr data);
+[DllImport("user32.dll")]
+public static extern bool EnumChildWindows(System.IntPtr parent, EnumProc proc, System.IntPtr data);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+public static extern int GetClassNameW(System.IntPtr window, System.Text.StringBuilder name, int size);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+public static extern System.IntPtr SendMessageW(System.IntPtr window, uint message, System.IntPtr wParam, System.Text.StringBuilder lParam);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)]
+public static extern System.IntPtr SendMessageW(System.IntPtr window, uint message, System.IntPtr wParam, System.IntPtr lParam);
+
+public static string RichEditText(System.IntPtr top) {
+  string found = null;
+  EnumChildWindows(top, delegate (System.IntPtr child, System.IntPtr data) {
+    var name = new System.Text.StringBuilder(256);
+    GetClassNameW(child, name, name.Capacity);
+    if (!name.ToString().StartsWith("RichEdit")) return true;
+    int length = SendMessageW(child, 0x000E, System.IntPtr.Zero, System.IntPtr.Zero).ToInt32();
+    var text = new System.Text.StringBuilder(length + 1);
+    SendMessageW(child, 0x000D, new System.IntPtr(length + 1), text);
+    found = text.ToString();
+    return false;
+  }, System.IntPtr.Zero);
+  return found;
+}
+'@
+$setup = Start-Process -FilePath $Installer -PassThru
+try {
+  $licenseText = $null
+  $deadline = (Get-Date).AddSeconds(60)
+  while (-not $licenseText) {
+    if ((Get-Date) -gt $deadline) { Fail 'the setup program showed no license page within 60 seconds' }
+    Start-Sleep -Milliseconds 500
+    $setup.Refresh()
+    if ($setup.HasExited) { Fail "the setup program exited with $($setup.ExitCode) before it showed its license page" }
+    if ($setup.MainWindowHandle -ne [IntPtr]::Zero) { $licenseText = [Fledge.Window]::RichEditText($setup.MainWindowHandle) }
+  }
+  $lines = @($licenseText -split "`r`n|`r|`n")
+  Expect "the license page's first line" $lines[0] 'MIT No Attribution'
+  Expect "the license page's copyright line" $lines[2] "Copyright $([char]0xA9) 2026 Kerrick Long"
+  Write-Host "ok: the setup program's window '$($setup.MainWindowTitle)' shows the license first"
+} finally {
+  if (-not $setup.HasExited) { Stop-Process -Id $setup.Id -Force; $setup.WaitForExit() }
+}
+
 $folder = Join-Path $env:LOCALAPPDATA "Programs\$appName"
 $app = Join-Path $folder "$appName.exe"
 $startMenu = [Environment]::GetFolderPath('Programs')
@@ -191,6 +243,8 @@ function CheckInstalled {
   Expect 'DisplayName' $entry.DisplayName $appName
   Expect 'DisplayVersion' $entry.DisplayVersion '1.2.3'
   Expect 'Publisher' $entry.Publisher 'setdef'
+  Expect 'URLInfoAbout' $entry.URLInfoAbout 'https://github.com/setdef/Fledge'
+  Expect 'HelpLink' $entry.HelpLink 'https://github.com/setdef/Fledge'
   Expect 'InstallLocation' $entry.InstallLocation $folder
   Expect 'UninstallString' $entry.UninstallString "`"$folder\uninstall.exe`""
   Expect 'QuietUninstallString' $entry.QuietUninstallString "`"$folder\uninstall.exe`" /S"

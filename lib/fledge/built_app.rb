@@ -172,7 +172,13 @@ module Fledge
       raise Error, GEMS if app.gemfile || !Dir.glob("*.gemspec", base: root).empty?
 
       config = app.config
-      key = { "programs" => config.programs, "linux" => config.linux, "ios" => config.ios, "android" => config.android }.find { |_, value| value }&.first
+      libraries = config.system_libraries("linux")
+      key = {
+"programs" => config.programs,
+"linux: system_libraries" => (libraries unless libraries.empty?),
+"ios" => config.ios,
+"android" => config.android,
+}.find { |_, value| value }&.first
       if key
         raise Error, "#{File.join(root, Config::FILE)} has #{key}, which changes the runtime or the gems, and --from keeps #{@given}'s. " \
           "Build this project with fledge build."
@@ -182,7 +188,9 @@ module Fledge
         full = File.join(root, path)
         raise Error, "#{root} holds #{path}, which --from takes from #{@given}. Remove it, or build with fledge build." if File.exist?(full) || File.symlink?(full)
       end
-      app.with(gemfile: @gemfile, config: config.with(linux: @system_libraries.empty? ? nil : Config::Linux.new(system_libraries: @system_libraries)))
+      changelog = config.linux&.deb_changelog
+      linux = Config::Linux.new(system_libraries: @system_libraries, deb_changelog: changelog) unless @system_libraries.empty? && changelog.nil?
+      app.with(gemfile: @gemfile, config: config.with(linux:))
     end
 
     # The entries of the built app's +app+ folder that set up its gems,

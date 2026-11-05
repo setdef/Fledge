@@ -114,8 +114,11 @@ module Fledge
     # [from] The Fledge::BuiltApp whose runtime and gems the app takes in
     #        place of the runtime archive's (<tt>fledge build --from</tt>),
     #        or +nil+; +runtime+ is then that app's path.
-    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil, from: nil)
+    # [log] Where warnings go, such as standard error, or +nil+ for
+    #       nowhere.
+    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil, from: nil, log: nil)
       @app = app
+      @log = log
       @from = from
       @platform = platform
       @runtime = runtime
@@ -324,7 +327,7 @@ module Fledge
       CacheTag.make_folder(@out)
       Dir.mktmpdir(".fledge-build-", @out) do |work|
         runtime = runtime_folder(work)
-        bundle = MacBundle.for(@app.identity, platform: @platform, folder:)
+        bundle = MacBundle.for(@app.identity, platform: @platform, folder:, build: @app.config.macos&.build)
         contents = bundle ? bundle.resources : folder
         runtime.move_into(contents)
         File.write(File.join(contents, CONFIG), launch_config)
@@ -360,8 +363,22 @@ module Fledge
       FileUtils.cp(runtime.launcher(launcher_name(program)), path, preserve: true)
       identity = program.identity
       WindowsResources.apply(path, identity:, tools:) if @platform.windows?
-      DesktopEntry.new(identity).entries.each { |entry| add(folder, entry) } if @platform.os == "linux" && identity.windowed?
+      desktop(identity) if @platform.os == "linux" && identity.windowed?
       path
+    end
+
+    # Writes the desktop entry and icons of the windowed Linux program
+    # whose identity is +identity+, and names on the log each size of
+    # Icon::LINUX its icon has no PNG for, since a desktop then scales
+    # the nearest one.
+    private def desktop(identity)
+      DesktopEntry.new(identity).entries.each { |entry| add(folder, entry) }
+      icon = identity.icon
+      missing = icon ? icon.linux_missing : [] # : Array[Integer]
+      return if missing.empty?
+
+      files = missing.map { |size| "#{icon&.name}-#{size}.png" }
+      @log&.puts "fledge build: warning: the icon has no #{files.join(', ')}, so Linux desktops scale the nearest size there is"
     end
 
     # Writes +entry+, whose path is relative to +root+, unless it is a

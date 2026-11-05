@@ -8,10 +8,11 @@ module Fledge
 
     @identity: Identity
     @folder: String
+    @build: String?
 
-    def self.for: (Identity identity, platform: Platform, folder: String) -> MacBundle?
+    def self.for: (Identity identity, platform: Platform, folder: String, ?build: String?) -> MacBundle?
 
-    def initialize: (Identity identity, folder: String) -> void
+    def initialize: (Identity identity, folder: String, ?build: String?) -> void
 
     def path: () -> String
 

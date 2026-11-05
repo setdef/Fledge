@@ -8,8 +8,9 @@ module Fledge
       SONAME: Regexp
 
       attr_reader system_libraries: Array[String]
+      attr_reader deb_changelog: String?
 
-      def self.new: (system_libraries: Array[String]) -> instance
+      def self.new: (system_libraries: Array[String], deb_changelog: String?) -> instance
 
       def self.from: (Hash[Object, Object] data, String file) -> Linux?
 

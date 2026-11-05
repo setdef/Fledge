@@ -17,7 +17,7 @@ module Fledge
 
       def initialize: (identity: Identity, folder: String, to: String, files: Array[String], folders: Array[String], size: Integer, ?signing: String?) -> void
 
-      def text: (icon: String?) -> String
+      def text: (icon: String?, ?license: String?) -> String
 
       private def functions: () -> Array[String]
 
@@ -33,7 +33,7 @@ module Fledge
 
       private def aumid_macro: () -> Array[String]
 
-      private def pages: () -> Array[String]
+      private def pages: (String? license) -> Array[String]
 
       private def registry: () -> Array[String]
 

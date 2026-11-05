@@ -51,8 +51,9 @@
 #     its own windows): a windowed app is an .app bundle on macOS,
 #     signed ad hoc, a program Windows starts without a console, and a
 #     folder with a desktop entry and icons on Linux. Every app carries
-#     the name, version, publisher, and icon fledge.yml gives, where
-#     each system shows them, on Windows in the program itself. A
+#     the name, version, publisher, icon, description, and homepage
+#     fledge.yml gives, where each system shows them, on Windows in the
+#     program itself. A
 #     windowed app gets an installer beside each archive, too: a disk
 #     image for macOS, a setup program for Windows, which makes the
 #     Start menu shortcut Windows needs before it shows the app's
@@ -120,8 +121,9 @@
 #                        PATH's project may have no Gemfile, gems.rb,
 #                        or gemspec, nor a file where APP keeps one
 #                        Bundler needs, and its fledge.yml no programs,
-#                        linux, ios, or android, which change the
-#                        runtime or the gems. An APP another Fledge
+#                        linux: system_libraries, ios, or android,
+#                        which change the runtime or the gems. An APP
+#                        another Fledge
 #                        release built, or built for another system,
 #                        is a usage error.
 #     build ios          Write an Xcode project for the app, for iPhone
@@ -204,12 +206,28 @@
 #                          as icons/app: icons/app.icns on macOS,
 #                          icons/app.ico on Windows (16 to 256
 #                          pixels), icons/app-16.png, -32, -64, -128,
-#                          -256, and -512 on Linux, icons/app-1024.png
-#                          for iOS, and icons/app-48.png, -72, -96,
-#                          -144, and -192 for Android
+#                          -256, and -512 on Linux (those there are,
+#                          at least one; the build names the rest),
+#                          icons/app-1024.png for iOS, and
+#                          icons/app-48.png, -72, -96, -144, and -192
+#                          for Android
 #                        publisher: who makes it (default: the
 #                          gemspec's authors)
 #                        copyright: such as "© 2026 Example, Inc."
+#                        description: one line that says what the app
+#                          does, such as Keeps your notes: a desktop
+#                          entry's Comment, a .deb's synopsis, and a
+#                          Windows program's Comments (default: none)
+#                        long_description: more about the app, in
+#                          paragraphs: a .deb's extended description
+#                        homepage: the app's web page, an http or https
+#                          URL: a .deb's Homepage, and the links of the
+#                          setup program's entry in Windows' Settings
+#                        license_file: the app's license text, a UTF-8
+#                          file in ROOT, such as LICENSE.txt, which the
+#                          setup program shows on a page before it
+#                          installs, and a .deb installs as
+#                          /usr/share/doc/PACKAGE/copyright
 #                        installers: which of dmg, nsis, appimage, and
 #                          deb a windowed app gets, such as [dmg] or []
 #                          for none (default: dmg, nsis, and appimage)
@@ -239,7 +257,18 @@
 #                          one that none needs; a .deb depends on their
 #                          packages; the app names one a computer
 #                          lacks, and exits with 72, before Ruby starts.
+#                          It may also hold deb_changelog, the app's
+#                          changelog, a file in ROOT, which a .deb
+#                          installs as /usr/share/doc/PACKAGE/
+#                          changelog.gz, compressed with gzip -n -9.
 #                          Other builds ignore it.
+#                        macos: a mapping of build, the build number
+#                          a windowed app's Info.plist gives as
+#                          CFBundleVersion, which the App Store and
+#                          updaters compare: one to three whole numbers
+#                          between periods, quoted, such as "42"
+#                          (default: the version's first three
+#                          numbers). Other builds ignore it.
 #                        file_associations: what a windowed app opens,
 #                          a list of mappings of name (what a person
 #                          calls the documents), role (viewer, the
@@ -348,7 +377,9 @@
 #                        makes a Start menu shortcut whose
 #                        AppUserModelID is the identifier, offers a
 #                        desktop shortcut, and registers an uninstaller.
-#                        /S installs silently.
+#                        With a license_file, it shows the license
+#                        first, for the person to accept. /S installs
+#                        silently, with no page at all.
 #     DIR/NAME-PLATFORM.AppImage
 #                        A windowed app's AppImage for Linux, which runs
 #                        from its own FUSE mount, as every AppImage
@@ -360,7 +391,9 @@
 #                        aarch64-linux, when fledge.yml lists deb:
 #                        apt install ./FILE puts the app in
 #                        /usr/lib/IDENTIFIER, with its desktop entry
-#                        and icons where desktops look, and needs
+#                        and icons where desktops look, and its
+#                        license_file and deb_changelog in
+#                        /usr/share/doc/PACKAGE, and needs
 #                        glibc 2.39 or newer; apt remove removes it.
 #                        It depends on libc6, and on the packages that
 #                        provide the libraries linux: system_libraries

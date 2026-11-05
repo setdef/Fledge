@@ -58,7 +58,9 @@ module Fledge
     # +identity+ and whose built folder is +folder+, for +platform+, to
     # +to+, and returns +to+. +system_libraries+ are the libraries the
     # app's gems load from the distribution (Config::Linux), whose
-    # packages the <tt>.deb</tt> depends on. Raises Fledge::Error when
+    # packages the <tt>.deb</tt> depends on. +license+ is the app's license
+    # text, and +changelog+ the path of its changelog, or +nil+ for none
+    # (#documents). Raises Fledge::Error when
     # this computer has no dpkg-deb, or no dpkg-shlibdeps when it needs
     # one, or either fails.
     #
@@ -73,11 +75,12 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(identity:, folder:, platform:, to:, system_libraries: [])
+    def self.write(identity:, folder:, platform:, to:, system_libraries: [], license: nil, changelog: nil)
       package = package_name(identity)
       Dir.mktmpdir("fledge-deb") do |work|
         root = File.join(work, "root")
         lay_out(root, folder, identity, package)
+        documents(root, package, license:, changelog:)
         control = File.join(root, "DEBIAN")
         FileUtils.mkdir_p(control, mode: 0o755)
         depends = ["libc6 (>= #{Platform::GLIBC_MINIMUM})", *dependencies(work, root, system_libraries)]
@@ -143,25 +146,74 @@ module Fledge
       FileUtils.rmdir(share) if File.directory?(share)
     end
 
+    # Writes <tt>/usr/share/doc/PACKAGE</tt>: +license+, the app's license
+    # text, as +copyright+, uncompressed, as Debian Policy 12.5 asks of
+    # that file, and the file at +changelog+ as <tt>changelog.gz</tt>, the
+    # name 12.7 gives the changelog of a package with no separate
+    # upstream, compressed with <tt>gzip -9</tt> as 12.7 asks and
+    # <tt>-n</tt>, which leaves out gzip's name and time, so the same
+    # changelog makes the same bytes. Nothing when both are +nil+.
+    private_class_method def self.documents(root, package, license:, changelog:)
+      return unless license || changelog
+
+      doc = File.join(root, "usr", "share", "doc", package)
+      FileUtils.mkdir_p(doc, mode: 0o755)
+      if license
+        File.binwrite(File.join(doc, "copyright"), license)
+        File.chmod(0o644, File.join(doc, "copyright"))
+      end
+      return unless changelog
+
+      FileUtils.cp(changelog, File.join(doc, "changelog"))
+      File.chmod(0o644, File.join(doc, "changelog"))
+      Command.run("gzip", "-n", "-9", File.join(doc, "changelog"), install: "Install gzip, which every Linux distribution has.")
+    end
+
     # The +control+ file: Debian Policy 5.3's mandatory fields and
-    # priority and section, with the app's name for its synopsis and its
-    # publisher, or its name, for its maintainer, since <tt>fledge.yml</tt>
-    # has neither a description nor an address. +Depends+ is +depends+:
+    # priority and section; the app's description, or else its name, for
+    # its synopsis, and its long description after it (Policy 5.6.13);
+    # its homepage, when it has one (5.6.23); and its publisher, or its
+    # name, for its maintainer, since <tt>fledge.yml</tt> has no
+    # address. +Depends+ is +depends+:
     # the glibc the runtime needs (Platform::GLIBC_MINIMUM), so apt
     # refuses an older Debian or Ubuntu, saying why, and the packages of
     # the libraries the gems load from the distribution.
     private_class_method def self.control_file(identity, package, architecture, size, depends)
-      <<~CONTROL
-        Package: #{package}
-        Version: #{version(identity.version)}
-        Architecture: #{architecture}
-        Maintainer: #{line(identity.publisher || identity.name)}
-        Installed-Size: #{size}
-        Depends: #{depends.join(', ')}
-        Section: misc
-        Priority: optional
-        Description: #{line(identity.name)}
-      CONTROL
+      homepage = identity.homepage
+      fields = [
+        "Package: #{package}",
+        "Version: #{version(identity.version)}",
+        "Architecture: #{architecture}",
+        "Maintainer: #{line(identity.publisher || identity.name)}",
+        "Installed-Size: #{size}",
+        "Depends: #{depends.join(', ')}",
+        "Section: misc",
+        "Priority: optional",
+      ]
+      fields << "Homepage: #{homepage}" if homepage
+      fields << "Description: #{line(identity.description || identity.name)}"
+      "#{fields.join("\n")}\n#{extended(identity.long_description)}"
+    end
+
+    # The extended description's lines, from +text+, as Debian Policy
+    # 5.6.13 writes them: each line after one space, and an empty line as
+    # a space and a full stop. Nothing for +nil+.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Deb.extended("One.\n\nTwo.\n") # => " One.\n .\n Two.\n"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.extended(text)
+      return "" unless text
+
+      text.strip.lines(chomp: true).map { |each| each.strip.empty? ? " .\n" : " #{each.rstrip.tr("\t", ' ')}\n" }.join
     end
 
     # The packages that provide +libraries+, as dpkg-shlibdeps finds

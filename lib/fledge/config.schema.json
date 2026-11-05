@@ -29,7 +29,7 @@
       "pattern": "^[0-9]+(?:\\.[0-9a-zA-Z]+)*(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?[ \\t\\n\\u000b\\f\\r]*$"
     },
     "icon": {
-      "description": "The icon's files without their extension, relative to the project's root, such as icons/app: icons/app.icns on macOS, icons/app.ico on Windows (16 to 256 pixels), icons/app-16.png, -32, -64, -128, -256, and -512 on Linux, icons/app-1024.png for iOS, and icons/app-48.png, -72, -96, -144, and -192 for Android.",
+      "description": "The icon's files without their extension, relative to the project's root, such as icons/app: icons/app.icns on macOS, icons/app.ico on Windows (16 to 256 pixels), icons/app-16.png, -32, -64, -128, -256, and -512 on Linux (those there are, at least one), icons/app-1024.png for iOS, and icons/app-48.png, -72, -96, -144, and -192 for Android.",
       "type": ["string", "null"],
       "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]",
       "not": {
@@ -46,6 +46,26 @@
       "description": "The app's copyright notice, such as \"© 2026 Example, Inc.\" (default: none).",
       "type": ["string", "null"],
       "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
+    },
+    "description": {
+      "description": "One line that says what the app does, such as Keeps your notes (default: none): a Linux desktop entry's Comment, a .deb's synopsis, and a Windows program's Comments.",
+      "type": ["string", "null"],
+      "pattern": "^[^\\r\\n]*[^\\u0000\\t\\n\\u000b\\f\\r ][^\\r\\n]*$"
+    },
+    "long_description": {
+      "description": "More about the app, in paragraphs (default: none): a .deb's extended description, after the description.",
+      "type": ["string", "null"],
+      "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
+    },
+    "homepage": {
+      "description": "The app's web page, an http or https URL, such as https://example.com/cool-app (default: none): a .deb's Homepage, and the links of a Windows setup program's entry in Settings.",
+      "type": ["string", "null"],
+      "pattern": "^https?://[^\\t\\n\\u000b\\f\\r <>\"]+$"
+    },
+    "license_file": {
+      "description": "The app's license text, a UTF-8 file in the project, such as LICENSE.txt (default: none): a Windows setup program shows it on a page before it installs, and a .deb installs it as /usr/share/doc/PACKAGE/copyright.",
+      "type": ["string", "null"],
+      "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
     },
     "installers": {
       "description": "Which of dmg, nsis, appimage, and deb a windowed app gets, such as [dmg] or [] for none (default: dmg, nsis, and appimage). A console app gets none.",
@@ -133,6 +153,23 @@
             "type": "string",
             "pattern": "^[A-Za-z0-9_+-][A-Za-z0-9._+-]*\\.so(?:\\.[0-9]+)*$"
           }
+        },
+        "deb_changelog": {
+          "description": "The app's changelog, a file in the project, such as CHANGELOG.md (default: none), which a .deb installs compressed as /usr/share/doc/PACKAGE/changelog.gz.",
+          "type": ["string", "null"],
+          "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
+        }
+      }
+    },
+    "macos": {
+      "description": "What a build for macOS writes in place of what it derives (default: nothing). Other builds ignore it.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "build": {
+          "description": "The app's build number, its Info.plist's CFBundleVersion, which the App Store and updaters compare: one to three whole numbers between periods, such as \"42\" or \"1.2.417\", quoted (default: the version's first three numbers, as CFBundleShortVersionString).",
+          "type": ["string", "null"],
+          "pattern": "^[0-9]+(?:\\.[0-9]+){0,2}$"
         }
       }
     },

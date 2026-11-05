@@ -36,10 +36,27 @@ class ConfigTest < Minitest::Test
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil, programs: nil, ios: nil, android: nil, linux: nil,
+      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil,
       file_associations: nil, build_tools: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
+  end
+
+  # A macOS build number, held by ADR 029, section 5, for CFBundleVersion.
+  def test_reads_a_macos_build_number
+    assert_equal "1.2.417", load("macos:\n  build: \"1.2.417\"\n").macos&.build
+    assert_nil load("macos:\n  build:\n").macos&.build
+    assert_nil load("name: A\n").macos
+  end
+
+  # What an app says about itself: a line, paragraphs, and a web page,
+  # which a program of several takes from the project.
+  def test_reads_what_an_app_says_about_itself
+    config = load("description: Keeps notes\nlong_description: |\n  Notes.\n\n  More.\nhomepage: https://example.com/notes\n" \
+      "programs:\n  - path: a.rb\n")
+    assert_equal ["Keeps notes", "Notes.\n\nMore.\n", "https://example.com/notes"], [config.description, config.long_description, config.homepage]
+    program = config.for_program(config.programs.to_a.first)
+    assert_equal ["Keeps notes", "https://example.com/notes"], [program.description, program.homepage]
   end
 
   # A windowed app lists the installers it wants (ADR 009), once each, or
@@ -55,10 +72,10 @@ class ConfigTest < Minitest::Test
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, linux, file_associations, and build_tools."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, file_associations, and build_tools."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, linux, file_associations, and build_tools\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, file_associations, and build_tools\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -75,6 +92,18 @@ class ConfigTest < Minitest::Test
       "icon: art/icon.png\n" => %r{: icon names the icon's files without an extension, such as icon: art/icon for art/icon\.icns, \.ico, and -16\.png to -512\.png\z},
       "publisher: [a]\n" => /: publisher must be text/,
       "copyright: true\n" => /: copyright must be text/,
+      "description: \"One.\\nTwo.\"\n" => /: description must be one line; put the rest in long_description\z/,
+      "long_description: [a]\n" => /: long_description must be text/,
+      "license_file: ../LICENSE\n" => %r{: license_file, "\.\./LICENSE", must name a file in the project, with / between folders, such as license_file: LICENSE\.txt\z},
+      "linux:\n  deb_changelog: /CHANGELOG\n" => %r{: linux: deb_changelog, "/CHANGELOG", must name a file in the project},
+      "linux:\n  changelog: CHANGELOG\n" => /: linux has 'changelog', which Fledge does not know\. It knows system_libraries and deb_changelog\.\z/,
+      "macos: \"42\"\n" => /: macos must be a mapping of build, such as macos: \{ build: "42" \}\z/,
+      "macos:\n  bulid: \"42\"\n" => /: macos has 'bulid', which Fledge does not know\. It knows build\.\z/,
+      "macos:\n  build: 42\n" => /: macos: build must be text; quote it, as in build: "42"\z/,
+      "macos:\n  build: \"1.2.3.4\"\n" => /: macos: build must be one to three whole numbers between periods, as Apple's CFBundleVersion is, .* not 1\.2\.3\.4\z/,
+      "macos:\n  build: \"1.0b2\"\n" => /: macos: build must be one to three whole numbers between periods/,
+      "homepage: example.com\n" => %r{: homepage must be an http or https URL with no spaces, such as https://example\.com/cool-app, not example\.com\z},
+      "homepage: \"https://example.com/a b\"\n" => /: homepage must be an http or https URL/,
       "kind: windowed\ninstallers: dmg\n" => /: installers must be a list of dmg, nsis, appimage, deb, such as installers: \[dmg, nsis, appimage, deb\], or \[\] for none\z/,
       "kind: windowed\ninstallers: [msi]\n" => /: installers has msi, which Fledge does not build\. It builds dmg, nsis, appimage, deb\.\z/,
       "installers: [dmg]\n" => /: only a windowed app has installers; a console app ships as its archive/,
@@ -130,7 +159,7 @@ class ConfigTest < Minitest::Test
     config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    name: W\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
 
     assert_equal Fledge::Config.new(name: "W", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
-      publisher: "Me", copyright: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil,
+      publisher: "Me", copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil,
       file_associations: nil, build_tools: nil), config.for_program(config.programs.to_a.first)
   end
 
@@ -209,7 +238,7 @@ class ConfigTest < Minitest::Test
   def test_reads_the_system_libraries_a_projects_gems_load_on_linux
     config = load("linux:\n  system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
 
-    assert_equal Fledge::Config::Linux.new(system_libraries: %w[libwebkit2gtk-4.1.so.0 libgtk-3.so.0]), config.linux
+    assert_equal Fledge::Config::Linux.new(system_libraries: %w[libwebkit2gtk-4.1.so.0 libgtk-3.so.0], deb_changelog: nil), config.linux
     assert_equal [], load("linux:\n  system_libraries: []\n").linux&.system_libraries
     assert_equal [], load("linux: {}\n").linux&.system_libraries
     assert_nil load("linux:\n").linux
@@ -224,8 +253,8 @@ class ConfigTest < Minitest::Test
   def test_refuses_a_system_library_that_is_not_a_librarys_name
     {
       "linux: [libpng16.so.16]\n" =>
-        /: linux must be a mapping of system_libraries, such as linux: \{ system_libraries: \[libgtk-3\.so\.0\] \}\z/,
-      "linux:\n  libraries: [libpng16.so.16]\n" => /: linux has 'libraries', which Fledge does not know\. It knows system_libraries\.\z/,
+        /: linux must be a mapping of system_libraries and deb_changelog, such as linux: \{ system_libraries: \[libgtk-3\.so\.0\] \}\z/,
+      "linux:\n  libraries: [libpng16.so.16]\n" => /: linux has 'libraries', which Fledge does not know\. It knows system_libraries and deb_changelog\.\z/,
       "linux:\n  system_libraries: libpng16.so.16\n" =>
         /: linux: system_libraries must be a list of the names compiled files give libraries, such as \[libgtk-3\.so\.0\]\z/,
       "linux:\n  system_libraries: [3]\n" => /: linux: system_libraries must be a list/,

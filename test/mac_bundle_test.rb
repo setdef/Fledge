@@ -16,7 +16,7 @@ class MacBundleTest < Minitest::Test
 
   def identity(file_associations)
     Fledge::Identity.new(name: "Hello Window", kind: "windowed", identifier: "com.example.HelloWindow", version: "1.2.3", publisher: nil,
-      copyright: nil, icon: nil, file_associations:)
+      copyright: nil, icon: nil, description: nil, long_description: nil, homepage: nil, file_associations:)
   end
 
   def info(file_associations)

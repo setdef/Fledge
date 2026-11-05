@@ -46,7 +46,8 @@ Write-Host '== the app it wrote, unpacked with Expand-Archive and run with a pat
 Expand-Archive -LiteralPath "Ausgabe\Spiel-$Platform.zip" -DestinationPath 'Entpackt'
 $spiel = ".\Entpackt\Spiel-$Platform\Spiel.exe"
 $info = (Get-Item $spiel).VersionInfo
-$info | Format-List FileDescription, ProductName, CompanyName, ProductVersion, OriginalFilename
+$info | Format-List FileDescription, ProductName, CompanyName, ProductVersion, OriginalFilename, Comments
+if ($info.Comments -ne 'Ein Spiel aus einem Ordner') { throw "the program's Comments are '$($info.Comments)', not the game's description" }
 if ($info.ProductName -ne 'Spiel' -or $info.CompanyName -ne 'Spielwerk' -or $info.OriginalFilename -ne 'Spiel.exe') { throw 'the version information is not the game''s' }
 $report = Join-Path $work 'report.txt'
 Start-Process -FilePath $spiel -ArgumentList "`"$report`"" -Wait
@@ -60,6 +61,11 @@ if ($setup.ExitCode -ne 0) { throw "the setup program exited $($setup.ExitCode)"
 $installed = Join-Path $env:LOCALAPPDATA 'Programs\Spiel'
 $verb = 'HKCU:\Software\Classes\Directory\shell\com.example.Spiel\command'
 Write-Host "the folders' verb: $((Get-Item -LiteralPath $verb).GetValue(''))"
+$progids = (Get-Item -LiteralPath 'HKCU:\Software\Classes\.spiellevel\OpenWithProgids').GetValueNames() -join ','
+if ($progids -ne 'com.example.Spiel.2') { throw ".spiellevel's OpenWithProgids is '$progids'" }
+$uninstallKey = Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\com.example.Spiel'
+if ($uninstallKey.URLInfoAbout -ne 'https://example.com/spiel') { throw "URLInfoAbout is '$($uninstallKey.URLInfoAbout)'" }
+Write-Host "ok: .spiellevel lists $progids, and the uninstall key's URLInfoAbout is $($uninstallKey.URLInfoAbout)"
 Remove-Item -LiteralPath $report
 Start-Process -FilePath (Join-Path $installed 'Spiel.exe') -ArgumentList "`"$report`"" -Wait
 $out = (Get-Content -LiteralPath $report -Raw).Trim()

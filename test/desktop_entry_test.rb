@@ -9,9 +9,9 @@ require_relative "test_helper"
 require "open3"
 
 class DesktopEntryTest < Minitest::Test
-  def identity(name: "Hello Window", icon: nil, file_associations: [])
+  def identity(name: "Hello Window", icon: nil, description: nil, file_associations: [])
     Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.HelloWindow", version: "1.2.3", publisher: nil,
-      copyright: nil, icon:, file_associations:)
+      copyright: nil, icon:, description:, long_description: nil, homepage: nil, file_associations:)
   end
 
   def test_writes_a_desktop_entry_named_for_the_identifier
@@ -39,6 +39,25 @@ class DesktopEntryTest < Minitest::Test
       end
       assert_equal expected, entries.drop(1).map { |entry| [entry.path, entry.content] }
     end
+  end
+
+  # A project with some of the six sizes, as icon tools make them (32,
+  # 128, and 256), ships those, each in its own size's folder.
+  def test_writes_only_the_icon_sizes_there_are
+    Dir.mktmpdir do |dir|
+      FakeRuntime.icons(dir)
+      [16, 64, 512].each { |size| File.delete(File.join(dir, "icon-#{size}.png")) }
+      entries = Fledge::DesktopEntry.new(identity(icon: Fledge::Icon.new(base: File.join(dir, "icon"), name: "icon"))).entries
+      assert_equal %w[32x32 128x128 256x256].map { |size| "share/icons/hicolor/#{size}/apps/com.example.HelloWindow.png" }, entries.drop(1).map(&:path)
+      assert_equal File.binread(File.join(dir, "icon-128.png")), entries[2].content
+    end
+  end
+
+  # The description is the entry's Comment, a menu's tooltip, escaped as
+  # a string.
+  def test_the_description_is_the_comment
+    text = Fledge::DesktopEntry.new(identity(description: " Says\thello")).text
+    assert_equal "Name=Hello Window\nComment=\\sSays\\thello\nExec=\"Hello Window\"\n", text.lines[3, 3].join
   end
 
   def test_escapes_values_and_quotes_the_program

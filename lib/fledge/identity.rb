@@ -45,7 +45,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Identity < Data.define(:name, :kind, :identifier, :version, :publisher, :copyright, :icon, :file_associations)
+  class Identity < Data.define(:name, :kind, :identifier, :version, :publisher, :copyright, :icon, :description, :long_description, :homepage, :file_associations)
     ##
     # :attr_reader: name
     # The app's name, as people see it.
@@ -114,6 +114,7 @@ module Fledge
         publisher: config.publisher || (authors.empty? ? nil : authors.join(", ")),
         copyright: config.copyright,
         icon: config.icon && Icon.new(base: File.expand_path(config.icon.to_s, root), name: config.icon.to_s),
+        description: config.description, long_description: config.long_description, homepage: config.homepage,
         file_associations: config.file_associations || []
       )
     end

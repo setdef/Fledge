@@ -52,6 +52,24 @@ class InstallersTest < Minitest::Test
     end
   end
 
+  # license_file is read as UTF-8, without a byte order mark a Windows
+  # editor may have written; a missing or non-UTF-8 file fails, naming
+  # the key.
+  def test_the_license_file_is_read_as_utf8_text
+    Dir.mktmpdir do |dir|
+      licensed = app(dir, "license_file: docs/LICENSE.txt\n")
+      FileUtils.mkdir_p(File.join(licensed.root, "docs"))
+      error = assert_raises(Fledge::Error) { Fledge::Installers.license(licensed) }
+      assert_equal "#{File.join(licensed.root, 'fledge.yml')}: license_file names docs/LICENSE.txt, which is not a file in #{licensed.root}", error.message
+
+      File.binwrite(File.join(licensed.root, "docs/LICENSE.txt"), "#{Fledge::Nsis::BOM}Copyright © Me\n")
+      assert_equal "Copyright © Me\n", Fledge::Installers.license(licensed)
+      File.binwrite(File.join(licensed.root, "docs/LICENSE.txt"), "Copyright \xA9 Me\n".b)
+      assert_match(%r{license_file names docs/LICENSE\.txt, which is not UTF-8 text}, assert_raises(Fledge::Error) { Fledge::Installers.license(licensed) }.message)
+      assert_nil Fledge::Installers.license(app(File.join(dir, "other").tap { |other| FileUtils.mkdir_p(other) }, "name: A\n"))
+    end
+  end
+
   def test_a_console_app_gets_none
     Dir.mktmpdir do |dir|
       assert_empty Fledge::Installers.formats(Fledge::App.at(FakeApp.write(dir)), MACOS)

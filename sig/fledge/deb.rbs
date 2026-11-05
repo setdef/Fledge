@@ -7,13 +7,17 @@ module Fledge
     INSTALL: String
     SHLIBDEPS: String
 
-    def self.write: (identity: Identity, folder: String, platform: Platform, to: String, ?system_libraries: Array[String]) -> String
+    def self.write: (identity: Identity, folder: String, platform: Platform, to: String, ?system_libraries: Array[String], ?license: String?, ?changelog: String?) -> String
+
+    private def self.documents: (String root, String package, license: String?, changelog: String?) -> void
 
     def self.package_name: (Identity identity) -> String
 
     def self.version: (String version) -> String
 
     private def self.lay_out: (String root, String folder, Identity identity, String package) -> void
+
+    def self.extended: (String? text) -> String
 
     private def self.control_file: (Identity identity, String package, String architecture, Integer size, Array[String] depends) -> String
 

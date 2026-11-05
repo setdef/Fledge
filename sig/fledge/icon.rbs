@@ -17,6 +17,10 @@ module Fledge
 
     def png: (Integer size, ?String system) -> String
 
+    def linux: () -> Hash[Integer, String]
+
+    def linux_missing: () -> Array[Integer]
+
     private def found: (String path, String shown, String system) -> String
   end
 end

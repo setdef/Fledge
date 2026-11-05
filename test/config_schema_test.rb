@@ -72,6 +72,17 @@ class ConfigSchemaTest < Minitest::Test
     "publisher: \"\"\n" => false,
     "copyright: © 2026 Example, Inc.\n" => true,
     "copyright: true\n" => false,
+    "description: Keeps your notes\n" => true,
+    "description: \"Keeps\\nnotes\"\n" => false,
+    "description: \"Keeps\\rnotes\"\n" => false,
+    "long_description: |\n  Notes.\n\n  More.\n" => true,
+    "homepage: https://example.com/cool-app?a=1#b\n" => true,
+    "homepage: http://example.com\n" => true,
+    "homepage: example.com\n" => false,
+    "homepage: ftp://example.com\n" => false,
+    "homepage: \"https://example.com/a b\"\n" => false,
+    "homepage: \"<https://example.com>\"\n" => false,
+    "homepage: \"https://\"\n" => false,
     "kind: windowed\nidentifier: com.example.A\ninstallers: [dmg, nsis, appimage, deb]\n" => true,
     "kind: windowed\nidentifier: com.example.A\ninstallers: [dmg, dmg]\n" => true,
     "kind: windowed\nidentifier: com.example.A\ninstallers: []\n" => true,
@@ -144,6 +155,26 @@ class ConfigSchemaTest < Minitest::Test
     "linux:\n  system_libraries: [.so]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0 \"]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0\\n\"]\n" => false,
+    "license_file: LICENSE.txt\n" => true,
+    "license_file: docs/License.md\n" => true,
+    "license_file: ../LICENSE\n" => false,
+    "license_file: /LICENSE\n" => false,
+    "license_file: docs\\\\LICENSE\n" => false,
+    "linux:\n  deb_changelog: CHANGELOG.md\n" => true,
+    "linux:\n  deb_changelog:\n" => true,
+    "linux:\n  deb_changelog: ../CHANGELOG.md\n" => false,
+    "linux:\n  deb_changelog: [CHANGELOG.md]\n" => false,
+    "macos:\n  build: \"42\"\n" => true,
+    "macos:\n  build: \"1.2.417\"\n" => true,
+    "macos:\n  build:\n" => true,
+    "macos: {}\n" => true,
+    "macos:\n  build: 42\n" => false,
+    "macos:\n  build: \"1.2.3.4\"\n" => false,
+    "macos:\n  build: \"1.0b2\"\n" => false,
+    "macos:\n  build: \"1..2\"\n" => false,
+    "macos:\n  build: \"42\\n\"\n" => false,
+    "macos:\n  bulid: \"42\"\n" => false,
+    "macos: \"42\"\n" => false,
     "#{WINDOWED}file_associations:\n  - name: Folder\n    folders: true\n  - name: Zip\n    role: editor\n    extensions: [zip, Zip]\n" \
       "    mime_types: [application/zip]\n    content_types: [public.zip-archive]\n" => true,
     "#{WINDOWED}file_associations:\n  - name: Text\n    mime_types: [text/plain]\n" => true,
@@ -280,6 +311,19 @@ class ConfigSchemaTest < Minitest::Test
     refute property.fetch("additionalProperties")
     ecma = Fledge::Config::Linux::SONAME.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
     assert_equal ecma, property.dig("properties", "system_libraries", "items", "pattern")
+  end
+
+  def test_macos_is_configs
+    property = schema.dig("properties", "macos")
+    assert_equal Fledge::Config::Macos::KEYS, property.fetch("properties").keys
+    refute property.fetch("additionalProperties")
+    ecma = Fledge::Config::Macos::BUILD.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
+    assert_equal ecma, property.dig("properties", "build", "pattern")
+  end
+
+  def test_homepage_is_configs
+    ecma = Fledge::Config::HOMEPAGE.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$").sub("\\s", "\\t\\n\\u000b\\f\\r ")
+    assert_equal ecma, schema.dig("properties", "homepage", "pattern")
   end
 
   # An entry of file_associations holds Config::FileAssociation's keys,

@@ -47,6 +47,12 @@ expect Package "$(dpkg-deb --field "$deb" Package)" "$package"
 expect Version "$(dpkg-deb --field "$deb" Version)" "$version"
 expect Architecture "$(dpkg-deb --field "$deb" Architecture)" "$(dpkg --print-architecture)"
 expect Depends "$(dpkg-deb --field "$deb" Depends)" "libc6 (>= 2.39)"
+expect Homepage "$(dpkg-deb --field "$deb" Homepage)" "https://github.com/setdef/Fledge"
+expect Description "$(dpkg-deb --field "$deb" Description)" "Says hello from a window
+ Hello Window is the example windowed app of Fledge, which ships a Ruby
+ app to people who don't have Ruby.
+ .
+ It opens no window: given a path, it writes a report there."
 
 if dpkg -s "$package" >/dev/null 2>&1; then
   fail "$package is installed before the test begins"
@@ -68,6 +74,7 @@ if command -v desktop-file-validate >/dev/null 2>&1; then
   echo "ok: desktop-file-validate accepts the desktop entry"
 fi
 expect Name "$(sed -n 's/^Name=//p' "$desktop")" "$name"
+expect Comment "$(sed -n 's/^Comment=//p' "$desktop")" "Says hello from a window"
 expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$program\" %F"
 expect MimeType "$(sed -n 's/^MimeType=//p' "$desktop")" "inode/directory;application/x-hellowindow;"
 # dpkg's trigger runs update-desktop-database, from desktop-file-utils,
@@ -79,6 +86,22 @@ if command -v update-desktop-database >/dev/null 2>&1; then
 fi
 expect Icon "$(sed -n 's/^Icon=//p' "$desktop")" "$identifier"
 expect Terminal "$(sed -n 's/^Terminal=//p' "$desktop")" false
+doc="/usr/share/doc/$package"
+# Debian Policy 12.5: the license, uncompressed, as the installed copyright
+# file. Debian's and Ubuntu's container images install no other file of
+# /usr/share/doc (their dpkg.cfg.d excludes it), so the changelog is read
+# from the package: changelog.gz (12.7), from gzip -n -9, with no name or
+# time in its header.
+grep -qx "MIT No Attribution" "$doc/copyright" || fail "$doc/copyright is not the app's license: $(head -n 3 "$doc/copyright")"
+grep -q "^Copyright © 2026 Kerrick Long\$" "$doc/copyright" || fail "$doc/copyright lost its copyright line"
+expect "the copyright file's mode" "$(stat -c %a "$doc/copyright")" 644
+unpacked=$(mktemp -d)
+dpkg-deb --extract "$deb" "$unpacked"
+changelog="$unpacked$doc/changelog.gz"
+zcat "$changelog" | grep -qx "Hello Window 1.2.3" || fail "the package's changelog.gz is not the app's changelog"
+expect "changelog.gz's gzip header" "$(od -An -tx1 -N10 "$changelog" | sed 's/^ *//')" "1f 8b 08 00 00 00 00 00 02 03"
+expect "changelog.gz's mode" "$(stat -c %a "$changelog")" 644
+rm -rf "$unpacked"
 png="89 50 4e 47 0d 0a 1a 0a"
 icons=""
 for size in 16 32 64 128 256 512; do
@@ -134,7 +157,7 @@ DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq "$package" >/dev/null || fa
 if dpkg -s "$package" 2>/dev/null | grep -qx "Status: install ok installed"; then
   fail "dpkg still says $package is installed"
 fi
-for left in "$lib" "$desktop" $icons; do
+for left in "$lib" "$desktop" "$doc" $icons; do
   [ ! -e "$left" ] || fail "removing the package left $left behind"
 done
 [ -z "$(dpkg --audit)" ] || fail "dpkg --audit has something to say: $(dpkg --audit)"

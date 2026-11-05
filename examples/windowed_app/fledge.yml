@@ -10,16 +10,32 @@
 # Properties dialog shows; and its icon, the files each operating system
 # takes it from, named as Briefcase names them: icons/icon.icns for
 # macOS, icons/icon.ico for Windows, and icons/icon-16.png to
-# icons/icon-512.png for Linux. Like hello, it sits inside Fledge's own
-# gem, and this file makes its folder a project's root (ADR 005).
+# icons/icon-512.png for Linux; what it says about itself, a line, a
+# paragraph, and a web page, which menus, packages, and Windows' Settings
+# show; its license, which its setup program shows and its .deb installs,
+# and its changelog, which the .deb installs too; and its Mac build
+# number. Like hello, it sits inside Fledge's own gem, and this file makes
+# its folder a project's root (ADR 005).
 name: Hello Window
 kind: windowed
 identifier: com.setdef.fledge.HelloWindow
 version: "1.2.3"
 publisher: setdef
 copyright: © 2026 Kerrick Long
+description: Says hello from a window
+long_description: |
+  Hello Window is the example windowed app of Fledge, which ships a Ruby
+  app to people who don't have Ruby.
+
+  It opens no window: given a path, it writes a report there.
+homepage: https://github.com/setdef/Fledge
+license_file: LICENSE.txt
 icon: icons/icon
 installers: [dmg, nsis, appimage, deb]
+linux:
+  deb_changelog: CHANGES.txt
+macos:
+  build: "1.2.417"
 
 # The files and folders it opens (ADR 032, section 3): every folder, which
 # it writes its report into, and its own reports, which it writes over.

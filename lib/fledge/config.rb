@@ -85,7 +85,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers, :programs, :ios, :android, :linux, :file_associations, :build_tools)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :license_file, :installers, :programs, :ios, :android, :linux, :macos, :file_associations, :build_tools)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -119,6 +119,25 @@ module Fledge
     # The app's copyright notice, or +nil+ for none.
 
     ##
+    # :attr_reader: description
+    # One line that says what the app does, or +nil+ for none.
+
+    ##
+    # :attr_reader: long_description
+    # More about the app, in paragraphs, or +nil+ for none.
+
+    ##
+    # :attr_reader: homepage
+    # The app's web page, an http or https URL, or +nil+ for none.
+
+    ##
+    # :attr_reader: license_file
+    # The path of the app's license text, UTF-8, relative to the
+    # project's root, which a Windows setup program shows before it
+    # installs and a <tt>.deb</tt> installs as its copyright file, or
+    # +nil+ for none.
+
+    ##
     # :attr_reader: installers
     # The installers to build, from INSTALLERS, or +nil+ for every one a
     # windowed app's targets have (ADR 009).
@@ -144,6 +163,11 @@ module Fledge
     # (Config::Linux), or +nil+ for none (ADR 030).
 
     ##
+    # :attr_reader: macos
+    # What a macOS build writes in place of what it derives, its build
+    # number (Config::Macos), or +nil+ for nothing.
+
+    ##
     # :attr_reader: file_associations
     # The files and folders a windowed app opens
     # (Config::FileAssociation), or +nil+ for none (ADR 032, section 3).
@@ -158,10 +182,10 @@ module Fledge
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright installers programs ios android linux file_associations build_tools].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage license_file installers programs ios android linux macos file_associations build_tools].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, linux, file_associations, and build_tools"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, file_associations, and build_tools"
 
     # The keys that, beside +programs+, belong to each program instead.
     PER_PROGRAM = %w[kind identifier icon].freeze
@@ -192,6 +216,10 @@ module Fledge
     # The longest identifier: an AppUserModelID's limit.
     IDENTIFIER_MAX = 128
 
+    # A homepage: an http or https URL, with no white space, quote, or
+    # angle bracket.
+    HOMEPAGE = %r{\Ahttps?://[^\s<>"]+\z}
+
     # The configuration of a project with no <tt>fledge.yml</tt>.
     #
     # === Example
@@ -206,8 +234,8 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.none
-      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, installers: nil, programs: nil, ios: nil,
-        android: nil, linux: nil, file_associations: nil, build_tools: nil)
+      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil,
+        android: nil, linux: nil, macos: nil, file_associations: nil, build_tools: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -252,11 +280,16 @@ module Fledge
         icon: icon(data, path),
         publisher: text(data, "publisher", path, "Example, Inc."),
         copyright: text(data, "copyright", path, "\"Copyright 2026 Example, Inc.\""),
+        description: description(data, path),
+        long_description: text(data, "long_description", path, "\"Cool App keeps your notes.\""),
+        homepage: homepage(data, path),
+        license_file: file(data, "license_file", path, "LICENSE.txt"),
         installers: installers(data, path),
         programs: programs(data, path),
         ios: Phone.from(data, "ios", path),
         android: Phone.from(data, "android", path),
         linux: Linux.from(data, path),
+        macos: Macos.from(data, path),
         file_associations: file_associations(data, path),
         build_tools: build_tools(data, path)
       )
@@ -350,6 +383,26 @@ module Fledge
         "for #{value.sub(/\.[^.]+\z/, '')}.icns, .ico, and -16.png to -512.png"
     end
 
+    # The one-line description at +data+'s +description+, or +nil+: a
+    # desktop entry's +Comment+ and a <tt>.deb</tt>'s synopsis are one
+    # line (Debian Policy 5.6.13).
+    private_class_method def self.description(data, path) # :nodoc:
+      value = text(data, "description", path, "Keeps your notes")
+      return value unless value&.match?(/[\r\n]/)
+
+      raise Error, "#{path}: description must be one line; put the rest in long_description"
+    end
+
+    # The homepage at +data+'s +homepage+, or +nil+: an http or https URL
+    # with no space or angle bracket, as Debian Policy 5.6.23 asks of a
+    # <tt>.deb</tt>'s +Homepage+.
+    private_class_method def self.homepage(data, path) # :nodoc:
+      value = text(data, "homepage", path, "https://example.com/cool-app")
+      return value if value.nil? || value.match?(HOMEPAGE)
+
+      raise Error, "#{path}: homepage must be an http or https URL with no spaces, such as https://example.com/cool-app, not #{value}"
+    end
+
     # The installers to build: a list of INSTALLERS, which may be empty,
     # and only for a windowed app, since a console app gets none (ADR
     # 009).
@@ -413,6 +466,17 @@ module Fledge
       value
     end
 
+    # The path at +key+ in +data+ of a file in the project (Config.inside?),
+    # or +nil+. Raises Fledge::Error, beginning with +path+ and suggesting
+    # +example+, for anything else. Config::Linux reads its files with it
+    # too.
+    def self.file(data, key, path, example) # :nodoc:
+      value = text(data, key, path, example)
+      return value if value.nil? || inside?(value)
+
+      raise Error, "#{path}: #{key}, #{value.inspect}, must name a file in the project, with / between folders, such as #{key}: #{example}"
+    end
+
     # Whether +path+ names a file or folder in the project: relative to
     # its root, with <tt>/</tt> between folders, none of them empty,
     # <tt>.</tt>, or <tt>..</tt>, no backslash or line break, and no space
@@ -457,5 +521,6 @@ end
 
 require_relative "config/file_association"
 require_relative "config/linux"
+require_relative "config/macos"
 require_relative "config/phone"
 require_relative "config/program"

@@ -34,9 +34,10 @@ module Fledge
       end
 
       # The installer's NSIS script, with the app's icon at +icon+, or
-      # NSIS's own for +nil+.
-      def text(icon:)
-        lines = header(icon) + pages + functions + install_section + uninstall_section
+      # NSIS's own for +nil+, and a license page that shows the file at
+      # +license+, or none for +nil+.
+      def text(icon:, license: nil)
+        lines = header(icon) + pages(license) + functions + install_section + uninstall_section
         "#{lines.join("\n")}\n"
       end
 
@@ -174,8 +175,14 @@ module Fledge
         ]
       end
 
-      private def pages
+      # The pages: Modern UI's license page first, when there is a
+      # license, which a person accepts before anything else, as Tauri's
+      # installer.nsi shows it; then the folder, the files, and the last
+      # page. A silent install (/S) shows none of them.
+      private def pages(license)
+        first = license ? ["!insertmacro MUI_PAGE_LICENSE #{quote(Nsis.host_path(license))}"] : [] # : Array[String]
         [
+          *first,
           "!insertmacro MUI_PAGE_DIRECTORY",
           "!insertmacro MUI_PAGE_INSTFILES",
           "!define MUI_FINISHPAGE_RUN \"$INSTDIR\\#{nsis(program)}\"",
@@ -196,6 +203,8 @@ module Fledge
           "DisplayName" => @identity.name,
           "DisplayVersion" => @identity.version,
           "Publisher" => @identity.publisher,
+          "URLInfoAbout" => @identity.homepage,
+          "HelpLink" => @identity.homepage,
         }.compact.map { |name, value| "  WriteRegStr HKCU #{key} #{quote(name)} #{quote(value.to_s)}" }
         values + [
           "  WriteRegStr HKCU #{key} \"DisplayIcon\" \"$INSTDIR\\#{nsis(program)}\"",

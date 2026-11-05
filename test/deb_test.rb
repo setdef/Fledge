@@ -24,8 +24,9 @@ class DebTest < Minitest::Test
     ENV["FLEDGE_REQUIRE_DPKG_DEB"] ? flunk(message) : skip(message)
   end
 
-  def identity(icon: nil, version: "1.2.3", publisher: "Example, Inc.", identifier: "com.example.MyApp")
-    Fledge::Identity.new(name: "My App", kind: "windowed", identifier:, version:, publisher:, copyright: nil, icon:, file_associations: [])
+  def identity(icon: nil, version: "1.2.3", publisher: "Example, Inc.", identifier: "com.example.MyApp", **about)
+    Fledge::Identity.new(name: "My App", kind: "windowed", identifier:, version:, publisher:, copyright: nil, icon:,
+      description: nil, long_description: nil, homepage: nil, file_associations: [], **about)
   end
 
   # Writes the folder fledge build leaves for a windowed app on Linux:
@@ -98,6 +99,51 @@ class DebTest < Minitest::Test
       assert_equal "optional", field(deb, "Priority")
       assert_operator field(deb, "Installed-Size").to_i, :>, 0
     end
+  end
+
+  # Policy 5.6.13 and 5.6.23: the description is the synopsis, the long
+  # description its extended lines, and the homepage a field of its own.
+  def test_the_description_and_homepage_are_the_packages
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      about = { description: "Says hello", long_description: "A window.\n\nIt says\thello.\n", homepage: "https://example.com/my-app" }
+      deb = build(dir, identity: identity(**about))
+      assert_equal "Says hello\n A window.\n .\n It says hello.", field(deb, "Description")
+      assert_equal "https://example.com/my-app", field(deb, "Homepage")
+    end
+    Dir.mktmpdir { |dir| assert_equal "", field(build(dir), "Homepage") }
+  end
+
+  # Policy 12.5 and 12.7: the license text, uncompressed, as the
+  # package's copyright file, and the changelog as changelog.gz, by
+  # gzip -9 -n, with no name or time in it; neither without the keys.
+  def test_the_license_and_changelog_are_the_packages_documents
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      changelog = File.join(dir, "CHANGES.txt")
+      File.write(changelog, "My App 1.2.3\n\n  * Says hello.\n")
+      deb = Fledge::Deb.write(identity:, folder: folder(dir, identity), platform: X86, to: File.join(dir, "My App.deb"),
+        license: "Copyright © 2026 Me\n", changelog:)
+      listed = contents(deb)
+      assert_match %r{^-rw-r--r-- root/root .* \./usr/share/doc/com\.example\.myapp/copyright$}, listed
+      assert_match %r{^-rw-r--r-- root/root .* \./usr/share/doc/com\.example\.myapp/changelog\.gz$}, listed
+      refute_match %r{doc/com\.example\.myapp/changelog$}, listed
+
+      out = File.join(dir, "out")
+      _, status = Open3.capture2e("dpkg-deb", "-x", deb, out)
+      assert_predicate status, :success?
+      doc = File.join(out, "usr/share/doc/com.example.myapp")
+      assert_equal "Copyright © 2026 Me\n", File.read(File.join(doc, "copyright"))
+      gz = File.binread(File.join(doc, "changelog.gz"))
+      assert_equal [0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 2], gz.bytes.first(9), "gzip -n -9: no name, no time, the best compression"
+      assert_equal File.read(changelog), Zlib.gunzip(gz)
+    end
+    Dir.mktmpdir { |dir| refute_match %r{usr/share/doc}, contents(build(dir)) }
+  end
+
+  def test_an_extended_description_is_written_as_policy_asks
+    assert_equal " One.\n .\n Two,\n   indented.\n", Fledge::Deb.extended("\nOne.\n\nTwo,\n  indented.  \n")
+    assert_equal "", Fledge::Deb.extended(nil)
   end
 
   def test_an_arm_platform_is_arm64_and_a_pre_release_sorts_before_its_release

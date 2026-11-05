@@ -24,7 +24,7 @@ class IdentityTest < Minitest::Test
   def test_a_project_with_nothing_to_say_is_a_console_app_at_version_0_0_0
     identity = Fledge::Identity.from(config:, gemspec: nil, name: "Hello", root: "/x/hello")
     assert_equal Fledge::Identity.new(name: "Hello", kind: "console", identifier: nil, version: "0.0.0", publisher: nil,
-      copyright: nil, icon: nil, file_associations: []), identity
+      copyright: nil, icon: nil, description: nil, long_description: nil, homepage: nil, file_associations: []), identity
     refute_predicate identity, :windowed?
   end
 
@@ -69,7 +69,24 @@ class IdentityTest < Minitest::Test
       error = assert_raises(Fledge::Error) { missing.file("icns") }
       assert_equal "the icon missing.icns does not exist. fledge.yml's icon names the icon's files without an extension, as Briefcase's " \
         "does. Make it from PNGs with iconutil -c icns, as a Mac app's icon is made.", error.message
-      assert_includes assert_raises(Fledge::Error) { missing.png(16) }.message, "Linux apps take one PNG of each size, -16, -32, -64,"
+      assert_includes assert_raises(Fledge::Error) { missing.png(16) }.message, "Linux apps take a PNG of at least one of the sizes -16, -32, -64,"
+    end
+  end
+
+  # Linux takes the PNGs a project has, of the six sizes, by their file
+  # names, and refuses an icon with none as a missing -16 is refused.
+  def test_linux_takes_the_sizes_there_are
+    Dir.mktmpdir do |dir|
+      [32, 128, 256].each { |size| File.write(File.join(dir, "art-#{size}.png"), "#{size}\n") }
+      File.write(File.join(dir, "art-48.png"), "not one of the six\n")
+      icon = Fledge::Icon.new(base: File.join(dir, "art"), name: "art")
+      assert_equal({ 32 => File.join(dir, "art-32.png"), 128 => File.join(dir, "art-128.png"), 256 => File.join(dir, "art-256.png") }, icon.linux)
+      assert_equal [16, 64, 512], icon.linux_missing
+
+      none = Fledge::Icon.new(base: File.join(dir, "none"), name: "none")
+      error = assert_raises(Fledge::Error) { none.linux }
+      assert_equal "the icon none-16.png does not exist. fledge.yml's icon names the icon's files without an extension, as Briefcase's does. " \
+        "Linux apps take a PNG of at least one of the sizes -16, -32, -64, -128, -256, -512, and ship each there is.", error.message
     end
   end
 end

@@ -25,10 +25,11 @@ module Fledge
     @installers: Array[String]
     @signing: Signing::signer?
     @from: BuiltApp?
+    @log: CLI::_Output?
 
     attr_reader installers: Array[String]
 
-    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?signing: Signing::signer?, ?from: BuiltApp?) -> void
+    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?signing: Signing::signer?, ?from: BuiltApp?, ?log: CLI::_Output?) -> void
 
     def base_name: () -> String
 
@@ -49,6 +50,8 @@ module Fledge
     private def runtime_folder: (String work) -> _RuntimeTree
 
     private def place_launcher: (_RuntimeTree runtime, App::Program program, String? tools, ?into: String) -> String
+
+    private def desktop: (Identity identity) -> void
 
     private def add: (String root, Entry entry) -> void
 

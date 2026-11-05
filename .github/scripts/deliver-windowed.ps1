@@ -70,6 +70,7 @@ Expect 'InternalName' $info.InternalName $appName
 Expect 'OriginalFilename' $info.OriginalFilename "$appName.exe"
 Expect 'CompanyName' $info.CompanyName 'setdef'
 Expect 'LegalCopyright' $info.LegalCopyright "$([char]0xA9) 2026 Kerrick Long"
+Expect 'Comments' $info.Comments 'Says hello from a window'
 Expect 'FileVersion' $info.FileVersion '1.2.3'
 Expect 'ProductVersion' $info.ProductVersion '1.2.3'
 Expect 'the file version numbers' "$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart).$($info.FilePrivatePart)" '1.2.3.0'

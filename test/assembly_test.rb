@@ -290,6 +290,29 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # fledge.yml's macos: build is the bundle's CFBundleVersion, as plutil
+  # reads it, and the version's numbers stay CFBundleShortVersionString;
+  # without it, both are the version's.
+  def test_a_macos_build_number_is_the_bundles_cfbundleversion
+    mac!
+    Dir.mktmpdir do |dir|
+      root = WindowedApp.write(dir)
+      File.write(File.join(root, "fledge.yml"), "version: \"2.1.0.pre.3\"\n#{File.read(File.join(root, 'fledge.yml'))}")
+      read = lambda do |key|
+        runtime = FakeRuntime.write(dir, MACOS, launcher: File.binread("/usr/bin/true"))
+        assemble(dir, root, platform: MACOS, runtime:)
+        plist = File.join(dir, "dist", "Hello Window-arm64-darwin", "Hello Window.app", "Contents", "Info.plist")
+        out, status = Open3.capture2e("plutil", "-extract", key, "raw", plist)
+        assert_predicate status, :success?, out
+        out.strip
+      end
+      assert_equal %w[2.1.0 2.1.0], [read.call("CFBundleVersion"), read.call("CFBundleShortVersionString")]
+
+      File.write(File.join(root, "fledge.yml"), "#{File.read(File.join(root, 'fledge.yml'))}macos:\n  build: \"2.1.417\"\n")
+      assert_equal %w[2.1.417 2.1.0], [read.call("CFBundleVersion"), read.call("CFBundleShortVersionString")]
+    end
+  end
+
   # A project of several programs (ADR 024): a windowed one, with an
   # icon, and two console ones, sharing one project.
   module Programs
@@ -468,6 +491,30 @@ class AssemblyTest < Minitest::Test
       assert_includes File.read(File.join(folder, "com.example.HelloWindow.desktop")), "Exec=\"Hello Window\"\n"
       assert_path_exists File.join(folder, "share/icons/hicolor/512x512/apps/com.example.HelloWindow.png")
       assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Hello Window"))
+    end
+  end
+
+  # A windowed Linux app takes the icon sizes its project has, at least
+  # one, and the build names the rest on its log; with all six it says
+  # nothing, and with none it fails as a missing icon does.
+  def test_a_windowed_linux_app_takes_the_icon_sizes_there_are
+    unix!
+    Dir.mktmpdir do |dir|
+      root = WindowedApp.write(dir)
+      log = StringIO.new
+      Fledge::Assembly.new(app: Fledge::App.at(root), platform: LINUX, runtime: FakeRuntime.write(dir, LINUX), out: File.join(dir, "dist"), log:).call
+      assert_equal "", log.string
+
+      [16, 64, 512].each { |size| File.delete(File.join(root, "art-#{size}.png")) }
+      Fledge::Assembly.new(app: Fledge::App.at(root), platform: LINUX, runtime: FakeRuntime.write(dir, LINUX), out: File.join(dir, "dist"), log:).call
+      assert_equal "fledge build: warning: the icon has no art-16.png, art-64.png, art-512.png, so Linux desktops scale the nearest size there is\n",
+        log.string
+      icons = File.join(dir, "dist", "Hello Window-x86_64-linux", "share/icons/hicolor")
+      assert_equal %w[128x128 256x256 32x32], Dir.children(icons).sort
+
+      Dir.glob(File.join(root, "art-*.png")).each { |png| File.delete(png) }
+      error = assert_raises(Fledge::Error) { assemble(dir, root) }
+      assert_includes error.message, "the icon art-16.png does not exist."
     end
   end
 

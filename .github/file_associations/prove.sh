@@ -31,6 +31,11 @@ tar -xzf "$archive" -C "$place"
 cp -R "$game" "$place/Mein Spiel"
 cd "$place"
 builder="Builder-$platform"
+# check LABEL ACTUAL EXPECTED
+check() {
+  [ "$2" = "$3" ] || { echo "$1 is '$2', not '$3'" >&2; exit 1; }
+  echo "ok: $1 is $3"
+}
 hostile() { env -i HOME="$place" PATH="$tools" XDG_CACHE_HOME="$work/cache" RUBYOPT=-rbogus RUBYLIB=/nope GEM_HOME=/nope GEM_PATH=/nope "$@"; }
 if hostile /bin/sh -c 'command -v ruby'; then
   echo "ruby is reachable" >&2
@@ -61,17 +66,32 @@ case "$platform" in
   *darwin)
     bundle="Entpackt/Spiel-$platform/Spiel.app"
     codesign --verify --deep --strict --verbose=2 "$bundle"
-    plutil -extract CFBundleDocumentTypes.0.LSItemContentTypes.0 raw "$bundle/Contents/Info.plist"
+    plist="$bundle/Contents/Info.plist"
+    check "the folders' content type" "$(plutil -extract CFBundleDocumentTypes.0.LSItemContentTypes.0 raw "$plist")" public.folder
+    check "the levels' extension" "$(plutil -extract CFBundleDocumentTypes.1.CFBundleTypeExtensions.0 raw "$plist")" spiellevel
+    check CFBundleVersion "$(plutil -extract CFBundleVersion raw "$plist")" 2.3.417
+    check CFBundleShortVersionString "$(plutil -extract CFBundleShortVersionString raw "$plist")" 2.3.4
     program="$bundle/Contents/MacOS/Spiel"
     hdiutil imageinfo "Ausgabe/Spiel-$platform.dmg" | grep -E '^Format:'
     ;;
   *)
     program="Entpackt/Spiel-$platform/Spiel"
-    grep -E '^(Exec|MimeType)=' "Entpackt/Spiel-$platform/com.example.Spiel.desktop"
+    desktop="Entpackt/Spiel-$platform/com.example.Spiel.desktop"
+    check Comment "$(sed -n 's/^Comment=//p' "$desktop")" "Ein Spiel aus einem Ordner"
+    check Exec "$(sed -n 's/^Exec=//p' "$desktop")" "Spiel %F"
+    check MimeType "$(sed -n 's/^MimeType=//p' "$desktop")" "inode/directory;application/x-spiellevel;"
     appimage="Ausgabe/Spiel-$platform.AppImage"
     hostile APPIMAGE_EXTRACT_AND_RUN=1 TMPDIR="$work" "./$appimage" "$work/from-appimage.txt"
     cat "$work/from-appimage.txt"
-    if [ -e "Ausgabe/Spiel-$platform.deb" ]; then dpkg-deb --info "Ausgabe/Spiel-$platform.deb" | grep -E 'Package|Architecture'; fi
+    deb="Ausgabe/Spiel-$platform.deb"
+    if [ -e "$deb" ]; then
+      check "the .deb's Homepage" "$(dpkg-deb --field "$deb" Homepage)" https://example.com/spiel
+      check "the .deb's Description" "$(dpkg-deb --field "$deb" Description | head -n 1)" "Ein Spiel aus einem Ordner"
+      dpkg-deb --contents "$deb" | grep -q "usr/share/doc/com.example.spiel/copyright$" || { echo "no copyright in the .deb" >&2; exit 1; }
+      dpkg-deb --contents "$deb" | grep -q "usr/share/doc/com.example.spiel/changelog.gz$" || { echo "no changelog.gz in the .deb" >&2; exit 1; }
+      dpkg-deb --contents "$deb" | grep -q "usr/share/applications/com.example.Spiel.desktop$" || { echo "no desktop entry in the .deb" >&2; exit 1; }
+      echo "ok: the .deb holds the license as copyright, the changelog, and the desktop entry"
+    fi
     ;;
 esac
 hostile "./$program" "$report"

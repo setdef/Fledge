@@ -67,8 +67,10 @@
 #     project in place of its own, writes the new app's name and
 #     identity with the system's own tools, and archives it, and
 #     downloads, installs, and compiles nothing. On Windows it takes
-#     the program and rcedit from this Fledge's runtime, which must
-#     be on the computer, since no app holds them.
+#     the program, rcedit, and NSIS from APP's tools folder, which an
+#     app built with build_tools: true carries, or else from this
+#     Fledge's runtime, which must then be on the computer; on Linux
+#     an AppImage needs the runtime's AppImage runtime the same way.
 #
 #     For a phone, fledge build writes the project that builds the
 #     app, which you build, sign, and submit with that system's tools:
@@ -287,6 +289,15 @@
 #                          macOS it arrives as an Apple event, which only
 #                          a GUI library's event loop receives, and ARGV
 #                          stays empty, as under ruby main.rb.
+#                        build_tools: true to carry, in the app's tools
+#                          folder, what fledge build --from needs that
+#                          a system lacks, so that an app with Fledge
+#                          in its Gemfile builds from itself where no
+#                          runtime is: on Windows the runtime's
+#                          launchers, rcedit, and NSIS, on Linux the
+#                          AppImage runtime, and on macOS nothing
+#                          (default: false). An app built --from
+#                          carries them only if it sets build_tools too.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        PLATFORM is this computer's: arm64-darwin,
 #                        x86_64-linux, aarch64-linux,

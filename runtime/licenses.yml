@@ -391,7 +391,7 @@ components:
     download: https://github.com/AppImage/type2-runtime/releases/tag/20251108
     notice: appimage-runtime
     source: appimage-runtime
-    ships: tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive
+    ships: tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools
     platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     files: [tools/appimage-runtime]
     binaries: [tools/appimage-runtime]
@@ -502,7 +502,7 @@ components:
     download: https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-src.tar.bz2
     notice: nsis
     source: nsis
-    ships: tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive
+    ships: tools/nsis/, which fledge build compiles the app's setup program with, and in its folder and archive only when fledge.yml sets build_tools
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     files: ["tools/nsis/**"]
     binaries: ["tools/nsis/Bin/{makensis.exe,zlib1.dll}", "tools/nsis/Stubs/{lzma_solid,zlib}-x86-unicode", "tools/nsis/Plugins/x86-unicode/*.dll",
@@ -515,7 +515,7 @@ components:
     kind: program
     download: https://github.com/electron/rcedit/releases/tag/v2.0.0
     notice: rcedit
-    ships: tools/rcedit.exe, which fledge build runs on the app's program, and never in its folder or archive
+    ships: tools/rcedit.exe, which fledge build runs on the app's program, and in its folder and archive only when fledge.yml sets build_tools
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     files: [tools/rcedit.exe]
     binaries: [tools/rcedit.exe]

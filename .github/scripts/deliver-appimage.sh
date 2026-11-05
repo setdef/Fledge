@@ -130,6 +130,12 @@ root="$work/squashfs-root"
 [ "$(readlink "$root/.DirIcon")" = "$identifier.png" ] || fail ".DirIcon is not a link to $identifier.png"
 grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the AppDir has no notices"
 grep -q "AppImage's type 2 runtime" "$root/notices/NOTICES.txt" || fail "the notices do not name the AppImage runtime"
+# The AppImage carries the source of the runtime at its front and of the
+# libfuse linked into it (LGPL-2.1, section 6(a); ADR 004, section 5).
+for id in appimage-runtime libfuse; do
+  [ -s "$root/notices/sources/$id/BUILD.txt" ] || fail "the AppDir has no notices/sources/$id/"
+done
+echo "ok: the AppImage holds the source of its runtime and of libfuse"
 if command -v desktop-file-validate >/dev/null 2>&1; then
   desktop-file-validate "$root/$identifier.desktop" || fail "desktop-file-validate rejects the AppDir's desktop entry"
   echo "ok: desktop-file-validate accepts the AppDir's desktop entry"

@@ -30,7 +30,7 @@ fail() {
 # An empty or missing tarball means its download failed before this
 # script ran; say so here rather than in tar's error about a folder.
 [ "$#" -eq 4 ] || fail "usage: replace-libcrypt.sh APP_DIR PROGRAM LIBXCRYPT_TARBALL MUSL_TARBALL"
-[ -f "$3" ] || fail "no libxcrypt tarball at '$3': was it downloaded (fetch_pin.rb libxcrypt)?"
+[ -f "$3" ] || fail "no libxcrypt tarball at '$3': the app carries it in notices/sources/libxcrypt/"
 [ -f "$4" ] || fail "no musl tarball at '$4': was it downloaded (fetch_pin.rb replaceability musl)?"
 
 app_dir=$(cd "$1" && pwd)

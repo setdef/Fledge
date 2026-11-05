@@ -29,8 +29,9 @@
 # into the app, except for Fledge's own AGPL-3.0-or-later files, which
 # setdef will likely license commercially too, and LGPL libraries, which
 # may ship only as separate shared libraries the app's recipient can
-# replace, with their source (never the app's) published beside each
-# runtime. RuntimeBuilder runs the audit on every runtime it builds and
+# replace, with their source (never the app's) in each runtime's
+# notices/sources/, so in every app, and published beside each runtime.
+# RuntimeBuilder runs the audit on every runtime it builds and
 # refuses to archive one that fails (ADR 004).
 #
 # Patterns are File.fnmatch globs relative to the tree (** crosses
@@ -103,6 +104,8 @@ signatures:
 #   kind: program        compiled code and the files around it
 #         shared_library a library in its own file, which other files load
 #         files          unmodified source or data files
+#         source         the published source of a component with the
+#                        same source pin, in notices/sources/ only
 #   files:     what the component owns
 #   binaries:  which of its files may be compiled code
 #   embedded:  files the component is compiled into, each with a string
@@ -773,6 +776,71 @@ components:
     notice: rv-ruby
     files: ["{prefix}INSTALL_RECEIPT.json", "{prefix}sbom.spdx.json", "{prefix}.brew/*.rb", "{prefix}lib/ruby/4.0.0/{arch}/portable_ruby_gems.rb"]
 
+  # The source of each component above whose license asks for it, which
+  # each runtime carries in notices/sources/ and so every app that copies
+  # its notices/ (ADR 004, section 5): the pinned archive exactly as
+  # downloaded, its license texts, and BUILD.txt
+  # (LicenseAudit::SourceBundle). Its license is the component's own.
+  - id: libxcrypt-source
+    name: libxcrypt's source code, as its authors released it, and how the runtime's copy was built
+    version: 4.5.2
+    license: LGPL-2.1-or-later
+    kind: source
+    download: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
+    notice: libxcrypt
+    source: libxcrypt
+    ships: notices/sources/libxcrypt/, in every app
+    platforms: [x86_64-linux, aarch64-linux]
+    files: ["notices/sources/libxcrypt/**"]
+
+  - id: gmp-source
+    name: GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built
+    version: 6.3.0
+    license: LGPL-3.0-or-later OR GPL-2.0-or-later
+    kind: source
+    download: https://repo.msys2.org/mingw/sources/mingw-w64-gmp-6.3.0-2.src.tar.zst
+    notice: gmp
+    source: gmp
+    ships: notices/sources/gmp/, in every app
+    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+    files: ["notices/sources/gmp/**"]
+
+  - id: appimage-runtime-source
+    name: AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built
+    version: "20251108"
+    license: MIT
+    kind: source
+    download: https://github.com/AppImage/type2-runtime/tree/dd6cebedcbddde9c82f89b011e8e1d40b6e43868
+    notice: appimage-runtime
+    source: appimage-runtime
+    ships: notices/sources/appimage-runtime/, in every app
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
+    files: ["notices/sources/appimage-runtime/**"]
+
+  - id: libfuse-source
+    name: libfuse's source code, as its authors released it
+    version: 3.15.0
+    license: LGPL-2.1-only
+    kind: source
+    download: https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz
+    notice: libfuse
+    source: libfuse
+    ships: notices/sources/libfuse/, in every app
+    platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
+    files: ["notices/sources/libfuse/**"]
+
+  - id: nsis-source
+    name: NSIS's source code, as its authors released it
+    version: "3.13"
+    license: Zlib AND bzip2-1.0.6 AND CPL-1.0
+    kind: source
+    download: https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-src.tar.bz2
+    notice: nsis
+    source: nsis
+    ships: notices/sources/nsis/, in every app
+    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+    files: ["notices/sources/nsis/**"]
+
   - id: ruby-win32
     name: Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL)
     version: 4.0.9
@@ -854,6 +922,11 @@ gems:
 # Text files whose words name a copyleft license, reviewed by a person.
 # Each names why the file meets the policy anyway.
 reviewed:
+  - files: ["notices/sources/appimage-runtime/{BUILD.txt,LICENSE}"]
+    why: >-
+      AppImage's runtime is MIT; its LICENSE names the LGPL of the libfuse
+      linked into it, and BUILD.txt says how to rebuild it with another
+      libfuse, as LGPL-2.1, section 6(a), asks.
   - files: ["{prefix}lib/ruby/4.0.0/net/{http,protocol}.rb", "{prefix}lib/ruby/4.0.0/rubygems/vendor/net-{http,protocol}/lib/net/*.rb"]
     why: The old header offers the Ruby license or the GPL; Ruby's license applies.
   - files: ["{prefix}lib/ruby/4.0.0/rubygems/{specification,util/licenses}.rb", "{prefix}lib/ruby/4.0.0/bundler/**/*.rb"]

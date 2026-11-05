@@ -102,6 +102,7 @@ class RuntimeBuilder
     FileUtils.rm_f(assets.values.map { |name| File.join(@work, name) })
     FileUtils.mkdir_p(stage)
     recipe.build(stage)
+    LicenseAudit::SourceBundle.new(platform: platform.name, version: Fledge::VERSION, downloads: @downloads).copy_into(stage)
     license(stage, readers: recipe.readers)
     path = archive
     publish(stage)

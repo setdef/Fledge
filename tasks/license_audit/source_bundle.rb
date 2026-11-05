@@ -18,16 +18,23 @@ class LicenseAudit
   # The complete corresponding source of a platform's LGPL libraries, of
   # the program an LGPL library is linked into (the AppImage runtime, ADR
   # 010), and of a component whose license asks that its source be
-  # available (NSIS), as one .tar.gz that each release publishes beside
-  # that platform's runtime, and that the runtime's NOTICES names.
+  # available (NSIS), in the runtime's own notices/sources/, which every
+  # app copies, and as one .tar.gz that each release publishes beside
+  # that platform's runtime. The runtime's NOTICES names both.
   #
   # For each component of runtime/licenses.yml that has a source pin and
-  # ships on the platform, the bundle holds the pinned source exactly as
+  # ships on the platform, a folder holds the pinned source exactly as
   # downloaded (checked against its SHA-256), the license texts, and a
   # BUILD.txt that says how the runtime's copy was built from it and how
   # to replace that copy. The LGPL asks for the library's source, not the
-  # app's: nothing of the app or of Fledge's launcher goes in.
+  # app's: nothing of the app or of Fledge's launcher goes in. The source
+  # travels with the app, so that whoever conveys the app conveys the
+  # source with it (LGPL-2.1, section 6(a)) whatever becomes of the
+  # release's host (ADR 004, section 5).
   class SourceBundle
+    # Where in a runtime, and so in an app, the sources are.
+    FOLDER = "notices/sources"
+
     def initialize(platform:, version:, map: MAP, sources: SOURCES, downloads: File.join(ROOT, "tmp", "downloads"))
       @platform = platform
       @version = version
@@ -38,7 +45,21 @@ class LicenseAudit
 
     # The components that ship on the platform with a source pin.
     def components
-      @map.fetch("components").select { |entry| entry["source"] && entry.fetch("platforms").include?(@platform) }
+      @map.fetch("components").select do |entry|
+        entry["source"] && entry.fetch("kind") != "source" && entry.fetch("platforms").include?(@platform)
+      end
+    end
+
+    # Writes each component's folder into the runtime folder +runtime+,
+    # under FOLDER, and returns FOLDER's path there, or nil when the
+    # platform ships nothing whose source Fledge publishes.
+    def copy_into(runtime)
+      return nil if components.empty?
+
+      folder = File.join(runtime, FOLDER)
+      FileUtils.mkdir_p(folder)
+      components.each { |entry| add_component(folder, entry) }
+      folder
     end
 
     # Writes the bundle into +directory+ and returns its path, or nil
@@ -84,7 +105,8 @@ class LicenseAudit
         that its source be available, such as NSIS's LZMA module, under the
         Common Public License. Each folder holds one component's source exactly
         as its publisher released it, its license, and BUILD.txt, which says
-        how the runtime's copy was built and how to replace it.
+        how the runtime's copy was built and how to replace it. Every app
+        built with this runtime carries the same folders in #{FOLDER}/.
 
         #{components.map { |entry| "  #{entry.fetch('id')}/  #{entry.fetch('name')} #{entry.fetch('version')} (#{entry.fetch('license')})" }.join("\n")}
 

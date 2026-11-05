@@ -76,14 +76,38 @@ entry=$(sed -n 's/^entry = //p' "$root/fledge.cfg")
 # ship no libxcrypt: musl's own crypt(3) serves (ADR 017).
 [ -s "$root/notices/sbom.spdx.json" ] || fail "the app has no notices/sbom.spdx.json"
 grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the app has no notices/NOTICES.txt from the license audit"
+
+# The source of each component whose license asks for it travels in the
+# app, in notices/sources/ID/ (ADR 004, section 5): the archive whose
+# SHA-256 its BUILD.txt names, and NOTICES.txt names the folder.
+sources_hold() {
+  for id in "$@"; do
+    folder="$root/notices/sources/$id"
+    [ -s "$folder/BUILD.txt" ] || fail "the app has no notices/sources/$id/BUILD.txt"
+    grep -qx "  notices/sources/$id/" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say the app holds $id's source"
+    found=
+    for file in "$folder"/*; do
+      [ "$(basename "$file")" = BUILD.txt ] && continue
+      sum=$(sha256sum "$file" | cut -d ' ' -f 1)
+      if grep -q "$sum" "$folder/BUILD.txt"; then found=$file; fi
+    done
+    [ -n "$found" ] || fail "notices/sources/$id/ holds no archive whose SHA-256 its BUILD.txt names"
+    echo "ok: the app holds $id's source, $(basename "$found")"
+  done
+}
 case "$(uname -s)" in
   Linux)
     if [ -e "$root/lib/libcrypt.so.2" ]; then
       grep -qx "  lib/libcrypt.so.2" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say lib/libcrypt.so.2 is replaceable"
-      grep -q -- "-lgpl-sources.tar.gz$" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say where libxcrypt's source is"
+      grep -q -- "-lgpl-sources.tar.gz$" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say where Fledge publishes libxcrypt's source"
+      sources_hold libxcrypt
     elif [ ! -e /lib/ld-musl-"$(uname -m)".so.1 ]; then
       fail "the app has no lib/libcrypt.so.2, which every app for Linux with glibc ships"
     fi
+    sources_hold appimage-runtime libfuse
+    ;;
+  *)
+    [ ! -e "$root/notices/sources" ] || fail "the app holds notices/sources/, but nothing on $(uname -s) asks for its source"
     ;;
 esac
 echo "ok: the app carries its notices and SBOM"

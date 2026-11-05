@@ -60,7 +60,22 @@ class MobileParity
       prints: /\ACmakePhone totals 10 in C\+\+ that CMake \d+\.\d+\.\d+ built for (?:iOS Simulator on arm64, on arm64-darwin|Android on x86_64, on x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
-  ].freeze
+    App.new(path: "test/fixtures/mobile_prompt", name: "Prompt", identifier: "com.setdef.fledge.Prompt", prints: /\APrompt after the sleep\z/),
+  ].select { |app| %w[Hello Parity Prompt].include?(app.name) }.freeze # experiment/phone-stdout
+
+  # experiment/phone-stdout: checks the seconds between the times the log
+  # took Prompt's two lines, which a sleep of 5 seconds parts when Ruby
+  # writes each as it prints it, and none when it flushes both at exit:
+  # with this branch's runtime (EXPERIMENT_RUNTIME=branch) at least 4,
+  # and with trunk's under 1. Prints them, and raises when they are not.
+  def self.prompt(device, before, after, out: $stdout)
+    gap = after - before
+    expected = ENV.fetch("EXPERIMENT_RUNTIME") == "branch" ? "at least 4" : "under 1"
+    out.puts "Prompt on #{device} (#{ENV.fetch('EXPERIMENT_RUNTIME')}'s runtime): before the sleep logged at #{before.round(3)}, " \
+      "after it at #{after.round(3)}, #{gap.round(3)} seconds apart; expected #{expected}"
+    ok = ENV.fetch("EXPERIMENT_RUNTIME") == "branch" ? gap >= 4 : gap < 1
+    raise "Prompt on #{device}: #{gap.round(3)} seconds apart, expected #{expected}" unless ok
+  end
 
   # The line the host app of every project fledge build writes logs when
   # the app's program ends, with its exit status.

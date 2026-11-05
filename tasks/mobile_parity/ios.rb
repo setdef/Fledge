@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "time" # experiment/phone-stdout
+
 #--
 # SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -103,12 +105,27 @@ class MobileParity
         parity = MobileParity.new(target: "arm64-ios-simulator", work: @work, out: @out)
         apps.map do |app, bundle|
           system("xcrun", "simctl", "install", udid, bundle, exception: true)
-          parity.check(app, launch(udid, app), name)
+          parity.check(app, launch(udid, app), name).tap { prompt(udid, app, name) if app.name == "Prompt" } # experiment/phone-stdout
         end.all?
       ensure
         system("xcrun", "simctl", "shutdown", udid, out: File::NULL, err: File::NULL)
         system("xcrun", "simctl", "delete", udid, out: File::NULL, err: File::NULL)
       end
+    end
+
+    # experiment/phone-stdout: the times the log took Prompt's two lines,
+    # from the ndjson log show wrote for its launch.
+    private def prompt(udid, app, name)
+      entries = File.readlines(File.join(@work, "#{udid}-#{app.identifier}.ndjson")).filter_map do |line|
+        JSON.parse(line)
+      rescue JSON::ParserError
+        nil
+      end
+      at = lambda do |message|
+        entry = entries.find { |candidate| candidate.is_a?(Hash) && candidate["eventMessage"] == message } or raise "no #{message.inspect} in the log"
+        Time.strptime(entry.fetch("timestamp"), "%Y-%m-%d %H:%M:%S.%N%z").to_f
+      end
+      MobileParity.prompt(name, at.call("Prompt before the sleep"), at.call("Prompt after the sleep"), out: @out)
     end
 
     # The newest available iOS runtime, and a device type of +family+

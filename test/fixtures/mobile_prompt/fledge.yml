@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# experiment/phone-stdout: an app whose lines must reach the log as it
+# prints them (main.rb).
+name: Prompt
+identifier: com.setdef.fledge.Prompt

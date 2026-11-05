@@ -87,8 +87,19 @@ class MobileParity
       parity = MobileParity.new(target: "#{abi.sub('arm64-v8a', 'aarch64')}-linux-android", work: @work, out: @out)
       APPS.map do |app|
         adb("install", "-r", File.join(APKS, "#{app.identifier}.apk"))
-        parity.check(app, launch(app), device)
+        parity.check(app, launch(app), device).tap { prompt(app, device) if app.name == "Prompt" } # experiment/phone-stdout
       end.all?
+    end
+
+    # experiment/phone-stdout: the times logcat took Prompt's two lines,
+    # in seconds since the epoch (-v epoch).
+    private def prompt(app, device)
+      lines = adb("logcat", "-d", "-v", "epoch", "-s", "#{app.identifier}:V").lines
+      at = lambda do |message|
+        line = lines.find { |candidate| candidate.chomp.end_with?(": #{message}") } or raise "no #{message.inspect} in logcat"
+        Float(line.split.first)
+      end
+      MobileParity.prompt(device, at.call("Prompt before the sleep"), at.call("Prompt after the sleep"), out: @out)
     end
 
     # Starts +app+ after clearing logcat, and returns the lines it logged

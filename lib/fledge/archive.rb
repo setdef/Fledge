@@ -86,7 +86,8 @@ module Fledge
     end
 
     # Unpacks the archive +archive+ into the folder +into+, which it
-    # creates. Raises Fledge::Error when tar fails.
+    # creates: all of it, or with +only+, those paths in it and what they
+    # hold. Raises Fledge::Error when tar fails.
     #
     # === Example
     #
@@ -99,12 +100,12 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.unpack(archive, into:)
+    def self.unpack(archive, into:, only: [])
       FileUtils.mkdir_p(into)
       if Gem.win_platform?
-        Command.run(tar, "-xf", "-", chdir: into, input: archive, install: INSTALL)
+        Command.run(tar, "-xf", "-", *only, chdir: into, input: archive, install: INSTALL)
       else
-        Command.run(tar, "-xf", archive, "-C", into, install: INSTALL)
+        Command.run(tar, "-xf", archive, "-C", into, *only, install: INSTALL)
       end
       into
     end

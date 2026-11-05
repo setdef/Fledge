@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# A stand-in for a desktop library's wrapper: a path gem whose C
+# extension links the distribution's libpng.
+gem "png_version", path: "gems/png_version"

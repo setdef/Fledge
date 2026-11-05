@@ -129,7 +129,7 @@ module Fledge
       case format
       when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:, signing: (signing if signing.is_a?(MacSigning)))
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
-      when "deb" then Deb.write(identity:, folder:, platform:, to:)
+      when "deb" then Deb.write(identity:, folder:, platform:, to:, system_libraries: app.config.system_libraries(platform.os))
       else Nsis.new(identity:, folder:, to:, signing: (signing if signing.is_a?(WindowsSigning))).write(tools)
       end
     end

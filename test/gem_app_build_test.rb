@@ -139,9 +139,35 @@ class GemAppBuildTest < Minitest::Test
       "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.0.9.",
       "fledge build:   unloadable 1.0.0 (x86_64-linux-gnu)'s lib/unloadable.so needs libxml2.so.2, which neither linux, nor " \
         "Fledge's runtime, nor the gem itself provides, so the app could not load it on another computer. Build the gem so " \
-        "that it carries the library, or links it statically.",
+        "that it carries the library, or links it statically, or, when every computer the app goes to has it from its Linux " \
+        "distribution, list it in fledge.yml as linux: { system_libraries: [libxml2.so.2] }.",
     ], err.lines.map(&:chomp).grep_v(/\ADownloading /)
     assert_empty Dir.glob(File.join(@dir, "dist", "*"))
+  end
+
+  # A gem may need a library the project lists as the Linux
+  # distribution's (ADR 030), and the app's program is told to look for
+  # it; a library listed that no gem needs from the system fails the
+  # build, as a gem that needs one unlisted does.
+  def test_a_library_listed_as_the_distributions_lets_a_gem_ship_on_linux
+    TestReaders.need(self, :elf)
+    wrapper = FakeGem.build(@gems, "wrapper", "1.0.0", platform: "x86_64-linux-gnu",
+      files: { "lib/wrapper.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2]) })
+    root = project(dependencies: { "wrapper" => ">= 0" }, locked: [wrapper])
+    File.write(File.join(root, "fledge.yml"), "linux:\n  system_libraries: [libxml2.so.2]\n")
+
+    out, err, status = build(File.join(root, "exe/my_app"))
+    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
+    assert_includes File.read(File.join(@dir, "dist/MyApp-x86_64-linux/fledge.cfg")), "\nsystem_libraries = libxml2.so.2\n"
+
+    File.write(File.join(root, "fledge.yml"), "linux:\n  system_libraries: [libxml2.so.2, libgtk-3.so.0]\n")
+    out, err, status = build(File.join(root, "exe/my_app"))
+    assert_equal [1, ""], [status, out]
+    assert_equal [
+      "fledge build: MyApp can't ship for x86_64-linux:",
+      "fledge build:   fledge.yml's linux: system_libraries lists libgtk-3.so.0, which none of the gems' compiled files needs beyond " \
+        "what every Linux distribution, Fledge's runtime, and the gems themselves provide. Remove it.",
+    ], err.lines.map(&:chomp).grep_v(/\ADownloading /)
   end
 
   # The gems an app depends on, and their licenses, are its developer's

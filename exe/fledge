@@ -80,8 +80,9 @@
 #     the runtime brings rcedit, for a program's version information
 #     and icon, and NSIS, for a setup program. Linux has tar, and an
 #     AppImage needs squashfs-tools' mksquashfs (4.4 or newer), and a
-#     .deb needs dpkg-deb, from dpkg. A
-#     missing tool fails the build, naming it and what to install.
+#     .deb needs dpkg-deb, from dpkg, and, when fledge.yml lists system
+#     libraries, dpkg-shlibdeps, from dpkg-dev. A missing tool fails
+#     the build, naming it and what to install.
 #
 # COMMANDS
 #     build              Copy the program PATH (default: the current
@@ -145,7 +146,9 @@
 #                        license, which is yours to comply with. A gem
 #                        that does not support the runtime's Ruby, or
 #                        whose compiled files need a library another
-#                        computer may lack, fails the build. A gem with
+#                        computer may lack, fails the build, unless
+#                        fledge.yml lists it as the Linux
+#                        distribution's. A gem with
 #                        an extension to compile is compiled with
 #                        bundle config build.NAME's options: Xcode's
 #                        command line tools on macOS, a C compiler and
@@ -197,6 +200,16 @@
 #                          Fledge's file at its path, or joins them, and
 #                          the build says which it replaced. Desktop
 #                          builds ignore them.
+#                        linux: a mapping of system_libraries, the
+#                          libraries the gems load from the Linux
+#                          distribution, by the names their compiled
+#                          files give them, such as
+#                          [libwebkit2gtk-4.1.so.0, libgtk-3.so.0]. The
+#                          gems may need them, and the build fails on
+#                          one that none needs; a .deb depends on their
+#                          packages; the app names one a computer
+#                          lacks, and exits with 72, before Ruby starts.
+#                          Other builds ignore it.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        PLATFORM is this computer's: arm64-darwin,
 #                        x86_64-linux, aarch64-linux,
@@ -215,8 +228,10 @@
 #                        IDENTIFIER.desktop and share/icons/ beside
 #                        it. It runs app/PROGRAM as ruby, or bundle
 #                        exec, would, and exits with its status, or
-#                        with 66 when it is missing and 70 when the
-#                        rest of the folder is broken. On macOS and
+#                        with 66 when it is missing, 72 on Linux when
+#                        a library fledge.yml lists is not on the
+#                        computer, and 70 when the rest of the folder
+#                        is broken. On macOS and
 #                        Linux, exec RbConfig.ruby, $0, *ARGV
 #                        restarts it the same way; on Windows, start
 #                        NAME.exe again. Its notices/
@@ -285,10 +300,13 @@
 #                        /usr/lib/IDENTIFIER, with its desktop entry
 #                        and icons where desktops look, and needs
 #                        glibc 2.39 or newer; apt remove removes it.
-#                        It depends on libc6 alone: a library a gem
-#                        opens at run time, such as the X11, Wayland,
-#                        or OpenGL that SDL opens, is the desktop's,
-#                        and apt does not check for it.
+#                        It depends on libc6, and on the packages that
+#                        provide the libraries linux: system_libraries
+#                        lists, as dpkg-shlibdeps finds them for the
+#                        files that need them. A library a gem opens at
+#                        run time, such as the X11, Wayland, or OpenGL
+#                        that SDL opens, is the desktop's, and apt does
+#                        not check for it.
 #     DIR/CACHEDIR.TAG   A cache directory tag (bford.info/cachedir),
 #                        written when the build makes DIR or finds it
 #                        empty, which keeps DIR out of every later

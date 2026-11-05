@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Config
+    class Linux < Data
+      KEYS: Array[String]
+      SONAME: Regexp
+
+      attr_reader system_libraries: Array[String]
+
+      def self.new: (system_libraries: Array[String]) -> instance
+
+      def self.from: (Hash[Object, Object] data, String file) -> Linux?
+
+      private def self.libraries: (Object value, String file) -> Array[String]
+    end
+  end
+end

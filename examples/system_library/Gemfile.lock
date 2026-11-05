@@ -1,0 +1,22 @@
+PATH
+  remote: gems/png_version
+  specs:
+    png_version (1.0.0)
+
+GEM
+  specs:
+
+PLATFORMS
+  aarch64-linux
+  ruby
+  x86_64-linux
+
+DEPENDENCIES
+  png_version!
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  png_version (1.0.0)
+
+BUNDLED WITH
+  4.0.20

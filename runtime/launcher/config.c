@@ -22,7 +22,10 @@
  * app folder, with / between folders. identifier is the app's reverse-DNS
  * name, which the Windows launcher makes its AppUserModelID (ADR 008):
  * letters, digits, hyphens, and dots, at most FLEDGE_IDENTIFIER_MAX
- * characters. Blank lines and lines that begin
+ * characters. system_libraries, on Linux, names the libraries the app's
+ * gems load from the distribution, between spaces, which the launcher
+ * looks for before Ruby starts (ADR 030): letters, digits, and . _ + -,
+ * with no folder. Blank lines and lines that begin
  * with # say nothing. fledge build and the launcher come from the same
  * Fledge, so a key this launcher does not know means the file is
  * damaged, and it is refused, as is a path that leaves the app folder
@@ -86,6 +89,21 @@ safe_path(const char *path)
     }
 }
 
+/* Whether names is a list fledge build writes of system libraries: file
+ * names of letters, digits, and . _ + -, between single spaces. */
+static int
+safe_libraries(const char *names)
+{
+    if (*names == '\0') return 0;
+    for (const char *letter = names; *letter != '\0'; letter++) {
+        int allowed = (*letter >= 'a' && *letter <= 'z') || (*letter >= 'A' && *letter <= 'Z') ||
+                      (*letter >= '0' && *letter <= '9') || *letter == '.' || *letter == '_' || *letter == '+' ||
+                      *letter == '-' || (*letter == ' ' && letter[1] != ' ' && letter[1] != '\0');
+        if (!allowed) return 0;
+    }
+    return 1;
+}
+
 /* Whether identifier is one fledge build writes: 1 to FLEDGE_IDENTIFIER_MAX
  * letters, digits, hyphens, and dots. */
 static int
@@ -126,6 +144,7 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
     config->entry = NULL;
     config->gemfile = NULL;
     config->identifier = NULL;
+    config->system_libraries = NULL;
 
     char *line = text;
     while (line != NULL) {
@@ -164,6 +183,7 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
         const char *value = trim(equals + 1);
         const char **slot;
         int is_path = 1;
+        int is_libraries = 0;
         if (strcmp(key, "entry") == 0) {
             slot = &config->entry;
         } else if (strcmp(key, "gemfile") == 0) {
@@ -175,6 +195,14 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
         } else if (strcmp(key, "identifier") == 0) {
             slot = &config->identifier;
             is_path = 0;
+        } else if (strcmp(key, "system_libraries") == 0) {
+            if (sectioned) {
+                *problem = "names system_libraries inside a program's section";
+                return -1;
+            }
+            slot = &config->system_libraries;
+            is_path = 0;
+            is_libraries = 1;
         } else {
             *problem = "has a key this app's program does not know";
             return -1;
@@ -183,7 +211,11 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
             *problem = "names a path outside the app folder";
             return -1;
         }
-        if (!is_path && !safe_identifier(value)) {
+        if (is_libraries && !safe_libraries(value)) {
+            *problem = "names a system library that is not a file name";
+            return -1;
+        }
+        if (!is_path && !is_libraries && !safe_identifier(value)) {
             *problem = "has an identifier that is not reverse-DNS";
             return -1;
         }

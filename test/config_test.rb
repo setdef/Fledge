@@ -36,7 +36,7 @@ class ConfigTest < Minitest::Test
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil, programs: nil, ios: nil, android: nil), config
+      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil, programs: nil, ios: nil, android: nil, linux: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
   end
@@ -54,10 +54,10 @@ class ConfigTest < Minitest::Test
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, and android."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, and linux."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, and android\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, and linux\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -129,7 +129,7 @@ class ConfigTest < Minitest::Test
     config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    name: W\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
 
     assert_equal Fledge::Config.new(name: "W", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
-      publisher: "Me", copyright: nil, installers: nil, programs: nil, ios: nil, android: nil), config.for_program(config.programs.to_a.first)
+      publisher: "Me", copyright: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil), config.for_program(config.programs.to_a.first)
   end
 
   def test_refuses_programs_it_cannot_ship
@@ -195,6 +195,43 @@ class ConfigTest < Minitest::Test
       "ios:\n  host: /Users/me/host\n" => %r{: ios's host, "/Users/me/host", must name a folder in the project},
       "ios:\n  host: .\n" => /: ios's host, "\.", must name a folder in the project/,
       "ios:\n  host: host/\n" => %r{: ios's host, "host/", must name a folder in the project},
+    }.each do |yaml, message|
+      error = assert_raises(Fledge::Error, yaml) { load(yaml) }
+      assert_match message, error.message, yaml
+      assert_includes error.message, "fledge.yml", yaml
+    end
+  end
+
+  # The libraries a project's gems load from the Linux distribution (ADR
+  # 030), by the names their compiled files give them, once each.
+  def test_reads_the_system_libraries_a_projects_gems_load_on_linux
+    config = load("linux:\n  system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
+
+    assert_equal Fledge::Config::Linux.new(system_libraries: %w[libwebkit2gtk-4.1.so.0 libgtk-3.so.0]), config.linux
+    assert_equal [], load("linux:\n  system_libraries: []\n").linux&.system_libraries
+    assert_equal [], load("linux: {}\n").linux&.system_libraries
+    assert_nil load("linux:\n").linux
+    assert_equal %w[libc.musl-x86_64.so.1 libstdc++.so.6 libfoo.so],
+      load("linux:\n  system_libraries: [libc.musl-x86_64.so.1, libstdc++.so.6, libfoo.so]\n").linux&.system_libraries
+    program = Fledge::Config::Program.from({ "path" => "a" }, 1, "fledge.yml")
+    assert_equal config.linux, config.for_program(program).linux
+    assert_equal [%w[libwebkit2gtk-4.1.so.0 libgtk-3.so.0], [], []], %w[linux darwin windows].map { |os| config.system_libraries(os) }
+    assert_equal [], Fledge::Config.none.system_libraries("linux")
+  end
+
+  def test_refuses_a_system_library_that_is_not_a_librarys_name
+    {
+      "linux: [libpng16.so.16]\n" =>
+        /: linux must be a mapping of system_libraries, such as linux: \{ system_libraries: \[libgtk-3\.so\.0\] \}\z/,
+      "linux:\n  libraries: [libpng16.so.16]\n" => /: linux has 'libraries', which Fledge does not know\. It knows system_libraries\.\z/,
+      "linux:\n  system_libraries: libpng16.so.16\n" =>
+        /: linux: system_libraries must be a list of the names compiled files give libraries, such as \[libgtk-3\.so\.0\]\z/,
+      "linux:\n  system_libraries: [3]\n" => /: linux: system_libraries must be a list/,
+      "linux:\n  system_libraries: [/usr/lib/libpng16.so.16]\n" =>
+        %r{: linux: system_libraries has "/usr/lib/libpng16\.so\.16", which is not a library's name: name it as compiled files do, such as libgtk-3\.so\.0, with no folder\z},
+      "linux:\n  system_libraries: [libpng16]\n" => /: linux: system_libraries has "libpng16", which is not a library's name/,
+      "linux:\n  system_libraries: [libpng16-16t64]\n" => /: linux: system_libraries has "libpng16-16t64", which is not a library's name/,
+      "linux:\n  system_libraries: [\"libpng16.so.16 \"]\n" => /: linux: system_libraries has "libpng16\.so\.16 ", which is not a library's name/,
     }.each do |yaml, message|
       error = assert_raises(Fledge::Error, yaml) { load(yaml) }
       assert_match message, error.message, yaml

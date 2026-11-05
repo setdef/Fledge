@@ -26,8 +26,9 @@ module Fledge
     attr_reader programs: Array[Config::Program]?
     attr_reader ios: Config::Phone?
     attr_reader android: Config::Phone?
+    attr_reader linux: Config::Linux?
 
-    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?) -> instance
 
     def self.none: () -> Config
 
@@ -38,6 +39,8 @@ module Fledge
     private def self.from: (Object data, String path) -> Config
 
     def for_program: (Config::Program program) -> Config
+
+    def system_libraries: (String os) -> Array[String]
 
     private def self.programs: (Hash[Object, Object] data, String path) -> Array[Config::Program]?
 

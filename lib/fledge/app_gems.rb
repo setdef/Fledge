@@ -169,13 +169,16 @@ module Fledge
     end
 
     # What keeps each gem from running on a desktop +platform+'s runtime:
-    # the Ruby it asks for, and what its compiled files need.
+    # the Ruby it asks for, and what its compiled files need; and on
+    # Linux, each library <tt>fledge.yml</tt> lists as the distribution's
+    # that none of them needs (Config::Linux; ADR 030).
     private def desktop_problems(packages, platform, runtime)
       readers(platform, runtime) do |readers|
-        linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, readers:)
-        packages.flat_map do |gem, package|
+        linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, system: @app.config.system_libraries(platform.os), readers:)
+        found = packages.flat_map do |gem, package|
           [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.contents)]
         end
+        [*found, *linkage.unused]
       end
     end
 

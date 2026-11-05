@@ -136,7 +136,7 @@ Your editor can check `fledge.yml` as you type. With Red Hat's YAML language ser
 ```
 <!-- SPDX-SnippetEnd -->
 
-`installers` chooses which of `dmg`, `nsis`, `appimage`, and `deb` to build. The default is the first three, and `deb` needs `dpkg-deb` on your computer. A `.deb` depends only on `libc6`, so `apt` installs it on a computer without a desktop too. A library a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there.
+`installers` chooses which of `dmg`, `nsis`, `appimage`, and `deb` to build. The default is the first three, and `deb` needs `dpkg-deb` on your computer. A `.deb` depends on `libc6`, and on the packages of any libraries you list as the Linux distribution's (see [Gems](#gems)), so `apt` installs it on a computer without a desktop too. A library a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there.
 
 ### Several programs in one app
 
@@ -184,6 +184,23 @@ $ bundle lock --add-checksums
 <!-- SPDX-SnippetEnd -->
 
 Precompiled gems ship as they are. Gems that ship as source, and gems from git, compile on your computer against the runtime's Ruby. Install a compiler first: Xcode's command line tools on macOS, a C compiler and `make` on Linux, or RubyInstaller's MSYS2 tools (`ridk install`) on Windows, and `cargo` for a Rust extension. If a gem would not load on another computer, the build fails and the error names the gem. Git gems, git submodules, path gems, mirrors, and credentials work as they do in Bundler; [`examples/real_gems`](examples/real_gems) uses each.
+
+#### A gem that links a library from the Linux distribution
+
+On Linux, a gem's compiled files may link only the libraries every distribution has, the ones the runtime carries, and the ones the gem carries itself. A wrapper of a desktop library, such as a webview's WebKitGTK and GTK, links libraries that a desktop's distribution provides and no gem carries, so the build refuses it and names each library. If every computer your app goes to has them, list them in `fledge.yml` by those names:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+linux:
+  system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0]
+```
+<!-- SPDX-SnippetEnd -->
+
+The build then takes the gem, and refuses a library you list that no gem needs. A `.deb` depends on the packages that provide them, as `dpkg-shlibdeps` finds them, so building one needs `dpkg-dev`, which `build-essential` brings. An AppImage or `.tar.gz` does not carry them: on a computer that lacks one, the app says which library to install, and exits with status 72, before your code runs. [`examples/system_library`](examples/system_library) is a complete example.
 
 #### A gem that only `vendor/cache` holds
 

@@ -64,8 +64,8 @@ module Fledge
       raise Error, "fledge build needs #{File.basename(command.first.to_s)}, which it could not run (#{e.message}). #{install}"
     end
 
-    # Runs +command+ as #run does, and returns only its standard output,
-    # as bytes.
+    # Runs +command+ as #run does, in the folder +chdir+, and returns
+    # only its standard output, as bytes.
     #
     # === Example
     #
@@ -78,8 +78,8 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.read(*command, install:)
-      output, error, status = Open3.capture3(*command, binmode: true)
+    def self.read(*command, install:, chdir: Dir.pwd)
+      output, error, status = Open3.capture3(*command, binmode: true, chdir:)
       return output if status.success?
 
       raise Error, "#{File.basename(command.first.to_s)} failed (#{status}):\n#{error.strip}"

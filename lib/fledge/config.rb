@@ -28,7 +28,11 @@ module Fledge
   # that no gem supplies, such as SDL3's host for a game whose SDL owns
   # the main loop: name a folder of them under +ios+ or +android+
   # (Config::Phone), and <tt>fledge build ios</tt> or <tt>fledge build
-  # android</tt> copies them over the project it writes (ADR 025).
+  # android</tt> copies them over the project it writes (ADR 025). Nor
+  # can it know which libraries a project's gems may load from a Linux
+  # distribution, such as a webview's WebKitGTK: list them under +linux+
+  # (Config::Linux), and the build accepts them, and a <tt>.deb</tt>
+  # depends on them (ADR 030).
   #
   # This class reads <tt>fledge.yml</tt> from the project's root, a YAML
   # mapping as RuboCop's and Kamal's configuration are, checks each value,
@@ -75,7 +79,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers, :programs, :ios, :android)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers, :programs, :ios, :android, :linux)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -128,14 +132,19 @@ module Fledge
     # What <tt>fledge build android</tt> lays over the project it writes
     # (Config::Phone), or +nil+ for nothing (ADR 025).
 
+    ##
+    # :attr_reader: linux
+    # The libraries the project's gems load from the Linux distribution
+    # (Config::Linux), or +nil+ for none (ADR 030).
+
     # The file's name, in the project's root.
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright installers programs ios android].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright installers programs ios android linux].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, and android"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, and linux"
 
     # The keys that, beside +programs+, belong to each program instead.
     PER_PROGRAM = %w[kind identifier icon].freeze
@@ -181,7 +190,7 @@ module Fledge
     #++
     def self.none
       new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, installers: nil, programs: nil, ios: nil,
-        android: nil)
+        android: nil, linux: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -229,7 +238,8 @@ module Fledge
         installers: installers(data, path),
         programs: programs(data, path),
         ios: Phone.from(data, "ios", path),
-        android: Phone.from(data, "android", path)
+        android: Phone.from(data, "android", path),
+        linux: Linux.from(data, path)
       )
     end
 
@@ -251,6 +261,29 @@ module Fledge
     #++
     def for_program(program)
       with(name: program.name, kind: program.kind, identifier: program.identifier, icon: program.icon, programs: nil)
+    end
+
+    # The libraries the project's gems load from the system on +os+
+    # (Fledge::Platform#os): on +linux+, glibc's or musl's, those its
+    # +linux+ mapping lists (Config::Linux), and none elsewhere.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   config = Fledge::Config.load("examples/system_library")
+    #   config.system_libraries("linux")  # => ["libpng16.so.16"]
+    #   config.system_libraries("darwin") # => []
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def system_libraries(os)
+      return [] unless os == "linux"
+
+      linux&.system_libraries || []
     end
 
     # The programs under +programs+ (ADR 024): a list of at least one,
@@ -380,5 +413,6 @@ module Fledge
   end
 end
 
+require_relative "config/linux"
 require_relative "config/phone"
 require_relative "config/program"

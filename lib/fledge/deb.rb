@@ -8,6 +8,7 @@
 require "fileutils"
 require "rubygems"
 require "tmpdir"
+require_relative "binary"
 require_relative "command"
 require_relative "desktop_entry"
 require_relative "error"
@@ -50,10 +51,16 @@ module Fledge
     # What to do when this computer has no dpkg-deb.
     INSTALL = "Install dpkg, which has it, such as with sudo apt install dpkg (Debian and Ubuntu have it already) or sudo dnf install dpkg."
 
+    # What to do when this computer has no dpkg-shlibdeps.
+    SHLIBDEPS = "Install dpkg-dev, which has it, such as with sudo apt install dpkg-dev (build-essential brings it)."
+
     # Writes the <tt>.deb</tt> of the app whose Fledge::Identity is
     # +identity+ and whose built folder is +folder+, for +platform+, to
-    # +to+, and returns +to+. Raises Fledge::Error when this computer has
-    # no dpkg-deb or it fails.
+    # +to+, and returns +to+. +system_libraries+ are the libraries the
+    # app's gems load from the distribution (Config::Linux), whose
+    # packages the <tt>.deb</tt> depends on. Raises Fledge::Error when
+    # this computer has no dpkg-deb, or no dpkg-shlibdeps when it needs
+    # one, or either fails.
     #
     # === Example
     #
@@ -66,14 +73,15 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(identity:, folder:, platform:, to:)
+    def self.write(identity:, folder:, platform:, to:, system_libraries: [])
       package = package_name(identity)
       Dir.mktmpdir("fledge-deb") do |work|
         root = File.join(work, "root")
         lay_out(root, folder, identity, package)
         control = File.join(root, "DEBIAN")
         FileUtils.mkdir_p(control, mode: 0o755)
-        File.write(File.join(control, "control"), control_file(identity, package, ARCHITECTURES.fetch(platform.name), installed_size(root)))
+        depends = ["libc6 (>= #{Platform::GLIBC_MINIMUM})", *dependencies(work, root, system_libraries)]
+        File.write(File.join(control, "control"), control_file(identity, package, ARCHITECTURES.fetch(platform.name), installed_size(root), depends))
         Command.run("dpkg-deb", "--build", "--root-owner-group", root, to, install: INSTALL)
       end
       to
@@ -138,21 +146,46 @@ module Fledge
     # The +control+ file: Debian Policy 5.3's mandatory fields and
     # priority and section, with the app's name for its synopsis and its
     # publisher, or its name, for its maintainer, since <tt>fledge.yml</tt>
-    # has neither a description nor an address. +Depends+ names the glibc
-    # the runtime needs (Platform::GLIBC_MINIMUM), so apt refuses an older
-    # Debian or Ubuntu, saying why.
-    private_class_method def self.control_file(identity, package, architecture, size)
+    # has neither a description nor an address. +Depends+ is +depends+:
+    # the glibc the runtime needs (Platform::GLIBC_MINIMUM), so apt
+    # refuses an older Debian or Ubuntu, saying why, and the packages of
+    # the libraries the gems load from the distribution.
+    private_class_method def self.control_file(identity, package, architecture, size, depends)
       <<~CONTROL
         Package: #{package}
         Version: #{version(identity.version)}
         Architecture: #{architecture}
         Maintainer: #{line(identity.publisher || identity.name)}
         Installed-Size: #{size}
-        Depends: libc6 (>= #{Platform::GLIBC_MINIMUM})
+        Depends: #{depends.join(', ')}
         Section: misc
         Priority: optional
         Description: #{line(identity.name)}
       CONTROL
+    end
+
+    # The packages that provide +libraries+, as dpkg-shlibdeps finds
+    # them for the compiled files in the tree at +root+ that need one:
+    # each with the oldest version whose symbols the files use, from the
+    # package's own symbols or shlibs file (Debian Policy 8.6), and any
+    # other package those files need, but not glibc's, which +Depends+
+    # names at the runtime's floor already. None when +libraries+ is
+    # empty. dpkg-shlibdeps reads <tt>debian/control</tt> in the folder
+    # it runs in, so +work+ gets an empty one; the tree's
+    # <tt>DEBIAN</tt> folder tells it the files are a package's.
+    private_class_method def self.dependencies(work, root, libraries)
+      return [] if libraries.empty?
+
+      files = Dir.glob("usr/lib/**/*", base: root).map { |path| File.join(root, path) }
+      binaries = Binary.read(files, readers: Binary::Readers.local("linux")).select { |_, binary| binary.format == :elf }
+      needing = binaries.select { |_, binary| binary.needed.intersect?(libraries) }.keys
+      return [] if needing.empty?
+
+      FileUtils.mkdir_p(File.join(work, "debian"))
+      File.write(File.join(work, "debian", "control"), "")
+      folders = binaries.keys.map { |path| "-l#{File.dirname(path)}" }.uniq
+      output = Command.read("dpkg-shlibdeps", "-O", "-xlibc6", *folders, *needing.map { |path| "-e#{path}" }, chdir: work, install: SHLIBDEPS)
+      output[/^shlibs:Depends=(.*)$/, 1].to_s.split(",").map(&:strip).reject(&:empty?)
     end
 
     # +text+ on one line, as a control field holds it.

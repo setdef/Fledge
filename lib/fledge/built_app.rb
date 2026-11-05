@@ -42,9 +42,11 @@ module Fledge
   # <tt>vendor/cache</tt>, and the folders inside its project that its
   # lockfile takes gems from. On Windows a program carries its app's
   # identity in its resources, which rcedit adds to but cannot take away,
-  # so a new program and rcedit come from the runtime this Fledge would
-  # use, when this computer has it (Runtimes#at_hand), and never from a
-  # download.
+  # so a new program and rcedit come from the app's own tools folder, which
+  # an app built with +build_tools+ carries (Assembly::BuildTools), or else
+  # from the runtime this Fledge would use, when this computer has it
+  # (Runtimes#at_hand), and never from a download. The tools folder of the
+  # app stays behind: a new app carries one only when it asks.
   #
   # Use it through <tt>fledge build --from</tt>.
   #
@@ -227,15 +229,43 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def unpack(app_names:, work:)
+      own = own_tools
+      return Tree.new(self, launchers: own_launchers(own, work), tools: own, app_names:) if own
+
       archive = @runtimes.at_hand(@platform)
       if archive.nil? && @platform.windows?
-        raise Error, "--from takes a Windows app's launchers and rcedit from Fledge #{VERSION}'s runtime for #{@platform}, which no app holds, " \
-          "and this computer has none: put #{Runtimes.file_name(@platform)} in FLEDGE_RUNTIME_DIR or #{@runtimes.cache}."
+        raise Error, "--from takes a Windows app's launchers and rcedit from the tools folder of an app built with build_tools: true, " \
+          "which #{@given} has not, or else from Fledge #{VERSION}'s runtime for #{@platform}, which this computer has not: " \
+          "put #{Runtimes.file_name(@platform)} in FLEDGE_RUNTIME_DIR or #{@runtimes.cache}."
       end
 
       only = [Assembly::LAUNCHER, Assembly::WINDOWED_LAUNCHER].map { |name| @platform.executable(name) } + [Assembly::TOOLS]
       runtime = archive && Assembly::RuntimeFolder.new(archive, platform: @platform, app_names:, work:, only:)
-      Tree.new(self, runtime:, launcher: runtime ? nil : launcher_copy(work), app_names:)
+      return Tree.new(self, launchers: -> (name) { runtime.launcher(name) }, tools: runtime.tools, app_names:) if runtime
+
+      copy = launcher_copy(work)
+      Tree.new(self, launchers: -> (_name) { copy }, tools: nil, app_names:)
+    end
+
+    # The app's own tools folder, which an app built with +build_tools+
+    # holds (Assembly::BuildTools), when it has what <tt>--from</tt>
+    # needs of it here: on Windows, the launchers too.
+    private def own_tools
+      folder = File.join(@contents, Assembly::TOOLS)
+      return nil unless File.directory?(folder)
+      return folder unless @platform.windows?
+
+      launchers = [Assembly::LAUNCHER, Assembly::WINDOWED_LAUNCHER].map { |name| File.join(folder, @platform.executable(name)) }
+      folder if launchers.all? { |launcher| File.file?(launcher) }
+    end
+
+    # The launchers in the app's own tools +folder+: on Windows, the ones
+    # it carries; elsewhere, a copy of its program in +work+.
+    private def own_launchers(folder, work)
+      return -> (name) { File.join(folder, @platform.executable(name)) } if @platform.windows?
+
+      copy = launcher_copy(work)
+      -> (_name) { copy }
     end
 
     # Copies everything of the app into +folder+ but its project, its
@@ -253,12 +283,13 @@ module Fledge
       @identifiers.each { |identifier| remove_icons(folder, identifier) }
     end
 
-    # The names in the app's folder that a new app keeps.
+    # The names in the app's folder that a new app keeps: not its tools
+    # folder, which the new app holds only if it asks for its own.
     private def held
       programs = @programs.map { |name| @platform.executable(name) }
       identity = @identifiers.map { |identifier| "#{identifier}.desktop" }
       identity << "#{File.basename(@bundle.to_s, '.app')}.icns" if @bundle
-      Dir.children(@contents).sort - ["app", Assembly::CONFIG] - programs - identity
+      Dir.children(@contents).sort - ["app", Assembly::CONFIG, Assembly::TOOLS] - programs - identity
     end
 
     # Removes a Linux app's icons, named by its +identifier+, from +folder+
@@ -341,25 +372,22 @@ module Fledge
     # unpacked runtime: its launchers, its tools, and what the new app
     # holds of it.
     class Tree # :nodoc:
-      # The tree of +built_app+, with the launchers and tools of +runtime+,
-      # an Assembly::RuntimeFolder, or else its program, +launcher+.
-      def initialize(built_app, runtime:, launcher:, app_names:)
+      # The tree of +built_app+, whose launcher named +name+ is
+      # <tt>launchers.call(name)</tt>, and whose tools folder is +tools+.
+      def initialize(built_app, launchers:, tools:, app_names:)
         @built_app = built_app
-        @runtime = runtime
-        @launcher = launcher
+        @launchers = launchers
+        @tools = tools
         @app_names = app_names
       end
 
-      # The launcher named +name+: the runtime's, or the app's program.
+      # The launcher named +name+.
       def launcher(name)
-        runtime = @runtime
-        runtime ? runtime.launcher(name) : @launcher.to_s
+        @launchers.call(name)
       end
 
-      # The runtime's tools folder, or +nil+.
-      def tools
-        @runtime&.tools
-      end
+      # The tools folder, or +nil+.
+      attr_reader :tools
 
       # Copies the app's runtime and gems into +folder+.
       def move_into(folder)

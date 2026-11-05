@@ -37,7 +37,7 @@ class ConfigTest < Minitest::Test
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
       icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", installers: nil, programs: nil, ios: nil, android: nil, linux: nil,
-      file_associations: nil), config
+      file_associations: nil, build_tools: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
   end
@@ -55,10 +55,10 @@ class ConfigTest < Minitest::Test
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, linux, and file_associations."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, linux, file_associations, and build_tools."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, linux, and file_associations\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, linux, file_associations, and build_tools\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -131,7 +131,7 @@ class ConfigTest < Minitest::Test
 
     assert_equal Fledge::Config.new(name: "W", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
       publisher: "Me", copyright: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil,
-      file_associations: nil), config.for_program(config.programs.to_a.first)
+      file_associations: nil, build_tools: nil), config.for_program(config.programs.to_a.first)
   end
 
   def test_refuses_programs_it_cannot_ship
@@ -297,5 +297,13 @@ class ConfigTest < Minitest::Test
       assert_match message, error.message, yaml
       assert_includes error.message, "fledge.yml", yaml
     end
+  end
+
+  # build_tools (ADR 032, section 4): whether the app carries what
+  # fledge build --from needs, for any kind of app.
+  def test_reads_whether_the_app_carries_its_build_tools
+    assert_equal [true, false, nil], ["build_tools: true\n", "build_tools: false\n", "build_tools:\n"].map { |yaml| load(yaml).build_tools }
+    error = assert_raises(Fledge::Error) { load("build_tools: rcedit\n") }
+    assert_match(/fledge\.yml: build_tools must be true or false, such as build_tools: true\z/, error.message)
   end
 end

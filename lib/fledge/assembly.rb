@@ -18,6 +18,7 @@ require_relative "platform"
 require_relative "signing"
 require_relative "version"
 require_relative "windows_resources"
+require_relative "assembly/build_tools"
 require_relative "assembly/runtime_folder"
 
 module Fledge
@@ -39,7 +40,10 @@ module Fledge
   # <tt>OUT/NAME-PLATFORM.tar.gz</tt> (<tt>.zip</tt> for Windows), to
   # ship; and a windowed app's installers (Fledge::Installers) are
   # written beside them, from the folder, with the installer files the
-  # runtime keeps in its +tools+ folder, which no app holds.
+  # runtime keeps in its +tools+ folder, which no app holds unless its
+  # <tt>fledge.yml</tt> sets +build_tools+ (Assembly::BuildTools): then
+  # the app carries them, after its code is signed, as the runtime has
+  # them, for <tt>fledge build --from</tt> (ADR 032, section 4).
   #
   # This class unpacks the runtime with tar (Fledge::Archive), moves it
   # into the folder, adds CONFIG, the app's project, and the files the
@@ -175,7 +179,9 @@ module Fledge
     def call
       @app.programs.each do |program|
         executable = @platform.executable(program.name)
-        { "app" => "its own app folder", CONFIG => "the file that says what it runs" }.each do |taken, what|
+        taken_names = { "app" => "its own app folder", CONFIG => "the file that says what it runs" }
+        taken_names[TOOLS] = "the tools it carries" if @app.config.build_tools
+        taken_names.each do |taken, what|
           raise Error, "an app named #{program.name} would collide with #{what}. Give it another name." if executable.casecmp?(taken)
         end
       end
@@ -326,6 +332,7 @@ module Fledge
         @files.each { |entry| add(contents, entry) }
         tools = runtime.tools
         finish(bundle, runtime, tools)
+        BuildTools.new(runtime, platform: @platform).copy_into(contents) if @app.config.build_tools
         Archive.pack(folder, to: archive)
         @installers = Installers.write_all(@app, @platform, folder:, tools:, signing: @signing)
       end

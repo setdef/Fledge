@@ -28,8 +28,9 @@ module Fledge
     attr_reader android: Config::Phone?
     attr_reader linux: Config::Linux?
     attr_reader file_associations: Array[Config::FileAssociation]?
+    attr_reader build_tools: bool?
 
-    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?, file_associations: Array[Config::FileAssociation]?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?, file_associations: Array[Config::FileAssociation]?, build_tools: bool?) -> instance
 
     def self.none: () -> Config
 
@@ -64,5 +65,7 @@ module Fledge
     private def self.installers: (Hash[Object, Object] data, String path) -> Array[String]?
 
     private def self.file_associations: (Hash[Object, Object] data, String path) -> Array[Config::FileAssociation]?
+
+    private def self.build_tools: (Hash[Object, Object] data, String path) -> bool?
   end
 end

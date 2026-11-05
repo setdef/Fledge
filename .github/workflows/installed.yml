@@ -413,7 +413,7 @@ jobs:
           sudo xcode-select -s "/Applications/Xcode_$xcode.app"
           url=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcodegen", "url")')
           sha256=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcodegen", "sha256")')
-          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" "$url"
+          curl -fsSL --retry 5 --retry-delay 5 --retry-connrefused -o "$RUNNER_TEMP/xcodegen.zip" "$url"
           echo "$sha256  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
           echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"

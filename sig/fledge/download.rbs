@@ -17,6 +17,12 @@ module Fledge
     class Missing < Unsuccessful
     end
 
+    class Unavailable < Unsuccessful
+    end
+
+    class Unreachable < Error
+    end
+
     class Mismatch < Error
       attr_reader actual: String
 
@@ -32,6 +38,8 @@ module Fledge
     private def self.verify: (String url, String actual, String expected) -> void
 
     private def self.get: (String url, ?Integer redirects, ?credentials: String?) { (Net::HTTPResponse) -> void } -> void
+
+    private def self.status_error: (String url, Net::HTTPResponse response) -> Unsuccessful
 
     private def self.follow: (URI::Generic from, String location, Integer redirects, String? credentials) { (Net::HTTPResponse) -> void } -> void
 

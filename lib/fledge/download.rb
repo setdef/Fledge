@@ -69,6 +69,14 @@ module Fledge
     # A server that answered 404 or 410: it has no file at that address.
     class Missing < Unsuccessful; end
 
+    # A server that answered 408, 429, or a 5xx status: the same request
+    # may succeed a moment later.
+    class Unavailable < Unsuccessful; end
+
+    # A connection that failed or broke off (refused, reset, timed out,
+    # or unresolvable): the same request may succeed a moment later.
+    class Unreachable < Error; end
+
     # A download whose SHA-256 is not the one it was pinned to.
     class Mismatch < Error
       # The SHA-256 of what the server sent.
@@ -173,12 +181,21 @@ module Fledge
             raise Refused.new("could not download #{url}: #{response.code} #{response.message}", response.code.to_i)
           when Net::HTTPNotFound, Net::HTTPGone
             raise Missing.new("could not download #{url}: #{response.code} #{response.message}", response.code.to_i)
-          else raise Error, "could not download #{url}: #{response.code} #{response.message}"
+          else raise status_error(url, response)
           end
         end
       end
     rescue SystemCallError, IOError, SocketError, Timeout::Error, OpenSSL::SSL::SSLError => e
-      raise Error, "could not download #{url}: #{e.message}"
+      raise Unreachable, "could not download #{url}: #{e.message}"
+    end
+
+    # The error for a response that is neither a success, a redirect, nor
+    # a login or missing-file answer: Unavailable when another try may
+    # succeed, Unsuccessful when it will not.
+    private_class_method def self.status_error(url, response) # :nodoc:
+      status = response.code.to_i
+      kind = (status == 408 || status == 429 || status >= 500) ? Unavailable : Unsuccessful
+      kind.new("could not download #{url}: #{response.code} #{response.message}", status)
     end
 
     private_class_method def self.follow(from, location, redirects, credentials, &) # :nodoc:

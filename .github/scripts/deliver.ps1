@@ -152,9 +152,9 @@ foreach ($id in @('gmp', 'nsis')) {
   if (-not (Test-Path -LiteralPath $build -PathType Leaf)) { Fail "the app has no notices\sources\$id\BUILD.txt" }
   if (-not $text.Contains("  notices/sources/$id/")) { Fail "notices\NOTICES.txt does not say the app holds $id's source" }
   $named = Get-Content -LiteralPath $build -Raw
-  $archive = Get-ChildItem -LiteralPath $folder -File | Where-Object { $_.Name -ne 'BUILD.txt' -and $named.Contains((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()) } | Select-Object -First 1
-  if (-not $archive) { Fail "notices\sources\$id\ holds no archive whose SHA-256 its BUILD.txt names" }
-  Write-Host "ok: the app holds $id's source, $($archive.Name)"
+  $found = Get-ChildItem -LiteralPath $folder -File | Where-Object { $_.Name -ne 'BUILD.txt' -and $named.Contains((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()) } | Select-Object -First 1
+  if (-not $found) { Fail "notices\sources\$id\ holds no archive whose SHA-256 its BUILD.txt names" }
+  Write-Host "ok: the app holds $id's source, $($found.Name)"
 }
 
 # The runner has Rubies (on PATH, in C:\hostedtoolcache, MSYS2 in

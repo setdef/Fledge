@@ -73,7 +73,7 @@ Add Fledge to your `Gemfile`, in the `development` group so that `fledge build` 
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
-gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.5.0", group: :development
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.5.1", group: :development
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -91,7 +91,7 @@ Run `fledge build` in your project's folder. Here, the project is a folder named
 ```console
 $ bundle install
 $ bundle exec fledge build
-Downloading fledge-runtime-0.5.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.5.0
+Downloading fledge-runtime-0.5.1-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.5.1
 dist/Greeter-arm64-darwin.tar.gz
 $ tar -xzf dist/Greeter-arm64-darwin.tar.gz -C /tmp
 $ /tmp/Greeter-arm64-darwin/Greeter
@@ -132,7 +132,7 @@ Your editor can check `fledge.yml` as you type. With Red Hat's YAML language ser
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.5.0/lib/fledge/config.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.5.1/lib/fledge/config.schema.json
 ```
 <!-- SPDX-SnippetEnd -->
 

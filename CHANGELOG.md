@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-05
+
 ### Fixed
 
 - On iOS and Android, each line an app's Ruby prints reaches the system log when it is printed, not when the program ends: `$stdout` is in sync mode before the program runs whenever standard output is not a terminal, as on a phone it never is, so `$stdout.sync` is true there where `ruby main.rb` in a terminal reports false.
@@ -285,7 +287,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/setdef/Fledge/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/setdef/Fledge/releases/tag/v0.5.0
 [0.4.0]: https://github.com/setdef/Fledge/releases/tag/v0.4.0
 [0.3.0]: https://github.com/setdef/Fledge/releases/tag/v0.3.0

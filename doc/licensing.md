@@ -67,7 +67,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.5.1 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
-| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -106,7 +106,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.5.1 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
-| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -145,7 +145,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.5.1 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
-| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -182,7 +182,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.5.1 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
-| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and never in its folder or archive |
+| AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -227,9 +227,9 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import | 23.1.4 | `Apache-2.0 WITH LLVM-exception` | tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive |
 | Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
 | NSIS's source code, as its authors released it | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | notices/sources/nsis/, in every app |
-| NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive |
+| NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and in its folder and archive only when fledge.yml sets build_tools |
 | OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
-| rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and never in its folder or archive |
+| rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and in its folder and archive only when fledge.yml sets build_tools |
 | Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL) | 4.0.9 | `GPL-1.0-or-later OR Artistic-1.0-Perl` | compiled into ruby/bin/x64-ucrt-ruby400.dll |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | RubyInstaller's runtime files, manifests, and tools | 4.0.9-1 | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
@@ -265,9 +265,9 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import | 23.1.4 | `Apache-2.0 WITH LLVM-exception` | tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive |
 | Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
 | NSIS's source code, as its authors released it | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | notices/sources/nsis/, in every app |
-| NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and never in its folder or archive |
+| NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and in its folder and archive only when fledge.yml sets build_tools |
 | OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/aarch64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
-| rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and never in its folder or archive |
+| rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and in its folder and archive only when fledge.yml sets build_tools |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | RubyInstaller's runtime files, manifests, and tools | 4.0.9-1 | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
 | The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL | 14.0.0 | `LicenseRef-MinGW-w64-runtime` | compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/ |

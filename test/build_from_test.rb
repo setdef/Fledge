@@ -324,6 +324,65 @@ class BuildFromTest < Minitest::Test
       "Build from an app this Fledge built.", error.message
   end
 
+  # A folder of no runtimes, so that none is at hand.
+  def no_runtime
+    folder = File.join(@dir, "no runtimes")
+    FileUtils.mkdir_p(folder)
+    { "FLEDGE_RUNTIME_DIR" => folder }
+  end
+
+  # build_tools (ADR 032, section 4): the app carries the runtime's tools,
+  # and --from takes them from it when no runtime is at hand. The new app
+  # keeps them only when its own fledge.yml asks for them too; an app
+  # that does not ask carries none.
+  def test_an_app_with_build_tools_carries_them_and_is_built_from_with_no_runtime
+    FakeRuntime.write(@runtimes, Fledge::Platform.find(LINUX), extra: [Fledge::Entry.file("tools/appimage-runtime", "AppImage runtime", mode: 0o755)])
+    refute_path_exists File.join(built_player, "tools")
+    FileUtils.rm_rf(File.join(@dir, "player"))
+    from = built_player("build_tools: true\n")
+    assert_equal ["appimage-runtime"], Dir.children(File.join(from, "tools"))
+    game
+
+    _, err, status = build("--from", from, "game", env: no_runtime)
+
+    assert_equal [0, ""], [status, err]
+    folder = File.join(@dir, "dist", "Game-x86_64-linux")
+    refute_path_exists File.join(folder, "tools")
+    assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Game"))
+    File.write(File.join(@dir, "game", "fledge.yml"), "name: Game\nbuild_tools: true\n")
+
+    _, err, status = build("--from", from, "game", env: no_runtime)
+
+    assert_equal [0, ""], [status, err]
+    assert_equal "AppImage runtime", File.read(File.join(folder, "tools", "appimage-runtime"))
+    assert File.executable?(File.join(folder, "tools", "appimage-runtime")) unless Gem.win_platform?
+  end
+
+  # A program named as the tools folder would collide with it.
+  def test_a_program_named_tools_collides_with_the_tools_it_carries
+    player("build_tools: true\nname: tools\n")
+    _, err, status = build("-o", "players", "player")
+    assert_equal [1, "fledge build: an app named tools would collide with the tools it carries. Give it another name.\n"], [status, err]
+  end
+
+  # On Windows the app carries the runtime's launchers, rcedit, and NSIS,
+  # but not llvm-readobj, which reads compiled gems, and --from builds
+  # none; with them, a Windows app is built from it with no runtime.
+  def test_on_windows_an_app_with_build_tools_is_built_from_with_no_runtime
+    skip "a Windows app is built on Windows, with the real runtime's launchers and rcedit" unless Gem.win_platform? && FakeRuntime.windows
+    host = Fledge::Platform.local.name
+    from = built_player("build_tools: true\n", host:)
+    assert_equal %w[launcher.exe launcherw.exe rcedit.exe], Dir.children(File.join(from, "tools")).sort
+    game("kind: windowed\nidentifier: com.example.Game\ninstallers: []\n")
+
+    _, err, status = build("--from", from, "game", host:, env: no_runtime)
+
+    assert_equal [0, ""], [status, err]
+    folder = File.join(@dir, "dist", "Game-#{host}")
+    assert_path_exists File.join(folder, "Game.exe")
+    refute_path_exists File.join(folder, "tools")
+  end
+
   # Windows' programs carry their app's identity in their resources, so
   # a Windows app built from another takes fresh launchers, and rcedit,
   # from the runtime, which no app holds yet, and downloads nothing.
@@ -339,9 +398,9 @@ class BuildFromTest < Minitest::Test
     out, err, status = build("--from", from, "game", host: "x64-mingw-ucrt", env: { "XDG_CACHE_HOME" => cache })
 
     assert_equal [1, ""], [status, out]
-    assert_equal "fledge build: --from takes a Windows app's launchers and rcedit from Fledge #{Fledge::VERSION}'s runtime for " \
-      "x64-mingw-ucrt, which no app holds, and this computer has none: put #{Fledge::Runtimes.file_name(Fledge::Platform.find('x64-mingw-ucrt'))} " \
-      "in FLEDGE_RUNTIME_DIR or #{File.join(cache, 'fledge', 'runtimes')}.\n", err
+    assert_equal "fledge build: --from takes a Windows app's launchers and rcedit from the tools folder of an app built with build_tools: true, " \
+      "which #{from} has not, or else from Fledge #{Fledge::VERSION}'s runtime for x64-mingw-ucrt, which this computer has not: " \
+      "put #{Fledge::Runtimes.file_name(Fledge::Platform.find('x64-mingw-ucrt'))} in FLEDGE_RUNTIME_DIR or #{File.join(cache, 'fledge', 'runtimes')}.\n", err
     refute_path_exists File.join(@dir, "dist", "Game-x64-mingw-ucrt")
   end
 end

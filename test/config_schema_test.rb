@@ -205,6 +205,11 @@ class ConfigSchemaTest < Minitest::Test
     "#{WINDOWED}file_associations:\n  - name: Text\n    content_types: [text]\n" => false,
     "#{WINDOWED}file_associations:\n  - name: Text\n    folders: \"yes\"\n" => false,
     "#{WINDOWED}file_associations:\n  - name: Both\n    folders: true\n    extensions: [txt]\n" => false,
+    "build_tools: true\n" => true,
+    "build_tools: false\n" => true,
+    "#{WINDOWED}build_tools: true\n" => true,
+    "build_tools: rcedit\n" => false,
+    "build_tools: [rcedit]\n" => false,
   }.merge(
     # Every key may be empty, which Config reads as absent, and none may
     # be blank or a number.

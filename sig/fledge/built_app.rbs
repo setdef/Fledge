@@ -31,6 +31,10 @@ module Fledge
 
     def unpack: (app_names: Array[String], work: String) -> Tree
 
+    private def own_tools: () -> String?
+
+    private def own_launchers: (String folder, String work) -> ^(String) -> String
+
     def copy_into: (String folder, Array[String] app_names) -> void
 
     private def held: () -> Array[String]
@@ -51,15 +55,15 @@ module Fledge
 
     class Tree
       @built_app: BuiltApp
-      @runtime: Assembly::RuntimeFolder?
-      @launcher: String?
+      @launchers: ^(String) -> String
+      @tools: String?
       @app_names: Array[String]
 
-      def initialize: (BuiltApp built_app, runtime: Assembly::RuntimeFolder?, launcher: String?, app_names: Array[String]) -> void
+      def initialize: (BuiltApp built_app, launchers: ^(String) -> String, tools: String?, app_names: Array[String]) -> void
 
       def launcher: (String name) -> String
 
-      def tools: () -> String?
+      attr_reader tools: String?
 
       def move_into: (String folder) -> void
     end

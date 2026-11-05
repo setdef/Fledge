@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Assembly
+    class BuildTools
+      LEFT_OUT: Array[String]
+
+      @runtime: Assembly::_RuntimeTree
+      @platform: Platform
+
+      def initialize: (Assembly::_RuntimeTree runtime, platform: Platform) -> void
+
+      def copy_into: (String folder) -> void
+
+      private def files: () -> Array[String]
+    end
+  end
+end

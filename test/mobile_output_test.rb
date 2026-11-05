@@ -196,8 +196,8 @@ class MobileOutputTest < Minitest::Test
       begin
         deadline = Time.now + 20
         sleep 0.1 until (File.exist?(log) && File.read(log).include?("O first\n")) || Time.now > deadline
-        assert_nil Process.wait2(pid, Process::WNOHANG), "the program ended before the line reached the log: #{File.read(errors)}"
-        assert_equal "O first\n", File.read(log), "the line did not reach the log within 20 seconds of the start: #{File.read(errors)}"
+        assert_nil Process.wait2(pid, Process::WNOHANG), "the program ended before the line reached the log: #{File.read(errors)}#{File.read(log)}"
+        assert_equal "O first\n", File.read(log), "the line did not reach the log within 20 seconds of the start: #{File.read(errors)}#{File.read(log)}"
       ensure
         begin
           Process.kill("KILL", pid)
@@ -211,6 +211,9 @@ class MobileOutputTest < Minitest::Test
 
   # Compiles RUBY_HOST in +dir+ with +compiler+, linked with the Ruby
   # running these tests, and returns the program's path.
+  # A Ruby with a static libruby loads its extensions as shared objects
+  # that find Ruby's symbols in the program that embeds it, so the host
+  # is linked with -rdynamic, as the launcher is.
   def compile_ruby_host(compiler, dir)
     config = RbConfig::CONFIG
     File.write(File.join(dir, "main.c"), RUBY_HOST)
@@ -224,7 +227,7 @@ class MobileOutputTest < Minitest::Test
 ]
     libraries = "#{config.fetch('LIBRUBYARG')} #{config.fetch('LIBS')} #{config.fetch('MAINLIBS', '')}".split
     _, err, status = Open3.capture3(compiler, "-std=gnu11", "-I", MOBILE, "-I", LAUNCHER, "-I", config.fetch("rubyhdrdir"),
-      "-I", config.fetch("rubyarchhdrdir"), *sources, "-L", config.fetch("libdir"), *libraries, "-Wl,-rpath,#{config.fetch('libdir')}", "-lpthread", "-o", program)
+      "-I", config.fetch("rubyarchhdrdir"), *sources, "-L", config.fetch("libdir"), *libraries, "-Wl,-rpath,#{config.fetch('libdir')}", "-rdynamic", "-lpthread", "-o", program)
     assert status.success?, err
     program
   end

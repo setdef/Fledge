@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Windows, `fledge build` writes and reads archives in folders whose names are not ASCII, such as `-o "Prüfung 日本"`, which `tar.exe` could not change into; and a tool's failure written in the console's code page is quoted instead of ending the build with a Ruby error.
 - On iOS and Android, each line an app's Ruby prints reaches the system log when it is printed, not when the program ends: `$stdout` is in sync mode before the program runs whenever standard output is not a terminal, as on a phone it never is, so `$stdout.sync` is true there where `ruby main.rb` in a terminal reports false.
 
 ## [0.5.0] - 2026-11-05

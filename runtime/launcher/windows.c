@@ -51,7 +51,9 @@
  *   1. Keeps every DLL loaded by name to System32 and the folders a DLL
  *      names for itself, never the current folder or PATH, where another
  *      Ruby's DLLs may be (SetDefaultDllDirectories).
- *   2. Finds the folder it lives in (GetModuleFileNameW), and reads
+ *   2. Finds the folder it lives in (GetModuleFileNameW, and when it
+ *      was started through a symbolic link, the link's target,
+ *      resolve_link), and reads
  *      fledge.cfg there, which names the program in app\ to run, ENTRY,
  *      the app's Gemfile, if it has one, and its identifier, if it has
  *      one, which becomes the process's AppUserModelID
@@ -264,6 +266,72 @@ extended_length(const wchar_t *path)
     if (wcsncmp(path, L"\\\\?\\", 4) == 0) return join(L"", path);
     if (wcsncmp(path, L"\\\\", 2) == 0) return join(L"\\\\?\\UNC\\", path + 2);
     return join(L"\\\\?\\", path);
+}
+
+/*
+ * path as an ordinary Windows path, without the \\?\ prefix
+ * GetFinalPathNameByHandleW gives it: \\?\C:\folder becomes C:\folder,
+ * and \\?\UNC\server\share becomes \\server\share, as extended_length
+ * undone.
+ */
+static wchar_t *
+ordinary(const wchar_t *path)
+{
+    if (wcsncmp(path, L"\\\\?\\UNC\\", 8) == 0) return join(L"\\\\", path + 8);
+    if (wcsncmp(path, L"\\\\?\\", 4) == 0) return join(L"", path + 4);
+    return join(L"", path);
+}
+
+/*
+ * The path of the file this program really is, when path, its own path,
+ * is a symbolic link to it. GetModuleFileNameW returns the path the
+ * program was started by, in "the same format that was specified when
+ * the module was loaded" (Microsoft's documentation of the function), so
+ * a program started through a link, as winget links a portable
+ * package's program into its Links folder, gets the link's path, and the
+ * launcher would look for fledge.cfg and Ruby in the link's folder (CI's
+ * Delivery found exactly that). Opening the link opens its target, and
+ * GetFinalPathNameByHandleW names the file the handle is open on, "when
+ * a path is fully resolved" (its documentation), as realpath does for
+ * darwin.c and linux.c. A path that is not a link is left as it is, so
+ * a folder reached through a junction, as Scoop's current folder is,
+ * or on a subst or mapped drive, keeps the path the person used: the
+ * folder beside the program is the app's either way.
+ */
+static wchar_t *
+resolve_link(wchar_t *path)
+{
+    wchar_t *long_path = extended_length(path);
+    DWORD attributes = GetFileAttributesW(long_path);
+
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0) {
+        free(long_path);
+        return path;
+    }
+
+    HANDLE file = CreateFileW(long_path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL, NULL);
+    free(long_path);
+    if (file == INVALID_HANDLE_VALUE) {
+        fail(L"could not find where this app is: %ls is a link that cannot be followed (Windows error %lu)", path,
+             GetLastError());
+    }
+
+    DWORD size = GetFinalPathNameByHandleW(file, NULL, 0, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+    wchar_t *final = size == 0 ? NULL : allocate(size, sizeof *final);
+    DWORD length =
+        final == NULL ? 0 : GetFinalPathNameByHandleW(file, final, size, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+    DWORD error = GetLastError();
+
+    CloseHandle(file);
+    if (length == 0 || length >= size) {
+        fail(L"could not find where this app is: %ls is a link that cannot be followed (Windows error %lu)", path,
+             error);
+    }
+    wchar_t *resolved = ordinary(final);
+    free(final);
+    free(path);
+    return resolved;
 }
 
 /*
@@ -824,7 +892,7 @@ wmain(int argc, wchar_t **argv)
         fail(L"could not protect this app from other programs' DLLs (Windows error %lu)", GetLastError());
     }
 
-    root = own_path();
+    root = resolve_link(own_path());
     wchar_t *slash = wcsrchr(root, L'\\');
     if (slash == NULL) fail(L"could not find where this app is: %ls", root);
     program_name = slash + 1;

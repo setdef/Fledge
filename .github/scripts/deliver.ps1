@@ -182,6 +182,22 @@ Check 'clean environment' 0 $app $clean
 Check 'exit status 3 reaches the caller' 3 $app $clean @('3')
 Check "a renamed copy, $folderName.exe" 0 $renamed $clean
 
+# As a package manager puts a console app on PATH (doc/contributors/
+# research/2026-11-04-package-managers.md, sections 2, 3, and 5): winget
+# links a portable package's program into its Links folder by a symbolic
+# link named as its command, on another drive here, and Scoop reaches
+# the version it installed through a junction, its current folder. The
+# launcher must find the folder it really lives in through either, and
+# carry the arguments and the exit status through.
+$links = Join-Path $work 'Links'
+New-Item -ItemType Directory -Force $links | Out-Null
+$link = New-Item -ItemType SymbolicLink -Path (Join-Path $links 'app-link.exe') -Target $app
+Write-Host "$($link.FullName) links to $($link.Target)"
+Check 'run through a symbolic link in another folder' 3 $link.FullName $clean @('3')
+$junction = New-Item -ItemType Junction -Path (Join-Path $work 'current') -Target $root
+Write-Host "$($junction.FullName) is a junction to $($junction.Target)"
+Check 'run through a junction to its folder' 3 (Join-Path $junction.FullName "$appName.exe") $clean @('3')
+
 # A json 99 in the person's own gem folder (Gem.user_dir:
 # %USERPROFILE%\.local\share\gem\ruby\4.0.0, or %USERPROFILE%\.gem\ruby\4.0.0
 # once %USERPROFILE%\.gem exists) shadows the runtime's json if RubyGems

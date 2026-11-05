@@ -47,6 +47,21 @@
       "type": ["string", "null"],
       "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
     },
+    "description": {
+      "description": "One line that says what the app does, such as Keeps your notes (default: none): a Linux desktop entry's Comment, a .deb's synopsis, and a Windows program's Comments.",
+      "type": ["string", "null"],
+      "pattern": "^[^\\r\\n]*[^\\u0000\\t\\n\\u000b\\f\\r ][^\\r\\n]*$"
+    },
+    "long_description": {
+      "description": "More about the app, in paragraphs (default: none): a .deb's extended description, after the description.",
+      "type": ["string", "null"],
+      "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
+    },
+    "homepage": {
+      "description": "The app's web page, an http or https URL, such as https://example.com/cool-app (default: none): a .deb's Homepage, and the links of a Windows setup program's entry in Settings.",
+      "type": ["string", "null"],
+      "pattern": "^https?://[^\\t\\n\\u000b\\f\\r <>\"]+$"
+    },
     "installers": {
       "description": "Which of dmg, nsis, appimage, and deb a windowed app gets, such as [dmg] or [] for none (default: dmg, nsis, and appimage). A console app gets none.",
       "type": ["array", "null"],

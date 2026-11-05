@@ -12,6 +12,7 @@ module Fledge
     DEFAULT_INSTALLERS: Array[String]
     IDENTIFIER: Regexp
     IDENTIFIER_MAX: Integer
+    HOMEPAGE: Regexp
     PER_PROGRAM: Array[String]
     PHONES: Array[String]
 
@@ -22,13 +23,16 @@ module Fledge
     attr_reader icon: String?
     attr_reader publisher: String?
     attr_reader copyright: String?
+    attr_reader description: String?
+    attr_reader long_description: String?
+    attr_reader homepage: String?
     attr_reader installers: Array[String]?
     attr_reader programs: Array[Config::Program]?
     attr_reader ios: Config::Phone?
     attr_reader android: Config::Phone?
     attr_reader linux: Config::Linux?
 
-    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, description: String?, long_description: String?, homepage: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?) -> instance
 
     def self.none: () -> Config
 
@@ -57,6 +61,10 @@ module Fledge
     def self.identifier: (Hash[Object, Object] data, String path) -> String?
 
     private def self.version: (Hash[Object, Object] data, String path) -> String?
+
+    private def self.description: (Hash[Object, Object] data, String path) -> String?
+
+    private def self.homepage: (Hash[Object, Object] data, String path) -> String?
 
     def self.icon: (Hash[Object, Object] data, String path) -> String?
 

@@ -144,6 +144,8 @@ function CheckInstalled {
   Expect 'DisplayName' $entry.DisplayName $appName
   Expect 'DisplayVersion' $entry.DisplayVersion '1.2.3'
   Expect 'Publisher' $entry.Publisher 'setdef'
+  Expect 'URLInfoAbout' $entry.URLInfoAbout 'https://github.com/setdef/Fledge'
+  Expect 'HelpLink' $entry.HelpLink 'https://github.com/setdef/Fledge'
   Expect 'InstallLocation' $entry.InstallLocation $folder
   Expect 'UninstallString' $entry.UninstallString "`"$folder\uninstall.exe`""
   Expect 'QuietUninstallString' $entry.QuietUninstallString "`"$folder\uninstall.exe`" /S"

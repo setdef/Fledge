@@ -187,6 +187,8 @@ module Fledge
           "DisplayName" => @identity.name,
           "DisplayVersion" => @identity.version,
           "Publisher" => @identity.publisher,
+          "URLInfoAbout" => @identity.homepage,
+          "HelpLink" => @identity.homepage,
         }.compact.map { |name, value| "  WriteRegStr HKCU #{key} #{quote(name)} #{quote(value.to_s)}" }
         values + [
           "  WriteRegStr HKCU #{key} \"DisplayIcon\" \"$INSTDIR\\#{nsis(program)}\"",

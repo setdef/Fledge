@@ -144,24 +144,50 @@ module Fledge
     end
 
     # The +control+ file: Debian Policy 5.3's mandatory fields and
-    # priority and section, with the app's name for its synopsis and its
-    # publisher, or its name, for its maintainer, since <tt>fledge.yml</tt>
-    # has neither a description nor an address. +Depends+ is +depends+:
+    # priority and section; the app's description, or else its name, for
+    # its synopsis, and its long description after it (Policy 5.6.13);
+    # its homepage, when it has one (5.6.23); and its publisher, or its
+    # name, for its maintainer, since <tt>fledge.yml</tt> has no
+    # address. +Depends+ is +depends+:
     # the glibc the runtime needs (Platform::GLIBC_MINIMUM), so apt
     # refuses an older Debian or Ubuntu, saying why, and the packages of
     # the libraries the gems load from the distribution.
     private_class_method def self.control_file(identity, package, architecture, size, depends)
-      <<~CONTROL
-        Package: #{package}
-        Version: #{version(identity.version)}
-        Architecture: #{architecture}
-        Maintainer: #{line(identity.publisher || identity.name)}
-        Installed-Size: #{size}
-        Depends: #{depends.join(', ')}
-        Section: misc
-        Priority: optional
-        Description: #{line(identity.name)}
-      CONTROL
+      homepage = identity.homepage
+      fields = [
+        "Package: #{package}",
+        "Version: #{version(identity.version)}",
+        "Architecture: #{architecture}",
+        "Maintainer: #{line(identity.publisher || identity.name)}",
+        "Installed-Size: #{size}",
+        "Depends: #{depends.join(', ')}",
+        "Section: misc",
+        "Priority: optional",
+      ]
+      fields << "Homepage: #{homepage}" if homepage
+      fields << "Description: #{line(identity.description || identity.name)}"
+      "#{fields.join("\n")}\n#{extended(identity.long_description)}"
+    end
+
+    # The extended description's lines, from +text+, as Debian Policy
+    # 5.6.13 writes them: each line after one space, and an empty line as
+    # a space and a full stop. Nothing for +nil+.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Deb.extended("One.\n\nTwo.\n") # => " One.\n .\n Two.\n"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.extended(text)
+      return "" unless text
+
+      text.strip.lines(chomp: true).map { |each| each.strip.empty? ? " .\n" : " #{each.rstrip.tr("\t", ' ')}\n" }.join
     end
 
     # The packages that provide +libraries+, as dpkg-shlibdeps finds

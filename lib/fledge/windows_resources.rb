@@ -27,8 +27,8 @@ module Fledge
   # Windows runtime carries a pinned build of it in its +tools+ folder,
   # which no app holds. It sets FileDescription, ProductName, and
   # InternalName to the app's name, OriginalFilename to its program's,
-  # CompanyName and LegalCopyright when there are a publisher and a
-  # copyright, FileVersion and ProductVersion to the version as written,
+  # CompanyName, LegalCopyright, and Comments when there are a
+  # publisher, a copyright, and a description, FileVersion and ProductVersion to the version as written,
   # whose leading numbers rcedit makes FILEVERSION and PRODUCTVERSION,
   # and the icon. rcedit keeps the launcher's manifest, which makes it
   # aware of long paths and runs it as the person who starts it. A
@@ -103,7 +103,7 @@ module Fledge
     # The version information's strings for +identity+, whose program is
     # +file_name+: FileDescription, which Task Manager shows, and
     # ProductName and InternalName are its name, and OriginalFilename its
-    # program's.
+    # program's; Comments is its description, when it has one.
     #
     # === Example
     #
@@ -118,6 +118,7 @@ module Fledge
     #++
     def self.strings(identity, file_name)
       {
+        "Comments" => identity.description,
         "CompanyName" => identity.publisher,
         "FileDescription" => identity.name,
         "InternalName" => identity.name,

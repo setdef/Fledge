@@ -12,8 +12,11 @@ module Fledge
     attr_reader publisher: String?
     attr_reader copyright: String?
     attr_reader icon: Icon?
+    attr_reader description: String?
+    attr_reader long_description: String?
+    attr_reader homepage: String?
 
-    def self.new: (name: String, kind: String, identifier: String?, version: String, publisher: String?, copyright: String?, icon: Icon?) -> instance
+    def self.new: (name: String, kind: String, identifier: String?, version: String, publisher: String?, copyright: String?, icon: Icon?, description: String?, long_description: String?, homepage: String?) -> instance
 
     def self.from: (config: Config, gemspec: Gem::Specification?, name: String, root: String) -> Identity
 

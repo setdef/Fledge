@@ -331,3 +331,9 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 *Governs:* an agent never opens an account, free or paid, on any service; when one is wanted, an agent asks the maintainer, with suggestions. *Applied in:* AGENTS.md, Questions.
 
+> One third of the reason Fledge exists is to support Lota, which is a faithful port of LÖVE2D to Ruby. Drag-to-fuse is a huge part of why LÖVE2D is successful; CLIs can be scary to newbies.
+
+[re: the orchestrator's answer to Lota's session that Fledge has no single-file mode, no plan for one, and that Lota should assume folder-style output.]
+
+*Governs:* single-file output and a drag-and-drop way to make an app, as LÖVE's fused games have, are in scope for Fledge, because supporting Lota is a main purpose of the project and a command line is a barrier to the people Lota is for; the earlier answer that they are excluded is withdrawn. *Applied in:* Plan 003, "Build from a built app, and the files an app opens".
+

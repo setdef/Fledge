@@ -139,6 +139,91 @@ class MobileOutputTest < Minitest::Test
     end
   end
 
+  LAUNCHER = File.expand_path("../runtime/launcher", __dir__)
+
+  # A host, as an app's would be, of the embedding API (fledge_ruby.c)
+  # linked with the Ruby running these tests, beside the log of PROGRAM:
+  # it forwards its output and runs the Ruby program it is given. This
+  # computer's Ruby reads no ruby_embed_libruby_path, which only the
+  # mobile runtimes' Ruby has, and may keep ruby_init_ext to itself, so
+  # the host defines both, the second weakly, for the linker to prefer
+  # Ruby's own where Ruby exports it; it registers no extension.
+  RUBY_HOST = <<~C
+    #include "fledge_ruby.h"
+    #include "mobile.h"
+    #include <stdio.h>
+
+    const char *ruby_embed_libruby_path;
+    __attribute__((weak)) void ruby_init_ext(const char *name, void (*init)(void)) { (void)name; (void)init; }
+
+    static FILE *log_file;
+
+    int fledge_log_echoes(void) { return 0; }
+    int fledge_log_open(const char *tag) { (void)tag; return 0; }
+    void fledge_log_write(int error, const char *text, size_t length) {
+        fprintf(log_file, "%s %.*s\\n", error ? "E" : "O", (int)length, text);
+        fflush(log_file);
+    }
+
+    int main(int argc, char **argv) {
+        (void)argc;
+        log_file = fopen(argv[1], "w");
+        if (fledge_ruby_forward_output("org.example.App") != 0) return 1;
+        return fledge_ruby_run(argv[2], argv[3], 0, NULL);
+    }
+  C
+
+  # On a phone the log is the only place an app's output goes, so a line
+  # an app's Ruby prints must reach it when it is printed, as it reaches
+  # a terminal under ruby main.rb, not when the program ends: Ruby
+  # buffers its standard output when that is a pipe, as the forwarding
+  # makes it, and writes through only on a terminal (io.c,
+  # io_binwrite_requires_flush_write, at 4.0.9). The program prints a
+  # line with no flush and then sleeps; the line must be in the log while
+  # it sleeps.
+  def test_a_line_ruby_prints_reaches_the_log_while_the_program_runs
+    skip "the mobile embedding API is for iOS and Android, which share POSIX's pipes; Windows has none" if Gem.win_platform?
+    compiler = RbConfig::CONFIG.fetch("CC").split.first
+    skip "no C compiler (#{compiler}) on this computer" unless system(compiler, "--version", out: File::NULL, err: File::NULL)
+
+    Dir.mktmpdir do |dir|
+      program = compile_ruby_host(compiler, dir)
+      script = File.join(dir, "main.rb")
+      File.write(script, "puts \"first\"\nsleep 60\n")
+      log = File.join(dir, "log.txt")
+      pid = Process.spawn(program, log, dir, script, in: File::NULL)
+      begin
+        deadline = Time.now + 20
+        sleep 0.1 until (File.exist?(log) && File.read(log).include?("O first\n")) || Time.now > deadline
+        assert_nil Process.wait2(pid, Process::WNOHANG), "the program ended before the line reached the log"
+        assert_equal "O first\n", File.read(log), "the line did not reach the log within 20 seconds of the start"
+      ensure
+        Process.kill("KILL", pid)
+        Process.wait(pid)
+      end
+    end
+  end
+
+  # Compiles RUBY_HOST in +dir+ with +compiler+, linked with the Ruby
+  # running these tests, and returns the program's path.
+  def compile_ruby_host(compiler, dir)
+    config = RbConfig::CONFIG
+    File.write(File.join(dir, "main.c"), RUBY_HOST)
+    FileUtils.mkdir(File.join(dir, "bin"))
+    File.symlink(config.fetch("libdir"), File.join(dir, "lib"))
+    program = File.join(dir, "bin", "host")
+    sources = [
+      File.join(dir, "main.c"),
+      *%w[fledge_ruby.c output.c].map { |file| File.join(MOBILE, file) },
+      *%w[locale.c config.c].map { |file| File.join(LAUNCHER, file) },
+]
+    libraries = "#{config.fetch('LIBRUBYARG')} #{config.fetch('LIBS')} #{config.fetch('MAINLIBS', '')}".split
+    _, err, status = Open3.capture3(compiler, "-std=gnu11", "-I", MOBILE, "-I", LAUNCHER, "-I", config.fetch("rubyhdrdir"),
+      "-I", config.fetch("rubyarchhdrdir"), *sources, "-L", config.fetch("libdir"), *libraries, "-lpthread", "-o", program)
+    assert status.success?, err
+    program
+  end
+
   # Runs +program+ with +env+, and returns its standard output, its
   # standard error, and its status, failing the test when it has not
   # exited within +seconds+.

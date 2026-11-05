@@ -9,7 +9,9 @@ module Fledge
       @app_names: Array[String]
       @top: String
 
-      def initialize: (String path, platform: Platform, app_names: Array[String], work: String) -> void
+      def initialize: (String path, platform: Platform, app_names: Array[String], work: String, ?only: Array[String]) -> void
+
+      private def members: (Array[String] only) -> Array[String]
 
       def launcher: (String name) -> String
 

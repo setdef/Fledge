@@ -9,7 +9,7 @@ module Fledge
 
     def self.pack: (String folder, to: String) -> String
 
-    def self.unpack: (String archive, into: String) -> String
+    def self.unpack: (String archive, into: String, ?only: Array[String]) -> String
 
     def self.names: (String archive) -> Array[String]
 

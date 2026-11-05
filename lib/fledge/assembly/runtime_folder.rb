@@ -17,16 +17,28 @@ module Fledge
     # runtime, and one whose files the app's own would collide with.
     class RuntimeFolder # :nodoc:
       # Unpacks the runtime archive at +path+ into +work+, for
-      # +platform+'s app whose programs are named +app_names+.
-      def initialize(path, platform:, app_names:, work:)
+      # +platform+'s app whose programs are named +app_names+: all of it,
+      # or with +only+, those of the names in its top folder that it has,
+      # such as its launchers and tools.
+      def initialize(path, platform:, app_names:, work:, only: [])
         @path = path
         @platform = platform
         @app_names = app_names
-        unpacked = Archive.unpack(path, into: File.join(work, "runtime"))
+        unpacked = Archive.unpack(path, into: File.join(work, "runtime"), only: members(only))
         tops = Dir.children(unpacked).sort
         raise Error, "#{path} is not a Fledge runtime: it holds both #{tops[0]}/ and #{tops[1]}" if tops.size > 1
 
         @top = File.join(unpacked, tops.first.to_s)
+      end
+
+      # The paths in the archive of the names +only+ in its top folder that
+      # it holds.
+      private def members(only)
+        return [] if only.empty?
+
+        names = Archive.names(@path).map { |name| name.chomp("/") }
+        top = names.first.to_s[%r{\A[^/]+}]
+        only.map { |name| "#{top}/#{name}" } & names
       end
 
       # The path of the runtime's launcher named +name+ (before the

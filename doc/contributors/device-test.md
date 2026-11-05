@@ -98,7 +98,7 @@ xcrun devicectl device process launch --device 'YOUR IPAD NAME' com.setdef.fledg
 
 ### What you should see
 
-The screen fills with a color that cycles through the rainbow once every four seconds, with a white square in the middle. Touch the screen: the square jumps to your finger and follows it. About a second and a half after your first touch the game ends, and with it the app: you are back on the Home Screen. That is the program ending, not a crash. Untouched, it ends after a minute.
+The screen fills with a color that cycles through the rainbow once every four seconds, with a white square in the middle. Touch the screen: the square jumps to your finger and follows it. About a second and a half after your first touch the game ends. The app stays open on its last frame, because SDL keeps UIKit's run loop going after the program returns (Lota's CI measured this in the Simulator: the process outlives the log line `exited with status 0`, and `simctl launch` only brings it forward); press the Home button to leave it. That is the program ending, not a crash. A device has not been checked, so if the app returns to the Home Screen by itself, note that in the results table. Untouched, it ends after a minute.
 
 ### What to capture
 

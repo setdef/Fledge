@@ -46,6 +46,7 @@ $manifest = Join-Path $bin 'lvp_icd.json'
 $lavapipe['VK_DRIVER_FILES'] = $manifest
 $lavapipe['VK_ICD_FILENAMES'] = $manifest
 $lavapipe['LOTA_TRIAL_RENDERERS'] = 'vulkan'
+$lavapipe['LOVE_GRAPHICS_VULKAN_ALLOW_SOFTWARE'] = '1'
 Register-Driver $manifest
 $null = Run-App 'reference-window-mesa-lavapipe' $ruby $lavapipe @($main) 2.5 90
 Collect-Frame 'reference-window-mesa-lavapipe'

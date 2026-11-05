@@ -95,7 +95,7 @@ Collect-Frame 'window-windows-opengl'
 function Soft-Settings([string] $Kind, [string] $Folder) {
   if ($Kind -eq 'llvmpipe') { return @{ GALLIUM_DRIVER = 'llvmpipe' } }
   $manifest = Join-Path $Folder 'lvp_icd.json'
-  @{ VK_DRIVER_FILES = $manifest; VK_ICD_FILENAMES = $manifest; LOTA_TRIAL_RENDERERS = 'vulkan' }
+  @{ VK_DRIVER_FILES = $manifest; VK_ICD_FILENAMES = $manifest; LOTA_TRIAL_RENDERERS = 'vulkan'; LOVE_GRAPHICS_VULKAN_ALLOW_SOFTWARE = '1' }
 }
 $expected = if ($Platform -eq 'aarch64-mingw-ucrt') { 'lavapipe' } else { 'llvmpipe' }
 $expectedRenderer = if ($expected -eq 'lavapipe') { 'renderer: Vulkan' } else { 'renderer: OpenGL' }

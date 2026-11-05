@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+
+# Experiment only: Fledge as an ordinary gem, from the folder the
+# workflow unpacks this checkout's gem into.
+source "https://rubygems.org"
+
+gem "fledge", path: "../fledge"

@@ -1,0 +1,150 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Experiment only (experiment/build-from), never for trunk: can an app
+# built with Fledge's own gem inside it, as an ordinary gem, run fledge
+# build --from from inside itself, on a computer that never ran fledge
+# build and has no Ruby, from a folder whose name has spaces and
+# characters outside ASCII, on all seven desktop platforms (ADR 032,
+# sections 2 and 4)? The runtimes are trunk's, from CI run RUN at
+# 59b1a45, whose launchers this branch does not change.
+
+name: build-from
+
+on:
+  push:
+    branches: ["experiment/build-from"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  RUN: "42023152148"
+  MISE_RUBY_COMPILE: "false"
+  ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
+  ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  builder:
+    name: builder (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, platform: arm64-darwin }
+          - { os: ubuntu-24.04, platform: x86_64-linux }
+          - { os: ubuntu-24.04-arm, platform: aarch64-linux }
+          - { os: ubuntu-24.04, platform: x86_64-linux-musl }
+          - { os: ubuntu-24.04-arm, platform: aarch64-linux-musl }
+          - { os: windows-latest, platform: x64-mingw-ucrt }
+          - { os: windows-11-arm, platform: aarch64-mingw-ucrt }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: runtimes
+          run-id: ${{ env.RUN }}
+          github-token: ${{ github.token }}
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        if: runner.os != 'Windows' && !endsWith(matrix.platform, '-musl')
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Read the Ruby pin
+        if: runner.os == 'Windows'
+        id: pins
+        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        if: runner.os == 'Windows'
+        with:
+          ruby-version: ${{ steps.pins.outputs.ruby }}
+
+      - name: Build the builder app, with this checkout's fledge as a gem in its Gemfile
+        if: "!endsWith(matrix.platform, '-musl')"
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ github.workspace }}/runtimes
+        run: .github/build_from/prepare.sh "$RUNNER_TEMP/build-from" "${{ matrix.platform }}"
+
+      - name: Build the builder app in Alpine
+        if: endsWith(matrix.platform, '-musl')
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes "$ALPINE_RUBY"
+          sh -c '.github/scripts/alpine-packages.sh apps && git config --global --add safe.directory /fledge &&
+          .github/build_from/prepare.sh /tmp/build-from ${{ matrix.platform }}'
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: builder-${{ matrix.platform }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+          if-no-files-found: error
+
+  prove:
+    name: prove (${{ matrix.platform }})
+    needs: builder
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, platform: arm64-darwin }
+          - { os: ubuntu-24.04, platform: x86_64-linux }
+          - { os: ubuntu-24.04-arm, platform: aarch64-linux }
+          - { os: ubuntu-24.04, platform: x86_64-linux-musl }
+          - { os: ubuntu-24.04-arm, platform: aarch64-linux-musl }
+          - { os: windows-latest, platform: x64-mingw-ucrt }
+          - { os: windows-11-arm, platform: aarch64-mingw-ucrt }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: builder-${{ matrix.platform }}
+          path: delivered
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: runner.os == 'Windows'
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: ${{ runner.temp }}/runtimes
+          run-id: ${{ env.RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Run fledge build --from inside the builder with no Ruby, and run what it wrote
+        if: runner.os != 'Windows' && !endsWith(matrix.platform, '-musl')
+        run: .github/build_from/prove.sh "${{ matrix.platform }}" "$PWD/delivered/Builder-${{ matrix.platform }}.tar.gz" "$PWD/.github/build_from/game"
+
+      - name: Run fledge build --from inside the builder on Alpine with no Ruby installed, and run what it wrote
+        if: endsWith(matrix.platform, '-musl')
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work "$ALPINE"
+          sh .github/build_from/prove.sh "${{ matrix.platform }}" "/work/delivered/Builder-${{ matrix.platform }}.tar.gz" /work/.github/build_from/game
+
+      - name: Run fledge build --from inside the builder with no Ruby, and run what it wrote
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/build_from/prove.ps1 -Platform ${{ matrix.platform }}
+          -Archive "$PWD\delivered\Builder-${{ matrix.platform }}.zip" -Game "$PWD\.github\build_from\game"
+          -Runtimes "$env:RUNNER_TEMP\runtimes"

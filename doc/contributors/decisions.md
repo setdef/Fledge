@@ -325,3 +325,9 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 *Governs:* nothing is pushed to RubyGems.org before 1.0.0; every release, before and after, has its git tag and the GitHub Release made from it; from 1.0.0 a release is also on RubyGems.org, and "not relying" means only that. *Applied in:* AGENTS.md, Releasing; ADR 028, section 7; ADR 029, section 2; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 
+> Absolutely not. If you want a second host, you come to me asking (optionally with suggestions).
+
+[re: the orchestrator's question whether an agent may open a free account on a second host for Fledge's release files.]
+
+*Governs:* an agent never opens an account, free or paid, on any service; when one is wanted, an agent asks the maintainer, with suggestions. *Applied in:* AGENTS.md, Questions.
+

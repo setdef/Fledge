@@ -10,6 +10,7 @@ require_relative "download"
 require_relative "entry"
 require_relative "error"
 require_relative "archive"
+require_relative "runtime_gem"
 require_relative "version"
 
 module Fledge
@@ -23,15 +24,19 @@ module Fledge
   # would be slow, and Fledge's own CI builds apps from runtimes that no
   # release holds yet.
   #
-  # This class looks in three places, in order. When the environment
+  # This class looks in four places, in order. When the environment
   # variable +FLEDGE_RUNTIME_DIR+ names a folder, the runtime comes from
   # there and nowhere else, which is how CI and Fledge's own development
-  # build apps from runtimes they just built. Otherwise it looks in a
-  # cache (<tt>$XDG_CACHE_HOME/fledge/runtimes</tt>, or
+  # build apps from runtimes they just built. Otherwise it looks in the
+  # installed gem that carries the runtime (Fledge::RuntimeGem, ADR 030)
+  # at this Fledge's version, which the gem +fledge+ depends on when it
+  # comes from a gem server. Then it looks in a cache
+  # (<tt>$XDG_CACHE_HOME/fledge/runtimes</tt>, or
   # <tt>~/.cache/fledge/runtimes</tt>), and if the runtime is not there,
-  # it downloads it from this version's GitHub Release into the cache.
+  # it downloads it from this version's GitHub Release into the cache,
+  # which is how a Fledge installed from a git tag gets it.
   #
-  # Either way, a runtime from the cache or a download must have the
+  # A runtime from a gem, the cache, or a download must have the
   # SHA-256 this gem pins for it in +PINS+, which the release workflow
   # wrote from the very runtimes it then published (ADR 014). The
   # release's own +SHA256SUMS+ catches a damaged download, but a release
@@ -124,11 +129,16 @@ module Fledge
     # [log] Where to say that a download is starting, or +nil+.
     # [pins] The file of SHA-256s to check runtimes against (default:
     #        PINS).
-    def initialize(env: ENV, release_url: "#{RELEASES}/v#{VERSION}", log: nil, pins: PINS)
+    # [gems] The installed gems to look for a runtime gem in, anything
+    #        with RubyGems' +find_all_by_name+ (default:
+    #        Gem::Specification, the gems RubyGems, or Bundler under
+    #        <tt>bundle exec</tt>, gives this program).
+    def initialize(env: ENV, release_url: "#{RELEASES}/v#{VERSION}", log: nil, pins: PINS, gems: Gem::Specification)
       @env = env
       @release_url = release_url
       @log = log
       @pins = pins
+      @gems = gems
     end
 
     # The path of the runtime archive for +platform+, downloading it
@@ -147,7 +157,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def archive(platform)
-      find(self.class.file_name(platform))
+      find(platform, self.class.file_name(platform))
     end
 
     # The path of the build-only companion of +platform+'s runtime
@@ -168,14 +178,17 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def dev_archive(platform)
-      find(self.class.dev_file_name(platform))
+      find(platform, self.class.dev_file_name(platform))
     end
 
-    private def find(name)
+    private def find(platform, name)
       directory = @env["FLEDGE_RUNTIME_DIR"].to_s
       return from_directory(directory, name) unless directory.empty?
 
       sha256 = pin(name)
+      installed = from_gem(RuntimeGem.for(platform), name, sha256)
+      return installed if installed
+
       cached = File.join(cache, name)
       return cached if File.file?(cached) && pinned?(cached, sha256)
 
@@ -207,6 +220,20 @@ module Fledge
       return path if File.file?(path)
 
       raise Error, "FLEDGE_RUNTIME_DIR is #{directory}, which has no #{name}"
+    end
+
+    # The path of +name+ in the installed runtime +gem+ of this version,
+    # or +nil+ when no such gem holds it. A file there that does not
+    # match its pin raises Fledge::Error.
+    private def from_gem(gem, name, sha256)
+      path = @gems.find_all_by_name(gem.name, "= #{VERSION}")
+        .map { |spec| File.join(spec.full_gem_path, RuntimeGem::FOLDER, name) }
+        .find { |candidate| File.file?(candidate) }
+      return nil unless path
+      return path if Digest::SHA256.file(path).hexdigest == sha256
+
+      raise Error, "#{path}, in the gem #{gem.name} #{VERSION}, does not match the SHA-256 this Fledge pins for it. " \
+        "Restore the gem with: gem pristine #{gem.name} --version #{VERSION}"
     end
 
     private def pinned?(cached, sha256)

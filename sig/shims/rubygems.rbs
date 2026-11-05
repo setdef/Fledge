@@ -11,6 +11,10 @@ module Gem
   class Specification
     def self.load: (String file) -> Gem::Specification?
 
+    def self.find_all_by_name: (String name, *String requirements) -> Array[Gem::Specification]
+
+    def full_gem_path: () -> String
+
     attr_accessor name: String
     attr_accessor version: Gem::Version
     attr_accessor platform: String

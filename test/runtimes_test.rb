@@ -6,6 +6,7 @@
 #++
 
 require_relative "test_helper"
+require_relative "support/gems"
 require_relative "support/loopback_server"
 require "digest"
 require "stringio"
@@ -158,6 +159,78 @@ class RuntimesTest < Minitest::Test
     end
   end
 
+  # A Fledge installed from a gem server has its runtime from the gem it
+  # depends on (ADR 030): a real gem, installed by RubyGems into an empty
+  # gem folder, is where the runtime comes from, with no download and
+  # nothing written to the cache.
+  def test_a_runtime_in_an_installed_runtime_gem_is_used_without_a_download
+    local = Fledge::Platform.local
+    Dir.mktmpdir do |dir|
+      runtime = File.binread(FakeRuntime.write(dir, local))
+      dev = "headers"
+      name = Fledge::Runtimes.file_name(local)
+      gems = install_runtime_gem(dir, local, { name => runtime, Fledge::Runtimes.dev_file_name(local) => dev })
+      home = File.join(dir, "home")
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: "http://127.0.0.1:1", log: StringIO.new,
+        pins: write_pins(dir, name => runtime, Fledge::Runtimes.dev_file_name(local) => dev), gems:)
+
+      path = runtimes.archive(local)
+      assert_equal File.join(dir, "gems", "gems", "fledge-runtime-#{Fledge::VERSION}-#{Fledge::RuntimeGem.for(local).platform}",
+        "runtime", name), path
+      assert_equal runtime, File.binread(path)
+      assert_equal dev, File.binread(runtimes.dev_archive(local))
+      refute_path_exists File.join(home, ".cache")
+    end
+  end
+
+  # A phone's runtime is a gem of its own, for any computer.
+  def test_a_phones_runtime_comes_from_its_own_gem
+    ios = Fledge::MobilePlatform.find("ios")
+    Dir.mktmpdir do |dir|
+      runtime = File.binread(FakeRuntime.write_mobile(dir, ios))
+      name = Fledge::Runtimes.file_name(ios)
+      gems = install_runtime_gem(dir, ios, { name => runtime })
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => dir }, release_url: "http://127.0.0.1:1", pins: write_pins(dir, name => runtime), gems:)
+
+      assert_equal File.join(dir, "gems", "gems", "fledge-runtime-ios-#{Fledge::VERSION}", "runtime", name), runtimes.archive(ios)
+    end
+  end
+
+  # RubyGems checked the gem's files when it installed them, but the
+  # installed folder is as writable as the cache; a file there that is
+  # not the one pinned is refused, naming the command that restores it.
+  def test_a_runtime_in_an_installed_gem_that_does_not_match_its_pin_fails
+    local = Fledge::Platform.local
+    Dir.mktmpdir do |dir|
+      name = Fledge::Runtimes.file_name(local)
+      gems = install_runtime_gem(dir, local, { name => "changed after it was installed" })
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => dir }, release_url: "http://127.0.0.1:1",
+        pins: write_pins(dir, name => "the released runtime"), gems:)
+
+      error = assert_raises(Fledge::Error) { runtimes.archive(local) }
+      assert_equal "#{File.join(dir, 'gems', 'gems', "fledge-runtime-#{Fledge::VERSION}-#{Fledge::RuntimeGem.for(local).platform}",
+        'runtime', name)}, in the gem fledge-runtime #{Fledge::VERSION}, does not match the SHA-256 this Fledge pins for it. " \
+        "Restore the gem with: gem pristine fledge-runtime --version #{Fledge::VERSION}", error.message
+    end
+  end
+
+  # Only the runtime gem of this Fledge's own version holds its runtime;
+  # another version's is not looked in, and the runtime downloads.
+  def test_a_runtime_gem_of_another_version_is_not_used
+    local = Fledge::Platform.local
+    Dir.mktmpdir do |dir|
+      name = Fledge::Runtimes.file_name(local)
+      gems = install_runtime_gem(dir, local, { name => "runtime" }, version: "999.0.0")
+      server = LoopbackServer.new("/v/#{name}" => [200, {}, "runtime"])
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => dir }, release_url: server.url("/v"), pins: write_pins(dir, name => "runtime"), gems:)
+
+      assert_equal File.join(dir, ".cache/fledge/runtimes", name), runtimes.archive(local)
+      assert_equal ["/v/#{name}"], server.requests
+    ensure
+      server&.stop
+    end
+  end
+
   # The pins the gem ships are SHA256SUMS lines, as sha256sum -c reads
   # them, for one version's release assets.
   def test_the_shipped_pins_are_one_releases_sha256sums
@@ -171,6 +244,16 @@ class RuntimesTest < Minitest::Test
     assert_equal 1, versions.uniq.size, "the pins are for one version"
     names = lines.map { |line| line.split("  ", 2).last }
     assert_equal names.sort, names
+  end
+
+  # Builds +target+'s runtime gem with +assets+ (file name => contents)
+  # in its runtime folder, installs it into +dir+/gems, and returns that
+  # folder's record of installed gems.
+  private def install_runtime_gem(dir, target, assets, version: Fledge::VERSION)
+    gem = Fledge::RuntimeGem.for(target)
+    built = FakeGem.build(dir, gem.name, version, platform: gem.platform,
+      files: assets.transform_keys { |name| "#{Fledge::RuntimeGem::FOLDER}/#{name}" })
+    FakeGem.install(built.path, File.join(dir, "gems"))
   end
 
   private def write_pins(dir, bodies)

@@ -282,7 +282,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the orchestrator's question whether major versions after 1.0 are the maintainer's decision, and its comparison of four ways to release them.]
 
-*Governs:* from 1.0.0, Fledge is released on RubyGems.org, by a human; the release does not rely on a GitHub Release or a git tag. Agents prepare a release and never publish it. *Applied in:* Plan 003, "Fledge as gems on RubyGems.org" and "1.0"; AGENTS.md, Releasing.
+*Governs:* from 1.0.0, Fledge is also released on RubyGems.org, by a human, so a release can be found there as well as by its git tag and GitHub Release; before 1.0.0 it is found only by its tag and GitHub Release, and nothing is pushed to RubyGems.org (the maintainer's explanation of 2026-11-04, below). Agents prepare a release and never publish it. *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; AGENTS.md, Releasing.
 
 > I can buy that for now, but will easily be swayed by the first app dev who gets upset by the deviation. And we shouldn't be cagey about it or hide it.
 
@@ -304,11 +304,24 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: question B in `questions.md`, whether a release from 1.0 on still gets a git tag.]
 
-*Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it. *Applied in:* ADR 028; Plan 003, "Fledge as gems on RubyGems.org" and "1.0".
+*Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it. *Applied in:* ADR 028; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 
 > winget, Chocolatey, Scoop, brew, apt-get, pacman, dnf, etc. are all very relevant for Ruby console apps.
 
 [re: the orchestrator's relay of a research agent's proposal to record in an ADR that Fledge does not target Flathub or the distributions' archives, and its note that Homebrew, winget, Chocolatey, and Scoop were never researched.]
 
 *Governs:* the package managers (winget, Chocolatey, Scoop, Homebrew, apt-get, pacman, dnf, and others) are in scope for Fledge's console apps; a decision that Fledge does not target them is not made, and none is to be recorded. *Applied in:* `doc/contributors/research/2026-11-04-app-stores.md` (which the package managers extend); Plan 003.
+
+## 2026-11-04
+
+The maintainer wrote this after the orchestrating agent had misread the sentence of 2026-11-03 above ("not relying on GitHub Releases and git tags"). It is quoted in part: the dictionary definitions of "rely", "dependent", "require", and "necessity" that followed it are left out.
+
+> Prior to 1.0.0, this gem would not release via RubyGems by using `gem push`. This is because prior to 1.0.0 I don't know if it'll succeed and I don't want to be a name squatter with a failed project.
+> Both before and after 1.0.0, it is expected that, like RatatuiRuby before, all releases will be findable via git tags in the source repos, which automatically become GitHub Relaeses.
+> Only before 1.0.0, that is the _only_ way they'll be findable, so releases **rely** on GitHub Releases / git tags.
+> After 1.0.0, that is _one way_ they'll be findable, so releases do not **rely** on GitHub Releases / git tags, they can be found another way too.
+
+[re: the orchestrator's account of what the sentence of 2026-11-03 meant, and its design of several gem names that carried Fledge's runtimes.]
+
+*Governs:* nothing is pushed to RubyGems.org before 1.0.0; every release, before and after, has its git tag and the GitHub Release made from it; from 1.0.0 a release is also on RubyGems.org, and "not relying" means only that. *Applied in:* AGENTS.md, Releasing; ADR 028, section 7; ADR 029, section 2; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 

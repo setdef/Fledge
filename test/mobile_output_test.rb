@@ -191,15 +191,20 @@ class MobileOutputTest < Minitest::Test
       script = File.join(dir, "main.rb")
       File.write(script, "puts \"first\"\nsleep 60\n")
       log = File.join(dir, "log.txt")
-      pid = Process.spawn(program, log, dir, script, in: File::NULL)
+      errors = File.join(dir, "errors.txt")
+      pid = Process.spawn(program, log, dir, script, in: File::NULL, err: errors)
       begin
         deadline = Time.now + 20
         sleep 0.1 until (File.exist?(log) && File.read(log).include?("O first\n")) || Time.now > deadline
-        assert_nil Process.wait2(pid, Process::WNOHANG), "the program ended before the line reached the log"
-        assert_equal "O first\n", File.read(log), "the line did not reach the log within 20 seconds of the start"
+        assert_nil Process.wait2(pid, Process::WNOHANG), "the program ended before the line reached the log: #{File.read(errors)}"
+        assert_equal "O first\n", File.read(log), "the line did not reach the log within 20 seconds of the start: #{File.read(errors)}"
       ensure
-        Process.kill("KILL", pid)
-        Process.wait(pid)
+        begin
+          Process.kill("KILL", pid)
+          Process.wait(pid)
+        rescue Errno::ESRCH, Errno::ECHILD
+          nil
+        end
       end
     end
   end
@@ -219,7 +224,7 @@ class MobileOutputTest < Minitest::Test
 ]
     libraries = "#{config.fetch('LIBRUBYARG')} #{config.fetch('LIBS')} #{config.fetch('MAINLIBS', '')}".split
     _, err, status = Open3.capture3(compiler, "-std=gnu11", "-I", MOBILE, "-I", LAUNCHER, "-I", config.fetch("rubyhdrdir"),
-      "-I", config.fetch("rubyarchhdrdir"), *sources, "-L", config.fetch("libdir"), *libraries, "-lpthread", "-o", program)
+      "-I", config.fetch("rubyarchhdrdir"), *sources, "-L", config.fetch("libdir"), *libraries, "-Wl,-rpath,#{config.fetch('libdir')}", "-lpthread", "-o", program)
     assert status.success?, err
     program
   end

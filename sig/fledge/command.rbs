@@ -6,5 +6,7 @@ module Fledge
     def self.run: (*String command, install: String, ?env: Hash[String, String?]) -> String
 
     def self.read: (*String command, install: String, ?chdir: String) -> String
+
+    private def self.text: (String output) -> String
   end
 end

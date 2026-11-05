@@ -59,7 +59,7 @@ module Fledge
       output, status = Open3.capture2e(env, *command)
       return output if status.success?
 
-      raise Error, "#{File.basename(command.first.to_s)} failed (#{status}):\n#{output.strip}"
+      raise Error, "#{File.basename(command.first.to_s)} failed (#{status}):\n#{text(output)}"
     rescue SystemCallError => e
       raise Error, "fledge build needs #{File.basename(command.first.to_s)}, which it could not run (#{e.message}). #{install}"
     end
@@ -82,9 +82,17 @@ module Fledge
       output, error, status = Open3.capture3(*command, binmode: true, chdir:)
       return output if status.success?
 
-      raise Error, "#{File.basename(command.first.to_s)} failed (#{status}):\n#{error.strip}"
+      raise Error, "#{File.basename(command.first.to_s)} failed (#{status}):\n#{text(error)}"
     rescue SystemCallError => e
       raise Error, "fledge build needs #{File.basename(command.first.to_s)}, which it could not run (#{e.message}). #{install}"
+    end
+
+    # +output+, a tool's, as text: a tool writes in the encoding of its
+    # console, such as Windows' OEM code page, which need not be UTF-8,
+    # so bytes that are not UTF-8 become U+FFFD rather than fail the
+    # message that quotes them.
+    private_class_method def self.text(output)
+      output.dup.force_encoding(Encoding::UTF_8).scrub.strip
     end
   end
 end

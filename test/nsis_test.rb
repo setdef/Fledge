@@ -109,6 +109,18 @@ class NsisTest < Minitest::Test
     assert_includes lines, "  WriteRegStr HKCU #{key} \"HelpLink\" \"https://example.com/$$app\""
   end
 
+  # A license text is Modern UI's license page, before the folder page,
+  # read from a file with a byte order mark and DOS line endings; with
+  # none there is no such page.
+  def test_a_license_is_a_page_before_the_folder
+    refute_match(/MUI_PAGE_LICENSE/, script)
+    lines = setup_program.script(icon: nil, license: File.join(@dist, "license.txt")).lines.map(&:chomp)
+    page = lines.index("!insertmacro MUI_PAGE_LICENSE #{"\"#{Fledge::Nsis.host_path(File.join(@dist, 'license.txt'))}\""}")
+    assert page
+    assert_equal "!insertmacro MUI_PAGE_DIRECTORY", lines[page.to_i + 1]
+    assert_equal "#{Fledge::Nsis::BOM}MIT\r\n\r\nCopyright ©\r\n", Fledge::Nsis.license_text("MIT\n\r\nCopyright ©\n")
+  end
+
   def test_a_new_version_runs_the_old_uninstaller_first
     assert_includes script, "  ExecWait '\"$INSTDIR\\uninstall.exe\" /S _?=$INSTDIR'\n"
   end

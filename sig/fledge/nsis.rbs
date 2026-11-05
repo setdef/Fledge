@@ -6,15 +6,19 @@ module Fledge
     UNINSTALL_KEY: String
     UNINSTALLER: String
     MAKENSIS: String
+    BOM: String
 
     @identity: Identity
     @folder: String
     @to: String
     @signing: WindowsSigning?
+    @license: String?
 
-    def initialize: (identity: Identity, folder: String, to: String, ?signing: WindowsSigning?) -> void
+    def initialize: (identity: Identity, folder: String, to: String, ?signing: WindowsSigning?, ?license: String?) -> void
 
-    def script: (icon: String?) -> String
+    def script: (icon: String?, ?license: String?) -> String
+
+    def self.license_text: (String text) -> String
 
     def write: (String? tools) -> String
 

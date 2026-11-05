@@ -58,7 +58,9 @@ module Fledge
     # +identity+ and whose built folder is +folder+, for +platform+, to
     # +to+, and returns +to+. +system_libraries+ are the libraries the
     # app's gems load from the distribution (Config::Linux), whose
-    # packages the <tt>.deb</tt> depends on. Raises Fledge::Error when
+    # packages the <tt>.deb</tt> depends on. +license+ is the app's license
+    # text, and +changelog+ the path of its changelog, or +nil+ for none
+    # (#documents). Raises Fledge::Error when
     # this computer has no dpkg-deb, or no dpkg-shlibdeps when it needs
     # one, or either fails.
     #
@@ -73,11 +75,12 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(identity:, folder:, platform:, to:, system_libraries: [])
+    def self.write(identity:, folder:, platform:, to:, system_libraries: [], license: nil, changelog: nil)
       package = package_name(identity)
       Dir.mktmpdir("fledge-deb") do |work|
         root = File.join(work, "root")
         lay_out(root, folder, identity, package)
+        documents(root, package, license:, changelog:)
         control = File.join(root, "DEBIAN")
         FileUtils.mkdir_p(control, mode: 0o755)
         depends = ["libc6 (>= #{Platform::GLIBC_MINIMUM})", *dependencies(work, root, system_libraries)]
@@ -141,6 +144,29 @@ module Fledge
       share = File.join(app, "share")
       Dir.children(share).each { |child| FileUtils.mv(File.join(share, child), File.join(root, "usr", "share", child)) } if File.directory?(share)
       FileUtils.rmdir(share) if File.directory?(share)
+    end
+
+    # Writes <tt>/usr/share/doc/PACKAGE</tt>: +license+, the app's license
+    # text, as +copyright+, uncompressed, as Debian Policy 12.5 asks of
+    # that file, and the file at +changelog+ as <tt>changelog.gz</tt>, the
+    # name 12.7 gives the changelog of a package with no separate
+    # upstream, compressed with <tt>gzip -9</tt> as 12.7 asks and
+    # <tt>-n</tt>, which leaves out gzip's name and time, so the same
+    # changelog makes the same bytes. Nothing when both are +nil+.
+    private_class_method def self.documents(root, package, license:, changelog:)
+      return unless license || changelog
+
+      doc = File.join(root, "usr", "share", "doc", package)
+      FileUtils.mkdir_p(doc, mode: 0o755)
+      if license
+        File.binwrite(File.join(doc, "copyright"), license)
+        File.chmod(0o644, File.join(doc, "copyright"))
+      end
+      return unless changelog
+
+      FileUtils.cp(changelog, File.join(doc, "changelog"))
+      File.chmod(0o644, File.join(doc, "changelog"))
+      Command.run("gzip", "-n", "-9", File.join(doc, "changelog"), install: "Install gzip, which every Linux distribution has.")
     end
 
     # The +control+ file: Debian Policy 5.3's mandatory fields and

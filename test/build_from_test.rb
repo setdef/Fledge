@@ -252,7 +252,7 @@ class BuildFromTest < Minitest::Test
     from = built_player
     {
       "programs:\n  - path: main.rb\n" => "programs",
-      "linux:\n  system_libraries: [libz.so.1]\n" => "linux",
+      "linux:\n  system_libraries: [libz.so.1]\n" => "linux: system_libraries",
     }.each do |config, key|
       FileUtils.rm_rf(File.join(@dir, "game"))
       game(config)

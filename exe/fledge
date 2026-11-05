@@ -119,8 +119,9 @@
 #                        PATH's project may have no Gemfile, gems.rb,
 #                        or gemspec, nor a file where APP keeps one
 #                        Bundler needs, and its fledge.yml no programs,
-#                        linux, ios, or android, which change the
-#                        runtime or the gems. An APP another Fledge
+#                        linux: system_libraries, ios, or android,
+#                        which change the runtime or the gems. An APP
+#                        another Fledge
 #                        release built, or built for another system,
 #                        is a usage error.
 #     build ios          Write an Xcode project for the app, for iPhone
@@ -220,6 +221,11 @@
 #                        homepage: the app's web page, an http or https
 #                          URL: a .deb's Homepage, and the links of the
 #                          setup program's entry in Windows' Settings
+#                        license_file: the app's license text, a UTF-8
+#                          file in ROOT, such as LICENSE.txt, which the
+#                          setup program shows on a page before it
+#                          installs, and a .deb installs as
+#                          /usr/share/doc/PACKAGE/copyright
 #                        installers: which of dmg, nsis, appimage, and
 #                          deb a windowed app gets, such as [dmg] or []
 #                          for none (default: dmg, nsis, and appimage)
@@ -249,6 +255,10 @@
 #                          one that none needs; a .deb depends on their
 #                          packages; the app names one a computer
 #                          lacks, and exits with 72, before Ruby starts.
+#                          It may also hold deb_changelog, the app's
+#                          changelog, a file in ROOT, which a .deb
+#                          installs as /usr/share/doc/PACKAGE/
+#                          changelog.gz, compressed with gzip -n -9.
 #                          Other builds ignore it.
 #                        macos: a mapping of build, the build number
 #                          a windowed app's Info.plist gives as
@@ -336,7 +346,9 @@
 #                        makes a Start menu shortcut whose
 #                        AppUserModelID is the identifier, offers a
 #                        desktop shortcut, and registers an uninstaller.
-#                        /S installs silently.
+#                        With a license_file, it shows the license
+#                        first, for the person to accept. /S installs
+#                        silently, with no page at all.
 #     DIR/NAME-PLATFORM.AppImage
 #                        A windowed app's AppImage for Linux, which runs
 #                        from its own FUSE mount, as every AppImage
@@ -348,7 +360,9 @@
 #                        aarch64-linux, when fledge.yml lists deb:
 #                        apt install ./FILE puts the app in
 #                        /usr/lib/IDENTIFIER, with its desktop entry
-#                        and icons where desktops look, and needs
+#                        and icons where desktops look, and its
+#                        license_file and deb_changelog in
+#                        /usr/share/doc/PACKAGE, and needs
 #                        glibc 2.39 or newer; apt remove removes it.
 #                        It depends on libc6, and on the packages that
 #                        provide the libraries linux: system_libraries

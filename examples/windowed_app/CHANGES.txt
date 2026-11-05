@@ -1,0 +1,7 @@
+Hello Window 1.2.3
+
+  * Says what it is: a description, a homepage, and this changelog.
+
+Hello Window 1.2.2
+
+  * Writes its report where it is told.

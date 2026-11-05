@@ -214,3 +214,11 @@ SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception"
 path = ["test/fixtures/binaries/*.so", "test/fixtures/binaries/*.bundle", "test/fixtures/binaries/*.dll", "test/fixtures/binaries/*.exe"]
 SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# The windowed example's license text and changelog, which its setup
+# program shows and its .deb installs as they are, so a header in them
+# would be shown and installed too.
+[[annotations]]
+path = ['examples/windowed_app/LICENSE.txt', 'examples/windowed_app/CHANGES.txt']
+SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-License-Identifier = "MIT-0"

@@ -120,11 +120,12 @@ version: "1.0.0"
 icon: icons/app                     # icons/app.icns, icons/app.ico, icons/app-16.png to -512.png
 description: Keeps your notes
 homepage: https://example.com/my-cool-app
+license_file: LICENSE.txt
 installers: [dmg, nsis, appimage, deb]
 ```
 <!-- SPDX-SnippetEnd -->
 
-macOS, Windows, and Linux show your app's name, icon, and version in their usual places. Linux menus show the description as a tooltip, and Windows in a program's properties; a `.deb` carries it, and a `long_description` of paragraphs after it, for `apt show` and software centers, and the homepage too, which Windows' Settings links to from the installed app. A Mac app's build number, which the App Store and updaters compare, is the version's first three numbers unless `macos: build` gives one, such as `"1.2.417"`. Each system takes its own icon file, as you make it: one `.icns`, one `.ico`, and for Linux a PNG of each size you have, of 16, 32, 64, 128, 256, and 512 pixels, where a desktop scales the nearest one for the rest and `fledge build` names the sizes it lacks. [`examples/windowed_app`](examples/windowed_app) is a complete example, and `--help` lists every key.
+macOS, Windows, and Linux show your app's name, icon, and version in their usual places. Linux menus show the description as a tooltip, and Windows in a program's properties; a `.deb` carries it, and a `long_description` of paragraphs after it, for `apt show` and software centers, and the homepage too, which Windows' Settings links to from the installed app. The license text, a UTF-8 file, is a page the Windows setup program shows before it installs, and the `.deb`'s copyright file; `linux: deb_changelog` adds your changelog to the `.deb` as well. A Mac app's build number, which the App Store and updaters compare, is the version's first three numbers unless `macos: build` gives one, such as `"1.2.417"`. Each system takes its own icon file, as you make it: one `.icns`, one `.ico`, and for Linux a PNG of each size you have, of 16, 32, 64, 128, 256, and 512 pixels, where a desktop scales the nearest one for the rest and `fledge build` names the sizes it lacks. [`examples/windowed_app`](examples/windowed_app) is a complete example, and `--help` lists every key.
 
 Your editor can check `fledge.yml` as you type. With Red Hat's YAML language server, which VS Code's YAML extension runs, make this the file's first line, with the tag your `Gemfile` names, and the editor completes each key and marks what `fledge build` would refuse:
 
@@ -177,7 +178,7 @@ dist/MyGame-arm64-darwin.tar.gz
 ```
 <!-- SPDX-SnippetEnd -->
 
-The new app runs `my_game`'s program with the `Gemfile`, `Gemfile.lock`, and gems of `Player`, and gets `my_game`'s own name, identity, archive, and installers, as `fledge build` would write them; nothing of `Player`'s project or identity stays. `my_game` may have no `Gemfile` or gemspec, and its `fledge.yml` no `programs`, `linux`, `ios`, or `android`, since those change the runtime or the gems. `--from` takes only an app built by the same Fledge release, for the platform you build on. On Windows it also needs that release's runtime on the computer, in `FLEDGE_RUNTIME_DIR` or Fledge's cache, for a fresh program and rcedit, which no app holds yet. An app with Fledge in its `Gemfile` carries Fledge's own Ruby code, under the same terms as its launcher (see [Copyright & License](#copyright--license)).
+The new app runs `my_game`'s program with the `Gemfile`, `Gemfile.lock`, and gems of `Player`, and gets `my_game`'s own name, identity, archive, and installers, as `fledge build` would write them; nothing of `Player`'s project or identity stays. `my_game` may have no `Gemfile` or gemspec, and its `fledge.yml` no `programs`, `linux: system_libraries`, `ios`, or `android`, since those change the runtime or the gems. `--from` takes only an app built by the same Fledge release, for the platform you build on. On Windows it also needs that release's runtime on the computer, in `FLEDGE_RUNTIME_DIR` or Fledge's cache, for a fresh program and rcedit, which no app holds yet. An app with Fledge in its `Gemfile` carries Fledge's own Ruby code, under the same terms as its launcher (see [Copyright & License](#copyright--license)).
 
 ### Signing
 

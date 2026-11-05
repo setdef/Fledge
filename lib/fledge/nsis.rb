@@ -72,17 +72,45 @@ module Fledge
     # program, in its Bin folder, beside the zlib1.dll it loads.
     MAKENSIS = File.join("Bin", "makensis.exe")
 
+    # A byte order mark, U+FEFF, which tells a Unicode installer that a
+    # text file is UTF-8, and which a license text saved by a Windows
+    # editor may already begin with.
+    BOM = [0xFEFF].pack("U").freeze
+
     # Creates the installer of the app whose Fledge::Identity is +identity+.
     #
     # [folder] The built app's folder, which the installer copies.
     # [to] The installer's path.
     # [signing] The Fledge::WindowsSigning that makensis signs the
     #           installer and its uninstaller with, or +nil+.
-    def initialize(identity:, folder:, to:, signing: nil)
+    # [license] The app's license text, which a page shows before the
+    #           install, or +nil+ for no such page.
+    def initialize(identity:, folder:, to:, signing: nil, license: nil)
       @identity = identity
       @folder = folder
       @to = to
       @signing = signing
+      @license = license
+    end
+
+    # +text+ as the license page reads a text file: with a UTF-8 byte
+    # order mark, which a Unicode installer needs to read it as UTF-8, as
+    # Tauri's bundler writes one (<tt>nsis/mod.rs</tt>), and with DOS line
+    # endings, which NSIS's LicenseData asks for (its manual, 4.8.1.26).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Nsis.license_text("MIT\n").bytes.first(3) # => [0xEF, 0xBB, 0xBF]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.license_text(text)
+      "#{BOM}#{text.gsub(/\r?\n/, "\r\n")}"
     end
 
     # The installer's NSIS script, which installs every file and folder in
@@ -102,7 +130,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def script(icon:)
+    def script(icon:, license: nil)
       files = [] # : Array[String]
       folders = [] # : Array[String]
       size = 0
@@ -117,7 +145,7 @@ module Fledge
           size += File.size(full)
         end
       end
-      Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:, signing: @signing&.command_line).text(icon:)
+      Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:, signing: @signing&.command_line).text(icon:, license:)
     end
 
     # Compiles the installer with the NSIS in +tools+, the runtime's
@@ -147,7 +175,9 @@ module Fledge
         copy = File.join(work, "nsis")
         FileUtils.cp_r(nsis, copy)
         script_path = File.join(work, "setup.nsi")
-        File.binwrite(script_path, "\uFEFF#{script(icon: @identity.icon&.file('ico'))}")
+        license = @license && File.join(work, "license.txt")
+        File.binwrite(license, Nsis.license_text(@license.to_s)) if license
+        File.binwrite(script_path, "\uFEFF#{script(icon: @identity.icon&.file('ico'), license:)}")
         compile(script_path, copy)
       ensure
         # On Windows on ARM, the x86 emulator's cache service (XtaCache)

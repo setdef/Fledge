@@ -79,7 +79,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :installers, :programs, :ios, :android, :linux, :macos)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :license_file, :installers, :programs, :ios, :android, :linux, :macos)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -125,6 +125,13 @@ module Fledge
     # The app's web page, an http or https URL, or +nil+ for none.
 
     ##
+    # :attr_reader: license_file
+    # The path of the app's license text, UTF-8, relative to the
+    # project's root, which a Windows setup program shows before it
+    # installs and a <tt>.deb</tt> installs as its copyright file, or
+    # +nil+ for none.
+
+    ##
     # :attr_reader: installers
     # The installers to build, from INSTALLERS, or +nil+ for every one a
     # windowed app's targets have (ADR 009).
@@ -158,10 +165,10 @@ module Fledge
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage installers programs ios android linux macos].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage license_file installers programs ios android linux macos].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, installers, programs, ios, android, linux, and macos"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, and macos"
 
     # The keys that, beside +programs+, belong to each program instead.
     PER_PROGRAM = %w[kind identifier icon].freeze
@@ -210,7 +217,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.none
-      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, description: nil, long_description: nil, homepage: nil, installers: nil, programs: nil, ios: nil,
+      new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil,
         android: nil, linux: nil, macos: nil)
     end
 
@@ -259,6 +266,7 @@ module Fledge
         description: description(data, path),
         long_description: text(data, "long_description", path, "\"Cool App keeps your notes.\""),
         homepage: homepage(data, path),
+        license_file: file(data, "license_file", path, "LICENSE.txt"),
         installers: installers(data, path),
         programs: programs(data, path),
         ios: Phone.from(data, "ios", path),
@@ -414,6 +422,17 @@ module Fledge
       raise Error, "#{path}: #{key} must be text, such as #{key}: #{example}" unless value.is_a?(String) && !value.strip.empty?
 
       value
+    end
+
+    # The path at +key+ in +data+ of a file in the project (Config.inside?),
+    # or +nil+. Raises Fledge::Error, beginning with +path+ and suggesting
+    # +example+, for anything else. Config::Linux reads its files with it
+    # too.
+    def self.file(data, key, path, example) # :nodoc:
+      value = text(data, key, path, example)
+      return value if value.nil? || inside?(value)
+
+      raise Error, "#{path}: #{key}, #{value.inspect}, must name a file in the project, with / between folders, such as #{key}: #{example}"
     end
 
     # Whether +path+ names a file or folder in the project: relative to

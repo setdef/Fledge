@@ -129,9 +129,50 @@ module Fledge
       case format
       when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:, signing: (signing if signing.is_a?(MacSigning)))
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
-      when "deb" then Deb.write(identity:, folder:, platform:, to:, system_libraries: app.config.system_libraries(platform.os))
-      else Nsis.new(identity:, folder:, to:, signing: (signing if signing.is_a?(WindowsSigning))).write(tools)
+      when "deb" then deb(app, folder:, platform:, to:)
+      else Nsis.new(identity:, folder:, to:, signing: (signing if signing.is_a?(WindowsSigning)), license: license(app)).write(tools)
       end
+    end
+
+    # Writes +app+'s <tt>.deb</tt>, with its license text and changelog.
+    private_class_method def self.deb(app, folder:, platform:, to:)
+      changelog = app.config.linux&.deb_changelog
+      Deb.write(identity: app.identity, folder:, platform:, to:, system_libraries: app.config.system_libraries(platform.os),
+        license: license(app), changelog: changelog && project_file(app, changelog, "linux: deb_changelog"))
+    end
+
+    # The text of +app+'s <tt>license_file</tt>, or +nil+ when it names
+    # none. Raises Fledge::Error when it is missing or not UTF-8, which a
+    # <tt>.deb</tt>'s copyright file must be (Debian Policy 12.5).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Installers.license(Fledge::App.at("examples/windowed_app")).lines.first # => "MIT No Attribution\n"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.license(app)
+      name = app.config.license_file
+      return nil unless name
+
+      text = File.binread(project_file(app, name, "license_file")).force_encoding(Encoding::UTF_8).delete_prefix(Nsis::BOM)
+      raise Error, "#{File.join(app.root, Config::FILE)}: license_file names #{name}, which is not UTF-8 text. Save it as UTF-8." unless text.valid_encoding?
+
+      text
+    end
+
+    # The path of the file +name+ in +app+'s project, which +key+ of its
+    # <tt>fledge.yml</tt> names. Raises Fledge::Error when it is no file.
+    private_class_method def self.project_file(app, name, key)
+      path = File.join(app.root, name)
+      return path if File.file?(path)
+
+      raise Error, "#{File.join(app.root, Config::FILE)}: #{key} names #{name}, which is not a file in #{app.root}"
     end
   end
 end

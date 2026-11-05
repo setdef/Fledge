@@ -150,6 +150,18 @@
           }
         }
       }
+    },
+    "macos": {
+      "description": "What a build for macOS writes in place of what it derives (default: nothing). Other builds ignore it.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "build": {
+          "description": "The app's build number, its Info.plist's CFBundleVersion, which the App Store and updaters compare: one to three whole numbers between periods, such as \"42\" or \"1.2.417\", quoted (default: the version's first three numbers, as CFBundleShortVersionString).",
+          "type": ["string", "null"],
+          "pattern": "^[0-9]+(?:\\.[0-9]+){0,2}$"
+        }
+      }
     }
   },
   "allOf": [

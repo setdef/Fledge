@@ -36,9 +36,16 @@ class ConfigTest < Minitest::Test
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", description: nil, long_description: nil, homepage: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil), config
+      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", description: nil, long_description: nil, homepage: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
+  end
+
+  # A macOS build number, held by ADR 029, section 5, for CFBundleVersion.
+  def test_reads_a_macos_build_number
+    assert_equal "1.2.417", load("macos:\n  build: \"1.2.417\"\n").macos&.build
+    assert_nil load("macos:\n  build:\n").macos&.build
+    assert_nil load("name: A\n").macos
   end
 
   # What an app says about itself: a line, paragraphs, and a web page,
@@ -64,10 +71,10 @@ class ConfigTest < Minitest::Test
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, installers, programs, ios, android, and linux."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, installers, programs, ios, android, linux, and macos."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, installers, programs, ios, android, and linux\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, installers, programs, ios, android, linux, and macos\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -86,6 +93,11 @@ class ConfigTest < Minitest::Test
       "copyright: true\n" => /: copyright must be text/,
       "description: \"One.\\nTwo.\"\n" => /: description must be one line; put the rest in long_description\z/,
       "long_description: [a]\n" => /: long_description must be text/,
+      "macos: \"42\"\n" => /: macos must be a mapping of build, such as macos: \{ build: "42" \}\z/,
+      "macos:\n  bulid: \"42\"\n" => /: macos has 'bulid', which Fledge does not know\. It knows build\.\z/,
+      "macos:\n  build: 42\n" => /: macos: build must be text; quote it, as in build: "42"\z/,
+      "macos:\n  build: \"1.2.3.4\"\n" => /: macos: build must be one to three whole numbers between periods, as Apple's CFBundleVersion is, .* not 1\.2\.3\.4\z/,
+      "macos:\n  build: \"1.0b2\"\n" => /: macos: build must be one to three whole numbers between periods/,
       "homepage: example.com\n" => %r{: homepage must be an http or https URL with no spaces, such as https://example\.com/cool-app, not example\.com\z},
       "homepage: \"https://example.com/a b\"\n" => /: homepage must be an http or https URL/,
       "kind: windowed\ninstallers: dmg\n" => /: installers must be a list of dmg, nsis, appimage, deb, such as installers: \[dmg, nsis, appimage, deb\], or \[\] for none\z/,
@@ -143,7 +155,7 @@ class ConfigTest < Minitest::Test
     config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    name: W\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
 
     assert_equal Fledge::Config.new(name: "W", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
-      publisher: "Me", copyright: nil, description: nil, long_description: nil, homepage: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil), config.for_program(config.programs.to_a.first)
+      publisher: "Me", copyright: nil, description: nil, long_description: nil, homepage: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil), config.for_program(config.programs.to_a.first)
   end
 
   def test_refuses_programs_it_cannot_ship

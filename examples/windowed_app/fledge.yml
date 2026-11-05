@@ -29,3 +29,5 @@ long_description: |
 homepage: https://github.com/setdef/Fledge
 icon: icons/icon
 installers: [dmg, nsis, appimage, deb]
+macos:
+  build: "1.2.417"

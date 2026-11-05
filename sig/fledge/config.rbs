@@ -31,8 +31,9 @@ module Fledge
     attr_reader ios: Config::Phone?
     attr_reader android: Config::Phone?
     attr_reader linux: Config::Linux?
+    attr_reader macos: Config::Macos?
 
-    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, description: String?, long_description: String?, homepage: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?) -> instance
+    def self.new: (name: String?, kind: String?, identifier: String?, version: String?, icon: String?, publisher: String?, copyright: String?, description: String?, long_description: String?, homepage: String?, installers: Array[String]?, programs: Array[Config::Program]?, ios: Config::Phone?, android: Config::Phone?, linux: Config::Linux?, macos: Config::Macos?) -> instance
 
     def self.none: () -> Config
 

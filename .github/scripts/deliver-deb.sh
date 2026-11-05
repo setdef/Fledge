@@ -46,6 +46,12 @@ expect Package "$(dpkg-deb --field "$deb" Package)" "$package"
 expect Version "$(dpkg-deb --field "$deb" Version)" "$version"
 expect Architecture "$(dpkg-deb --field "$deb" Architecture)" "$(dpkg --print-architecture)"
 expect Depends "$(dpkg-deb --field "$deb" Depends)" "libc6 (>= 2.39)"
+expect Homepage "$(dpkg-deb --field "$deb" Homepage)" "https://github.com/setdef/Fledge"
+expect Description "$(dpkg-deb --field "$deb" Description)" "Says hello from a window
+ Hello Window is the example windowed app of Fledge, which ships a Ruby
+ app to people who don't have Ruby.
+ .
+ It opens no window: given a path, it writes a report there."
 
 if dpkg -s "$package" >/dev/null 2>&1; then
   fail "$package is installed before the test begins"
@@ -67,6 +73,7 @@ if command -v desktop-file-validate >/dev/null 2>&1; then
   echo "ok: desktop-file-validate accepts the desktop entry"
 fi
 expect Name "$(sed -n 's/^Name=//p' "$desktop")" "$name"
+expect Comment "$(sed -n 's/^Comment=//p' "$desktop")" "Says hello from a window"
 expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$program\""
 expect Icon "$(sed -n 's/^Icon=//p' "$desktop")" "$identifier"
 expect Terminal "$(sed -n 's/^Terminal=//p' "$desktop")" false

@@ -14,8 +14,9 @@ require "open3"
 # Delivery installs a real one on Windows
 # (.github/scripts/deliver-installer.ps1).
 class NsisTest < Minitest::Test
-  def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4")
-    Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.MyApp", version:, publisher:, copyright:, icon: nil)
+  def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4", homepage: nil)
+    Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.MyApp", version:, publisher:, copyright:, icon: nil,
+      description: nil, long_description: nil, homepage:)
   end
 
   def setup
@@ -97,6 +98,15 @@ class NsisTest < Minitest::Test
     assert_equal ["  Delete \"$INSTDIR\\My App.exe\"", "  Delete \"$INSTDIR\\app\\$$main.rb\"", "  Delete \"$INSTDIR\\ruby\\bin\\ruby.dll\""],
       uninstall.grep(/Delete "\$INSTDIR\\(?!uninstall)/)
     assert_equal ["  RMDir \"$INSTDIR\\ruby\\bin\"", "  RMDir \"$INSTDIR\\app\"", "  RMDir \"$INSTDIR\\ruby\"", "  RMDir $INSTDIR"], uninstall.grep(/RMDir/)
+  end
+
+  # Settings' "Installed apps" links a homepage from the uninstall key.
+  def test_the_homepage_is_the_uninstall_keys_links
+    key = "\"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\com.example.MyApp\""
+    refute_match(/URLInfoAbout|HelpLink/, script)
+    lines = script(identity: identity(homepage: "https://example.com/$app")).lines.map(&:chomp)
+    assert_includes lines, "  WriteRegStr HKCU #{key} \"URLInfoAbout\" \"https://example.com/$$app\""
+    assert_includes lines, "  WriteRegStr HKCU #{key} \"HelpLink\" \"https://example.com/$$app\""
   end
 
   def test_a_new_version_runs_the_old_uninstaller_first

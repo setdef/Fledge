@@ -24,8 +24,9 @@ class DebTest < Minitest::Test
     ENV["FLEDGE_REQUIRE_DPKG_DEB"] ? flunk(message) : skip(message)
   end
 
-  def identity(icon: nil, version: "1.2.3", publisher: "Example, Inc.", identifier: "com.example.MyApp")
-    Fledge::Identity.new(name: "My App", kind: "windowed", identifier:, version:, publisher:, copyright: nil, icon:)
+  def identity(icon: nil, version: "1.2.3", publisher: "Example, Inc.", identifier: "com.example.MyApp", **about)
+    Fledge::Identity.new(name: "My App", kind: "windowed", identifier:, version:, publisher:, copyright: nil, icon:,
+      description: nil, long_description: nil, homepage: nil, **about)
   end
 
   # Writes the folder fledge build leaves for a windowed app on Linux:
@@ -98,6 +99,24 @@ class DebTest < Minitest::Test
       assert_equal "optional", field(deb, "Priority")
       assert_operator field(deb, "Installed-Size").to_i, :>, 0
     end
+  end
+
+  # Policy 5.6.13 and 5.6.23: the description is the synopsis, the long
+  # description its extended lines, and the homepage a field of its own.
+  def test_the_description_and_homepage_are_the_packages
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      about = { description: "Says hello", long_description: "A window.\n\nIt says\thello.\n", homepage: "https://example.com/my-app" }
+      deb = build(dir, identity: identity(**about))
+      assert_equal "Says hello\n A window.\n .\n It says hello.", field(deb, "Description")
+      assert_equal "https://example.com/my-app", field(deb, "Homepage")
+    end
+    Dir.mktmpdir { |dir| assert_equal "", field(build(dir), "Homepage") }
+  end
+
+  def test_an_extended_description_is_written_as_policy_asks
+    assert_equal " One.\n .\n Two,\n   indented.\n", Fledge::Deb.extended("\nOne.\n\nTwo,\n  indented.  \n")
+    assert_equal "", Fledge::Deb.extended(nil)
   end
 
   def test_an_arm_platform_is_arm64_and_a_pre_release_sorts_before_its_release

@@ -51,8 +51,9 @@
 #     its own windows): a windowed app is an .app bundle on macOS,
 #     signed ad hoc, a program Windows starts without a console, and a
 #     folder with a desktop entry and icons on Linux. Every app carries
-#     the name, version, publisher, and icon fledge.yml gives, where
-#     each system shows them, on Windows in the program itself. A
+#     the name, version, publisher, icon, description, and homepage
+#     fledge.yml gives, where each system shows them, on Windows in the
+#     program itself. A
 #     windowed app gets an installer beside each archive, too: a disk
 #     image for macOS, a setup program for Windows, which makes the
 #     Start menu shortcut Windows needs before it shows the app's
@@ -210,6 +211,15 @@
 #                        publisher: who makes it (default: the
 #                          gemspec's authors)
 #                        copyright: such as "© 2026 Example, Inc."
+#                        description: one line that says what the app
+#                          does, such as Keeps your notes: a desktop
+#                          entry's Comment, a .deb's synopsis, and a
+#                          Windows program's Comments (default: none)
+#                        long_description: more about the app, in
+#                          paragraphs: a .deb's extended description
+#                        homepage: the app's web page, an http or https
+#                          URL: a .deb's Homepage, and the links of the
+#                          setup program's entry in Windows' Settings
 #                        installers: which of dmg, nsis, appimage, and
 #                          deb a windowed app gets, such as [dmg] or []
 #                          for none (default: dmg, nsis, and appimage)

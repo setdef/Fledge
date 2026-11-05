@@ -22,7 +22,9 @@ module Fledge
   # Theme Specification describe them, and as an AppImage's AppDir holds
   # them: <tt>ID.desktop</tt> at the top, named by the app's reverse-DNS
   # identifier as the specification recommends, whose +Exec+ names the
-  # program beside it and whose +Icon+ names the identifier, and a PNG of
+  # program beside it, whose +Comment+ is the app's description, the
+  # tooltip a menu shows, when it has one, and whose +Icon+ names the
+  # identifier, and a PNG of
   # each of Fledge::Icon::LINUX's sizes the developer has
   # (Fledge::Icon#linux) at
   # <tt>share/icons/hicolor/SIZExSIZE/apps/ID.png</tt>, the layout of
@@ -97,8 +99,10 @@ module Fledge
         "Type=Application",
         "Version=1.5",
         "Name=#{DesktopEntry.string(@identity.name)}",
-        "Exec=#{DesktopEntry.string(DesktopEntry.exec(program))}",
       ]
+      description = @identity.description
+      lines << "Comment=#{DesktopEntry.string(description)}" if description
+      lines << "Exec=#{DesktopEntry.string(DesktopEntry.exec(program))}"
       lines << "Icon=#{@identity.identifier}" if @identity.icon
       lines << "Terminal=false"
       "#{lines.join("\n")}\n"

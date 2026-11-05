@@ -110,6 +110,7 @@ case "$(uname -s)" in
     desktop-file-validate "$desktop" || fail "desktop-file-validate rejects $identifier.desktop"
     echo "ok: desktop-file-validate accepts $identifier.desktop"
     expect Name "$(sed -n 's/^Name=//p' "$desktop")" "$name"
+    expect Comment "$(sed -n 's/^Comment=//p' "$desktop")" "Says hello from a window"
     expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$name\""
     expect Icon "$(sed -n 's/^Icon=//p' "$desktop")" "$identifier"
     expect Terminal "$(sed -n 's/^Terminal=//p' "$desktop")" false

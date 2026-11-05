@@ -152,6 +152,17 @@ class ConfigSchemaTest < Minitest::Test
     "linux:\n  system_libraries: [.so]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0 \"]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0\\n\"]\n" => false,
+    "macos:\n  build: \"42\"\n" => true,
+    "macos:\n  build: \"1.2.417\"\n" => true,
+    "macos:\n  build:\n" => true,
+    "macos: {}\n" => true,
+    "macos:\n  build: 42\n" => false,
+    "macos:\n  build: \"1.2.3.4\"\n" => false,
+    "macos:\n  build: \"1.0b2\"\n" => false,
+    "macos:\n  build: \"1..2\"\n" => false,
+    "macos:\n  build: \"42\\n\"\n" => false,
+    "macos:\n  bulid: \"42\"\n" => false,
+    "macos: \"42\"\n" => false,
   }.merge(
     # Every key may be empty, which Config reads as absent, and none may
     # be blank or a number.
@@ -253,6 +264,19 @@ class ConfigSchemaTest < Minitest::Test
     refute property.fetch("additionalProperties")
     ecma = Fledge::Config::Linux::SONAME.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
     assert_equal ecma, property.dig("properties", "system_libraries", "items", "pattern")
+  end
+
+  def test_macos_is_configs
+    property = schema.dig("properties", "macos")
+    assert_equal Fledge::Config::Macos::KEYS, property.fetch("properties").keys
+    refute property.fetch("additionalProperties")
+    ecma = Fledge::Config::Macos::BUILD.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
+    assert_equal ecma, property.dig("properties", "build", "pattern")
+  end
+
+  def test_homepage_is_configs
+    ecma = Fledge::Config::HOMEPAGE.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$").sub("\\s", "\\t\\n\\u000b\\f\\r ")
+    assert_equal ecma, schema.dig("properties", "homepage", "pattern")
   end
 
   def test_only_config_refuses_what_draft_07_cannot_say

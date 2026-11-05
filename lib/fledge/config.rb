@@ -79,7 +79,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :installers, :programs, :ios, :android, :linux)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :installers, :programs, :ios, :android, :linux, :macos)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -149,14 +149,19 @@ module Fledge
     # The libraries the project's gems load from the Linux distribution
     # (Config::Linux), or +nil+ for none (ADR 030).
 
+    ##
+    # :attr_reader: macos
+    # What a macOS build writes in place of what it derives, its build
+    # number (Config::Macos), or +nil+ for nothing.
+
     # The file's name, in the project's root.
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage installers programs ios android linux].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage installers programs ios android linux macos].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, installers, programs, ios, android, and linux"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, installers, programs, ios, android, linux, and macos"
 
     # The keys that, beside +programs+, belong to each program instead.
     PER_PROGRAM = %w[kind identifier icon].freeze
@@ -206,7 +211,7 @@ module Fledge
     #++
     def self.none
       new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, description: nil, long_description: nil, homepage: nil, installers: nil, programs: nil, ios: nil,
-        android: nil, linux: nil)
+        android: nil, linux: nil, macos: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -258,7 +263,8 @@ module Fledge
         programs: programs(data, path),
         ios: Phone.from(data, "ios", path),
         android: Phone.from(data, "android", path),
-        linux: Linux.from(data, path)
+        linux: Linux.from(data, path),
+        macos: Macos.from(data, path)
       )
     end
 
@@ -453,5 +459,6 @@ module Fledge
 end
 
 require_relative "config/linux"
+require_relative "config/macos"
 require_relative "config/phone"
 require_relative "config/program"

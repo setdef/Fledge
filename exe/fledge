@@ -250,6 +250,13 @@
 #                          packages; the app names one a computer
 #                          lacks, and exits with 72, before Ruby starts.
 #                          Other builds ignore it.
+#                        macos: a mapping of build, the build number
+#                          a windowed app's Info.plist gives as
+#                          CFBundleVersion, which the App Store and
+#                          updaters compare: one to three whole numbers
+#                          between periods, quoted, such as "42"
+#                          (default: the version's first three
+#                          numbers). Other builds ignore it.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        PLATFORM is this computer's: arm64-darwin,
 #                        x86_64-linux, aarch64-linux,

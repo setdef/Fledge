@@ -321,7 +321,7 @@ module Fledge
       CacheTag.make_folder(@out)
       Dir.mktmpdir(".fledge-build-", @out) do |work|
         runtime = runtime_folder(work)
-        bundle = MacBundle.for(@app.identity, platform: @platform, folder:)
+        bundle = MacBundle.for(@app.identity, platform: @platform, folder:, build: @app.config.macos&.build)
         contents = bundle ? bundle.resources : folder
         runtime.move_into(contents)
         File.write(File.join(contents, CONFIG), launch_config)

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fledge build --from APP [PATH]` builds PATH's project into a copy of APP, an app the same Fledge release built for this computer, with APP's runtime, gems, `Gemfile`, and `Gemfile.lock`, and the project's own name, identity, archive, and installers, downloading, installing, and compiling nothing. A project with a `Gemfile`, `gems.rb`, or gemspec, or whose `fledge.yml` has `programs`, `linux`, `ios`, or `android`, is refused; an APP from another release or for another platform is a usage error. On Windows it takes the program and rcedit from the release's runtime, which must be in `FLEDGE_RUNTIME_DIR` or the cache.
 - `fledge.yml` takes `description`, one line, `long_description`, and `homepage`, an http or https URL: the description is a Linux desktop entry's `Comment`, a `.deb`'s synopsis, and a Windows program's `Comments`; the long description is a `.deb`'s extended description; the homepage is a `.deb`'s `Homepage` and the setup program's `URLInfoAbout` and `HelpLink`. A project without them builds the same files.
+- `fledge.yml`'s `macos: build`, one to three whole numbers between periods, such as `"1.2.417"`, is a windowed Mac app's `CFBundleVersion` in place of the version's first three numbers.
 
 ### Changed
 

@@ -69,15 +69,17 @@ module Fledge
 
     # The bundle an app with +identity+ is on +platform+, built in
     # +folder+: one for a windowed macOS app, and +nil+ for any other.
-    def self.for(identity, platform:, folder:)
-      new(identity, folder:) if platform.os == "darwin" && identity.windowed?
+    def self.for(identity, platform:, folder:, build: nil)
+      new(identity, folder:, build:) if platform.os == "darwin" && identity.windowed?
     end
 
     # Creates the bundle of the app whose Fledge::Identity is +identity+,
-    # in the built app's folder +folder+.
-    def initialize(identity, folder:)
+    # in the built app's folder +folder+, whose +CFBundleVersion+ is
+    # +build+ (Config::Macos), or else the one derived from its version.
+    def initialize(identity, folder:, build: nil)
       @identity = identity
       @folder = folder
+      @build = build
     end
 
     # The bundle's path: <tt>FOLDER/NAME.app</tt>.
@@ -135,7 +137,8 @@ module Fledge
 
     # The keys of the bundle's <tt>Info.plist</tt>: those Apple's
     # Information Property List reference requires of a macOS app, its
-    # identity, the oldest macOS its runtime runs on
+    # identity, its build number (+fledge.yml+'s <tt>macos: build</tt>, or
+    # its version's), the oldest macOS its runtime runs on
     # (Platform::MACOS_MINIMUM), and that it draws at Retina resolution,
     # as Tauri's bundler writes them.
     #
@@ -161,7 +164,7 @@ module Fledge
         "CFBundleName" => @identity.name,
         "CFBundlePackageType" => "APPL",
         "CFBundleShortVersionString" => version,
-        "CFBundleVersion" => version,
+        "CFBundleVersion" => @build || version,
         "LSMinimumSystemVersion" => Platform::MACOS_MINIMUM,
         "NSHighResolutionCapable" => true,
       } # : Hash[String, String | bool]

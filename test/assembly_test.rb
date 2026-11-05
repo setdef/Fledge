@@ -290,6 +290,29 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # fledge.yml's macos: build is the bundle's CFBundleVersion, as plutil
+  # reads it, and the version's numbers stay CFBundleShortVersionString;
+  # without it, both are the version's.
+  def test_a_macos_build_number_is_the_bundles_cfbundleversion
+    mac!
+    Dir.mktmpdir do |dir|
+      root = WindowedApp.write(dir)
+      File.write(File.join(root, "fledge.yml"), "version: \"2.1.0.pre.3\"\n#{File.read(File.join(root, 'fledge.yml'))}")
+      read = lambda do |key|
+        runtime = FakeRuntime.write(dir, MACOS, launcher: File.binread("/usr/bin/true"))
+        assemble(dir, root, platform: MACOS, runtime:)
+        plist = File.join(dir, "dist", "Hello Window-arm64-darwin", "Hello Window.app", "Contents", "Info.plist")
+        out, status = Open3.capture2e("plutil", "-extract", key, "raw", plist)
+        assert_predicate status, :success?, out
+        out.strip
+      end
+      assert_equal %w[2.1.0 2.1.0], [read.call("CFBundleVersion"), read.call("CFBundleShortVersionString")]
+
+      File.write(File.join(root, "fledge.yml"), "#{File.read(File.join(root, 'fledge.yml'))}macos:\n  build: \"2.1.417\"\n")
+      assert_equal %w[2.1.417 2.1.0], [read.call("CFBundleVersion"), read.call("CFBundleShortVersionString")]
+    end
+  end
+
   # A project of several programs (ADR 024): a windowed one, with an
   # icon, and two console ones, sharing one project.
   module Programs

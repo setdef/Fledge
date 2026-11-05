@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Config
+    class Macos < Data
+      KEYS: Array[String]
+      BUILD: Regexp
+
+      attr_reader build: String?
+
+      def self.new: (build: String?) -> instance
+
+      def self.from: (Hash[Object, Object] data, String file) -> Macos?
+
+      private def self.build: (Object value, String file) -> String?
+    end
+  end
+end

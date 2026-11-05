@@ -306,3 +306,9 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 *Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it. *Applied in:* ADR 028; Plan 003, "Fledge as gems on RubyGems.org" and "1.0".
 
+> winget, Chocolatey, Scoop, brew, apt-get, pacman, dnf, etc. are all very relevant for Ruby console apps.
+
+[re: the orchestrator's relay of a research agent's proposal to record in an ADR that Fledge does not target Flathub or the distributions' archives, and its note that Homebrew, winget, Chocolatey, and Scoop were never researched.]
+
+*Governs:* the package managers (winget, Chocolatey, Scoop, Homebrew, apt-get, pacman, dnf, and others) are in scope for Fledge's console apps; a decision that Fledge does not target them is not made, and none is to be recorded. *Applied in:* `doc/contributors/research/2026-11-04-app-stores.md` (which the package managers extend); Plan 003.
+

@@ -32,7 +32,10 @@ module Fledge
   # can it know which libraries a project's gems may load from a Linux
   # distribution, such as a webview's WebKitGTK: list them under +linux+
   # (Config::Linux), and the build accepts them, and a <tt>.deb</tt>
-  # depends on them (ADR 030).
+  # depends on them (ADR 030). Nor can it know which files and folders a
+  # windowed app opens: list them under +file_associations+
+  # (Config::FileAssociation), and each system offers the app for them
+  # (ADR 032, section 3).
   #
   # This class reads <tt>fledge.yml</tt> from the project's root, a YAML
   # mapping as RuboCop's and Kamal's configuration are, checks each value,
@@ -79,7 +82,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers, :programs, :ios, :android, :linux)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :installers, :programs, :ios, :android, :linux, :file_associations)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -137,14 +140,19 @@ module Fledge
     # The libraries the project's gems load from the Linux distribution
     # (Config::Linux), or +nil+ for none (ADR 030).
 
+    ##
+    # :attr_reader: file_associations
+    # The files and folders a windowed app opens
+    # (Config::FileAssociation), or +nil+ for none (ADR 032, section 3).
+
     # The file's name, in the project's root.
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright installers programs ios android linux].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright installers programs ios android linux file_associations].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, and linux"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, installers, programs, ios, android, linux, and file_associations"
 
     # The keys that, beside +programs+, belong to each program instead.
     PER_PROGRAM = %w[kind identifier icon].freeze
@@ -190,7 +198,7 @@ module Fledge
     #++
     def self.none
       new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, installers: nil, programs: nil, ios: nil,
-        android: nil, linux: nil)
+        android: nil, linux: nil, file_associations: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -239,7 +247,8 @@ module Fledge
         programs: programs(data, path),
         ios: Phone.from(data, "ios", path),
         android: Phone.from(data, "android", path),
-        linux: Linux.from(data, path)
+        linux: Linux.from(data, path),
+        file_associations: file_associations(data, path)
       )
     end
 
@@ -352,6 +361,18 @@ module Fledge
       value.uniq
     end
 
+    # The files and folders the app opens (Config::FileAssociation), only
+    # for a windowed app, since only a windowed app has a bundle, a desktop
+    # entry, or a setup program to declare them in (ADR 032, section 3).
+    private_class_method def self.file_associations(data, path) # :nodoc:
+      list = FileAssociation.list(data, path)
+      if list && !list.empty? && !windowed?(data)
+        raise Error, "#{path}: only a windowed app opens files and folders a person gives it; leave out file_associations, or make the app windowed"
+      end
+
+      list
+    end
+
     # Whether the app, or one of its programs, is windowed.
     private_class_method def self.windowed?(data) # :nodoc:
       programs = data["programs"]
@@ -413,6 +434,7 @@ module Fledge
   end
 end
 
+require_relative "config/file_association"
 require_relative "config/linux"
 require_relative "config/phone"
 require_relative "config/program"

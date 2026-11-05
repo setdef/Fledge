@@ -16,10 +16,13 @@
 # register an uninstaller under HKCU. Started from that shortcut, as the
 # Start menu starts it, the app must write its report, which says it had
 # no console and the AppUserModelID it gave itself: the shortcut's, which
-# is what lets Windows show its notifications. Installed again over
+# is what lets Windows show its notifications. What it opens must be in
+# the registry, a file's in its extension's "Open with" list without
+# taking its default, and opening a file and a folder through the shell
+# must start the app with the path as its argument. Installed again over
 # itself, as a new version would be, it must still be whole. Then its
 # silent uninstaller must remove its files, its shortcut, and its
-# registry key.
+# registry keys.
 
 param(
   [Parameter(Mandatory)] [string] $Installer
@@ -92,6 +95,38 @@ public static string AppUserModelId(string path) {
   PropVariantClear(ref value);
   return id;
 }
+
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+public struct ShellExecuteInfo {
+  public int size; public uint mask; public System.IntPtr window;
+  public string verb; public string file; public string parameters; public string directory;
+  public int show; public System.IntPtr instance; public System.IntPtr idList; public string className;
+  public System.IntPtr classKey; public uint hotKey; public System.IntPtr icon; public System.IntPtr process;
+}
+
+[DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+public static extern bool ShellExecuteExW(ref ShellExecuteInfo info);
+
+// Opens file with verb as the shell does, through the ProgID className
+// when it is given (SEE_MASK_CLASSNAME, 0x1), waiting for the shell to
+// start it (SEE_MASK_NOASYNC, 0x100).
+public static bool Open(string file, string verb, string className) {
+  ShellExecuteInfo info = new ShellExecuteInfo();
+  info.size = Marshal.SizeOf(info);
+  info.mask = 0x100u | (className == null ? 0u : 0x1u);
+  info.verb = verb; info.file = file; info.className = className; info.show = 1;
+  return ShellExecuteExW(ref info);
+}
+
+[DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+public static extern int AssocQueryStringW(uint flags, int what, string association, string verb, System.Text.StringBuilder output, ref uint length);
+
+// The command the shell runs for verb on association (ASSOCSTR_COMMAND, 1).
+public static string Command(string association, string verb) {
+  System.Text.StringBuilder output = new System.Text.StringBuilder(2048);
+  uint length = 2048;
+  return AssocQueryStringW(0, 1, association, verb, output, ref length) == 0 ? output.ToString() : null;
+}
 '@
 
 $Installer = (Resolve-Path -LiteralPath $Installer).Path
@@ -153,6 +188,43 @@ function CheckInstalled {
 Install
 CheckInstalled
 
+# What the app opens (fledge.yml's file_associations; ADR 032, section 3),
+# read back from the registry and through the shell's own API, and then
+# opened as the shell opens them, in a folder whose name has a space and
+# a character outside ASCII. A file's ProgID is in its extension's
+# OpenWithProgids, its "Open with" list, and the extension's default is
+# left alone; every folder gets a verb. Each passes the path as the
+# program's one argument, as a file or folder dropped on the program
+# does with nothing registered: the app writes its report to that path,
+# or into it when it is a folder.
+$classes = 'HKCU:\Software\Classes'
+$progId = "$identifier.2"
+$command = "`"$app`" `"%1`""
+$extension = Get-Item -LiteralPath "$classes\.hellowindow"
+Expect 'the default of .hellowindow' $extension.GetValue('') $null
+Expect ".hellowindow's OpenWithProgids" ((Get-Item -LiteralPath "$classes\.hellowindow\OpenWithProgids").GetValueNames() -join ',') $progId
+Expect "$progId's name" (Get-Item -LiteralPath "$classes\$progId").GetValue('') 'Hello Window report'
+Expect "$progId's command" (Get-Item -LiteralPath "$classes\$progId\shell\open\command").GetValue('') $command
+Expect "the folders' verb" (Get-Item -LiteralPath "$classes\Directory\shell\$identifier").GetValue('') 'Open with Hello Window'
+Expect "the shell's command for $progId" ([Fledge.Shell]::Command($progId, 'open')) $command
+Expect "the shell's command for the folders' verb" ([Fledge.Shell]::Command('Directory', $identifier)) $command
+
+$dropped = Join-Path $env:RUNNER_TEMP 'Ein Ordner ü'
+New-Item -ItemType Directory -Force $dropped | Out-Null
+$document = Join-Path $dropped 'dropped.hellowindow'
+Set-Content -LiteralPath $document -Value 'a document'
+if (-not [Fledge.Shell]::Open($document, 'open', $progId)) { Fail "the shell could not open $document with $progId" }
+WaitFor { (Get-Content -LiteralPath $document -Raw) -match '"ruby":"4.0.9"' } 'the app writing its report over the file the shell opened with it' 60
+Write-Host "ok: the shell opened $document with the app, which got its path"
+if (-not [Fledge.Shell]::Open($dropped, $identifier, $null)) { Fail "the shell could not open $dropped with the folders' verb" }
+WaitFor { Test-Path -LiteralPath (Join-Path $dropped 'hello_window.json') } 'the app writing its report into the folder the shell opened with it' 60
+Write-Host "ok: the shell opened $dropped with the folders' verb, and the app got its path"
+Remove-Item -LiteralPath (Join-Path $dropped 'hello_window.json')
+Start-Process -FilePath $app -ArgumentList "`"$dropped`"" -Wait
+if (-not (Test-Path -LiteralPath (Join-Path $dropped 'hello_window.json'))) { Fail 'the app given a folder, as a drop gives it, did not write into it' }
+Write-Host 'ok: the installed app, started with a folder as a drop on it starts it, got its path'
+Start-Sleep -Seconds 3
+
 # Started from its Start menu shortcut, through the shell, as a click in
 # the Start menu starts it. Given no arguments, it writes its report to
 # its temporary folder (Ruby's Dir.tmpdir: TMPDIR, TMP, or TEMP), here a
@@ -208,5 +280,9 @@ if (Test-Path -LiteralPath $shortcut) { Fail 'the Start menu shortcut is still t
 Write-Host 'ok: the Start menu shortcut is gone'
 if (Test-Path -LiteralPath $key) { Fail "$key is still in the registry" }
 Write-Host "ok: $key is gone"
+foreach ($left in "$classes\$progId", "$classes\.hellowindow", "$classes\Directory\shell\$identifier") {
+  if (Test-Path -LiteralPath $left) { Fail "$left is still in the registry" }
+}
+Write-Host 'ok: the file associations are gone'
 
 Write-Host "Delivered: $appName, installed and uninstalled"

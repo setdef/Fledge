@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `fledge build --from APP [PATH]` builds PATH's project into a copy of APP, an app the same Fledge release built for this computer, with APP's runtime, gems, `Gemfile`, and `Gemfile.lock`, and the project's own name, identity, archive, and installers, downloading, installing, and compiling nothing. A project with a `Gemfile`, `gems.rb`, or gemspec, or whose `fledge.yml` has `programs`, `linux`, `ios`, or `android`, is refused; an APP from another release or for another platform is a usage error. On Windows it takes the program and rcedit from the release's runtime, which must be in `FLEDGE_RUNTIME_DIR` or the cache.
+- `file_associations` in `fledge.yml`: the files and folders a windowed app opens, each with a `name`, a `role` (`viewer` or `editor`), and `extensions`, `mime_types`, and `content_types`, or `folders: true`. macOS's `Info.plist` declares them as document types ranked `Alternate`; the Windows setup program adds the app to each extension's "Open with" and to every folder's menu, under `HKCU\Software\Classes`, and its uninstaller removes them; the Linux desktop entry, in the folder, the AppImage, and the `.deb`, lists their MIME types and runs the program with their paths (`%F`).
 
 ### Fixed
 

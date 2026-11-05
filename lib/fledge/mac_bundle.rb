@@ -164,11 +164,50 @@ module Fledge
         "CFBundleVersion" => version,
         "LSMinimumSystemVersion" => Platform::MACOS_MINIMUM,
         "NSHighResolutionCapable" => true,
-      } # : Hash[String, String | bool]
+      } # : Hash[String, String | bool | Array[Hash[String, String | Array[String]]]]
       keys["CFBundleIconFile"] = icon_file if @identity.icon
       copyright = @identity.copyright
       keys["NSHumanReadableCopyright"] = copyright if copyright
+      types = @identity.file_associations.map { |association| MacBundle.document_type(association) }
+      keys["CFBundleDocumentTypes"] = types unless types.empty?
       keys
+    end
+
+    # The entry of CFBundleDocumentTypes that declares +association+, a
+    # Config::FileAssociation (ADR 032, section 3): its name and role,
+    # ranked +Alternate+, so that macOS offers the app for these files
+    # and never makes it their default unless the person does; its
+    # extensions and MIME types as electron-builder writes them
+    # (+CFBundleTypeExtensions+), and its content types, or
+    # <tt>public.folder</tt> for folders, as +LSItemContentTypes+, which
+    # macOS reads in place of the others when it is there.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   folder = Fledge::Config::FileAssociation.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [],
+    #     content_types: [], folders: true)
+    #   Fledge::MacBundle.document_type(folder)
+    #   # => {"CFBundleTypeName"=>"Project folder", "CFBundleTypeRole"=>"Viewer", "LSHandlerRank"=>"Alternate",
+    #   #     "LSItemContentTypes"=>["public.folder"]}
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.document_type(association)
+      type = {
+        "CFBundleTypeName" => association.name,
+        "CFBundleTypeRole" => association.role.capitalize,
+        "LSHandlerRank" => "Alternate",
+      } # : Hash[String, String | Array[String]]
+      type["CFBundleTypeExtensions"] = association.extensions unless association.extensions.empty?
+      type["CFBundleTypeMIMETypes"] = association.mime_types unless association.mime_types.empty?
+      content_types = association.folders ? ["public.folder"] : association.content_types
+      type["LSItemContentTypes"] = content_types unless content_types.empty?
+      type
     end
 
     # +version+ as CFBundleShortVersionString and CFBundleVersion take it:

@@ -4,6 +4,9 @@
 module Fledge
   class Nsis
     class Script
+      CLASSES: String
+      CHANGE_NOTIFY: String
+
       @identity: Identity
       @folder: String
       @to: String
@@ -33,6 +36,20 @@ module Fledge
       private def pages: () -> Array[String]
 
       private def registry: () -> Array[String]
+
+      private def associations: () -> Array[String]
+
+      private def dissociations: () -> Array[String]
+
+      private def verb: () -> String
+
+      private def open_command: () -> String
+
+      private def prog_id: (Integer index) -> String
+
+      private def extensions: (Config::FileAssociation association) -> Array[String]
+
+      private def classes: (String path) -> String
 
       private def key: () -> String
 

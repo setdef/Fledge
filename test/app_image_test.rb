@@ -26,7 +26,7 @@ class AppImageTest < Minitest::Test
 
   def identity(icon: nil)
     Fledge::Identity.new(name: "My App", kind: "windowed", identifier: "com.example.MyApp", version: "1.0", publisher: nil,
-      copyright: nil, icon:)
+      copyright: nil, icon:, file_associations: [])
   end
 
   # Writes the AppImage of a folder with the app's program and desktop

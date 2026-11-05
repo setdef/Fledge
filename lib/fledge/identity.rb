@@ -45,7 +45,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Identity < Data.define(:name, :kind, :identifier, :version, :publisher, :copyright, :icon)
+  class Identity < Data.define(:name, :kind, :identifier, :version, :publisher, :copyright, :icon, :file_associations)
     ##
     # :attr_reader: name
     # The app's name, as people see it.
@@ -74,6 +74,11 @@ module Fledge
     ##
     # :attr_reader: icon
     # The app's Fledge::Icon, or +nil+ for none.
+
+    ##
+    # :attr_reader: file_associations
+    # The files and folders the app opens (Config::FileAssociation),
+    # which only a windowed app declares; empty for none.
 
     # The version of an app that names none, and has no gemspec.
     DEFAULT_VERSION = "0.0.0"
@@ -108,7 +113,8 @@ module Fledge
         version: config.version || gemspec&.version&.to_s || DEFAULT_VERSION,
         publisher: config.publisher || (authors.empty? ? nil : authors.join(", ")),
         copyright: config.copyright,
-        icon: config.icon && Icon.new(base: File.expand_path(config.icon.to_s, root), name: config.icon.to_s)
+        icon: config.icon && Icon.new(base: File.expand_path(config.icon.to_s, root), name: config.icon.to_s),
+        file_associations: config.file_associations || []
       )
     end
 

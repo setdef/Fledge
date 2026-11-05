@@ -13,6 +13,13 @@ module Fledge
     # information, its pages, and its install and uninstall sections,
     # with every name in it quoted as NSIS reads a string.
     class Script # :nodoc:
+      # Where one person's file types and verbs are, under HKCU.
+      CLASSES = 'Software\Classes'
+
+      # Tells Explorer that file associations changed: SHChangeNotify with
+      # SHCNE_ASSOCCHANGED and SHCNF_FLUSH.
+      CHANGE_NOTIFY = "  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0x1000, p 0, p 0)'"
+
       # The script that installs the app of +identity+ from +folder+ into
       # the setup program +to+, and uninstalls +files+ and +folders+,
       # whose contents are +size+ bytes.
@@ -65,6 +72,7 @@ module Fledge
           "  CreateShortcut \"$SMPROGRAMS\\#{nsis(@identity.name)}.lnk\" \"$INSTDIR\\#{nsis(program)}\"",
           "  !insertmacro FledgeSetAppUserModelId \"$SMPROGRAMS\\#{nsis(@identity.name)}.lnk\"",
           *registry,
+          *associations,
           "SectionEnd",
           "",
         ]
@@ -83,6 +91,7 @@ module Fledge
           *@folders.sort_by { |path| [-path.count("/"), path] }.map { |path| "  RMDir #{installed(path)}" },
           "  RMDir $INSTDIR",
           "  DeleteRegKey HKCU #{key}",
+          *dissociations,
           "SectionEnd",
         ]
       end
@@ -197,6 +206,88 @@ module Fledge
           "  WriteRegDWORD HKCU #{key} \"NoRepair\" 1",
           "  WriteRegDWORD HKCU #{key} \"EstimatedSize\" #{(@size + 1023) / 1024}",
         ]
+      end
+
+      # The registry entries of the files and folders the app opens
+      # (Config::FileAssociation; ADR 032, section 3), under
+      # <tt>HKCU\Software\Classes</tt>, which needs no administrator. For
+      # files, a ProgID of the app's, <tt>IDENTIFIER.N</tt> for the Nth
+      # entry, named for the documents, with the app's icon and the command
+      # that opens one, and listed in each extension's +OpenWithProgids+,
+      # which adds the app to Explorer's "Open with" and leaves the
+      # extension's default alone; electron-builder's FileAssociation.nsh
+      # lists its own there, and sets the default too. For folders, a verb
+      # every folder gets, "Open with NAME". Then SHChangeNotify, as
+      # Tauri's and electron-builder's installers call it, so Explorer
+      # reads them at once.
+      private def associations
+        lines = @identity.file_associations.each_with_index.flat_map do |association, index|
+          if association.folders
+            next [
+              "  WriteRegStr HKCU #{verb} \"\" #{quote("Open with #{@identity.name}")}",
+              "  WriteRegStr HKCU #{classes("Directory\\shell\\#{@identity.identifier}\\command")} \"\" #{open_command}",
+            ]
+          end
+
+          progid = prog_id(index)
+          listed = extensions(association).map { |extension| "  WriteRegNone HKCU #{classes(".#{extension}\\OpenWithProgids")} #{quote(progid)}" }
+          next [] if listed.empty?
+
+          [
+            "  WriteRegStr HKCU #{classes(progid)} \"\" #{quote(association.name)}",
+            "  WriteRegStr HKCU #{classes("#{progid}\\DefaultIcon")} \"\" '\"$INSTDIR\\#{nsis(program)}\",0'",
+            "  WriteRegStr HKCU #{classes("#{progid}\\shell\\open\\command")} \"\" #{open_command}",
+            *listed,
+          ]
+        end
+        lines.empty? ? lines : [*lines, CHANGE_NOTIFY]
+      end
+
+      # What the uninstaller removes of #associations: the ProgIDs, their
+      # values in each extension's +OpenWithProgids+, each extension's keys
+      # when nothing else is left in them, and the folders' verb.
+      private def dissociations
+        lines = @identity.file_associations.each_with_index.flat_map do |association, index|
+          next ["  DeleteRegKey HKCU #{verb}"] if association.folders
+
+          progid = prog_id(index)
+          listed = extensions(association).flat_map do |extension|
+            [
+              "  DeleteRegValue HKCU #{classes(".#{extension}\\OpenWithProgids")} #{quote(progid)}",
+              "  DeleteRegKey /ifempty HKCU #{classes(".#{extension}\\OpenWithProgids")}",
+              "  DeleteRegKey /ifempty HKCU #{classes(".#{extension}")}",
+            ]
+          end
+          listed.empty? ? listed : ["  DeleteRegKey HKCU #{classes(progid)}", *listed]
+        end
+        lines.empty? ? lines : [*lines, CHANGE_NOTIFY]
+      end
+
+      # The key of the verb every folder gets.
+      private def verb
+        classes("Directory\\shell\\#{@identity.identifier}")
+      end
+
+      # The command that opens a file or folder: the program, with the
+      # path as its one argument.
+      private def open_command
+        "'\"$INSTDIR\\#{nsis(program)}\" \"%1\"'"
+      end
+
+      # The ProgID of the file associations' entry at +index+.
+      private def prog_id(index)
+        "#{@identity.identifier}.#{index + 1}"
+      end
+
+      # The extensions of +association+, once each as Windows, which
+      # ignores their case, knows them.
+      private def extensions(association)
+        association.extensions.uniq(&:downcase)
+      end
+
+      # +path+ under CLASSES, quoted.
+      private def classes(path)
+        quote("#{CLASSES}\\#{path}")
       end
 
       private def key

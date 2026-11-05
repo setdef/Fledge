@@ -90,16 +90,29 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def text(program: @identity.name)
+      types = mime_types
+      exec = DesktopEntry.string(DesktopEntry.exec(program))
       lines = [
         "[Desktop Entry]",
         "Type=Application",
         "Version=1.5",
         "Name=#{DesktopEntry.string(@identity.name)}",
-        "Exec=#{DesktopEntry.string(DesktopEntry.exec(program))}",
+        types.empty? ? "Exec=#{exec}" : "Exec=#{exec} %F",
       ]
       lines << "Icon=#{@identity.identifier}" if @identity.icon
       lines << "Terminal=false"
+      lines << "MimeType=#{types.map { |type| "#{type};" }.join}" unless types.empty?
       "#{lines.join("\n")}\n"
+    end
+
+    # The MIME types of the files and folders the app opens
+    # (Config::FileAssociation), with <tt>inode/directory</tt>, the type
+    # shared-mime-info gives a folder, for folders; once each. A desktop
+    # entry that lists them gets <tt>%F</tt> in its +Exec+, so a file
+    # manager passes the paths as arguments, as electron-builder's
+    # desktop entries pass theirs.
+    private def mime_types
+      @identity.file_associations.flat_map { |association| association.folders ? ["inode/directory"] : association.mime_types }.uniq
     end
 
     # +value+ escaped as a desktop entry's string values are: a backslash

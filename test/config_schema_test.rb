@@ -22,6 +22,9 @@ class ConfigSchemaTest < Minitest::Test
   # major.
   URL = "https://raw.githubusercontent.com/setdef/Fledge/v#{Fledge::VERSION}/lib/fledge/config.schema.json".freeze
 
+  # The start of a windowed app's fledge.yml.
+  WINDOWED = "kind: windowed\nidentifier: com.example.A\n"
+
   # Each document, and whether fledge build takes it. Both the schema and
   # Fledge::Config (with Fledge::Identity, which refuses a windowed app
   # with no identifier) must agree with the second column.
@@ -141,6 +144,36 @@ class ConfigSchemaTest < Minitest::Test
     "linux:\n  system_libraries: [.so]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0 \"]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0\\n\"]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Folder\n    folders: true\n  - name: Zip\n    role: editor\n    extensions: [zip, Zip]\n" \
+      "    mime_types: [application/zip]\n    content_types: [public.zip-archive]\n" => true,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    mime_types: [text/plain]\n" => true,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    content_types: [public.plain-text]\n    role:\n    folders: false\n" => true,
+    "#{WINDOWED}file_associations:\n  - name: Folder\n    folders: true\n    extensions: []\n    mime_types:\n" => true,
+    "#{WINDOWED}file_associations: []\n" => true,
+    "file_associations: []\n" => true,
+    "file_associations:\n  - name: Text\n    extensions: [txt]\n" => false,
+    "kind: console\nfile_associations:\n  - name: Text\n    extensions: [txt]\n" => false,
+    "programs:\n  - path: a\n    kind: windowed\n    identifier: com.example.A\nfile_associations:\n  - name: Text\n    extensions: [txt]\n" => true,
+    "programs:\n  - path: a\nfile_associations:\n  - name: Text\n    extensions: [txt]\n" => false,
+    "#{WINDOWED}file_associations: Text\n" => false,
+    "#{WINDOWED}file_associations:\n  - Text\n" => false,
+    "#{WINDOWED}file_associations:\n  - extensions: [txt]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name:\n    extensions: [txt]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: \" \"\n    extensions: [txt]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    extension: [txt]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    extensions: []\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    folders: false\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    role: owner\n    extensions: [txt]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    extensions: [.txt]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    extensions: [tar.gz]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    extensions: txt\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    extensions: [3]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    mime_types: [text]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    mime_types: [\"text/plain\\n\"]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    content_types: [text]\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Text\n    folders: \"yes\"\n" => false,
+    "#{WINDOWED}file_associations:\n  - name: Both\n    folders: true\n    extensions: [txt]\n" => false,
   }.merge(
     # Every key may be empty, which Config reads as absent, and none may
     # be blank or a number.
@@ -242,6 +275,20 @@ class ConfigSchemaTest < Minitest::Test
     refute property.fetch("additionalProperties")
     ecma = Fledge::Config::Linux::SONAME.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
     assert_equal ecma, property.dig("properties", "system_libraries", "items", "pattern")
+  end
+
+  # An entry of file_associations holds Config::FileAssociation's keys,
+  # its roles, and its rules for each list.
+  def test_file_associations_are_configs
+    item = schema.dig("properties", "file_associations", "items")
+    association = Fledge::Config::FileAssociation
+    assert_equal association::KEYS, item.fetch("properties").keys
+    refute item.fetch("additionalProperties")
+    assert_equal [*association::ROLES, nil], item.dig("properties", "role", "enum")
+    association::LISTS.each do |key, (rule, _)|
+      ecma = rule.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
+      assert_equal ecma, item.dig("properties", key, "items", "pattern"), key
+    end
   end
 
   def test_only_config_refuses_what_draft_07_cannot_say

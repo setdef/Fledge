@@ -9,9 +9,9 @@ require_relative "test_helper"
 require "open3"
 
 class DesktopEntryTest < Minitest::Test
-  def identity(name: "Hello Window", icon: nil)
+  def identity(name: "Hello Window", icon: nil, file_associations: [])
     Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.HelloWindow", version: "1.2.3", publisher: nil,
-      copyright: nil, icon:)
+      copyright: nil, icon:, file_associations:)
   end
 
   def test_writes_a_desktop_entry_named_for_the_identifier
@@ -60,6 +60,34 @@ class DesktopEntryTest < Minitest::Test
       entry = Fledge::DesktopEntry.new(identity(name: 'Hello "Window" 100%')).entries.first
       path = File.join(dir, entry.path)
       File.write(path, entry.content)
+      out, status = Open3.capture2e("desktop-file-validate", path)
+      assert_predicate status, :success?, out
+    end
+  end
+
+  # The files and folders the app opens (ADR 032, section 3), as a desktop
+  # knows them: by MIME type, inode/directory for folders, once each;
+  # and %F, so a file manager passes their paths as arguments. An entry
+  # with only extensions names no MIME type, and adds nothing.
+  def test_lists_the_mime_types_the_app_opens_and_takes_their_paths
+    association = Fledge::Config::FileAssociation
+    file_associations = [
+      association.new(name: "Folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true),
+      association.new(name: "Zip", role: "editor", extensions: ["zip"], mime_types: ["application/zip", "application/x-zip"],
+        content_types: [], folders: false),
+      association.new(name: "Also zip", role: "viewer", extensions: [], mime_types: ["application/zip"], content_types: [], folders: false),
+    ]
+    text = Fledge::DesktopEntry.new(identity(file_associations:)).text
+
+    assert_includes text, "\nExec=\"Hello Window\" %F\n"
+    assert_includes text, "\nMimeType=inode/directory;application/zip;application/x-zip;\n"
+    only_extensions = [association.new(name: "Text", role: "viewer", extensions: ["txt"], mime_types: [], content_types: [], folders: false)]
+    assert_equal Fledge::DesktopEntry.new(identity).text, Fledge::DesktopEntry.new(identity(file_associations: only_extensions)).text
+    skip "desktop-file-validate is not installed" unless system("command -v desktop-file-validate > /dev/null 2>&1")
+
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "com.example.HelloWindow.desktop")
+      File.write(path, text)
       out, status = Open3.capture2e("desktop-file-validate", path)
       assert_predicate status, :success?, out
     end

@@ -238,6 +238,26 @@
 #                          packages; the app names one a computer
 #                          lacks, and exits with 72, before Ruby starts.
 #                          Other builds ignore it.
+#                        file_associations: what a windowed app opens,
+#                          a list of mappings of name (what a person
+#                          calls the documents), role (viewer, the
+#                          default, or editor), and extensions (without
+#                          the dot), mime_types, and content_types
+#                          (macOS's uniform types), or folders: true,
+#                          in an entry of its own. macOS's Info.plist
+#                          declares them, ranked Alternate, so the app
+#                          is offered and never made their default; the
+#                          setup program adds the app to each
+#                          extension's "Open with" and to every
+#                          folder's menu, under HKCU, and a portable
+#                          folder registers nothing; the desktop entry
+#                          lists the MIME types, inode/directory for
+#                          folders, and takes their paths (%F). A file
+#                          or folder dropped on a Windows program, or
+#                          opened with a Linux one, arrives in ARGV; on
+#                          macOS it arrives as an Apple event, which only
+#                          a GUI library's event loop receives, and ARGV
+#                          stays empty, as under ruby main.rb.
 #     DIR/NAME-PLATFORM/ The built app, ready to run where it lands.
 #                        PLATFORM is this computer's: arm64-darwin,
 #                        x86_64-linux, aarch64-linux,

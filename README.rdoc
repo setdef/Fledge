@@ -10,8 +10,9 @@ you build on.
 Your users download one file, unpack it wherever they like, and run it.
 They install nothing, and they never need to know what Ruby is. A
 windowed app also gets an installer for its system: a disk image on
-macOS, a setup program on Windows, and an AppImage or +.deb+ on Linux.
-A console app can reach them through Scoop, a Homebrew tap, or winget:
+macOS, a setup program on Windows, and an AppImage or +.deb+ on Linux,
+and can name the files and folders it opens, which each system then
+offers it for. A console app can reach them through Scoop, a Homebrew tap, or winget:
 each archive comes with its SHA-256, which their recipes name.
 
 Fledge builds apps for macOS on Apple silicon, Linux (glibc and musl,

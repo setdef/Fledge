@@ -141,6 +141,7 @@ if ($Mesa) {
   $mesaFiles = Get-ChildItem -LiteralPath $Mesa -File
   $mesaFiles | ForEach-Object { Write-Host $_.Name }
   $mesaFiles | Copy-Item -Destination $root
+  Register-Driver (Join-Path $root 'lvp_icd.json')
   Section 'whether the Mesa DLLs load here'
   Test-Load @((Join-Path $env:SystemRoot 'System32\opengl32.dll'), (Join-Path $env:SystemRoot 'System32\vulkan-1.dll'),
     (Join-Path $root 'opengl32.dll'), (Join-Path $root 'libgallium_wgl.dll'), (Join-Path $root 'vulkan_lvp.dll'))
@@ -161,6 +162,7 @@ if ($Mesa) {
 
   $said = Run-Shell "window-$expected-shell" $app (Soft-Settings $expected $root)
   Expect "started through the shell, it draws with $expected and quits with 0" ($said -match 'exiting with 0' -and $said -match 'frames in')
+  Unregister-Driver (Join-Path $root 'lvp_icd.json')
   $mesaFiles | ForEach-Object { Remove-Item -LiteralPath (Join-Path $root $_.Name) }
 }
 
@@ -180,8 +182,10 @@ if (Test-Path -LiteralPath $installer) {
   if ($Mesa) {
     $mesaFiles = Get-ChildItem -LiteralPath $Mesa -File
     $mesaFiles | Copy-Item -Destination $folder
+    Register-Driver (Join-Path $folder 'lvp_icd.json')
     $said = Run-Shell "installed-shortcut-$expected" $shortcut (Soft-Settings $expected $folder)
     Expect "started from its Start menu shortcut, it draws with $expected and quits with 0" ($said -match 'exiting with 0' -and $said -match 'frames in')
+    Unregister-Driver (Join-Path $folder 'lvp_icd.json')
     $mesaFiles | ForEach-Object { Remove-Item -LiteralPath (Join-Path $folder $_.Name) }
   }
   $uninstall = Start-Process -FilePath (Join-Path $folder 'uninstall.exe') -ArgumentList '/S' -Wait -PassThru

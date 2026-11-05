@@ -156,3 +156,19 @@ function Test-Load([string[]] $Paths) {
     }
   }
 }
+
+# Registers a Vulkan driver's manifest where the Vulkan loader looks on
+# Windows (HKLM\SOFTWARE\Khronos\Vulkan\Drivers), since the loader
+# ignores VK_DRIVER_FILES in an elevated process, as a runner's are.
+$drivers = 'HKLM:\SOFTWARE\Khronos\Vulkan\Drivers'
+function Register-Driver([string] $Manifest) {
+  if (-not (Test-Path $drivers)) { New-Item -Path $drivers | Out-Null }
+  New-ItemProperty -Path $drivers -Name $Manifest -Value 0 -PropertyType DWord -Force | Out-Null
+  Write-Host "registered the Vulkan driver $Manifest"
+}
+function Unregister-Driver([string] $Manifest) {
+  Remove-ItemProperty -Path $drivers -Name $Manifest -ErrorAction SilentlyContinue
+}
+$elevated = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+  [Security.Principal.WindowsBuiltInRole]::Administrator)
+Write-Host "elevated: $elevated"

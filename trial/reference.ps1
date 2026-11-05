@@ -46,8 +46,10 @@ $manifest = Join-Path $bin 'lvp_icd.json'
 $lavapipe['VK_DRIVER_FILES'] = $manifest
 $lavapipe['VK_ICD_FILENAMES'] = $manifest
 $lavapipe['LOTA_TRIAL_RENDERERS'] = 'vulkan'
+Register-Driver $manifest
 $null = Run-App 'reference-window-mesa-lavapipe' $ruby $lavapipe @($main) 2.5 90
 Collect-Frame 'reference-window-mesa-lavapipe'
+Unregister-Driver $manifest
 $copied | ForEach-Object { Remove-Item -LiteralPath $_ }
 
 Section 'statuses'

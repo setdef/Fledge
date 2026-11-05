@@ -32,11 +32,13 @@
 /*
  * The exit statuses of a launcher that cannot start its app, from
  * sysexits(3) (ADR 002): EX_NOINPUT when the program the app runs, or the
- * fledge.cfg that names it, is missing, and EX_SOFTWARE when anything else
- * about the app or its runtime is broken. An app's own failures exit with
+ * fledge.cfg that names it, is missing, EX_OSFILE when a library the app's
+ * gems load from the Linux distribution is not on the computer (ADR 030),
+ * and EX_SOFTWARE when anything else about the app or its runtime is
+ * broken. An app's own failures exit with
  * the app's status instead, as under ruby.
  */
-enum { FLEDGE_EXIT_NO_APP = 66, FLEDGE_EXIT_SOFTWARE = 70 };
+enum { FLEDGE_EXIT_NO_APP = 66, FLEDGE_EXIT_SOFTWARE = 70, FLEDGE_EXIT_OSFILE = 72 };
 
 /*
  * Whether the environment variable name (or "NAME=value" entry) is one
@@ -63,12 +65,15 @@ char *fledge_bundle_environment_code(const char *variables, size_t length);
 /*
  * What fledge.cfg says: the program to run, and the Gemfile to set up
  * first, or NULL for none, each relative to the app folder with / between
- * folders, and the app's reverse-DNS identifier, or NULL for none.
+ * folders, the app's reverse-DNS identifier, or NULL for none, and the
+ * libraries its gems load from the Linux distribution, between spaces, or
+ * NULL for none.
  */
 struct fledge_config {
     const char *entry;
     const char *gemfile;
     const char *identifier;
+    const char *system_libraries;
 };
 
 /*
@@ -110,6 +115,16 @@ void fledge_coerce_locale(void);
  * out, which holds size bytes. Returns 0, or -1 with errno set.
  */
 int fledge_executable_path(char *out, size_t size);
+
+#ifdef __linux__
+/*
+ * Whether this computer's loader loads each of the libraries names lists,
+ * between spaces, as it would for a gem's extension (linux.c). Returns 0,
+ * or -1 with the first it could not load in library and the loader's
+ * reason in reason, each NUL-terminated within size bytes.
+ */
+int fledge_find_system_libraries(const char *names, char *library, char *reason, size_t size);
+#endif
 
 /*
  * In the runtime's bin/ruby: when argv[1] is the program a launcher of

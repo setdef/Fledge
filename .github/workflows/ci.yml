@@ -986,6 +986,30 @@ jobs:
             ruby -I lib exe/fledge build -o dist "$app"
           done
 
+      # ADR 030: examples/system_library, whose png_version gem links the
+      # distribution's libpng, which fledge.yml lists under linux:
+      # system_libraries. Its headers come from libpng-dev at the version
+      # of the libpng the runner's image has; dpkg-dev, whose
+      # dpkg-shlibdeps finds the package the .deb depends on, is on the
+      # runner already. The same project without the list must fail,
+      # naming the key.
+      - name: Build system_library for ${{ matrix.platform }}, and refuse it without its list
+        if: runner.os == 'Linux'
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: |
+          sudo apt-get install -y -qq "libpng-dev=$(dpkg-query -W -f '${Version}' libpng16-16t64)"
+          ruby -I lib exe/fledge build -o dist examples/system_library
+          unlisted="$RUNNER_TEMP/unlisted"
+          cp -R examples/system_library "$unlisted"
+          sed -i '/^linux:/,$d' "$unlisted/fledge.yml"
+          status=0
+          ruby -I lib exe/fledge build -o "$RUNNER_TEMP/unlisted-dist" "$unlisted" 2> "$RUNNER_TEMP/unlisted.err" || status=$?
+          cat "$RUNNER_TEMP/unlisted.err"
+          [ "$status" = 1 ] || { echo "::error::system_library without its list exited with $status, not 1"; exit 1; }
+          grep -q "needs libpng16.so.16, .*list it in fledge.yml as linux: { system_libraries: \[libpng16.so.16\] }" "$RUNNER_TEMP/unlisted.err" ||
+            { echo "::error::the refusal does not name linux: system_libraries"; exit 1; }
+
       # ADR 016: hello and windowed_app again, signed with a self-signed
       # identity made for this run, as a developer signs with their own;
       # Delivery verifies them on a fresh runner with the certificate.
@@ -1583,6 +1607,10 @@ jobs:
   # Ubuntu 24.04's, which is the oldest there is, and by Debian 13's; the
   # app runs from /usr/lib, as root and as an ordinary user; and removing
   # the package leaves nothing of it (.github/scripts/deliver-deb.sh).
+  # First, examples/system_library (ADR 030) runs from its archive and
+  # its AppImage without libpng, which its gem links, and says so; then
+  # apt installs its .deb, which depends on libpng's package, and it runs
+  # (.github/scripts/deliver-system-library.sh).
   delivery-deb-x86_64-linux:
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
     needs: build-x86_64-linux
@@ -1607,6 +1635,14 @@ jobs:
         with:
           name: apps-${{ matrix.platform }}
           path: delivered
+
+      # ADR 030, before apt brings anything else: the app whose gem links
+      # libpng names it, and exits with 72, from its archive and its
+      # AppImage, until apt installs its .deb, which brings libpng.
+      - name: Run System Library without libpng, then install its .deb with apt
+        run: |
+          apt-get update -qq
+          .github/scripts/deliver-system-library.sh delivered
 
       # freedesktop.org's validator, which a desktop has.
       - name: Install desktop-file-validate

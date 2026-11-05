@@ -34,8 +34,49 @@ class LinkageTest < Minitest::Test
     assert_equal [
 "linked 1.0.0's lib/ext.so needs libxml2.so.2, which neither linux, nor Fledge's runtime, nor the gem itself " \
   "provides, so the app could not load it on another computer. Build the gem so that it carries the library, or links " \
-  "it statically.",
+  "it statically, or, when every computer the app goes to has it from its Linux distribution, list it in fledge.yml " \
+  "as linux: { system_libraries: [libxml2.so.2] }.",
 ], linux
+  end
+
+  # A library the project lists as its gems' to load from the Linux
+  # distribution (ADR 030) may be needed, on glibc's Linux and musl's,
+  # and every other still keeps a gem from shipping.
+  def test_a_library_the_project_lists_as_the_distributions_may_be_needed
+    files = {
+      "lib/ext.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2]),
+      "lib/other.so" => Binaries.elf(needed: %w[libreadline.so.8 libc.so.6]),
+    }
+    TestReaders.need(self, :elf)
+    { "linux" => %w[libxml2.so.2], "linux-musl" => %w[libxml2.so.2 libc.so.6] }.each do |os, system|
+      linkage = Fledge::Linkage.new(os:, system:, readers: TestReaders.all)
+      found = linkage.problems("linked 1.0.0", files)
+
+      assert_equal 1, found.size, os
+      assert_includes found.first, "lib/other.so needs libreadline.so.8", os
+      assert_includes found.first, "linux: { system_libraries: [libreadline.so.8] }", os
+      assert_empty linkage.unused, os
+    end
+  end
+
+  # A library listed that no gem's compiled file needs from the system,
+  # because none needs it, or every distribution, the runtime, or the gem
+  # already provides it, is refused, so the list says only what is true
+  # and a .deb depends on nothing more.
+  def test_a_listed_library_no_gem_needs_from_the_system_is_refused
+    TestReaders.need(self, :elf)
+    linkage = Fledge::Linkage.new(os: "linux", provided: ["libcrypt.so.2"], system: %w[libxml2.so.2 libc.so.6 libcrypt.so.2 libown.so libgtk-3.so.0],
+      readers: TestReaders.all)
+    assert_empty linkage.problems("linked 1.0.0", {
+      "lib/ext.so" => Binaries.elf(needed: %w[libc.so.6 libcrypt.so.2 libxml2.so.2 libown.so]),
+      "lib/libown.so" => Binaries.elf(needed: ["libm.so.6"]),
+    })
+    assert_empty linkage.problems("plain 1.0.0", { "lib/plain.rb" => "" })
+
+    assert_equal %w[libc.so.6 libcrypt.so.2 libown.so libgtk-3.so.0].map { |library|
+      "fledge.yml's linux: system_libraries lists #{library}, which none of the gems' compiled files needs beyond what every " \
+        "Linux distribution, Fledge's runtime, and the gems themselves provide. Remove it."
+    }, linkage.unused
   end
 
   def test_a_dylib_no_one_ships_keeps_a_gem_from_shipping_on_macos

@@ -362,6 +362,30 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # The libraries fledge.yml lists as the Linux distribution's (ADR 030)
+  # reach a Linux launcher, which says which one a computer lacks before
+  # Ruby starts, once for all the programs; other systems' launchers are
+  # not told.
+  def test_a_linux_launcher_is_told_the_system_libraries_the_gems_load
+    unix!
+    Dir.mktmpdir do |dir|
+      hello = FakeApp.write(dir)
+      File.write(File.join(hello, "fledge.yml"), "linux:\n  system_libraries: [libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
+      assemble(dir, hello)
+      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = main.rb\n" \
+        "system_libraries = libgtk-3.so.0 libwebkit2gtk-4.1.so.0\n", File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
+      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = main.rb\n",
+        Fledge::Assembly.launch_config(Fledge::App.at(hello))
+
+      root = Programs.write(dir)
+      File.write(File.join(root, "Gemfile"), "")
+      File.write(File.join(root, "fledge.yml"), "#{File.read(File.join(root, 'fledge.yml'))}linux:\n  system_libraries: [libgtk-3.so.0]\n")
+      text = Fledge::Assembly.launch_config(Fledge::App.at(root), system_libraries: ["libgtk-3.so.0"])
+      assert text.start_with?("# Written by fledge build: what this app's programs run (ADR 024).\ngemfile = Gemfile\n" \
+        "system_libraries = libgtk-3.so.0\n\n[Play Game]\n"), text
+    end
+  end
+
   # One of the programs, built on its own, is an app of one program, as
   # a project with no programs builds.
   def test_one_of_several_programs_builds_alone

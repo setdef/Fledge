@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+
+# An app whose gem loads a library from the Linux distribution (ADR 030),
+# as a webview's wrapper loads WebKitGTK and GTK: png_version, a path gem
+# whose C extension links libpng, which Debian and Ubuntu install with a
+# desktop and leave out of a bare system. Listing libpng16.so.16 under
+# linux lets the gem need it, makes the .deb depend on the package that
+# provides it, libpng16-16t64, so apt installs it, and has the app name
+# it, before Ruby starts, on a computer that lacks it. It builds on
+# Linux, where the gem compiles against the distribution's libpng-dev.
+name: System Library
+kind: windowed
+identifier: com.setdef.fledge.SystemLibrary
+version: "1.0.0"
+publisher: setdef
+installers: [appimage, deb]
+linux:
+  system_libraries: [libpng16.so.16]

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge.yml`'s `linux: system_libraries` lists, by soname, the libraries a project's gems load from the Linux distribution, such as `[libwebkit2gtk-4.1.so.0, libgtk-3.so.0]`. On Linux `fledge build` takes a gem whose compiled files need one, refuses one listed that no gem needs, makes a `.deb` depend on the packages that provide them (found with dpkg-shlibdeps, from dpkg-dev), and has the app's program name one the computer lacks, and exit with 72, before Ruby starts. A gem that needs a library nothing provides is still refused, and the message now names the key.
+
 ### Changed
 
 - Breaking: an app gets the Ruby that runs `fledge build`, its minor version at the patch level Fledge ships, so `fledge build` on a Ruby whose minor version has no runtime, such as a 4.1 preview, fails and says so, instead of building the app with Ruby 4.0.

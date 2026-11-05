@@ -27,9 +27,9 @@ module Fledge
 
     def launch_config: () -> String
 
-    def self.launch_config: (App app) -> String
+    def self.launch_config: (App app, ?system_libraries: Array[String]) -> String
 
-    private def self.single_config: (App app) -> String
+    private def self.single_config: (App app, Array[String] system_libraries) -> String
 
     private def self.config_value: (String path) -> String
 

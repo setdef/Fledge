@@ -10,11 +10,17 @@ module Fledge
     @system: Array[Regexp]
     @os: String
     @provided: Array[String]
+    @declared: Array[String]
+    @needed: Array[String]
     @readers: Binary::Readers
 
-    def initialize: (os: String, ?provided: Array[String], ?readers: Binary::Readers) -> void
+    def initialize: (os: String, ?provided: Array[String], ?system: Array[String], ?readers: Binary::Readers) -> void
 
     def problems: (String label, Hash[String, String] files) -> Array[String]
+
+    def unused: () -> Array[String]
+
+    private def unprovided: (String label, String path, String library) -> String?
 
     private def unreached: (String label, String path, String library, Dyld dyld, Array[String] paths) -> String?
 

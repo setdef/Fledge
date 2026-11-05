@@ -389,6 +389,28 @@ class BuiltAppTest < Minitest::Test
     File.rename("#{main}.away", main) if main && File.exist?("#{main}.away")
   end
 
+  # ADR 030: on Linux, a library the app's gems load from the
+  # distribution that this computer lacks stops the app before Ruby
+  # starts, with EX_OSFILE and the library's name, never a LoadError
+  # that names a gem; one it has changes nothing.
+  def test_a_system_library_the_computer_lacks_is_named_before_ruby_starts
+    skip "only a Linux app's gems load libraries from its distribution" unless @platform.os == "linux"
+    config = File.join(File.realpath(File.dirname(app)), "fledge.cfg")
+    original = File.read(config)
+    present = @platform.musl? ? "libc.musl-#{@platform.name.split('-').first}.so.1" : "libm.so.6"
+
+    File.write(config, "#{original}system_libraries = #{present}\n")
+    assert_equal [expected, "", 0], run_app({}, app).then { |out, err, status| [out, err, status.exitstatus] }
+
+    File.write(config, "#{original}system_libraries = #{present} libfledge-absent.so.1\n")
+    out, err, status = run_app({}, app)
+    assert_equal ["", 72], [out, status.exitstatus]
+    assert_match(/\AHello: this app needs libfledge-absent\.so\.1, which this computer does not have \(.*libfledge-absent\.so\.1.*\)\. /, err)
+    assert err.end_with?("Install it from your Linux distribution's packages, then run the app again\n"), err
+  ensure
+    File.write(config, original) if config && original
+  end
+
   # The gem-shaped app (ADR 005): exe/my_cool_app, with i18n and the
   # runtime's own build of sqlite3 set up by Bundler as bundle exec would.
   def test_the_gem_shaped_app_runs_with_its_gems_and_its_status

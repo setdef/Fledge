@@ -5,8 +5,9 @@ module Fledge
   module Deb
     ARCHITECTURES: Hash[String, String]
     INSTALL: String
+    SHLIBDEPS: String
 
-    def self.write: (identity: Identity, folder: String, platform: Platform, to: String) -> String
+    def self.write: (identity: Identity, folder: String, platform: Platform, to: String, ?system_libraries: Array[String]) -> String
 
     def self.package_name: (Identity identity) -> String
 
@@ -14,7 +15,9 @@ module Fledge
 
     private def self.lay_out: (String root, String folder, Identity identity, String package) -> void
 
-    private def self.control_file: (Identity identity, String package, String architecture, Integer size) -> String
+    private def self.control_file: (Identity identity, String package, String architecture, Integer size, Array[String] depends) -> String
+
+    private def self.dependencies: (String work, String root, Array[String] libraries) -> Array[String]
 
     private def self.line: (String text) -> String
 

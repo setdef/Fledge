@@ -126,6 +126,21 @@ class ConfigSchemaTest < Minitest::Test
     "android:\n  host: .\n" => false,
     "android:\n  host: host/\n" => false,
     "android:\n  host: host\\\\android\n" => false,
+    "linux:\n  system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0, libstdc++.so.6, libfoo.so]\n" => true,
+    "linux:\n  system_libraries: [libgtk-3.so.0, libgtk-3.so.0]\n" => true,
+    "linux:\n  system_libraries: []\n" => true,
+    "linux:\n  system_libraries:\n" => true,
+    "linux: {}\n" => true,
+    "linux: [libgtk-3.so.0]\n" => false,
+    "linux:\n  libraries: [libgtk-3.so.0]\n" => false,
+    "linux:\n  system_libraries: libgtk-3.so.0\n" => false,
+    "linux:\n  system_libraries: [3]\n" => false,
+    "linux:\n  system_libraries: [/usr/lib/libgtk-3.so.0]\n" => false,
+    "linux:\n  system_libraries: [libgtk-3-0]\n" => false,
+    "linux:\n  system_libraries: [libgtk-3.so.]\n" => false,
+    "linux:\n  system_libraries: [.so]\n" => false,
+    "linux:\n  system_libraries: [\"libgtk-3.so.0 \"]\n" => false,
+    "linux:\n  system_libraries: [\"libgtk-3.so.0\\n\"]\n" => false,
   }.merge(
     # Every key may be empty, which Config reads as absent, and none may
     # be blank or a number.
@@ -217,6 +232,16 @@ class ConfigSchemaTest < Minitest::Test
       refute property.fetch("additionalProperties")
       assert_equal schema.dig("properties", "programs", "items", "properties", "path", "pattern"), property.dig("properties", "host", "pattern")
     end
+  end
+
+  # Linux's mapping holds Config::Linux's keys, and each system library
+  # is a name Config::Linux takes.
+  def test_linux_is_configs
+    property = schema.dig("properties", "linux")
+    assert_equal Fledge::Config::Linux::KEYS, property.fetch("properties").keys
+    refute property.fetch("additionalProperties")
+    ecma = Fledge::Config::Linux::SONAME.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
+    assert_equal ecma, property.dig("properties", "system_libraries", "items", "pattern")
   end
 
   def test_only_config_refuses_what_draft_07_cannot_say

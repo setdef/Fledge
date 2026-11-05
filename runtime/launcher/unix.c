@@ -36,6 +36,10 @@
  *      program in app/ to run, ENTRY, and the app's Gemfile, if it has one.
  *      In an app of several programs, each a copy of this launcher, it
  *      reads the section of fledge.cfg named as its own file is (ADR 024).
+ *      On Linux, it then has the loader look for each library the app's
+ *      gems load from the distribution, which fledge.cfg lists, and
+ *      names the first one this computer lacks instead of starting Ruby
+ *      (find_system_libraries, linux.c; ADR 030).
  *   2. It sets aside every environment variable through which a Ruby
  *      that happens to be installed on the computer could change how
  *      Ruby boots: RUBYOPT, RUBYLIB, GEM_HOME, BUNDLE_GEMFILE, and the
@@ -383,6 +387,29 @@ read_config(void)
     if (parsed != 0) fail("this app is damaged: %s %s", path, problem);
 }
 
+#ifdef __linux__
+/*
+ * On Linux, refuses to start an app whose gems load a library from the
+ * distribution (fledge.cfg's system_libraries, ADR 030) that this
+ * computer's loader cannot load, naming the library, with EX_OSFILE: a
+ * gem's extension would otherwise fail when Ruby required it, with a
+ * LoadError that names the gem (linux.c).
+ */
+static void
+find_system_libraries(void)
+{
+    static char library[512];
+    static char reason[512];
+
+    if (app_config.system_libraries == NULL) return;
+    if (fledge_find_system_libraries(app_config.system_libraries, library, reason, sizeof library) == 0) return;
+    fail_with(FLEDGE_EXIT_OSFILE,
+              "this app needs %s, which this computer does not have (%s). Install it from your Linux distribution's "
+              "packages, then run the app again",
+              library, reason);
+}
+#endif
+
 /*
  * Finds the app folder beside the launcher, ROOT/app, by its real path.
  * In a macOS .app, ROOT is Contents/MacOS and its app is a link to
@@ -483,6 +510,9 @@ main(int argc, char **argv)
 {
     find_root(sizeof root);
     read_config();
+#ifdef __linux__
+    find_system_libraries();
+#endif
     find_app_folder();
     scrub_environment();
     fledge_coerce_locale();

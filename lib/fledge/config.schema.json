@@ -120,6 +120,21 @@
           "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
         }
       }
+    },
+    "linux": {
+      "description": "What a build for Linux needs to know of the computers the app goes to (default: nothing). Other builds ignore it.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "system_libraries": {
+          "description": "The libraries the project's gems load from the Linux distribution, by the names their compiled files give them, such as [libwebkit2gtk-4.1.so.0, libgtk-3.so.0] (default: none). fledge build accepts a gem that needs one, refuses one that no gem's compiled file needs from the system, and makes a .deb depend on the packages that provide them; the app says which is missing on a computer that lacks one.",
+          "type": ["array", "null"],
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_+-][A-Za-z0-9._+-]*\\.so(?:\\.[0-9]+)*$"
+          }
+        }
+      }
     }
   },
   "allOf": [

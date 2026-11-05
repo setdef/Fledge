@@ -196,7 +196,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def launch_config
-      Assembly.launch_config(@app)
+      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os))
     end
 
     # The contents of CONFIG for +app+ (#launch_config), which the
@@ -236,13 +236,15 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.launch_config(app)
+    def self.launch_config(app, system_libraries: [])
       programs = app.programs
-      return single_config(app) if programs.size == 1
+      return single_config(app, system_libraries) if programs.size == 1
 
       lines = [] # : Array[String]
       gemfile = app.gemfile
-      lines.push("gemfile = #{config_value(gemfile)}", "") if gemfile
+      lines << "gemfile = #{config_value(gemfile)}" if gemfile
+      lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
+      lines << "" unless lines.empty?
       programs.each do |program|
         lines.push("[#{program.name}]", "entry = #{config_value(program.entry)}")
         identifier = program.identity.identifier
@@ -252,12 +254,13 @@ module Fledge
       "# Written by fledge build: what this app's programs run (ADR 024).\n#{lines.join("\n").chomp}\n"
     end
 
-    private_class_method def self.single_config(app) # :nodoc:
+    private_class_method def self.single_config(app, system_libraries) # :nodoc:
       lines = ["entry = #{config_value(app.entry)}"]
       gemfile = app.gemfile
       lines << "gemfile = #{config_value(gemfile)}" if gemfile
       identifier = app.identity.identifier
       lines << "identifier = #{identifier}" if identifier
+      lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
       "# Written by fledge build: what this app's program runs (ADR 005).\n#{lines.join("\n")}\n"
     end
 

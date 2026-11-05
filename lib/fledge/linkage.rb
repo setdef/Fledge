@@ -24,7 +24,10 @@ module Fledge
   # (Fledge::Binary, with the build computer's tools), and names every
   # library one of them needs that neither the target's operating system,
   # nor Fledge's runtime, nor the gem itself provides.
-  # What the operating system provides is SYSTEM_LIBRARIES. On macOS a
+  # What the operating system provides is SYSTEM_LIBRARIES, and on Linux
+  # also what the project lists as its gems' to load from the
+  # distribution (Config::Linux; ADR 030), which a desktop library's
+  # wrapper needs. On macOS a
   # library the gem carries must also be where its name leads: a file that
   # names <tt>@rpath/libfoo.dylib</tt> or
   # <tt>@loader_path/libfoo.dylib</tt> loads the gem's copy only if dyld
@@ -96,12 +99,18 @@ module Fledge
     # [os] The operating system the app is for (Fledge::Platform#os).
     # [provided] The file names of the shared libraries the runtime
     #            ships, which a compiled file may need too.
+    # [system] The file names of the libraries the project lists as its
+    #          gems' to load from the Linux distribution
+    #          (Config::Linux#system_libraries), which a compiled file
+    #          may need too, and #unused names when none does.
     # [readers] The tools that read compiled files here
     #           (Fledge::Binary::Readers).
-    def initialize(os:, provided: [], readers: Binary::Readers.local(os))
+    def initialize(os:, provided: [], system: [], readers: Binary::Readers.local(os))
       @system = SYSTEM_LIBRARIES.fetch(os)
       @os = os
       @provided = provided
+      @declared = system
+      @needed = [] # : Array[String]
       @readers = readers
     end
 
@@ -137,13 +146,56 @@ module Fledge
 
         binary.needed.reject { |library| @system.any? { |pattern| pattern.match?(library) } }.filter_map do |library|
           if !shipped.include?(File.basename(library).downcase)
-            "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \
-              "the app could not load it on another computer. Build the gem so that it carries the library, or links it statically."
+            unprovided(label, path, library)
           elsif dyld && !@provided.map(&:downcase).include?(File.basename(library).downcase)
             unreached(label, path, library, dyld, binaries.keys)
           end
         end
       end
+    end
+
+    # Why the libraries the project listed as its gems' to load from the
+    # Linux distribution (Config::Linux) are wrong, one sentence for each
+    # that none of the files #problems judged needed beyond what the
+    # system, the runtime, and the gems provide, or none. Ask after
+    # #problems has judged every gem.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   linkage = Fledge::Linkage.new(os: "linux", system: ["libgtk-3.so.0"])
+    #   linkage.problems("plain 1.0.0", { "lib/plain.rb" => "" }) # => []
+    #   linkage.unused.first
+    #   # => "fledge.yml's linux: system_libraries lists libgtk-3.so.0, which none of the gems' compiled files needs ..."
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def unused
+      (@declared - @needed).map do |library|
+        "fledge.yml's linux: system_libraries lists #{library}, which none of the gems' compiled files needs beyond what every " \
+          "Linux distribution, Fledge's runtime, and the gems themselves provide. Remove it."
+      end
+    end
+
+    # Why the file at +path+ would not load +library+, which nothing
+    # provides, or +nil+ when the project listed it as the Linux
+    # distribution's (Config::Linux).
+    private def unprovided(label, path, library)
+      if @declared.include?(library)
+        @needed |= [library]
+        return
+      end
+
+      problem = "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \
+        "the app could not load it on another computer. Build the gem so that it carries the library, or links it statically"
+      return "#{problem}." unless FORMATS.fetch(@os) == :elf
+
+      "#{problem}, or, when every computer the app goes to has it from its Linux distribution, list it in fledge.yml as " \
+        "linux: { system_libraries: [#{library}] }."
     end
 
     # Why dyld would not find +library+, which the file at +path+ names

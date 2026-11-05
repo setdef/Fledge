@@ -82,14 +82,14 @@ grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "t
 # SHA-256 its BUILD.txt names, and NOTICES.txt names the folder.
 sources_hold() {
   for id in "$@"; do
-    folder="$root/notices/sources/$id"
-    [ -s "$folder/BUILD.txt" ] || fail "the app has no notices/sources/$id/BUILD.txt"
+    source_dir="$root/notices/sources/$id"
+    [ -s "$source_dir/BUILD.txt" ] || fail "the app has no notices/sources/$id/BUILD.txt"
     grep -qx "  notices/sources/$id/" "$root/notices/NOTICES.txt" || fail "NOTICES.txt does not say the app holds $id's source"
     found=
-    for file in "$folder"/*; do
+    for file in "$source_dir"/*; do
       [ "$(basename "$file")" = BUILD.txt ] && continue
       sum=$(sha256sum "$file" | cut -d ' ' -f 1)
-      if grep -q "$sum" "$folder/BUILD.txt"; then found=$file; fi
+      if grep -q "$sum" "$source_dir/BUILD.txt"; then found=$file; fi
     done
     [ -n "$found" ] || fail "notices/sources/$id/ holds no archive whose SHA-256 its BUILD.txt names"
     echo "ok: the app holds $id's source, $(basename "$found")"

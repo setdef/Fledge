@@ -13,6 +13,7 @@
 #
 # SYNOPSIS
 #     fledge build [OPTIONS] [PATH]
+#     fledge build --from APP [OPTIONS] [PATH]
 #     fledge build ios|android [OPTIONS] [PATH]
 #     fledge --help
 #     fledge --version
@@ -58,6 +59,16 @@
 #     notifications, and an AppImage for Linux, and, when fledge.yml
 #     asks for it, a .deb for Debian and Ubuntu.
 #
+#     An app Fledge built already holds a runtime and its gems, each
+#     built for its platform, so a project that needs no other gems
+#     can be built from it, on a computer of the same platform with
+#     nothing else: fledge build --from copies the app, puts the
+#     project in place of its own, writes the new app's name and
+#     identity with the system's own tools, and archives it, and
+#     downloads, installs, and compiles nothing. On Windows it takes
+#     the program and rcedit from this Fledge's runtime, which must
+#     be on the computer, since no app holds them.
+#
 #     For a phone, fledge build writes the project that builds the
 #     app, which you build, sign, and submit with that system's tools:
 #     an Xcode project for iPhone and iPad on a Mac, and a Gradle project
@@ -96,6 +107,21 @@
 #                        names, or else its main.rb; when fledge.yml
 #                        lists programs, every one of them, and a file
 #                        it lists means that program alone.
+#     build --from APP   Build the program PATH as build does, but with
+#                        the runtime and gems of APP, the folder of an
+#                        app this Fledge built for this computer (on
+#                        macOS, its .app too), in place of the
+#                        runtime's and the Gemfile.lock's. The new app
+#                        runs PATH's project with APP's Gemfile and
+#                        Gemfile.lock, and its own name and identity;
+#                        nothing of APP's project or identity stays.
+#                        PATH's project may have no Gemfile, gems.rb,
+#                        or gemspec, nor a file where APP keeps one
+#                        Bundler needs, and its fledge.yml no programs,
+#                        linux, ios, or android, which change the
+#                        runtime or the gems. An APP another Fledge
+#                        release built, or built for another system,
+#                        is a usage error.
 #     build ios          Write an Xcode project for the app, for iPhone
 #                        and iPad (iOS 15 and later, arm64), which
 #                        builds for devices and the Simulator, and print
@@ -116,6 +142,8 @@
 #
 # OPTIONS
 #     -o, --out DIR      Write builds to DIR (default: dist)
+#     --from APP         Build from the app in the folder APP (see
+#                        build --from); not for a phone
 #     --sign IDENTITY    Sign the app with your own identity: on
 #                        macOS a code signing identity in your
 #                        keychain, as codesign names it, such as

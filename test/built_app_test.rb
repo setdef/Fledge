@@ -281,6 +281,45 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # ADR 032: an app built with fledge build --from takes the runtime and
+  # the gems of an app already built, and runs a project of its own,
+  # which requires a gem the old app's Gemfile takes from a folder in its
+  # project, from a folder whose name is not ASCII, with no Ruby around.
+  def test_an_app_built_from_a_built_app_runs_its_own_project_with_the_old_apps_gems
+    Dir.mktmpdir do |dir|
+      player = File.join(dir, "player")
+      FileUtils.mkdir_p([File.join(player, ".git"), File.join(player, "vendor", "greeter", "lib")])
+      File.write(File.join(player, "vendor", "greeter", "greeter.gemspec"),
+        "Gem::Specification.new { |s| s.name = 'greeter'; s.version = '1.0'; s.summary = 'x'; s.authors = ['x']; s.files = ['lib/greeter.rb'] }\n")
+      File.write(File.join(player, "vendor", "greeter", "lib", "greeter.rb"), "module Greeter\n  def self.hi(name) = \"hello from greeter in \#{name}\"\nend\n")
+      File.write(File.join(player, "Gemfile"), "source \"https://rubygems.org\"\n\ngem \"greeter\", path: \"vendor/greeter\"\n")
+      platforms = %w[aarch64-linux aarch64-linux-musl aarch64-mingw-ucrt arm64-darwin x64-mingw-ucrt x86_64-linux x86_64-linux-musl]
+      File.write(File.join(player, "Gemfile.lock"), "PATH\n  remote: vendor/greeter\n  specs:\n    greeter (1.0)\n\n" \
+        "GEM\n  remote: https://rubygems.org/\n  specs:\n\nPLATFORMS\n#{platforms.map { |name| "  #{name}\n" }.join}\n" \
+        "DEPENDENCIES\n  greeter!\n\nCHECKSUMS\n  greeter (1.0)\n\nBUNDLED WITH\n  4.0.20\n")
+      File.write(File.join(player, "main.rb"), "require \"greeter\"\nputs Greeter.hi(\"the player\")\n")
+      File.write(File.join(player, "fledge.yml"), "name: Player\n")
+      game = File.join(dir, "game")
+      FileUtils.mkdir_p(File.join(game, ".git"))
+      File.write(File.join(game, "main.rb"), "require \"greeter\"\nputs Greeter.hi(File.basename(__dir__))\n")
+      File.write(File.join(game, "fledge.yml"), "name: Game\n")
+
+      env = { "FLEDGE_RUNTIME_DIR" => @runtimes }
+      out, err, status = Open3.capture3(env, RbConfig.ruby, "-I", LIB, EXE, "build", "-o", File.join(dir, "players"), player)
+      assert_predicate status, :success?, err
+      from = File.join(dir, "players", "Player-#{@platform}")
+      out, err, status = Open3.capture3(env, RbConfig.ruby, "-I", LIB, EXE, "build", "--from", from, "-o", File.join(dir, "games"), game)
+      assert_equal [true, ""], [status.success?, err]
+      assert_equal "#{File.join(dir, 'games', "Game-#{@platform}#{@platform.archive_extension}")}\n", out
+
+      place = File.join(dir, "My Games", "Ünïcödé 日本")
+      FileUtils.mkdir_p(place)
+      unpack(out.chomp, place)
+      out, err, status = run_app({ "HOME" => dir }, File.join(place, "Game-#{@platform}", @platform.executable("Game")))
+      assert_equal ["hello from greeter in app\n", "", 0], [out, err, status.exitstatus]
+    end
+  end
+
   # require "mkmf" loads in a built app, as under ruby, since the runtime
   # keeps Ruby's headers (ADR 003, section 2), and some gems require it
   # at run time for MakeMakefile#find_executable.

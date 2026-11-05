@@ -25,6 +25,7 @@ class CLITest < Minitest::Test
   end
 
   USAGE = "Usage: fledge build [OPTIONS] [PATH]\n" \
+    "       fledge build --from APP [OPTIONS] [PATH]\n" \
     "       fledge build ios|android [OPTIONS] [PATH]\n" \
     "       fledge --help\n" \
     "       fledge --version\n" \
@@ -112,7 +113,7 @@ class CLITest < Minitest::Test
   end
 
   def test_the_short_usage_is_the_help_headers_synopsis
-    assert_equal "Usage: fledge build [OPTIONS] [PATH]\n       fledge build ios|android [OPTIONS] [PATH]\n       fledge --help\n" \
+    assert_equal "Usage: fledge build [OPTIONS] [PATH]\n       fledge build --from APP [OPTIONS] [PATH]\n       fledge build ios|android [OPTIONS] [PATH]\n       fledge --help\n" \
       "       fledge --version\n",
       Fledge::CLI.new(help_path: EXE).usage
   end

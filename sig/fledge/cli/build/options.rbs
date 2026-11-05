@@ -9,8 +9,9 @@ module Fledge
         attr_reader path: String
         attr_reader phone: String?
         attr_reader sign: String?
+        attr_reader from: String?
 
-        def self.new: (out: String, path: String, phone: String?, sign: String?) -> instance
+        def self.new: (out: String, path: String, phone: String?, sign: String?, from: String?) -> instance
 
         def self.parse: (Array[String] argv) -> Options
 

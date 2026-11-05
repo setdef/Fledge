@@ -18,6 +18,12 @@ module Fledge
 
       private def build: (App app, Platform platform, String out, Signing::signer? signing) -> void
 
+      private def build_from: (App app, BuiltApp from, Platform platform, String out, Signing::signer? signing) -> void
+
+      private def written: (Assembly assembly, String out) -> void
+
+      private def out_dir: (App app, String out) -> String
+
       private def build_project: (App app, MobilePlatform phone, Platform host, String out) -> void
 
       private def same_ruby: (RuntimeContents contents, Platform | MobilePlatform platform) -> RuntimeContents

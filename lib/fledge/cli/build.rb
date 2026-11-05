@@ -9,6 +9,7 @@ require "tmpdir"
 require_relative "../app"
 require_relative "../app_gems"
 require_relative "../assembly"
+require_relative "../built_app"
 require_relative "../bundle"
 require_relative "../checksum"
 require_relative "../error"
@@ -107,11 +108,16 @@ module Fledge
       #++
       def call(argv)
         options = Options.parse(argv)
-        app = App.at(options.path)
         host = Platform.local(@host)
+        from = options.from&.then { |path| BuiltApp.at(path, platform: host, runtimes: Runtimes.new(env: @env, log: @err)) }
+        app = App.at(options.path)
         phone = MobilePlatform.find(options.phone.to_s)
+        signing = phone ? nil : Signing.for(host, options.sign, env: @env)
+        if from then build_from(from.adopt(app), from, host, options.out, signing)
         # A phone's app runs one program: App#main (ADR 024, section 6).
-        phone ? build_project(app.with(programs: [app.main]), phone, host, options.out) : build(app, host, options.out, Signing.for(host, options.sign, env: @env))
+        elsif phone then build_project(app.with(programs: [app.main]), phone, host, options.out)
+        else build(app, host, options.out, signing)
+        end
         0
       rescue UsageError
         raise
@@ -121,9 +127,7 @@ module Fledge
       end
 
       private def build(app, platform, out, signing)
-        out_dir = File.expand_path(out)
-        raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
-
+        out_dir = out_dir(app, out)
         runtimes = Runtimes.new(env: @env, log: @err)
         Dir.mktmpdir("fledge-build") do |work|
           gems = gems_for(app, runtimes, work)
@@ -131,20 +135,38 @@ module Fledge
           contents = same_ruby(RuntimeContents.read(runtime), platform)
           files = gems ? gems.for(platform, runtime: contents) : [] # : Array[Entry]
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
-          assembly = Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:)
-          [assembly.call, *assembly.installers].each do |path|
-            Checksum.write(path)
-            @out.puts File.join(out, File.basename(path))
-          end
+          written(Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:), out)
         end
+      end
+
+      # Builds +app+ from the built app +from+ (ADR 032): with its runtime
+      # and gems, downloading, installing, and compiling nothing.
+      private def build_from(app, from, platform, out, signing)
+        written(Assembly.new(app:, platform:, runtime: from.path, out: out_dir(app, out), files: from.files, signing:, from:), out)
+      end
+
+      # Writes +assembly+'s archive and installers, each with its checksum
+      # file, and prints each one's path in the folder +out+.
+      private def written(assembly, out)
+        [assembly.call, *assembly.installers].each do |path|
+          Checksum.write(path)
+          @out.puts File.join(out, File.basename(path))
+        end
+      end
+
+      # The folder +out+, as an absolute path, which may not be +app+'s.
+      private def out_dir(app, out)
+        out_dir = File.expand_path(out)
+        raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
+
+        out_dir
       end
 
       # Writes +phone+'s project for +app+ (Fledge::MobileProject), on the
       # computer +host+, with the app's gems, each its pure-Ruby build.
       private def build_project(app, phone, host, out)
         phone.check_host(host)
-        out_dir = File.expand_path(out)
-        raise Error, "--out can't be the app's own folder, #{out}" if out_dir == app.root
+        out_dir = out_dir(app, out)
 
         runtimes = Runtimes.new(env: @env, log: @err)
         writer = MobileProject.for(phone)

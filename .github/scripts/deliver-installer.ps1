@@ -111,13 +111,25 @@ public static extern bool ShellExecuteExW(ref ShellExecuteInfo info);
 
 // Opens file with verb as the shell does, through the ProgID className
 // when it is given (SEE_MASK_CLASSNAME, 0x1), waiting for the shell to
-// start it (SEE_MASK_NOASYNC, 0x100).
-public static bool Open(string file, string verb, string className) {
-  ShellExecuteInfo info = new ShellExecuteInfo();
-  info.size = Marshal.SizeOf(info);
-  info.mask = 0x100u | (className == null ? 0u : 0x1u);
-  info.verb = verb; info.file = file; info.className = className; info.show = 1;
-  return ShellExecuteExW(ref info);
+// start it (SEE_MASK_NOASYNC, 0x100), with no dialog on an error
+// (SEE_MASK_FLAG_NO_UI, 0x400). The shell's folder handlers are COM
+// objects that need a single-threaded apartment, which PowerShell's own
+// thread is not, so it runs on one of its own, for at most a minute.
+// Returns null, or why it failed.
+public static string Open(string file, string verb, string className) {
+  string result = "it did not return within a minute";
+  System.Threading.Thread thread = new System.Threading.Thread(() => {
+    ShellExecuteInfo info = new ShellExecuteInfo();
+    info.size = Marshal.SizeOf(info);
+    info.mask = 0x500u | (className == null ? 0u : 0x1u);
+    info.verb = verb; info.file = file; info.className = className; info.show = 1;
+    result = ShellExecuteExW(ref info) ? null : new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error()).Message;
+  });
+  thread.IsBackground = true;
+  thread.SetApartmentState(System.Threading.ApartmentState.STA);
+  thread.Start();
+  thread.Join(60000);
+  return result;
 }
 
 [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
@@ -267,10 +279,12 @@ $dropped = Join-Path $env:RUNNER_TEMP 'Ein Ordner ü'
 New-Item -ItemType Directory -Force $dropped | Out-Null
 $document = Join-Path $dropped 'dropped.hellowindow'
 Set-Content -LiteralPath $document -Value 'a document'
-if (-not [Fledge.Shell]::Open($document, 'open', $progId)) { Fail "the shell could not open $document with $progId" }
+$failed = [Fledge.Shell]::Open($document, 'open', $progId)
+if ($failed) { Fail "the shell could not open $document with ${progId}: $failed" }
 WaitFor { (Get-Content -LiteralPath $document -Raw) -match '"ruby":"4.0.9"' } 'the app writing its report over the file the shell opened with it' 60
 Write-Host "ok: the shell opened $document with the app, which got its path"
-if (-not [Fledge.Shell]::Open($dropped, $identifier, $null)) { Fail "the shell could not open $dropped with the folders' verb" }
+$failed = [Fledge.Shell]::Open($dropped, $identifier, $null)
+if ($failed) { Fail "the shell could not open $dropped with the folders' verb: $failed" }
 WaitFor { Test-Path -LiteralPath (Join-Path $dropped 'hello_window.json') } 'the app writing its report into the folder the shell opened with it' 60
 Write-Host "ok: the shell opened $dropped with the folders' verb, and the app got its path"
 Remove-Item -LiteralPath (Join-Path $dropped 'hello_window.json')

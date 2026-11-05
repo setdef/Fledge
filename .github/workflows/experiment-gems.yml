@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# The experiment of ADR 030 on this branch only: the Gems workflow with
+# v0.4.0's published runtimes, which this branch's lib/fledge/SHA256SUMS
+# pins and whose version it has, built into gems and installed offline
+# on every platform. ci.yml skips this branch.
+
+name: Experiment, gems
+
+on:
+  push:
+    branches: ["experiment/platform-gems"]
+
+permissions:
+  contents: read
+
+jobs:
+  gems:
+    name: Gems
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/gems.yml
+    with:
+      tag: v0.4.0

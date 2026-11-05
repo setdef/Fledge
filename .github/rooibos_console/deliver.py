@@ -10,11 +10,13 @@ Ctrl-C by the signal Ruby's Interrupt raises.
 
     python3 -I deliver.py PROGRAM
 """
+import atexit
 import fcntl
 import os
 import pty
 import re
 import select
+import signal
 import struct
 import sys
 import tempfile
@@ -22,6 +24,33 @@ import termios
 import time
 
 CONTROL = re.compile(rb"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07")
+
+
+RUNS = []
+
+
+def reap():
+    """Kills every app this script started, with its whole process group."""
+    for pid in RUNS:
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except OSError:
+            pass
+        try:
+            os.waitpid(pid, os.WNOHANG)
+        except OSError:
+            pass
+
+
+def timed_out(*_):
+    print("::error::Fledge Check: the whole run took more than 5 minutes")
+    reap()
+    os._exit(1)
+
+
+atexit.register(reap)
+signal.signal(signal.SIGALRM, timed_out)
+signal.alarm(300)
 
 
 def fail(message, seen):
@@ -46,6 +75,8 @@ class Run:
         os.makedirs(env["PATH"], exist_ok=True)
         self.seen = b""
         self.pid, self.fd = pty.fork()
+        if self.pid:
+            RUNS.append(self.pid)
         if self.pid == 0:
             fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 100, 0, 0))
             os.chdir(work)
@@ -152,3 +183,19 @@ if status != -2:
 if b"\x1b[?1049l" not in second.seen:
     fail("Ctrl-C did not restore the terminal", second.seen)
 print("ok: Ctrl-C restored the terminal")
+
+third = Run(program, work)
+if not third.read_until(lambda t: "Gem.dir" in t, 60):
+    fail("the third run never showed its screen", third.seen)
+os.close(third.fd)
+status = None
+deadline = time.time() + 30
+while time.time() < deadline:
+    done, raw = os.waitpid(third.pid, os.WNOHANG)
+    if done:
+        status = os.waitstatus_to_exitcode(raw)
+        break
+    time.sleep(0.2)
+if status is None:
+    fail("the app kept running after its terminal was closed", third.seen)
+print(f"ok: closing the terminal ended the app with status {status}")

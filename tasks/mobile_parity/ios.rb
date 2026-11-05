@@ -167,10 +167,16 @@ class MobileParity
       deadline = Time.now + TIMEOUT
       pid = nil
       until pid && MobileParity.status(messages(udid, since, pid, app))
-        pid ||= File.read(console)[/^#{Regexp.escape(app.identifier)}: (\d+)$/, 1]&.then { |found| Integer(found) }
+        # simctl writes its "ID: PID" line to a file only when it exits, so
+        # the process's ID comes from launchd in the simulator.
+        pid ||= Open3.capture2e("xcrun", "simctl", "spawn", udid, "launchctl", "list").first.lines
+          .grep(/UIKitApplication:#{Regexp.escape(app.identifier)}\[/).first&.split&.first&.then { |found| Integer(found, exception: false) }
         if Time.now > deadline
-          raise "#{app.name} did not finish in #{TIMEOUT} seconds with OS_ACTIVITY_DT_MODE set.\nIts streams:\n" \
-            "#{File.readlines(console).last(40).join}\nIts log:\n#{pid ? messages(udid, since, pid, app).last(40).join("\n") : 'no process ID'}"
+          logged = pid ? messages(udid, since, pid, app) : []
+          firsts = logged.first&.then { |first| logged.count { |entry| entry.include?(first) } }
+          raise "#{app.name} did not finish in #{TIMEOUT} seconds with OS_ACTIVITY_DT_MODE set: process #{pid.inspect} logged " \
+            "#{logged.size} entries, #{firsts.inspect} of them holding its first.\nIts log:\n" \
+            "#{logged.first(12).map { |entry| entry[0, 300] }.join("\n")}"
         end
 
         sleep 5

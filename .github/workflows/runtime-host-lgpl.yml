@@ -1,0 +1,894 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Experiment only (experiment/runtime-host-lgpl), never for trunk: ci.yml's jobs for the
+# runtimes that carry sources in notices/sources/ (ADR 004, section 5),
+# and nothing else: the glibc Linux, musl Linux, and Windows runtimes,
+# their license audits and the comparison with their source bundles, the
+# builds of the examples on them, Delivery of hello and the windowed app,
+# and Replace libcrypt and Replace GMP. Written from ci.yml by a script.
+
+name: CI (experiment/runtime-host-lgpl)
+'on':
+  push:
+    branches:
+    - experiment/runtime-host-lgpl
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash
+env:
+  MISE_RUBY_COMPILE: 'false'
+  RUST_TOOLCHAIN: 1.99.1
+  BUNDLE_FROZEN: 'true'
+  ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
+  ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+jobs:
+  gate:
+    name: Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
+      with:
+        version: 2026.10.11
+    - name: Place Bundler outside the checkout
+      id: paths
+      run: |
+        echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
+        echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: "~/.cache/fledge/bundle"
+        key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.ruby
+          }}-${{ hashFiles('Gemfile.lock') }}
+    - name: Install the bundle
+      run: bundle install
+    - name: Unpack LLVM's tools for reading compiled files
+      run: |
+        archive=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+        mkdir -p "$RUNNER_TEMP/llvm-mingw"
+        tar -xJf "$archive" -C "$RUNNER_TEMP/llvm-mingw" --strip-components=1
+        echo "FLEDGE_LLVM=$RUNNER_TEMP/llvm-mingw/bin" >> "$GITHUB_ENV"
+    - name: Run the gate
+      timeout-minutes: 15
+      env:
+        A: "--verbose"
+        FLEDGE_REQUIRE_READERS: '1'
+      run: bundle exec rake
+    - name: Fail if the gate changed a file
+      run: |
+        changes=$(git status --porcelain)
+        if [ -n "$changes" ]; then
+          echo "$changes"
+          git diff
+          echo "::error::bundle exec rake changed files; run it locally and commit what it changes"
+          exit 1
+        fi
+  runtime:
+    name: Runtime (${{ matrix.platform }})
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux
+        - os: ubuntu-24.04
+          platform: x64-mingw-ucrt
+        - os: ubuntu-24.04
+          platform: aarch64-mingw-ucrt
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
+      with:
+        version: 2026.10.11
+        install_args: ruby
+    - name: Install patchelf
+      if: runner.os == 'Linux' && !endsWith(matrix.platform, '-mingw-ucrt')
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq patchelf=0.18.0-1.1build1
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: tmp/downloads
+        key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml')
+          }}
+    - name: Build the runtime
+      run: |
+        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+        export SOURCE_DATE_EPOCH
+        ruby tasks/runtime_builder.rb "${{ matrix.platform }}"
+    - name: Check that MSYS2's GMP package holds the runtime's libgmp-10.dll
+      if: endsWith(matrix.platform, '-mingw-ucrt')
+      env:
+        PLATFORM: "${{ matrix.platform }}"
+      run: |
+        case "$PLATFORM" in
+          x64-mingw-ucrt) package=$(ruby .github/scripts/fetch_pin.rb gmp package) folder=ucrt64 ;;
+          aarch64-mingw-ucrt) package=$(ruby .github/scripts/fetch_pin.rb gmp arm64 package) folder=clangarm64 ;;
+        esac
+        mkdir -p "$RUNNER_TEMP/gmp-package"
+        tar --zstd -xf "$package" -C "$RUNNER_TEMP/gmp-package" "$folder/bin/libgmp-10.dll"
+        cmp "$RUNNER_TEMP/gmp-package/$folder/bin/libgmp-10.dll" tmp/runtime/"$PLATFORM"/stage/fledge-runtime-*/ruby/bin/ruby_builtin_dlls/libgmp-10.dll
+        sha256sum "$RUNNER_TEMP/gmp-package/$folder/bin/libgmp-10.dll"
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: runtime-${{ matrix.platform }}
+        path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
+        if-no-files-found: error
+        retention-days: 14
+  runtime-musl:
+    name: Runtime (${{ matrix.platform }})
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux-musl
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux-musl
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: tmp/downloads
+        key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml')
+          }}
+    - name: Build the runtime in Alpine
+      env:
+        PLATFORM: "${{ matrix.platform }}"
+      run: |
+        SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+        export SOURCE_DATE_EPOCH
+        docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e SOURCE_DATE_EPOCH -e PLATFORM "$ALPINE_RUBY" \
+          sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: runtime-${{ matrix.platform }}
+        path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
+        if-no-files-found: error
+        retention-days: 14
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      if: failure()
+      with:
+        name: runtime-${{ matrix.platform }}-logs
+        path: tmp/runtime/${{ matrix.platform }}/logs
+        retention-days: 14
+  build-x86_64-linux:
+    name: Build (${{ matrix.platform }})
+    needs:
+    - runtime
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux
+          rust: ''
+    steps: &1
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
+      if: runner.os != 'Windows'
+      with:
+        version: 2026.10.11
+        install_args: ruby
+    - name: Read the Ruby pin
+      if: runner.os == 'Windows'
+      id: pins
+      run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+    - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f
+      if: runner.os == 'Windows'
+      with:
+        ruby-version: "${{ steps.pins.outputs.ruby }}"
+    - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+      if: matrix.platform != 'aarch64-mingw-ucrt'
+      with:
+        toolchain: "${{ env.RUST_TOOLCHAIN }}${{ matrix.rust }}"
+    - name: Point bindgen and RubyInstaller at MSYS2
+      if: matrix.platform == 'x64-mingw-ucrt'
+      run: |
+        sysroot="${RI_DEVKIT//\\//}${MSYSTEM_PREFIX:?setup-ruby did not set MSYSTEM_PREFIX}"
+        libclang="C:/Program Files/LLVM/bin"
+        test -f "$sysroot/include/stdio.h" || { echo "::error::no C headers (stdio.h) in $sysroot/include"; exit 1; }
+        test -f "$libclang/libclang.dll" || { echo "::error::no libclang.dll in $libclang"; exit 1; }
+        {
+          echo "BINDGEN_EXTRA_CLANG_ARGS=--target=x86_64-pc-windows-gnu --sysroot=$sysroot -D__AVX512VLFP16INTRIN_H -D__AVX512FP16INTRIN_H"
+          echo "LIBCLANG_PATH=$libclang"
+          echo "MSYS2_PATH=$RI_DEVKIT"
+        } >> "$GITHUB_ENV"
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: runtime-${{ matrix.platform }}
+        path: "${{ runner.temp }}/runtimes"
+    - name: Install mksquashfs
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
+    - name: Build hello, the parity and console probes, my_cool_app, windowed_app,
+        programs, and native_app for ${{ matrix.platform }}
+      env:
+        FLEDGE_RUNTIME_DIR: "${{ runner.temp }}/runtimes"
+      run: |
+        ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
+        apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs examples/native_app)
+        [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console examples/windowed_app examples/programs)
+        for app in "${apps[@]}"; do
+          ruby -I lib exe/fledge build -o dist "$app"
+        done
+    - name: Build system_library for ${{ matrix.platform }}, and refuse it without
+        its list
+      if: runner.os == 'Linux'
+      env:
+        FLEDGE_RUNTIME_DIR: "${{ runner.temp }}/runtimes"
+      run: |
+        sudo apt-get install -y -qq "libpng-dev=$(dpkg-query -W -f '${Version}' libpng16-16t64)"
+        ruby -I lib exe/fledge build -o dist examples/system_library
+        unlisted="$RUNNER_TEMP/unlisted"
+        cp -R examples/system_library "$unlisted"
+        sed -i '/^linux:/,$d' "$unlisted/fledge.yml"
+        status=0
+        ruby -I lib exe/fledge build -o "$RUNNER_TEMP/unlisted-dist" "$unlisted" 2> "$RUNNER_TEMP/unlisted.err" || status=$?
+        cat "$RUNNER_TEMP/unlisted.err"
+        [ "$status" = 1 ] || { echo "::error::system_library without its list exited with $status, not 1"; exit 1; }
+        grep -q "needs libpng16.so.16, .*list it in fledge.yml as linux: { system_libraries: \[libpng16.so.16\] }" "$RUNNER_TEMP/unlisted.err" ||
+          { echo "::error::the refusal does not name linux: system_libraries"; exit 1; }
+    - name: Make a code signing identity
+      if: runner.os == 'macOS'
+      run: |
+        mkdir -p dist-signed
+        .github/scripts/make-test-identity.sh dist-signed/certificate.pem
+    - name: Make a code signing certificate
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force dist-signed | Out-Null
+        pwsh -NoProfile -File .github/scripts/make-test-identity.ps1 -Certificate dist-signed/certificate.cer
+    - name: Build hello and windowed_app, signed, for ${{ matrix.platform }}
+      if: runner.os != 'Linux'
+      env:
+        FLEDGE_RUNTIME_DIR: "${{ runner.temp }}/runtimes"
+      run: |
+        for app in examples/hello examples/windowed_app; do
+          ruby -I lib exe/fledge build --sign "$FLEDGE_TEST_SIGN_IDENTITY" -o dist-signed "$app"
+        done
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      if: runner.os != 'Linux'
+      with:
+        name: signed-${{ matrix.platform }}
+        path: |
+          dist-signed/*-${{ matrix.platform }}.tar.gz
+          dist-signed/*-${{ matrix.platform }}.zip
+          dist-signed/*-${{ matrix.platform }}.dmg
+          dist-signed/*-${{ matrix.platform }}-setup.exe
+          dist-signed/certificate.*
+        if-no-files-found: error
+        retention-days: 14
+    - name: Build nokogiri_app from source for ${{ matrix.platform }}
+      if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x64-mingw-ucrt'
+      env:
+        FLEDGE_RUNTIME_DIR: "${{ runner.temp }}/runtimes"
+      run: ruby -I lib exe/fledge build -o dist examples/nokogiri_app
+    - name: Build real_gems through a credentialed mirror for ${{ matrix.platform
+        }}
+      if: matrix.platform != 'aarch64-mingw-ucrt'
+      shell: bash
+      env:
+        FLEDGE_RUNTIME_DIR: "${{ runner.temp }}/runtimes"
+      run: |
+        ruby .github/scripts/gem-mirror.rb 9292 fledge:mirror-password "$RUNNER_TEMP/mirror.log" &
+        mirror=$!
+        sleep 3
+        status=0
+        ruby -I lib exe/fledge build -o dist examples/real_gems || status=$?
+        kill "$mirror" || true
+        cat "$RUNNER_TEMP/mirror.log"
+        [ "$status" = 0 ] || exit "$status"
+        for gem in wisper-2.0.1 paint-2.3.0; do
+          grep -q "^GET /gems/$gem.gem 200\$" "$RUNNER_TEMP/mirror.log" || { echo "::error::$gem did not come through the mirror, with its login"; exit 1; }
+        done
+        echo "wisper 2.0.1 through a mirror that wanted a login; shared from outside the project; greeter compiled for the runtime's Ruby; fledge_submodule_gem says Hello World!; paint 2.3.0 from an optional group; shared-cli says shared from outside the project" > dist/real_gems.expected
+    - name: Read the runner's Ruby
+      if: matrix.platform != 'aarch64-mingw-ucrt'
+      id: host
+      run: echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      if: matrix.platform != 'aarch64-mingw-ucrt'
+      with:
+        path: "${{ runner.temp }}/examples-bundle"
+        key: examples-bundle-${{ runner.os }}-${{ runner.arch }}-${{ steps.host.outputs.ruby
+          }}-rust-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('examples/my_cool_app/Gemfile.lock',
+          'examples/native_app/Gemfile.lock', 'examples/nokogiri_app/Gemfile.lock',
+          'examples/nokogiri_app/.bundle/config') }}
+    - name: Run the examples with bundle exec
+      if: matrix.platform != 'aarch64-mingw-ucrt'
+      env:
+        BUNDLE_PATH: "${{ runner.temp }}/examples-bundle"
+      run: |
+        (cd examples/my_cool_app && bundle install)
+        (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) | tee dist/my_cool_app.expected
+        examples=native_app
+        case "${{ matrix.platform }}" in arm64-darwin | x64-mingw-ucrt) examples="native_app nokogiri_app" ;; esac
+        for example in $examples; do
+          (cd "examples/$example" && bundle install)
+          (cd "examples/$example" && bundle exec ruby main.rb) | tee "dist/$example.expected"
+        done
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: apps-${{ matrix.platform }}
+        path: |
+          dist/*-${{ matrix.platform }}.tar.gz
+          dist/*-${{ matrix.platform }}.zip
+          dist/*-${{ matrix.platform }}.dmg
+          dist/*-${{ matrix.platform }}-setup.exe
+          dist/*-${{ matrix.platform }}.AppImage
+          dist/*-${{ matrix.platform }}.deb
+          dist/*.expected
+        if-no-files-found: error
+        retention-days: 14
+  build-aarch64-linux:
+    name: Build (${{ matrix.platform }})
+    needs:
+    - runtime
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux
+          rust: ''
+    steps: *1
+  build-x64-mingw-ucrt:
+    name: Build (${{ matrix.platform }})
+    needs:
+    - runtime
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: windows-latest
+          platform: x64-mingw-ucrt
+          rust: "-x86_64-pc-windows-gnu"
+    steps: *1
+  build-aarch64-mingw-ucrt:
+    name: Build (${{ matrix.platform }})
+    needs:
+    - runtime
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: windows-11-arm
+          platform: aarch64-mingw-ucrt
+          rust: ''
+    steps: *1
+  build-musl:
+    name: Build (${{ matrix.platform }})
+    needs:
+    - runtime-musl
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux-musl
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux-musl
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: runtime-${{ matrix.platform }}
+        path: runtimes
+    - name: Build the examples in Alpine, and run my_cool_app with bundle exec
+      run: |
+        cat > "$RUNNER_TEMP/build-apps.sh" <<'SH'
+        set -eu
+        .github/scripts/alpine-packages.sh apps
+        git config --global --add safe.directory /fledge
+        ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
+        for app in examples/hello test/fixtures/parity test/fixtures/console /tmp/parity-bundle examples/my_cool_app examples/windowed_app examples/programs; do
+          ruby -I lib exe/fledge build -o dist "$app"
+        done
+        (cd examples/my_cool_app && bundle install)
+        (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
+        cat dist/my_cool_app.expected
+        SH
+        docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes \
+          -e BUNDLE_FROZEN "$ALPINE_RUBY" sh /scripts/build-apps.sh
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: apps-${{ matrix.platform }}
+        path: |
+          dist/*-${{ matrix.platform }}.tar.gz
+          dist/*-${{ matrix.platform }}.AppImage
+          dist/*.expected
+        if-no-files-found: error
+        retention-days: 14
+  delivery-x86_64-linux:
+    name: Delivery (${{ matrix.platform }})
+    needs:
+    - build-x86_64-linux
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux
+          ruby-platform: x86_64-linux
+    steps: &2
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        sparse-checkout: ".github/scripts"
+        sparse-checkout-cone-mode: false
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: apps-${{ matrix.platform }}
+        path: "${{ runner.temp }}/delivered"
+    - name: Run hello as someone with no Ruby would
+      run: .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/Hello-${{ matrix.platform
+        }}.tar.gz" "$RUNNER_TEMP/delivered/Parity-${{ matrix.platform }}.tar.gz" "Hello
+        from Ruby 4.0.9 on ${{ matrix.ruby-platform }}"
+    - name: Run my_cool_app as someone with no Ruby would
+      run: .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform
+        }}.tar.gz" "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz"
+        "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
+    - name: Interrupt the console probe in a terminal, as a person would
+      run: .github/scripts/deliver-console.sh "$RUNNER_TEMP/delivered/Console-${{
+        matrix.platform }}.tar.gz"
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      if: runner.os == 'macOS'
+      with:
+        name: signed-${{ matrix.platform }}
+        path: "${{ runner.temp }}/signed"
+    - name: Verify and run the signed apps
+      if: runner.os == 'macOS'
+      run: .github/scripts/deliver-signed.sh "$RUNNER_TEMP/signed/Hello-arm64-darwin.tar.gz"
+        "$RUNNER_TEMP/signed/Hello Window-arm64-darwin.tar.gz" "$RUNNER_TEMP/signed/Hello
+        Window-arm64-darwin.dmg" "$RUNNER_TEMP/signed/certificate.pem"
+  delivery-aarch64-linux:
+    name: Delivery (${{ matrix.platform }})
+    needs:
+    - build-aarch64-linux
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux
+          ruby-platform: aarch64-linux
+    steps: *2
+  delivery-windowed-x86_64-linux:
+    name: Delivery of a windowed app (${{ matrix.platform }})
+    needs:
+    - build-x86_64-linux
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux
+    steps: &3
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        sparse-checkout: ".github/scripts"
+        sparse-checkout-cone-mode: false
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: apps-${{ matrix.platform }}
+        path: "${{ runner.temp }}/delivered"
+    - name: Install desktop-file-validate
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq desktop-file-utils=0.27-2build1
+    - name: Start Hello Window as the desktop would
+      run: .github/scripts/deliver-windowed.sh "$RUNNER_TEMP/delivered/Hello Window-${{
+        matrix.platform }}.tar.gz"
+    - name: Run Shared Save and shared-save from one folder, with one save
+      run: .github/scripts/deliver-programs.sh "$RUNNER_TEMP/delivered/Shared Save-${{
+        matrix.platform }}.tar.gz"
+    - name: Install Hello Window from its disk image as a person would
+      if: runner.os == 'macOS'
+      run: .github/scripts/deliver-dmg.sh "$RUNNER_TEMP/delivered/Hello Window-${{
+        matrix.platform }}.dmg"
+    - name: Install FUSE
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get install -y -qq fuse3=3.14.0-5build1
+        ls -l /dev/fuse
+    - name: Run Hello Window as an AppImage, with FUSE
+      if: runner.os == 'Linux'
+      run: .github/scripts/deliver-appimage.sh "$RUNNER_TEMP/delivered/Hello Window-${{
+        matrix.platform }}.AppImage" fuse
+  delivery-windowed-aarch64-linux:
+    name: Delivery of a windowed app (${{ matrix.platform }})
+    needs:
+    - build-aarch64-linux
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux
+    steps: *3
+  delivery-musl:
+    name: Delivery (${{ matrix.platform }}, alpine:3.24)
+    needs:
+    - build-musl
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux-musl
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux-musl
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        sparse-checkout: ".github/scripts"
+        sparse-checkout-cone-mode: false
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: apps-${{ matrix.platform }}
+        path: delivered
+    - name: Run hello, my_cool_app, the console probe, windowed_app, and programs
+        on Alpine with no Ruby installed
+      env:
+        PLATFORM: "${{ matrix.platform }}"
+      run: |
+        cat > "$RUNNER_TEMP/deliver-all.sh" <<'SH'
+        set -eu
+        .github/scripts/alpine-packages.sh deliver
+        d=delivered
+        .github/scripts/deliver.sh "$d/Hello-$PLATFORM.tar.gz" "$d/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.0.9 on $PLATFORM" --no-ruby-installed
+        .github/scripts/deliver.sh "$d/MyCoolApp-$PLATFORM.tar.gz" "$d/ParityBundle-$PLATFORM.tar.gz" "$(cat "$d/my_cool_app.expected")" --no-ruby-installed
+        .github/scripts/deliver-console.sh "$d/Console-$PLATFORM.tar.gz"
+        .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
+        .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract
+        .github/scripts/deliver-programs.sh "$d/Shared Save-$PLATFORM.tar.gz"
+        SH
+        docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$RUNNER_TEMP:/scripts" -w /work -e PLATFORM "$ALPINE" sh /scripts/deliver-all.sh
+  delivery-windows-x64-mingw-ucrt:
+    name: Delivery (${{ matrix.platform }})
+    needs:
+    - build-x64-mingw-ucrt
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: windows-latest
+          platform: x64-mingw-ucrt
+    env:
+      PLATFORM: "${{ matrix.platform }}"
+    steps: &4
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        sparse-checkout: ".github/scripts"
+        sparse-checkout-cone-mode: false
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: apps-${{ matrix.platform }}
+        path: "${{ runner.temp }}/delivered"
+    - name: Run Hello.exe as someone with no Ruby would
+      shell: pwsh
+      run: pwsh -NoProfile -File .github/scripts/deliver.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello-$env:PLATFORM.zip"
+        -Probe "$env:RUNNER_TEMP/delivered/Parity-$env:PLATFORM.zip" -Platform $env:PLATFORM
+        -Expected "Hello from Ruby 4.0.9 on $env:PLATFORM"
+    - name: Run MyCoolApp.exe as someone with no Ruby would
+      if: matrix.platform == 'x64-mingw-ucrt'
+      shell: pwsh
+      run: pwsh -NoProfile -File .github/scripts/deliver.ps1 -Archive "$env:RUNNER_TEMP/delivered/MyCoolApp-$env:PLATFORM.zip"
+        -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-$env:PLATFORM.zip" -Platform
+        $env:PLATFORM -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected"
+        -Raw).TrimEnd()
+    - name: Interrupt the console probe in a console, close it, and start the windowed
+        app from one
+      shell: pwsh
+      run: pwsh -NoProfile -File .github/scripts/deliver-console.ps1 -Archive "$env:RUNNER_TEMP/delivered/Console-$env:PLATFORM.zip"
+        -Windowed "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
+    - name: Start Hello Window.exe as Explorer would
+      shell: pwsh
+      run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello
+        Window-$env:PLATFORM.zip"
+    - name: Run Shared Save.exe and shared-save.exe from one folder, with one save
+      shell: pwsh
+      run: pwsh -NoProfile -File .github/scripts/deliver-programs.ps1 -Archive "$env:RUNNER_TEMP/delivered/Shared
+        Save-$env:PLATFORM.zip"
+    - name: Install Hello Window with its setup program, run it from the Start menu,
+        and uninstall it
+      shell: pwsh
+      run: pwsh -NoProfile -File .github/scripts/deliver-installer.ps1 -Installer
+        "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM-setup.exe"
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: signed-${{ matrix.platform }}
+        path: "${{ runner.temp }}/signed"
+    - name: Verify, install, and run the signed apps
+      shell: pwsh
+      run: pwsh -NoProfile -File .github/scripts/deliver-signed.ps1 -Hello "$env:RUNNER_TEMP/signed/Hello-$env:PLATFORM.zip"
+        -Windowed "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM.zip" -Installer
+        "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM-setup.exe" -Certificate
+        "$env:RUNNER_TEMP/signed/certificate.cer"
+  delivery-windows-aarch64-mingw-ucrt:
+    name: Delivery (${{ matrix.platform }})
+    needs:
+    - build-aarch64-mingw-ucrt
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: windows-11-arm
+          platform: aarch64-mingw-ucrt
+    env:
+      PLATFORM: "${{ matrix.platform }}"
+    steps: *4
+  licenses:
+    name: Licenses (${{ matrix.platform }})
+    needs:
+    - runtime
+    - runtime-musl
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+        - x86_64-linux
+        - aarch64-linux
+        - x86_64-linux-musl
+        - aarch64-linux-musl
+        - x64-mingw-ucrt
+        - aarch64-mingw-ucrt
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
+      with:
+        version: 2026.10.11
+        install_args: ruby
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: runtime-${{ matrix.platform }}
+        path: "${{ runner.temp }}/runtimes"
+    - name: Unpack LLVM's tools for reading compiled files
+      run: |
+        archive=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+        mkdir -p "$RUNNER_TEMP/llvm-mingw"
+        tar -xJf "$archive" -C "$RUNNER_TEMP/llvm-mingw" --strip-components=1
+        echo "FLEDGE_LLVM=$RUNNER_TEMP/llvm-mingw/bin" >> "$GITHUB_ENV"
+    - name: Unpack the runtime and check its release assets
+      env:
+        PLATFORM: "${{ matrix.platform }}"
+      run: |
+        mkdir -p "$RUNNER_TEMP/tree"
+        tar -xzf "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM".tar.gz -C "$RUNNER_TEMP/tree"
+        tree=$(echo "$RUNNER_TEMP"/tree/fledge-runtime-*)
+        echo "TREE=$tree" >> "$GITHUB_ENV"
+        cmp "$tree/notices/sbom.spdx.json" "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM".spdx.json
+        cmp "$tree/notices/NOTICES.txt" "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-NOTICES.txt
+        # The runtime's notices/sources/ holds the same folders, byte for
+        # byte, as the release's source bundle, but its README.
+        case "$PLATFORM" in
+          *-linux | *-linux-musl | *-mingw-ucrt)
+            mkdir -p "$RUNNER_TEMP/bundle"
+            tar -xzvf "$RUNNER_TEMP"/runtimes/fledge-runtime-*-"$PLATFORM"-lgpl-sources.tar.gz -C "$RUNNER_TEMP/bundle"
+            bundle=$(echo "$RUNNER_TEMP"/bundle/fledge-runtime-*-lgpl-sources)
+            rm "$bundle/README.txt"
+            diff -r "$bundle" "$tree/notices/sources"
+            ;;
+          *)
+            if ls "$RUNNER_TEMP"/runtimes/*-lgpl-sources.tar.gz 2>/dev/null; then echo "::error::$PLATFORM ships no LGPL library"; exit 1; fi
+            if [ -e "$tree/notices/sources" ]; then echo "::error::$PLATFORM's runtime holds notices/sources/, but ships nothing that asks for its source"; exit 1; fi
+            ;;
+        esac
+    - name: Audit the unpacked runtime
+      run: ruby tasks/license_audit.rb --platform "${{ matrix.platform }}" --tree
+        "$TREE"
+    - name: Validate the SBOM with the SPDX tools
+      run: pipx run --spec spdx-tools==0.8.3 pyspdxtools -i "$TREE/notices/sbom.spdx.json"
+    - name: Fail the audit with a GPL library and a GPL gem slipped in
+      env:
+        PLATFORM: "${{ matrix.platform }}"
+      run: |
+        extension=$(ruby .github/scripts/plant_gpl.rb "$PLATFORM" "$TREE")
+        if ruby tasks/license_audit.rb --platform "$PLATFORM" --tree "$TREE" > "$RUNNER_TEMP/tampered.txt"; then
+          cat "$RUNNER_TEMP/tampered.txt"
+          echo "::error::the audit passed a runtime with a GPL library and a GPL gem in it"
+          exit 1
+        fi
+        grep -F "VIOLATION: unlisted-binary: $extension:" "$RUNNER_TEMP/tampered.txt"
+        grep -F "gem-copyleft-1.0.0 is GPL-3.0-only, which the policy does not allow" "$RUNNER_TEMP/tampered.txt"
+  replace-libcrypt-x86_64-linux:
+    name: Replace libcrypt (${{ matrix.platform }})
+    needs:
+    - build-x86_64-linux
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04
+          platform: x86_64-linux
+    steps: &5
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
+      with:
+        version: 2026.10.11
+        install_args: ruby
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: apps-${{ matrix.platform }}
+        path: "${{ runner.temp }}/delivered"
+    - name: Replace lib/libcrypt.so.2 and run the app with each replacement
+      run: |
+        tar -xzf "$RUNNER_TEMP/delivered/Hello-${{ matrix.platform }}.tar.gz" -C "$RUNNER_TEMP"
+        # Assigned first, so a missing file or a download that fails stops
+        # the step here: bash -e ignores a failed $(...) inside another
+        # command's arguments. libxcrypt's source is the one the app
+        # itself carries, so the replacement is built as a person who
+        # received only the app would build it (LGPL-2.1, section 6(a)).
+        xcrypt=$(ls "$RUNNER_TEMP/Hello-${{ matrix.platform }}"/notices/sources/libxcrypt/libxcrypt-*.tar.xz)
+        musl=$(ruby .github/scripts/fetch_pin.rb replaceability musl)
+        sh .github/scripts/replace-libcrypt.sh "$RUNNER_TEMP/Hello-${{ matrix.platform }}" Hello "$xcrypt" "$musl"
+  replace-libcrypt-aarch64-linux:
+    name: Replace libcrypt (${{ matrix.platform }})
+    needs:
+    - build-aarch64-linux
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-24.04-arm
+          platform: aarch64-linux
+    steps: *5
+  gmp-replacement:
+    name: Build a replacement libgmp-10.dll (${{ matrix.platform }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: x64-mingw-ucrt
+          triple: x86_64-w64-mingw32
+        - platform: aarch64-mingw-ucrt
+          triple: aarch64-w64-mingw32
+    env:
+      TRIPLE: "${{ matrix.triple }}"
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e
+      with:
+        version: 2026.10.11
+        install_args: ruby
+    - name: Cross-build GNU MP as libgmp-10.dll
+      run: |
+        toolchain="$RUNNER_TEMP/llvm-mingw"
+        source="$RUNNER_TEMP/gmp"
+        mkdir -p "$toolchain" "$source" "$RUNNER_TEMP/gmp-dll"
+        llvm_mingw=$(ruby .github/scripts/fetch_pin.rb llvm-mingw hosts x86_64-linux)
+        gmp=$(ruby .github/scripts/fetch_pin.rb replaceability gmp)
+        tar -xJf "$llvm_mingw" -C "$toolchain" --strip-components=1
+        tar -xJf "$gmp" -C "$source" --strip-components=1
+        export PATH="$toolchain/bin:$PATH"
+        cd "$source"
+        # GMP 6.2.1's config.sub predates aarch64-w64-mingw32; llvm-mingw's
+        # own autoconf scripts know it.
+        cp /usr/share/misc/config.sub configfsf.sub 2>/dev/null || true
+        ./configure --quiet --host="$TRIPLE" CC="$TRIPLE-clang" CC_FOR_BUILD=cc \
+          --enable-shared --disable-static --disable-assembly
+        make --quiet -j"$(nproc)" > /dev/null
+        cp .libs/libgmp-10.dll "$RUNNER_TEMP/gmp-dll/"
+        "$TRIPLE-objdump" -p .libs/libgmp-10.dll | grep 'DLL Name'
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: gmp-replacement-${{ matrix.platform }}
+        path: "${{ runner.temp }}/gmp-dll/libgmp-10.dll"
+        if-no-files-found: error
+        retention-days: 14
+  replace-gmp-x64-mingw-ucrt:
+    name: Replace GMP (${{ matrix.platform }})
+    needs:
+    - build-x64-mingw-ucrt
+    - gmp-replacement
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: windows-latest
+          platform: x64-mingw-ucrt
+    steps: &6
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        sparse-checkout: ".github/scripts"
+        sparse-checkout-cone-mode: false
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: apps-${{ matrix.platform }}
+        path: "${{ runner.temp }}/delivered"
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+      with:
+        name: gmp-replacement-${{ matrix.platform }}
+        path: "${{ runner.temp }}/gmp-dll"
+    - name: Replace libgmp-10.dll and run the app
+      shell: pwsh
+      run: pwsh -NoProfile -File .github/scripts/replace-gmp.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello-${{
+        matrix.platform }}.zip" -Dll "$env:RUNNER_TEMP/gmp-dll/libgmp-10.dll" -Version
+        6.2.1
+  replace-gmp-aarch64-mingw-ucrt:
+    name: Replace GMP (${{ matrix.platform }})
+    needs:
+    - build-aarch64-mingw-ucrt
+    - gmp-replacement
+    runs-on: "${{ matrix.os }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: windows-11-arm
+          platform: aarch64-mingw-ucrt
+    steps: *6

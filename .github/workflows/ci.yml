@@ -62,7 +62,7 @@ name: CI
 on:
   push:
     # Not on tags: release.yml looks up the tagged commit's run on trunk.
-    branches: ["**"]
+    branches: ["**", "!experiment/runtime-host-lgpl"]
   pull_request:
 
 permissions:

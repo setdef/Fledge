@@ -12,7 +12,7 @@ Read these next, in order: `AGENTS.md` (how to work here, and binding), `doc/con
 
 ## Where Fledge stands
 
-The latest release is [`v0.4.0`](https://github.com/setdef/Fledge/releases/tag/v0.4.0), which keeps an explicit `LC_ALL` or `LC_CTYPE` as `ruby` does, ships Ruby's headers for `require "mkmf"`, and lets `binding.irb` open IRB in an app with a Gemfile on macOS and Linux. [`v0.3.0`](https://github.com/setdef/Fledge/releases/tag/v0.3.0) restarts an app through `RbConfig.ruby` as it first started (ADR 026), and [`v0.2.1`](https://github.com/setdef/Fledge/releases/tag/v0.2.1) is the first published release of the 0.2.0 changes: `v0.2.0` is a tag without a GitHub Release, because its release run failed when a runtime source's host was down, and it is neither used nor deleted. Releases before `v0.1.0` were `0.0.1.pre.N`, and versions are ordinary 0.MINOR.PATCH from `v0.1.0` on (decisions, 2026-11-02). Every release is a git tag and a GitHub Release carrying the prebuilt runtimes; Fledge is never published to RubyGems.org.
+The latest release is [`v0.4.0`](https://github.com/setdef/Fledge/releases/tag/v0.4.0), which keeps an explicit `LC_ALL` or `LC_CTYPE` as `ruby` does, ships Ruby's headers for `require "mkmf"`, and lets `binding.irb` open IRB in an app with a Gemfile on macOS and Linux. [`v0.3.0`](https://github.com/setdef/Fledge/releases/tag/v0.3.0) restarts an app through `RbConfig.ruby` as it first started (ADR 026), and [`v0.2.1`](https://github.com/setdef/Fledge/releases/tag/v0.2.1) is the first published release of the 0.2.0 changes: `v0.2.0` is a tag without a GitHub Release, because its release run failed when a runtime source's host was down, and it is neither used nor deleted. Releases before `v0.1.0` were `0.0.1.pre.N`, and versions are ordinary 0.MINOR.PATCH from `v0.1.0` on (decisions, 2026-11-02). Every release is a git tag and a GitHub Release carrying the prebuilt runtimes. Fledge is not on RubyGems.org yet: from 1.0.0 the maintainer publishes it there by hand, as a pure `fledge` gem and a `fledge-runtime` gem per platform that carries its runtime (ADR 030), and agents never do.
 
 `fledge build` builds an app on the computer it runs on, for that computer's platform, with that platform's own tools (ADR 010): `arm64-darwin`, `x86_64-linux`, `aarch64-linux`, `x86_64-linux-musl`, `aarch64-linux-musl`, `x64-mingw-ucrt`, and `aarch64-mingw-ucrt`. `fledge build ios` and `fledge build android` write an Xcode or Gradle project around the mobile runtimes for a pure-Ruby app (ADR 012).
 
@@ -40,6 +40,7 @@ Plan 003 holds it. In short:
 - **Unproven**: a real iPhone or iPad; App Review; Android's arm64-v8a build, which no GitHub runner can emulate with hardware acceleration (tried 2026-11-02, ADR 011; no money is spent on a device cloud or a machine, decisions 2026-11-02); Gatekeeper's and SmartScreen's verdicts on a real certificate.
 - **0.2.0, the maintainer's priority (decisions, 2026-11-02): phones.** Native gems on phones (ADR 022, Plan 003) are done for C and C++ extensions (run 41492629986 on experiment/phones) and first released in `v0.2.1`; what is left is in the ADR (Rust extensions, `require_relative`). The SDL3 spike ran (ADR 025, `examples/sdl_phone`, branch `experiment/sdl-phones`): a game whose SDL3 owns the main loop runs with Ruby inside on both phones, given a host of SDL's own; the `host` key in `fledge.yml` (ADR 025, section 5), first released in `v0.2.1`, lets a project supply that host, and the story "A game plays on a tablet and a phone" waits on Lota's side, and on devices. An `extconf.rb` that builds a C++ library with CMake before mkmf builds the extension compiles for both phones since ADR 027 (`examples/cmake_phone`, run 41779653817 on `experiment/cmake-phone`): Fledge names each target's CMake toolchain file in `CMAKE_TOOLCHAIN_FILE`.
 - **One project, several programs** (ADR 024), done and first released in `v0.2.1`: `programs` in `fledge.yml` ships a project's programs from one folder with one runtime, one project, and one set of gems. `examples/programs` builds and delivers on every desktop platform (`trunk`'s run 41584541749; Plan 003). A JSON Schema of `fledge.yml` for editors (ADR 023) is in `v0.2.1` too.
+- **Fledge as gems** (ADR 030): `rake gems[ASSETS]` builds the ten gems a release would publish from its pinned runtimes, `rake gems:check` installs them offline and builds hello, `.github/workflows/gems.yml` does both on every platform, and `fledge build` takes its runtime from an installed `fledge-runtime` gem. What is left of the story is the port of RatatuiRuby's bump tooling and the 1.0 changes of ADR 030, section 9.
 - **The 1.0 contract** (ADR 029): what 1.0 freezes and what it does not, and the names held for later, from the 1.0 review (`doc/contributors/research/2026-11-04-one-point-oh-surface.md`). The review's six must-change items are done (Plan 003, "1.0"); its "could change after 1.0" list stays for later.
 - **Open problems from the ADRs**: the musl and ARM64 Windows builds of `examples/real_gems`, and `Gem.bindir` on an app's `PATH` (ADR 020); installer polish, which Plan 003 defers past 1.0 until a developer asks, and `diskutil image create`, which waits for `hdiutil create` to stop working (it still works on macOS 26 and 27; ADR 010); emulated tools and sqlite3 on ARM64 Windows (ADR 018); native gems on phones are in `v0.2.1` (ADR 022).
 
@@ -59,7 +60,51 @@ A release is two commits and a tag (AGENTS.md, Releasing; ADR 014):
 2. **The pin commit**, `chore: pin X.Y.Z's runtimes`: `bundle exec rake runtime:pin` downloads the runtimes the release commit's CI run built and writes `lib/fledge/SHA256SUMS`. It refuses unless that run passed on every job. Commit that file alone (`git commit lib/fledge/SHA256SUMS`), push, and wait for CI: a pin commit's run is short, the gate and the `Changes` job, which checks the pins against the release commit's runtimes, with every other job skipped (ADR 014, section 5).
 3. **The tag**: `git tag -a vX.Y.Z -m "Fledge X.Y.Z" PIN_COMMIT && git push origin vX.Y.Z`. `release.yml` does not run CI again: it refuses a tag whose commit changes anything but the pins, whose short CI run on `trunk` has not passed (or is still running), whose parent's run did not pass on every job, or whose pins do not match the runtimes of the parent's run. Watch its run, then `gh release view vX.Y.Z`. A run refused only because a CI run had not finished can be run again once it passes, with `gh run rerun RUN`. After any change to `release.yml`, try it before the next tag depends on it: `gh workflow run release.yml --ref BRANCH -f tag=vLAST` runs every check of a release against the last tag and its runtimes, with the workflow and scripts of BRANCH, and publishes nothing unless given `-f publish=true`.
 
-Do all three within 14 days, while CI keeps the runtimes. Never delete a release: each runtime's NOTICES links its LGPL sources there. During a release, pushing to `trunk` cancels the CI run in progress there, and the pin commit needs that run's runtimes, so do not push between the release commit and its CI run's end. Outside a release, push whenever a step is done.
+4. **The gems**, a rehearsal before 1.0 and what the maintainer pushes from 1.0.0 (ADR 030, section 8): once the pin commit's short CI has passed, `gh workflow run gems.yml --ref trunk -f ref=PIN_COMMIT -f run=RUN`, with RUN the parent's run that `rake runtime:pin` pinned. It builds every gem from that run's runtimes, keeps them as the `gems` artifact for 30 days, and installs and checks them on every platform. Before 1.0 nothing is pushed, and its gems can be pushed nowhere (their `allowed_push_host` is `https://fledge.invalid` below 1.0.0). From 1.0.0 it must pass before the maintainer publishes (below).
+
+Do all of it within 14 days, while CI keeps the runtimes. Never delete a release: each runtime's NOTICES links its LGPL sources there. During a release, pushing to `trunk` cancels the CI run in progress there, and the pin commit needs that run's runtimes, so do not push between the release commit and its CI run's end. Outside a release, push whenever a step is done.
+
+## How the maintainer publishes on RubyGems.org (from 1.0.0)
+
+Publishing is the maintainer's alone (AGENTS.md, Releasing): an agent never runs `gem signin`, `gem push`, or `rake release`, which refuses anyway. An agent does everything up to step 1 and gives the maintainer the run ids; the maintainer runs the rest. A release's gems are ten files: `fledge-runtime` for each of the seven desktop platforms, `fledge-runtime-ios`, `fledge-runtime-android`, and `fledge` (ADR 030).
+
+1. **Check that the release's Gems run passed on every job:** `gh run view GEMS_RUN --json conclusion,jobs --jq '.conclusion, (.jobs[] | select(.conclusion != "success") | .name)'` prints `success` and nothing else.
+2. **Download the gems and check them against their sums:**
+
+   ```sh
+   gh run download GEMS_RUN --repo setdef/Fledge --name gems --dir fledge-X.Y.Z-gems
+   cd fledge-X.Y.Z-gems
+   shasum -a 256 -c SHA256SUMS
+   ```
+
+3. **Optionally, build them yourself and compare.** RubyGems writes the same bytes from the same files, so gems built on your computer from the same runtimes have the same SHA-256s. In a checkout of the pin commit:
+
+   ```sh
+   gh run download RUN --repo setdef/Fledge --pattern 'runtime-*' --dir tmp/assets
+   bundle exec rake "gems[tmp/assets,tmp/rebuilt]"
+   diff tmp/rebuilt/SHA256SUMS PATH/TO/fledge-X.Y.Z-gems/SHA256SUMS
+   ```
+
+4. **Check that they may go to RubyGems.org:** `gem spec fledge-X.Y.Z.gem metadata` names `allowed_push_host: https://rubygems.org`, and `gem spec fledge-X.Y.Z.gem dependencies` names `fledge-runtime` at `= X.Y.Z`. A gem below 1.0.0 names `https://fledge.invalid`, and `gem push` refuses it.
+5. **Sign in,** with multi-factor authentication, which every Fledge gem asks for (`rubygems_mfa_required`): `gem signin`.
+6. **Push the runtime gems first and `fledge` last,** so that `fledge` is never on RubyGems.org without its runtimes. From the folder of step 2:
+
+   ```sh
+   gem push fledge-runtime-X.Y.Z-arm64-darwin.gem
+   gem push fledge-runtime-X.Y.Z-x86_64-linux-gnu.gem
+   gem push fledge-runtime-X.Y.Z-aarch64-linux-gnu.gem
+   gem push fledge-runtime-X.Y.Z-x86_64-linux-musl.gem
+   gem push fledge-runtime-X.Y.Z-aarch64-linux-musl.gem
+   gem push fledge-runtime-X.Y.Z-x64-mingw-ucrt.gem
+   gem push fledge-runtime-X.Y.Z-aarch64-mingw-ucrt.gem
+   gem push fledge-runtime-ios-X.Y.Z.gem
+   gem push fledge-runtime-android-X.Y.Z.gem
+   gem push fledge-X.Y.Z.gem
+   ```
+
+   If one fails, push it again before going on; push `fledge` only when all nine runtime gems are there.
+7. **Check what RubyGems.org serves:** the SHA-256 it reports for each gem is the one in `SHA256SUMS`, for example `curl -s https://rubygems.org/api/v2/rubygems/fledge-runtime/versions/X.Y.Z.json?platform=arm64-darwin`, whose `sha` is the arm64-darwin gem's line. Then, in an empty folder, `gem install fledge -v X.Y.Z` and `fledge --version`.
+8. **Tag, and move `stable`,** as ADR 028, section 7, describes. The tag's GitHub Release follows from `release.yml`; nothing in the gems relies on it.
 
 ## Known CI flakes, and what to do
 

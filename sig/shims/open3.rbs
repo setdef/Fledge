@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 module Open3
-  def self.capture2e: (Hash[String, String?] env, *String command) -> [String, Process::Status]
+  def self.capture2e: (Hash[String, String?] env, *String command, ?stdin_data: String, ?chdir: String) -> [String, Process::Status]
                     | ...
 
   def self.capture3: (Hash[String, String?] env, *String command) -> [String, String, Process::Status]
-                   | (*String command, binmode: bool, chdir: String) -> [String, String, Process::Status]
+                   | (*String command, binmode: bool, chdir: String, ?stdin_data: String) -> [String, String, Process::Status]
                    | ...
 
   def self.popen2e: [T] (Hash[String, String?] env, *String command) { (IO input, IO output, Process::Waiter thread) -> T } -> T

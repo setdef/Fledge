@@ -1,0 +1,46 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#++
+
+require_relative "test_helper"
+
+# Fledge::Archive with the computer's own tar, in folders whose names are
+# not ASCII: Windows' tar.exe reads its arguments in the ANSI code page,
+# where they are not, and CI runs this test there too.
+class ArchiveTest < Minitest::Test
+  def test_an_app_packs_and_unpacks_in_folders_named_outside_ascii
+    Dir.mktmpdir do |dir|
+      place = File.join(dir, "Mein Ort", "Prüfung 日本")
+      folder = File.join(place, "Spiel-x86_64-linux")
+      FileUtils.mkdir_p(File.join(folder, "app"))
+      File.write(File.join(folder, "app", "main.rb"), "puts 1\n")
+      extension = Gem.win_platform? ? Fledge::Archive::ZIP : Fledge::Archive::TAR_GZ
+
+      archive = Fledge::Archive.pack(folder, to: "#{folder}#{extension}")
+      elsewhere = Fledge::Archive.pack(folder, to: File.join(dir, "Mein Ort", "anderswo#{extension}"))
+      into = Fledge::Archive.unpack(archive, into: File.join(place, "Entpackt 日本"))
+
+      assert_equal "puts 1\n", File.read(File.join(into, "Spiel-x86_64-linux", "app", "main.rb"))
+      assert_includes Fledge::Archive.names(elsewhere).map { |name| name.chomp("/") }, "Spiel-x86_64-linux/app/main.rb"
+      assert_equal "puts 1\n", Fledge::Archive.read(archive, "Spiel-x86_64-linux/app/main.rb")
+    end
+  end
+
+  # A relative archive path names a file in the folder fledge build runs
+  # in, wherever tar runs.
+  def test_a_relative_archive_path_is_the_callers
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        FileUtils.mkdir_p("dist/Hello-x86_64-linux")
+        File.write("dist/Hello-x86_64-linux/hello.rb", "")
+        FileUtils.mkdir_p("out")
+        Fledge::Archive.pack("dist/Hello-x86_64-linux", to: "out/hello.tar.gz")
+
+        assert_includes Fledge::Archive.names("out/hello.tar.gz").map { |name| name.chomp("/") }, "Hello-x86_64-linux/hello.rb"
+      end
+    end
+  end
+end

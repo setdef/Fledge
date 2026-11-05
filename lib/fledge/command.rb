@@ -39,10 +39,12 @@ module Fledge
   # SPDX-SnippetEnd
   #++
   module Command
-    # Runs +command+ with +env+ added to the environment, and returns its
-    # standard output and error together. Raises Fledge::Error with that
-    # output when the command fails, and with +install+, which says how
-    # to get the tool, when it is not on this computer.
+    # Runs +command+ with +env+ added to the environment, in the folder
+    # +chdir+ when one is given, with the file +input+ on its standard
+    # input when one is given, and returns its standard output and error
+    # together. Raises Fledge::Error with that output when the command
+    # fails, and with +install+, which says how to get the tool, when it
+    # is not on this computer.
     #
     # === Example
     #
@@ -55,8 +57,9 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.run(*command, install:, env: {})
-      output, status = Open3.capture2e(env, *command)
+    def self.run(*command, install:, env: {}, chdir: nil, input: nil)
+      stdin_data = input ? File.binread(input) : ""
+      output, status = chdir ? Open3.capture2e(env, *command, stdin_data:, chdir:) : Open3.capture2e(env, *command, stdin_data:)
       return output if status.success?
 
       raise Error, "#{File.basename(command.first.to_s)} failed (#{status}):\n#{text(output)}"
@@ -64,8 +67,9 @@ module Fledge
       raise Error, "fledge build needs #{File.basename(command.first.to_s)}, which it could not run (#{e.message}). #{install}"
     end
 
-    # Runs +command+ as #run does, in the folder +chdir+, and returns
-    # only its standard output, as bytes.
+    # Runs +command+ as #run does, in the folder +chdir+, with the file
+    # +input+ on its standard input when one is given, and returns only
+    # its standard output, as bytes.
     #
     # === Example
     #
@@ -78,8 +82,8 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.read(*command, install:, chdir: Dir.pwd)
-      output, error, status = Open3.capture3(*command, binmode: true, chdir:)
+    def self.read(*command, install:, chdir: Dir.pwd, input: nil)
+      output, error, status = Open3.capture3(*command, binmode: true, chdir:, stdin_data: input ? File.binread(input) : "")
       return output if status.success?
 
       raise Error, "#{File.basename(command.first.to_s)} failed (#{status}):\n#{text(error)}"

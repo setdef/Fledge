@@ -145,6 +145,84 @@ class RuntimesTest < Minitest::Test
     server&.stop
   end
 
+  # FLEDGE_RUNTIME_MIRROR replaces the releases' download base, as
+  # UV_PYTHON_INSTALL_MIRROR replaces python-build-standalone's: the same
+  # tag folder and file names, checked against the same pins.
+  def test_a_mirror_replaces_the_release_and_its_downloads_are_checked_against_the_pins
+    body = "the released runtime"
+    name = Fledge::Runtimes.file_name(LINUX)
+    mirror = LoopbackServer.new("/fledge/v#{Fledge::VERSION}/#{name}" => [200, {}, body])
+    release = LoopbackServer.new("/v/#{name}" => [200, {}, body])
+    Dir.mktmpdir do |home|
+      log = StringIO.new
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => home, "FLEDGE_RUNTIME_MIRROR" => "#{mirror.url('/fledge')}/" },
+        release_url: release.url("/v"), log:, pins: write_pins(home, name => body))
+
+      path = runtimes.archive(LINUX)
+      assert_equal File.join(home, ".cache/fledge/runtimes", name), path
+      assert_equal body, File.binread(path)
+      assert_equal path, runtimes.archive(LINUX)
+      assert_equal "Downloading #{name} from #{mirror.url('/fledge')}/v#{Fledge::VERSION}\n", log.string
+      assert_equal ["/fledge/v#{Fledge::VERSION}/#{name}"], mirror.requests
+      assert_empty release.requests
+    end
+  ensure
+    mirror&.stop
+    release&.stop
+  end
+
+  # The pins make any host safe to download from; they also make a host
+  # that serves other bytes plain to see.
+  def test_a_mirror_that_serves_other_bytes_is_refused_naming_it_and_both_sha256s
+    name = Fledge::Runtimes.file_name(LINUX)
+    tampered = "tampered"
+    mirror = LoopbackServer.new("/v#{Fledge::VERSION}/#{name}" => [200, {}, tampered])
+    Dir.mktmpdir do |home|
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => home, "FLEDGE_RUNTIME_MIRROR" => mirror.url("") },
+        release_url: "http://127.0.0.1:1", pins: write_pins(home, name => "the released runtime"))
+
+      error = assert_raises(Fledge::Error) { runtimes.archive(LINUX) }
+      assert_equal "FLEDGE_RUNTIME_MIRROR is #{mirror.url('')}, whose #{name} has SHA-256 " \
+        "#{Digest::SHA256.hexdigest(tampered)}, but Fledge #{Fledge::VERSION} pins " \
+        "#{Digest::SHA256.hexdigest('the released runtime')} for it. The mirror does not hold the file this " \
+        "Fledge released; nothing was saved.", error.message
+      refute_path_exists File.join(home, ".cache/fledge/runtimes", name)
+    end
+  ensure
+    mirror&.stop
+  end
+
+  # A mirror is chosen on purpose, often because the release's host is
+  # not to be reached; a file it lacks fails rather than quietly coming
+  # from the release, as uv and rustup do with theirs.
+  def test_a_mirror_without_the_file_fails_and_does_not_fall_back_to_the_release
+    body = "the released runtime"
+    name = Fledge::Runtimes.dev_file_name(LINUX)
+    mirror = LoopbackServer.new
+    release = LoopbackServer.new("/v/#{name}" => [200, {}, body])
+    Dir.mktmpdir do |home|
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => home, "FLEDGE_RUNTIME_MIRROR" => mirror.url("/m") },
+        release_url: release.url("/v"), pins: write_pins(home, name => body))
+
+      error = assert_raises(Fledge::Error) { runtimes.dev_archive(LINUX) }
+      assert_equal "FLEDGE_RUNTIME_MIRROR is #{mirror.url('/m')}: could not download " \
+        "#{mirror.url("/m/v#{Fledge::VERSION}/#{name}")}: 404 X", error.message
+      assert_empty release.requests
+    end
+  ensure
+    mirror&.stop
+    release&.stop
+  end
+
+  def test_the_runtime_directory_wins_over_a_mirror
+    Dir.mktmpdir do |dir|
+      archive = FakeRuntime.write(dir, LINUX)
+      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "FLEDGE_RUNTIME_MIRROR" => "http://127.0.0.1:1" })
+
+      assert_equal archive, runtimes.archive(LINUX)
+    end
+  end
+
   def test_a_runtime_this_fledge_does_not_pin_fails_without_a_download
     Dir.mktmpdir do |home|
       [write_pins(home, "other.tar.gz" => "other"), File.join(home, "absent")].each do |pins|

@@ -313,7 +313,8 @@
 #                        build's app/, and out of backups that honor it.
 #     ~/.cache/fledge/runtimes/
 #                        Runtimes downloaded from Fledge's GitHub
-#                        Release for this version, each checked
+#                        Release for this version (or from
+#                        FLEDGE_RUNTIME_MIRROR), each checked
 #                        against the SHA-256 this Fledge pins for it,
 #                        in the cache too, and, to
 #                        compile gems, each one's build-only companion
@@ -334,6 +335,13 @@
 #                        fledge-runtime-VERSION-PLATFORM.tar.gz files
 #                        (and their -dev.tar.gz companions), and never
 #                        download them.
+#     FLEDGE_RUNTIME_MIRROR
+#                        Download runtimes from this server instead
+#                        of Fledge's GitHub Release, as
+#                        MIRROR/vVERSION/NAME, the release's own
+#                        paths. Every file is checked against the
+#                        SHA-256 this Fledge pins, and a file the
+#                        mirror lacks fails the build.
 #     XDG_CACHE_HOME     Keep downloaded runtimes and gems in
 #                        $XDG_CACHE_HOME/fledge instead.
 #

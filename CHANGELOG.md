@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `FLEDGE_RUNTIME_MIRROR` names a server to download runtimes from instead of Fledge's GitHub Release, holding the release's files at its paths, as `MIRROR/vVERSION/NAME`. Every download is checked against the SHA-256 the gem pins, a mirror that serves other bytes fails the build naming both SHA-256s, and a file the mirror lacks fails the build rather than coming from the release.
 - `fledge.yml`'s `linux: system_libraries` lists, by soname, the libraries a project's gems load from the Linux distribution, such as `[libwebkit2gtk-4.1.so.0, libgtk-3.so.0]`. On Linux `fledge build` takes a gem whose compiled files need one, refuses one listed that no gem needs, makes a `.deb` depend on the packages that provide them (found with dpkg-shlibdeps, from dpkg-dev), and has the app's program name one the computer lacks, and exit with 72, before Ruby starts. A gem that needs a library nothing provides is still refused, and the message now names the key.
 
 ### Changed

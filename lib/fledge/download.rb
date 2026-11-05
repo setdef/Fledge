@@ -69,6 +69,23 @@ module Fledge
     # A server that answered 404 or 410: it has no file at that address.
     class Missing < Unsuccessful; end
 
+    # A download whose SHA-256 is not the one it was pinned to.
+    class Mismatch < Error
+      # The SHA-256 of what the server sent.
+      attr_reader :actual
+
+      # The SHA-256 the file was pinned to.
+      attr_reader :expected
+
+      # Creates the error for +message+, with the +actual+ and +expected+
+      # SHA-256.
+      def initialize(message, actual:, expected:)
+        super(message)
+        @actual = actual
+        @expected = expected
+      end
+    end
+
     # The body at +url+, as a String. Raises Fledge::Error when the
     # server does not answer with success.
     #
@@ -91,7 +108,8 @@ module Fledge
 
     # Saves the file at +url+ to the path +to+, creating its folder, and
     # returns +to+. Raises Fledge::Error, and leaves nothing at +to+,
-    # when the download fails or its SHA-256 is not +sha256+. +credentials+
+    # when the download fails, and Fledge::Download::Mismatch when its
+    # SHA-256 is not +sha256+. +credentials+
     # (<tt>USER:PASSWORD</tt>, each percent-encoded as in a URL's userinfo,
     # as Bundler's Source::Rubygems::Remote applies them) log in with HTTP
     # Basic authentication to the server at +url+, and to no other host a
@@ -132,8 +150,9 @@ module Fledge
     private_class_method def self.verify(url, actual, expected) # :nodoc:
       return if actual == expected.downcase
 
-      raise Error, "#{url} has SHA-256 #{actual}, but #{expected} was expected. " \
-        "The file changed since it was pinned, or the download was damaged; nothing was saved."
+      raise Mismatch.new("#{url} has SHA-256 #{actual}, but #{expected} was expected. " \
+        "The file changed since it was pinned, or the download was damaged; nothing was saved.",
+        actual:, expected: expected.downcase)
     end
 
     private_class_method def self.get(url, redirects = REDIRECTS, credentials: nil, &block) # :nodoc:

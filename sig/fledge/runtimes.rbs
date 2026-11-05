@@ -38,6 +38,8 @@ module Fledge
 
     private def download: (String name, String destination, String sha256) -> String
 
+    private def from_mirror: (String mirror, String name, String destination, String sha256) -> String
+
     private def pin: (String name) -> String
   end
 end

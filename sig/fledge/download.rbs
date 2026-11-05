@@ -17,6 +17,14 @@ module Fledge
     class Missing < Unsuccessful
     end
 
+    class Mismatch < Error
+      attr_reader actual: String
+
+      attr_reader expected: String
+
+      def initialize: (String message, actual: String, expected: String) -> void
+    end
+
     def self.read: (String url) -> String
 
     def self.save: (String url, to: String, sha256: String, ?credentials: String?) -> String

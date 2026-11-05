@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `fledge build` writes beside the archive and each installer its SHA-256 in `FILE.sha256`, one line as `sha256sum` prints it, which `sha256sum -c` checks and a package manager's recipe names. It is not printed, so standard output is unchanged.
 - `fledge.yml`'s `linux: system_libraries` lists, by soname, the libraries a project's gems load from the Linux distribution, such as `[libwebkit2gtk-4.1.so.0, libgtk-3.so.0]`. On Linux `fledge build` takes a gem whose compiled files need one, refuses one listed that no gem needs, makes a `.deb` depend on the packages that provide them (found with dpkg-shlibdeps, from dpkg-dev), and has the app's program name one the computer lacks, and exit with 72, before Ruby starts. A gem that needs a library nothing provides is still refused, and the message now names the key.
 
 ### Changed

@@ -89,9 +89,9 @@
 #                        directory) and its project into this
 #                        computer's runtime, with the gems it needs,
 #                        then archive the result, and for a windowed
-#                        app write its installer. Prints the path of
-#                        the archive and installer it writes, one per
-#                        line.
+#                        app write its installer, each with its
+#                        checksum file. Prints the path of the archive
+#                        and installer it writes, one per line.
 #                        A folder means the one executable its gemspec
 #                        names, or else its main.rb; when fledge.yml
 #                        lists programs, every one of them, and a file
@@ -307,6 +307,12 @@
 #                        run time, such as the X11, Wayland, or OpenGL
 #                        that SDL opens, is the desktop's, and apt does
 #                        not check for it.
+#     DIR/FILE.sha256    Beside the archive and each installer, its
+#                        SHA-256, as sha256sum prints it: the hash, two
+#                        spaces, and FILE's name. In DIR,
+#                        sha256sum -c FILE.sha256 (shasum -a 256 -c on
+#                        macOS) checks FILE; a package manager's recipe
+#                        names the hash. Not printed.
 #     DIR/CACHEDIR.TAG   A cache directory tag (bford.info/cachedir),
 #                        written when the build makes DIR or finds it
 #                        empty, which keeps DIR out of every later

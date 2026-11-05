@@ -135,14 +135,14 @@ module Fledge
           contents = same_ruby(RuntimeContents.read(runtime), platform)
           files = gems ? gems.for(platform, runtime: contents) : [] # : Array[Entry]
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
-          written(Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:), out)
+          written(Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:, log: @err), out)
         end
       end
 
       # Builds +app+ from the built app +from+ (ADR 032): with its runtime
       # and gems, downloading, installing, and compiling nothing.
       private def build_from(app, from, platform, out, signing)
-        written(Assembly.new(app:, platform:, runtime: from.path, out: out_dir(app, out), files: from.files, signing:, from:), out)
+        written(Assembly.new(app:, platform:, runtime: from.path, out: out_dir(app, out), files: from.files, signing:, from:, log: @err), out)
       end
 
       # Writes +assembly+'s archive and installers, each with its checksum

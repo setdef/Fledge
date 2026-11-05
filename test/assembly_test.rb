@@ -471,6 +471,30 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # A windowed Linux app takes the icon sizes its project has, at least
+  # one, and the build names the rest on its log; with all six it says
+  # nothing, and with none it fails as a missing icon does.
+  def test_a_windowed_linux_app_takes_the_icon_sizes_there_are
+    unix!
+    Dir.mktmpdir do |dir|
+      root = WindowedApp.write(dir)
+      log = StringIO.new
+      Fledge::Assembly.new(app: Fledge::App.at(root), platform: LINUX, runtime: FakeRuntime.write(dir, LINUX), out: File.join(dir, "dist"), log:).call
+      assert_equal "", log.string
+
+      [16, 64, 512].each { |size| File.delete(File.join(root, "art-#{size}.png")) }
+      Fledge::Assembly.new(app: Fledge::App.at(root), platform: LINUX, runtime: FakeRuntime.write(dir, LINUX), out: File.join(dir, "dist"), log:).call
+      assert_equal "fledge build: warning: the icon has no art-16.png, art-64.png, art-512.png, so Linux desktops scale the nearest size there is\n",
+        log.string
+      icons = File.join(dir, "dist", "Hello Window-x86_64-linux", "share/icons/hicolor")
+      assert_equal %w[128x128 256x256 32x32], Dir.children(icons).sort
+
+      Dir.glob(File.join(root, "art-*.png")).each { |png| File.delete(png) }
+      error = assert_raises(Fledge::Error) { assemble(dir, root) }
+      assert_includes error.message, "the icon art-16.png does not exist."
+    end
+  end
+
   # A windowed app gets its platform's installer by default (ADR 009),
   # written beside its archive from its folder and the runtime's tools
   # folder, which neither the folder nor the archive holds.

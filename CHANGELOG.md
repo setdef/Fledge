@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fledge build --from APP [PATH]` builds PATH's project into a copy of APP, an app the same Fledge release built for this computer, with APP's runtime, gems, `Gemfile`, and `Gemfile.lock`, and the project's own name, identity, archive, and installers, downloading, installing, and compiling nothing. A project with a `Gemfile`, `gems.rb`, or gemspec, or whose `fledge.yml` has `programs`, `linux`, `ios`, or `android`, is refused; an APP from another release or for another platform is a usage error. On Windows it takes the program and rcedit from the release's runtime, which must be in `FLEDGE_RUNTIME_DIR` or the cache.
 
+### Changed
+
+- A windowed Linux app takes the icon PNGs its project has, at least one of `-16`, `-32`, `-64`, `-128`, `-256`, and `-512`, instead of needing all six; `fledge build` warns on standard error naming each one missing, and the AppImage's top icon is the 256-pixel one, or else the largest.
+
 ### Fixed
 
 - On Windows, `fledge build` writes and reads archives in folders whose names are not ASCII, such as `-o "Prüfung 日本"`, which `tar.exe` could not change into; and a tool's failure written in the console's code page is quoted instead of ending the build with a Ruby error.

@@ -122,7 +122,7 @@ installers: [dmg, nsis, appimage, deb]
 ```
 <!-- SPDX-SnippetEnd -->
 
-macOS, Windows, and Linux show your app's name, icon, and version in their usual places. [`examples/windowed_app`](examples/windowed_app) is a complete example, and `--help` lists every key.
+macOS, Windows, and Linux show your app's name, icon, and version in their usual places. Each system takes its own icon file, as you make it: one `.icns`, one `.ico`, and for Linux a PNG of each size you have, of 16, 32, 64, 128, 256, and 512 pixels, where a desktop scales the nearest one for the rest and `fledge build` names the sizes it lacks. [`examples/windowed_app`](examples/windowed_app) is a complete example, and `--help` lists every key.
 
 Your editor can check `fledge.yml` as you type. With Red Hat's YAML language server, which VS Code's YAML extension runs, make this the file's first line, with the tag your `Gemfile` names, and the editor completes each key and marks what `fledge build` would refuse:
 

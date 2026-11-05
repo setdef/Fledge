@@ -1010,6 +1010,18 @@ jobs:
           grep -q "needs libpng16.so.16, .*list it in fledge.yml as linux: { system_libraries: \[libpng16.so.16\] }" "$RUNNER_TEMP/unlisted.err" ||
             { echo "::error::the refusal does not name linux: system_libraries"; exit 1; }
 
+      # Plan 003, "A Linux build takes the icon sizes a developer has":
+      # windowed_app with only three of its PNGs builds, warns, and ships
+      # three icons in its .deb and AppImage; with none it fails.
+      - name: Build windowed_app with three icon sizes, and with none, for ${{ matrix.platform }}
+        if: runner.os == 'Linux'
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: |
+          sudo apt-get install -y -qq desktop-file-utils
+          mkdir "$RUNNER_TEMP/icon-sizes"
+          .github/scripts/check-icon-sizes.sh "$RUNNER_TEMP/icon-sizes"
+
       # ADR 016: hello and windowed_app again, signed with a self-signed
       # identity made for this run, as a developer signs with their own;
       # Delivery verifies them on a fresh runner with the certificate.

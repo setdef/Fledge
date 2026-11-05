@@ -23,7 +23,8 @@ module Fledge
   # them: <tt>ID.desktop</tt> at the top, named by the app's reverse-DNS
   # identifier as the specification recommends, whose +Exec+ names the
   # program beside it and whose +Icon+ names the identifier, and a PNG of
-  # each of Fledge::Icon::LINUX's sizes at
+  # each of Fledge::Icon::LINUX's sizes the developer has
+  # (Fledge::Icon#linux) at
   # <tt>share/icons/hicolor/SIZExSIZE/apps/ID.png</tt>, the layout of
   # <tt>$XDG_DATA_HOME</tt>, so installing the app is copying +share+
   # into <tt>~/.local/share</tt> and the desktop entry into its
@@ -69,7 +70,8 @@ module Fledge
     def entries
       id = @identity.identifier.to_s
       icon = @identity.icon
-      icons = icon ? Icon::LINUX.map { |size| Entry.file("share/icons/hicolor/#{size}x#{size}/apps/#{id}.png", File.binread(icon.png(size))) } : [] # : Array[Entry]
+      pngs = icon ? icon.linux : {} # : Hash[Integer, String]
+      icons = pngs.map { |size, png| Entry.file("share/icons/hicolor/#{size}x#{size}/apps/#{id}.png", File.binread(png)) }
       [Entry.file("#{id}.desktop", text), *icons]
     end
 

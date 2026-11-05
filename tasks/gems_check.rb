@@ -139,8 +139,8 @@ class GemsCheck
     unpacked = File.join(chdir, "unpacked-#{label}")
     FileUtils.mkdir_p(unpacked)
     Fledge::Archive.unpack(File.join(dist, "Hello-#{@platform}#{@platform.archive_extension}"), into: unpacked)
-    launcher = Dir.glob(File.join(unpacked, "*", @platform.executable("hello")), File::FNM_CASEFOLD).first or
-      raise Failure, "#{label}: no hello was built"
+    launcher = File.join(unpacked, "Hello-#{@platform}", @platform.executable("Hello"))
+    raise Failure, "#{label}: no #{launcher} was built" unless File.file?(launcher)
     printed = run(bare(env), chdir, launcher, unsetenv_others: true)
     raise Failure, "#{label}: the built hello printed #{printed.inspect}" unless printed.start_with?("Hello from Ruby ")
 

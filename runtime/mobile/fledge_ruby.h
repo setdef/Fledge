@@ -44,7 +44,11 @@ enum { FLEDGE_RUBY_NO_APP = 66, FLEDGE_RUBY_SOFTWARE = 70 };
  * default gems, and bundled gems are root/lib/ruby, and OpenSSL trusts
  * the certificate authorities in root/libexec/cert.pem (SSL_CERT_FILE,
  * unless the environment names another). A bare C locale becomes a
- * UTF-8 one, as under the desktop launcher.
+ * UTF-8 one, as under the desktop launcher. When standard output is not
+ * a terminal, as on a phone it never is, $stdout is in sync mode before
+ * the program runs, so that each line reaches the log or the developer
+ * tool reading it when it is printed, as it reaches a terminal, rather
+ * than when the program ends.
  *
  * Ruby boots once per process, so a second call returns
  * FLEDGE_RUBY_SOFTWARE at once. Ruby needs the deep stack a process's
@@ -87,6 +91,7 @@ int fledge_ruby_add_extension(const char *feature, void (*init)(void));
  * logcat with tag as its tag on Android, where standard error's lines
  * are warnings. Name the app, as by its bundle identifier or package.
  * A line longer than a log entry holds goes as several entries in a row.
+ * Each of Ruby's lines arrives as it is printed (fledge_ruby_run).
  * When the log already copies its entries to standard error, as Apple's
  * does for a developer tool that sets OS_ACTIVITY_DT_MODE, it leaves the
  * streams to that tool. Returns 0, or -1 with errno set.

@@ -160,12 +160,32 @@ register_extensions(void)
 }
 
 /*
+ * Has Ruby write each line to standard output as it is printed, as it
+ * does on a terminal, when standard output is not one: on a phone it is
+ * the pipe fledge_ruby_forward_output reads into the system log, or a
+ * developer tool's, and whoever reads it is watching the app run. Ruby
+ * writes through to a terminal but buffers a pipe until its buffer fills
+ * or the program ends (io.c, io_binwrite_requires_flush_write, lines
+ * 1966 to 1979 at 4.0.9), so without this an app's lines reached the log
+ * only when it ended. This is $stdout.sync = true, as Briefcase's iOS
+ * host unbuffers Python's streams so that "output appears in the log
+ * immediately" (config.buffered_stdio = 0); standard error is in sync
+ * mode already (rb_io_prep_stderr). On a terminal it is left as it is.
+ */
+static void
+write_lines_as_printed(void)
+{
+    if (!isatty(STDOUT_FILENO)) rb_funcall(rb_stdout, rb_intern("sync="), 1, Qtrue);
+}
+
+/*
  * SPDX-SnippetBegin
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, from Ruby's main.c (lines 37 to 43) at
  *   Ruby v4.0.9 (3e93b23afc), with setup_bundler between ruby_options and
- *   ruby_run_node, as in the desktop launcher's run_ruby.
+ *   ruby_run_node, as in the desktop launcher's run_ruby, and standard
+ *   output's sync mode set before either.
  */
 static int
 run_ruby(int argc, char **argv)
@@ -173,6 +193,7 @@ run_ruby(int argc, char **argv)
     RUBY_INIT_STACK;
     ruby_init();
     void *node = ruby_options(argc, argv);
+    write_lines_as_printed();
     register_extensions();
     if (bundle_gemfile != NULL && ruby_executable_node(node, NULL) && setup_bundler() != 0) {
         return ruby_cleanup(FLEDGE_RUBY_SOFTWARE);

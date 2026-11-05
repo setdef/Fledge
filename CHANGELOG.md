@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- On iOS and Android, each line an app's Ruby prints reaches the system log when it is printed, not when the program ends: `$stdout` is in sync mode before the program runs whenever standard output is not a terminal, as on a phone it never is, so `$stdout.sync` is true there where `ruby main.rb` in a terminal reports false.
+
 ## [0.5.0] - 2026-11-05
 
 ### Added

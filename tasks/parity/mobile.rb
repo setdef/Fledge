@@ -55,6 +55,11 @@ class Parity
       reason: "A phone's Ruby is an interpreter only: iOS gives no app memory it may write code into and run, and " \
         "Ruby builds no JIT for Android (configure.ac at 4.0.9), so RubyVM::YJIT is not defined, as in any Ruby " \
         "built without YJIT. An app that turns YJIT on only where it is defined runs either way."),
+    Justification.new(fact: "$stdout.sync", reference: [/\Afalse\z/], app: [/\Atrue\z/], platforms: MOBILE,
+      reason: "A phone has no terminal: an app's standard output is the pipe the embedding API reads into the " \
+        "system log, where a developer watches the app run. Ruby writes through to a terminal but buffers a pipe " \
+        "until the program ends, so the runtime puts $stdout in sync mode, which writes each line when it is " \
+        "printed, as under ruby main.rb in a terminal, and as Briefcase's iOS host unbuffers Python's streams."),
     Justification.new(fact: "gems", reference: [/\A"fiddle /], platforms: IOS,
       reason: "The iOS runtime leaves out fiddle, which calls any C function by name, as xord/cruby leaves it out " \
         "of RubySketch's Ruby \"to pass the App Store review\" (ADR 011, section 4)."),

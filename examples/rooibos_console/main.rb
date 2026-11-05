@@ -17,6 +17,7 @@
 #   q       quits, with status 0
 #   Ctrl-C  restores the terminal, then raises Interrupt as Ruby does when
 #           interrupted, so the shell reports the status of SIGINT
+#   TERM, HUP, or a closed terminal ends it the same way, by the signal
 #
 # Run it as ruby main.rb or bundle exec ruby main.rb, or as the app
 # fledge build makes of it; the screen reads the same except for the
@@ -35,8 +36,32 @@ module Check
   WATCHED = %w[RUBYOPT RUBYLIB GEM_HOME GEM_PATH BUNDLE_GEMFILE PATH LANG LC_ALL TERM COLORTERM].freeze
 
   class << self
-    # Whether Ctrl-C ended the app, so Interrupt is raised once the terminal is restored.
-    attr_accessor :interrupted
+    # The name of the signal that ends the app (INT for Ctrl-C, TERM or HUP
+    # sent to it, HUP when the terminal is gone), or nil while it runs.
+    attr_accessor :ending
+
+    # Has Ruby's own handling of TERM and HUP stand aside while the screen
+    # is up, so the screen can be restored before the signal ends the app.
+    def watch_signals
+      %w[TERM HUP].each { |name| trap(name) { self.ending ||= name } if Signal.list.key?(name) }
+    end
+
+    # True when the terminal has gone away, as when its window is closed.
+    def terminal_gone?
+      IO.console.nil?
+    rescue SystemCallError
+      true
+    end
+
+    # Ends the program as Ruby does when the signal arrives: Interrupt for
+    # Ctrl-C, and for the others the signal itself with its default action.
+    def finish
+      return unless ending
+      raise Interrupt if ending == "INT"
+
+      trap(ending, "DEFAULT")
+      Process.kill(ending, Process.pid)
+    end
 
     # The text of a file, or nil when it cannot be read.
     def read(path)
@@ -95,10 +120,11 @@ module Check
       "unknown"
     end
 
-    # A Fledge app keeps its Ruby at bin/ruby beside fledge.cfg, whose
-    # first line says which fledge build wrote it.
+    # A Fledge app keeps fledge.cfg in the folder above its Ruby (bin/ruby
+    # on macOS and Linux, ruby/bin/ruby.exe on Windows); the file's first
+    # line says which fledge build wrote it.
     def fledge_line
-      config = read(File.join(File.dirname(RbConfig.ruby, 2), "fledge.cfg"))
+      config = (1..4).filter_map { |levels| read(File.join(File.dirname(RbConfig.ruby, levels), "fledge.cfg")) }.first
       return "Fledge app: no, this is a Ruby installed on this computer" unless config
 
       built = config[/fledge build \S+ for [^\s:]+/]
@@ -184,7 +210,7 @@ module FledgeCheck
   Update = lambda { |message, model|
     case message
     in { type: :key, code: "c", modifiers: ["ctrl"] }
-      Check.interrupted = true
+      Check.ending = "INT"
       Rooibos::Command.exit
     in { type: :key, code: "q" }
       Rooibos::Command.exit
@@ -193,12 +219,16 @@ module FledgeCheck
     in { type: :key, code:, modifiers: }
       model.with(key: (modifiers + [code]).join("+"))
     else
+      Check.ending ||= "HUP" if (model.frame % 10).zero? && Check.terminal_gone?
+      return Rooibos::Command.exit if Check.ending
+
       model.with(time: Time.now, frame: model.frame + 1)
     end
   }
 end
 
 if $PROGRAM_NAME == __FILE__
+  Check.watch_signals
   Rooibos.run(FledgeCheck, fps: 10, update_every_frame: true)
-  raise Interrupt if Check.interrupted
+  Check.finish
 end

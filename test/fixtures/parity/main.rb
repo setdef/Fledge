@@ -91,6 +91,9 @@ end
 # probe only checks that RubyGems can find the file.
 RESOLVE_ONLY = %w[debug test-unit].freeze
 
+# A gem that exits while it loads (prism 2.1 does, when the parser gem it
+# translates for is missing) raises SystemExit, which is no StandardError:
+# the probe reports it as it reports a LoadError and keeps going.
 def requireable(spec)
   feature = feature_of(spec)
   if RESOLVE_ONLY.include?(spec.name)
@@ -99,7 +102,7 @@ def requireable(spec)
 
   require feature
   "loads"
-rescue LoadError, StandardError => e
+rescue LoadError, StandardError, SystemExit => e
   "#{e.class}: #{e.message.lines.first.to_s.chomp}"
 end
 

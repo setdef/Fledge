@@ -7,6 +7,7 @@
 
 require "digest"
 require "fileutils"
+require "rubygems/installer"
 require "rubygems/package"
 
 # Real .gem files, built by RubyGems itself, small enough for a unit
@@ -56,6 +57,18 @@ module FakeGem
     path = File.join(directory, File.basename(built))
     FileUtils.mv(built, path)
     Built.new(path:, name:, version:, platform:, sha256: Digest::SHA256.file(path).hexdigest)
+  end
+
+  # Installs the .gem file +path+ into the gem folder +home+ with
+  # RubyGems' own installer, as gem install --local --install-dir does,
+  # and returns the record of what +home+ holds
+  # (Gem::SpecificationRecord), the view of installed gems that
+  # Gem::Specification gives a program run with GEM_HOME set to +home+.
+  def self.install(path, home)
+    Gem::DefaultUserInteraction.use_ui(Gem::SilentUI.new) do
+      Gem::Installer.at(path, install_dir: home, ignore_dependencies: true, document: [], wrappers: true, force: true).install
+    end
+    Gem::SpecificationRecord.from_path(home)
   end
 end
 

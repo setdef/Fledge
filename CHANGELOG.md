@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge build` takes its runtime, and its build-only companion, from an installed `fledge-runtime` gem of its own version (or `fledge-runtime-ios` or `fledge-runtime-android` for a phone), checked against the SHA-256 it pins, before it looks in the cache or downloads from the GitHub Release; a file there that does not match its pin fails the build and names `gem pristine`. Nothing publishes these gems before 1.0.0.
+
 ### Changed
 
 - Breaking: an app gets the Ruby that runs `fledge build`, its minor version at the patch level Fledge ships, so `fledge build` on a Ruby whose minor version has no runtime, such as a 4.1 preview, fails and says so, instead of building the app with Ruby 4.0.

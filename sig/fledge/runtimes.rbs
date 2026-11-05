@@ -9,6 +9,10 @@ module Fledge
       def to_h: () -> Hash[String, String]
     end
 
+    interface _Gems
+      def find_all_by_name: (String name, *String requirements) -> Array[Gem::Specification]
+    end
+
     RELEASES: String
     EXTENSION: String
     PINS: String
@@ -17,18 +21,21 @@ module Fledge
     @release_url: String
     @log: CLI::_Output?
     @pins: String
+    @gems: _Gems
 
     def self.file_name: (target platform, ?version: String) -> String
 
     def self.dev_file_name: (Platform platform, ?version: String) -> String
 
-    def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?, ?pins: String) -> void
+    def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?, ?pins: String, ?gems: _Gems) -> void
 
     def archive: (target platform) -> String
 
     def dev_archive: (Platform platform) -> String
 
-    private def find: (String name) -> String
+    private def find: (target platform, String name) -> String
+
+    private def from_gem: (RuntimeGem gem, String name, String sha256) -> String?
 
     def cache: () -> String
 

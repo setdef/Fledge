@@ -283,7 +283,7 @@ $failed = [Fledge.Shell]::Open($document, 'open', $progId)
 if ($failed) { Fail "the shell could not open $document with ${progId}: $failed" }
 WaitFor { (Get-Content -LiteralPath $document -Raw) -match '"ruby":"4.0.9"' } 'the app writing its report over the file the shell opened with it' 60
 Write-Host "ok: the shell opened $document with the app, which got its path"
-$failed = [Fledge.Shell]::Open($dropped, $identifier, $null)
+$failed = [Fledge.Shell]::Open($dropped, $identifier, 'Directory')
 if ($failed) { Fail "the shell could not open $dropped with the folders' verb: $failed" }
 WaitFor { Test-Path -LiteralPath (Join-Path $dropped 'hello_window.json') } 'the app writing its report into the folder the shell opened with it' 60
 Write-Host "ok: the shell opened $dropped with the folders' verb, and the app got its path"

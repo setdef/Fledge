@@ -73,7 +73,7 @@ Add Fledge to your `Gemfile`, in the `development` group so that `fledge build` 
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
-gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.4.0", group: :development
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.5.0", group: :development
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -91,7 +91,7 @@ Run `fledge build` in your project's folder. Here, the project is a folder named
 ```console
 $ bundle install
 $ bundle exec fledge build
-Downloading fledge-runtime-0.4.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.4.0
+Downloading fledge-runtime-0.5.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.5.0
 dist/Greeter-arm64-darwin.tar.gz
 $ tar -xzf dist/Greeter-arm64-darwin.tar.gz -C /tmp
 $ /tmp/Greeter-arm64-darwin/Greeter
@@ -99,7 +99,7 @@ Hello, Ruby!
 ```
 <!-- SPDX-SnippetEnd -->
 
-The first time you build, Fledge downloads the runtime for your platform from the release, and checks it against a SHA-256 that it carries. That check makes any copy of the release as good as the release: to download from your own server, copy the release's files to it, one folder per tag, and set `FLEDGE_RUNTIME_MIRROR` to its address, so that `https://files.example.com/fledge` serves `https://files.example.com/fledge/v0.4.0/fledge-runtime-0.4.0-arm64-darwin.tar.gz`. The app takes its name from the folder, camelized. Send the `.tar.gz` (a `.zip` on Windows) to anyone on that platform. Beside it, `fledge build` writes the archive's own SHA-256, as `sha256sum` prints it, in `Greeter-arm64-darwin.tar.gz.sha256`, for the people and package managers that check what they download.
+The first time you build, Fledge downloads the runtime for your platform from the release, and checks it against a SHA-256 that it carries. That check makes any copy of the release as good as the release: to download from your own server, copy the release's files to it, one folder per tag, and set `FLEDGE_RUNTIME_MIRROR` to its address, so that `https://files.example.com/fledge` serves `https://files.example.com/fledge/v0.5.0/fledge-runtime-0.5.0-arm64-darwin.tar.gz`. The app takes its name from the folder, camelized. Send the `.tar.gz` (a `.zip` on Windows) to anyone on that platform. Beside it, `fledge build` writes the archive's own SHA-256, as `sha256sum` prints it, in `Greeter-arm64-darwin.tar.gz.sha256`, for the people and package managers that check what they download.
 
 With no argument, `fledge build` builds the folder you are in: the one executable its gemspec names, or else its `main.rb`. Pass a path to build another program, and `--out DIR` to write somewhere other than `dist`. Your whole project ships in the app's `app/` folder, except `.git`, `.bundle`, `vendor/bundle`, `vendor/cache`, and the folders earlier builds wrote to. `bundle exec fledge --help` prints the whole manual.
 
@@ -132,7 +132,7 @@ Your editor can check `fledge.yml` as you type. With Red Hat's YAML language ser
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.4.0/lib/fledge/config.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.5.0/lib/fledge/config.schema.json
 ```
 <!-- SPDX-SnippetEnd -->
 

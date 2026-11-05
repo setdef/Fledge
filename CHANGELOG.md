@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-05
+
 ### Added
 
 - `FLEDGE_RUNTIME_MIRROR` names a server to download runtimes from instead of Fledge's GitHub Release, holding the release's files at its paths, as `MIRROR/vVERSION/NAME`. Every download is checked against the SHA-256 the gem pins, a mirror that serves other bytes fails the build naming both SHA-256s, and a file the mirror lacks fails the build rather than coming from the release.
@@ -279,7 +281,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/setdef/Fledge/releases/tag/v0.5.0
 [0.4.0]: https://github.com/setdef/Fledge/releases/tag/v0.4.0
 [0.3.0]: https://github.com/setdef/Fledge/releases/tag/v0.3.0
 [0.2.1]: https://github.com/setdef/Fledge/releases/tag/v0.2.1

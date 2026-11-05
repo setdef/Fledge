@@ -164,6 +164,17 @@ if ($Mesa) {
   Expect "started through the shell, it draws with $expected and quits with 0" ($said -match 'exiting with 0' -and $said -match 'frames in')
   Unregister-Driver (Join-Path $root 'lvp_icd.json')
   $mesaFiles | ForEach-Object { Remove-Item -LiteralPath (Join-Path $root $_.Name) }
+
+  # The same app unpacked under a path of ASCII letters only, to tell
+  # whether lavapipe's manifest is found under one that has others.
+  $ascii = Join-Path $env:RUNNER_TEMP 'ascii'
+  Expand-Archive -LiteralPath $archive -DestinationPath $ascii
+  $asciiRoot = Join-Path $ascii "LotaTrial-$Platform"
+  $mesaFiles | Copy-Item -Destination $asciiRoot
+  Register-Driver (Join-Path $asciiRoot 'lvp_icd.json')
+  $null = Run-App 'window-lavapipe-ascii-path' (Join-Path $asciiRoot 'LotaTrial.exe') (With-Settings $nullAudio (Soft-Settings 'lavapipe' $asciiRoot)) @() 2.5 90
+  Collect-Frame 'window-lavapipe-ascii-path'
+  Unregister-Driver (Join-Path $asciiRoot 'lvp_icd.json')
 }
 
 $installer = Join-Path $Dist "LotaTrial-$Platform-setup.exe"

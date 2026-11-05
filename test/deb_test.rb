@@ -26,7 +26,7 @@ class DebTest < Minitest::Test
 
   def identity(icon: nil, version: "1.2.3", publisher: "Example, Inc.", identifier: "com.example.MyApp", **about)
     Fledge::Identity.new(name: "My App", kind: "windowed", identifier:, version:, publisher:, copyright: nil, icon:,
-      description: nil, long_description: nil, homepage: nil, **about)
+      description: nil, long_description: nil, homepage: nil, file_associations: [], **about)
   end
 
   # Writes the folder fledge build leaves for a windowed app on Linux:

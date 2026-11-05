@@ -15,8 +15,9 @@ module Fledge
     attr_reader description: String?
     attr_reader long_description: String?
     attr_reader homepage: String?
+    attr_reader file_associations: Array[Config::FileAssociation]
 
-    def self.new: (name: String, kind: String, identifier: String?, version: String, publisher: String?, copyright: String?, icon: Icon?, description: String?, long_description: String?, homepage: String?) -> instance
+    def self.new: (name: String, kind: String, identifier: String?, version: String, publisher: String?, copyright: String?, icon: Icon?, description: String?, long_description: String?, homepage: String?, file_associations: Array[Config::FileAssociation]) -> instance
 
     def self.from: (config: Config, gemspec: Gem::Specification?, name: String, root: String) -> Identity
 

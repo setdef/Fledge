@@ -24,7 +24,7 @@ class IdentityTest < Minitest::Test
   def test_a_project_with_nothing_to_say_is_a_console_app_at_version_0_0_0
     identity = Fledge::Identity.from(config:, gemspec: nil, name: "Hello", root: "/x/hello")
     assert_equal Fledge::Identity.new(name: "Hello", kind: "console", identifier: nil, version: "0.0.0", publisher: nil,
-      copyright: nil, icon: nil, description: nil, long_description: nil, homepage: nil), identity
+      copyright: nil, icon: nil, description: nil, long_description: nil, homepage: nil, file_associations: []), identity
     refute_predicate identity, :windowed?
   end
 

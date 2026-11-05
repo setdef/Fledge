@@ -11,6 +11,8 @@ module Fledge
 
     def text: (?program: String) -> String
 
+    private def mime_types: () -> Array[String]
+
     def self.string: (String value) -> String
 
     def self.exec: (String program) -> String

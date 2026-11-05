@@ -543,18 +543,23 @@ class BuiltAppTest < Minitest::Test
         assert_predicate status, :success?, out
         out, status = Open3.capture2e("plutil", "-extract", "CFBundleIdentifier", "raw", File.join(bundle, "Contents", "Info.plist"))
         assert_equal ["com.setdef.fledge.HelloWindow\n", true], [out, status.success?]
+        out, status = Open3.capture2e("plutil", "-extract", "CFBundleDocumentTypes.1.CFBundleTypeExtensions.0", "raw",
+          File.join(bundle, "Contents", "Info.plist"))
+        assert_equal ["hellowindow\n", true], [out, status.success?]
       when "windows"
         header = File.binread(program, 4096)
         assert_equal 2, header.byteslice(header.byteslice(0x3C, 4).unpack1("V") + 24 + 68, 2).unpack1("v"), "its PE Subsystem is GUI"
       else
-        assert_includes File.read(File.join(folder, "com.setdef.fledge.HelloWindow.desktop")), "Exec=\"Hello Window\"\n"
+        desktop = File.read(File.join(folder, "com.setdef.fledge.HelloWindow.desktop"))
+        assert_includes desktop, "Exec=\"Hello Window\" %F\n"
+        assert_includes desktop, "MimeType=inode/directory;application/x-hellowindow;\n"
       end
 
       report = File.join(dir, "report.json")
       _, err, status = run_app({ "HOME" => dir }, program, report, "4")
 
       assert_equal ["", 4], [err, status.exitstatus]
-      facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app" }
+      facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app", "arguments" => 2 }
       facts.merge!("console" => false, "app_user_model_id" => "com.setdef.fledge.HelloWindow") if @platform.windows?
       facts["yjit"] = true unless @platform.windows?
       assert_equal facts, JSON.parse(File.read(report))
@@ -705,7 +710,7 @@ class BuiltAppTest < Minitest::Test
       assert_predicate status, :success?, err
       installer = File.expand_path(out.lines.fetch(1).chomp, Dir.pwd)
       report = File.join(dir, "report.json")
-      facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app" }
+      facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app", "arguments" => 2 }
       case @platform.os
       when "darwin"
         assert_equal "Hello Window-arm64-darwin.dmg", File.basename(installer)

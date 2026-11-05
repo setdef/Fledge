@@ -36,7 +36,8 @@ class ConfigTest < Minitest::Test
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil), config
+      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil,
+      file_associations: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
   end
@@ -71,10 +72,10 @@ class ConfigTest < Minitest::Test
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, and macos."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, and file_associations."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, and macos\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, and file_associations\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -158,7 +159,8 @@ class ConfigTest < Minitest::Test
     config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    name: W\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
 
     assert_equal Fledge::Config.new(name: "W", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
-      publisher: "Me", copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil), config.for_program(config.programs.to_a.first)
+      publisher: "Me", copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil,
+      file_associations: nil), config.for_program(config.programs.to_a.first)
   end
 
   def test_refuses_programs_it_cannot_ship
@@ -261,6 +263,64 @@ class ConfigTest < Minitest::Test
       "linux:\n  system_libraries: [libpng16]\n" => /: linux: system_libraries has "libpng16", which is not a library's name/,
       "linux:\n  system_libraries: [libpng16-16t64]\n" => /: linux: system_libraries has "libpng16-16t64", which is not a library's name/,
       "linux:\n  system_libraries: [\"libpng16.so.16 \"]\n" => /: linux: system_libraries has "libpng16\.so\.16 ", which is not a library's name/,
+    }.each do |yaml, message|
+      error = assert_raises(Fledge::Error, yaml) { load(yaml) }
+      assert_match message, error.message, yaml
+      assert_includes error.message, "fledge.yml", yaml
+    end
+  end
+
+  # The files and folders a windowed app opens (ADR 032, section 3): a
+  # viewer of each unless it says editor, each list once each, and the
+  # list kept for each program, where the windowed one declares it.
+  def test_reads_the_files_and_folders_a_windowed_app_opens
+    config = load(<<~YAML)
+      kind: windowed
+      identifier: com.example.A
+      file_associations:
+        - name: Project folder
+          folders: true
+        - name: Project archive
+          role: editor
+          extensions: [zip, ZIP, zip]
+          mime_types: [application/zip]
+          content_types: [public.zip-archive]
+    YAML
+
+    association = Fledge::Config::FileAssociation
+    assert_equal [
+      association.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true),
+      association.new(name: "Project archive", role: "editor", extensions: %w[zip ZIP], mime_types: ["application/zip"],
+        content_types: ["public.zip-archive"], folders: false),
+    ], config.file_associations
+    assert_equal config.file_associations, config.for_program(Fledge::Config::Program.from({ "path" => "a" }, 1, "fledge.yml")).file_associations
+    assert_equal [], load("file_associations: []\n").file_associations
+    assert_nil load("kind: windowed\nidentifier: com.example.A\nfile_associations:\n").file_associations
+    windowed = "programs:\n  - path: a\n    kind: windowed\n    identifier: com.example.A\n  - path: b\n"
+    assert_equal 1, load("#{windowed}file_associations:\n  - name: Text\n    mime_types: [text/plain]\n").file_associations&.size
+  end
+
+  def test_refuses_file_associations_it_cannot_declare
+    windowed = "kind: windowed\nidentifier: com.example.A\nfile_associations:\n"
+    {
+      "file_associations:\n  - name: Text\n    extensions: [txt]\n" =>
+        /: only a windowed app opens files and folders a person gives it; leave out file_associations, or make the app windowed\z/,
+      "#{windowed}  name: Text\n" => /: file_associations must be a list of what the app opens, each a mapping such as - name: Project folder\z/,
+      "#{windowed}  - Text\n" => /: file_associations' entry 1 must be a mapping of name, role, extensions, mime_types, content_types, and folders/,
+      "#{windowed}  - name: Text\n    extension: [txt]\n" => /: file_associations' entry 1 has 'extension', which Fledge does not know\. It knows name, role/,
+      "#{windowed}  - extensions: [txt]\n" => /: file_associations' entry 1 needs a name, the kind of document a person sees, such as name: Project archive\z/,
+      "#{windowed}  - name: \" \"\n    extensions: [txt]\n" => /: file_associations' entry 1 needs a name/,
+      "#{windowed}  - name: Text\n    role: owner\n    extensions: [txt]\n" => /: file_associations' entry 1: role must be viewer or editor, not owner\z/,
+      "#{windowed}  - name: Text\n    extensions: [.txt]\n" => /: file_associations' entry 1: extensions must be a list such as \[zip, txt\], without the dot\z/,
+      "#{windowed}  - name: Text\n    extensions: txt\n" => /: file_associations' entry 1: extensions must be a list such as/,
+      "#{windowed}  - name: Text\n    extensions: [tar.gz]\n" => /: file_associations' entry 1: extensions must be a list/,
+      "#{windowed}  - name: Text\n    mime_types: [text]\n" => %r{: file_associations' entry 1: mime_types must be a list such as \[application/zip\]\z},
+      "#{windowed}  - name: Text\n    content_types: [text]\n" => /: file_associations' entry 1: content_types must be a list such as \[public\.zip-archive\]\z/,
+      "#{windowed}  - name: Text\n    folders: yes please\n" => /: file_associations' entry 1: folders must be true or false\z/,
+      "#{windowed}  - name: Text\n" => /: file_associations' entry 1 names nothing to open: give it extensions, mime_types, content_types, or folders: true\z/,
+      "#{windowed}  - name: Text\n    folders: false\n    extensions: []\n" => /: file_associations' entry 1 names nothing to open/,
+      "#{windowed}  - name: Text\n    extensions: [txt]\n  - name: Both\n    folders: true\n    extensions: [txt]\n" =>
+        /: file_associations' entry 2 is for folders and files; give the files an entry of their own\z/,
     }.each do |yaml, message|
       error = assert_raises(Fledge::Error, yaml) { load(yaml) }
       assert_match message, error.message, yaml

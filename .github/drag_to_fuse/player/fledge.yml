@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Experiment only (experiment/drag-to-fuse): the player a game is fused
+# into, a windowed app as a Lota player would be.
+name: FusePlayer
+kind: windowed
+identifier: org.setdef.fledge.spike.FusePlayer
+version: "0.0.1"
+installers: []

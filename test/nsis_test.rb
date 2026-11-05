@@ -14,9 +14,9 @@ require "open3"
 # Delivery installs a real one on Windows
 # (.github/scripts/deliver-installer.ps1).
 class NsisTest < Minitest::Test
-  def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4", homepage: nil)
+  def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4", homepage: nil, file_associations: [])
     Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.MyApp", version:, publisher:, copyright:, icon: nil,
-      description: nil, long_description: nil, homepage:)
+      description: nil, long_description: nil, homepage:, file_associations:)
   end
 
   def setup
@@ -160,6 +160,53 @@ class NsisTest < Minitest::Test
     assert_includes text, "Name \"Say $\\\"$$1$\\\"\"\n"
   end
 
+  # What the app opens (ADR 032, section 3): a folder, an archive by two
+  # extensions (one twice, in another case), and text by its MIME type
+  # alone, which Windows does not register.
+  def file_associations
+    association = Fledge::Config::FileAssociation
+    [
+      association.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true),
+      association.new(name: "Project archive", role: "editor", extensions: %w[zip ZIP fz], mime_types: [], content_types: [], folders: false),
+      association.new(name: "Text", role: "viewer", extensions: [], mime_types: ["text/plain"], content_types: [], folders: false),
+    ]
+  end
+
+  # A ProgID of the app's for each entry with extensions, listed in each
+  # extension's OpenWithProgids, so the app is in "Open with" and the
+  # extension's default stays the person's; a verb on every folder; and
+  # what the uninstaller removes of them.
+  def test_the_setup_program_registers_what_the_app_opens_without_taking_a_default
+    lines = script(identity: identity(file_associations:)).lines.map(&:chomp)
+    install = lines.take_while { |line| line != "Section Uninstall" }
+    uninstall = lines.drop_while { |line| line != "Section Uninstall" }
+    classes = '"Software\Classes'
+    command = %q('"$INSTDIR\My App.exe" "%1"')
+
+    assert_equal [
+      %(  WriteRegStr HKCU #{classes}\\Directory\\shell\\com.example.MyApp" "" "Open with My App"),
+      %(  WriteRegStr HKCU #{classes}\\Directory\\shell\\com.example.MyApp\\command" "" #{command}),
+      %(  WriteRegStr HKCU #{classes}\\com.example.MyApp.2" "" "Project archive"),
+      %(  WriteRegStr HKCU #{classes}\\com.example.MyApp.2\\DefaultIcon" "" '"$INSTDIR\\My App.exe",0'),
+      %(  WriteRegStr HKCU #{classes}\\com.example.MyApp.2\\shell\\open\\command" "" #{command}),
+      %(  WriteRegNone HKCU #{classes}\\.zip\\OpenWithProgids" "com.example.MyApp.2"),
+      %(  WriteRegNone HKCU #{classes}\\.fz\\OpenWithProgids" "com.example.MyApp.2"),
+      Fledge::Nsis::Script::CHANGE_NOTIFY,
+    ], install.grep(/Classes|SHChangeNotify/)
+    assert_equal [
+      %(  DeleteRegKey HKCU #{classes}\\Directory\\shell\\com.example.MyApp"),
+      %(  DeleteRegKey HKCU #{classes}\\com.example.MyApp.2"),
+      %(  DeleteRegValue HKCU #{classes}\\.zip\\OpenWithProgids" "com.example.MyApp.2"),
+      %(  DeleteRegKey /ifempty HKCU #{classes}\\.zip\\OpenWithProgids"),
+      %(  DeleteRegKey /ifempty HKCU #{classes}\\.zip"),
+      %(  DeleteRegValue HKCU #{classes}\\.fz\\OpenWithProgids" "com.example.MyApp.2"),
+      %(  DeleteRegKey /ifempty HKCU #{classes}\\.fz\\OpenWithProgids"),
+      %(  DeleteRegKey /ifempty HKCU #{classes}\\.fz"),
+      Fledge::Nsis::Script::CHANGE_NOTIFY,
+    ], uninstall.grep(/Classes|SHChangeNotify/)
+    assert_empty script.lines.grep(/Classes|SHChangeNotify/), "an app that opens nothing registers nothing"
+  end
+
   def test_a_runtime_without_nsis_is_refused
     Dir.mktmpdir do |dir|
       nsis = Fledge::Nsis.new(identity:, folder: dir, to: File.join(dir, "setup.exe"))
@@ -182,7 +229,7 @@ class NsisTest < Minitest::Test
       tools = File.join(Dir.glob(File.join(dir, "runtime", "*")).first.to_s, "tools")
       folder = File.join(dir, "My App-x64-mingw-ucrt")
       Fledge::Entry.file("My App.exe", "MZ", mode: 0o755).write_into(folder)
-      nsis = Fledge::Nsis.new(identity:, folder:, to: "#{folder}-setup.exe")
+      nsis = Fledge::Nsis.new(identity: identity(file_associations:), folder:, to: "#{folder}-setup.exe")
 
       path = nsis.write(tools)
       assert_equal "MZ", File.binread(path, 2)

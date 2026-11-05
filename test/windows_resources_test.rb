@@ -12,7 +12,7 @@ require_relative "test_helper"
 class WindowsResourcesTest < Minitest::Test
   def identity(**about)
     Fledge::Identity.new(name: "My App", kind: "windowed", identifier: "com.example.MyApp", version: "1.2.3", publisher: "Me",
-      copyright: nil, icon: nil, description: nil, long_description: nil, homepage: nil, **about)
+      copyright: nil, icon: nil, description: nil, long_description: nil, homepage: nil, file_associations: [], **about)
   end
 
   # The description is the Comments string, which Explorer's Properties

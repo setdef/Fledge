@@ -11,10 +11,12 @@
 #
 # ARCHIVE is "Hello Window-PLATFORM.tar.gz". On macOS the app is an .app
 # bundle: codesign must verify it strictly and deeply, plutil must read
-# what fledge.yml says from its Info.plist, and it must run both through
-# open -W, as Finder starts it, and through its own program. On Linux it
-# is a folder with a desktop entry, which desktop-file-validate must
-# accept, and icons in the hicolor theme's folders. The app writes a
+# what fledge.yml says from its Info.plist, the files and folders it
+# opens among it, which Launch Services must then offer it for, and it
+# must run both through open -W, as Finder starts it, and through its
+# own program. On Linux it is a folder with a desktop entry, which
+# desktop-file-validate must accept, with the MIME types of what it
+# opens, and icons in the hicolor theme's folders. The app writes a
 # report of what it ran on to the path it is given, and exits with the
 # status it is given.
 #
@@ -95,6 +97,39 @@ case "$(uname -s)" in
     icon="$bundle/Contents/Resources/$(plutil -extract CFBundleIconFile raw "$plist")"
     expect "the icon's width" "$(sips -g pixelWidth "$icon" | sed -n 's/^ *pixelWidth: //p')" 1024
     grep -q "^This app was built with Fledge" "$bundle/Contents/Resources/notices/NOTICES.txt" || fail "the app has no notices"
+    # What it opens (file_associations; ADR 032, section 3): document
+    # types ranked Alternate, read back by plutil, and then by Launch
+    # Services itself, which, once the bundle is registered, must offer
+    # the app for a folder and for a report, as Finder's "Open With" does.
+    types="CFBundleDocumentTypes"
+    expect "the folders' content type" "$(plutil -extract "$types.0.LSItemContentTypes.0" raw "$plist")" public.folder
+    expect "the folders' role" "$(plutil -extract "$types.0.CFBundleTypeRole" raw "$plist")" Viewer
+    expect "the folders' rank" "$(plutil -extract "$types.0.LSHandlerRank" raw "$plist")" Alternate
+    expect "the reports' name" "$(plutil -extract "$types.1.CFBundleTypeName" raw "$plist")" "Hello Window report"
+    expect "the reports' extension" "$(plutil -extract "$types.1.CFBundleTypeExtensions.0" raw "$plist")" hellowindow
+    expect "the reports' role" "$(plutil -extract "$types.1.CFBundleTypeRole" raw "$plist")" Editor
+    # Launch Services leaves out an app in a temporary folder, such as
+    # mktemp's under /var/folders, so a copy goes in the home folder,
+    # where a person keeps one.
+    lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+    kept="$HOME/Fledge Delivery $$"
+    mkdir -p "$kept/Ein Ordner ü"
+    ditto "$bundle" "$kept/$name.app"
+    "$lsregister" -f "$kept/$name.app"
+    sleep 2
+    : >"$kept/dropped.hellowindow"
+    for target in "$kept/Ein Ordner ü" "$kept/dropped.hellowindow"; do
+      apps=$(osascript -l JavaScript -e 'ObjC.import("AppKit")' -e 'function run(argv) {
+        const urls = $.NSWorkspace.sharedWorkspace.URLsForApplicationsToOpenURL($.NSURL.fileURLWithPath(argv[0]));
+        const paths = [];
+        for (let i = 0; i < urls.count; i++) paths.push(urls.objectAtIndex(i).path.js);
+        return paths.join("\n");
+      }' "$target")
+      printf '%s\n' "$apps" | grep -q "/$name.app\$" || { printf '%s\n' "$apps"; fail "Launch Services does not offer $name.app for $target"; }
+      echo "ok: Launch Services offers $name.app for $(basename "$target")"
+    done
+    "$lsregister" -u "$kept/$name.app"
+    rm -rf "$kept"
 
     run_report "its own program" 4 "$bundle/Contents/MacOS/$name"
     # open -W starts the app as Finder does, through Launch Services, and
@@ -111,7 +146,8 @@ case "$(uname -s)" in
     echo "ok: desktop-file-validate accepts $identifier.desktop"
     expect Name "$(sed -n 's/^Name=//p' "$desktop")" "$name"
     expect Comment "$(sed -n 's/^Comment=//p' "$desktop")" "Says hello from a window"
-    expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$name\""
+    expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$name\" %F"
+    expect MimeType "$(sed -n 's/^MimeType=//p' "$desktop")" "inode/directory;application/x-hellowindow;"
     expect Icon "$(sed -n 's/^Icon=//p' "$desktop")" "$identifier"
     expect Terminal "$(sed -n 's/^Terminal=//p' "$desktop")" false
     for size in 16 32 64 128 256 512; do

@@ -16,7 +16,9 @@
 # Explorer's means, and cannot read what it prints, so it reports in a
 # file instead.
 #
-# Given a path, it writes there, as JSON, what it ran on, and lives for
+# Given a path, it writes there, or into it when it is a folder, as an
+# app that opens folders would read them (its fledge.yml lists folders
+# under file_associations), as JSON, what it ran on, and lives for
 # two seconds, as an app with a window would for at least that long,
 # which lets macOS's open -W see it running. It then prints a line
 # (which goes nowhere when no one captured its output, and must not fail
@@ -38,12 +40,14 @@
 require "json"
 require "tmpdir"
 
-report = ARGV.fetch(0) { File.join(Dir.tmpdir, "hello_window.json") }
+report = ARGV.fetch(0) { Dir.tmpdir }
+report = File.join(report, "hello_window.json") if File.directory?(report)
 facts = {
   "ruby" => RUBY_VERSION,
   "platform" => RUBY_PLATFORM,
   "program" => File.basename($PROGRAM_NAME),
   "folder" => File.basename(__dir__),
+  "arguments" => ARGV.length,
 }
 facts["appdir"] = File.basename(ENV.fetch("APPDIR")) if ENV.key?("APPDIR")
 if defined?(RubyVM::YJIT.enable)

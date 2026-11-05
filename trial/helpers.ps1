@@ -162,7 +162,7 @@ function Test-Load([string[]] $Paths) {
 # ignores VK_DRIVER_FILES in an elevated process, as a runner's are.
 $drivers = 'HKLM:\SOFTWARE\Khronos\Vulkan\Drivers'
 function Register-Driver([string] $Manifest) {
-  if (-not (Test-Path $drivers)) { New-Item -Path $drivers | Out-Null }
+  if (-not (Test-Path $drivers)) { New-Item -Path $drivers -Force | Out-Null }
   New-ItemProperty -Path $drivers -Name $Manifest -Value 0 -PropertyType DWord -Force | Out-Null
   Write-Host "registered the Vulkan driver $Manifest"
 }

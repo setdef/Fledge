@@ -4,7 +4,13 @@
 module Fledge
   module Dmg
     APPLICATIONS: String
+    BUSY: String
+    WAITS: Array[Integer]
 
-    def self.write: (String bundle, name: String, to: String, ?signing: MacSigning?) -> String
+    def self.write: (String bundle, name: String, to: String, ?signing: MacSigning?, ?waits: Array[Integer]) -> String
+
+    private
+
+    def self.create: (String stage, name: String, to: String, waits: Array[Integer]) -> String
   end
 end

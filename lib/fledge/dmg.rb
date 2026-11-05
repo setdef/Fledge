@@ -29,6 +29,13 @@ module Fledge
   # read-only, zlib-compressed image of it (UDZO) on a Mac OS Extended
   # volume, as create-dmg makes one (ADR 010).
   #
+  # <tt>hdiutil create</tt> makes the image from a scratch volume it
+  # mounts and detaches, and fails with "Resource busy" when another
+  # process still holds that volume, as XProtect does now and then on a
+  # GitHub macOS runner. create-dmg runs it again after 2, 4, 8, and 16
+  # seconds when its output says so, and this class does the same; any
+  # other failure fails the build at once.
+  #
   # Use it through Fledge::Installers.
   #
   # === Example
@@ -47,10 +54,19 @@ module Fledge
     # The link to the Applications folder, as create-dmg names it.
     APPLICATIONS = "Applications"
 
+    # What hdiutil says when another process holds its volume, which
+    # create-dmg looks for before it tries again.
+    BUSY = "Resource busy"
+
+    # The seconds to wait before each try after the first, as
+    # create-dmg waits: five tries in all.
+    WAITS = [2, 4, 8, 16].freeze
+
     # Writes the disk image of the bundle at +bundle+ to +to+, its volume
     # named +name+, signs it with +signing+ (Fledge::MacSigning#sign_image)
-    # when given one, and returns +to+. Raises Fledge::Error when ditto,
-    # hdiutil, or codesign fails.
+    # when given one, and returns +to+. Tries hdiutil again after each of
+    # +waits+, in seconds, while it finds its volume busy. Raises
+    # Fledge::Error when ditto, hdiutil, or codesign fails.
     #
     # === Example
     #
@@ -63,16 +79,29 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(bundle, name:, to:, signing: nil)
+    def self.write(bundle, name:, to:, signing: nil, waits: WAITS)
       Dir.mktmpdir("fledge-dmg") do |stage|
         Command.run("ditto", bundle, File.join(stage, File.basename(bundle)), install: MacBundle::INSTALL)
         File.symlink("/Applications", File.join(stage, APPLICATIONS))
         FileUtils.rm_f(to)
-        Command.run("hdiutil", "create", "-volname", name, "-srcfolder", stage, "-fs", "HFS+", "-format", "UDZO", "-ov", to,
-          install: MacBundle::INSTALL)
+        create(stage, name:, to:, waits:)
       end
       signing&.sign_image(to)
       to
     end
+
+    # Runs <tt>hdiutil create</tt> on the folder +stage+, and again after
+    # each of +waits+ while it fails with BUSY.
+    def self.create(stage, name:, to:, waits:)
+      Command.run("hdiutil", "create", "-volname", name, "-srcfolder", stage, "-fs", "HFS+", "-format", "UDZO", "-ov", to,
+        install: MacBundle::INSTALL)
+    rescue Error => e
+      wait, *waits = waits
+      raise unless wait && e.message.include?(BUSY)
+
+      sleep(wait)
+      retry
+    end
+    private_class_method :create
   end
 end

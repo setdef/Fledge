@@ -12,7 +12,8 @@
 # build gave it, for this computer's architecture; apt must install it,
 # resolving its dependency on a new enough glibc; the desktop entry
 # desktop-file-validate accepts, and the icons, must be where desktops
-# look; the program must run from /usr/lib/PACKAGE, as the desktop entry's
+# look, and update-desktop-database must list the app for the MIME type
+# it opens; the program must run from /usr/lib/PACKAGE, as the desktop entry's
 # Exec has it, as root and as an ordinary user, with a PATH that holds no
 # Ruby and in a hostile Ruby environment, and write its report and exit
 # with the status it is given; and removing the package must leave
@@ -74,7 +75,15 @@ if command -v desktop-file-validate >/dev/null 2>&1; then
 fi
 expect Name "$(sed -n 's/^Name=//p' "$desktop")" "$name"
 expect Comment "$(sed -n 's/^Comment=//p' "$desktop")" "Says hello from a window"
-expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$program\""
+expect Exec "$(sed -n 's/^Exec=//p' "$desktop")" "\"$program\" %F"
+expect MimeType "$(sed -n 's/^MimeType=//p' "$desktop")" "inode/directory;application/x-hellowindow;"
+# dpkg's trigger runs update-desktop-database, from desktop-file-utils,
+# which reads the MIME types of every desktop entry into the cache
+# desktops look a file's apps up in.
+if command -v update-desktop-database >/dev/null 2>&1; then
+  grep -q "^application/x-hellowindow=.*$identifier.desktop" /usr/share/applications/mimeinfo.cache || fail "mimeinfo.cache does not name $identifier.desktop for application/x-hellowindow"
+  echo "ok: update-desktop-database lists the app for application/x-hellowindow"
+fi
 expect Icon "$(sed -n 's/^Icon=//p' "$desktop")" "$identifier"
 expect Terminal "$(sed -n 's/^Terminal=//p' "$desktop")" false
 doc="/usr/share/doc/$package"

@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+module Fledge
+  class Config
+    class FileAssociation < Data
+      KEYS: Array[String]
+      KNOWN: String
+      ROLES: Array[String]
+      EXTENSION: Regexp
+      MIME_TYPE: Regexp
+      CONTENT_TYPE: Regexp
+      LISTS: Hash[String, [Regexp, String]]
+
+      attr_reader name: String
+      attr_reader role: String
+      attr_reader extensions: Array[String]
+      attr_reader mime_types: Array[String]
+      attr_reader content_types: Array[String]
+      attr_reader folders: bool
+
+      def self.new: (name: String, role: String, extensions: Array[String], mime_types: Array[String], content_types: Array[String], folders: bool) -> instance
+
+      def self.list: (Hash[Object, Object] data, String file) -> Array[FileAssociation]?
+
+      private def self.from: (Object item, Integer number, String file) -> FileAssociation
+
+      private def self.role: (Hash[Object, Object] item, String where) -> String
+
+      private def self.folders: (Hash[Object, Object] item, Hash[String, Array[String]] lists, String where) -> bool
+
+      private def self.list_at: (Hash[Object, Object] item, String key, Regexp rule, String message) -> Array[String]
+    end
+  end
+end

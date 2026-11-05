@@ -141,6 +141,26 @@ Your editor can check `fledge.yml` as you type. With Red Hat's YAML language ser
 
 `installers` chooses which of `dmg`, `nsis`, `appimage`, and `deb` to build. The default is the first three, and `deb` needs `dpkg-deb` on your computer. A `.deb` depends on `libc6`, and on the packages of any libraries you list as the Linux distribution's (see [Gems](#gems)), so `apt` installs it on a computer without a desktop too. A library a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there.
 
+A windowed app can say which files and folders it opens, so that each system offers it for them:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+file_associations:
+  - name: Project folder
+    folders: true
+  - name: Project archive
+    role: editor                    # viewer, the default, or editor
+    extensions: [zip]
+    mime_types: [application/zip]
+```
+<!-- SPDX-SnippetEnd -->
+
+macOS lists the app under "Open With" for them, and never makes it their default unless your users do; `content_types` names macOS's own types, such as `public.zip-archive`, where you know them. The Windows setup program adds the app to each extension's "Open with" list and to every folder's menu, and its uninstaller takes them out again; an app your users unpack from the `.zip` registers nothing. A Linux desktop knows a file by its MIME type, so list `mime_types` for Linux. On Windows and Linux, the path of a file or folder opened with your app, or dropped on its program, arrives in `ARGV`. On macOS it arrives as an Apple event, which your GUI library's event loop receives, such as SDL3's `SDL_EVENT_DROP_FILE`; `ARGV` stays empty there, as it does under `ruby main.rb`.
+
 ### Several programs in one app
 
 If your app has more than one way in, such as a window, a terminal interface, and a command line that all open the same save file, list them under `programs` in `fledge.yml`. Fledge builds them into one folder that shares one Ruby runtime, one copy of your project, and one set of gems. `fledge build` with no argument builds all of them; `fledge build PATH` with one of the listed files builds that program alone.

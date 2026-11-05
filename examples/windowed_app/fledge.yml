@@ -36,3 +36,16 @@ linux:
   deb_changelog: CHANGES.txt
 macos:
   build: "1.2.417"
+
+# The files and folders it opens (ADR 032, section 3): every folder, which
+# it writes its report into, and its own reports, which it writes over.
+# macOS offers it for them, Windows' setup program adds it to their "Open
+# with" and to every folder's menu, and a Linux desktop passes their
+# paths to it.
+file_associations:
+  - name: Hello Window folder
+    folders: true
+  - name: Hello Window report
+    role: editor
+    extensions: [hellowindow]
+    mime_types: [application/x-hellowindow]

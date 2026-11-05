@@ -95,10 +95,11 @@ module Check
       "unknown"
     end
 
-    # A Fledge app keeps its Ruby at bin/ruby beside fledge.cfg, whose
-    # first line says which fledge build wrote it.
+    # A Fledge app keeps fledge.cfg in the folder above its Ruby (bin/ruby
+    # on macOS and Linux, ruby/bin/ruby.exe on Windows); the file's first
+    # line says which fledge build wrote it.
     def fledge_line
-      config = read(File.join(File.dirname(RbConfig.ruby, 2), "fledge.cfg"))
+      config = (1..4).filter_map { |levels| read(File.join(File.dirname(RbConfig.ruby, levels), "fledge.cfg")) }.first
       return "Fledge app: no, this is a Ruby installed on this computer" unless config
 
       built = config[/fledge build \S+ for [^\s:]+/]

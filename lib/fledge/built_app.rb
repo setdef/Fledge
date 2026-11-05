@@ -233,7 +233,8 @@ module Fledge
           "and this computer has none: put #{Runtimes.file_name(@platform)} in FLEDGE_RUNTIME_DIR or #{@runtimes.cache}."
       end
 
-      runtime = archive && Assembly::RuntimeFolder.new(archive, platform: @platform, app_names:, work:)
+      only = [Assembly::LAUNCHER, Assembly::WINDOWED_LAUNCHER].map { |name| @platform.executable(name) } + [Assembly::TOOLS]
+      runtime = archive && Assembly::RuntimeFolder.new(archive, platform: @platform, app_names:, work:, only:)
       Tree.new(self, runtime:, launcher: runtime ? nil : launcher_copy(work), app_names:)
     end
 

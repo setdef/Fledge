@@ -284,7 +284,8 @@ class BuiltAppTest < Minitest::Test
   # ADR 032: an app built with fledge build --from takes the runtime and
   # the gems of an app already built, and runs a project of its own,
   # which requires a gem the old app's Gemfile takes from a folder in its
-  # project, from a folder whose name is not ASCII, with no Ruby around.
+  # project, written to a folder whose name is not ASCII, and run there
+  # with no Ruby around.
   def test_an_app_built_from_a_built_app_runs_its_own_project_with_the_old_apps_gems
     Dir.mktmpdir do |dir|
       player = File.join(dir, "player")
@@ -308,13 +309,11 @@ class BuiltAppTest < Minitest::Test
       out, err, status = Open3.capture3(env, RbConfig.ruby, "-I", LIB, EXE, "build", "-o", File.join(dir, "players"), player)
       assert_predicate status, :success?, err
       from = File.join(dir, "players", "Player-#{@platform}")
-      out, err, status = Open3.capture3(env, RbConfig.ruby, "-I", LIB, EXE, "build", "--from", from, "-o", File.join(dir, "games"), game)
-      assert_equal [true, ""], [status.success?, err]
-      assert_equal "#{File.join(dir, 'games', "Game-#{@platform}#{@platform.archive_extension}")}\n", out
-
       place = File.join(dir, "My Games", "Ünïcödé 日本")
-      FileUtils.mkdir_p(place)
-      unpack(out.chomp, place)
+      out, err, status = Open3.capture3(env, RbConfig.ruby, "-I", LIB, EXE, "build", "--from", from, "-o", place, game)
+      assert_equal [true, ""], [status.success?, err]
+      assert_equal "#{File.join(place, "Game-#{@platform}#{@platform.archive_extension}")}\n", out
+
       out, err, status = run_app({ "HOME" => dir }, File.join(place, "Game-#{@platform}", @platform.executable("Game")))
       assert_equal ["hello from greeter in app\n", "", 0], [out, err, status.exitstatus]
     end

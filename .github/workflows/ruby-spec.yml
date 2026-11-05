@@ -61,9 +61,17 @@ jobs:
           run=""
           if [ "$GITHUB_EVENT_NAME" = schedule ] || [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             FULL=true
-            run=$(gh run list --repo "$REPOSITORY" --workflow ci.yml --branch trunk --event push --status success \
-              --limit 1 --json databaseId --jq '.[0].databaseId')
-            [ -n "$run" ] || { echo "::error::trunk has no run of ci.yml that passed"; exit 1; }
+            # A pin commit's short run passes too, and holds no runtimes: take
+            # the newest passing run that has them.
+            for candidate in $(gh run list --repo "$REPOSITORY" --workflow ci.yml --branch trunk --event push --status success \
+              --limit 20 --json databaseId --jq '.[].databaseId'); do
+              if [ "$(gh api "repos/$REPOSITORY/actions/runs/$candidate/artifacts" \
+                --jq '[.artifacts[]|select(.name=="runtime-x86_64-linux" and .expired==false)]|length')" != 0 ]; then
+                run=$candidate
+                break
+              fi
+            done
+            [ -n "$run" ] || { echo "::error::trunk has no run of ci.yml that passed and still holds its runtimes"; exit 1; }
             echo "Runtimes of $GITHUB_SERVER_URL/$REPOSITORY/actions/runs/$run"
           fi
           two='{"os":"ubuntu-24.04","platform":"x86_64-linux"},{"os":"macos-15","platform":"arm64-darwin"}'

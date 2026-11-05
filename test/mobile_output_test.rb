@@ -38,6 +38,7 @@ class MobileOutputTest < Minitest::Test
     static FILE *log_file;
 
     const char *fledge_ruby_certificates(void) { return NULL; }
+    int fledge_log_echoes(void) { return 0; }
     int fledge_log_open(const char *tag) { return strcmp(tag, "org.example.App") == 0 ? 0 : -1; }
     void fledge_log_write(int error, const char *text, size_t length) {
         fprintf(log_file, "%s %.*s\\n", error ? "E" : "O", (int)length, text);
@@ -84,6 +85,69 @@ class MobileOutputTest < Minitest::Test
       assert_equal "E oops", entries.find { |entry| entry.start_with?("E ") }
       out = entries.select { |entry| entry.start_with?("O ") }.map { |entry| entry.delete_prefix("O ") }
       assert_equal ["hello", "", "x" * 1000, "x" * 1000, "x" * 500, "a" * 999, "éé", "b" * 998, "  \tc"], out
+    end
+  end
+
+  # A program that forwards its output to Apple's real os_log
+  # (apple.c), then prints a line to standard output and one to standard
+  # error, waits, and prints one more to standard error, which blocks for
+  # ever if the pipe it writes to is full.
+  APPLE_PROGRAM = <<~C
+    #include "fledge_ruby.h"
+    #include <stdio.h>
+    #include <unistd.h>
+
+    const char *fledge_ruby_certificates(void) { return NULL; }
+
+    int main(void) {
+        if (fledge_ruby_forward_output("org.setdef.fledge.OutputTest") != 0) return 1;
+        puts("out");
+        fputs("first\\n", stderr);
+        sleep(2);
+        fputs("last\\n", stderr);
+        return 0;
+    }
+  C
+
+  # With OS_ACTIVITY_DT_MODE in the environment, which Xcode and other
+  # developer tools set to have the unified log copy each entry to
+  # standard error, and which macOS and the iOS Simulator honor whatever
+  # its value, even NO (ADR 011, section 5), forwarding standard error to
+  # os_log would send each entry back into the pipe it came from until
+  # the pipe filled and the program blocked. The streams are left as they
+  # are instead: each line reaches the tool once, and the program ends.
+  # Without it, the lines go to the log and not to the streams. macOS
+  # shares iOS's os_log, so this runs on a Mac with the real one.
+  def test_leaves_the_streams_alone_when_the_log_copies_itself_to_standard_error
+    skip "os_log is Apple's" unless RUBY_PLATFORM.include?("darwin")
+
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "main.c"), APPLE_PROGRAM)
+      program = File.join(dir, "forward")
+      _, err, status = Open3.capture3("cc", "-std=gnu11", "-Wall", "-Werror", "-I", MOBILE, File.join(dir, "main.c"),
+        File.join(MOBILE, "output.c"), File.join(MOBILE, "apple.c"), "-o", program)
+      assert status.success?, err
+
+      ["YES", "NO", ""].each do |value|
+        out, err, status = run_for(program, { "OS_ACTIVITY_DT_MODE" => value }, seconds: 20)
+        assert_predicate status, :success?, "OS_ACTIVITY_DT_MODE=#{value.inspect}"
+        assert_equal ["out\n", "first\nlast\n"], [out, err], "OS_ACTIVITY_DT_MODE=#{value.inspect}"
+      end
+      out, err, status = run_for(program, { "OS_ACTIVITY_DT_MODE" => nil }, seconds: 20)
+      assert_predicate status, :success?
+      assert_equal ["", ""], [out, err]
+    end
+  end
+
+  # Runs +program+ with +env+, and returns its standard output, its
+  # standard error, and its status, failing the test when it has not
+  # exited within +seconds+.
+  def run_for(program, env, seconds:)
+    Dir.mktmpdir do |dir|
+      out = File.join(dir, "out")
+      err = File.join(dir, "err")
+      status = finish(Process.spawn(env, program, out:, err:), seconds:)
+      [File.read(out), File.read(err), status]
     end
   end
 

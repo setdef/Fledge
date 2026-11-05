@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - On macOS, `fledge build` tries `hdiutil create` again, after 2, 4, 8, and 16 seconds, when it fails with "Resource busy" because another process holds its scratch volume, as happens now and then on GitHub's macOS runners; it had failed the build at once.
+- On iOS, an app launched with `OS_ACTIVITY_DT_MODE` in its environment, whatever its value, as a developer tool may launch it, leaves its standard output and standard error to that tool instead of forwarding them to os_log, which copied each line back to standard error until the app froze. Without it, the lines go to os_log as before.
 - On Windows, `fledge build` takes a gem whose compiled files link DLLs every Windows has in System32 for windows, input, graphics, and sound (`avrt`, `cfgmgr32`, `comctl32`, `d3d9`, `d3d11`, `dinput8`, `dsound`, `dwmapi`, `dxgi`, `hid`, `imm32`, `setupapi`), as a game library's precompiled Windows gem does; it had refused such a gem, saying the app could not load the DLL on another computer.
 - On macOS and Linux, an app's `notices/NOTICES.txt` and SBOM, and `doc/licensing.md`, count `bin/ruby` among the files that hold Fledge's AGPL code, beside the launcher and the RubyGems defaults file; they had named only those two, though `bin/ruby` has carried Fledge's code since 0.3.0.
 

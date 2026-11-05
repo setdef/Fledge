@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+
+# A terminal UI on Rooibos, as a Rooibos app developer has one: main.rb,
+# and a Gemfile that locks rooibos. It sits inside Fledge's own gem, so
+# this file makes its folder a project's root (ADR 005).
+name: Fledge Check
+kind: console

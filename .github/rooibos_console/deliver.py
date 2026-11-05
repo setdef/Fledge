@@ -101,11 +101,23 @@ class Run:
                 self.seen += data
         return False
 
+    def drain(self):
+        """Reads what the app wrote before it ended, which waits in the pty."""
+        while select.select([self.fd], [], [], 0.5)[0]:
+            try:
+                data = os.read(self.fd, 65536)
+            except OSError:
+                return
+            if not data:
+                return
+            self.seen += data
+
     def status(self, seconds):
         deadline = time.time() + seconds
         while time.time() < deadline:
             done, raw = os.waitpid(self.pid, os.WNOHANG)
             if done:
+                self.drain()
                 return os.waitstatus_to_exitcode(raw)
             try:
                 self.seen += os.read(self.fd, 65536)

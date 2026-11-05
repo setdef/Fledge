@@ -3,9 +3,9 @@
 
 module Fledge
   module Command
-    def self.run: (*String command, install: String, ?env: Hash[String, String?]) -> String
+    def self.run: (*String command, install: String, ?env: Hash[String, String?], ?chdir: String?, ?input: String?) -> String
 
-    def self.read: (*String command, install: String, ?chdir: String) -> String
+    def self.read: (*String command, install: String, ?chdir: String, ?input: String?) -> String
 
     private def self.text: (String output) -> String
   end

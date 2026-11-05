@@ -315,28 +315,85 @@ class LicenseAuditTest < Minitest::Test
   # libfuse is linked into AppImage's runtime, the runtime's own source
   # and libfuse's (LGPL-2.1, section 6(a)), each with its license and how
   # it was built.
+  # A sources.yml in +directory+ that pins libxcrypt, AppImage's runtime,
+  # and libfuse to small files already in its download cache, and the
+  # SourceBundle for x86_64-linux that reads it.
+  def linux_bundle(directory)
+    downloads = File.join(directory, "downloads")
+    FileUtils.mkdir_p(downloads)
+    pin = lambda do |name|
+      File.binwrite(File.join(downloads, name), "pretend #{name}")
+      { "url" => "https://example.com/#{name}", "sha256" => Digest::SHA256.hexdigest("pretend #{name}") }
+    end
+    sources = File.join(directory, "sources.yml")
+    File.write(sources, {
+      "libxcrypt" => { "version" => "4.5.2", **pin.call("libxcrypt-4.5.2.tar.xz") },
+      "appimage-runtime" => {
+        "version" => "20251108",
+        "commit" => "dd6cebedcbddde9c82f89b011e8e1d40b6e43868",
+        "platforms" => { "x86_64-linux" => { "url" => "https://example.com/runtime-x86_64", "sha256" => "0" * 64 } },
+        "source" => pin.call("type2-runtime.tar.gz"),
+      },
+      "libfuse" => { "version" => "3.15.0", **pin.call("fuse-3.15.0.tar.xz") },
+    }.to_yaml)
+    LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: "0.0.0", sources:, downloads:)
+  end
+
+  # The app carries the source of each component whose license asks for
+  # it, in notices/sources/, which it copies from the runtime, so the
+  # source offer does not depend on any host (ADR 004, section 5). The
+  # audit accounts for every file there as that component's source, the
+  # SBOM lists them, and NOTICES.txt says where they are.
+  def test_the_runtime_carries_the_sources_in_its_notices_and_the_audit_accounts_for_them
+    Dir.mktmpdir do |directory|
+      assert_equal File.join(@tree, "notices/sources"), linux_bundle(directory).copy_into(@tree)
+    end
+    write("tools/appimage-runtime", Binaries.elf(payload: APPIMAGE_RUNTIME))
+    run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
+    report = run.call
+    owners = report.owners.transform_values(&:id)
+
+    assert_empty report.violations.map(&:to_s)
+    assert_equal "libxcrypt-source", owners.fetch("notices/sources/libxcrypt/libxcrypt-4.5.2.tar.xz")
+    assert_equal "libxcrypt-source", owners.fetch("notices/sources/libxcrypt/BUILD.txt")
+    assert_equal "appimage-runtime-source", owners.fetch("notices/sources/appimage-runtime/type2-runtime.tar.gz")
+    assert_equal "libfuse-source", owners.fetch("notices/sources/libfuse/LGPL2.txt")
+    sbom = LicenseAudit::Spdx.new(report, version: "0.0.0", created: Time.utc(2026, 11, 4)).to_h
+    assert_includes sbom.fetch("files").map { |file| file.fetch("fileName") }, "./notices/sources/libfuse/fuse-3.15.0.tar.xz"
+    text = LicenseAudit::Notices.new(report, version: "0.0.0", map: run.map).text
+    lgpl = text[/^LIBRARIES UNDER THE GNU LESSER.*?(?=^SOURCE THAT)/m].to_s
+    assert_includes lgpl, "in this app, in\n\n  notices/sources/libxcrypt/\n"
+    assert_includes lgpl, "\n  https://github.com/setdef/Fledge/releases/download/v0.0.0/fledge-runtime-0.0.0-x86_64-linux-lgpl-sources.tar.gz\n"
+    refute_includes lgpl, "  notices/sources/libxcrypt/BUILD.txt"
+    published = text[/^SOURCE THAT FLEDGE PUBLISHES.*?(?=^LICENSE TEXTS)/m].to_s
+    assert_includes published, "  notices/sources/appimage-runtime/\n"
+    assert_includes published, "  notices/sources/libfuse/\n"
+    refute_includes published, "source code, as"
+  end
+
+  # The notices folder is audited too, but for the two files the audit
+  # itself writes there: anything else in it belongs to a component.
+  def test_a_file_in_the_notices_folder_that_no_component_owns_fails
+    write("notices/NOTICES.txt", "Third-party software in this app\n")
+    write("notices/sbom.spdx.json", "{}\n")
+    write("notices/sources/stray.txt", "hello\n")
+    write("notices/extra.txt", "hello\n")
+    found = rules(audit)
+
+    assert_includes found, ["unaccounted", "notices/sources/stray.txt"]
+    assert_includes found, ["unaccounted", "notices/extra.txt"]
+    refute_includes found, ["unaccounted", "notices/NOTICES.txt"]
+    refute_includes found, ["unaccounted", "notices/sbom.spdx.json"]
+  end
+
   def test_the_source_bundle_holds_the_pinned_sources_their_licenses_and_how_they_were_built
     Dir.mktmpdir do |directory|
-      downloads = File.join(directory, "downloads")
-      FileUtils.mkdir_p(downloads)
-      pin = lambda do |name|
-        File.binwrite(File.join(downloads, name), "pretend #{name}")
-        { "url" => "https://example.com/#{name}", "sha256" => Digest::SHA256.hexdigest("pretend #{name}") }
-      end
-      sources = File.join(directory, "sources.yml")
-      File.write(sources, {
-        "libxcrypt" => { "version" => "4.5.2", **pin.call("libxcrypt-4.5.2.tar.xz") },
-        "appimage-runtime" => {
-          "version" => "20251108",
-          "commit" => "dd6cebedcbddde9c82f89b011e8e1d40b6e43868",
-          "platforms" => { "x86_64-linux" => { "url" => "https://example.com/runtime-x86_64", "sha256" => "0" * 64 } },
-          "source" => pin.call("type2-runtime.tar.gz"),
-        },
-        "libfuse" => { "version" => "3.15.0", **pin.call("fuse-3.15.0.tar.xz") },
-      }.to_yaml)
-
-      path = LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: "0.0.0", sources:, downloads:).write(directory)
+      bundle = linux_bundle(directory)
+      path = bundle.write(directory)
       top = File.join(Fledge::Archive.unpack(path, into: File.join(directory, "unpacked")), "fledge-runtime-0.0.0-x86_64-linux-lgpl-sources")
+      runtime = File.join(directory, "runtime")
+      bundle.copy_into(runtime)
+      assert_equal Dir.glob("**/*", base: top).sort - ["README.txt"], Dir.glob("**/*", base: File.join(runtime, "notices/sources")).sort
 
       assert_equal "pretend libxcrypt-4.5.2.tar.xz", File.read(File.join(top, "libxcrypt/libxcrypt-4.5.2.tar.xz"))
       assert_includes File.read(File.join(top, "libxcrypt/BUILD.txt")), "--enable-shared --disable-static --disable-obsolete-api"

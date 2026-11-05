@@ -173,17 +173,20 @@ class LicenseAudit
     File.read(File.join(ROOT, "lib", "fledge", "version.rb"))[/VERSION = "([^"]+)"/, 1].to_s
   end
 
+  # The files this audit writes into a runtime's notices/, which it does
+  # not audit. Everything else there, the sources SourceBundle copies in
+  # among it, belongs to a component like any other file.
+  WRITTEN = %w[notices/NOTICES.txt notices/sbom.spdx.json].freeze
+
   # Every file and symlink in the tree, relative to it, except the
-  # notices this audit writes; and in place of each Android library (an
-  # .aar, which is a zip), every file in it, as AAR!ENTRY, since an app
-  # ships what the AAR holds.
+  # notices this audit writes (WRITTEN); and in place of each Android
+  # library (an .aar, which is a zip), every file in it, as AAR!ENTRY,
+  # since an app ships what the AAR holds.
   private def walk
     paths = []
     Find.find(tree) do |path|
       relative = path.delete_prefix("#{tree}/")
-      next if path == tree
-
-      Find.prune if relative == "notices"
+      next if path == tree || WRITTEN.include?(relative)
       next unless File.file?(path) || File.symlink?(path)
 
       relative.end_with?(".aar") ? paths.concat(open_archive(relative)) : paths << relative

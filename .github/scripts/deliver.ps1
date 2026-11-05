@@ -143,6 +143,20 @@ foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_d
 }
 Write-Host "ok: the app carries its notices and SBOM"
 
+# The source of each component whose license asks for it travels in the
+# app, in notices\sources\ID\ (ADR 004, section 5): the archive whose
+# SHA-256 its BUILD.txt names, and NOTICES.txt names the folder.
+foreach ($id in @('gmp', 'nsis')) {
+  $folder = Join-Path $root "notices\sources\$id"
+  $build = Join-Path $folder 'BUILD.txt'
+  if (-not (Test-Path -LiteralPath $build -PathType Leaf)) { Fail "the app has no notices\sources\$id\BUILD.txt" }
+  if (-not $text.Contains("  notices/sources/$id/")) { Fail "notices\NOTICES.txt does not say the app holds $id's source" }
+  $named = Get-Content -LiteralPath $build -Raw
+  $found = Get-ChildItem -LiteralPath $folder -File | Where-Object { $_.Name -ne 'BUILD.txt' -and $named.Contains((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()) } | Select-Object -First 1
+  if (-not $found) { Fail "notices\sources\$id\ holds no archive whose SHA-256 its BUILD.txt names" }
+  Write-Host "ok: the app holds $id's source, $($found.Name)"
+}
+
 # The runner has Rubies (on PATH, in C:\hostedtoolcache, MSYS2 in
 # C:\msys64). PATH keeps only Windows' own folders, and nothing on it may
 # find a Ruby or a compiler.

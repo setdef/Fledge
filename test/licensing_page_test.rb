@@ -55,7 +55,9 @@ class LicensingPageTest < Minitest::Test
       runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}#{more}") }))
       %w[x86_64-linux aarch64-linux].each do |platform|
         runtime(directory, platform, unix(-> (more) { Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{RUST} GCC: (#{more}") }).merge(
-          "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash")
+          "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
+          "notices/sources/libxcrypt/libxcrypt-4.5.2.tar.xz" => "pretend libxcrypt",
+          "notices/sources/libxcrypt/BUILD.txt" => "how it was built\n"
         ))
       end
       %w[x86_64-linux-musl aarch64-linux-musl].each do |platform|
@@ -94,8 +96,11 @@ class LicensingPageTest < Minitest::Test
     assert_includes darwin, "no LGPL library ships on this platform"
     refute_includes darwin, "libxcrypt"
     assert_includes linux, "| libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` |"
-    assert_includes linux, "meet the LGPL for libxcrypt (`lib/libcrypt.so.2`)"
-    assert_includes linux, "`fledge-runtime-9.8.7-x86_64-linux-lgpl-sources.tar.gz`"
+    assert_includes linux, "meet the LGPL for libxcrypt (`lib/libcrypt.so.2`), as"
+    assert_includes linux, "| libxcrypt's source code, as its authors released it, and how the runtime's copy was built | 4.5.2 | `LGPL-2.1-or-later` |"
+    assert_includes linux, "The source is in every app, in `notices/sources/`, and in Fledge's release as " \
+      "`fledge-runtime-9.8.7-x86_64-linux-lgpl-sources.tar.gz`."
+    refute_includes linux, "LGPL for libxcrypt's source"
     assert_includes linux, "- `MIT`: rake"
     assert_includes linux, "- `Ruby OR BSD-2-Clause`: csv"
     refute_empty section(text, "Windows on x64 (x64-mingw-ucrt)")

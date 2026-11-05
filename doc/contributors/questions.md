@@ -25,15 +25,3 @@ A new `fledge.yml` key, command, installer or output file is compatible within 1
 **Default.** 1.0.0 waits for a real-device playtest of a game on both your devices and for nothing in axis 2. The rest is named as unproven or not offered in the README.
 
 **To reverse.** Say what else blocks 1.0.0, or that nothing does. Agents then change the "1.0" story in Plan 003.
-
-## D. May Fledge make one system's app on another system when it compiles nothing? (open, no deadline)
-
-Agents designed a way to make a new app from an app Fledge already built: copy it, put another project in place of its own, and give the copy that project's name and icon. It compiles and downloads nothing. A framework can ship such an app so that its users make apps by dropping a folder on it, with no command line.
-
-On 2026-10-28 you asked: "We already have to have target-environment-platform machines to compile on, right? If so, what value does cross-platform non-compilation building add?" You then accepted that each system's app is built on that system. This way of making an app compiles nothing, so your question's premise does not hold for it. LÖVE's equivalent works from any system: `cat love.exe game.love > game.exe` on a Mac makes a Windows program.
-
-What would be lost making another system's app this way: a Mac app made on Windows or Linux cannot be signed, and Macs refuse it as damaged once it is downloaded, so that would not be offered at all; a Windows app made on a Mac or Linux would keep the original app's icon, name and version instead of its own; a Linux AppImage needs a Linux tool, though the plain archive works.
-
-**Default.** Fledge makes an app only for the system it runs on, this way too. A person on a Mac needs a Windows computer to make the Windows app.
-
-**To reverse.** Say that it may make a Windows or Linux app on another system. Agents then let it take another system's app and write its archive, with the limits above stated where developers read.

@@ -337,3 +337,9 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 *Governs:* single-file output and a drag-and-drop way to make an app, as LÖVE's fused games have, are in scope for Fledge, because supporting Lota is a main purpose of the project and a command line is a barrier to the people Lota is for; the earlier answer that they are excluded is withdrawn. *Applied in:* Plan 003, "Build from a built app, and the files an app opens".
 
+> Question D. My main concern was adding a lot of code, complexity, and surface area for bugs re: cross-compiling. Anything that doesn't do those is fine by me.
+
+[re: question D in `questions.md`, whether a repack may make one system's app on another system when it compiles nothing.]
+
+*Governs:* making an app for another system from an already built app is allowed when it adds little code and complexity and little room for bugs, and above all when it needs no cross-compiling; the earlier rule that each system's app is built on that system (decisions, 2026-10-28) was about code that writes formats and compiles, and is not extended to a step that only copies. *Applied in:* ADR 032, section 6.
+

@@ -343,3 +343,9 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 *Governs:* making an app for another system from an already built app is allowed when it adds little code and complexity and little room for bugs, and above all when it needs no cross-compiling; the earlier rule that each system's app is built on that system (decisions, 2026-10-28) was about code that writes formats and compiles, and is not extended to a step that only copies. *Applied in:* ADR 032, section 6.
 
+> I've decided to pay Apple, Microsoft, Google, whoever I need.
+
+[re: the maintainer's wish to publish Dot Popper on the Play Store, App Store, Mac App Store, Windows Store, and brew, after the rulings of 2026-10-28 and 2026-11-02 that no money is spent now.]
+
+*Governs:* the maintainer will spend money on the accounts and certificates the stores need (Apple, Microsoft, Google, a certificate authority, and others), which ends the earlier rulings that none is spent; the maintainer opens and pays for each account, since an agent never opens one, even a free one; agents plan and prepare the work that needs them (signing, notarization, store submissions) and say what each costs. *Applied in:* `doc/contributors/handoff.md`, Plan 003's store and signing stories.
+

@@ -146,7 +146,7 @@ Put the archives and installers wherever your users download things, such as a G
 
 ### Update
 
-Change the tag in your `Gemfile` and run `bundle update fledge`. Fledge is 0.x, so read the [CHANGELOG](CHANGELOG.md) first: a minor version can break your build.
+Change the tag in your `Gemfile` and run `bundle update fledge`. Fledge is 0.x, so read the [CHANGELOG](CHANGELOG.md) first: any new version can break your build. From 1.0, only a major version can, and [What 1.x keeps](doc/runtimes.md#what-1x-keeps) lists what minor versions and patches leave alone.
 
 ## Documentation
 
@@ -158,7 +158,7 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. Fledge is 0.x, 
 | [iPhone, iPad, and Android](doc/phones.md) | Phone projects, gems with C extensions on phones, and what has run on devices |
 | [Publishing with a package manager](doc/package_managers.md) | A Scoop manifest, a Homebrew formula, and winget's files for a console app |
 | [Building from an app already built](doc/building_from_an_app.md) | `fledge build --from` and `build_tools`, for frameworks |
-| [Runtimes and Ruby versions](doc/runtimes.md) | Which Ruby your app gets, where Fledge downloads it from, mirrors, building offline, and updating |
+| [Runtimes and Ruby versions](doc/runtimes.md) | Which Ruby your app gets, where Fledge downloads it from, mirrors, building offline, updating, and what stays the same from 1.0 |
 | [How a Fledge app differs from `ruby main.rb`](doc/differences_from_ruby.md) | Each difference your code can see, and why it is there |
 | [What ships in your app](doc/licensing.md) | Every component Fledge puts in an app, on each platform, and what you owe under its license |
 | [`examples/`](examples) | Apps that CI builds and runs, from [`hello`](examples/hello) to [`windowed_app`](examples/windowed_app) |

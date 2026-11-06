@@ -25,4 +25,23 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. Each version of
 
 A new version of Fledge may move your app's Ruby to a newer patch, such as 4.0.9 to 4.0.10, and you'll find each move in the [CHANGELOG](../CHANGELOG.md). Only you move it to another minor version, by running Fledge with that Ruby.
 
-Fledge is 0.x, so a minor version can break your build: read the CHANGELOG before you update. From 1.0, Fledge will change the command, `fledge.yml`, or what a built app holds only in a major version.
+Fledge is 0.x today, so any new version can break your build. Read the CHANGELOG before you update.
+
+### What 1.x keeps
+
+From 1.0, Fledge follows [Semantic Versioning](https://semver.org/). In a minor version, Fledge only adds: a new option, `fledge.yml` key, or installer, and your build stays as it was until you choose to use it. In a patch, Fledge only fixes. Only a major version, such as 2.0, changes any of these:
+
+- **The command.** `fledge build`, its options and their defaults, its exit statuses, and the paths it prints on standard output, one per line.
+- **`fledge.yml`.** Every key, the values each accepts, and each default.
+- **The files `fledge build` writes.** The app's folder, its archive, each installer, the `.sha256` beside each, and their names.
+- **What your code and your users meet in a built app.** Each program's name and place, your project in `app/`, the `notices/` folder, a Mac app's `NAME.app`, a Linux app's desktop entry and icons, and the folder each installer puts the app in.
+- **How your code runs.** Fledge may remove a [difference from `ruby main.rb`](differences_from_ruby.md), but never add one.
+- **Ruby and the systems your users run.** Every Ruby minor version 1.0 has a runtime for, Ruby 4.0 today, and the oldest system each platform runs on, as the [compatibility table](../README.md#compatibility) lists them.
+- **Phone projects.** The folders of the project Fledge writes, the files in it you may replace, and the functions your host code calls to start Ruby.
+- **Runtime downloads.** The names of the release's files, `FLEDGE_RUNTIME_DIR`, and `FLEDGE_RUNTIME_MIRROR`.
+
+Any version may change what you should not depend on:
+
+- **Where the runtime sits inside an app.** Ask Ruby where things are, with `__dir__`, `RbConfig.ruby`, and `Gem.dir`, and your code keeps working when Fledge moves a folder, as it might to meet a store's rules.
+- **What `fledge build` prints on standard error.** Fledge improves its messages from release to release. A script that runs Fledge should check its exit status and read standard output.
+- **Fledge's Ruby classes.** Run the `fledge` command, and don't call `Fledge::` code from your own.

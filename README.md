@@ -404,7 +404,7 @@ Lock `ruby` as a platform (`bundle lock --add-platform ruby`). [`examples/mobile
 
 **Frameworks that start the app themselves.** A framework such as SDL3 needs its own startup files on each phone. Name a folder of them under `ios: host:` and `android: host:` in `fledge.yml`, and `fledge build` copies them over the project it writes. [`examples/sdl_phone`](examples/sdl_phone) is a game loop on SDL3.
 
-Fledge's CI runs phone apps in the iOS Simulator on an iPhone and an iPad, and on x86-64 Android emulators. A game built with `fledge build ios` has run on a physical iPad Pro, signed with the free Personal Team that Xcode makes for any Apple ID, so running on a device needs no paid account. No app has run on an iPhone yet, and none has been through App Review. For `arm64-v8a`, which most Android phones use, the CI builds the library and checks the APK but never runs it, because no free runner boots an arm64 emulator.
+Fledge's CI runs phone apps in the iOS Simulator on an iPhone and an iPad, and on x86-64 Android emulators. A game built with `fledge build ios` has run on a physical iPad Pro, signed with the free Personal Team that Xcode makes for any Apple ID, so running on a device needs no paid account. The same game has run on a physical iPhone 13 mini. No app has been through App Review. For `arm64-v8a`, which most Android phones use, the CI builds the library and checks the APK but never runs it, because no free runner boots an arm64 emulator.
 
 ### Updating Fledge
 

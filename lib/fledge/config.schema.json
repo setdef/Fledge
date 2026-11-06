@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/setdef/Fledge/v0.5.1/lib/fledge/config.schema.json",
+  "$id": "https://raw.githubusercontent.com/setdef/Fledge/v0.6.0/lib/fledge/config.schema.json",
   "title": "fledge.yml",
   "description": "What a project tells Fledge about its app: how it presents itself to the person who runs it. Every key is optional, and an unknown key fails the build.",
   "type": "object",

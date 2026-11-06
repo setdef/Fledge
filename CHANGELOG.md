@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-05
+
 ### Added
 
 - `fledge build --from APP [PATH]` builds PATH's project into a copy of APP, an app the same Fledge release built for this computer, with APP's runtime, gems, `Gemfile`, and `Gemfile.lock`, and the project's own name, identity, archive, and installers, downloading, installing, and compiling nothing. A project with a `Gemfile`, `gems.rb`, or gemspec, or whose `fledge.yml` has `programs`, `linux: system_libraries`, `ios`, or `android`, is refused; an APP from another release or for another platform is a usage error. On Windows it takes the program and rcedit from APP's `build_tools`, or else from the release's runtime, which must then be in `FLEDGE_RUNTIME_DIR` or the cache.
@@ -305,7 +307,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/setdef/Fledge/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/setdef/Fledge/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/setdef/Fledge/releases/tag/v0.5.0
 [0.4.0]: https://github.com/setdef/Fledge/releases/tag/v0.4.0

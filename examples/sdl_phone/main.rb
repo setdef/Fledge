@@ -52,7 +52,9 @@ puts "SdlDemo recurses #{depth} levels deep"
 
 point = nil
 touched_at = nil
-frames = SdlDemo.run(60) do |frame, width, height, touches|
+# Branch-only canary (iphone-canary): ten minutes untouched, not one, so
+# there is time to turn the phone through each orientation.
+frames = SdlDemo.run(600) do |frame, width, height, touches|
   touches.each do |x, y, kind|
     point = [x, y]
     next unless kind == :down
@@ -64,6 +66,10 @@ frames = SdlDemo.run(60) do |frame, width, height, touches|
   next nil if touched_at && frame > touched_at + 90
 
   x, y = point || [width / 2.0, height / 2.0]
-  [*color(frame), x, y]
+  # Branch-only canary (iphone-canary): a flat pure green (#00ff00) in
+  # place of color(frame)'s rainbow, so a column the Metal drawable leaves
+  # uncovered shows as another color, and the extension's one-pixel red
+  # and blue edges stand out.
+  [0, 255, 0, x, y]
 end
 puts "SdlDemo drew #{frames} frames in all, #{touched_at ? 'after a touch' : 'with no touch'}"

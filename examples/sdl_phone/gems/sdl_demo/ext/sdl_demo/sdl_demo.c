@@ -25,6 +25,71 @@
 #include <sys/syscall.h>
 #endif
 
+#ifdef __APPLE__
+/*
+ * Branch-only canary (iphone-canary): UIKit's and Core Animation's own
+ * sizes, read through the Objective-C runtime so that this file stays C.
+ * On arm64 objc_msgSend returns these structs of doubles in registers, so
+ * one cast serves every message; a message to nil answers zeros.
+ */
+#include <objc/message.h>
+#include <objc/runtime.h>
+
+struct canary_size { double width, height; };
+struct canary_rect { double x, y, width, height; };
+
+static void *
+canary_object(void *object, const char *selector)
+{
+    return object ? ((void *(*)(void *, SEL))objc_msgSend)(object, sel_registerName(selector)) : NULL;
+}
+
+static double
+canary_double(void *object, const char *selector)
+{
+    return object ? ((double (*)(void *, SEL))objc_msgSend)(object, sel_registerName(selector)) : 0.0;
+}
+
+static struct canary_size
+canary_size(void *object, const char *selector)
+{
+    struct canary_size none = {0, 0};
+    return object ? ((struct canary_size (*)(void *, SEL))objc_msgSend)(object, sel_registerName(selector)) : none;
+}
+
+static struct canary_rect
+canary_rect(void *object, const char *selector)
+{
+    struct canary_rect none = {0, 0, 0, 0};
+    return object ? ((struct canary_rect (*)(void *, SEL))objc_msgSend)(object, sel_registerName(selector)) : none;
+}
+
+/* Appends UIKit's screen and window, and the renderer's CAMetalLayer. */
+static void
+canary_apple(SDL_Window *sdl_window, SDL_Renderer *renderer, VALUE line)
+{
+    void *window = SDL_GetPointerProperty(SDL_GetWindowProperties(sdl_window), SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
+    void *screen = canary_object(window, "screen");
+    void *layer = SDL_GetRenderMetalLayer(renderer);
+    void *superlayer = canary_object(layer, "superlayer");
+    struct canary_rect window_bounds = canary_rect(window, "bounds");
+    struct canary_rect native_bounds = canary_rect(screen, "nativeBounds");
+    struct canary_rect layer_frame = canary_rect(layer, "frame");
+    struct canary_rect layer_bounds = canary_rect(layer, "bounds");
+    struct canary_rect super_bounds = canary_rect(superlayer, "bounds");
+    struct canary_size drawable = canary_size(layer, "drawableSize");
+    double contents_scale = canary_double(layer, "contentsScale");
+
+    rb_str_catf(line, " | UIScreen scale %.3f nativeScale %.3f nativeBounds %.0fx%.0f | UIWindow bounds %.2fx%.2f pt",
+                canary_double(screen, "scale"), canary_double(screen, "nativeScale"), native_bounds.width, native_bounds.height,
+                window_bounds.width, window_bounds.height);
+    rb_str_catf(line, " | CAMetalLayer frame (%.2f,%.2f %.2fx%.2f) pt in superlayer %.2fx%.2f pt, contentsScale %.3f,"
+                      " bounds*scale %.2fx%.2f px, drawableSize %.0fx%.0f px",
+                layer_frame.x, layer_frame.y, layer_frame.width, layer_frame.height, super_bounds.width, super_bounds.height,
+                contents_scale, layer_bounds.width * contents_scale, layer_bounds.height * contents_scale, drawable.width, drawable.height);
+}
+#endif
+
 /* Everything one run of the loop holds, for its ensure. */
 struct game {
     SDL_Window *window;
@@ -71,7 +136,61 @@ draw(struct game *game, VALUE answer, int width, int height)
     SDL_RenderClear(game->renderer);
     SDL_SetRenderDrawColor(game->renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
     SDL_RenderFillRect(game->renderer, &square);
+
+    /*
+     * Branch-only canary (iphone-canary): one-pixel edges, in the render
+     * output's pixels, so that a column the drawable does not cover shows
+     * as something other than the green background, and an edge that is
+     * drawn but falls off the screen is missing its red or blue line.
+     * Blue at the left (x = 0) and top (y = 0); red at the right
+     * (x = width - 1) and bottom (y = height - 1).
+     */
+    SDL_FRect left = {0.0f, 0.0f, 1.0f, (float)height};
+    SDL_FRect top = {0.0f, 0.0f, (float)width, 1.0f};
+    SDL_FRect right = {(float)(width - 1), 0.0f, 1.0f, (float)height};
+    SDL_FRect bottom = {0.0f, (float)(height - 1), (float)width, 1.0f};
+    SDL_SetRenderDrawColor(game->renderer, 0, 0, 255, SDL_ALPHA_OPAQUE);
+    SDL_RenderFillRect(game->renderer, &left);
+    SDL_RenderFillRect(game->renderer, &top);
+    SDL_SetRenderDrawColor(game->renderer, 255, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderFillRect(game->renderer, &right);
+    SDL_RenderFillRect(game->renderer, &bottom);
     SDL_RenderPresent(game->renderer);
+}
+
+/*
+ * Branch-only canary (iphone-canary): every size SDL, UIKit, and the
+ * Metal layer report for the window, on one line. The loop prints it
+ * whenever it changes, which is once per orientation change once the
+ * rotation settles.
+ */
+static VALUE
+canary_line(struct game *game)
+{
+    int points_w = 0, points_h = 0, pixels_w = 0, pixels_h = 0, output_w = 0, output_h = 0;
+    SDL_Rect safe = {0, 0, 0, 0}, viewport = {0, 0, 0, 0};
+    SDL_DisplayID display = SDL_GetDisplayForWindow(game->window);
+    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(display);
+    static const char *orientations[] = {"unknown", "landscape", "landscape-flipped", "portrait", "portrait-flipped"};
+    SDL_DisplayOrientation orientation = SDL_GetCurrentDisplayOrientation(display);
+
+    SDL_GetWindowSize(game->window, &points_w, &points_h);
+    SDL_GetWindowSizeInPixels(game->window, &pixels_w, &pixels_h);
+    SDL_GetCurrentRenderOutputSize(game->renderer, &output_w, &output_h);
+    SDL_GetWindowSafeArea(game->window, &safe);
+    SDL_GetRenderViewport(game->renderer, &viewport);
+
+    VALUE line = rb_sprintf("SdlDemo canary: orientation %s | window %dx%d pt, %dx%d px, pixel density %.3f, display scale %.3f,"
+                            " display content scale %.3f | render output %dx%d px, viewport (%d,%d %dx%d) | safe area (%d,%d %dx%d) pt",
+                            (unsigned)orientation < 5 ? orientations[orientation] : "?", points_w, points_h, pixels_w, pixels_h,
+                            SDL_GetWindowPixelDensity(game->window), SDL_GetWindowDisplayScale(game->window),
+                            SDL_GetDisplayContentScale(display), output_w, output_h, viewport.x, viewport.y, viewport.w, viewport.h,
+                            safe.x, safe.y, safe.w, safe.h);
+    if (mode) rb_str_catf(line, " | display mode %dx%d pt, pixel density %.3f", mode->w, mode->h, mode->pixel_density);
+#ifdef __APPLE__
+    canary_apple(game->window, game->renderer, line);
+#endif
+    return line;
 }
 
 /* The loop: events, the block, a frame, until the time is up or SDL quits. */
@@ -81,10 +200,16 @@ loop(VALUE data)
     struct game *game = (struct game *)data;
     Uint64 end = SDL_GetTicks() + (Uint64)(game->seconds * 1000.0);
     int quit = 0;
+    VALUE canary_last = Qnil;
 
     while (!quit && SDL_GetTicks() < end) {
         int width = 0, height = 0;
         SDL_GetCurrentRenderOutputSize(game->renderer, &width, &height);
+        VALUE canary = canary_line(game);
+        if (NIL_P(canary_last) || !RTEST(rb_str_equal(canary, canary_last))) {
+            rb_io_puts(1, &canary, rb_stdout);
+            canary_last = canary;
+        }
         VALUE touches = rb_ary_new();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {

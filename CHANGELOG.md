@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A Windows app carries `notices/MODIFIED.txt`, which names each of its programs, says that `fledge build` changed that copy of Fledge's AGPL launcher on the date of the build (`SOURCE_DATE_EPOCH` when it is set; one that is not a whole number of seconds fails the build) by writing into it, with rcedit, the version information and icon it lists, and says where the launcher's source and those steps are. A Windows runtime's `notices/NOTICES.txt` names the file. `fledge build --from` leaves the old app's behind and writes the new app's.
+
 ## [0.6.0] - 2026-11-05
 
 ### Added

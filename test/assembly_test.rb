@@ -214,7 +214,7 @@ class AssemblyTest < Minitest::Test
 
       assert_equal File.join(dir, "dist", "Hello-x64-mingw-ucrt.zip"), archive
       folder = File.join(dir, "dist", "Hello-x64-mingw-ucrt")
-      assert_equal %w[Hello.exe app fledge.cfg ruby], Dir.children(folder).sort
+      assert_equal %w[Hello.exe app fledge.cfg notices ruby], Dir.children(folder).sort
       program = File.join(folder, "Hello.exe")
       assert_equal 3, subsystem(program)
       info = version_info(program)
@@ -237,7 +237,7 @@ class AssemblyTest < Minitest::Test
       assemble(dir, app, platform: WINDOWS)
 
       folder = File.join(dir, "dist", "Hello Window-x64-mingw-ucrt")
-      assert_equal ["Hello Window.exe", "app", "fledge.cfg", "ruby"], Dir.children(folder).sort
+      assert_equal ["Hello Window.exe", "app", "fledge.cfg", "notices", "ruby"], Dir.children(folder).sort
       program = File.join(folder, "Hello Window.exe")
       assert_equal 2, subsystem(program)
       assert_equal "Hello Window", version_info(program).fetch("FileDescription")
@@ -472,10 +472,38 @@ class AssemblyTest < Minitest::Test
       assemble(dir, Programs.write(dir), platform: WINDOWS)
 
       folder = File.join(dir, "dist", "Game-x64-mingw-ucrt")
-      assert_equal ["Play Game.exe", "app", "fledge.cfg", "game-cli.exe", "ruby", "tui.exe"], Dir.children(folder).sort
+      assert_equal ["Play Game.exe", "app", "fledge.cfg", "game-cli.exe", "notices", "ruby", "tui.exe"], Dir.children(folder).sort
       assert_equal [2, 3, 3], ["Play Game.exe", "game-cli.exe", "tui.exe"].map { |program| subsystem(File.join(folder, program)) }
       assert_equal ["Play Game", "game-cli", "tui"],
         ["Play Game.exe", "game-cli.exe", "tui.exe"].map { |program| version_info(File.join(folder, program)).fetch("FileDescription") }
+      notice = File.read(File.join(folder, "notices", "MODIFIED.txt"))
+      ["Play Game.exe", "game-cli.exe", "tui.exe"].each { |program| assert_includes notice, "\n  #{program}\n    FileVersion and ProductVersion: " }
+    end
+  end
+
+  # Each Windows program is a modified copy of Fledge's AGPL launcher,
+  # with rcedit's resources in it, so the app carries a notice that says
+  # so and when (AGPL-3.0, section 5(a); ADR 004, section 10): the date
+  # is SOURCE_DATE_EPOCH's when it is set.
+  def test_a_windows_app_carries_the_notice_of_the_programs_it_changed
+    windows!
+    Dir.mktmpdir do |dir|
+      app = WindowedApp.write(dir)
+      epoch = ENV.fetch("SOURCE_DATE_EPOCH", nil)
+      begin
+        ENV["SOURCE_DATE_EPOCH"] = "1793923200"
+        assemble(dir, app, platform: WINDOWS)
+      ensure
+        ENV["SOURCE_DATE_EPOCH"] = epoch
+      end
+
+      folder = File.join(dir, "dist", "Hello Window-x64-mingw-ucrt")
+      identity = Fledge::App.at(app).identity
+      expected = Fledge::ModificationNotice.new(programs: { "Hello Window.exe" => identity }, date: Time.at(1_793_923_200)).text(File.join(folder, "app"))
+      assert_equal expected, File.read(File.join(folder, "notices", "MODIFIED.txt"))
+      assert_includes expected, "changed on 2026-11-06"
+      assert_includes expected, "    Icon: art.ico, which this app holds as app/art.ico\n"
+      assert_equal identity.version, version_info(File.join(folder, "Hello Window.exe")).fetch("ProductVersion")
     end
   end
 

@@ -13,6 +13,7 @@ require_relative "config"
 require_relative "entry"
 require_relative "error"
 require_relative "mac_bundle"
+require_relative "modification_notice"
 require_relative "platform"
 require_relative "runtimes"
 require_relative "version"
@@ -278,7 +279,8 @@ module Fledge
 
     # Copies everything of the app into +folder+ but its project, its
     # <tt>fledge.cfg</tt>, its programs, and the files that carry its
-    # identity: the runtime, the gems, and the notices. Raises
+    # identity, the notice of its changed programs among them
+    # (ModificationNotice): the runtime, the gems, and the notices. Raises
     # Fledge::Error when one of +app_names+ would collide with them.
     def copy_into(folder, app_names) # :nodoc:
       FileUtils.mkdir_p(folder)
@@ -289,6 +291,7 @@ module Fledge
         FileUtils.copy_entry(File.join(@contents, name), File.join(folder, name), true)
       end
       @identifiers.each { |identifier| remove_icons(folder, identifier) }
+      FileUtils.rm_f(File.join(folder, ModificationNotice::PATH))
     end
 
     # The names in the app's folder that a new app keeps: not its tools

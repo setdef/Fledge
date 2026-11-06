@@ -311,6 +311,21 @@ class LicenseAuditTest < Minitest::Test
     assert_empty notices.missing
   end
 
+  # On Windows each program is a modified copy of the launcher, which the
+  # runtime's notices say, and name notices/MODIFIED.txt, where
+  # fledge build says what it changed (ADR 004, section 10); elsewhere a
+  # program is only renamed, and they say nothing of it.
+  def test_windows_notices_say_fledge_build_modifies_the_launcher_and_where_it_says_how
+    audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
+    report = audit_run.call
+    windows = LicenseAudit::Notices.new(report.with(platform: "x64-mingw-ucrt"), version: "0.0.0", map: audit_run.map).text
+    linux = LicenseAudit::Notices.new(report, version: "0.0.0", map: audit_run.map).text
+
+    assert_includes windows, "which makes each a modified version of it. notices/MODIFIED.txt,\nbeside this file, names each program so changed"
+    refute_includes linux, "MODIFIED.txt"
+    assert_includes linux, "rubygems/defaults/operating_system.rb\n\nTheir complete source is Fledge's"
+  end
+
   # Each Linux runtime's bundle holds libxcrypt's source, and, since
   # libfuse is linked into AppImage's runtime, the runtime's own source
   # and libfuse's (LGPL-2.1, section 6(a)), each with its license and how

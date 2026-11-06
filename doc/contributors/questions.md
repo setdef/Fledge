@@ -25,3 +25,11 @@ A new `fledge.yml` key, command, installer or output file is compatible within 1
 **Default.** 1.0.0 waits for a real-device playtest of a game on both your devices and for nothing in axis 2. The rest is named as unproven or not offered in the README.
 
 **To reverse.** Say what else blocks 1.0.0, or that nothing does. Agents then change the "1.0" story in Plan 003.
+
+## E. Does a Windows app's icon and version text fall under Fledge's license? (open, no deadline)
+
+Every program of an app is a copy of Fledge's launcher, which is under the GNU Affero General Public License. On Windows, `fledge build` writes the app's icon and its version text (name, publisher, copyright, description, version) into that copy, so each Windows program is a changed version of Fledge's launcher. Each Windows app now carries a notice that says so, with the date, as the license's section 5(a) asks. Section 5(c) then asks that "the entire work, as a whole" be licensed under the AGPL. Read strictly, that could reach the icon and the text inside the program, which are the app developer's. You wrote on 2026-11-06: "I don't want closed apps that use `fledge build` to have to choose between releasing their app code under copyleft or paying for a commercial license." The icon and the text are not code, but they are the developer's.
+
+**Default.** The work proceeds as it is: the notice names what was written into each program and says nothing about the icon's or the text's license, so they stay the developer's, as the files in the app's folder do. No exception is added to the license.
+
+**To reverse.** Say that you want Fledge's license to state it, as an additional permission under section 7: that the icon and version text `fledge build` writes into a program stay under their owner's terms. Agents would then add it to the license notice and to each app's notices. It needs your word, since it changes Fledge's license terms.

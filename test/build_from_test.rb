@@ -381,6 +381,27 @@ class BuildFromTest < Minitest::Test
     folder = File.join(@dir, "dist", "Game-#{host}")
     assert_path_exists File.join(folder, "Game.exe")
     refute_path_exists File.join(folder, "tools")
+    notice = File.read(File.join(folder, "notices", "MODIFIED.txt"))
+    assert_includes notice, "\n  Game.exe\n"
+    refute_includes notice, "Player.exe"
+  end
+
+  # The notice of the programs a build changed (ADR 004, section 10) is
+  # the old app's, about programs the new app does not hold, so it stays
+  # behind, and the new app's build writes its own where it changes any.
+  def test_the_old_apps_notice_of_its_changed_programs_stays_behind
+    from = built_player
+    FileUtils.mkdir_p(File.join(from, "notices"))
+    File.write(File.join(from, "notices", "MODIFIED.txt"), "Player.exe was changed\n")
+    File.write(File.join(from, "notices", "NOTICES.txt"), "the runtime's notices\n")
+    game
+
+    _, err, status = build("--from", from, "game")
+
+    assert_equal [0, ""], [status, err]
+    folder = File.join(@dir, "dist", "Game-x86_64-linux")
+    assert_equal "the runtime's notices\n", File.read(File.join(folder, "notices", "NOTICES.txt"))
+    refute_path_exists File.join(folder, "notices", "MODIFIED.txt")
   end
 
   # Windows' programs carry their app's identity in their resources, so

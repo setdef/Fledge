@@ -250,8 +250,8 @@ echo "ok: the app wrote nothing into its own folder"
 # as a manager's bin folder on PATH, gets a launcher that refuses to run
 # there and says why, with EX_SOFTWARE (70): Ruby would take that
 # folder's parent as its prefix and look for its standard library there
-# (unix.c, find_root). The README tells recipes to keep the app in a
-# folder of its own and link the launcher.
+# (unix.c, find_root). doc/package_managers.md tells recipes to keep
+# the app in a folder of its own and link the launcher.
 flat="$work/flat/bin"
 mkdir -p "$work/flat"
 cp -R "$root" "$flat"

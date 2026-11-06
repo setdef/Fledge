@@ -1,38 +1,44 @@
 == Ship a Ruby App to People Who Don't Have Ruby
 
-Fledge packages software written in Ruby so that people can run it
-without installing Ruby. Point it at the program you already run, such
-as +main.rb+, +bin/server+, or a gem's +exe/my_app+. Fledge copies the
-program, its project, and the gems your +Gemfile.lock+ locks into a copy
-of Ruby that runs from any folder, and writes an app for the platform
-you build on.
+Fledge packages a Ruby program so that people can run it without
+installing Ruby. It is for a Ruby developer whose program already works
+on their computer, as a +main.rb+, a +bin/server+, or a gem's
++exe/my_app+, and who wants to hand it to people who have never heard
+of Ruby.
 
-Your users download one file, unpack it wherever they like, and run it.
-They install nothing, and they never need to know what Ruby is. A
-windowed app also gets an installer for its system: a disk image on
-macOS, a setup program on Windows, and an AppImage or +.deb+ on Linux,
-and can name the files and folders it opens, which each system then
-offers it for. A console app can reach them through Scoop, a Homebrew tap, or winget:
-each archive comes with its SHA-256, which their recipes name.
+Fledge copies your program, the rest of its project, and the gems your
++Gemfile.lock+ locks into a copy of Ruby that runs from any folder, adds
+a launcher that starts your program as <tt>bundle exec</tt> would, and
+archives the result for the platform you build on. Your users download
+one file, unpack it wherever they like, and run it. They install
+nothing, and they never need to know what Ruby is. A program that
+prints one line builds to a 20 MB archive on a Mac with Apple silicon.
 
 Fledge builds apps for macOS on Apple silicon, Linux (glibc and musl,
 x86-64 and ARM64), and Windows (x64 and ARM64), each on a computer of
-that platform. For iPhone, iPad, and Android it writes the Xcode or
-Gradle project that builds the app, with C and C++ gems compiled in.
-An app Fledge built can be the start of another: <tt>fledge build
---from</tt> copies it, with a project that needs no other gems in place
-of its own, on a computer of the same platform with nothing else
-installed.
+that platform. A windowed app also gets an installer: a disk image on
+macOS, a setup program on Windows, and an AppImage, and a +.deb+ if you
+ask for one, on Linux. In +fledge.yml+ you give it a name, version,
+icon, description, homepage, and license, and list the files and
+folders it opens, which each system then offers it for. A console app
+reaches people who live in a terminal through Scoop, a Homebrew tap, or
+winget, since each archive comes with its SHA-256. For iPhone, iPad,
+and Android, Fledge writes the Xcode or Gradle project that builds the
+app, with C and C++ gems compiled in. And <tt>fledge build --from</tt>
+makes a new app from one Fledge already built, for a project that needs
+no other gems, with no Bundler, network, or compiler on the computer.
 
-A built app runs your code as +ruby main.rb+ does, on the Ruby you run
-Fledge with, at the patch level Fledge ships. A few differences are
-listed, with their reasons, in the README: the program's path is
-absolute, your users' Ruby settings do not change how the app boots, and
-a bare C locale becomes UTF-8.
+A built app runs your code as <tt>ruby main.rb</tt> does, on the Ruby
+you run Fledge with, at the patch level Fledge ships. The README lists
+each difference with its reason: the program's path is absolute, your
+users' Ruby settings do not change how the app boots, and a bare C
+locale becomes UTF-8.
 
 You install Fledge from a git tag, in the +development+ group of your
-Gemfile, and run +fledge build+. Releases are at
++Gemfile+, and run <tt>bundle exec fledge build</tt>. Releases are at
 https://github.com/setdef/Fledge/releases. The README at
-https://github.com/setdef/Fledge has the first build, the +fledge.yml+
-options, signing, and a recipe for each package manager. What ships inside an app, and what its licenses
-ask of you, is in doc/licensing.md there.
+https://github.com/setdef/Fledge shows the first build, every
++fledge.yml+ option, signing, phones, and building from a built app;
+doc/package_managers.md there has a recipe for each package manager,
+and doc/licensing.md says what ships inside an app and what its
+licenses ask of you.

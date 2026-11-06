@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+# Rooibos 0.8.0, the release on RubyGems.org. Its ratatui_ruby arrives
+# with it, precompiled where RubyGems.org has a build for the platform.
+gem "rooibos", "0.8.0"

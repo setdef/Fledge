@@ -1,44 +1,84 @@
 == Ship a Ruby App to People Who Don't Have Ruby
 
-Fledge packages a Ruby program so that people can run it without
-installing Ruby. It is for a Ruby developer whose program already works
-on their computer, as a +main.rb+, a +bin/server+, or a gem's
-+exe/my_app+, and who wants to hand it to people who have never heard
-of Ruby.
+Fledge[https://github.com/setdef/Fledge] turns a Ruby program you already
+run into an app that people without Ruby can download and run. Your users
+unpack one file and run it. They install nothing, and never learn what Ruby
+is.
 
-Fledge copies your program, the rest of its project, and the gems your
-+Gemfile.lock+ locks into a copy of Ruby that runs from any folder, adds
-a launcher that starts your program as <tt>bundle exec</tt> would, and
-archives the result for the platform you build on. Your users download
-one file, unpack it wherever they like, and run it. They install
-nothing, and they never need to know what Ruby is. A program that
-prints one line builds to a 20 MB archive on a Mac with Apple silicon.
+  gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.6.0", group: :development
 
-Fledge builds apps for macOS on Apple silicon, Linux (glibc and musl,
-x86-64 and ARM64), and Windows (x64 and ARM64), each on a computer of
-that platform. A windowed app also gets an installer: a disk image on
-macOS, a setup program on Windows, and an AppImage, and a +.deb+ if you
-ask for one, on Linux. In +fledge.yml+ you give it a name, version,
-icon, description, homepage, and license, and list the files and
-folders it opens, which each system then offers it for. A console app
-reaches people who live in a terminal through Scoop, a Homebrew tap, or
-winget, since each archive comes with its SHA-256. For iPhone, iPad,
-and Android, Fledge writes the Xcode or Gradle project that builds the
-app, with C and C++ gems compiled in. And <tt>fledge build --from</tt>
-makes a new app from one Fledge already built, for a project that needs
-no other gems, with no Bundler, network, or compiler on the computer.
+=== A First App
 
-A built app runs your code as <tt>ruby main.rb</tt> does, on the Ruby
-you run Fledge with, at the patch level Fledge ships. The README lists
-each difference with its reason: the program's path is absolute, your
-users' Ruby settings do not change how the app boots, and a bare C
-locale becomes UTF-8.
+A folder named +greeter+ holds a one-line +main.rb+ and a +Gemfile+ with
+Fledge in it:
 
-You install Fledge from a git tag, in the +development+ group of your
-+Gemfile+, and run <tt>bundle exec fledge build</tt>. Releases are at
-https://github.com/setdef/Fledge/releases. The README at
-https://github.com/setdef/Fledge shows the first build, every
-+fledge.yml+ option, signing, phones, and building from a built app;
-doc/package_managers.md there has a recipe for each package manager,
-and doc/licensing.md says what ships inside an app and what its
-licenses ask of you.
+  $ bundle exec fledge build
+  dist/Greeter-arm64-darwin.tar.gz
+  $ tar -xzf dist/Greeter-arm64-darwin.tar.gz -C /tmp
+  $ /tmp/Greeter-arm64-darwin/Greeter
+  Hello, Ruby!
+
+The archive is 20 MB. Anyone with an Apple silicon Mac on macOS 14 or newer
+can run it, with no Ruby on their computer.
+
+
+---
+
+=== What You Get
+
+Fledge copies your program, your project, and the gems your
++Gemfile.lock+ locks into a Ruby that runs from any folder, and adds a
+launcher that starts your program as <tt>bundle exec</tt> would. Your code
+runs as it does under <tt>ruby main.rb</tt>, whether or not your users
+installed a Ruby.
+
+[Terminal apps]
+  A <tt>.tar.gz</tt> on macOS and Linux, a <tt>.zip</tt> on Windows, with a
+  SHA-256 beside each for Scoop, Homebrew, and winget.
+[Windowed apps]
+  A <tt>.app</tt> and a <tt>.dmg</tt> on macOS, a setup program on Windows,
+  and an AppImage, and a <tt>.deb</tt> if you ask, on Linux, with your name, icon,
+  version, and the files your app opens.
+[Phones]
+  An Xcode or Gradle project for iPhone, iPad, and Android, with your C
+  and C++ gems compiled in.
+[Frameworks]
+  <tt>fledge build --from</tt> makes a new app from one Fledge already
+  built, with no Bundler, network, or compiler on the computer.
+
+Fledge builds for macOS on Apple silicon, Linux (glibc and musl, x86-64 and
+ARM64), and Windows (x64 and ARM64). Build each platform's app on a computer
+of that platform, such as a CI runner of each.
+
+
+---
+
+=== Links
+
+[Get Started]
+  {README}[https://github.com/setdef/Fledge#readme],
+  {Examples}[https://github.com/setdef/Fledge/tree/trunk/examples],
+  <tt>fledge --help</tt>
+[Guides]
+  {Gems}[https://github.com/setdef/Fledge/blob/trunk/doc/gems.md],
+  {Desktop apps}[https://github.com/setdef/Fledge/blob/trunk/doc/desktop_apps.md],
+  {Phones}[https://github.com/setdef/Fledge/blob/trunk/doc/phones.md],
+  {Package managers}[https://github.com/setdef/Fledge/blob/trunk/doc/package_managers.md],
+  {Building from an app}[https://github.com/setdef/Fledge/blob/trunk/doc/building_from_an_app.md],
+  {Runtimes}[https://github.com/setdef/Fledge/blob/trunk/doc/runtimes.md],
+  {Differences from ruby main.rb}[https://github.com/setdef/Fledge/blob/trunk/doc/differences_from_ruby.md]
+[Reference]
+  {What ships in your app}[https://github.com/setdef/Fledge/blob/trunk/doc/licensing.md],
+  {Changelog}[https://github.com/setdef/Fledge/blob/trunk/CHANGELOG.md],
+  {Releases}[https://github.com/setdef/Fledge/releases]
+[Community]
+  {Issues}[https://github.com/setdef/Fledge/issues],
+  {Contributing}[https://github.com/setdef/Fledge/blob/trunk/CONTRIBUTING.md]
+
+
+---
+
+[Source] https://github.com/setdef/Fledge
+[Releases] https://github.com/setdef/Fledge/releases
+
+© 2026 Kerrick Long · Code: AGPL-3.0-or-later · Docs: CC-BY-SA-4.0 · Snippets: MIT-0 · Requested: built by AI agents, reviewed by CI

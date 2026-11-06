@@ -349,3 +349,11 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 *Governs:* the maintainer will spend money on the accounts and certificates the stores need (Apple, Microsoft, Google, a certificate authority, and others), which ends the earlier rulings that none is spent; the maintainer opens and pays for each account, since an agent never opens one, even a free one; agents plan and prepare the work that needs them (signing, notarization, store submissions) and say what each costs. *Applied in:* `doc/contributors/handoff.md`, Plan 003's store and signing stories.
 
+
+## 2026-11-06
+
+> I don't want closed apps that use `fledge build` to have to choose between releasing their app code under copyleft or paying for a commercial license, but I do want those who change Fledge or offer Fledge-as-a-Service to either release their changes under copyleft, or pay me for a commercial license for the privilege not to do so.
+
+[re: the orchestrator's reading of the AGPL-3.0's text, that its conditions reach only works that copy or adapt Fledge, so an app's own code that `fledge build` packages is not a covered work.]
+
+*Governs:* what Fledge's license must and must not reach. An app's own code stays under its developer's terms whether or not they buy a commercial license; a changed Fledge, or Fledge offered as a service, is released under copyleft unless its maker buys a commercial license. The license, the README's licensing section, and each app's notices must stay true to this. *Applied in:* README.md, Copyright & License; `doc/licensing.md`.

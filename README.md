@@ -176,7 +176,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Fledge is copyright 2026, Kerrick Long. The code is [AGPL-3.0-or-later](LICENSES/AGPL-3.0-or-later.txt), and the documentation is [CC-BY-SA-4.0](LICENSES/CC-BY-SA-4.0.txt). Code snippets and examples are [MIT-0](LICENSES/MIT-0.txt): copy and use them without attribution. See each file's SPDX comment for specifics.
 
-**Your app stays yours.** You may keep your app's source private. Fledge's code in your app is its launcher, one RubyGems defaults file, on macOS and Linux the app's `bin/ruby`, and Fledge's Ruby code if your app ships Fledge as a gem. When you give the app to people, you must offer them the source of that code under the AGPL, and you'll find its address in each app's `notices/NOTICES.txt`. For the rest of the runtime, you need only keep the notices, which every app carries. On Linux and Windows, a few libraries are under the LGPL, and each app carries their source in `notices/sources/`. Setdef may also offer Fledge under a commercial license. You'll find the details in [What ships in your app](doc/licensing.md), which is not legal advice.
+**Your app stays yours.** Your app's code stays under your terms, whether or not you buy a commercial license. The AGPL reaches only code that copies or changes Fledge, and your program does neither. Fledge's code in your app is its launcher, one RubyGems defaults file, on macOS and Linux the app's `bin/ruby`, and Fledge's Ruby code if your app ships Fledge as a gem. When you give the app to people, the AGPL requires three things of you for those files:
+
+- Offer their source. You'll find its address in each app's `notices/NOTICES.txt`.
+- Keep the app's `notices/` folder with the app.
+- If the app comes installed on a device you sell to consumers, give its owners what they need to install a changed launcher.
+
+For the rest of the runtime, you need only keep the notices. On Linux and Windows, a few libraries are under the LGPL, and each app carries their source in `notices/sources/`.
+
+If you change Fledge itself and give it to others, or offer a changed Fledge as a service, you must release your changes under the AGPL. A commercial license from Setdef frees you from these terms. You'll find the details in [What ships in your app](doc/licensing.md), which is not legal advice.
 
 Some parts of this program are copied from other sources under appropriate reuse licenses, and the copyright belongs to their respective owners. See the [REUSE Specification – Version 3.3](https://reuse.software/spec-3.3/) for details.
 

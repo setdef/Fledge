@@ -357,3 +357,9 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 [re: the orchestrator's reading of the AGPL-3.0's text, that its conditions reach only works that copy or adapt Fledge, so an app's own code that `fledge build` packages is not a covered work.]
 
 *Governs:* what Fledge's license must and must not reach. An app's own code stays under its developer's terms whether or not they buy a commercial license; a changed Fledge, or Fledge offered as a service, is released under copyleft unless its maker buys a commercial license. The license, the README's licensing section, and each app's notices must stay true to this. *Applied in:* README.md, Copyright & License; `doc/licensing.md`.
+
+> I don't want Fledge's AGPL copyleft to apply to developers' graphical application icons.
+
+[re: question E in `questions.md`, whether section 5(c) of the AGPL reaches the icon and version text that `fledge build` writes into each Windows program, a copy of Fledge's launcher that the build modifies; the orchestrator had noted that the version text is names, numbers, and short phrases, which copyright does not protect, so the icon is what is left.]
+
+*Governs:* an app's icon stays under its developer's terms wherever Fledge puts it, including inside a program built from Fledge's launcher; agents add a section 7 additional permission saying so, with its wording shown to the maintainer before it is committed. *Applied in:* the launcher's license notice, each runtime's NOTICES.txt, each Windows app's `notices/MODIFIED.txt`, README.md, Copyright & License, and ADR 004, section 10.

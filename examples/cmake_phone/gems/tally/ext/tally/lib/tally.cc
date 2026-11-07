@@ -4,7 +4,6 @@
  */
 #include "tally.h"
 
-#include <numeric>
 #include <string>
 #include <vector>
 
@@ -26,10 +25,15 @@
 #define TALLY_PROCESSOR "another processor"
 #endif
 
-extern "C" long long tally_sum(const long long *values, size_t count)
+extern "C" int tally_sum(const long long *values, size_t count, long long *total)
 {
     std::vector<long long> numbers(values, values + count);
-    return std::accumulate(numbers.begin(), numbers.end(), 0LL);
+    long long sum = 0;
+    for (long long number : numbers) {
+        if (__builtin_add_overflow(sum, number, &sum)) return 0;
+    }
+    *total = sum;
+    return 1;
 }
 
 /* TALLY_CMAKE_VERSION and TALLY_SYSTEM are what CMake configured

@@ -4,11 +4,15 @@
  */
 #include "total.h"
 
-#include <numeric>
 #include <vector>
 
-extern "C" long long adder_total(const long long *values, size_t count)
+extern "C" int adder_total(const long long *values, size_t count, long long *total)
 {
     std::vector<long long> numbers(values, values + count);
-    return std::accumulate(numbers.begin(), numbers.end(), 0LL);
+    long long sum = 0;
+    for (long long number : numbers) {
+        if (__builtin_add_overflow(sum, number, &sum)) return 0;
+    }
+    *total = sum;
+    return 1;
 }

@@ -11,8 +11,11 @@
 extern "C" {
 #endif
 
-/* The sum of count numbers, computed in C++. */
-long long adder_total(const long long *values, size_t count);
+/*
+ * The sum of count numbers, computed in C++, into total. Returns 1, or 0
+ * when the sum is too big for a long long.
+ */
+int adder_total(const long long *values, size_t count, long long *total);
 
 #ifdef __cplusplus
 }

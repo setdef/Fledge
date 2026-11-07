@@ -11,8 +11,11 @@
 extern "C" {
 #endif
 
-/* The sum of count numbers, computed in C++. */
-long long tally_sum(const long long *values, size_t count);
+/*
+ * The sum of count numbers, computed in C++, into total. Returns 1, or 0
+ * when the sum is too big for a long long.
+ */
+int tally_sum(const long long *values, size_t count, long long *total);
 
 /* Which CMake built the library, for which system, and for which processor. */
 const char *tally_built_for(void);

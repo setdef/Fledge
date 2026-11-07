@@ -9,17 +9,29 @@
 static VALUE
 add(VALUE self, VALUE left, VALUE right)
 {
-    return LL2NUM(NUM2LL(left) + NUM2LL(right));
+    long long sum;
+    if (__builtin_add_overflow(NUM2LL(left), NUM2LL(right), &sum)) rb_raise(rb_eRangeError, "the sum is too big for a long long");
+    return LL2NUM(sum);
 }
 
+/*
+ * The numbers go in a buffer of ALLOCV_N's, not ALLOCA_N's: the Array
+ * may be any size, and ALLOCV_N moves a large buffer from the C stack to
+ * the heap, where Ruby frees it even when NUM2LL raises.
+ */
 static VALUE
 total(VALUE self, VALUE numbers)
 {
     Check_Type(numbers, T_ARRAY);
     long count = RARRAY_LEN(numbers);
-    long long *values = ALLOCA_N(long long, count);
+    VALUE buffer;
+    long long *values = ALLOCV_N(long long, buffer, count);
     for (long index = 0; index < count; index++) values[index] = NUM2LL(rb_ary_entry(numbers, index));
-    return LL2NUM(adder_total(values, (size_t)count));
+    long long sum;
+    int fits = adder_total(values, (size_t)count, &sum);
+    ALLOCV_END(buffer);
+    if (!fits) rb_raise(rb_eRangeError, "the total is too big for a long long");
+    return LL2NUM(sum);
 }
 
 static VALUE

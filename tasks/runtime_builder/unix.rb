@@ -31,6 +31,14 @@ class RuntimeBuilder
       %w[unix.c scrub.c config.c bundler.c locale.c].map { |file| File.join(LAUNCHER, file) } << File.join(LAUNCHER, os_file)
     end
 
+    # Runs gcc's static analyzer over each of +sources+, warnings as
+    # errors, as clang's checks every other platform's launcher.
+    private def analyze_with_gcc(cc, sources)
+      sources.each do |source|
+        @builder.run(cc, "-fanalyzer", "-Werror", "-std=gnu11", *includes, "-c", source, "-o", File::NULL)
+      end
+    end
+
     private def includes
       headers = Dir.glob(File.join(@prefix, "include", "ruby-*")).first or raise "#{@prefix} has no Ruby headers"
       arch = Dir.glob(File.join(headers, "*")).find { |dir| File.directory?(dir) && File.basename(dir) != "ruby" }

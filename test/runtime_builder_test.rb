@@ -480,6 +480,43 @@ class RuntimeBuilderTest < Minitest::Test
     assert_equal "arm64-darwin runtimes build on arm64-darwin only; this is x86_64-linux", error.message
   end
 
+  # Stands in for the builder where a recipe compiles, keeping the
+  # commands it would run; readelf answers with no libraries needed.
+  class Commands
+    attr_reader :ran
+
+    def initialize
+      @ran = []
+    end
+
+    def run(*command, **)
+      @ran << command
+    end
+
+    def capture(*)
+      ""
+    end
+  end
+
+  # gcc's analyzer checks every musl launcher source, warnings as errors,
+  # as it does on glibc Linux, before anything links.
+  def test_a_musl_compile_analyzes_each_source_before_it_links
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, "prefix", "include", "ruby-4.0.0", "aarch64-linux-musl"))
+      commands = Commands.new
+      recipe = RuntimeBuilder::Musl.new(builder: commands, build_dir: dir)
+      recipe.instance_variable_set(:@prefix, File.join(dir, "prefix"))
+      sources = %w[unix.c scrub.c].map { |file| File.join(RuntimeBuilder::Recipe::LAUNCHER, file) }
+
+      recipe.compile(File.join(dir, "launcher"), sources, "$ORIGIN/lib")
+
+      analyzed = commands.ran.take(2)
+      assert_equal sources, analyzed.map { |command| command[-3] }
+      analyzed.each { |command| assert_equal %w[cc -fanalyzer -Werror -std=gnu11], command.take(4) }
+      assert_includes commands.ran[2], "-O2"
+    end
+  end
+
   # The Windows launcher cross-compiles, so Windows runtimes build where
   # llvm-mingw is pinned, and not on Windows itself.
   def test_a_windows_runtime_builds_on_the_unix_platforms_llvm_mingw_is_pinned_for

@@ -272,14 +272,32 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
-      # patchelf removes the RUNPATHs rv-ruby's build left in its
-      # extensions, pinned to Ubuntu 24.04's build; gcc, make, perl, and
-      # xz, which libxcrypt's build needs, are on the runner already.
-      - name: Install patchelf
+      # The compiler and linker that build the launcher, bin/ruby, and
+      # libxcrypt, pinned to the Ubuntu 24.04 builds of gcc 13 and
+      # binutils that built the runtimes before this pin, and patchelf,
+      # which removes the RUNPATHs rv-ruby's build left in its extensions.
+      # make, perl, and xz, which libxcrypt's build needs, are on the
+      # runner already. Ubuntu's archive lists only a package's newest
+      # update, so a pin that stops resolving fails the job, and is moved
+      # on purpose.
+      - name: Install the pinned compiler, linker, and patchelf
         if: runner.os == 'Linux' && !endsWith(matrix.platform, '-mingw-ucrt')
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq patchelf=0.18.0-1.1build1
+          sudo apt-get install -y -qq gcc-13=13.3.0-6ubuntu2~24.04.1 binutils=2.42-4ubuntu2.10 patchelf=0.18.0-1.1build1
+          echo "CC=gcc-13" >> "$GITHUB_ENV"
+          gcc-13 --version | head -n 1
+          ld --version | head -n 1
+
+      # The Xcode whose clang and linker build the launcher and bin/ruby,
+      # chosen by version as the iOS runtime's is, since Apple publishes
+      # no download to pin: 16.4, macos-15's default, whose macOS 15.5 SDK
+      # built the runtimes before this pin.
+      - name: Select the pinned Xcode
+        if: runner.os == 'macOS'
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app
+          xcodebuild -version
 
       # rv-ruby, RubyInstaller, llvm-mingw, and libxcrypt downloads, keyed
       # by the file that pins their SHA-256s, so a changed pin downloads

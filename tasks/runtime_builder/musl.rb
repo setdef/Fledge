@@ -35,6 +35,7 @@ class RuntimeBuilder
 
     def compile(output, sources, _rpath)
       cc = ENV.fetch("CC", "cc")
+      analyze_with_gcc(cc, sources)
       static = File.join(@prefix, "lib", "libruby-static.a")
       FileUtils.mkdir_p(File.dirname(output))
       @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *includes, *sources, "-rdynamic", "-static-libgcc",

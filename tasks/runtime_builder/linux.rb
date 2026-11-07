@@ -37,9 +37,7 @@ class RuntimeBuilder
     def compile(output, sources, rpath)
       xcrypt = (@xcrypt ||= build_libxcrypt)
       cc = ENV.fetch("CC", "cc")
-      sources.each do |source|
-        @builder.run(cc, "-fanalyzer", "-Werror", "-std=gnu11", *includes, "-c", source, "-o", File::NULL)
-      end
+      analyze_with_gcc(cc, sources)
       static = File.join(@prefix, "lib", "libruby-static.a")
       FileUtils.mkdir_p(File.dirname(output))
       @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *includes, *sources, "-rdynamic", "-static-libgcc",

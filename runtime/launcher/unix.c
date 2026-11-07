@@ -141,6 +141,12 @@ static size_t set_aside_count;
  * BUNDLE_GEMFILE, and the rest), keeping a copy of each. unsetenv
  * rearranges environ, so the scan starts over after each removal;
  * environments are small.
+ *
+ * An entry without "=" is no variable: execve(2) passes any string, but
+ * getenv and unsetenv look only for "NAME=", and Ruby's ENV skips such
+ * an entry (hash.c, env_each_pair, at Ruby 4.0.9), so nothing in Ruby
+ * reads it. unsetenv cannot remove it either, and the scan would find it
+ * again for ever, so it stays, as it would under ruby.
  */
 static void
 scrub_environment(void)
@@ -150,7 +156,8 @@ scrub_environment(void)
     do {
         removed = 0;
         for (char **entry = environ; entry != NULL && *entry != NULL; entry++) {
-            if (!fledge_is_scrubbed(*entry, 0)) continue;
+            const char *equals = strchr(*entry, '=');
+            if (equals == NULL || !fledge_is_scrubbed(*entry, 0)) continue;
 
             char **grown = realloc(set_aside, (set_aside_count + 1) * sizeof *set_aside);
             if (grown == NULL) fail("out of memory");
@@ -159,9 +166,7 @@ scrub_environment(void)
             if (set_aside[set_aside_count] == NULL) fail("out of memory");
             set_aside_count++;
 
-            const char *equals = strchr(*entry, '=');
-            size_t length = equals != NULL ? (size_t)(equals - *entry) : strlen(*entry);
-            char *name = strndup(*entry, length);
+            char *name = strndup(*entry, (size_t)(equals - *entry));
             if (name == NULL) fail("out of memory");
             int status = unsetenv(name);
             free(name);

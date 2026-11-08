@@ -262,6 +262,20 @@ package() {
 
 ## What has been tested
 
-No one has yet installed a Fledge app with `scoop`, `brew`, or `winget`. The Scoop manifest and the winget files above pass each manager's JSON schema, and CI runs apps through the links and junctions these managers make. Whether `brew install` changes the app's files, and how winget's and Microsoft's virus scans treat a Ruby runtime, are unknown.
+Fledge's CI takes the recipes above from this page, fills in a hash and a local server's address, and installs a build of `examples/hello` with each manager's own tool on a fresh runner. It runs the app by its command, with no Ruby on `PATH`, checks that its exit status comes through and no `ruby` command appeared, and uninstalls it. In run [42496254675](https://github.com/setdef/Fledge/actions/runs/42496254675), with v0.9.0's published runtimes:
+
+| Manager | Installed on | From |
+| --- | --- | --- |
+| Scoop | Windows x64 and ARM64 | a local manifest |
+| Homebrew 7.0.11 on Linux, 7.0.12 on macOS | macOS on Apple silicon, Linux x86-64 and ARM64 | a local tap |
+| winget 1.11.510 | Windows x64 | local manifests |
+| Chocolatey 2.7.5 | Windows x64 | a local `.nupkg` |
+| `makepkg` and `pacman` | Arch Linux x86-64, in a container | a `PKGBUILD` |
+
+`brew install` left the app runnable on all three platforms, and Scoop, Chocolatey, and Homebrew each put exactly one command on `PATH`. winget 1.11 warns about the 1.12.0 schema headers and installs anyway. GitHub's `windows-11-arm` runners have no `winget`, so winget on ARM64 is untried, and Chocolatey ran only on x64.
+
+Each of those installs read a local server, not a real release, and none went through a public repository. What the public routes do is unknown: Microsoft's review and virus scans of `winget-pkgs`, Chocolatey's moderation, a `brew tap` from GitHub and any trust step it asks for, and the AUR's account and rules.
+
+[`mise`](https://mise.jdx.dev/dev-tools/backends/github.html), `aqua`, and `ubi` read a real GitHub Release's assets, which CI has none of for an app, so they are untried. `ubi` without `--extract-all` takes one file, and an app cannot run from one file. Snap, Nix, MacPorts, and apt or dnf repositories for a console app are also untried: Fledge builds a `.deb` only for a windowed app.
 
 The official repositories of Homebrew (`homebrew/core`), Debian, Fedora, and Flathub accept only software they build from source, so a Fledge app goes to your own tap, bucket, or repository instead.

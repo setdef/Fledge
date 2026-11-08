@@ -36,7 +36,7 @@ recipe() {
     echo "::error::no block $2 under ## $1 in $doc" >&2
     exit 1
   }
-  for name in $(grep -o "HASH FROM [^ \"']*" "$out/$3" | sed 's/HASH FROM //' | sort -u); do
+  grep -o "HASH FROM [^ \"']*" "$out/$3" | sed 's/HASH FROM //' | sort -u | while read -r name; do
     hash=$zeros
     [ ! -f "$dist/$name" ] || hash=$(cut -d' ' -f1 "$dist/$name" | tr -d '\r')
     sed "s/HASH FROM $name/$hash/g" "$out/$3" >"$out/$3.tmp"

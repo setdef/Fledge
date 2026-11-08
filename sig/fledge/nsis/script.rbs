@@ -5,6 +5,10 @@ module Fledge
   class Nsis
     class Script
       CLASSES: String
+
+      PROG_ID_MAX: Integer
+
+      PROG_ID_HASH: Integer
       CHANGE_NOTIFY: String
       QUOTES: Array[String]
 
@@ -46,9 +50,11 @@ module Fledge
 
       private def open_command: () -> String
 
-      private def prog_id: (Integer index) -> String
+      private def prog_id: (String extension) -> String
 
-      private def extensions: (Config::FileAssociation association) -> Array[String]
+      private def folder_verb: () -> Array[String]
+
+      private def opened_extensions: () -> Array[[String, String]]
 
       private def classes: (String path) -> String
 

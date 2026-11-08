@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `fledge build --from` on an APP it cannot use (not a folder, not built by Fledge, built by another release or for another system) exits 1, a failed build, and no longer 2, a usage error.
+- The Windows setup program registers one ProgID for each extension in `file_associations`, named from the identifier and a hash of the extension, within Microsoft's limits on a ProgID; reordering or renaming entries no longer renames it. An installed app keeps its earlier `IDENTIFIER.N` entries until it is removed by hand.
 
 ## [0.9.0] - 2026-11-08
 

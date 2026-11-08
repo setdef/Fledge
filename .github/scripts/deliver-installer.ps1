@@ -27,7 +27,8 @@
 # registry keys.
 
 param(
-  [Parameter(Mandatory)] [string] $Installer
+  [Parameter(Mandatory)] [string] $Installer,
+  [string] $Identifier = 'com.setdef.fledge.HelloWindow'
 )
 
 Set-StrictMode -Version Latest
@@ -37,7 +38,7 @@ $ErrorActionPreference = 'Stop'
 $appName = 'Hello Window'
 # Hello Window-PLATFORM-setup.exe: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
 $platform = [IO.Path]::GetFileNameWithoutExtension($Installer) -replace "^$appName-", '' -replace '-setup$', ''
-$identifier = 'com.setdef.fledge.HelloWindow'
+$identifier = $Identifier
 
 function Fail([string] $message) {
   Write-Host "::error::Delivery (installer): $message"
@@ -264,11 +265,16 @@ CheckInstalled
 # does with nothing registered: the app writes its report to that path,
 # or into it when it is a folder.
 $classes = 'HKCU:\Software\Classes'
-$progId = "$identifier.2"
 $command = "`"$app`" `"%1`""
 $extension = Get-Item -LiteralPath "$classes\.hellowindow"
 Expect 'the default of .hellowindow' $extension.GetValue('') $null
-Expect ".hellowindow's OpenWithProgids" ((Get-Item -LiteralPath "$classes\.hellowindow\OpenWithProgids").GetValueNames() -join ',') $progId
+$progIds = @((Get-Item -LiteralPath "$classes\.hellowindow\OpenWithProgids").GetValueNames())
+Expect ".hellowindow's OpenWithProgids, how many" $progIds.Count 1
+$progId = $progIds[0]
+# Microsoft's ProgID key page: no more than 39 characters, no punctuation
+# but periods, and no digit first.
+if ($progId.Length -gt 39 -or $progId -cnotmatch '^[A-Za-z][A-Za-z0-9.]*$') { Fail "$progId breaks Microsoft's rules for a ProgID" }
+Write-Host "ok: $progId keeps Microsoft's rules for a ProgID"
 Expect "$progId's name" (Get-Item -LiteralPath "$classes\$progId").GetValue('') 'Hello Window report'
 Expect "$progId's command" (Get-Item -LiteralPath "$classes\$progId\shell\open\command").GetValue('') $command
 Expect "the folders' verb" (Get-Item -LiteralPath "$classes\Directory\shell\$identifier").GetValue('') 'Open with Hello Window'

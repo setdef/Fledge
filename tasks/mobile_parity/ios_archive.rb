@@ -105,6 +105,17 @@ class MobileParity
       info.key?("ITSAppUsesNonExemptEncryption") ? "declared #{info['ITSAppUsesNonExemptEncryption']}" : "not declared"
     end
 
+    # What to say of +info+'s version when it is 0.0.0, which is what an
+    # app with no <tt>version</tt> in fledge.yml has: Apple's reference
+    # for CFBundleVersion allows it ("0 specifies 0.0.0"), and no Apple
+    # page says App Store Connect refuses it, so it is noted, not failed.
+    # Nil for any other version.
+    def self.version_note(info)
+      return unless info["CFBundleShortVersionString"] == "0.0.0"
+
+      "its version is 0.0.0, since fledge.yml has no version; give it one before it goes in a store"
+    end
+
     # Whether the PNG at +path+ has an alpha channel: a color type of
     # gray with alpha (4) or RGBA (6), or a tRNS chunk, as the PNG
     # specification (W3C, section 11.3.2) gives transparency to the
@@ -177,6 +188,8 @@ class MobileParity
       @out.puts "Archived #{@app.name} unsigned: iOS #{info['MinimumOSVersion']}, arm64, version #{info['CFBundleShortVersionString']} " \
         "(#{info['CFBundleVersion']}), #{@icon ? 'a 1024 pixel icon without alpha' : 'no icon (App Store Connect needs one)'}, " \
         "export compliance #{IOSArchive.encryption(info)}"
+      note = IOSArchive.version_note(info)
+      @out.puts "#{@app.name}: #{note}" if note
       bundle
     end
 

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `fledge build --from` on an APP it cannot use (not a folder, not built by Fledge, built by another release or for another system) exits 1, a failed build, and no longer 2, a usage error.
+
 ## [0.9.0] - 2026-11-08
 
 ### Added

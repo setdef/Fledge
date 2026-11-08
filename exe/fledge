@@ -128,9 +128,9 @@
 #                        Bundler needs, and its fledge.yml no programs,
 #                        linux: system_libraries, ios, or android,
 #                        which change the runtime or the gems. An APP
-#                        another Fledge
-#                        release built, or built for another system,
-#                        is a usage error.
+#                        Fledge did not build, another Fledge release
+#                        built, or built for another system fails the
+#                        build.
 #     build ios          Write an Xcode project for the app, for iPhone
 #                        and iPad (iOS 15 and later, arm64), which
 #                        builds for devices and the Simulator, and print
@@ -477,7 +477,8 @@
 #
 # EXIT STATUS
 #     0                  Success
-#     1                  The build failed (a missing app, a computer
+#     1                  The build failed (a missing app, an APP that
+#                        --from cannot use, a computer
 #                        Fledge has no runtime for, or that does not
 #                        build the phone's project, a runtime that
 #                        would not download, a gem that cannot ship or

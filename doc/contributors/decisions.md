@@ -363,3 +363,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: an agent starting to copy RatatuiRuby's release tooling into Fledge, which the maintainer had never asked for; the second line answers whether Fledge's agents should ever do that second extraction.]
 
 *Governs:* Fledge's release tooling (`rake bump:*`, the release task's tags, `stable`) waits until RatatuiRuby's agents finish extracting `ratatui_ruby-devtools` and its non-RatatuiRuby parts are extracted again for Fledge, Lota, and the rest; nothing is ported or copied before then, and Fledge's agents do that second extraction only when the maintainer explicitly instructs it. *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; ADR 028, section 7.
+
+## 2026-11-08
+
+The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
+
+> I want this 1.0.0-ready pending only my manual testing (or the testing I need to prompt you to do) that is blocked on my developer accounts.
+
+[re: the orchestrator's offer to fix the stale statements in the handoff and to write the checklist for the one `gem push`, made while the repository's readiness for 1.0.0 was being weighed.]
+
+*Governs:* agents finish everything for 1.0.0 that the maintainer's developer accounts do not block; what those accounts block is tested by the maintainer, or by an agent he prompts to run the test. It names no test and no account, and it does not say which tests must pass before 1.0.0 is tagged. *Applied in:* `doc/contributors/handoff.md`; `doc/contributors/releasing-1.0.md`; `doc/contributors/questions.md`, question C; Plan 003.

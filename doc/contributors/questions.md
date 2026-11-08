@@ -16,7 +16,7 @@ You have not decided this, and nothing waits on it. It is here so that it stays 
 
 **Where they stand on 2026-11-06.**
 
-- *A real iPhone and iPad:* proven. Dot Popper ran on your iPad Pro and on an iPhone 13 mini, signed with a free Personal Team. App Review is not done: it needs your Apple Developer Program enrollment, US$99 a year.
+- *A real iPhone and iPad:* proven. Dot Popper ran on your iPad Pro and on an iPhone 13 mini, signed with an Apple Account's team (the profiles Xcode made last 365 days and list four devices, which Apple's page does not give a free Personal Team: is that team enrolled in the paid Developer Program?). App Review is not done: it needs your Apple Developer Program enrollment, US$99 a year.
 - *Android on arm64:* proven. You played Dot Popper on your OnePlus Nord N30 5G (Android 14), from an APK that Fledge v0.5.1 built.
 - *A real signing chain:* not proven. The Apple enrollment gives a Developer ID certificate, which Fledge signs with already, though it does not notarize yet. Windows needs a trusted code-signing certificate, bought separately.
 

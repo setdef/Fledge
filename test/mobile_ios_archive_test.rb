@@ -116,6 +116,15 @@ class MobileIOSArchiveTest < Minitest::Test
     assert_equal "declared true", MobileParity::IOSArchive.encryption(info.merge("ITSAppUsesNonExemptEncryption" => true))
   end
 
+  # Apple's CFBundleVersion page says "0 specifies 0.0.0", and no page of
+  # Apple's refuses it, so an app with no version is archived, with a
+  # note that a store listing wants one.
+  def test_a_version_of_zero_is_noted_not_refused
+    assert_empty problems(info.merge("CFBundleVersion" => "0.0.0", "CFBundleShortVersionString" => "0.0.0"))
+    assert_includes MobileParity::IOSArchive.version_note(info.merge("CFBundleShortVersionString" => "0.0.0")), "fledge.yml"
+    assert_nil MobileParity::IOSArchive.version_note(info)
+  end
+
   def png(color_type, extra: "")
     header = [1024, 1024, 8, color_type, 0, 0, 0].pack("NNCCCCC")
     chunk = -> (type, data) { [data.bytesize].pack("N") + type + data + [Zlib.crc32(type + data)].pack("N") }

@@ -4,7 +4,7 @@
 -->
 # Publishing a console app with a package manager
 
-People who live in a terminal install tools with a package manager. This guide shows how to publish a console app that [Fledge](../README.md) built through [Scoop](https://scoop.sh/), a [Homebrew](https://brew.sh/) tap, and [winget](https://learn.microsoft.com/windows/package-manager/). Each manager takes the archive `fledge build` writes, from a release you publish, such as a GitHub Release, and a manifest you write that names the archive's address and its SHA-256.
+People who live in a terminal install tools with a package manager. This guide shows how to publish a console app that [Fledge](../README.md) built through [Scoop](https://scoop.sh/), a [Homebrew](https://brew.sh/) tap, [winget](https://learn.microsoft.com/windows/package-manager/), [Chocolatey](https://chocolatey.org/), and the [AUR](https://aur.archlinux.org/). Each manager takes the archive `fledge build` writes, from a release you publish, such as a GitHub Release, and a text file you write that names the archive's address and its SHA-256.
 
 The examples publish an app named `Hello`, from a repository at `github.com/example/hello`, as the command `hello`. Replace each `HASH FROM FILE.sha256` with the hash in that file, which `fledge build` writes beside each archive.
 
@@ -109,7 +109,41 @@ end
 
 ## winget
 
-A winget package is three files, which you add to [`microsoft/winget-pkgs`](https://github.com/microsoft/winget-pkgs) by a pull request, under `manifests/e/Example/Hello/1.0.0/`. The version file names the package and its default locale, the locale file its publisher, name, license, and description, and the installer file the archives. winget unpacks the `.zip` and links the program into its folder on `PATH`, as `hello`. This is the installer file:
+A winget package is three files, which you add to [`microsoft/winget-pkgs`](https://github.com/microsoft/winget-pkgs) by a pull request, under `manifests/e/Example/Hello/1.0.0/`. The version file names the package and its default locale, the locale file its publisher, name, license, and description, and the installer file the archives. winget unpacks the `.zip` and links the program into its folder on `PATH`, as `hello`:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+# Example.Hello.yaml
+PackageIdentifier: Example.Hello
+PackageVersion: 1.0.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.12.0
+```
+<!-- SPDX-SnippetEnd -->
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+# Example.Hello.locale.en-US.yaml
+PackageIdentifier: Example.Hello
+PackageVersion: 1.0.0
+PackageLocale: en-US
+Publisher: Example
+PackageName: Hello
+License: MIT
+ShortDescription: Says hello
+ManifestType: defaultLocale
+ManifestVersion: 1.12.0
+```
+<!-- SPDX-SnippetEnd -->
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -141,6 +175,87 @@ ManifestVersion: 1.12.0
 <!-- SPDX-SnippetEnd -->
 
 An app built with Fledge 0.4.0 or earlier cannot run through winget's link. For one, add `ArchiveBinariesDependOnPath: true`, and winget puts the app's folder on `PATH` instead.
+
+## Chocolatey
+
+A Chocolatey package is a `.nuspec` file and an install script, which `choco pack` packs into a `.nupkg`. You publish it to the community repository with an account of yours, or to a feed of your own, and your users run `choco install hello`:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>hello</id>
+    <version>1.0.0</version>
+    <title>Hello</title>
+    <authors>Example</authors>
+    <projectUrl>https://github.com/example/hello</projectUrl>
+    <description>Says hello</description>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
+```
+<!-- SPDX-SnippetEnd -->
+
+Chocolatey puts a shim on `PATH` for every `.exe` in the package, and a Fledge app holds `ruby.exe` and more. An empty file named after a program, with `.ignore` added, stops its shim, so `tools\chocolateyInstall.ps1` writes one for every program but the app's:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```powershell
+$ErrorActionPreference = 'Stop'
+$toolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+
+Install-ChocolateyZipPackage -PackageName 'hello' -UnzipLocation $toolsDir `
+  -Url64bit 'https://github.com/example/hello/releases/download/v1.0.0/Hello-x64-mingw-ucrt.zip' `
+  -Checksum64 'HASH FROM Hello-x64-mingw-ucrt.zip.sha256' -ChecksumType64 'sha256'
+
+Get-ChildItem -LiteralPath $toolsDir -Recurse -Filter '*.exe' |
+  Where-Object { $_.Name -ne 'Hello.exe' } |
+  ForEach-Object { New-Item -ItemType File -Force -Path "$($_.FullName).ignore" | Out-Null }
+```
+<!-- SPDX-SnippetEnd -->
+
+Windows finds `Hello.exe` when your users type `hello`, whatever its case.
+
+## The AUR
+
+On Arch Linux, a `-bin` package in the [AUR](https://aur.archlinux.org/) names a prebuilt release. Put a `PKGBUILD` such as this in the package's git repository. The `options` line keeps `makepkg` from stripping or pruning the app, which stays whole in `/opt`, with only a link in `/usr/bin`:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```sh
+pkgname=hello-bin
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Says hello"
+arch=('x86_64' 'aarch64')
+url="https://github.com/example/hello"
+license=('MIT')
+options=('!strip' '!debug' '!staticlibs' '!purge')
+source_x86_64=("https://github.com/example/hello/releases/download/v1.0.0/Hello-x86_64-linux.tar.gz")
+source_aarch64=("https://github.com/example/hello/releases/download/v1.0.0/Hello-aarch64-linux.tar.gz")
+sha256sums_x86_64=('HASH FROM Hello-x86_64-linux.tar.gz.sha256')
+sha256sums_aarch64=('HASH FROM Hello-aarch64-linux.tar.gz.sha256')
+
+package() {
+  install -d "$pkgdir/opt/hello" "$pkgdir/usr/bin"
+  cp -a "$srcdir/Hello-$CARCH-linux/." "$pkgdir/opt/hello/"
+  ln -s /opt/hello/Hello "$pkgdir/usr/bin/hello"
+}
+```
+<!-- SPDX-SnippetEnd -->
 
 ## What has been tested
 

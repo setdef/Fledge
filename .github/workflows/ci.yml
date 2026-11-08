@@ -1085,6 +1085,27 @@ jobs:
             ruby -I lib exe/fledge build --sign "$FLEDGE_TEST_SIGN_IDENTITY" -o dist-signed "$app"
           done
 
+      # ADR 033: the same two apps signed through the developer's own
+      # command, here the Windows SDK's signtool with the same
+      # certificate, as a developer runs a cloud signer's tool: hello
+      # with --sign-command, typed in PowerShell, and windowed_app with
+      # FLEDGE_SIGN_COMMAND. Delivery verifies them as it verifies
+      # --sign's.
+      - name: Build hello and windowed_app, signed through a signing command, for ${{ matrix.platform }}
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: |
+          $signtool = ruby -I lib -r fledge -e 'print Fledge::Nsis.host_path(Fledge::WindowsSigning.signtool(ENV))'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $command = "`"$signtool`" sign /sha1 $env:FLEDGE_TEST_SIGN_IDENTITY /fd sha256 /tr http://timestamp.digicert.com /td sha256 %1"
+          ruby -I lib exe/fledge build --sign-command $command -o dist-signed/command examples/hello
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $env:FLEDGE_SIGN_COMMAND = $command
+          ruby -I lib exe/fledge build -o dist-signed/command examples/windowed_app
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: runner.os != 'Linux'
         with:
@@ -1094,6 +1115,8 @@ jobs:
             dist-signed/*-${{ matrix.platform }}.zip
             dist-signed/*-${{ matrix.platform }}.dmg
             dist-signed/*-${{ matrix.platform }}-setup.exe
+            dist-signed/command/*-${{ matrix.platform }}.zip
+            dist-signed/command/*-${{ matrix.platform }}-setup.exe
             dist-signed/certificate.*
           if-no-files-found: error
           retention-days: 14
@@ -1864,6 +1887,17 @@ jobs:
           -Windowed "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM.zip"
           -Installer "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM-setup.exe"
           -Certificate "$env:RUNNER_TEMP/signed/certificate.cer"
+
+      # ADR 033: the apps --sign-command signed with signtool, verified
+      # the same way, with the certificate the step above trusted.
+      - name: Verify, install, and run the apps signed through a signing command
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver-signed.ps1
+          -Hello "$env:RUNNER_TEMP/signed/command/Hello-$env:PLATFORM.zip"
+          -Windowed "$env:RUNNER_TEMP/signed/command/Hello Window-$env:PLATFORM.zip"
+          -Installer "$env:RUNNER_TEMP/signed/command/Hello Window-$env:PLATFORM-setup.exe"
+          -Certificate "$env:RUNNER_TEMP/signed/certificate.cer" -Trusted
 
   delivery-windows-aarch64-mingw-ucrt:
     name: Delivery (${{ matrix.platform }})

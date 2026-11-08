@@ -18,12 +18,17 @@
 # install the app silently, with the uninstaller it wrote signed too, and
 # uninstall it; and the signed program must still run. Nothing here may
 # need Ruby.
+#
+# The same apps signed through fledge build --sign-command (ADR 033) are
+# checked the same way after the first run has trusted the certificate,
+# with -Trusted, which skips the refusal the first run proved.
 
 param(
   [Parameter(Mandatory)] [string] $Hello,
   [Parameter(Mandatory)] [string] $Windowed,
   [Parameter(Mandatory)] [string] $Installer,
-  [Parameter(Mandatory)] [string] $Certificate
+  [Parameter(Mandatory)] [string] $Certificate,
+  [switch] $Trusted
 )
 
 Set-StrictMode -Version Latest
@@ -61,9 +66,11 @@ New-Item -ItemType Directory -Force $work | Out-Null
 foreach ($archive in @($Hello, $Windowed)) { Expand-Archive -LiteralPath $archive -DestinationPath $work }
 $program = Join-Path $work "Hello-$platform\Hello.exe"
 
-$before = Verify @($program)
-if ($before.Status -eq 0) { Fail "signtool trusted the test certificate before this computer did:`n$($before.Output)" }
-Write-Host 'ok: before this computer trusts the test certificate, signtool refuses the program'
+if (-not $Trusted) {
+  $before = Verify @($program)
+  if ($before.Status -eq 0) { Fail "signtool trusted the test certificate before this computer did:`n$($before.Output)" }
+  Write-Host 'ok: before this computer trusts the test certificate, signtool refuses the program'
+}
 
 Import-Certificate -FilePath $Certificate -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
 

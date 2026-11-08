@@ -247,7 +247,7 @@ module Fledge
       # Tauri's and electron-builder's installers call it, so Explorer
       # reads them at once.
       private def associations
-        folders = @identity.file_associations.any?(&:folders) ? folder_verb : []
+        folders = folder_verb
         lines = folders + opened_extensions.flat_map do |extension, name|
           progid = prog_id(extension)
           [
@@ -262,24 +262,37 @@ module Fledge
 
       # The verb every folder gets, "Open with NAME".
       private def folder_verb
+        return [] unless opens_folders?
+
         [
           "  WriteRegStr HKCU #{verb} \"\" #{quote("Open with #{@identity.name}")}",
           "  WriteRegStr HKCU #{classes("Directory\\shell\\#{@identity.identifier}\\command")} \"\" #{open_command}",
         ]
       end
 
+      # What the uninstaller removes of #folder_verb.
+      private def folder_verb_removal
+        return [] unless opens_folders?
+
+        ["  DeleteRegKey HKCU #{verb}"]
+      end
+
+      private def opens_folders?
+        @identity.file_associations.any?(&:folders)
+      end
+
       # Each extension the app opens, as Windows, which ignores case, knows
       # it, and the name of the first entry that lists it.
       private def opened_extensions
         pairs = @identity.file_associations.flat_map { |association| association.extensions.map { |extension| [extension.downcase, association.name] } }
-        pairs.uniq(&:first)
+        pairs.uniq(&:first).to_h { |extension, name| [extension.to_s, name.to_s] }
       end
 
       # What the uninstaller removes of #associations: the ProgIDs, their
       # values in each extension's +OpenWithProgids+, each extension's keys
       # when nothing else is left in them, and the folders' verb.
       private def dissociations
-        folders = @identity.file_associations.any?(&:folders) ? ["  DeleteRegKey HKCU #{verb}"] : []
+        folders = folder_verb_removal
         lines = folders + opened_extensions.flat_map do |extension, _name|
           progid = prog_id(extension)
           [

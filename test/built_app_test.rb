@@ -429,6 +429,41 @@ class BuiltAppTest < Minitest::Test
     File.rename("#{main}.away", main) if main && File.exist?("#{main}.away")
   end
 
+  # ADR 029, section 2: a missing fledge.cfg is EX_NOINPUT, as a missing
+  # entry is.
+  def test_a_missing_fledge_cfg_exits_with_ex_noinput
+    config = File.join(File.realpath(File.dirname(app)), "fledge.cfg")
+    File.rename(config, "#{config}.away")
+    out, err, status = run_app({}, app)
+
+    assert_equal ["", 66], [out, status.exitstatus]
+    assert_equal "#{@platform.executable('Hello')}: this app is incomplete: #{config.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
+      err.gsub("\r\n", "\n")
+  ensure
+    File.rename("#{config}.away", config) if config && File.exist?("#{config}.away")
+  end
+
+  # ADR 029, section 2: bin/ruby hands an app's own script to the app's
+  # launcher (ADR 026, section 3), and exits with EX_SOFTWARE when it
+  # finds the launcher and the system will not run it. The launcher here
+  # is executable, so bin/ruby finds it, and is no program, so execv fails.
+  def test_bin_ruby_exits_with_ex_software_when_it_cannot_run_the_launcher
+    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026, section 4)" if @platform.windows?
+    folder = File.realpath(File.dirname(app))
+    launcher = File.join(folder, @platform.executable("Hello"))
+    # Kept out of the folder, where any executable file is a launcher.
+    kept = "#{folder}.launcher"
+    File.rename(launcher, kept)
+    File.write(launcher, "not a program\n")
+    File.chmod(0o755, launcher)
+    out, err, status = run_app({}, File.join(folder, "bin", "ruby"), File.join(folder, "app", "main.rb"))
+
+    assert_equal ["", 70], [out, status.exitstatus], err
+    assert_includes err, "ruby: could not run #{launcher}: "
+  ensure
+    File.rename(kept, launcher) if kept && File.exist?(kept)
+  end
+
   # ADR 030: on Linux, a library the app's gems load from the
   # distribution that this computer lacks stops the app before Ruby
   # starts, with EX_OSFILE and the library's name, never a LoadError

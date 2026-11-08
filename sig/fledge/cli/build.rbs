@@ -16,6 +16,8 @@ module Fledge
 
       def call: (Array[String]) -> Integer
 
+      private def signing: (Options options, Platform host) -> Signing::signer?
+
       private def build: (App app, Platform platform, String out, Signing::signer? signing) -> void
 
       private def build_from: (App app, BuiltApp from, Platform platform, String out, Signing::signer? signing) -> void

@@ -110,6 +110,46 @@ class BuildCommandTest < Minitest::Test
     assert_includes err, "fledge build: --sign signs apps for macOS and Windows"
   end
 
+  # ADR 033: --sign-command names the developer's own signing command, and
+  # --notarize the keychain profile notarytool reads; neither is in
+  # fledge.yml, which other people build too.
+  def test_sign_command_and_notarize_take_their_values_in_either_form
+    options = Fledge::CLI::Build::Options.parse(["--sign-command", "signtool sign /a %1", "hello"])
+    assert_equal ["signtool sign /a %1", nil], [options.sign_command, options.notarize]
+    options = Fledge::CLI::Build::Options.parse(["--sign=Developer ID Application: Example", "--notarize=fledge", "hello"])
+    assert_equal ["Developer ID Application: Example", "fledge"], [options.sign, options.notarize]
+    assert_equal "a=b %1", Fledge::CLI::Build::Options.parse(["--sign-command=a=b %1"]).sign_command
+  end
+
+  # A command that signs runs only for Windows, and notarization is
+  # Apple's, for macOS; Apple notarizes no ad hoc signature.
+  def test_signing_a_build_for_the_wrong_system_fails
+    windows = Gem::Platform.new("x64-mingw-ucrt")
+    mac = Gem::Platform.new("arm64-darwin-25")
+    {
+      [%w[--sign-command sign.cmd hello], Gem::Platform.new("x86_64-linux")] => "fledge build: --sign-command signs Windows apps; " \
+        "on macOS sign with --sign IDENTITY, and a Linux app carries no signature for its system to check\n",
+      [%w[--sign-command sign.cmd hello], mac] => "fledge build: --sign-command signs Windows apps; " \
+        "on macOS sign with --sign IDENTITY, and a Linux app carries no signature for its system to check\n",
+      [%w[--sign 0123456789ABCDEF0123456789ABCDEF01234567 --notarize me hello], windows] =>
+        "fledge build: --notarize has Apple notarize a macOS app; build it on a Mac, or build this one without --notarize\n",
+      [%w[--sign - --notarize me hello], mac] => "fledge build: --notarize needs a Developer ID Application identity in --sign; " \
+        "Apple does not notarize an ad hoc signature (-)\n",
+    }.each do |(argv, host), message|
+      out, err, status = build(*argv, host:)
+
+      assert_equal [1, "", message], [status, out, err], argv.inspect
+    end
+  end
+
+  # FLEDGE_SIGN_COMMAND is a Windows build's default for --sign-command:
+  # a build for any other system, which it could not sign, ignores it.
+  def test_the_signing_command_in_the_environment_is_only_windows
+    out, err, status = build("hello", env: { "FLEDGE_RUNTIME_DIR" => @runtimes, "FLEDGE_SIGN_COMMAND" => "false %1" })
+
+    assert_equal [0, "dist/Hello-x86_64-linux.tar.gz\n", ""], [status, out, err]
+  end
+
   def test_the_path_defaults_to_the_current_directory
     out = StringIO.new
     status = Dir.chdir(@app) do
@@ -153,6 +193,13 @@ class BuildCommandTest < Minitest::Test
       %w[--sign] => "--sign needs an IDENTITY",
       %w[--sign=] => "--sign needs an IDENTITY",
       %w[ios --sign me] => "--sign signs desktop apps; sign a phone's app with Xcode or Gradle",
+      %w[ios --sign-command sign.cmd] => "--sign-command signs desktop apps; sign a phone's app with Xcode or Gradle",
+      %w[--sign-command] => "--sign-command needs a COMMAND",
+      %w[--sign-command=] => "--sign-command needs a COMMAND",
+      %w[--notarize] => "--notarize needs a PROFILE",
+      %w[--sign me --sign-command sign.cmd hello] => "--sign and --sign-command each sign the app; give one of them",
+      %w[--notarize me hello] => "--notarize needs --sign IDENTITY, the Developer ID Application identity Apple notarizes",
+      %w[--sign-command sign.cmd --notarize me hello] => "--notarize needs --sign IDENTITY, the Developer ID Application identity Apple notarizes",
     }.each do |argv, message|
       error = assert_raises(Fledge::UsageError, argv.inspect) { build(*argv) }
       assert_equal message, error.message, argv.inspect

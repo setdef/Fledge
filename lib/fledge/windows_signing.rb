@@ -73,11 +73,20 @@ module Fledge
       ["sign", "/sha1", @thumbprint, "/fd", "sha256", "/tr", TIMESTAMP, "/td", "sha256"]
     end
 
-    # Signs every PE file under +folder+.
+    # Signs every PE file under +folder+ (WindowsSigning.files).
     def sign_folder(folder)
-      files = Signing.code_files(folder, :pe).select { |path| EXTENSIONS.include?(File.extname(path).downcase) }
       tool = WindowsSigning.signtool(@env)
-      files.each_slice(50) { |slice| Command.run(tool, *arguments, *slice.map { |path| Nsis.host_path(path) }, install: INSTALL) }
+      WindowsSigning.files(folder).each_slice(50) do |slice|
+        Command.run(tool, *arguments, *slice.map { |path| Nsis.host_path(path) }, install: INSTALL)
+      end
+    end
+
+    # The PE files under +folder+ that a Windows app's signer signs, in
+    # the order of their paths: those whose first bytes say they are PE
+    # (Fledge::Signing.code_files) and whose extension is one of
+    # EXTENSIONS.
+    def self.files(folder)
+      Signing.code_files(folder, :pe).select { |path| EXTENSIONS.include?(File.extname(path).downcase) }
     end
 
     # The command makensis runs to sign the installer and the uninstaller

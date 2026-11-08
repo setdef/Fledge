@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge build --sign IDENTITY --notarize PROFILE` on macOS has Apple notarize the signed app with `xcrun notarytool` and the credentials the keychain profile PROFILE holds, then staples the ticket to the disk image and the bundle before the archive is packed; a console app's folder is notarized in a zip archive. A refused app fails the build with the issues Apple's log names. `--notarize` needs `--sign` with an identity that is not ad hoc.
+- `fledge build --sign-command COMMAND` on Windows signs every program and library, the uninstaller, and the setup program with your own command, run through `cmd.exe` once per file with the file's path in place of `%1` or after the command, for a certificate in a cloud or hardware service such as Azure Artifact Signing; `FLEDGE_SIGN_COMMAND` gives the command when the command line gives neither `--sign` nor `--sign-command`. A command that exits nonzero fails the build, naming the file. `--sign` and `--sign-command` together are a usage error.
+
 ## [0.8.0] - 2026-11-08
 
 ### Changed

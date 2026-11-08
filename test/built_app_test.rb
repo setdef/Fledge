@@ -8,6 +8,8 @@
 require_relative "test_helper"
 require_relative "../tasks/parity"
 require_relative "support/disk_images"
+require_relative "support/stand_in_notary"
+require "digest"
 require "json"
 require "open3"
 require "stringio"
@@ -684,6 +686,90 @@ class BuiltAppTest < Minitest::Test
     end
     verified, status = Open3.capture2e(signtool, "verify", "/pa", windowed.fetch(1))
     assert_predicate status, :success?, verified
+  end
+
+  # ADR 033: --notarize, against the stand-in notary service of
+  # test/support/stand_in_notary.rb, through fledge build as a developer
+  # runs it, with the identity FLEDGE_TEST_SIGN_IDENTITY names (CI's
+  # self-signed one; Apple notarizes no ad hoc signature, so "-" skips).
+  # The windowed app's disk image goes to Apple signed, holding the
+  # signed bundle; Apple's ticket is stapled to the image and then to the
+  # bundle, before the archive is packed, so the archive holds the
+  # stapled bundle, and the checksum is of the stapled image. The console
+  # app's folder goes in a zip archive, and nothing is stapled to it.
+  def test_a_notarized_build_staples_before_it_archives
+    skip "notarization is Apple's" unless @platform.os == "darwin"
+    identity = ENV["FLEDGE_TEST_SIGN_IDENTITY"].to_s
+    skip "FLEDGE_TEST_SIGN_IDENTITY names no certificate's identity, which --notarize needs (CI makes one)" if ["", "-"].include?(identity)
+
+    StandInNotary.with do |calls, submitted|
+      Dir.mktmpdir do |dir|
+        archive, image = notarized_build(dir, WINDOWED_APP, identity)
+        stage = File.join(dir, "stage")
+        image_name = File.basename(image)
+        assert_equal [
+          ["notarytool", "submit", image, "--keychain-profile", "fledge-test", "--wait", "--output-format", "json"],
+          *%w[staple validate].map { |action| ["stapler", action, image_name, "(in #{File.realpath(File.dirname(image))})"] },
+          *%w[staple validate].map { |action| ["stapler", action, "Hello Window.app", "(in #{File.realpath(archive.delete_suffix('.tar.gz'))})"] },
+        ], calls.call
+        sent = File.join(submitted, image_name)
+        verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--verbose=2", sent)
+        assert_predicate status, :success?, "the image went to Apple signed: #{verified}"
+        DiskImages.mounted(sent) do |mount|
+          verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", "--verbose=2", File.join(mount, "Hello Window.app"))
+          assert_predicate status, :success?, "the image held the signed bundle: #{verified}"
+        end
+        assert_equal Digest::SHA256.file(image).hexdigest, File.read("#{image}.sha256").split.first, "the checksum is of the stapled image"
+        Fledge::Archive.unpack(archive, into: stage)
+        bundle = File.join(stage, File.basename(archive, ".tar.gz"), "Hello Window.app")
+        assert_equal StandInNotary::TICKET, File.read(File.join(bundle, "Contents", "CodeResources")).chomp, "the archive holds the stapled bundle"
+        verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", "--verbose=2", bundle)
+        assert_predicate status, :success?, verified
+
+        before = calls.call.size
+        archive, = notarized_build(dir, HELLO, identity)
+        assert_equal [%w[notarytool submit]], calls.call.drop(before).map { |call| call.first(2) }
+        assert_path_exists File.join(submitted, "Hello-#{@platform}.zip")
+        assert_path_exists archive
+      end
+    end
+  end
+
+  # The contract test of --notarize (ADR 033), which only the maintainer
+  # runs: Apple's real notary service, with a Developer ID Application
+  # identity in FLEDGE_TEST_SIGN_IDENTITY and the keychain profile
+  # FLEDGE_TEST_NOTARY_PROFILE names (doc/contributors/signing-test.md).
+  # Gatekeeper must accept the disk image and the bundle as notarized,
+  # and stapler must validate the ticket on each.
+  def test_a_notarized_build_opens_with_gatekeepers_blessing
+    profile = ENV["FLEDGE_TEST_NOTARY_PROFILE"].to_s
+    skip "FLEDGE_TEST_NOTARY_PROFILE names no notarytool profile; the maintainer runs this with his own" if profile.empty?
+    skip "notarization is Apple's" unless @platform.os == "darwin"
+
+    Dir.mktmpdir do |dir|
+      archive, image = notarized_build(dir, WINDOWED_APP, ENV.fetch("FLEDGE_TEST_SIGN_IDENTITY"), profile:)
+      bundle = File.join(archive.delete_suffix(".tar.gz"), "Hello Window.app")
+      [image, bundle].each do |path|
+        validated, status = Open3.capture2e("xcrun", "stapler", "validate", path)
+        assert_predicate status, :success?, validated
+      end
+      assessed, status = Open3.capture2e("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "-vv", image)
+      assert_predicate status, :success?, assessed
+      assert_includes assessed, "source=Notarized Developer ID"
+      assessed, status = Open3.capture2e("spctl", "--assess", "--type", "execute", "-vv", bundle)
+      assert_predicate status, :success?, assessed
+      assert_includes assessed, "source=Notarized Developer ID"
+    end
+  end
+
+  # Builds +source+ signed with +identity+ and notarized with the keychain
+  # profile +profile+ into DIR/dist, and returns the paths fledge build
+  # printed.
+  def notarized_build(dir, source, identity, profile: "fledge-test")
+    out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
+      "--sign", identity, "--notarize", profile, "-o", File.join(dir, "dist"), source)
+    assert_predicate status, :success?, err
+    out.lines.map { |line| File.expand_path(line.chomp, Dir.pwd) }
   end
 
   # What codesign says of the signature of +path+, and its entitlements.

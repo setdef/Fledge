@@ -130,7 +130,7 @@ module Fledge
       when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:, signing: (signing if signing.is_a?(MacSigning)))
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
       when "deb" then deb(app, folder:, platform:, to:)
-      else Nsis.new(identity:, folder:, to:, signing: (signing if signing.is_a?(WindowsSigning)), license: license(app)).write(tools)
+      else Nsis.new(identity:, folder:, to:, signing: (signing.is_a?(MacSigning) ? nil : signing), license: license(app)).write(tools)
       end
     end
 

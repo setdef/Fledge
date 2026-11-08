@@ -11,10 +11,10 @@ module Fledge
     @identity: Identity
     @folder: String
     @to: String
-    @signing: WindowsSigning?
+    @signing: (WindowsSigning | SignCommand)?
     @license: String?
 
-    def initialize: (identity: Identity, folder: String, to: String, ?signing: WindowsSigning?, ?license: String?) -> void
+    def initialize: (identity: Identity, folder: String, to: String, ?signing: (WindowsSigning | SignCommand)?, ?license: String?) -> void
 
     def script: (icon: String?, ?license: String?) -> String
 
@@ -25,5 +25,7 @@ module Fledge
     def self.host_path: (String path) -> String
 
     private def compile: (String script_path, String nsis) -> void
+
+    private def signing_failure: (String output) -> String
   end
 end

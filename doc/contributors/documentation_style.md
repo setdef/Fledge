@@ -34,7 +34,7 @@ Every public class must begin with a **Context-Problem-Solution** narrative.
 **Bad (Generic/Descriptive):**
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2025 Kerrick Long
+  SPDX-FileCopyrightText: 2025 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
@@ -47,7 +47,7 @@ Every public class must begin with a **Context-Problem-Solution** narrative.
 **Good (Alexandrian/Zinsser/Plain Language):**
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2025 Kerrick Long
+  SPDX-FileCopyrightText: 2025 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
@@ -89,7 +89,7 @@ Every public class must begin with a **Context-Problem-Solution** narrative.
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2025 Kerrick Long
+  SPDX-FileCopyrightText: 2025 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby

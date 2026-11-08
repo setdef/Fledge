@@ -982,7 +982,7 @@ jobs:
       # from the LLVM the runner image ships.
       # SPDX-SnippetBegin
       # SPDX-License-Identifier: AGPL-3.0-or-later
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-SnippetComment: Adapted from Ferro's .github/workflows/ci.yml at
       #   ef2407b1f44cd3c23d98c5085042857761598b85 (setdef/Ferro), its step
       #   "Point bindgen at Ruby's MSYS2 headers".

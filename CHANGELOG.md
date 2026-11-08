@@ -12,9 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-08
+
 ### Changed
 
-- `fledge build --from` on an APP it cannot use (not a folder, not built by Fledge, built by another release or for another system) exits 1, a failed build, and no longer 2, a usage error.
+- Breaking: `fledge build --from` on an APP it cannot use (not a folder, not built by Fledge, built by another release or for another system) exits 1, a failed build, and no longer 2, a usage error.
 - The Windows setup program registers one ProgID for each extension in `file_associations`, named from the identifier and a hash of the extension, within Microsoft's limits on a ProgID; reordering or renaming entries no longer renames it. An installed app keeps its earlier `IDENTIFIER.N` entries until it is removed by hand.
 
 ## [0.9.0] - 2026-11-08
@@ -345,7 +347,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/setdef/Fledge/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/setdef/Fledge/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/setdef/Fledge/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/setdef/Fledge/compare/v0.6.0...v0.7.0

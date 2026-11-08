@@ -65,6 +65,13 @@ jobs:
       - name: Make a code signing identity
         run: .github/scripts/make-test-identity.sh "$RUNNER_TEMP/certificate.pem"
 
+      # test/release_checks_test.rb reads ci.yml, which this branch takes
+      # out so that it does not run; the tests read signing-ready's.
+      - name: Restore ci.yml for the tests that read it
+        run: |
+          git fetch --depth 1 origin signing-ready
+          git show FETCH_HEAD:.github/workflows/ci.yml > .github/workflows/ci.yml
+
       - name: Run the tests
         timeout-minutes: 15
         env:
@@ -110,6 +117,13 @@ jobs:
       - name: Make a code signing certificate
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/make-test-identity.ps1 -Certificate "$env:RUNNER_TEMP/certificate.cer"
+
+      # test/release_checks_test.rb reads ci.yml, which this branch takes
+      # out so that it does not run; the tests read signing-ready's.
+      - name: Restore ci.yml for the tests that read it
+        run: |
+          git fetch --depth 1 origin signing-ready
+          git show FETCH_HEAD:.github/workflows/ci.yml > .github/workflows/ci.yml
 
       - name: Run the tests
         timeout-minutes: 25

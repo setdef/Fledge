@@ -314,19 +314,19 @@ class LicenseAuditTest < Minitest::Test
     assert_empty notices.missing
   end
 
-  # On Windows each program is a modified copy of the launcher, which the
-  # runtime's notices say, and name notices/MODIFIED.txt, where
-  # fledge build says what it changed (ADR 004, section 10); elsewhere a
-  # program is only renamed, and they say nothing of it.
-  def test_windows_notices_say_fledge_build_modifies_the_launcher_and_where_it_says_how
+  # Every platform's notices name Fledge's own files and where their
+  # source is, and none names a notice of changed programs: Fledge's
+  # files are MIT, which asks for none (decisions, 2026-11-07).
+  def test_every_platforms_notices_name_fledges_files_and_no_notice_of_changes
     audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
     report = audit_run.call
     windows = LicenseAudit::Notices.new(report.with(platform: "x64-mingw-ucrt"), version: "0.0.0", map: audit_run.map).text
     linux = LicenseAudit::Notices.new(report, version: "0.0.0", map: audit_run.map).text
 
-    assert_includes windows, "which makes each a modified version of it. notices/MODIFIED.txt,\nbeside this file, names each program so changed"
-    refute_includes linux, "MODIFIED.txt"
-    assert_includes linux, "rubygems/defaults/operating_system.rb\n\nTheir source is Fledge's"
+    [windows, linux].each do |text|
+      assert_includes text, "rubygems/defaults/operating_system.rb\n\nTheir source is Fledge's"
+      refute_includes text, "MODIFIED.txt"
+    end
   end
 
   # Each Linux runtime's bundle holds libxcrypt's source, and, since

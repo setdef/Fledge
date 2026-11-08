@@ -133,7 +133,7 @@ class LicenseAudit
           app's user runs is the first, renamed for the app:
 
           #{files}
-          #{modified}
+
           Their source is Fledge's, at the tag of the version that built this
           app:
 
@@ -141,23 +141,6 @@ class LicenseAudit
 
         OURS
       ]
-    end
-
-    # On Windows, fledge build writes each program's version information
-    # and icon into its copy of the launcher, which makes it a modified
-    # version, and says so in notices/MODIFIED.txt (AGPL-3.0, section
-    # 5(a); Fledge::ModificationNotice).
-    private def modified
-      return "" unless @report.platform.include?("mingw")
-
-      <<~MODIFIED
-
-        On Windows, fledge build also writes the app's version information
-        and icon into each copy of the launcher it makes the app's program,
-        which makes each a modified version of it. notices/MODIFIED.txt,
-        beside this file, names each program so changed, what was written
-        into it, and the date of the build.
-      MODIFIED
     end
 
     private def lgpl(present)

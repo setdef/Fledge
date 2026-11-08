@@ -17,7 +17,6 @@ require_relative "mac_bundle"
 require_relative "platform"
 require_relative "signing"
 require_relative "version"
-require_relative "modification_notice"
 require_relative "windows_resources"
 require_relative "assembly/build_tools"
 require_relative "assembly/runtime_folder"
@@ -398,16 +397,14 @@ module Fledge
 
     # Makes a copy of +runtime+'s launcher each of the app's programs,
     # last of all, and signs what the build signs (ADR 016): the bundle,
-    # which seals the rest, or the app's folder. On Windows it writes,
-    # before signing, the notice of the programs it changed.
+    # which seals the rest, or the app's folder.
     #
     # A bundle's program is the windowed one (App#main); a console program
     # beside it lives in the bundle's +MacOS+ folder, as a bundle's helper
     # tools do, linked from the app's folder (ADR 024).
     private def finish(bundle, runtime, tools)
       unless bundle
-        programs = @app.programs.to_h { |program| [File.basename(place_launcher(runtime, program, tools)), program.identity] }
-        modification_notice(programs) if @platform.windows?
+        @app.programs.each { |program| place_launcher(runtime, program, tools) }
         @signing&.sign_folder(folder)
         return
       end
@@ -421,14 +418,6 @@ module Fledge
       helpers.each do |helper|
         File.symlink(File.join(File.basename(bundle.path), "Contents", "MacOS", File.basename(helper)), File.join(folder, File.basename(helper)))
       end
-    end
-
-    # Writes the notice of the Windows +programs+ the build changed, by
-    # file name with the identity rcedit wrote into each, which AGPL-3.0,
-    # section 5(a), asks of a modified launcher (Fledge::ModificationNotice).
-    private def modification_notice(programs)
-      notice = ModificationNotice.new(programs:, date: ModificationNotice.date(ENV))
-      add(folder, Entry.file(ModificationNotice::PATH, notice.text(File.join(folder, "app"))))
     end
 
     # The signer of a macOS bundle, when the build signs one.

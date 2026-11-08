@@ -143,21 +143,6 @@ foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_d
 }
 Write-Host "ok: the app carries its notices and SBOM"
 
-# Each program is a copy of Fledge's AGPL launcher that rcedit wrote the
-# app's version information into, so the app says that fledge build
-# changed it, and when (AGPL-3.0, section 5(a); ADR 004, section 10).
-$modified = Join-Path $root 'notices\MODIFIED.txt'
-if (-not (Test-Path -LiteralPath $modified -PathType Leaf)) { Fail "the app has no notices\MODIFIED.txt" }
-$said = Get-Content -LiteralPath $modified -Raw
-if ($said -cnotmatch 'changed on \d{4}-\d{2}-\d{2}:') {
-  Fail "notices\MODIFIED.txt gives no date of the change"
-}
-if (-not $said.Contains("`n  $appName.exe`n    FileVersion and ProductVersion: $($info.ProductVersion)")) {
-  Fail "notices\MODIFIED.txt does not name $appName.exe and the version written into it"
-}
-if (-not $text.Contains('notices/MODIFIED.txt')) { Fail "notices\NOTICES.txt does not name notices/MODIFIED.txt" }
-Write-Host "ok: the app says fledge build changed $appName.exe, and when"
-
 # The source of each component whose license asks for it travels in the
 # app, in notices\sources\ID\ (ADR 004, section 5): the archive whose
 # SHA-256 its BUILD.txt names, and NOTICES.txt names the folder.

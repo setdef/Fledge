@@ -57,7 +57,6 @@ module Fledge
 
     private def finish: (MacBundle? bundle, _RuntimeTree runtime, String? tools) -> void
 
-    private def modification_notice: (Hash[String, Identity] programs) -> void
 
     private def mac_signing: () -> MacSigning?
 

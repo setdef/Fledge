@@ -35,9 +35,9 @@ class LicenseAudit
       where = (report.owned(component) + report.embedded_in(component)).first.to_s
       return check_source(component, report, where) if component.kind == "source"
 
-      category = LicenseAudit.category(component.license, first_party: component.first_party)
+      category = LicenseAudit.category(component.license)
       case category
-      when :notice_only, :first_party then nil
+      when :notice_only then nil
       when :file_level
         return if component.kind == "files"
 

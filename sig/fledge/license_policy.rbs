@@ -3,7 +3,7 @@
 
 module Fledge
   module LicensePolicy
-    type category = :notice_only | :first_party | :file_level | :source_offer | :shared_library | :forbidden
+    type category = :notice_only | :file_level | :source_offer | :shared_library | :forbidden
 
     NOTICE_ONLY: Array[String]
     FILE_LEVEL: Array[String]
@@ -13,7 +13,7 @@ module Fledge
     ALIASES: Hash[String, String]
     CATEGORIES: Array[category]
 
-    def self.category: (String expression, ?first_party: bool) -> category
+    def self.category: (String expression) -> category
 
     def self.notice_only?: (String expression) -> bool
 
@@ -21,9 +21,8 @@ module Fledge
 
     class Expression
       @tokens: Array[String]
-      @first_party: bool
 
-      def initialize: (String text, ?first_party: bool) -> void
+      def initialize: (String text) -> void
 
       def category: () -> category
 

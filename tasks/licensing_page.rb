@@ -61,7 +61,7 @@ class LicensingPage
   class Summary < Data.define(:components, :gems, :lgpl, :sources); end
 
   # A component, as the page shows it.
-  class Row < Data.define(:name, :version, :license, :ships, :files, :embedded); end
+  class Row < Data.define(:name, :version, :license, :ships, :files, :embedded, :first_party); end
 
   def initialize(runtimes, version: Fledge::VERSION)
     @runtimes = runtimes
@@ -102,7 +102,7 @@ class LicensingPage
     components = present.reject(&:gem_dir).sort_by { |component| [component.first_party ? 0 : 1, component.name.downcase] }
     row = lambda do |component|
       Row.new(name: component.name, version: component.version, license: component.license, ships: component.ships,
-        files: report.owned(component), embedded: report.embedded_in(component))
+        files: report.owned(component), embedded: report.embedded_in(component), first_party: component.first_party)
     end
     gems = present.select(&:gem_dir).group_by(&:license).transform_values { |list| list.map { |gem| gem.name[/\A\S+/] }.sort }
     sources, libraries = components.partition { |component| component.kind == "source" }
@@ -130,7 +130,7 @@ class LicensingPage
   end
 
   private def everywhere(reports)
-    ours = reports.fetch("x86_64-linux").components.find { |row| row.license == "AGPL-3.0-or-later" } or raise "no runtime holds Fledge's own files"
+    ours = reports.fetch("x86_64-linux").components.find(&:first_party) or raise "no runtime holds Fledge's own files"
     <<~EVERYWHERE
       ## On every platform
 
@@ -142,7 +142,7 @@ class LicensingPage
 
       **A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `tools/`: a Windows app's setup program is made of NSIS's stub and plug-ins (the zlib license, which asks nothing of a binary) and compressed with NSIS's LZMA module, which is under the Common Public License 1.0: its section 3 asks that a program distributed in object code say that its source is available and how to get it, and Fledge does both, putting NSIS's source in the app's `notices/sources/nsis/`, which the setup program installs with the app, publishing it in `fledge-runtime-VERSION-x64-mingw-ucrt-lgpl-sources.tar.gz` beside each Windows runtime, and saying so in the app's `notices/NOTICES.txt`; and a Linux app's AppImage begins with AppImage's runtime (MIT), as AppImage releases it, with libfuse (LGPL-2.1, as [below](#libraries-under-the-lgpl) says), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib, mimalloc, and musl (MIT) linked in. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/`, which it holds: `NOTICES.txt`, and on Linux and Windows the sources in `notices/sources/`.
 
-      **Fledge's own files** in an app are #{own_files(ours)}. Fledge's code in them is Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
+      **Fledge's own files** in an app are #{own_files(ours)}. Fledge's code in them is Fledge's work, copyright 2026 setdef, under the MIT License, which asks only that its copyright notice and permission notice be included in all copies; `notices/NOTICES.txt` names those files and carries Fledge's license text, so keeping `notices/` meets it.
     EVERYWHERE
   end
 
@@ -163,14 +163,14 @@ class LicensingPage
   # copy of the runtime but an app the developer builds from the project
   # fledge build writes, around the runtime's library.
   private def phones(reports)
-    ours = reports.fetch("ios").components.find { |row| row.license == "AGPL-3.0-or-later" && row.ships.include?("libfledgeruby") } or
+    ours = reports.fetch("ios").components.find { |row| row.first_party && row.ships.include?("libfledgeruby") } or
       raise "no mobile runtime holds Fledge's embedding API"
     <<~PHONES
       ## On iOS and Android
 
-      For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and #{ours.name.sub(/,.*/, '')} are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so the notices and Fledge's own code are all they ask of you.
+      For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and #{ours.name.sub(/,.*/, '')} are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so keeping the notices is all they ask of you.
 
-      **Fledge's own code** in a phone's app is #{ours.name.sub(/,.*/, '')}, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the GNU Affero General Public License, version 3 or later, as the desktop launcher is, with the same terms above. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
+      **Fledge's own code** in a phone's app is #{ours.name.sub(/,.*/, '')}, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the MIT License, as the desktop launcher is, and ask only that you keep the notices. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
     PHONES
   end
 
@@ -192,7 +192,7 @@ class LicensingPage
       "| #{cell(row.name)} | #{cell(row.version)} | `#{cell(row.license)}` | #{cell(row.ships)} |"
     end
     gems = summary.gems.map { |license, names| "- `#{cell(license)}`: #{names.join(', ')}" }
-    obligations = summary.lgpl.empty? ? "Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform." : obligation(platform, summary)
+    obligations = summary.lgpl.empty? ? "Nothing beyond keeping the notices: no LGPL library ships on this platform." : obligation(platform, summary)
     <<~SECTION
       ## #{TITLES.fetch(platform)}
 
@@ -213,7 +213,7 @@ class LicensingPage
       where = row.files.empty? ? "linked into AppImage's runtime" : row.files.map { |file| "`#{file}`" }.join(", ")
       "#{row.name.sub(/,.*/, '')} (#{where})"
     end
-    "keep the notices and Fledge's own files as above, and meet the LGPL for #{libraries.join(' and for ')}, as " \
+    "keep the notices, and meet the LGPL for #{libraries.join(' and for ')}, as " \
       "[below](#libraries-under-the-lgpl) says. The source is #{source_place(platform, summary)}."
   end
 

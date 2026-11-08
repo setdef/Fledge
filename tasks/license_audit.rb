@@ -123,10 +123,10 @@ class LicenseAudit
   end
 
   # The license policy's verdict on an SPDX license expression
-  # (Fledge::LicensePolicy): one of :notice_only, :first_party,
-  # :file_level, :shared_library, or :forbidden.
-  def self.category(expression, first_party: false)
-    Fledge::LicensePolicy.category(expression, first_party:)
+  # (Fledge::LicensePolicy): one of :notice_only, :file_level,
+  # :source_offer, :shared_library, or :forbidden.
+  def self.category(expression)
+    Fledge::LicensePolicy.category(expression)
   end
 
   # Where each of Ruby's own trees in the runtime starts: ruby/ in a

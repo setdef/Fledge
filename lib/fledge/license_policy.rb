@@ -10,14 +10,15 @@ module Fledge
   #
   # Everything Fledge itself copies into an app, its runtime, the app's
   # developer gives to whoever receives the app. The maintainer's rule is
-  # that a developer who buys a commercial license must be able to ship an
-  # app with no copyleft obligation beyond keeping notices (decisions 1,
-  # 8, and 24 in <tt>doc/contributors/decisions.md</tt>): permissive
-  # licenses ship freely, the LGPL ships only as a separate shared library
-  # whose source Fledge publishes, and the GPL and the AGPL do not ship at
-  # all, except Fledge's own files. The rule is for what Fledge puts in an
-  # app, not for the app's own gems, whose licenses are the developer's
-  # choice and responsibility (2026-10-28; ADR 007).
+  # that a developer must be able to ship an app with no copyleft
+  # obligation beyond keeping notices (decisions 8 and 24 in
+  # <tt>doc/contributors/decisions.md</tt>): permissive licenses ship
+  # freely, Fledge's own files among them, which are MIT (decisions,
+  # 2026-11-07); the LGPL ships only as a separate shared library whose
+  # source Fledge publishes; and the GPL and the AGPL do not ship at all.
+  # The rule is for what Fledge puts in an app, not for the app's own
+  # gems, whose licenses are the developer's choice and responsibility
+  # (2026-10-28; ADR 007).
   #
   # This module holds that policy and judges an SPDX license expression
   # against it, as SPDX 2.3, annex D, reads one: +OR+ takes the least
@@ -110,13 +111,11 @@ module Fledge
     ALIASES = { "BSDL" => "BSD-2-Clause", "PSFL" => "PSF-2.0" }.freeze
 
     # The verdicts, from least restrictive to most.
-    CATEGORIES = %i[notice_only first_party file_level source_offer shared_library forbidden].freeze
+    CATEGORIES = %i[notice_only file_level source_offer shared_library forbidden].freeze
 
     # The verdict on the SPDX expression +expression+: one of CATEGORIES.
-    # With +first_party+, AGPL-3.0-or-later is Fledge's own and
-    # <tt>:first_party</tt>; otherwise it is forbidden like any copyleft
-    # license not listed above. An empty or malformed expression, an
-    # unknown license, and NOASSERTION are forbidden.
+    # A copyleft license not listed above is forbidden, and so are an
+    # empty or malformed expression, an unknown license, and NOASSERTION.
     #
     # === Example
     #
@@ -130,8 +129,8 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.category(expression, first_party: false)
-      Expression.new(expression, first_party:).category
+    def self.category(expression)
+      Expression.new(expression).category
     end
 
     # Whether +expression+ asks nothing beyond keeping notices.
@@ -199,11 +198,9 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     class Expression
-      # Parses +text+. With +first_party+, AGPL-3.0-or-later is
-      # <tt>:first_party</tt>.
-      def initialize(text, first_party: false)
+      # Parses +text+.
+      def initialize(text)
         @tokens = text.to_s.scan(/\(|\)|[A-Za-z0-9.+:-]+/)
-        @first_party = first_party
       end
 
       # The verdict: one of LicensePolicy::CATEGORIES.
@@ -269,7 +266,6 @@ module Fledge
       private def classify(id)
         id = ALIASES.fetch(id, id)
         return :notice_only if NOTICE_ONLY.include?(id)
-        return :first_party if @first_party && id == "AGPL-3.0-or-later"
         return :file_level if FILE_LEVEL.include?(id)
         return :source_offer if SOURCE_OFFER.include?(id)
         return :shared_library if SHARED_LIBRARY.include?(id)

@@ -37,7 +37,7 @@ class LicenseAudit
     end
 
     private def check_text(label, names, owner, text)
-      return if owner && LicenseAudit.category(owner.license, first_party: owner.first_party) != :notice_only
+      return if owner && LicenseAudit.category(owner.license) != :notice_only
       return if text.byteslice(0, 8192).to_s.include?("\0")
       return unless COPYLEFT_BYTES.match?(text)
       return if names.any? { |name| reviewed.any? { |pattern| @audit.matches?(pattern, name) } }

@@ -34,7 +34,6 @@ class LicensePolicyTest < Minitest::Test
     }
 
     expected.each { |expression, category| assert_equal category, Fledge::LicensePolicy.category(expression), expression }
-    assert_equal :first_party, Fledge::LicensePolicy.category("AGPL-3.0-or-later", first_party: true)
   end
 
   def test_an_apps_gems_must_be_notice_only

@@ -23,14 +23,14 @@
 #     lib/fledge/license_policy.rb holds (Fledge::LicensePolicy), since
 #     fledge build judges an app's own gems by it too (ADR 005).
 #
-# The maintainer's rule (decisions 1, 8, and 24, and the replies of
+# The maintainer's rule (decisions 8 and 24, and the replies of
 # 2026-10-26 in doc/contributors/decisions.md; AGENTS.md, Licensing): an
 # app's developer must owe nothing beyond notices for what Fledge copies
-# into the app, except for Fledge's own AGPL-3.0-or-later files, which
-# setdef will likely license commercially too, and LGPL libraries, which
-# may ship only as separate shared libraries the app's recipient can
-# replace, with their source (never the app's) in each runtime's
-# notices/sources/, so in every app, and published beside each runtime.
+# into the app, Fledge's own MIT files among them (decisions,
+# 2026-11-07), except for LGPL libraries, which may ship only as
+# separate shared libraries the app's recipient can replace, with their
+# source (never the app's) in each runtime's notices/sources/, so in
+# every app, and published beside each runtime.
 # RuntimeBuilder runs the audit on every runtime it builds and
 # refuses to archive one that fails (ADR 004).
 #
@@ -111,11 +111,14 @@ signatures:
 #   embedded:  files the component is compiled into, each with a string
 #              that proves its version is still the one named here
 #   source:    the runtime/sources.yml pin of its source, for LGPL code
+#   first_party: Fledge's own work, which NOTICES.txt and doc/licensing.md
+#              name as Fledge's, and into which no LGPL library may be
+#              linked
 components:
   - id: fledge
     name: Fledge launcher and RubyGems defaults
     version: "{fledge_version}"
-    license: AGPL-3.0-or-later
+    license: MIT
     first_party: true
     kind: program
     supplier: "Organization: setdef"
@@ -143,7 +146,7 @@ components:
   - id: fledge
     name: Fledge's RubyGems defaults
     version: "{fledge_version}"
-    license: AGPL-3.0-or-later
+    license: MIT
     first_party: true
     kind: files
     supplier: "Organization: setdef"
@@ -162,7 +165,7 @@ components:
   - id: fledge-embedding
     name: Fledge's embedding API, and the library and packages it is built into
     version: "{fledge_version}"
-    license: AGPL-3.0-or-later
+    license: MIT
     first_party: true
     kind: program
     supplier: "Organization: setdef"

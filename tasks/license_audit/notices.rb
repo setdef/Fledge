@@ -116,9 +116,9 @@ class LicenseAudit
       Dir.children(directory).grep(LICENSE_FILE).sort.map { |file| "#{component.gem_dir}/#{file}" }
     end
 
-    # Fledge's own files, such as the launcher, are AGPL-3.0-or-later,
-    # whose section 6 asks whoever conveys them as object code to offer
-    # their Corresponding Source: this says where it is.
+    # Fledge's own files, such as the launcher, are MIT, which asks that
+    # its copyright notice and permission notice go with every copy: this
+    # names the files, and the LICENSE TEXTS below carry Fledge's LICENSE.
     private def first_party(present)
       ours = present.select(&:first_party)
       return [] if ours.empty?
@@ -128,14 +128,14 @@ class LicenseAudit
         "FLEDGE'S OWN FILES",
         "",
         <<~OURS,
-          These files are Fledge's own work, under the GNU Affero General Public
-          License, version 3 or later (its text is below). The program the app's
-          user runs is the first, renamed for the app:
+          These files are Fledge's own work, copyright 2026 setdef, under the
+          MIT License (its text is below, as fledge/LICENSE). The program the
+          app's user runs is the first, renamed for the app:
 
           #{files}
           #{modified}
-          Their complete source is Fledge's, at the tag of the version that
-          built this app:
+          Their source is Fledge's, at the tag of the version that built this
+          app:
 
             https://github.com/setdef/Fledge/tree/v#{@version}
 

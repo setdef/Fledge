@@ -243,8 +243,8 @@ class LicenseAuditTest < Minitest::Test
   # Fledge::LicensePolicy (test/license_policy_test.rb).
   def test_the_audit_judges_licenses_by_fledges_policy
     assert_equal :notice_only, LicenseAudit.category("Ruby OR BSD-2-Clause")
+    assert_equal :notice_only, LicenseAudit.category("MIT")
     assert_equal :forbidden, LicenseAudit.category("AGPL-3.0-or-later")
-    assert_equal :first_party, LicenseAudit.category("AGPL-3.0-or-later", first_party: true)
   end
 
   def test_reads_the_libraries_elf_pe_and_mach_o_files_need
@@ -306,6 +306,9 @@ class LicenseAuditTest < Minitest::Test
     assert_includes text, "https://github.com/setdef/Fledge/releases/download/v0.0.0/fledge-runtime-0.0.0-x86_64-linux-lgpl-sources.tar.gz"
     assert_includes text, "=== libxcrypt/COPYING.LIB"
     assert_includes text, "FLEDGE'S OWN FILES"
+    assert_includes text, "These files are Fledge's own work, copyright 2026 setdef, under the\nMIT License"
+    assert_includes text, "=== fledge/LICENSE\n\nMIT License\n\nCopyright (c) 2026 setdef\n\nPermission is hereby granted"
+    refute_includes text, "AGPL"
     assert_includes text, "https://github.com/setdef/Fledge/tree/v0.0.0"
     assert_includes text, "License text: lib/ruby/gems/4.0.0/gems/csv-3.3.5/LICENSE.txt"
     assert_empty notices.missing
@@ -323,7 +326,7 @@ class LicenseAuditTest < Minitest::Test
 
     assert_includes windows, "which makes each a modified version of it. notices/MODIFIED.txt,\nbeside this file, names each program so changed"
     refute_includes linux, "MODIFIED.txt"
-    assert_includes linux, "rubygems/defaults/operating_system.rb\n\nTheir complete source is Fledge's"
+    assert_includes linux, "rubygems/defaults/operating_system.rb\n\nTheir source is Fledge's"
   end
 
   # Each Linux runtime's bundle holds libxcrypt's source, and, since

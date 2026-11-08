@@ -413,7 +413,8 @@
 #                        A windowed app's .deb for x86_64-linux and
 #                        aarch64-linux, when fledge.yml lists deb:
 #                        apt install ./FILE puts the app in
-#                        /usr/lib/IDENTIFIER, with its desktop entry
+#                        /usr/lib/PACKAGE (the identifier in lower
+#                        case), with its desktop entry
 #                        and icons where desktops look, and its
 #                        license_file and deb_changelog in
 #                        /usr/share/doc/PACKAGE, and needs

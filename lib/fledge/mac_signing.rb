@@ -25,7 +25,10 @@ module Fledge
   # after that. The ad hoc identity, "-", signs the same way but for the
   # timestamp, which needs a certificate to stamp: Gatekeeper trusts it
   # no more than the ad hoc signature Fledge gives every bundle, but it
-  # proves the rest on any Mac.
+  # proves the rest on any Mac. When Apple's timestamp server does not
+  # answer, codesign is run again after a wait, a few times, and any
+  # other failure, such as an identity the keychain lacks, fails at once
+  # (ADR 016, section 6).
   #
   # Use it through Fledge::Signing, which <tt>fledge build --sign</tt> calls.
   #
@@ -52,13 +55,27 @@ module Fledge
     # Where codesign comes from.
     INSTALL = "It comes with macOS, in /usr/bin."
 
+    # What codesign prints when Apple's timestamp server did not answer
+    # or sent no timestamp: the Security framework's descriptions of
+    # errSecTimestampServiceNotAvailable and errSecTimestampMissing
+    # (<Security/SecBase.h>), the two VS Code signs again for.
+    TIMESTAMP_FAILURES = ["The timestamp service is not available.", "A timestamp was expected but was not found."].freeze
+
+    # The seconds to wait before each run of codesign after the first
+    # while it fails with one of TIMESTAMP_FAILURES, as Defold waits:
+    # five runs in all.
+    WAITS = [5, 10, 20, 40].freeze
+
     # The identity codesign signs with: a name or SHA-1 hash in the
     # keychain, or "-" for an ad hoc signature.
     attr_reader :identity
 
-    # Creates the signer for +identity+.
-    def initialize(identity)
+    # Creates the signer for +identity+, which runs codesign again after
+    # each of +waits+, in seconds, while Apple's timestamp server does
+    # not answer.
+    def initialize(identity, waits: WAITS)
       @identity = identity
+      @waits = waits
     end
 
     # codesign's options for every piece of code: replace any signature,
@@ -86,7 +103,7 @@ module Fledge
     #++
     def sign_folder(folder)
       files = Signing.code_files(folder, :macho).reject { |path| MacSigning.object_file?(path) }
-      files.each_slice(100) { |slice| Command.run("codesign", *code_options, *slice, install: INSTALL) }
+      files.each_slice(100) { |slice| codesign(*code_options, *slice) }
     end
 
     # Whether the Mach-O file at +path+ is an object file (MH_OBJECT, 1,
@@ -104,14 +121,31 @@ module Fledge
     # then the bundle itself, as +identifier+, which seals them.
     def sign_bundle(path, identifier:, helpers: [])
       sign_folder(File.join(path, "Contents", "Resources"))
-      Command.run("codesign", *code_options, *helpers, install: INSTALL) unless helpers.empty?
-      Command.run("codesign", *code_options, "--identifier", identifier, path, install: INSTALL)
+      codesign(*code_options, *helpers) unless helpers.empty?
+      codesign(*code_options, "--identifier", identifier, path)
     end
 
     # Signs the disk image at +path+, after the bundle in it, as
     # notarization asks of an image it staples a ticket to.
     def sign_image(path)
-      Command.run("codesign", "--force", "--sign", @identity, *timestamp, path, install: INSTALL)
+      codesign("--force", "--sign", @identity, *timestamp, path)
+    end
+
+    # Runs codesign with +arguments+, and again after each of the waits
+    # while it fails with one of TIMESTAMP_FAILURES. Signing again is
+    # safe: every run has --force, which replaces a signature already
+    # made.
+    private def codesign(*)
+      waits = @waits
+      begin
+        Command.run("codesign", *, install: INSTALL)
+      rescue Error => e
+        wait, *waits = waits
+        raise unless wait && TIMESTAMP_FAILURES.any? { |failure| e.message.include?(failure) }
+
+        sleep(wait)
+        retry
+      end
     end
 
     # codesign's request for a secure timestamp from Apple's server, but

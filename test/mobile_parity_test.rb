@@ -134,6 +134,32 @@ class MobileParityTest < Minitest::Test
     assert_raises(RuntimeError) { MobileParity::Android.build_tools(File.join(Dir.tmpdir, "no-sdk-here")) }
   end
 
+  # zipalign -c -P 16 passes a native library it finds compressed, since
+  # only a stored one needs aligning, so the check reads its verbose
+  # lines for what must be stored: every native library, which Android
+  # maps from the APK, and the asset fledge.zip, which FledgeRuby unpacks.
+  def test_what_zipalign_finds_compressed_that_must_be_stored
+    aligned = <<~ALIGNED
+      Verifying alignment of base-master.apk (4)...
+            49 AndroidManifest.xml (OK - compressed)
+          1332 assets/fledge.zip (OK - compressed)
+      30261325 classes.dex (OK - compressed)
+         16384 lib/x86_64/libfledgeruby.so (OK)
+      16416768 lib/x86_64/libfledgeext.so (OK - compressed)
+      Verification succesful
+    ALIGNED
+
+    assert_equal %w[assets/fledge.zip lib/x86_64/libfledgeext.so], MobileParity::Android.compressed_but_mapped(aligned)
+    assert_empty MobileParity::Android.compressed_but_mapped(aligned.gsub("(OK - compressed)", "(OK)"))
+  end
+
+  # bundletool get-size total prints the smallest and largest download
+  # of the APKs it made, as CSV, in bytes; Play's limit is on the largest.
+  def test_the_download_size_is_the_largest_bundletool_reports
+    assert_equal 17_290_310, MobileParity::Android.download_size("MIN,MAX\n17112131,17290310\n")
+    assert_raises(RuntimeError) { MobileParity::Android.download_size("nothing") }
+  end
+
   # An app that never finished is diagnosed from logcat's lines about it:
   # those naming it, those of its process, by the ID ActivityManager
   # started it with, and the crash reporters', not the system's chatter.

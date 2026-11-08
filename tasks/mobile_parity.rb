@@ -35,6 +35,7 @@ require_relative "parity"
 #   ruby tasks/mobile_parity.rb android-build RUNTIMES_DIR
 #   ruby tasks/mobile_parity.rb android
 #   ruby tasks/mobile_parity.rb android-check APK
+#   ruby tasks/mobile_parity.rb android-bundle AAB
 class MobileParity
   ROOT = Parity::ROOT
 
@@ -197,7 +198,10 @@ if $PROGRAM_NAME == __FILE__
   when "android-build" then MobileParity::Android.build(runtimes: path)
   when "android" then MobileParity::Android.new.call
   when "android-check" then MobileParity::Android.check(path, $stdout) || true
-  else abort "usage: ruby tasks/mobile_parity.rb ios RUNTIMES_DIR | android-build RUNTIMES_DIR | android | android-check APK"
+  when "android-bundle"
+    work = File.join(MobileParity::ROOT, "tmp", "mobile-parity", "android", "bundle")
+    MobileParity::Android.check_bundle(path, apks: File.join(work, "app.apks"), work:, out: $stdout) || true
+  else abort "usage: ruby tasks/mobile_parity.rb ios RUNTIMES_DIR | android-build RUNTIMES_DIR | android | android-check APK | android-bundle AAB"
   end
   exit(passed ? 0 : 1)
 end

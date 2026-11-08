@@ -269,7 +269,9 @@ nsis:
 # chosen by version on the runner (ci.yml), since Apple publishes no
 # download to pin; XcodeGen, which fledge build ios runs to write an
 # app's Xcode project (ADR 012), is pinned for CI's Mobile apps jobs, and
-# no runtime holds it.
+# no runtime holds it; so is bundletool, Google's jar that makes the APKs
+# Google Play would serve from an app's bundle, which those jobs check
+# and install (ADR 012, section 9), as Google publishes it on GitHub.
 mobile:
   ruby:
     version: 4.0.9
@@ -315,6 +317,10 @@ mobile:
     version: 2.46.0
     url: https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
     sha256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+  bundletool:
+    version: 1.18.3
+    url: https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
+    sha256: a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
 
 # The musl Linux runtimes (x86_64-linux-musl, aarch64-linux-musl; ADR
 # 017): CRuby built from its release tarball on a computer of each, in

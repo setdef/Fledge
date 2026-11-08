@@ -73,7 +73,7 @@ class MobileRuntimeTest < Minitest::Test
   def test_every_mobile_input_is_pinned_by_sha256
     pins = RuntimeBuilder.new(platform: mobile("ios")).sources.fetch("mobile")
 
-    %w[ruby openssl libyaml libffi ca-certificates gradle xcodegen].each do |name|
+    %w[ruby openssl libyaml libffi ca-certificates gradle xcodegen bundletool].each do |name|
       assert_match(%r{\Ahttps://}, pins.fetch(name).fetch("url"), name)
       assert_match(/\A\h{64}\z/, pins.fetch(name).fetch("sha256"), name)
     end

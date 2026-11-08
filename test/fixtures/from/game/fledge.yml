@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# A windowed game with the app metadata keys and file_associations
+# together, built by the builder app with fledge build --from.
+name: Spiel
+kind: windowed
+identifier: com.example.Spiel
+version: "2.3.4"
+publisher: Spielwerk
+description: Ein Spiel aus einem Ordner
+homepage: https://example.com/spiel
+license_file: LICENSE.txt
+installers: [dmg, nsis, appimage, deb]
+linux:
+  deb_changelog: CHANGES.txt
+macos:
+  build: "2.3.417"
+file_associations:
+  - name: Spiel folder
+    folders: true
+  - name: Spiel level
+    extensions: [spiellevel]
+    mime_types: [application/x-spiellevel]

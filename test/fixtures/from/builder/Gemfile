@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Fledge as an ordinary gem, from the folder prepare-from.sh unpacks this
+# checkout's gem into, as a framework's Gemfile ships it.
+source "https://rubygems.org"
+
+gem "fledge", path: "../fledge"

@@ -23,13 +23,13 @@ Each app carries the same facts in `notices/NOTICES.txt` (every component, its l
 
 **A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `tools/`: a Windows app's setup program is made of NSIS's stub and plug-ins (the zlib license, which asks nothing of a binary) and compressed with NSIS's LZMA module, which is under the Common Public License 1.0: its section 3 asks that a program distributed in object code say that its source is available and how to get it, and Fledge does both, putting NSIS's source in the app's `notices/sources/nsis/`, which the setup program installs with the app, publishing it in `fledge-runtime-VERSION-x64-mingw-ucrt-lgpl-sources.tar.gz` beside each Windows runtime, and saying so in the app's `notices/NOTICES.txt`; and a Linux app's AppImage begins with AppImage's runtime (MIT), as AppImage releases it, with libfuse (LGPL-2.1, as [below](#libraries-under-the-lgpl) says), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib, mimalloc, and musl (MIT) linked in. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/`, which it holds: `NOTICES.txt`, and on Linux and Windows the sources in `notices/sources/`.
 
-**Fledge's own files** in an app are `launcher`, the program your app's users run, renamed for your app; `bin/ruby`, the Ruby that `RbConfig.ruby` names, which is Ruby's `main.c` with Fledge's code compiled in; and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb`. Fledge's code in them is Fledge's work, under the GNU Affero General Public License, version 3 or later. If you give an app to others, the AGPL asks you to convey the Corresponding Source of those files under its terms (AGPL-3.0, section 6): Fledge's own source at the tag of the version that built the app, which `notices/NOTICES.txt` names. Fledge's maintainer has said that a commercial license will likely be offered (through [setdef](https://setdef.com)) for apps that don't want to follow the AGPL; none is offered yet.
+**Fledge's own files** in an app are `launcher`, the program your app's users run, renamed for your app; `bin/ruby`, the Ruby that `RbConfig.ruby` names, which is Ruby's `main.c` with Fledge's code compiled in; and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb`. Fledge's code in them is Fledge's work, copyright 2026 setdef, under the MIT License, which asks only that its copyright notice and permission notice be included in all copies; `notices/NOTICES.txt` names those files and carries Fledge's license text, so keeping `notices/` meets it.
 
 ## On iOS and Android
 
-For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and Fledge's embedding API are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so the notices and Fledge's own code are all they ask of you.
+For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and Fledge's embedding API are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so keeping the notices is all they ask of you.
 
-**Fledge's own code** in a phone's app is Fledge's embedding API, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the GNU Affero General Public License, version 3 or later, as the desktop launcher is, with the same terms above. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
+**Fledge's own code** in a phone's app is Fledge's embedding API, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the MIT License, as the desktop launcher is, and ask only that you keep the notices. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
 
 ## Your app's own gems
 
@@ -41,7 +41,7 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.7.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/arm64-darwin23/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/arm64-darwin23/openssl.bundle |
@@ -59,13 +59,13 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform.
+**What you must do on this platform:** Nothing beyond keeping the notices: no LGPL library ships on this platform.
 
 ## Linux on x86-64 (x86_64-linux)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.7.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
@@ -98,13 +98,13 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x86_64-linux-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x86_64-linux-lgpl-sources.tar.gz`.
 
 ## Linux on ARM64 (aarch64-linux)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.7.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
@@ -137,13 +137,13 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-linux-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-linux-lgpl-sources.tar.gz`.
 
 ## musl Linux, such as Alpine, on x86-64 (x86_64-linux-musl)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.7.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
@@ -174,13 +174,13 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x86_64-linux-musl-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x86_64-linux-musl-lgpl-sources.tar.gz`.
 
 ## musl Linux, such as Alpine, on ARM64 (aarch64-linux-musl)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.7.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
@@ -211,13 +211,13 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-linux-musl-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-linux-musl-lgpl-sources.tar.gz`.
 
 ## Windows on x64 (x64-mingw-ucrt)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.7.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs | 13 to 16 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built |
 | GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | notices/sources/gmp/, in every app |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
@@ -250,13 +250,13 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x64-mingw-ucrt-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x64-mingw-ucrt-lgpl-sources.tar.gz`.
 
 ## Windows on ARM64 (aarch64-mingw-ucrt)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.7.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
 | GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | notices/sources/gmp/, in every app |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
@@ -287,14 +287,14 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-mingw-ucrt-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-mingw-ucrt-lgpl-sources.tar.gz`.
 
 ## iOS and iPadOS (arm64-ios, arm64-ios-simulator)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge's embedding API, and the library and packages it is built into | 0.7.0 | `AGPL-3.0-or-later` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
-| Fledge's RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
+| Fledge's embedding API, and the library and packages it is built into | 0.7.0 | `MIT` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
+| Fledge's RubyGems defaults | 0.7.0 | `MIT` | lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
 | libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
@@ -311,14 +311,14 @@ Its 83 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform.
+**What you must do on this platform:** Nothing beyond keeping the notices: no LGPL library ships on this platform.
 
 ## Android (aarch64-linux-android, x86_64-linux-android)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge's embedding API, and the library and packages it is built into | 0.7.0 | `AGPL-3.0-or-later` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
-| Fledge's RubyGems defaults | 0.7.0 | `AGPL-3.0-or-later` | lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
+| Fledge's embedding API, and the library and packages it is built into | 0.7.0 | `MIT` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
+| Fledge's RubyGems defaults | 0.7.0 | `MIT` | lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
 | libffi, compiled into the Android runtime's library for the fiddle gem | 3.5.2 | `MIT` | compiled into libfledgeruby.so |
 | libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
 | LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's library by the NDK | r30 | `Apache-2.0 WITH LLVM-exception` | compiled into libfledgeruby.so |
@@ -337,7 +337,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** Nothing beyond the notices and Fledge's own files above: no LGPL library ships on this platform.
+**What you must do on this platform:** Nothing beyond keeping the notices: no LGPL library ships on this platform.
 
 ## Libraries under the LGPL
 

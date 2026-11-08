@@ -181,3 +181,37 @@ Fledge runs the command through `cmd.exe` once for each program and library, the
 ### What is proven
 
 Fledge's CI signs with a self-signed certificate, on macOS and on Windows, and runs `signtool` through `--sign-command` too. It notarizes against a stand-in for Apple's service that answers as Apple documents. How Gatekeeper and SmartScreen treat an app signed and notarized with real credentials is untested. Fledge does not sign Linux apps, and Xcode and Gradle sign a phone's app.
+
+## Publish to a store
+
+No Fledge app has been through any store's review. This section says what each store's own documents ask for, as they read on 2026-11-04, against what Fledge writes. A store can still refuse an app for a reason its documents leave out, and only a submission settles that. For phones, see [Google Play and the App Store](phones.md#google-play).
+
+### The Microsoft Store
+
+The Store's [policy 10.2.9](https://learn.microsoft.com/windows/apps/publish/store-policies) takes a desktop program as an `.exe` installer at a link you give it, and the setup program Fledge writes fits what it lists:
+
+- It holds the whole app, and is no downloader stub.
+- `/S` installs it silently, which the policy asks for. Fledge's CI installs it this way, runs the app from the Start menu, and uninstalls it.
+- It installs for one person, with no administrator, and adds a Start menu entry and an uninstaller.
+
+What the setup program lacks, you bring:
+
+- **A certificate.** The setup program, and every program and library in it, must chain to a certificate authority in Microsoft's Trusted Root Program. The Store does not sign this route for you, and a self-signed certificate will not pass. `--sign` signs them all, and `--sign-command` does the same through a cloud or hardware service. [Microsoft's table](https://learn.microsoft.com/windows/msix/package/signing-package-overview) lists Azure Artifact Signing at about US$10 a month and an OV certificate at US$300 to 500 a year.
+- **A versioned HTTPS address**, whose file never changes. A GitHub Release's address redirects to a download host, and whether the Store's check takes that is unknown.
+- **A Partner Center account.** Microsoft's [new onboarding flow](https://learn.microsoft.com/windows/apps/publish/partner-center/open-a-developer-account) charges no registration fee.
+
+No one has tried this. Fledge's CI signs the setup program with a self-signed certificate only, so the Store's certification, and its malware scan of a Ruby runtime, are unknown.
+
+The Store's other route takes an MSIX package, which it signs and hosts for free. Fledge writes no MSIX.
+
+### The Mac App Store
+
+Fledge does not build for the Mac App Store. Its `.app` is signed for Developer ID, for people who download it from you. The Store takes a different program: an [App Sandbox](https://developer.apple.com/documentation/xcode/configuring-the-macos-app-sandbox) on every executable, a provisioning profile, Apple Distribution and Mac Installer Distribution certificates, and a `.pkg`. Inside the sandbox, your Ruby code reads only its own container and the files a person picks, so it no longer runs as it does under `ruby main.rb`. Ship a Mac app outside the Store, signed and notarized, as [Sign your app](#sign-your-app) says.
+
+### Linux
+
+Flathub, the Debian and Ubuntu archives, and Launchpad PPAs take only what they build from source, so none of them takes a Fledge app. [Flathub says](https://docs.flathub.org/docs/for-app-authors/requirements) "Binary or precompiled files must not be present in the submission pull request". Fedora's rules were out of reach when this was written. Three routes take prebuilt apps, and no one has tried any of them with a Fledge app:
+
+- **Your own apt repository.** Serve the `.deb` Fledge builds from a repository you make with [`reprepro` or `aptly`](https://wiki.debian.org/DebianRepository/Setup) and sign, and your users [add your key and a `.sources` file](https://wiki.debian.org/DebianRepository/UseThirdParty). Fledge's CI installs the `.deb` with `apt`, from the file. It has not served one from a repository.
+- **The Snap Store.** Its documents ask for no source build in what was read, and [Tauri's guide](https://v2.tauri.app/distribute/snapcraft/) makes a strict snap with snapcraft's `dump` plugin from a built `.deb`. Fledge writes no `snapcraft.yaml`, so you would write one. A strict snap sees only what its interfaces open, so the app's files and network reach differ from `ruby main.rb`. Whether the launcher runs from a snap's read-only mount is unknown.
+- **Your own Flatpak repository.** [Flatpak's guide](https://docs.flatpak.org/en/latest/hosting-a-repository.html) says how to host one, on a web server or GitLab Pages. Fledge writes no Flatpak, so you would write its manifest, and the default sandbox gives an app no host files or network until you open them.

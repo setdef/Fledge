@@ -140,8 +140,8 @@ Pass `--sign` with your macOS signing identity or your Windows certificate's thu
 
 Put the archives and installers wherever your users download things, such as a GitHub Release. From there:
 
-- People who use a terminal can install a console app through Scoop, Homebrew, or winget. For a recipe for each, see [Publishing with a package manager](doc/package_managers.md).
-- For iPhone, iPad, and Android, see [iPhone, iPad, and Android](doc/phones.md).
+- People who use a terminal can install a console app through Scoop, Homebrew, winget, Chocolatey, or the AUR. CI proves each recipe with the manager's own tool. See [Publishing with a package manager](doc/package_managers.md).
+- A store takes an app only through its own review, and no Fledge app has been through one. For what each store's documents ask, and what no one has tried, see [Publish to a store](doc/desktop_apps.md#publish-to-a-store) for the Microsoft Store, the Mac App Store, and Linux, and [iPhone, iPad, and Android](doc/phones.md) for Google Play and the App Store.
 - A framework can ship an app that its users build their apps from, with no Ruby on their computer. See [Building from an app already built](doc/building_from_an_app.md).
 
 ### Update
@@ -154,9 +154,9 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. Fledge is 0.x, 
 | --- | --- |
 | `bundle exec fledge --help` | The manual: every option, every `fledge.yml` key, every file Fledge writes, and the exit statuses |
 | [Gems in a Fledge app](doc/gems.md) | Locking, compiled gems, gems that link a Linux library, and gems from `vendor/cache` |
-| [Desktop apps](doc/desktop_apps.md) | Names, icons, installers, file associations, several programs in one app, and signing |
+| [Desktop apps](doc/desktop_apps.md) | Names, icons, installers, file associations, several programs in one app, signing, and publishing to a store |
 | [iPhone, iPad, and Android](doc/phones.md) | Phone projects, gems with C extensions on phones, and what has run on devices |
-| [Publishing with a package manager](doc/package_managers.md) | A Scoop manifest, a Homebrew formula, and winget's files for a console app |
+| [Publishing with a package manager](doc/package_managers.md) | A Scoop manifest, a Homebrew formula, winget's files, a Chocolatey package, and a `PKGBUILD` for a console app |
 | [Building from an app already built](doc/building_from_an_app.md) | `fledge build --from` and `build_tools`, for frameworks |
 | [Runtimes and Ruby versions](doc/runtimes.md) | Which Ruby your app gets, where Fledge downloads it from, mirrors, building offline, updating, and what stays the same from 1.0 |
 | [How a Fledge app differs from `ruby main.rb`](doc/differences_from_ruby.md) | Each difference your code can see, and why it is there |

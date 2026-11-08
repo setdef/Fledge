@@ -1,0 +1,169 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# The recipes in doc/package_managers.md, installed by each manager's own
+# tool on a fresh runner: Fledge installs from a tag with Bundler, as the
+# README says, and builds examples/hello with that version's published
+# runtime; then, on a runner that set up no Ruby, the recipes, taken from
+# the guide itself, install that build from a local server that stands in
+# for a release, and the app runs by its command with no Ruby on PATH,
+# and uninstalls. installed.yml calls this after a release.
+
+name: Package managers
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The release tag to install, such as v0.1.0
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to install, such as v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  BASE_URL: http://127.0.0.1:8765
+
+jobs:
+  build:
+    name: Build hello (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, platform: arm64-darwin }
+          - { os: ubuntu-24.04, platform: x86_64-linux }
+          - { os: ubuntu-24.04-arm, platform: aarch64-linux }
+          - { os: windows-latest, platform: x64-mingw-ucrt }
+          - { os: windows-11-arm, platform: aarch64-mingw-ucrt }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.tag }}
+          sparse-checkout: |
+            examples/hello
+            mise.toml
+          sparse-checkout-cone-mode: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        if: runner.os != 'Windows'
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Read the Ruby pin
+        if: runner.os == 'Windows'
+        id: pins
+        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        if: runner.os == 'Windows'
+        with:
+          ruby-version: ${{ steps.pins.outputs.ruby }}
+
+      - name: Install Fledge from the tag, and build hello with the release's runtime
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/project"
+          cd "$RUNNER_TEMP/project"
+          printf 'source "https://rubygems.org"\ngem "fledge", git: "https://github.com/setdef/Fledge", tag: "%s"\n' "$TAG" > Gemfile
+          bundle install
+          bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/hello"
+          ls -l "$RUNNER_TEMP/dist"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hello-${{ matrix.platform }}
+          path: ${{ runner.temp }}/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  install:
+    name: ${{ matrix.manager }} (${{ matrix.platform }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { manager: scoop, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
+          - { manager: scoop, os: windows-11-arm, platform: aarch64-mingw-ucrt, ruby-platform: aarch64-mingw-ucrt }
+          # windows-11-arm runners have no winget.
+          - { manager: winget, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
+          - { manager: chocolatey, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
+          - { manager: homebrew, os: macos-15, platform: arm64-darwin, ruby-platform: arm64-darwin23 }
+          - { manager: homebrew, os: ubuntu-24.04, platform: x86_64-linux, ruby-platform: x86_64-linux }
+          - { manager: homebrew, os: ubuntu-24.04-arm, platform: aarch64-linux, ruby-platform: aarch64-linux }
+          - { manager: aur, os: ubuntu-24.04, platform: x86_64-linux, ruby-platform: x86_64-linux }
+    env:
+      # The newest Arch Linux with its build tools, on 2026-11-08.
+      ARCH: archlinux:base-devel@sha256:2de80105abb49f813a85393c6758a4334deb6bcec4a2411bd2f059c0bee6ee4c
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts
+            doc/package_managers.md
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: hello-${{ matrix.platform }}
+          path: ${{ runner.temp }}/dist
+
+      - name: Serve the build as a release would
+        if: runner.os != 'Windows'
+        run: nohup python3 -m http.server 8765 --bind 127.0.0.1 --directory "$RUNNER_TEMP/dist" > "$RUNNER_TEMP/server.log" 2>&1 &
+
+      - name: Serve the build as a release would
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Start-Process -FilePath python -ArgumentList '-m', 'http.server', '8765', '--bind', '127.0.0.1', '--directory', "$env:RUNNER_TEMP\dist" -WindowStyle Hidden
+
+      - name: Write the recipes from the guide
+        run: |
+          .github/scripts/package-manager-serve.sh "$BASE_URL"
+          .github/scripts/package-manager-recipes.sh doc/package_managers.md "$RUNNER_TEMP/dist" "$BASE_URL" "$RUNNER_TEMP/recipes"
+          find "$RUNNER_TEMP/recipes" -type f
+
+      - name: Install with Scoop, run, and uninstall
+        if: matrix.manager == 'scoop'
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-scoop.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.ruby-platform }}
+
+      - name: Install with winget, run, and uninstall
+        if: matrix.manager == 'winget'
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-winget.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.ruby-platform }}
+
+      - name: Install with Chocolatey, run, and uninstall
+        if: matrix.manager == 'chocolatey'
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-chocolatey.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.ruby-platform }}
+
+      - name: Install with Homebrew from a local tap, run, and uninstall
+        if: matrix.manager == 'homebrew'
+        run: .github/scripts/deliver-homebrew.sh "$RUNNER_TEMP/recipes" ${{ matrix.ruby-platform }}
+
+      - name: Build with makepkg, install with pacman, run, and remove
+        if: matrix.manager == 'aur'
+        run: >-
+          docker run --rm --network host -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" -v "$RUNNER_TEMP/recipes:/recipes:ro"
+          "$ARCH" /scripts/deliver-aur.sh /recipes ${{ matrix.ruby-platform }}

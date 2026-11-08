@@ -15,8 +15,10 @@
 # the tag and builds them with Xcode and Gradle (ADR 012), and another
 # downloads every asset of the release and checks it against SHA256SUMS,
 # which must be the tag's lib/fledge/SHA256SUMS, the pins the gem ships.
-# The last jobs build the .gem from the tag and install that file instead
-# of the tag on each platform, which proves what the gemspec packs.
+# The next jobs build the .gem from the tag and install that file instead
+# of the tag on each platform, which proves what the gemspec packs; and
+# package-managers.yml installs hello with Scoop, Homebrew, winget,
+# Chocolatey, and pacman, from the recipes in the guide.
 #
 # release.yml calls this after it publishes a release; run it by hand
 # (workflow_dispatch) to check any published tag again.
@@ -49,6 +51,14 @@ env:
   RUST_TOOLCHAIN: "1.99.1"
 
 jobs:
+  # The guide's recipes, installed with each package manager's own tool
+  # (doc/package_managers.md).
+  package-managers:
+    name: Package managers
+    uses: ./.github/workflows/package-managers.yml
+    with:
+      tag: ${{ inputs.tag }}
+
   sums:
     name: The release's assets match its SHA256SUMS and the gem's pins
     runs-on: ubuntu-24.04

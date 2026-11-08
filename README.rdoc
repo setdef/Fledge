@@ -34,7 +34,8 @@ installed a Ruby.
 
 [Terminal apps]
   A <tt>.tar.gz</tt> on macOS and Linux, a <tt>.zip</tt> on Windows, with a
-  SHA-256 beside each for Scoop, Homebrew, and winget.
+  SHA-256 beside each for Scoop, Homebrew, winget, Chocolatey, and the
+  AUR.
 [Windowed apps]
   A <tt>.app</tt> and a <tt>.dmg</tt> on macOS, a setup program on Windows,
   and an AppImage, and a <tt>.deb</tt> if you ask, on Linux, with your name, icon,

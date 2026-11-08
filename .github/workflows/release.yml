@@ -23,9 +23,10 @@
 # lib/fledge/SHA256SUMS. fledge build at that version downloads its
 # runtimes from this release, by the names Fledge::Runtimes gives them,
 # and checks each against the SHA-256 its own gem pins. A version with
-# "pre" in it (RubyGems' prerelease form, such as 0.0.1.pre.1, which
-# the versions before 0.1.0 had) is marked a prerelease; an ordinary
-# 0.MINOR.PATCH version, such as 0.1.0, is not.
+# anything but digits and periods in it (RubyGems' prerelease form, such
+# as 0.0.1.pre.1, which the versions before 0.1.0 had, or SemVer's, such
+# as 1.0.0-beta.1) is marked a prerelease; an ordinary MAJOR.MINOR.PATCH
+# version, such as 0.1.0, is not.
 #
 # A release takes two commits (ADR 014), as Homebrew's bottles do: the
 # release commit, whose CI run on trunk builds the runtimes, and on it a
@@ -237,7 +238,7 @@ jobs:
           VERSION: ${{ needs.check.outputs.version }}
         run: |
           prerelease=()
-          case "$VERSION" in *pre*) prerelease=(--prerelease) ;; esac
+          case "$VERSION" in *[!0-9.]*) prerelease=(--prerelease) ;; esac
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" --title "Fledge $TAG" \
             --notes "Runtimes for fledge build at $TAG, one per platform, each to build that platform's apps on a computer of that platform, with its SPDX SBOM and NOTICES; and, for Linux and Windows, the source the runtime's licenses ask for: its LGPL libraries', AppImage's runtime's, and NSIS's. What Fledge puts into each platform's app and installer, and what its licenses ask of you: doc/licensing.md at $TAG. What changed: CHANGELOG.md." \
             release/fledge-runtime-* release/SHA256SUMS

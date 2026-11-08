@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-07
+
 ### Added
 
 - A Windows app carries `notices/MODIFIED.txt`, which names each of its programs, says that `fledge build` changed that copy of Fledge's AGPL launcher on the date of the build (`SOURCE_DATE_EPOCH` when it is set; one that is not a whole number of seconds fails the build) by writing into it, with rcedit, the version information and icon it lists, and says where the launcher's source and those steps are. A Windows runtime's `notices/NOTICES.txt` names the file. `fledge build --from` leaves the old app's behind and writes the new app's.
@@ -315,7 +317,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/setdef/Fledge/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/setdef/Fledge/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/setdef/Fledge/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/setdef/Fledge/releases/tag/v0.5.0

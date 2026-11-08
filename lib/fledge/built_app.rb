@@ -77,7 +77,7 @@ module Fledge
 
     # The app <tt>fledge build</tt> wrote at +path+, the folder it wrote
     # or, on macOS, its <tt>.app</tt>, for +platform+, the computer's,
-    # whose runtime +runtimes+ may have at hand. Raises Fledge::UsageError
+    # whose runtime +runtimes+ may have at hand. Raises Fledge::Error
     # when it is not one, another Fledge release built it, or it is for
     # another platform.
     #
@@ -95,12 +95,12 @@ module Fledge
     #++
     def self.at(path, platform:, runtimes:)
       full = File.expand_path(path)
-      raise UsageError, "--from #{path} is not a folder. Give it the folder of an app fledge build wrote, such as dist/NAME-PLATFORM." unless File.directory?(full)
+      raise Error, "--from #{path} is not a folder. Give it the folder of an app fledge build wrote, such as dist/NAME-PLATFORM." unless File.directory?(full)
 
       bundle = bundle_in(full)
       contents = bundle ? File.join(bundle, "Contents", "Resources") : full
       config = File.join(contents, Assembly::CONFIG)
-      raise UsageError, "--from #{path} is not an app fledge build wrote: it has no #{Assembly::CONFIG}" unless File.file?(config)
+      raise Error, "--from #{path} is not an app fledge build wrote: it has no #{Assembly::CONFIG}" unless File.file?(config)
 
       new(given: path, contents:, bundle:, config: File.read(config), platform:, runtimes:)
     end
@@ -129,7 +129,7 @@ module Fledge
       @identifiers = config.scan(/^identifier = (.+)$/).flatten
       @programs = config.scan(/^\[(.+)\]$/).flatten
       @programs = [bundle ? File.basename(bundle, ".app") : File.basename(contents).delete_suffix("-#{platform}")] if @programs.empty?
-      raise UsageError, "--from #{given} is not an app fledge build wrote: it has no program #{@programs.first}" unless File.file?(program)
+      raise Error, "--from #{given} is not an app fledge build wrote: it has no program #{@programs.first}" unless File.file?(program)
     end
 
     # The app's folder, as the person gave it.
@@ -369,11 +369,11 @@ module Fledge
     private def check(version, platform)
       unless version == VERSION
         by = version ? "Fledge #{version}" : "an earlier Fledge"
-        raise UsageError, "--from #{@given} was built by #{by}, and this is Fledge #{VERSION}. Build from an app this Fledge built."
+        raise Error, "--from #{@given} was built by #{by}, and this is Fledge #{VERSION}. Build from an app this Fledge built."
       end
       return if platform == @platform.name
 
-      raise UsageError, "--from #{@given} is an app for #{platform}, and this computer builds for #{@platform}. Build from an app for this computer."
+      raise Error, "--from #{@given} is an app for #{platform}, and this computer builds for #{@platform}. Build from an app for this computer."
     end
 
     # A built app's runtime and gems, as Fledge::Assembly takes an

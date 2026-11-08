@@ -289,39 +289,59 @@ class BuildFromTest < Minitest::Test
 ], [status, err]
   end
 
-  # What --from refuses before it reads the project is a usage error: an
-  # APP Fledge did not build, built by another release, or for another
-  # system (ADR 032, sections 2 and 6).
-  def test_an_app_fledge_did_not_build_or_built_elsewhere_is_a_usage_error
+  # An APP that will not do is a failed build, status 1, as a missing
+  # PATH is: the command line was well formed.
+  def test_an_app_fledge_did_not_build_or_built_elsewhere_fails_the_build
     from = built_player
     game
     other = File.join(@dir, "other")
     FileUtils.mkdir_p(other)
+    no_program = File.join(@dir, "no program")
+    FileUtils.mkdir_p(no_program)
     config = File.join(from, "fledge.cfg")
     text = File.read(config)
+    File.write(File.join(no_program, "fledge.cfg"), text)
     {
       ["--from", "nowhere", "game"] => "--from nowhere is not a folder. Give it the folder of an app fledge build wrote, such as dist/NAME-PLATFORM.",
       ["--from", "other", "game"] => "--from other is not an app fledge build wrote: it has no fledge.cfg",
+      ["--from", "no program", "game"] => "--from no program is not an app fledge build wrote: it has no program no program",
       ["--from", from, "game", { host: "aarch64-linux" }] => "--from #{from} is an app for x86_64-linux, and this computer builds for " \
         "aarch64-linux. Build from an app for this computer.",
+    }.each do |argv, message|
+      options = argv.last.is_a?(Hash) ? argv.pop : {}
+      _, err, status = build(*argv, **options)
+      assert_equal [1, "fledge build: #{message}\n"], [status, err], argv.inspect
+    end
+
+    File.write(config, text.sub("fledge build #{Fledge::VERSION} ", "fledge build 0.4.0 "))
+    _, err, status = build("--from=#{from}", "game")
+    assert_equal [
+      1,
+      "fledge build: --from #{from} was built by Fledge 0.4.0, and this is Fledge #{Fledge::VERSION}. " \
+        "Build from an app this Fledge built.\n",
+], [status, err]
+
+    File.write(config, text.sub("fledge build #{Fledge::VERSION} for x86_64-linux", "fledge build"))
+    _, err, status = build("--from", from, "game")
+    assert_equal [
+      1,
+      "fledge build: --from #{from} was built by an earlier Fledge, and this is Fledge #{Fledge::VERSION}. " \
+        "Build from an app this Fledge built.\n",
+], [status, err]
+  end
+
+  # A --from with no APP, or for a phone, is the command line's own
+  # mistake: status 2.
+  def test_a_from_with_no_value_or_for_a_phone_is_a_usage_error
+    from = built_player
+    {
       ["--from", from, "ios", "game"] => "--from builds for this computer; a phone's project is written with fledge build ios or android",
       ["--from"] => "--from needs an APP",
       ["--from="] => "--from needs an APP",
     }.each do |argv, message|
-      options = argv.last.is_a?(Hash) ? argv.pop : {}
-      error = assert_raises(Fledge::UsageError, argv.inspect) { build(*argv, **options) }
+      error = assert_raises(Fledge::UsageError, argv.inspect) { build(*argv) }
       assert_equal message, error.message, argv.inspect
     end
-
-    File.write(config, text.sub("fledge build #{Fledge::VERSION} ", "fledge build 0.4.0 "))
-    error = assert_raises(Fledge::UsageError) { build("--from=#{from}", "game") }
-    assert_equal "--from #{from} was built by Fledge 0.4.0, and this is Fledge #{Fledge::VERSION}. " \
-      "Build from an app this Fledge built.", error.message
-
-    File.write(config, text.sub("fledge build #{Fledge::VERSION} for x86_64-linux", "fledge build"))
-    error = assert_raises(Fledge::UsageError) { build("--from", from, "game") }
-    assert_equal "--from #{from} was built by an earlier Fledge, and this is Fledge #{Fledge::VERSION}. " \
-      "Build from an app this Fledge built.", error.message
   end
 
   # A folder of no runtimes, so that none is at hand.

@@ -60,7 +60,7 @@ $installed = Join-Path $env:LOCALAPPDATA 'Programs\Spiel'
 $verb = (Get-Item -LiteralPath 'HKCU:\Software\Classes\Directory\shell\com.example.Spiel\command').GetValue('')
 if ($verb -notlike '*Spiel.exe*') { throw "the folders' verb is '$verb'" }
 $progids = (Get-Item -LiteralPath 'HKCU:\Software\Classes\.spiellevel\OpenWithProgids').GetValueNames() -join ','
-if ($progids -ne 'com.example.Spiel.2') { throw ".spiellevel's OpenWithProgids is '$progids'" }
+if ($progids -ne 'com.example.Spiel.4bb1a8b546') { throw ".spiellevel's OpenWithProgids is '$progids'" }
 $uninstallKey = Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\com.example.Spiel'
 if ($uninstallKey.URLInfoAbout -ne 'https://example.com/spiel') { throw "URLInfoAbout is '$($uninstallKey.URLInfoAbout)'" }
 Write-Host "ok: the folders' verb, .spiellevel's $progids, and the uninstall key's URLInfoAbout"

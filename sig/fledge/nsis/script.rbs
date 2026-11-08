@@ -54,7 +54,11 @@ module Fledge
 
       private def folder_verb: () -> Array[String]
 
-      private def opened_extensions: () -> Array[[String, String]]
+      private def opened_extensions: () -> Hash[String, String]
+
+      private def opens_folders?: () -> bool
+
+      private def folder_verb_removal: () -> Array[String]
 
       private def classes: (String path) -> String
 

@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "digest"
 require_relative "../windows_resources"
 
 module Fledge
@@ -15,6 +16,11 @@ module Fledge
     class Script # :nodoc:
       # Where one person's file types and verbs are, under HKCU.
       CLASSES = 'Software\Classes'
+
+      # The longest ProgID, by Microsoft's ProgID key page, and how many
+      # hexadecimal digits of a hash end one.
+      PROG_ID_MAX = 39
+      PROG_ID_HASH = 10
 
       # Tells Explorer that file associations changed: SHChangeNotify with
       # SHCNE_ASSOCCHANGED and SHCNF_FLUSH.
@@ -231,8 +237,8 @@ module Fledge
       # The registry entries of the files and folders the app opens
       # (Config::FileAssociation; ADR 032, section 3), under
       # <tt>HKCU\Software\Classes</tt>, which needs no administrator. For
-      # files, a ProgID of the app's, <tt>IDENTIFIER.N</tt> for the Nth
-      # entry, named for the documents, with the app's icon and the command
+      # files, a ProgID of the app's for each extension (#prog_id), named
+      # for the documents, with the app's icon and the command
       # that opens one, and listed in each extension's +OpenWithProgids+,
       # which adds the app to Explorer's "Open with" and leaves the
       # extension's default alone; electron-builder's FileAssociation.nsh
@@ -241,44 +247,47 @@ module Fledge
       # Tauri's and electron-builder's installers call it, so Explorer
       # reads them at once.
       private def associations
-        lines = @identity.file_associations.each_with_index.flat_map do |association, index|
-          if association.folders
-            next [
-              "  WriteRegStr HKCU #{verb} \"\" #{quote("Open with #{@identity.name}")}",
-              "  WriteRegStr HKCU #{classes("Directory\\shell\\#{@identity.identifier}\\command")} \"\" #{open_command}",
-            ]
-          end
-
-          progid = prog_id(index)
-          listed = extensions(association).map { |extension| "  WriteRegNone HKCU #{classes(".#{extension}\\OpenWithProgids")} #{quote(progid)}" }
-          next [] if listed.empty?
-
+        folders = @identity.file_associations.any?(&:folders) ? folder_verb : []
+        lines = folders + opened_extensions.flat_map do |extension, name|
+          progid = prog_id(extension)
           [
-            "  WriteRegStr HKCU #{classes(progid)} \"\" #{quote(association.name)}",
+            "  WriteRegStr HKCU #{classes(progid)} \"\" #{quote(name)}",
             "  WriteRegStr HKCU #{classes("#{progid}\\DefaultIcon")} \"\" '\"$INSTDIR\\#{nsis(program)}\",0'",
             "  WriteRegStr HKCU #{classes("#{progid}\\shell\\open\\command")} \"\" #{open_command}",
-            *listed,
+            "  WriteRegNone HKCU #{classes(".#{extension}\\OpenWithProgids")} #{quote(progid)}",
           ]
         end
         lines.empty? ? lines : [*lines, CHANGE_NOTIFY]
+      end
+
+      # The verb every folder gets, "Open with NAME".
+      private def folder_verb
+        [
+          "  WriteRegStr HKCU #{verb} \"\" #{quote("Open with #{@identity.name}")}",
+          "  WriteRegStr HKCU #{classes("Directory\\shell\\#{@identity.identifier}\\command")} \"\" #{open_command}",
+        ]
+      end
+
+      # Each extension the app opens, as Windows, which ignores case, knows
+      # it, and the name of the first entry that lists it.
+      private def opened_extensions
+        pairs = @identity.file_associations.flat_map { |association| association.extensions.map { |extension| [extension.downcase, association.name] } }
+        pairs.uniq(&:first)
       end
 
       # What the uninstaller removes of #associations: the ProgIDs, their
       # values in each extension's +OpenWithProgids+, each extension's keys
       # when nothing else is left in them, and the folders' verb.
       private def dissociations
-        lines = @identity.file_associations.each_with_index.flat_map do |association, index|
-          next ["  DeleteRegKey HKCU #{verb}"] if association.folders
-
-          progid = prog_id(index)
-          listed = extensions(association).flat_map do |extension|
-            [
-              "  DeleteRegValue HKCU #{classes(".#{extension}\\OpenWithProgids")} #{quote(progid)}",
-              "  DeleteRegKey /ifempty HKCU #{classes(".#{extension}\\OpenWithProgids")}",
-              "  DeleteRegKey /ifempty HKCU #{classes(".#{extension}")}",
-            ]
-          end
-          listed.empty? ? listed : ["  DeleteRegKey HKCU #{classes(progid)}", *listed]
+        folders = @identity.file_associations.any?(&:folders) ? ["  DeleteRegKey HKCU #{verb}"] : []
+        lines = folders + opened_extensions.flat_map do |extension, _name|
+          progid = prog_id(extension)
+          [
+            "  DeleteRegKey HKCU #{classes(progid)}",
+            "  DeleteRegValue HKCU #{classes(".#{extension}\\OpenWithProgids")} #{quote(progid)}",
+            "  DeleteRegKey /ifempty HKCU #{classes(".#{extension}\\OpenWithProgids")}",
+            "  DeleteRegKey /ifempty HKCU #{classes(".#{extension}")}",
+          ]
         end
         lines.empty? ? lines : [*lines, CHANGE_NOTIFY]
       end
@@ -294,15 +303,17 @@ module Fledge
         "'\"$INSTDIR\\#{nsis(program)}\" \"%1\"'"
       end
 
-      # The ProgID of the file associations' entry at +index+.
-      private def prog_id(index)
-        "#{@identity.identifier}.#{index + 1}"
-      end
-
-      # The extensions of +association+, once each as Windows, which
-      # ignores their case, knows them.
-      private def extensions(association)
-        association.extensions.uniq(&:downcase)
+      # The ProgID of +extension+: the identifier, without what Microsoft's
+      # ProgID rules forbid (more than PROG_ID_MAX characters, punctuation
+      # but periods, a digit first), then a hash of the identifier and the
+      # extension. It depends on nothing that can move or be reworded, so
+      # a reordered list or a renamed entry keeps it (ADR 032, section 3);
+      # the hash keeps two identifiers the rest would make alike apart.
+      private def prog_id(extension)
+        hash = Digest::SHA256.hexdigest("#{@identity.identifier}\n#{extension}")[0, PROG_ID_HASH].to_s
+        readable = @identity.identifier.to_s.delete("^A-Za-z0-9.").squeeze(".").sub(/\A[0-9.]+/, "")
+        readable = readable[0, PROG_ID_MAX - PROG_ID_HASH - 1].to_s.delete_suffix(".")
+        "#{readable.empty? ? 'App' : readable}.#{hash}"
       end
 
       # +path+ under CLASSES, quoted.

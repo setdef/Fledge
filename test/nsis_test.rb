@@ -14,8 +14,8 @@ require "open3"
 # Delivery installs a real one on Windows
 # (.github/scripts/deliver-installer.ps1).
 class NsisTest < Minitest::Test
-  def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4", homepage: nil, file_associations: [])
-    Fledge::Identity.new(name:, kind: "windowed", identifier: "com.example.MyApp", version:, publisher:, copyright:, icon: nil,
+  def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4", homepage: nil, file_associations: [], identifier: "com.example.MyApp")
+    Fledge::Identity.new(name:, kind: "windowed", identifier:, version:, publisher:, copyright:, icon: nil,
       description: nil, long_description: nil, homepage:, file_associations:)
   end
 
@@ -188,7 +188,7 @@ class NsisTest < Minitest::Test
     ]
   end
 
-  # A ProgID of the app's for each entry with extensions, listed in each
+  # A ProgID of the app's for each extension, listed in that
   # extension's OpenWithProgids, so the app is in "Open with" and the
   # extension's default stays the person's; a verb on every folder; and
   # what the uninstaller removes of them.
@@ -198,29 +198,83 @@ class NsisTest < Minitest::Test
     uninstall = lines.drop_while { |line| line != "Section Uninstall" }
     classes = '"Software\Classes'
     command = %q('"$INSTDIR\My App.exe" "%1"')
+    zip = "com.example.MyApp.7932ec1957"
+    fz = "com.example.MyApp.c1011d98ca"
 
     assert_equal [
       %(  WriteRegStr HKCU #{classes}\\Directory\\shell\\com.example.MyApp" "" "Open with My App"),
       %(  WriteRegStr HKCU #{classes}\\Directory\\shell\\com.example.MyApp\\command" "" #{command}),
-      %(  WriteRegStr HKCU #{classes}\\com.example.MyApp.2" "" "Project archive"),
-      %(  WriteRegStr HKCU #{classes}\\com.example.MyApp.2\\DefaultIcon" "" '"$INSTDIR\\My App.exe",0'),
-      %(  WriteRegStr HKCU #{classes}\\com.example.MyApp.2\\shell\\open\\command" "" #{command}),
-      %(  WriteRegNone HKCU #{classes}\\.zip\\OpenWithProgids" "com.example.MyApp.2"),
-      %(  WriteRegNone HKCU #{classes}\\.fz\\OpenWithProgids" "com.example.MyApp.2"),
+      %(  WriteRegStr HKCU #{classes}\\#{zip}" "" "Project archive"),
+      %(  WriteRegStr HKCU #{classes}\\#{zip}\\DefaultIcon" "" '"$INSTDIR\\My App.exe",0'),
+      %(  WriteRegStr HKCU #{classes}\\#{zip}\\shell\\open\\command" "" #{command}),
+      %(  WriteRegNone HKCU #{classes}\\.zip\\OpenWithProgids" "#{zip}"),
+      %(  WriteRegStr HKCU #{classes}\\#{fz}" "" "Project archive"),
+      %(  WriteRegStr HKCU #{classes}\\#{fz}\\DefaultIcon" "" '"$INSTDIR\\My App.exe",0'),
+      %(  WriteRegStr HKCU #{classes}\\#{fz}\\shell\\open\\command" "" #{command}),
+      %(  WriteRegNone HKCU #{classes}\\.fz\\OpenWithProgids" "#{fz}"),
       Fledge::Nsis::Script::CHANGE_NOTIFY,
     ], install.grep(/Classes|SHChangeNotify/)
     assert_equal [
       %(  DeleteRegKey HKCU #{classes}\\Directory\\shell\\com.example.MyApp"),
-      %(  DeleteRegKey HKCU #{classes}\\com.example.MyApp.2"),
-      %(  DeleteRegValue HKCU #{classes}\\.zip\\OpenWithProgids" "com.example.MyApp.2"),
+      %(  DeleteRegKey HKCU #{classes}\\#{zip}"),
+      %(  DeleteRegValue HKCU #{classes}\\.zip\\OpenWithProgids" "#{zip}"),
       %(  DeleteRegKey /ifempty HKCU #{classes}\\.zip\\OpenWithProgids"),
       %(  DeleteRegKey /ifempty HKCU #{classes}\\.zip"),
-      %(  DeleteRegValue HKCU #{classes}\\.fz\\OpenWithProgids" "com.example.MyApp.2"),
+      %(  DeleteRegKey HKCU #{classes}\\#{fz}"),
+      %(  DeleteRegValue HKCU #{classes}\\.fz\\OpenWithProgids" "#{fz}"),
       %(  DeleteRegKey /ifempty HKCU #{classes}\\.fz\\OpenWithProgids"),
       %(  DeleteRegKey /ifempty HKCU #{classes}\\.fz"),
       Fledge::Nsis::Script::CHANGE_NOTIFY,
     ], uninstall.grep(/Classes|SHChangeNotify/)
     assert_empty script.lines.grep(/Classes|SHChangeNotify/), "an app that opens nothing registers nothing"
+  end
+
+  # The ProgIDs in a script, in order, one for each extension.
+  def prog_ids(**)
+    script(identity: identity(**)).scan(/WriteRegNone HKCU "[^"]+" "([^"]+)"/).flatten
+  end
+
+  def entry(name, *extensions)
+    Fledge::Config::FileAssociation.new(name:, role: "viewer", extensions:, mime_types: [], content_types: [], folders: false)
+  end
+
+  # A ProgID must outlast the app's next version: neither the order of
+  # the entries, nor an entry's name, nor its other extensions may change
+  # it (ADR 032, section 3), since the uninstaller knows only today's.
+  def test_a_prog_id_survives_a_reorder_a_rename_and_an_extensions_neighbors
+    ids = prog_ids(file_associations: [entry("A", "aaa"), entry("B", "bbb")])
+
+    assert_equal ids.reverse, prog_ids(file_associations: [entry("B", "bbb"), entry("A", "aaa")])
+    assert_equal ids, prog_ids(file_associations: [entry("Renamed", "AAA"), entry("B", "bbb")])
+    assert_equal ids.first, prog_ids(file_associations: [entry("A", "other", "aaa")]).last
+  end
+
+  # A second entry that lists an extension adds nothing: Windows knows
+  # one ProgID for it here, under the first entry's name.
+  def test_an_extension_two_entries_list_is_registered_once
+    text = script(identity: identity(file_associations: [entry("First", "zip"), entry("Second", "ZIP")]))
+
+    assert_equal 1, text.scan("WriteRegNone").size
+    assert_includes text, '"" "First"'
+    refute_includes text, '"" "Second"'
+  end
+
+  # Microsoft's ProgID key page: no more than 39 characters, no
+  # punctuation but periods, no digit first.
+  def test_a_prog_id_keeps_microsofts_rules_for_any_identifier_and_stays_unique
+    long = "io.github.some-one.#{'my-very-long-application-' * 4}name"
+    [long, "1password.example.App", "1.2", "a-b.c-d", "ab.cd"].each do |identifier|
+      ids = prog_ids(identifier:, file_associations: [entry("A", "one", "two")])
+
+      ids.each do |id|
+        assert_operator id.length, :<=, 39, id
+        assert_match(/\A[A-Za-z][A-Za-z0-9.]*\z/, id)
+        refute_includes id, ".."
+      end
+      assert_equal 2, ids.uniq.size, identifier
+    end
+    refute_equal prog_ids(identifier: "a-b.c-d", file_associations: [entry("A", "one")]),
+      prog_ids(identifier: "ab.cd", file_associations: [entry("A", "one")])
   end
 
   def test_a_runtime_without_nsis_is_refused

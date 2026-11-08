@@ -60,16 +60,20 @@ module Fledge
     # [project] The app's root, whose <tt>vendor/cache</tt> it looks in.
     # [gem_path] The folders whose <tt>cache</tt> it looks in (default:
     #            RubyGems' path).
-    # [log] Where to say that a download is starting, or +nil+.
+    # [log] Where to say that a download is starting or trying again, or
+    #       +nil+.
     # [public_servers] The hosts whose 403 to a request without a login
     #                  means they have no such file (default:
     #                  PUBLIC_SERVERS).
-    def initialize(cache:, project:, gem_path: Gem.path, log: nil, public_servers: PUBLIC_SERVERS)
+    # [waits] The seconds to wait before each try again of a download
+    #         that failed for a moment (default: Download::WAITS).
+    def initialize(cache:, project:, gem_path: Gem.path, log: nil, public_servers: PUBLIC_SERVERS, waits: Download::WAITS)
       @cache = cache
       @project = project
       @gem_path = gem_path
       @log = log
       @public_servers = public_servers
+      @waits = waits
     end
 
     # The path of a <tt>.gem</tt> file for +gem+ (a Fledge::LockedGem)
@@ -93,7 +97,7 @@ module Fledge
       return found if found
 
       @log&.puts "Downloading #{gem.file_name} from #{gem.remote}"
-      Download.save(gem.url, to: cached, sha256: gem.sha256, credentials: gem.credentials)
+      Download.save(gem.url, to: cached, sha256: gem.sha256, credentials: gem.credentials, waits: @waits, log: @log)
     rescue Download::Missing => e
       raise Error, missing(gem, e.status)
     rescue Download::Refused => e

@@ -114,6 +114,23 @@ class GemFetcherTest < Minitest::Test
       "bundle lock, then build again.", error.message
   end
 
+  # Bundler asks a gem server again when it fails for a moment
+  # (Bundler::Retry, BUNDLE_RETRY), and so does Fledge (ADR 014,
+  # section 6); a server without the file is asked once.
+  def test_a_server_that_fails_for_a_moment_is_asked_again_and_one_without_the_file_once
+    answers = [[500, {}, "oops"], [200, {}, File.binread(@built.path)]]
+    server = LoopbackServer.new({ "/gems/foo-1.0.0.gem" => -> { answers.shift } })
+    flaky = fetcher(waits: [0, 0])
+
+    assert_equal @built.sha256, Digest::SHA256.file(flaky.fetch(@gem.with(remote: server.url("/")))).hexdigest
+    assert_equal ["/gems/foo-1.0.0.gem"] * 2, server.requests
+    assert_includes @log.string, "could not download #{server.url('/gems/foo-1.0.0.gem')}: 500 X; trying again in 0 seconds (2 of 3)\n"
+    assert_raises(Fledge::Error) { flaky.fetch(@gem.with(remote: server.url("/"), version: "2.0.0")) }
+    assert_equal (["/gems/foo-1.0.0.gem"] * 2) + ["/gems/foo-2.0.0.gem"], server.requests
+  ensure
+    server&.stop
+  end
+
   # A server other than RubyGems.org that forbids a download nobody logged
   # in for is taken at its word, as Bundler takes a 403
   # (Bundler::Fetcher::AuthenticationForbiddenError).

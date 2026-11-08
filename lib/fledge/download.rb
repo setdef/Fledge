@@ -25,7 +25,10 @@ module Fledge
   # then moves it into place. A mismatch deletes the file and raises, so
   # a bad download never sits in a cache waiting to be trusted. It
   # follows redirects, as GitHub's release downloads need, but never
-  # from HTTPS to plain HTTP.
+  # from HTTPS to plain HTTP. A host that fails for a moment, with a
+  # 408, a 429, a 5xx, or a connection that fails or breaks off, is
+  # asked again a few times, as Bundler asks again for a gem (ADR 014,
+  # section 6); a missing file, a refusal, or a mismatch fails at once.
   #
   # Use it to fetch anything Fledge pins by SHA-256.
   #
@@ -49,6 +52,11 @@ module Fledge
   module Download
     # How many redirects a download follows before giving up.
     REDIRECTS = 5
+
+    # The seconds #save waits before each try after the first: four tries
+    # in all, as Bundler makes by default (BUNDLE_RETRY, 3), each wait
+    # twice the one before, as Fledge::Dmg's are.
+    WAITS = [2, 4, 8].freeze
 
     # A server that answered with a status its caller may act on.
     class Unsuccessful < Error
@@ -125,6 +133,13 @@ module Fledge
     # answers 401 or 403, and Fledge::Download::Missing when it answers
     # 404 or 410.
     #
+    # A download that fails with Fledge::Download::Unavailable or
+    # Fledge::Download::Unreachable is tried again from its first byte
+    # after each of +waits+, in seconds, saying so on +log+ when one is
+    # given, and the last failure is raised when they run out. Any other
+    # failure is raised at once, and every try is checked against
+    # +sha256+.
+    #
     # === Example
     #
     #--
@@ -136,9 +151,19 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.save(url, to:, sha256:, credentials: nil)
+    def self.save(url, to:, sha256:, credentials: nil, waits: WAITS, log: nil)
       FileUtils.mkdir_p(File.dirname(to))
       partial = "#{to}.part"
+      verify(url, again(waits, log) { stream(url, partial, credentials) }, sha256)
+      File.rename(partial, to)
+      to
+    ensure
+      FileUtils.rm_f(partial) if partial
+    end
+
+    # Writes the body at +url+ to +partial+, from its first byte, and
+    # returns its SHA-256.
+    private_class_method def self.stream(url, partial, credentials) # :nodoc:
       digest = Digest::SHA256.new
       File.open(partial, "wb") do |file|
         get(url, credentials:) do |response|
@@ -148,11 +173,24 @@ module Fledge
           end
         end
       end
-      verify(url, digest.hexdigest, sha256)
-      File.rename(partial, to)
-      to
-    ensure
-      FileUtils.rm_f(partial) if partial
+      digest.hexdigest
+    end
+
+    # The block's result, called again after each of +waits+ while it
+    # raises Unavailable or Unreachable, which a moment may cure.
+    private_class_method def self.again(waits, log) # :nodoc:
+      tries = 1
+      begin
+        yield
+      rescue Unavailable, Unreachable => e
+        wait = waits[tries - 1]
+        raise unless wait
+
+        tries += 1
+        log&.puts "#{e.message}; trying again in #{wait} seconds (#{tries} of #{waits.size + 1})"
+        sleep(wait)
+        retry
+      end
     end
 
     private_class_method def self.verify(url, actual, expected) # :nodoc:
@@ -163,11 +201,16 @@ module Fledge
         actual:, expected: expected.downcase)
     end
 
+    # Calls the block with the successful response to a GET of +url+.
+    # A body that ends before its Content-Length raises EOFError, which
+    # Net::HTTP would otherwise take for the whole body (+ignore_eof+ is
+    # true by default), so a connection that broke off is Unreachable
+    # and tried again, not a Mismatch.
     private_class_method def self.get(url, redirects = REDIRECTS, credentials: nil, &block) # :nodoc:
       uri = URI(url)
       raise Error, "#{url} is not an http or https URL" unless uri.is_a?(URI::HTTP) && uri.host
 
-      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
+      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", ignore_eof: false) do |http|
         request = Net::HTTP::Get.new(uri.request_uri)
         if credentials
           user, password = login(credentials)

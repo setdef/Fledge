@@ -235,6 +235,49 @@ class RuntimesTest < Minitest::Test
     release&.stop
   end
 
+  # GitHub's release downloads answer 5xx now and then and pass a moment
+  # later (ADR 014, section 6).
+  def test_a_release_that_fails_for_a_moment_is_asked_again_and_the_log_says_so
+    body = "the released runtime"
+    name = Fledge::Runtimes.file_name(LINUX)
+    answers = [[502, {}, "Bad Gateway"], [200, {}, body]]
+    server = LoopbackServer.new("/v/#{name}" => -> { answers.shift })
+    Dir.mktmpdir do |home|
+      log = StringIO.new
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v"), log:,
+        pins: write_pins(home, name => body), waits: [0, 0])
+
+      assert_equal body, File.binread(runtimes.archive(LINUX))
+      assert_equal "Downloading #{name} from #{server.url('/v')}\n" \
+        "could not download #{server.url("/v/#{name}")}: 502 X; trying again in 0 seconds (2 of 3)\n", log.string
+      assert_equal ["/v/#{name}"] * 2, server.requests
+    end
+  ensure
+    server&.stop
+  end
+
+  # A mirror is asked again as the release is, and still not passed over
+  # when it keeps failing (ADR 031, section 3).
+  def test_a_mirror_that_keeps_failing_is_asked_again_and_then_fails_without_the_release
+    body = "the released runtime"
+    name = Fledge::Runtimes.file_name(LINUX)
+    mirror = LoopbackServer.new("/v#{Fledge::VERSION}/#{name}" => [503, {}, "down"])
+    release = LoopbackServer.new("/v/#{name}" => [200, {}, body])
+    Dir.mktmpdir do |home|
+      runtimes = Fledge::Runtimes.new(env: { "HOME" => home, "FLEDGE_RUNTIME_MIRROR" => mirror.url("") },
+        release_url: release.url("/v"), pins: write_pins(home, name => body), waits: [0, 0])
+
+      error = assert_raises(Fledge::Error) { runtimes.archive(LINUX) }
+      assert_equal "FLEDGE_RUNTIME_MIRROR is #{mirror.url('')}: could not download " \
+        "#{mirror.url("/v#{Fledge::VERSION}/#{name}")}: 503 X", error.message
+      assert_equal 3, mirror.requests.size
+      assert_empty release.requests
+    end
+  ensure
+    mirror&.stop
+    release&.stop
+  end
+
   def test_the_runtime_directory_wins_over_a_mirror
     Dir.mktmpdir do |dir|
       archive = FakeRuntime.write(dir, LINUX)

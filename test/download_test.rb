@@ -7,6 +7,7 @@
 
 require_relative "test_helper"
 require "digest"
+require "stringio"
 require_relative "support/loopback_server"
 
 class DownloadTest < Minitest::Test
@@ -125,6 +126,102 @@ class DownloadTest < Minitest::Test
     error = assert_raises(Fledge::Error) { Fledge::Download.read("http://127.0.0.1:1/file") }
 
     assert_match(%r{\Acould not download http://127.0.0.1:1/file: }, error.message)
+  end
+
+  # A host that fails for a moment (ADR 014, section 6): 408, 429, a
+  # 5xx, or a connection that breaks off, is asked again after each of
+  # the waits, and what it then sends is still checked against the pin.
+  def test_a_server_that_fails_for_a_moment_is_asked_again_and_the_file_checked
+    answers = [[503, {}, "down"], [429, {}, ""], [200, {}, BODY]]
+    server = LoopbackServer.new({ "/file" => -> { answers.shift } })
+    log = StringIO.new
+    Dir.mktmpdir do |dir|
+      to = File.join(dir, "runtime.tar.gz")
+
+      assert_equal to, Fledge::Download.save(server.url("/file"), to:, sha256: SHA, waits: [0, 0, 0], log:)
+      assert_equal BODY, File.read(to)
+      assert_equal %w[/file] * 3, server.requests
+      assert_equal "could not download #{server.url('/file')}: 503 X; trying again in 0 seconds (2 of 4)\n" \
+        "could not download #{server.url('/file')}: 429 X; trying again in 0 seconds (3 of 4)\n", log.string
+      assert_equal ["runtime.tar.gz"], Dir.children(dir)
+    end
+  ensure
+    server&.stop
+  end
+
+  # A body cut short, which Net::HTTP reads as the end of the file before
+  # its Content-Length: the bytes already written are thrown away, not
+  # added to.
+  def test_a_connection_that_breaks_off_is_tried_again_from_the_start
+    answers = [[200, { "Content-Length" => BODY.bytesize.to_s }, BODY[0, 1000]], [200, {}, BODY]]
+    server = LoopbackServer.new({ "/file" => -> { answers.shift } })
+    Dir.mktmpdir do |dir|
+      to = File.join(dir, "f")
+
+      Fledge::Download.save(server.url("/file"), to:, sha256: SHA, waits: [0])
+
+      assert_equal BODY, File.read(to)
+      assert_equal 2, server.requests.size
+    end
+  ensure
+    server&.stop
+  end
+
+  def test_a_server_still_failing_after_every_wait_fails_with_its_last_answer
+    server = LoopbackServer.new({ "/file" => [502, {}, ""] })
+    Dir.mktmpdir do |dir|
+      error = assert_raises(Fledge::Download::Unavailable) do
+        Fledge::Download.save(server.url("/file"), to: File.join(dir, "f"), sha256: SHA, waits: [0, 0])
+      end
+
+      assert_equal "could not download #{server.url('/file')}: 502 X", error.message
+      assert_equal 3, server.requests.size
+      assert_empty Dir.children(dir)
+    end
+  ensure
+    server&.stop
+  end
+
+  def test_an_unreachable_server_is_tried_again_and_then_fails
+    Dir.mktmpdir do |dir|
+      log = StringIO.new
+      error = assert_raises(Fledge::Download::Unreachable) do
+        Fledge::Download.save("http://127.0.0.1:1/file", to: File.join(dir, "f"), sha256: SHA, waits: [0], log:)
+      end
+
+      assert_match(%r{\Acould not download http://127.0.0.1:1/file: }, error.message)
+      assert_equal 1, log.string.lines.size
+      assert_empty Dir.children(dir)
+    end
+  end
+
+  # A missing file, a refusal, another 4xx, and a file whose SHA-256 is
+  # not the pin's would answer the same a moment later.
+  def test_a_permanent_failure_is_not_tried_again
+    server = LoopbackServer.new({
+      "/gone" => [404, {}, ""],
+      "/denied" => [403, {}, ""],
+      "/bad" => [400, {}, ""],
+      "/changed" => [200, {}, "#{BODY}, changed"],
+    })
+    log = StringIO.new
+    Dir.mktmpdir do |dir|
+      %w[/gone /denied /bad /changed].each do |path|
+        assert_raises(Fledge::Error) { Fledge::Download.save(server.url(path), to: File.join(dir, "f"), sha256: SHA, waits: [0, 0], log:) }
+      end
+
+      assert_equal %w[/gone /denied /bad /changed], server.requests
+      assert_empty log.string
+      assert_empty Dir.children(dir)
+    end
+  ensure
+    server&.stop
+  end
+
+  # Bundler's default, three retries (BUNDLE_RETRY), with waits that
+  # double from two seconds, as Fledge::Dmg's do.
+  def test_a_download_waits_two_four_and_eight_seconds
+    assert_equal [2, 4, 8], Fledge::Download::WAITS
   end
 
   def test_only_http_and_https_are_downloaded

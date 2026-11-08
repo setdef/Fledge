@@ -9,9 +9,10 @@ module Fledge
     @project: String
     @gem_path: Array[String]
     @log: CLI::_Output?
+    @waits: Array[Integer]
     attr_reader public_servers: Array[String]
 
-    def initialize: (cache: String, project: String, ?gem_path: Array[String], ?log: CLI::_Output?, ?public_servers: Array[String]) -> void
+    def initialize: (cache: String, project: String, ?gem_path: Array[String], ?log: CLI::_Output?, ?public_servers: Array[String], ?waits: Array[Integer]) -> void
 
     def fetch: (LockedGem gem) -> String
 

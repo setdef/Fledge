@@ -14,7 +14,9 @@ class LoopbackServer
 
   # +routes+ is the table of paths (as a Hash, or written inline), each to
   # [status, headers, body], or to something whose call returns one, for a
-  # route whose answer changes from one request to the next. With
+  # route whose answer changes from one request to the next. A route's
+  # own Content-Length wins over the body's, so a route can promise more
+  # than it sends and close, as a connection broken off does. With
   # +credentials+ ("user:password"), every request without that HTTP
   # Basic login gets 401, as a credentialed gem server answers.
   def initialize(routes = {}, credentials: nil, **inline)
@@ -50,7 +52,7 @@ class LoopbackServer
     answer = @routes.fetch(path) { [404, {}, "missing"] }
     status, headers, body = answer.respond_to?(:call) ? answer.call : answer
     status, headers, body = [401, { "WWW-Authenticate" => "Basic realm=\"gems\"" }, "login"] if @credentials && authorization != login
-    headers = headers.merge("Content-Length" => body.bytesize.to_s, "Connection" => "close")
+    headers = { "Content-Length" => body.bytesize.to_s, "Connection" => "close" }.merge(headers)
     client.write("HTTP/1.1 #{status} X\r\n#{headers.map { |k, v| "#{k}: #{v}\r\n" }.join}\r\n#{body}")
   ensure
     client.close

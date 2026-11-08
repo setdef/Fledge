@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fledge build` tries a runtime's or a gem's download again after 2, 4, and 8 seconds when the server answers 408, 429, or a 5xx, or the connection fails or breaks off, saying so on its output, instead of failing the build at once; a missing file, a refused login, or a SHA-256 mismatch still fails at once, and every try is checked against its pin. A body cut short by a broken connection is now such a failure, where it was reported as a SHA-256 mismatch.
 - `fledge build --sign` on macOS runs codesign again after 5, 10, 20, and 40 seconds when Apple's timestamp server does not answer ("The timestamp service is not available." or "A timestamp was expected but was not found."), instead of failing the build at once; any other codesign failure still fails at once.
+- A `with` that names only `development` or `test`, such as `BUNDLE_WITH=development` or the same in the project's `.bundle/config`, no longer ships that group's gems.
 
 ## [0.7.0] - 2026-11-07
 

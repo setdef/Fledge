@@ -194,11 +194,17 @@ module Fledge
     # say, since a built app has no development or test gems. The
     # settings Bundler reads are the project's <tt>.bundle/config</tt>,
     # BUNDLE_WITH and BUNDLE_WITHOUT, and the developer's own.
+    #
+    # WITHOUT is taken from what Bundler answers as well as from +with+:
+    # Bundler stores an empty list as no value at all
+    # (Bundler::Settings#array_to_s and #set_key), so a temporary
+    # <tt>with</tt> of none lets the next level's <tt>with</tt>, such as
+    # BUNDLE_WITH=development, show through (Bundler::Settings#[]).
     private def read_groups(definition)
       settings = Bundler.settings
       @with = settings[:with].map(&:to_s) - WITHOUT.map(&:to_s)
       @without = (WITHOUT.map(&:to_s) + settings[:without].map(&:to_s)).uniq
-      @groups = settings.temporary(with: @with, without: @without) { definition.__send__(:requested_groups) }.map(&:to_sym)
+      @groups = settings.temporary(with: @with, without: @without) { definition.__send__(:requested_groups) }.map(&:to_sym) - WITHOUT
     end
 
     # Every build.NAME setting Bundler has, by NAME.

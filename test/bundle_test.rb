@@ -109,6 +109,28 @@ class BundleTest < Minitest::Test
     assert_includes config, "BUNDLE_WITH: \"extras\"\n"
   end
 
+  # Bundler's settings store an empty list as no value at all
+  # (Bundler::Settings#array_to_s and #set_key), so a `with` that names
+  # only development or test, from the environment or the project's
+  # .bundle/config, must still leave those groups out.
+  def test_development_and_test_gems_are_left_out_whatever_with_says
+    gemfile = "group :development do\n  gem \"foo\"\nend\ngroup :test do\n  gem \"bar\"\nend\n"
+    %w[development test development:test].each do |with|
+      ENV["BUNDLE_WITH"] = with
+      assert_empty names(bundle(name: "env_#{with.tr(':', '_')}", dependencies: {}, locked: [@foo, @bar], gemfile:,
+        lock_dependencies: %w[foo bar]), LINUX), "BUNDLE_WITH=#{with}"
+    ensure
+      ENV.delete("BUNDLE_WITH")
+    end
+    root = FakeProject.write(@dir, name: "config_app", dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar])
+    FileUtils.mkdir_p(File.join(root, ".bundle"))
+    File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_WITH: \"development:test\"\n")
+    configured = Fledge::Bundle.new(Fledge::App.at(root))
+
+    assert_empty names(configured, LINUX)
+    refute_includes configured.app_files.fetch(".bundle/config"), "BUNDLE_WITH:"
+  end
+
   def test_a_gem_limited_to_a_ruby_version_follows_the_runtimes
     bundle = bundle(dependencies: {}, locked: [@foo, @bar],
       gemfile: "gem \"foo\", platforms: :mri_40\ngem \"bar\", platforms: :ruby_33\n", lock_dependencies: %w[bar foo])

@@ -107,7 +107,6 @@ jobs:
           - { manager: scoop, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
           - { manager: scoop, os: windows-11-arm, platform: aarch64-mingw-ucrt, ruby-platform: aarch64-mingw-ucrt }
           - { manager: winget, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
-          - { manager: winget, os: windows-11-arm, platform: aarch64-mingw-ucrt, ruby-platform: aarch64-mingw-ucrt }
           - { manager: chocolatey, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
           - { manager: homebrew, os: macos-15, platform: arm64-darwin, ruby-platform: arm64-darwin23 }
           - { manager: homebrew, os: ubuntu-24.04, platform: x86_64-linux, ruby-platform: x86_64-linux }

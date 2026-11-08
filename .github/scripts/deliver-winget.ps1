@@ -27,7 +27,9 @@ if ($LASTEXITCODE -ne 0) { Fail "winget --info exited with $LASTEXITCODE" }
 winget settings --enable LocalManifestFiles
 if ($LASTEXITCODE -ne 0) { Fail "enabling local manifests exited with $LASTEXITCODE" }
 winget validate --manifest $manifest --disable-interactivity
-if ($LASTEXITCODE -ne 0) { Fail "winget validate exited with $LASTEXITCODE" }
+# Warnings exit with 0x8A150028 (a validation warning), not an error: a
+# runner's older winget does not know the newest schema's header.
+if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne -1978335192) { Fail "winget validate exited with $LASTEXITCODE" }
 
 winget install --manifest $manifest --accept-package-agreements --accept-source-agreements --disable-interactivity
 if ($LASTEXITCODE -ne 0) { Fail "winget install exited with $LASTEXITCODE" }

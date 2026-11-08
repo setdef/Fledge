@@ -5,12 +5,15 @@ module Fledge
   class MacSigning
     ENTITLEMENTS: String
     INSTALL: String
+    TIMESTAMP_FAILURES: Array[String]
+    WAITS: Array[Integer]
 
     @identity: String
+    @waits: Array[Integer]
 
     attr_reader identity: String
 
-    def initialize: (String identity) -> void
+    def initialize: (String identity, ?waits: Array[Integer]) -> void
 
     def code_options: () -> Array[String]
 
@@ -21,6 +24,8 @@ module Fledge
     def sign_bundle: (String path, identifier: String, ?helpers: Array[String]) -> String
 
     def sign_image: (String path) -> String
+
+    private def codesign: (*String arguments) -> String
 
     private def timestamp: () -> Array[String]
   end

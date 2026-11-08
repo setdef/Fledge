@@ -39,7 +39,7 @@ Get-ChildItem -LiteralPath $links | Format-List FullName, LinkType, Target
 & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'package-manager-check.ps1') -Folder $links -Platform $Platform
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
-winget uninstall --manifest $manifest --disable-interactivity
+winget uninstall --manifest $manifest --accept-source-agreements --disable-interactivity
 if ($LASTEXITCODE -ne 0) { Fail "winget uninstall exited with $LASTEXITCODE" }
 if (Test-Path -LiteralPath (Join-Path $links 'hello.exe')) { Fail 'uninstalling left the link' }
 if (Get-ChildItem -LiteralPath (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages') -Filter 'Example.Hello*' -ErrorAction SilentlyContinue) { Fail 'uninstalling left the app' }

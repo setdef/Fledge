@@ -30,12 +30,35 @@ class MobileParity
     # "Describing use of required reason API" (developer.apple.com, read
     # 2026-10-28): the file timestamp, system boot time, and disk space
     # APIs that are C functions. The rest are Foundation's and UIKit's,
-    # which Ruby does not call.
+    # which Ruby does not call. Apple lists getattrlist, fgetattrlist, and
+    # getattrlistat among the disk space APIs too, but they are not here
+    # under disk space: Ruby's dir.c calls them for the filesystem's type,
+    # not for free space, and this check matches by function name only, so
+    # listing them would demand a disk space declaration Ruby does not
+    # need.
     PRIVACY_APIS = {
       "NSPrivacyAccessedAPICategoryFileTimestamp" => %w[stat fstat fstatat lstat getattrlist fgetattrlist getattrlistat getattrlistbulk],
       "NSPrivacyAccessedAPICategorySystemBootTime" => %w[mach_absolute_time],
       "NSPrivacyAccessedAPICategoryDiskSpace" => %w[statfs statvfs fstatfs fstatvfs],
     }.freeze
+
+    # The reason Fledge's manifest gives for each category it declares
+    # (lib/fledge/templates/ios/Host/PrivacyInfo.xcprivacy): C617.1, files
+    # inside the app's container, and 35F9.1, time elapsed between events
+    # in the app.
+    REASONS = {
+      "NSPrivacyAccessedAPICategoryFileTimestamp" => "C617.1",
+      "NSPrivacyAccessedAPICategorySystemBootTime" => "35F9.1",
+    }.freeze
+
+    # The categories of REASONS that the privacy +manifest+ (a Hash, as
+    # plutil converts it to JSON) declares without the reason Fledge
+    # expects, as a Hash from category to the reasons it names.
+    def self.wrong_reasons(manifest)
+      manifest.fetch("NSPrivacyAccessedAPITypes").to_h do |type|
+        [type.fetch("NSPrivacyAccessedAPIType"), type.fetch("NSPrivacyAccessedAPITypeReasons", [])]
+      end.select { |category, reasons| REASONS.key?(category) && !reasons.include?(REASONS.fetch(category)) }
+    end
 
     def initialize(runtimes:, work: File.join(ROOT, "tmp", "mobile-parity", "ios"), out: $stdout)
       @runtimes = File.expand_path(runtimes)
@@ -79,14 +102,19 @@ class MobileParity
 
     # Fails unless the privacy manifest in the app +bundle+ names each
     # category of PRIVACY_APIS whose functions +executable+ imports, as
-    # nm, Apple's own tool, lists them.
+    # nm, Apple's own tool, lists them, and gives each category Fledge
+    # declares the reason (REASONS) Fledge expects.
     private def check_privacy(bundle, executable)
       imported = capture("xcrun", "nm", "-u", executable).lines.map { |line| line.strip.delete_prefix("_") }
       manifest = capture("plutil", "-convert", "json", "-o", "-", File.join(bundle, "PrivacyInfo.xcprivacy"))
-      declared = JSON.parse(manifest).fetch("NSPrivacyAccessedAPITypes").map { |type| type.fetch("NSPrivacyAccessedAPIType") }
+      parsed = JSON.parse(manifest)
+      declared = parsed.fetch("NSPrivacyAccessedAPITypes").map { |type| type.fetch("NSPrivacyAccessedAPIType") }
       needed = PRIVACY_APIS.select { |_, functions| functions.intersect?(imported) }
       missing = needed.keys - declared
       raise "#{executable} imports #{needed.slice(*missing)}, whose categories its privacy manifest leaves out" unless missing.empty?
+
+      wrong = IOS.wrong_reasons(parsed)
+      raise "#{executable}'s privacy manifest names #{wrong}, without the reasons #{REASONS.slice(*wrong.keys)}" unless wrong.empty?
 
       @out.puts "#{File.basename(executable)} imports #{needed.values.flatten.intersection(imported).join(', ')}: " \
         "its privacy manifest names #{needed.keys.join(' and ')}"

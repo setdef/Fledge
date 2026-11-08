@@ -50,6 +50,25 @@ class MobileParityTest < Minitest::Test
     end
   end
 
+  # Fledge's own manifest gives the reasons the check expects, and a
+  # manifest that names a category with another reason fails it.
+  def test_the_privacy_manifest_check_compares_reasons
+    skip "plutil is Apple's" unless RUBY_PLATFORM.include?("darwin")
+    template = File.join(MobileParity::ROOT, "lib", "fledge", "templates", "ios", "Host", "PrivacyInfo.xcprivacy")
+    manifest = JSON.parse(IO.popen(["plutil", "-convert", "json", "-o", "-", template], &:read))
+
+    assert_empty MobileParity::IOS.wrong_reasons(manifest)
+
+    first = manifest["NSPrivacyAccessedAPITypes"].first
+    first["NSPrivacyAccessedAPITypeReasons"] = ["DDA9.1"]
+
+    assert_equal({ first["NSPrivacyAccessedAPIType"] => ["DDA9.1"] }, MobileParity::IOS.wrong_reasons(manifest))
+
+    first["NSPrivacyAccessedAPITypeReasons"] = ["DDA9.1", "C617.1"]
+
+    assert_empty MobileParity::IOS.wrong_reasons(manifest)
+  end
+
   # The reference runs as a person runs ruby main.rb: in a UTF-8 locale,
   # with a home folder of its own and nothing of the runner's Ruby.
   def test_the_reference_runs_with_a_persons_plain_environment

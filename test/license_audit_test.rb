@@ -247,6 +247,37 @@ class LicenseAuditTest < Minitest::Test
     assert_equal :forbidden, LicenseAudit.category("AGPL-3.0-or-later")
   end
 
+  # The macOS floor (ADR 029, sections 2 and 6): every Mach-O in a macOS
+  # runtime, the launcher and bin/ruby among them, runs on Fledge's oldest
+  # macOS, and the audit refuses a runtime with one that says otherwise.
+  def macos_floors(files)
+    Dir.mktmpdir("macos-floor") do |tree|
+      files.each do |path, bytes|
+        FileUtils.mkdir_p(File.dirname(File.join(tree, path)))
+        File.binwrite(File.join(tree, path), bytes)
+      end
+      LicenseAudit.new(platform: "arm64-darwin", tree:, fledge_version: "0.0.0", readers: TestReaders.all).call
+        .violations.select { |violation| violation.rule == "macos-floor" }.map(&:to_s)
+    end
+  end
+
+  def test_refuses_a_mach_o_that_needs_a_newer_macos_than_the_floor
+    TestReaders.need(self, :macho)
+
+    assert_empty macos_floors({ "launcher" => Binaries.macho, "bin/ruby" => Binaries.macho })
+    %w[launcher bin/ruby lib/ruby/4.0.0/arm64-darwin23/a.bundle].each do |path|
+      assert_equal ["macos-floor: #{path}: needs macOS 27.1, and Fledge's macOS apps run on macOS 14.0 and later"],
+        macos_floors({ path => Binaries.macho(minos: "27.1") })
+    end
+  end
+
+  def test_refuses_a_mach_o_that_names_no_macos_at_all
+    TestReaders.need(self, :macho)
+
+    assert_equal ["macos-floor: launcher: names no macOS it runs on, and Fledge's macOS apps run on macOS 14.0 and later"],
+      macos_floors({ "launcher" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], platform: "ios") })
+  end
+
   def test_reads_the_libraries_elf_pe_and_mach_o_files_need
     TestReaders.need(self, :elf, :macho, :pe)
     audit = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0", readers: TestReaders.all)

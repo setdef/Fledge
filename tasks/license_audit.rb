@@ -16,6 +16,7 @@ require "stringio"
 require "yaml"
 require "zlib"
 require_relative "../lib/fledge/license_policy"
+require_relative "../lib/fledge/platform"
 
 # Accounts for everything in a runtime tree and checks it against
 # Fledge's license policy (Fledge::LicensePolicy) and the map of what
@@ -103,6 +104,7 @@ class LicenseAudit
     links = check_links(binaries, files)
     embeds = check_embedded(components, files)
     check_binary_ownership(binaries, owners)
+    check_macos_floor(binaries)
     check_signatures(binaries, owners, embeds)
     check_pins(components, files)
     texts = CopyleftText.new(self, method(:violate))
@@ -310,6 +312,23 @@ class LicenseAudit
   # A copyleft library's code may appear only in its own shared library,
   # or in a file the map says it is linked into (its embedded files),
   # which the policy then judges (LicenseAudit::Policy).
+  # Refuses a Mach-O that a macOS runtime holds and Fledge's oldest macOS
+  # would not load (ADR 029, section 6): a pin that raises the deployment
+  # target would otherwise raise a floor only a major version may raise.
+  private def check_macos_floor(binaries)
+    return unless @facts.fetch("os") == "darwin"
+
+    floor = Fledge::Platform::MACOS_MINIMUM
+    binaries.each do |path, binary|
+      next unless binary.format == :macho
+
+      found = binary.macos_minimum
+      next if found && Gem::Version.new(found) <= Gem::Version.new(floor)
+
+      violate("macos-floor", path, "#{found ? "needs macOS #{found}" : 'names no macOS it runs on'}, and Fledge's macOS apps run on macOS #{floor} and later")
+    end
+  end
+
   private def check_signatures(binaries, owners, embeds)
     @map.fetch("signatures").each do |signature|
       binaries.each_key do |path|

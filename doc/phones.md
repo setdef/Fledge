@@ -29,6 +29,30 @@ Some frameworks, such as SDL3, need their startup files on each phone. Name a fo
 
 Apple asks for a reason each time an app uses certain system calls, and an app declares them in `PrivacyInfo.xcprivacy`. Fledge's manifest declares the file-timestamp and boot-time APIs that Ruby calls, for files in the app's container (C617.1) and for elapsed time (35F9.1). If your app shows a file's dates to the person (DDA9.1) or reads files the person picked (3B52.1), or if its gems call other required-reason APIs, add those to your own copy. Put it in your `ios: host:` folder as `Host/PrivacyInfo.xcprivacy`, which replaces Fledge's whole.
 
+## Google Play
+
+Google Play takes an [Android App Bundle](https://developer.android.com/guide/app-bundle) (`.aab`) from a new app, not an APK. Build one in the project Fledge wrote:
+
+```sh
+./gradlew bundleRelease
+```
+
+The bundle is `build/outputs/bundle/release/NAME-release.aab`, and it is unsigned. Fledge holds no key of yours. Sign the bundle with your upload key, and Play signs the APKs it makes from it with your app's signing key ([Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756)). Make an upload key once with the JDK's `keytool`, and keep it out of your repository:
+
+```sh
+keytool -genkeypair -v -keystore ~/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+Then sign each bundle with `jarsigner`, as [Android's documentation](https://developer.android.com/build/building-cmdline#sign_cmdline) does. `apksigner` signs APKs, not bundles.
+
+```sh
+jarsigner -keystore ~/upload-keystore.jks "build/outputs/bundle/release/NAME-release.aab" upload
+```
+
+Or name the key in a `signingConfigs` block in `build.gradle`, and `bundleRelease` signs the bundle as it builds it. `./gradlew assembleDebug` still builds an APK you can install on a phone or an emulator with `adb install`.
+
+To see the APKs Play would make from your bundle, and install them, use Google's [bundletool](https://developer.android.com/tools/bundletool): `build-apks` with your key, then `install-apks`. Play limits the base module, which holds all of a Fledge app, to a 500 MB download ([size limits](https://support.google.com/googleplay/android-developer/answer/9859372)). `bundletool get-size total --apks=app.apks` prints yours. Ruby and the example apps download as about 17 MB.
+
 ## What has run where
 
-CI runs phone apps in the iOS Simulator, on an iPhone and an iPad, and on x86-64 Android emulators. A game built with `fledge build ios` has run on a physical iPad Pro and a physical iPhone 13 mini, signed with a free Personal Team. Apple's membership page says a free team's profiles expire after 7 days, but the profiles Xcode made for that team last a year, so read the `ExpirationDate` in your own (`security cms -D -i FILE.mobileprovision`). No app has been through App Review yet. For `arm64-v8a`, which most Android phones use, CI builds the library and checks the APK, but no free CI runner can start an arm64 emulator. A game that `fledge build android` built has run on a physical OnePlus Nord N30 5G with Android 14, which loaded the APK's `arm64-v8a` library.
+CI runs phone apps in the iOS Simulator, on an iPhone and an iPad, and on x86-64 Android emulators. On Android, each app runs from its APK, and again from the APKs bundletool makes from its signed release bundle, as Play would install them. A game built with `fledge build ios` has run on a physical iPad Pro and a physical iPhone 13 mini, signed with a free Personal Team. Apple's membership page says a free team's profiles expire after 7 days, but the profiles Xcode made for that team last a year, so read the `ExpirationDate` in your own (`security cms -D -i FILE.mobileprovision`). No app has been through App Review or Google Play's review yet. For `arm64-v8a`, which most Android phones use, CI builds the library and checks the APK, but no free CI runner can start an arm64 emulator. A game that `fledge build android` built has run on a physical OnePlus Nord N30 5G with Android 14, which loaded the APK's `arm64-v8a` library.

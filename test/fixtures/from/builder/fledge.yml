@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# A console app that carries the tools fledge build --from needs and
+# Fledge itself, so it can build another app with no Ruby anywhere
+# (ADR 032, section 4). Delivery runs it.
+name: Builder
+kind: console
+build_tools: true

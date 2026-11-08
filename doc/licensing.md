@@ -98,7 +98,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.6.0-x86_64-linux-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x86_64-linux-lgpl-sources.tar.gz`.
 
 ## Linux on ARM64 (aarch64-linux)
 
@@ -137,7 +137,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.6.0-aarch64-linux-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-linux-lgpl-sources.tar.gz`.
 
 ## musl Linux, such as Alpine, on x86-64 (x86_64-linux-musl)
 
@@ -174,7 +174,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.6.0-x86_64-linux-musl-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x86_64-linux-musl-lgpl-sources.tar.gz`.
 
 ## musl Linux, such as Alpine, on ARM64 (aarch64-linux-musl)
 
@@ -211,7 +211,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.6.0-aarch64-linux-musl-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-linux-musl-lgpl-sources.tar.gz`.
 
 ## Windows on x64 (x64-mingw-ucrt)
 
@@ -250,7 +250,7 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.6.0-x64-mingw-ucrt-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-x64-mingw-ucrt-lgpl-sources.tar.gz`.
 
 ## Windows on ARM64 (aarch64-mingw-ucrt)
 
@@ -287,7 +287,7 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
-**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.6.0-aarch64-mingw-ucrt-lgpl-sources.tar.gz`.
+**What you must do on this platform:** keep the notices and Fledge's own files as above, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.7.0-aarch64-mingw-ucrt-lgpl-sources.tar.gz`.
 
 ## iOS and iPadOS (arm64-ios, arm64-ios-simulator)
 

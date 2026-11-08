@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A `with` that names only `development` or `test`, such as `BUNDLE_WITH=development` or the same in the project's `.bundle/config`, no longer ships that group's gems.
+
 ## [0.7.0] - 2026-11-07
 
 ### Added

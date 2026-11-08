@@ -164,6 +164,23 @@ class ReleaseChecksTest < Minitest::Test
     assert jobs.select { |_, job| job["needs"] == "changes" }.all? { |_, job| job.key?("if") }
   end
 
+  # ADR 029, section 2, freezes a prerelease tag in SemVer's form; such a
+  # version must not publish as a full release, which GitHub would show
+  # as the latest. The step's own case statement decides, run by bash.
+  def test_any_prerelease_version_is_marked_a_prerelease
+    workflow = YAML.load_file(File.join(ROOT, ".github", "workflows", "release.yml"))
+    step = workflow.fetch("jobs").fetch("release").fetch("steps").find { |candidate| candidate["run"].to_s.include?("gh release create") }
+    decision = step.fetch("run")[/^case "\$VERSION".*esac$/] or flunk("release.yml's step has no case on the version")
+    marked = lambda do |version|
+      out, status = Open3.capture2e({ "VERSION" => version }, "bash", "-c", "prerelease=()\n#{decision}\necho \"${prerelease[*]}\"")
+      assert_predicate status, :success?, out
+      out.strip
+    end
+
+    %w[1.0.0-beta.1 1.0.0-rc.2 1.0.0-alpha 0.0.1.pre.1 2.0.0.beta1].each { |version| assert_equal "--prerelease", marked.call(version), version }
+    %w[0.1.0 1.0.0 12.34.56].each { |version| assert_equal "", marked.call(version), version }
+  end
+
   # A dry run of release.yml writes nothing: the one job that may write
   # to the repository creates the release, and runs only on a pushed tag
   # or when asked to publish, which a dry run is not by default.

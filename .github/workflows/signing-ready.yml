@@ -1,0 +1,264 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Experiment only (experiment/signing-ready), never for trunk: ADR 033's
+# fledge build --notarize and --sign-command, on the jobs ci.yml runs them
+# in. The macOS Test job runs the whole suite with CI's self-signed
+# identity, so the stand-in notary service notarizes a built app through
+# fledge build; the Windows Test jobs run it with CI's self-signed
+# certificate, so the stand-in signer signs a whole build; the Windows
+# Build jobs sign hello and windowed_app with --sign and through
+# --sign-command with the real signtool, and their Delivery jobs verify
+# both on fresh runners; and the macOS Build and Delivery jobs check that
+# --sign still delivers now that installers come before the archive. The
+# runtimes are trunk's, from CI run RUN at 7ce8fcd, whose launchers this
+# branch does not change.
+
+name: signing-ready
+
+on:
+  push:
+    branches: ["experiment/signing-ready"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  RUN: "42453865685"
+  MISE_RUBY_COMPILE: "false"
+  BUNDLE_FROZEN: "true"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test-mac:
+    name: Test (arm64-darwin)
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Place Bundler outside the checkout
+        run: echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
+
+      - name: Install the bundle
+        run: bundle install
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-arm64-darwin
+          path: ${{ runner.temp }}/runtimes
+          run-id: ${{ env.RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Make a code signing identity
+        run: .github/scripts/make-test-identity.sh "$RUNNER_TEMP/certificate.pem"
+
+      - name: Run the tests
+        timeout-minutes: 15
+        env:
+          A: --verbose
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_REQUIRE_RUNTIME: "1"
+        run: bundle exec rake test
+
+  test-windows:
+    name: Test (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, platform: x64-mingw-ucrt }
+          - { os: windows-11-arm, platform: aarch64-mingw-ucrt }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the Ruby pin
+        id: pins
+        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        with:
+          ruby-version: ${{ steps.pins.outputs.ruby }}
+          bundler-cache: true
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: ${{ runner.temp }}/runtimes
+          run-id: ${{ env.RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Point RubyInstaller at setup-ruby's MSYS2
+        run: echo "MSYS2_PATH=$RI_DEVKIT" >> "$GITHUB_ENV"
+
+      - name: Make a code signing certificate
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/make-test-identity.ps1 -Certificate "$env:RUNNER_TEMP/certificate.cer"
+
+      - name: Run the tests
+        timeout-minutes: 25
+        env:
+          A: --verbose
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_REQUIRE_RUNTIME: "1"
+        run: bundle exec rake test
+
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, platform: arm64-darwin }
+          - { os: windows-latest, platform: x64-mingw-ucrt }
+          - { os: windows-11-arm, platform: aarch64-mingw-ucrt }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        if: runner.os != 'Windows'
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Read the Ruby pin
+        if: runner.os == 'Windows'
+        id: pins
+        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        if: runner.os == 'Windows'
+        with:
+          ruby-version: ${{ steps.pins.outputs.ruby }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: ${{ runner.temp }}/runtimes
+          run-id: ${{ env.RUN }}
+          github-token: ${{ github.token }}
+
+      # From here, ci.yml's Build steps for signing, as they are on this
+      # branch.
+      - name: Make a code signing identity
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist-signed
+          .github/scripts/make-test-identity.sh dist-signed/certificate.pem
+
+      - name: Make a code signing certificate
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist-signed | Out-Null
+          pwsh -NoProfile -File .github/scripts/make-test-identity.ps1 -Certificate dist-signed/certificate.cer
+
+      - name: Build hello and windowed_app, signed, for ${{ matrix.platform }}
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: |
+          for app in examples/hello examples/windowed_app; do
+            ruby -I lib exe/fledge build --sign "$FLEDGE_TEST_SIGN_IDENTITY" -o dist-signed "$app"
+          done
+
+      - name: Build hello and windowed_app, signed through a signing command, for ${{ matrix.platform }}
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: |
+          $signtool = ruby -I lib -r fledge -e 'print Fledge::Nsis.host_path(Fledge::WindowsSigning.signtool(ENV))'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $command = "`"$signtool`" sign /sha1 $env:FLEDGE_TEST_SIGN_IDENTITY /fd sha256 /tr http://timestamp.digicert.com /td sha256 %1"
+          ruby -I lib exe/fledge build --sign-command $command -o dist-signed/command examples/hello
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $env:FLEDGE_SIGN_COMMAND = $command
+          ruby -I lib exe/fledge build -o dist-signed/command examples/windowed_app
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signed-${{ matrix.platform }}
+          path: |
+            dist-signed/*-${{ matrix.platform }}.tar.gz
+            dist-signed/*-${{ matrix.platform }}.zip
+            dist-signed/*-${{ matrix.platform }}.dmg
+            dist-signed/*-${{ matrix.platform }}-setup.exe
+            dist-signed/command/*-${{ matrix.platform }}.zip
+            dist-signed/command/*-${{ matrix.platform }}-setup.exe
+            dist-signed/certificate.*
+          if-no-files-found: error
+          retention-days: 14
+
+  delivery:
+    name: Delivery (${{ matrix.platform }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, platform: arm64-darwin }
+          - { os: windows-latest, platform: x64-mingw-ucrt }
+          - { os: windows-11-arm, platform: aarch64-mingw-ucrt }
+    env:
+      PLATFORM: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signed-${{ matrix.platform }}
+          path: ${{ runner.temp }}/signed
+
+      - name: Verify and run the signed apps
+        if: runner.os == 'macOS'
+        run: >-
+          .github/scripts/deliver-signed.sh "$RUNNER_TEMP/signed/Hello-arm64-darwin.tar.gz"
+          "$RUNNER_TEMP/signed/Hello Window-arm64-darwin.tar.gz" "$RUNNER_TEMP/signed/Hello Window-arm64-darwin.dmg"
+          "$RUNNER_TEMP/signed/certificate.pem"
+
+      - name: Verify, install, and run the signed apps
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver-signed.ps1
+          -Hello "$env:RUNNER_TEMP/signed/Hello-$env:PLATFORM.zip"
+          -Windowed "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM.zip"
+          -Installer "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM-setup.exe"
+          -Certificate "$env:RUNNER_TEMP/signed/certificate.cer"
+
+      - name: Verify, install, and run the apps signed through a signing command
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver-signed.ps1
+          -Hello "$env:RUNNER_TEMP/signed/command/Hello-$env:PLATFORM.zip"
+          -Windowed "$env:RUNNER_TEMP/signed/command/Hello Window-$env:PLATFORM.zip"
+          -Installer "$env:RUNNER_TEMP/signed/command/Hello Window-$env:PLATFORM-setup.exe"
+          -Certificate "$env:RUNNER_TEMP/signed/certificate.cer" -Trusted

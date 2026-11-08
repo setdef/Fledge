@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -42,7 +42,7 @@ module Fledge
   #
   #--
   # SPDX-SnippetBegin
-  # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
   #   app = Fledge::App.at("examples/my_cool_app/exe/my_cool_app")
@@ -104,7 +104,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::App.at("bin/server").entry # => "bin/server"
@@ -254,7 +254,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::App.camelize("my_cool_app") # => "MyCoolApp"
@@ -287,7 +287,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::App.at("my_app/main.rb").entries(skip: [File.expand_path("my_app/dist")])
@@ -305,7 +305,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::App.at("examples/programs").main.name # => "Shared Save"
@@ -323,7 +323,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::App.at("bin/server").entry # => "bin/server"
@@ -341,7 +341,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::App.at("examples/windowed_app").identity.windowed? # => true

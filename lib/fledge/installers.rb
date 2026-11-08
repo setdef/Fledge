@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -38,7 +38,7 @@ module Fledge
   #
   #--
   # SPDX-SnippetBegin
-  # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
   #   app = Fledge::App.at("examples/windowed_app")
@@ -64,7 +64,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Installers.formats(Fledge::App.at("examples/hello"), Fledge::Platform.local) # => []
@@ -86,7 +86,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Installers.file_name("dmg", "MyApp-arm64-darwin") # => "MyApp-arm64-darwin.dmg"
@@ -115,7 +115,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Installers.write("dmg", app:, folder: "dist/MyApp-arm64-darwin", platform:, tools: nil)
@@ -149,7 +149,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Installers.license(Fledge::App.at("examples/windowed_app")).lines.first # => "MIT No Attribution\n"

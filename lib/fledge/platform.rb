@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -30,7 +30,7 @@ module Fledge
   #
   #--
   # SPDX-SnippetBegin
-  # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
   #   Fledge::Platform.find("x86_64-linux").name # => "x86_64-linux"
@@ -70,7 +70,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.names.first # => "arm64-darwin"
@@ -88,7 +88,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("aarch64-linux") # => #<data Fledge::Platform name="aarch64-linux">
@@ -116,7 +116,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.local(Gem::Platform.new("arm64-darwin-25")).name # => "arm64-darwin"
@@ -148,7 +148,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("x64-mingw-ucrt").windows? # => true
@@ -166,7 +166,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("aarch64-linux").os # => "linux"
@@ -186,7 +186,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("arm64-darwin").macos_minimum # => "14.0"
@@ -204,7 +204,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("x86_64-linux-musl").musl? # => true
@@ -223,7 +223,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("aarch64-linux-musl").libraries # => "linux-musl"
@@ -241,7 +241,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("x86_64-linux").glibc_minimum # => "2.39"
@@ -264,7 +264,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("x86_64-linux").lockfile_names # => ["x86_64-linux", "x86_64-linux-gnu"]
@@ -284,7 +284,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("x86_64-linux").force_ruby_platform? # => false
@@ -301,7 +301,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("arm64-darwin").archive_extension # => ".tar.gz"
@@ -320,7 +320,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Platform.find("x86_64-linux").executable("hello")   # => "hello"
@@ -338,7 +338,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   "hello-#{Fledge::Platform.find('x86_64-linux')}" # => "hello-x86_64-linux"

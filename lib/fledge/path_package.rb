@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -33,7 +33,7 @@ module Fledge
   #
   #--
   # SPDX-SnippetBegin
-  # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
   #   package = Fledge::PathPackage.new(path_gem)
@@ -80,7 +80,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.scope # => "path-greeter-1.0"
@@ -98,7 +98,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.problems(ruby_version: "4.0.9") # => []
@@ -115,7 +115,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.extensions? # => true
@@ -134,7 +134,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.contents.keys # => ["lib/greeter.rb"]
@@ -163,7 +163,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.installed_path("lib/ruby/gems/4.0.0") # => "app/vendor/cache/greeter"
@@ -181,7 +181,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.entries("lib/ruby/gems/4.0.0") # => []
@@ -201,7 +201,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.copy_to("tmp/copy") # => "tmp/copy"
@@ -232,7 +232,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.app_entries([]).map(&:path) # => ["app/vendor/cache/greeter", "app/vendor/cache/greeter/greeter.gemspec", ...]
@@ -260,7 +260,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   package.app_files(built).keys # => ["gems/greeter/lib/greeter/greeter.bundle"]

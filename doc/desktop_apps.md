@@ -1,5 +1,5 @@
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 # Desktop apps: names, windows, installers, and signing
@@ -12,7 +12,7 @@ Without `fledge.yml`, an app is a console app named after your gemspec or your p
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
@@ -33,7 +33,7 @@ An app that opens its own windows, through a GUI library such as [SDL](https://w
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
@@ -81,7 +81,7 @@ A windowed app can list the files and folders it opens, so that each system offe
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
@@ -107,7 +107,7 @@ If your app has more than one way in, such as a window, a terminal interface, an
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml

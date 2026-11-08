@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -21,7 +21,7 @@ module Fledge
   #
   #--
   # SPDX-SnippetBegin
-  # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
   #   gem = Fledge::LockedGem.new(name: "sqlite3", version: "2.10.2", platform: "x64-mingw-ucrt",
@@ -68,7 +68,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   i18n.full_name # => "i18n-1.15.2"
@@ -85,7 +85,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   i18n.file_name # => "i18n-1.15.2.gem"
@@ -103,7 +103,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   i18n.url # => "https://rubygems.org/gems/i18n-1.15.2.gem"
@@ -121,7 +121,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   sqlite3.to_s # => "sqlite3 2.10.2 (x64-mingw-ucrt)"

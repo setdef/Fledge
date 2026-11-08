@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -27,7 +27,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::Binary::Readers.local("linux").reads?(:elf)                 # => true
@@ -59,7 +59,7 @@ module Fledge
       #
       #--
       # SPDX-SnippetBegin
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
       #   Fledge::Binary::Readers.local("windows", readobj: "tools/llvm-readobj.exe").reads?(:pe) # => true
@@ -85,7 +85,7 @@ module Fledge
       #
       #--
       # SPDX-SnippetBegin
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
       #   Fledge::Binary::Readers.llvm("/opt/llvm-mingw/bin").commands[:pe] # => "/opt/llvm-mingw/bin/llvm-readobj"

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.name = "fledge"
   spec.version = Fledge::VERSION
   spec.authors = ["Kerrick Long"]
-  spec.email = ["me@kerricklong.com"]
+  spec.email = ["kerrick@setdef.com"]
 
   spec.summary = "Ship a Ruby app to people who don't have Ruby."
   spec.description = File.read(File.expand_path("README.rdoc", __dir__))

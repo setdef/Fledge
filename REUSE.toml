@@ -2,7 +2,7 @@ version = 1
 
 [[annotations]]
 path = 'Gemfile.lock'
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "CC0-1.0"
 
 # Bundler writes a lockfile, and its own settings, and gives neither a
@@ -12,7 +12,7 @@ path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock',
   'examples/nokogiri_app/.bundle/config', 'examples/mobile_app/Gemfile.lock', 'examples/real_gems/Gemfile.lock',
   'examples/real_gems/.bundle/config', 'examples/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock',
   'examples/cmake_phone/Gemfile.lock', 'examples/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock']
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 
 # The SHA-256 of every asset of a release, as sha256sum writes them,
@@ -20,7 +20,7 @@ SPDX-License-Identifier = "MIT-0"
 # the release's SHA256SUMS (ADR 014); that format has no comments.
 [[annotations]]
 path = 'lib/fledge/SHA256SUMS'
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "CC0-1.0"
 
 # The windowed example's icon, drawn by a script, saved as a PNG, and
@@ -28,21 +28,21 @@ SPDX-License-Identifier = "CC0-1.0"
 # has a place for a header.
 [[annotations]]
 path = ['examples/windowed_app/icons/**', 'examples/mobile_app/icons/**']
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 
 # The iOS project template's asset catalog, in the JSON Xcode reads,
 # which has no place for a header.
 [[annotations]]
 path = 'lib/fledge/templates/ios/Host/Assets.xcassets/**'
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 # The JSON Schema of fledge.yml (ADR 023), which editors read as JSON,
 # which has no comments.
 [[annotations]]
 path = 'lib/fledge/config.schema.json'
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 # Gradle's wrapper, as Gradle 9.8.2's gradle wrapper task writes it, in
@@ -57,7 +57,7 @@ SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
 path = 'README.rdoc'
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
 
 # Third-party license texts the runtimes ship in their notices/ folder,
@@ -212,7 +212,7 @@ SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception"
 # header.
 [[annotations]]
 path = ["test/fixtures/binaries/*.so", "test/fixtures/binaries/*.bundle", "test/fixtures/binaries/*.dll", "test/fixtures/binaries/*.exe"]
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
 # The windowed example's license text and changelog, which its setup
@@ -220,5 +220,5 @@ SPDX-License-Identifier = "AGPL-3.0-or-later"
 # would be shown and installed too.
 [[annotations]]
 path = ['examples/windowed_app/LICENSE.txt', 'examples/windowed_app/CHANGES.txt']
-SPDX-FileCopyrightText = "2026 Kerrick Long <me@kerricklong.com>"
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"

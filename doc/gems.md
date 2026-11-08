@@ -1,5 +1,5 @@
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 # Gems in a Fledge app
@@ -12,7 +12,7 @@ Lock each platform you build on, and every gem's checksum:
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```console
@@ -40,7 +40,7 @@ On Linux, a gem's compiled files may link only the libraries every distribution 
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
@@ -57,7 +57,7 @@ A gem from a GitHub release, which is not on rubygems.org, has no checksum on an
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```console

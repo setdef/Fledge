@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=../../lib/fledge/config.schema.json
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
 # native_phone is a lone script with a gem that has a C and C++

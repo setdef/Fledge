@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -30,7 +30,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   # fledge.yml:
@@ -62,7 +62,7 @@ module Fledge
       #
       #--
       # SPDX-SnippetBegin
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
       #   Fledge::Config::Macos.from({ "macos" => { "build" => "42" } }, "fledge.yml").build # => "42"

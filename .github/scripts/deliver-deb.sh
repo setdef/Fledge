@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Delivery of a windowed app's .deb (ADR 021) on Debian and Ubuntu: the
@@ -93,7 +93,7 @@ doc="/usr/share/doc/$package"
 # from the package: changelog.gz (12.7), from gzip -n -9, with no name or
 # time in its header.
 grep -qx "MIT No Attribution" "$doc/copyright" || fail "$doc/copyright is not the app's license: $(head -n 3 "$doc/copyright")"
-grep -q "^Copyright © 2026 Kerrick Long\$" "$doc/copyright" || fail "$doc/copyright lost its copyright line"
+grep -q "^Copyright © 2026 setdef\$" "$doc/copyright" || fail "$doc/copyright lost its copyright line"
 expect "the copyright file's mode" "$(stat -c %a "$doc/copyright")" 644
 unpacked=$(mktemp -d)
 dpkg-deb --extract "$deb" "$unpacked"

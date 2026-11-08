@@ -1,5 +1,5 @@
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 # Publishing a console app with a package manager
@@ -20,7 +20,7 @@ Put a manifest such as `hello.json` in a git repository, your bucket, and your u
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```json
@@ -67,7 +67,7 @@ Put a formula such as `Formula/hello.rb` in a repository named `homebrew-NAME`, 
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
@@ -113,7 +113,7 @@ A winget package is three files, which you add to [`microsoft/winget-pkgs`](http
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml

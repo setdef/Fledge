@@ -81,4 +81,4 @@ of that platform, such as a CI runner of each.
 [Source] https://github.com/setdef/Fledge
 [Releases] https://github.com/setdef/Fledge/releases
 
-© 2026 Kerrick Long · Code: AGPL-3.0-or-later · Docs: CC-BY-SA-4.0 · Snippets: MIT-0 · Requested: built by AI agents, reviewed by CI
+© 2026 setdef · Code: AGPL-3.0-or-later · Docs: CC-BY-SA-4.0 · Snippets: MIT-0 · Requested: built by AI agents, reviewed by CI

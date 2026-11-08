@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -28,7 +28,7 @@ namespace :reuse do
 
   desc "Add SPDX headers to files missing them (per AGENTS.md standards)"
   task :fix do
-    copyright = "Kerrick Long <me@kerricklong.com>"
+    copyright = "setdef <kerrick@setdef.com>"
 
     # Code files: AGPL-3.0-or-later
     code_extensions = %w[rb rbs c h rake gemspec toml yml yaml json lock].freeze

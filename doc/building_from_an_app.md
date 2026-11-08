@@ -1,5 +1,5 @@
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 # Building from an app already built
@@ -8,7 +8,7 @@ An app that [Fledge](../README.md) built already holds a Ruby and your gems, eac
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```console

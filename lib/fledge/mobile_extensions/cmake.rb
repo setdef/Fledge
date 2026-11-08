@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -32,7 +32,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::MobileExtensions::CMake.android(ndk: "/sdk/ndk/30.0.16248370", abi: "x86_64", compiler: "x86_64-linux-android26-clang")
@@ -58,7 +58,7 @@ module Fledge
       #
       #--
       # SPDX-SnippetBegin
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
       #   Fledge::MobileExtensions::CMake.ios(triple: "arm64-apple-ios15.0", sysroot: sdk, cc: clang, cxx: clangxx)
@@ -90,7 +90,7 @@ module Fledge
       #
       #--
       # SPDX-SnippetBegin
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
       #   Fledge::MobileExtensions::CMake.android(ndk: "/ndk", abi: "arm64-v8a", compiler: "aarch64-linux-android26-clang")

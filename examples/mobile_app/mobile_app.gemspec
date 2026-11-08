@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 #++
 
@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.name = "mobile_app"
   spec.version = MobileApp::VERSION
   spec.authors = ["Kerrick Long"]
-  spec.email = ["me@kerricklong.com"]
+  spec.email = ["kerrick@setdef.com"]
 
   spec.summary = "Says hello through a chain of pure-Ruby gems, on a desktop or a phone."
   spec.homepage = "https://github.com/setdef/Fledge/tree/trunk/examples/mobile_app"

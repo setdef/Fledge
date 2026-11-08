@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 1993-2007 Yukihiro Matsumoto
- * SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+ * SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-FileComment: Adapted from Ruby's main.c at Ruby v4.0.9
  *   (3e93b23afcec3433f6aecc34b5d832799d754238), without its developer-only

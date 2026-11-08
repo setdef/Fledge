@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -23,7 +23,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   ndk = Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local)
@@ -59,7 +59,7 @@ module Fledge
       #
       #--
       # SPDX-SnippetBegin
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
       #   Fledge::MobileExtensions::NDK.find({ "ANDROID_NDK_ROOT" => "/opt/ndk" }, host: host).root # => "/opt/ndk"
@@ -108,7 +108,7 @@ module Fledge
       #
       #--
       # SPDX-SnippetBegin
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
       #   ndk.bin # => "/opt/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"

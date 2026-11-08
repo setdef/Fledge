@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -33,7 +33,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::MobileProject::IOS.new(app:, runtime:, out:).call # => "/path/to/dist/Hello-ios"
@@ -65,7 +65,7 @@ module Fledge
       #
       #--
       # SPDX-SnippetBegin
-      # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
       #   Fledge::MobileProject::IOS.ruby_under # => "FledgeRuby.xcframework/ios-arm64/"

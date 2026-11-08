@@ -1,5 +1,5 @@
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 # Fledge
@@ -28,7 +28,7 @@ This folder, `greeter`, holds a one-line `main.rb` that prints `Hello, Ruby!`, a
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```console
@@ -76,7 +76,7 @@ Add Fledge to your `Gemfile`, in the `development` group, so that it stays out o
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
@@ -100,7 +100,7 @@ Fledge ships the gems your `Gemfile.lock` locks, without the `development` and `
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```console
@@ -117,7 +117,7 @@ Fledge compiles a gem that ships as source on your computer, so install a compil
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
@@ -174,7 +174,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Copyright & License
 
-Fledge is copyright 2026, Kerrick Long. The code is [AGPL-3.0-or-later](LICENSES/AGPL-3.0-or-later.txt), and the documentation is [CC-BY-SA-4.0](LICENSES/CC-BY-SA-4.0.txt). Code snippets and examples are [MIT-0](LICENSES/MIT-0.txt): copy and use them without attribution. See each file's SPDX comment for specifics.
+Fledge is copyright 2026, setdef. The code is [AGPL-3.0-or-later](LICENSES/AGPL-3.0-or-later.txt), and the documentation is [CC-BY-SA-4.0](LICENSES/CC-BY-SA-4.0.txt). Code snippets and examples are [MIT-0](LICENSES/MIT-0.txt): copy and use them without attribution. See each file's SPDX comment for specifics.
 
 **Your app stays yours.** Your app's code stays under your terms, whether or not you buy a commercial license. The AGPL reaches only code that copies or changes Fledge, and your program does neither. Fledge's code in your app is its launcher, one RubyGems defaults file, on macOS and Linux the app's `bin/ruby`, and Fledge's Ruby code if your app ships Fledge as a gem. When you give the app to people, the AGPL requires three things of you for those files:
 

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+// SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT-0
 //
 // The app's entry point when SDL3 owns the screen (ADR 025), in place of

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+ * SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
  * SPDX-License-Identifier: MIT-0
  */
 #ifndef TALLY_H

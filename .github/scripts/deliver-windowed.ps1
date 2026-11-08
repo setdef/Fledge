@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Delivery of a windowed app (ADR 008) on Windows: unpacks what fledge
@@ -69,7 +69,7 @@ Expect 'ProductName' $info.ProductName $appName
 Expect 'InternalName' $info.InternalName $appName
 Expect 'OriginalFilename' $info.OriginalFilename "$appName.exe"
 Expect 'CompanyName' $info.CompanyName 'setdef'
-Expect 'LegalCopyright' $info.LegalCopyright "$([char]0xA9) 2026 Kerrick Long"
+Expect 'LegalCopyright' $info.LegalCopyright "$([char]0xA9) 2026 setdef"
 Expect 'Comments' $info.Comments 'Says hello from a window'
 Expect 'FileVersion' $info.FileVersion '1.2.3'
 Expect 'ProductVersion' $info.ProductVersion '1.2.3'

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #++
 
@@ -56,7 +56,7 @@ module Fledge
   #
   #--
   # SPDX-SnippetBegin
-  # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
   #   compiler = Fledge::MobileExtensions.new(platform:, packages: { gem => package }, build_args: {}, host:, runtimes:, work:, log: $stderr)
@@ -231,7 +231,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::MobileExtensions.problems(gem, package, ios, host) # => []
@@ -277,7 +277,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   Fledge::MobileExtensions.registration_source([["adder/adder", "Init_fledge_0"]])
@@ -290,7 +290,7 @@ module Fledge
       calls = registrations.map { |feature, init| "    fledge_ruby_add_extension(#{c_string(feature)}, #{init});\n" }.join
       <<~C
         /*
-         * SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+         * SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
          * SPDX-License-Identifier: AGPL-3.0-or-later
          */
 
@@ -353,7 +353,7 @@ module Fledge
     #
     #--
     # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
     #   compiler.call(tree).registrations.size # => 1

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileComment: Adapted from the "Fail the audit with a GPL library and
 #   a GPL gem slipped in" step of .github/workflows/ci.yml on Fledge's

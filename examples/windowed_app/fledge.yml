@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=../../lib/fledge/config.schema.json
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
 # A windowed app (ADR 008), with everything an app says about itself to
@@ -21,7 +21,7 @@ kind: windowed
 identifier: com.setdef.fledge.HelloWindow
 version: "1.2.3"
 publisher: setdef
-copyright: © 2026 Kerrick Long
+copyright: © 2026 setdef
 description: Says hello from a window
 long_description: |
   Hello Window is the example windowed app of Fledge, which ships a Ruby

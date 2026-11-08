@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Delivery of a windowed app (ADR 008) on macOS and Linux: unpacks what
@@ -93,7 +93,7 @@ case "$(uname -s)" in
     expect CFBundlePackageType "$(plutil -extract CFBundlePackageType raw "$plist")" APPL
     expect LSMinimumSystemVersion "$(plutil -extract LSMinimumSystemVersion raw "$plist")" 14.0
     expect NSHighResolutionCapable "$(plutil -extract NSHighResolutionCapable raw "$plist")" true
-    expect NSHumanReadableCopyright "$(plutil -extract NSHumanReadableCopyright raw "$plist")" "© 2026 Kerrick Long"
+    expect NSHumanReadableCopyright "$(plutil -extract NSHumanReadableCopyright raw "$plist")" "© 2026 setdef"
     icon="$bundle/Contents/Resources/$(plutil -extract CFBundleIconFile raw "$plist")"
     expect "the icon's width" "$(sips -g pixelWidth "$icon" | sed -n 's/^ *pixelWidth: //p')" 1024
     grep -q "^This app was built with Fledge" "$bundle/Contents/Resources/notices/NOTICES.txt" || fail "the app has no notices"

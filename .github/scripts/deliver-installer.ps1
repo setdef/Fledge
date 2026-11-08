@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Delivery of a windowed app's NSIS installer (ADR 009) on Windows: the
@@ -199,7 +199,7 @@ try {
   }
   $lines = @($licenseText -split "`r`n|`r|`n")
   Expect "the license page's first line" $lines[0] 'MIT No Attribution'
-  Expect "the license page's copyright line" $lines[2] "Copyright $([char]0xA9) 2026 Kerrick Long"
+  Expect "the license page's copyright line" $lines[2] "Copyright $([char]0xA9) 2026 setdef"
   Write-Host "ok: the setup program's window '$($setup.MainWindowTitle)' shows the license first"
 } finally {
   if (-not $setup.HasExited) { Stop-Process -Id $setup.Id -Force; $setup.WaitForExit() }

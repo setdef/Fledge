@@ -1,5 +1,5 @@
 <!--
-  SPDX-FileCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
@@ -117,7 +117,7 @@ Every public class must begin with a **Context-Problem-Solution** narrative.
 
 <!-- SPDX-SnippetBegin -->
 <!--
-  SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+  SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
@@ -125,7 +125,7 @@ Every public class must begin with a **Context-Problem-Solution** narrative.
 #
 #--
 # SPDX-SnippetBegin
-# SPDX-SnippetCopyrightText: 2026 Kerrick Long <me@kerricklong.com>
+# SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 #++
 #   Fledge::CLI.new(help_path: "exe/fledge").call(["--version"]) # => 0

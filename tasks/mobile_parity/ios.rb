@@ -8,14 +8,16 @@
 require "fileutils"
 require "json"
 require "open3"
+require_relative "ios_archive"
 
 class MobileParity
   # The check in the iOS Simulator, on an iPhone and an iPad: each app's
   # Xcode project, as fledge build ios writes it, built with xcodebuild
-  # for the Simulator, and for devices, unsigned, to show that the device
-  # slice links and that the privacy manifest names a category for every
-  # API Apple asks a reason for that the app's executable imports
-  # (PRIVACY_APIS); then, on a new simulator of each kind, each app
+  # for the Simulator, and archived for devices, unsigned (IOSArchive), to
+  # show that the device slice links, that the archive is the one App
+  # Store Connect takes as far as no account shows, and that the privacy
+  # manifest names a category for every API Apple asks a reason for that
+  # the app's executable imports (PRIVACY_APIS); then, on a new simulator of each kind, each app
   # installed and launched with simctl, its os_log read with log show.
   class IOS
     # The kinds of device the check runs on: an iPhone and an iPad, the
@@ -74,30 +76,28 @@ class MobileParity
       FileUtils.mkdir_p(@work)
       projects = MobileParity.projects("ios", runtimes: @runtimes, out: File.join(@work, "projects"))
       projects.each do |app, project|
-        device = build_app(app, project, "iphoneos")
-        executable = File.join(device, app.name)
-        @out.puts "Built #{app.name} for devices, unsigned: #{capture('xcrun', 'vtool', '-show-build', executable).lines.grep(/minos|sdk/).map(&:strip).join(', ')}"
-        check_privacy(device, executable)
+        icon = Fledge::App.at(File.join(ROOT, app.path)).identity.icon
+        device = IOSArchive.new(app:, project:, work: @work, icon: !icon.nil?, out: @out).call
+        check_privacy(device, File.join(device, app.name))
       end
-      apps = projects.to_h { |app, project| [app, build_app(app, project, "iphonesimulator")] }
+      apps = projects.to_h { |app, project| [app, build_app(app, project)] }
       FAMILIES.map { |family| on_simulator(family, apps) }.all?
     end
 
-    # The app built from +project+ for +sdk+, unsigned, with xcodebuild,
-    # which must warn of nothing.
-    private def build_app(app, project, sdk)
+    # The app built from +project+ for the Simulator, unsigned, with
+    # xcodebuild, which must warn of nothing.
+    private def build_app(app, project)
       derived = File.join(@work, "derived-#{app.identifier}")
-      log = File.join(@work, "xcodebuild-#{app.identifier}-#{sdk}.log")
-      configuration = (sdk == "iphoneos") ? "Release" : "Debug"
+      log = File.join(@work, "xcodebuild-#{app.identifier}-iphonesimulator.log")
       built = system("xcodebuild", "-project", File.join(project, "#{app.name}.xcodeproj"), "-scheme", app.name,
-        "-configuration", configuration, "-sdk", sdk, "-derivedDataPath", derived, "build", "CODE_SIGNING_ALLOWED=NO",
+        "-configuration", "Debug", "-sdk", "iphonesimulator", "-derivedDataPath", derived, "build", "CODE_SIGNING_ALLOWED=NO",
         out: log, err: [:child, :out])
-      raise "xcodebuild failed for #{app.name} (#{sdk}):\n#{File.readlines(log).last(60).join}" unless built
+      raise "xcodebuild failed for #{app.name}:\n#{File.readlines(log).last(60).join}" unless built
 
       warnings = File.readlines(log).grep(/\bwarning:/).uniq
-      raise "xcodebuild warned building #{app.name} (#{sdk}):\n#{warnings.join}" unless warnings.empty?
+      raise "xcodebuild warned building #{app.name}:\n#{warnings.join}" unless warnings.empty?
 
-      File.join(derived, "Build", "Products", "#{configuration}-#{sdk}", "#{app.name}.app")
+      File.join(derived, "Build", "Products", "Debug-iphonesimulator", "#{app.name}.app")
     end
 
     # Fails unless the privacy manifest in the app +bundle+ names each

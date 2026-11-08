@@ -53,6 +53,27 @@ Or name the key in a `signingConfigs` block in `build.gradle`, and `bundleReleas
 
 To see the APKs Play would make from your bundle, and install them, use Google's [bundletool](https://developer.android.com/tools/bundletool): `build-apks` with your key, then `install-apks`. Play limits the base module, which holds all of a Fledge app, to a 500 MB download ([size limits](https://support.google.com/googleplay/android-developer/answer/9859372)). `bundletool get-size total --apks=app.apks` prints yours. Ruby and the example apps download as about 17 MB.
 
+## The App Store
+
+The App Store takes an archive that your team signed, which Fledge cannot make: it holds no certificate or profile of yours, and uploading needs an [Apple Developer Program](https://developer.apple.com/programs/) account. Open the project's `NAME.xcodeproj`, choose your team under Signing & Capabilities, and use Xcode's Product > Archive, then Window > Organizer, where Validate App and Distribute App take it to App Store Connect. Or from a terminal, with your team's ID:
+
+```sh
+xcodebuild archive -project NAME.xcodeproj -scheme NAME -configuration Release -sdk iphoneos \
+  -archivePath NAME.xcarchive -allowProvisioningUpdates DEVELOPMENT_TEAM=YOURTEAMID
+xcodebuild -exportArchive -archivePath NAME.xcarchive -exportPath export -exportOptionsPlist ExportOptions.plist -allowProvisioningUpdates
+```
+
+`ExportOptions.plist` holds `method` `app-store-connect`, and `destination` `upload` to send the build to App Store Connect, or `export` to write an `.ipa` for Transporter. Xcode must have your Apple ID in its Accounts settings.
+
+Before you do, know what is yours to settle:
+
+- **An icon.** Give `fledge.yml` an `icon`, and for iOS a `-1024.png` that has no alpha channel and no rounded corners: App Store Connect refuses an icon with transparency, even an opaque one. `sips -g hasAlpha ICON.png` says whether yours has it.
+- **Export compliance.** Every app carries OpenSSL, so Fledge does not say for you whether your app's encryption is exempt from U.S. export rules. Answer App Store Connect's questions once, then add `ITSAppUsesNonExemptEncryption` to `Host/Info.plist`, `false` if Apple's [export compliance overview](https://developer.apple.com/documentation/security/complying-with-encryption-export-regulations) says yours is exempt, so it stops asking.
+- **A new version for each upload.** The build number is `version`'s first three numbers, and App Store Connect wants a new one each time you upload.
+- **The privacy manifest** (see above) must describe your app, not only Fledge's Ruby.
+
+CI archives every example app with no team or certificate, as `xcodebuild archive` does with `CODE_SIGNING_ALLOWED=NO`, and checks with Apple's tools what App Store Connect reads in that archive: the app's `Info.plist` keys, arm64 and iOS 15 in the executable and no Simulator slice, bitcode, or library outside the system's, no other Mach-O file, the `.dSYM`, the privacy manifest, and an app icon with a 1024 pixel image and no alpha. That is everything Apple's tools check without an account. What only an upload proves is your team's signature and profile, App Store Connect's own validation, and App Review; no Fledge app has been through them.
+
 ## What has run where
 
-CI runs phone apps in the iOS Simulator, on an iPhone and an iPad, and on x86-64 Android emulators. On Android, each app runs from its APK, and again from the APKs bundletool makes from its signed release bundle, as Play would install them. A game built with `fledge build ios` has run on a physical iPad Pro and a physical iPhone 13 mini, signed with a free Personal Team. Apple's membership page says a free team's profiles expire after 7 days, but the profiles Xcode made for that team last a year, so read the `ExpirationDate` in your own (`security cms -D -i FILE.mobileprovision`). No app has been through App Review or Google Play's review yet. For `arm64-v8a`, which most Android phones use, CI builds the library and checks the APK, but no free CI runner can start an arm64 emulator. A game that `fledge build android` built has run on a physical OnePlus Nord N30 5G with Android 14, which loaded the APK's `arm64-v8a` library.
+CI runs phone apps in the iOS Simulator, on an iPhone and an iPad, and archives them for devices unsigned, and on x86-64 Android emulators. On Android, each app runs from its APK, and again from the APKs bundletool makes from its signed release bundle, as Play would install them. A game built with `fledge build ios` has run on a physical iPad Pro and a physical iPhone 13 mini, signed with a free Personal Team. Apple's membership page says a free team's profiles expire after 7 days, but the profiles Xcode made for that team last a year, so read the `ExpirationDate` in your own (`security cms -D -i FILE.mobileprovision`). No app has been through App Review or Google Play's review yet. For `arm64-v8a`, which most Android phones use, CI builds the library and checks the APK, but no free CI runner can start an arm64 emulator. A game that `fledge build android` built has run on a physical OnePlus Nord N30 5G with Android 14, which loaded the APK's `arm64-v8a` library.

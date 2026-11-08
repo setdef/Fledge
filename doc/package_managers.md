@@ -117,6 +117,7 @@ A winget package is three files, which you add to [`microsoft/winget-pkgs`](http
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.12.0.schema.json
 # Example.Hello.yaml
 PackageIdentifier: Example.Hello
 PackageVersion: 1.0.0
@@ -132,6 +133,7 @@ ManifestVersion: 1.12.0
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
 # Example.Hello.locale.en-US.yaml
 PackageIdentifier: Example.Hello
 PackageVersion: 1.0.0
@@ -151,6 +153,7 @@ ManifestVersion: 1.12.0
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
 # Example.Hello.installer.yaml
 PackageIdentifier: Example.Hello
 PackageVersion: 1.0.0

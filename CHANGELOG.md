@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-08
+
 ### Added
 
 - `fledge build --sign IDENTITY --notarize PROFILE` on macOS has Apple notarize the signed app with `xcrun notarytool` and the credentials the keychain profile PROFILE holds, then staples the ticket to the disk image and the bundle before the archive is packed; a console app's folder is notarized in a zip archive. A refused app fails the build with the issues Apple's log names. `--notarize` needs `--sign` with an identity that is not ad hoc.
@@ -338,7 +340,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/setdef/Fledge/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/setdef/Fledge/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/setdef/Fledge/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/setdef/Fledge/compare/v0.5.1...v0.6.0

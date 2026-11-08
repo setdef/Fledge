@@ -33,7 +33,7 @@ This folder, `greeter`, holds a one-line `main.rb` that prints `Hello, Ruby!`, a
 -->
 ```console
 $ bundle exec fledge build
-Downloading fledge-runtime-0.8.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.8.0
+Downloading fledge-runtime-0.9.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.9.0
 dist/Greeter-arm64-darwin.tar.gz
 $ tar -xzf dist/Greeter-arm64-darwin.tar.gz -C /tmp
 $ /tmp/Greeter-arm64-darwin/Greeter
@@ -80,11 +80,11 @@ Add Fledge to your `Gemfile`, in the `development` group, so that it stays out o
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
-gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.8.0", group: :development
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.9.0", group: :development
 ```
 <!-- SPDX-SnippetEnd -->
 
-Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.8.0`. Fledge installs from a git tag. You'll find the latest on the [releases page](https://github.com/setdef/Fledge/releases).
+Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.9.0`. Fledge installs from a git tag. You'll find the latest on the [releases page](https://github.com/setdef/Fledge/releases).
 
 ## Usage
 
@@ -121,7 +121,7 @@ Fledge compiles a gem that ships as source on your computer, so install a compil
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.8.0/lib/fledge/config.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.9.0/lib/fledge/config.schema.json
 name: My Cool App
 kind: windowed
 identifier: com.example.MyCoolApp

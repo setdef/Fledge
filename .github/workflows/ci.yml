@@ -33,9 +33,10 @@
 # The mobile runtimes (ADR 011) build from Ruby's source, iOS's on a Mac
 # with Xcode and Android's on Linux with the NDK, and their Delivery is
 # apps built with fledge build ios and fledge build android (ADR 012),
-# whose Xcode and Gradle projects build unsigned, run in the iOS
-# Simulator on an iPhone and an iPad and on Android emulators with 4 KB
-# and 16 KB pages: hello, a gem-shaped app with pure-Ruby gems, a script
+# whose Xcode and Gradle projects build unsigned, the Gradle ones as APKs
+# and as the app bundles Google Play takes, run in the iOS Simulator on an
+# iPhone and an iPad and on Android emulators with 4 KB and 16 KB pages,
+# from an APK and from a bundle's APKs: hello, a gem-shaped app with pure-Ruby gems, a script
 # that requires json and a bundled gem and reaches a server over HTTPS,
 # and the parity probe (tasks/mobile_parity.rb).
 #
@@ -534,8 +535,13 @@ jobs:
 
   # The same on Android emulators of API 36 with 4 KB and with 16 KB
   # pages: the apps built with fledge build android, each Gradle project
-  # built with its own wrapper, debug and unsigned release, and each APK
-  # checked for Play's 16 KB alignment and target API. No GitHub-hosted
+  # built with its own wrapper, debug and unsigned release, as APKs and as
+  # the app bundles Google Play takes, and each APK checked for Play's 16
+  # KB alignment and target API; each release bundle signed with a
+  # throwaway upload key, validated with bundletool, made into the APKs
+  # Play would serve, which are checked the same way and against Play's
+  # size limit (ADR 012, section 9), and each app run from its debug APK
+  # and again from its bundle's APKs, as Play installs them. No GitHub-hosted
   # runner boots an arm64-v8a emulator with hardware acceleration (ADR
   # 011), so the arm64-v8a library is built and checked but run on no
   # emulator here.
@@ -586,7 +592,14 @@ jobs:
           unzip -q "$archive" -d "$RUNNER_TEMP/ndk"
           echo "ANDROID_NDK_ROOT=$(echo "$RUNNER_TEMP"/ndk/android-ndk-*)" >> "$GITHUB_ENV"
 
-      - name: Build the apps with fledge build android and Gradle, and check each for 16 KB pages and API 36
+      # bundletool makes and installs the APKs Play would serve from a
+      # bundle, pinned by SHA-256 (runtime/sources.yml).
+      - name: Fetch the pinned bundletool
+        run: |
+          jar=$(ruby .github/scripts/fetch_pin.rb mobile bundletool)
+          echo "BUNDLETOOL=$jar" >> "$GITHUB_ENV"
+
+      - name: Build the apps with fledge build android and Gradle, as APKs and bundles, and check each for 16 KB pages, API 36, and Play's size limit
         run: ruby tasks/mobile_parity.rb android-build "$RUNNER_TEMP/runtimes"
 
       - name: Enable KVM
@@ -599,7 +612,7 @@ jobs:
       # twice that: with the emulator's default, the 16 KB system ran out
       # of memory and its low-memory killer killed the app in front, one
       # app in one run and another in the next.
-      - name: Run the apps on the emulator
+      - name: Run the apps on the emulator, from their APKs and from their bundles
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 36
@@ -621,7 +634,8 @@ jobs:
   # supports its SDK there and Briefcase, Flutter, React Native, and Tauri
   # build Android apps there (ADR 012): examples/mobile_app, written with
   # fledge build android and built with its Gradle wrapper and the
-  # runner's Android SDK.
+  # runner's Android SDK, as an APK and as the release bundle Play takes,
+  # which is signed, validated, and made into Play's APKs with bundletool.
   mobile-apps-android-hosts:
     name: Mobile apps (Android project on ${{ matrix.host }})
     needs: runtime-mobile
@@ -663,12 +677,18 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: ruby -I lib exe/fledge build android -o dist examples/mobile_app
 
-      - name: Build it with its Gradle wrapper and check the APK
+      - name: Fetch the pinned bundletool
+        run: |
+          jar=$(ruby .github/scripts/fetch_pin.rb mobile bundletool)
+          echo "BUNDLETOOL=$jar" >> "$GITHUB_ENV"
+
+      - name: Build it with its Gradle wrapper and check the APK and the bundle
         run: |
           cd "dist/Mobile App-android"
-          if [ "$RUNNER_OS" = Windows ]; then ./gradlew.bat --no-daemon assembleDebug; else ./gradlew --no-daemon assembleDebug; fi
+          if [ "$RUNNER_OS" = Windows ]; then ./gradlew.bat --no-daemon assembleDebug bundleRelease; else ./gradlew --no-daemon assembleDebug bundleRelease; fi
           cd ../..
           ruby tasks/mobile_parity.rb android-check "dist/Mobile App-android/build/outputs/apk/debug/Mobile App-debug.apk"
+          ruby tasks/mobile_parity.rb android-bundle "dist/Mobile App-android/build/outputs/bundle/release/Mobile App-release.aab"
 
   # The tests on each platform, with that platform's runtime, so
   # test/built_app_test.rb builds and runs a real app rather than

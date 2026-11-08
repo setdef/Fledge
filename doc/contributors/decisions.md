@@ -373,3 +373,15 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: the orchestrator's offer to fix the stale statements in the handoff and to write the checklist for the one `gem push`, made while the repository's readiness for 1.0.0 was being weighed.]
 
 *Governs:* agents finish everything for 1.0.0 that the maintainer's developer accounts do not block; what those accounts block is tested by the maintainer, or by an agent he prompts to run the test. It names no test and no account, and it does not say which tests must pass before 1.0.0 is tagged. *Applied in:* `doc/contributors/handoff.md`; `doc/contributors/releasing-1.0.md`; `doc/contributors/questions.md`, question C; Plan 003.
+
+> Yes, cut v0.X.Y releases as appropriate as we go along; my ideal is that v0.A.B (where A.B is the highest 0.X.Y release ever made) has the same features/fixes/etc. as v1.0.0 will when it gets cut.
+
+[re: whether agents should keep cutting 0.x releases as work accumulates, given the 2026-11-08 goal of a repository that is 1.0.0-ready pending only the tests the maintainer's accounts block.]
+
+*Governs:* agents release 0.x versions as work accumulates, so that the newest 0.x release carries what 1.0.0 will; the 1.0.0 release then adds only what the maintainer's own testing and decision add. *Applied in:* AGENTS.md, Releasing; `doc/contributors/handoff.md`.
+
+> Keep a list of account-block tests current and clear for me to work through myself; I may decide at some point which ones I want to keep blocking 1.0.0 and which ones I don't.
+
+[re: question C in `questions.md`, which account-blocked tests must pass before 1.0.0 is tagged, and how the maintainer is to find and run them.]
+
+*Governs:* agents keep a list of the tests that wait on the maintainer's developer accounts, current and clear enough for the maintainer to work through alone; which of them block 1.0.0 is the maintainer's choice, made later, and until then none is named a requirement. *Applied in:* `doc/contributors/account-tests.md`; AGENTS.md, Releasing; question C in `questions.md`.

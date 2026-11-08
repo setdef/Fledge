@@ -38,10 +38,6 @@ The project was started with these directions, given in prose rather than as a n
 
 Answers to the numbered entries of an earlier `questions.md`. Each answer names, in brackets, what the entry asked when the answer alone does not say.
 
-> 1. Like Tokra (~/Developer/Tokra/), AGPL-3.0-or-later but with SPDX snippets attributing derivative bits of code following the REUSE specification with the reuse tool. We'll likely offer a commercial license (see ~/Developer/setdef.com/) for apps that don't want to follow the AGPL.
-
-*Governs:* the license of everything in this repository, and how code or prose derived from elsewhere is attributed. *Applied in:* AGENTS.md, Licensing; SPDX snippets throughout `runtime/`; `reuse lint` in the gate.
-
 > 2. What are the other options? [re: "an app is a folder with a main.rb" — still open]
 
 *Governs:* nothing yet; the maintainer asked a question back. *Applied in:* `questions.md`, entry A. The current layout (a folder with a `main.rb`) stays until it is answered.
@@ -68,7 +64,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 8. Because of what I said re: #1, we must be VERY careful to be able to let app devs _not_ be copyleft-laden when they pay for a commercial license.
 
-*Governs:* the license of everything Fledge itself copies into an app, its runtime; not the app's own gems, which the 2026-10-28 reply leaves to the app's developer. *Applied in:* AGENTS.md, Licensing (the standing rule for what a runtime may carry); Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe, from CI."
+*Governs:* the license of everything Fledge itself copies into an app, its runtime: no third-party component may leave an app's developer with copyleft obligations beyond notices. It stands on its own since 2026-11-07, when Fledge itself became MIT ("#1" and the commercial license it names are gone). It does not reach the app's own gems, which the 2026-10-28 reply leaves to the app's developer. *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe, from CI."
 
 > 9. When using fledge, your ruby source code should be able to be identical to how it was without Fledge, so the things you had to `require` before you can still need the app dev to `require`, but the things you didn't have to `require` before the app dev still shouldn't have to require.
 
@@ -304,7 +300,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: question B in `questions.md`, whether a release from 1.0 on still gets a git tag.]
 
-*Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it. *Applied in:* ADR 028; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
+*Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it; the tooling itself waits on its extraction (2026-11-07, below). *Applied in:* ADR 028; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 
 > winget, Chocolatey, Scoop, brew, apt-get, pacman, dnf, etc. are all very relevant for Ruby console apps.
 
@@ -350,24 +346,20 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 *Governs:* the maintainer will spend money on the accounts and certificates the stores need (Apple, Microsoft, Google, a certificate authority, and others), which ends the earlier rulings that none is spent; the maintainer opens and pays for each account, since an agent never opens one, even a free one; agents plan and prepare the work that needs them (signing, notarization, store submissions) and say what each costs. *Applied in:* `doc/contributors/handoff.md`, Plan 003's store and signing stories.
 
 
-## 2026-11-06
+## 2026-11-07
 
-> I don't want closed apps that use `fledge build` to have to choose between releasing their app code under copyleft or paying for a commercial license, but I do want those who change Fledge or offer Fledge-as-a-Service to either release their changes under copyleft, or pay me for a commercial license for the privilege not to do so.
+The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
 
-[re: the orchestrator's reading of the AGPL-3.0's text, that its conditions reach only works that copy or adapt Fledge, so an app's own code that `fledge build` packages is not a covered work.]
+> setdef now licenses Fledge under the MIT license.
 
-*Governs:* what Fledge's license must and must not reach. An app's own code stays under its developer's terms whether or not they buy a commercial license; a changed Fledge, or Fledge offered as a service, is released under copyleft unless its maker buys a commercial license. The license, the README's licensing section, and each app's notices must stay true to this. *Applied in:* README.md, Copyright & License; `doc/licensing.md`.
+[re: the orchestrator's account of what the AGPL cost Fledge's app developers and what it protected, after the maintainer asked for reasons not to go MIT. setdef is the registered d/b/a of the maintainer's single-member Missouri LLC, Kerrick Design, LLC.]
 
-> I don't want Fledge's AGPL copyleft to apply to developers' graphical application icons.
+*Governs:* Fledge's own code is MIT, held by setdef; there is no commercial license for Fledge. It replaces decision 1 and the entries of 2026-11-06 (the additional permission, the icon, and "Option A"), which no longer govern anything. Released tags through `v0.7.0` keep the license they were released under. *Applied in:* every file's SPDX header, `LICENSE`, the gemspec, each app's `notices/NOTICES.txt`, the README, AGENTS.md, Licensing, and the ADRs that described the AGPL.
 
-[re: question E in `questions.md`, whether section 5(c) of the AGPL reaches the icon and version text that `fledge build` writes into each Windows program, a copy of Fledge's launcher that the build modifies; the orchestrator had noted that the version text is names, numbers, and short phrases, which copyright does not protect, so the icon is what is left.]
+> In fact, I specifically said that ratatui_ruby-devtools is in the middle of being extracted and after that work is done by those agents we'll need to further extract the non-RatatuiRuby-ecosystem parts of it to reuse for Fledge, lota, etc.
 
-*Governs:* an app's icon stays under its developer's terms wherever Fledge puts it, including inside a program built from Fledge's launcher; agents add a section 7 additional permission saying so, with its wording shown to the maintainer before it is committed. *Applied in:* the launcher's license notice, each runtime's NOTICES.txt, each Windows app's `notices/MODIFIED.txt`, README.md, Copyright & License, and ADR 004, section 10.
+> Only if I explicitly instruct it.
 
+[re: an agent starting to copy RatatuiRuby's release tooling into Fledge, which the maintainer had never asked for; the second line answers whether Fledge's agents should ever do that second extraction.]
 
-> If that is Option A, sounds good to me.
-
-[re: the orchestrator's summary of the maintainer's intent for Fledge's license, after the maintainer pulled the commit that let apps keep users from replacing Fledge: (1) what a developer gives `fledge build` stays the developer's, and a closed app never has to choose between copyleft and paying; (2) Fledge itself, changed or offered as a service, stays under the AGPL or is licensed commercially; (3) whoever runs an app built with Fledge may replace the Fledge part with a changed version of their own; (4) Fledge never asks a developer for the app's source or object files, so Fledge's design keeps its part replaceable, such as a dynamic library on iOS; (5) the commercial license is for those who do not want those terms; (6) agents draft license terms and explain them plainly, and nothing that changes Fledge's license reaches `trunk` without the maintainer's explicit yes. Option A: no waiver of Installation Information or of section 10 for apps; an app goes through a channel whose terms restrict its users, such as Apple's App Store and TestFlight, only under a commercial license, and may be given out anywhere else, an IPA included.]
-
-*Governs:* Fledge's additional permission covers only what a developer gives `fledge build`, and lifts no AGPL condition on Fledge's own code; Fledge keeps its own part of an app replaceable without the developer's files, which makes the iOS library dynamic; restricted channels are the commercial license's to grant. *Applied in:* the additional permission (local branch `wip/application-permission`, to be rebuilt without its waivers), Plan 003 (a dynamic iOS library), and the draft commercial license in the maintainer's private folder.
-
+*Governs:* Fledge's release tooling (`rake bump:*`, the release task's tags, `stable`) waits until RatatuiRuby's agents finish extracting `ratatui_ruby-devtools` and its non-RatatuiRuby parts are extracted again for Fledge, Lota, and the rest; nothing is ported or copied before then, and Fledge's agents do that second extraction only when the maintainer explicitly instructs it. *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; ADR 028, section 7.

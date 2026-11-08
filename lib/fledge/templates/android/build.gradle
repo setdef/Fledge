@@ -9,9 +9,11 @@
 // as the asset fledge.zip, which org.setdef.fledge.FledgeRuby, in
 // libs/FledgeRuby.aar, unpacks on the app's first launch. Native
 // libraries are stored uncompressed and aligned for 16 KB pages. No
-// signing is configured: assembleDebug signs with the Android SDK's debug
-// key, assembleRelease leaves the app unsigned, and you sign a release
-// with your own key, in a signingConfigs block or with apksigner.
+// signing is configured: assembleDebug and bundleDebug sign with the
+// Android SDK's debug key, assembleRelease and bundleRelease leave the
+// app unsigned, and you sign a release with your own key, in a
+// signingConfigs block, or with apksigner for an APK and jarsigner for
+// the app bundle (.aab) Google Play takes.
 plugins {
     id 'com.android.application'
 }
@@ -50,6 +52,9 @@ android {
         versionName = '@@VERSION_NAME@@'
     }
 
+    // fledge.zip stays stored, uncompressed, in the APK and in every APK
+    // Google Play makes from the app bundle, whose BundleConfig.pb
+    // carries this list.
     androidResources {
         noCompress += ['zip']
     }

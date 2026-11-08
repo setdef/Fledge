@@ -540,6 +540,7 @@ jobs:
             examples/windowed_app
             test/fixtures/parity
             mise.toml
+            runtime/sources.yml
           sparse-checkout-cone-mode: false
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -625,6 +626,16 @@ jobs:
           XDG_CACHE_HOME="$RUNNER_TEMP/empty" FLEDGE_RUNTIME_MIRROR=http://127.0.0.1:9 \
             bundle exec fledge build --from "$RUNNER_TEMP/from/Player-${{ matrix.platform }}" -o "$RUNNER_TEMP/from" "$RUNNER_TEMP/game"
           [ "$("$RUNNER_TEMP/from/Game-${{ matrix.platform }}/Game" | tr -d '\r')" = game ]
+
+      - name: Install XcodeGen, pinned by SHA-256
+        if: matrix.platform == 'arm64-darwin'
+        run: |
+          url=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcodegen", "url")')
+          sha256=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcodegen", "sha256")')
+          curl -fsSL --retry 5 --retry-delay 5 --retry-connrefused -o "$RUNNER_TEMP/xcodegen.zip" "$url"
+          echo "$sha256  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
 
       - name: Write hello's iOS project from the gem's templates
         if: matrix.platform == 'arm64-darwin'

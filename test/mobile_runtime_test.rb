@@ -104,4 +104,16 @@ class MobileRuntimeTest < Minitest::Test
     assert_equal "android", RuntimeBuilder.platform("android").name
     assert_raises(Fledge::UsageError) { RuntimeBuilder.platform("arm64-ios") }
   end
+
+  # ADR 029, section 2, freezes the phone runtimes' statuses, which are
+  # sysexits' values as the desktop launcher's are.
+  def test_the_phone_runtimes_statuses_are_the_launchers
+    root = File.expand_path("..", __dir__)
+    phone = File.read(File.join(root, "runtime", "mobile", "fledge_ruby.h"))
+    launcher = File.read(File.join(root, "runtime", "launcher", "launcher.h"))
+    values = -> (text, name) { Integer(text[/\b#{name} = (\d+)/, 1]) }
+
+    assert_equal [66, 70], [values.call(phone, "FLEDGE_RUBY_NO_APP"), values.call(phone, "FLEDGE_RUBY_SOFTWARE")]
+    assert_equal [66, 70], [values.call(launcher, "FLEDGE_EXIT_NO_APP"), values.call(launcher, "FLEDGE_EXIT_SOFTWARE")]
+  end
 end

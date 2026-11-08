@@ -58,6 +58,8 @@ module Fledge
     private def finish: (MacBundle? bundle, _RuntimeTree runtime, String? tools) -> void
 
 
+    private def notarize: (MacBundle? bundle) -> void
+
     private def mac_signing: () -> MacSigning?
 
     private def launcher_name: (App::Program program) -> String

@@ -3,9 +3,15 @@
 
 module Fledge
   module Signing
-    type signer = MacSigning | WindowsSigning
+    type signer = MacSigning | WindowsSigning | SignCommand
 
-    def self.for: (Platform platform, String? identity, ?env: Runtimes::_Env) -> signer?
+    NOT_APPLE: String
+
+    def self.for: (Platform platform, String? identity, ?command: String?, ?notarize: String?, ?env: Runtimes::_Env, ?log: CLI::_Output?) -> signer?
+
+    private def self.sign_command: (Platform platform, String command) -> SignCommand
+
+    private def self.notary: (String identity, String profile, CLI::_Output? log) -> Notary
 
     def self.code_files: (String folder, Symbol format) -> Array[String]
   end

@@ -6,6 +6,7 @@ module Fledge
     class Script
       CLASSES: String
       CHANGE_NOTIFY: String
+      QUOTES: Array[String]
 
       @identity: Identity
       @folder: String

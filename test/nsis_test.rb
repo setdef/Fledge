@@ -154,6 +154,22 @@ class NsisTest < Minitest::Test
     end
   end
 
+  # ADR 033: a developer's own command goes to makensis in the first of
+  # NSIS's quote characters it does not hold, since NSIS has no escape for
+  # a quote inside a string of the same kind.
+  def test_a_signing_command_is_quoted_with_a_character_it_does_not_hold
+    {
+      "sign.cmd" => "'sign.cmd \"%1\"'",
+      "pwsh -File 'C:\\sign.ps1' %1" => "`pwsh -File 'C:\\sign.ps1' \"%1\"`",
+    }.each do |command, quoted|
+      text = Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe", signing: Fledge::SignCommand.new(command)).script(icon: nil)
+
+      assert_includes text, "\n!uninstfinalize #{quoted} = 0\n!finalize #{quoted} = 0\n", command
+    end
+    every = Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe", signing: Fledge::SignCommand.new("a 'b' `c`"))
+    assert_match(/holds ', ", and ` all/, assert_raises(Fledge::Error) { every.script(icon: nil) }.message)
+  end
+
   def test_names_are_escaped_as_nsis_strings
     text = script(identity: identity(name: "Say \"$1\""))
 

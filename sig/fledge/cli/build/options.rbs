@@ -5,15 +5,21 @@ module Fledge
   class CLI
     class Build
       class Options < Data
+        VALUES: Hash[String, String]
+
         attr_reader out: String
         attr_reader path: String
         attr_reader phone: String?
         attr_reader sign: String?
         attr_reader from: String?
+        attr_reader sign_command: String?
+        attr_reader notarize: String?
 
-        def self.new: (out: String, path: String, phone: String?, sign: String?, from: String?) -> instance
+        def self.new: (out: String, path: String, phone: String?, sign: String?, from: String?, sign_command: String?, notarize: String?) -> instance
 
         def self.parse: (Array[String] argv) -> Options
+
+        private def self.check: (Hash[String, String] values, String? phone) -> void
 
         private def self.value_of: (String option, Array[String] arguments, String name) -> String
       end

@@ -10,10 +10,13 @@ module Fledge
 
     @identity: String
     @waits: Array[Integer]
+    @notary: Notary?
 
     attr_reader identity: String
 
-    def initialize: (String identity, ?waits: Array[Integer]) -> void
+    attr_reader notary: Notary?
+
+    def initialize: (String identity, ?waits: Array[Integer], ?notary: Notary?) -> void
 
     def code_options: () -> Array[String]
 

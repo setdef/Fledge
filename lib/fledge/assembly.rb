@@ -48,7 +48,10 @@ module Fledge
   # This class unpacks the runtime with tar (Fledge::Archive), moves it
   # into the folder, adds CONFIG, the app's project, and the files the
   # build adds (the app's gems), and places the launcher last, once
-  # everything it must describe or seal is there; then it packs the
+  # everything it must describe or seal is there, and signs what it signs;
+  # then it writes the installers, has Apple notarize a macOS app when
+  # the build notarizes (Fledge::Notary, ADR 033), so that the archive
+  # carries the ticket stapled to its bundle, and packs the
   # folder with tar, which keeps the permissions and symlinks the runtime
   # was built with, as the platform names its archive
   # (Fledge::Platform#archive_extension). Each platform is built on its
@@ -336,8 +339,9 @@ module Fledge
         tools = runtime.tools
         finish(bundle, runtime, tools)
         BuildTools.new(runtime, platform: @platform).copy_into(contents) if @app.config.build_tools
-        Archive.pack(folder, to: archive)
         @installers = Installers.write_all(@app, @platform, folder:, tools:, signing: @signing)
+        notarize(bundle)
+        Archive.pack(folder, to: archive)
       end
       archive
     rescue
@@ -420,7 +424,16 @@ module Fledge
       end
     end
 
-    # The signer of a macOS bundle, when the build signs one.
+    # Has Apple notarize the signed app, when the build notarizes
+    # (ADR 033): after its disk image is written and signed, which is
+    # what is sent when there is one, and before the archive, which then
+    # carries the bundle with its ticket stapled.
+    private def notarize(bundle)
+      image = @installers.find { |path| path.end_with?(Installers::SUFFIX.fetch("dmg")) }
+      mac_signing&.notary&.notarize(folder, bundle: bundle&.path, image:)
+    end
+
+    # The signer of a macOS app, when the build signs one.
     private def mac_signing
       signing = @signing
       signing if signing.is_a?(MacSigning)

@@ -68,7 +68,7 @@ For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you
 - Fledge runs on Ruby 4.0.1 or newer, with Bundler. Your app gets the Ruby you run Fledge with, at the patch level on the Ruby badge above. See [Runtimes and Ruby versions](doc/runtimes.md).
 - Your code runs as it does under `ruby main.rb`. Fledge's CI compares the two on every platform. Your code can see [a few differences](doc/differences_from_ruby.md), each with its reason.
 - On every change, CI builds each desktop app and runs it on a clean computer that has no Ruby. CI runs phone apps in the iOS Simulator and Android emulators, and a game has run on a real iPad and iPhone. See [What has run where](doc/phones.md#what-has-run-where).
-- CI signs apps with a self-signed certificate only. Signing with a certificate from Apple or a certificate authority is untested.
+- CI signs apps with a self-signed certificate only, and notarizes them against a stand-in for Apple's service. Signing with a certificate from Apple or a certificate authority, and notarizing with Apple, are untested.
 
 ## Installation
 
@@ -134,7 +134,7 @@ With the first line, an editor that runs the [YAML language server](https://gith
 
 ### Sign
 
-Pass `--sign` with your macOS signing identity or your Windows certificate's thumbprint, and Fledge signs every program, library, bundle, and installer. Without a signature, Gatekeeper and SmartScreen warn the people who download your app. See [Sign your app](doc/desktop_apps.md#sign-your-app).
+Pass `--sign` with your macOS signing identity or your Windows certificate's thumbprint, and Fledge signs every program, library, bundle, and installer. On a Mac, add `--notarize` to have Apple notarize the app and staple its ticket. On Windows, `--sign-command` signs through your own command instead, for a certificate in a cloud or hardware service. Without a signature, Gatekeeper and SmartScreen warn the people who download your app. See [Sign your app](doc/desktop_apps.md#sign-your-app).
 
 ### Publish
 

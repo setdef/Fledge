@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class Notary
+    INSTALL: String
+    NO_PROFILE: Integer
+    ACCEPTED: String
+
+    @profile: String
+    @log: CLI::_Output?
+
+    attr_reader profile: String
+
+    def initialize: (String profile, ?log: CLI::_Output?) -> void
+
+    def notarize: (String folder, ?bundle: String?, ?image: String?) -> void
+
+    def submit: (String path) -> String
+
+    def staple: (String path) -> void
+
+    private def submit_zip: (String path) -> String
+
+    private def notarytool: (*String arguments) -> [String, String, Process::Status]
+
+    private def submission: (String output) -> Hash[String, String]?
+
+    private def accepted: (String name, String id) -> String
+
+    private def failure: (String name, String said, Process::Status status) -> String
+
+    private def rejected: (String name, String id, Hash[String, String] result) -> String
+
+    private def issues: (String id) -> Array[String]
+
+    private def issue_line: (Hash[String, String] issue) -> String
+  end
+end

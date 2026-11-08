@@ -81,8 +81,9 @@ module Fledge
     #
     # [folder] The built app's folder, which the installer copies.
     # [to] The installer's path.
-    # [signing] The Fledge::WindowsSigning that makensis signs the
-    #           installer and its uninstaller with, or +nil+.
+    # [signing] The Fledge::WindowsSigning or Fledge::SignCommand that
+    #           makensis signs the installer and its uninstaller with, or
+    #           +nil+.
     # [license] The app's license text, which a page shows before the
     #           install, or +nil+ for no such page.
     def initialize(identity:, folder:, to:, signing: nil, license: nil)
@@ -216,9 +217,22 @@ module Fledge
       return if status.success? && File.file?(@to)
 
       FileUtils.rm_f(@to)
-      raise Error, "makensis could not write #{File.basename(@to)}:\n#{output.strip}"
+      raise Error, "#{signing_failure(output)}makensis could not write #{File.basename(@to)}:\n#{output.strip}"
     rescue SystemCallError => e
       raise Error, "makensis could not run (#{e.message})"
+    end
+
+    # The line that names the file the signing command failed on, from
+    # makensis's +output+, which says "UninstFinalize command returned"
+    # for the uninstaller and "Finalize command returned" for the setup
+    # program (NSIS's run_postbuild_cmds, Source/build.cpp), or "" when
+    # signing did not fail.
+    private def signing_failure(output)
+      found = output.match(/\b(Uninst)?Finalize command returned (-?\d+)/)
+      return "" unless found
+
+      file = found[1] ? "the uninstaller of #{File.basename(@to)}" : File.basename(@to)
+      "the signing command failed on #{file} (exit #{found[2]})\n"
     end
   end
 end

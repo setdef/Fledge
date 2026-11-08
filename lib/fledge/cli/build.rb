@@ -112,7 +112,7 @@ module Fledge
         from = options.from&.then { |path| BuiltApp.at(path, platform: host, runtimes: Runtimes.new(env: @env, log: @err)) }
         app = App.at(options.path)
         phone = MobilePlatform.find(options.phone.to_s)
-        signing = phone ? nil : Signing.for(host, options.sign, env: @env)
+        signing = phone ? nil : signing(options, host)
         if from then build_from(from.adopt(app), from, host, options.out, signing)
         # A phone's app runs one program: App#main (ADR 024, section 6).
         elsif phone then build_project(app.with(programs: [app.main]), phone, host, options.out)
@@ -124,6 +124,16 @@ module Fledge
       rescue Error => e
         e.message.each_line { |line| @err.puts "fledge build: #{line.chomp}" }
         1
+      end
+
+      # The signer +options+ ask for on +host+ (Fledge::Signing.for), or
+      # +nil+. FLEDGE_SIGN_COMMAND stands for <tt>--sign-command</tt> in a
+      # Windows build whose command line asks for no signing of its own,
+      # as an environment variable gives a default an option overrides.
+      private def signing(options, host)
+        command = options.sign_command
+        command ||= @env["FLEDGE_SIGN_COMMAND"].to_s.then { |value| value unless value.strip.empty? } if host.windows? && !options.sign
+        Signing.for(host, options.sign, command:, notarize: options.notarize, env: @env, log: @err)
       end
 
       private def build(app, platform, out, signing)

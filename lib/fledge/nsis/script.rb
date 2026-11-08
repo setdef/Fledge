@@ -20,6 +20,10 @@ module Fledge
       # SHCNE_ASSOCCHANGED and SHCNF_FLUSH.
       CHANGE_NOTIFY = "  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0x1000, p 0, p 0)'"
 
+      # The characters NSIS quotes a string with, in the order the
+      # signing command is tried in them.
+      QUOTES = ["'", "`", '"'].freeze
+
       # The script that installs the app of +identity+ from +folder+ into
       # the setup program +to+, and uninstalls +files+ and +folders+,
       # whose contents are +size+ bytes.
@@ -100,11 +104,18 @@ module Fledge
       # The app's program, as the installed folder holds it.
       # NSIS 3.08's !uninstfinalize and !finalize: makensis runs the
       # signing command on the uninstaller it writes into the installer,
-      # and then on the installer, failing unless it exits 0 (ADR 016).
+      # and then on the installer, failing unless it exits 0 (ADR 016). The
+      # command goes in the first of NSIS's three quote characters it
+      # does not hold, since NSIS has no escape for a quote of the same
+      # kind inside a string (ADR 033).
       private def finalize
-        return [] unless @signing
+        signing = @signing
+        return [] unless signing
 
-        ["!uninstfinalize '#{@signing}' = 0", "!finalize '#{@signing}' = 0"]
+        quote = QUOTES.find { |mark| !signing.include?(mark) }
+        raise Error, "the signing command holds ', \", and ` all, so makensis cannot quote it; put it in a .cmd file and give that" unless quote
+
+        ["!uninstfinalize #{quote}#{signing}#{quote} = 0", "!finalize #{quote}#{signing}#{quote} = 0"]
       end
 
       private def program

@@ -86,8 +86,13 @@
 #     can trust it: on macOS every Mach-O file, the bundle, and the
 #     disk image, with the hardened runtime and a timestamp, by
 #     codesign; on Windows every program and library, and the setup
-#     program and its uninstaller, by signtool from the Windows SDK.
-#     Fledge does not notarize.
+#     program and its uninstaller, by signtool from the Windows SDK,
+#     or by a signing command of your own (--sign-command), for a
+#     certificate kept in a cloud or hardware service. On macOS,
+#     --notarize then has Apple's notary service notarize the signed
+#     app, with notarytool and the credentials you stored in your
+#     keychain once, and staples Apple's ticket to the disk image and
+#     the bundle before the archive is packed.
 #
 #     Each system's own tools do the work. macOS has them all (tar,
 #     plutil, codesign, ditto, hdiutil). Windows 10 and 11 have tar;
@@ -156,6 +161,24 @@
 #                        of a code signing certificate in your
 #                        certificate store. Not on Linux, or for a
 #                        phone, which Xcode and Gradle sign.
+#     --sign-command COMMAND
+#                        Sign a Windows app with your own command, in
+#                        place of --sign: Fledge runs COMMAND, through
+#                        cmd.exe, once for each program and library,
+#                        then the uninstaller and the setup program,
+#                        with the file's path, quoted, in place of %1,
+#                        or after COMMAND when it has no %1. A COMMAND
+#                        that exits with anything but 0 fails the
+#                        build, naming the file. Windows only.
+#     --notarize PROFILE Have Apple notarize the macOS app --sign
+#                        signed with a Developer ID Application
+#                        identity, with the credentials xcrun
+#                        notarytool store-credentials PROFILE stored in
+#                        your keychain, and staple Apple's ticket to the
+#                        disk image and the bundle. A console app's
+#                        folder is notarized in a zip archive, and
+#                        Gatekeeper finds its ticket online. Waits for
+#                        Apple, usually minutes. macOS only.
 #     -h, -?, --help     Show this help
 #     -v, --version      Print Fledge's version
 #
@@ -443,6 +466,11 @@
 #                        paths. Every file is checked against the
 #                        SHA-256 this Fledge pins, and a file the
 #                        mirror lacks fails the build.
+#     FLEDGE_SIGN_COMMAND
+#                        On Windows, the COMMAND of --sign-command for
+#                        a build whose command line gives neither
+#                        --sign nor --sign-command. Other systems'
+#                        builds ignore it.
 #     XDG_CACHE_HOME     Keep downloaded runtimes and gems in
 #                        $XDG_CACHE_HOME/fledge instead.
 #
@@ -453,8 +481,9 @@
 #                        build the phone's project, a runtime that
 #                        would not download, a gem that cannot ship or
 #                        would not compile, a missing tool or icon
-#                        file, an identity that would not sign, a full
-#                        disk)
+#                        file, an identity or a signing command that
+#                        would not sign, an app Apple would not
+#                        notarize, a full disk)
 #     2                  Usage error (an unrecognized option, a
 #                        missing value)
 #
@@ -470,8 +499,15 @@
 #     fledge build ios
 #     fledge build android
 #
-#     Build and sign with your Developer ID, on a Mac:
-#     fledge build --sign "Developer ID Application: Example (ABCDE12345)"
+#     Build and sign with your Developer ID, and notarize, on a Mac:
+#     fledge build --sign "Developer ID Application: Example (ABCDE12345)" \
+#       --notarize my-notary-profile
+#
+#     Build and sign with Azure Artifact Signing, on Windows:
+#     fledge build --sign-command "signtool sign /fd sha256 /tr
+#       http://timestamp.acs.microsoft.com /td sha256 /dlib
+#       C:\ArtifactSigning\bin\x64\Azure.CodeSigning.Dlib.dll /dmdf
+#       C:\ArtifactSigning\metadata.json %1"
 #
 #     Build a script from elsewhere, into another folder:
 #     fledge build --out /tmp/builds path/to/app/main.rb

@@ -6,6 +6,7 @@
 #++
 
 require_relative "command"
+require_relative "notary"
 
 module Fledge
   # Signs a macOS app with its developer's identity, through codesign.
@@ -29,6 +30,10 @@ module Fledge
   # answer, codesign is run again after a wait, a few times, and any
   # other failure, such as an identity the keychain lacks, fails at once
   # (ADR 016, section 6).
+  #
+  # A signer given a Fledge::Notary (<tt>fledge build --notarize</tt>)
+  # carries it to the build, which has Apple notarize what was signed
+  # (ADR 033).
   #
   # Use it through Fledge::Signing, which <tt>fledge build --sign</tt> calls.
   #
@@ -70,12 +75,17 @@ module Fledge
     # keychain, or "-" for an ad hoc signature.
     attr_reader :identity
 
+    # The Fledge::Notary that notarizes what this signs, or +nil+ when the
+    # build does not notarize.
+    attr_reader :notary
+
     # Creates the signer for +identity+, which runs codesign again after
     # each of +waits+, in seconds, while Apple's timestamp server does
-    # not answer.
-    def initialize(identity, waits: WAITS)
+    # not answer, and whose build +notary+ notarizes, when given one.
+    def initialize(identity, waits: WAITS, notary: nil)
       @identity = identity
       @waits = waits
+      @notary = notary
     end
 
     # codesign's options for every piece of code: replace any signature,

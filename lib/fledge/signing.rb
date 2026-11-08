@@ -8,6 +8,7 @@
 require_relative "binary"
 require_relative "error"
 require_relative "mac_signing"
+require_relative "sign_command"
 require_relative "windows_signing"
 
 module Fledge
@@ -23,9 +24,11 @@ module Fledge
   #
   # This module turns the identity <tt>fledge build --sign</tt> names into
   # the signer for the system the build is for: Fledge::MacSigning, with
-  # Apple's codesign, or Fledge::WindowsSigning, with Microsoft's signtool
-  # (ADR 016). Each signs every compiled file of its system's own format,
-  # which Signing.code_files finds.
+  # Apple's codesign, which may carry a Fledge::Notary for
+  # <tt>--notarize</tt>, or Fledge::WindowsSigning, with Microsoft's
+  # signtool (ADR 016); or the command <tt>--sign-command</tt> names into a
+  # Fledge::SignCommand (ADR 033). Each signs every compiled file of its
+  # system's own format, which Signing.code_files finds.
   #
   # Use it to get the signer Fledge::Assembly hands each step that signs.
   #
@@ -61,16 +64,49 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.for(platform, identity, env: ENV)
+    #
+    # [command] The developer's own signing command
+    #           (<tt>--sign-command</tt>, Fledge::SignCommand), in place
+    #           of +identity+, for Windows only.
+    # [notarize] The keychain profile <tt>--notarize</tt> names, which has
+    #            Apple notarize a macOS app signed with +identity+
+    #            (Fledge::Notary), or +nil+.
+    # [log] Where the notary says what it is doing, or +nil+.
+    def self.for(platform, identity, command: nil, notarize: nil, env: ENV, log: nil)
+      return sign_command(platform, command) if command
       return nil if identity.nil?
 
       case platform.os
-      when "darwin" then MacSigning.new(identity)
-      when "windows" then WindowsSigning.new(identity, env:)
+      when "darwin" then MacSigning.new(identity, notary: notarize && notary(identity, notarize, log))
+      when "windows"
+        raise Error, NOT_APPLE if notarize
+
+        WindowsSigning.new(identity, env:)
       else
         raise Error, "--sign signs apps for macOS and Windows; a Linux app carries no signature for its system to check, " \
           "so build it without --sign"
       end
+    end
+
+    # Why <tt>--notarize</tt> is refused for a build that is not for macOS.
+    NOT_APPLE = "--notarize has Apple notarize a macOS app; build it on a Mac, or build this one without --notarize"
+
+    # The Fledge::SignCommand that runs +command+ for +platform+, which
+    # must be Windows. Raises Fledge::Error otherwise.
+    private_class_method def self.sign_command(platform, command)
+      return SignCommand.new(command) if platform.windows?
+
+      raise Error, "--sign-command signs Windows apps; on macOS sign with --sign IDENTITY, and a Linux app carries no " \
+        "signature for its system to check"
+    end
+
+    # The Fledge::Notary for the keychain profile +profile+, which
+    # notarizes only what a certificate Apple issued signed. Raises
+    # Fledge::Error for the ad hoc identity, which Apple does not notarize.
+    private_class_method def self.notary(identity, profile, log)
+      raise Error, "--notarize needs a Developer ID Application identity in --sign; Apple does not notarize an ad hoc signature (-)" if identity == "-"
+
+      Notary.new(profile, log:)
     end
 
     # The paths of the files under +folder+ whose first bytes say they

@@ -125,11 +125,59 @@ programs:
 
 ## Sign your app
 
-An app is unsigned unless you sign it. Without a signature, macOS's [Gatekeeper](https://support.apple.com/guide/security/gatekeeper-and-runtime-protection-sec5599b66df/web) and Windows' [SmartScreen](https://learn.microsoft.com/windows/security/operating-system-security/virus-and-threat-protection/microsoft-defender-smartscreen/) warn the people who download your app.
+An app is unsigned unless you sign it. Without a signature, macOS's [Gatekeeper](https://support.apple.com/guide/security/gatekeeper-and-runtime-protection-sec5599b66df/web) and Windows' [SmartScreen](https://learn.microsoft.com/windows/security/operating-system-security/virus-and-threat-protection/microsoft-defender-smartscreen/) warn the people who download your app. On a Mac, Gatekeeper opens a downloaded app without a warning only once Apple has also notarized it. Your credentials stay on your computer: none of them goes in `fledge.yml`, which other people build too.
 
-To sign with your identity, pass `--sign` to `fledge build`:
+### On macOS
 
-- **macOS:** a code signing identity from your keychain, such as `"Developer ID Application: NAME (TEAM)"`.
-- **Windows:** the SHA-1 thumbprint of a code signing certificate in your certificate store.
+Pass `--sign` with a code signing identity from your keychain, and `--notarize` with the name of a notarytool profile:
 
-Fledge signs every program and library, the app bundle, and the installer. A macOS signature carries a timestamp from Apple's server; when that server does not answer, Fledge signs again after 5, 10, 20, and 40 seconds before it gives up. Fledge does not sign Linux apps, and does not notarize Mac apps: `xcrun notarytool` notarizes a signed disk image. Xcode and Gradle sign a phone's app. Fledge's CI signs with a self-signed certificate only, so how Gatekeeper and SmartScreen treat an app signed with a certificate from Apple or a certificate authority is untested.
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```console
+$ bundle exec fledge build --sign "Developer ID Application: Example, Inc. (ABCDE12345)" --notarize example-notary
+```
+<!-- SPDX-SnippetEnd -->
+
+Fledge signs every program and library with the hardened runtime and a timestamp from Apple's server, then the app bundle, then the disk image. When the timestamp server does not answer, Fledge signs again after 5, 10, 20, and 40 seconds before it gives up.
+
+With `--notarize`, Fledge sends the signed disk image to Apple's notary service and waits for Apple's answer, which most apps get within 15 minutes. It then staples Apple's ticket to the disk image and to the app bundle, so that Gatekeeper finds it even on a Mac with no network, and only then packs the archive, which holds the stapled bundle. A console app has no bundle to staple to: Fledge sends its folder in a zip archive, and Gatekeeper looks up its ticket online. When Apple refuses the app, the build fails and lists each problem from Apple's log.
+
+The profile keeps your Apple credentials in your keychain, where notarytool reads them. Store them once, with an [App Store Connect API key](https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api), or with your Apple ID and an [app-specific password](https://support.apple.com/102654):
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```console
+$ xcrun notarytool store-credentials example-notary --key ~/private_keys/AuthKey_ABC123DEFG.p8 --key-id ABC123DEFG --issuer 69a6de70-0000-0000-0000-000000000000
+$ xcrun notarytool store-credentials example-notary --apple-id you@example.com --team-id ABCDE12345
+```
+<!-- SPDX-SnippetEnd -->
+
+A Developer ID Application certificate and an App Store Connect key come with the [Apple Developer Program](https://developer.apple.com/programs/). Apple notarizes no ad hoc signature, so `--sign -` and `--notarize` together fail.
+
+### On Windows
+
+Pass `--sign` with the SHA-1 thumbprint of a code signing certificate in your certificate store, and Fledge signs with `signtool` from the Windows SDK, with SHA-256 and a timestamp from DigiCert's server.
+
+A certificate kept in a cloud or a hardware service, such as [Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/), DigiCert KeyLocker, or SSL.com eSigner, signs with that service's own tool. Pass `--sign-command` with the command that signs one file, and `%1` where the file's path goes:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```console
+> bundle exec fledge build --sign-command "signtool sign /fd sha256 /tr http://timestamp.acs.microsoft.com /td sha256 /dlib C:\ArtifactSigning\bin\x64\Azure.CodeSigning.Dlib.dll /dmdf C:\ArtifactSigning\metadata.json %1"
+```
+<!-- SPDX-SnippetEnd -->
+
+Fledge runs the command through `cmd.exe` once for each program and library, then for the uninstaller and the setup program as it writes them, with the path in quotes. Without `%1`, the path goes at the end, so a `.cmd` file of your own works too. A command that exits with anything but 0 stops the build and names the file. Fledge never prints the command, which may hold a password. To keep the command out of your build scripts, set `FLEDGE_SIGN_COMMAND` instead, as a CI secret can.
+
+### What is proven
+
+Fledge's CI signs with a self-signed certificate, on macOS and on Windows, and runs `signtool` through `--sign-command` too. It notarizes against a stand-in for Apple's service that answers as Apple documents. How Gatekeeper and SmartScreen treat an app signed and notarized with real credentials is untested. Fledge does not sign Linux apps, and Xcode and Gradle sign a phone's app.

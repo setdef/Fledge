@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class SignCommand
+    PLACEHOLDER: Regexp
+    CMD: String
+
+    @command: String
+
+    def initialize: (String command) -> void
+
+    def line: (String path) -> String
+
+    def sign_folder: (String folder) -> void
+
+    def sign: (String path) -> void
+
+    def command_line: () -> String
+
+    private def expand: (String quoted) -> String
+  end
+end

@@ -7,6 +7,7 @@
 
 require_relative "test_helper"
 require "open3"
+require "stringio"
 
 # Fledge::Signing (ADR 016): which files each system's signer signs, and
 # how. test/built_app_test.rb signs whole apps with the identity
@@ -33,6 +34,16 @@ class SigningTest < Minitest::Test
 
   def test_a_mac_signs_with_the_identity_as_codesign_names_it
     assert_instance_of Fledge::MacSigning, Fledge::Signing.for(MAC, "Developer ID Application: Example (ABCDE12345)")
+  end
+
+  # ADR 033: --notarize gives the Mac's signer a notary for the keychain
+  # profile it names, which a signer without it lacks.
+  def test_a_mac_signer_carries_the_notary_notarize_names
+    log = StringIO.new
+    signing = Fledge::Signing.for(MAC, "Developer ID Application: Example (ABCDE12345)", notarize: "fledge-notary", log:)
+
+    assert_equal "fledge-notary", signing.notary.profile
+    assert_nil Fledge::Signing.for(MAC, "Developer ID Application: Example (ABCDE12345)").notary
   end
 
   def test_windows_signs_with_a_certificates_thumbprint

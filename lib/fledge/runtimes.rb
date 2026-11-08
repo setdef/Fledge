@@ -128,14 +128,18 @@ module Fledge
     #       (default: +ENV+).
     # [release_url] Where this version's runtimes download from when no
     #               mirror is set (default: its GitHub Release).
-    # [log] Where to say that a download is starting, or +nil+.
+    # [log] Where to say that a download is starting or trying again, or
+    #       +nil+.
     # [pins] The file of SHA-256s to check runtimes against (default:
     #        PINS).
-    def initialize(env: ENV, release_url: "#{RELEASES}/v#{VERSION}", log: nil, pins: PINS)
+    # [waits] The seconds to wait before each try again of a download
+    #         that failed for a moment (default: Download::WAITS).
+    def initialize(env: ENV, release_url: "#{RELEASES}/v#{VERSION}", log: nil, pins: PINS, waits: Download::WAITS)
       @env = env
       @release_url = release_url
       @log = log
       @pins = pins
+      @waits = waits
     end
 
     # The path of the runtime archive for +platform+, downloading it
@@ -257,7 +261,7 @@ module Fledge
       return from_mirror(mirror, name, destination, sha256) unless mirror.empty?
 
       @log&.puts "Downloading #{name} from #{@release_url}"
-      Download.save("#{@release_url}/#{name}", to: destination, sha256:)
+      Download.save("#{@release_url}/#{name}", to: destination, sha256:, waits: @waits, log: @log)
     end
 
     # Downloads +name+ from the mirror, where this version's release
@@ -266,7 +270,7 @@ module Fledge
     private def from_mirror(mirror, name, destination, sha256)
       base = "#{mirror}/v#{VERSION}"
       @log&.puts "Downloading #{name} from #{base}"
-      Download.save("#{base}/#{name}", to: destination, sha256:)
+      Download.save("#{base}/#{name}", to: destination, sha256:, waits: @waits, log: @log)
     rescue Download::Mismatch => e
       raise Error, "FLEDGE_RUNTIME_MIRROR is #{mirror}, whose #{name} has SHA-256 #{e.actual}, but Fledge #{VERSION} " \
         "pins #{e.expected} for it. The mirror does not hold the file this Fledge released; nothing was saved."

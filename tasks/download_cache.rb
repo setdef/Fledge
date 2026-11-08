@@ -26,7 +26,9 @@ class DownloadCache
   # waiting +first_wait+ seconds, then twice that and so on up to
   # LONGEST_WAIT, by calling +sleeper+ (a hosted runner's download from
   # GitHub or Gradle fails now and then, and passes a minute later). Any
-  # other failure, a 4xx or a SHA-256 mismatch, is final at once.
+  # other failure, a 4xx or a SHA-256 mismatch, is final at once. These
+  # tries replace Fledge::Download.save's own shorter ones, which a
+  # developer at a terminal waits for, rather than multiply them.
   def initialize(folder, tries: TRIES, first_wait: FIRST_WAIT, sleeper: Kernel.method(:sleep))
     @folder = folder
     @tries = tries
@@ -57,7 +59,7 @@ class DownloadCache
   private def save_with_retries(source, path, sha256)
     tries = 1
     begin
-      Fledge::Download.save(source, to: path, sha256:)
+      Fledge::Download.save(source, to: path, sha256:, waits: [])
     rescue Fledge::Download::Unavailable, Fledge::Download::Unreachable => e
       raise if tries >= @tries
 

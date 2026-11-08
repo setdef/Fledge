@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `fledge build` tries a runtime's or a gem's download again after 2, 4, and 8 seconds when the server answers 408, 429, or a 5xx, or the connection fails or breaks off, saying so on its output, instead of failing the build at once; a missing file, a refused login, or a SHA-256 mismatch still fails at once, and every try is checked against its pin. A body cut short by a broken connection is now such a failure, where it was reported as a SHA-256 mismatch.
+
 ## [0.7.0] - 2026-11-07
 
 ### Added

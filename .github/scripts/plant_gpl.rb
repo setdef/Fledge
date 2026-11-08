@@ -2,7 +2,7 @@
 
 #--
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # SPDX-FileComment: Adapted from the "Fail the audit with a GPL library and
 #   a GPL gem slipped in" step of .github/workflows/ci.yml on Fledge's
 #   spike/permissive branch (58edf27d27912d062ccfa5c4960533a220c9eb24).

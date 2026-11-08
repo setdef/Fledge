@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // No CMake or ndk-build: the runtime builder links libfledgeruby.so with
 // the NDK itself, and the AAR carries it as it is, unstripped by the

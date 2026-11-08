@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Plan 001's pipeline, on every push and pull request: the gate, then a
 # runtime per platform, then the tests on each platform with its own
@@ -981,7 +981,7 @@ jobs:
       # with its two AVX-512 defines, rust-bindgen #2500); libclang comes
       # from the LLVM the runner image ships.
       # SPDX-SnippetBegin
-      # SPDX-License-Identifier: AGPL-3.0-or-later
+      # SPDX-License-Identifier: MIT
       # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-SnippetComment: Adapted from Ferro's .github/workflows/ci.yml at
       #   ef2407b1f44cd3c23d98c5085042857761598b85 (setdef/Ferro), its step

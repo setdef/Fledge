@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-  SPDX-License-Identifier: AGPL-3.0-or-later
+  SPDX-License-Identifier: MIT
 
   Written by fledge build (ADR 012): the APIs Apple requires a reason
   for that Fledge's Ruby calls. Ruby stats files (stat, fstat, fstatat,

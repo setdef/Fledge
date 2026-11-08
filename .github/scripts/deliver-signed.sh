@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Delivery of a signed macOS build (ADR 016): examples/hello and
 # examples/windowed_app, built with fledge build --sign and CI's test

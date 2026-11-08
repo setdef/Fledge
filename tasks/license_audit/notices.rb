@@ -2,7 +2,7 @@
 
 #--
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #++
 
 # SPDX-FileComment: Adapted from tasks/license_audit/notices.rb on Fledge's
@@ -256,7 +256,7 @@ class LicenseAudit
     end
 
     private def notice_files(folder)
-      return [File.join(ROOT, "LICENSES", "AGPL-3.0-or-later.txt")] if folder == "fledge"
+      return [File.join(ROOT, "LICENSE")] if folder == "fledge"
 
       Dir.glob(File.join(NOTICES, folder, "*"))
     end

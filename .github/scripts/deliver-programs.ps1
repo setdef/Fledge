@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Delivery of one project's several programs (ADR 024) on Windows:
 # unpacks what fledge build wrote for examples/programs, checks that the

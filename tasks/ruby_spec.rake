@@ -2,7 +2,7 @@
 
 #--
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #++
 
 desc "Run ruby/spec on stock Ruby and in a built app, and compare (tasks/ruby_spec.rb)"

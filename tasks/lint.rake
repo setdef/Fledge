@@ -2,7 +2,7 @@
 
 #--
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #++
 
 require "rubocop/rake_task"
@@ -30,9 +30,9 @@ namespace :reuse do
   task :fix do
     copyright = "setdef <kerrick@setdef.com>"
 
-    # Code files: AGPL-3.0-or-later
+    # Code files: MIT
     code_extensions = %w[rb rbs c h rake gemspec toml yml yaml json lock].freeze
-    code_license = "AGPL-3.0-or-later"
+    code_license = "MIT"
 
     # Documentation files: CC-BY-SA-4.0
     doc_extensions = %w[md txt].freeze

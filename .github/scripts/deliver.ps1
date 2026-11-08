@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Delivery (Plan 001) on Windows: runs a built app the way a person who
 # has never installed Ruby would, and fails unless it behaves. It is

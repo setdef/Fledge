@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # A Linux build takes the icon sizes a project has (Plan 003, "A Linux
 # build takes the icon sizes a developer has"; ADR 010, section 4):

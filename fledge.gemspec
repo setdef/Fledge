@@ -2,7 +2,7 @@
 
 #--
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #++
 
 require_relative "lib/fledge/version"
@@ -16,7 +16,7 @@ Gem::Specification.new do |spec|
   spec.summary = "Ship a Ruby app to people who don't have Ruby."
   spec.description = File.read(File.expand_path("README.rdoc", __dir__))
   spec.homepage = "https://github.com/setdef/Fledge"
-  spec.license = "AGPL-3.0-or-later"
+  spec.license = "MIT"
   spec.required_ruby_version = ">= 4.0.1"
   spec.required_rubygems_version = ">= 3.3.11"
 

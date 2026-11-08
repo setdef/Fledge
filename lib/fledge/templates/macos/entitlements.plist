@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-  SPDX-License-Identifier: AGPL-3.0-or-later
+  SPDX-License-Identifier: MIT
 
   The entitlements fledge build signs a macOS app's code with, under the
   hardened runtime (ADR 016), Briefcase's defaults for every macOS app.

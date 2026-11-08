@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Makes a code signing identity for CI on macOS (ADR 016): a self-signed
 # certificate, made fresh, with its key, in a temporary keychain that

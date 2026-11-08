@@ -36,14 +36,14 @@ SPDX-License-Identifier = "MIT-0"
 [[annotations]]
 path = 'lib/fledge/templates/ios/Host/Assets.xcassets/**'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
-SPDX-License-Identifier = "AGPL-3.0-or-later"
+SPDX-License-Identifier = "MIT"
 
 # The JSON Schema of fledge.yml (ADR 023), which editors read as JSON,
 # which has no comments.
 [[annotations]]
 path = 'lib/fledge/config.schema.json'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
-SPDX-License-Identifier = "AGPL-3.0-or-later"
+SPDX-License-Identifier = "MIT"
 
 # Gradle's wrapper, as Gradle 9.8.2's gradle wrapper task writes it, in
 # every Android project fledge build writes (ADR 012); the jar is the one
@@ -213,7 +213,7 @@ SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception"
 [[annotations]]
 path = ["test/fixtures/binaries/*.so", "test/fixtures/binaries/*.bundle", "test/fixtures/binaries/*.dll", "test/fixtures/binaries/*.exe"]
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
-SPDX-License-Identifier = "AGPL-3.0-or-later"
+SPDX-License-Identifier = "MIT"
 
 # The windowed example's license text and changelog, which its setup
 # program shows and its .deb installs as they are, so a header in them

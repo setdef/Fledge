@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # The shipped path, end to end (Plan 001's walking skeleton in
 # production): on a fresh runner of each platform, a developer's project
@@ -150,7 +150,7 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}${{ runner.os == 'Windows' && '-x86_64-pc-windows-gnu' || '' }}
 
       # SPDX-SnippetBegin
-      # SPDX-License-Identifier: AGPL-3.0-or-later
+      # SPDX-License-Identifier: MIT
       # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-SnippetComment: Adapted from Ferro's .github/workflows/ci.yml at
       #   ef2407b1f44cd3c23d98c5085042857761598b85 (setdef/Ferro), its step

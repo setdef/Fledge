@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Delivery of the console (ADR 015): runs the console probe
 # (test/fixtures/console) in a terminal of its own, a pseudo-terminal

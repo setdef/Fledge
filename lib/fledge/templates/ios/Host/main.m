@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // The app's one screen, written by fledge build (ADR 012). Before UIKit
 // starts, it sends standard output and standard error to os_log, with the

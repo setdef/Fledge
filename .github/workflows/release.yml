@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Publishes a Fledge release when a vX.Y.Z tag is pushed (ADR 001,
 # section 7; ADR 004; AGENTS.md, Releasing). Only when CI passed on a

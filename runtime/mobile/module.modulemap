@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Clang's module for the embedding API, so Swift can import FledgeRuby,
 // and so linking it adds what Ruby and OpenSSL need of iOS: libz, and

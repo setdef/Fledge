@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=../../../lib/fledge/config.schema.json
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # The mobile check's app of what the mobile runtimes promise (main.rb).
 # This file makes its folder a project's root (ADR 005), and names it for

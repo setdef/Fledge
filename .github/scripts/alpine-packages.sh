@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Installs, in an Alpine 3.24 container, the packages each musl Linux job
 # needs (ADR 017), pinned by version as the Ubuntu jobs pin theirs:

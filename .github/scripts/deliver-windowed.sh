@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Delivery of a windowed app (ADR 008) on macOS and Linux: unpacks what
 # fledge build wrote for examples/windowed_app, checks the identity each

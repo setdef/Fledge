@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Checks runtimes against the pins a commit ships (ADR 014): FOLDER must
 # hold exactly the release assets Fledge asks for at this checkout's

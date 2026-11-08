@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=../../../lib/fledge/config.schema.json
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # The console probe is a lone main.rb inside Fledge's own gem; this file
 # makes its folder the project's root (ADR 005), so it ships alone, as

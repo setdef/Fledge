@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!--
 SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-SPDX-License-Identifier: AGPL-3.0-or-later
+SPDX-License-Identifier: MIT
 
 The Windows launcher's application manifest, embedded in the program by
 windows.rc, so it stays with the program when fledge build renames it.

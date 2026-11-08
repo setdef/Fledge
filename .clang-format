@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # The launcher's C follows Ruby's own C style (main.c, ruby.c): four-space
 # indents, the return type on its own line above a function's name, and

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 // The Windows launcher's resources: its manifest (windows.manifest), as
 // resource 1 (CREATEPROCESS_MANIFEST_RESOURCE_ID) of type 24

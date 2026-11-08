@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 
 # Delivery of a windowed app's .deb (ADR 021) on Debian and Ubuntu: the
 # .deb fledge build wrote for examples/windowed_app, installed with apt as

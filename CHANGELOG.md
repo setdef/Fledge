@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Fledge is now licensed under the MIT license; each app's `notices/NOTICES.txt` says so.
+
 ### Removed
 
 - A Windows app no longer carries `notices/MODIFIED.txt`, and `fledge build` no longer reads `SOURCE_DATE_EPOCH` or fails on one that is not a whole number of seconds: Fledge's launcher is MIT, which asks for no notice of changes.

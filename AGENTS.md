@@ -94,10 +94,10 @@ A question names its context, the default the work proceeds on, and how to rever
 
 ## Licensing
 
-Fledge is AGPL-3.0-or-later (decision 1), and setdef may offer it under a commercial license too, so every line must be clearly Fledge's or clearly attributed.
+Fledge is MIT, copyright setdef (decisions, 2026-11-07); released tags through `v0.7.0` keep the AGPL-3.0-or-later they were released under. Every line must be clearly Fledge's or clearly attributed, so that Fledge's notice covers only setdef's work and every other author keeps theirs.
 
 - **Derived code and prose get SPDX snippets**, as Tokra does. Anything adapted from elsewhere (Ruby's `main.c`, `ruby.c`, or `win32/win32.c`; RubyGems; RubyInstaller; rv-ruby; Lota; Tokra; a spike) sits between `SPDX-SnippetBegin` and `SPDX-SnippetEnd`, with the source's `SPDX-License-Identifier`, an `SPDX-SnippetCopyrightText` naming the source's authors, and an `SPDX-SnippetComment` naming the source file and the commit or tag it came from. Do this for the maintainer's own projects too: their license or ownership may differ from Fledge's. Add the source's license text to `LICENSES/`; `reuse lint` in the gate checks both.
-- **Fledge's runtime carries no copyleft obligation beyond keeping notices** (decision 8), except Fledge's own code, which is AGPL-3.0-or-later and commercially licensable. A developer who buys a commercial license must be able to ship an app with no copyleft obligation from Fledge at all. Fledge never asks an app developer for their app's source or object files. Every third-party component in a runtime (a library, a DLL, a gem, a data file) is one of:
+- **Fledge's runtime carries no copyleft obligation beyond keeping notices** (decision 8). Fledge's own code in it is MIT, which asks only for its notice, and each app's `notices/NOTICES.txt` carries that notice. Fledge never asks an app developer for their app's source or object files. Every third-party component in a runtime (a library, a DLL, a gem, a data file) is one of:
   - under a permissive license such as MIT, BSD, Apache-2.0, Zlib, or Ruby's;
   - an LGPL library shipped as a separate shared library a person can replace, with its source published beside the runtime;
   - an LGPL library linked into another component that is not Fledge's, with both sources published beside the runtime (libfuse in AppImage's runtime, which only installers carry; ADR 010);

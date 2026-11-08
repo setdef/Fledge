@@ -27,4 +27,4 @@ Some frameworks, such as SDL3, need their startup files on each phone. Name a fo
 
 ## What has run where
 
-CI runs phone apps in the iOS Simulator, on an iPhone and an iPad, and on x86-64 Android emulators. A game built with `fledge build ios` has run on a physical iPad Pro and a physical iPhone 13 mini, signed with the free Personal Team that Xcode makes for any Apple ID. No app has been through App Review yet. For `arm64-v8a`, which most Android phones use, CI builds the library and checks the APK, but no free CI runner can start an arm64 emulator, so it has not run there.
+CI runs phone apps in the iOS Simulator, on an iPhone and an iPad, and on x86-64 Android emulators. A game built with `fledge build ios` has run on a physical iPad Pro and a physical iPhone 13 mini, signed with the free Personal Team that Xcode makes for any Apple ID. No app has been through App Review yet. For `arm64-v8a`, which most Android phones use, CI builds the library and checks the APK, but no free CI runner can start an arm64 emulator. A game that `fledge build android` built has run on a physical OnePlus Nord N30 5G with Android 14, which loaded the APK's `arm64-v8a` library.

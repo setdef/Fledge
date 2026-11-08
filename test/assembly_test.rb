@@ -214,7 +214,7 @@ class AssemblyTest < Minitest::Test
 
       assert_equal File.join(dir, "dist", "Hello-x64-mingw-ucrt.zip"), archive
       folder = File.join(dir, "dist", "Hello-x64-mingw-ucrt")
-      assert_equal %w[Hello.exe app fledge.cfg notices ruby], Dir.children(folder).sort
+      assert_equal %w[Hello.exe app fledge.cfg ruby], Dir.children(folder).sort
       program = File.join(folder, "Hello.exe")
       assert_equal 3, subsystem(program)
       info = version_info(program)
@@ -237,7 +237,7 @@ class AssemblyTest < Minitest::Test
       assemble(dir, app, platform: WINDOWS)
 
       folder = File.join(dir, "dist", "Hello Window-x64-mingw-ucrt")
-      assert_equal ["Hello Window.exe", "app", "fledge.cfg", "notices", "ruby"], Dir.children(folder).sort
+      assert_equal ["Hello Window.exe", "app", "fledge.cfg", "ruby"], Dir.children(folder).sort
       program = File.join(folder, "Hello Window.exe")
       assert_equal 2, subsystem(program)
       assert_equal "Hello Window", version_info(program).fetch("FileDescription")
@@ -472,7 +472,7 @@ class AssemblyTest < Minitest::Test
       assemble(dir, Programs.write(dir), platform: WINDOWS)
 
       folder = File.join(dir, "dist", "Game-x64-mingw-ucrt")
-      assert_equal ["Play Game.exe", "app", "fledge.cfg", "game-cli.exe", "notices", "ruby", "tui.exe"], Dir.children(folder).sort
+      assert_equal ["Play Game.exe", "app", "fledge.cfg", "game-cli.exe", "ruby", "tui.exe"], Dir.children(folder).sort
       assert_equal [2, 3, 3], ["Play Game.exe", "game-cli.exe", "tui.exe"].map { |program| subsystem(File.join(folder, program)) }
       assert_equal ["Play Game", "game-cli", "tui"],
         ["Play Game.exe", "game-cli.exe", "tui.exe"].map { |program| version_info(File.join(folder, program)).fetch("FileDescription") }

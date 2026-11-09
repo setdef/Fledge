@@ -74,7 +74,9 @@ class MobileParity
     def call
       FileUtils.rm_rf(@work)
       FileUtils.mkdir_p(@work)
-      projects = MobileParity.projects("ios", runtimes: @runtimes, out: File.join(@work, "projects"))
+      # Spike: only hello and native_phone.
+      apps = APPS.select { |app| %w[examples/hello examples/native_phone].include?(app.path) }
+      projects = MobileParity.projects("ios", runtimes: @runtimes, out: File.join(@work, "projects"), apps:)
       projects.each do |app, project|
         icon = Fledge::App.at(File.join(ROOT, app.path)).identity.icon
         device = IOSArchive.new(app:, project:, work: @work, icon: !icon.nil?, out: @out).call

@@ -154,8 +154,8 @@ check "clean environment" 0 env -i PATH="$empty" HOME="$home" "$app"
 
 # A hostile environment: everything a Ruby developer's shell might set,
 # pointed at code that raises if it ever loads. A json 99 in the user's
-# gem folder (Gem.user_dir: ~/.gem/ruby/4.0.0, or
-# ~/.local/share/gem/ruby/4.0.0 when ~/.gem does not exist) shadows the
+# gem folder (Gem.user_dir: ~/.gem/ruby/4.1.0+5, or
+# ~/.local/share/gem/ruby/4.1.0+5 when ~/.gem does not exist) shadows the
 # runtime's json if RubyGems searches it; a libcrypt in LD_LIBRARY_PATH
 # breaks the launcher if the dynamic linker prefers it to the runtime's.
 evil="$work/evil"
@@ -196,16 +196,16 @@ CONFIG
 }
 
 dot_gem_home="$work/dot-gem-home"
-plant_json "$dot_gem_home/.gem/ruby/4.0.0"
+plant_json "$dot_gem_home/.gem/ruby/4.1.0+5"
 plant_bundler_config "$dot_gem_home"
 xdg_home="$work/xdg-home"
-plant_json "$xdg_home/.local/share/gem/ruby/4.0.0"
+plant_json "$xdg_home/.local/share/gem/ruby/4.1.0+5"
 
 check "a json gem in ~/.gem" 0 env -i PATH="$empty" HOME="$dot_gem_home" "$app"
 check "a json gem in ~/.local/share/gem" 0 env -i PATH="$empty" HOME="$xdg_home" "$app"
 check "hostile environment" 0 env -i PATH="$empty" HOME="$dot_gem_home" \
   RUBYLIB="$evil" RUBYOPT="-rnonexistent" RUBYSHELL=/bin/false \
-  GEM_HOME="$dot_gem_home/.gem/ruby/4.0.0" GEM_PATH="$dot_gem_home/.gem/ruby/4.0.0" \
+  GEM_HOME="$dot_gem_home/.gem/ruby/4.1.0+5" GEM_PATH="$dot_gem_home/.gem/ruby/4.1.0+5" \
   GEM_SPEC_CACHE="$evil" GEMRC="$evil/json.rb" \
   BUNDLE_GEMFILE="$evil/Gemfile" BUNDLE_PATH="$evil" BUNDLER_SETUP="$evil/bundler_setup.rb" \
   BUNDLE_APP_CONFIG="$evil" BUNDLE_FROZEN=false BUNDLE_WITHOUT=default BUNDLER_VERSION=2.1.0 \
@@ -330,7 +330,7 @@ restarts "a restart in the person's environment is the same app" HOME="$home" GE
   RUBYLIB="$evil"
 restarts "a restart in a hostile environment is the same app" HOME="$dot_gem_home" \
   RUBYLIB="$evil" RUBYOPT="-rnonexistent" RUBYSHELL=/bin/false \
-  GEM_HOME="$dot_gem_home/.gem/ruby/4.0.0" GEM_PATH="$dot_gem_home/.gem/ruby/4.0.0" \
+  GEM_HOME="$dot_gem_home/.gem/ruby/4.1.0+5" GEM_PATH="$dot_gem_home/.gem/ruby/4.1.0+5" \
   GEM_SPEC_CACHE="$evil" GEMRC="$evil/json.rb" \
   BUNDLE_GEMFILE="$evil/Gemfile" BUNDLE_PATH="$evil" BUNDLER_SETUP="$evil/bundler_setup.rb" \
   BUNDLE_APP_CONFIG="$evil" BUNDLE_FROZEN=false BUNDLE_WITHOUT=default BUNDLER_VERSION=2.1.0 \

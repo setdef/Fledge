@@ -47,12 +47,12 @@ class MobileParity
   # What test/fixtures/mobile_hello prints, when the runtime keeps csv a
   # gem and can reach a server over HTTPS with the CA certificates it
   # carries.
-  HELLO = /\AHello from Ruby 4\.0\.9 on \S+: \["csv","\d+\.\d+\.\d+"\] over HTTPS: 200\z/
+  HELLO = /\AHello from Ruby 4\.1\.0 on \S+: \["csv","\d+\.\d+\.\d+"\] over HTTPS: 200\z/
 
   # The apps, each built with fledge build for each phone.
   APPS = [
     App.new(path: "examples/hello", name: "Hello", identifier: "com.setdef.fledge.Hello",
-      prints: /\AHello from Ruby 4\.0\.9 on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
+      prints: /\AHello from Ruby 4\.1\.0 on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "examples/mobile_app", name: "Mobile App", identifier: "com.setdef.fledge.MobileApp",
       prints: /\AMobileApp 1\.2\.3 says hello through i18n 1\.15\.2 and concurrent-ruby 1\.3\.8, set up by Bundler\z/),
     App.new(path: "examples/native_phone", name: "NativePhone", identifier: "com.setdef.fledge.NativePhone",

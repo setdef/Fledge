@@ -37,8 +37,10 @@ class RuntimeBuilder
 
     # fiddle is left out, as xord/cruby leaves it out "to pass the App
     # Store review" (Rakefile, line 577): it would call any C function.
+    # Spike only: prism, as on Android, since Ruby 4.1's bundled prism
+    # gem links its own libprism, which collides with libruby's.
     private def omitted_gems
-      %w[fiddle]
+      %w[fiddle prism]
     end
 
     private def edits
@@ -158,7 +160,7 @@ class RuntimeBuilder
     end
 
     private def ruby_headers(root)
-      File.join(root, "include", "ruby-4.0.0")
+      File.join(root, "include", "ruby-4.1.0+5")
     end
 
     # The slice's headers: Ruby's, with its configuration header beside

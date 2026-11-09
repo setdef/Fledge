@@ -21,7 +21,7 @@ class RuntimeBuilder
         report = File.join(@build_dir, "#{File.basename(source, '.c')}.plist")
         @builder.run(cc, "--analyze", "-Xclang", "-analyzer-werror", "-std=gnu11", *includes, source, "-o", report)
       end
-      static = File.join(@prefix, "lib", "libruby.4.0-static.a")
+      static = File.join(@prefix, "lib", "libruby.4.1-static.a")
       FileUtils.mkdir_p(File.dirname(output))
       @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, "-mmacosx-version-min=14.0", *includes, *sources,
         "-Wl,-force_load,#{static}", "-framework", "CoreFoundation", "-ldl", "-lobjc", "-lpthread", "-o", output)

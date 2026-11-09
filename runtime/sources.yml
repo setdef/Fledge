@@ -40,8 +40,8 @@ ruby:
     reline, readline, fiddle, prism, tsort, win32-registry]
   platforms:
     arm64-darwin:
-      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_sonoma.tar.gz
-      sha256: 38130a97c314e2e44198f37fc6555a66ab9a8011ecc5980d4ae36f2858ed11b5
+      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.arm64_sonoma.tar.gz
+      sha256: 9e3944ade8e237835a7eca5cae1ce1140c32ca6b6854c25a4d56c26512df7033
     x86_64-linux:
       url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.x86_64_linux.tar.gz
       sha256: 29fd684d85aa4d08d97160d1c0a21b11b9ee95f2d87ab231044df03ca9d39361

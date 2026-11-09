@@ -858,18 +858,18 @@ components:
 
   - id: ruby
     name: Ruby, with the third-party code its LEGAL lists (Onigmo, and others)
-    version: 4.0.9
+    version: 4.1.0-preview1
     license: Ruby OR BSD-2-Clause
     kind: program
     supplier: "Organization: Ruby core team"
-    download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+    download: https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview1.tar.gz
     notice: ruby
     ships: "compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt, ios, android]
     fallback: true
     embedded:
       - files: [launcher, "{prefix}bin/ruby", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
-        evidence: "3e93b23afc"
+        evidence: "2d08b5f42f"
       - files: ["{prefix}bin/x64-ucrt-ruby400.dll"]
         evidence: "3e93b23afc"
     files:
@@ -891,7 +891,7 @@ components:
       - "{prefix}lib/lib*-ruby*.dll.a"
       # Ruby's own extensions, by name, so that a file nobody listed fails.
       - "{prefix}lib/ruby/4.1.0+5/{arch}/{cgi/escape,continuation,coverage,date_core,digest,etc,fcntl,monitor,objspace,openssl,psych,pty,ripper,socket,stringio,strscan,zlib}.{so}"
-      - "{prefix}lib/ruby/4.1.0+5/{arch}/{digest/{bubblebabble,md5,rmd160,sha1,sha2},erb/escape,io/{console,nonblock,wait},json/ext/{generator,parser},rbconfig/sizeof,win32/{dll_directory,resolv}}.{so}"
+      - "{prefix}lib/ruby/4.1.0+5/{arch}/{digest/{blake3,bubblebabble,crc32,md5,rmd160,sha1,sha2},erb/escape,io/{console,nonblock,wait},json/ext/{generator,parser},rbconfig/sizeof,win32/{dll_directory,resolv}}.{so}"
       - "{prefix}lib/ruby/4.1.0+5/{arch}/enc/{big5,cesu_8,cp949,emacs_mule,encdb,euc_jp,euc_kr,euc_tw,gb18030,gb2312,gbk,iso_8859_1,iso_8859_10,iso_8859_11,iso_8859_13,iso_8859_14,iso_8859_15,iso_8859_16,iso_8859_2,iso_8859_3,iso_8859_4,iso_8859_5,iso_8859_6,iso_8859_7,iso_8859_8,iso_8859_9,koi8_r,koi8_u,shift_jis,utf_16be,utf_16le,utf_32be,utf_32le,windows_1250,windows_1251,windows_1252,windows_1253,windows_1254,windows_1257,windows_31j}.{so}"
       - "{prefix}lib/ruby/4.1.0+5/{arch}/enc/trans/{big5,cesu_8,chinese,ebcdic,emoji,emoji_iso2022_kddi,emoji_sjis_docomo,emoji_sjis_kddi,emoji_sjis_softbank,escape,gb18030,gbk,iso2022,japanese,japanese_euc,japanese_sjis,korean,single_byte,transdb,utf8_mac,utf_16_32}.{so}"
       # The debug symbols rv-ruby's macOS build keeps beside each one.
@@ -946,6 +946,8 @@ reviewed:
       BSD-2-Clause.
   - files: ["{prefix}lib/ruby/gems/4.1.0+5/gems/rdoc-*/{LICENSE.rdoc,lib/rdoc/rd.rb}"]
     why: Ruby's old license, which offers the GPL-2.0 or Ruby's own conditions; Ruby's apply.
+  - files: ["{prefix}lib/ruby/gems/4.1.0+5/gems/rdoc-*/rdoc.gemspec", "{prefix}lib/ruby/gems/4.1.0+5/specifications/rdoc-*.gemspec"]
+    why: rdoc 8's gemspec lists Ruby and GPL-2.0-only, the two choices of Ruby's old license (its LICENSE.rdoc, SPDX Ruby or GPL-2.0-only); Ruby's apply.
   - files: ["{prefix}lib/ruby/gems/4.1.0+5/gems/rbs-*/core/dir.rbs", "{prefix}{include/ruby-4.1.0+5,Headers}/ruby/internal/ctype.h"]
     why: Mentions the word (a file name in an example, a comment about compatibility); no license.
   - files: ["{prefix}share/doc/ruby/html/**"]

@@ -160,6 +160,7 @@ class RuntimeBuilder
       logged("#{target.name}-configure", File.join(@source, "configure"), *configure_options(target, deps), chdir: build,
         env: environment(target))
       use_host_builtin_binary(build)
+      keep_without_ext(build)
       logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", chdir: build, env: environment(target))
       BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: EXTENSION_API)
       logged("#{target.name}-install", "make", "install-nodoc", "DESTDIR=#{root}", chdir: build, env: environment(target))
@@ -170,7 +171,7 @@ class RuntimeBuilder
     end
 
     private def finish_tree(target, root)
-      gems = File.join(root, "lib", "ruby", "gems", "4.0.0")
+      gems = File.join(root, "lib", "ruby", "gems", "4.1.0+5")
       BundledExtensions.check_installed(gems, @kept, platform: target.ruby_platform, api: EXTENSION_API)
       Pruning.prune(File.join(root, "lib", "ruby"), @builder.bundled_gems)
       @builder.install_rubygems_defaults(File.join(root, "lib", "ruby"))
@@ -222,6 +223,18 @@ class RuntimeBuilder
 
       File.write(makefile, text.sub(/^BUILTIN_BINARY = no$/, "BUILTIN_BINARY = yes"))
       File.write(File.join(build, "GNUmakefile"), "\nbuiltin_binary.rbbin: ; @:\n", mode: "a")
+    end
+
+    # Spike: Ruby 4.1's common.mk passes --without-ext=-test- to
+    # configure-ext.mk when cross-compiling, which overrides configure's
+    # --with-out-ext, so the bundled gems' own builds come back; this adds
+    # the list to that option in the build's uncommon.mk.
+    private def keep_without_ext(build)
+      path = File.join(build, "uncommon.mk")
+      text = File.read(path)
+      raise "#{path} has no --without-ext=-test-" unless text.include?("--without-ext=-test-")
+
+      File.write(path, text.sub("--without-ext=-test-", "--without-ext=-test-,#{@without.join(',')}"))
     end
 
     # Every static archive Ruby's build made for the target (libruby,

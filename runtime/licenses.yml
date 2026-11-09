@@ -124,13 +124,13 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: "the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and {prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"
+    ships: "the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and {prefix}lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt]
     files:
       - launcher
       - launcher.exe
       - launcherw.exe
-      - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
+      - {glob: "{prefix}lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
     binaries: [launcher, launcher.exe, launcherw.exe]
     # bin/ruby on macOS and Linux is Ruby's main.c with Fledge's code that
     # chooses its locale and hands an app's own program back to its
@@ -152,10 +152,10 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts
+    ships: lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts
     platforms: [ios, android]
     files:
-      - {glob: "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
+      - {glob: "{prefix}lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
 
   # The mobile runtimes' one library (ADR 011): Fledge's embedding API
   # (runtime/mobile/), compiled with Ruby and what Ruby links into
@@ -277,10 +277,10 @@ components:
     kind: program
     download: https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz
     notice: openssl
-    ships: "compiled into lib/ruby/4.0.0/{arch}/openssl.{so}"
+    ships: "compiled into lib/ruby/4.1.0+5/{arch}/openssl.{so}"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
     embedded:
-      - files: ["{prefix}lib/ruby/4.0.0/{arch}/openssl.{so}"]
+      - files: ["{prefix}lib/ruby/4.1.0+5/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.2 "
 
   - id: openssl
@@ -290,10 +290,10 @@ components:
     kind: program
     download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
     notice: openssl
-    ships: "compiled into lib/ruby/4.0.0/{arch}/openssl.{so}"
+    ships: "compiled into lib/ruby/4.1.0+5/{arch}/openssl.{so}"
     platforms: [x86_64-linux-musl, aarch64-linux-musl]
     embedded:
-      - files: ["{prefix}lib/ruby/4.0.0/{arch}/openssl.{so}"]
+      - files: ["{prefix}lib/ruby/4.1.0+5/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.5 "
 
   - id: openssl-mobile
@@ -316,12 +316,12 @@ components:
     kind: shared_library
     download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
     notice: openssl
-    ships: shared libraries in ruby/lib/ruby/4.0.0/{arch}/ and ruby/lib/ruby/4.0.0/lib/
+    ships: shared libraries in ruby/lib/ruby/4.1.0+5/{arch}/ and ruby/lib/ruby/4.1.0+5/lib/
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
-    files: ["{prefix}lib/ruby/4.0.0/{arch}/lib{crypto,ssl}-3-{x64,arm64}.dll", "{prefix}lib/ruby/4.0.0/lib/{engines-3,ossl-modules}/*.dll"]
-    binaries: ["{prefix}lib/ruby/4.0.0/{arch}/lib{crypto,ssl}-3-{x64,arm64}.dll", "{prefix}lib/ruby/4.0.0/lib/{engines-3,ossl-modules}/*.dll"]
+    files: ["{prefix}lib/ruby/4.1.0+5/{arch}/lib{crypto,ssl}-3-{x64,arm64}.dll", "{prefix}lib/ruby/4.1.0+5/lib/{engines-3,ossl-modules}/*.dll"]
+    binaries: ["{prefix}lib/ruby/4.1.0+5/{arch}/lib{crypto,ssl}-3-{x64,arm64}.dll", "{prefix}lib/ruby/4.1.0+5/lib/{engines-3,ossl-modules}/*.dll"]
     embedded:
-      - files: ["{prefix}lib/ruby/4.0.0/{arch}/libcrypto-3-{x64,arm64}.dll"]
+      - files: ["{prefix}lib/ruby/4.1.0+5/{arch}/libcrypto-3-{x64,arm64}.dll"]
         evidence: "OpenSSL 3.6.5 "
 
   - id: libyaml
@@ -331,10 +331,10 @@ components:
     kind: program
     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
     notice: libyaml
-    ships: "compiled into lib/ruby/4.0.0/{arch}/psych.{so}"
+    ships: "compiled into lib/ruby/4.1.0+5/{arch}/psych.{so}"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
-      - files: ["{prefix}lib/ruby/4.0.0/{arch}/psych.{so}"]
+      - files: ["{prefix}lib/ruby/4.1.0+5/{arch}/psych.{so}"]
         evidence: "0.2.5\0"
 
   - id: libyaml-mobile
@@ -357,12 +357,12 @@ components:
     kind: shared_library
     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
     notice: libyaml
-    ships: a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/
+    ships: a shared library in ruby/lib/ruby/4.1.0+5/x64-mingw-ucrt/
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
-    files: ["{prefix}lib/ruby/4.0.0/{arch}/libyaml-0-2.dll"]
-    binaries: ["{prefix}lib/ruby/4.0.0/{arch}/libyaml-0-2.dll"]
+    files: ["{prefix}lib/ruby/4.1.0+5/{arch}/libyaml-0-2.dll"]
+    binaries: ["{prefix}lib/ruby/4.1.0+5/{arch}/libyaml-0-2.dll"]
     embedded:
-      - files: ["{prefix}lib/ruby/4.0.0/{arch}/libyaml-0-2.dll"]
+      - files: ["{prefix}lib/ruby/4.1.0+5/{arch}/libyaml-0-2.dll"]
         evidence: "0.2.5\0"
 
   - id: zlib
@@ -372,10 +372,10 @@ components:
     kind: program
     download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
     notice: zlib
-    ships: "compiled into lib/ruby/4.0.0/{arch}/zlib.so"
+    ships: "compiled into lib/ruby/4.1.0+5/{arch}/zlib.so"
     platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
-      - files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib.so"]
+      - files: ["{prefix}lib/ruby/4.1.0+5/{arch}/zlib.so"]
         evidence: "deflate 1.3.2 "
 
   # AppImage's type 2 runtime, as AppImage released it (runtime/sources.yml),
@@ -578,12 +578,12 @@ components:
     kind: shared_library
     download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
     notice: zlib
-    ships: a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/
+    ships: a shared library in ruby/lib/ruby/4.1.0+5/x64-mingw-ucrt/
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
-    files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib1.dll"]
-    binaries: ["{prefix}lib/ruby/4.0.0/{arch}/zlib1.dll"]
+    files: ["{prefix}lib/ruby/4.1.0+5/{arch}/zlib1.dll"]
+    binaries: ["{prefix}lib/ruby/4.1.0+5/{arch}/zlib1.dll"]
     embedded:
-      - files: ["{prefix}lib/ruby/4.0.0/{arch}/zlib1.dll"]
+      - files: ["{prefix}lib/ruby/4.1.0+5/{arch}/zlib1.dll"]
         evidence: "deflate 1.3.2 "
 
   - id: libffi
@@ -596,7 +596,7 @@ components:
     ships: compiled into the fiddle gem's extension
     platforms: [x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl]
     embedded:
-      - files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
+      - files: ["{prefix}lib/ruby/gems/4.1.0+5/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
         evidence: "3.5.2\0"
 
   - id: libffi-mobile
@@ -635,10 +635,10 @@ components:
     notice: libffi
     ships: a shared library beside the fiddle gem's extension
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
-    files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
-    binaries: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+    files: ["{prefix}lib/ruby/gems/4.1.0+5/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+    binaries: ["{prefix}lib/ruby/gems/4.1.0+5/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
     embedded:
-      - files: ["{prefix}lib/ruby/gems/4.0.0/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+      - files: ["{prefix}lib/ruby/gems/4.1.0+5/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
         evidence: "3.8.0\0"
 
   - id: winpthreads
@@ -648,10 +648,10 @@ components:
     kind: shared_library
     download: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0/mingw-w64-libraries/winpthreads
     notice: mingw-w64
-    ships: a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports
+    ships: a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.1.0+5/x64-mingw-ucrt/ that nothing imports
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
-    files: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/4.0.0/{arch}/libwinpthread-1.dll"]
-    binaries: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/4.0.0/{arch}/libwinpthread-1.dll"]
+    files: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/4.1.0+5/{arch}/libwinpthread-1.dll"]
+    binaries: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/4.1.0+5/{arch}/libwinpthread-1.dll"]
 
   - id: libxcrypt
     name: libxcrypt, which backs String#crypt
@@ -745,9 +745,9 @@ components:
     kind: files
     download: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-ca-certificates
     notice: ca-certificates
-    ships: ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified
+    ships: ruby/lib/ruby/4.1.0+5/etc/ssl/cert.pem, unmodified
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
-    files: ["{prefix}lib/ruby/4.0.0/etc/ssl/cert.pem"]
+    files: ["{prefix}lib/ruby/4.1.0+5/etc/ssl/cert.pem"]
 
   - id: rubyinstaller
     name: RubyInstaller's runtime files, manifests, and tools
@@ -761,8 +761,8 @@ components:
     files:
       - "{prefix}LICENSE.txt"
       - "{prefix}lib/ruby/site_ruby/**"
-      - "{prefix}lib/ruby/4.0.0/etc/ssl/{README-SSL.md,certs/c_rehash.rb}"
-      - "{prefix}lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"
+      - "{prefix}lib/ruby/4.1.0+5/etc/ssl/{README-SSL.md,certs/c_rehash.rb}"
+      - "{prefix}lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb"
       - "{prefix}bin/ruby_builtin_dlls/ruby_builtin_dlls.manifest"
       - "{prefix}lib/ruby/**/*-assembly.manifest"
       - "{prefix}bin/{ridk.cmd,ridk.ps1,setrbvars.cmd,startmenu.rb}"
@@ -777,7 +777,7 @@ components:
     ships: rv-ruby's install receipt and SBOM (only in rv-ruby's whole tree)
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
     notice: rv-ruby
-    files: ["{prefix}INSTALL_RECEIPT.json", "{prefix}sbom.spdx.json", "{prefix}.brew/*.rb", "{prefix}lib/ruby/4.0.0/{arch}/portable_ruby_gems.rb"]
+    files: ["{prefix}INSTALL_RECEIPT.json", "{prefix}sbom.spdx.json", "{prefix}.brew/*.rb", "{prefix}lib/ruby/4.1.0+5/{arch}/portable_ruby_gems.rb"]
 
   # The source of each component above whose license asks for it, which
   # each runtime carries in notices/sources/ and so every app that copies
@@ -873,8 +873,8 @@ components:
       - files: ["{prefix}bin/x64-ucrt-ruby400.dll"]
         evidence: "3e93b23afc"
     files:
-      - "{prefix}lib/ruby/4.0.0/**"
-      - "{prefix}lib/ruby/gems/4.0.0/**/"
+      - "{prefix}lib/ruby/4.1.0+5/**"
+      - "{prefix}lib/ruby/gems/4.1.0+5/**/"
       - "{prefix}include/**"
       - "{prefix}Headers/**"
       - "{prefix}share/**"
@@ -890,16 +890,16 @@ components:
       - "{prefix}lib/libruby*-static.a"
       - "{prefix}lib/lib*-ruby*.dll.a"
       # Ruby's own extensions, by name, so that a file nobody listed fails.
-      - "{prefix}lib/ruby/4.0.0/{arch}/{cgi/escape,continuation,coverage,date_core,digest,etc,fcntl,monitor,objspace,openssl,psych,pty,ripper,socket,stringio,strscan,zlib}.{so}"
-      - "{prefix}lib/ruby/4.0.0/{arch}/{digest/{bubblebabble,md5,rmd160,sha1,sha2},erb/escape,io/{console,nonblock,wait},json/ext/{generator,parser},rbconfig/sizeof,win32/{dll_directory,resolv}}.{so}"
-      - "{prefix}lib/ruby/4.0.0/{arch}/enc/{big5,cesu_8,cp949,emacs_mule,encdb,euc_jp,euc_kr,euc_tw,gb18030,gb2312,gbk,iso_8859_1,iso_8859_10,iso_8859_11,iso_8859_13,iso_8859_14,iso_8859_15,iso_8859_16,iso_8859_2,iso_8859_3,iso_8859_4,iso_8859_5,iso_8859_6,iso_8859_7,iso_8859_8,iso_8859_9,koi8_r,koi8_u,shift_jis,utf_16be,utf_16le,utf_32be,utf_32le,windows_1250,windows_1251,windows_1252,windows_1253,windows_1254,windows_1257,windows_31j}.{so}"
-      - "{prefix}lib/ruby/4.0.0/{arch}/enc/trans/{big5,cesu_8,chinese,ebcdic,emoji,emoji_iso2022_kddi,emoji_sjis_docomo,emoji_sjis_kddi,emoji_sjis_softbank,escape,gb18030,gbk,iso2022,japanese,japanese_euc,japanese_sjis,korean,single_byte,transdb,utf8_mac,utf_16_32}.{so}"
+      - "{prefix}lib/ruby/4.1.0+5/{arch}/{cgi/escape,continuation,coverage,date_core,digest,etc,fcntl,monitor,objspace,openssl,psych,pty,ripper,socket,stringio,strscan,zlib}.{so}"
+      - "{prefix}lib/ruby/4.1.0+5/{arch}/{digest/{bubblebabble,md5,rmd160,sha1,sha2},erb/escape,io/{console,nonblock,wait},json/ext/{generator,parser},rbconfig/sizeof,win32/{dll_directory,resolv}}.{so}"
+      - "{prefix}lib/ruby/4.1.0+5/{arch}/enc/{big5,cesu_8,cp949,emacs_mule,encdb,euc_jp,euc_kr,euc_tw,gb18030,gb2312,gbk,iso_8859_1,iso_8859_10,iso_8859_11,iso_8859_13,iso_8859_14,iso_8859_15,iso_8859_16,iso_8859_2,iso_8859_3,iso_8859_4,iso_8859_5,iso_8859_6,iso_8859_7,iso_8859_8,iso_8859_9,koi8_r,koi8_u,shift_jis,utf_16be,utf_16le,utf_32be,utf_32le,windows_1250,windows_1251,windows_1252,windows_1253,windows_1254,windows_1257,windows_31j}.{so}"
+      - "{prefix}lib/ruby/4.1.0+5/{arch}/enc/trans/{big5,cesu_8,chinese,ebcdic,emoji,emoji_iso2022_kddi,emoji_sjis_docomo,emoji_sjis_kddi,emoji_sjis_softbank,escape,gb18030,gbk,iso2022,japanese,japanese_euc,japanese_sjis,korean,single_byte,transdb,utf8_mac,utf_16_32}.{so}"
       # The debug symbols rv-ruby's macOS build keeps beside each one.
-      - "{prefix}lib/ruby/4.0.0/{arch}/**/*.bundle.dSYM/Contents/Resources/DWARF/*.bundle"
+      - "{prefix}lib/ruby/4.1.0+5/{arch}/**/*.bundle.dSYM/Contents/Resources/DWARF/*.bundle"
 
 # Gems whose files hold more than their specification says: another
 # license, or a license text the gem's own files do not carry (a
-# default gem's code is in lib/ruby/4.0.0, and its license file is not).
+# default gem's code is in lib/ruby/4.1.0+5, and its license file is not).
 gems:
   minitest:
     text: README.rdoc
@@ -930,23 +930,23 @@ reviewed:
       AppImage's runtime is MIT; its LICENSE names the LGPL of the libfuse
       linked into it, and BUILD.txt says how to rebuild it with another
       libfuse, as LGPL-2.1, section 6(a), asks.
-  - files: ["{prefix}lib/ruby/4.0.0/net/{http,protocol}.rb", "{prefix}lib/ruby/4.0.0/rubygems/vendor/net-{http,protocol}/lib/net/*.rb"]
+  - files: ["{prefix}lib/ruby/4.1.0+5/net/{http,protocol}.rb", "{prefix}lib/ruby/4.1.0+5/rubygems/vendor/net-{http,protocol}/lib/net/*.rb"]
     why: The old header offers the Ruby license or the GPL; Ruby's license applies.
-  - files: ["{prefix}lib/ruby/4.0.0/rubygems/{specification,util/licenses}.rb", "{prefix}lib/ruby/4.0.0/bundler/**/*.rb"]
+  - files: ["{prefix}lib/ruby/4.1.0+5/rubygems/{specification,util/licenses}.rb", "{prefix}lib/ruby/4.1.0+5/bundler/**/*.rb"]
     why: RubyGems' and Bundler's lists of license identifiers name these licenses as data.
-  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rdoc-*/{LEGAL.rdoc,lib/rdoc/generator/template/darkfish/css/fonts.css}"]
+  - files: ["{prefix}lib/ruby/gems/4.1.0+5/gems/rdoc-*/{LEGAL.rdoc,lib/rdoc/generator/template/darkfish/css/fonts.css}"]
     why: Names the OFL that covers rdoc's fonts, and the Perl terms of a test fixture rdoc's gem leaves out.
-  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/test-unit-*/{PSFL,doc/text/news.md}"]
+  - files: ["{prefix}lib/ruby/gems/4.1.0+5/gems/test-unit-*/{PSFL,doc/text/news.md}"]
     why: The PSF license's own text, and a changelog entry; test-unit is Ruby OR BSD-2-Clause OR PSF-2.0.
-  - files: ["{prefix}lib/ruby/gems/4.0.0/cache/nkf-*.gem!nkf.gemspec"]
+  - files: ["{prefix}lib/ruby/gems/4.1.0+5/cache/nkf-*.gem!nkf.gemspec"]
     why: >-
       nkf's own gemspec adds EPL-2.0 and LGPL-2.1 to its licenses only when
       it builds JRuby's java-platform gem, from ext/java, which runtimes
       prune (RuntimeBuilder::Pruning.prune_jruby); the gem CRuby installs is Ruby OR
       BSD-2-Clause.
-  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rdoc-*/{LICENSE.rdoc,lib/rdoc/rd.rb}"]
+  - files: ["{prefix}lib/ruby/gems/4.1.0+5/gems/rdoc-*/{LICENSE.rdoc,lib/rdoc/rd.rb}"]
     why: Ruby's old license, which offers the GPL-2.0 or Ruby's own conditions; Ruby's apply.
-  - files: ["{prefix}lib/ruby/gems/4.0.0/gems/rbs-*/core/dir.rbs", "{prefix}{include/ruby-4.0.0,Headers}/ruby/internal/ctype.h"]
+  - files: ["{prefix}lib/ruby/gems/4.1.0+5/gems/rbs-*/core/dir.rbs", "{prefix}{include/ruby-4.1.0+5,Headers}/ruby/internal/ctype.h"]
     why: Mentions the word (a file name in an example, a comment about compatibility); no license.
   - files: ["{prefix}share/doc/ruby/html/**"]
     why: >-

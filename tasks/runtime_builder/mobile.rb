@@ -80,7 +80,7 @@ class RuntimeBuilder
 
     # The ABI version of a Ruby without a shared libruby, as RubyGems
     # names its extension folders (Gem.extension_api_version).
-    EXTENSION_API = "4.0.0-static"
+    EXTENSION_API = "4.1.0+5-static"
 
     def hosts
       @builder.platform.hosts

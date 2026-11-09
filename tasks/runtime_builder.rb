@@ -244,7 +244,7 @@ class RuntimeBuilder
   # library at +ruby+ (a lib/ruby folder), replacing any there, such as
   # RubyInstaller's; see the file's own comment.
   def install_rubygems_defaults(ruby)
-    version = sources.fetch("ruby").fetch("version").sub(/\.\d+\z/, ".0")
+    version = sources.fetch("ruby").fetch("abi")
     defaults = File.join(ruby, version, "rubygems", "defaults")
     raise "#{ruby} has no RubyGems at #{version}" unless File.directory?(File.dirname(defaults))
 

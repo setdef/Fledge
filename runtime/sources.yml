@@ -31,19 +31,20 @@
 # adds (rv-ruby adds bootsnap and msgpack), so that an app finds exactly
 # what a standard Ruby 4.0.9 has (ADR 003).
 ruby:
-  version: 4.0.9
+  version: 4.1.0-preview1
+  abi: 4.1.0+5
   release: "20261023"
-  bundled_gems: [minitest, power_assert, rake, test-unit, rexml, rss, net-ftp, net-imap, net-pop, net-smtp, matrix,
+  bundled_gems: [minitest, power_assert, rake, test-unit, rexml, rss, net-imap, net-smtp, matrix,
     prime, rbs, typeprof, debug, racc, mutex_m, getoptlong, base64, bigdecimal, observer, abbrev, resolv-replace,
     rinda, drb, nkf, syslog, csv, repl_type_completor, ostruct, pstore, benchmark, logger, rdoc, win32ole, irb,
-    reline, readline, fiddle]
+    reline, readline, fiddle, prism, tsort, win32-registry]
   platforms:
     arm64-darwin:
       url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_sonoma.tar.gz
       sha256: 38130a97c314e2e44198f37fc6555a66ab9a8011ecc5980d4ae36f2858ed11b5
     x86_64-linux:
-      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.x86_64_linux.tar.gz
-      sha256: 16b24f5b3aac3925f95cbbdd08e55c2877aec4f2614edf44af236a59a6591aa4
+      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.x86_64_linux.tar.gz
+      sha256: 29fd684d85aa4d08d97160d1c0a21b11b9ee95f2d87ab231044df03ca9d39361
     aarch64-linux:
       url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_linux.tar.gz
       sha256: 6b49808f690ecfe0f51f266b9c3477908f69d7a927d90355565368c40c875d22
@@ -274,9 +275,9 @@ nsis:
 # and install (ADR 012, section 9), as Google publishes it on GitHub.
 mobile:
   ruby:
-    version: 4.0.9
-    url: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
-    sha256: c35350682ff050b79702d57ade4516e7336063f510155d19fb2fb5b3f3909511
+    version: 4.1.0-preview1
+    url: https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview1.tar.gz
+    sha256: fb530bb88e90de3ae91c1310a27ae090e6bd989b8726de50ef12a890a85b88ef
   openssl:
     version: 3.6.5
     url: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz

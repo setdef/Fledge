@@ -58,7 +58,7 @@ class Parity
   # Where bundle install puts a gem's files for the person, and where
   # fledge build puts them in the app.
   PERSON_GEMS = %r{<work>/person-gems}
-  APP_GEMS = %r{<prefix>/lib/ruby/gems/4\.0\.0}
+  APP_GEMS = %r{<prefix>/lib/ruby/gems/4\.1\.0\+5}
 
   # The variables Bundler sets for the bundle it set up, whose values
   # name where the gems are (ADR 005).
@@ -96,12 +96,12 @@ class Parity
     Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
       reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1; ADR 003), " \
         "so it cannot change how the app runs; it still reaches the app's ENV and every program the app starts."),
-    Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/yaml_serializer\.rb"\z}],
+    Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.1\.0\+5/rubygems/yaml_serializer\.rb"\z}],
       checks: %i[bundle],
       reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
         "without the development and test groups, as bundle config set --local would (ADR 005). Reading a " \
         "configuration file loads RubyGems' YAML serializer."),
-    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/4\.0\.0/bundler/feature_flag\.rb"\z}],
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/4\.1\.0\+5/bundler/feature_flag\.rb"\z}],
       checks: %i[bundle],
       reason: "With no setting that says where the bundle's gems are, Bundler asks its feature flags whether to use " \
         "Ruby's own gem folder; the app's .bundle/config says so (path.system, as Warbler's does), so it never asks."),
@@ -112,20 +112,20 @@ class Parity
     Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, %r{\A"<home>/\.(?:gem|local/share/gem)/}],
       reason: "The app's gems are the runtime's alone (ADR 003): the person's GEM_HOME, GEM_PATH, and " \
         "Gem.user_dir never shadow them. Their ENV still reaches the app and its child processes."),
-    Justification.new(fact: "Gem.dir", reference: [%r{\A"<work>/person-gems"\z}], app: [%r{\A"<prefix>/lib/ruby/gems/4\.0\.0"\z}],
+    Justification.new(fact: "Gem.dir", reference: [%r{\A"<work>/person-gems"\z}], app: [%r{\A"<prefix>/lib/ruby/gems/4\.1\.0\+5"\z}],
       reason: "As for Gem.path: RubyGems installs into the runtime's gem folder, never the person's GEM_HOME."),
     Justification.new(fact: "gems", reference: [RV_RUBY_EXTRAS],
       reason: "rv-ruby adds bootsnap and msgpack, which no standard Ruby 4.0.9 installs; runtimes keep " \
         "Ruby's own default and bundled gems."),
     Justification.new(fact: "requireable", reference: [RV_RUBY_EXTRAS], reason: "As for gems."),
-    Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/defaults/operating_system\.rb"\z}],
+    Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.1\.0\+5/rubygems/defaults/operating_system\.rb"\z}],
       platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", "x86_64-linux-musl", "aarch64-linux-musl", *MOBILE],
       reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems (ADR 001, section 8); " \
         "rv-ruby ships no such file, nor does the Ruby a musl runtime is built from."),
     Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reference: [
-        %r{\A"<prefix>/lib/ruby/site_ruby/4\.0\.0/ruby_installer/},
-        %r{\A"<prefix>/lib/ruby/4\.0\.0/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)},
+        %r{\A"<prefix>/lib/ruby/site_ruby/4\.1\.0\+5/ruby_installer/},
+        %r{\A"<prefix>/lib/ruby/4\.1\.0\+5/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)},
       ],
       reason: "Fledge's RubyGems defaults replace RubyInstaller's (ADR 001, section 8), which load " \
         "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \

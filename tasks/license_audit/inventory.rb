@@ -31,7 +31,7 @@ class LicenseAudit
     # gem's files where RubyGems keeps them, in each of the runtime's Ruby
     # trees that holds it (LicenseAudit#prefixes).
     def gem_components
-      root = "#{@audit.prefix}lib/ruby/gems/4.0.0"
+      root = "#{@audit.prefix}lib/ruby/gems/4.1.0+5"
       Dir.glob(File.join(@audit.tree, root, "specifications", "{,default/}*.gemspec")).map do |path|
         spec = Gem::Specification.load(path) or raise "#{path}: not a gem specification"
         component(spec, root, path)
@@ -49,7 +49,7 @@ class LicenseAudit
       Component.new(id: "gem-#{full}", name: "#{spec.name} (#{default ? 'default' : 'bundled'} gem)", version: spec.version.to_s,
         license: override.fetch("license") { Fledge::LicensePolicy.gem_license(spec.licenses) }, kind: "program",
         first_party: false, download: "https://rubygems.org/gems/#{spec.name}/versions/#{spec.version}", notice: nil, source: nil,
-        ships: default ? "Ruby's default gem; its code is in lib/ruby/4.0.0" : "files under lib/ruby/gems/4.0.0/gems/#{full}",
+        ships: default ? "Ruby's default gem; its code is in lib/ruby/4.1.0+5" : "files under lib/ruby/gems/4.1.0+5/gems/#{full}",
         supplier: nil, files: gem_files(root, spec), binaries: gem_binaries(root, full), embedded: [], sha256: {},
         fallback: false, gem_dir: "#{gems}/gems/#{full}")
     end

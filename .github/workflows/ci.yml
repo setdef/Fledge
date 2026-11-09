@@ -229,6 +229,18 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
+      # Spike: rv-ruby's Ruby 4.1.0-preview1 as the baseruby, since the
+      # cross build's make install runs tool/rbinstall.rb with it and 4.1's
+      # lib on the load path, whose monitor.rb needs 4.1's core Monitor.
+      - name: Use Ruby 4.1.0-preview1
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb ruby platforms arm64-darwin)
+          mkdir -p "$RUNNER_TEMP/ruby41"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/ruby41"
+          bin=$(dirname "$(find "$RUNNER_TEMP/ruby41" -path '*/bin/ruby' -type f | head -n 1)")
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/ruby" -v
+
       - name: Select the pinned Xcode
         if: matrix.platform == 'ios'
         run: |

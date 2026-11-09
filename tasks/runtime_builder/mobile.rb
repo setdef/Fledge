@@ -160,7 +160,7 @@ class RuntimeBuilder
       logged("#{target.name}-configure", File.join(@source, "configure"), *configure_options(target, deps), chdir: build,
         env: environment(target))
       use_host_builtin_binary(build)
-      keep_without_ext(build)
+      keep_without_ext(build, target)
       logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", chdir: build, env: environment(target))
       BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: EXTENSION_API)
       logged("#{target.name}-install", "make", "install-nodoc", "DESTDIR=#{root}", chdir: build, env: environment(target))
@@ -229,7 +229,8 @@ class RuntimeBuilder
     # configure-ext.mk when cross-compiling, which overrides configure's
     # --with-out-ext, so the bundled gems' own builds come back; this adds
     # the list to that option in the build's uncommon.mk.
-    private def keep_without_ext(build)
+    private def keep_without_ext(build, target)
+      logged("#{target.name}-uncommon", "make", "uncommon.mk", chdir: build, env: environment(target))
       path = File.join(build, "uncommon.mk")
       text = File.read(path)
       raise "#{path} has no --without-ext=-test-" unless text.include?("--without-ext=-test-")

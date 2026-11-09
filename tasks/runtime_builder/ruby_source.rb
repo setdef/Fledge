@@ -19,6 +19,7 @@ class RuntimeBuilder
       psych_extconf: "ext/psych/extconf.rb",
       vm_dump: "vm_dump.c",
       configure: "configure",
+      configure_macos_minimum: "configure",
       ruby_c: "ruby.c",
     }.freeze
 
@@ -57,6 +58,20 @@ class RuntimeBuilder
     def self.configure(text)
       replace(text, /^(\s*)target_os=\$\{target_os\}-android$/,
         "\\1case $target_os in *android*) ;; *) target_os=${target_os}-android ;; esac", "configure appends -android")
+    end
+
+    # Spike: Ruby 4.1's configure refuses a darwin target whose
+    # MAC_OS_X_VERSION_MIN_REQUIRED is below 10.6 (configure.ac, lines 439
+    # to 451 at 4.1.0-preview1, from ruby/ruby 3e96f16643, "Require Mac OS
+    # X 10.6 or later"). An iOS target is darwin too, and there the SDK's
+    # AvailabilityMacros.h, with no macOS deployment target from clang
+    # (__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__), defaults the macro
+    # to 10.5 on arm64 (lines 96 to 111), so the check fails. This makes
+    # it apply only when clang targets macOS, in the generated configure.
+    def self.configure_macos_minimum(text)
+      replace(text, /^(\s*)#if MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_6$/,
+        "\\1#if defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_6",
+        "configure requires Mac OS X 10.6")
     end
 
     # Built with --enable-load-relative, Ruby derives its prefix from the

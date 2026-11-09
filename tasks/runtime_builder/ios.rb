@@ -44,7 +44,7 @@ class RuntimeBuilder
     end
 
     private def edits
-      %i[psych_extconf vm_dump ruby_c]
+      %i[psych_extconf vm_dump ruby_c configure_macos_minimum]
     end
 
     private def host_triple(_target)

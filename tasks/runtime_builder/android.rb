@@ -50,6 +50,13 @@ class RuntimeBuilder
       true
     end
 
+    # Spike only: Ruby 4.1's bundled prism gem compiles its own copy of
+    # libprism into its extension, whose pm_* symbols collide with the
+    # libprism inside libruby once both are linked into one library.
+    private def omitted_gems
+      %w[prism]
+    end
+
     private def host_triple(target)
       target.triple
     end

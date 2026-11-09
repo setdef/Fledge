@@ -138,7 +138,7 @@ class RuntimeBuilder
       FileUtils.mkdir_p(host)
       logged("host-configure", File.join(@source, "configure"), "--disable-shared", "--disable-yjit", "--disable-zjit",
         "--disable-install-doc", "--with-baseruby=#{RbConfig.ruby}", chdir: host, env: host_environment)
-      logged("host-make", "make", "-j#{Etc.nprocessors}", "miniruby", chdir: host, env: host_environment)
+      logged("host-make", "make", "-j#{Etc.nprocessors}", "miniruby", "dump_ast", chdir: host, env: host_environment)
       host
     end
 
@@ -195,6 +195,7 @@ class RuntimeBuilder
         "--disable-install-doc",
         "--disable-install-rdoc",
         "--with-baseruby=#{RbConfig.ruby}",
+        "--with-dump-ast=#{File.join(@host, 'dump_ast')}",
         "--with-openssl-dir=#{deps.fetch(:openssl)}",
         "--with-libyaml-dir=#{deps.fetch(:libyaml)}",
         "--without-gmp",

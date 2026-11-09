@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 [tools]
-ruby = "4.1.0-preview1"
+ruby = "4.0.9"
 python = "3.12"
 pre-commit = "latest"
 uv = "0.13.4"

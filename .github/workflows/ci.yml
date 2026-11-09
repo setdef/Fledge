@@ -293,6 +293,18 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
+      # Spike: rv-ruby's Ruby 4.1.0-preview1, which the macOS runtime is
+      # made from, as the runner's Ruby, since fledge build needs the
+      # runtime's minor Ruby and mise has no macOS build of the preview.
+      - name: Use Ruby 4.1.0-preview1
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb ruby platforms arm64-darwin)
+          mkdir -p "$RUNNER_TEMP/ruby41"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/ruby41"
+          bin=$(dirname "$(find "$RUNNER_TEMP/ruby41" -path '*/bin/ruby' -type f | head -n 1)")
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/ruby" -v
+
       - name: Select the pinned Xcode
         run: |
           xcode=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcode")')
@@ -385,6 +397,18 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
+      # Spike: rv-ruby's Ruby 4.1.0-preview1, which the macOS runtime is
+      # made from, as the runner's Ruby, since fledge build needs the
+      # runtime's minor Ruby and mise has no macOS build of the preview.
+      - name: Use Ruby 4.1.0-preview1
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb ruby platforms arm64-darwin)
+          mkdir -p "$RUNNER_TEMP/ruby41"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/ruby41"
+          bin=$(dirname "$(find "$RUNNER_TEMP/ruby41" -path '*/bin/ruby' -type f | head -n 1)")
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/ruby" -v
+
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: runtime-${{ matrix.platform }}
@@ -428,6 +452,18 @@ jobs:
         with:
           version: 2026.10.11
           install_args: ruby
+
+      # Spike: rv-ruby's Ruby 4.1.0-preview1, which the macOS runtime is
+      # made from, as the runner's Ruby, since fledge build needs the
+      # runtime's minor Ruby and mise has no macOS build of the preview.
+      - name: Use Ruby 4.1.0-preview1
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb ruby platforms arm64-darwin)
+          mkdir -p "$RUNNER_TEMP/ruby41"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/ruby41"
+          bin=$(dirname "$(find "$RUNNER_TEMP/ruby41" -path '*/bin/ruby' -type f | head -n 1)")
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/ruby" -v
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

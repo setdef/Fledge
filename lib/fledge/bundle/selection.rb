@@ -16,14 +16,18 @@ module Fledge
     class Selection # :nodoc:
       # A selection from +definition+'s lockfile, named +lockfile_name+,
       # for +platform+, whose runtime is Ruby +ruby_version+ on the RubyGems
-      # platform +target+, setting up +groups+ (symbols).
-      def initialize(definition, lockfile_name:, platform:, ruby_version:, target:, groups:)
+      # platform +target+, setting up +groups+ (symbols). +runs+ answers
+      # whether a locked specification's +required_ruby_version+ admits
+      # the runtime's Ruby, and is asked only when a gem has a build to
+      # fall back to.
+      def initialize(definition, lockfile_name:, platform:, ruby_version:, target:, groups:, runs:)
         @definition = definition
         @lockfile_name = lockfile_name
         @platform = platform
         @ruby_version = ruby_version
         @target = target
         @groups = groups
+        @runs = runs
       end
 
       # The locked specifications the app's dependencies reach on the
@@ -45,13 +49,56 @@ module Fledge
         specs
       end
 
+      # The build of +name+ Bundler would set up: the best match for the
+      # target's platform, or, when its +required_ruby_version+ excludes
+      # the runtime's Ruby (as sqlite3 2.10.2's precompiled builds exclude
+      # Ruby 4.1), the gem's source build, which Fledge compiles. With no
+      # build that admits the runtime's Ruby, the best match stays, and
+      # Fledge::AppGems names it, as a frozen Bundler would fail on it.
+      #
+      # A frozen Bundler 4.0.20 materializes a locked build against its
+      # source's specifications, which carry +required_ruby_version+
+      # (Bundler::MatchMetadata#matches_current_ruby?,
+      # <tt>bundler/match_metadata.rb</tt>, lines 9 to 11), and skips one
+      # that does not match: Bundler::LazySpecification#choose_compatible
+      # (<tt>bundler/lazy_specification.rb</tt>, lines 236 to 250) finds
+      # none, so #materialize_for_installation (lines 137 to 152) tries
+      # each of #candidate_platforms (lines 203 to 206), the local
+      # platform and then +ruby+, "since it requires compilation, but
+      # works when precompiled gems are incompatible", and with none
+      # compatible keeps the locked platform's build
+      # (#frozen_bundle_fallback, lines 211 to 216). The lockfile does not
+      # record +required_ruby_version+, so +runs+ reads it from the build's
+      # <tt>.gem</tt>.
+      #--
+      # SPDX-SnippetBegin
+      # SPDX-License-Identifier: MIT
+      # SPDX-SnippetCopyrightText: 2010-2019 André Arko, 2009 Engine Yard
+      # SPDX-SnippetComment: Bundler::LazySpecification#find_compatible_platform_spec,
+      #   #candidate_platforms, and #frozen_bundle_fallback, adapted from
+      #   bundler/lazy_specification.rb at Bundler 4.0.20 (lines 192 to 216),
+      #   with the runtime's platform as Bundler's local one.
+      #++
       private def best(lookup, name, force_ruby)
         candidates = lookup[name] or raise Error, "#{@lockfile_name} locks no #{name}. Run bundle lock, then build again."
         force_ruby ||= @platform.force_ruby_platform?
-        Bundler::MatchPlatform.select_best_platform_match(candidates, @target, force_ruby:).first or
-          raise Error, "#{@lockfile_name} locks no build of #{name} for #{@platform}, only for " \
-            "#{candidates.map { |spec| spec.platform.to_s }.sort.join(', ')}. If #{name} has one, run bundle lock " \
-            "--add-platform #{@platform.lockfile_names.first}, then build again."
+        builds = [@target, Gem::Platform::RUBY].uniq.map do |platform|
+          Bundler::MatchPlatform.select_best_platform_match(candidates, platform, force_ruby:)
+        end
+        locked = builds.first.first or no_build(name, candidates)
+        choices = builds.flatten.uniq
+        return locked if choices.one?
+
+        choices.find { |spec| @runs.call(spec) } || locked
+      end
+      #--
+      # SPDX-SnippetEnd
+      #++
+
+      private def no_build(name, candidates)
+        raise Error, "#{@lockfile_name} locks no build of #{name} for #{@platform}, only for " \
+          "#{candidates.map { |spec| spec.platform.to_s }.sort.join(', ')}. If #{name} has one, run bundle lock " \
+          "--add-platform #{@platform.lockfile_names.first}, then build again."
       end
 
       # Whether the dependency is one Bundler sets up on the platform, in

@@ -87,7 +87,7 @@ module Bundler
   end
 
   module MatchPlatform
-    def self.select_best_platform_match: (Array[LazySpecification] specs, Gem::Platform platform, ?force_ruby: bool) -> Array[LazySpecification]
+    def self.select_best_platform_match: (Array[LazySpecification] specs, Gem::Platform | String platform, ?force_ruby: bool) -> Array[LazySpecification]
   end
 
   class Source

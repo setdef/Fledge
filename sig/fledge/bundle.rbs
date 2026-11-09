@@ -37,7 +37,9 @@ module Fledge
 
     private def checksums: (String text) -> Hash[String, String]
 
-    def gems_for: (target platform, ruby_version: String, arch: String) -> Array[locked_gem]
+    def gems_for: (target platform, ruby_version: String, arch: String) ?{ (LockedGem gem) -> Gem::Requirement } -> Array[locked_gem]
+
+    private def runs?: (Bundler::LazySpecification spec, target platform, Gem::Version version, (^(LockedGem gem) -> Gem::Requirement)? required_ruby) -> bool
 
     private def check_ruby: (String ruby_version) -> void
 

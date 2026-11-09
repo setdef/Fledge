@@ -123,7 +123,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def for(platform, runtime:)
-      locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch)
+      locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch) { |gem| required_ruby(gem) }
         .reject { |gem| !gem.is_a?(PathGem) && runtime.gems.include?(gem.full_name) }
       packages = locked.to_h { |gem| [gem, package_for(gem)] } # : Hash[locked_gem, package]
       stubs = [] # : Array[Entry]
@@ -256,6 +256,13 @@ module Fledge
     # gems of #extension_packages, by gem name.
     def extension_build_args
       extension_packages.keys.to_h { |gem| [gem.name, @bundle.build_args(gem.name)] }
+    end
+
+    # The Ruby versions +gem+'s build admits, from its <tt>.gem</tt>, as
+    # Bundler reads them from its source to choose between a gem's builds
+    # (Fledge::Bundle#gems_for).
+    private def required_ruby(gem)
+      Gem::Package.new(@fetcher.fetch(gem)).spec.required_ruby_version
     end
 
     private def package_for(gem)

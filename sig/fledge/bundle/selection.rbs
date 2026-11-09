@@ -10,12 +10,15 @@ module Fledge
       @ruby_version: String
       @target: Gem::Platform
       @groups: Array[Symbol]
+      @runs: ^(Bundler::LazySpecification spec) -> bool
 
-      def initialize: (Bundler::Definition definition, lockfile_name: String, platform: target, ruby_version: String, target: Gem::Platform, groups: Array[Symbol]) -> void
+      def initialize: (Bundler::Definition definition, lockfile_name: String, platform: target, ruby_version: String, target: Gem::Platform, groups: Array[Symbol], runs: ^(Bundler::LazySpecification spec) -> bool) -> void
 
       def specs: () -> Array[Bundler::LazySpecification]
 
       private def best: (Hash[String, Array[Bundler::LazySpecification]] lookup, String name, bool force_ruby) -> Bundler::LazySpecification
+
+      private def no_build: (String name, Array[Bundler::LazySpecification] candidates) -> bot
 
       private def ships?: (Bundler::Dependency dependency) -> bool
 

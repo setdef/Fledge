@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-10
+
 ### Fixed
 
 - `fledge build` takes a gem's locked source build, as Bundler does, when its precompiled build's `required_ruby_version` excludes the runtime's Ruby, instead of refusing the precompiled build.
@@ -351,7 +353,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/setdef/Fledge/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/setdef/Fledge/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/setdef/Fledge/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/setdef/Fledge/compare/v0.7.0...v0.8.0

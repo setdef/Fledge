@@ -385,3 +385,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: question C in `questions.md`, which account-blocked tests must pass before 1.0.0 is tagged, and how the maintainer is to find and run them.]
 
 *Governs:* agents keep a list of the tests that wait on the maintainer's developer accounts, current and clear enough for the maintainer to work through alone; which of them block 1.0.0 is the maintainer's choice, made later, and until then none is named a requirement. *Applied in:* `doc/contributors/account-tests.md`; AGENTS.md, Releasing; question C in `questions.md`.
+
+## 2026-11-09
+
+The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
+
+> If the Fledge agent and Lota agent agree, I'd rather see Fledge and Lota ship 4.1-preview now, drop 4.0 now, and not ship Fledge 1.0.0 or Lota 1.0.0 until 4.1 releases.
+
+[re: the Lota agent's proposal that Lota and Fledge require Ruby 4.1, previews included, after Fledge's Ruby 4.1 spike (`doc/contributors/research/2026-11-09-ruby-4.1-spike.md`), and the maintainer's word before it that he would agree only if both agents did. Both agreed: Fledge's orchestrating agent on the grounds that a 1.0 on Ruby 4.0 would oblige Fledge to keep 4.0's runtimes through all of 1.x (ADR 029, section 6), on condition that the spike's open problems are fixed or explained before the first release on 4.1; the Lota agent on condition that Lota's own move lands together with that release. Fledge's orchestrating agent had also proposed a last release on Ruby 4.0.9 first, which these words leave out.]
+
+*Governs:* Fledge's next release carries Ruby 4.1 preview runtimes in place of Ruby 4.0's, as soon as its CI passes on every job; Ruby 4.0 is dropped now, with no further release on it; Fledge 1.0.0 is not released before Ruby 4.1.0 is, and so waits on Ruby 4.1.0 as well as on the maintainer's account-blocked testing. *Applied in:* Plan 003; ADR 028 and ADR 029; the handoff.

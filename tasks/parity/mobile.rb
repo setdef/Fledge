@@ -18,6 +18,10 @@ class Parity
   DESKTOP_ARCH = "(?:arm64-darwin23|x86_64-linux|aarch64-linux)"
   MOBILE_ARCH = "(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"
 
+  # The bundled gems that depend on prism (their specifications, at Ruby
+  # 4.1.0-preview1), as a pattern.
+  PRISM_DEPENDENTS = "(?:irb|minitest|rbs|rdoc|repl_type_completor|typeprof)"
+
   # What decisions 9 and 10 mean on a phone (doc/contributors/design/phone-projects.md,
   # "Parity on a phone"): each way an app's Ruby on iOS or Android differs from ruby main.rb on the
   # desktop that runs its simulator, and why each is right.
@@ -65,12 +69,22 @@ class Parity
         "of RubySketch's Ruby \"to pass the App Store review\" (ADR 058)."),
     Justification.new(fact: "requireable", reference: [/\A"fiddle"=/], platforms: IOS, reason: "As for gems."),
     # For now: prism's extension waits on a link with libruby's own
-    # libprism (RuntimeBuilder::Mobile#omitted_gems), and goes when it
-    # loads on a phone.
+    # libprism (RuntimeBuilder::Mobile#omitted_gems), and these three go
+    # when it loads on a phone.
     Justification.new(fact: "gems", reference: [/\A"prism /], platforms: MOBILE,
       reason: "For now, the phones' runtimes leave out Ruby 4.1's bundled prism gem, whose extension compiles a " \
         "copy of libprism that collides with libruby's own once every extension is linked into one library; " \
         "require \"prism\" fails on a phone until it is linked with libruby's."),
     Justification.new(fact: "requireable", reference: [/\A"prism"=/], platforms: MOBILE, reason: "As for prism's gems."),
+    Justification.new(fact: "requireable", reference: [/\A"#{PRISM_DEPENDENTS}"="loads"\z/o],
+      app: [/\A"#{PRISM_DEPENDENTS}"="Gem::MissingSpecError: Could not find 'prism' /o], platforms: MOBILE,
+      reason: "As for prism's gems: the bundled gems that depend on prism, irb, minitest, rbs, rdoc, " \
+        "repl_type_completor, and typeprof, cannot be activated on a phone while prism is left out."),
+    Justification.new(fact: "gems", app: [/\A"win32-registry /], platforms: MOBILE,
+      reason: "Ruby's own install puts every bundled gem it can in a Ruby it builds from source, as the phones' " \
+        "runtimes are, win32-registry among them, which only Windows can use; rv-ruby's builds, which the " \
+        "desktop's ruby main.rb runs, leave it out."),
+    Justification.new(fact: "requireable", app: [/\A"win32-registry"=/], platforms: MOBILE,
+      reason: "As for win32-registry's gem: it calls Windows' kernel32.dll through fiddle, so it loads nowhere else."),
   ].freeze
 end

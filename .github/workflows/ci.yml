@@ -921,7 +921,9 @@ jobs:
   # which Delivery asks what Bundler.with_original_env and
   # with_unbundled_env give a child; examples/my_cool_app, whose gems come
   # from RubyGems.org, each checked against its Gemfile.lock's checksum,
-  # precompiled for the platform (ADR 005); examples/windowed_app, a
+  # precompiled for the platform (ADR 005); test/fixtures/bundled_with,
+  # whose Gemfile.lock names a Bundler no runtime ships (ADR 063);
+  # examples/windowed_app, a
   # windowed app (ADR 037, ADR 008) with its installer (ADR 009);
   # examples/programs, a windowed and a console program of one project in
   # one folder (ADR 024); and
@@ -1029,7 +1031,7 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs examples/native_app)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs examples/native_app test/fixtures/bundled_with/exe/bundled_with)
           [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console examples/windowed_app examples/programs)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
@@ -1194,6 +1196,8 @@ jobs:
         run: |
           (cd examples/my_cool_app && bundle install)
           (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) | tee dist/my_cool_app.expected
+          (cd test/fixtures/bundled_with && bundle install)
+          (cd test/fixtures/bundled_with && bundle exec ruby exe/bundled_with) | tee dist/bundled_with.expected
           examples=native_app
           case "${{ matrix.platform }}" in arm64-darwin | x64-mingw-ucrt) examples="native_app nokogiri_app" ;; esac
           for example in $examples; do
@@ -1489,6 +1493,14 @@ jobs:
         run: >-
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
+
+      # ADR 063: an app whose Gemfile.lock names a Bundler the runtime's
+      # Ruby does not ship runs with it, as bundle exec did where it was
+      # built.
+      - name: Run bundled_with as someone with no Ruby would
+        run: >-
+          .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/BundledWith-${{ matrix.platform }}.tar.gz"
+          "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/bundled_with.expected")"
 
       # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
       # the console probe in a terminal of its own, a
@@ -1857,6 +1869,16 @@ jobs:
           -Archive "$env:RUNNER_TEMP/delivered/MyCoolApp-$env:PLATFORM.zip"
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-$env:PLATFORM.zip" -Platform $env:PLATFORM
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected" -Raw).TrimEnd()
+
+      # ADR 063, as on macOS and Linux.
+      - name: Run BundledWith.exe as someone with no Ruby would
+        if: matrix.platform == 'x64-mingw-ucrt'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/BundledWith-$env:PLATFORM.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-$env:PLATFORM.zip" -Platform $env:PLATFORM
+          -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/bundled_with.expected" -Raw).TrimEnd()
 
       # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
       # the console probe in a console of its own, ended by

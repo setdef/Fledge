@@ -22,3 +22,4 @@
 
 # Claude Code worktrees and local settings
 /.claude/
+/CLAUDE.local.md

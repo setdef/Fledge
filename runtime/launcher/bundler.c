@@ -4,8 +4,9 @@
  */
 
 /*
- * The environment an app with a Gemfile runs in, on every operating
- * system (ADR 005, section 5).
+ * The Bundler that sets up an app with a Gemfile (ADR 063), and the
+ * environment the app runs in, on every operating system (ADR 005,
+ * section 5).
  *
  * Under bundle exec, a program's ENV is the person's, with Bundler's
  * own settings over it: BUNDLE_GEMFILE, GEM_HOME, PATH with the bundle's
@@ -39,6 +40,7 @@
 #include "launcher.h"
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,6 +60,46 @@ static const char code_after_variables[] =
     "ENV.update(bundled.slice(\"GEM_HOME\", \"GEM_PATH\"))\n"
     "Bundler.load.send(:setup_manpath) unless bundled[\"MANPATH\"] == booted[\"MANPATH\"]\n"
     "nil\n";
+
+/*
+ * Which Bundler sets the app up. bundle exec runs the Bundler the
+ * lockfile's BUNDLED WITH names, which bundle install installed, in
+ * place of Ruby's own (bundler/self_manager.rb, lines 70 to 96, at
+ * Bundler 4.0.20), and hands its program RUBYLIB with that Bundler's lib
+ * first and RUBYOPT with -r and the path of its bundler/setup
+ * (shared_helpers.rb, set_rubylib and set_rubyopt). fledge build
+ * installs that Bundler in the runtime's gem folder, where RubyGems'
+ * paths, which pin_rubygems fixed, find it as Gem.dir, and fledge.cfg
+ * names its version (ADR 063). The runtime's own Bundler is in Ruby's
+ * library, where RUBYLIB adds nothing. Either is required by its path:
+ * by name, RubyGems would activate the bundler gem first, loading what
+ * bundle exec does not. bundler/setup prints its own message and exits
+ * when standard output is a terminal; otherwise it raises, quietly, and
+ * the code prints what went wrong.
+ */
+#define RUNTIME_BUNDLER "RbConfig::CONFIG['rubylibdir']"
+#define LOCKED_BUNDLER "File.join(Gem.dir, 'gems', 'bundler-%s', 'lib')"
+#define SETUP_BEFORE "begin\n  require File.join("
+#define SETUP_AFTER ", 'bundler/setup')\nrescue StandardError => e\n  $stderr.puts(e.message)\n  raise\nend\n"
+
+int
+fledge_bundler_code(char *code, size_t size, const char *version, int setup)
+{
+    int length;
+
+    if (version == NULL && !setup) {
+        length = snprintf(code, size, "require File.join(" RUNTIME_BUNDLER ", 'bundler')");
+    } else if (version == NULL) {
+        length = snprintf(code, size, SETUP_BEFORE RUNTIME_BUNDLER SETUP_AFTER);
+    } else if (!setup) {
+        length = snprintf(code, size,
+                          "$LOAD_PATH.unshift(" LOCKED_BUNDLER ")\nrequire File.join(" LOCKED_BUNDLER ", 'bundler')",
+                          version, version);
+    } else {
+        length = snprintf(code, size, SETUP_BEFORE LOCKED_BUNDLER SETUP_AFTER, version);
+    }
+    return length < 0 || (size_t)length >= size ? -1 : 0;
+}
 
 char *
 fledge_bundle_environment_code(const char *variables, size_t length)

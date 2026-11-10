@@ -290,6 +290,69 @@ module Fledge
       end
     end
 
+    # The Bundler <tt>bundle exec</tt> would run the app with in place of
+    # the runtime's own, whose version is +running+ (such as
+    # <tt>"4.0.20"</tt>), as a Fledge::LockedGem, or +nil+ when it runs
+    # the runtime's. That is the Bundler the lockfile's BUNDLED WITH names,
+    # which <tt>bundle install</tt> installs and which Bundler then
+    # switches to (Bundler::SelfManager), unless Bundler's +version+
+    # setting is +system+ or names another, or it is a development build,
+    # or the block, given that gem, answers a +required_ruby_version+ (a
+    # Gem::Requirement) that excludes the runtime's Ruby,
+    # +ruby_version+, in which case <tt>bundle install</tt> keeps the
+    # Bundler that runs it. Raises Fledge::Error when the lockfile has no
+    # checksum for it.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   # Gemfile.lock: BUNDLED WITH 4.0.19
+    #   bundle.bundler_for("4.0.20", ruby_version: "4.0.9").to_s # => "bundler 4.0.19"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def bundler_for(running, ruby_version:, &required_ruby)
+      at_project(@gemfile) do
+        version = switch_version(Gem::Version.new(running)) or next nil
+        gem = sources.bundler(version.to_s)
+        next gem unless required_ruby
+
+        gem if required_ruby.call(gem).satisfied_by?(Gem::Version.new(ruby_version))
+      end
+    end
+
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-License-Identifier: MIT
+    # SPDX-SnippetCopyrightText: 2010-2019 André Arko, 2009 Engine Yard
+    # SPDX-SnippetComment: Bundler::SelfManager#find_restart_version,
+    #   #needs_switching?, #released?, and #lockfile_version, adapted from
+    #   bundler/self_manager.rb at Bundler 4.0.20 (lines 99 to 109, 163 to
+    #   165, and 181 to 200), and Bundler::LockfileParser.bundled_with
+    #   (bundler/lockfile_parser.rb, lines 88 to 96), with the runtime's
+    #   Bundler as the running one.
+    #++
+    private def switch_version(running)
+      configured = Bundler.settings[:version]
+      return nil if configured == "system"
+
+      text = File.read(@lockfile)
+      return nil unless text.include?("BUNDLED WITH")
+
+      locked = Gem::Version.new(text.split("BUNDLED WITH").last.to_s.strip)
+      version = (configured == "lockfile") ? locked : Gem::Version.new(configured)
+      version unless version.to_s.end_with?(".dev") || version == running
+    rescue ArgumentError
+      nil
+    end
+    #--
+    # SPDX-SnippetEnd
+    #++
+
     # Whether +spec+'s build admits the runtime's Ruby, +version+, as
     # +required_ruby+ answers for a gem from a gem server (the only source
     # that locks more than one build of a gem).

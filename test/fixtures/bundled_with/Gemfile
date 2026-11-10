@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+#++
+
+# An app whose Gemfile.lock was written by Bundler 4.0.19, which no
+# runtime's Ruby ships as its own: bundle exec runs it with Bundler
+# 4.0.19, which bundle install installs, and so must the built app (ADR
+# 063).
+source "https://rubygems.org"
+
+gem "concurrent-ruby", "~> 1.3"

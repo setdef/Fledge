@@ -56,6 +56,21 @@ module Fledge
           credentials: remote.uri.userinfo)
       end
 
+      # Bundler itself at +version+, from RubyGems.org, where Bundler
+      # fetches the Bundler a lockfile names
+      # (Bundler::SelfManager#remote_specs, at Bundler 4.0.20), asked
+      # through the mirror and with the login Bundler's settings give that
+      # server, and checked against the lockfile's checksum for it.
+      def bundler(version)
+        lock_name = "bundler (#{version})"
+        sha256 = @checksums[lock_name] or
+          raise Error, "#{@lockfile_name} has no checksum for #{lock_name}, the Bundler bundle exec runs the app with, and Fledge " \
+            "checks every gem it ships. Run bundle install, which installs Bundler #{version}, then bundle lock --add-checksums, " \
+            "then build again."
+        remote = Bundler::Source::Rubygems::Remote.new("https://rubygems.org/")
+        LockedGem.new(name: "bundler", version:, platform: "ruby", remote: remote.anonymized_uri.to_s, sha256:, credentials: remote.uri.userinfo)
+      end
+
       # A gem from git, at the revision the lockfile locks, which must be a
       # whole commit: SHA-1's 40 hexadecimal digits, or SHA-256's 64.
       private def git_gem(spec, source)

@@ -166,6 +166,7 @@ class RuntimeBuilder
         File.join(MOBILE, "android.c"),
         File.join(Recipe::LAUNCHER, "locale.c"),
         File.join(Recipe::LAUNCHER, "config.c"),
+        File.join(Recipe::LAUNCHER, "bundler.c"),
       ]
     end
 

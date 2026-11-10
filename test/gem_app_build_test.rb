@@ -107,6 +107,36 @@ class GemAppBuildTest < Minitest::Test
     assert_equal "require_relative '../gems/rdoc-7.0.4/lib/rubygems_plugin.rb'\n", File.read(File.join(gems, "plugins/rdoc_plugin.rb"))
   end
 
+  # The Bundler a lockfile's BUNDLED WITH names, which bundle exec runs in
+  # place of Ruby's own, ships installed beside the runtime's own
+  # Bundler, from RubyGems.org (here through Bundler's mirror of it, the
+  # loopback server), and fledge.cfg names it for the launcher. A
+  # lockfile the runtime's own Bundler wrote ships none.
+  def test_the_bundler_the_lockfile_names_ships_and_the_launcher_is_told_to_run_it
+    runtime_bundler = Fledge::Entry.file("lib/ruby/gems/4.0.0/specifications/default/bundler-4.0.20.gemspec", "# bundler\n")
+    FakeRuntime.write(@runtimes, Fledge::Platform.find("x86_64-linux"), extra: [runtime_bundler])
+    bundler = FakeGem.build(@gems, "bundler", "4.0.19", files: { "lib/bundler.rb" => "# bundler\n" }, executables: [])
+    serve(bundler)
+    root = project(dependencies: {}, locked: [], bundled_with: "4.0.19", bundler:)
+    FileUtils.mkdir_p(File.join(root, ".bundle"))
+    File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_MIRROR__HTTPS://RUBYGEMS__ORG/: \"#{@server.url('/')}\"\n")
+
+    out, err, status = build(File.join(root, "exe/my_app"))
+
+    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
+    folder = File.join(@dir, "dist/MyApp-x86_64-linux")
+    gems = File.join(folder, "lib/ruby/gems/4.0.0")
+    assert_equal "# bundler\n", File.read(File.join(gems, "gems/bundler-4.0.19/lib/bundler.rb"))
+    assert_equal "4.0.19", Gem::Specification.load(File.join(gems, "specifications/bundler-4.0.19.gemspec")).version.to_s
+    assert_includes File.read(File.join(folder, "fledge.cfg")), "\ngemfile = Gemfile\nbundler = 4.0.19\n"
+
+    File.write(File.join(root, "Gemfile.lock"), File.read(File.join(root, "Gemfile.lock")).sub("BUNDLED WITH\n  4.0.19", "BUNDLED WITH\n  4.0.20"))
+    _, err, status = build(File.join(root, "exe/my_app"))
+    assert_equal 0, status, err
+    refute_includes File.read(File.join(folder, "fledge.cfg")), "bundler ="
+    refute_path_exists File.join(gems, "gems/bundler-4.0.19")
+  end
+
   def test_a_gem_the_lockfile_does_not_lock_for_the_platform_says_what_to_run
     native = FakeGem.build(@gems, "native", "1.0.0", platform: "x86_64-linux-gnu")
     root = project(dependencies: { "native" => ">= 0" }, locked: [native], platforms: %w[x86_64-linux arm64-darwin])

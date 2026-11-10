@@ -125,6 +125,7 @@ module Fledge
       @runtimes = runtimes
       check(config[HEADER, 1], config[HEADER, 2])
       @gemfile = config[/^gemfile = (.+)$/, 1]
+      @bundler = config[/^bundler = (.+)$/, 1]
       @system_libraries = config[/^system_libraries = (.+)$/, 1].to_s.split
       @identifiers = config.scan(/^identifier = (.+)$/).flatten
       @programs = config.scan(/^\[(.+)\]$/).flatten
@@ -148,6 +149,25 @@ module Fledge
     def path
       @given
     end
+
+    # The version of the Bundler the app runs with in place of its
+    # runtime's own, which its gem folder holds, as its
+    # <tt>fledge.cfg</tt> names it (Assembly.launch_config), or +nil+ for
+    # the runtime's own. A new app runs with the same Bundler, as it runs
+    # with the same Gemfile and lockfile.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   from.bundler # => "4.0.19"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    attr_reader :bundler
 
     # +app+, the project to build, as an app built from this one: with
     # this app's Gemfile, and on Linux the system libraries its gems load.

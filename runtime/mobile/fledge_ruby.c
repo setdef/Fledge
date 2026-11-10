@@ -43,8 +43,10 @@
  * ruby_run_node, as the desktop launcher's setup_bundler does
  * (runtime/launcher/unix.c): BUNDLE_GEMFILE names the app's Gemfile, so
  * Bundler reads its settings from the app's .bundle/config beside it, and
- * bundler/setup, from Ruby's own library, sets ENV as bundle exec would
- * (Bundler::Runtime#setup, set_bundle_environment, at Bundler 4.0.20).
+ * bundler/setup, from Ruby's own library or from the gem of the Bundler
+ * fledge.cfg names (the launcher's bundler.c; ADR 063), sets ENV as
+ * bundle exec would (Bundler::Runtime#setup, set_bundle_environment, at
+ * Bundler 4.0.20).
  */
 
 #include "fledge_ruby.h"
@@ -86,13 +88,9 @@ static const char *found_certificates;
 /* The app's Gemfile, for fledge_ruby_run_app, or NULL. */
 static const char *bundle_gemfile;
 
-static const char require_bundler[] = "require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler')";
-static const char bundler_setup[] = "begin\n"
-                                    "  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\n"
-                                    "rescue StandardError => e\n"
-                                    "  $stderr.puts(e.message)\n"
-                                    "  raise\n"
-                                    "end\n";
+/* The version of the Bundler fledge.cfg names, for fledge_ruby_run_app,
+ * or NULL for the runtime's own (ADR 063). */
+static const char *bundle_bundler;
 
 const char *
 fledge_ruby_certificates(void)
@@ -101,15 +99,22 @@ fledge_ruby_certificates(void)
 }
 
 /*
- * Has Bundler set up the gems of bundle_gemfile, and returns 0, or prints
- * why it could not and returns -1.
+ * Has Bundler, bundle_bundler's or the runtime's own, set up the gems of
+ * bundle_gemfile (the launcher's bundler.c), and returns 0, or prints why
+ * it could not and returns -1.
  */
 static int
 setup_bundler(void)
 {
+    static char require_bundler[512];
+    static char bundler_setup[512];
     int state = 0;
 
-    rb_eval_string_protect(require_bundler, &state);
+    if (fledge_bundler_code(require_bundler, sizeof require_bundler, bundle_bundler, 0) != 0 ||
+        fledge_bundler_code(bundler_setup, sizeof bundler_setup, bundle_bundler, 1) != 0) {
+        state = -1;
+    }
+    if (state == 0) rb_eval_string_protect(require_bundler, &state);
     if (state == 0 && setenv("BUNDLE_GEMFILE", bundle_gemfile, 1) != 0) state = -1;
     if (state == 0) rb_eval_string_protect(bundler_setup, &state);
     if (state == 0) return 0;
@@ -325,5 +330,6 @@ fledge_ruby_run_app(const char *root, int argc, char *const *argv)
         return FLEDGE_RUBY_NO_APP;
     }
     if (config.gemfile != NULL) bundle_gemfile = gemfile;
+    bundle_bundler = config.bundler;
     return fledge_ruby_run(root, script, argc, argv);
 }

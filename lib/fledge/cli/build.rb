@@ -145,14 +145,15 @@ module Fledge
           contents = same_ruby(RuntimeContents.read(runtime), platform)
           files = gems ? gems.for(platform, runtime: contents) : [] # : Array[Entry]
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
-          written(Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:, log: @err), out)
+          written(Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:, bundler: gems&.bundler, log: @err), out)
         end
       end
 
       # Builds +app+ from the built app +from+ (ADR 032): with its runtime
       # and gems, downloading, installing, and compiling nothing.
       private def build_from(app, from, platform, out, signing)
-        written(Assembly.new(app:, platform:, runtime: from.path, out: out_dir(app, out), files: from.files, signing:, from:, log: @err), out)
+        written(Assembly.new(app:, platform:, runtime: from.path, out: out_dir(app, out), files: from.files, signing:, from:, bundler: from.bundler,
+          log: @err), out)
       end
 
       # Writes +assembly+'s archive and installers, each with its checksum
@@ -187,7 +188,7 @@ module Fledge
           files = gems ? gems.for(phone, runtime: contents) : [] # : Array[Entry]
           app_files = gems ? gems.app_files(force_ruby_platform: true) : {} # : Hash[String, String]
           project = writer.new(app:, runtime:, out: out_dir, app_files:, files:, extensions: extensions(gems, phone, host, runtimes, work),
-            log: @err).call
+            bundler: gems&.bundler, log: @err).call
           @out.puts File.join(out, File.basename(project))
         end
       end

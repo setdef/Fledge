@@ -223,7 +223,7 @@ class MobileOutputTest < Minitest::Test
     sources = [
       File.join(dir, "main.c"),
       *%w[fledge_ruby.c output.c].map { |file| File.join(MOBILE, file) },
-      *%w[locale.c config.c].map { |file| File.join(LAUNCHER, file) },
+      *%w[locale.c config.c bundler.c].map { |file| File.join(LAUNCHER, file) },
 ]
     libraries = "#{config.fetch('LIBRUBYARG')} #{config.fetch('LIBS')} #{config.fetch('MAINLIBS', '')}".split
     _, err, status = Open3.capture3(compiler, "-std=gnu11", "-I", MOBILE, "-I", LAUNCHER, "-I", config.fetch("rubyhdrdir"),

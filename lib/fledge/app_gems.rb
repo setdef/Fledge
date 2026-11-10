@@ -81,6 +81,7 @@ module Fledge
       @checkouts = checkouts
       @compiler = compiler
       @path_files = {} # : Hash[String, String]
+      @bundler = nil # : String?
     end
 
     # What the app's +app+ folder holds in place of the project's own
@@ -125,6 +126,9 @@ module Fledge
     def for(platform, runtime:)
       locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch) { |gem| required_ruby(gem) }
         .reject { |gem| !gem.is_a?(PathGem) && runtime.gems.include?(gem.full_name) }
+      bundler = locked_bundler(runtime)
+      @bundler = bundler&.version
+      locked << bundler if bundler
       packages = locked.to_h { |gem| [gem, package_for(gem)] } # : Hash[locked_gem, package]
       stubs = [] # : Array[Entry]
       problems = case platform
@@ -139,6 +143,35 @@ module Fledge
       packages = mark_extensions(packages, platform, runtime) if platform.is_a?(MobilePlatform)
       entries = [*packages.flat_map { |gem, package| entries_for(gem, package, runtime.gem_dir) }, *stubs]
       entries.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
+    end
+
+    # The version of the Bundler #for added to the runtime, which the app
+    # runs with in place of the runtime's own, as <tt>bundle exec</tt>
+    # runs the Bundler its lockfile names (Fledge::Bundle#bundler_for), or
+    # +nil+ when it runs the runtime's own: +nil+ before #for.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   # Gemfile.lock: BUNDLED WITH 4.0.19, and the runtime's Bundler is 4.0.20
+    #   gems.for(Fledge::Platform.find("x86_64-linux"), runtime: contents)
+    #   gems.bundler # => "4.0.19"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    attr_reader :bundler
+
+    # The Bundler the lockfile names in place of +runtime+'s own, as a
+    # Fledge::LockedGem, or +nil+ for the runtime's, or for a runtime
+    # with no Bundler at all.
+    private def locked_bundler(runtime)
+      running = runtime.gems.filter_map { |name| name[/\Abundler-(\d[^-]*)\z/, 1] }.first or return nil
+
+      @bundle.bundler_for(running, ruby_version: runtime.ruby_version) { |gem| required_ruby(gem) }
     end
 
     # The wrappers of the executables of the gems in +packages+, as the

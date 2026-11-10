@@ -207,6 +207,12 @@ class RuntimeBuilder
     DownloadCache.new(@downloads).fetch(url, sha256, mirrors:)
   end
 
+  # Downloads the file the runtime/sources.yml pin +pin+ names, as #fetch
+  # does, from its url or else from each of its mirrors.
+  def fetch_pin(pin)
+    fetch(pin.fetch("url"), pin.fetch("sha256"), mirrors: pin.fetch("mirrors", []))
+  end
+
   # The first of +tools+ found on PATH, as a full path, or nil.
   def which(*tools)
     directories = ENV.fetch("PATH", "").split(File::PATH_SEPARATOR)

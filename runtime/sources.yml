@@ -7,67 +7,83 @@
 # SHA-256 differs fails the build. Change a pin on purpose, and run
 # Delivery (ci.yml) before trusting it.
 
-# Ruby 4.0.9 for each target (ADR 035; doc/contributors/design/runtimes.md,
-# "Sources and pins").
+# Ruby 4.1.0-preview1 for each target (ADR 035, ADR 056;
+# doc/contributors/design/runtimes.md, "Sources and pins"), but Windows,
+# whose Ruby is a snapshot of Ruby's master of a month later, below.
 #
 # macOS and Linux: rv-ruby's relocatable CRuby builds, release 20261023,
 # one asset per target. Each carries a static libruby the launcher links,
-# and the standard library the runtime ships. The SHA-256s are those the
-# Unix launcher spike verified (Plan 001).
+# and the standard library the runtime ships. The SHA-256s are those
+# GitHub records for each asset.
 #
-# Windows: RubyInstaller's release RubyInstaller-4.0.9-1, the 7-Zip
-# archive of its x64 UCRT build, which the launcher loads as a DLL. Its
-# PGP signature is checked on every build too, with gpgv, against
-# RubyInstaller's package signing key as rubyinstaller2's own repository
-# records it (recipes/unpack/appveyor-repo-key.asc), at a pinned commit
-# and pinned by SHA-256; the signature must be that key's, by
-# fingerprint. The key expires on 2027-06-15; how to move to a renewed
+# Windows: RubyInstaller publishes no build of a Ruby preview, so the
+# Windows runtimes take its rolling build of Ruby's master,
+# rubyinstaller-head, as it stood on 2026-11-10: ruby 4.1.0dev (master
+# 0e25874222), whose library folders are named 4.1.0+6, where the
+# preview's are 4.1.0+5 (RuntimeBuilder.ruby_abi), built by RubyInstaller
+# at 92a692c. It is the 7-Zip archive of the UCRT build, which the
+# launcher loads as a DLL, x64 and ARM64 of the same day and the same
+# commit. Its PGP signature is checked on every build too, with gpgv,
+# against RubyInstaller's package signing key as rubyinstaller2's own
+# repository records it (recipes/unpack/appveyor-repo-key.asc), at a
+# pinned commit and pinned by SHA-256; the signature must be that key's,
+# by fingerprint. The key expires on 2027-06-15; how to move to a renewed
 # key is in doc/contributors/design/runtimes.md, "The RubyInstaller
-# signing key". The SHA-256 is the one the Windows launcher spike
-# verified (Plan 001).
+# signing key". RubyInstaller's URL serves each day's build
+# in place of the last, so these exact files are kept where Fledge
+# publishes its runtimes (url) and fetched from RubyInstaller (mirrors)
+# only while it still serves them; every download is checked against the
+# one sha256 either way. RubyInstaller-4.1.0-1 replaces this snapshot
+# once it is released.
 #
-# bundled_gems lists Ruby 4.0.9's bundled gems, from gems/bundled_gems
-# at Ruby's v4.0.9 tag (3e93b23afc). A runtime keeps every default gem
-# and every one of these that its Ruby installs (rv-ruby installs all but
-# win32ole, which only Windows builds), and prunes any other gem its Ruby
-# adds (rv-ruby adds bootsnap and msgpack), so that an app finds exactly
-# what a standard Ruby 4.0.9 has (ADR 039).
+# bundled_gems lists Ruby 4.1.0-preview1's bundled gems, from
+# gems/bundled_gems at its v4_1_0_preview1 tag (2d08b5f42f). A runtime
+# keeps every default gem and every one of these that its Ruby installs
+# (rv-ruby installs all but win32ole and win32-registry, which only
+# Windows builds; RubyInstaller all but syslog, which needs a Unix), and
+# prunes any other gem its Ruby adds (rv-ruby adds bootsnap and
+# msgpack), so that an app finds exactly what a standard Ruby 4.1 has
+# (ADR 039).
 ruby:
-  version: 4.0.9
+  version: 4.1.0-preview1
   release: "20261023"
-  bundled_gems: [minitest, power_assert, rake, test-unit, rexml, rss, net-ftp, net-imap, net-pop, net-smtp, matrix,
-    prime, rbs, typeprof, debug, racc, mutex_m, getoptlong, base64, bigdecimal, observer, abbrev, resolv-replace,
-    rinda, drb, nkf, syslog, csv, repl_type_completor, ostruct, pstore, benchmark, logger, rdoc, win32ole, irb,
-    reline, readline, fiddle]
+  bundled_gems: [minitest, power_assert, rake, test-unit, rexml, rss, net-imap, net-smtp, matrix, prime, rbs, typeprof,
+    debug, racc, mutex_m, getoptlong, base64, bigdecimal, observer, abbrev, resolv-replace, rinda, drb, nkf, syslog, csv,
+    repl_type_completor, ostruct, pstore, benchmark, logger, rdoc, prism, win32ole, irb, reline, readline, fiddle, tsort,
+    win32-registry]
   platforms:
     arm64-darwin:
-      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_sonoma.tar.gz
-      sha256: 38130a97c314e2e44198f37fc6555a66ab9a8011ecc5980d4ae36f2858ed11b5
+      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.arm64_sonoma.tar.gz
+      sha256: 9e3944ade8e237835a7eca5cae1ce1140c32ca6b6854c25a4d56c26512df7033
     x86_64-linux:
-      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.x86_64_linux.tar.gz
-      sha256: 16b24f5b3aac3925f95cbbdd08e55c2877aec4f2614edf44af236a59a6591aa4
+      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.x86_64_linux.tar.gz
+      sha256: 29fd684d85aa4d08d97160d1c0a21b11b9ee95f2d87ab231044df03ca9d39361
     aarch64-linux:
-      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_linux.tar.gz
-      sha256: 6b49808f690ecfe0f51f266b9c3477908f69d7a927d90355565368c40c875d22
+      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.arm64_linux.tar.gz
+      sha256: 5462ee70c273007fa21ff63991f9bcaf68edbcf01f50f81bd416f9a6ed71e1ac
     x64-mingw-ucrt:
-      url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-x64.7z
-      sha256: 1dc0715916251a13c4f6a550a3da1f2c726bff869371fd573a65234c008f47b4
+      url: https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-x64.7z
+      mirrors: [https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x64.7z]
+      sha256: 901473edafd6b174d79978fc109d3df3ab73b1436719233f35c1a31b5b18bf58
       signature:
-        url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-x64.7z.asc
-        sha256: a97fdc468289fb9b6343b5101c9121f06d3e71823584f47cb50a5c907805d158
+        url: https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-x64.7z.asc
+        mirrors: [https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x64.7z.asc]
+        sha256: 5189bb5ecd07a1cf758102a303da5178966dea37081fa9c1c3f981cf0d01da7d
         key:
           url: https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc
           sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
           fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
           expires: "2027-06-15"
-    # RubyInstaller's build for Windows on ARM64 (ADR 035), signed with
-    # the same key.
+    # RubyInstaller's build for Windows on ARM64 (ADR 035), of the same
+    # day and commit, signed with the same key.
     aarch64-mingw-ucrt:
-      url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z
-      sha256: d13273600bff5ca349f3866a0492517b144510ceb916525e891e2e1a3f728b78
+      url: https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-arm.7z
+      mirrors: [https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-arm.7z]
+      sha256: 7d1ae764cc530ded0ae7f0c6e610eea17c7ef4ce574e529963072674dc234b34
       signature:
-        url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z.asc
-        sha256: e91c5b653c541a33ee6fb290dd2e3b3fbf651d64ab9a6dc507959c47be911d3f
+        url: https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-arm.7z.asc
+        mirrors: [https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-arm.7z.asc]
+        sha256: def88921529dcc7998bb301f2511ecf2f0c8c6d731a504cdedfe458a55a46135
         key:
           url: https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc
           sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
@@ -138,6 +154,53 @@ gmp:
       url: https://repo.msys2.org/mingw/clangarm64/mingw-w64-clang-aarch64-gmp-6.3.0-2-any.pkg.tar.zst
       sha256: edfaa0517787819ec3ad5da2cc4d691563962a576d0102e91eea507abdc3bdfb
     dll_sha256: bfc6046e374a27838b54bde5602851c7cc426ac9438cb65f019b9e67a961f47c
+
+# Two DLLs RubyInstaller's head build of 2026-11-10 needs and does not
+# ship, which each Windows runtime adds from the MSYS2 packages of the
+# builds RubyInstaller's own files come from. Its zlib.so imports
+# libz-1.dll, the name MSYS2's zlib 1.4 gives the DLL, where the build
+# ships the same package's zlib1.dll and names that in
+# zlib.so-assembly.manifest, so Ruby's zlib does not load; and on x64 its
+# digest/blake3.so imports libgcc_s_seh-1.dll, GCC's runtime library, for
+# one function (__popcountdi2). Each is pinned by its package's SHA-256
+# (package), the path of the DLL in it (path), and the DLL's own SHA-256
+# (dll_sha256), which the license audit checks too (runtime/licenses.yml);
+# and by MSYS2's source package of that build (url), which holds the
+# upstream release, MSYS2's patches, and the PKGBUILD. Neither license
+# asks for the source (zlib's; GCC's runtime library exception), so no
+# runtime carries it. The x64 builds are MSYS2's UCRT64 environment's,
+# whose zlib1.dll RubyInstaller ships byte for byte, and the ARM64 one
+# CLANGARM64's, whose clang links its own builtins, so blake3.so needs no
+# libgcc there.
+windows-dlls:
+  libz-1.dll:
+    version: "1.4"
+    url: https://repo.msys2.org/mingw/sources/mingw-w64-zlib-1.4-2.src.tar.zst
+    sha256: 28415621a0f6c16bc20b0ce50cd1ae3632dd9f27bdc5776ab3ec18e8d2f00dcd
+    platforms:
+      x64-mingw-ucrt:
+        package:
+          url: https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-zlib-1.4-2-any.pkg.tar.zst
+          sha256: 172541cf5e2391a402f092104988699b0163129d22be1d6b4b201bfb84af6fcf
+        path: ucrt64/bin/libz-1.dll
+        dll_sha256: 934103c50623302548a1cf66fbc22f0029e4eb4556343252a505e2fc005e835f
+      aarch64-mingw-ucrt:
+        package:
+          url: https://repo.msys2.org/mingw/clangarm64/mingw-w64-clang-aarch64-zlib-1.4-2-any.pkg.tar.zst
+          sha256: ff28742649461c300f8817cc106252ad817aab9611f391c8112ba73f30dafa70
+        path: clangarm64/bin/libz-1.dll
+        dll_sha256: 5bc4df08b4965cc589a79f3e8561ef8cce9df2e6997bf95ad543e5879902f931
+  libgcc_s_seh-1.dll:
+    version: 16.2.0
+    url: https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst
+    sha256: a901d8afb78438abcff9ed020cd9aa9431db76de1992171c2454c3c07ad289e8
+    platforms:
+      x64-mingw-ucrt:
+        package:
+          url: https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libgcc-16.2.0-6-any.pkg.tar.zst
+          sha256: 80b2497f019977dd9528b1abc8621b1328a0115ab1f724047ccbb56bf323f11d
+        path: ucrt64/bin/libgcc_s_seh-1.dll
+        dll_sha256: 791ebf66e99c7c1b4ed3666468cec45a0172b4c8942ac6c84c3e9cab3e1b5270
 
 # Inputs that no runtime ships, used only by CI's proofs that whoever
 # receives an app can replace its LGPL libraries (ci.yml: Replace
@@ -261,7 +324,7 @@ nsis:
 # linked statically, which no prebuilt Ruby offers. Each builds on its
 # own system (AGENTS.md): iOS on a Mac with the Xcode below, Android on
 # Linux with the NDK below. Their sources are Ruby's release tarball, the
-# same 4.0.9 the desktop runtimes carry; OpenSSL 3.6.5, the release
+# same 4.1.0-preview1 the macOS and Linux runtimes carry; OpenSSL 3.6.5, the release
 # RubyInstaller's Windows Ruby links; libyaml 0.2.5, as every desktop
 # runtime has; libffi 3.5.2, for fiddle, on Android only (iOS leaves
 # fiddle out, as xord/cruby does for the App Store); and Mozilla's CA
@@ -278,9 +341,9 @@ nsis:
 # (doc/contributors/design/phone-projects.md, "The Android App Bundle check").
 mobile:
   ruby:
-    version: 4.0.9
-    url: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
-    sha256: c35350682ff050b79702d57ade4516e7336063f510155d19fb2fb5b3f3909511
+    version: 4.1.0-preview1
+    url: https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview1.tar.gz
+    sha256: fb530bb88e90de3ae91c1310a27ae090e6bd989b8726de50ef12a890a85b88ef
   openssl:
     version: 3.6.5
     url: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
@@ -342,9 +405,9 @@ mobile:
 # version (ci.yml).
 musl-ruby:
   ruby:
-    version: 4.0.9
-    url: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
-    sha256: c35350682ff050b79702d57ade4516e7336063f510155d19fb2fb5b3f3909511
+    version: 4.1.0-preview1
+    url: https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview1.tar.gz
+    sha256: fb530bb88e90de3ae91c1310a27ae090e6bd989b8726de50ef12a890a85b88ef
   openssl:
     version: 3.6.5
     url: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz

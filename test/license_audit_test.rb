@@ -24,7 +24,7 @@ class LicenseAuditTest < Minitest::Test
     TestReaders.need(self, :elf)
     @tree = Dir.mktmpdir("license-audit")
     write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2],
-      payload: "ruby 4.0.9 (revision 3e93b23afc) #{RUST} GCC: (Ubuntu 13.3.0)"))
+      payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) #{RUST} GCC: (Ubuntu 13.3.0)"))
     write("lib/libcrypt.so.2", Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"))
     write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.2 "))
     write("lib/ruby/4.1.0+5/set.rb", "class Set; end\n")
@@ -150,7 +150,7 @@ class LicenseAuditTest < Minitest::Test
   # The same code in the launcher, the program an app's developer ships
   # as their own, fails.
   def test_libfuse_linked_into_the_launcher_fails
-    write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "ruby 4.0.9 (revision 3e93b23afc) #{RUST} GCC: (Ubuntu 13.3.0) " \
+    write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) #{RUST} GCC: (Ubuntu 13.3.0) " \
                                                                           "fuse: unsupported protocol version: "))
 
     assert_includes rules(audit), ["static-copyleft", "launcher"]
@@ -193,7 +193,7 @@ class LicenseAuditTest < Minitest::Test
   end
 
   def test_a_library_neither_the_system_nor_the_runtime_provides_fails
-    write("launcher", Binaries.elf(needed: %w[libreadline.so.8 libc.so.6], payload: "3e93b23afc #{RUST}"))
+    write("launcher", Binaries.elf(needed: %w[libreadline.so.8 libc.so.6], payload: "2d08b5f42f #{RUST}"))
 
     assert_includes rules(audit), ["unresolved", "launcher"]
   end
@@ -531,7 +531,7 @@ class LicenseAuditTest < Minitest::Test
   # The bytes each mobile runtime's one library holds of what is linked
   # into it (runtime/licenses.yml): Ruby's revision, OpenSSL's version
   # string, libyaml's, and on Android libffi's.
-  MOBILE_LIBRARY = "ruby 4.0.9 (revision 3e93b23afc) OpenSSL 3.6.5 0.2.5\0"
+  MOBILE_LIBRARY = "ruby 4.1.0preview1 (revision 2d08b5f42f) OpenSSL 3.6.5 0.2.5\0 BLAKE3 1.8.5\0"
 
   # An iOS runtime: an XCFramework whose two slices each carry the Ruby
   # it runs, as CPython's iOS XCFramework does (ADR 011), audited as one

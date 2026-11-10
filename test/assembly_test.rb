@@ -36,18 +36,18 @@ class AssemblyTest < Minitest::Test
     lib
     lib/current
     lib/ruby
-    lib/ruby/4.0.0
-    lib/ruby/4.0.0/fake-arch
-    lib/ruby/4.0.0/fake-arch/rbconfig.rb
+    lib/ruby/4.1.0+5
+    lib/ruby/4.1.0+5/fake-arch
+    lib/ruby/4.1.0+5/fake-arch/rbconfig.rb
     lib/ruby/gems
-    lib/ruby/gems/4.0.0
-    lib/ruby/gems/4.0.0/plugins
-    lib/ruby/gems/4.0.0/plugins/rdoc_plugin.rb
-    lib/ruby/gems/4.0.0/specifications
-    lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec
-    lib/ruby/gems/4.0.0/specifications/default
-    lib/ruby/gems/4.0.0/specifications/default/json-2.18.0.gemspec
-    lib/ruby/gems/4.0.0/specifications/rdoc-7.0.4.gemspec
+    lib/ruby/gems/4.1.0+5
+    lib/ruby/gems/4.1.0+5/plugins
+    lib/ruby/gems/4.1.0+5/plugins/rdoc_plugin.rb
+    lib/ruby/gems/4.1.0+5/specifications
+    lib/ruby/gems/4.1.0+5/specifications/csv-3.3.5.gemspec
+    lib/ruby/gems/4.1.0+5/specifications/default
+    lib/ruby/gems/4.1.0+5/specifications/default/json-2.18.0.gemspec
+    lib/ruby/gems/4.1.0+5/specifications/rdoc-7.0.4.gemspec
     lib/ruby/stdlib.rb
   ].freeze
 
@@ -170,11 +170,11 @@ class AssemblyTest < Minitest::Test
     Dir.mktmpdir do |dir|
       app = FakeApp.write(dir)
       File.write(File.join(app, "hello.gemspec.txt"), "original\n")
-      gem = Fledge::Entry.file("lib/ruby/gems/4.0.0/gems/foo-1.0.0/lib/foo.rb", "# foo\n")
-      info = Fledge::Entry.file("lib/ruby/gems/4.0.0/build_info/foo-1.0.0.info", "--with-foo\n")
+      gem = Fledge::Entry.file("lib/ruby/gems/4.1.0+5/gems/foo-1.0.0/lib/foo.rb", "# foo\n")
+      info = Fledge::Entry.file("lib/ruby/gems/4.1.0+5/build_info/foo-1.0.0.info", "--with-foo\n")
 
       archive = assemble(dir, app, app_files: { "hello.gemspec.txt" => "evaluated\n", ".bundle/config" => "---\n" },
-        files: [gem, Fledge::Entry.directory("lib/ruby/gems/4.0.0"), info])
+        files: [gem, Fledge::Entry.directory("lib/ruby/gems/4.1.0+5"), info])
 
       folder = File.join(dir, "dist", "Hello-x86_64-linux")
       assert_equal "evaluated\n", File.read(File.join(folder, "app/hello.gemspec.txt"))
@@ -190,7 +190,7 @@ class AssemblyTest < Minitest::Test
     unix!
     Dir.mktmpdir do |dir|
       runtime = FakeRuntime.write(dir, LINUX)
-      clash = Fledge::Entry.file("lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec", "# mine\n")
+      clash = Fledge::Entry.file("lib/ruby/gems/4.1.0+5/specifications/csv-3.3.5.gemspec", "# mine\n")
 
       error = assert_raises(Fledge::Error) { assemble(dir, FakeApp.write(dir), runtime:, files: [clash]) }
 

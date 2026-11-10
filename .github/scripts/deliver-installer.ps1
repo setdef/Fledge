@@ -288,7 +288,7 @@ $document = Join-Path $dropped 'dropped.hellowindow'
 Set-Content -LiteralPath $document -Value 'a document'
 $failed = [Fledge.Shell]::Open($document, 'open', $progId)
 if ($failed) { Fail "the shell could not open $document with ${progId}: $failed" }
-WaitFor { (Get-Content -LiteralPath $document -Raw) -match '"ruby":"4.0.9"' } 'the app writing its report over the file the shell opened with it' 60
+WaitFor { (Get-Content -LiteralPath $document -Raw) -match '"ruby":"4.1.0"' } 'the app writing its report over the file the shell opened with it' 60
 Write-Host "ok: the shell opened $document with the app, which got its path"
 $failed = [Fledge.Shell]::Open($dropped, $identifier, 'Directory')
 if ($failed) { Fail "the shell could not open $dropped with the folders' verb: $failed" }
@@ -315,7 +315,7 @@ Start-Process -FilePath $shortcut
 WaitFor { Test-Path -LiteralPath $report } 'the app writing its report after starting from its shortcut' 60
 Start-Sleep -Seconds 3
 $facts = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
-Expect "the report's Ruby" $facts.ruby '4.0.9'
+Expect "the report's Ruby" $facts.ruby '4.1.0'
 Expect "the report's platform" $facts.platform $platform
 Expect 'whether it had a console' $facts.console $false
 Expect 'the AppUserModelID the app gave itself, which its shortcut carries' $facts.app_user_model_id ([Fledge.Shell]::AppUserModelId($shortcut))

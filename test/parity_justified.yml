@@ -65,7 +65,7 @@
   reference:
   - \A"(?-mix:<work>\/person-gems)/gems/bundler-
   app:
-  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/4\.0\.0)/gems/bundler-
+  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/bundler-
   platforms:
   checks:
   - bundle
@@ -73,7 +73,7 @@
   reference:
   - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<work>\/person-gems)/gems/bundler-
   app:
-  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<prefix>\/lib\/ruby\/gems\/4\.0\.0)/gems/bundler-
+  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/bundler-
   platforms:
   checks:
   - bundle
@@ -81,7 +81,7 @@
   reference:
   - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<work>\/person-gems)/gems/bundler-
   app:
-  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<prefix>\/lib\/ruby\/gems\/4\.0\.0)/gems/bundler-
+  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/bundler-
   platforms:
   checks:
   - bundle
@@ -386,6 +386,30 @@
   platforms:
   - arm64-ios
   - arm64-ios-simulator
+  checks:
+  - script
+  - bundle
+- fact: gems
+  reference:
+  - '\A"prism '
+  app: []
+  platforms:
+  - arm64-ios
+  - arm64-ios-simulator
+  - aarch64-linux-android
+  - x86_64-linux-android
+  checks:
+  - script
+  - bundle
+- fact: requireable
+  reference:
+  - \A"prism"=
+  app: []
+  platforms:
+  - arm64-ios
+  - arm64-ios-simulator
+  - aarch64-linux-android
+  - x86_64-linux-android
   checks:
   - script
   - bundle

@@ -78,7 +78,7 @@ run() {
   set -e
   [ "$status" -eq 4 ] || { cat "$work/out" "$work/err"; fail "$label: exit status $status, not 4"; }
   [ ! -s "$work/err" ] || { cat "$work/err"; fail "$label: it wrote to standard error"; }
-  grep -q '"ruby":"4.0.9"' "$report" || fail "$label: the report says another Ruby: $(cat "$report")"
+  grep -q '"ruby":"4.1.0"' "$report" || fail "$label: the report says another Ruby: $(cat "$report")"
   grep -q '"program":"main.rb","folder":"app"' "$report" || fail "$label: the report says another program: $(cat "$report")"
   grep -q "\"appdir\":\"$where" "$report" || fail "$label: it did not run from a $where folder: $(cat "$report")"
   echo "ok: $label ran from $where..., and reported $(cat "$report")"

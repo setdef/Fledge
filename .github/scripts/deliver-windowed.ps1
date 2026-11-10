@@ -92,7 +92,7 @@ $report = Join-Path $env:RUNNER_TEMP 'windowed report.json'
 $process = Start-Process -FilePath $app -ArgumentList "`"$report`"", '4' -WorkingDirectory $system -Wait -PassThru
 Expect 'the exit status' $process.ExitCode 4
 $facts = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
-Expect "the report's Ruby" $facts.ruby '4.0.9'
+Expect "the report's Ruby" $facts.ruby '4.1.0'
 Expect "the report's platform" $facts.platform $platform
 Expect "the report's program" $facts.program 'main.rb'
 Expect 'whether it had a console' $facts.console $false

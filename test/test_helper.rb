@@ -43,7 +43,7 @@ module FakeRuntime
 
   # Ruby's rbconfig.rb for +platform+'s runtime, with what Fledge reads.
   def self.rbconfig(platform)
-    "module RbConfig\n  CONFIG = {}\n  CONFIG[\"MAJOR\"] = \"4\"\n  CONFIG[\"MINOR\"] = \"0\"\n  CONFIG[\"TEENY\"] = \"9\"\n" \
+    "module RbConfig\n  CONFIG = {}\n  CONFIG[\"MAJOR\"] = \"4\"\n  CONFIG[\"MINOR\"] = \"1\"\n  CONFIG[\"TEENY\"] = \"0\"\n" \
       "  CONFIG[\"arch\"] = \"#{ARCH.fetch(platform.name)}\"\nend\n"
   end
 
@@ -132,10 +132,10 @@ module FakeRuntime
   # rbconfig.rb, and a default gem, json 2.18.0, and a bundled gem, csv
   # 3.3.5.
   def self.ruby(lib, platform)
-    gems = "#{lib}/gems/4.0.0"
+    gems = "#{lib}/gems/4.1.0+5"
     [
       Fledge::Entry.file("#{lib}/stdlib.rb", "# stdlib\n"),
-      Fledge::Entry.file("#{lib}/4.0.0/fake-arch/rbconfig.rb", rbconfig(platform)),
+      Fledge::Entry.file("#{lib}/4.1.0+5/fake-arch/rbconfig.rb", rbconfig(platform)),
       Fledge::Entry.file("#{gems}/specifications/default/json-2.18.0.gemspec", "# json\n"),
       Fledge::Entry.file("#{gems}/specifications/csv-3.3.5.gemspec", "# csv\n"),
       Fledge::Entry.file("#{gems}/specifications/rdoc-7.0.4.gemspec", "# rdoc\n"),

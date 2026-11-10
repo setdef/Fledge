@@ -48,9 +48,10 @@
  * is a plain call off WebAssembly (ruby/ruby.h), RUBY_INIT_STACK,
  * ruby_init, and ruby_run_node(ruby_options(...)). Before that it:
  *
- *   1. Keeps every DLL loaded by name to System32 and the folders a DLL
- *      names for itself, never the current folder or PATH, where another
- *      Ruby's DLLs may be (SetDefaultDllDirectories).
+ *   1. Keeps every DLL loaded by name to System32, the folders a DLL
+ *      names for itself, and the runtime's ruby\bin\ruby_builtin_dlls,
+ *      never the current folder or PATH, where another Ruby's DLLs may
+ *      be (SetDefaultDllDirectories, add_builtin_dlls).
  *   2. Finds the folder it lives in (GetModuleFileNameW, and when it
  *      was started through a symbolic link, the link's target,
  *      resolve_link), and reads
@@ -485,6 +486,34 @@ function(HMODULE dll, const char *name, const wchar_t *wide_name)
 #define RUBY_FUNCTION(name) function(dll, #name, L"" #name)
 
 /*
+ * Adds ruby\bin\ruby_builtin_dlls in the app's folder to the folders
+ * Windows searches for the DLLs a DLL loaded later imports, as
+ * SetDefaultDllDirectories allows (AddDllDirectory). Ruby's DLL finds its
+ * own there through its manifest, and each extension RubyInstaller gave
+ * a manifest finds its DLLs beside it; an extension it gave none, such
+ * as digest/blake3.so, which imports GCC's runtime library on x64, finds
+ * that DLL here. The folder is the app's own, so nothing of another
+ * Ruby's can answer for it. Past MAX_PATH it tries the \\?\ form, as
+ * load_ruby does.
+ */
+static void
+add_builtin_dlls(const wchar_t *folder)
+{
+    wchar_t *path = join(folder, L"\\ruby\\bin\\ruby_builtin_dlls");
+    DLL_DIRECTORY_COOKIE cookie = AddDllDirectory(path);
+
+    if (cookie == NULL && GetLastError() == ERROR_FILENAME_EXCED_RANGE) {
+        wchar_t *long_path = extended_length(path);
+        cookie = AddDllDirectory(long_path);
+        free(long_path);
+    }
+    if (cookie == NULL) {
+        fail(L"this app is incomplete: %ls is missing (Windows error %lu)", path, GetLastError());
+    }
+    free(path);
+}
+
+/*
  * Loads ruby\bin\FLEDGE_RUBY_DLL from the app's folder, letting it find
  * its own dependencies in its own folder and System32 only. Past
  * MAX_PATH, LoadLibraryExW fails with ERROR_FILENAME_EXCED_RANGE even in
@@ -890,6 +919,7 @@ wmain(int argc, wchar_t **argv)
     read_config();
     set_app_user_model_id();
     scrub_environment();
+    add_builtin_dlls(root);
     load_ruby(root);
 
     setlocale(LC_CTYPE, "");

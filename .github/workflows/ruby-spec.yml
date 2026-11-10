@@ -39,7 +39,7 @@ defaults:
 
 env:
   MISE_RUBY_COMPILE: "false"
-  ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
+  ALPINE_RUBY: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
 
 jobs:
   # Which platforms, and whose runtimes: the calling run's, or at night
@@ -127,7 +127,7 @@ jobs:
       - name: Read the Ruby pin
         if: runner.os == 'Windows'
         id: pins
-        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+        run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
 
       - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         if: runner.os == 'Windows'

@@ -72,7 +72,7 @@ run_report() {
 
 # check_report LABEL REPORT
 check_report() {
-  grep -q '"ruby":"4.0.9"' "$2" || fail "$1: the report says another Ruby: $(cat "$2")"
+  grep -q '"ruby":"4.1.0"' "$2" || fail "$1: the report says another Ruby: $(cat "$2")"
   grep -q '"program":"main.rb","folder":"app"' "$2" || fail "$1: the report says another program: $(cat "$2")"
   echo "ok: $1 ran and reported $(cat "$2")"
 }

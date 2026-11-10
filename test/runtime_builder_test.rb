@@ -22,7 +22,7 @@ class RuntimeBuilderTest < Minitest::Test
 
     assert_equal Fledge::Platform.names.reject { |name| name.end_with?("-musl") }.sort, pins.keys.sort
     pins.except("x64-mingw-ucrt", "aarch64-mingw-ucrt").each_value do |pin|
-      assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4\.0\.9\.}, pin.fetch("url"))
+      assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4\.1\.0-preview1\.}, pin.fetch("url"))
       assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
     end
   end
@@ -40,28 +40,35 @@ class RuntimeBuilderTest < Minitest::Test
     assert_equal builder("x86_64-linux").sources.fetch("ruby").fetch("version"), pins.fetch("ruby").fetch("version")
   end
 
-  # Windows on ARM64 takes RubyInstaller's ARM64 build of the same
-  # release, signed with the same key (ADR 035;
+  # Windows on ARM64 takes RubyInstaller's ARM64 build of the same day,
+  # signed with the same key (ADR 035;
   # doc/contributors/design/runtimes.md, "Windows on ARM64").
   def test_windows_on_arm_pins_rubyinstallers_arm64_build_signed_by_the_same_key
     platforms = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms")
     arm = platforms.fetch("aarch64-mingw-ucrt")
 
-    assert_equal "https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z",
-      arm.fetch("url")
+    assert_equal "https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-arm.7z", arm.fetch("url")
+    assert_equal ["https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-arm.7z"],
+      arm.fetch("mirrors")
     assert_equal "#{arm.fetch('url')}.asc", arm.fetch("signature").fetch("url")
+    assert_equal arm.fetch("mirrors").map { |url| "#{url}.asc" }, arm.fetch("signature").fetch("mirrors")
     assert_equal platforms.fetch("x64-mingw-ucrt").fetch("signature").fetch("key"), arm.fetch("signature").fetch("key")
   end
 
+  # RubyInstaller's rubyinstaller-head URL serves each day's build in
+  # place of the last, so the pin names the copy of the day's files that
+  # Fledge publishes, and RubyInstaller's URL only as a mirror.
   def test_windows_pins_rubyinstaller_its_signature_and_the_key_that_signed_it
     pin = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms").fetch("x64-mingw-ucrt")
     signature = pin.fetch("signature")
     key = signature.fetch("key")
 
-    assert_equal "https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-x64.7z",
-      pin.fetch("url")
-    assert_equal "1dc0715916251a13c4f6a550a3da1f2c726bff869371fd573a65234c008f47b4", pin.fetch("sha256")
+    assert_equal "https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-x64.7z", pin.fetch("url")
+    assert_equal ["https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x64.7z"],
+      pin.fetch("mirrors")
+    assert_equal "901473edafd6b174d79978fc109d3df3ab73b1436719233f35c1a31b5b18bf58", pin.fetch("sha256")
     assert_equal "#{pin.fetch('url')}.asc", signature.fetch("url")
+    assert_equal pin.fetch("mirrors").map { |url| "#{url}.asc" }, signature.fetch("mirrors")
     assert_match(/\A\h{64}\z/, signature.fetch("sha256"))
     assert_match(%r{\Ahttps://raw\.githubusercontent\.com/oneclick/rubyinstaller2/\h{40}/}, key.fetch("url"))
     assert_match(/\A\h{64}\z/, key.fetch("sha256"))
@@ -96,13 +103,61 @@ class RuntimeBuilderTest < Minitest::Test
     assert_equal pin.fetch("dll_sha256"), licensed.fetch("sha256").values.first
   end
 
-  # Only .github/scripts/fetch_pin.rb passes a pin's mirrors to the
-  # download, and it alone reads the replaceability pins; mirrors named
-  # anywhere else would never be tried.
+  # The DLLs RubyInstaller's head build lacks come from MSYS2's packages,
+  # each pinned with its source package and the DLL's own SHA-256, which
+  # the license audit checks again in the runtime.
+  def test_the_dlls_rubyinstaller_lacks_are_pinned_to_msys2s_packages_and_audited
+    pins = builder("x64-mingw-ucrt").sources.fetch("windows-dlls")
+    components = YAML.safe_load_file(LicenseAudit::MAP).fetch("components")
+
+    assert_equal %w[libgcc_s_seh-1.dll libz-1.dll], pins.keys.sort
+    assert_equal({ "libz-1.dll" => %w[aarch64-mingw-ucrt x64-mingw-ucrt], "libgcc_s_seh-1.dll" => %w[x64-mingw-ucrt] },
+      pins.transform_values { |pin| pin.fetch("platforms").keys.sort })
+    pins.each do |name, pin|
+      assert_match(%r{\Ahttps://repo\.msys2\.org/mingw/sources/mingw-w64-[a-z]+-#{Regexp.escape(pin.fetch('version'))}-\d+\.src\.tar\.zst\z},
+        pin.fetch("url"))
+      assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
+      pin.fetch("platforms").each do |platform, dll|
+        assert_match(%r{\Ahttps://repo\.msys2\.org/mingw/(?:ucrt64|clangarm64)/}, dll.fetch("package").fetch("url"))
+        assert_match(/\A\h{64}\z/, dll.fetch("package").fetch("sha256"))
+        assert_equal name, File.basename(dll.fetch("path"))
+        audited = components.select { |component| component.fetch("platforms").include?(platform) }
+          .flat_map { |component| component.fetch("sha256", {}).to_a }.select { |path, _| path.end_with?("/#{name}") }
+        assert_equal [dll.fetch("dll_sha256")], audited.map(&:last), "#{name} on #{platform}"
+      end
+    end
+  end
+
+  # zlib.so finds libz-1.dll through the private assembly its own
+  # manifest names, as it finds zlib1.dll.
+  def test_name_in_manifest_adds_a_dll_beside_the_one_the_manifest_names
+    manifest = <<~XML
+      <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+        <assemblyIdentity type="win32" name="zlib.so-assembly" version="1.0.0.0"></assemblyIdentity>
+
+        <file name="zlib1.dll"/>
+      </assembly>
+    XML
+
+    assert_includes RuntimeBuilder::Windows.name_in_manifest(manifest, after: "zlib1.dll", name: "libz-1.dll"),
+      %(  <file name="zlib1.dll"/><file name="libz-1.dll"/>\n</assembly>)
+    error = assert_raises(RuntimeError) { RuntimeBuilder::Windows.name_in_manifest(manifest, after: "zlib.dll", name: "libz-1.dll") }
+    assert_match(/names no zlib\.dll/, error.message)
+  end
+
+  # Only RuntimeBuilder#fetch_pin passes a pin's mirrors to the download:
+  # .github/scripts/fetch_pin.rb, which alone reads the replaceability
+  # pins, and whatever fetches Ruby's Windows pins, the build, its
+  # signature check, and the parity check, whose RubyInstaller URL serves
+  # a pinned snapshot for one day only. Mirrors named anywhere else would
+  # never be tried.
   def test_only_the_pins_fetch_pin_reads_name_mirrors_and_each_is_https
     mirrored = mirrored_pins(builder("x86_64-linux").sources)
+    windows = %w[x64-mingw-ucrt aarch64-mingw-ucrt].flat_map do |name|
+      [["ruby", "platforms", name], ["ruby", "platforms", name, "signature"]]
+    end
 
-    assert_equal [%w[replaceability gmp], %w[replaceability musl]], mirrored.keys.sort
+    assert_equal [*windows, %w[replaceability gmp], %w[replaceability musl]].sort, mirrored.keys.sort
     mirrored.each_value do |urls|
       refute_empty urls
       urls.each { |url| assert_match(%r{\Ahttps://}, url) }
@@ -195,8 +250,8 @@ class RuntimeBuilderTest < Minitest::Test
     TestReaders.need(self, :elf)
     rust = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
     {
-      "launcher" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{rust} GCC: ("),
-      "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{rust} GCC: ( ruby: could not run "),
+      "launcher" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "2d08b5f42f #{rust} GCC: ("),
+      "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "2d08b5f42f #{rust} GCC: ( ruby: could not run "),
       "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
       "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
       "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n",
@@ -229,7 +284,7 @@ class RuntimeBuilderTest < Minitest::Test
   def test_license_refuses_a_runtime_with_libxcrypt_linked_into_bin_ruby_or_a_gpl_gem
     Dir.mktmpdir do |stage|
       linux_stage(stage)
-      File.binwrite(File.join(stage, "bin/ruby"), Binaries.elf(needed: %w[libc.so.6], payload: "3e93b23afc /rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/ GCC: ( yescrypt-ROMhash"))
+      File.binwrite(File.join(stage, "bin/ruby"), Binaries.elf(needed: %w[libc.so.6], payload: "2d08b5f42f /rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/ GCC: ( yescrypt-ROMhash"))
       gems = File.join(stage, "lib/ruby/gems/4.0.0")
       write_spec(gems, "copyleft", "1.0.0", licenses: ["GPL-3.0-only"])
       FileUtils.mkdir_p(File.join(gems, "gems/copyleft-1.0.0"))
@@ -275,14 +330,16 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
-  # Ruby 4.0.9's gems/bundled_gems, at its v4.0.9 tag.
-  def test_the_bundled_gems_are_ruby_4_0_9s
+  # Ruby 4.1.0-preview1's gems/bundled_gems, at its v4_1_0_preview1 tag
+  # (2d08b5f42f), in its order: prism, tsort, and win32-registry joined
+  # it in 4.1, and net-ftp and net-pop left.
+  def test_the_bundled_gems_are_ruby_4_1_0_preview1s
     bundled = builder("x86_64-linux").bundled_gems
 
-    assert_equal 39, bundled.size
-    assert_equal %w[minitest power_assert rake test-unit], bundled.first(4)
-    assert_includes bundled, "csv"
-    assert_includes bundled, "fiddle"
+    expected = "minitest power_assert rake test-unit rexml rss net-imap net-smtp matrix prime rbs typeprof debug racc " \
+      "mutex_m getoptlong base64 bigdecimal observer abbrev resolv-replace rinda drb nkf syslog csv repl_type_completor " \
+      "ostruct pstore benchmark logger rdoc prism win32ole irb reline readline fiddle tsort win32-registry"
+    assert_equal expected.split, bundled
     refute_includes bundled, "bootsnap"
   end
 

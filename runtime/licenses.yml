@@ -382,6 +382,27 @@ components:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/zlib.so"]
         evidence: "deflate 1.3.2 "
 
+  # BLAKE3's reference C implementation, which Ruby 4.1 vendors in
+  # ext/digest/blake3 for Digest::BLAKE3 (ruby/ruby df881376ca, "initial
+  # BLAKE3 import", and 70a0bfa820), with its three license files and no
+  # line in Ruby's LEGAL: anyone who receives it may choose CC0-1.0,
+  # Apache-2.0, or Apache-2.0 with LLVM's exception, so it asks for its
+  # notice at most. Its evidence is BLAKE3_VERSION_STRING (blake3.h). On
+  # Windows on x64, MSYS2's GCC compiles one of its functions into a call
+  # to libgcc's __popcountdi2, from libgcc_s_seh-1.dll (gcc-runtime-dll).
+  - id: blake3
+    name: BLAKE3, compiled into Ruby's digest/blake3 extension
+    version: 1.8.5
+    license: CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception
+    kind: program
+    download: https://github.com/BLAKE3-team/BLAKE3/tree/1.8.5
+    notice: blake3
+    ships: compiled into lib/ruby/{abi}/{arch}/digest/blake3.{so} (on iOS and Android, into libfledgeruby)
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt, ios, android]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/digest/blake3.{so}", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+        evidence: "1.8.5\0"
+
   # AppImage's type 2 runtime, as AppImage released it (runtime/sources.yml),
   # and what its own build links into it statically (its
   # scripts/common/install-dependencies.sh and, for Alpine 3.21's
@@ -577,18 +598,77 @@ components:
 
   - id: zlib-dll
     name: zlib (zlib1.dll)
-    version: 1.3.2
+    version: "1.4"
     license: Zlib
     kind: shared_library
-    download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+    download: https://github.com/madler/zlib/releases/download/v1.4/zlib-1.4.tar.gz
     notice: zlib
-    ships: a shared library in ruby/lib/ruby/{abi}/x64-mingw-ucrt/
+    ships: a shared library in ruby/lib/ruby/{abi}/{arch}/
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     files: ["{prefix}lib/ruby/{abi}/{arch}/zlib1.dll"]
     binaries: ["{prefix}lib/ruby/{abi}/{arch}/zlib1.dll"]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/zlib1.dll"]
-        evidence: "deflate 1.3.2 "
+        evidence: "deflate 1.4 "
+
+  # The zlib DLL RubyInstaller's head build of Ruby imports from zlib.so
+  # and does not ship, which the runtime adds from MSYS2's package of the
+  # same zlib build whose zlib1.dll it ships (runtime/sources.yml,
+  # windows-dlls), checked byte for byte.
+  - id: zlib-libz-dll
+    name: zlib (libz-1.dll), from MSYS2's zlib 1.4-2
+    version: "1.4"
+    license: Zlib
+    kind: shared_library
+    download: https://repo.msys2.org/mingw/sources/mingw-w64-zlib-1.4-2.src.tar.zst
+    notice: zlib
+    ships: a shared library in ruby/lib/ruby/{abi}/{arch}/, beside zlib.so, which imports it
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}lib/ruby/{abi}/{arch}/libz-1.dll"]
+    binaries: ["{prefix}lib/ruby/{abi}/{arch}/libz-1.dll"]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/libz-1.dll"]
+        evidence: "deflate 1.4 "
+    sha256:
+      "{prefix}lib/ruby/{abi}/{arch}/libz-1.dll": 934103c50623302548a1cf66fbc22f0029e4eb4556343252a505e2fc005e835f
+
+  # The same zlib, from MSYS2's CLANGARM64 package, for Windows on ARM64.
+  - id: zlib-libz-dll
+    name: zlib (libz-1.dll), from MSYS2's zlib 1.4-2
+    version: "1.4"
+    license: Zlib
+    kind: shared_library
+    download: https://repo.msys2.org/mingw/sources/mingw-w64-zlib-1.4-2.src.tar.zst
+    notice: zlib
+    ships: a shared library in ruby/lib/ruby/{abi}/{arch}/, beside zlib.so, which imports it
+    platforms: [aarch64-mingw-ucrt]
+    files: ["{prefix}lib/ruby/{abi}/{arch}/libz-1.dll"]
+    binaries: ["{prefix}lib/ruby/{abi}/{arch}/libz-1.dll"]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/libz-1.dll"]
+        evidence: "deflate 1.4 "
+    sha256:
+      "{prefix}lib/ruby/{abi}/{arch}/libz-1.dll": 5bc4df08b4965cc589a79f3e8561ef8cce9df2e6997bf95ad543e5879902f931
+
+  # GCC's runtime library as a DLL of its own, which the x64 digest/blake3.so
+  # of RubyInstaller's head build imports for __popcountdi2 and the build
+  # does not ship; the runtime adds it from MSYS2's package of the GCC that
+  # built the rest (runtime/sources.yml, windows-dlls). Its license, GPL
+  # with GCC's runtime library exception, is the one gcc-runtime-msys2's
+  # code compiled into RubyInstaller's DLLs already carries, and asks
+  # nothing of a program built with GCC that links it.
+  - id: gcc-runtime-dll
+    name: GCC's runtime library (libgcc_s_seh-1.dll), from MSYS2's libgcc 16.2.0-6
+    version: 16.2.0
+    license: GPL-3.0-or-later WITH GCC-exception-3.1
+    kind: shared_library
+    download: https://repo.msys2.org/mingw/sources/mingw-w64-gcc-16.2.0-6.src.tar.zst
+    ships: ruby/bin/ruby_builtin_dlls/libgcc_s_seh-1.dll, a shared library digest/blake3.so loads
+    platforms: [x64-mingw-ucrt]
+    files: ["{prefix}bin/ruby_builtin_dlls/libgcc_s_seh-1.dll"]
+    binaries: ["{prefix}bin/ruby_builtin_dlls/libgcc_s_seh-1.dll"]
+    sha256:
+      "{prefix}bin/ruby_builtin_dlls/libgcc_s_seh-1.dll": 791ebf66e99c7c1b4ed3666468cec45a0172b4c8942ac6c84c3e9cab3e1b5270
 
   - id: libffi
     name: libffi, compiled into the fiddle gem's extension
@@ -652,7 +732,7 @@ components:
     kind: shared_library
     download: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0/mingw-w64-libraries/winpthreads
     notice: mingw-w64
-    ships: a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/{abi}/x64-mingw-ucrt/ that nothing imports
+    ships: a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/{abi}/{arch}/
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     files: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/{abi}/{arch}/libwinpthread-1.dll"]
     binaries: ["{prefix}bin/ruby_builtin_dlls/libwinpthread-1.dll", "{prefix}lib/ruby/{abi}/{arch}/libwinpthread-1.dll"]
@@ -755,10 +835,10 @@ components:
 
   - id: rubyinstaller
     name: RubyInstaller's runtime files, manifests, and tools
-    version: 4.0.9-1
+    version: head (92a692c, 2026-11-10)
     license: BSD-3-Clause
     kind: program
-    download: https://github.com/oneclick/rubyinstaller2/tree/RubyInstaller-4.0.9-1
+    download: https://github.com/oneclick/rubyinstaller2/tree/92a692c6a1de8b22caaa27df93214fccff9b3988
     notice: rubyinstaller
     ships: the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/)
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
@@ -850,32 +930,31 @@ components:
 
   - id: ruby-win32
     name: Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL)
-    version: 4.0.9
+    version: 4.1.0dev (master 0e25874222)
     license: GPL-1.0-or-later OR Artistic-1.0-Perl
     kind: program
-    download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+    download: https://github.com/ruby/ruby/tree/0e258742221c81dddb807e48a5691ce44b46dadd
     notice: ruby
-    ships: compiled into ruby/bin/x64-ucrt-ruby400.dll
+    ships: compiled into Ruby's DLL in ruby/bin/
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     embedded:
-      - files: ["{prefix}bin/x64-ucrt-ruby400.dll"]
+      - files: ["{prefix}bin/{x64,aarch64}-ucrt-ruby*.dll"]
 
+  # Ruby 4.1.0-preview1, everywhere but Windows (runtime/sources.yml).
   - id: ruby
     name: Ruby, with the third-party code its LEGAL lists (Onigmo, and others)
-    version: 4.0.9
+    version: 4.1.0-preview1
     license: Ruby OR BSD-2-Clause
     kind: program
     supplier: "Organization: Ruby core team"
-    download: https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.9.tar.gz
+    download: https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview1.tar.gz
     notice: ruby
-    ships: "compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/"
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt, ios, android]
+    ships: "compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/"
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, ios, android]
     fallback: true
     embedded:
       - files: [launcher, "{prefix}bin/ruby", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
-        evidence: "3e93b23afc"
-      - files: ["{prefix}bin/x64-ucrt-ruby400.dll"]
-        evidence: "3e93b23afc"
+        evidence: "2d08b5f42f"
     files:
       - "{prefix}lib/ruby/{abi}/**"
       - "{prefix}lib/ruby/gems/{abi}/**/"
@@ -894,8 +973,57 @@ components:
       - "{prefix}lib/libruby*-static.a"
       - "{prefix}lib/lib*-ruby*.dll.a"
       # Ruby's own extensions, by name, so that a file nobody listed fails.
+      # digest/crc32 is Ruby's own code: "a clean implementation derived
+      # from the Wikipedia article" by its author, Jean Boussier, in the
+      # digest gem (ruby/ruby 0e3b8918b3, from ruby/digest 8d893787b7),
+      # whose gemspec licenses it as Ruby's, Ruby OR BSD-2-Clause.
       - "{prefix}lib/ruby/{abi}/{arch}/{cgi/escape,continuation,coverage,date_core,digest,etc,fcntl,monitor,objspace,openssl,psych,pty,ripper,socket,stringio,strscan,zlib}.{so}"
-      - "{prefix}lib/ruby/{abi}/{arch}/{digest/{bubblebabble,md5,rmd160,sha1,sha2},erb/escape,io/{console,nonblock,wait},json/ext/{generator,parser},rbconfig/sizeof,win32/{dll_directory,resolv}}.{so}"
+      - "{prefix}lib/ruby/{abi}/{arch}/{digest/{blake3,bubblebabble,crc32,md5,rmd160,sha1,sha2},erb/escape,io/{console,nonblock,wait},json/ext/{generator,parser},rbconfig/sizeof,win32/{dll_directory,resolv}}.{so}"
+      - "{prefix}lib/ruby/{abi}/{arch}/enc/{big5,cesu_8,cp949,emacs_mule,encdb,euc_jp,euc_kr,euc_tw,gb18030,gb2312,gbk,iso_8859_1,iso_8859_10,iso_8859_11,iso_8859_13,iso_8859_14,iso_8859_15,iso_8859_16,iso_8859_2,iso_8859_3,iso_8859_4,iso_8859_5,iso_8859_6,iso_8859_7,iso_8859_8,iso_8859_9,koi8_r,koi8_u,shift_jis,utf_16be,utf_16le,utf_32be,utf_32le,windows_1250,windows_1251,windows_1252,windows_1253,windows_1254,windows_1257,windows_31j}.{so}"
+      - "{prefix}lib/ruby/{abi}/{arch}/enc/trans/{big5,cesu_8,chinese,ebcdic,emoji,emoji_iso2022_kddi,emoji_sjis_docomo,emoji_sjis_kddi,emoji_sjis_softbank,escape,gb18030,gbk,iso2022,japanese,japanese_euc,japanese_sjis,korean,single_byte,transdb,utf8_mac,utf_16_32}.{so}"
+      # The debug symbols rv-ruby's macOS build keeps beside each one.
+      - "{prefix}lib/ruby/{abi}/{arch}/**/*.bundle.dSYM/Contents/Resources/DWARF/*.bundle"
+
+  # Windows' Ruby: RubyInstaller's head build of Ruby's master of
+  # 2026-11-10 (runtime/sources.yml).
+  - id: ruby
+    name: Ruby, with the third-party code its LEGAL lists (Onigmo, and others)
+    version: 4.1.0dev (master 0e25874222)
+    license: Ruby OR BSD-2-Clause
+    kind: program
+    supplier: "Organization: Ruby core team"
+    download: https://github.com/ruby/ruby/tree/0e258742221c81dddb807e48a5691ce44b46dadd
+    notice: ruby
+    ships: "compiled into Ruby's DLL in ruby/bin/, and its standard library in ruby/lib/ruby/"
+    platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+    fallback: true
+    embedded:
+      - files: ["{prefix}bin/{x64,aarch64}-ucrt-ruby*.dll"]
+        evidence: "0e25874222"
+    files:
+      - "{prefix}lib/ruby/{abi}/**"
+      - "{prefix}lib/ruby/gems/{abi}/**/"
+      - "{prefix}include/**"
+      - "{prefix}Headers/**"
+      - "{prefix}share/**"
+      - "{prefix}lib/pkgconfig/**"
+      - "{prefix}lib/libruby*-static.a"
+      - "{prefix}lib/lib*-ruby*.dll.a"
+      - "{prefix}bin/*"
+      - "{prefix}{COPYING,COPYING.ja,NEWS.md,README.md}"
+    binaries:
+      - "{prefix}bin/ruby"
+      - "{prefix}bin/{ruby,rubyw}.exe"
+      - "{prefix}bin/*-ruby*.dll"
+      - "{prefix}lib/libruby*-static.a"
+      - "{prefix}lib/lib*-ruby*.dll.a"
+      # Ruby's own extensions, by name, so that a file nobody listed fails.
+      # digest/crc32 is Ruby's own code: "a clean implementation derived
+      # from the Wikipedia article" by its author, Jean Boussier, in the
+      # digest gem (ruby/ruby 0e3b8918b3, from ruby/digest 8d893787b7),
+      # whose gemspec licenses it as Ruby's, Ruby OR BSD-2-Clause.
+      - "{prefix}lib/ruby/{abi}/{arch}/{cgi/escape,continuation,coverage,date_core,digest,etc,fcntl,monitor,objspace,openssl,psych,pty,ripper,socket,stringio,strscan,zlib}.{so}"
+      - "{prefix}lib/ruby/{abi}/{arch}/{digest/{blake3,bubblebabble,crc32,md5,rmd160,sha1,sha2},erb/escape,io/{console,nonblock,wait},json/ext/{generator,parser},rbconfig/sizeof,win32/{dll_directory,resolv}}.{so}"
       - "{prefix}lib/ruby/{abi}/{arch}/enc/{big5,cesu_8,cp949,emacs_mule,encdb,euc_jp,euc_kr,euc_tw,gb18030,gb2312,gbk,iso_8859_1,iso_8859_10,iso_8859_11,iso_8859_13,iso_8859_14,iso_8859_15,iso_8859_16,iso_8859_2,iso_8859_3,iso_8859_4,iso_8859_5,iso_8859_6,iso_8859_7,iso_8859_8,iso_8859_9,koi8_r,koi8_u,shift_jis,utf_16be,utf_16le,utf_32be,utf_32le,windows_1250,windows_1251,windows_1252,windows_1253,windows_1254,windows_1257,windows_31j}.{so}"
       - "{prefix}lib/ruby/{abi}/{arch}/enc/trans/{big5,cesu_8,chinese,ebcdic,emoji,emoji_iso2022_kddi,emoji_sjis_docomo,emoji_sjis_kddi,emoji_sjis_softbank,escape,gb18030,gbk,iso2022,japanese,japanese_euc,japanese_sjis,korean,single_byte,transdb,utf8_mac,utf_16_32}.{so}"
       # The debug symbols rv-ruby's macOS build keeps beside each one.
@@ -950,6 +1078,8 @@ reviewed:
       BSD-2-Clause.
   - files: ["{prefix}lib/ruby/gems/{abi}/gems/rdoc-*/{LICENSE.rdoc,lib/rdoc/rd.rb}"]
     why: Ruby's old license, which offers the GPL-2.0 or Ruby's own conditions; Ruby's apply.
+  - files: ["{prefix}lib/ruby/gems/{abi}/gems/rdoc-*/rdoc.gemspec", "{prefix}lib/ruby/gems/{abi}/specifications/rdoc-*.gemspec"]
+    why: rdoc 8's gemspec lists Ruby and GPL-2.0-only, the two choices of Ruby's old license (its LICENSE.rdoc); Ruby's apply.
   - files: ["{prefix}lib/ruby/gems/{abi}/gems/rbs-*/core/dir.rbs", "{prefix}{include/ruby-{abi},Headers}/ruby/internal/ctype.h"]
     why: Mentions the word (a file name in an example, a comment about compatibility); no license.
   - files: ["{prefix}share/doc/ruby/html/**"]

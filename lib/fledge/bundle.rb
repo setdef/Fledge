@@ -311,7 +311,7 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   # Gemfile.lock: BUNDLED WITH 4.0.19
-    #   bundle.bundler_for("4.0.20", ruby_version: "4.0.9").to_s # => "bundler 4.0.19"
+    #   bundle.bundler_for("4.1.0.beta2", ruby_version: "4.1.0").to_s # => "bundler 4.0.19"
     #--
     # SPDX-SnippetEnd
     #++

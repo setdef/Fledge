@@ -53,7 +53,7 @@ class Parity
         "rbconfig.rb is in the folder of Ruby's platform, as for $LOAD_PATH. The same extensions load."),
     Justification.new(fact: "RubyVM::YJIT.enabled?", reference: [/\Afalse\z/], app: [/\Anull\z/], platforms: MOBILE,
       reason: "A phone's Ruby is an interpreter only: iOS gives no app memory it may write code into and run, and " \
-        "Ruby builds no JIT for Android (configure.ac at 4.0.9), so RubyVM::YJIT is not defined, as in any Ruby " \
+        "Ruby builds no JIT for Android (configure.ac at 4.1.0-preview1), so RubyVM::YJIT is not defined, as in any Ruby " \
         "built without YJIT. An app that turns YJIT on only where it is defined runs either way."),
     Justification.new(fact: "$stdout.sync", reference: [/\Afalse\z/], app: [/\Atrue\z/], platforms: MOBILE,
       reason: "A phone has no terminal: an app's standard output is the pipe the embedding API reads into the " \
@@ -64,5 +64,13 @@ class Parity
       reason: "The iOS runtime leaves out fiddle, which calls any C function by name, as xord/cruby leaves it out " \
         "of RubySketch's Ruby \"to pass the App Store review\" (ADR 058)."),
     Justification.new(fact: "requireable", reference: [/\A"fiddle"=/], platforms: IOS, reason: "As for gems."),
+    # For now: prism's extension waits on a link with libruby's own
+    # libprism (RuntimeBuilder::Mobile#omitted_gems), and goes when it
+    # loads on a phone.
+    Justification.new(fact: "gems", reference: [/\A"prism /], platforms: MOBILE,
+      reason: "For now, the phones' runtimes leave out Ruby 4.1's bundled prism gem, whose extension compiles a " \
+        "copy of libprism that collides with libruby's own once every extension is linked into one library; " \
+        "require \"prism\" fails on a phone until it is linked with libruby's."),
+    Justification.new(fact: "requireable", reference: [/\A"prism"=/], platforms: MOBILE, reason: "As for prism's gems."),
   ].freeze
 end

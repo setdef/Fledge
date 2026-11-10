@@ -23,7 +23,7 @@ gem "ostruct", "~> 0.6.3"
 gem "inch", "~> 0.4"
 gem "flog", "4.8.0"
 gem "steep"
-gem "rdoc", "~> 7.0"
+gem "rdoc", "~> 8.1"
 
 # Checks lib/fledge/config.schema.json and the examples against it
 # (doc/contributors/design/public-interface.md). Development only: nothing Fledge ships loads it.

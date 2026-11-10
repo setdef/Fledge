@@ -137,6 +137,12 @@ SPDX-FileCopyrightText = "1996-2025 Anthony Green, Red Hat, Inc and others"
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
+path = "runtime/notices/blake3/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2019 Jack O'Connor and Samuel Neves"
+SPDX-License-Identifier = "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"
+
+[[annotations]]
 path = "runtime/notices/prism/**"
 precedence = "override"
 SPDX-FileCopyrightText = "2022-present Shopify Inc."

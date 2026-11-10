@@ -1,8 +1,19 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
+# mise finds a precompiled Ruby among jdx/ruby's releases, but not among
+# the ones GitHub marks as prereleases, as jdx/ruby marks 4.1.0-preview1,
+# and then fails (CI sets MISE_RUBY_COMPILE=false) or compiles Ruby for
+# ten minutes. This names jdx/ruby's own asset for each version and
+# platform, so mise downloads the build it would download for a release.
+# For a URL it is given, mise checks no artifact attestation, as it does
+# for jdx/ruby's releases; the setting goes when Fledge moves to Ruby
+# 4.1.0.
+[settings]
+ruby.precompiled_url = "https://github.com/jdx/ruby/releases/download/{version}/ruby-{version}.{platform}.tar.gz"
+
 [tools]
-ruby = "4.0.9"
+ruby = "4.1.0-preview1"
 python = "3.12"
 pre-commit = "latest"
 uv = "0.13.4"

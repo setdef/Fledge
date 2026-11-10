@@ -146,7 +146,7 @@ jobs:
       - name: Read the Ruby pin
         if: runner.os == 'Windows'
         id: pins
-        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+        run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
 
       - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         if: runner.os == 'Windows'
@@ -246,7 +246,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           .github/scripts/deliver.sh "$RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.tar.gz" \
-            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.0.9 on ${{ matrix.ruby-platform }}"
+            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.1.0 on ${{ matrix.ruby-platform }}"
           .github/scripts/deliver.sh "$RUNNER_TEMP/dist/MyCoolApp-${{ matrix.platform }}.tar.gz" \
             "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/my_cool_app.expected")"
           .github/scripts/deliver.sh "$RUNNER_TEMP/dist/NativeApp-${{ matrix.platform }}.tar.gz" \
@@ -292,7 +292,7 @@ jobs:
           pwsh -NoProfile -File .github/scripts/deliver.ps1
           -Archive "$env:RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.zip"
           -Probe "$env:RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.zip" -Platform ${{ matrix.platform }}
-          -Expected "Hello from Ruby 4.0.9 on ${{ matrix.platform }}"
+          -Expected "Hello from Ruby 4.1.0 on ${{ matrix.platform }}"
 
       - name: Run MyCoolApp.exe as someone with no Ruby would
         if: matrix.platform == 'x64-mingw-ucrt'
@@ -322,7 +322,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
-      ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
+      ALPINE_RUBY: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
       ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
     strategy:
       fail-fast: false
@@ -378,7 +378,7 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: >-
           docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work -e PLATFORM "$ALPINE" sh -c '
-          checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.0.9 on $PLATFORM" --no-ruby-installed &&
+          checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed &&
           checks/.github/scripts/deliver.sh "dist/MyCoolApp-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "$(cat dist/my_cool_app.expected)" --no-ruby-installed'
 
   # A phone's project from the tag (ADR 012): fledge build ios on a Mac and
@@ -574,7 +574,7 @@ jobs:
       - name: Read the Ruby pin
         if: runner.os == 'Windows'
         id: pins
-        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+        run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
 
       - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         if: runner.os == 'Windows'
@@ -671,7 +671,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           .github/scripts/deliver.sh "$RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.tar.gz" \
-            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.0.9 on ${{ matrix.ruby-platform }}"
+            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.1.0 on ${{ matrix.ruby-platform }}"
 
       - name: Install desktop-file-validate
         if: runner.os == 'Linux'
@@ -712,7 +712,7 @@ jobs:
           pwsh -NoProfile -File .github/scripts/deliver.ps1
           -Archive "$env:RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.zip"
           -Probe "$env:RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.zip" -Platform ${{ matrix.platform }}
-          -Expected "Hello from Ruby 4.0.9 on ${{ matrix.platform }}"
+          -Expected "Hello from Ruby 4.1.0 on ${{ matrix.platform }}"
 
   installed-gem-musl:
     name: Install the built gem, build, and deliver (${{ matrix.platform }})
@@ -720,7 +720,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
-      ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
+      ALPINE_RUBY: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
       ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
     strategy:
       fail-fast: false
@@ -795,7 +795,7 @@ jobs:
           cat > "$RUNNER_TEMP/deliver.sh" <<'SH'
           set -eu
           checks/.github/scripts/alpine-packages.sh deliver
-          checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.0.9 on $PLATFORM" --no-ruby-installed
+          checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed
           checks/.github/scripts/deliver-windowed.sh "dist/Hello Window-$PLATFORM.tar.gz"
           checks/.github/scripts/deliver-appimage.sh "dist/Hello Window-$PLATFORM.AppImage" extract
           SH

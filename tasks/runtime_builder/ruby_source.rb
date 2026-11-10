@@ -9,17 +9,18 @@ require "fileutils"
 
 class RuntimeBuilder
   # The edits a mobile runtime makes to Ruby's own source before it builds
-  # it (doc/contributors/design/phone-runtimes.md, "Scripted edits to Ruby's
-  # source"). Each replaces lines of Ruby 4.0.9's files that it names,
-  # and raises when they are not there, so that a new Ruby whose files
-  # moved on fails the build at the edit to look at again, rather than
-  # building a Ruby that is quietly different.
+  # it (doc/contributors/design/phone-runtimes.md, "Scripted edits to
+  # Ruby's source"). Each replaces lines of Ruby 4.1.0-preview1's files
+  # that it names, and raises when they are not there, so that a new Ruby
+  # whose files moved on fails the build at the edit to look at again,
+  # rather than building a Ruby that is quietly different.
   module RubySource
     # The file each edit changes, relative to Ruby's source.
     FILES = {
       psych_extconf: "ext/psych/extconf.rb",
       vm_dump: "vm_dump.c",
       configure: "configure",
+      configure_macos_minimum: "configure",
       ruby_c: "ruby.c",
     }.freeze
 
@@ -50,7 +51,7 @@ class RuntimeBuilder
     end
 
     # configure appends -android to a target system that already names
-    # Android (configure.ac, line 581 at 4.0.9), so a --host of
+    # Android (configure.ac, line 617 at 4.1.0-preview1), so a --host of
     # aarch64-linux-android gives a RUBY_PLATFORM of
     # aarch64-linux-android-android. Termux guards the line
     # (termux-packages, packages/ruby/android-sdk-level.patch); this guards
@@ -60,9 +61,24 @@ class RuntimeBuilder
         "\\1case $target_os in *android*) ;; *) target_os=${target_os}-android ;; esac", "configure appends -android")
     end
 
+    # configure refuses a darwin target whose MAC_OS_X_VERSION_MIN_REQUIRED
+    # is below 10.6 (configure.ac, lines 439 to 451 at 4.1.0-preview1, from
+    # ruby/ruby 3e96f16643, "Require Mac OS X 10.6 or later"). An iOS
+    # target is darwin too, and the iOS SDK's AvailabilityMacros.h, given
+    # no macOS deployment target by clang
+    # (__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__), sets the macro to
+    # 10.5 (lines 96 to 111), so configure stops with "Unsupported OS X
+    # version is required". This keeps the check for a macOS target only,
+    # in the generated configure, which needs no autoreconf.
+    def self.configure_macos_minimum(text)
+      replace(text, /^(\s*)#if MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_6$/,
+        "\\1#if defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_6",
+        "configure requires Mac OS X 10.6")
+    end
+
     # Built with --enable-load-relative, Ruby derives its prefix from the
     # path of the file that holds libruby (ruby.c, runtime_libruby_path,
-    # lines 591 to 664 at 4.0.9). On Android that file sits in a folder
+    # lines 594 to 663 at 4.1.0-preview1). On Android that file sits in a folder
     # of native libraries alone, and an iOS app may keep Ruby's library
     # anywhere in its bundle, so ruby_embed_libruby_path lets the embedder
     # name the path Ruby would otherwise read from dladdr.

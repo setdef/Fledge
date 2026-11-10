@@ -45,6 +45,7 @@ class RuntimeBuilder
       FileUtils.cp_r(tree, ruby)
       FileUtils.chmod_R("u+w", ruby)
       Pruning.prune_windows(ruby, @builder.bundled_gems)
+      add_missing_dlls(ruby)
       @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
       copy_nsis(File.join(stage, "tools", "nsis"))
       copy_rcedit(File.join(stage, "tools", "rcedit.exe"))
@@ -55,6 +56,63 @@ class RuntimeBuilder
     # the license audit (Fledge::Binary::Readers.llvm): llvm-mingw's.
     def readers
       Fledge::Binary::Readers.llvm(File.join(@toolchain, "bin"))
+    end
+
+    # Where each DLL RubyInstaller's Ruby needs and does not ship goes in
+    # ruby\ (runtime/sources.yml, windows-dlls): libz-1.dll beside the
+    # zlib.so that imports it, in Ruby's architecture folder, and
+    # libgcc_s_seh-1.dll among the DLLs RubyInstaller keeps for Ruby's
+    # own, which the launcher adds to the folders Windows looks in for an
+    # extension's DLLs (windows.c, add_builtin_dlls).
+    DLL_FOLDERS = { "libz-1.dll" => :arch, "libgcc_s_seh-1.dll" => :builtin }.freeze
+
+    # Adds to the Ruby tree +ruby+ each DLL its Ruby needs and does not
+    # ship, from its pinned MSYS2 package, and names libz-1.dll in
+    # zlib.so's assembly manifest, beside the zlib1.dll it names, so that
+    # Windows finds it there as it finds zlib1.dll. Raises when the tree
+    # ships one already, whose pin should then go.
+    private def add_missing_dlls(ruby)
+      lib = File.join(ruby, "lib", "ruby")
+      folders = {
+        arch: File.join(lib, RuntimeBuilder.ruby_abi(lib), @builder.platform.name),
+        builtin: File.join(ruby, "bin", "ruby_builtin_dlls"),
+      }
+      @builder.sources.fetch("windows-dlls").each do |name, dll|
+        pin = dll.fetch("platforms")[@builder.platform.name] or next
+        target = File.join(folders.fetch(DLL_FOLDERS.fetch(name)), name)
+        raise "#{target} is in RubyInstaller's Ruby already: drop its pin from runtime/sources.yml" if File.exist?(target)
+
+        FileUtils.cp(unpack_dll(name, pin), target)
+      end
+      manifest = File.join(folders.fetch(:arch), "zlib.so-assembly.manifest")
+      File.write(manifest, Windows.name_in_manifest(File.read(manifest), after: "zlib1.dll", name: "libz-1.dll"))
+    end
+
+    # The assembly manifest +text+ with a file element for the DLL +name+
+    # after the one for +after+, as RubyInstaller writes them.
+    def self.name_in_manifest(text, after:, name:)
+      element = %(<file name="#{after}"/>)
+      raise "the manifest names no #{after}: #{text}" unless text.include?(element)
+
+      text.sub(element, %(#{element}<file name="#{name}"/>))
+    end
+
+    # The DLL +name+ from the MSYS2 package +pin+ names, unpacked with
+    # zstd and checked against its own SHA-256.
+    private def unpack_dll(name, pin)
+      package = @builder.fetch_pin(pin.fetch("package"))
+      zstd = @builder.which("zstd") or raise "unpacking #{package} needs zstd on PATH"
+      unpacked = File.join(@build_dir, "msys2", name)
+      FileUtils.rm_rf(unpacked)
+      FileUtils.mkdir_p(unpacked)
+      statuses = Open3.pipeline([zstd, "-dcq", package], ["tar", "-xf", "-", "-C", unpacked, pin.fetch("path")])
+      raise "could not unpack #{pin.fetch('path')} from #{package}" unless statuses.all?(&:success?)
+
+      file = File.join(unpacked, pin.fetch("path"))
+      actual = Digest::SHA256.file(file).hexdigest
+      raise "#{file} has SHA-256 #{actual}, not #{pin.fetch('dll_sha256')}" unless actual == pin.fetch("dll_sha256")
+
+      file
     end
 
     # llvm-readobj, which fledge build runs on Windows to read what an
@@ -185,7 +243,7 @@ class RuntimeBuilder
 
     private def unpack_rubyinstaller
       pin = @builder.sources.fetch("ruby").fetch("platforms").fetch(@builder.platform.name)
-      archive = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      archive = @builder.fetch_pin(pin)
       verify(archive, pin.fetch("signature"))
       unpacked = File.join(@build_dir, "rubyinstaller")
       FileUtils.mkdir_p(unpacked)
@@ -200,7 +258,7 @@ class RuntimeBuilder
     # trusts only the keyring it is given: here, the one key the pin
     # names, and the signature must be that key's, by fingerprint.
     private def verify(archive, pin)
-      signature = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      signature = @builder.fetch_pin(pin)
       key = pin.fetch("key")
       keyring = File.join(@build_dir, "rubyinstaller-signing-key.gpg")
       File.binwrite(keyring, Armor.dearmor(File.read(@builder.fetch(key.fetch("url"), key.fetch("sha256")))))

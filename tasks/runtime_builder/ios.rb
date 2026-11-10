@@ -36,13 +36,14 @@ class RuntimeBuilder
     end
 
     # fiddle is left out, as xord/cruby leaves it out "to pass the App
-    # Store review" (Rakefile, line 577): it would call any C function.
+    # Store review" (Rakefile, line 577): it would call any C function;
+    # and, for now, prism's extension, as on Android (Mobile).
     private def omitted_gems
-      %w[fiddle]
+      [*super, "fiddle"]
     end
 
     private def edits
-      %i[psych_extconf vm_dump ruby_c]
+      %i[psych_extconf vm_dump ruby_c configure_macos_minimum]
     end
 
     private def host_triple(_target)

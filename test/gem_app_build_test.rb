@@ -60,11 +60,11 @@ class GemAppBuildTest < Minitest::Test
 
     out, err, status = build(File.join(root, "exe/my_app"))
     assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    folders = { "dist/MyApp-x86_64-linux" => ["lib/ruby/gems/4.0.0", linux] }
+    folders = { "dist/MyApp-x86_64-linux" => ["lib/ruby/gems/4.1.0+5", linux] }
     if FakeRuntime.windows
       out, windows_err, status = build(File.join(root, "exe/my_app"), host: "x64-mingw-ucrt")
       assert_equal [0, "dist/MyApp-x64-mingw-ucrt.zip\n"], [status, out], windows_err
-      folders["dist/MyApp-x64-mingw-ucrt"] = ["ruby/lib/ruby/gems/4.0.0", windows]
+      folders["dist/MyApp-x64-mingw-ucrt"] = ["ruby/lib/ruby/gems/4.1.0+5", windows]
     end
 
     folders.each do |folder, (gem_dir, native)|
@@ -102,7 +102,7 @@ class GemAppBuildTest < Minitest::Test
     out, err, status = build(File.join(root, "exe/my_app"))
 
     assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    gems = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.0.0")
+    gems = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5")
     assert_path_exists File.join(gems, "gems/rdoc-7.1.0/lib/rubygems_plugin.rb")
     assert_equal "require_relative '../gems/rdoc-7.0.4/lib/rubygems_plugin.rb'\n", File.read(File.join(gems, "plugins/rdoc_plugin.rb"))
   end
@@ -113,7 +113,7 @@ class GemAppBuildTest < Minitest::Test
   # loopback server), and fledge.cfg names it for the launcher. A
   # lockfile the runtime's own Bundler wrote ships none.
   def test_the_bundler_the_lockfile_names_ships_and_the_launcher_is_told_to_run_it
-    runtime_bundler = Fledge::Entry.file("lib/ruby/gems/4.0.0/specifications/default/bundler-4.0.20.gemspec", "# bundler\n")
+    runtime_bundler = Fledge::Entry.file("lib/ruby/gems/4.1.0+5/specifications/default/bundler-4.0.20.gemspec", "# bundler\n")
     FakeRuntime.write(@runtimes, Fledge::Platform.find("x86_64-linux"), extra: [runtime_bundler])
     bundler = FakeGem.build(@gems, "bundler", "4.0.19", files: { "lib/bundler.rb" => "# bundler\n" }, executables: [])
     serve(bundler)
@@ -125,7 +125,7 @@ class GemAppBuildTest < Minitest::Test
 
     assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
     folder = File.join(@dir, "dist/MyApp-x86_64-linux")
-    gems = File.join(folder, "lib/ruby/gems/4.0.0")
+    gems = File.join(folder, "lib/ruby/gems/4.1.0+5")
     assert_equal "# bundler\n", File.read(File.join(gems, "gems/bundler-4.0.19/lib/bundler.rb"))
     assert_equal "4.0.19", Gem::Specification.load(File.join(gems, "specifications/bundler-4.0.19.gemspec")).version.to_s
     assert_includes File.read(File.join(folder, "fledge.cfg")), "\ngemfile = Gemfile\nbundler = 4.0.19\n"
@@ -164,7 +164,7 @@ class GemAppBuildTest < Minitest::Test
     out, err, status = build(root)
 
     assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    gems = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.0.0")
+    gems = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5")
     assert_path_exists File.join(gems, "gems/lite-1.0.0/lib/lite.rb")
     refute_path_exists File.join(gems, "gems/lite-1.0.0-x86_64-linux-gnu")
 
@@ -173,7 +173,7 @@ class GemAppBuildTest < Minitest::Test
     root = project(dependencies: { "lite" => ">= 0" }, locked: [precompiled, neither])
     _, err, status = build(root)
     assert_equal 1, status
-    assert_includes err, "lite 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.0.9."
+    assert_includes err, "lite 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.1.0."
   end
 
   # Fledge refuses a gem only when it would not run where the app goes,
@@ -190,7 +190,7 @@ class GemAppBuildTest < Minitest::Test
     assert_equal [1, ""], [status, out]
     assert_equal [
       "fledge build: MyApp can't ship for x86_64-linux:",
-      "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.0.9.",
+      "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.1.0.",
       "fledge build:   unloadable 1.0.0 (x86_64-linux-gnu)'s lib/unloadable.so needs libxml2.so.2, which neither linux, nor " \
         "Fledge's runtime, nor the gem itself provides, so the app could not load it on another computer. Build the gem so " \
         "that it carries the library, or links it statically, or, when every computer the app goes to has it from its Linux " \
@@ -251,7 +251,7 @@ class GemAppBuildTest < Minitest::Test
 
     assert_equal 0, status, err
     assert_empty err.lines.grep_v(/\ADownloading /), "no warnings, and no verdicts"
-    installed = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.0.0")
+    installed = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5")
     gems.each { |gem| assert_path_exists File.join(installed, "specifications", "#{File.basename(gem.file_name, '.gem')}.gemspec"), gem.name }
     assert_path_exists File.join(installed, "gems/tokraish-1.0.0-x86_64-linux-gnu/lib/tokraish/tokraish.so")
     assert_path_exists File.join(installed, "gems/iconvy-1.0.0-x86_64-linux-gnu/lib/iconvy.so")
@@ -292,12 +292,12 @@ class GemAppBuildTest < Minitest::Test
     if FakeRuntime.windows
       _, err, status = build(root, host: "x64-mingw-ucrt")
       assert_equal 0, status, err
-      assert_equal "# alpha\n", File.read(File.join(@dir, "dist/MyApp-x64-mingw-ucrt/ruby/lib/ruby/gems/4.0.0/bundler/gems", scope,
+      assert_equal "# alpha\n", File.read(File.join(@dir, "dist/MyApp-x64-mingw-ucrt/ruby/lib/ruby/gems/4.1.0+5/bundler/gems", scope,
         "gems/alpha/lib/alpha.rb"))
     end
-    gemspec = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.0.0/bundler/gems", scope, "gems/alpha/alpha.gemspec"))
+    gemspec = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", scope, "gems/alpha/alpha.gemspec"))
     refute_includes gemspec, "git ls-files"
-    assert_equal "MIT\n", File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.0.0/bundler/gems", scope, "gems/alpha/LICENSE"))
+    assert_equal "MIT\n", File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", scope, "gems/alpha/LICENSE"))
   end
 
   def test_a_gem_whose_file_differs_from_the_lockfile_is_refused

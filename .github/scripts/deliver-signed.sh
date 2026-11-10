@@ -71,7 +71,7 @@ check_entitlements() {
 check_code "$hello"
 check_entitlements "$hello/Hello"
 out=$(cd / && env -i PATH=/usr/bin:/bin HOME="$work" "$hello/Hello")
-case "$out" in "Hello from Ruby 4.0.9 on "*) echo "ok: Hello ran: $out" ;; *) fail "Hello printed: $out" ;; esac
+case "$out" in "Hello from Ruby 4.1.0 on "*) echo "ok: Hello ran: $out" ;; *) fail "Hello printed: $out" ;; esac
 
 check_code "$bundle/Contents/Resources"
 codesign --verify --strict --deep --verbose=2 "$bundle" || fail "the bundle does not verify"

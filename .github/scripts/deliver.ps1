@@ -295,7 +295,7 @@ $arch = if ($Platform -eq 'aarch64-mingw-ucrt') { 'arm64' } else { 'x64' }
 $rubyDlls = @(Get-ChildItem -Path (Join-Path $root 'ruby\bin\*-ucrt-ruby*.dll'))
 if ($rubyDlls.Count -ne 1) { Fail "ruby\bin holds no one Ruby DLL: $($rubyDlls.Name -join ', ')" }
 $rubyDll = $rubyDlls[0].Name
-foreach ($dll in $rubyDll, 'libgmp-10.dll', 'libwinpthread-1.dll', 'zlib1.dll', 'libyaml-0-2.dll',
+foreach ($dll in $rubyDll, 'libgmp-10.dll', 'libwinpthread-1.dll', 'zlib1.dll', 'libz-1.dll', 'libgcc_s_seh-1.dll', 'libyaml-0-2.dll',
   "libssl-3-$arch.dll", "libcrypto-3-$arch.dll") {
   Set-Content -LiteralPath (Join-Path $evil $dll) -Value 'not a DLL'
 }

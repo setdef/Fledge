@@ -24,7 +24,7 @@ pin = RuntimeBuilder.new.sources.dig(*ARGV) or abort "no pin at #{ARGV.join(' ')
 out = $stdout
 $stdout = $stderr
 begin
-  out.puts RuntimeBuilder.new.fetch(pin.fetch("url"), pin.fetch("sha256"), mirrors: pin.fetch("mirrors", []))
+  out.puts RuntimeBuilder.new.fetch_pin(pin)
 rescue Fledge::Error => e
   abort "fetch_pin: #{e.message}"
 end

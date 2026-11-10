@@ -91,7 +91,7 @@ env:
   BUNDLE_FROZEN: "true"
   # musl Linux (ADR 017): the Alpine a developer with Ruby builds apps
   # on, and the bare Alpine Delivery runs them on, pinned by digest.
-  ALPINE_RUBY: ruby:4.0.9-alpine3.24@sha256:f1e530793cc09e1093417a4c9956069407155e1883d02beb30bda35ae54a47a3
+  ALPINE_RUBY: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
   ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
   # The status fledge build --from exits with for an APP of another release
   # or platform, or a folder Fledge did not build (Fledge::BuiltApp).
@@ -664,7 +664,7 @@ jobs:
 
       - name: Read the Ruby pin
         id: pins
-        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+        run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
 
       # RubyInstaller's Ruby on Windows, whose platform is the
       # x64-mingw-ucrt Fledge builds on; Ruby's own elsewhere.
@@ -835,7 +835,9 @@ jobs:
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 035), through setup-ruby at
-  # mise.toml's pin. test/built_app_test.rb unpacks hello and my_cool_app
+  # mise.toml's pin, or for a preview, which RubyInstaller does not
+  # build, its head build of that day (.github/scripts/ruby-pin.sh).
+  # test/built_app_test.rb unpacks hello and my_cool_app
   # with Windows' own Expand-Archive, from the .zip Windows' own tar
   # wrote, and runs Hello.exe and MyCoolApp.exe.
   test-windows:
@@ -859,7 +861,7 @@ jobs:
 
       - name: Read the Ruby pin
         id: pins
-        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+        run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
 
       - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         with:
@@ -929,8 +931,9 @@ jobs:
   # one folder (ADR 024); and
   # examples/native_app, whose gems must be compiled (ADR 006): redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
-  # its git tag, and bigdecimal, which spreadsheet, a GPL gem, needs, each
-  # compiled against the runtime's own Ruby and its build-only companion.
+  # its git tag, each compiled against the runtime's own Ruby and its
+  # build-only companion, and spreadsheet, a GPL gem, with the bigdecimal
+  # it needs, the one the runtime's Ruby bundles.
   # examples/real_gems (doc/contributors/design/gems.md, "Examples that
   # exercise these rules"): the gems real apps lock, from a credentialed
   # mirror, a folder outside the project, a path gem with an extension, git
@@ -974,7 +977,7 @@ jobs:
       - name: Read the Ruby pin
         if: runner.os == 'Windows'
         id: pins
-        run: echo "ruby=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+        run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
 
       # RubyInstaller's Ruby, with the MSYS2 UCRT64 toolchain ridk installs,
       # which fledge build finds as RubyInstaller does (MSYS2_PATH first).
@@ -1487,7 +1490,7 @@ jobs:
       - name: Run hello as someone with no Ruby would
         run: >-
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/Hello-${{ matrix.platform }}.tar.gz"
-          "$RUNNER_TEMP/delivered/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.0.9 on ${{ matrix.ruby-platform }}"
+          "$RUNNER_TEMP/delivered/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.1.0 on ${{ matrix.ruby-platform }}"
 
       - name: Run my_cool_app as someone with no Ruby would
         run: >-
@@ -1676,7 +1679,7 @@ jobs:
       - name: Run hello on a computer with no Ruby installed
         run: >-
           .github/scripts/deliver.sh "delivered/Hello-${{ matrix.platform }}.tar.gz"
-          "delivered/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.0.9 on ${{ matrix.platform }}" --no-ruby-installed
+          "delivered/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.1.0 on ${{ matrix.platform }}" --no-ruby-installed
 
       - name: Run my_cool_app on a computer with no Ruby installed
         run: >-
@@ -1813,7 +1816,7 @@ jobs:
           set -eu
           .github/scripts/alpine-packages.sh deliver
           d=delivered
-          .github/scripts/deliver.sh "$d/Hello-$PLATFORM.tar.gz" "$d/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.0.9 on $PLATFORM" --no-ruby-installed
+          .github/scripts/deliver.sh "$d/Hello-$PLATFORM.tar.gz" "$d/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed
           .github/scripts/deliver.sh "$d/MyCoolApp-$PLATFORM.tar.gz" "$d/ParityBundle-$PLATFORM.tar.gz" "$(cat "$d/my_cool_app.expected")" --no-ruby-installed
           .github/scripts/deliver-console.sh "$d/Console-$PLATFORM.tar.gz"
           .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
@@ -1859,7 +1862,7 @@ jobs:
           pwsh -NoProfile -File .github/scripts/deliver.ps1
           -Archive "$env:RUNNER_TEMP/delivered/Hello-$env:PLATFORM.zip"
           -Probe "$env:RUNNER_TEMP/delivered/Parity-$env:PLATFORM.zip" -Platform $env:PLATFORM
-          -Expected "Hello from Ruby 4.0.9 on $env:PLATFORM"
+          -Expected "Hello from Ruby 4.1.0 on $env:PLATFORM"
 
       - name: Run MyCoolApp.exe as someone with no Ruby would
         if: matrix.platform == 'x64-mingw-ucrt'
@@ -2181,7 +2184,8 @@ jobs:
             *.7z) 7z x -y -bd -o"$RUNNER_TEMP/upstream" "$archive" > /dev/null ;;
             *) tar -xzf "$archive" -C "$RUNNER_TEMP/upstream" ;;
           esac
-          tree=$(find "$RUNNER_TEMP/upstream" -mindepth 1 -maxdepth 3 -type d \( -name '4.0.9' -o -name 'rubyinstaller-*' \) | head -n 1)
+          version=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("ruby", "version")')
+          tree=$(find "$RUNNER_TEMP/upstream" -mindepth 1 -maxdepth 3 -type d \( -name "$version" -o -name 'rubyinstaller-*' \) | head -n 1)
           echo "TREE=$tree" >> "$GITHUB_ENV"
 
       - name: Audit the whole tree

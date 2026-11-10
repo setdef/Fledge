@@ -12,5 +12,9 @@
 # nkf ships JRuby's Java sources (EPL-2.0 OR LGPL-2.1-or-later) in its
 # folder and in its cached .gem; a runtime prunes them
 # (RuntimeBuilder::Pruning.prune_jruby).
-- "copyleft-text: lib/ruby/gems/4.0.0/gems/nkf-0.2.0/ext/java/"
-- "copyleft-text: lib/ruby/gems/4.0.0/cache/nkf-0.2.0.gem!ext/java/"
+- "copyleft-text: lib/ruby/gems/4.1.0+6/gems/nkf-0.3.0/ext/java/"
+- "copyleft-text: lib/ruby/gems/4.1.0+6/cache/nkf-0.3.0.gem!ext/java/"
+# RubyInstaller's head build ships no libz-1.dll, which its zlib.so
+# imports; a runtime adds it from MSYS2's package (runtime/sources.yml,
+# windows-dlls).
+- "unresolved: lib/ruby/4.1.0+6/aarch64-mingw-ucrt/zlib.so: needs libz-1.dll"

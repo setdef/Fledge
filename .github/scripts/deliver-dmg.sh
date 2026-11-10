@@ -67,7 +67,7 @@ run_report() {
   set -e
   [ "$status" -eq 4 ] || { cat "$work/out" "$work/err"; fail "$1: exit status $status, not 4"; }
   [ ! -s "$work/err" ] || { cat "$work/err"; fail "$1: it wrote to standard error"; }
-  grep -q '"ruby":"4.0.9"' "$report" || fail "$1: the report says another Ruby: $(cat "$report")"
+  grep -q '"ruby":"4.1.0"' "$report" || fail "$1: the report says another Ruby: $(cat "$report")"
   echo "ok: $1 ran and reported $(cat "$report")"
 }
 
@@ -85,7 +85,7 @@ echo "ok: codesign verifies the installed $name.app, signed for $identifier"
 run_report "the installed app" "$applications/$name.app/Contents/MacOS/$name"
 report="$work/report-open.json"
 open -n -W "$applications/$name.app" --args "$report" 4 || fail "open could not start the installed $name.app"
-grep -q '"ruby":"4.0.9"' "$report" || fail "open -W: no report from the installed app"
+grep -q '"ruby":"4.1.0"' "$report" || fail "open -W: no report from the installed app"
 echo "ok: open -W started the installed app, which reported $(cat "$report")"
 
 echo "Delivered: $name, from its disk image"

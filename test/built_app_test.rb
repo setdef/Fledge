@@ -50,7 +50,7 @@ class BuiltAppTest < Minitest::Test
   end
 
   def expected
-    "Hello from Ruby 4.0.9 on #{expected_platform}\n"
+    "Hello from Ruby 4.1.0 on #{expected_platform}\n"
   end
 
   # RUBY_PLATFORM as rv-ruby reports it: macOS builds carry the Darwin
@@ -320,6 +320,31 @@ class BuiltAppTest < Minitest::Test
 
       out, err, status = run_app({ "HOME" => dir }, File.join(place, "Game-#{@platform}", @platform.executable("Game")))
       assert_equal ["hello from greeter in app\n", "", 0], [out, err, status.exitstatus]
+    end
+  end
+
+  # Ruby 4.1's new digests and zlib load in a built app, each finding the
+  # DLLs it imports in the runtime: on Windows, RubyInstaller's head build
+  # ships neither the libz-1.dll its zlib.so imports nor the GCC runtime
+  # library its x64 digest/blake3.so does, and the runtime adds both
+  # (runtime/sources.yml, windows-dlls). BLAKE3 of nothing, and CRC-32 of
+  # "abc", are those algorithms' published test vectors.
+  def test_zlib_and_rubys_new_digests_load_in_a_built_app
+    Dir.mktmpdir do |dir|
+      project = File.join(dir, "digests")
+      FileUtils.mkdir_p(project)
+      File.write(File.join(project, "main.rb"), <<~RUBY)
+        require "zlib"
+        require "digest"
+        puts Digest::BLAKE3.hexdigest(""), Digest::CRC32.hexdigest("abc"), Zlib.crc32("abc").to_s(16)
+      RUBY
+      File.write(File.join(project, "fledge.yml"), "name: Digests\n")
+      launcher = build_and_unpack(dir, project, name: "Digests")
+
+      out, err, status = run_app({ "HOME" => dir }, launcher, chdir: dir)
+
+      assert_equal ["af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262\n352441c2\n352441c2\n", "", 0],
+        [out, err, status.exitstatus]
     end
   end
 
@@ -612,7 +637,7 @@ class BuiltAppTest < Minitest::Test
       _, err, status = run_app({ "HOME" => dir }, program, report, "4")
 
       assert_equal ["", 4], [err, status.exitstatus]
-      facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app", "arguments" => 2 }
+      facts = { "ruby" => "4.1.0", "platform" => expected_platform, "program" => "main.rb", "folder" => "app", "arguments" => 2 }
       facts.merge!("console" => false, "app_user_model_id" => "com.setdef.fledge.HelloWindow") if @platform.windows?
       facts["yjit"] = true unless @platform.windows?
       assert_equal facts, JSON.parse(File.read(report))
@@ -848,7 +873,7 @@ class BuiltAppTest < Minitest::Test
       assert_predicate status, :success?, err
       installer = File.expand_path(out.lines.fetch(1).chomp, Dir.pwd)
       report = File.join(dir, "report.json")
-      facts = { "ruby" => "4.0.9", "platform" => expected_platform, "program" => "main.rb", "folder" => "app", "arguments" => 2 }
+      facts = { "ruby" => "4.1.0", "platform" => expected_platform, "program" => "main.rb", "folder" => "app", "arguments" => 2 }
       case @platform.os
       when "darwin"
         assert_equal "Hello Window-arm64-darwin.dmg", File.basename(installer)

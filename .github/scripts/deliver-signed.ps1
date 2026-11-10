@@ -94,7 +94,7 @@ Write-Host 'ok: signtool verifies the setup program'
 $system = $env:SystemRoot
 $env:PATH = "$system\System32;$system;$system\System32\Wbem;$system\System32\WindowsPowerShell\v1.0"
 $out = & $program
-if ($LASTEXITCODE -ne 0 -or $out -notlike "Hello from Ruby 4.0.9 on $platform") { Fail "the signed Hello.exe printed '$out', exit $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0 -or $out -notlike "Hello from Ruby 4.1.0 on $platform") { Fail "the signed Hello.exe printed '$out', exit $LASTEXITCODE" }
 Write-Host "ok: the signed Hello.exe ran: $out"
 
 $installed = Join-Path $env:LOCALAPPDATA 'Programs\Hello Window'

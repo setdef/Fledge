@@ -52,9 +52,9 @@ class LicensingPageTest < Minitest::Test
   def page
     TestReaders.need(self, :elf, :macho, :pe)
     Dir.mktmpdir do |directory|
-      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}#{more}") }))
+      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "2d08b5f42f #{RUST}#{more}") }))
       %w[x86_64-linux aarch64-linux].each do |platform|
-        runtime(directory, platform, unix(-> (more) { Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "3e93b23afc #{RUST} GCC: (#{more}") }).merge(
+        runtime(directory, platform, unix(-> (more) { Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "2d08b5f42f #{RUST} GCC: (#{more}") }).merge(
           "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
           "notices/sources/libxcrypt/libxcrypt-4.5.2.tar.xz" => "pretend libxcrypt",
           "notices/sources/libxcrypt/BUILD.txt" => "how it was built\n"
@@ -62,7 +62,7 @@ class LicensingPageTest < Minitest::Test
       end
       %w[x86_64-linux-musl aarch64-linux-musl].each do |platform|
         runtime(directory, platform, unix(lambda do |more|
-          Binaries.elf(needed: %w[libc.so], payload: "3e93b23afc /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/ GCC: (Alpine 15.2.0) 15.2.0#{more}")
+          Binaries.elf(needed: %w[libc.so], payload: "2d08b5f42f /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/ GCC: (Alpine 15.2.0) 15.2.0#{more}")
         end))
       end
       %w[x64-mingw-ucrt aarch64-mingw-ucrt].each do |platform|
@@ -180,7 +180,7 @@ class LicensingPageTest < Minitest::Test
   def test_a_runtime_that_breaks_the_policy_makes_no_page
     TestReaders.need(self, :macho)
     Dir.mktmpdir do |directory|
-      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "3e93b23afc #{RUST}#{more}") }).merge(
+      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "2d08b5f42f #{RUST}#{more}") }).merge(
         "stray.txt" => "hello\n"
       ))
 

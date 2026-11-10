@@ -11,12 +11,12 @@ class RuntimeContentsTest < Minitest::Test
   def test_reads_the_gem_folder_its_gems_and_its_ruby
     Dir.mktmpdir do |dir|
       {
-        "x86_64-linux" => "lib/ruby/gems/4.0.0",
-        "x64-mingw-ucrt" => "ruby/lib/ruby/gems/4.0.0",
+        "x86_64-linux" => "lib/ruby/gems/4.1.0+5",
+        "x64-mingw-ucrt" => "ruby/lib/ruby/gems/4.1.0+5",
       }.each do |name, gem_dir|
         contents = Fledge::RuntimeContents.read(FakeRuntime.write(dir, Fledge::Platform.find(name)))
 
-        assert_equal [gem_dir, %w[csv-3.3.5 json-2.18.0 rdoc-7.0.4], "4.0.9"], [contents.gem_dir, contents.gems, contents.ruby_version]
+        assert_equal [gem_dir, %w[csv-3.3.5 json-2.18.0 rdoc-7.0.4], "4.1.0"], [contents.gem_dir, contents.gems, contents.ruby_version]
         assert_equal FakeRuntime::ARCH.fetch(name), contents.arch
         assert_equal ["#{gem_dir}/plugins/rdoc_plugin.rb"], contents.plugins
       end
@@ -69,7 +69,7 @@ class RuntimeContentsTest < Minitest::Test
 
       contents = Fledge::RuntimeContents.read(runtime, under: "FledgeRuby.xcframework/ios-arm64/")
 
-      assert_equal ["lib/ruby/gems/4.0.0", ["csv-3.3.5", "json-2.18.0", "rdoc-7.0.4"], "4.0.9", "arm64-darwin"],
+      assert_equal ["lib/ruby/gems/4.1.0+5", ["csv-3.3.5", "json-2.18.0", "rdoc-7.0.4"], "4.1.0", "arm64-darwin"],
         [contents.gem_dir, contents.gems, contents.ruby_version, contents.arch]
       error = assert_raises(Fledge::Error) { Fledge::RuntimeContents.read(runtime) }
       assert_match(/holds no one gem folder/, error.message, "two slices are two Rubies")

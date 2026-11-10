@@ -56,7 +56,7 @@ class Parity
   BUNDLED_WITH_APP = File.join(ROOT, "test", "fixtures", "bundled_with")
   ARGUMENTS = ["one", "two words", "ünïcödé"].freeze
 
-  # rv-ruby installs two gems a standard Ruby 4.0.9 does not, which a
+  # rv-ruby installs two gems a standard Ruby 4.1 does not, which a
   # runtime prunes (RuntimeBuilder::Pruning.prune).
   RV_RUBY_EXTRAS = /\A"(?:bootsnap|msgpack)(?: |"=)/
 
@@ -142,7 +142,7 @@ class Parity
     Justification.new(fact: "Gem.dir", reference: [%r{\A"<work>/person-gems"\z}], app: [%r{\A"<prefix>/lib/ruby/gems/#{ABI}"\z}o],
       reason: "As for Gem.path: RubyGems installs into the runtime's gem folder, never the person's GEM_HOME."),
     Justification.new(fact: "gems", reference: [RV_RUBY_EXTRAS],
-      reason: "rv-ruby adds bootsnap and msgpack, which no standard Ruby 4.0.9 installs; runtimes keep " \
+      reason: "rv-ruby adds bootsnap and msgpack, which no standard Ruby 4.1 installs; runtimes keep " \
         "Ruby's own default and bundled gems."),
     Justification.new(fact: "requireable", reference: [RV_RUBY_EXTRAS], reason: "As for gems."),
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/#{ABI}/rubygems/defaults/operating_system\.rb"\z}o],
@@ -348,7 +348,7 @@ class Parity
       File.join(@runtimes, Fledge::Runtimes.file_name(platform))
     else
       pin = @builder.sources.fetch("ruby").fetch("platforms").fetch(platform.name)
-      @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      @builder.fetch_pin(pin)
     end
     into = File.join(@work, "reference")
     FileUtils.mkdir_p(into)

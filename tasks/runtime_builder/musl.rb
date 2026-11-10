@@ -114,8 +114,11 @@ class RuntimeBuilder
     # SPDX-SnippetEnd
     #++
 
+    # With Mobile::NO_GIT, the build takes the bundled gems the pinned
+    # tarball carries in gems/, and downloads none.
     private def configure_options(prefix, deps)
       [
+        Mobile::NO_GIT,
         "--prefix=#{prefix}",
         "--enable-load-relative",
         "--disable-shared",

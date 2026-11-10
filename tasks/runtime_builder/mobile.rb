@@ -101,13 +101,19 @@ class RuntimeBuilder
       source = unpack(pin("ruby"), "ruby")
       RubySource.apply(source, edits)
       @kept = BundledExtensions.copy(source, omit: omitted_gems)
-      @without = [*BundledExtensions.without(source), "win32", "win32ole"].uniq
+      @without = [*BundledExtensions.without(source), "win32", "win32ole", "-test-/*"].uniq
       source
     end
 
-    # The bundled gems this platform leaves out: none but on iOS.
+    # The bundled gems whose extensions this platform leaves out: prism's,
+    # for now, on both phones. Ruby 4.1's prism gem compiles its own copy
+    # of libprism into its extension, and libruby holds Ruby's own, so the
+    # two collide (pm_parse, and every pm_ symbol) once a phone's runtime
+    # links every extension into one library. Until it is linked with
+    # libruby's libprism, require "prism" fails on a phone
+    # (Parity::MOBILE_JUSTIFIED).
     private def omitted_gems
-      []
+      %w[prism]
     end
 
     # Unpacks the tarball +pin+ names into a fresh folder named +name+
@@ -122,19 +128,23 @@ class RuntimeBuilder
     end
 
     # A miniruby for the build machine, from the same source: a cross
-    # build cannot run its own miniruby, so configure.ac (lines 1584 to
-    # 1588 at 4.0.9) leaves out the builtin binary, and builtin.c falls
-    # back to mini_builtin.c, which never loads gem_prelude, so the Ruby
-    # boots with no RubyGems. An iseq binary depends only on Ruby's
+    # build cannot run its own miniruby, so configure.ac (lines 1629 to
+    # 1632 at 4.1.0-preview1) leaves out the builtin binary, and builtin.c
+    # falls back to mini_builtin.c, which never loads gem_prelude, so the
+    # Ruby boots with no RubyGems. An iseq binary depends only on Ruby's
     # version, endianness, and word size (compile.c,
     # ibf_load_setup_bytes), so this miniruby writes the one the target's
-    # Ruby would.
+    # Ruby would. Beside it, dump_ast, the program that turns the builtin
+    # Ruby files into the .rbinc files the build compiles in: a cross
+    # build would compile it for the target, which the build machine
+    # cannot run, and configure.ac (lines 119 to 136) takes the build
+    # machine's instead with --with-dump-ast.
     private def build_host_miniruby
       host = File.join(@build_dir, "host")
       FileUtils.mkdir_p(host)
       logged("host-configure", File.join(@source, "configure"), "--disable-shared", "--disable-yjit", "--disable-zjit",
         "--disable-install-doc", "--with-baseruby=#{RbConfig.ruby}", chdir: host, env: host_environment)
-      logged("host-make", "make", "-j#{Etc.nprocessors}", "miniruby", chdir: host, env: host_environment)
+      logged("host-make", "make", "-j#{Etc.nprocessors}", "miniruby", "dump_ast", chdir: host, env: host_environment)
       host
     end
 
@@ -156,10 +166,11 @@ class RuntimeBuilder
       logged("#{target.name}-configure", File.join(@source, "configure"), *configure_options(target, deps), chdir: build,
         env: environment(target))
       use_host_builtin_binary(build)
-      logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", chdir: build, env: environment(target))
+      logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", *MAKE_VARIABLES, chdir: build, env: environment(target))
       @extension_api = Mobile.extension_api(build)
       BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: @extension_api)
-      logged("#{target.name}-install", "make", "install-nodoc", "DESTDIR=#{root}", chdir: build, env: environment(target))
+      logged("#{target.name}-install", "make", "install-nodoc", "DESTDIR=#{root}", *MAKE_VARIABLES, chdir: build,
+        env: environment(target))
       finish_tree(target, root)
       @archives ||= {}
       @archives[target] = archives(build, deps)
@@ -191,12 +202,30 @@ class RuntimeBuilder
       File.join(root, "include", "ruby-#{RuntimeBuilder.ruby_abi(File.join(root, 'lib', 'ruby'))}")
     end
 
+    # What make is told for every target. common.mk (lines 350 to 359 at
+    # 4.1.0-preview1) hands configure-ext.mk --without-ext=-test- when
+    # cross-compiling, which takes the place of the list configure was
+    # given (--with-out-ext), so the bundled gems' own builds came back;
+    # with yes_cross_compiling empty it hands nothing, and the list, which
+    # names -test- itself, holds.
+    MAKE_VARIABLES = ["yes_cross_compiling="].freeze
+
+    # A preview's gems/bundled_gems names a commit for some bundled gems
+    # (debug, irb, and prism in 4.1.0-preview1), and where the build
+    # machine has git, extract-gems clones each from GitHub and builds
+    # its gem from that commit (common.mk, lines 1573 to 1589 at
+    # 4.1.0-preview1) in place of the one the release's tarball carries
+    # in gems/. Without git (configure.ac, lines 138 to 156) the build
+    # takes the tarball's, which its SHA-256 pins, and downloads nothing.
+    NO_GIT = "--without-git"
+
     # What configure is told for every target: a static Ruby, every
     # extension linked in, interpreter only, finding its library relative
     # to itself, built with the libraries built for the target and none
     # of the build machine's (PKG_CONFIG=false), and without GMP (LGPL),
-    # Windows' extensions, or the bundled gems' own builds (their
-    # extensions are linked in among Ruby's; BundledExtensions).
+    # Windows' extensions, Ruby's test extensions, or the bundled gems' own
+    # builds (their extensions are linked in among Ruby's;
+    # BundledExtensions).
     private def configure_options(target, deps)
       [
         "--host=#{host_triple(target)}",
@@ -209,7 +238,9 @@ class RuntimeBuilder
         "--disable-zjit",
         "--disable-install-doc",
         "--disable-install-rdoc",
+        NO_GIT,
         "--with-baseruby=#{RbConfig.ruby}",
+        "--with-dump-ast=#{File.join(@host, 'dump_ast')}",
         "--with-openssl-dir=#{deps.fetch(:openssl)}",
         "--with-libyaml-dir=#{deps.fetch(:libyaml)}",
         "--without-gmp",

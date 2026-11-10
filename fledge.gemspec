@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
   spec.description = File.read(File.expand_path("README.rdoc", __dir__))
   spec.homepage = "https://github.com/setdef/Fledge"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 4.0.1"
+  spec.required_ruby_version = ">= 4.1.0.a"
   spec.required_rubygems_version = ">= 3.3.11"
 
   # Releases are tags and GitHub Releases

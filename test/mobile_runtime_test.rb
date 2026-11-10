@@ -78,7 +78,7 @@ class MobileRuntimeTest < Minitest::Test
       assert_match(/\A\h{64}\z/, pins.fetch(name).fetch("sha256"), name)
     end
     assert_equal %w[arm64-darwin x86_64-linux], pins.fetch("ndk").fetch("hosts").keys.sort
-    assert_equal "4.0.9", pins.fetch("ruby").fetch("version")
+    assert_equal "4.1.0-preview1", pins.fetch("ruby").fetch("version")
     assert_equal RuntimeBuilder.new.sources.fetch("ruby").fetch("version"), pins.fetch("ruby").fetch("version")
   end
 

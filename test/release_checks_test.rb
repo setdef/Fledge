@@ -143,10 +143,10 @@ class ReleaseChecksTest < Minitest::Test
       pins = File.join(dir, "SHA256SUMS")
       File.write(pins, Dir.children(assets).sort.map { |name| "#{Digest::SHA256.file(File.join(assets, name)).hexdigest}  #{name}\n" }.join)
 
-      out, status = Open3.capture2e("sh", CHECK_PINS, assets, pins, tagged, chdir: dir)
+      out, status = unbundled { Open3.capture2e("sh", CHECK_PINS, assets, pins, tagged, chdir: dir) }
       assert_predicate status, :success?, out
 
-      out, status = Open3.capture2e("sh", CHECK_PINS, assets, pins, chdir: dir)
+      out, status = unbundled { Open3.capture2e("sh", CHECK_PINS, assets, pins, chdir: dir) }
       refute_predicate status, :success?, out
     end
   end
@@ -211,7 +211,15 @@ class ReleaseChecksTest < Minitest::Test
   end
 
   private def check_pins(assets, pins)
-    Dir.mktmpdir { |elsewhere| Open3.capture2e("sh", CHECK_PINS, assets, pins, chdir: elsewhere) }
+    Dir.mktmpdir { |elsewhere| unbundled { Open3.capture2e("sh", CHECK_PINS, assets, pins, chdir: elsewhere) } }
+  end
+
+  # Runs the block outside the tests' own bundle, as release.yml and CI
+  # run check-pins.sh: its ruby -r loads tasks/runtime_builder before
+  # RUBYOPT's bundler/setup, and with it Ruby's own default gems, which
+  # need not be the versions the tests' Gemfile.lock locks.
+  private def unbundled(&)
+    defined?(Bundler) ? Bundler.with_unbundled_env(&) : yield
   end
 
   private def in_repository

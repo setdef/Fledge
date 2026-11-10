@@ -43,13 +43,13 @@ class MobileBuildTest < Minitest::Test
   end
 
   # A phone's Ruby is the minor version that runs fledge build too (ADR
-  # 055); the fake runtimes are Ruby 4.0.9.
+  # 055); the fake runtimes are Ruby 4.1.0.
   def test_a_phone_project_on_another_ruby_minor_than_the_runtimes_fails
     script_app("identifier: com.example.Hello\n")
-    out, err, status = build("android", "hello", ruby: "4.1.0")
+    out, err, status = build("android", "hello", ruby: "4.2.0")
 
     assert_equal [1, ""], [status, out]
-    assert_includes err, "fledge build: You are running Ruby 4.1.0, and Fledge #{Fledge::VERSION}'s runtime for android is Ruby 4.0.9.\n"
+    assert_includes err, "fledge build: You are running Ruby 4.2.0, and Fledge #{Fledge::VERSION}'s runtime for android is Ruby 4.1.0.\n"
     refute_path_exists File.join(@dir, "dist/Hello-android")
   end
 
@@ -222,7 +222,7 @@ class MobileBuildTest < Minitest::Test
     out, err, status = build("android", root)
 
     assert_equal [0, "dist/MyApp-android\n"], [status, out], err
-    gems = File.join(@dir, "dist/MyApp-android/fledge/lib/ruby/gems/4.0.0")
+    gems = File.join(@dir, "dist/MyApp-android/fledge/lib/ruby/gems/4.1.0+5")
     assert_path_exists File.join(gems, "gems/pure-1.0.0/lib/pure.rb")
     assert_path_exists File.join(gems, "gems/dual-2.0.0/lib/dual.rb"), "a gem with a build for Linux ships its ruby one"
     refute_path_exists File.join(gems, "gems/dual-2.0.0-x86_64-linux-gnu")

@@ -41,7 +41,7 @@ Hello, Ruby!
 ```
 <!-- SPDX-SnippetEnd -->
 
-The archive is 20 MB, and 62 MB unpacked. Anyone with an Apple silicon Mac on macOS 14 or newer can run `Greeter`, with no Ruby on their computer.
+The archive is 22 MB, and 74 MB unpacked. Anyone with an Apple silicon Mac on macOS 14 or newer can run `Greeter`, with no Ruby on their computer.
 
 ### What Fledge builds
 

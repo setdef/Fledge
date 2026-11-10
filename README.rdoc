@@ -18,7 +18,7 @@ Fledge in it:
   $ /tmp/Greeter-arm64-darwin/Greeter
   Hello, Ruby!
 
-The archive is 20 MB. Anyone with an Apple silicon Mac on macOS 14 or newer
+The archive is 22 MB. Anyone with an Apple silicon Mac on macOS 14 or newer
 can run it, with no Ruby on their computer.
 
 

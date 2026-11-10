@@ -118,10 +118,14 @@ module Fledge
     # [from] The Fledge::BuiltApp whose runtime and gems the app takes in
     #        place of the runtime archive's (<tt>fledge build --from</tt>),
     #        or +nil+; +runtime+ is then that app's path.
+    # [bundler] The version of the Bundler the app runs with in place of
+    #           the runtime's own, which +files+ install
+    #           (Fledge::AppGems#bundler), or +nil+ for the runtime's.
     # [log] Where warnings go, such as standard error, or +nil+ for
     #       nowhere.
-    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil, from: nil, log: nil)
+    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil, from: nil, bundler: nil, log: nil)
       @app = app
+      @bundler = bundler
       @log = log
       @from = from
       @platform = platform
@@ -197,9 +201,9 @@ module Fledge
     end
 
     # The contents of CONFIG for the app: its entry point, and its
-    # Gemfile when it has one, relative to the +app+ folder, and its
-    # identifier when it has one, which the Windows launcher makes its
-    # AppUserModelID. Its first line, a comment the launcher skips, names
+    # Gemfile when it has one, relative to the +app+ folder, the Bundler
+    # it runs when that is not the runtime's own, and its identifier when
+    # it has one, which the Windows launcher makes its AppUserModelID. Its first line, a comment the launcher skips, names
     # the Fledge release and the platform the app was built with, which
     # <tt>fledge build --from</tt> reads (Fledge::BuiltApp; ADR 032).
     #
@@ -218,14 +222,18 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def launch_config
-      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os), built: "#{VERSION} for #{@platform}")
+      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os), built: "#{VERSION} for #{@platform}",
+        bundler: @bundler)
     end
 
     # The contents of CONFIG for +app+ (#launch_config), which the
     # launcher reads, and on a phone the embedding API's
     # <tt>fledge_ruby_run_app</tt> (ADR 061), whose first line says it was
     # written by fledge build, and, given +built+, which release and for
-    # which platform, such as <tt>0.5.0 for x86_64-linux</tt>. Raises
+    # which platform, such as <tt>0.5.0 for x86_64-linux</tt>. Given
+    # +bundler+, a version, it names the Bundler the app's gems are set up
+    # with, which the build installed in the runtime's gem folder, in place
+    # of the runtime's own (ADR 063). Raises
     # Fledge::Error for a program or Gemfile whose name the file cannot
     # hold.
     #
@@ -261,14 +269,12 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.launch_config(app, system_libraries: [], built: nil)
+    def self.launch_config(app, system_libraries: [], built: nil, bundler: nil)
       by = built ? "fledge build #{built}" : "fledge build"
       programs = app.programs
-      return "# Written by #{by}: what this app's program runs (ADR 005).\n#{single_config(app, system_libraries)}" if programs.size == 1
+      return "# Written by #{by}: what this app's program runs (ADR 005).\n#{single_config(app, system_libraries, bundler)}" if programs.size == 1
 
-      lines = [] # : Array[String]
-      gemfile = app.gemfile
-      lines << "gemfile = #{config_value(gemfile)}" if gemfile
+      lines = bundle_config(app, bundler)
       lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
       lines << "" unless lines.empty?
       programs.each do |program|
@@ -280,14 +286,21 @@ module Fledge
       "# Written by #{by}: what this app's programs run (ADR 024).\n#{lines.join("\n").chomp}\n"
     end
 
-    private_class_method def self.single_config(app, system_libraries) # :nodoc:
-      lines = ["entry = #{config_value(app.entry)}"]
-      gemfile = app.gemfile
-      lines << "gemfile = #{config_value(gemfile)}" if gemfile
+    private_class_method def self.single_config(app, system_libraries, bundler) # :nodoc:
+      lines = ["entry = #{config_value(app.entry)}", *bundle_config(app, bundler)]
       identifier = app.identity.identifier
       lines << "identifier = #{identifier}" if identifier
       lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
       "#{lines.join("\n")}\n"
+    end
+
+    # The lines that name +app+'s Gemfile, if it has one, and +bundler+.
+    private_class_method def self.bundle_config(app, bundler) # :nodoc:
+      gemfile = app.gemfile or return []
+
+      lines = ["gemfile = #{config_value(gemfile)}"]
+      lines << "bundler = #{bundler}" if bundler
+      lines
     end
 
     private_class_method def self.config_value(path) # :nodoc:

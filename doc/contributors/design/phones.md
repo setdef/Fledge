@@ -95,7 +95,7 @@ When the gem's Ruby requires its extension, `load.c`'s `search_required` finds n
 
 ## The embedding API
 
-`runtime/mobile/fledge_ruby.h` is the embedding API, in C, compiled into both runtimes with `fledge_ruby.c`, `output.c`, `apple.c` or `android.c`, and the launcher's `locale.c` and `config.c`. Its header comments are the reference for each function.
+`runtime/mobile/fledge_ruby.h` is the embedding API, in C, compiled into both runtimes with `fledge_ruby.c`, `output.c`, `apple.c` or `android.c`, and the launcher's `locale.c`, `config.c`, and `bundler.c`. Its header comments are the reference for each function.
 
 | Function | What it does |
 |---|---|
@@ -106,7 +106,7 @@ When the gem's Ruby requires its extension, `load.c`'s `search_required` finds n
 
 `fledge_ruby_run` starts Ruby as the desktop launcher does, after Ruby's own `main.c` (`doc/contributors/design/launcher.md`): the locale, `ruby_sysinit`, then `ruby_start_main`, whose callback runs `RUBY_INIT_STACK`, `ruby_init`, and `ruby_run_node(ruby_options(...))`, with `ruby --disable=rubyopt -- SCRIPT ARGS`. Between `ruby_options` and `ruby_run_node` it registers the extensions added so far and puts `$stdout` in sync mode when descriptor 1 is not a terminal (ADR 059). Ruby's prefix is `root`, through `ruby_embed_libruby_path`, so the load path and `Gem.path` are `root/lib/ruby`, which Fledge's RubyGems defaults keep `Gem.path` to. A bare C locale becomes a UTF-8 one, with the launcher's own `fledge_coerce_locale` (ADR 041). Ruby boots once per process, so a second call returns 70 (`FLEDGE_RUBY_SOFTWARE`).
 
-`fledge_ruby_run_app` reads `root/fledge.cfg` with the launcher's reader and runs `root/app/ENTRY`. For an app with a Gemfile it sets `BUNDLE_GEMFILE` to the app's Gemfile, whose `.bundle/config` Bundler then reads as the app's settings, and requires `bundler/setup` from Ruby's own library, which sets `ENV` as `bundle exec` would (`Bundler::Runtime#setup`, `set_bundle_environment`). It returns 66 (`FLEDGE_RUBY_NO_APP`) when `fledge.cfg` or the program is missing, and 70 when the configuration is damaged or Bundler cannot set up the gems.
+`fledge_ruby_run_app` reads `root/fledge.cfg` with the launcher's reader and runs `root/app/ENTRY`. For an app with a Gemfile it sets `BUNDLE_GEMFILE` to the app's Gemfile, whose `.bundle/config` Bundler then reads as the app's settings, and requires `bundler/setup` from Ruby's own library, or from the gem of the Bundler `fledge.cfg` names, as the desktop launcher does (`doc/contributors/design/launcher.md`, "The Bundler environment"), which sets `ENV` as `bundle exec` would (`Bundler::Runtime#setup`, `set_bundle_environment`). It returns 66 (`FLEDGE_RUBY_NO_APP`) when `fledge.cfg` or the program is missing, and 70 when the configuration is damaged or Bundler cannot set up the gems.
 
 Unlike the desktop launcher, neither function sets anything of the environment aside: iOS and Android start an app with an environment of their own, which no person sets. Ruby needs a deep stack: Fledge's hosts run it on a thread with 64 MB.
 

@@ -14,6 +14,8 @@ module Fledge
 
       private def rubygem: (Bundler::LazySpecification spec, Bundler::Source::Rubygems source, target platform) -> LockedGem
 
+      def bundler: (String version) -> LockedGem
+
       private def git_gem: (Bundler::LazySpecification spec, Bundler::Source::Git source) -> GitGem
 
       private def own_gem: (Bundler::LazySpecification spec, Bundler::Source::Path source) -> PathGem?

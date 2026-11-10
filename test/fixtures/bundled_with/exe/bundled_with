@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+#++
+
+# Prints the Bundler that set up this program's gems, and the one
+# BUNDLER_VERSION names for a Ruby it starts: under bundle exec, the
+# Bundler that wrote Gemfile.lock, and so in the built app (ADR 063). Pass
+# a number to exit with it, as examples/hello does, for Delivery.
+require "concurrent"
+
+puts "Bundler #{Bundler::VERSION} set up concurrent-ruby #{Concurrent::VERSION}, and BUNDLER_VERSION is #{ENV.fetch('BUNDLER_VERSION')}"
+exit Integer(ARGV.fetch(0, "0"))

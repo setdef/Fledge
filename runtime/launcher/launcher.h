@@ -17,7 +17,8 @@
  * operating system shares: which variables a person's own Ruby may not
  * pass to an app. config.c holds another: how to read fledge.cfg, which
  * says what the app runs. bundler.c holds a third: how an app with a
- * Gemfile gets the environment bundle exec would give it. locale.c holds
+ * Gemfile gets the Bundler and the environment bundle exec would give
+ * it. locale.c holds
  * how macOS, Linux, and the mobile runtimes choose a UTF-8 locale, for
  * the launcher and for the runtime's bin/ruby (ruby_main.c) alike.
  * relaunch.c holds how bin/ruby hands an app's own program back to the
@@ -56,6 +57,17 @@ int fledge_is_scrubbed(const char *name, int ignore_case);
  */
 char *fledge_bundle_environment_code(const char *variables, size_t length);
 
+/*
+ * Writes into code, which holds size bytes, the Ruby that requires
+ * Bundler, when setup is 0, or that has it set up the app's gems, when
+ * setup is 1, by their paths, as bundle exec's RUBYOPT requires
+ * bundler/setup (bundler.c): the runtime's own Bundler when version is
+ * NULL, and otherwise the Bundler of that version that fledge build
+ * installed in the runtime's gem folder (ADR 063). Returns 0, or -1 when
+ * the code does not fit.
+ */
+int fledge_bundler_code(char *code, size_t size, const char *version, int setup);
+
 /* The file beside the launcher that says what the app runs (config.c). */
 #define FLEDGE_CONFIG "fledge.cfg"
 
@@ -65,13 +77,15 @@ char *fledge_bundle_environment_code(const char *variables, size_t length);
 /*
  * What fledge.cfg says: the program to run, and the Gemfile to set up
  * first, or NULL for none, each relative to the app folder with / between
- * folders, the app's reverse-DNS identifier, or NULL for none, and the
+ * folders, the version of the Bundler that sets it up, or NULL for the
+ * runtime's own, the app's reverse-DNS identifier, or NULL for none, and the
  * libraries its gems load from the Linux distribution, between spaces, or
  * NULL for none.
  */
 struct fledge_config {
     const char *entry;
     const char *gemfile;
+    const char *bundler;
     const char *identifier;
     const char *system_libraries;
 };

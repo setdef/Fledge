@@ -29,7 +29,9 @@ require_relative "parity/mobile"
 # gem-shaped app: examples/my_cool_app with the probe as its
 # exe/my_cool_app, built with its locked gems, against bundle exec ruby
 # exe/my_cool_app on the same Ruby, with the bundle installed there as
-# its developer would install it (bundle install, into GEM_HOME). Each
+# its developer would install it (bundle install, into GEM_HOME); and
+# again for test/fixtures/bundled_with, whose Gemfile.lock names a
+# Bundler no runtime's Ruby ships, which bundle exec runs (ADR 063). Each
 # pair gets the same arguments and the same environment: the caller's,
 # without the caller's own Ruby settings, plus a GEM_HOME, a RUBYOPT, and
 # two markers that stand for a person's. It normalizes paths (the app's
@@ -49,6 +51,9 @@ class Parity
   PROBE = File.join(ROOT, "test", "fixtures", "parity")
   # The gem-shaped app whose exe/my_cool_app the probe stands in for.
   GEM_APP = File.join(ROOT, "examples", "my_cool_app")
+  # The app whose Gemfile.lock names another Bundler than the runtime's,
+  # whose exe/bundled_with the probe stands in for.
+  BUNDLED_WITH_APP = File.join(ROOT, "test", "fixtures", "bundled_with")
   ARGUMENTS = ["one", "two words", "ünïcödé"].freeze
 
   # rv-ruby installs two gems a standard Ruby 4.0.9 does not, which a
@@ -64,6 +69,13 @@ class Parity
   # name where the gems are (ADR 045).
   BUNDLE_LOCATIONS = /\A"(?:GEM_HOME|PATH)"=/
 
+  # The variables bundle exec sets that name where its Bundler is, when
+  # that is a gem bundle install installed for the person, or fledge
+  # build for the app: its bundle program, its bundler/setup, and its lib
+  # folder (Bundler::SharedHelpers#set_bundle_variables, #set_rubyopt, and
+  # #set_rubylib, at Bundler 4.0.20; ADR 063).
+  BUNDLER_VARIABLES = /\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*/
+
   # The facts a C locale decides: the character set Ruby reads text,
   # paths, and arguments in.
   LOCALE_FACTS = ["Encoding.default_external", "Encoding.find('locale')", "Encoding.find('filesystem')"].freeze
@@ -75,7 +87,8 @@ class Parity
           "ruby /path/to/app/main.rb would, since a person may start the app from any folder.")
     end,
     *%w[$0 __FILE__ $PROGRAM_NAME].map do |fact|
-      Justification.new(fact:, reference: [%r{\A"exe/my_cool_app"\z}], app: [%r{\A"<app>/my_cool_app"\z}], checks: %i[bundle],
+      Justification.new(fact:, reference: [%r{\A"exe/(?:my_cool_app|bundled_with)"\z}], app: [%r{\A"<app>/(?:my_cool_app|bundled_with)"\z}],
+        checks: %i[bundle],
         reason: "bundle exec ruby exe/my_cool_app names the program as typed. The launcher runs it by its absolute " \
           "path, since a person may start the app from any folder.")
     end,
@@ -83,6 +96,18 @@ class Parity
       reason: "bundle install put the gems in the person's GEM_HOME; fledge build put the same gems in the runtime's gem " \
         "folder, beside Ruby's own (doc/contributors/design/gems.md, \"Installing into the runtime's gem folder\"). " \
         "Bundler sets up the same gems, in the same order, from each."),
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"#{PERSON_GEMS}/gems/bundler-}], app: [%r{\A"#{APP_GEMS}/gems/bundler-}],
+      checks: %i[bundle],
+      reason: "bundle exec runs the Bundler the lockfile names, which bundle install put in the person's GEM_HOME; " \
+        "fledge build put the same Bundler in the runtime's gem folder, and the app runs it (ADR 063). The same files " \
+        "load, in the same order, from each."),
+    *["ENV", "child ENV"].map do |fact|
+      Justification.new(fact:, reference: [%r{#{BUNDLER_VARIABLES}#{PERSON_GEMS}/gems/bundler-}],
+        app: [%r{#{BUNDLER_VARIABLES}#{APP_GEMS}/gems/bundler-}], checks: %i[bundle],
+        reason: "bundle exec names the Bundler it runs in BUNDLE_BIN_PATH, BUNDLER_SETUP, RUBYLIB, and RUBYOPT: the " \
+          "lockfile's, in the person's GEM_HOME on their computer and in the runtime's gem folder in the app (ADR 063). " \
+          "The rest of each value is the same in both.")
+    end,
     Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/gems/rake-}], checks: %i[bundle],
       reason: "A built app leaves out the Gemfile's development and test groups, as Warbler does, and its Bundler " \
         "sets up the rest (ADR 045); bundle exec on the developer's computer sets up all of them."),
@@ -175,6 +200,7 @@ class Parity
       results << check(" under LC_CTYPE=C", nil, locale: { "LC_CTYPE" => "C" })
     end
     results << (WITHOUT_GEM_APP.include?(platform.name) ? skip_bundle : check_bundle)
+    results << check_bundle(BUNDLED_WITH_APP, "bundled_with", "BundledWith", " of an app whose lockfile names another Bundler")
     results.all?
   end
 
@@ -191,40 +217,38 @@ class Parity
     true
   end
 
-  # The gem-shaped check: the probe as examples/my_cool_app's program,
-  # built with its locked gems, against bundle exec ruby
-  # exe/my_cool_app, with the bundle installed into the person's GEM_HOME.
-  private def check_bundle
+  # The gem-shaped check: the probe as the program exe/PROGRAM of
+  # +source+ (examples/my_cool_app's exe/my_cool_app, unless given), built
+  # with its locked gems as the app +name+, against bundle exec ruby
+  # exe/PROGRAM, with the bundle installed into the person's GEM_HOME by
+  # bundle install, which installs the Bundler the lockfile names, as it
+  # does for a developer.
+  private def check_bundle(source = GEM_APP, program = "my_cool_app", name = "MyCoolApp", label = " of a gem-shaped app with bundle exec")
     env = environment
-    project = gem_project("gem-app")
-    reference = gem_project("reference-gem-app")
+    project = Parity.gem_probe(File.join(@work, "#{program}-app"), source:, program:)
+    reference = Parity.gem_probe(File.join(@work, "reference-#{program}-app"), source:, program:)
     bundle = File.join(File.dirname(@ruby), "bundle")
     install = [@ruby, bundle, "install", "--quiet"]
     system(env.merge("BUNDLE_FROZEN" => "true"), *install, chdir: reference, unsetenv_others: true, exception: true)
-    launcher = build_app(File.join(project, "exe", "my_cool_app"), "MyCoolApp")
-    expected = run([@ruby, bundle, "exec", @ruby, "exe/my_cool_app", *ARGUMENTS], reference, env)
+    launcher = build_app(File.join(project, "exe", program), name)
+    expected = run([@ruby, bundle, "exec", @ruby, "exe/#{program}", *ARGUMENTS], reference, env)
     actual = run([launcher, *ARGUMENTS], File.join(File.dirname(launcher), "app"), env)
     differences = Reports.compare(Reports.normalize(expected, work: @work), Reports.normalize(actual, work: @work),
       platform: platform.name, check: :bundle)
-    report(" of a gem-shaped app with bundle exec", env, differences)
+    report(label, env, differences)
     differences.all?(&:justified?)
   end
 
-  # A copy of examples/my_cool_app in the work folder, named +name+, with
-  # the probe as its exe/my_cool_app.
-  private def gem_project(name)
-    Parity.gem_probe(File.join(@work, name))
-  end
-
   # Writes the gem-shaped probe into the new folder +project+: a copy of
-  # examples/my_cool_app, without the developer's .bundle, with the probe
-  # as its exe/my_cool_app, and with +name+, when given, as the app's name
-  # in its fledge.yml. Returns +project+. CI builds one for Delivery, and
-  # test/built_app_test.rb for the built app's tests.
-  def self.gem_probe(project, name: nil)
-    FileUtils.cp_r(GEM_APP, project)
+  # +source+ (examples/my_cool_app, unless given), without the
+  # developer's .bundle, with the probe as its exe/PROGRAM, and with
+  # +name+, when given, as the app's name in its fledge.yml. Returns
+  # +project+. CI builds one for Delivery, and test/built_app_test.rb for
+  # the built app's tests.
+  def self.gem_probe(project, name: nil, source: GEM_APP, program: "my_cool_app")
+    FileUtils.cp_r(source, project)
     FileUtils.rm_rf(File.join(project, ".bundle"))
-    FileUtils.cp(File.join(PROBE, "main.rb"), File.join(project, "exe", "my_cool_app"))
+    FileUtils.cp(File.join(PROBE, "main.rb"), File.join(project, "exe", program))
     File.write(File.join(project, "fledge.yml"), "name: #{name}\n") if name
     project
   end

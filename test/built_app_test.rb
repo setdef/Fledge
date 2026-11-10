@@ -537,6 +537,19 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # ADR 063: an app whose Gemfile.lock names a Bundler the runtime's Ruby
+  # does not ship runs with that Bundler, as bundle exec does, and tells a
+  # Ruby it starts so, whatever BUNDLER_VERSION the person has.
+  def test_an_app_runs_the_bundler_its_lockfile_names
+    Dir.mktmpdir do |dir|
+      program = built(File.join(Parity::BUNDLED_WITH_APP, "exe", "bundled_with"))
+
+      out, err, status = run_app({ "HOME" => dir, "BUNDLER_VERSION" => "2.1.0" }, program, "4")
+
+      assert_equal ["Bundler 4.0.19 set up concurrent-ruby 1.3.8, and BUNDLER_VERSION is 4.0.19\n", "", 4], [out, err, status.exitstatus]
+    end
+  end
+
   def test_a_gem_shaped_app_without_its_program_exits_with_ex_noinput
     program = File.join(File.realpath(File.dirname(my_cool_app)), "app", "exe", "my_cool_app")
     File.rename(program, "#{program}.away")

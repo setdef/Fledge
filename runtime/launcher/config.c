@@ -16,11 +16,15 @@
  *   # Written by fledge build: what this app's program runs (ADR 005).
  *   entry = exe/my_cool_app
  *   gemfile = Gemfile
+ *   bundler = 4.0.19
  *   identifier = com.example.MyCoolApp
  *
  * entry is the program to run and gemfile the project's Gemfile, which
  * the launcher has Bundler set up first; both are relative to the app's
- * app folder, with / between folders. identifier is the app's reverse-DNS
+ * app folder, with / between folders. bundler, beside gemfile, is the
+ * version of the Bundler that sets it up when that is not the runtime's
+ * own (ADR 063), whose gem fledge build installed: letters, digits, and
+ * dots, as a gem's version is written. identifier is the app's reverse-DNS
  * name, which the Windows launcher makes its AppUserModelID (ADR 008):
  * letters, digits, hyphens, and dots, at most FLEDGE_IDENTIFIER_MAX
  * characters. system_libraries, on Linux, names the libraries the app's
@@ -49,8 +53,9 @@
  *
  * Each copy reads the section whose name is its own file's name. A
  * section holds only entry and identifier, and a file with sections
- * holds neither outside them. A copy renamed by hand finds no section,
- * which is a missing input, as a missing entry is.
+ * holds neither outside them. gemfile, bundler, and system_libraries are
+ * the whole app's, so they stay outside the sections. A copy renamed by
+ * hand finds no section, which is a missing input, as a missing entry is.
  */
 
 #include "launcher.h"
@@ -105,6 +110,23 @@ safe_libraries(const char *names)
     return 1;
 }
 
+/* Whether version is one fledge build writes of a Bundler: 1 to 32
+ * letters, digits, and dots, as Gem::Version writes one, so that it
+ * can name a gem's folder and stand in the launcher's Ruby. */
+static int
+safe_version(const char *version)
+{
+    size_t length = strlen(version);
+
+    if (length == 0 || length > 32) return 0;
+    for (const char *letter = version; *letter != '\0'; letter++) {
+        int allowed = (*letter >= 'a' && *letter <= 'z') || (*letter >= 'A' && *letter <= 'Z') ||
+                      (*letter >= '0' && *letter <= '9') || *letter == '.';
+        if (!allowed) return 0;
+    }
+    return 1;
+}
+
 /* Whether identifier is one fledge build writes: 1 to FLEDGE_IDENTIFIER_MAX
  * letters, digits, hyphens, and dots. */
 static int
@@ -144,6 +166,7 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
 
     config->entry = NULL;
     config->gemfile = NULL;
+    config->bundler = NULL;
     config->identifier = NULL;
     config->system_libraries = NULL;
 
@@ -183,8 +206,7 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
         const char *key = trim(content);
         const char *value = trim(equals + 1);
         const char **slot;
-        int is_path = 1;
-        int is_libraries = 0;
+        enum { PATH, IDENTIFIER, LIBRARIES, VERSION } kind = PATH;
         if (strcmp(key, "entry") == 0) {
             slot = &config->entry;
         } else if (strcmp(key, "gemfile") == 0) {
@@ -193,30 +215,40 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
                 return -1;
             }
             slot = &config->gemfile;
+        } else if (strcmp(key, "bundler") == 0) {
+            if (sectioned) {
+                *problem = "names bundler inside a program's section";
+                return -1;
+            }
+            slot = &config->bundler;
+            kind = VERSION;
         } else if (strcmp(key, "identifier") == 0) {
             slot = &config->identifier;
-            is_path = 0;
+            kind = IDENTIFIER;
         } else if (strcmp(key, "system_libraries") == 0) {
             if (sectioned) {
                 *problem = "names system_libraries inside a program's section";
                 return -1;
             }
             slot = &config->system_libraries;
-            is_path = 0;
-            is_libraries = 1;
+            kind = LIBRARIES;
         } else {
             *problem = "has a key this app's program does not know";
             return -1;
         }
-        if (is_path && !safe_path(value)) {
+        if (kind == PATH && !safe_path(value)) {
             *problem = "names a path outside the app folder";
             return -1;
         }
-        if (is_libraries && !safe_libraries(value)) {
+        if (kind == LIBRARIES && !safe_libraries(value)) {
             *problem = "names a system library that is not a file name";
             return -1;
         }
-        if (!is_path && !is_libraries && !safe_identifier(value)) {
+        if (kind == VERSION && !safe_version(value)) {
+            *problem = "names a Bundler that is not a version";
+            return -1;
+        }
+        if (kind == IDENTIFIER && !safe_identifier(value)) {
             *problem = "has an identifier that is not reverse-DNS";
             return -1;
         }

@@ -95,7 +95,7 @@ module Bundler
       def remotes: () -> Array[URI::Generic]
 
       class Remote
-        def initialize: (URI::Generic uri) -> void
+        def initialize: (URI::Generic | String uri) -> void
 
         def uri: () -> URI::Generic
 

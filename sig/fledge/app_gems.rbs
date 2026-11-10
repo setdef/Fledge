@@ -12,12 +12,17 @@ module Fledge
     @compiler: NativeBuild
     @path_files: Hash[String, String]
     @extension_packages: Hash[locked_gem, package]
+    @bundler: String?
 
     def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild) -> void
 
     def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
 
     def for: (target platform, runtime: RuntimeContents) -> Array[Entry]
+
+    attr_reader bundler: String?
+
+    private def locked_bundler: (RuntimeContents runtime) -> LockedGem?
 
     def extension_packages: () -> Hash[locked_gem, package]
 

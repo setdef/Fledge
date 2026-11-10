@@ -23,7 +23,7 @@ Each app carries the same facts in `notices/NOTICES.txt` (every component, its l
 
 **A windowed app's installers** (ADR 009) hold the app, its `notices/` with them, and on Windows and Linux more of the runtime's components, which its section lists as shipping in `tools/`: a Windows app's setup program is made of NSIS's stub and plug-ins (the zlib license, which asks nothing of a binary) and compressed with NSIS's LZMA module, which is under the Common Public License 1.0: its section 3 asks that a program distributed in object code say that its source is available and how to get it, and Fledge does both, putting NSIS's source in the app's `notices/sources/nsis/`, which the setup program installs with the app, publishing it in `fledge-runtime-VERSION-x64-mingw-ucrt-lgpl-sources.tar.gz` beside each Windows runtime, and saying so in the app's `notices/NOTICES.txt`; and a Linux app's AppImage begins with AppImage's runtime (MIT), as AppImage releases it, with libfuse (LGPL-2.1, as [below](#libraries-under-the-lgpl) says), squashfuse (BSD-2-Clause), zstd (BSD-3-Clause), zlib, mimalloc, and musl (MIT) linked in. A macOS app's disk image holds nothing but the app. Each installer's notices are the app's `notices/`, which it holds: `NOTICES.txt`, and on Linux and Windows the sources in `notices/sources/`.
 
-**Fledge's own files** in an app are `launcher`, the program your app's users run, renamed for your app; `bin/ruby`, the Ruby that `RbConfig.ruby` names, which is Ruby's `main.c` with Fledge's code compiled in; and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb`. Fledge's code in them is Fledge's work, copyright 2026 setdef, under the MIT License, which asks only that its copyright notice and permission notice be included in all copies; `notices/NOTICES.txt` names those files and carries Fledge's license text, so keeping `notices/` meets it.
+**Fledge's own files** in an app are `launcher`, the program your app's users run, renamed for your app; `bin/ruby`, the Ruby that `RbConfig.ruby` names, which is Ruby's `main.c` with Fledge's code compiled in; and `lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb`. Fledge's code in them is Fledge's work, copyright 2026 setdef, under the MIT License, which asks only that its copyright notice and permission notice be included in all copies; `notices/NOTICES.txt` names those files and carries Fledge's license text, so keeping `notices/` meets it.
 
 ## On iOS and Android
 
@@ -35,20 +35,21 @@ For a phone, `fledge build ios` and `fledge build android` write a project that 
 
 Fledge takes no position on the licenses of the gems your app depends on. Which gems your app uses, and what their licenses ask of you, are your choice and your responsibility, as they are however else you ship a Ruby app. `fledge build` ships every gem your `Gemfile.lock` locks for each platform (leaving out its `development` and `test` groups), whatever its license, whether or not it declares one, and whatever its compiled files hold. Everything else on this page, the policy and the obligations alike, is about what Fledge itself puts into your app: its runtime.
 
-Each gem ships as RubyGems or Bundler installs it, with all of its own files, its license files among them, in the app's gem folder (`lib/ruby/gems/4.0.0/` on macOS and Linux, `ruby\lib\ruby\gems\4.0.0\` on Windows), and its specification, which declares its license, in that folder's `specifications/`. Fledge writes no notices of its own for your gems: `bundle licenses` lists the license each one's specification declares, and each gem's own notices say what it asks of you. `fledge build` refuses a gem only when it would not run where the app goes: one with an extension that does not compile, one whose `required_ruby_version` excludes Ruby 4.0.9, or one whose compiled files need a library that neither the operating system, nor the runtime, nor the gem itself provides.
+Each gem ships as RubyGems or Bundler installs it, with all of its own files, its license files among them, in the app's gem folder (`lib/ruby/gems/4.1.0+5/` on macOS and Linux, `ruby\lib\ruby\gems\4.1.0+6\` on Windows, each named for its Ruby's library), and its specification, which declares its license, in that folder's `specifications/`. Fledge writes no notices of its own for your gems: `bundle licenses` lists the license each one's specification declares, and each gem's own notices say what it asks of you. `fledge build` refuses a gem only when it would not run where the app goes: one with an extension that does not compile, one whose `required_ruby_version` excludes Ruby 4.1.0-preview1, or one whose compiled files need a library that neither the operating system, nor the runtime, nor the gem itself provides.
 
 ## macOS on Apple Silicon (arm64-darwin)
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/arm64-darwin23/psych.bundle |
+| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/digest/blake3.bundle (on iOS and Android, into libfledgeruby) |
+| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
-| OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/arm64-darwin23/openssl.bundle |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/openssl.bundle |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
 
-Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -56,7 +57,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** Nothing beyond keeping the notices: no LGPL library ships on this platform.
@@ -65,9 +66,10 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/x86_64-linux/digest/blake3.so (on iOS and Android, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -75,19 +77,19 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
 | libxcrypt's source code, as its authors released it, and how the runtime's copy was built | 4.5.2 | `LGPL-2.1-or-later` | notices/sources/libxcrypt/, in every app |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/x86_64-linux/psych.so |
+| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/x86_64-linux/psych.so |
 | mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
-| OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/x86_64-linux/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux/openssl.so |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
-| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/x86_64-linux/zlib.so |
+| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/x86_64-linux/zlib.so |
 | zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
 | Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
 
-Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -95,7 +97,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** keep the notices, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.11.0-x86_64-linux-lgpl-sources.tar.gz`.
@@ -104,9 +106,10 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/aarch64-linux/digest/blake3.so (on iOS and Android, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -114,19 +117,19 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
 | libxcrypt's source code, as its authors released it, and how the runtime's copy was built | 4.5.2 | `LGPL-2.1-or-later` | notices/sources/libxcrypt/, in every app |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/aarch64-linux/psych.so |
+| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/aarch64-linux/psych.so |
 | mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
-| OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.0.0/aarch64-linux/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux/openssl.so |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
-| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/aarch64-linux/zlib.so |
+| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/aarch64-linux/zlib.so |
 | zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
 | Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
 
-Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -134,7 +137,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** keep the notices, and meet the LGPL for libfuse (linked into AppImage's runtime) and for libxcrypt (`lib/libcrypt.so.2`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.11.0-aarch64-linux-lgpl-sources.tar.gz`.
@@ -143,27 +146,28 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/digest/blake3.so (on iOS and Android, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libfuse's source code, as its authors released it | 3.15.0 | `LGPL-2.1-only` | notices/sources/libfuse/, in every app |
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/x86_64-linux-musl/psych.so |
+| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/psych.so |
 | mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
-| OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.0.0/x86_64-linux-musl/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/openssl.so |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby |
-| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/x86_64-linux-musl/zlib.so |
+| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/zlib.so |
 | zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
 | Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
 
-Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -171,7 +175,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** keep the notices, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.11.0-x86_64-linux-musl-lgpl-sources.tar.gz`.
@@ -180,27 +184,28 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/digest/blake3.so (on iOS and Android, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libfuse's source code, as its authors released it | 3.15.0 | `LGPL-2.1-only` | notices/sources/libfuse/, in every app |
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.0.0/aarch64-linux-musl/psych.so |
+| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/psych.so |
 | mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
-| OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.0.0/aarch64-linux-musl/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/openssl.so |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby |
-| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.0.0/aarch64-linux-musl/zlib.so |
+| zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/zlib.so |
 | zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
 | Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
 
-Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -208,7 +213,7 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** keep the notices, and meet the LGPL for libfuse (linked into AppImage's runtime), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.11.0-aarch64-linux-musl-lgpl-sources.tar.gz`.
@@ -217,29 +222,32 @@ Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.1.0+6/rubygems/defaults/operating_system.rb |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+6/x64-mingw-ucrt/digest/blake3.so (on iOS and Android, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs | 13 to 16 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built |
+| GCC's runtime library (libgcc_s_seh-1.dll), from MSYS2's libgcc 16.2.0-6 | 16.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | ruby/bin/ruby_builtin_dlls/libgcc_s_seh-1.dll, a shared library digest/blake3.so loads |
 | GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | notices/sources/gmp/, in every app |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
-| libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
+| libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/ |
 | LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe and launcherw.exe |
 | llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import | 23.1.4 | `Apache-2.0 WITH LLVM-exception` | tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive |
-| Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
+| Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.1.0+6/etc/ssl/cert.pem, unmodified |
 | NSIS's source code, as its authors released it | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | notices/sources/nsis/, in every app |
 | NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and in its folder and archive only when fledge.yml sets build_tools |
-| OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
+| OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/ and ruby/lib/ruby/4.1.0+6/lib/ |
 | rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and in its folder and archive only when fledge.yml sets build_tools |
-| Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL) | 4.0.9 | `GPL-1.0-or-later OR Artistic-1.0-Perl` | compiled into ruby/bin/x64-ucrt-ruby400.dll |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
-| RubyInstaller's runtime files, manifests, and tools | 4.0.9-1 | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
+| Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL) | 4.1.0dev (master 0e25874222) | `GPL-1.0-or-later OR Artistic-1.0-Perl` | compiled into Ruby's DLL in ruby/bin/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0dev (master 0e25874222) | `Ruby OR BSD-2-Clause` | compiled into Ruby's DLL in ruby/bin/, and its standard library in ruby/lib/ruby/ |
+| RubyInstaller's runtime files, manifests, and tools | head (92a692c, 2026-11-10) | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
 | The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL | 14.0.0 | `LicenseRef-MinGW-w64-runtime` | compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/ |
-| winpthreads (libwinpthread-1.dll), from MinGW-w64 | 14.0.0 | `MIT AND BSD-3-Clause` | a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports |
-| zlib (zlib1.dll) | 1.3.2 | `Zlib` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
+| winpthreads (libwinpthread-1.dll), from MinGW-w64 | 14.0.0 | `MIT AND BSD-3-Clause` | a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/ |
+| zlib (libz-1.dll), from MSYS2's zlib 1.4-2 | 1.4 | `Zlib` | a shared library in ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/, beside zlib.so, which imports it |
+| zlib (zlib1.dll) | 1.4 | `Zlib` | a shared library in ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/ |
 | zlib, linked into llvm-readobj | 1.3.2 | `Zlib` | linked into tools/llvm-readobj.exe |
 | Zstandard (libzstd), linked into llvm-readobj | 1.5.7 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/llvm-readobj.exe |
 
-Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -247,7 +255,7 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** keep the notices, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.11.0-x64-mingw-ucrt-lgpl-sources.tar.gz`.
@@ -256,27 +264,30 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb |
+| Fledge launcher and RubyGems defaults | 0.11.0 | `MIT` | the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and ruby/lib/ruby/4.1.0+6/rubygems/defaults/operating_system.rb |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+6/aarch64-mingw-ucrt/digest/blake3.so (on iOS and Android, into libfledgeruby) |
 | GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | notices/sources/gmp/, in every app |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
-| libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
+| libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/ |
 | LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe and launcherw.exe |
 | llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import | 23.1.4 | `Apache-2.0 WITH LLVM-exception` | tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive |
-| Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.0.0/etc/ssl/cert.pem, unmodified |
+| Mozilla's CA certificates, as MSYS2 packages them | Mozilla's data of 2026-10-21 | `MPL-2.0` | ruby/lib/ruby/4.1.0+6/etc/ssl/cert.pem, unmodified |
 | NSIS's source code, as its authors released it | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | notices/sources/nsis/, in every app |
 | NSIS, whose makensis, stubs, plug-ins, and Modern UI make an app's setup program | 3.13 | `Zlib AND bzip2-1.0.6 AND CPL-1.0` | tools/nsis/, which fledge build compiles the app's setup program with, and in its folder and archive only when fledge.yml sets build_tools |
-| OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.0.0/aarch64-mingw-ucrt/ and ruby/lib/ruby/4.0.0/lib/ |
+| OpenSSL (libcrypto-3-x64.dll, libssl-3-x64.dll, and its engines and providers) | 3.6.5 | `Apache-2.0` | shared libraries in ruby/lib/ruby/4.1.0+6/aarch64-mingw-ucrt/ and ruby/lib/ruby/4.1.0+6/lib/ |
 | rcedit, which fledge build runs to write an app's version information and icon into its program | 2.0.0 | `MIT` | tools/rcedit.exe, which fledge build runs on the app's program, and in its folder and archive only when fledge.yml sets build_tools |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
-| RubyInstaller's runtime files, manifests, and tools | 4.0.9-1 | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
+| Ruby's win32/win32.c, compiled into Ruby's DLL (Ruby's LEGAL) | 4.1.0dev (master 0e25874222) | `GPL-1.0-or-later OR Artistic-1.0-Perl` | compiled into Ruby's DLL in ruby/bin/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0dev (master 0e25874222) | `Ruby OR BSD-2-Clause` | compiled into Ruby's DLL in ruby/bin/, and its standard library in ruby/lib/ruby/ |
+| RubyInstaller's runtime files, manifests, and tools | head (92a692c, 2026-11-10) | `BSD-3-Clause` | the files RubyInstaller adds to Ruby (ruby/LICENSE.txt, the DLL manifests, ruby/lib/ruby/site_ruby/) |
 | The MinGW-w64 runtime (CRT startup code), linked into the launcher and every DLL | 14.0.0 | `LicenseRef-MinGW-w64-runtime` | compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/ |
-| winpthreads (libwinpthread-1.dll), from MinGW-w64 | 14.0.0 | `MIT AND BSD-3-Clause` | a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ that nothing imports |
-| zlib (zlib1.dll) | 1.3.2 | `Zlib` | a shared library in ruby/lib/ruby/4.0.0/x64-mingw-ucrt/ |
+| winpthreads (libwinpthread-1.dll), from MinGW-w64 | 14.0.0 | `MIT AND BSD-3-Clause` | a shared library in ruby/bin/ruby_builtin_dlls/ and ruby/lib/ruby/4.1.0+6/aarch64-mingw-ucrt/ |
+| zlib (libz-1.dll), from MSYS2's zlib 1.4-2 | 1.4 | `Zlib` | a shared library in ruby/lib/ruby/4.1.0+6/aarch64-mingw-ucrt/, beside zlib.so, which imports it |
+| zlib (zlib1.dll) | 1.4 | `Zlib` | a shared library in ruby/lib/ruby/4.1.0+6/aarch64-mingw-ucrt/ |
 | zlib, linked into llvm-readobj | 1.3.2 | `Zlib` | linked into tools/llvm-readobj.exe |
 | Zstandard (libzstd), linked into llvm-readobj | 1.5.7 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/llvm-readobj.exe |
 
-Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -284,7 +295,7 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, win32ole, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** keep the notices, and meet the LGPL for GNU MP (`ruby/bin/ruby_builtin_dlls/libgmp-10.dll`), as [below](#libraries-under-the-lgpl) says. The source is in every app, in `notices/sources/`, and in Fledge's release as `fledge-runtime-0.11.0-aarch64-mingw-ucrt-lgpl-sources.tar.gz`.
@@ -294,21 +305,22 @@ Its 85 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | Component | Version | License | How it ships |
 |---|---|---|---|
 | Fledge's embedding API, and the library and packages it is built into | 0.11.0 | `MIT` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
-| Fledge's RubyGems defaults | 0.11.0 | `MIT` | lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
+| Fledge's RubyGems defaults | 0.11.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin/digest/blake3.so (on iOS and Android, into libfledgeruby) |
 | libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 
-Its 83 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 80 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
-- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, psych, rake, repl_type_completor, syntax_suggest, typeprof
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** Nothing beyond keeping the notices: no LGPL library ships on this platform.
@@ -318,23 +330,24 @@ Its 83 default and bundled gems, the ones every Ruby 4.0.9 installs, by the lice
 | Component | Version | License | How it ships |
 |---|---|---|---|
 | Fledge's embedding API, and the library and packages it is built into | 0.11.0 | `MIT` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
-| Fledge's RubyGems defaults | 0.11.0 | `MIT` | lib/ruby/4.0.0/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
+| Fledge's RubyGems defaults | 0.11.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/digest/blake3.so (on iOS and Android, into libfledgeruby) |
 | libffi, compiled into the Android runtime's library for the fiddle gem | 3.5.2 | `MIT` | compiled into libfledgeruby.so |
 | libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
 | LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's library by the NDK | r30 | `Apache-2.0 WITH LLVM-exception` | compiled into libfledgeruby.so |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.0.9 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on Windows, ruby/bin/x64-ucrt-ruby400.dll; on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 
-Its 84 default and bundled gems, the ones every Ruby 4.0.9 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
-- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, psych, rake, repl_type_completor, syntax_suggest, typeprof
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, io-wait, ipaddr, irb, logger, matrix, mutex_m, net-ftp, net-http, net-imap, net-pop, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** Nothing beyond keeping the notices: no LGPL library ships on this platform.

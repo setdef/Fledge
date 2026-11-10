@@ -4,8 +4,8 @@
  */
 
 /*
- * Fledge's embedding API for Ruby on iOS, iPadOS, and Android (ADR 011,
- * section 5).
+ * Fledge's embedding API for Ruby on iOS, iPadOS, and Android (ADR 061;
+ * doc/contributors/design/phones.md, "The embedding API").
  *
  * A phone runs no program of Fledge's own: the app is the developer's,
  * or a framework's (Lota's SDL_main, Tokra's Tauri host), and Ruby is a
@@ -59,7 +59,7 @@ int fledge_ruby_run(const char *root, const char *script, int argc, char *const 
 
 /*
  * Runs the app fledge build put in root, as Fledge's desktop launcher
- * runs one (ADR 005): root/fledge.cfg names its program, in root/app,
+ * runs one (ADR 061): root/fledge.cfg names its program, in root/app,
  * and, for an app with a Gemfile, the Gemfile whose gems Bundler sets up
  * before the program runs, as bundle exec would, with Bundler's settings
  * from root/app/.bundle/config. Otherwise as fledge_ruby_run, whose

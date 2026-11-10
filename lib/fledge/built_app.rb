@@ -20,7 +20,8 @@ require_relative "assembly"
 
 module Fledge
   # An app <tt>fledge build</tt> wrote, which <tt>fledge build --from</tt>
-  # builds another app from (ADR 032, section 2).
+  # builds another app from (ADR 032;
+  # doc/contributors/design/desktop-apps.md, "Building from a built app").
   #
   # A built app already holds a runtime and the gems its Gemfile.lock
   # locks, each built for its platform. A project that needs no other
@@ -33,7 +34,7 @@ module Fledge
   # the Fledge release and the platform that built it
   # (Assembly#launch_config), and refuses an app another release built,
   # since its launcher and its <tt>fledge.cfg</tt> are that release's, or
-  # one for another platform (ADR 032, section 6). It hands
+  # one for another platform (ADR 032). It hands
   # Fledge::Assembly what a runtime archive would give (#unpack): the
   # app's runtime and gems, without its project, its <tt>fledge.cfg</tt>,
   # its programs, or the files that carry its identity; and the files

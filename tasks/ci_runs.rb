@@ -14,7 +14,7 @@ require "uri"
 #
 # A release tags a commit only once CI has passed on it (AGENTS.md,
 # Releasing), and publishes the runtimes CI built from that commit's
-# parent (ADR 014). Running all of CI again on the tag proves nothing
+# parent (ADR 053). Running all of CI again on the tag proves nothing
 # the push already proved, takes half an hour, and draws every flaky
 # mirror and runner a second time; 0.2.0 was never published because
 # that second run failed on a download unrelated to its runtimes.

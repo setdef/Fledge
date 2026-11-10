@@ -28,7 +28,7 @@
  * It differs from main.c in two calls. First, when its first argument is
  * the program a launcher of this app runs, as in a restart with exec
  * RbConfig.ruby, $0, *ARGV, it runs that launcher in its place
- * (fledge_relaunch, ADR 026, section 3), so the restarted app boots as
+ * (fledge_relaunch, ADR 026), so the restarted app boots as
  * it booted the first time. Second, where main.c sets LC_CTYPE from
  * the environment, it calls the launcher's fledge_coerce_locale, which
  * does the same and then turns a bare C or POSIX locale into a UTF-8
@@ -38,7 +38,7 @@
  * person has, which for an app a desktop started is C; with main.c's
  * setlocale they would read the app's folder, whose name need not be
  * ASCII, as US-ASCII, and Bundler would fail to set up the app's gems
- * (ADR 026, section 1).
+ * (ADR 041).
  *
  * Its license is Ruby's, like the rest of what it is made of; the
  * runtime's notices/ruby/ covers it. relaunch.c, config.c, locale.c, and

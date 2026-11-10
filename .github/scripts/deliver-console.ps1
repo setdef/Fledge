@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of the console on Windows (ADR 015): runs the console probe
+# Delivery of the console on Windows (ADR 003;
+# doc/contributors/design/parity.md, "Console checks"): runs the console probe
 # (test/fixtures/console) in a console of its own, as a person runs an
 # app in a console window, and ends it as they would:
 #
@@ -22,11 +23,13 @@
 #              with no handler of its own is ended at once, with the status
 #              STATUS_CONTROL_C_EXIT (0xC000013A), before any ensure clause
 #              or at_exit hook runs. GitHub's runners would not close a
-#              console window from a script (ADR 015), but ClosePseudoConsole
+#              console window from a script
+#              (doc/contributors/design/parity.md, "Console checks"), but
+#              ClosePseudoConsole
 #              does the same to a program on a pseudoconsole, as Windows
 #              Terminal does when a tab closes.
 #
-# And a windowed app (ADR 008) started from a console, as a person types
+# And a windowed app (ADR 037) started from a console, as a person types
 # its name into one: like rubyw.exe, it gets no console, and the console
 # does not wait for it.
 #

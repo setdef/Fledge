@@ -13,5 +13,5 @@ Not sent, and Fledge needs nothing from it. The maintainer may relay it. Pin: Fl
 For information only: Rooibos's first app builds with Fledge, and you may depend on a tag if you want CI to do it. Rooibos depends on Fledge; Fledge depends on nothing of Rooibos's.
 
 - Put `fledge` in the `development` group of a ship project's Gemfile, pinned by git tag (`gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.0.1.pre.17"`), and run `bundle exec fledge build` on a runner of each platform.
-- What you may rely on (the command, `fledge.yml`, exit statuses, output) is in `doc/contributors/adr/019.md`.
+- What you may rely on (the command, `fledge.yml`, exit statuses, output) is in `doc/contributors/design/public-interface.md`, "A framework wrapper's view".
 - A working example workflow, `.github/workflows/wrapper.yml` with `.github/scripts/deliver-tui.py` and `deliver-tui.ps1`, is on branch `experiment/wrapper` of setdef/Fledge, for copying.

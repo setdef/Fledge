@@ -12,7 +12,8 @@
 # every OS, so one run answers for all three.
 #
 # A pushed pin commit, which changes only lib/fledge/SHA256SUMS (ADR
-# 014, section 5), runs only the gate and a check that its pins match
+# 053; doc/contributors/design/releases.md, "A pin commit's short CI"),
+# runs only the gate and a check that its pins match
 # the runtimes of its parent's run; every other job is skipped (the
 # Changes job). Every other commit runs everything below.
 #
@@ -54,9 +55,10 @@
 #
 # release.yml, on a v* tag, publishes the runtimes this workflow built
 # from the release commit, once it has passed on trunk on the release
-# commit and on the pin commit tagged (ADR 014). It looks those runs up
+# commit and on the pin commit tagged (ADR 053). It looks those runs up
 # and does not run this again. Nothing here, or ever, publishes to
-# RubyGems.org (ADR 001).
+# RubyGems.org (doc/contributors/design/releases.md, "Where releases
+# are").
 
 name: CI
 
@@ -166,7 +168,8 @@ jobs:
             exit 1
           fi
 
-  # A pin commit (ADR 014, section 5) changes only lib/fledge/SHA256SUMS
+  # A pin commit (ADR 053; doc/contributors/design/releases.md, "A pin
+  # commit's short CI") changes only lib/fledge/SHA256SUMS
   # from a parent whose run built and delivered every runtime it pins.
   # No runtime, app, or check below reads that file, so a pushed pin
   # commit runs the gate, which does, and this job, and every other job
@@ -259,7 +262,7 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
           # Cross-compiled; the runner's 7z unpacks RubyInstaller's archive
-          # and its gpgv checks the signature. Windows on ARM64 too (ADR 018).
+          # and its gpgv checks the signature. Windows on ARM64 too (ADR 035).
           - os: ubuntu-24.04
             platform: x64-mingw-ucrt
           - os: ubuntu-24.04
@@ -462,7 +465,8 @@ jobs:
           path: tmp/runtime/${{ matrix.platform }}/logs
           retention-days: 14
 
-  # Delivery on phones (ADR 011, section 6; ADR 012): apps built as a
+  # Delivery on phones (doc/contributors/design/phones.md, "Parity on a
+  # phone"; ADR 012): apps built as a
   # developer builds them, with fledge build ios, and their Xcode projects
   # built with xcodebuild for the Simulator and, unsigned, for devices, to
   # show the device slice links and the privacy manifest names every
@@ -543,7 +547,8 @@ jobs:
   # KB alignment and target API; each release bundle signed with a
   # throwaway upload key, validated with bundletool, made into the APKs
   # Play would serve, which are checked the same way and against Play's
-  # size limit (ADR 012, section 9), and each app run from its debug APK
+  # size limit (doc/contributors/design/phones.md, "The Android App Bundle
+  # check"), and each app run from its debug APK
   # and again from its bundle's APKs, as Play installs them. No GitHub-hosted
   # runner boots an arm64-v8a emulator with hardware acceleration (ADR
   # 011), so the arm64-v8a library is built and checked but run on no
@@ -778,7 +783,8 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: bundle exec rake parity
 
-      # ADR 015: Ctrl-C and a hangup, in a terminal of the probe's own,
+      # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
+      # Ctrl-C and a hangup, in a terminal of the probe's own,
       # end ruby main.rb as the console Delivery expects of a built app.
       - name: Interrupt ruby main.rb in a terminal
         run: .github/scripts/deliver-console.sh --reference "$(command -v ruby)" test/fixtures/console/main.rb
@@ -828,7 +834,7 @@ jobs:
       full: "${{ startsWith(github.event.head_commit.message, 'chore: release ') }}"
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
-  # Ruby, which the runtime ships too (ADR 001), through setup-ruby at
+  # Ruby, which the runtime ships too (ADR 035), through setup-ruby at
   # mise.toml's pin. test/built_app_test.rb unpacks hello and my_cool_app
   # with Windows' own Expand-Archive, from the .zip Windows' own tar
   # wrote, and runs Hello.exe and MyCoolApp.exe.
@@ -843,7 +849,7 @@ jobs:
         include:
           - os: windows-latest
             platform: x64-mingw-ucrt
-          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 018).
+          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 035).
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
     steps:
@@ -896,7 +902,8 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: bundle exec rake parity
 
-      # ADR 015: Ctrl-C on two code pages and closing the console end
+      # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
+      # Ctrl-C on two code pages and closing the console end
       # ruby.exe main.rb as the console Delivery expects of a built app,
       # and rubyw.exe, typed into a console, gets none.
       - name: Interrupt ruby.exe main.rb in a console, and close it
@@ -915,14 +922,15 @@ jobs:
   # with_unbundled_env give a child; examples/my_cool_app, whose gems come
   # from RubyGems.org, each checked against its Gemfile.lock's checksum,
   # precompiled for the platform (ADR 005); examples/windowed_app, a
-  # windowed app (ADR 008) with its installer (ADR 009); examples/programs,
-  # a windowed and a console program of one project in one folder (ADR
-  # 024); and
+  # windowed app (ADR 037, ADR 008) with its installer (ADR 009);
+  # examples/programs, a windowed and a console program of one project in
+  # one folder (ADR 024); and
   # examples/native_app, whose gems must be compiled (ADR 006): redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
   # its git tag, and bigdecimal, which spreadsheet, a GPL gem, needs, each
   # compiled against the runtime's own Ruby and its build-only companion.
-  # examples/real_gems (ADR 020): the gems real apps lock, from a credentialed
+  # examples/real_gems (doc/contributors/design/gems.md, "Examples that
+  # exercise these rules"): the gems real apps lock, from a credentialed
   # mirror, a folder outside the project, a path gem with an extension, git
   # with a submodule, and an optional group. The Mac and Windows build
   # examples/nokogiri_app too, nokogiri from
@@ -1088,7 +1096,7 @@ jobs:
             ruby -I lib exe/fledge build --sign "$FLEDGE_TEST_SIGN_IDENTITY" -o dist-signed "$app"
           done
 
-      # ADR 033: the same two apps signed through the developer's own
+      # ADR 051: the same two apps signed through the developer's own
       # command, here the Windows SDK's signtool with the same
       # certificate, as a developer runs a cloud signer's tool: hello
       # with --sign-command, typed in PowerShell, and windowed_app with
@@ -1130,7 +1138,8 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: ruby -I lib exe/fledge build -o dist examples/nokogiri_app
 
-      # ADR 020: the gems real apps lock. examples/real_gems takes RubyGems.org
+      # doc/contributors/design/gems.md, "Examples that exercise these
+      # rules": the gems real apps lock. examples/real_gems takes RubyGems.org
       # through a mirror that wants a login, as its .bundle/config says in
       # Bundler's own settings, from a loopback server of ours
       # (.github/scripts/gem-mirror.rb); a gem from a folder outside its
@@ -1192,8 +1201,9 @@ jobs:
             (cd "examples/$example" && bundle exec ruby main.rb) | tee "dist/$example.expected"
           done
 
-      # The builder app Delivery runs fledge build --from inside (ADR 032,
-      # section 4), on one platform of each operating system.
+      # The builder app Delivery runs fledge build --from inside (ADR 032;
+      # doc/contributors/design/desktop-apps.md, "Building from a built
+      # app"), on one platform of each operating system.
       - name: Build the app that builds apps, with build_tools and Fledge as a gem
         if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x86_64-linux' || matrix.platform == 'x64-mingw-ucrt'
         env:
@@ -1268,7 +1278,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows on ARM64 (ADR 018) builds what needs no gem compiled for
+          # Windows on ARM64 (ADR 035) builds what needs no gem compiled for
           # it: sqlite3 publishes no aarch64-mingw-ucrt build and its source
           # does not configure there, so no my_cool_app, gem-shaped probe,
           # or native_app.
@@ -1480,7 +1490,8 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
 
-      # ADR 015: the console probe in a terminal of its own, a
+      # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
+      # the console probe in a terminal of its own, a
       # pseudo-terminal, ended by Ctrl-C typed into it and by a hangup,
       # must end as ruby main.rb does (.github/scripts/deliver-console.sh).
       - name: Interrupt the console probe in a terminal, as a person would
@@ -1530,7 +1541,7 @@ jobs:
             ruby-platform: aarch64-linux
     steps: *delivery-steps
 
-  # Delivery of the windowed app (ADR 008), on a fresh runner of each
+  # Delivery of the windowed app (ADR 037, ADR 008), on a fresh runner of each
   # platform: on macOS its .app bundle must pass codesign --verify --strict
   # --deep, plutil must read its identity, and it must run through open -W,
   # as Finder starts it, and through its own program; on Linux
@@ -1847,7 +1858,8 @@ jobs:
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-$env:PLATFORM.zip" -Platform $env:PLATFORM
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected" -Raw).TrimEnd()
 
-      # ADR 015: the console probe in a console of its own, ended by
+      # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
+      # the console probe in a console of its own, ended by
       # Ctrl-C on code pages 65001 and 437 and by its window closing, and
       # the windowed app typed into a console, which gets none, each as
       # ruby.exe and rubyw.exe do (.github/scripts/deliver-console.ps1).
@@ -1858,7 +1870,7 @@ jobs:
           -Archive "$env:RUNNER_TEMP/delivered/Console-$env:PLATFORM.zip"
           -Windowed "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
 
-      # The windowed app (ADR 008): a GUI program with its version
+      # The windowed app (ADR 037, ADR 008): a GUI program with its version
       # information and icon, started as Explorer starts it, with no
       # console and its identifier as its AppUserModelID
       # (.github/scripts/deliver-windowed.ps1).
@@ -1899,7 +1911,7 @@ jobs:
           -Installer "$env:RUNNER_TEMP/signed/Hello Window-$env:PLATFORM-setup.exe"
           -Certificate "$env:RUNNER_TEMP/signed/certificate.cer"
 
-      # ADR 033: the apps --sign-command signed with signtool, verified
+      # ADR 051: the apps --sign-command signed with signtool, verified
       # the same way, with the certificate the step above trusted.
       - name: Verify, install, and run the apps signed through a signing command
         shell: pwsh
@@ -1919,7 +1931,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Natively on Windows 11 on ARM64 (ADR 018).
+          # Natively on Windows 11 on ARM64 (ADR 035).
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
     env:
@@ -1961,7 +1973,8 @@ jobs:
           path: ${{ runner.temp }}/delivered
 
       # What an AppImage needs that no app may carry: squashfs-tools is
-      # GPL-2.0 (ADR 032, section 4). Pinned to Ubuntu 24.04's build.
+      # GPL-2.0 (ADR 032; doc/contributors/design/desktop-apps.md,
+      # "Building from a built app"). Pinned to Ubuntu 24.04's build.
       - name: Install mksquashfs
         if: runner.os == 'Linux'
         run: |
@@ -2155,9 +2168,9 @@ jobs:
           --expect ".github/license-expectations/${{ matrix.platform }}.yml"
 
   # doc/licensing.md, the page that tells app developers what ships and
-  # what it asks of them, is generated from the audit of these four
-  # runtimes (tasks/licensing_page.rb); it fails here when it no longer
-  # matches them.
+  # what it asks of them, is generated from the audit of every
+  # platform's runtime (tasks/licensing_page.rb); it fails here when it
+  # no longer matches them.
   licensing-page:
     name: Licensing page is current
     needs: [runtime, runtime-musl, runtime-mobile]

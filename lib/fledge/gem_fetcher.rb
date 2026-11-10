@@ -13,8 +13,9 @@ require_relative "download"
 module Fledge
   # Finds the <tt>.gem</tt> file of a locked gem, for any platform.
   #
-  # Building for Windows on a Mac needs Windows' build of each native gem,
-  # which Bundler never installs on the Mac. RubyGems.org serves every
+  # A build needs the very build of each gem the lockfile locks for its
+  # target, which Bundler on the developer's computer may never have
+  # installed. RubyGems.org serves every
   # platform's <tt>.gem</tt> file at <tt>/gems/FILE</tt>, as
   # <tt>gem fetch --platform</tt> fetches it, and the Gemfile.lock records
   # each one's SHA-256, so any copy can be checked against the lockfile.
@@ -47,7 +48,7 @@ module Fledge
     # The servers that answer 403 for a gem file they do not have, and need
     # no login for any file they have: RubyGems.org, whose files come from
     # a storage bucket that answers 403 (AccessDenied) for a name it does
-    # not hold (ADR 020, section 2).
+    # not hold (doc/contributors/design/gems.md, "Fetching a gem's file").
     PUBLIC_SERVERS = ["rubygems.org"].freeze
 
     # The hosts whose 403 to a request without a login means they have no

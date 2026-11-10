@@ -31,9 +31,9 @@ class BuildCommandTest < Minitest::Test
     [out.string, err.string, status]
   end
 
-  # ADR 028, section 3: an app runs on the Ruby minor version that runs
-  # fledge build, as Briefcase and PyInstaller package the Python that
-  # runs them. The fake runtimes are Ruby 4.0.9.
+  # ADR 055: an app runs on the Ruby minor version that runs fledge
+  # build, as Briefcase and PyInstaller package the Python that runs
+  # them. The fake runtimes are Ruby 4.0.9.
   def test_a_build_on_another_ruby_minor_than_the_runtimes_fails
     out, err, status = build("hello", ruby: "4.1.0")
 
@@ -45,7 +45,7 @@ class BuildCommandTest < Minitest::Test
   end
 
   # The runtime carries the newest patch of its Ruby minor, which is
-  # Fledge's to move (ADR 028, section 3).
+  # Fledge's to move (ADR 055).
   def test_a_build_on_another_patch_of_the_runtimes_ruby_builds
     out, err, status = build("hello", ruby: "4.0.1")
 
@@ -62,7 +62,8 @@ class BuildCommandTest < Minitest::Test
 
   # Beside each file it prints, the build writes that file's SHA-256 in
   # sha256sum's format, which a package manager's recipe needs, and does
-  # not print it (ADR 029, section 4).
+  # not print it (doc/contributors/design/public-interface.md, "The
+  # checksum file").
   def test_the_archive_gets_a_checksum_file_beside_it_that_is_not_printed
     out, err, status = build("hello")
 
@@ -110,8 +111,8 @@ class BuildCommandTest < Minitest::Test
     assert_includes err, "fledge build: --sign signs apps for macOS and Windows"
   end
 
-  # ADR 033: --sign-command names the developer's own signing command, and
-  # --notarize the keychain profile notarytool reads; neither is in
+  # ADR 051: --sign-command names the developer's own signing command,
+  # and --notarize the keychain profile notarytool reads; neither is in
   # fledge.yml, which other people build too.
   def test_sign_command_and_notarize_take_their_values_in_either_form
     options = Fledge::CLI::Build::Options.parse(["--sign-command", "signtool sign /a %1", "hello"])
@@ -161,9 +162,9 @@ class BuildCommandTest < Minitest::Test
     assert_equal "../dist/Hello-x86_64-linux.tar.gz\n", out.string
   end
 
-  # A phone's name, first, asks for its project, as Briefcase's create iOS
-  # and Flutter's build ios do (ADR 012); after the PATH, or after --, it
-  # is a path, and ./ios names a folder called ios.
+  # A phone's name, first, asks for its project, as Briefcase's create
+  # iOS and Flutter's build ios do (ADR 060); after the PATH, or after
+  # --, it is a path, and ./ios names a folder called ios.
   def test_a_phone_named_first_asks_for_its_project
     {
       %w[ios] => [".", "ios"],

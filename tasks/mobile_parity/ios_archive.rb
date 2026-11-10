@@ -11,7 +11,8 @@ require "open3"
 
 class MobileParity
   # The archive App Store Connect would take, as far as Apple's own tools
-  # show without an account (ADR 012, section 10): an app's Xcode
+  # show without an account (doc/contributors/design/phones.md,
+  # "The App Store archive check"): an app's Xcode
   # project archived for devices with xcodebuild, unsigned, and what
   # App Store Connect requires of the archive and the app in it checked
   # in the files, with plutil, vtool, otool, lipo, and assetutil. What
@@ -100,7 +101,7 @@ class MobileParity
 
     # What +info+ says of export compliance: ITSAppUsesNonExemptEncryption
     # is the developer's declaration to the U.S. export rules, so Fledge
-    # writes none (ADR 012, section 10) and the check reports it.
+    # writes none (ADR 062) and the check reports it.
     def self.encryption(info)
       info.key?("ITSAppUsesNonExemptEncryption") ? "declared #{info['ITSAppUsesNonExemptEncryption']}" : "not declared"
     end

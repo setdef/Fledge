@@ -650,8 +650,10 @@ class AssemblyTest < Minitest::Test
     out.lines.map { |line| line.chomp.delete_suffix("/") }
   end
 
-  # ADR 005, section 1: a build into dist, and then one into out, a
-  # folder of its own, ships the project, not the first build.
+  # A build into dist, and then one into out, a folder of its own, ships
+  # the project, not the first build
+  # (doc/contributors/design/desktop-apps.md, "The project and its
+  # name").
   def test_a_build_into_another_folder_leaves_out_the_earlier_builds
     unix!
     Dir.mktmpdir do |dir|

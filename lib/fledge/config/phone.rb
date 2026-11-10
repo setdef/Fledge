@@ -11,7 +11,8 @@ module Fledge
   class Config
     # What a project's <tt>fledge.yml</tt> says under +ios+ or +android+
     # about the project <tt>fledge build ios</tt> or <tt>fledge build
-    # android</tt> writes (ADR 025, section 5).
+    # android</tt> writes (ADR 025; doc/contributors/design/phones.md,
+    # "Host files").
     #
     # Fledge writes each phone's project afresh on every build (ADR 012),
     # so a change made to it by hand lasts until the next build. Some apps

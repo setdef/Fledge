@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# A windowed app (ADR 008), with everything an app says about itself to
-# the operating system and the person who runs it: the name in a Dock,
+# A windowed app (ADR 037, ADR 008), with everything an app says about
+# itself to the operating system and the person who runs it: the name in a Dock,
 # taskbar, or menu, which may have spaces; the identifier macOS and
 # Windows know it by, a reverse-DNS name of a domain its developer
 # controls; its version, publisher, and copyright, which Explorer's
@@ -37,7 +37,7 @@ linux:
 macos:
   build: "1.2.417"
 
-# The files and folders it opens (ADR 032, section 3): every folder, which
+# The files and folders it opens (ADR 052): every folder, which
 # it writes its report into, and its own reports, which it writes over.
 # macOS offers it for them, Windows' setup program adds it to their "Open
 # with" and to every folder's menu, and a Linux desktop passes their

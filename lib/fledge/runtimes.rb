@@ -17,9 +17,10 @@ module Fledge
   #
   # A runtime is a launcher and a relocatable Ruby, built once per
   # platform by Fledge's own CI and attached to the GitHub Release of
-  # the Fledge version that built it (ADR 001, section 2). You should
-  # not need a Mac to build for macOS, so <tt>fledge build</tt> cannot
-  # build runtimes itself; it has to fetch them. Fetching on every build
+  # the Fledge version that built it (ADR 034). You should not need to
+  # build a Ruby, or own the toolchain that builds one, to ship an app,
+  # so <tt>fledge build</tt> does not build runtimes itself; it fetches
+  # them. Fetching on every build
   # would be slow, and Fledge's own CI builds apps from runtimes that no
   # release holds yet.
   #

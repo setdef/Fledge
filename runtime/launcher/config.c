@@ -5,7 +5,8 @@
 
 /*
  * Reads fledge.cfg, the file fledge build writes beside the launcher to
- * say what the app runs (ADR 005), on every operating system.
+ * say what the app runs (ADR 005), on every operating system
+ * (doc/contributors/design/launcher.md, "fledge.cfg").
  *
  * The launcher is the same program for every app, and on macOS it is
  * signed, so nothing about one app can be written into it. Instead, as

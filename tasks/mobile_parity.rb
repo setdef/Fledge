@@ -11,12 +11,13 @@ require "open3"
 require "rbconfig"
 require_relative "parity"
 
-# The mobile check (ADR 011, section 6; ADR 012): apps built as a
-# developer builds them, with fledge build ios and fledge build android,
-# their projects built with xcodebuild and Gradle, and run in the iOS
-# Simulator, on an iPhone and an iPad, and on Android emulators, each
-# app's output read back the way an app's reaches its developer: from the
-# system log the embedding API forwards it to (os_log, logcat).
+# The mobile check (ADR 012; doc/contributors/design/parity.md, "The mobile
+# parity"): apps built as a developer builds them, with fledge build ios
+# and fledge build android, their projects built with xcodebuild and
+# Gradle, and run in the iOS Simulator, on an iPhone and an iPad, and on
+# Android emulators, each app's output read back the way an app's
+# reaches its developer: from the system log the embedding API forwards
+# it to (os_log, logcat).
 #
 # The apps (APPS) are examples/hello; examples/mobile_app, whose pure-Ruby
 # gems Bundler sets up; examples/native_phone, whose gem has a C and C++

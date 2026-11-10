@@ -17,9 +17,8 @@ require "json_schemer"
 class ConfigSchemaTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   PATH = File.join(ROOT, "lib", "fledge", "config.schema.json")
-  # The schema at this release's tag (ADR 023, section 3), which a
-  # developer's editor keeps reading after trunk moves on to the next
-  # major.
+  # The schema at this release's tag (ADR 054), which a developer's
+  # editor keeps reading after trunk moves on to the next major.
   URL = "https://raw.githubusercontent.com/setdef/Fledge/v#{Fledge::VERSION}/lib/fledge/config.schema.json".freeze
 
   # The start of a windowed app's fledge.yml.
@@ -218,8 +217,9 @@ class ConfigSchemaTest < Minitest::Test
 
   # Documents Config refuses and no draft-07 schema can: draft-07 has no
   # way to say that at most one item of a list matches, or that items
-  # differ in one property (ADR 024, section 2). An editor takes them; the
-  # build refuses them, naming what to change.
+  # differ in one property (doc/contributors/design/desktop-apps.md,
+  # "Several programs"). An editor takes them; the build refuses them,
+  # naming what to change.
   CONFIG_ONLY = [
     "programs:\n  - path: a\n    kind: windowed\n    identifier: com.example.A\n  - path: b\n    kind: windowed\n    identifier: com.example.B\n",
     "programs:\n  - path: a/cli\n  - path: b/cli\n",

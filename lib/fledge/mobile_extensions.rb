@@ -23,7 +23,7 @@ require_relative "mobile_extensions/ndk"
 module Fledge
   # Compiles an app's gems' C and C++ extensions for a phone (ADR 022).
   #
-  # A phone's Ruby loads no extension from a file (ADR 011, section 4), so
+  # A phone's Ruby loads no extension from a file (ADR 011), so
   # each one is compiled to a static archive, linked into the app, and
   # registered under the name <tt>require</tt> asks for, which Ruby's own
   # <tt>extinit.c</tt> does for the extensions of its standard library.

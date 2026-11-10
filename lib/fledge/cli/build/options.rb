@@ -21,13 +21,14 @@ module Fledge
       # the one PATH, with <tt>--</tt> ending the options. A desktop build
       # is for the computer it runs on (ADR 010); a phone's, which no phone
       # builds, is named first, as Briefcase's <tt>briefcase create
-      # iOS</tt> and Flutter's <tt>flutter build ios</tt> name it (ADR 012).
+      # iOS</tt> and Flutter's <tt>flutter build ios</tt> name it (ADR 060).
       class Options < Data.define(:out, :path, :phone, :sign, :from, :sign_command, :notarize)
         # The options +argv+ gives. A first operand that names a phone
         # (Fledge::MobilePlatform.names) is the phone; a folder of that
         # name is <tt>./ios</tt>, or follows <tt>--</tt>. A platform added
-        # later takes its word here too, which the help reserves (ADR 029,
-        # section 5). Raises
+        # later takes its word here too, which the help reserves
+        # (doc/contributors/design/public-interface.md, "Reserved names").
+        # Raises
         # Fledge::UsageError for an option it does not know, one without
         # its value, or more than one PATH, and for the <tt>--target</tt>
         # Fledge 0.0.1.pre.7 and earlier took, saying why it went.

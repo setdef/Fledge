@@ -18,7 +18,7 @@ require_relative "parity/justification"
 require_relative "parity/reports"
 require_relative "parity/mobile"
 
-# The parity check (ADR 003 and ADR 005): an app's Ruby code must see the
+# The parity check (ADR 003 and ADR 045): an app's Ruby code must see the
 # same Ruby under Fledge as it does run as its developer runs it.
 #
 # It builds the probe app in test/fixtures/parity with fledge build, from
@@ -41,7 +41,7 @@ require_relative "parity/mobile"
 # under code page 437, as a console in the United States starts. On
 # macOS and Linux it runs it again with no locale at all, as a desktop
 # starts an app, and under LC_ALL=C and LC_CTYPE=C, which a person sets
-# on purpose (ADR 026, section 1).
+# on purpose (ADR 041).
 #
 # Run it as rake parity, after rake runtime or with FLEDGE_RUNTIME_DIR set.
 class Parity
@@ -61,7 +61,7 @@ class Parity
   APP_GEMS = %r{<prefix>/lib/ruby/gems/4\.0\.0}
 
   # The variables Bundler sets for the bundle it set up, whose values
-  # name where the gems are (ADR 005).
+  # name where the gems are (ADR 045).
   BUNDLE_LOCATIONS = /\A"(?:GEM_HOME|PATH)"=/
 
   # The facts a C locale decides: the character set Ruby reads text,
@@ -81,10 +81,11 @@ class Parity
     end,
     Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/gems/}], app: [%r{\A"#{APP_GEMS}/gems/}], checks: %i[bundle],
       reason: "bundle install put the gems in the person's GEM_HOME; fledge build put the same gems in the runtime's gem " \
-        "folder, beside Ruby's own (ADR 005). Bundler sets up the same gems, in the same order, from each."),
+        "folder, beside Ruby's own (doc/contributors/design/gems.md, \"Installing into the runtime's gem folder\"). " \
+        "Bundler sets up the same gems, in the same order, from each."),
     Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/gems/rake-}], checks: %i[bundle],
       reason: "A built app leaves out the Gemfile's development and test groups, as Warbler does, and its Bundler " \
-        "sets up the rest (ADR 005); bundle exec on the developer's computer sets up all of them."),
+        "sets up the rest (ADR 045); bundle exec on the developer's computer sets up all of them."),
     Justification.new(fact: "gems", reference: [/\A"rake /], checks: %i[bundle], reason: "As for $LOAD_PATH: rake is a development gem."),
     Justification.new(fact: "requireable", reference: [/\A"rake"=/], checks: %i[bundle], reason: "As for gems."),
     *["ENV", "child ENV"].map do |fact|
@@ -94,12 +95,12 @@ class Parity
           "person's own values in both, and records theirs as BUNDLER_ORIG_*.")
     end,
     Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
-      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1; ADR 003), " \
+      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1; ADR 040), " \
         "so it cannot change how the app runs; it still reaches the app's ENV and every program the app starts."),
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/yaml_serializer\.rb"\z}],
       checks: %i[bundle],
       reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
-        "without the development and test groups, as bundle config set --local would (ADR 005). Reading a " \
+        "without the development and test groups, as bundle config set --local would (ADR 045). Reading a " \
         "configuration file loads RubyGems' YAML serializer."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/4\.0\.0/bundler/feature_flag\.rb"\z}],
       checks: %i[bundle],
@@ -107,10 +108,11 @@ class Parity
         "Ruby's own gem folder; the app's .bundle/config says so (path.system, as Warbler's does), so it never asks."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<project>/lib/my_cool_app/version\.rb"\z}], checks: %i[bundle],
       reason: "Bundler evaluates the project's gemspec as it sets up the bundle, and this one requires its version file. " \
-        "A built app ships the gemspec evaluated, as Bundler caches a git gem's (ADR 005), so that one that runs git " \
-        "needs no git; the version file loads when the app requires it, as every other file of the app does."),
+        "A built app ships the gemspec evaluated, as Bundler caches a git gem's " \
+        "(doc/contributors/design/gems.md, \"The app's .bundle/config and gemspecs\"), so that one that runs git needs no git; " \
+        "the version file loads when the app requires it, as every other file of the app does."),
     Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, %r{\A"<home>/\.(?:gem|local/share/gem)/}],
-      reason: "The app's gems are the runtime's alone (ADR 003): the person's GEM_HOME, GEM_PATH, and " \
+      reason: "The app's gems are the runtime's alone (ADR 040): the person's GEM_HOME, GEM_PATH, and " \
         "Gem.user_dir never shadow them. Their ENV still reaches the app and its child processes."),
     Justification.new(fact: "Gem.dir", reference: [%r{\A"<work>/person-gems"\z}], app: [%r{\A"<prefix>/lib/ruby/gems/4\.0\.0"\z}],
       reason: "As for Gem.path: RubyGems installs into the runtime's gem folder, never the person's GEM_HOME."),
@@ -120,14 +122,16 @@ class Parity
     Justification.new(fact: "requireable", reference: [RV_RUBY_EXTRAS], reason: "As for gems."),
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/4\.0\.0/rubygems/defaults/operating_system\.rb"\z}],
       platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", "x86_64-linux-musl", "aarch64-linux-musl", *MOBILE],
-      reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems (ADR 001, section 8); " \
+      reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems " \
+        "(doc/contributors/design/runtimes.md, \"Fledge's RubyGems defaults\"); " \
         "rv-ruby ships no such file, nor does the Ruby a musl runtime is built from."),
     Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reference: [
         %r{\A"<prefix>/lib/ruby/site_ruby/4\.0\.0/ruby_installer/},
         %r{\A"<prefix>/lib/ruby/4\.0\.0/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)},
       ],
-      reason: "Fledge's RubyGems defaults replace RubyInstaller's (ADR 001, section 8), which load " \
+      reason: "Fledge's RubyGems defaults replace RubyInstaller's (ADR 038; " \
+        "doc/contributors/design/runtimes.md, \"Fledge's RubyGems defaults\"), which load " \
         "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
         "encodings its messages use. Ruby loads an encoding when code first needs it, so an app " \
         "that uses one finds it either way."),
@@ -137,7 +141,7 @@ class Parity
           "or env -i starts an app, ruby takes the C locale, whose character set is ASCII; the launcher and the " \
           "runtime's bin/ruby take a UTF-8 locale instead, as Python does under PEP 538, so that a folder name " \
           "outside ASCII in the app's path, or the person's home, cannot break Ruby's boot and Bundler's setup " \
-          "(ADR 026, section 1). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
+          "(ADR 041). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
           "nothing is exported: ENV and every program the app starts see the person's own locale.")
     end,
     *MOBILE_JUSTIFIED,
@@ -177,12 +181,13 @@ class Parity
   # Platforms the gem-shaped probe cannot be bundled on: its Gemfile is
   # examples/my_cool_app's, whose sqlite3 publishes no aarch64-mingw-ucrt
   # build, and whose source build fails there, SQLite's own configure
-  # not knowing aarch64-w64-windows-gnu (ADR 018).
+  # not knowing aarch64-w64-windows-gnu (doc/contributors/design/parity.md,
+  # "The gem-shaped run").
   WITHOUT_GEM_APP = %w[aarch64-mingw-ucrt].freeze
 
   private def skip_bundle
     @out.puts "Parity of a gem-shaped app with bundle exec on #{platform}: not checked, as sqlite3 cannot be " \
-      "installed there (ADR 018)"
+      "installed there (doc/contributors/design/parity.md, \"The gem-shaped run\")"
     true
   end
 

@@ -36,7 +36,7 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
 $appName = 'Hello Window'
-# Hello Window-PLATFORM-setup.exe: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
+# Hello Window-PLATFORM-setup.exe: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 035).
 $platform = [IO.Path]::GetFileNameWithoutExtension($Installer) -replace "^$appName-", '' -replace '-setup$', ''
 $identifier = $Identifier
 
@@ -255,7 +255,8 @@ function CheckInstalled {
 Install
 CheckInstalled
 
-# What the app opens (fledge.yml's file_associations; ADR 032, section 3),
+# What the app opens (fledge.yml's file_associations; ADR 052;
+# doc/contributors/design/desktop-apps.md, "Files an app opens"),
 # read back from the registry and through the shell's own API, and then
 # opened as the shell opens them, in a folder whose name has a space and
 # a character outside ASCII. A file's ProgID is in its extension's

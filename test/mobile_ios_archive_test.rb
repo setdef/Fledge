@@ -9,10 +9,11 @@ require "zlib"
 require_relative "test_helper"
 require_relative "../tasks/mobile_parity"
 
-# The parts of the iOS archive check (ADR 012, section 10) that need no
-# xcodebuild: what App Store Connect requires of an app's Info.plist, of
-# its icon, and of the files in its bundle, read from a real property
-# list that plutil made. CI's Mobile apps (iOS) job archives each app.
+# The parts of the iOS archive check (doc/contributors/design/phones.md,
+# "The App Store archive check") that need no xcodebuild: what App Store
+# Connect requires of an app's Info.plist, of its icon, and of the files
+# in its bundle, read from a real property list that plutil made. CI's
+# Mobile apps (iOS) job archives each app.
 class MobileIOSArchiveTest < Minitest::Test
   APP = { "name" => "Mobile App", "identifier" => "com.example.MobileApp" }.freeze
 

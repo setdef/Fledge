@@ -18,7 +18,8 @@ require_relative "../lib/fledge/platform"
 require_relative "../lib/fledge/runtimes"
 require_relative "../lib/fledge/version"
 
-# Builds a runtime (ADR 001, section 2).
+# Builds a runtime (ADR 034; doc/contributors/design/runtimes.md,
+# "What a runtime is").
 #
 # On macOS and Linux, a runtime is the launcher in runtime/launcher/,
 # compiled against rv-ruby's static libruby, beside Ruby's own program
@@ -46,7 +47,7 @@ require_relative "../lib/fledge/version"
 # share Unix, and Windows. The layout is the one the Unix and Windows
 # launcher spikes settled (Plan 001).
 #
-# What a runtime leaves out follows one rule (ADR 003): an app's Ruby
+# What a runtime leaves out follows one rule (ADR 039): an app's Ruby
 # code must run as it does under a standard Ruby 4.0.9, so a runtime
 # keeps everything such a Ruby installs that running Ruby code can
 # reach (every default and bundled gem, its executables, the gem cache,

@@ -82,7 +82,7 @@ module Fledge
       #        Gem::Platform.local).
       # [ruby] The version of the Ruby running the build (default:
       #        +RUBY_VERSION+), whose minor version the runtime's Ruby
-      #        must have (ADR 028, section 3).
+      #        must have (ADR 055).
       def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION)
         @out = out
         @err = err
@@ -114,7 +114,8 @@ module Fledge
         phone = MobilePlatform.find(options.phone.to_s)
         signing = phone ? nil : signing(options, host)
         if from then build_from(from.adopt(app), from, host, options.out, signing)
-        # A phone's app runs one program: App#main (ADR 024, section 6).
+        # A phone's app runs one program: App#main (ADR 024;
+        # doc/contributors/design/desktop-apps.md, "Several programs").
         elsif phone then build_project(app.with(programs: [app.main]), phone, host, options.out)
         else build(app, host, options.out, signing)
         end
@@ -196,7 +197,7 @@ module Fledge
       # version of the Ruby running the build. Fledge has no default Ruby:
       # an app runs on the Ruby its developer runs it with, as Briefcase
       # and PyInstaller package the Python that runs them, at the patch
-      # level of Fledge's runtime (ADR 028, section 3). Raises
+      # level of Fledge's runtime (ADR 055). Raises
       # Fledge::Error otherwise.
       private def same_ruby(contents, platform)
         return contents if minor(contents.ruby_version) == minor(@ruby)

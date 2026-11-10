@@ -8,7 +8,8 @@
 require_relative "test_helper"
 
 # The Cache Directory Tagging Specification's tag, which marks each
-# folder fledge build makes for its builds (ADR 005, section 1).
+# folder fledge build makes for its builds (ADR 005;
+# doc/contributors/design/desktop-apps.md, "The project and its name").
 class CacheTagTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir

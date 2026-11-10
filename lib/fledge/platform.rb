@@ -14,7 +14,7 @@ module Fledge
   # You already meet RubyGems' platform names in a Gemfile.lock and in
   # precompiled gems: +arm64-darwin+, +x86_64-linux+. The same names say
   # which precompiled gem fits a runtime, so Fledge names its targets
-  # with them (ADR 001, section 4). But RubyGems also knows platforms
+  # with them (ADR 036). But RubyGems also knows platforms
   # Fledge has no runtime for, and names the computer you are on in more
   # detail (<tt>arm64-darwin-25</tt>) than a target needs.
   #
@@ -51,13 +51,14 @@ module Fledge
     NAMES = %w[arm64-darwin x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt aarch64-mingw-ucrt].freeze
 
     # The oldest macOS an arm64-darwin runtime runs on: rv-ruby's Sonoma
-    # build, and the launcher built with -mmacosx-version-min=14.0 (ADR
-    # 001, section 3).
+    # build, and the launcher built with -mmacosx-version-min=14.0
+    # (doc/contributors/design/releases.md, "Platform floors").
     MACOS_MINIMUM = "14.0"
 
     # The oldest glibc a Linux runtime runs on: rv-ruby's Linux builds
     # call functions glibc added in 2.39, a floor the maintainer accepted
-    # (decision 7; ADR 001, section 3).
+    # (decision 7; doc/contributors/design/releases.md, "Platform
+    # floors").
     GLIBC_MINIMUM = "2.39"
 
     ##

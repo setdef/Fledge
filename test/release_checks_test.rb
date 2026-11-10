@@ -10,9 +10,10 @@ require_relative "../tasks/runtime_pins"
 require "open3"
 require "yaml"
 
-# The two checks that let a pin commit run a short CI (ADR 014, section
-# 5), run as CI runs them: .github/scripts/pins-only.sh, which says
-# whether a commit is a pin commit, in real git repositories, and
+# The two checks that let a pin commit run a short CI (ADR 053;
+# doc/contributors/design/releases.md, "A pin commit's short CI"), run
+# as CI runs them: .github/scripts/pins-only.sh, which says whether a
+# commit is a pin commit, in real git repositories, and
 # .github/scripts/check-pins.sh, which checks runtimes against the pins
 # with sha256sum, on assets pinned by rake runtime:pin's own code. Both
 # run on Linux runners; Windows' tests skip them.
@@ -164,9 +165,11 @@ class ReleaseChecksTest < Minitest::Test
     assert jobs.select { |_, job| job["needs"] == "changes" }.all? { |_, job| job.key?("if") }
   end
 
-  # ADR 029, section 2, freezes a prerelease tag in SemVer's form; such a
-  # version must not publish as a full release, which GitHub would show
-  # as the latest. The step's own case statement decides, run by bash.
+  # A prerelease tag is frozen in SemVer's form
+  # (doc/contributors/design/public-interface.md, "Frozen for 1.x");
+  # such a version must not publish as a full release, which GitHub
+  # would show as the latest. The step's own case statement decides, run
+  # by bash.
   def test_any_prerelease_version_is_marked_a_prerelease
     workflow = YAML.load_file(File.join(ROOT, ".github", "workflows", "release.yml"))
     step = workflow.fetch("jobs").fetch("release").fetch("steps").find { |candidate| candidate["run"].to_s.include?("gh release create") }

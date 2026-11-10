@@ -62,7 +62,8 @@ class NsisTest < Minitest::Test
   end
 
   # The Start menu shortcut, with its System.AppUserModel.ID set to the
-  # identifier the launcher gives the process (ADR 008, section 3).
+  # identifier the launcher gives the process
+  # (doc/contributors/design/launcher.md, "Windows").
   def test_the_start_menu_shortcut_carries_the_app_user_model_id
     text = script
 
@@ -154,9 +155,9 @@ class NsisTest < Minitest::Test
     end
   end
 
-  # ADR 033: a developer's own command goes to makensis in the first of
-  # NSIS's quote characters it does not hold, since NSIS has no escape for
-  # a quote inside a string of the same kind.
+  # ADR 051: a developer's own command goes to makensis in the first of
+  # NSIS's quote characters it does not hold, since NSIS has no escape
+  # for a quote inside a string of the same kind.
   def test_a_signing_command_is_quoted_with_a_character_it_does_not_hold
     {
       "sign.cmd" => "'sign.cmd \"%1\"'",
@@ -176,9 +177,9 @@ class NsisTest < Minitest::Test
     assert_includes text, "Name \"Say $\\\"$$1$\\\"\"\n"
   end
 
-  # What the app opens (ADR 032, section 3): a folder, an archive by two
-  # extensions (one twice, in another case), and text by its MIME type
-  # alone, which Windows does not register.
+  # What the app opens (ADR 052): a folder, an archive by two extensions
+  # (one twice, in another case), and text by its MIME type alone, which
+  # Windows does not register.
   def file_associations
     association = Fledge::Config::FileAssociation
     [
@@ -239,8 +240,8 @@ class NsisTest < Minitest::Test
   end
 
   # A ProgID must outlast the app's next version: neither the order of
-  # the entries, nor an entry's name, nor its other extensions may change
-  # it (ADR 032, section 3), since the uninstaller knows only today's.
+  # the entries, nor an entry's name, nor its other extensions may
+  # change it (ADR 052), since the uninstaller knows only today's.
   def test_a_prog_id_survives_a_reorder_a_rename_and_an_extensions_neighbors
     ids = prog_ids(file_associations: [entry("A", "aaa"), entry("B", "bbb")])
 

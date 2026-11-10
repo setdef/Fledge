@@ -12,8 +12,8 @@ class RuntimeBuilder
   # iOS and iPadOS: Ruby for devices and for the Simulator, both arm64,
   # built with Xcode's compilers after xord/cruby's Rakefile (at 11d62c4,
   # lines 499 to 724), and packed with Xcode's own tools as an
-  # XCFramework of two static libraries, FledgeRuby.xcframework (ADR 011,
-  # section 2).
+  # XCFramework of two static libraries, FledgeRuby.xcframework
+  # (doc/contributors/design/phones.md, "What a phone runtime holds").
   #
   # Each slice holds libfledgeruby.a (Ruby, its extensions and encodings,
   # OpenSSL, libyaml, and the embedding API, in one archive), its headers

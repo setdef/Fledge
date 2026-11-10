@@ -74,10 +74,10 @@ module FakeRuntime
   end
 
   # Writes the runtime for the phone +phone+ (a Fledge::MobilePlatform)
-  # into +directory+, shaped as ADR 011 describes it, and returns its
-  # path: for iOS, an XCFramework whose two slices each hold a Ruby; for
-  # Android, an AAR beside one Ruby; each with its CA certificates and
-  # notices.
+  # into +directory+, shaped as doc/contributors/design/phones.md, "What
+  # a phone runtime holds", describes it, and returns its path: for iOS,
+  # an XCFramework whose two slices each hold a Ruby; for Android, an
+  # AAR beside one Ruby; each with its CA certificates and notices.
   def self.write_mobile(directory, phone)
     top = File.basename(Fledge::Runtimes.file_name(phone), Fledge::Runtimes::EXTENSION)
     path = File.join(directory, Fledge::Runtimes.file_name(phone))

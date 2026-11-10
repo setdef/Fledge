@@ -51,7 +51,8 @@ class CLITest < Minitest::Test
 
   # A bare word Fledge reads as a platform is read so by every later
   # release, and the help says to write ./NAME for a folder of that name
-  # (ADR 029, section 5), naming each word the parser takes today.
+  # (doc/contributors/design/public-interface.md, "Reserved names"),
+  # naming each word the parser takes today.
   def test_help_reserves_the_words_it_reads_as_platforms
     out, = fledge("--help")
     words = out.split.join(" ")

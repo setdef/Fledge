@@ -7,7 +7,7 @@
  * The locale an app's Ruby starts in, on macOS and Linux, and in the
  * mobile runtimes (runtime/mobile/fledge_ruby.c), whose apps the system
  * starts with no LANG at all. The runtime's bin/ruby (ruby_main.c) calls
- * it too, so a Ruby the app starts is in the app's locale (ADR 026).
+ * it too, so a Ruby the app starts is in the app's locale (ADR 041).
  */
 
 #include "launcher.h"
@@ -51,7 +51,7 @@ names_locale(const char *name)
  * Python/pylifecycle.c, lines 189 to 194 and 293 to 294). Fledge also
  * leaves an explicit LC_CTYPE alone, where PEP 538 coerces it: LC_CTYPE
  * is the category Encoding.default_external comes from, and ruby
- * honours it (ADR 026, section 1). So only a C locale that comes from
+ * honours it (ADR 041). So only a C locale that comes from
  * LANG, or from no variable at all, is replaced.
  */
 void

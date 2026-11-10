@@ -19,7 +19,7 @@
 # uninstall it; and the signed program must still run. Nothing here may
 # need Ruby.
 #
-# The same apps signed through fledge build --sign-command (ADR 033) are
+# The same apps signed through fledge build --sign-command (ADR 051) are
 # checked the same way after the first run has trusted the certificate,
 # with -Trusted, which skips the refusal the first run proved.
 
@@ -40,7 +40,7 @@ function Fail([string] $message) {
   exit 1
 }
 
-# Hello-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
+# Hello-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 035).
 $platform = [IO.Path]::GetFileNameWithoutExtension($Hello) -replace '^Hello-', ''
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
 $kits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'

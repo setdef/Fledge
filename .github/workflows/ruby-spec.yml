@@ -4,12 +4,13 @@
 # ruby/spec on stock Ruby and in a built app, on the same runner, from
 # the same runtime (tasks/ruby_spec.rb): every example that fails on one
 # side only fails the job unless RubySpec::JUSTIFIED explains it (ADR
-# 003, section 4; AGENTS.md, Design precedence 2).
+# 003; doc/contributors/design/parity.md, "ruby/spec"; AGENTS.md, Design
+# precedence 2).
 #
 # ci.yml calls this on every push, once its runtimes are built, for
 # x86_64-linux and arm64-darwin, and for all seven desktop platforms on
 # a release commit ("chore: release X.Y.Z"), whose run a release
-# publishes from (ADR 014). Every night, and when run by hand, it runs
+# publishes from (ADR 053). Every night, and when run by hand, it runs
 # all seven on the runtimes of trunk's newest run of ci.yml that passed.
 # A run costs about 3 to 4 minutes on Linux and macOS and 12 to 16 on
 # Windows (experiment/ruby-spec, run 41776558621).

@@ -65,7 +65,7 @@ All of these use the Developer ID Application certificate and notarization profi
 - **Proves:** whether `com.apple.security.cs.allow-unsigned-executable-memory` can be dropped. CI's self-signed builds ran YJIT without it.
 - **Needs:** as MAC-1.
 - **Steps:** `signing-test.md`, Part 1, step 6.
-- **Passing:** there is no pass or fail. `"yjit":true` with no entitlements means a later change may drop it; `"yjit":false` or a crash means it stays. An agent records either answer in ADR 033, section 5.
+- **Passing:** there is no pass or fail. `"yjit":true` with no entitlements means a later change may drop it; `"yjit":false` or a crash means it stays. An agent records either answer in ADR 050.
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
 
@@ -122,7 +122,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 
 #### IOS-1: A Fledge iOS app passes App Store Connect's validation
 
-- **Proves:** a team's signature and profile, `xcodebuild -exportArchive`, and App Store Connect's own checks accept an archive of a Fledge iOS project. CI checks everything Apple's tools check without an account (ADR 012, section 10).
+- **Proves:** a team's signature and profile, `xcodebuild -exportArchive`, and App Store Connect's own checks accept an archive of a Fledge iOS project. CI checks everything Apple's tools check without an account (`doc/contributors/design/phones.md`, "The App Store archive check").
 - **Needs:** the Apple Developer Program, and an app record in App Store Connect.
 - **Steps:** `doc/phones.md`, "The App Store" (Product > Archive, or the `xcodebuild archive` and `-exportArchive` commands there), and its "Export compliance", which is a legal claim of yours. Set a `version` in `fledge.yml` first.
 - **Passing:** the upload is accepted and the build appears under TestFlight with no validation error. If App Store Connect refuses version 0.0.0, tell an agent: `fledge build ios` should then refuse it (ADR 012).
@@ -151,7 +151,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 
 #### AND-1: Google Play takes a Fledge app bundle
 
-- **Proves:** Play accepts the signed `.aab` that `./gradlew bundleRelease` makes, including the 16 KB alignment and the stored `fledge.zip` that CI checks with bundletool (ADR 012, section 9).
+- **Proves:** Play accepts the signed `.aab` that `./gradlew bundleRelease` makes, including the 16 KB alignment and the stored `fledge.zip` that CI checks with bundletool (`doc/contributors/design/phones.md`, "The Android App Bundle check").
 - **Needs:** a Google Play Console developer account, and an upload key made with `keytool`.
 - **Steps:** `doc/phones.md`, "Google Play". Upload to an internal testing track.
 - **Passing:** Play accepts the bundle with no error, and a device installs the app from the track and runs it. Your OnePlus Nord N30 5G is a device whose arm64-v8a library already ran Fledge's APK (proven, not in this list).
@@ -215,8 +215,8 @@ The Mac App Store needs a sandboxed mode and a `.pkg`, which Fledge does not bui
 
 These need no account, but they need a person at a real desktop. Agents do not do them, and they are not blocked on anything you buy. They are not on the list above, so none of them has a "Blocks 1.0.0?" line; decide for each whether it matters.
 
-- **A drop on an app's icon in the Finder or the Dock.** Launch Services' offer and `open -a` are proved (ADR 032, section 3), but not a real drop, nor a GUI library's drop event in a Fledge app. Agents do no SDL work, so the SDL3 app this test wants is yours to supply, or you can waive the test.
-- **A Linux file manager's double-click.** The desktop entry's `MimeType=` and `Exec=... %F` are checked from the files; a real double-click in a file manager is not (ADR 032, "Not proven").
+- **A drop on an app's icon in the Finder or the Dock.** Launch Services' offer and `open -a` are proved (ADR 052; `doc/contributors/design/desktop-apps.md`, "Files an app opens"), but not a real drop, nor a GUI library's drop event in a Fledge app. Agents do no SDL work, so the SDL3 app this test wants is yours to supply, or you can waive the test.
+- **A Linux file manager's double-click.** The desktop entry's `MimeType=` and `Exec=... %F` are checked from the files; a real double-click in a file manager is not (ADR 052).
 - **The Windows 10 floor on a real machine.** The README says Windows 10 and 11 on x64; the repository records no run of a built app on a real Windows 10 computer, only on GitHub's runners. Build or copy an app there and open it.
 
 ## Not in this list: already proven

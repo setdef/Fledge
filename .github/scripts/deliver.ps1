@@ -144,7 +144,9 @@ foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_d
 Write-Host "ok: the app carries its notices and SBOM"
 
 # The source of each component whose license asks for it travels in the
-# app, in notices\sources\ID\ (ADR 004, section 5): the archive whose
+# app, in notices\sources\ID\ (ADR 043;
+# doc/contributors/design/license-audit.md, "notices/sources/ and the
+# source bundles"): the archive whose
 # SHA-256 its BUILD.txt names, and NOTICES.txt names the folder.
 foreach ($id in @('gmp', 'nsis')) {
   $folder = Join-Path $root "notices\sources\$id"
@@ -299,13 +301,13 @@ if ((Get-Snapshot $place) -ne $before) { Fail "running the app changed the files
 Write-Host 'ok: the app wrote nothing into its own folder'
 
 # The person's own Ruby settings are hidden from the app's boot only
-# (ADR 003): the app's gems stay the runtime's, and what the app starts
+# (ADR 040): the app's gems stay the runtime's, and what the app starts
 # sees the person's GEM_HOME and RUBYOPT. Without a Gemfile, that is any
 # Ruby the app starts through RbConfig.ruby, the runtime's own ruby.exe,
 # as under ruby main.rb. With one, the app's ENV is bundle exec's, with
 # Bundler's GEM_HOME over the person's, and a Ruby started inside
 # Bundler.with_original_env or with_unbundled_env, as a Bundler app
-# starts a person's own tools, sees theirs (ADR 005).
+# starts a person's own tools, sees theirs (ADR 045).
 $personGems = Join-Path $work 'person gems'
 New-Item -ItemType Directory -Force $personGems | Out-Null
 $person = $clean.Clone()

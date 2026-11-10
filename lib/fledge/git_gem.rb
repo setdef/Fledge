@@ -15,7 +15,7 @@ module Fledge
   # the tag or branch pointed to when it was locked, and the glob its
   # gemspecs are found by. The revision pins the gem as a checksum pins a
   # <tt>.gem</tt>, so it is what Fledge fetches, and nothing else
-  # (ADR 006).
+  # (doc/contributors/design/gems.md, "Git gems").
   #
   # Bundler keeps a git gem's checkout at
   # <tt>GEM_DIR/bundler/gems/SCOPE</tt> and its extensions under

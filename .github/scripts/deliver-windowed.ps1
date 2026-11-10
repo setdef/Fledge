@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a windowed app (ADR 008) on Windows: unpacks what fledge
-# build wrote for examples/windowed_app, checks the identity Windows reads
-# from the program with Windows' own means, and starts it as Explorer
-# would, with no Ruby anywhere it can reach.
+# Delivery of a windowed app (ADR 037, ADR 008) on Windows: unpacks what
+# fledge build wrote for examples/windowed_app, checks the identity
+# Windows reads from the program with Windows' own means, and starts it
+# as Explorer would, with no Ruby anywhere it can reach.
 #
 #   pwsh -NoProfile -File deliver-windowed.ps1 -Archive ARCHIVE
 #
@@ -26,7 +26,7 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
 $appName = 'Hello Window'
-# Hello Window-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 018).
+# Hello Window-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 035).
 $platform = [IO.Path]::GetFileNameWithoutExtension($Archive) -replace "^$appName-", ''
 $identifier = 'com.setdef.fledge.HelloWindow'
 

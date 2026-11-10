@@ -20,7 +20,7 @@ module Fledge
   # <tt>/dlib</tt> plug-in, DigiCert KeyLocker, SSL.com eSigner, or a key
   # in a cloud KMS through jsign or osslsigncode. Fledge knows none of
   # them; it runs the command the developer gives it, as Tauri's
-  # +signCommand+ and electron-builder's +sign+ hook do (ADR 033).
+  # +signCommand+ and electron-builder's +sign+ hook do (ADR 051).
   #
   # This class runs that command once for each PE file Fledge signs, the
   # programs, Ruby's libraries, and its extensions, in the order of

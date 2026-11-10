@@ -10,8 +10,8 @@ require_relative "support/binaries"
 require "open3"
 
 # Whether a gem's compiled files would load on the computer an app goes
-# to (Fledge::Linkage; ADR 006, section 8, and ADR 007): files LLVM's
-# linker made (test/support/binaries.rb), read with the tools here.
+# to (Fledge::Linkage; ADR 046, and ADR 007): files LLVM's linker made
+# (test/support/binaries.rb), read with the tools here.
 class LinkageTest < Minitest::Test
   def problems(os, files, provided: [])
     TestReaders.need(self, Fledge::Linkage::FORMATS.fetch(os))

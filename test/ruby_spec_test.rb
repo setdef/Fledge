@@ -72,10 +72,10 @@ class RubySpecTest < Minitest::Test
       differences.first.to_s.lines.first.chomp
   end
 
-  # With no locale, stock Ruby reads paths as US-ASCII where a built app,
-  # whose launcher takes a UTF-8 locale (ADR 026, section 1), reads them
-  # as UTF-8, so examples that need an ASCII-compatible encoding other
-  # than UTF-8 fail under stock Ruby only, and only on macOS and Linux.
+  # With no locale, stock Ruby reads paths as US-ASCII where a built
+  # app, whose launcher takes a UTF-8 locale (ADR 041), reads them as
+  # UTF-8, so examples that need an ASCII-compatible encoding other than
+  # UTF-8 fail under stock Ruby only, and only on macOS and Linux.
   def test_a_justified_difference_names_its_reason_and_holds_only_where_listed
     name = "Dir.chdir accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters"
     runs = results(stock: [name], app: [])

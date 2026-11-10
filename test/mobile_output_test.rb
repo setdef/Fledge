@@ -10,12 +10,12 @@ require "open3"
 require "rbconfig"
 
 # The mobile embedding API's forwarding of standard output and standard
-# error to the system's log (runtime/mobile/output.c; ADR 011, section 5),
-# compiled with this computer's C compiler beside a log that writes each
-# entry to a file, as os_log and logcat would keep it, and run: what a
-# program prints must reach the log line by line, standard error's marked
-# as errors, with a line longer than an entry holds sent as several
-# entries cut between UTF-8 characters.
+# error to the system's log (runtime/mobile/output.c; ADR 059), compiled
+# with this computer's C compiler beside a log that writes each entry to
+# a file, as os_log and logcat would keep it, and run: what a program
+# prints must reach the log line by line, standard error's marked as
+# errors, with a line longer than an entry holds sent as several entries
+# cut between UTF-8 characters.
 class MobileOutputTest < Minitest::Test
   MOBILE = File.expand_path("../runtime/mobile", __dir__)
 
@@ -112,10 +112,10 @@ class MobileOutputTest < Minitest::Test
   # With OS_ACTIVITY_DT_MODE in the environment, which Xcode and other
   # developer tools set to have the unified log copy each entry to
   # standard error, and which macOS and the iOS Simulator honor whatever
-  # its value, even NO (ADR 011, section 5), forwarding standard error to
-  # os_log would send each entry back into the pipe it came from until
-  # the pipe filled and the program blocked. The streams are left as they
-  # are instead: each line reaches the tool once, and the program ends.
+  # its value, even NO (ADR 059), forwarding standard error to os_log
+  # would send each entry back into the pipe it came from until the pipe
+  # filled and the program blocked. The streams are left as they are
+  # instead: each line reaches the tool once, and the program ends.
   # Without it, the lines go to the log and not to the streams. macOS
   # shares iOS's os_log, so this runs on a Mac with the real one.
   def test_leaves_the_streams_alone_when_the_log_copies_itself_to_standard_error

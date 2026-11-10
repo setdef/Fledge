@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of the console (ADR 015): runs the console probe
+# Delivery of the console (ADR 003; doc/contributors/design/parity.md,
+# "Console checks"): runs the console probe
 # (test/fixtures/console) in a terminal of its own, a pseudo-terminal
 # that script(1) opens, as a person runs an app in Terminal or a Linux
 # terminal emulator, and ends it as they would:
@@ -61,7 +62,7 @@ fi
 
 # A locale every runner has, so that Ruby's choice of encoding is the
 # terminal's, not a bare C locale's, which the launcher turns into UTF-8
-# and ruby does not (ADR 003, section 5).
+# and ruby does not (ADR 041).
 case "$(uname -s)" in
   Darwin) locale=en_US.UTF-8 ;;
   *) locale=C.UTF-8 ;;

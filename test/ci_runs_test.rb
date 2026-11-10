@@ -10,8 +10,8 @@ require_relative "support/loopback_server"
 require_relative "../tasks/ci_runs"
 require "json"
 
-# How release.yml, and rake runtime:pin, learn that a commit passed CI on
-# trunk without running CI again (ADR 014): GitHub's REST API, served
+# How release.yml, and rake runtime:pin, learn that a commit passed CI
+# on trunk without running CI again (ADR 053): GitHub's REST API, served
 # here by a loopback server that answers as GitHub's does, read through
 # Net::HTTP itself.
 class CIRunsTest < Minitest::Test
@@ -24,8 +24,9 @@ class CIRunsTest < Minitest::Test
     end
   end
 
-  # A pin-only commit's CI skips the jobs a pin cannot change (ADR 014,
-  # section 2), so a skipped job counts unless every job has to have run.
+  # A pin-only commit's CI skips the jobs a pin cannot change (ADR 053;
+  # doc/contributors/design/releases.md, "A pin commit's short CI"), so
+  # a skipped job counts unless every job has to have run.
   def test_skipped_jobs_count_only_when_every_job_need_not_have_run
     with_api(runs: [a_run(7)], jobs: { 7 => [a_job("Gate"), a_job("Build (arm64-darwin)", "skipped")] }) do |_, runs|
       assert_equal 7, runs.green(SHA)

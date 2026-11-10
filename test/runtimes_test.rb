@@ -236,7 +236,7 @@ class RuntimesTest < Minitest::Test
   end
 
   # GitHub's release downloads answer 5xx now and then and pass a moment
-  # later (ADR 014, section 6).
+  # later (doc/contributors/design/releases.md, "Download retries").
   def test_a_release_that_fails_for_a_moment_is_asked_again_and_the_log_says_so
     body = "the released runtime"
     name = Fledge::Runtimes.file_name(LINUX)
@@ -257,7 +257,7 @@ class RuntimesTest < Minitest::Test
   end
 
   # A mirror is asked again as the release is, and still not passed over
-  # when it keeps failing (ADR 031, section 3).
+  # when it keeps failing (ADR 031).
   def test_a_mirror_that_keeps_failing_is_asked_again_and_then_fails_without_the_release
     body = "the released runtime"
     name = Fledge::Runtimes.file_name(LINUX)

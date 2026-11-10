@@ -78,7 +78,9 @@ entry=$(sed -n 's/^entry = //p' "$root/fledge.cfg")
 grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the app has no notices/NOTICES.txt from the license audit"
 
 # The source of each component whose license asks for it travels in the
-# app, in notices/sources/ID/ (ADR 004, section 5): the archive whose
+# app, in notices/sources/ID/ (ADR 043;
+# doc/contributors/design/license-audit.md, "notices/sources/ and the
+# source bundles"): the archive whose
 # SHA-256 its BUILD.txt names, and NOTICES.txt names the folder.
 sources_hold() {
   for id in "$@"; do
@@ -269,13 +271,13 @@ rm -rf "$work/flat"
 echo "ok: the app unpacked into a folder named bin refuses to run there, and says why"
 
 # The person's own Ruby settings are hidden from the app's boot only
-# (ADR 003): the app's gems stay the runtime's, and what the app starts
+# (ADR 040): the app's gems stay the runtime's, and what the app starts
 # sees the person's GEM_HOME and RUBYOPT. Without a Gemfile, that is any
 # Ruby the app starts through RbConfig.ruby, the runtime's own bin/ruby,
 # as under ruby main.rb. With one, the app's ENV is bundle exec's, with
 # Bundler's GEM_HOME over the person's, and a Ruby started inside
 # Bundler.with_original_env or with_unbundled_env, as a Bundler app
-# starts a person's own tools, sees theirs (ADR 005).
+# starts a person's own tools, sees theirs (ADR 045).
 person_gems="$work/person gems"
 mkdir -p "$person_gems"
 # person_sees COMMAND NAME: what the probe's COMMAND says a child Ruby

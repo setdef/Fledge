@@ -131,7 +131,9 @@ root="$work/squashfs-root"
 grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the AppDir has no notices"
 grep -q "AppImage's type 2 runtime" "$root/notices/NOTICES.txt" || fail "the notices do not name the AppImage runtime"
 # The AppImage carries the source of the runtime at its front and of the
-# libfuse linked into it (LGPL-2.1, section 6(a); ADR 004, section 5).
+# libfuse linked into it (LGPL-2.1, section 6(a); ADR 043;
+# doc/contributors/design/license-audit.md, "notices/sources/ and the
+# source bundles").
 for id in appimage-runtime libfuse; do
   [ -s "$root/notices/sources/$id/BUILD.txt" ] || fail "the AppDir has no notices/sources/$id/"
 done

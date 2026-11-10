@@ -61,7 +61,7 @@ class RuntimeBuilder
     end
 
     # AppImage's type 2 runtime, the program at the front of every
-    # AppImage (ADR 009 and ADR 010), as AppImage releases it for this
+    # AppImage (ADR 009 and ADR 049), as AppImage releases it for this
     # platform's architecture, pinned by SHA-256: built statically
     # against musl, with libfuse (LGPL-2.1), squashfuse, zstd, zlib, and
     # mimalloc linked in, whose sources the release's source bundle holds.

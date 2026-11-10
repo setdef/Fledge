@@ -11,12 +11,12 @@ require "digest"
 require "open3"
 
 # Fledge::SignCommand, a Windows app signed by its developer's own
-# command (fledge build --sign-command, ADR 033). No agent has a
+# command (fledge build --sign-command, ADR 051). No agent has a
 # certificate in a cloud signing service, so the command is the stand-in
 # of test/support/stand_in_signer.rb, which records each path and marks
 # each file. On Windows, with a runtime, a whole build runs it as a
-# developer would, through fledge build, and CI's Build jobs also run the
-# real signtool through --sign-command, which Delivery verifies
+# developer would, through fledge build, and CI's Build jobs also run
+# the real signtool through --sign-command, which Delivery verifies
 # (.github/scripts/deliver-signed.ps1).
 class SignCommandTest < Minitest::Test
   BINARIES = File.expand_path("fixtures/binaries", __dir__)

@@ -5,7 +5,8 @@
 
 /*
  * The environment an app with a Gemfile runs in, on every operating
- * system (ADR 005, section 5).
+ * system (ADR 045; doc/contributors/design/launcher.md,
+ * "The Bundler environment").
  *
  * Under bundle exec, a program's ENV is the person's, with Bundler's
  * own settings over it: BUNDLE_GEMFILE, GEM_HOME, PATH with the bundle's

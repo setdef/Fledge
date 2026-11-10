@@ -57,7 +57,7 @@
  *      (find_app_folder).
  *   5. Once Ruby has booted and before ENTRY runs, it fixes RubyGems'
  *      paths, and for an app with a Gemfile has Bundler set up the app's
- *      gems, as bundle exec would (setup_bundler, ADR 005).
+ *      gems, as bundle exec would (setup_bundler, ADR 045).
  *   6. Then it puts the variables of step 2 back, so ENV and the app's
  *      child processes see what they would see without Fledge: as they
  *      were (restore_environment), or for an app with a Gemfile beneath
@@ -221,7 +221,7 @@ restore_environment(void)
  * Gemfile, once Bundler has set up its gems, beneath Bundler's own
  * settings, as bundle exec would have composed them over the person's
  * environment, and records the person's environment as the one Bundler
- * started from (bundler.c; ADR 005, section 5).
+ * started from (bundler.c; ADR 045).
  */
 static void
 bundle_environment(void)
@@ -294,7 +294,7 @@ static const char bundler_setup[] = "begin\n"
 /*
  * Has Bundler set up the gems of the app's Gemfile, which fledge build
  * installed into the runtime's gem folder, as bundle exec would before
- * running ENTRY (ADR 005). The person's own Bundler settings are still
+ * running ENTRY (ADR 045). The person's own Bundler settings are still
  * set aside: BUNDLE_GEMFILE names the app's Gemfile, and
  * BUNDLE_USER_CONFIG names the app's own .bundle/config, which fledge
  * build wrote, in place of ~/.bundle/config, so nothing of the person's
@@ -421,7 +421,8 @@ find_system_libraries(void)
  * Contents/Resources/app (Fledge::MacBundle), where Ruby's prefix is
  * too. Ruby resolves links for __dir__ but not for $0 or __FILE__, so
  * an entry run through the link would put File.dirname(__FILE__) in
- * one folder and __dir__ in another (ADR 026, section 2). Everywhere
+ * one folder and __dir__ in another (doc/contributors/design/launcher.md,
+ * "The app folder in a macOS bundle"). Everywhere
  * else ROOT is already a real path and app a real folder, so this
  * changes nothing. A missing app folder stays ROOT/app, for
  * build_ruby_arguments to name.

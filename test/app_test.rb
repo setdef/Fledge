@@ -177,8 +177,10 @@ class AppTest < Minitest::Test
     assert_equal %w[.env.example helper.rb main.rb vendor vendor/keep.rb], paths
   end
 
-  # ADR 005, section 1: a folder a build went to holds a cache directory
-  # tag, and stays out of every later build, wherever that one goes.
+  # A folder a build went to holds a cache directory tag, and stays out
+  # of every later build, wherever that one goes (ADR 005;
+  # doc/contributors/design/desktop-apps.md, "The project and its
+  # name").
   def test_entries_leave_out_each_folder_a_cache_directory_tag_marks
     write("app/main.rb")
     write("app/dist/index.html", "the app's own")

@@ -4,7 +4,7 @@
   SPDX-License-Identifier: MIT
 
   The entitlements fledge build signs a macOS app's code with, under the
-  hardened runtime (ADR 016), Briefcase's defaults for every macOS app.
+  hardened runtime (ADR 050), Briefcase's defaults for every macOS app.
   YJIT, which an app may enable, makes its machine code executable with
   mprotect, without MAP_JIT (jit.c, rb_jit_reserve_addr_space and
   rb_jit_mark_executable, at Ruby 4.0.9), which the first is for; the

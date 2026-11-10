@@ -16,4 +16,4 @@ For information only: you said packaging needed a bundle id, an AppUserModelID, 
 - `doc/contributors/adr/008.md`: the identifier is the bundle id on macOS and the AppUserModelID on Windows.
 - `doc/contributors/adr/009.md`: the installers for each platform.
 - `doc/contributors/adr/006.md`: Rust gems built with rb-sys compile as you build.
-- `doc/contributors/adr/019.md`: what a wrapper may rely on.
+- `doc/contributors/design/public-interface.md`, "A framework wrapper's view": what a wrapper may rely on.

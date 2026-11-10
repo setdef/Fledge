@@ -6,7 +6,7 @@
 #++
 
 class Parity
-  # The mobile targets (ADR 011, section 1), on which the mobile parity
+  # The mobile targets (ADR 057), on which the mobile parity
   # check (tasks/mobile_parity.rb) runs the probe.
   MOBILE = RuntimeBuilder::Mobile::PLATFORMS.values.flat_map(&:targets).map(&:name).freeze
 
@@ -18,8 +18,8 @@ class Parity
   DESKTOP_ARCH = "(?:arm64-darwin23|x86_64-linux|aarch64-linux)"
   MOBILE_ARCH = "(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"
 
-  # What decisions 9 and 10 mean on a phone (ADR 011, section 6): each
-  # way an app's Ruby on iOS or Android differs from ruby main.rb on the
+  # What decisions 9 and 10 mean on a phone (doc/contributors/design/phones.md,
+  # "Parity on a phone"): each way an app's Ruby on iOS or Android differs from ruby main.rb on the
   # desktop that runs its simulator, and why each is right.
   MOBILE_JUSTIFIED = [
     Justification.new(fact: "ENV", reference: [/./], app: [/./], platforms: MOBILE,
@@ -39,7 +39,7 @@ class Parity
     Justification.new(fact: "RUBY_PLATFORM", reference: [/\A"#{DESKTOP_ARCH}"\z/o], app: [/\A"#{MOBILE_ARCH}"\z/o], platforms: MOBILE,
       reason: "Ruby names the platform it was built for: rv-ruby's for macOS 14 (darwin23) or glibc Linux, a " \
         "phone's for iOS, which Ruby calls arm64-darwin, or Android, which it calls ARCH-linux-android. Fledge's " \
-        "target names for them are ADR 011's."),
+        "target names for them are ADR 057's."),
     Justification.new(fact: "RUBY_DESCRIPTION", reference: [/\[#{DESKTOP_ARCH}\]"\z/o], app: [/\[#{MOBILE_ARCH}\]"\z/o],
       platforms: MOBILE, reason: "As for RUBY_PLATFORM, which it ends with; the version, date, and revision are the same."),
     Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?4\.0\.0/#{DESKTOP_ARCH}"\z}o],
@@ -62,7 +62,7 @@ class Parity
         "printed, as under ruby main.rb in a terminal, and as Briefcase's iOS host unbuffers Python's streams."),
     Justification.new(fact: "gems", reference: [/\A"fiddle /], platforms: IOS,
       reason: "The iOS runtime leaves out fiddle, which calls any C function by name, as xord/cruby leaves it out " \
-        "of RubySketch's Ruby \"to pass the App Store review\" (ADR 011, section 4)."),
+        "of RubySketch's Ruby \"to pass the App Store review\" (ADR 058)."),
     Justification.new(fact: "requireable", reference: [/\A"fiddle"=/], platforms: IOS, reason: "As for gems."),
   ].freeze
 end

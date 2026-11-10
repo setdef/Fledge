@@ -35,10 +35,9 @@ module Fledge
   # depends on them (ADR 030). Nor can it know which files and folders a
   # windowed app opens: list them under +file_associations+
   # (Config::FileAssociation), and each system offers the app for them
-  # (ADR 032, section 3). Nor can it know whether the app builds others
-  # from itself where nothing else is installed: set +build_tools+, and
-  # it carries the tools <tt>fledge build --from</tt> needs (ADR 032,
-  # section 4).
+  # (ADR 052). Nor can it know whether the app builds others from itself
+  # where nothing else is installed: set +build_tools+, and it carries
+  # the tools <tt>fledge build --from</tt> needs (ADR 032).
   #
   # This class reads <tt>fledge.yml</tt> from the project's root, a YAML
   # mapping as RuboCop's and Kamal's configuration are, checks each value,
@@ -170,13 +169,13 @@ module Fledge
     ##
     # :attr_reader: file_associations
     # The files and folders a windowed app opens
-    # (Config::FileAssociation), or +nil+ for none (ADR 032, section 3).
+    # (Config::FileAssociation), or +nil+ for none (ADR 052).
 
     ##
     # :attr_reader: build_tools
     # Whether the app carries the tools <tt>fledge build --from</tt> runs
     # that a system lacks, so that it can build an app from itself with
-    # no runtime at hand (ADR 032, section 4); +nil+ for no.
+    # no runtime at hand (ADR 032); +nil+ for no.
 
     # The file's name, in the project's root.
     FILE = "fledge.yml"
@@ -204,7 +203,7 @@ module Fledge
     # not every Linux computer has, so a developer asks for it (ADR 021).
     DEFAULT_INSTALLERS = %w[dmg nsis appimage].freeze
 
-    # The kinds of app (ADR 001, section 5): one that runs in a terminal,
+    # The kinds of app (ADR 037): one that runs in a terminal,
     # and one that opens its own windows and shows none.
     KINDS = %w[console windowed].freeze
 
@@ -426,7 +425,7 @@ module Fledge
 
     # The files and folders the app opens (Config::FileAssociation), only
     # for a windowed app, since only a windowed app has a bundle, a desktop
-    # entry, or a setup program to declare them in (ADR 032, section 3).
+    # entry, or a setup program to declare them in (ADR 052).
     private_class_method def self.file_associations(data, path) # :nodoc:
       list = FileAssociation.list(data, path)
       if list && !list.empty? && !windowed?(data)

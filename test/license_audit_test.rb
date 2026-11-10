@@ -118,7 +118,7 @@ class LicenseAuditTest < Minitest::Test
 
   # libfuse may be linked into AppImage's runtime, which is not Fledge's
   # own, because Fledge publishes the runtime's source and libfuse's
-  # (ADR 010); the audit finds every library it says is linked in.
+  # (ADR 049); the audit finds every library it says is linked in.
   def test_libfuse_linked_into_the_appimage_runtime_whose_source_is_published_passes
     write("tools/appimage-runtime", Binaries.elf(payload: APPIMAGE_RUNTIME))
 
@@ -247,9 +247,10 @@ class LicenseAuditTest < Minitest::Test
     assert_equal :forbidden, LicenseAudit.category("AGPL-3.0-or-later")
   end
 
-  # The macOS floor (ADR 029, sections 2 and 6): every Mach-O in a macOS
-  # runtime, the launcher and bin/ruby among them, runs on Fledge's oldest
-  # macOS, and the audit refuses a runtime with one that says otherwise.
+  # The macOS floor (doc/contributors/design/releases.md, "Platform
+  # floors"): every Mach-O in a macOS runtime, the launcher and bin/ruby
+  # among them, runs on Fledge's oldest macOS, and the audit refuses a
+  # runtime with one that says otherwise.
   def macos_floors(files)
     Dir.mktmpdir("macos-floor") do |tree|
       files.each do |path, bytes|
@@ -390,9 +391,9 @@ class LicenseAuditTest < Minitest::Test
 
   # The app carries the source of each component whose license asks for
   # it, in notices/sources/, which it copies from the runtime, so the
-  # source offer does not depend on any host (ADR 004, section 5). The
-  # audit accounts for every file there as that component's source, the
-  # SBOM lists them, and NOTICES.txt says where they are.
+  # source offer does not depend on any host (ADR 043). The audit
+  # accounts for every file there as that component's source, the SBOM
+  # lists them, and NOTICES.txt says where they are.
   def test_the_runtime_carries_the_sources_in_its_notices_and_the_audit_accounts_for_them
     Dir.mktmpdir do |directory|
       assert_equal File.join(@tree, "notices/sources"), linux_bundle(directory).copy_into(@tree)
@@ -458,7 +459,8 @@ class LicenseAuditTest < Minitest::Test
   end
 
   # Windows on ARM64's GNU MP is MSYS2's CLANGARM64 build of the same
-  # source package, and its bundle says so (ADR 018).
+  # source package, and its bundle says so
+  # (doc/contributors/design/runtimes.md, "Windows on ARM64").
   def test_the_windows_on_arm_source_bundle_names_msys2s_clangarm64_build
     Dir.mktmpdir do |directory|
       downloads = File.join(directory, "downloads")

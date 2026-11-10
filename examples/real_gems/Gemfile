@@ -5,8 +5,9 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# The gems real apps lock that need more than a gem server's file (ADR
-# 020). The .bundle/config beside this file sends RubyGems.org through a
+# The gems real apps lock that need more than a gem server's file
+# (doc/contributors/design/gems.md, "Examples that exercise these
+# rules"). The .bundle/config beside this file sends RubyGems.org through a
 # mirror that wants a login (Bundler's own mirror and credential
 # settings), and asks for the optional group.
 source "https://rubygems.org"

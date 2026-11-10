@@ -12,7 +12,7 @@ require_relative "unix"
 
 class RuntimeBuilder
   # musl Linux (Alpine and the CI images built on it): CRuby built from
-  # its pinned source on the computer it is for, as ADR 001's fallback
+  # its pinned source on the computer it is for, as ADR 035's fallback
   # and python-build-standalone build Python, because rv-ruby's musl
   # builds link the standard library's extensions into their own
   # bin/ruby, where a launcher linked against their libruby cannot reach

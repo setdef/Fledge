@@ -12,9 +12,10 @@ require "stringio"
 require "yaml"
 
 # fledge build ios and fledge build android (ADR 012), through real
-# streams, with fake mobile runtimes shaped as ADR 011 describes them,
-# real .gem files served at the lockfile's remote, and, for iOS, the real
-# XcodeGen where this computer has it.
+# streams, with fake mobile runtimes shaped as
+# doc/contributors/design/phones.md, "What a phone runtime holds",
+# describes them, real .gem files served at the lockfile's remote, and,
+# for iOS, the real XcodeGen where this computer has it.
 class MobileBuildTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir
@@ -42,7 +43,7 @@ class MobileBuildTest < Minitest::Test
   end
 
   # A phone's Ruby is the minor version that runs fledge build too (ADR
-  # 028, section 3); the fake runtimes are Ruby 4.0.9.
+  # 055); the fake runtimes are Ruby 4.0.9.
   def test_a_phone_project_on_another_ruby_minor_than_the_runtimes_fails
     script_app("identifier: com.example.Hello\n")
     out, err, status = build("android", "hello", ruby: "4.1.0")
@@ -273,10 +274,10 @@ class MobileBuildTest < Minitest::Test
     end
   end
 
-  # ADR 025, section 5: the files in android's host replace Fledge's at
-  # the same paths, or join them, before Fledge fills its marks, and the
-  # build says which of Fledge's it replaced. ios's host is not android's
-  # to check.
+  # ADR 025: the files in android's host replace Fledge's at the same
+  # paths, or join them, before Fledge fills its marks, and the build
+  # says which of Fledge's it replaced. ios's host is not android's to
+  # check.
   def test_an_android_hosts_files_replace_fledges_and_join_them
     root = script_app("identifier: com.example.Hello\nandroid:\n  host: host/android\nios:\n  host: missing\n")
     activity = "src/main/java/org/setdef/fledge/host/MainActivity.java"

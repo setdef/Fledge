@@ -8,14 +8,15 @@
 require_relative "test_helper"
 
 # Signing with a timestamp when Apple's timestamp server does not answer
-# (ADR 016, section 6). CI's signed build once failed with codesign's
-# "A timestamp was expected but was not found." (run 42126058497,
-# attempt 1, Build (arm64-darwin)) and passed when run again; VS Code
-# and Defold sign again after a wait when codesign's output says so,
-# and so does Fledge::MacSigning. Apple's server cannot be made to fail
-# on demand, so a codesign placed first on +PATH+ fails as the runner's
-# did for as many runs as a test asks, then runs the real codesign,
-# which signs ad hoc, and the real Fledge::Command runs both.
+# (doc/contributors/design/signing.md, "Timestamps"). CI's signed build
+# once failed with codesign's "A timestamp was expected but was not
+# found." (run 42126058497, attempt 1, Build (arm64-darwin)) and passed
+# when run again; VS Code and Defold sign again after a wait when
+# codesign's output says so, and so does Fledge::MacSigning. Apple's
+# server cannot be made to fail on demand, so a codesign placed first on
+# +PATH+ fails as the runner's did for as many runs as a test asks, then
+# runs the real codesign, which signs ad hoc, and the real
+# Fledge::Command runs both.
 class MacSigningTest < Minitest::Test
   BINARIES = File.expand_path("fixtures/binaries", __dir__)
 

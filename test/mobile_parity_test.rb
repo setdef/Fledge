@@ -10,12 +10,13 @@ require_relative "support/gems"
 require_relative "support/loopback_server"
 require_relative "../tasks/mobile_parity"
 
-# The parts of the mobile check (ADR 011, section 6; ADR 012) that need no
-# simulator or emulator: reading the probe's report and an app's status
-# back from the entries of a system log, the apps it builds, the
-# reference Ruby's environment, and the justifications for what a phone
-# does differently. CI's Mobile apps jobs build the apps with fledge
-# build and run them in the iOS Simulator and Android emulators.
+# The parts of the mobile check (doc/contributors/design/phones.md,
+# "Parity on a phone") that need no simulator or emulator: reading the
+# probe's report and an app's status back from the entries of a system
+# log, the apps it builds, the reference Ruby's environment, and the
+# justifications for what a phone does differently. CI's Mobile apps
+# jobs build the apps with fledge build and run them in the iOS
+# Simulator and Android emulators.
 class MobileParityTest < Minitest::Test
   # The embedding API sends a line longer than a log entry holds as
   # several entries in a row, so the report is the entries from its
@@ -34,7 +35,8 @@ class MobileParityTest < Minitest::Test
   end
 
   # The host app of every project fledge build writes logs the app's
-  # exit status when its program ends (ADR 012).
+  # exit status when its program ends
+  # (doc/contributors/design/phones.md, "The host app").
   def test_the_status_is_the_hosts_last_word
     assert_equal 0, MobileParity.status(["a", "Mobile App exited with status 0"])
     assert_equal 1, MobileParity.status(["Hello exited with status 1"])

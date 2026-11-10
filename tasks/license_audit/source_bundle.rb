@@ -17,7 +17,7 @@ require_relative "../download_cache"
 class LicenseAudit
   # The complete corresponding source of a platform's LGPL libraries, of
   # the program an LGPL library is linked into (the AppImage runtime, ADR
-  # 010), and of a component whose license asks that its source be
+  # 049), and of a component whose license asks that its source be
   # available (NSIS), in the runtime's own notices/sources/, which every
   # app copies, and as one .tar.gz that each release publishes beside
   # that platform's runtime. The runtime's NOTICES names both.
@@ -30,7 +30,7 @@ class LicenseAudit
   # app's: nothing of the app or of Fledge's launcher goes in. The source
   # travels with the app, so that whoever conveys the app conveys the
   # source with it (LGPL-2.1, section 6(a)) whatever becomes of the
-  # release's host (ADR 004, section 5).
+  # release's host (ADR 043).
   class SourceBundle
     # Where in a runtime, and so in an app, the sources are.
     FOLDER = "notices/sources"

@@ -91,7 +91,7 @@ class RuntimeBuilder
     end
 
     # What of NSIS's release fledge build compiles an installer with (ADR
-    # 009 and ADR 010): its license; makensis, the release's own Windows
+    # 009 and ADR 049): its license; makensis, the release's own Windows
     # program, and the zlib1.dll it loads; the stub of solid LZMA
     # compression, NSIS's default and Tauri's, the zlib stub makensis
     # loads as it starts, before a script chooses its compressor, and the
@@ -135,7 +135,7 @@ class RuntimeBuilder
 
     # Compiles the console launcher to +output+, and the windowed one, a
     # GUI program for windowed apps, beside it as launcherw.exe, as
-    # RubyInstaller ships rubyw.exe beside ruby.exe (ADR 008). Both build
+    # RubyInstaller ships rubyw.exe beside ruby.exe (ADR 037). Both build
     # with warnings as errors, under clang's static analyzer, and may
     # import only what IMPORTS allows.
     private def compile(tree, output)

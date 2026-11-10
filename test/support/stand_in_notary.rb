@@ -13,7 +13,9 @@ require "tmpdir"
 # <tt>notarytool submit</tt>, <tt>notarytool log</tt>, and
 # <tt>stapler staple</tt> and <tt>validate</tt> as Apple documents them,
 # and records every call, so a test proves what Fledge asks of Apple, in
-# which order, without an Apple Developer account (ADR 033, section 6).
+# which order, without an Apple Developer account
+# (doc/contributors/design/signing.md, "What CI proves, and the
+# stand-ins").
 #
 # Its answers are Apple's own examples: the submission ID, and the log of
 # an Invalid submission, from "Customizing the notarization workflow";

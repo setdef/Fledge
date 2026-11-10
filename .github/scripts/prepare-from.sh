@@ -7,7 +7,8 @@
 # as the fledge gem, unpacks it into WORK/fledge as a framework would
 # vendor it, copies the builder project beside it, whose fledge.yml sets
 # build_tools, has Bundler lock it for PLATFORM, and builds it with the
-# runtime in FLEDGE_RUNTIME_DIR (ADR 032, sections 4 and 8).
+# runtime in FLEDGE_RUNTIME_DIR (ADR 032;
+# doc/contributors/design/desktop-apps.md, "Building from a built app").
 #
 #   .github/scripts/prepare-from.sh WORK PLATFORM
 set -eu

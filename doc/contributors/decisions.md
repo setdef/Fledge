@@ -24,7 +24,7 @@ The project was started with these directions, given in prose rather than as a n
 
 > Never publish to RubyGems.org.
 
-*Governs:* the gem's distribution, forever. *Applied in:* AGENTS.md, Releasing; `fledge.gemspec`'s `allowed_push_host`; ADR 001, section 7.
+*Governs:* the gem's distribution, forever. *Applied in:* AGENTS.md, Releasing; `fledge.gemspec`'s `allowed_push_host`; `doc/contributors/design/releases.md`, "Where releases are".
 
 > The walking skeleton must walk on macOS, Windows, and Linux.
 
@@ -60,7 +60,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 7. 2.39 is fine, and even newer may be fine if there becomes good reason to raise the floor.
 
-*Governs:* the oldest glibc a Linux app runs on. *Applied in:* ADR 001, section 3.
+*Governs:* the oldest glibc a Linux app runs on. *Applied in:* ADR 035; `doc/contributors/design/releases.md`, "Platform floors".
 
 > 8. Because of what I said re: #1, we must be VERY careful to be able to let app devs _not_ be copyleft-laden when they pay for a commercial license.
 
@@ -68,7 +68,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 9. When using fledge, your ruby source code should be able to be identical to how it was without Fledge, so the things you had to `require` before you can still need the app dev to `require`, but the things you didn't have to `require` before the app dev still shouldn't have to require.
 
-*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 003; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
+*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 003 and ADR 039; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
 
 > 10. All the ruby globals should be non-surprising to app devs, for the same motivation as #9.
 
@@ -76,7 +76,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 11. I don't understand what I'd be deciding here. [re: restoring the person's own RUBY*/GEM*/BUNDLE* env for child processes — orchestrator is explaining; still open]
 
-*Governs:* nothing yet. *Applied in:* `questions.md`, entry C, which tracks the follow-up. The launcher now restores the person's environment after Ruby boots, as the orchestrating agent directed (ADR 003, section 3).
+*Governs:* nothing yet. *Applied in:* `questions.md`, entry C, which tracks the follow-up. The launcher now restores the person's environment after Ruby boots, as the orchestrating agent directed (ADR 040).
 
 > 12. Many CI platforms only run on musl for Linux, so I'd like to support it eventually, but it's not a blocker to continuing to iterate. It may be a blocker to 1.0 though.
 
@@ -88,7 +88,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 14. You wrote the ADRs. Recall the difference between what _I've said_ vs. what's on disk. me/me vs. me/yourself
 
-*Governs:* ADR content is the agents' to decide and change. *Applied in:* AGENTS.md, Questions; ADR 001, section 2 (how a version pins its runtimes).
+*Governs:* ADR content is the agents' to decide and change. *Applied in:* AGENTS.md, Questions; ADR 014 (how a version pins its runtimes).
 
 > 15. You wrote the plans. Recall the difference between what _I've said_ vs. what's on disk. me/me vs. me/yourself
 
@@ -108,11 +108,11 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 19. I don't understand what I'd be deciding here. [re: RubyInstaller signing key expiry — agents own this]
 
-*Governs:* the RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 001, section 3; `runtime/sources.yml`.
+*Governs:* the RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 035; `doc/contributors/design/runtimes.md`, "The RubyInstaller signing key"; `runtime/sources.yml`.
 
 > 20. Tiny filesize is not a priority; "my ruby code just works" _is_ a (high) priority.
 
-*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* ADR 003; `RuntimeBuilder::Pruning.prune`.
+*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* ADR 039; `RuntimeBuilder::Pruning.prune`.
 
 > 21. I don't understand what I'd be deciding here. [re: Windows console code pages and Ctrl-C — agents own this]
 
@@ -124,7 +124,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 23. Would this require app devs to have a bunch of `if`s or polymorphic objects used throughout their app to handle the difference? [re: Windows ruby\ vs Unix lib/ layout — answer is no; agents own this]
 
-*Governs:* the internal layout of a runtime is the agents' to decide, as long as app code needs no per-OS branches for it. *Applied in:* ADR 001, section 8.
+*Governs:* the internal layout of a runtime is the agents' to decide, as long as app code needs no per-OS branches for it. *Applied in:* ADR 038.
 
 > 24. See #8 [re: GMP being LGPL]
 
@@ -150,7 +150,7 @@ Replies to the orchestrating agent's answers in chat, quoted from the maintainer
 
 [re: whether to restore the person's own `RUBYOPT`, `GEM_*`, `BUNDLE_*`, and the rest into `ENV` after Ruby has booted, so the app's `ENV` and its child processes look as they would without Fledge, while the app's own boot stays protected. The orchestrator recommended restoring.]
 
-*Governs:* the environment an app and its child processes see. *Applied in:* ADR 003, section 3; `runtime/launcher/unix.c` and `windows.c`; the parity check and Delivery.
+*Governs:* the environment an app and its child processes see. *Applied in:* ADR 040; `runtime/launcher/unix.c` and `windows.c`; the parity check and Delivery.
 
 > 8 and 24. Remember that LGPL and GPL/AGPL's main differentiator is dynamic linking. Relevant here or not?
 
@@ -188,7 +188,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the orchestrator's report that `fledge build` refused GPL and AGPL app gems, such as Tokra, allowed LGPL ones only with their source pinned, and refused gems whose binaries had LGPL code linked in statically.]
 
-*Governs:* Fledge takes no position on the licenses of the gems an app depends on — those are the app developer's choice and responsibility; decision 8 and the LGPL replies govern only what Fledge itself puts into apps (its runtime). *Applied in:* ADR 007, which supersedes the parts of ADR 004 (section 7 and part of 8), ADR 005 (sections 3 and 7), and ADR 006 (sections 8 to 10) that judged an app's gems; AGENTS.md, Licensing; `Fledge::AppGems`, which no longer judges a gem's license or what its compiled files hold, and `Fledge::Linkage`, which checks only that they load; `fledge.yml`, which no longer has `licenses` or `compiled`; the removal of `lib/fledge/compiled_code.yml`, `Fledge::RustCrates`, and `notices/GEMS.txt`; `doc/licensing.md`, "Your app's own gems"; the README; `exe/fledge`'s help; Plan 002; `examples/native_app`, which ships spreadsheet (GPL-3.0), and `examples/nokogiri_app`, which ships for Windows with GNU libiconv linked in.
+*Governs:* Fledge takes no position on the licenses of the gems an app depends on — those are the app developer's choice and responsibility; decision 8 and the LGPL replies govern only what Fledge itself puts into apps (its runtime). *Applied in:* ADR 007; AGENTS.md, Licensing; `Fledge::AppGems`, which no longer judges a gem's license or what its compiled files hold, and `Fledge::Linkage`, which checks only that they load; `fledge.yml`, which no longer has `licenses` or `compiled`; the removal of `lib/fledge/compiled_code.yml`, `Fledge::RustCrates`, and `notices/GEMS.txt`; `doc/licensing.md`, "Your app's own gems"; the README; `exe/fledge`'s help; Plan 002; `examples/native_app`, which ships spreadsheet (GPL-3.0), and `examples/nokogiri_app`, which ships for Windows with GNU libiconv linked in.
 
 > We should eventually get an Apple Developer account, but I'd like to wait until the last responsible moment.
 
@@ -246,7 +246,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: a draft line saying Fledge is "never" installed from RubyGems.org, which followed AGENTS.md's "Never publish to RubyGems.org" as if that rule were a position of the project.]
 
-*Governs:* publishing to RubyGems.org is a human-only activity, whether or not Fledge is on RubyGems.org; the earlier "Never publish to RubyGems.org" and decision 6's "you may not release to rubygems" bind agents and say nothing about the project, so documents for developers do not say Fledge is never published there. *Applied in:* AGENTS.md, Releasing; Plan 003, "1.0"; ADR 001, section 7.
+*Governs:* publishing to RubyGems.org is a human-only activity, whether or not Fledge is on RubyGems.org; the earlier "Never publish to RubyGems.org" and decision 6's "you may not release to rubygems" bind agents and say nothing about the project, so documents for developers do not say Fledge is never published there. *Applied in:* AGENTS.md, Releasing; Plan 003, "1.0"; `doc/contributors/design/releases.md`, "Where releases are".
 
 ## 2026-11-02, later again
 
@@ -284,7 +284,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the orchestrator's argument for keeping the launcher's turning a bare C locale into a UTF-8 one, a deviation from plain Ruby that Design precedence 1 justifies.]
 
-*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; ADR 026; `Parity::JUSTIFIED`.
+*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; ADR 041; `Parity::JUSTIFIED`.
 
 > A minor release can make additional rubies available, but can only change the defaults' patch versions--unless we abandon the concept of default entirely, and require app devs to specify a version (maybe better?); then it's limited to e.g. generated config files, which can change in a minor version because they don't get re-generated on upgrade.
 >
@@ -294,13 +294,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: question A in `questions.md`, whether a 1.x release may change the Ruby inside apps or raise the minimum operating system.]
 
-*Governs:* a minor release may add Rubies and may change only a default Ruby's patch version; the maintainer is open to having no default Ruby, with the app developer naming the version (the orchestrator is to weigh it); generated config files may change in a minor release because an upgrade does not regenerate them; a new Ruby minor is expected to break (Ruby does not follow SemVer); dropping a Ruby, or an operating system version (macOS 26 against 27, not a patch), requires a major version. *Applied in:* ADR 028; ADR 029.
+*Governs:* a minor release may add Rubies and may change only a default Ruby's patch version; the maintainer is open to having no default Ruby, with the app developer naming the version (the orchestrator is to weigh it); generated config files may change in a minor release because an upgrade does not regenerate them; a new Ruby minor is expected to break (Ruby does not follow SemVer); dropping a Ruby, or an operating system version (macOS 26 against 27, not a patch), requires a major version. *Applied in:* ADR 028; ADR 029; ADR 055.
 
 > We'll be reusing the git/ruby version stuff from RatatuiRuby and Rooibos. How tags work (and release branches, backports, etc.) differ before and after 1.0.0.
 
 [re: question B in `questions.md`, whether a release from 1.0 on still gets a git tag.]
 
-*Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it; the tooling itself waits on its extraction (2026-11-07, below). *Applied in:* ADR 028; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
+*Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it; the tooling itself waits on its extraction (2026-11-07, below). *Applied in:* ADR 028; `doc/contributors/design/releases.md`, "From 1.0: release branches and a human publishing"; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 
 > winget, Chocolatey, Scoop, brew, apt-get, pacman, dnf, etc. are all very relevant for Ruby console apps.
 
@@ -319,7 +319,7 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 [re: the orchestrator's account of what the sentence of 2026-11-03 meant, and its design of several gem names that carried Fledge's runtimes.]
 
-*Governs:* nothing is pushed to RubyGems.org before 1.0.0; every release, before and after, has its git tag and the GitHub Release made from it; from 1.0.0 a release is also on RubyGems.org, and "not relying" means only that. *Applied in:* AGENTS.md, Releasing; ADR 028, section 7; ADR 029, section 2; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
+*Governs:* nothing is pushed to RubyGems.org before 1.0.0; every release, before and after, has its git tag and the GitHub Release made from it; from 1.0.0 a release is also on RubyGems.org, and "not relying" means only that. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`, "Where releases are" and "From 1.0: release branches and a human publishing"; `doc/contributors/design/public-interface.md`, "Frozen for 1.x"; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 
 > Absolutely not. If you want a second host, you come to me asking (optionally with suggestions).
 
@@ -337,7 +337,7 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 [re: question D in `questions.md`, whether a repack may make one system's app on another system when it compiles nothing.]
 
-*Governs:* making an app for another system from an already built app is allowed when it adds little code and complexity and little room for bugs, and above all when it needs no cross-compiling; the earlier rule that each system's app is built on that system (decisions, 2026-10-28) was about code that writes formats and compiles, and is not extended to a step that only copies. *Applied in:* ADR 032, section 6.
+*Governs:* making an app for another system from an already built app is allowed when it adds little code and complexity and little room for bugs, and above all when it needs no cross-compiling; the earlier rule that each system's app is built on that system (decisions, 2026-10-28) was about code that writes formats and compiles, and is not extended to a step that only copies. *Applied in:* ADR 032.
 
 > I've decided to pay Apple, Microsoft, Google, whoever I need.
 
@@ -362,7 +362,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: an agent starting to copy RatatuiRuby's release tooling into Fledge, which the maintainer had never asked for; the second line answers whether Fledge's agents should ever do that second extraction.]
 
-*Governs:* Fledge's release tooling (`rake bump:*`, the release task's tags, `stable`) waits until RatatuiRuby's agents finish extracting `ratatui_ruby-devtools` and its non-RatatuiRuby parts are extracted again for Fledge, Lota, and the rest; nothing is ported or copied before then, and Fledge's agents do that second extraction only when the maintainer explicitly instructs it. *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; ADR 028, section 7.
+*Governs:* Fledge's release tooling (`rake bump:*`, the release task's tags, `stable`) waits until RatatuiRuby's agents finish extracting `ratatui_ruby-devtools` and its non-RatatuiRuby parts are extracted again for Fledge, Lota, and the rest; nothing is ported or copied before then, and Fledge's agents do that second extraction only when the maintainer explicitly instructs it. *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; `doc/contributors/design/releases.md`, "From 1.0: release branches and a human publishing".
 
 ## 2026-11-08
 
@@ -394,10 +394,10 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the Lota agent's proposal that Lota and Fledge require Ruby 4.1, previews included, after Fledge's Ruby 4.1 spike (`doc/contributors/research/2026-11-09-ruby-4.1-spike.md`), and the maintainer's word before it that he would agree only if both agents did. Both agreed: Fledge's orchestrating agent on the grounds that a 1.0 on Ruby 4.0 would oblige Fledge to keep 4.0's runtimes through all of 1.x (ADR 029, section 6), on condition that the spike's open problems are fixed or explained before the first release on 4.1; the Lota agent on condition that Lota's own move lands together with that release. Fledge's orchestrating agent had also proposed a last release on Ruby 4.0.9 first, which these words leave out.]
 
-*Governs:* Fledge's releases carry Ruby 4.1 preview runtimes in place of Ruby 4.0's, from the first release whose CI passes on every job with them; Ruby 4.0 is dropped now, but for the one release the next quotation allows; Fledge 1.0.0 is not released before Ruby 4.1.0 is, and so waits on Ruby 4.1.0 as well as on the maintainer's account-blocked testing. *Applied in:* Plan 003; ADR 028 and ADR 029; the handoff.
+*Governs:* Fledge's releases carry Ruby 4.1 preview runtimes in place of Ruby 4.0's, from the first release whose CI passes on every job with them; Ruby 4.0 is dropped now, but for the one release the next quotation allows; Fledge 1.0.0 is not released before Ruby 4.1.0 is, and so waits on Ruby 4.1.0 as well as on the maintainer's account-blocked testing. *Applied in:* Plan 003; ADR 056; `doc/contributors/design/releases.md`, "Ruby 4.1 and 1.0"; the handoff.
 
 > I am okay with a last-release on Ruby 4.0.9 first, as long as it doesn't meaningfully delay "now". Call it "now-ish" :)
 
 [re: the release on Ruby 4.0.9 that the quotation above left out, which the orchestrating agent noted when it recorded that one.]
 
-*Governs:* one last Fledge release on Ruby 4.0.9 is made before the first on Ruby 4.1, as long as it does not meaningfully delay the move to 4.1; "now" in the quotation above means as soon as that release and the 4.1 work allow. *Applied in:* release 0.11.0; Plan 003.
+*Governs:* one last Fledge release on Ruby 4.0.9 is made before the first on Ruby 4.1, as long as it does not meaningfully delay the move to 4.1; "now" in the quotation above means as soon as that release and the 4.1 work allow. *Applied in:* release 0.11.0; Plan 003; ADR 056; `doc/contributors/design/releases.md`, "Ruby 4.1 and 1.0".

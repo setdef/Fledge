@@ -113,7 +113,8 @@ module Fledge
       # and then on the installer, failing unless it exits 0 (ADR 016). The
       # command goes in the first of NSIS's three quote characters it
       # does not hold, since NSIS has no escape for a quote of the same
-      # kind inside a string (ADR 033).
+      # kind inside a string (doc/contributors/design/signing.md,
+      # "Signing on Windows").
       private def finalize
         signing = @signing
         return [] unless signing
@@ -235,7 +236,7 @@ module Fledge
       end
 
       # The registry entries of the files and folders the app opens
-      # (Config::FileAssociation; ADR 032, section 3), under
+      # (Config::FileAssociation; ADR 052), under
       # <tt>HKCU\Software\Classes</tt>, which needs no administrator. For
       # files, a ProgID of the app's for each extension (#prog_id), named
       # for the documents, with the app's icon and the command
@@ -320,7 +321,8 @@ module Fledge
       # ProgID rules forbid (more than PROG_ID_MAX characters, punctuation
       # but periods, a digit first), then a hash of the identifier and the
       # extension. It depends on nothing that can move or be reworded, so
-      # a reordered list or a renamed entry keeps it (ADR 032, section 3);
+      # a reordered list or a renamed entry keeps it
+      # (doc/contributors/design/desktop-apps.md, "Files an app opens");
       # the hash keeps two identifiers the rest would make alike apart.
       private def prog_id(extension)
         hash = Digest::SHA256.hexdigest("#{@identity.identifier}\n#{extension}")[0, PROG_ID_HASH].to_s

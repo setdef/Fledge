@@ -42,7 +42,8 @@ class ConfigTest < Minitest::Test
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
   end
 
-  # A macOS build number, held by ADR 029, section 5, for CFBundleVersion.
+  # A macOS build number, held for CFBundleVersion
+  # (doc/contributors/design/public-interface.md, "Reserved names").
   def test_reads_a_macos_build_number
     assert_equal "1.2.417", load("macos:\n  build: \"1.2.417\"\n").macos&.build
     assert_nil load("macos:\n  build:\n").macos&.build
@@ -201,10 +202,10 @@ class ConfigTest < Minitest::Test
     assert_equal ["dmg"], load(yaml).installers
   end
 
-  # ADR 025, section 5: ios and android each name the folder of the
-  # project's own host files, which fledge build ios or fledge build
-  # android copies over the project it writes. The folder is checked when
-  # that phone's project is built, so a desktop build never needs it.
+  # ADR 025: ios and android each name the folder of the project's own
+  # host files, which fledge build ios or fledge build android copies
+  # over the project it writes. The folder is checked when that phone's
+  # project is built, so a desktop build never needs it.
   def test_reads_each_phones_host
     config = load("ios:\n  host: host/ios\nandroid:\n  host: host/android\n")
 
@@ -270,9 +271,9 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  # The files and folders a windowed app opens (ADR 032, section 3): a
-  # viewer of each unless it says editor, each list once each, and the
-  # list kept for each program, where the windowed one declares it.
+  # The files and folders a windowed app opens (ADR 052): a viewer of
+  # each unless it says editor, each list once each, and the list kept
+  # for each program, where the windowed one declares it.
   def test_reads_the_files_and_folders_a_windowed_app_opens
     config = load(<<~YAML)
       kind: windowed
@@ -328,8 +329,8 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  # build_tools (ADR 032, section 4): whether the app carries what
-  # fledge build --from needs, for any kind of app.
+  # build_tools (ADR 032): whether the app carries what fledge build
+  # --from needs, for any kind of app.
   def test_reads_whether_the_app_carries_its_build_tools
     assert_equal [true, false, nil], ["build_tools: true\n", "build_tools: false\n", "build_tools:\n"].map { |yaml| load(yaml).build_tools }
     error = assert_raises(Fledge::Error) { load("build_tools: rcedit\n") }

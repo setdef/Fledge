@@ -9,10 +9,12 @@ require "find"
 require_relative "test_helper"
 require_relative "../lib/fledge/mobile_project"
 
-# ADR 029, section 2, and ADR 025, section 5: a host copies a template's
-# file to replace it at its path, with Fledge's marks in it, so those
-# paths and marks are frozen for 1.x. A new file or mark is compatible;
-# a path or a mark that goes away breaks every host that copied it.
+# ADR 025 (doc/contributors/design/public-interface.md, "Frozen for
+# 1.x", and doc/contributors/design/phones.md, "Host files"): a host
+# copies a template's file to replace it at its path, with Fledge's
+# marks in it, so those paths and marks are frozen for 1.x. A new file
+# or mark is compatible; a path or a mark that goes away breaks every
+# host that copied it.
 class MobileTemplateContractTest < Minitest::Test
   PATHS = {
     "ios" => %w[
@@ -63,12 +65,12 @@ class MobileTemplateContractTest < Minitest::Test
 
   %w[ios android].each do |system|
     define_method(:"test_every_path_#{system}_hosts_may_replace_is_still_there") do
-      assert_empty PATHS.fetch(system) - files(system), "ADR 029, section 2, freezes these paths for 1.x: a host replaces them by name"
+      assert_empty PATHS.fetch(system) - files(system), "public-interface.md, \"Frozen for 1.x\", freezes these paths: a host replaces them by name"
     end
 
     define_method(:"test_every_mark_#{system}_hosts_may_copy_is_still_there") do
       MARKS.fetch(system).each do |path, expected|
-        assert_empty expected - marks(system, path), "ADR 029, section 2, freezes the marks of #{path} for 1.x"
+        assert_empty expected - marks(system, path), "public-interface.md, \"Frozen for 1.x\", freezes the marks of #{path}"
       end
     end
 

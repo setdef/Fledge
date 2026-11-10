@@ -10,7 +10,7 @@ This is the maintainer's checklist for the one `gem push`. Fledge is a single pu
 
 ## Who does what
 
-Agents prepare 1.0.0: the release commit, the pin commit, the tag, and the GitHub Release, exactly as for any release (ADR 014). They never run `gem push` or `gem signin`, and they never touch RubyGems.org (AGENTS.md, Releasing). They do not change `allowed_push_host` before the 1.0.0 release commit, which is the commit that changes it.
+Agents prepare 1.0.0: the release commit, the pin commit, the tag, and the GitHub Release, exactly as for any release (ADR 014; `doc/contributors/design/releases.md`, "How a release is made"). They never run `gem push` or `gem signin`, and they never touch RubyGems.org (AGENTS.md, Releasing). They do not change `allowed_push_host` before the 1.0.0 release commit, which is the commit that changes it.
 
 You run everything from "Build the gem from the tag" on.
 
@@ -20,9 +20,9 @@ As it stands, a push is refused twice over. `fledge.gemspec` sets `spec.metadata
 
 1. **`fledge.gemspec`**: set `allowed_push_host` to `"https://rubygems.org"`, and rewrite the comment above it, which says a stray push is kept from publishing. Leave `rubygems_mfa_required` set to `"true"`: RubyGems then refuses a push from an account without multi-factor authentication.
 2. **`test/version_test.rb`**: `test_gemspec_cannot_be_pushed_to_rubygems` asserts the invalid host. Change it to assert `https://rubygems.org` and `rubygems_mfa_required`, so the host cannot change unnoticed.
-3. **`tasks/package.rake`**: keep `rake release` refusing, and say why in its comment: you push with `gem push`, by hand, and `rake release` would also push a branch and a tag, which the release process makes with git commands (ADR 028, section 7, until the extracted tooling arrives). The abort message and comment stop saying that releases are never on RubyGems.org.
+3. **`tasks/package.rake`**: keep `rake release` refusing, and say why in its comment: you push with `gem push`, by hand, and `rake release` would also push a branch and a tag, which the release process makes with git commands (`doc/contributors/design/releases.md`, "From 1.0: release branches and a human publishing", until the extracted tooling arrives). The abort message and comment stop saying that releases are never on RubyGems.org.
 4. **`README.md` and `README.rdoc`**: change the install line from a git tag to a version constraint, `gem "fledge", "~> 1.0", group: :development`, and rewrite the sentence after it in README.md ("Fledge installs from a git tag") so the page says Fledge installs from RubyGems.org, and that every release is also a git tag and a GitHub Release. The release step that swaps the old version for the new one in these files then has no tag to swap there. The gem's description is `README.rdoc` (`spec.description`), so RubyGems.org shows what you push; read both files start to finish, as AGENTS.md says, before the commit.
-5. **Statements that the gem is never published**: `AGENTS.md` (Releasing, "The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses"), `doc/contributors/adr/001.md` (section 7), and the handoff are true before this commit and false after it. Correct each to say what the code then does, and leave the rule that agents never push there.
+5. **Statements that the gem is never published**: `AGENTS.md` (Releasing, "The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses"), `doc/contributors/design/releases.md` ("Where releases are"), and the handoff are true before this commit and false after it. Correct each to say what the code then does, and leave the rule that agents never push there.
 6. **`CHANGELOG.md`**: under `## [1.0.0]`, one line saying that Fledge is also on RubyGems.org, and installs with `gem "fledge", "~> 1.0"`.
 
 Then run the gate and push `trunk`, wait for CI to pass on every job, pin the runtimes, tag the pin commit, and let `release.yml` publish the GitHub Release, all as handoff.md describes. The tagged commit is the pin commit, which changes only `lib/fledge/SHA256SUMS`, so it carries the six changes above from its parent.
@@ -51,7 +51,7 @@ gem build fledge.gemspec
 
 1. **Version and host**: `gem specification fledge-1.0.0.gem version` prints `1.0.0`, and `gem specification fledge-1.0.0.gem metadata` prints an `allowed_push_host` of `https://rubygems.org` and `rubygems_mfa_required: 'true'`. If the host is still `https://fledge.invalid`, stop: the release commit missed item 1.
 2. **Contents**: `gem contents` reads installed gems only, so list the file: `tar -xOf fledge-1.0.0.gem data.tar.gz | tar -tzf -`. It lists `exe/fledge`, `lib/`, `sig/`, `README.rdoc`, `CHANGELOG.md`, `LICENSE`, and `LICENSES/`, and none of `test/`, `tasks/`, `doc/`, `examples/`, or `.github/` (`rake package:check` fails when the gem packs one).
-3. **The pins**: `lib/fledge/SHA256SUMS` is in that list, and it is the release's file byte for byte. Unpack with `gem unpack fledge-1.0.0.gem`, download the release's with `gh release download v1.0.0 --pattern SHA256SUMS --dir /tmp/release-pins`, and `diff fledge-1.0.0/lib/fledge/SHA256SUMS /tmp/release-pins/SHA256SUMS` prints nothing. A gem without it cannot check a single runtime (ADR 014, section 1).
+3. **The pins**: `lib/fledge/SHA256SUMS` is in that list, and it is the release's file byte for byte. Unpack with `gem unpack fledge-1.0.0.gem`, download the release's with `gh release download v1.0.0 --pattern SHA256SUMS --dir /tmp/release-pins`, and `diff fledge-1.0.0/lib/fledge/SHA256SUMS /tmp/release-pins/SHA256SUMS` prints nothing. A gem without it cannot check a single runtime (ADR 014; `doc/contributors/design/releases.md`, "The pins").
 4. **It runs**: in an empty `GEM_HOME`, `gem install --local --no-document --install-dir /tmp/fledge-home fledge-1.0.0.gem`, then `GEM_HOME=/tmp/fledge-home ruby /tmp/fledge-home/bin/fledge --version` prints `fledge 1.0.0`. This is `rake package:check`'s test; run it again on the file you are about to push.
 
 ## Push
@@ -67,4 +67,4 @@ gem build fledge.gemspec
 
 ## After 1.0.0
 
-Release branches, backports by `git cherry-pick -x`, `stable`, and `rake release` as the maintainer's command follow ADR 028, section 7, once RatatuiRuby's `ratatui_ruby-devtools` is extracted for Fledge (decisions, 2026-11-07). Nothing there blocks 1.0.0, and this page is replaced when it lands.
+Release branches, backports by `git cherry-pick -x`, `stable`, and `rake release` as the maintainer's command follow `doc/contributors/design/releases.md`, "From 1.0: release branches and a human publishing", once RatatuiRuby's `ratatui_ruby-devtools` is extracted for Fledge (decisions, 2026-11-07). Nothing there blocks 1.0.0, and this page is replaced when it lands.

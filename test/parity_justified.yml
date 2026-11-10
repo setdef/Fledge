@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: MIT
 #
 # Every difference from ruby main.rb that Parity::JUSTIFIED and
-# Parity::MOBILE_JUSTIFIED may allow (ADR 029, section 2). After 1.0
-# this list may only shrink: adding to it needs a major version.
+# Parity::MOBILE_JUSTIFIED may allow
+# (doc/contributors/design/public-interface.md, "Frozen for 1.x"). After
+# 1.0 this list may only shrink: adding to it needs a major version.
 - fact: "$0"
   reference:
   - \A"main\.rb"\z

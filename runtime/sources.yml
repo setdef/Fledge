@@ -7,7 +7,8 @@
 # SHA-256 differs fails the build. Change a pin on purpose, and run
 # Delivery (ci.yml) before trusting it.
 
-# Ruby 4.0.9 for each target (ADR 001, section 3).
+# Ruby 4.0.9 for each target (ADR 035; doc/contributors/design/runtimes.md,
+# "Sources and pins").
 #
 # macOS and Linux: rv-ruby's relocatable CRuby builds, release 20261023,
 # one asset per target. Each carries a static libruby the launcher links,
@@ -21,15 +22,16 @@
 # records it (recipes/unpack/appveyor-repo-key.asc), at a pinned commit
 # and pinned by SHA-256; the signature must be that key's, by
 # fingerprint. The key expires on 2027-06-15; how to move to a renewed
-# key is ADR 001, section 3. The SHA-256 is the one the Windows launcher
-# spike verified (Plan 001).
+# key is in doc/contributors/design/runtimes.md, "The RubyInstaller
+# signing key". The SHA-256 is the one the Windows launcher spike
+# verified (Plan 001).
 #
 # bundled_gems lists Ruby 4.0.9's bundled gems, from gems/bundled_gems
 # at Ruby's v4.0.9 tag (3e93b23afc). A runtime keeps every default gem
 # and every one of these that its Ruby installs (rv-ruby installs all but
 # win32ole, which only Windows builds), and prunes any other gem its Ruby
 # adds (rv-ruby adds bootsnap and msgpack), so that an app finds exactly
-# what a standard Ruby 4.0.9 has (ADR 003).
+# what a standard Ruby 4.0.9 has (ADR 039).
 ruby:
   version: 4.0.9
   release: "20261023"
@@ -58,7 +60,7 @@ ruby:
           sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
           fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
           expires: "2027-06-15"
-    # RubyInstaller's build for Windows on ARM64 (ADR 018), signed with
+    # RubyInstaller's build for Windows on ARM64 (ADR 035), signed with
     # the same key.
     aarch64-mingw-ucrt:
       url: https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-4.0.9-1/rubyinstaller-4.0.9-1-arm.7z
@@ -102,7 +104,8 @@ llvm-mingw:
 # a shared library from the same release rv-ruby used (its formula
 # rv-portable-libxcrypt.rb at the commit that built release 20261023) and
 # the launcher loads it from the runtime's lib/ folder, where whoever
-# receives an app can replace it. See Plan 002, "Copyleft-free runtimes."
+# receives an app can replace it (ADR 042;
+# doc/contributors/design/runtimes.md, "libxcrypt on glibc Linux").
 libxcrypt:
   version: 4.5.2
   url: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
@@ -129,7 +132,7 @@ gmp:
   dll_sha256: c2567ccf3f410c3411ba7cd4b7ba14f393a0e70a1d0c0593297df6706b5fba96
   # The same source's build for Windows on ARM64, in MSYS2's CLANGARM64
   # environment, whose libgmp-10.dll RubyInstaller's ARM64 Ruby ships
-  # byte for byte (ADR 018).
+  # byte for byte (doc/contributors/design/runtimes.md, "Windows on ARM64").
   arm64:
     package:
       url: https://repo.msys2.org/mingw/clangarm64/mingw-w64-clang-aarch64-gmp-6.3.0-2-any.pkg.tar.zst
@@ -271,7 +274,8 @@ nsis:
 # app's Xcode project (ADR 012), is pinned for CI's Mobile apps jobs, and
 # no runtime holds it; so is bundletool, Google's jar that makes the APKs
 # Google Play would serve from an app's bundle, which those jobs check
-# and install (ADR 012, section 9), as Google publishes it on GitHub.
+# and install, as Google publishes it on GitHub
+# (doc/contributors/design/phones.md, "The Android App Bundle check").
 mobile:
   ruby:
     version: 4.0.9

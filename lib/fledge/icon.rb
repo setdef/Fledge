@@ -21,7 +21,7 @@ module Fledge
   # This class names those files as Briefcase does: <tt>icon:</tt> in
   # <tt>fledge.yml</tt> is a path without an extension, and the build for
   # each system takes the file it needs from beside it, as you made it
-  # (ADR 010):
+  # (ADR 048):
   #
   # * <tt>ICON.icns</tt> on macOS, which <tt>iconutil -c icns
   #   ICON.iconset</tt> makes from PNGs;
@@ -126,7 +126,7 @@ module Fledge
 
     # The icon's Linux PNGs that exist, by size, of LINUX's sizes,
     # smallest first. A size is the file name's claim: Fledge reads no
-    # image (ADR 010, section 4). Raises Fledge::Error, as #png does for
+    # image (ADR 048). Raises Fledge::Error, as #png does for
     # the smallest size, when there is none at all.
     #
     # === Example

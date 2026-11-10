@@ -24,7 +24,8 @@ module Fledge
   # format of GNU coreutils' +sha256sum+: the hash in lowercase hex, two
   # spaces, and the file's name without its folder, so that
   # <tt>sha256sum -c</tt> (or <tt>shasum -a 256 -c</tt> on macOS) checks it
-  # from the folder both are in (ADR 029, section 4).
+  # from the folder both are in (doc/contributors/design/public-interface.md,
+  # "The checksum file").
   #
   # Use it on each file the build prints.
   #

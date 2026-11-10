@@ -100,7 +100,7 @@ jobs:
           - os: windows-latest
             platform: x64-mingw-ucrt
             ruby-platform: x64-mingw-ucrt
-          # Windows on ARM64 (ADR 018), whose apps here need no gem
+          # Windows on ARM64 (ADR 035), whose apps here need no gem
           # compiled for it: no my_cool_app or native_app.
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
@@ -252,7 +252,7 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/dist/NativeApp-${{ matrix.platform }}.tar.gz" \
             "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/native_app.expected")"
 
-      # The windowed app (ADR 008), as ci.yml delivers it.
+      # The windowed app (ADR 037, ADR 008), as ci.yml delivers it.
       - name: Install desktop-file-validate
         if: runner.os == 'Linux'
         run: |

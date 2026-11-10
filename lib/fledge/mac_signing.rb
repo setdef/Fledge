@@ -29,7 +29,7 @@ module Fledge
   # proves the rest on any Mac. When Apple's timestamp server does not
   # answer, codesign is run again after a wait, a few times, and any
   # other failure, such as an identity the keychain lacks, fails at once
-  # (ADR 016, section 6).
+  # (doc/contributors/design/signing.md, "Timestamps").
   #
   # A signer given a Fledge::Notary (<tt>fledge build --notarize</tt>)
   # carries it to the build, which has Apple notarize what was signed
@@ -54,7 +54,7 @@ module Fledge
   class MacSigning
     # The entitlements every Mach-O file is signed with, Briefcase's
     # defaults: executable memory made without MAP_JIT, which YJIT makes,
-    # and libraries the app did not sign (ADR 016).
+    # and libraries the app did not sign (ADR 050).
     ENTITLEMENTS = File.join(File.dirname(__FILE__), "templates", "macos", "entitlements.plist")
 
     # Where codesign comes from.

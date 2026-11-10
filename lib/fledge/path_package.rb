@@ -18,8 +18,8 @@ module Fledge
   # Bundler's own place for one, <tt>vendor/cache/NAME</tt> beside the
   # app's Gemfile, whole but for git's files and with its gemspecs
   # evaluated, as <tt>bundle cache --all</tt> copies it
-  # (Bundler::Source::Path#cache) and as a git gem's are (ADR 006, section
-  # 7). A gem with an extension is compiled by Fledge::NativeBuild in a
+  # (Bundler::Source::Path#cache) and as a git gem's are
+  # (doc/contributors/design/gems.md, "Path gems"). A gem with an extension is compiled by Fledge::NativeBuild in a
   # copy made of the files its gemspec lists, as <tt>gem build</tt> and
   # <tt>gem install</tt> would build it, and what the build wrote into the
   # gem's require paths ships over the developer's own (usually compiled

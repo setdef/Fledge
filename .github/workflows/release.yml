@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Publishes a Fledge release when a vX.Y.Z tag is pushed (ADR 001,
-# section 7; ADR 004; AGENTS.md, Releasing). Only when CI passed on a
+# Publishes a Fledge release when a vX.Y.Z tag is pushed
+# (doc/contributors/design/releases.md, "Where releases are"; ADR 004;
+# AGENTS.md, Releasing). Only when CI passed on a
 # push to trunk on every job, the license audit and Delivery included,
 # for the tagged commit's parent, and for the tagged commit the short CI
 # a pin commit runs, does it create the GitHub Release, with, for each
@@ -173,7 +174,7 @@ jobs:
       # runtimes the tag pins: the newest such run, as rake runtime:pin
       # and the pin commit's Changes job take it. With the short CI that
       # skipped the rest of the pin commit's jobs, this is what makes the
-      # tagged commit green on every job (ADR 014, section 5).
+      # tagged commit green on every job (ADR 053).
       - name: Find the CI run whose runtimes the tag pins
         env:
           GH_TOKEN: ${{ github.token }}

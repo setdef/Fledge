@@ -16,8 +16,9 @@ module Fledge
   # A Windows app's setup program: an NSIS installer.
   #
   # Windows shows an app's notifications only when a shortcut in the
-  # Start menu carries the AppUserModelID the app gives itself (ADR 008,
-  # section 3), and only an installer makes one. People also expect an app
+  # Start menu carries the AppUserModelID the app gives itself
+  # (doc/contributors/design/launcher.md, "Windows"), and only an
+  # installer makes one. People also expect an app
   # they install to be in Settings' list of apps, where they can remove
   # it. NSIS is the installer Tauri's bundler writes by default, and on
   # Windows, where Windows apps are built (ADR 010), Tauri runs NSIS's own
@@ -45,7 +46,7 @@ module Fledge
   # License, whose request that a binary say where its source is
   # available Fledge meets by publishing NSIS's source beside each Windows
   # runtime and naming it in the app's notices, which the installer holds
-  # (ADR 010).
+  # (ADR 049).
   #
   # Use it through Fledge::Installers, once the app's folder is built.
   #
@@ -184,7 +185,8 @@ module Fledge
         # On Windows on ARM, the x86 emulator's cache service (XtaCache)
         # keeps makensis.exe open for a while after it exits, so the copy
         # it ran from may not delete yet; it is the system's temporary
-        # folder's to clear, never the build's own (ADR 018).
+        # folder's to clear, never the build's own
+        # (doc/contributors/design/runtimes.md, "Windows on ARM64").
         FileUtils.rm_rf(work)
       end
       @to

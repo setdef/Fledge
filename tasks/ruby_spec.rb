@@ -12,8 +12,9 @@ require_relative "ruby_spec/results"
 
 # The ruby/spec comparison: ruby/spec, run by MSpec, on stock Ruby and in
 # a built app, with every example that fails on one side only either
-# justified in JUSTIFIED or failing the check (ADR 003, section 4; AGENTS.md,
-# Design precedence 2).
+# justified in JUSTIFIED or failing the check
+# (doc/contributors/design/parity.md, "ruby/spec"; AGENTS.md, Design
+# precedence 2).
 #
 # It downloads ruby/spec and MSpec at their pinned commits (SOURCES),
 # each checked against its SHA-256, and writes a project of
@@ -26,7 +27,7 @@ require_relative "ruby_spec/results"
 # no Ruby on it, an empty home folder, and no locale, as a desktop starts
 # an app. A person's hostile Ruby settings are not part of it: they reach
 # the child Rubies the specs start through RbConfig.ruby, as they would
-# under ruby main.rb (ADR 003, Consequences), and stock Ruby would read
+# under ruby main.rb (ADR 040), and stock Ruby would read
 # them at its own boot, where the launcher hides them.
 #
 # Each run's output is kept in the output folder, with a summary that
@@ -78,7 +79,7 @@ class RubySpec
       side: :stock, platforms: %w[arm64-darwin],
       reason: "With no locale, stock Ruby takes the C locale and reads paths as US-ASCII, and these macOS-only " \
         "examples fail converting one; the built app's launcher takes a UTF-8 locale in place of a bare C one " \
-        "(ADR 026, section 1; Parity::JUSTIFIED), so they pass there.",
+        "(ADR 041; Parity::JUSTIFIED), so they pass there.",
     ),
   ].freeze
 

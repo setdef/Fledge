@@ -9,9 +9,9 @@ require_relative "test_helper"
 require "open3"
 require "stringio"
 
-# fledge build --from APP (ADR 032, section 2), through real streams: an
-# app built by fledge build from a fake runtime, with gems from folders
-# inside and outside its project, and a second project built from it.
+# fledge build --from APP (ADR 032), through real streams: an app built
+# by fledge build from a fake runtime, with gems from folders inside and
+# outside its project, and a second project built from it.
 class BuildFromTest < Minitest::Test
   LINUX = "x86_64-linux"
   PLATFORMS = %w[arm64-darwin x64-mingw-ucrt aarch64-mingw-ucrt x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl].freeze
@@ -351,8 +351,8 @@ class BuildFromTest < Minitest::Test
     { "FLEDGE_RUNTIME_DIR" => folder }
   end
 
-  # build_tools (ADR 032, section 4): the app carries the runtime's tools,
-  # and --from takes them from it when no runtime is at hand. The new app
+  # build_tools (ADR 032): the app carries the runtime's tools, and
+  # --from takes them from it when no runtime is at hand. The new app
   # keeps them only when its own fledge.yml asks for them too; an app
   # that does not ask carries none.
   def test_an_app_with_build_tools_carries_them_and_is_built_from_with_no_runtime

@@ -20,8 +20,8 @@
 #   - every text file whose words name a copyleft license is one a person
 #     has reviewed (reviewed);
 #   - and every component's license meets the policy, which
-#     lib/fledge/license_policy.rb holds (Fledge::LicensePolicy), since
-#     fledge build judges an app's own gems by it too (ADR 005).
+#     lib/fledge/license_policy.rb holds (Fledge::LicensePolicy; ADR
+#     004).
 #
 # The maintainer's rule (decisions 8 and 24, and the replies of
 # 2026-10-26 in doc/contributors/decisions.md; AGENTS.md, Licensing): an
@@ -73,8 +73,10 @@ platforms:
   x64-mingw-ucrt: {os: windows, arch: x64-mingw-ucrt, gem_arch: x64-mingw-ucrt, so: so}
   aarch64-mingw-ucrt: {os: windows, arch: aarch64-mingw-ucrt, gem_arch: aarch64-mingw-ucrt, so: so}
   # iOS's Ruby reports arm64-darwin on devices and in the Simulator, and
-  # each XCFramework slice carries its own (ADR 011, section 2); Android's
-  # one tree holds each ABI's arch folder, named for its platform.
+  # each XCFramework slice carries its own
+  # (doc/contributors/design/phones.md, "What a phone runtime holds");
+  # Android's one tree holds each ABI's arch folder, named for its
+  # platform.
   ios:
     os: ios
     arch: arm64-darwin
@@ -134,7 +136,7 @@ components:
     binaries: [launcher, launcher.exe, launcherw.exe]
     # bin/ruby on macOS and Linux is Ruby's main.c with Fledge's code that
     # chooses its locale and hands an app's own program back to its
-    # launcher (runtime/launcher/ruby_main.c, ADR 026).
+    # launcher (runtime/launcher/ruby_main.c; ADR 041 and ADR 026).
     embedded:
       - files: ["{prefix}bin/ruby"]
         evidence: "ruby: could not run "
@@ -781,7 +783,7 @@ components:
 
   # The source of each component above whose license asks for it, which
   # each runtime carries in notices/sources/ and so every app that copies
-  # its notices/ (ADR 004, section 5): the pinned archive exactly as
+  # its notices/ (ADR 043): the pinned archive exactly as
   # downloaded, its license texts, and BUILD.txt
   # (LicenseAudit::SourceBundle). Its license is the component's own.
   - id: libxcrypt-source

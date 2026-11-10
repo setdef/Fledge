@@ -10,8 +10,7 @@ require_relative "../error"
 module Fledge
   class Config
     # One of the kinds of file or folder a windowed app opens, as its
-    # <tt>fledge.yml</tt> lists them under +file_associations+ (ADR 032,
-    # section 3).
+    # <tt>fledge.yml</tt> lists them under +file_associations+ (ADR 052).
     #
     # A person opens a document with the app that made it, or drops a
     # folder on the app that shows it. Each system learns which app opens

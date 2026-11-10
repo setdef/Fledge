@@ -14,7 +14,8 @@ class RuntimeBuilder
   # (termux-packages, packages/ruby/build.sh), linked with the embedding
   # API into one shared library per ABI, libfledgeruby.so, and packed by
   # Gradle and the Android Gradle plugin as an AAR, FledgeRuby.aar, with
-  # the embedding API's Java class (ADR 011, section 2).
+  # the embedding API's Java class (doc/contributors/design/phones.md,
+  # "What a phone runtime holds").
   #
   # Beside the AAR the runtime holds the Ruby both ABIs run: one lib/ruby
   # (Ruby names each ABI's folder for its own platform, so both fit in

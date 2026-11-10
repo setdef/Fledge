@@ -8,15 +8,15 @@
 require_relative "test_helper"
 
 # A Mac app's disk image when <tt>hdiutil create</tt> finds its volume
-# busy (ADR 010, section 3). On a GitHub macOS runner hdiutil sometimes
-# fails with "create failed - Resource busy" when another process
-# (XProtect, by the runner image's maintainers' account) holds the
-# scratch volume it makes the image from; create-dmg tries again after
-# a wait when its output says so, and so does Fledge::Dmg. The failure
-# cannot be provoked on demand, so an hdiutil placed first on +PATH+
-# fails as the runner's did for as many runs as a test asks, then
-# writes the image; the real ditto copies the bundle and the real
-# Fledge::Command runs both.
+# busy (doc/contributors/design/desktop-apps.md, "The disk image"). On a
+# GitHub macOS runner hdiutil sometimes fails with "create failed -
+# Resource busy" when another process (XProtect, by the runner image's
+# maintainers' account) holds the scratch volume it makes the image
+# from; create-dmg tries again after a wait when its output says so, and
+# so does Fledge::Dmg. The failure cannot be provoked on demand, so an
+# hdiutil placed first on +PATH+ fails as the runner's did for as many
+# runs as a test asks, then writes the image; the real ditto copies the
+# bundle and the real Fledge::Command runs both.
 class DmgTest < Minitest::Test
   # An hdiutil that counts its runs in COUNT, fails with FAILURE for the
   # first FAILS of them, and otherwise writes its last argument, the

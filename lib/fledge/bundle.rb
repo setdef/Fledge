@@ -35,9 +35,9 @@ module Fledge
   # the Gemfile limits to other platforms. A gem from git comes at the
   # revision the lockfile locks (Fledge::GitGem). It refuses what it
   # cannot ship: a platform the lockfile does not lock, a git gem the
-  # lockfile does not pin to a commit, a gem from a folder outside the
-  # project, a path gem with an extension to compile, a gem without a
-  # checksum, and a Gemfile that asks for another Ruby. It also reads the
+  # lockfile does not pin to a commit, a path gem outside the project
+  # whose folder is not there, a gem without a checksum, and a Gemfile
+  # that asks for another Ruby. It also reads the
   # build options Bundler would pass each gem's extension
   # (<tt>bundle config build.NAME</tt>).
   #
@@ -86,7 +86,7 @@ module Fledge
     # current machine's platform and install only <tt>ruby</tt> platform
     # gems" (<tt>lib/bundler/man/bundle-config.1.ronn</tt>, at Bundler
     # 4.0.20), so that an iOS Ruby, which reports <tt>arm64-darwin</tt>,
-    # never resolves a macOS gem (ADR 011, section 1).
+    # never resolves a macOS gem (ADR 057).
     FORCE_RUBY_PLATFORM = "BUNDLE_FORCE_RUBY_PLATFORM: \"true\"\n"
 
     # Where Bundler finds a path gem's gemspecs (Bundler::Source::Path,
@@ -251,7 +251,7 @@ module Fledge
     # Gem::Platform#===): <tt>arm64-darwin</tt> and
     # <tt>arm64-darwin-23</tt> fit rv-ruby's <tt>arm64-darwin23</tt>, and
     # <tt>arm64-darwin-24</tt> does not. A Fledge::MobilePlatform's app
-    # runs Bundler with <tt>force_ruby_platform</tt> (ADR 011, section 1),
+    # runs Bundler with <tt>force_ruby_platform</tt> (ADR 057),
     # as which the lockfile must lock +ruby+, and each gem is its +ruby+
     # build. A gem from a gem server whose best build for +platform+ has a
     # +required_ruby_version+ that excludes +ruby_version+ gives way to
@@ -261,9 +261,9 @@ module Fledge
     # Gem::Requirement), which the lockfile does not record; without a
     # block every build admits every Ruby. Raises Fledge::Error, saying what to run, when
     # the lockfile does not lock +platform+, the Gemfile asks for another
-    # Ruby, a git gem is not pinned to a commit or needs its submodules, a
-    # gem comes from a folder outside the project or is a path gem with an
-    # extension, or a gem has no checksum.
+    # Ruby, a git gem is not pinned to a commit, a path gem outside the
+    # project has no folder there or a path that ends in <tt>.</tt> or
+    # <tt>..</tt>, or a gem has no checksum.
     #
     # === Example
     #

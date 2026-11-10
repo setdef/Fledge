@@ -14,7 +14,9 @@ module Fledge
   #
   # An app's gems join the runtime's default and bundled gems in Ruby's
   # own gem folder, <tt>lib/ruby/gems/4.0.0</tt> (in <tt>ruby\</tt> on
-  # Windows), where RubyGems and Bundler find them (ADR 005). A gem the
+  # Windows), where RubyGems and Bundler find them
+  # (doc/contributors/design/gems.md, "Installing into the runtime's gem
+  # folder"). A gem the
   # runtime already has at the same version is the runtime's, already
   # audited, and must not be added twice; a gem must suit the runtime's
   # Ruby. The runtime knows all three, so they are read from it rather
@@ -125,7 +127,8 @@ module Fledge
     # The contents of the runtime archive at +path+, or of its folder
     # +under+ (relative to the archive's top folder, ending in a
     # <tt>/</tt>), such as an iOS runtime's XCFramework slice, which holds a
-    # Ruby of its own (ADR 011, section 2); its paths are then relative to
+    # Ruby of its own (doc/contributors/design/phones.md, "What a phone
+    # runtime holds"); its paths are then relative to
     # that folder. Raises Fledge::Error when it holds no gem folder or no
     # rbconfig.rb.
     #

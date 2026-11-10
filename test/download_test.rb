@@ -128,9 +128,10 @@ class DownloadTest < Minitest::Test
     assert_match(%r{\Acould not download http://127.0.0.1:1/file: }, error.message)
   end
 
-  # A host that fails for a moment (ADR 014, section 6): 408, 429, a
-  # 5xx, or a connection that breaks off, is asked again after each of
-  # the waits, and what it then sends is still checked against the pin.
+  # A host that fails for a moment (doc/contributors/design/releases.md,
+  # "Download retries"): 408, 429, a 5xx, or a connection that breaks
+  # off, is asked again after each of the waits, and what it then sends
+  # is still checked against the pin.
   def test_a_server_that_fails_for_a_moment_is_asked_again_and_the_file_checked
     answers = [[503, {}, "down"], [429, {}, ""], [200, {}, BODY]]
     server = LoopbackServer.new({ "/file" => -> { answers.shift } })

@@ -21,14 +21,14 @@ class RuntimeBuilder
   # compiling for each target with Xcode's or the NDK's compiler, against
   # OpenSSL and libyaml built the same way, with --with-static-linked-ext
   # and no JIT. A miniruby built for the build machine from the same
-  # source writes the builtin binary a cross build cannot (ADR 011,
-  # section 3), and the bundled gems with C extensions stay gems
-  # (BundledExtensions). Each subclass names its targets' toolchains and
+  # source writes the builtin binary a cross build cannot
+  # (doc/contributors/design/phones.md, "The builtin binary"), and the bundled
+  # gems with C extensions stay gems (BundledExtensions). Each subclass names its targets' toolchains and
   # packs what they built: an XCFramework for iOS (IOS), an AAR for
   # Android (Android).
   class Mobile < Recipe
     # One slice of a mobile runtime: the target name Fledge gives it
-    # (ADR 011, section 1), what Ruby calls its platform there, its
+    # (ADR 057), what Ruby calls its platform there, its
     # compiler's target triple, OpenSSL's name for it, and for iOS the
     # SDK and XCFramework slice, or for Android the ABI.
     class Target < Data.define(:name, :ruby_platform, :triple, :openssl, :sdk, :slice, :abi)
@@ -71,7 +71,7 @@ class RuntimeBuilder
       ]),
     }.freeze
 
-    # Where the embedding API's C lives (ADR 011, section 5).
+    # Where the embedding API's C lives (ADR 061).
     MOBILE = File.join(ROOT, "runtime", "mobile")
 
     # Static libruby, as Ruby's build names it: libruby-static.a, or on
@@ -150,7 +150,7 @@ class RuntimeBuilder
     # Builds Ruby, with the libraries it links, for +target+, and
     # returns the folder it installed into: its prefix, lib/ruby and
     # include/ among it, with Fledge's RubyGems defaults, pruned as a
-    # desktop runtime prunes Ruby (ADR 003, section 2).
+    # desktop runtime prunes Ruby (ADR 039).
     private def build_target(target)
       deps = build_dependencies(target)
       build = File.join(@build_dir, target.name, "ruby")

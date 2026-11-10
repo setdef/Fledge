@@ -18,8 +18,9 @@ module Fledge
     # such as Sparkle compare to tell one upload or download from the
     # next. Fledge derives both from the app's +version+ (Fledge::MacBundle),
     # so two builds of one version cannot differ; +build+ sets the second,
-    # as Tauri's <tt>bundleVersion</tt> and Briefcase's +build+ do, and
-    # as ADR 029, section 5, held the name for.
+    # as Tauri's <tt>bundleVersion</tt> and Briefcase's +build+ do; the
+    # reserved <tt>ios: build</tt> takes the same shape
+    # (doc/contributors/design/public-interface.md, "Reserved names").
     #
     # This class reads the mapping: its +build+, one to three whole
     # numbers between periods, Apple's rule for +CFBundleVersion+.

@@ -84,10 +84,10 @@ class DesktopEntryTest < Minitest::Test
     end
   end
 
-  # The files and folders the app opens (ADR 032, section 3), as a desktop
-  # knows them: by MIME type, inode/directory for folders, once each;
-  # and %F, so a file manager passes their paths as arguments. An entry
-  # with only extensions names no MIME type, and adds nothing.
+  # The files and folders the app opens (ADR 052), as a desktop knows
+  # them: by MIME type, inode/directory for folders, once each; and %F,
+  # so a file manager passes their paths as arguments. An entry with
+  # only extensions names no MIME type, and adds nothing.
   def test_lists_the_mime_types_the_app_opens_and_takes_their_paths
     association = Fledge::Config::FileAssociation
     file_associations = [

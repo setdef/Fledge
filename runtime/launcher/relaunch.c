@@ -5,7 +5,8 @@
 
 /*
  * Hands an app's own program, run through the runtime's bin/ruby, back
- * to the app's launcher, on macOS and Linux (ADR 026, section 3).
+ * to the app's launcher, on macOS and Linux (ADR 026;
+ * doc/contributors/design/launcher.md, "bin/ruby and restarts").
  *
  * A Ruby program restarts itself with exec RbConfig.ruby, $0, *ARGV, as
  * Puma's hot restart does. In a built app RbConfig.ruby is bin/ruby, and

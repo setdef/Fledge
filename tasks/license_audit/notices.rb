@@ -204,7 +204,7 @@ class LicenseAudit
     # The components, but LGPL shared libraries, whose source Fledge
     # publishes because their licenses ask for it: an LGPL library linked
     # into another component, that component, and NSIS, whose LZMA module
-    # is under the Common Public License (ADR 010). Each is in an
+    # is under the Common Public License (ADR 049). Each is in an
     # installer, never in the app's own folder: AppImage's runtime and
     # what it links, or NSIS's stub, at the front of the app's setup
     # program.

@@ -40,8 +40,9 @@ class RuntimeBuilderTest < Minitest::Test
     assert_equal builder("x86_64-linux").sources.fetch("ruby").fetch("version"), pins.fetch("ruby").fetch("version")
   end
 
-  # Windows on ARM64 takes RubyInstaller's ARM64 build of the same release,
-  # signed with the same key (ADR 018).
+  # Windows on ARM64 takes RubyInstaller's ARM64 build of the same
+  # release, signed with the same key (ADR 035;
+  # doc/contributors/design/runtimes.md, "Windows on ARM64").
   def test_windows_on_arm_pins_rubyinstallers_arm64_build_signed_by_the_same_key
     platforms = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms")
     arm = platforms.fetch("aarch64-mingw-ucrt")
@@ -150,8 +151,8 @@ class RuntimeBuilderTest < Minitest::Test
   # the runtime's Ruby needs and the runtime prunes (ADR 006): the
   # library to link against, the import library of Ruby's DLL on Windows
   # and static libruby elsewhere, with their licenses beside it. Ruby's
-  # headers are in the runtime itself (ADR 003, section 2). Nothing else
-  # of Ruby's tree, and never libxcrypt's static archive.
+  # headers are in the runtime itself (ADR 039). Nothing else of Ruby's
+  # tree, and never libxcrypt's static archive.
   def test_copy_dev_takes_the_library_to_link_against
     Dir.mktmpdir do |dir|
       tree = File.join(dir, "tree")

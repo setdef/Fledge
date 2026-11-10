@@ -32,15 +32,17 @@ module Fledge
   #   NAME.app/Contents/Resources/...          the runtime and the app
   #   NAME.app/Contents/_CodeSignature/CodeResources
   #
-  # Ruby finds its standard library beside the program that holds it (ADR
-  # 001, section 1), and the launcher finds <tt>fledge.cfg</tt> and
+  # Ruby finds its standard library beside the program that holds it
+  # (ADR 001; doc/contributors/design/launcher.md, "Finding itself"),
+  # and the launcher finds <tt>fledge.cfg</tt> and
   # <tt>app/</tt> there too, but Apple's tools expect only code in
   # <tt>Contents/MacOS</tt>. So the launcher's neighbors live in
   # +Resources+, and LINKED names symbolic links in +MacOS+ that point at
   # them. The launcher runs the app by its real path, in +Resources+, so
   # <tt>$0</tt>, <tt>__FILE__</tt>, and <tt>__dir__</tt> name the folder
-  # Ruby's prefix is in (ADR 026). Then it writes <tt>Info.plist</tt> with +plutil+ and signs the
-  # bundle ad hoc with +codesign+, which seals every file; both come with
+  # Ruby's prefix is in (doc/contributors/design/launcher.md, "The app
+  # folder in a macOS bundle"). Then it writes <tt>Info.plist</tt> with
+  # +plutil+ and signs the bundle ad hoc with +codesign+, which seals every file; both come with
   # macOS (ADR 010).
   #
   # Use it through Fledge::Assembly.
@@ -177,7 +179,7 @@ module Fledge
     end
 
     # The entry of CFBundleDocumentTypes that declares +association+, a
-    # Config::FileAssociation (ADR 032, section 3): its name and role,
+    # Config::FileAssociation (ADR 052): its name and role,
     # ranked +Alternate+, so that macOS offers the app for these files
     # and never makes it their default unless the person does; its
     # extensions and MIME types as electron-builder writes them

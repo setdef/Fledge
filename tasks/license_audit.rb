@@ -313,8 +313,9 @@ class LicenseAudit
   # or in a file the map says it is linked into (its embedded files),
   # which the policy then judges (LicenseAudit::Policy).
   # Refuses a Mach-O that a macOS runtime holds and Fledge's oldest macOS
-  # would not load (ADR 029, section 6): a pin that raises the deployment
-  # target would otherwise raise a floor only a major version may raise.
+  # would not load: a pin that raises the deployment target would
+  # otherwise raise a floor only a major version may raise
+  # (doc/contributors/design/releases.md, "Platform floors").
   private def check_macos_floor(binaries)
     return unless @facts.fetch("os") == "darwin"
 

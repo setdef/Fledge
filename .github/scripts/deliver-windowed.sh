@@ -2,10 +2,11 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a windowed app (ADR 008) on macOS and Linux: unpacks what
-# fledge build wrote for examples/windowed_app, checks the identity each
-# operating system reads with that system's own tools, and starts the
-# app the way the system would, with no Ruby anywhere it can reach.
+# Delivery of a windowed app (ADR 037, ADR 008) on macOS and Linux:
+# unpacks what fledge build wrote for examples/windowed_app, checks the
+# identity each operating system reads with that system's own tools, and
+# starts the app the way the system would, with no Ruby anywhere it can
+# reach.
 #
 #   deliver-windowed.sh ARCHIVE
 #
@@ -97,7 +98,8 @@ case "$(uname -s)" in
     icon="$bundle/Contents/Resources/$(plutil -extract CFBundleIconFile raw "$plist")"
     expect "the icon's width" "$(sips -g pixelWidth "$icon" | sed -n 's/^ *pixelWidth: //p')" 1024
     grep -q "^This app was built with Fledge" "$bundle/Contents/Resources/notices/NOTICES.txt" || fail "the app has no notices"
-    # What it opens (file_associations; ADR 032, section 3): document
+    # What it opens (file_associations; ADR 052;
+    # doc/contributors/design/desktop-apps.md, "Files an app opens"): document
     # types ranked Alternate, read back by plutil, and then by Launch
     # Services itself, which, once the bundle is registered, must offer
     # the app for a folder and for a report, as Finder's "Open With" does.

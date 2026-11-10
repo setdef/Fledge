@@ -88,7 +88,8 @@ module Fledge
     # keeps an emulated program open for a while after it exits, so the
     # build's own folder, where the runtime's rcedit is, could not be
     # deleted after it ran; the copy is the temporary folder's to clear,
-    # as makensis's is (Fledge::Nsis; ADR 018).
+    # as makensis's is (Fledge::Nsis; doc/contributors/design/runtimes.md,
+    # "Windows on ARM64").
     private_class_method def self.run(rcedit, *)
       work = Dir.mktmpdir("fledge-rcedit")
       begin

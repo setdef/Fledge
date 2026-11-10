@@ -10,7 +10,7 @@ require "json"
 require "open3"
 
 # Fledge::MacBundle's Info.plist keys for the files and folders an app
-# opens (ADR 032, section 3), and, on a Mac, what plutil reads of them.
+# opens (ADR 052), and, on a Mac, what plutil reads of them.
 class MacBundleTest < Minitest::Test
   ASSOCIATION = Fledge::Config::FileAssociation
 

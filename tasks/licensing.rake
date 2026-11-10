@@ -9,7 +9,7 @@
 # which only CI builds together, so this stays out of the gate; CI's
 # "Licensing page is current" job runs the check, and uploads the page it
 # expected when the check fails.
-desc "Write doc/licensing.md from the four runtime archives in DIR (ADR 004)"
+desc "Write doc/licensing.md from every platform's runtime archive in DIR (ADR 004)"
 task :licensing, [:dir] do |_task, arguments|
   dir = arguments[:dir] or abort "usage: rake \"licensing[DIR]\", DIR holding fledge-runtime-*-PLATFORM.tar.gz for every platform"
   ruby "tasks/licensing_page.rb", dir

@@ -20,8 +20,9 @@ class VersionTest < Minitest::Test
     assert_equal Fledge::VERSION, gemspec.version.to_s
   end
 
-  # Only a person publishes to RubyGems.org (ADR 001); a push host that
-  # cannot resolve makes a stray gem push refuse instead.
+  # Only a person publishes to RubyGems.org
+  # (doc/contributors/design/releases.md, "Where releases are"); a push
+  # host that cannot resolve makes a stray gem push refuse instead.
   def test_gemspec_cannot_be_pushed_to_rubygems
     assert_equal "https://fledge.invalid", gemspec.metadata.fetch("allowed_push_host")
   end

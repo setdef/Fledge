@@ -33,10 +33,11 @@ module Fledge
   # This class takes the gems Fledge::Bundle locks for a platform, leaves
   # out those the runtime already has at the same version, fetches the
   # rest (Fledge::GemFetcher for a gem server's, Fledge::GitCheckout for
-  # git's), compiles those with an extension still to compile when the
-  # platform is the one Fledge runs on (Fledge::NativeBuild), and refuses
-  # them for any other platform, and for a phone (Fledge::MobilePlatform),
-  # whose gems must be pure Ruby until after 1.0. Then it checks that each one runs on the
+  # git's), and compiles those with an extension still to compile for a
+  # desktop, whose platform is the one Fledge runs on
+  # (Fledge::NativeBuild); a phone's extensions are compiled for its
+  # project (Fledge::MobileExtensions), which refuses only one it does
+  # not compile there. Then it checks that each one runs on the
   # platform's runtime: its <tt>required_ruby_version</tt>, what its
   # compiled files need (Fledge::Linkage), and, for what Fledge compiled,
   # the oldest macOS or glibc it needs. It names every problem at once,
@@ -45,7 +46,8 @@ module Fledge
   # among them, where RubyGems or Bundler would put them, except a
   # RubyGems plugin loader the runtime already has for a gem of that
   # name at another version (rdoc, which irb asks for): the runtime's
-  # stays, and the build does not fail on the clash (ADR 019).
+  # stays, and the build does not fail on the clash
+  # (doc/contributors/design/gems.md, "RubyGems plugin loaders").
   #
   # Use it once per target in <tt>fledge build</tt>.
   #
@@ -143,7 +145,8 @@ module Fledge
 
     # The wrappers of the executables of the gems in +packages+, as the
     # runtime's RubyGems writes them (Fledge::NativeBuild#binstubs), in the
-    # runtime's bin folder, where it keeps its own gems' (ADR 020): all but
+    # runtime's bin folder, where it keeps its own gems'
+    # (doc/contributors/design/gems.md, "Gem executables"): all but
     # a program the runtime already has under that name, whose wrapper
     # finds whichever version of its gem the app's Bundler activates.
     private def executables(packages, runtime)
@@ -194,7 +197,8 @@ module Fledge
       ensure
         # Windows on ARM's x86-64 emulator may hold llvm-readobj.exe open
         # for a while after it exits, as with makensis (Fledge::Nsis); what
-        # is left is the system's temporary folder's to clear (ADR 018).
+        # is left is the system's temporary folder's to clear
+        # (doc/contributors/design/runtimes.md, "Windows on ARM64").
         FileUtils.rm_rf(dir)
       end
     end

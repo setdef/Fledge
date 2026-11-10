@@ -21,8 +21,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * Fledge's embedding API for Ruby on Android (ADR 011, section 5): the
- * Java half of runtime/mobile/fledge_ruby.h, as thin as Android needs.
+ * Fledge's embedding API for Ruby on Android (ADR 061;
+ * doc/contributors/design/phones.md, "The Java class"): the Java half of
+ * runtime/mobile/fledge_ruby.h, as thin as Android needs.
  *
  * <p>Ruby reads its standard library and the app's code from files, and
  * an APK's assets are not files, so the app carries the runtime's lib/

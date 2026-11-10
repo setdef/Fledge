@@ -21,7 +21,8 @@ module Fledge
   # <tt>--exclude-caches</tt>, Borg, restic) leave the builds out too.
   #
   # Use it where a build makes the folder its output goes to, and where
-  # a build copies the project (ADR 005, section 1).
+  # a build copies the project (ADR 005;
+  # doc/contributors/design/desktop-apps.md, "The project and its name").
   #
   # === Example
   #

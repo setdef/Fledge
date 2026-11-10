@@ -78,9 +78,10 @@ class BuiltAppTest < Minitest::Test
 
   # examples/my_cool_app's Gemfile, which the gem-shaped probe shares,
   # locks sqlite3, which has no build for some platforms and does not
-  # compile there (Parity::WITHOUT_GEM_APP; ADR 018).
+  # compile there (Parity::WITHOUT_GEM_APP;
+  # doc/contributors/design/parity.md, "The gem-shaped run").
   def gem_shaped!
-    skip "sqlite3, which examples/my_cool_app locks, does not install on #{@platform} (ADR 018)" if
+    skip "sqlite3, which examples/my_cool_app locks, does not install on #{@platform} (doc/contributors/design/parity.md, \"The gem-shaped run\")" if
       Parity::WITHOUT_GEM_APP.include?(@platform.name)
   end
 
@@ -125,10 +126,11 @@ class BuiltAppTest < Minitest::Test
     def built = (@built ||= {})
   end
 
-  # ADR 015: Ctrl-C typed into a terminal, and a hangup, end the built
+  # ADR 003: Ctrl-C typed into a terminal, and a hangup, end the built
   # console probe as they end ruby main.rb, through Ruby's own handlers
-  # (.github/scripts/deliver-console.sh, which CI's Delivery runs too).
-  # Windows' console is CI's to check, with deliver-console.ps1.
+  # (.github/scripts/deliver-console.sh, which CI's Delivery runs too;
+  # doc/contributors/design/parity.md, "Console checks"). Windows'
+  # console is CI's to check, with deliver-console.ps1.
   def test_ctrl_c_and_a_hangup_end_the_built_app_as_they_end_ruby
     skip "deliver-console.ps1 checks Windows' console in CI" if @platform.windows?
 
@@ -187,8 +189,9 @@ class BuiltAppTest < Minitest::Test
   end
 
   # The launcher hides the person's Ruby settings from Ruby's boot, then
-  # puts them back (ADR 003): the app's own gems stay the runtime's, and a
-  # Ruby the app starts sees the person's settings, as under ruby main.rb.
+  # puts them back (ADR 040): the app's own gems stay the runtime's, and
+  # a Ruby the app starts sees the person's settings, as under ruby
+  # main.rb.
   def test_the_persons_ruby_settings_reach_child_processes_but_not_the_apps_gems
     Dir.mktmpdir do |dir|
       gems = File.join(dir, "person-gems")
@@ -204,16 +207,16 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # An app with a Gemfile gets the ENV bundle exec gives (ADR 005):
+  # An app with a Gemfile gets the ENV bundle exec gives (ADR 045):
   # Bundler's settings over the person's, so a child Ruby runs in the
   # app's bundle with the person's RUBYOPT after Bundler's own, and
-  # Bundler.with_original_env and with_unbundled_env, which a Bundler app
-  # uses to start a person's own tools, give the person's environment
-  # back. The app's own gems stay the runtime's. The environment names no
-  # locale, so the child's is C, which bin/ruby makes a UTF-8 one as the
-  # launcher does (ADR 026, section 1): in a C locale, Bundler 4.0.20
-  # cannot set up a bundle in a folder whose name is not ASCII, and the
-  # app is unpacked in one.
+  # Bundler.with_original_env and with_unbundled_env, which a Bundler
+  # app uses to start a person's own tools, give the person's
+  # environment back. The app's own gems stay the runtime's. The
+  # environment names no locale, so the child's is C, which bin/ruby
+  # makes a UTF-8 one as the launcher does (ADR 041): in a C locale,
+  # Bundler 4.0.20 cannot set up a bundle in a folder whose name is not
+  # ASCII, and the app is unpacked in one.
   def test_a_bundler_apps_children_see_the_persons_ruby_settings_as_under_bundle_exec
     Dir.mktmpdir do |dir|
       gems = File.join(dir, "person-gems")
@@ -233,13 +236,13 @@ class BuiltAppTest < Minitest::Test
   end
 
   # The runtime's own bin/ruby, the Ruby an app restarts or a gem's
-  # executable runs on, chooses its locale as the launcher does (ADR 026,
-  # section 1, after PEP 538): with no locale in the environment, which is
-  # C, it reads a folder whose name is not ASCII as UTF-8. Windows keeps
+  # executable runs on, chooses its locale as the launcher does (ADR
+  # 041, after PEP 538): with no locale in the environment, which is C,
+  # it reads a folder whose name is not ASCII as UTF-8. Windows keeps
   # RubyInstaller's ruby.exe, which reads the console's code page (ADR
-  # 003, section 5).
+  # 003; doc/contributors/design/launcher.md, "The locale").
   def test_the_runtimes_own_ruby_turns_a_c_locale_into_utf8_as_the_launcher_does
-    skip "Windows keeps RubyInstaller's ruby.exe (ADR 001, section 8)" if @platform.windows?
+    skip "Windows keeps RubyInstaller's ruby.exe (ADR 038)" if @platform.windows?
 
     Dir.mktmpdir do |dir|
       script = File.join(dir, "Ünïcödé", "encoding.rb")
@@ -252,13 +255,12 @@ class BuiltAppTest < Minitest::Test
   end
 
   # The launcher and bin/ruby keep a character set the person chose, C
-  # included, as ruby does, and turn only a C locale that comes from LANG
-  # or from no variable at all into a UTF-8 one (ADR 026, section 1;
-  # PEP 538 never coerces under LC_ALL). The probe and the script run
-  # from a folder whose name is ASCII, where ruby itself runs in a C
-  # locale.
+  # included, as ruby does, and turn only a C locale that comes from
+  # LANG or from no variable at all into a UTF-8 one (ADR 041; PEP 538
+  # never coerces under LC_ALL). The probe and the script run from a
+  # folder whose name is ASCII, where ruby itself runs in a C locale.
   def test_an_explicit_c_locale_is_kept_and_only_a_bare_one_becomes_utf8
-    skip "Windows takes its encoding from the console's code page (ADR 003, section 5)" if @platform.windows?
+    skip "Windows takes its encoding from the console's code page (ADR 003)" if @platform.windows?
 
     Dir.mktmpdir do |dir|
       launcher = build_and_unpack(dir, PROBE, place: File.join(dir, "ascii"))
@@ -321,9 +323,9 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # require "mkmf" loads in a built app, as under ruby, since the runtime
-  # keeps Ruby's headers (ADR 003, section 2), and some gems require it
-  # at run time for MakeMakefile#find_executable.
+  # require "mkmf" loads in a built app, as under ruby, since the
+  # runtime keeps Ruby's headers (ADR 039), and some gems require it at
+  # run time for MakeMakefile#find_executable.
   def test_mkmf_loads_in_a_built_app_and_finds_an_executable
     Dir.mktmpdir do |dir|
       project = File.join(dir, "mkmf-app")
@@ -370,15 +372,15 @@ class BuiltAppTest < Minitest::Test
 
   # A program restarts itself as Ruby programs do, with exec
   # RbConfig.ruby, $0, *ARGV, and the runtime's bin/ruby hands the app's
-  # own program back to its launcher (ADR 026, section 3). So the restart
-  # is the same process running the same program, in the same locale,
-  # with the same gems and environment: with no locale, from a folder
-  # whose name is not ASCII, in the person's environment and in a hostile
-  # one, with a Gemfile and without, and in a macOS .app, in the same
-  # bundle. The probe compares what it sees after the restart with what
-  # it saw before.
+  # own program back to its launcher (ADR 026). So the restart is the
+  # same process running the same program, in the same locale, with the
+  # same gems and environment: with no locale, from a folder whose name
+  # is not ASCII, in the person's environment and in a hostile one, with
+  # a Gemfile and without, and in a macOS .app, in the same bundle. The
+  # probe compares what it sees after the restart with what it saw
+  # before.
   def test_a_restart_through_rbconfig_ruby_is_the_same_app_again
-    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026, section 4)" if @platform.windows?
+    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026)" if @platform.windows?
 
     Dir.mktmpdir do |dir|
       evil = File.join(dir, "evil")
@@ -398,12 +400,13 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # bin/ruby hands only its first argument to the launcher, and only when
-  # it is an app's program (ADR 026, section 3): with an option before
-  # the program, it is plain Ruby, whose RubyGems reads the person's
-  # GEM_HOME, as ruby -W1 main.rb would.
+  # bin/ruby hands only its first argument to the launcher, and only
+  # when it is an app's program (ADR 026;
+  # doc/contributors/design/launcher.md, "bin/ruby and restarts"): with
+  # an option before the program, it is plain Ruby, whose RubyGems reads
+  # the person's GEM_HOME, as ruby -W1 main.rb would.
   def test_bin_ruby_runs_an_apps_program_through_its_launcher_unless_an_option_comes_first
-    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026, section 4)" if @platform.windows?
+    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026)" if @platform.windows?
 
     ruby = File.join(File.dirname(probe), "bin", "ruby")
     main = File.join(File.dirname(probe), "app", "main.rb")
@@ -429,8 +432,8 @@ class BuiltAppTest < Minitest::Test
     File.rename("#{main}.away", main) if main && File.exist?("#{main}.away")
   end
 
-  # ADR 029, section 2: a missing fledge.cfg is EX_NOINPUT, as a missing
-  # entry is.
+  # A missing fledge.cfg is EX_NOINPUT, as a missing entry is (ADR 002;
+  # doc/contributors/design/public-interface.md, "Frozen for 1.x").
   def test_a_missing_fledge_cfg_exits_with_ex_noinput
     config = File.join(File.realpath(File.dirname(app)), "fledge.cfg")
     File.rename(config, "#{config}.away")
@@ -443,12 +446,12 @@ class BuiltAppTest < Minitest::Test
     File.rename("#{config}.away", config) if config && File.exist?("#{config}.away")
   end
 
-  # ADR 029, section 2: bin/ruby hands an app's own script to the app's
-  # launcher (ADR 026, section 3), and exits with EX_SOFTWARE when it
-  # finds the launcher and the system will not run it. The launcher here
-  # is executable, so bin/ruby finds it, and is no program, so execv fails.
+  # bin/ruby hands an app's own script to the app's launcher (ADR 026),
+  # and exits with EX_SOFTWARE when it finds the launcher and the system
+  # will not run it. The launcher here is executable, so bin/ruby finds
+  # it, and is no program, so execv fails.
   def test_bin_ruby_exits_with_ex_software_when_it_cannot_run_the_launcher
-    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026, section 4)" if @platform.windows?
+    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026)" if @platform.windows?
     folder = File.realpath(File.dirname(app))
     launcher = File.join(folder, @platform.executable("Hello"))
     # Kept out of the folder, where any executable file is a launcher.
@@ -562,12 +565,12 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # examples/windowed_app, built as a windowed app (ADR 008): on macOS an
-  # .app bundle that Apple's codesign verifies, strictly and deeply, and
-  # whose Info.plist plutil reads; on Windows a GUI program; on Linux a
-  # folder with a desktop entry. Run by its program, it writes its report
-  # and exits with the status it is given; on Windows it has no console,
-  # and its AppUserModelID is its identifier.
+  # examples/windowed_app, built as a windowed app (ADR 037): on macOS
+  # an .app bundle that Apple's codesign verifies, strictly and deeply,
+  # and whose Info.plist plutil reads; on Windows a GUI program; on
+  # Linux a folder with a desktop entry. Run by its program, it writes
+  # its report and exits with the status it is given; on Windows it has
+  # no console, and its AppUserModelID is its identifier.
   def test_the_windowed_app_runs_from_its_bundle_or_folder
     Dir.mktmpdir do |dir|
       folder = File.dirname(build_and_unpack(dir, WINDOWED_APP, name: "Hello Window"))
@@ -604,10 +607,11 @@ class BuiltAppTest < Minitest::Test
   end
 
   # In a macOS .app the launcher runs from Contents/MacOS, beside links
-  # to the runtime and the app in Contents/Resources (Fledge::MacBundle).
-  # $0, __FILE__, __dir__, and Ruby's prefix all name the app's real
-  # folder there, so File.dirname(__FILE__) is __dir__, as under ruby
-  # (ADR 026, section 2).
+  # to the runtime and the app in Contents/Resources
+  # (Fledge::MacBundle). $0, __FILE__, __dir__, and Ruby's prefix all
+  # name the app's real folder there, so File.dirname(__FILE__) is
+  # __dir__, as under ruby (doc/contributors/design/launcher.md, "The
+  # app folder in a macOS bundle").
   def test_a_mac_apps_program_runs_from_the_folder_it_really_is_in
     skip "only a macOS .app runs its program through links" unless @platform.os == "darwin"
 

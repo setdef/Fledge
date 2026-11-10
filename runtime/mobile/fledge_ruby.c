@@ -33,8 +33,8 @@
  *     its default file instead (fledge_ruby_certificates).
  *   - Nothing is set aside from the environment: iOS and Android start
  *     an app with their own environment, which no person sets, so there
- *     is no RUBYOPT or GEM_HOME of a person's own to hide (ADR 011,
- *     section 6), and so nothing to pin RubyGems' paths against or to
+ *     is no RUBYOPT or GEM_HOME of a person's own to hide (ADR 061),
+ *     and so nothing to pin RubyGems' paths against or to
  *     put back once Bundler is set up.
  *
  * fledge_ruby_run_app reads the fledge.cfg fledge build writes into an

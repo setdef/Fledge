@@ -100,7 +100,8 @@ class RuntimeBuilder
     end
 
     private def find_certificates(prefix)
-      openssl_rb = File.join(prefix, "lib", "ruby", "4.0.0", "openssl.rb")
+      ruby = File.join(prefix, "lib", "ruby")
+      openssl_rb = File.join(ruby, RuntimeBuilder.ruby_abi(ruby), "openssl.rb")
       text = File.read(openssl_rb)
       raise "#{openssl_rb} no longer requires 'openssl.so'" unless text.include?("require 'openssl.so'")
 

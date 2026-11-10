@@ -241,14 +241,29 @@ class RuntimeBuilder
     sources.fetch("ruby").fetch("bundled_gems")
   end
 
+  # The name of the folder the Ruby library at +ruby+ (a lib/ruby folder)
+  # keeps its standard library in, and its gems in gems/ under the same
+  # name: RbConfig's ruby_version, such as 4.1.0+5, the one folder there
+  # named for a version. A release is named MAJOR.MINOR.0, and a preview
+  # or a snapshot of Ruby's master adds its ABI version
+  # (include/ruby/internal/abi.h), which two snapshots of one minor need
+  # not share. The Ruby's own tree says which it is, so nothing here keeps
+  # it a second time.
+  def self.ruby_abi(ruby)
+    found = Dir.glob(ABI_FOLDER, base: ruby)
+    raise "#{ruby} holds no one Ruby standard library: #{found.join(', ')}" unless found.size == 1
+
+    found.first.to_s.delete_suffix("/")
+  end
+
+  # The glob of a Ruby library's folder named for its version, in lib/ruby.
+  ABI_FOLDER = "[0-9]*.*/"
+
   # Puts Fledge's rubygems/defaults/operating_system.rb into the Ruby
   # library at +ruby+ (a lib/ruby folder), replacing any there, such as
   # RubyInstaller's; see the file's own comment.
   def install_rubygems_defaults(ruby)
-    version = sources.fetch("ruby").fetch("version").sub(/\.\d+\z/, ".0")
-    defaults = File.join(ruby, version, "rubygems", "defaults")
-    raise "#{ruby} has no RubyGems at #{version}" unless File.directory?(File.dirname(defaults))
-
+    defaults = File.join(ruby, RuntimeBuilder.ruby_abi(ruby), "rubygems", "defaults")
     FileUtils.mkdir_p(defaults)
     FileUtils.cp(File.join(ROOT, "runtime", "rubygems", "operating_system.rb"), defaults)
   end

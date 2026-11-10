@@ -155,6 +155,24 @@ class LicenseAudit
     !@archived.key?(path) && File.symlink?(File.join(tree, path))
   end
 
+  # The name of the folders the tree's Ruby keeps its standard library
+  # and its gems in, such as 4.1.0+5, which {abi} stands for: the one
+  # folder of lib/ruby named for a version in the tree's Ruby trees
+  # (#prefixes), as the Ruby the tree came from installed it
+  # (RuntimeBuilder.ruby_abi). In a tree with no Ruby library, such as an
+  # Android library on its own, it is the pattern of any such folder,
+  # which then matches none. Raises ArgumentError when the tree holds
+  # more than one.
+  def abi
+    @abi ||= begin
+      pattern = "[0-9]*.*"
+      found = prefixes.flat_map { |each| Dir.glob("#{pattern}/", base: File.join(tree, each, "lib", "ruby")) }.uniq
+      raise ArgumentError, "#{tree} holds more than one Ruby library: #{found.join(', ')}" if found.size > 1
+
+      found.first.to_s.delete_suffix("/").then { |name| name.empty? ? pattern : name }
+    end
+  end
+
   def expand(pattern)
     tokens = {
       "prefix" => prefix,
@@ -163,7 +181,10 @@ class LicenseAudit
       "so" => @facts.fetch("so"),
       "fledge_version" => @fledge_version,
     }
-    expanded = pattern.gsub(/\{(prefix|arch|gem_arch|so|fledge_version)\}/) { tokens.fetch(Regexp.last_match(1)) }
+    expanded = pattern.gsub(/\{(prefix|arch|gem_arch|so|fledge_version|abi)\}/) do
+      name = Regexp.last_match(1).to_s
+      (name == "abi") ? abi : tokens.fetch(name)
+    end
     expanded.end_with?("/**") ? "#{expanded}/*" : expanded
   end
 

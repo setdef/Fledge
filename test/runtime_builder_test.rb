@@ -447,14 +447,38 @@ class RuntimeBuilderTest < Minitest::Test
 
   def test_install_rubygems_defaults_replaces_rubyinstallers_hook_with_fledges
     Dir.mktmpdir do |ruby|
-      defaults = File.join(ruby, "4.0.0/rubygems/defaults")
+      defaults = File.join(ruby, "4.1.0+6/rubygems/defaults")
       FileUtils.mkdir_p(defaults)
+      File.write(File.join(ruby, "4.1.0+6/rubygems.rb"), "module Gem; end\n")
+      FileUtils.mkdir_p(File.join(ruby, "site_ruby/4.1.0+6"))
       File.write(File.join(defaults, "operating_system.rb"), "require 'ruby_installer/runtime'\n")
 
       builder("x64-mingw-ucrt").install_rubygems_defaults(ruby)
 
       assert_equal File.read(File.join(RuntimeBuilder::ROOT, "runtime/rubygems/operating_system.rb")),
         File.read(File.join(defaults, "operating_system.rb"))
+    end
+  end
+
+  # Ruby's own tree names the folder of its library: MAJOR.MINOR.0 for a
+  # release, with its ABI version for a preview or a snapshot of master.
+  def test_ruby_abi_is_the_folder_that_holds_rubygems
+    Dir.mktmpdir do |ruby|
+      FileUtils.mkdir_p(File.join(ruby, "gems/4.1.0+5"))
+      FileUtils.mkdir_p(File.join(ruby, "site_ruby/4.1.0+5"))
+      error = assert_raises(RuntimeError) { RuntimeBuilder.ruby_abi(ruby) }
+      assert_equal "#{ruby} holds no one Ruby standard library: ", error.message
+
+      FileUtils.mkdir_p(File.join(ruby, "4.1.0+5"))
+      File.write(File.join(ruby, "4.1.0+5/rubygems.rb"), "module Gem; end\n")
+      assert_equal "4.1.0+5", RuntimeBuilder.ruby_abi(ruby)
+    end
+  end
+
+  def test_the_extension_api_of_a_static_ruby_is_its_rbconfigs_ruby_version
+    Dir.mktmpdir do |build|
+      File.write(File.join(build, "rbconfig.rb"), %(  CONFIG["MAJOR"] = "4"\n  CONFIG["ruby_version"] = "4.1.0+5"\n))
+      assert_equal "4.1.0+5-static", RuntimeBuilder::Mobile.extension_api(build)
     end
   end
 

@@ -6,6 +6,13 @@
 #++
 
 class Parity
+  # The name of the folders a Ruby keeps its library and gems in, as a
+  # pattern for a justification: its ruby_version, MAJOR.MINOR.0 for a
+  # release, with its ABI version for a preview or a snapshot of master
+  # (4.1.0+5), as the runtime's own tree names them
+  # (RuntimeBuilder.ruby_abi).
+  ABI = '\d+\.\d+\.0(?:\+\d+)?'
+
   # One difference parity allows, and why. +reference+ and +app+ are
   # patterns: an element found only in the reference run is justified
   # when it matches one of +reference+, and one found only in the app

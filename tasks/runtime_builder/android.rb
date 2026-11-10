@@ -172,7 +172,7 @@ class RuntimeBuilder
     end
 
     private def compile_flags(root)
-      headers = File.join(root, "include", "ruby-4.0.0")
+      headers = Mobile.ruby_headers(root)
       arch = Dir.glob(File.join(headers, "*-linux-android")).first or raise "#{headers} has no Android configuration"
       ["-std=gnu11", *WARNINGS, "-isystem", arch, "-isystem", headers, "-I", MOBILE, "-I", Recipe::LAUNCHER]
     end

@@ -75,12 +75,8 @@ class RuntimeBuilder
     MOBILE = File.join(ROOT, "runtime", "mobile")
 
     # Static libruby, as Ruby's build names it: libruby-static.a, or on
-    # Apple systems libruby.4.0-static.a.
+    # Apple systems libruby.MAJOR.MINOR-static.a.
     LIBRUBY = /\Alibruby(?:\.[\d.]+)?-static\.a\z/
-
-    # The ABI version of a Ruby without a shared libruby, as RubyGems
-    # names its extension folders (Gem.extension_api_version).
-    EXTENSION_API = "4.0.0-static"
 
     def hosts
       @builder.platform.hosts
@@ -161,7 +157,8 @@ class RuntimeBuilder
         env: environment(target))
       use_host_builtin_binary(build)
       logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", chdir: build, env: environment(target))
-      BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: EXTENSION_API)
+      @extension_api = Mobile.extension_api(build)
+      BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: @extension_api)
       logged("#{target.name}-install", "make", "install-nodoc", "DESTDIR=#{root}", chdir: build, env: environment(target))
       finish_tree(target, root)
       @archives ||= {}
@@ -170,10 +167,28 @@ class RuntimeBuilder
     end
 
     private def finish_tree(target, root)
-      gems = File.join(root, "lib", "ruby", "gems", "4.0.0")
-      BundledExtensions.check_installed(gems, @kept, platform: target.ruby_platform, api: EXTENSION_API)
-      Pruning.prune(File.join(root, "lib", "ruby"), @builder.bundled_gems)
-      @builder.install_rubygems_defaults(File.join(root, "lib", "ruby"))
+      ruby = File.join(root, "lib", "ruby")
+      gems = File.join(ruby, "gems", RuntimeBuilder.ruby_abi(ruby))
+      BundledExtensions.check_installed(gems, @kept, platform: target.ruby_platform, api: @extension_api.to_s)
+      Pruning.prune(ruby, @builder.bundled_gems)
+      @builder.install_rubygems_defaults(ruby)
+    end
+
+    # The ABI version of the Ruby built in the folder +build+, as RubyGems
+    # names the folders of a Ruby without a shared libruby
+    # (Gem.extension_api_version): the build's rbconfig.rb's ruby_version,
+    # with -static.
+    def self.extension_api(build)
+      rbconfig = File.join(build, "rbconfig.rb")
+      version = File.read(rbconfig)[/^\s*CONFIG\["ruby_version"\] = "([^"]+)"/, 1] or raise "#{rbconfig} names no ruby_version"
+      "#{version}-static"
+    end
+
+    # The folder of Ruby's headers in the Ruby installed at +root+,
+    # include/ruby-ABI, named as its library's folders are
+    # (RuntimeBuilder.ruby_abi).
+    def self.ruby_headers(root)
+      File.join(root, "include", "ruby-#{RuntimeBuilder.ruby_abi(File.join(root, 'lib', 'ruby'))}")
     end
 
     # What configure is told for every target: a static Ruby, every

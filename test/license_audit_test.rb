@@ -18,7 +18,7 @@ require "stringio"
 # the four real runtimes and the whole trees they come from.
 class LicenseAuditTest < Minitest::Test
   RUST = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
-  ARCH = "lib/ruby/4.0.0/x86_64-linux"
+  ARCH = "lib/ruby/4.1.0+5/x86_64-linux"
 
   def setup
     TestReaders.need(self, :elf)
@@ -27,8 +27,8 @@ class LicenseAuditTest < Minitest::Test
       payload: "ruby 4.0.9 (revision 3e93b23afc) #{RUST} GCC: (Ubuntu 13.3.0)"))
     write("lib/libcrypt.so.2", Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"))
     write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.2 "))
-    write("lib/ruby/4.0.0/set.rb", "class Set; end\n")
-    write("lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
+    write("lib/ruby/4.1.0+5/set.rb", "class Set; end\n")
+    write("lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
     write("libexec/cert.pem", "-----BEGIN CERTIFICATE-----\n")
     write_gem("csv", "3.3.5", ["Ruby", "BSD-2-Clause"])
   end
@@ -52,9 +52,9 @@ class LicenseAuditTest < Minitest::Test
       gem.licenses = licenses
       gem.executables = executables
     end
-    write("lib/ruby/gems/4.0.0/specifications/#{name}-#{version}.gemspec", spec.to_ruby)
-    write("lib/ruby/gems/4.0.0/gems/#{name}-#{version}/lib/#{name}.rb", "module #{name.capitalize}; end\n")
-    write("lib/ruby/gems/4.0.0/gems/#{name}-#{version}/LICENSE.txt", "#{licenses.join(' or ')}\n")
+    write("lib/ruby/gems/4.1.0+5/specifications/#{name}-#{version}.gemspec", spec.to_ruby)
+    write("lib/ruby/gems/4.1.0+5/gems/#{name}-#{version}/lib/#{name}.rb", "module #{name.capitalize}; end\n")
+    write("lib/ruby/gems/4.1.0+5/gems/#{name}-#{version}/LICENSE.txt", "#{licenses.join(' or ')}\n")
   end
 
   # Writes RubyGems' cache/NAME-VERSION.gem holding +files+, as the tar
@@ -64,7 +64,7 @@ class LicenseAuditTest < Minitest::Test
     Gem::Package::TarWriter.new(data) { |tar| files.each { |path, bytes| tar.add_file(path, 0o644) { |io| io.write(bytes) } } }
     gem = StringIO.new(+"".b)
     Gem::Package::TarWriter.new(gem) { |tar| tar.add_file("data.tar.gz", 0o444) { |io| io.write(Zlib.gzip(data.string)) } }
-    write("lib/ruby/gems/4.0.0/cache/#{name}-#{version}.gem", gem.string)
+    write("lib/ruby/gems/4.1.0+5/cache/#{name}-#{version}.gem", gem.string)
   end
 
   def audit
@@ -87,10 +87,29 @@ class LicenseAuditTest < Minitest::Test
   def test_each_file_belongs_to_the_most_specific_component
     owners = audit.owners.transform_values(&:id)
 
-    assert_equal "fledge", owners.fetch("lib/ruby/4.0.0/rubygems/defaults/operating_system.rb")
-    assert_equal "ruby", owners.fetch("lib/ruby/4.0.0/set.rb")
-    assert_equal "gem-csv-3.3.5", owners.fetch("lib/ruby/gems/4.0.0/gems/csv-3.3.5/lib/csv.rb")
+    assert_equal "fledge", owners.fetch("lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb")
+    assert_equal "ruby", owners.fetch("lib/ruby/4.1.0+5/set.rb")
+    assert_equal "gem-csv-3.3.5", owners.fetch("lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/lib/csv.rb")
     assert_equal "libxcrypt", owners.fetch("lib/libcrypt.so.2")
+  end
+
+  # A preview's folders are named for its ABI (4.1.0+5), and a snapshot
+  # of Ruby's master may name another (4.1.0+6): the tree says which.
+  def test_the_folders_of_rubys_library_are_named_as_the_tree_names_them
+    FileUtils.mv(File.join(@tree, "lib/ruby/4.1.0+5"), File.join(@tree, "lib/ruby/4.1.0+6"))
+    FileUtils.mv(File.join(@tree, "lib/ruby/gems/4.1.0+5"), File.join(@tree, "lib/ruby/gems/4.1.0+6"))
+    report = audit
+
+    assert_empty report.violations.map(&:to_s)
+    assert_equal "ruby", report.owners.fetch("lib/ruby/4.1.0+6/set.rb").id
+    assert_includes report.present.find { |component| component.id == "gem-csv-3.3.5" }.ships, "lib/ruby/gems/4.1.0+6/gems/csv-3.3.5"
+  end
+
+  def test_a_tree_with_two_ruby_libraries_is_refused
+    write("lib/ruby/4.0.0/set.rb", "class Set; end\n")
+
+    error = assert_raises(ArgumentError) { audit }
+    assert_equal "#{File.expand_path(@tree)} holds more than one Ruby library: 4.0.0/, 4.1.0+5/", error.message
   end
 
   def test_a_file_no_component_owns_fails
@@ -199,32 +218,32 @@ class LicenseAuditTest < Minitest::Test
   def test_copyleft_text_inside_a_cached_gem_fails_unless_reviewed
     write_cached_gem("csv", "3.3.5", "lib/csv.rb" => "class CSV; end\n", "lib/borrowed.rb" => "# GNU General Public License\n")
 
-    assert_includes rules(audit), ["copyleft-text", "lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem!lib/borrowed.rb"]
-    refute_includes rules(audit).map(&:last), "lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem!lib/csv.rb"
+    assert_includes rules(audit), ["copyleft-text", "lib/ruby/gems/4.1.0+5/cache/csv-3.3.5.gem!lib/borrowed.rb"]
+    refute_includes rules(audit).map(&:last), "lib/ruby/gems/4.1.0+5/cache/csv-3.3.5.gem!lib/csv.rb"
   end
 
   # Such as the AppleDouble ._csv-3.3.5.gem macOS's tar adds beside a
   # file with extended attributes: the audit cannot see inside it, so it
   # must not pass it.
   def test_a_cached_gem_the_audit_cannot_read_fails
-    write("lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem", "\x00\x05\x16\x07 not a tar".b)
-    write("lib/ruby/gems/4.0.0/cache/._csv-3.3.5.gem", ("\x01" * 512).b)
+    write("lib/ruby/gems/4.1.0+5/cache/csv-3.3.5.gem", "\x00\x05\x16\x07 not a tar".b)
+    write("lib/ruby/gems/4.1.0+5/cache/._csv-3.3.5.gem", ("\x01" * 512).b)
 
-    assert_includes rules(audit), ["unreadable", "lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem"]
-    assert_includes rules(audit), ["unreadable", "lib/ruby/gems/4.0.0/cache/._csv-3.3.5.gem"]
+    assert_includes rules(audit), ["unreadable", "lib/ruby/gems/4.1.0+5/cache/csv-3.3.5.gem"]
+    assert_includes rules(audit), ["unreadable", "lib/ruby/gems/4.1.0+5/cache/._csv-3.3.5.gem"]
   end
 
   def test_compiled_or_libxcrypt_code_inside_a_cached_gem_fails
     write_cached_gem("csv", "3.3.5", "lib/csv.so" => Binaries.elf(needed: %w[libc.so.6]), "lib/crypt.c" => "yescrypt-ROMhash")
 
-    assert_includes rules(audit), ["unlisted-binary", "lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem!lib/csv.so"]
-    assert_includes rules(audit), ["static-copyleft", "lib/ruby/gems/4.0.0/cache/csv-3.3.5.gem!lib/crypt.c"]
+    assert_includes rules(audit), ["unlisted-binary", "lib/ruby/gems/4.1.0+5/cache/csv-3.3.5.gem!lib/csv.so"]
+    assert_includes rules(audit), ["static-copyleft", "lib/ruby/gems/4.1.0+5/cache/csv-3.3.5.gem!lib/crypt.c"]
   end
 
   def test_a_gem_under_the_gpl_fails
     write_gem("copyleft", "1.0.0", ["GPL-3.0-or-later"])
 
-    assert_includes rules(audit), ["policy", "lib/ruby/gems/4.0.0/gems/copyleft-1.0.0/LICENSE.txt"]
+    assert_includes rules(audit), ["policy", "lib/ruby/gems/4.1.0+5/gems/copyleft-1.0.0/LICENSE.txt"]
   end
 
   def test_a_gem_that_declares_no_license_fails
@@ -234,9 +253,9 @@ class LicenseAuditTest < Minitest::Test
   end
 
   def test_text_that_names_a_copyleft_license_must_have_been_reviewed
-    write("lib/ruby/4.0.0/borrowed.rb", "# Licensed under the GNU General Public License, version 3.\n")
+    write("lib/ruby/4.1.0+5/borrowed.rb", "# Licensed under the GNU General Public License, version 3.\n")
 
-    assert_includes rules(audit), ["copyleft-text", "lib/ruby/4.0.0/borrowed.rb"]
+    assert_includes rules(audit), ["copyleft-text", "lib/ruby/4.1.0+5/borrowed.rb"]
   end
 
   # The audit judges every component of a runtime by
@@ -266,7 +285,7 @@ class LicenseAuditTest < Minitest::Test
     TestReaders.need(self, :macho)
 
     assert_empty macos_floors({ "launcher" => Binaries.macho, "bin/ruby" => Binaries.macho })
-    %w[launcher bin/ruby lib/ruby/4.0.0/arm64-darwin23/a.bundle].each do |path|
+    %w[launcher bin/ruby lib/ruby/4.1.0+5/arm64-darwin23/a.bundle].each do |path|
       assert_equal ["macos-floor: #{path}: needs macOS 27.1, and Fledge's macOS apps run on macOS 14.0 and later"],
         macos_floors({ path => Binaries.macho(minos: "27.1") })
     end
@@ -342,7 +361,7 @@ class LicenseAuditTest < Minitest::Test
     assert_includes text, "=== fledge/LICENSE\n\nMIT License\n\nCopyright (c) 2026 setdef\n\nPermission is hereby granted"
     refute_includes text, "AGPL"
     assert_includes text, "https://github.com/setdef/Fledge/tree/v0.0.0"
-    assert_includes text, "License text: lib/ruby/gems/4.0.0/gems/csv-3.3.5/LICENSE.txt"
+    assert_includes text, "License text: lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/LICENSE.txt"
     assert_empty notices.missing
   end
 
@@ -530,12 +549,12 @@ class LicenseAuditTest < Minitest::Test
         put.call("#{root}/Headers/ruby.h", "/* ruby */\n")
         put.call("#{root}/Headers/fledge_ruby.h", "/* fledge */\n")
         put.call("#{root}/Headers/module.modulemap", "module FledgeRuby {}\n")
-        put.call("#{root}/lib/ruby/4.0.0/set.rb", "class Set; end\n")
-        put.call("#{root}/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
+        put.call("#{root}/lib/ruby/4.1.0+5/set.rb", "class Set; end\n")
+        put.call("#{root}/lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
         put.call("#{root}/libexec/cert.pem", "-----BEGIN CERTIFICATE-----\n")
-        put.call("#{root}/lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec", File.read(File.join(@tree, "lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec")))
-        put.call("#{root}/lib/ruby/gems/4.0.0/gems/csv-3.3.5/lib/csv.rb", "module Csv; end\n")
-        put.call("#{root}/lib/ruby/gems/4.0.0/gems/csv-3.3.5/LICENSE.txt", "Ruby or BSD-2-Clause\n")
+        put.call("#{root}/lib/ruby/gems/4.1.0+5/specifications/csv-3.3.5.gemspec", File.read(File.join(@tree, "lib/ruby/gems/4.1.0+5/specifications/csv-3.3.5.gemspec")))
+        put.call("#{root}/lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/lib/csv.rb", "module Csv; end\n")
+        put.call("#{root}/lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/LICENSE.txt", "Ruby or BSD-2-Clause\n")
       end
 
       TestReaders.need(self, :macho)
@@ -544,7 +563,7 @@ class LicenseAuditTest < Minitest::Test
       assert_empty report.violations.map(&:to_s)
       assert_equal 1, report.present.count { |component| component.id == "gem-csv-3.3.5" }
       owners = report.owners.transform_values(&:id)
-      assert_equal "gem-csv-3.3.5", owners.fetch("FledgeRuby.xcframework/ios-arm64-simulator/lib/ruby/gems/4.0.0/gems/csv-3.3.5/lib/csv.rb")
+      assert_equal "gem-csv-3.3.5", owners.fetch("FledgeRuby.xcframework/ios-arm64-simulator/lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/lib/csv.rb")
       assert_equal "fledge-embedding", owners.fetch("FledgeRuby.xcframework/ios-arm64/libfledgeruby.a")
       assert_equal "ruby", owners.fetch("FledgeRuby.xcframework/ios-arm64/Headers/ruby.h")
       %w[ruby openssl-mobile libyaml-mobile ca-certificates].each { |id| assert_includes report.present.map(&:id), id }

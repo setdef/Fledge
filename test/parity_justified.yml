@@ -57,7 +57,7 @@
   reference:
   - \A"(?-mix:<work>\/person-gems)/gems/
   app:
-  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/4\.0\.0)/gems/
+  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/
   platforms:
   checks:
   - bundle
@@ -134,13 +134,13 @@
 - fact: "$LOADED_FEATURES"
   reference: []
   app:
-  - \A"<prefix>/lib/ruby/4\.0\.0/rubygems/yaml_serializer\.rb"\z
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/rubygems/yaml_serializer\.rb"\z
   platforms:
   checks:
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/4\.0\.0/bundler/feature_flag\.rb"\z
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/bundler/feature_flag\.rb"\z
   app: []
   platforms:
   checks:
@@ -165,7 +165,7 @@
   reference:
   - \A"<work>/person-gems"\z
   app:
-  - \A"<prefix>/lib/ruby/gems/4\.0\.0"\z
+  - \A"<prefix>/lib/ruby/gems/\d+\.\d+\.0(?:\+\d+)?"\z
   platforms:
   checks:
   - script
@@ -189,7 +189,7 @@
 - fact: "$LOADED_FEATURES"
   reference: []
   app:
-  - \A"<prefix>/lib/ruby/4\.0\.0/rubygems/defaults/operating_system\.rb"\z
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/rubygems/defaults/operating_system\.rb"\z
   platforms:
   - arm64-darwin
   - x86_64-linux
@@ -205,8 +205,8 @@
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/site_ruby/4\.0\.0/ruby_installer/
-  - \A"<prefix>/lib/ruby/4\.0\.0/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)
+  - \A"<prefix>/lib/ruby/site_ruby/\d+\.\d+\.0(?:\+\d+)?/ruby_installer/
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)
   app: []
   platforms:
   - x64-mingw-ucrt
@@ -318,9 +318,9 @@
   - bundle
 - fact: "$LOAD_PATH"
   reference:
-  - \A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?4\.0\.0/(?:arm64-darwin23|x86_64-linux|aarch64-linux)"\z
+  - \A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin23|x86_64-linux|aarch64-linux)"\z
   app:
-  - \A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?4\.0\.0/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"\z
+  - \A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"\z
   platforms:
   - arm64-ios
   - arm64-ios-simulator
@@ -331,9 +331,9 @@
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/4\.0\.0/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/[^"]+\.(?:bundle|so|rb)"\z
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/[^"]+\.(?:bundle|so|rb)"\z
   app:
-  - \A"<prefix>/lib/ruby/4\.0\.0/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/rbconfig\.rb"\z
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/rbconfig\.rb"\z
   - \A"[a-z0-9_/]+\.so"\z
   platforms:
   - arm64-ios

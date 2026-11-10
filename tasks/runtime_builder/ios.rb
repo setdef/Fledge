@@ -159,7 +159,7 @@ class RuntimeBuilder
     end
 
     private def ruby_headers(root)
-      File.join(root, "include", "ruby-4.0.0")
+      Mobile.ruby_headers(root)
     end
 
     # The slice's headers: Ruby's, with its configuration header beside

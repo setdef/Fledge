@@ -15,8 +15,8 @@
 # RbConfig.ruby changes: Parity-PLATFORM.tar.gz, a
 # lone script, for hello, and ParityBundle-PLATFORM.tar.gz, the probe as
 # a gem-shaped app's program (Parity.gem_probe), for my_cool_app. EXPECTED
-# is the one line the app must print: for hello, "Hello from Ruby 4.0.9
-# on RUBY_PLATFORM"; for my_cool_app, what bundle exec exe/my_cool_app
+# is the one line the app must print: for hello, "Hello from Ruby
+# RUBY_VERSION on RUBY_PLATFORM"; for my_cool_app, what bundle exec exe/my_cool_app
 # printed on the computer that built it. With --no-ruby-installed, the
 # computer itself must have no Ruby on its PATH (a fresh container);
 # without it, the app still runs with a PATH that holds no Ruby, whatever
@@ -69,6 +69,12 @@ entry=$(sed -n 's/^entry = //p' "$root/fledge.cfg")
 [ -n "$entry" ] || fail "$root/fledge.cfg names no entry"
 [ -x "$app" ] || fail "$app is not executable after unpacking"
 [ -x "$probe" ] || fail "$probe is not executable after unpacking"
+# The name of the folders the app's Ruby keeps its library and gems in,
+# its ruby_version (4.1.0+5 for a preview): the one folder of lib/ruby
+# named for a version, as RubyGems names the user's gem folder for it.
+set -- "$root"/lib/ruby/[0-9]*.*
+[ $# -eq 1 ] && [ -d "$1" ] || fail "$root/lib/ruby holds no one folder named for a Ruby version: $*"
+abi=$(basename "$1")
 
 # The app carries the notices the license audit wrote (ADR 004): every
 # component and license text, and the SBOM; on Linux with glibc,
@@ -156,8 +162,8 @@ check "clean environment" 0 env -i PATH="$empty" HOME="$home" "$app"
 
 # A hostile environment: everything a Ruby developer's shell might set,
 # pointed at code that raises if it ever loads. A json 99 in the user's
-# gem folder (Gem.user_dir: ~/.gem/ruby/4.0.0, or
-# ~/.local/share/gem/ruby/4.0.0 when ~/.gem does not exist) shadows the
+# gem folder (Gem.user_dir: ~/.gem/ruby/ABI, or
+# ~/.local/share/gem/ruby/ABI when ~/.gem does not exist) shadows the
 # runtime's json if RubyGems searches it; a libcrypt in LD_LIBRARY_PATH
 # breaks the launcher if the dynamic linker prefers it to the runtime's.
 evil="$work/evil"
@@ -198,16 +204,16 @@ CONFIG
 }
 
 dot_gem_home="$work/dot-gem-home"
-plant_json "$dot_gem_home/.gem/ruby/4.0.0"
+plant_json "$dot_gem_home/.gem/ruby/$abi"
 plant_bundler_config "$dot_gem_home"
 xdg_home="$work/xdg-home"
-plant_json "$xdg_home/.local/share/gem/ruby/4.0.0"
+plant_json "$xdg_home/.local/share/gem/ruby/$abi"
 
 check "a json gem in ~/.gem" 0 env -i PATH="$empty" HOME="$dot_gem_home" "$app"
 check "a json gem in ~/.local/share/gem" 0 env -i PATH="$empty" HOME="$xdg_home" "$app"
 check "hostile environment" 0 env -i PATH="$empty" HOME="$dot_gem_home" \
   RUBYLIB="$evil" RUBYOPT="-rnonexistent" RUBYSHELL=/bin/false \
-  GEM_HOME="$dot_gem_home/.gem/ruby/4.0.0" GEM_PATH="$dot_gem_home/.gem/ruby/4.0.0" \
+  GEM_HOME="$dot_gem_home/.gem/ruby/$abi" GEM_PATH="$dot_gem_home/.gem/ruby/$abi" \
   GEM_SPEC_CACHE="$evil" GEMRC="$evil/json.rb" \
   BUNDLE_GEMFILE="$evil/Gemfile" BUNDLE_PATH="$evil" BUNDLER_SETUP="$evil/bundler_setup.rb" \
   BUNDLE_APP_CONFIG="$evil" BUNDLE_FROZEN=false BUNDLE_WITHOUT=default BUNDLER_VERSION=2.1.0 \
@@ -332,7 +338,7 @@ restarts "a restart in the person's environment is the same app" HOME="$home" GE
   RUBYLIB="$evil"
 restarts "a restart in a hostile environment is the same app" HOME="$dot_gem_home" \
   RUBYLIB="$evil" RUBYOPT="-rnonexistent" RUBYSHELL=/bin/false \
-  GEM_HOME="$dot_gem_home/.gem/ruby/4.0.0" GEM_PATH="$dot_gem_home/.gem/ruby/4.0.0" \
+  GEM_HOME="$dot_gem_home/.gem/ruby/$abi" GEM_PATH="$dot_gem_home/.gem/ruby/$abi" \
   GEM_SPEC_CACHE="$evil" GEMRC="$evil/json.rb" \
   BUNDLE_GEMFILE="$evil/Gemfile" BUNDLE_PATH="$evil" BUNDLER_SETUP="$evil/bundler_setup.rb" \
   BUNDLE_APP_CONFIG="$evil" BUNDLE_FROZEN=false BUNDLE_WITHOUT=default BUNDLER_VERSION=2.1.0 \

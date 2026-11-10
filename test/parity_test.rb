@@ -79,6 +79,19 @@ class ParityTest < Minitest::Test
     refute_predicate Parity::Reports.compare(installer, none, platform: "x86_64-linux").first, :justified?
   end
 
+  # A Ruby's folders are named for its ruby_version, which a preview or a
+  # snapshot of master gives its ABI version too, so a justification
+  # holds for whichever the runtime's Ruby is, and only for a version.
+  def test_a_justification_holds_for_the_folders_of_any_ruby_version
+    none = { "$LOADED_FEATURES" => [] }
+    %w[4.0.0 4.1.0+5 4.1.0+6].each do |abi|
+      defaults = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/#{abi}/rubygems/defaults/operating_system.rb"] }
+      assert_predicate Parity::Reports.compare(none, defaults, platform: "x86_64-linux").first, :justified?
+    end
+    stray = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/rubygems/defaults/operating_system.rb"] }
+    refute_predicate Parity::Reports.compare(none, stray, platform: "x86_64-linux").first, :justified?
+  end
+
   # The launcher's UTF-8 in place of a bare C locale is justified only in
   # the run with no locale at all; under LC_ALL=C it would be a
   # difference, and the no-locale run still allows what the script check

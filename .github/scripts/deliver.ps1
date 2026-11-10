@@ -216,9 +216,15 @@ Write-Host "$($junction.FullName) is a junction to $($junction.Target)"
 Check 'run through a junction to its folder' 3 (Join-Path $junction.FullName "$appName.exe") $clean @('3')
 
 # A json 99 in the person's own gem folder (Gem.user_dir:
-# %USERPROFILE%\.local\share\gem\ruby\4.0.0, or %USERPROFILE%\.gem\ruby\4.0.0
+# %USERPROFILE%\.local\share\gem\ruby\ABI, or %USERPROFILE%\.gem\ruby\ABI
 # once %USERPROFILE%\.gem exists) shadows the runtime's json if RubyGems
-# searches it, and raises if it ever loads.
+# searches it, and raises if it ever loads. ABI names the folders the
+# app's Ruby keeps its library and gems in, its ruby_version (4.1.0+6 for
+# a snapshot of Ruby's master): the one folder of ruby\lib\ruby named for
+# a version.
+$abiFolders = @(Get-ChildItem -LiteralPath (Join-Path $root 'ruby\lib\ruby') -Directory | Where-Object { $_.Name -match '^\d+\.\d+\.' })
+if ($abiFolders.Count -ne 1) { Fail "ruby\lib\ruby holds no one folder named for a Ruby version: $($abiFolders.Name -join ', ')" }
+$abi = $abiFolders[0].Name
 $leak = 'raise "Delivery: the user''s Ruby environment leaked into the app"'
 function Install-LeakingJson([string] $GemFolder) {
   New-Item -ItemType Directory -Force (Join-Path $GemFolder 'gems\json-99.0.0\lib'), (Join-Path $GemFolder 'specifications') |
@@ -246,10 +252,10 @@ BUNDLE_FORCE_RUBY_PLATFORM: "true"
 BUNDLE_WITHOUT: "default"
 BUNDLE_AUTO_INSTALL: "true"
 "@
-$xdgGems = Join-Path $env:USERPROFILE '.local\share\gem\ruby\4.0.0'
+$xdgGems = Join-Path $env:USERPROFILE ".local\share\gem\ruby\$abi"
 Install-LeakingJson $xdgGems
 Check 'a json gem in %USERPROFILE%\.local\share\gem' 0 $app $clean
-$dotGems = Join-Path $env:USERPROFILE '.gem\ruby\4.0.0'
+$dotGems = Join-Path $env:USERPROFILE ".gem\ruby\$abi"
 Install-LeakingJson $dotGems
 Check 'a json gem in %USERPROFILE%\.gem' 0 $app $clean
 
@@ -286,7 +292,9 @@ Check 'hostile environment' 0 $app $hostile
 # PATH and in the current folder: Windows would load them before the
 # runtime's own if the launcher let it search either.
 $arch = if ($Platform -eq 'aarch64-mingw-ucrt') { 'arm64' } else { 'x64' }
-$rubyDll = if ($Platform -eq 'aarch64-mingw-ucrt') { 'aarch64-ucrt-ruby400.dll' } else { 'x64-ucrt-ruby400.dll' }
+$rubyDlls = @(Get-ChildItem -Path (Join-Path $root 'ruby\bin\*-ucrt-ruby*.dll'))
+if ($rubyDlls.Count -ne 1) { Fail "ruby\bin holds no one Ruby DLL: $($rubyDlls.Name -join ', ')" }
+$rubyDll = $rubyDlls[0].Name
 foreach ($dll in $rubyDll, 'libgmp-10.dll', 'libwinpthread-1.dll', 'zlib1.dll', 'libyaml-0-2.dll',
   "libssl-3-$arch.dll", "libcrypto-3-$arch.dll") {
   Set-Content -LiteralPath (Join-Path $evil $dll) -Value 'not a DLL'

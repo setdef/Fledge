@@ -11,8 +11,10 @@
 #                               audit reads compiled files with
 #   alpine-packages.sh apps     what a developer on Alpine builds apps
 #                               with: git for Bundler, binutils' objdump,
-#                               and squashfs-tools' mksquashfs for an
-#                               AppImage
+#                               squashfs-tools' mksquashfs for an
+#                               AppImage, and a C toolchain, which
+#                               compiles a gem with no build for the
+#                               Ruby, as sqlite3 2.10.2 has none for 4.1
 #   alpine-packages.sh deliver  what Delivery checks a built app with, on
 #                               a computer with no Ruby: script(1) and
 #                               pgrep for the console,
@@ -31,7 +33,8 @@ case "${1:?usage: alpine-packages.sh build|apps|deliver}" in
       zstd=1.5.7-r2
     ;;
   apps)
-    set -- git=2.54.1-r0 binutils=2.45.1-r1 tar=1.35-r5 squashfs-tools=4.7.5-r0
+    set -- git=2.54.1-r0 binutils=2.45.1-r1 tar=1.35-r5 squashfs-tools=4.7.5-r0 \
+      build-base=0.5-r4 gcc=15.2.0-r5 musl-dev=1.2.6-r3 make=4.4.1-r4
     ;;
   deliver)
     set -- util-linux-misc=2.42.3-r1 procps-ng=4.0.6-r0 desktop-file-utils=0.28-r0 file=5.47-r2

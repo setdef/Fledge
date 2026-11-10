@@ -253,7 +253,13 @@ module Fledge
     # <tt>arm64-darwin-24</tt> does not. A Fledge::MobilePlatform's app
     # runs Bundler with <tt>force_ruby_platform</tt> (ADR 011, section 1),
     # as which the lockfile must lock +ruby+, and each gem is its +ruby+
-    # build. Raises Fledge::Error, saying what to run, when
+    # build. A gem from a gem server whose best build for +platform+ has a
+    # +required_ruby_version+ that excludes +ruby_version+ gives way to
+    # its source build, as the built app's Bundler would choose it
+    # (Fledge::Bundle::Selection): the block, given the Fledge::LockedGem
+    # of a build, answers its +required_ruby_version+ (a
+    # Gem::Requirement), which the lockfile does not record; without a
+    # block every build admits every Ruby. Raises Fledge::Error, saying what to run, when
     # the lockfile does not lock +platform+, the Gemfile asks for another
     # Ruby, a git gem is not pinned to a commit or needs its submodules, a
     # gem comes from a folder outside the project or is a path gem with an
@@ -271,14 +277,27 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def gems_for(platform, ruby_version:, arch:)
+    def gems_for(platform, ruby_version:, arch:, &required_ruby)
       target = Gem::Platform.new(platform.force_ruby_platform? ? Gem::Platform::RUBY : arch)
       check_ruby(ruby_version)
       check_locked(platform, target)
-      specs = Selection.new(@definition, lockfile_name:, platform:, ruby_version:, target:, groups: @groups).specs
+      runs = -> (spec) { runs?(spec, platform, Gem::Version.new(ruby_version), required_ruby) }
       # Bundler's settings (a mirror, a login) are read from the project's
       # own folder, so the sources ask for them there.
-      at_project(@gemfile) { specs.filter_map { |spec| sources.gem_for(spec, platform) }.sort_by(&:name) }
+      at_project(@gemfile) do
+        specs = Selection.new(@definition, lockfile_name:, platform:, ruby_version:, target:, groups: @groups, runs:).specs
+        specs.filter_map { |spec| sources.gem_for(spec, platform) }.sort_by(&:name)
+      end
+    end
+
+    # Whether +spec+'s build admits the runtime's Ruby, +version+, as
+    # +required_ruby+ answers for a gem from a gem server (the only source
+    # that locks more than one build of a gem).
+    private def runs?(spec, platform, version, required_ruby)
+      return true unless required_ruby && spec.source.is_a?(Bundler::Source::Rubygems)
+
+      gem = sources.gem_for(spec, platform)
+      !gem.is_a?(LockedGem) || required_ruby.call(gem).satisfied_by?(version)
     end
 
     private def check_ruby(ruby_version)

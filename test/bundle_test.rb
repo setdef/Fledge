@@ -77,6 +77,27 @@ class BundleTest < Minitest::Test
     assert_equal ["native 1.0.0"], names(bundle, WINDOWS)
   end
 
+  # Bundler skips a locked build whose required_ruby_version excludes the
+  # Ruby it runs on and falls back to the gem's source build, with that
+  # build's own dependencies, as sqlite3 2.10.2's precompiled Linux build
+  # (Ruby < 4.1.dev) gives way to its source build on Ruby 4.1. With
+  # nothing that fits, it keeps the best build, which then fails.
+  def test_a_build_whose_ruby_excludes_the_runtimes_gives_way_to_the_source_build
+    helper = FakeGem.build(@dir, "helper", "1.0.0")
+    precompiled = FakeGem.build(@dir, "lite", "1.0.0", platform: "x86_64-linux-gnu", required_ruby_version: "< 4.0.dev")
+    source = FakeGem.build(@dir, "lite", "1.0.0", required_ruby_version: ">= 3.2")
+    built = [helper, precompiled, source].to_h { |gem| [File.basename(gem.path, ".gem"), gem.path] }
+    bundle = bundle(dependencies: { "lite" => ">= 0" }, locked: [helper, precompiled, source],
+      locked_dependencies: { source.lock_name => ["helper (>= 0)"] })
+    requirement = -> (gem) { Gem::Package.new(built.fetch(gem.full_name)).spec.required_ruby_version }
+
+    picked = -> (ruby_version) { bundle.gems_for(LINUX, ruby_version:, arch: "x86_64-linux", &requirement).map(&:to_s) }
+
+    assert_equal ["helper 1.0.0", "lite 1.0.0"], picked.call("4.0.9")
+    assert_equal ["lite 1.0.0 (x86_64-linux-gnu)"], picked.call("3.4.9")
+    assert_equal ["lite 1.0.0 (x86_64-linux-gnu)"], picked.call("3.1.7"), "with no build that fits, the best one stays, to fail"
+  end
+
   def test_leaves_out_development_and_test_gems_and_gems_for_other_platforms
     bundle = bundle(dependencies: { "foo" => ">= 0" }, locked: [@foo, @bar, @windows],
       gemfile: "group :development, :test do\n  gem \"bar\"\nend\ngem \"native\", platforms: :windows\n",

@@ -122,6 +122,30 @@ class GemAppBuildTest < Minitest::Test
     refute_path_exists File.join(@dir, "dist/MyApp-arm64-darwin")
   end
 
+  # A precompiled build whose required_ruby_version excludes the
+  # runtime's Ruby gives way to the gem's source build, as the built
+  # app's Bundler would choose it, and when the source build excludes it
+  # too, the build names the precompiled one, as Bundler would fail on it.
+  def test_a_precompiled_build_for_another_ruby_gives_way_to_the_source_build
+    precompiled = FakeGem.build(@gems, "lite", "1.0.0", platform: "x86_64-linux-gnu", required_ruby_version: "< 3.5")
+    source = FakeGem.build(@gems, "lite", "1.0.0")
+    root = project(dependencies: { "lite" => ">= 0" }, locked: [precompiled, source])
+
+    out, err, status = build(root)
+
+    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
+    gems = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.0.0")
+    assert_path_exists File.join(gems, "gems/lite-1.0.0/lib/lite.rb")
+    refute_path_exists File.join(gems, "gems/lite-1.0.0-x86_64-linux-gnu")
+
+    FileUtils.rm_rf([root, File.join(@dir, "dist"), File.join(@dir, "cache")])
+    neither = FakeGem.build(File.join(@gems, "old"), "lite", "1.0.0", required_ruby_version: "< 3.5")
+    root = project(dependencies: { "lite" => ">= 0" }, locked: [precompiled, neither])
+    _, err, status = build(root)
+    assert_equal 1, status
+    assert_includes err, "lite 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.0.9."
+  end
+
   # Fledge refuses a gem only when it would not run where the app goes,
   # and names every such gem at once.
   def test_every_gem_that_would_not_run_is_named_with_what_to_do

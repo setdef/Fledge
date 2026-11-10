@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `fledge build` takes a gem's locked source build, as Bundler does, when its precompiled build's `required_ruby_version` excludes the runtime's Ruby, instead of refusing the precompiled build.
+
 ## [0.10.0] - 2026-11-08
 
 ### Changed

@@ -39,6 +39,8 @@ module Fledge
 
     private def extension_marks: (String path) -> Array[Entry]
 
+    private def required_ruby: (LockedGem gem) -> Gem::Requirement
+
     private def package_for: (locked_gem gem) -> package
 
     private def compile: (Hash[locked_gem, package] packages) -> Hash[locked_gem, package]

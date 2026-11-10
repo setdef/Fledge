@@ -92,7 +92,12 @@ class NativeBuildTest < Minitest::Test
     File.write(File.join(root, "exe", "my_app"), "require \"greeter\"\nputs Greeter.greet\n")
   end
 
-  def gem_dir(folder) = File.join(folder, @platform.windows? ? "ruby/lib/ruby/gems/4.0.0" : "lib/ruby/gems/4.0.0")
+  # The app's gem folder, named for its Ruby's library (4.1.0+5).
+  def gem_dir(folder)
+    found = Dir.glob(File.join(folder, @platform.windows? ? "ruby/lib/ruby/gems/*" : "lib/ruby/gems/*"))
+    assert_equal 1, found.size, "one gem folder in #{folder}"
+    found.first.to_s
+  end
 
   def test_a_gem_with_only_its_source_compiles_with_its_build_options_and_runs
     greeter = FakeGem.build(@dir, "greeter", "1.0.0", files: FILES, extensions: ["ext/greeter/extconf.rb"])

@@ -6,9 +6,9 @@
 /*
  * fledge_ruby_run (fledge_ruby.h): Ruby started in a phone app as
  * Fledge's desktop launcher starts it (runtime/launcher/unix.c), which
- * follows Ruby's own main.c at 4.0.9: the locale, ruby_sysinit, then
- * ruby_start_main, whose callback runs RUBY_INIT_STACK, ruby_init, and
- * ruby_run_node(ruby_options(...)), with the arguments
+ * follows Ruby's own main.c at 4.1.0-preview1: the locale, ruby_sysinit,
+ * then ruby_start_main, whose callback runs RUBY_INIT_STACK, ruby_init,
+ * and ruby_run_node(ruby_options(...)), with the arguments
  *
  *   ruby --disable=rubyopt -- SCRIPT ARGS
  *
@@ -67,10 +67,10 @@
 extern const char *ruby_embed_libruby_path;
 
 /*
- * Ruby's registry of statically linked extensions, load.c at 4.0.9
- * (line 1480): the one extinit.c fills for Ruby's own, by the feature
- * with its ".so", which require looks a name up in when it finds no file
- * (search_required, lines 1126 to 1145).
+ * Ruby's registry of statically linked extensions, load.c at
+ * 4.1.0-preview1 (line 1553): the one extinit.c fills for Ruby's own, by
+ * the feature with its ".so", which require looks a name up in when it
+ * finds no file (search_required, lines 1199 to 1218).
  */
 void ruby_init_ext(const char *name, void (*init)(void));
 
@@ -152,9 +152,9 @@ fledge_ruby_add_extension(const char *feature, void (*init)(void))
 /*
  * Hands Ruby every extension fledge_ruby_add_extension was told of, as
  * Init_ext hands it Ruby's own (Ruby's ruby_opt_init calls Init_ext once
- * the VM is up, ruby.c line 1828 at 4.0.9): after ruby_options, so that
- * the main namespace they register in exists, and before the program or
- * Bundler's setup requires any of them.
+ * the VM is up, ruby.c line 1824 at 4.1.0-preview1): after ruby_options,
+ * so that the main namespace they register in exists, and before the
+ * program or Bundler's setup requires any of them.
  */
 static void
 register_extensions(void)
@@ -171,11 +171,12 @@ register_extensions(void)
  * developer tool's, and whoever reads it is watching the app run. Ruby
  * writes through to a terminal but buffers a pipe until its buffer fills
  * or the program ends (io.c, io_binwrite_requires_flush_write, lines
- * 1966 to 1979 at 4.0.9), so without this an app's lines reached the log
- * only when it ended. This is $stdout.sync = true, as Briefcase's iOS
- * host unbuffers Python's streams so that "output appears in the log
- * immediately" (config.buffered_stdio = 0); standard error is in sync
- * mode already (rb_io_prep_stderr). On a terminal it is left as it is.
+ * 1941 to 1954 at 4.1.0-preview1), so without this an app's lines
+ * reached the log only when it ended. This is $stdout.sync = true, as
+ * Briefcase's iOS host unbuffers Python's streams so that "output
+ * appears in the log immediately" (config.buffered_stdio = 0); standard
+ * error is in sync mode already (rb_io_prep_stderr). On a terminal it is
+ * left as it is.
  */
 static void
 write_lines_as_printed(void)
@@ -188,9 +189,9 @@ write_lines_as_printed(void)
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, from Ruby's main.c (lines 37 to 43) at
- *   Ruby v4.0.9 (3e93b23afc), with setup_bundler between ruby_options and
- *   ruby_run_node, as in the desktop launcher's run_ruby, and standard
- *   output's sync mode set before either.
+ *   Ruby v4.1.0-preview1 (2d08b5f42f), with setup_bundler between
+ *   ruby_options and ruby_run_node, as in the desktop launcher's
+ *   run_ruby, and standard output's sync mode set before either.
  */
 static int
 run_ruby(int argc, char **argv)
@@ -261,7 +262,7 @@ fledge_ruby_run(const char *root, const char *script, int argc, char *const *arg
      * SPDX-License-Identifier: Ruby OR BSD-2-Clause
      * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
      * SPDX-SnippetComment: The end of main, from Ruby's main.c (lines 61
-     *   to 62) at Ruby v4.0.9 (3e93b23afc).
+     *   to 62) at Ruby v4.1.0-preview1 (2d08b5f42f).
      */
     int ruby_argc = (int)count;
     ruby_sysinit(&ruby_argc, &ruby_argv);

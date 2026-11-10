@@ -233,7 +233,7 @@ class RuntimeBuilder
       ["-isystem", headers, "-isystem", File.join(headers, @builder.platform.name), "-I", LAUNCHER]
     end
 
-    # The name of Ruby's DLL in bin\, such as x64-ucrt-ruby400.dll.
+    # The name of Ruby's DLL in bin\, such as x64-ucrt-ruby410.dll.
     private def ruby_dll(tree)
       dlls = Dir.glob(File.join(tree, "bin", "*-ruby*.dll"))
       raise "#{tree}/bin holds no single Ruby DLL: #{dlls}" unless dlls.size == 1

@@ -51,7 +51,7 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   bundle = Fledge::Bundle.new(Fledge::App.at("examples/my_cool_app"))
-  #   bundle.gems_for(Fledge::Platform.find("x64-mingw-ucrt"), ruby_version: "4.0.9", arch: "x64-mingw-ucrt").map(&:to_s)
+  #   bundle.gems_for(Fledge::Platform.find("x64-mingw-ucrt"), ruby_version: "4.1.0", arch: "x64-mingw-ucrt").map(&:to_s)
   #   # => ["concurrent-ruby 1.3.8", "i18n 1.15.2", "sqlite3 2.10.2 (x64-mingw-ucrt)"]
   #--
   # SPDX-SnippetEnd
@@ -272,7 +272,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   bundle.gems_for(Fledge::Platform.find("x86_64-linux"), ruby_version: "4.0.9", arch: "x86_64-linux").last.platform
+    #   bundle.gems_for(Fledge::Platform.find("x86_64-linux"), ruby_version: "4.1.0", arch: "x86_64-linux").last.platform
     #   # => "x86_64-linux-gnu"
     #--
     # SPDX-SnippetEnd

@@ -9,17 +9,18 @@ require "fileutils"
 
 class RuntimeBuilder
   # How a mobile runtime keeps Ruby's bundled gems with C extensions
-  # (bigdecimal, debug, nkf, racc, rbs, syslog, and on Android fiddle) as
-  # gems while linking their extensions into Ruby (ADR 058).
+  # (bigdecimal, debug, nkf, racc, rbs, syslog, and on Android fiddle; and
+  # prism, which the phones leave out for now) as gems while linking their
+  # extensions into Ruby (ADR 058).
   #
   # A mobile Ruby loads no extension from a file: iOS forbids it, and
   # both runtimes link every extension into the one library an app
   # carries. Ruby's build links its own extensions in that way
   # (--with-static-linked-ext), registering each in extinit.c, but never a
   # bundled gem's: template/configure-ext.mk.tmpl builds .bundle/gems with
-  # --no-extstatic, and ext/extmk.rb (line 656 at 4.0.9) leaves a gem's
-  # extension out of extinit.c. The mobile spike moved those gems into
-  # the standard library, so they loaded but were no longer gems
+  # --no-extstatic, and ext/extmk.rb (line 661 at 4.1.0-preview1) leaves a
+  # gem's extension out of extinit.c. The mobile spike moved those gems
+  # into the standard library, so they loaded but were no longer gems
   # (Gem.loaded_specs["bigdecimal"] was nil), which an app that names them
   # in its Gemfile would notice.
   #
@@ -39,7 +40,7 @@ class RuntimeBuilder
     # them to leave out their builds as gems: extmk matches a gem by the
     # name of its folder in .bundle/gems, NAME-VERSION, unless the folder
     # holds a NAME.gemspec as well as NAME-VERSION.gemspec, when it
-    # matches NAME (ext/extmk.rb, lines 519 to 523 at 4.0.9).
+    # matches NAME (ext/extmk.rb, lines 523 to 527 at 4.1.0-preview1).
     def self.without(source)
       gems(source).keys.sort.flat_map { |name| [name, "#{name}-*"] }
     end

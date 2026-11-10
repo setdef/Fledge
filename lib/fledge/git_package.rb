@@ -43,8 +43,8 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   package = Fledge::GitPackage.new(git_gem, checkouts.checkout(git_gem))
-  #   package.installed_path("lib/ruby/gems/4.0.0")
-  #   # => "lib/ruby/gems/4.0.0/bundler/gems/Ferro-21a106d0c0d6/gems/idna"
+  #   package.installed_path("lib/ruby/gems/4.1.0+5")
+  #   # => "lib/ruby/gems/4.1.0+5/bundler/gems/Ferro-21a106d0c0d6/gems/idna"
   #--
   # SPDX-SnippetEnd
   #++
@@ -109,7 +109,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   package.problems(ruby_version: "4.0.9") # => []
+    #   package.problems(ruby_version: "4.1.0") # => []
     #--
     # SPDX-SnippetEnd
     #++
@@ -144,7 +144,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   package.checkout_path("lib/ruby/gems/4.0.0") # => "lib/ruby/gems/4.0.0/bundler/gems/Ferro-21a106d0c0d6"
+    #   package.checkout_path("lib/ruby/gems/4.1.0+5") # => "lib/ruby/gems/4.1.0+5/bundler/gems/Ferro-21a106d0c0d6"
     #--
     # SPDX-SnippetEnd
     #++
@@ -162,7 +162,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   package.installed_path("lib/ruby/gems/4.0.0") # => "lib/ruby/gems/4.0.0/bundler/gems/Ferro-21a106d0c0d6/gems/idna"
+    #   package.installed_path("lib/ruby/gems/4.1.0+5") # => "lib/ruby/gems/4.1.0+5/bundler/gems/Ferro-21a106d0c0d6/gems/idna"
     #--
     # SPDX-SnippetEnd
     #++
@@ -180,7 +180,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   package.entries("lib/ruby/gems/4.0.0").first.path # => "lib/ruby/gems/4.0.0/bundler/gems/Ferro-21a106d0c0d6/gems/idna"
+    #   package.entries("lib/ruby/gems/4.1.0+5").first.path # => "lib/ruby/gems/4.1.0+5/bundler/gems/Ferro-21a106d0c0d6/gems/idna"
     #--
     # SPDX-SnippetEnd
     #++

@@ -35,7 +35,7 @@ class RuntimeBuilder
     end
 
     # RubyGems' checksums.yaml: each digest of each file (Gem::Package's
-    # build, at Ruby 4.0.9).
+    # build, at Ruby 4.1.0-preview1).
     private_class_method def self.gem_checksums(entries)
       { "SHA256" => Digest::SHA256, "SHA512" => Digest::SHA512 }.transform_values do |digest|
         entries.transform_values { |entry| digest.hexdigest(entry.fetch(:bytes)) }

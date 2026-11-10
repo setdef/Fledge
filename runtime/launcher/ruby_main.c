@@ -2,8 +2,8 @@
  * SPDX-FileCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
- * SPDX-FileComment: Adapted from Ruby's main.c at Ruby v4.0.9
- *   (3e93b23afcec3433f6aecc34b5d832799d754238), without its developer-only
+ * SPDX-FileComment: Adapted from Ruby's main.c at Ruby v4.1.0-preview1
+ *   (2d08b5f42f2cbed4a4e6ecf8d62987a4f21f98c1), without its developer-only
  *   RUBY_DEBUG_ENV and sanitizer hooks, whose headers Ruby does not install,
  *   with Fledge's fledge_relaunch (relaunch.c) first, and with Fledge's
  *   fledge_coerce_locale (locale.c) in place of its setlocale.

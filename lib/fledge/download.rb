@@ -41,9 +41,9 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   Fledge::Download.save(
-  #     "https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.0.9.arm64_sonoma.tar.gz",
+  #     "https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.arm64_sonoma.tar.gz",
   #     to: "tmp/ruby.tar.gz",
-  #     sha256: "38130a97c314e2e44198f37fc6555a66ab9a8011ecc5980d4ae36f2858ed11b5"
+  #     sha256: "9e3944ade8e237835a7eca5cae1ce1140c32ca6b6854c25a4d56c26512df7033"
   #   )
   #
   #   Fledge::Download.read("https://example.com/SHA256SUMS") # => "abc123...  file\n"

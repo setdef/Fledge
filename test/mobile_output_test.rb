@@ -178,9 +178,9 @@ class MobileOutputTest < Minitest::Test
   # a terminal under ruby main.rb, not when the program ends: Ruby
   # buffers its standard output when that is a pipe, as the forwarding
   # makes it, and writes through only on a terminal (io.c,
-  # io_binwrite_requires_flush_write, at 4.0.9). The program prints a
-  # line with no flush and then sleeps; the line must be in the log while
-  # it sleeps.
+  # io_binwrite_requires_flush_write, at 4.1.0-preview1). The program
+  # prints a line with no flush and then sleeps; the line must be in the
+  # log while it sleeps.
   def test_a_line_ruby_prints_reaches_the_log_while_the_program_runs
     skip "the mobile embedding API is for iOS and Android, which share POSIX's pipes; Windows has none" if Gem.win_platform?
     compiler = RbConfig::CONFIG.fetch("CC").split.first

@@ -9,13 +9,13 @@
 #
 # RubyGems loads rubygems/defaults/operating_system.rb, when one exists,
 # so that whoever packages Ruby can change its defaults (rubygems.rb
-# lines 58 to 59 and 1422 to 1434 at Ruby 4.0.9). Debian and
+# lines 59 to 60 and 1464 to 1476 at Ruby 4.1.0-preview1). Debian and
 # RubyInstaller ship one; rv-ruby does not.
 #
-# Left alone, Gem.default_path puts Gem.user_dir (~/.gem/ruby/4.0.0, or
-# ~/.local/share/gem/ruby/4.0.0) first whenever the person's home folder
+# Left alone, Gem.default_path puts Gem.user_dir (~/.gem/ruby/4.1.0+5, or
+# ~/.local/share/gem/ruby/4.1.0+5) first whenever the person's home folder
 # exists (rubygems/defaults.rb, Gem.default_path), so a gem they installed
-# with their own Ruby 4.0 would shadow a gem the app ships, json
+# with their own Ruby 4.1 would shadow a gem the app ships, json
 # included. Here the app's gems come from the runtime and nowhere else.
 #
 # The launcher hides GEM_HOME and GEM_PATH from Ruby's boot, and has
@@ -28,9 +28,9 @@
 # SPDX-License-Identifier: Ruby OR MIT
 # SPDX-SnippetCopyrightText: Chad Fowler, Rich Kilmer, Jim Weirich and others
 # SPDX-SnippetComment: Gem.default_path, adapted from RubyGems'
-#   lib/rubygems/defaults.rb at Ruby v4.0.9 (3e93b23afc), keeping only its
-#   default_dir, through the operating_system.rb hook RubyGems documents
-#   there for packagers.
+#   lib/rubygems/defaults.rb at Ruby v4.1.0-preview1 (2d08b5f42f), keeping
+#   only its default_dir, through the operating_system.rb hook RubyGems
+#   documents there for packagers.
 #++
 module Gem
   # The runtime's own gem folder, and nothing else.
@@ -49,9 +49,9 @@ end
 # Gem::BUNDLED_GEMS.force_activate("irb"), which sets up a temporary
 # bundle of the Gemfile's gems and irb, and never writes it to the
 # lockfile (Definition.no_lock; prelude.rb lines 8 to 11 and
-# bundled_gems.rb lines 214 to 259, at Ruby 4.0.9). In a frozen bundle
-# that fails: Runtime#setup refuses a Gemfile with a gem the lockfile
-# lacks ("You have added to the Gemfile: * irb"), and a frozen
+# bundled_gems.rb lines 247 to 292, at Ruby 4.1.0-preview1). In a frozen
+# bundle that fails: Runtime#setup refuses a Gemfile with a gem the
+# lockfile lacks ("You have added to the Gemfile: * irb"), and a frozen
 # Definition#resolve takes only the lockfile's gems. A built app's
 # .bundle/config freezes its bundle (Fledge::Bundle::SETTINGS), so that
 # Bundler never touches the lockfile in a folder that may be read-only,

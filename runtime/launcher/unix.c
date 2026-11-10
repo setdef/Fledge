@@ -14,8 +14,8 @@
  *   bin/ruby                   Ruby's own program, for RbConfig.ruby,
  *                              which runs this program again when it
  *                              is given ENTRY (relaunch.c)
- *   lib/ruby/4.0.0/            Ruby's standard library
- *   lib/ruby/gems/4.0.0/       Ruby's default and bundled gems, and the
+ *   lib/ruby/4.1.0+5/          Ruby's standard library
+ *   lib/ruby/gems/4.1.0+5/     Ruby's default and bundled gems, and the
  *                              app's own
  *   lib/libcrypt.so.N          libxcrypt, on Linux only (see below)
  *   libexec/cert.pem           certificate authorities for HTTPS
@@ -25,11 +25,11 @@
  *
  * libruby is linked into this program statically, so the program is the
  * Ruby interpreter. It starts Ruby the way Ruby's own main.c does
- * (main.c lines 37 to 63 at Ruby 4.0.9): setlocale, ruby_sysinit, then
- * ruby_start_main, whose callback runs RUBY_INIT_STACK, ruby_init, and
- * ruby_run_node(ruby_options(...)). Ruby runs on the process's main
- * thread, where macOS wants windows and events. Beyond that it does six
- * things Ruby's main.c does not:
+ * (main.c lines 37 to 63 at Ruby 4.1.0-preview1): setlocale,
+ * ruby_sysinit, then ruby_start_main, whose callback runs
+ * RUBY_INIT_STACK, ruby_init, and ruby_run_node(ruby_options(...)). Ruby
+ * runs on the process's main thread, where macOS wants windows and
+ * events. Beyond that it does six things Ruby's main.c does not:
  *
  *   1. It finds the folder it lives in (fledge_executable_path, one file
  *      per operating system), and reads fledge.cfg there, which names the
@@ -44,7 +44,7 @@
  *      that happens to be installed on the computer could change how
  *      Ruby boots: RUBYOPT, RUBYLIB, GEM_HOME, BUNDLE_GEMFILE, and the
  *      rest (see scrub.c, which windows.c shares). The runtime's own
- *      lib/ruby/4.0.0/rubygems/defaults/operating_system.rb then keeps
+ *      lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb then keeps
  *      RubyGems to the runtime's gems, away from ~/.gem.
  *   3. It turns a bare C locale into a UTF-8 one (locale.c).
  *   4. It runs the app with arguments equivalent to
@@ -69,13 +69,13 @@
  *
  * Ruby finds its standard library on its own. rv-ruby builds Ruby with
  * --enable-load-relative, so ruby_init_loadpath derives the install
- * prefix at run time from the file that holds libruby (ruby.c lines 591
- * to 735 at Ruby 4.0.9). Here that file is this program, so the prefix is
- * the folder this program sits in, and Ruby looks for ROOT/lib/ruby/4.0.0
- * as rv-ruby's own bin/ruby does. One wrinkle: when that folder is named
- * bin (in any case) or lib, ruby.c takes its parent as the prefix
- * instead. The launcher refuses to run from such a folder rather than
- * run with a standard library from somewhere else.
+ * prefix at run time from the file that holds libruby (ruby.c lines 593
+ * to 737 at Ruby 4.1.0-preview1). Here that file is this program, so the
+ * prefix is the folder this program sits in, and Ruby looks for
+ * ROOT/lib/ruby/4.1.0+5 as rv-ruby's own bin/ruby does. One wrinkle:
+ * when that folder is named bin (in any case) or lib, ruby.c takes its
+ * parent as the prefix instead. The launcher refuses to run from such a
+ * folder rather than run with a standard library from somewhere else.
  *
  * On Linux, libruby calls crypt(3) from libxcrypt, which is LGPL. The
  * launcher links it dynamically, from ROOT/lib, through an RPATH of
@@ -98,8 +98,8 @@
 #include <strings.h>
 #include <sys/stat.h>
 
-/* As in Ruby's main.c (line 35 at v4.0.9): lets the VM declare any
- * globals it needs. */
+/* As in Ruby's main.c (line 35 at v4.1.0-preview1): lets the VM declare
+ * any globals it needs. */
 RUBY_GLOBAL_SETUP
 
 extern char **environ;
@@ -144,9 +144,9 @@ static size_t set_aside_count;
  *
  * An entry without "=" is no variable: execve(2) passes any string, but
  * getenv and unsetenv look only for "NAME=", and Ruby's ENV skips such
- * an entry (hash.c, env_each_pair, at Ruby 4.0.9), so nothing in Ruby
- * reads it. unsetenv cannot remove it either, and the scan would find it
- * again for ever, so it stays, as it would under ruby.
+ * an entry (hash.c, env_each_pair, at Ruby 4.1.0-preview1), so nothing
+ * in Ruby reads it. unsetenv cannot remove it either, and the scan would
+ * find it again for ever, so it stays, as it would under ruby.
  */
 static void
 scrub_environment(void)
@@ -254,9 +254,9 @@ bundle_environment(void)
  * Has RubyGems work out its gem paths now, from the environment Ruby
  * booted with, before restore_environment puts GEM_HOME and GEM_PATH
  * back. Gem.paths reads them once and keeps the answer (rubygems.rb,
- * Gem.paths, at Ruby 4.0.9), so the app's gems stay the runtime's even
- * when the person has GEM_HOME set; a child Ruby the app starts still
- * reads the person's own.
+ * Gem.paths, at Ruby 4.1.0-preview1), so the app's gems stay the
+ * runtime's even when the person has GEM_HOME set; a child Ruby the app
+ * starts still reads the person's own.
  */
 static void
 pin_rubygems(void)
@@ -338,8 +338,8 @@ find_root(size_t size)
      * SPDX-License-Identifier: Ruby OR BSD-2-Clause
      * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
      * SPDX-SnippetComment: The test of ruby_init_loadpath in ruby.c
-     *   (lines 710 to 720) at Ruby v4.0.9 (3e93b23afc): "/bin" matched in
-     *   any case, "/lib" exactly.
+     *   (lines 712 to 722) at Ruby v4.1.0-preview1 (2d08b5f42f): "/bin"
+     *   matched in any case, "/lib" exactly.
      */
     if (strcasecmp(folder, "bin") == 0 || strcmp(folder, "lib") == 0) {
         fail("this app cannot run from a folder named \"%s\"; rename the folder or move the app out of it", folder);
@@ -435,8 +435,8 @@ static int ruby_argc;
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
- *   43) at Ruby v4.0.9 (3e93b23afc), as Lota's launcher spike first did
- *   (setdef/lota, ADR 002), with pin_rubygems, setup_bundler,
+ *   43) at Ruby v4.1.0-preview1 (2d08b5f42f), as Lota's launcher spike
+ *   first did (setdef/lota, ADR 002), with pin_rubygems, setup_bundler,
  *   bundle_environment, and restore_environment between ruby_options and
  *   ruby_run_node.
  */
@@ -463,8 +463,9 @@ run_ruby(int argc, char **argv)
  * Builds the arguments Ruby sees. argv[0] stays the very pointer
  * ruby_sysinit recorded: on Linux, ruby.c recognizes the program that
  * holds libruby by comparing dladdr's file name with that pointer
- * (ruby.c line 647 at Ruby 4.0.9), and only then reads /proc/self/exe,
- * so a launcher found on PATH by its bare name still finds its root.
+ * (ruby.c line 649 at Ruby 4.1.0-preview1), and only then reads
+ * /proc/self/exe, so a launcher found on PATH by its bare name still
+ * finds its root.
  */
 static void
 build_ruby_arguments(int argc, char **argv)
@@ -497,8 +498,8 @@ build_ruby_arguments(int argc, char **argv)
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: main, adapted from Ruby's main.c (lines 51 to 63)
- *   at Ruby v4.0.9 (3e93b23afc), with the launcher's own steps before
- *   ruby_sysinit.
+ *   at Ruby v4.1.0-preview1 (2d08b5f42f), with the launcher's own steps
+ *   before ruby_sysinit.
  */
 int
 main(int argc, char **argv)

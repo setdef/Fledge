@@ -88,7 +88,7 @@ module Fledge
       ],
     }.freeze
 
-    # A Windows Ruby's DLL, such as x64-ucrt-ruby400.dll.
+    # A Windows Ruby's DLL, such as x64-ucrt-ruby410.dll.
     RUBY_DLL = /\A[\w-]*-ruby\d+\.dll\z/i
 
     # The format each operating system's loader loads.

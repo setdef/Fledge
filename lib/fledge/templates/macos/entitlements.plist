@@ -7,8 +7,9 @@
   hardened runtime (ADR 050), Briefcase's defaults for every macOS app.
   YJIT, which an app may enable, makes its machine code executable with
   mprotect, without MAP_JIT (jit.c, rb_jit_reserve_addr_space and
-  rb_jit_mark_executable, at Ruby 4.0.9), which the first is for; the
-  second lets Ruby load a library its app did not sign, as a gem may.
+  rb_jit_mark_executable, at Ruby 4.1.0-preview1), which the first is
+  for; the second lets Ruby load a library its app did not sign, as a gem
+  may.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

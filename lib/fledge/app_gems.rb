@@ -60,7 +60,7 @@ module Fledge
   #++
   #   gems = Fledge::AppGems.new(app:, bundle: Fledge::Bundle.new(app), fetcher:, checkouts:, compiler:)
   #   entries = gems.for(Fledge::Platform.find("x86_64-linux"), runtime: Fledge::RuntimeContents.read(archive))
-  #   entries.map(&:path).grep(/sqlite3_native/) # => ["lib/ruby/gems/4.0.0/gems/sqlite3-2.10.2-x86_64-linux-gnu/lib/sqlite3/4.0/sqlite3_native.so"]
+  #   entries.map(&:path).grep(/sqlite3_native/) # => ["lib/ruby/gems/4.1.0+5/gems/sqlite3-2.10.2/lib/sqlite3/sqlite3_native.so"]
   #--
   # SPDX-SnippetEnd
   #++
@@ -121,7 +121,7 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   gems.for(Fledge::Platform.find("x64-mingw-ucrt"), runtime: contents).first.path
-    #   # => "ruby/lib/ruby/gems/4.0.0/gems/concurrent-ruby-1.3.8"
+    #   # => "ruby/lib/ruby/gems/4.1.0+5/gems/concurrent-ruby-1.3.8"
     #--
     # SPDX-SnippetEnd
     #++

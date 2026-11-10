@@ -48,7 +48,7 @@ require_relative "../lib/fledge/version"
 # launcher spikes settled (Plan 001).
 #
 # What a runtime leaves out follows one rule (ADR 039): an app's Ruby
-# code must run as it does under a standard Ruby 4.0.9, so a runtime
+# code must run as it does under a standard Ruby 4.1, so a runtime
 # keeps everything such a Ruby installs that running Ruby code can
 # reach (every default and bundled gem, its executables, the gem cache,
 # the C extensions, RbConfig.ruby) and prunes only what no running Ruby

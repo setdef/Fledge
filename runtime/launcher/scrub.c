@@ -15,7 +15,7 @@
  * environment variables, so the launcher hides every variable whose
  * name starts with one of these prefixes. Prefixes, not a list of
  * names, so a variable a later Ruby adds is removed too. Read at Ruby
- * 4.0.9:
+ * 4.1.0-preview1:
  *
  *   RUBY      ruby.c: RUBYOPT, RUBYLIB, RUBYPATH, RUBYSHELL,
  *             RUBY_YJIT_ENABLE, RUBY_ZJIT_ENABLE; gc.c, vm.c, thread.c:

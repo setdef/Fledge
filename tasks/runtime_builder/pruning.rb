@@ -14,7 +14,7 @@ class RuntimeBuilder
   # install.
   module Pruning
     # Removes, from a copy of a Ruby's lib/ruby at +ruby+, what no running
-    # Ruby code reads, and what a standard Ruby 4.0.9 does not install.
+    # Ruby code reads, and what a standard Ruby 4.1 does not install.
     # Returns the names of the executables of the gems it removed, for
     # prune_bin. +bundled+ names Ruby's bundled gems, from
     # runtime/sources.yml. Each removal, and why no app can miss it:
@@ -28,11 +28,11 @@ class RuntimeBuilder
     #          require "mkmf", which some gems do at run time for
     #          MakeMakefile#find_executable, aborts without ruby/ruby.h
     #          (mkmf.rb, "can't find header files for ruby").
-    # [gems/4.0.0/doc] RDoc and ri documentation, read by the rdoc and ri
+    # [gems/4.1.0+5/doc] RDoc and ri documentation, read by the rdoc and ri
     #          tools a developer runs, never by an app's requires.
     # [portable_ruby_gems.rb, and gems no standard Ruby installs] rv-ruby's
     #          own additions (a load-path helper for its executables, and
-    #          bootsnap and msgpack): a standard Ruby 4.0.9, and
+    #          bootsnap and msgpack): a standard Ruby 4.1, and
     #          RubyInstaller's, has none of them, so an app that worked
     #          under ruby never needed them. Gems that are neither default
     #          gems nor in +bundled+ go, with their specification, cache,

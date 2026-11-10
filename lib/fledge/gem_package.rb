@@ -48,9 +48,9 @@ module Fledge
   #++
   #   package = Fledge::GemPackage.new("sqlite3-2.10.2-x64-mingw-ucrt.gem")
   #   package.spec.full_name                       # => "sqlite3-2.10.2-x64-mingw-ucrt"
-  #   package.problems(ruby_version: "4.0.9")      # => []
-  #   package.entries("ruby/lib/ruby/gems/4.0.0").first.path
-  #   # => "ruby/lib/ruby/gems/4.0.0/gems/sqlite3-2.10.2-x64-mingw-ucrt"
+  #   package.problems(ruby_version: "4.1.0")      # => []
+  #   package.entries("ruby/lib/ruby/gems/4.1.0+5").first.path
+  #   # => "ruby/lib/ruby/gems/4.1.0+5/gems/sqlite3-2.10.2-x64-mingw-ucrt"
   #--
   # SPDX-SnippetEnd
   #++
@@ -65,7 +65,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::GemPackage.ruby_problems(spec, "4.0.9") # => ["old 1.0 needs Ruby < 3.0, and Fledge's runtime is Ruby 4.0.9."]
+    #   Fledge::GemPackage.ruby_problems(spec, "4.1.0") # => ["old 1.0 needs Ruby < 3.0, and Fledge's runtime is Ruby 4.1.0."]
     #--
     # SPDX-SnippetEnd
     #++
@@ -105,7 +105,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::GemPackage.new("sqlite3-2.10.2-x64-mingw-ucrt.gem").problems(ruby_version: "4.0.9")
+    #   Fledge::GemPackage.new("sqlite3-2.10.2-x64-mingw-ucrt.gem").problems(ruby_version: "4.1.0")
     #   # => []
     #--
     # SPDX-SnippetEnd
@@ -142,7 +142,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   package.installed_path("lib/ruby/gems/4.0.0") # => "lib/ruby/gems/4.0.0/gems/i18n-1.15.2"
+    #   package.installed_path("lib/ruby/gems/4.1.0+5") # => "lib/ruby/gems/4.1.0+5/gems/i18n-1.15.2"
     #--
     # SPDX-SnippetEnd
     #++
@@ -175,8 +175,8 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   package.entries("lib/ruby/gems/4.0.0").map(&:path).last
-    #   # => "lib/ruby/gems/4.0.0/cache/i18n-1.15.2.gem"
+    #   package.entries("lib/ruby/gems/4.1.0+5").map(&:path).last
+    #   # => "lib/ruby/gems/4.1.0+5/cache/i18n-1.15.2.gem"
     #--
     # SPDX-SnippetEnd
     #++

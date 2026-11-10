@@ -370,7 +370,7 @@ class RuntimeBuilderTest < Minitest::Test
 
   # Everything a standard Ruby installs and Ruby code can reach stays;
   # what only compilers, debuggers, and documentation tools read goes,
-  # and so do gems no standard Ruby 4.0.9 installs, such as rv-ruby's
+  # and so do gems no standard Ruby 4.1 installs, such as rv-ruby's
   # bootsnap.
   def test_prune_keeps_default_and_bundled_gems_and_drops_what_no_ruby_code_reads
     Dir.mktmpdir do |ruby|

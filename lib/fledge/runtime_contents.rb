@@ -13,7 +13,7 @@ module Fledge
   # gems go, which gems it has, and which Ruby it runs.
   #
   # An app's gems join the runtime's default and bundled gems in Ruby's
-  # own gem folder, <tt>lib/ruby/gems/4.0.0</tt> (in <tt>ruby\</tt> on
+  # own gem folder, <tt>lib/ruby/gems/4.1.0+5</tt> (in <tt>ruby\</tt> on
   # Windows), where RubyGems and Bundler find them
   # (doc/contributors/design/gems.md, "Installing into the runtime's gem
   # folder"). A gem the
@@ -41,8 +41,8 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   contents = Fledge::RuntimeContents.read("fledge-runtime-0.0.1-x64-mingw-ucrt.tar.gz")
-  #   contents.gem_dir                    # => "ruby/lib/ruby/gems/4.0.0"
-  #   contents.ruby_version               # => "4.0.9"
+  #   contents.gem_dir                    # => "ruby/lib/ruby/gems/4.1.0+5"
+  #   contents.ruby_version               # => "4.1.0"
   #   contents.gems.include?("csv-3.3.5") # => true
   #   contents.arch                       # => "x64-mingw-ucrt"
   #--
@@ -60,7 +60,7 @@ module Fledge
 
     ##
     # :attr_reader: ruby_version
-    # The runtime's Ruby version, such as <tt>4.0.9</tt>.
+    # The runtime's Ruby version, such as <tt>4.1.0</tt>.
 
     ##
     # :attr_reader: arch
@@ -71,7 +71,7 @@ module Fledge
     ##
     # :attr_reader: libraries
     # The file name of every shared library the runtime holds, sorted,
-    # such as <tt>x64-ucrt-ruby400.dll</tt>.
+    # such as <tt>x64-ucrt-ruby410.dll</tt>.
 
     ##
     # :attr_reader: path
@@ -80,7 +80,7 @@ module Fledge
     ##
     # :attr_reader: plugins
     # The path of every RubyGems plugin loader the runtime's gem folder
-    # holds, such as <tt>lib/ruby/gems/4.0.0/plugins/rdoc_plugin.rb</tt>,
+    # holds, such as <tt>lib/ruby/gems/4.1.0+5/plugins/rdoc_plugin.rb</tt>,
     # which a gem of the same name at another version would write to
     # (Gem::Installer#generate_plugins).
 
@@ -139,9 +139,9 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::RuntimeContents.read(runtime).gem_dir # => "lib/ruby/gems/4.0.0"
+    #   Fledge::RuntimeContents.read(runtime).gem_dir # => "lib/ruby/gems/4.1.0+5"
     #   Fledge::RuntimeContents.read(ios, under: "FledgeRuby.xcframework/ios-arm64/").gem_dir
-    #   # => "lib/ruby/gems/4.0.0"
+    #   # => "lib/ruby/gems/4.1.0+5"
     #--
     # SPDX-SnippetEnd
     #++

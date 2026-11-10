@@ -18,10 +18,10 @@
  *                                      app\main.rb, or
  *                                      app\exe\my_cool_app beside its
  *                                      Gemfile
- *   ruby\bin\x64-ucrt-ruby400.dll      Ruby
+ *   ruby\bin\x64-ucrt-ruby410.dll      Ruby
  *   ruby\bin\ruby_builtin_dlls\        the DLLs Ruby's DLL needs
- *   ruby\lib\ruby\4.0.0\               Ruby's standard library
- *   ruby\lib\ruby\gems\4.0.0\          Ruby's default and bundled gems,
+ *   ruby\lib\ruby\4.1.0+5\             Ruby's standard library
+ *   ruby\lib\ruby\gems\4.1.0+5\        Ruby's default and bundled gems,
  *                                      and the app's own
  *   notices\                           the licenses of everything above
  *
@@ -32,8 +32,8 @@
  * imported Ruby's DLL would need the DLL beside it, at the top of the
  * app's folder. But Ruby finds its standard library from its DLL's own
  * path: a DLL in PREFIX\bin makes PREFIX the prefix (ruby.c,
- * runtime_libruby_path and ruby_init_loadpath, at Ruby 4.0.9), so the DLL
- * must stay in ruby\bin. LoadLibraryExW by absolute path, and
+ * runtime_libruby_path and ruby_init_loadpath, at Ruby 4.1.0-preview1),
+ * so the DLL must stay in ruby\bin. LoadLibraryExW by absolute path, and
  * GetProcAddress for the five functions Ruby's own main.c calls, let the
  * launcher sit at the top and Ruby keep its shape. The DLL's own
  * dependencies (libgmp, libwinpthread) load through the private assembly
@@ -44,9 +44,10 @@
  * alternatives worse.
  *
  * It starts Ruby the way Ruby's own main.c does (main.c lines 37 to 63
- * at Ruby 4.0.9): setlocale, ruby_sysinit, then, since ruby_start_main
- * is a plain call off WebAssembly (ruby/ruby.h), RUBY_INIT_STACK,
- * ruby_init, and ruby_run_node(ruby_options(...)). Before that it:
+ * at Ruby 4.1.0-preview1): setlocale, ruby_sysinit, then, since
+ * ruby_start_main is a plain call off WebAssembly (ruby/ruby.h),
+ * RUBY_INIT_STACK, ruby_init, and ruby_run_node(ruby_options(...)).
+ * Before that it:
  *
  *   1. Keeps every DLL loaded by name to System32, the folders a DLL
  *      names for itself, and the runtime's ruby\bin\ruby_builtin_dlls,
@@ -63,7 +64,7 @@
  *      its own file is, less .exe (ADR 024).
  *   3. Sets aside every environment variable scrub.c names, removing it
  *      from both copies of the environment Ruby reads (see
- *      scrub_environment). The runtime's own lib\ruby\4.0.0\rubygems\
+ *      scrub_environment). The runtime's own lib\ruby\4.1.0+5\rubygems\
  *      defaults\operating_system.rb, which replaces RubyInstaller's, then
  *      keeps RubyGems to the runtime's gems, away from the person's own.
  *   4. Runs the app with arguments equivalent to
@@ -128,7 +129,7 @@
 /* The DLL's file name, from the RubyInstaller tree the launcher is
  * built against (rake runtime passes it). */
 #ifndef FLEDGE_RUBY_DLL
-#error "build with -DFLEDGE_RUBY_DLL=L\"x64-ucrt-ruby400.dll\", the name of Ruby's DLL in ruby\\bin"
+#error "build with -DFLEDGE_RUBY_DLL=L\"x64-ucrt-ruby410.dll\", the name of Ruby's DLL in ruby\\bin"
 #endif
 
 /* The launcher's file name, for messages. Set once in wmain. */
@@ -554,9 +555,9 @@ load_ruby(const wchar_t *folder)
  * Has RubyGems work out its gem paths now, from the environment Ruby
  * booted with, before restore_environment puts GEM_HOME and GEM_PATH
  * back. Gem.paths reads them once and keeps the answer (rubygems.rb,
- * Gem.paths, at Ruby 4.0.9), so the app's gems stay the runtime's even
- * when the person has GEM_HOME set; a child Ruby the app starts still
- * reads the person's own.
+ * Gem.paths, at Ruby 4.1.0-preview1), so the app's gems stay the
+ * runtime's even when the person has GEM_HOME set; a child Ruby the app
+ * starts still reads the person's own.
  */
 static void
 pin_rubygems(void)
@@ -819,10 +820,10 @@ bundle_environment(void)
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
- *   43) at Ruby v4.0.9 (3e93b23afc), with RUBY_INIT_STACK spelled out
- *   through a function pointer, and pin_rubygems, setup_bundler,
- *   bundle_environment, and restore_environment between ruby_options and
- *   ruby_run_node.
+ *   43) at Ruby v4.1.0-preview1 (2d08b5f42f), with RUBY_INIT_STACK
+ *   spelled out through a function pointer, and pin_rubygems,
+ *   setup_bundler, bundle_environment, and restore_environment between
+ *   ruby_options and ruby_run_node.
  */
 static int __attribute__((noinline))
 run_ruby(int argc, char **argv)
@@ -896,9 +897,9 @@ int wmain(int argc, wchar_t **argv);
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: wmain and main, adapted from Ruby's main.c (lines
- *   45 to 63) at Ruby v4.0.9 (3e93b23afc), which on Windows hands
- *   ruby_sysinit no arguments for it to rebuild from the command line,
- *   with the launcher's own steps before ruby_sysinit.
+ *   45 to 63) at Ruby v4.1.0-preview1 (2d08b5f42f), which on Windows
+ *   hands ruby_sysinit no arguments for it to rebuild from the command
+ *   line, with the launcher's own steps before ruby_sysinit.
  */
 int
 wmain(int argc, wchar_t **argv)

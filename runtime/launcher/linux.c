@@ -11,7 +11,8 @@
  * on PATH, run through a symlink, or run by a relative path. realpath
  * reads that link, so the result is the runtime folder the file really
  * lives in. Ruby's own ruby.c reads the same link to find its prefix
- * (runtime_libruby_path, ruby.c lines 646 to 649 at Ruby 4.0.9).
+ * (runtime_libruby_path, ruby.c lines 648 to 651 at Ruby
+ * 4.1.0-preview1).
  *
  * It also answers one question only Linux asks: whether this computer
  * has the libraries the app's gems load from the distribution, which

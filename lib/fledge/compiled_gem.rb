@@ -14,10 +14,11 @@ module Fledge
   # require path, where <tt>require</tt> finds it, and into the gem's
   # extensions folder (<tt>extensions/PLATFORM/ABI/FULL_NAME</tt>), whose
   # <tt>gem.build_complete</tt> tells RubyGems and Bundler the extension
-  # is built (Gem::Ext::Builder#build_extensions, at Ruby 4.0.9); without
-  # it, they treat the gem as not yet installed. A gem compiled with
-  # build options also gets <tt>build_info/FULL_NAME.info</tt>, which
-  # <tt>gem pristine</tt> reads (Gem::Installer#write_build_info_file).
+  # is built (Gem::Ext::Builder#build_extensions, at Ruby
+  # 4.1.0-preview1); without it, they treat the gem as not yet installed.
+  # A gem compiled with build options also gets
+  # <tt>build_info/FULL_NAME.info</tt>, which <tt>gem pristine</tt> reads
+  # (Gem::Installer#write_build_info_file).
   #
   # This class is a gem's package (Fledge::GemPackage, or a git gem's
   # Fledge::GitPackage) and what Fledge::NativeBuild compiled for it: the
@@ -38,8 +39,8 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   compiled.contents.keys.grep(/\.bundle\z/) # => ["lib/redcarpet.bundle"]
-  #   compiled.entries("lib/ruby/gems/4.0.0").map(&:path).grep(/build_complete/)
-  #   # => ["lib/ruby/gems/4.0.0/extensions/arm64-darwin-23/4.0.0-static/redcarpet-3.6.1/gem.build_complete"]
+  #   compiled.entries("lib/ruby/gems/4.1.0+5").map(&:path).grep(/build_complete/)
+  #   # => ["lib/ruby/gems/4.1.0+5/extensions/arm64-darwin-23/4.1.0+5-static/redcarpet-3.6.1/gem.build_complete"]
   #--
   # SPDX-SnippetEnd
   #++
@@ -121,7 +122,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   compiled.installed_path("lib/ruby/gems/4.0.0") # => "lib/ruby/gems/4.0.0/gems/redcarpet-3.6.1"
+    #   compiled.installed_path("lib/ruby/gems/4.1.0+5") # => "lib/ruby/gems/4.1.0+5/gems/redcarpet-3.6.1"
     #--
     # SPDX-SnippetEnd
     #++
@@ -139,7 +140,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   compiled.problems(ruby_version: "4.0.9") # => []
+    #   compiled.problems(ruby_version: "4.1.0") # => []
     #--
     # SPDX-SnippetEnd
     #++
@@ -181,9 +182,9 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   compiled.entries("lib/ruby/gems/4.0.0").map(&:path).grep(/\.bundle\z/)
-    #   # => ["lib/ruby/gems/4.0.0/gems/redcarpet-3.6.1/lib/redcarpet.bundle",
-    #   #     "lib/ruby/gems/4.0.0/extensions/arm64-darwin-23/4.0.0-static/redcarpet-3.6.1/redcarpet.bundle"]
+    #   compiled.entries("lib/ruby/gems/4.1.0+5").map(&:path).grep(/\.bundle\z/)
+    #   # => ["lib/ruby/gems/4.1.0+5/gems/redcarpet-3.6.1/lib/redcarpet.bundle",
+    #   #     "lib/ruby/gems/4.1.0+5/extensions/arm64-darwin-23/4.1.0+5-static/redcarpet-3.6.1/redcarpet.bundle"]
     #--
     # SPDX-SnippetEnd
     #++

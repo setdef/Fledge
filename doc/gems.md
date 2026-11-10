@@ -23,6 +23,10 @@ $ bundle lock --add-checksums
 
 For iPhone, iPad, and Android, lock `ruby` as a platform too (`bundle lock --add-platform ruby`).
 
+## The Bundler that wrote your lockfile
+
+`bundle exec` runs the Bundler your `Gemfile.lock` names under `BUNDLED WITH`, and so does your app: Fledge ships that Bundler beside Ruby's own, and checks it against its entry in `CHECKSUMS`, as it checks every gem. Bundler 2.6 and newer write that entry. If your lockfile has none, run `bundle install`, which installs that Bundler, then `bundle lock --add-checksums`.
+
 ## Gems with compiled extensions
 
 Fledge ships precompiled gems as they are. It compiles gems that ship as source, and gems from git, on your computer, against the app's Ruby. Install a compiler first:

@@ -382,6 +382,23 @@ class AssemblyTest < Minitest::Test
       text = Fledge::Assembly.launch_config(Fledge::App.at(root))
       assert text.start_with?("# Written by fledge build: what this app's programs run (ADR 024).\ngemfile = Gemfile\n\n[Play Game]\n"), text
       assert_equal 1, text.scan("gemfile").size
+      text = Fledge::Assembly.launch_config(Fledge::App.at(root), bundler: "4.0.19")
+      assert text.start_with?("# Written by fledge build: what this app's programs run (ADR 024).\ngemfile = Gemfile\nbundler = 4.0.19\n\n" \
+        "[Play Game]\n"), text
+    end
+  end
+
+  # The Bundler the app runs in place of the runtime's own (ADR 063)
+  # follows its Gemfile, for the launcher; an app without one runs no
+  # Bundler, so names none.
+  def test_fledge_cfg_names_the_bundler_beside_the_gemfile
+    Dir.mktmpdir do |dir|
+      hello = FakeApp.write(dir)
+      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = main.rb\n",
+        Fledge::Assembly.launch_config(Fledge::App.at(hello), bundler: "4.0.19")
+      File.write(File.join(hello, "Gemfile"), "")
+      assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = main.rb\ngemfile = Gemfile\nbundler = 4.0.19\n",
+        Fledge::Assembly.launch_config(Fledge::App.at(hello), bundler: "4.0.19")
     end
   end
 

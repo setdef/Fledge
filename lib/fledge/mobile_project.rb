@@ -109,10 +109,14 @@ module Fledge
     # [extensions] The Fledge::MobileExtensions that compiles the gems'
     #              extensions against the runtime, which the project links
     #              into the app, or +nil+ for an app with none (ADR 022).
+    # [bundler] The version of the Bundler the app runs with in place of
+    #           the runtime's own, which +files+ install
+    #           (Fledge::AppGems#bundler), or +nil+ for the runtime's.
     # [log] Where to say which of Fledge's files the project's host
     #       replaced, such as <tt>$stderr</tt>, or +nil+ for nowhere.
-    def initialize(app:, runtime:, out:, app_files: {}, files: [], extensions: nil, log: nil)
+    def initialize(app:, runtime:, out:, app_files: {}, files: [], extensions: nil, bundler: nil, log: nil)
       @app = app
+      @bundler = bundler
       @runtime = runtime
       @out = out
       @app_files = app_files
@@ -179,7 +183,7 @@ module Fledge
       place_extensions(project) if @built
       root = File.join(project, ROOT)
       FileUtils.mkdir_p(root)
-      File.write(File.join(root, Assembly::CONFIG), Assembly.launch_config(@app))
+      File.write(File.join(root, Assembly::CONFIG), Assembly.launch_config(@app, bundler: @bundler))
       FileUtils.cp_r(File.join(tree, "notices"), root)
       skip = [@out]
       skip << File.join(@app.root, host) if host

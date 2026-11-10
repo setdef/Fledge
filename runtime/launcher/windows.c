@@ -693,30 +693,13 @@ set_app_user_model_id(void)
 }
 
 /*
- * The Ruby that loads Bundler, and that has Bundler set up the app's
- * gems, by their paths in Ruby's own library, as bundle exec's
- * RUBYOPT=-r.../bundler/setup does (bundler/shared_helpers.rb,
- * set_rubyopt): required by name, RubyGems would activate the bundler gem
- * first, loading what bundle exec does not. The second prints what went
- * wrong when it cannot. bundler/setup prints its
- * own message and exits when standard output is a console; otherwise it
- * raises, quietly.
- */
-static const char require_bundler[] = "require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler')";
-static const char bundler_setup[] = "begin\n"
-                                    "  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\n"
-                                    "rescue StandardError => e\n"
-                                    "  $stderr.puts(e.message)\n"
-                                    "  raise\n"
-                                    "end\n";
-
-/*
  * Has Bundler set up the gems of the app's Gemfile, which fledge build
  * installed into the runtime's gem folder, as bundle exec would before
  * running ENTRY (ADR 045), as unix.c does. BUNDLE_GEMFILE names the app's
  * Gemfile, and BUNDLE_USER_CONFIG names the app's own .bundle\config,
  * which fledge build wrote, in place of %USERPROFILE%\.bundle\config, so
- * nothing of the person's changes which gems load. Bundler is required
+ * nothing of the person's changes which gems load. The Bundler is the one
+ * fledge.cfg names, or the runtime's own (bundler.c). It is required
  * first, so the environment it records as the one it started from is the
  * one Ruby booted with, which bundle_environment then completes with the
  * person's own.
@@ -724,11 +707,17 @@ static const char bundler_setup[] = "begin\n"
 static void
 setup_bundler(void)
 {
+    static char require_bundler[512];
+    static char bundler_setup[512];
     int state = 0;
     wchar_t *app = join(root, L"\\app\\");
     wchar_t *gemfile_path = join(app, gemfile);
     wchar_t *settings = join(app, L".bundle\\config");
 
+    if (fledge_bundler_code(require_bundler, sizeof require_bundler, app_config.bundler, 0) != 0 ||
+        fledge_bundler_code(bundler_setup, sizeof bundler_setup, app_config.bundler, 1) != 0) {
+        fail(L"this app is damaged: its Bundler's version is too long");
+    }
     ruby_api.eval_string_protect(require_bundler, &state);
     if (state != 0) fail(L"could not start Bundler");
     set(L"BUNDLE_GEMFILE", gemfile_path);

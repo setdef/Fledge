@@ -164,6 +164,20 @@ class BuildFromTest < Minitest::Test
       "entry = main.rb\ngemfile = Gemfile\nsystem_libraries = libz.so.1\n", File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
   end
 
+  # The new app runs the old one's lockfile, and so the Bundler it names,
+  # which the old app's gem folder holds (ADR 063).
+  def test_the_bundler_the_lockfile_names_comes_along
+    from = built_player
+    File.write(File.join(from, "fledge.cfg"), "bundler = 4.0.19\n", mode: "a")
+    game
+
+    _, err, status = build("--from", from, "game")
+
+    assert_equal [0, ""], [status, err]
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\n" \
+      "entry = main.rb\ngemfile = Gemfile\nbundler = 4.0.19\n", File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
+  end
+
   # Nothing of the old app's identity comes along: a windowed app's
   # desktop entry and icons are the new app's alone.
   def test_the_new_app_has_its_own_identity_and_none_of_the_old_ones

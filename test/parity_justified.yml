@@ -31,25 +31,25 @@
   - script
 - fact: "$0"
   reference:
-  - \A"exe/my_cool_app"\z
+  - \A"exe/(?:my_cool_app|bundled_with)"\z
   app:
-  - \A"<app>/my_cool_app"\z
+  - \A"<app>/(?:my_cool_app|bundled_with)"\z
   platforms:
   checks:
   - bundle
 - fact: __FILE__
   reference:
-  - \A"exe/my_cool_app"\z
+  - \A"exe/(?:my_cool_app|bundled_with)"\z
   app:
-  - \A"<app>/my_cool_app"\z
+  - \A"<app>/(?:my_cool_app|bundled_with)"\z
   platforms:
   checks:
   - bundle
 - fact: "$PROGRAM_NAME"
   reference:
-  - \A"exe/my_cool_app"\z
+  - \A"exe/(?:my_cool_app|bundled_with)"\z
   app:
-  - \A"<app>/my_cool_app"\z
+  - \A"<app>/(?:my_cool_app|bundled_with)"\z
   platforms:
   checks:
   - bundle
@@ -58,6 +58,30 @@
   - \A"(?-mix:<work>\/person-gems)/gems/
   app:
   - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/4\.0\.0)/gems/
+  platforms:
+  checks:
+  - bundle
+- fact: "$LOADED_FEATURES"
+  reference:
+  - \A"(?-mix:<work>\/person-gems)/gems/bundler-
+  app:
+  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/4\.0\.0)/gems/bundler-
+  platforms:
+  checks:
+  - bundle
+- fact: ENV
+  reference:
+  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<work>\/person-gems)/gems/bundler-
+  app:
+  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<prefix>\/lib\/ruby\/gems\/4\.0\.0)/gems/bundler-
+  platforms:
+  checks:
+  - bundle
+- fact: child ENV
+  reference:
+  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<work>\/person-gems)/gems/bundler-
+  app:
+  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<prefix>\/lib\/ruby\/gems\/4\.0\.0)/gems/bundler-
   platforms:
   checks:
   - bundle

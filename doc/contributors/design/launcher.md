@@ -19,13 +19,13 @@ Everything is in `runtime/launcher/`. `launcher.h` declares what the files share
 | `windows.c` | the whole Windows launcher | `launcher.exe`, `launcherw.exe` |
 | `scrub.c` | which variables are hidden from Ruby's boot | every launcher |
 | `config.c` | the `fledge.cfg` reader | every launcher, `bin/ruby`, the phone runtime |
-| `bundler.c` | the Ruby that composes `bundle exec`'s environment | every launcher |
+| `bundler.c` | the Ruby that loads the app's Bundler, and the Ruby that composes `bundle exec`'s environment | every launcher; the phone runtime, for the first |
 | `locale.c` | `fledge_coerce_locale` | the Unix launcher, `bin/ruby`, the phone runtime |
 | `ruby_main.c` | `bin/ruby`: Ruby's `main.c`, with two calls of Fledge's | `bin/ruby` |
 | `relaunch.c` | how `bin/ruby` hands the app's program to its launcher | `bin/ruby` |
 | `windows.manifest`, `windows.rc` | the Windows launcher's embedded manifest | every Windows launcher |
 
-`tasks/runtime_builder/unix.rb` and `windows.rb` compile them; `doc/contributors/design/runtimes.md` covers the toolchains. The phone runtime (`runtime/mobile/fledge_ruby.c`) shares `config.c` and `locale.c` and does the launcher's work of its own; `doc/contributors/design/phones.md` covers it.
+`tasks/runtime_builder/unix.rb` and `windows.rb` compile them; `doc/contributors/design/runtimes.md` covers the toolchains. The phone runtime (`runtime/mobile/fledge_ruby.c`) shares `config.c`, `locale.c`, and `bundler.c` and does the launcher's work of its own; `doc/contributors/design/phones.md` covers it.
 
 ## The boot sequence
 
@@ -86,9 +86,9 @@ Each step that runs Ruby uses `rb_eval_string_protect`, so the launcher adds not
 
 For an app whose `fledge.cfg` names a `gemfile`, `setup_bundler` runs while the person's settings are still hidden:
 
-1. It requires Bundler by its path in Ruby's library, `File.join(RbConfig::CONFIG['rubylibdir'], 'bundler')`, so that `Bundler.original_env` records the environment Ruby booted with. Required by name, RubyGems would first activate the bundler gem, which `bundle exec` does not.
+1. It requires Bundler by its path, so that `Bundler.original_env` records the environment Ruby booted with. Required by name, RubyGems would first activate the bundler gem, which `bundle exec` does not. Which Bundler, `fledge_bundler_code` in `bundler.c` writes: the runtime's own, `File.join(RbConfig::CONFIG['rubylibdir'], 'bundler')`, or, when `fledge.cfg` names a `bundler` version, the gem `fledge build` installed for it (`doc/contributors/design/gems.md`, "The lockfile's Bundler"). For that one, the launcher first puts the gem's lib, `File.join(Gem.dir, 'gems', 'bundler-VERSION', 'lib')`, at the front of `$LOAD_PATH`, where `bundle exec`'s `RUBYLIB` puts it for the program it runs (`bundler/shared_helpers.rb`, `set_rubylib`), and requires `bundler` from there. `Gem.dir` is the runtime's gem folder, since RubyGems' paths are fixed before.
 2. It sets `BUNDLE_GEMFILE` to `APP/GEMFILE` and `BUNDLE_USER_CONFIG` to `APP/.bundle/config`, the file `fledge build` wrote, so the person's `~/.bundle/config` is never read.
-3. It requires `bundler/setup` by its path, as `bundle exec`'s `RUBYOPT=-r.../bundler/setup` does (`bundler/shared_helpers.rb`, `set_rubyopt`). On failure it prints the exception's message and exits 70 ("could not set up this app's gems"); `bundler/setup` prints its own message and exits when standard output is a terminal.
+3. It requires `bundler/setup` by its path, from the same Bundler, as `bundle exec`'s `RUBYOPT=-r.../bundler/setup` does (`bundler/shared_helpers.rb`, `set_rubyopt`). On failure it prints the exception's message and exits 70 ("could not set up this app's gems"); `bundler/setup` prints its own message and exits when standard output is a terminal.
 4. It removes `BUNDLE_USER_CONFIG`.
 
 `bundle_environment` then evaluates the Ruby that `bundler.c` writes, with the set-aside variables inside it as hexadecimal, so the launcher needs no Ruby function but `rb_eval_string_protect`. The code, run once:
@@ -124,12 +124,13 @@ ending `what this app's programs run (ADR 024).` for an app of several programs.
 |---|---|---|
 | `entry` | the program to run, relative to the app folder, `/` between folders, with no empty, `.`, or `..` part, no `\`, no `:` | required: at the top, or in each section |
 | `gemfile` | the project's Gemfile, as a path like `entry` | at the top only |
+| `bundler` | the version of the Bundler that sets up the Gemfile, when it is not the runtime's own: 1 to 32 letters, digits, and dots | at the top only, after `gemfile` |
 | `identifier` | 1 to 128 letters, digits, hyphens, and dots | at the top, or in a section |
 | `system_libraries` | file names of letters, digits, and `. _ + -`, between single spaces | at the top only; the Linux launcher reads it |
 
 **Sections.** An app of one program has no section. An app of several gives each program a section headed by its name, holding only `entry` and `identifier`, after the shared keys. Each launcher copy reads the section whose name is its own file name, less `.exe` on Windows, ignoring case: ASCII case on macOS and Linux, `CompareStringOrdinal` on Windows, as their file systems compare names. Keys of other sections are checked but not kept.
 
-**Refusals.** `fledge build` and the runtime come from the same Fledge, so anything else means the app is damaged: an unknown key, a line that is not `key = value`, a heading that is not `[NAME]`, a path that leaves the app folder, an identifier or library list with another character, a key twice, `gemfile` or `system_libraries` inside a section, `entry` or `identifier` above the first section, no `entry`, text that is not UTF-8 on Windows. Each exits 70 with "this app is damaged: PATH PROBLEM". A missing file, and a file with sections and none for this launcher, exit 66.
+**Refusals.** `fledge build` and the runtime come from the same Fledge, so anything else means the app is damaged: an unknown key, a line that is not `key = value`, a heading that is not `[NAME]`, a path that leaves the app folder, an identifier or library list with another character, a Bundler version with another character, a key twice, `gemfile`, `bundler`, or `system_libraries` inside a section, `entry` or `identifier` above the first section, no `entry`, text that is not UTF-8 on Windows. Each exits 70 with "this app is damaged: PATH PROBLEM". A missing file, and a file with sections and none for this launcher, exit 66.
 
 ## Messages and exit statuses
 

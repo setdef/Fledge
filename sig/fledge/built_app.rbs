@@ -13,6 +13,7 @@ module Fledge
     @platform: Platform
     @runtimes: Runtimes
     @gemfile: String?
+    @bundler: String?
     @system_libraries: Array[String]
     @identifiers: Array[String]
     @programs: Array[String]
@@ -24,6 +25,8 @@ module Fledge
     def initialize: (given: String, contents: String, bundle: String?, config: String, platform: Platform, runtimes: Runtimes) -> void
 
     def path: () -> String
+
+    attr_reader bundler: String?
 
     def adopt: (App app) -> App
 

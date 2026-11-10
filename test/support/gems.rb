@@ -67,10 +67,12 @@ module FakeProject
   # FakeGem::Built gems the lockfile locks from +remote+, with their
   # own +locked_dependencies+ (lock name => [dependency names]);
   # +gemfile+ adds lines to the Gemfile and +lock_dependencies+ to its
-  # DEPENDENCIES; +checksums+ false leaves the CHECKSUMS section out.
+  # DEPENDENCIES; +checksums+ false leaves the CHECKSUMS section out;
+  # +bundled_with+ is the Bundler that wrote it, whose checksum the
+  # section has when +bundler+ (a FakeGem::Built bundler) is given.
   def self.write(directory, name: "my_app", dependencies: {}, locked: [], remote: "https://rubygems.org/",
     platforms: %w[arm64-darwin x64-mingw-ucrt aarch64-mingw-ucrt x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl], gemfile: "", lock_dependencies: [],
-    locked_dependencies: {}, checksums: true
+    locked_dependencies: {}, checksums: true, bundled_with: "4.0.20", bundler: nil
   )
     root = File.join(directory, name)
     FileUtils.mkdir_p([File.join(root, "exe"), File.join(root, "lib")])
@@ -80,7 +82,7 @@ module FakeProject
     File.chmod(0o755, File.join(root, "exe", name))
     File.write(File.join(root, "lib", "#{name}.rb"), "")
     File.write(File.join(root, "Gemfile.lock"), lockfile(name, dependencies, locked, remote, platforms, lock_dependencies,
-      locked_dependencies, checksums))
+      locked_dependencies, checksums, bundled_with, bundler))
     root
   end
 
@@ -99,12 +101,12 @@ module FakeProject
     GEMSPEC
   end
 
-  def self.lockfile(name, dependencies, locked, remote, platforms, lock_dependencies, locked_dependencies, checksums)
+  def self.lockfile(name, dependencies, locked, remote, platforms, lock_dependencies, locked_dependencies, checksums, bundled_with, bundler)
     path_spec = ["    #{name} (0.1.0)", *dependencies.map { |dependency, requirement| "      #{dependency} (#{requirement})" }]
     specs = locked.sort_by(&:lock_name).flat_map do |gem|
       ["    #{gem.lock_name}", *locked_dependencies.fetch(gem.lock_name, []).map { |dependency| "      #{dependency}" }]
     end
-    sums = (locked.map { |gem| "  #{gem.lock_name} sha256=#{gem.sha256}" } + ["  #{name} (0.1.0)"]).sort
+    sums = ([*locked, *bundler].map { |gem| "  #{gem.lock_name} sha256=#{gem.sha256}" } + ["  #{name} (0.1.0)"]).sort
     <<~LOCK
       PATH
         remote: .
@@ -123,7 +125,7 @@ module FakeProject
       #{["  #{name}!", *lock_dependencies.map { |dependency| "  #{dependency}" }].sort.join("\n")}
       #{checksums ? "\nCHECKSUMS\n#{sums.join("\n")}\n" : ''}
       BUNDLED WITH
-        4.0.20
+        #{bundled_with}
     LOCK
   end
 end

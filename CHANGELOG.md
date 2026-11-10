@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- An app whose `Gemfile.lock` names another Bundler under `BUNDLED WITH` than the runtime's runs with that Bundler, as `bundle exec` does: `fledge build` ships it, checked against its `CHECKSUMS` entry, and refuses a lockfile without one. It ran with the runtime's Bundler.
+
 ## [0.11.0] - 2026-11-10
 
 ### Fixed

@@ -39,6 +39,10 @@ module Fledge
 
     def gems_for: (target platform, ruby_version: String, arch: String) ?{ (LockedGem gem) -> Gem::Requirement } -> Array[locked_gem]
 
+    def bundler_for: (String running, ruby_version: String) ?{ (LockedGem gem) -> Gem::Requirement } -> LockedGem?
+
+    private def switch_version: (Gem::Version running) -> Gem::Version?
+
     private def runs?: (Bundler::LazySpecification spec, target platform, Gem::Version version, (^(LockedGem gem) -> Gem::Requirement)? required_ruby) -> bool
 
     private def check_ruby: (String ruby_version) -> void

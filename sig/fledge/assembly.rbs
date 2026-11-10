@@ -25,11 +25,12 @@ module Fledge
     @installers: Array[String]
     @signing: Signing::signer?
     @from: BuiltApp?
+    @bundler: String?
     @log: CLI::_Output?
 
     attr_reader installers: Array[String]
 
-    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?signing: Signing::signer?, ?from: BuiltApp?, ?log: CLI::_Output?) -> void
+    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?signing: Signing::signer?, ?from: BuiltApp?, ?bundler: String?, ?log: CLI::_Output?) -> void
 
     def base_name: () -> String
 
@@ -37,9 +38,11 @@ module Fledge
 
     def launch_config: () -> String
 
-    def self.launch_config: (App app, ?system_libraries: Array[String], ?built: String?) -> String
+    def self.launch_config: (App app, ?system_libraries: Array[String], ?built: String?, ?bundler: String?) -> String
 
-    private def self.single_config: (App app, Array[String] system_libraries) -> String
+    private def self.single_config: (App app, Array[String] system_libraries, String? bundler) -> String
+
+    private def self.bundle_config: (App app, String? bundler) -> Array[String]
 
     private def self.config_value: (String path) -> String
 

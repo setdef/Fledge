@@ -23,6 +23,7 @@ For each target, before anything is fetched:
 - **The lockfile locks the target.** A lockfile platform counts when it is `ruby`, when it is the generic form of the runtime's platform, or when the runtime's platform `===` it, as `Bundler::Definition#validate_platforms!` and `#current_platform_locked?` decide with the running Ruby's platform (`definition.rb`, lines 524 to 530 and 832 to 836). The runtime's platform is `Gem::Platform.new` of the `arch` in the runtime's `rbconfig.rb` (`Fledge::RuntimeContents#arch`), which is what the app's RubyGems and Bundler see on any computer: `arm64-darwin23` for rv-ruby's macOS build. So `arm64-darwin` and `arm64-darwin-23` fit it, and `arm64-darwin-24` does not; a Linux platform fits by its own name or its `-gnu` name. Otherwise the build fails with `Run bundle lock --add-platform PLATFORM`.
 - **The Gemfile's `ruby`**, when it has one, must admit the runtime's Ruby (`Bundler::RubyVersion#diff`).
 - **Every gem from a gem server has a checksum** in the lockfile's `CHECKSUMS` section, by the name the section gives it (`sqlite3 (2.10.2-arm64-darwin)`). A gem without one fails with `Run bundle lock --add-checksums`. Fledge pins every external input by SHA-256 (AGENTS.md), and an app's gems are Fledge's input here; the lockfile is where the developer pinned them.
+- **The lockfile's Bundler has a checksum**, when the app ships it ("The lockfile's Bundler", below): `bundler (VERSION)` in `CHECKSUMS`, which Bundler 2.6 and newer write for the Bundler that wrote the lockfile. Without one the build fails, saying to run `bundle install`, which installs that Bundler, and then `bundle lock --add-checksums`.
 - **Every git gem is locked to a whole commit**, 40 or 64 hexadecimal digits. Nothing else pins it.
 - **Every gem comes from a gem server, git, or a folder.** Any other source fails, naming it.
 
@@ -43,6 +44,20 @@ The lockfile does not record `required_ruby_version`, so Fledge reads it from th
 A gem the lockfile does not lock, or locks no build of for the target, fails, saying to run `bundle lock` or `bundle lock --add-platform`.
 
 On a phone (`Fledge::MobilePlatform`), the target is `ruby`: the lockfile must lock `ruby`, and every gem is its `ruby` build, as the app's Bundler runs with `force_ruby_platform` (ADR 057).
+
+## The lockfile's Bundler
+
+`bundle install` installs the Bundler a lockfile names under `BUNDLED WITH`, and `bundle exec`, `bundler/setup`, and every `bundle` command then switch to it from Ruby's own (`Bundler.auto_switch` and `Bundler::SelfManager#restart_with_locked_bundler_if_needed`, `bundler.rb` lines 172 to 174 and `bundler/self_manager.rb` lines 9 to 14, at Bundler 4.0.20). So the app ships that Bundler, and its launcher loads it (ADR 063; `doc/contributors/design/launcher.md`, "The Bundler environment").
+
+`Fledge::Bundle#bundler_for` chooses it as `SelfManager#find_restart_version` does (lines 190 to 200), with the runtime's Bundler (`RuntimeContents#gems`, the one `bundler-VERSION`) as the running one:
+
+- Bundler's `version` setting, read from every level with Bundler's root at the project, is `system`: the runtime's Bundler.
+- The setting is `lockfile`, its default: the `BUNDLED WITH` version, read as `LockfileParser.bundled_with` reads it. Any other value names the version itself. A lockfile without `BUNDLED WITH`, or a version that does not parse, keeps the runtime's.
+- A development build's version (ending `.dev`), or the runtime's own version, keeps the runtime's (`#released?` and `#running?`).
+
+The chosen Bundler is a `Fledge::LockedGem` of `bundler`, platform `ruby`, from `https://rubygems.org/`, where Bundler fetches it (`#remote_specs`), through the mirror and login Bundler's settings give that server, checked against `bundler (VERSION)` in `CHECKSUMS`. When its `required_ruby_version`, read from the checksummed `.gem`, excludes the runtime's Ruby, the app keeps the runtime's Bundler, as `bundle install` goes on with the Bundler that runs it when RubyGems.org has no build of the locked one for the running Ruby (`#install_and_restart_with`, lines 48 to 63). Otherwise `Fledge::AppGems#for` installs it with the app's gems ("Installing into the runtime's gem folder"), beside the runtime's own Bundler, whose `bundle` and `bundler` programs stay the runtime's ("Gem executables"), and `fledge.cfg` names its version as `bundler` (`Fledge::Assembly.launch_config`). `fledge build --from` keeps the key, as it keeps the lockfile (`Fledge::BuiltApp#bundler`).
+
+The app's `.bundle/config` keeps `BUNDLE_VERSION: "system"`, so neither the app's Bundler nor one in a Ruby the app starts tries to switch again: the launcher has already chosen.
 
 ## Fetching a gem's file
 
@@ -153,7 +168,7 @@ The build's other leftovers (the Makefile beside `extconf.rb`, a Cargo target fo
 
 `Fledge::Bundle#app_files` writes what the app's `app/` folder holds in place of the project's own files:
 
-- **`.bundle/config`**, Warbler's settings for a packed app (`Fledge::Bundle::SETTINGS`): `BUNDLE_VERSION: "system"` (never switch to another Bundler), `BUNDLE_FROZEN: "true"` (refuse a Gemfile that moved past its lockfile, and never rewrite or touch the lockfile, so an app in a read-only folder starts), `BUNDLE_PATH__SYSTEM: "true"` (the gems are in Ruby's own gem folder), `BUNDLE_AUTO_INSTALL: "false"`, then `BUNDLE_WITHOUT` and, when the project asks for a group, `BUNDLE_WITH` ("Groups"). A phone's app adds `BUNDLE_FORCE_RUBY_PLATFORM: "true"`. This is the local level of Bundler's settings, which wins over every other (`Settings#configs`), in the app and in any Ruby it starts; the launcher also has Bundler read it as the global file, so the person's `~/.bundle/config` is never read (`doc/contributors/design/launcher.md`).
+- **`.bundle/config`**, Warbler's settings for a packed app (`Fledge::Bundle::SETTINGS`): `BUNDLE_VERSION: "system"` (never switch to another Bundler at run time, since the launcher already loads the one the lockfile names: "The lockfile's Bundler"), `BUNDLE_FROZEN: "true"` (refuse a Gemfile that moved past its lockfile, and never rewrite or touch the lockfile, so an app in a read-only folder starts), `BUNDLE_PATH__SYSTEM: "true"` (the gems are in Ruby's own gem folder), `BUNDLE_AUTO_INSTALL: "false"`, then `BUNDLE_WITHOUT` and, when the project asks for a group, `BUNDLE_WITH` ("Groups"). A phone's app adds `BUNDLE_FORCE_RUBY_PLATFORM: "true"`. This is the local level of Bundler's settings, which wins over every other (`Settings#configs`), in the app and in any Ruby it starts; the launcher also has Bundler read it as the global file, so the person's `~/.bundle/config` is never read (`doc/contributors/design/launcher.md`).
 - **Each gemspec of the project's own gems** (the root's, and path gems' inside the root), evaluated now and written as `spec.to_ruby`, as Bundler caches a git gem's, so a gemspec that runs `git ls-files` needs no git where the app runs.
 
 The developer's own `.bundle` folder, `vendor/bundle`, and `vendor/cache` never ship (ADR 005).

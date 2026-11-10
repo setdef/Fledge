@@ -377,4 +377,72 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
 
     assert_equal before, Bundler.root
   end
+
+  # bundle exec runs the Bundler a lockfile's BUNDLED WITH names, which
+  # bundle install installed, in place of Ruby's own
+  # (Bundler::SelfManager at Bundler 4.0.20), so the built app ships it,
+  # fetched from RubyGems.org, where Bundler fetches it, and checked
+  # against the lockfile's checksum, as every gem is.
+  def test_the_bundler_a_lockfile_names_ships_in_place_of_the_runtimes_own
+    bundler = FakeGem.build(@dir, "bundler", "4.0.19")
+    bundle = bundle(dependencies: {}, locked: [], bundled_with: "4.0.19", bundler:)
+
+    gem = bundle.bundler_for("4.0.20", ruby_version: "4.0.9")
+
+    assert_equal ["bundler", "4.0.19", "ruby", "https://rubygems.org/", bundler.sha256],
+      [gem.name, gem.version, gem.platform, gem.remote, gem.sha256]
+    assert_nil bundle.bundler_for("4.0.19", ruby_version: "4.0.9"), "the runtime's own Bundler is the lockfile's"
+  end
+
+  # Bundler fetches the Bundler a lockfile names from RubyGems.org through
+  # the mirror its settings give that server (Bundler::SelfManager#remote_specs
+  # and Bundler::Source::Rubygems::Remote).
+  def test_the_lockfiles_bundler_comes_through_bundlers_mirror_of_rubygems_org
+    bundler = FakeGem.build(@dir, "bundler", "4.0.19")
+    bundle = bundle(dependencies: {}, locked: [], bundled_with: "4.0.19", bundler:)
+    FileUtils.mkdir_p(File.join(@dir, "my_app", ".bundle"))
+    File.write(File.join(@dir, "my_app", ".bundle", "config"), "---\nBUNDLE_MIRROR__HTTPS://RUBYGEMS__ORG/: \"http://127.0.0.1:9/\"\n")
+
+    assert_equal "http://127.0.0.1:9/", bundle.bundler_for("4.0.20", ruby_version: "4.0.9").remote
+  end
+
+  # Bundler keeps its own version when its version setting is system,
+  # switches to one the setting names, and never to a development
+  # build's (Bundler::SelfManager#find_restart_version and #released?).
+  def test_bundlers_version_setting_and_development_builds_keep_or_choose_the_bundler
+    bundler = FakeGem.build(@dir, "bundler", "4.0.19")
+    project = FakeProject.write(@dir, bundled_with: "4.0.19", bundler:)
+    FileUtils.mkdir_p(File.join(project, ".bundle"))
+    settings = File.join(project, ".bundle", "config")
+    File.write(settings, "---\nBUNDLE_VERSION: \"system\"\n")
+
+    assert_nil Fledge::Bundle.new(Fledge::App.at(project)).bundler_for("4.0.20", ruby_version: "4.0.9")
+    File.write(settings, "---\nBUNDLE_VERSION: \"4.0.18\"\n")
+    error = assert_raises(Fledge::Error) { Fledge::Bundle.new(Fledge::App.at(project)).bundler_for("4.0.20", ruby_version: "4.0.9") }
+    assert_includes error.message, "no checksum for bundler (4.0.18)"
+    development = bundle(name: "edge_app", dependencies: {}, locked: [], bundled_with: "4.1.0.dev")
+    assert_nil development.bundler_for("4.0.20", ruby_version: "4.0.9")
+  end
+
+  def test_a_lockfile_without_its_bundlers_checksum_is_refused
+    bundle = bundle(dependencies: {}, locked: [], bundled_with: "4.0.19")
+
+    error = assert_raises(Fledge::Error) { bundle.bundler_for("4.0.20", ruby_version: "4.0.9") }
+    assert_equal "Gemfile.lock has no checksum for bundler (4.0.19), the Bundler bundle exec runs the app with, and Fledge " \
+      "checks every gem it ships. Run bundle install, which installs Bundler 4.0.19, then bundle lock --add-checksums, " \
+      "then build again.", error.message
+  end
+
+  # bundle install falls back to the Bundler that runs it when RubyGems.org
+  # has no build of the locked one for the running Ruby
+  # (Bundler::SelfManager#install_and_restart_with), and bundle exec then
+  # runs that one.
+  def test_a_locked_bundler_that_excludes_the_runtimes_ruby_gives_way_to_the_runtimes
+    bundler = FakeGem.build(@dir, "bundler", "2.3.27", required_ruby_version: "< 3.4")
+    bundle = bundle(dependencies: {}, locked: [], bundled_with: "2.3.27", bundler:)
+    requirement = -> (_gem) { Gem::Package.new(bundler.path).spec.required_ruby_version }
+
+    assert_nil bundle.bundler_for("4.0.20", ruby_version: "4.0.9", &requirement)
+    assert_equal "2.3.27", bundle.bundler_for("4.0.20", ruby_version: "3.3.10", &requirement).version
+  end
 end

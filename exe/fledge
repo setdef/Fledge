@@ -209,7 +209,10 @@
 #                        command line tools on macOS, a C compiler and
 #                        make on Linux, RubyInstaller's MSYS2 UCRT64
 #                        tools (ridk install) on Windows, and cargo for
-#                        a Rust extension.
+#                        a Rust extension. The Bundler it names under
+#                        BUNDLED WITH ships too, when it is not the
+#                        runtime's, and sets up the gems, as under
+#                        bundle exec; its CHECKSUMS entry is checked.
 #     ROOT/fledge.yml    Optional, a YAML mapping of:
 #                        name: the app's name (default: the gemspec's
 #                          name, or ROOT's folder name, camelized)

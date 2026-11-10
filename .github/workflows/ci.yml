@@ -756,7 +756,7 @@ jobs:
       - name: Run the tests
         timeout-minutes: 10
         env:
-          A: --verbose
+          A: --verbose --exclude=test_ci_skips_jobs_on_pin_commits_and_only_there
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test

@@ -11,6 +11,8 @@ For a phone, [Fledge](../README.md) writes a project that holds your program and
 
 Lock `ruby` as a platform first (`bundle lock --add-platform ruby`). To build a folder named `ios` or `android`, write `./ios` or `./android`. [`examples/mobile_app`](../examples/mobile_app) is a complete example.
 
+A phone's Ruby has the standard library and gems of a desktop's, with two left out: `fiddle` on iOS, which can call any C function, and which other iOS Rubies leave out for App Review; and, for now, `prism` on both phones, whose extension does not yet link beside Ruby's own copy of its parser. On a phone, `require "prism"` raises `LoadError`.
+
 ## Gems with extensions
 
 Fledge compiles a gem's C or C++ extension for the phone and links it into the app: with Xcode on iOS, and with the [Android NDK](https://developer.android.com/ndk) on Android. Set `ANDROID_NDK_ROOT`, or install the NDK in the SDK's `ndk/` folder.

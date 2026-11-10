@@ -8,7 +8,9 @@ A runtime is the copy of Ruby that [Fledge](../README.md) puts in each app: CRub
 
 ## Which Ruby your app gets
 
-Your app gets the Ruby you run Fledge with. Fledge has a runtime for each Ruby it supports, Ruby 4.0 today, at the patch level on the [README](../README.md)'s Ruby badge. On a Ruby it has no runtime for, such as a 4.1 preview, `fledge build` stops and says so.
+Your app gets the Ruby you run Fledge with. Fledge has a runtime for each Ruby it supports, Ruby 4.1 today, at the version on the [README](../README.md)'s Ruby badge: 4.1.0-preview1, until Ruby 4.1.0 is released. On a Ruby it has no runtime for, such as 4.0, `fledge build` stops and says so.
+
+On Windows, RubyInstaller builds no Ruby preview, so the Windows runtimes carry its build of Ruby's own development branch of 2026-11-10, a Ruby 4.1 a month newer than the preview, which reports itself as `4.1.0dev`. Your code sees Ruby 4.1 on every platform, and `RUBY_VERSION` is `4.1.0`.
 
 Name your Ruby in a `.ruby-version` file, which version managers and CI's [`setup-ruby`](https://github.com/ruby/setup-ruby) read, so that every computer that builds your app builds it with the same Ruby. With `ruby file: ".ruby-version"` in your `Gemfile`, Bundler holds every computer to it too.
 
@@ -23,7 +25,7 @@ The first time you build for a platform, Fledge downloads its runtime from Fledg
 
 Change the tag in your `Gemfile` and run `bundle update fledge`. Each version of Fledge pins the SHA-256 of every runtime it downloads.
 
-A new version of Fledge may move your app's Ruby to a newer patch, such as 4.0.9 to 4.0.10, and you'll find each move in the [CHANGELOG](../CHANGELOG.md). Only you move it to another minor version, by running Fledge with that Ruby.
+A new version of Fledge may move your app's Ruby to a newer patch, such as 4.1.0 to 4.1.1, or from a preview of 4.1 to its release, and you'll find each move in the [CHANGELOG](../CHANGELOG.md). Only you move it to another minor version, by running Fledge with that Ruby.
 
 Fledge is 0.x today, so any new version can break your build. Read the CHANGELOG before you update.
 
@@ -36,7 +38,7 @@ From 1.0, Fledge follows [Semantic Versioning](https://semver.org/). In a minor 
 - **The files `fledge build` writes.** The app's folder, its archive, each installer, the `.sha256` beside each, and their names.
 - **What your code and your users meet in a built app.** Each program's name and place, your project in `app/`, the `notices/` folder, a Mac app's `NAME.app`, a Linux app's desktop entry and icons, and the folder each installer puts the app in.
 - **How your code runs.** Fledge may remove a [difference from `ruby main.rb`](differences_from_ruby.md), but never add one.
-- **Ruby and the systems your users run.** Every Ruby minor version 1.0 has a runtime for, Ruby 4.0 today, and the oldest system each platform runs on, as the [compatibility table](../README.md#compatibility) lists them.
+- **Ruby and the systems your users run.** Every Ruby minor version 1.0 has a runtime for, Ruby 4.1 today, and the oldest system each platform runs on, as the [compatibility table](../README.md#compatibility) lists them.
 - **Phone projects.** The folders of the project Fledge writes, the files in it you may replace, and the functions your host code calls to start Ruby.
 - **Runtime downloads.** The names of the release's files, `FLEDGE_RUNTIME_DIR`, and `FLEDGE_RUNTIME_MIRROR`.
 

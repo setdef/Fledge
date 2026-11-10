@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Breaking: every runtime carries Ruby 4.1.0-preview1 in place of Ruby 4.0.9, so `fledge build` needs Ruby 4.1 to run it, and an app gets Ruby 4.1's standard library, default gems, and bundled gems (prism, tsort, and win32-registry join them; net-ftp and net-pop leave), in folders named `4.1.0+5`: rv-ruby release `20261023`'s builds on macOS and glibc Linux, and Ruby's source on musl Linux, iOS, and Android.
+- Breaking: the Windows runtimes carry RubyInstaller's build of Ruby's master of 2026-11-10, `ruby 4.1.0dev` (`0e25874222`), whose folders are named `4.1.0+6`, since RubyInstaller builds no Ruby preview; each adds the `libz-1.dll` (zlib 1.4) its `zlib.so` needs and, on x64, the `libgcc_s_seh-1.dll` its `digest/blake3.so` needs, from MSYS2's packages, and the launcher finds the second in `ruby\bin\ruby_builtin_dlls`.
+- On iOS and Android, the prism gem is left out for now, so `require "prism"` fails in a phone's app.
+
+### Removed
+
+- Breaking: Ruby 4.0. No runtime carries it, and the gem needs Ruby 4.1 or newer.
+
 ### Fixed
 
 - An app whose `Gemfile.lock` names another Bundler under `BUNDLED WITH` than the runtime's runs with that Bundler, as `bundle exec` does: `fledge build` ships it, checked against its `CHECKSUMS` entry, and refuses a lockfile without one. It ran with the runtime's Bundler.

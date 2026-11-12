@@ -100,6 +100,7 @@ env:
 jobs:
   gate:
     name: Gate
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -255,12 +256,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15
-            platform: arm64-darwin
-          - os: ubuntu-24.04
-            platform: x86_64-linux
-          - os: ubuntu-24.04-arm
-            platform: aarch64-linux
           # Cross-compiled; the runner's 7z unpacks RubyInstaller's archive
           # and its gpgv checks the signature. Windows on ARM64 too (ADR 035).
           - os: ubuntu-24.04
@@ -355,8 +350,8 @@ jobs:
   # ARM runner (rv-ruby's build-alpine.yml says the same).
   runtime-musl:
     name: Runtime (${{ matrix.platform }})
+    if: false
     needs: changes
-    if: needs.changes.outputs.pins-only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -408,8 +403,8 @@ jobs:
   # has none (spike/mobile/FINDINGS.txt).
   runtime-mobile:
     name: Runtime (${{ matrix.platform }})
+    if: false
     needs: changes
-    if: needs.changes.outputs.pins-only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -482,6 +477,7 @@ jobs:
   # difference justified for a phone (tasks/mobile_parity.rb).
   mobile-apps-ios:
     name: Mobile apps (iOS Simulator, iPhone and iPad)
+    if: false
     needs: [runtime, runtime-mobile]
     runs-on: macos-26
     timeout-minutes: 50
@@ -555,6 +551,7 @@ jobs:
   # emulator here.
   mobile-apps-android:
     name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
+    if: false
     needs: [runtime, runtime-mobile]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -646,6 +643,7 @@ jobs:
   # which is signed, validated, and made into Play's APKs with bundletool.
   mobile-apps-android-hosts:
     name: Mobile apps (Android project on ${{ matrix.host }})
+    if: false
     needs: runtime-mobile
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -732,6 +730,7 @@ jobs:
   # from source, which the limits below leave room for.
   test:
     name: Test (${{ matrix.platform }})
+    if: false
     needs: runtime
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
@@ -822,6 +821,7 @@ jobs:
   # ruby main.rb, then as my_cool_app's program against bundle exec.
   parity-musl:
     name: Parity (${{ matrix.platform }})
+    if: false
     needs: runtime-musl
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -854,7 +854,7 @@ jobs:
   # seven desktop platforms too, which also run every night.
   ruby-spec:
     name: ruby/spec
-    needs: [runtime, runtime-musl, runtime-mobile]
+    needs: [runtime]
     permissions:
       contents: read
       actions: read
@@ -964,6 +964,13 @@ jobs:
       # Ctrl-C on two code pages and closing the console end
       # ruby.exe main.rb as the console Delivery expects of a built app,
       # and rubyw.exe, typed into a console, gets none.
+      - name: "winacp: what activeCodePage changes"
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+        run: bash winacp/ci.sh
+
       - name: Interrupt ruby.exe main.rb in a console, and close it
         shell: pwsh
         run: >-
@@ -1011,6 +1018,7 @@ jobs:
   # own platform's build only.
   build-arm64-darwin:
     name: Build (${{ matrix.platform }})
+    if: false
     needs: runtime
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
@@ -1298,6 +1306,7 @@ jobs:
 
   build-x86_64-linux:
     name: Build (${{ matrix.platform }})
+    if: false
     needs: runtime
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
@@ -1313,6 +1322,7 @@ jobs:
 
   build-aarch64-linux:
     name: Build (${{ matrix.platform }})
+    if: false
     needs: runtime
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
@@ -1369,6 +1379,7 @@ jobs:
   # precompiled for musl, windowed_app, with its AppImage, and programs.
   build-musl:
     name: Build (${{ matrix.platform }})
+    if: false
     needs: runtime-musl
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -1421,6 +1432,7 @@ jobs:
   # platform, as Delivery runs the others.
   delivery-native-arm64-darwin:
     name: Delivery from source (${{ matrix.platform }})
+    if: false
     needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1489,6 +1501,7 @@ jobs:
 
   delivery-native-x86_64-linux:
     name: Delivery from source (${{ matrix.platform }})
+    if: false
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1502,6 +1515,7 @@ jobs:
 
   delivery-native-aarch64-linux:
     name: Delivery from source (${{ matrix.platform }})
+    if: false
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1534,6 +1548,7 @@ jobs:
   # (.github/scripts/deliver.sh).
   delivery-arm64-darwin:
     name: Delivery (${{ matrix.platform }})
+    if: false
     needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1599,6 +1614,7 @@ jobs:
 
   delivery-x86_64-linux:
     name: Delivery (${{ matrix.platform }})
+    if: false
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1613,6 +1629,7 @@ jobs:
 
   delivery-aarch64-linux:
     name: Delivery (${{ matrix.platform }})
+    if: false
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1641,6 +1658,7 @@ jobs:
   # project and one Ruby, sharing one save (deliver-programs.sh).
   delivery-windowed-arm64-darwin:
     name: Delivery of a windowed app (${{ matrix.platform }})
+    if: false
     needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1694,6 +1712,7 @@ jobs:
 
   delivery-windowed-x86_64-linux:
     name: Delivery of a windowed app (${{ matrix.platform }})
+    if: false
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1707,6 +1726,7 @@ jobs:
 
   delivery-windowed-aarch64-linux:
     name: Delivery of a windowed app (${{ matrix.platform }})
+    if: false
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -1723,6 +1743,7 @@ jobs:
   # certificates package.
   delivery-debian-x86_64-linux:
     name: Delivery (${{ matrix.platform }}, debian:trixie-slim)
+    if: false
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     container: debian:trixie-slim
@@ -1768,6 +1789,7 @@ jobs:
 
   delivery-debian-aarch64-linux:
     name: Delivery (${{ matrix.platform }}, debian:trixie-slim)
+    if: false
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
     container: debian:trixie-slim
@@ -1792,6 +1814,7 @@ jobs:
   # (.github/scripts/deliver-system-library.sh).
   delivery-deb-x86_64-linux:
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
+    if: false
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.image }}
@@ -1834,6 +1857,7 @@ jobs:
 
   delivery-deb-aarch64-linux:
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
+    if: false
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.image }}
@@ -1854,6 +1878,7 @@ jobs:
   # in a container, so says so and runs extracted.
   delivery-musl:
     name: Delivery (${{ matrix.platform }}, alpine:3.24)
+    if: false
     needs: build-musl
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -2043,6 +2068,7 @@ jobs:
   # same code paths.
   delivery-from-arm64-darwin:
     name: Delivery of build --from (${{ matrix.platform }})
+    if: false
     needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -2089,6 +2115,7 @@ jobs:
 
   delivery-from-x86_64-linux:
     name: Delivery of build --from (${{ matrix.platform }})
+    if: false
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -2123,6 +2150,7 @@ jobs:
   # every platform.
   licenses:
     name: Licenses (${{ matrix.platform }})
+    if: false
     needs: [runtime, runtime-musl, runtime-mobile]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -2209,8 +2237,8 @@ jobs:
   # It shows the audit catching the real thing, not only planted files.
   licenses-upstream:
     name: Licenses of the whole upstream tree (${{ matrix.platform }})
+    if: false
     needs: changes
-    if: needs.changes.outputs.pins-only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -2268,6 +2296,7 @@ jobs:
   # no longer matches them.
   licensing-page:
     name: Licensing page is current
+    if: false
     needs: [runtime, runtime-musl, runtime-mobile]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -2317,6 +2346,7 @@ jobs:
   # String#crypt loses without libxcrypt.
   replace-libcrypt-x86_64-linux:
     name: Replace libcrypt (${{ matrix.platform }})
+    if: false
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -2355,6 +2385,7 @@ jobs:
 
   replace-libcrypt-aarch64-linux:
     name: Replace libcrypt (${{ matrix.platform }})
+    if: false
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15

@@ -153,7 +153,7 @@ jobs:
           # Every test of a compiled file runs, with this runner's GNU
           # objdump for ELF and LLVM's for the rest (test/test_helper.rb).
           FLEDGE_REQUIRE_READERS: "1"
-        run: bundle exec rake lint:fix lint steep package:check
+        run: bundle exec rake lint:shell lint:c steep package:check
 
       # The gate starts with lint:fix, which corrects RuboCop offenses and
       # adds missing license headers, so an offense would pass as a fix

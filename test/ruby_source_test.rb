@@ -9,7 +9,7 @@ require_relative "test_helper"
 require_relative "../tasks/runtime_builder"
 
 # The edits the mobile runtimes make to Ruby 4.0.9's source
-# (doc/contributors/design/phones.md, "Scripted edits to Ruby's
+# (doc/contributors/design/phone-runtimes.md, "Scripted edits to Ruby's
 # source"), each against the lines of Ruby's own files it changes, and
 # each failing loudly when a new Ruby no longer has those lines, so that
 # moving the Ruby pin shows which edit to look at again.

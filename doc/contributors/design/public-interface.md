@@ -16,7 +16,7 @@ A change is compatible when every project that builds with 1.0 builds with a lat
 
 ## Frozen for 1.x
 
-- **The command.** `fledge build [OPTIONS] [PATH]`, `fledge build --from APP [OPTIONS] [PATH]` (ADR 032), `fledge build ios|android [OPTIONS] [PATH]` (`doc/contributors/design/phones.md`, "The operand"), `--help` (`-h`, `-?`), `--version` (`-v`), `-o`/`--out`, `--from APP`, `--sign` (ADR 016), `--sign-command COMMAND` (Windows only; ADR 051), `--notarize PROFILE` (macOS only, with `--sign`; ADR 033), and `--`, with their meanings and defaults (`.` for PATH, `dist` for `--out`). `--sign` with `--sign-command` is a usage error, and so is `--notarize` without `--sign`. `FLEDGE_SIGN_COMMAND`, which stands for `--sign-command` on a Windows build whose command line gives neither it nor `--sign`, is frozen with them. A bare word Fledge reads as a platform, today `ios` and `android`, is read as one; a folder of that name is written `./NAME` (see "Reserved names").
+- **The command.** `fledge build [OPTIONS] [PATH]`, `fledge build --from APP [OPTIONS] [PATH]` (ADR 032), `fledge build ios|android [OPTIONS] [PATH]` (`doc/contributors/design/phone-projects.md`, "The operand"), `--help` (`-h`, `-?`), `--version` (`-v`), `-o`/`--out`, `--from APP`, `--sign` (ADR 016), `--sign-command COMMAND` (Windows only; ADR 051), `--notarize PROFILE` (macOS only, with `--sign`; ADR 033), and `--`, with their meanings and defaults (`.` for PATH, `dist` for `--out`). `--sign` with `--sign-command` is a usage error, and so is `--notarize` without `--sign`. `FLEDGE_SIGN_COMMAND`, which stands for `--sign-command` on a Windows build whose command line gives neither it nor `--sign`, is frozen with them. A bare word Fledge reads as a platform, today `ios` and `android`, is read as one; a folder of that name is written `./NAME` (see "Reserved names").
 - **Exit statuses** (ADR 002). `fledge`: 0; 1 for a failed build; 2 for a usage error. A built program: its Ruby program's status; 66 when its entry, `fledge.cfg`, or its section of `fledge.cfg` is missing; 72 on Linux when a library `linux: system_libraries` lists is not on the computer (ADR 030); 70 for other damage. `bin/ruby`: 70 when it cannot run the app's launcher (ADR 026). The phone runtimes: `FLEDGE_RUBY_NO_APP` and `FLEDGE_RUBY_SOFTWARE` (`runtime/mobile/fledge_ruby.h`).
 - **Standard output.** One path per line: the archive `fledge build` writes, then each installer, or a phone project's folder. `--help` and `--version` print there too. Nothing else goes to standard output, the checksum files included.
 - **`fledge.yml`.** Every key, every value it accepts, every default, and the refusal of a key it does not know. The keys are `Fledge::Config::KEYS`, and `lib/fledge/config.schema.json` describes each: among them `installers` and its default (`dmg`, `nsis`, `appimage`; ADR 009), `programs` (ADR 024), `ios` and `android` with `host` (ADR 025), `linux` with `system_libraries` (ADR 030) and `deb_changelog`, `macos` with `build`, `file_associations` and what each system makes of it (ADR 052), and `build_tools` (ADR 032).
@@ -55,11 +55,7 @@ Each item below may change in any release, with a CHANGELOG entry when a develop
 
 ## The checksum file
 
-`fledge build` writes `FILE.sha256` beside the archive and each installer, always, not behind an option. Every package manager that installs a console app from a release names its SHA-256 (`doc/contributors/research/2026-11-04-package-managers.md`), and an option would cost a developer a flag for what each of them needs.
-
-It is one file per archive, as cargo-dist writes ("a .sha256 file for each archive", `axodotdev.github.io/cargo-dist/book/reference/config.html`) and GoReleaser writes with `split` (`{{ .ArtifactName }}.{{ .Algorithm }}`, `goreleaser.com/customization/checksum/`). It is not one list per release, as GoReleaser's default `checksums.txt` is: each platform's app is built on its own computer (ADR 010), and one list under one name would be written once on each.
-
-Its format is GNU coreutils' `sha256sum`: the hash in lowercase hex, two spaces, and the file's name, on one line. `sha256sum -c` and `shasum -a 256 -c` check it, and `cat *.sha256` makes the list a release page shows. Ruby's own `Digest::SHA256` writes it, since no tool on all three systems prints that format (macOS has `shasum`, Windows `Get-FileHash` and `certutil`), and the format is one line.
+`fledge build` writes `FILE.sha256` beside the archive and each installer, always, in `sha256sum`'s format, and 1.x keeps both. What it holds and why is in `doc/contributors/design/desktop-apps.md`, "The folder and the archive".
 
 ## The fledge.yml schema
 
@@ -80,13 +76,13 @@ Every `fledge.yml` in `examples/` and the test fixtures starts with a modeline t
 Each name below is held, so that the feature it names arrives under it and nothing else takes it first.
 
 - **`ios: build`**, a string of one to three whole numbers separated by periods, the shape `macos: build` has for the same Apple key, for `CFBundleVersion` and `CURRENT_PROJECT_VERSION`; and **`android: version_code`**, a whole number for `versionCode`. Each overrides the number Fledge derives from `version`, as Tauri's `bundleVersion` and `versionCode` and Briefcase's `build` and `version_code` do. Without them both stores see `1.0.0.pre.1` and `1.0.0` as one build, and refuse a second upload of a version. The derivation (`lib/fledge/mobile_project/ios.rb` and `android.rb`) stays the default, frozen; only the override is to come.
-- **Runtime asset names with the Ruby's version**: `fledge-runtime-VERSION-ruby-X.Y.Z-PLATFORM.tar.gz`, and the same `-ruby-X.Y.Z-` part in each companion asset's name, for the runtime of a Ruby minor that a 1.x release adds. Throughout 1.x, the names without it mean the runtime of the Ruby minor 1.0 ships (`doc/contributors/design/releases.md`, "Ruby 4.1 and 1.0").
+- **Runtime asset names with the Ruby's version**: `fledge-runtime-VERSION-ruby-X.Y.Z-PLATFORM.tar.gz`, and the same `-ruby-X.Y.Z-` part in each companion asset's name, for the runtime of a Ruby minor that a 1.x release adds. Throughout 1.x, the names without it mean the runtime of the Ruby minor 1.0 ships (`doc/contributors/design/releases.md`, "Ruby minors and runtimes").
 - **Platform words in PATH.** A bare word that names a platform Fledge may write a project for (`ios` and `android` today; `visionos`, `tvos`, `watchos`, or another later) is read as that platform by every release that adds it. `fledge --help` says to write `./NAME` for a folder of such a name, so a developer who follows the help is never broken by a new platform. Briefcase reads `briefcase build iOS` the same way.
 
 Waiting for a developer or a framework to ask, and compatible when they come, since each turns a refusal into an acceptance (ADR 032):
 
 - a copy-only `fledge build --from` for an APP built for another system;
-- a single Windows file that runs without unpacking by hand. A spike would first measure Defender's and SmartScreen's verdicts on a downloaded copy, a cold first launch, and a signature made after the payload is appended.
+- a single Windows file that runs without unpacking by hand (ADR 032).
 
 ## A framework wrapper's view
 
@@ -112,4 +108,28 @@ For a framework's drop-to-make-an-app (decisions.md, 2026-11-04), Fledge gives g
 
 ### Phones
 
-What Fledge provides on an iPhone, an iPad, or an Android device, and what a wrapper provides there, is in `doc/contributors/design/phones.md`, "What a framework provides".
+A framework that ships to an iPhone, an iPad, or an Android device through Fledge may rely on what follows from a Fledge release; it is part of Fledge's public interface, and changes only as this document says. How each part works is in `doc/contributors/design/phone-runtimes.md` and `doc/contributors/design/phone-projects.md`.
+
+**Fledge provides:**
+
+- `fledge build ios`, on a Mac with Xcode and XcodeGen, and `fledge build android`, on a Mac, x86-64 Linux, or Windows, which write an Xcode or Gradle project holding the project, its gems, and a runtime. The framework's team builds, signs, and submits that project with Xcode or Gradle.
+- A gem with a C or C++ extension built by an `extconf.rb` is compiled for each of the phone's targets, linked into the app, and registered, so `require "name/name"` finds it. Static libraries an `extconf.rb` links are linked per iOS slice; shared ones are carried into the Android app.
+- An `extconf.rb` that runs CMake finds each target's toolchain file in `CMAKE_TOOLCHAIN_FILE`.
+- `ios: host: DIR` and `android: host: DIR` in `fledge.yml` name a folder of files that `fledge build` copies over the project it writes, so a framework that must own the app's startup supplies its own files and keeps them across builds (see `doc/contributors/design/phone-projects.md`, "Host files"). The templates' file paths and marks stay, so a host's copy keeps working.
+- The embedding API, `fledge_ruby_forward_output` and `fledge_ruby_run_app` (and on Android `FledgeRuby.startApp`), which a framework's host calls wherever its framework runs the main function.
+
+**The framework provides:**
+
+- A Ruby program that starts the app, and the gems it needs in the project's `Gemfile.lock`, locked for `ruby` (`bundle lock --add-platform ruby`). A phone runs no shell script, and the gems must be in the lockfile, not found on the build computer's paths.
+- An extension that an `extconf.rb` builds with mkmf, calling `create_makefile` once, in C or C++, loaded with `require "name/name"` or `require "name/name.so"`, never `require_relative`, with its Init function named `Init_NAME` for the target's basename, as mkmf expects (Fledge renames it). The `extconf.rb` requires nothing but Ruby's standard library, since it runs with `--disable-gems`.
+- No `dlopen` of a file it ships, no code that writes executable files, and no `fork` or `exec`.
+- When the `extconf.rb` runs CMake first: run `cmake` with a new build folder each time, inside the folder the `extconf.rb` runs in, and let CMake find its toolchain in `CMAKE_TOOLCHAIN_FILE`; pass no `CMAKE_SYSTEM_NAME`, sysroot, or compiler of its own, but `CMAKE_BUILD_TYPE` and the project's options as on a desktop; link what CMake built through `$LOCAL_LIBS` by path; build static libraries position-independent (`POSITION_INDEPENDENT_CODE ON`); name the C++ runtime as on a desktop (`-lc++` or `-lstdc++`) when the extension is C over C++, and Fledge links the phone's; and have CMake 3.21 or later on the build computer's `PATH`.
+- Its native libraries, built for the phone's targets: a static library per iOS slice (or an XCFramework), and a shared library per Android ABI, found by the `extconf.rb` through `dir_config` or Bundler's `build.NAME` options (`bundle config build.NAME --with-NAME-dir=...`), which Fledge passes as `extconf.rb` arguments for every target.
+- Its host files, when its framework owns startup, in the `host:` folder: on iOS any of `Host/main.m`, `Host/Info.plist`, `Host/PrivacyInfo.xcprivacy`, the asset catalog, and `project.yml`; on Android `MainActivity.java` at its package's path, the manifest, the Gradle files, `strings.xml`, and any Java sources of its own.
+
+Fledge refuses, naming the gem, an extension that the gemspec says Rake, CMake, configure, or Cargo builds with no `extconf.rb`, and a Rust extension.
+
+**Known limits:**
+
+- CI runs the apps in the iOS Simulator and on x86_64 Android emulators. It builds and checks the iOS device slice and the arm64-v8a library, but runs neither: no free GitHub-hosted runner boots an arm64-v8a emulator. Games built with `fledge build` have run on a physical iPad Pro, iPhone 13 mini, and OnePlus Nord N30 5G (arm64-v8a).
+- An SDL host on iOS runs Ruby on the main thread and asks for a 64 MB main-thread stack in the project's linker flags. Apple documents 1 MB for a device's main thread. An iPhone 13 mini granted the 64 MB; an iPad's grant is not measured, so a deep recursion in Ruby could still fail there.

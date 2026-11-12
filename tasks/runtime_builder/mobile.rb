@@ -22,7 +22,7 @@ class RuntimeBuilder
   # OpenSSL and libyaml built the same way, with --with-static-linked-ext
   # and no JIT. A miniruby built for the build machine from the same
   # source writes the builtin binary a cross build cannot
-  # (doc/contributors/design/phones.md, "The builtin binary"), and the bundled
+  # (doc/contributors/design/phone-runtimes.md, "The builtin binary"), and the bundled
   # gems with C extensions stay gems (BundledExtensions). Each subclass names its targets' toolchains and
   # packs what they built: an XCFramework for iOS (IOS), an AAR for
   # Android (Android).

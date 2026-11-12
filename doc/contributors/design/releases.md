@@ -30,17 +30,7 @@ A release carries one runtime of each Ruby minor it supports, for each platform,
 
 The runtimes' asset names without a Ruby version mean the runtime of the Ruby minor 1.0 ships, for all of 1.x. A 1.x release that adds a second minor names that minor's assets with the reserved `-ruby-X.Y.Z-` part (`doc/contributors/design/public-interface.md`, "Reserved names"). Two minors side by side double the runtimes every CI run and release builds.
 
-## Ruby 4.1 and 1.0
-
-Fledge moves to Ruby 4.1 before 1.0, and 1.0 ships on it (ADR 056). The maintainer allowed one last release on Ruby 4.0.9 before the first on 4.1 (decisions.md, 2026-11-09). From the first release whose CI passes on every job with Ruby 4.1 preview runtimes, releases carry those in place of 4.0's. Until then, the runtimes carry the Ruby `runtime/sources.yml` pins.
-
-Before 1.0, a release may carry a preview of a Ruby minor, and any 0.x release may move it to a later preview or to the minor's final release. 1.0 carries Ruby 4.1, which only a major drops.
-
-1.0 waits for three things:
-
-- some of the unproven things proven (decisions.md, 2026-11-02);
-- the maintainer's own testing that his developer accounts block, whichever of it he chooses (decisions.md, 2026-11-08; `doc/contributors/account-tests.md`);
-- Ruby 4.1.0 (decisions.md, 2026-11-09).
+Before 1.0, a release may carry a preview of a Ruby minor, and any 0.x release may move it to a later preview or to the minor's final release. 1.0 carries Ruby 4.1, which only a major drops (ADR 056).
 
 ## Platform floors
 
@@ -131,47 +121,16 @@ After publishing, `release.yml` calls `.github/workflows/installed.yml`, which c
 
 `installed.yml` is where a change in the world between the push and the tag shows, since the release runs no CI of its own (ADR 053).
 
-## Download retries
-
-`fledge build` downloads runtimes, companions, and gems through `Fledge::Download.save`. A download that fails with `Download::Unavailable` (408, 429, or a 5xx) or `Download::Unreachable` (a connection refused, reset, timed out, unresolvable, or broken off) is tried again after 2, 4, and 8 seconds (`Download::WAITS`), four tries in all, and the last failure is raised when they run out. Each try starts again from the first byte into the same `.part` file and is checked against the pin; nothing reaches the destination unless it matches. A 401 or 403, a 404 or 410, any other 4xx, and a SHA-256 mismatch would answer the same a moment later, so each fails at once. Before each wait, `Fledge::Runtimes` and `Fledge::GemFetcher` say on their log why and how long: `could not download URL: 503 Service Unavailable; trying again in 2 seconds (2 of 4)`.
-
-A mirror (ADR 031) is retried the same way and then fails, still without trying the release.
-
-Why these numbers:
-
-- **Four tries** is Bundler's default: `download_gem` runs inside `Bundler::Retry` (`lib/bundler/rubygems_integration.rb`, line 384, at bundler 4.0.20), and `BUNDLE_RETRY` is 3 (`settings.rb`, line 84). Bundler's index requests likewise pass over a refused login, a 404, and other 4xx (`fetcher.rb`, lines 99 to 125).
-- **The waits double**, as Bundler's do (`retry.rb`, lines 22 to 31 and 67 to 76), from 2 seconds rather than Bundler's 1, because a release host's outage outlasts a second more often than a gem index's hiccup. They stop at 8, so a host that is truly down fails the build in about 14 seconds.
-- **No jitter**: one build's downloads run one after another and are no herd, and a fixed wait is what the log can promise.
-- **No setting.** Reading `BUNDLE_RETRY` would tie runtime downloads, which are not Bundler's, to a Bundler setting, and a variable of Fledge's own would be one more name to freeze for a need no one has shown.
-
-`Fledge::Download` starts Net::HTTP with `ignore_eof: false`. By default Net::HTTP reads a body that ends before its `Content-Length` as the whole body (`net/http.rb`, lines 1469 to 1472, net-http 0.9.1 in Ruby 4.0.9), so a connection that broke off mid-download would be a SHA-256 mismatch, which is never retried. With `ignore_eof: false` it raises `EOFError`, which is `Unreachable`. Net::HTTP's own retry of a GET does not "restart in the middle of a download" (lines 2458 to 2475), so it does not cover this.
-
-CI's download cache (`tasks/download_cache.rb`) tries five times, after 5, 10, 20, and 40 seconds, on the same two errors, since a hosted runner can wait longer than a developer at a terminal. It passes `waits: []` to `Download.save`, so its tries replace the product's rather than multiply them.
-
 ## From 1.0: release branches and a human publishing
 
 Before 1.0, every commit and every release is on `trunk`, with no release branches: there is no older series to patch. Releases through 1.0.0 are made by hand, as `doc/contributors/handoff.md` says.
 
-After 1.0, Fledge reuses the version and git tooling of RatatuiRuby and Rooibos, which works differently before 1.0.0 and after it (decisions.md, 2026-11-03). That tooling waits until RatatuiRuby's agents finish extracting `ratatui_ruby-devtools` and its parts outside the RatatuiRuby ecosystem are extracted again for Fledge, Lota, and the rest. Nothing is ported or copied before then, and Fledge's agents do that second extraction only when the maintainer explicitly instructs it (decisions.md, 2026-11-07). The tooling does not block 1.0.
+After 1.0, Fledge reuses the version and git tooling of RatatuiRuby and Rooibos, which works differently before 1.0.0 and after it (decisions.md, 2026-11-03), and the tooling is not in this repository yet (decisions.md, 2026-11-07). From then on:
 
-The model, from RatatuiRuby's `doc/contributors/releasing.md` (at `10dd1800`), which Rooibos uses through `ratatui_ruby-devtools` (Rooibos's `Rakefile` at `54a73ebb`, `RatatuiRuby::Devtools.install!`):
+- every change lands on `trunk` first, and each minor has a release branch, `release/X.Y`, cut from `trunk` when `X.Y.0` is released;
+- a fix goes to each release branch that needs it by `git cherry-pick -x`, and the patch release is made from the branch; this is how a long-term line gets its fixes (see "Support follows live Rubies");
+- every release has a SemVer tag, and `stable`, the repository's default branch, sits at the newest stable release;
+- each release branch keeps its own CHANGELOG;
+- a human publishes: `rake release` pushes the gem, so the maintainer runs it. Agents prepare the bump, the branch, the backports, the CHANGELOG, and green CI, and the maintainer's run makes the tag and moves `stable`, which AGENTS.md forbids agents to force-push.
 
-- **Trunk-based development.** Every change lands on `trunk` first.
-- **A release branch for each minor.** `rake bump:minor` or `rake bump:major` cuts `release/X.Y` from `trunk` and releases `X.Y.0` from it (`tasks/bump/release_from_trunk.rb`). devtools' `BumpWorkflow.to` (`lib/ratatui_ruby/devtools/tasks/bump/bump_workflow.rb`, lines 19 to 33, at `1a31a719`) picks the workflow by the version, so a prerelease stays unbranched (`unbranched_release.rb`) and a `.0` opens a series.
-- **Backports by cherry-pick.** A fix lands on `trunk`, then goes to each release branch that needs it with `git cherry-pick -x`, and `rake bump:patch` releases it from the branch (`tasks/bump/patch_release.rb`). This is how a long-term line gets its fixes.
-- **SemVer tags.** The release task replaces Bundler's normalized tag with the SemVer one (`tasks/release.rake`; devtools' `lib/ratatui_ruby/devtools/tasks/release_tasks.rb`).
-- **`stable`**, a branch at the newest stable release, moved by the release task, and the repository's default branch.
-- **The CHANGELOG.** Each release branch keeps its own; when a final release ships, its section is consolidated on the branch and copied to `trunk`.
-
-Three things differ from RatatuiRuby:
-
-- **A human publishes.** `rake release` runs Bundler's release task, which pushes the gem, so the maintainer runs it. Agents prepare the bump, the branch, the backports, the CHANGELOG, and green CI. The tag and the move of `stable` come with the maintainer's run, and so does the force-push that moves `stable`, which AGENTS.md forbids agents.
-- **The tooling is not there yet**, as above.
-- **One pure-Ruby gem, and runtimes outside it.** RatatuiRuby's platform gems carry compiled code its own Ruby loads. A Fledge runtime is files Fledge copies into an app, built once per target by CI and checked against the gem's pins, so there is nothing to build per platform inside the gem. The tag and the GitHub Release stay, because they hold the runtimes and the source bundles each app's notices name.
-
-## Not decided
-
-- The minimum time between a deprecation and its removal, beyond one minor release.
-- Whether `fledge build` should warn when a newer patch of its embedded Ruby exists. Bundler already reports newer gems, so only the embedded runtime and platform deadlines would be new, and no developer has shown the need.
-- Which patch of musl 1.2 the musl runtimes need. They are built and delivered on the musl of the Alpine release `runtime/sources.yml` pins (ADR 017), and no older one has been tried; the README names no musl version until one has.
-- The exact end-of-life dates of each Ruby minor, which come from ruby-lang.org when a line becomes a long-term line.
+Fledge's runtimes are not in the gem. A runtime is files Fledge copies into an app, built once per target by CI and checked against the gem's pins, so there is nothing to build per platform inside the gem. The tag and the GitHub Release stay, because they hold the runtimes and the source bundles each app's notices name. Plan 003, "1.0", describes the RatatuiRuby tooling Fledge will reuse and what waits on its extraction.

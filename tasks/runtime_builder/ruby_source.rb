@@ -9,7 +9,7 @@ require "fileutils"
 
 class RuntimeBuilder
   # The edits a mobile runtime makes to Ruby's own source before it builds
-  # it (doc/contributors/design/phones.md, "Scripted edits to Ruby's
+  # it (doc/contributors/design/phone-runtimes.md, "Scripted edits to Ruby's
   # source"). Each replaces lines of Ruby 4.0.9's files that it names,
   # and raises when they are not there, so that a new Ruby whose files
   # moved on fails the build at the edit to look at again, rather than

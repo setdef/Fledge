@@ -14,10 +14,10 @@ This document says how Fledge checks that what it copies into apps meets the lic
 
 | Category | Licenses | Allowed for |
 |---|---|---|
-| `notice_only` | `NOTICE_ONLY`: MIT, the BSDs, Apache-2.0, Zlib, Ruby, PSF-2.0, OFL-1.1, the MinGW-w64 runtime's, and the rest, each with its reason in the file | any component |
-| `file_level` | `FILE_LEVEL`: MPL-2.0, EPL-2.0 | a component of kind `files`, shipped as unmodified files whose source form is the file itself, such as the CA bundle |
-| `source_offer` | `SOURCE_OFFER`: CPL-1.0 | a component whose source Fledge publishes, such as NSIS, whose LZMA module asks that a binary say where its source is (CPL-1.0, section 3) |
-| `shared_library` | `SHARED_LIBRARY`: the LGPL, 2.1 and 3.0, only and or-later | a component of kind `shared_library` with a source pin in `runtime/sources.yml`, or one linked into another component as the next sections say |
+| `notice_only` | `NOTICE_ONLY`: permissive licenses, each with its reason in the file | any component |
+| `file_level` | `FILE_LEVEL`: file-level copyleft | a component of kind `files`, shipped as unmodified files whose source form is the file itself, such as the CA bundle |
+| `source_offer` | `SOURCE_OFFER`: a license that asks only that a binary say where its source is (CPL-1.0, section 3) | a component whose source Fledge publishes, such as NSIS |
+| `shared_library` | `SHARED_LIBRARY`: the LGPL | a component of kind `shared_library` with a source pin in `runtime/sources.yml`, or one linked into another component as the next sections say |
 | `forbidden` | everything else: the GPL and the AGPL, any copyleft not listed, an unknown license, an empty or malformed expression, and `NOASSERTION` (a gem that declares no license) | nothing |
 
 A component of kind `source`, the published source of a pinned component in `notices/sources/`, is allowed under its own license whatever its category, since carrying source asks nothing of the app; see "notices/sources/ and the source bundles".

@@ -16,7 +16,7 @@ class MobileParity
   # API; each release bundle signed as a developer signs it for upload,
   # validated, and made into the split APKs Play would serve, which are
   # checked the same way and against Play's download limit
-  # (doc/contributors/design/phones.md, "The Android App Bundle check");
+  # (doc/contributors/design/phone-projects.md, "The Android App Bundle check");
   # then, on the emulator CI's android-emulator-runner boots,
   # each app installed and started twice, from its debug APK with adb and
   # from its bundle's APKs with bundletool, its logcat read back each time.

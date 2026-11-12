@@ -5,7 +5,7 @@
 
 /*
  * Fledge's embedding API for Ruby on iOS, iPadOS, and Android (ADR 061;
- * doc/contributors/design/phones.md, "The embedding API").
+ * doc/contributors/design/phone-runtimes.md, "The embedding API").
  *
  * A phone runs no program of Fledge's own: the app is the developer's,
  * or a framework's (Lota's SDL_main, Tokra's Tauri host), and Ruby is a

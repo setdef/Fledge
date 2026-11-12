@@ -74,7 +74,7 @@ module FakeRuntime
   end
 
   # Writes the runtime for the phone +phone+ (a Fledge::MobilePlatform)
-  # into +directory+, shaped as doc/contributors/design/phones.md, "What
+  # into +directory+, shaped as doc/contributors/design/phone-runtimes.md, "What
   # a phone runtime holds", describes it, and returns its path: for iOS,
   # an XCFramework whose two slices each hold a Ruby; for Android, an
   # AAR beside one Ruby; each with its CA certificates and notices.

@@ -23,7 +23,7 @@ module Fledge
     # <tt>FledgeRuby.aar</tt> is in <tt>libs/</tt>; its <tt>lib/</tt> and
     # <tt>libexec/</tt> are in ROOT, which the build stores as the asset
     # <tt>fledge.zip</tt> that <tt>org.setdef.fledge.FledgeRuby</tt>
-    # unpacks (doc/contributors/design/phones.md, "The Java class"). The
+    # unpacks (doc/contributors/design/phone-runtimes.md, "The Java class"). The
     # app's identifier is its <tt>applicationId</tt>, its name its
     # label, its version its
     # <tt>versionName</tt> and, as a number, its <tt>versionCode</tt>

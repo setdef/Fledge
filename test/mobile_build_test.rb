@@ -13,7 +13,7 @@ require "yaml"
 
 # fledge build ios and fledge build android (ADR 012), through real
 # streams, with fake mobile runtimes shaped as
-# doc/contributors/design/phones.md, "What a phone runtime holds",
+# doc/contributors/design/phone-runtimes.md, "What a phone runtime holds",
 # describes them, real .gem files served at the lockfile's remote, and,
 # for iOS, the real XcodeGen where this computer has it.
 class MobileBuildTest < Minitest::Test

@@ -10,7 +10,7 @@ require_relative "test_helper"
 require_relative "../lib/fledge/mobile_project"
 
 # ADR 025 (doc/contributors/design/public-interface.md, "Frozen for
-# 1.x", and doc/contributors/design/phones.md, "Host files"): a host
+# 1.x", and doc/contributors/design/phone-projects.md, "Host files"): a host
 # copies a template's file to replace it at its path, with Fledge's
 # marks in it, so those paths and marks are frozen for 1.x. A new file
 # or mark is compatible; a path or a mark that goes away breaks every

@@ -465,7 +465,7 @@ jobs:
           path: tmp/runtime/${{ matrix.platform }}/logs
           retention-days: 14
 
-  # Delivery on phones (doc/contributors/design/phones.md, "Parity on a
+  # Delivery on phones (doc/contributors/design/phone-projects.md, "Parity on a
   # phone"; ADR 012): apps built as a
   # developer builds them, with fledge build ios, and their Xcode projects
   # built with xcodebuild for the Simulator and, unsigned, for devices, to
@@ -547,7 +547,7 @@ jobs:
   # KB alignment and target API; each release bundle signed with a
   # throwaway upload key, validated with bundletool, made into the APKs
   # Play would serve, which are checked the same way and against Play's
-  # size limit (doc/contributors/design/phones.md, "The Android App Bundle
+  # size limit (doc/contributors/design/phone-projects.md, "The Android App Bundle
   # check"), and each app run from its debug APK
   # and again from its bundle's APKs, as Play installs them. No GitHub-hosted
   # runner boots an arm64-v8a emulator with hardware acceleration (ADR

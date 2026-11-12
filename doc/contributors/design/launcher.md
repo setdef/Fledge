@@ -25,7 +25,7 @@ Everything is in `runtime/launcher/`. `launcher.h` declares what the files share
 | `relaunch.c` | how `bin/ruby` hands the app's program to its launcher | `bin/ruby` |
 | `windows.manifest`, `windows.rc` | the Windows launcher's embedded manifest | every Windows launcher |
 
-`tasks/runtime_builder/unix.rb` and `windows.rb` compile them; `doc/contributors/design/runtimes.md` covers the toolchains. The phone runtime (`runtime/mobile/fledge_ruby.c`) shares `config.c`, `locale.c`, and `bundler.c` and does the launcher's work of its own; `doc/contributors/design/phones.md` covers it.
+`tasks/runtime_builder/unix.rb` and `windows.rb` compile them; `doc/contributors/design/runtimes.md` covers the toolchains. The phone runtime (`runtime/mobile/fledge_ruby.c`) shares `config.c`, `locale.c`, and `bundler.c` and does the launcher's work of its own; `doc/contributors/design/phone-runtimes.md` covers it.
 
 ## The boot sequence
 
@@ -142,18 +142,20 @@ ending `what this app's programs run (ADR 024).` for an app of several programs.
 
 The launcher prints `NAME: message` to standard error and exits. On Windows `show` writes UTF-16 with `WriteConsoleW` to a console, and UTF-8 to a file or pipe; the windowed launcher, when it has no standard error, shows the message in a `MessageBoxW` titled with the program's name, with an error icon.
 
-| Status | When | Message |
-|---|---|---|
-| 66 (`EX_NOINPUT`) | `fledge.cfg` is missing | `this app is incomplete: PATH is missing` |
-| 66 | the program `entry` names is missing or not a file | `this app is incomplete: PATH is missing` |
-| 66 | `fledge.cfg` has sections and none for this launcher | `this app is incomplete: PATH has no program named NAME` |
-| 72 (`EX_OSFILE`) | Linux: a library `system_libraries` lists will not load | `this app needs LIB, which this computer does not have (REASON). Install it from your Linux distribution's packages, then run the app again` |
-| 70 (`EX_SOFTWARE`) | the launcher is in a folder named `bin` or `lib` | `this app cannot run from a folder named "bin"; rename the folder or move the app out of it` |
-| 70 | `fledge.cfg` is damaged or unreadable | `this app is damaged: PATH PROBLEM`, `could not read PATH` |
-| 70 | Windows: Ruby's DLL, or a DLL it needs, is missing | `this app is incomplete: PATH is missing, or a file it needs is (Windows error N)` |
-| 70 | Windows: Ruby's DLL will not load, or lacks a function | `could not load PATH (Windows error N)`, `this app is damaged: its Ruby has no FUNCTION` |
-| 70 | Bundler cannot start or set up the app's gems | Bundler's own message, then `could not set up this app's gems` |
-| 70 | anything else before the program runs | such as `the path to this app is too long`, `could not find where this app is`, `out of memory`, `could not protect this app from other programs' DLLs` |
+| Status | When |
+|---|---|
+| 66 (`EX_NOINPUT`) | `fledge.cfg` is missing |
+| 66 | the program `entry` names is missing or not a file |
+| 66 | `fledge.cfg` has sections and none for this launcher |
+| 72 (`EX_OSFILE`) | Linux: a library `system_libraries` lists will not load |
+| 70 (`EX_SOFTWARE`) | the launcher is in a folder named `bin` or `lib` |
+| 70 | `fledge.cfg` is damaged or unreadable |
+| 70 | Windows: Ruby's DLL, or a DLL it needs, is missing |
+| 70 | Windows: Ruby's DLL will not load, or lacks a function |
+| 70 | Bundler cannot start or set up the app's gems |
+| 70 | anything else before the program runs |
+
+The messages follow Ruby's `ruby: message` form and name the app, never Ruby: for example `NAME: this app is incomplete: PATH is missing` for a missing program, and `NAME: this app needs LIB, which this computer does not have (REASON). Install it from your Linux distribution's packages, then run the app again` for status 72. Their exact wording is the launcher's C source (`runtime/launcher/`), which `test/built_app_test.rb` and Delivery read back; this table lists the statuses.
 
 Once the program runs, the status is the program's own. `bin/ruby`, which is Ruby's program, says `ruby: could not run LAUNCHER: REASON` and exits 70 when it finds the app's launcher and cannot start it.
 

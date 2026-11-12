@@ -394,10 +394,10 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the Lota agent's proposal that Lota and Fledge require Ruby 4.1, previews included, after Fledge's Ruby 4.1 spike (`doc/contributors/research/2026-11-09-ruby-4.1-spike.md`), and the maintainer's word before it that he would agree only if both agents did. Both agreed: Fledge's orchestrating agent on the grounds that a 1.0 on Ruby 4.0 would oblige Fledge to keep 4.0's runtimes through all of 1.x (ADR 029), on condition that the spike's open problems are fixed or explained before the first release on 4.1; the Lota agent on condition that Lota's own move lands together with that release. Fledge's orchestrating agent had also proposed a last release on Ruby 4.0.9 first, which these words leave out.]
 
-*Governs:* Fledge's releases carry Ruby 4.1 preview runtimes in place of Ruby 4.0's, from the first release whose CI passes on every job with them; Ruby 4.0 is dropped now, but for the one release the next quotation allows; Fledge 1.0.0 is not released before Ruby 4.1.0 is, and so waits on Ruby 4.1.0 as well as on the maintainer's account-blocked testing. *Applied in:* Plan 003; ADR 056; `doc/contributors/design/releases.md`, "Ruby 4.1 and 1.0"; the handoff.
+*Governs:* Fledge's releases carry Ruby 4.1 preview runtimes in place of Ruby 4.0's, from the first release whose CI passes on every job with them; Ruby 4.0 is dropped now, but for the one release the next quotation allows; Fledge 1.0.0 is not released before Ruby 4.1.0 is, and so waits on Ruby 4.1.0 as well as on the maintainer's account-blocked testing. *Applied in:* Plan 003; ADR 056; Plan 003, "1.0"; the handoff.
 
 > I am okay with a last-release on Ruby 4.0.9 first, as long as it doesn't meaningfully delay "now". Call it "now-ish" :)
 
 [re: the release on Ruby 4.0.9 that the quotation above left out, which the orchestrating agent noted when it recorded that one.]
 
-*Governs:* one last Fledge release on Ruby 4.0.9 is made before the first on Ruby 4.1, as long as it does not meaningfully delay the move to 4.1; "now" in the quotation above means as soon as that release and the 4.1 work allow. *Applied in:* release 0.11.0; Plan 003; ADR 056; `doc/contributors/design/releases.md`, "Ruby 4.1 and 1.0".
+*Governs:* one last Fledge release on Ruby 4.0.9 is made before the first on Ruby 4.1, as long as it does not meaningfully delay the move to 4.1; "now" in the quotation above means as soon as that release and the 4.1 work allow. *Applied in:* release 0.11.0; Plan 003; ADR 056; Plan 003, "1.0".

@@ -275,7 +275,7 @@ nsis:
 # no runtime holds it; so is bundletool, Google's jar that makes the APKs
 # Google Play would serve from an app's bundle, which those jobs check
 # and install, as Google publishes it on GitHub
-# (doc/contributors/design/phones.md, "The Android App Bundle check").
+# (doc/contributors/design/phone-projects.md, "The Android App Bundle check").
 mobile:
   ruby:
     version: 4.0.9

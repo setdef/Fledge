@@ -236,7 +236,7 @@ class RuntimesTest < Minitest::Test
   end
 
   # GitHub's release downloads answer 5xx now and then and pass a moment
-  # later (doc/contributors/design/releases.md, "Download retries").
+  # later (doc/contributors/design/runtimes.md, "Download retries").
   def test_a_release_that_fails_for_a_moment_is_asked_again_and_the_log_says_so
     body = "the released runtime"
     name = Fledge::Runtimes.file_name(LINUX)

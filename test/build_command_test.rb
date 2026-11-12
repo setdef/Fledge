@@ -163,7 +163,7 @@ class BuildCommandTest < Minitest::Test
   end
 
   # A phone's name, first, asks for its project, as Briefcase's create
-  # iOS and Flutter's build ios do (doc/contributors/design/phones.md); after the PATH, or after
+  # iOS and Flutter's build ios do (doc/contributors/design/phone-projects.md); after the PATH, or after
   # --, it is a path, and ./ios names a folder called ios.
   def test_a_phone_named_first_asks_for_its_project
     {

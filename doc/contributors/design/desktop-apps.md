@@ -53,7 +53,7 @@ The layout of the runtime itself is in `doc/contributors/design/runtimes.md`.
 
 **Standard output.** `fledge build` prints the archive's path and then each installer's, one per line, each joined to `--out` as the developer wrote it; progress and warnings go to standard error (GNU Coding Standards, 4.8). The folder is not printed: a wrapper derives it from the archive's name.
 
-**Checksum files.** Beside the archive and each installer, `fledge build` writes `FILE.sha256`, one line in GNU coreutils' `sha256sum` format, `HEX  NAME` (`Fledge::Checksum`), after the file is final, so a notarized or signed file's checksum is of what ships. Ruby's `Digest::SHA256` writes it, since no tool on all three systems prints that format (macOS has `shasum`, Windows `Get-FileHash` and `certutil`). The file is always written, one per archive as cargo-dist and GoReleaser's `split` write them, and never one list per release: each platform's app is built on its own computer, so one list under one name would be written once on each. `sha256sum -c` and `shasum -a 256 -c` check it, and `cat *.sha256` makes a release page's list. Every package manager that installs a console app from a release names its SHA-256 (`doc/package_managers.md`).
+**Checksum files.** Beside the archive and each installer, `fledge build` writes `FILE.sha256`, one line in GNU coreutils' `sha256sum` format, `HEX  NAME` (`Fledge::Checksum`), after the file is final, so a notarized or signed file's checksum is of what ships. Ruby's `Digest::SHA256` writes it, since no tool on all three systems prints that format (macOS has `shasum`, Windows `Get-FileHash` and `certutil`). The file is always written, not behind an option, since every package manager that installs a console app from a release names its SHA-256 and an option would cost a developer a flag for what each of them needs. It is one per archive, as cargo-dist ("a .sha256 file for each archive", `axodotdev.github.io/cargo-dist/book/reference/config.html`) and GoReleaser with `split` (`goreleaser.com/customization/checksum/`) write them, and never one list per release: each platform's app is built on its own computer, so one list under one name would be written once on each. `sha256sum -c` and `shasum -a 256 -c` check it, and `cat *.sha256` makes a release page's list. Every package manager that installs a console app from a release names its SHA-256 (`doc/package_managers.md`).
 
 ## Identity on each system
 
@@ -61,7 +61,7 @@ The layout of the runtime itself is in `doc/contributors/design/runtimes.md`.
 
 - **name**: NAME, above.
 - **kind**: `console` (ADR 037).
-- **identifier**: none. A windowed app without one fails, suggesting `io.github.OWNER.NAME` when the gemspec's homepage is on `github.com`, or else `com.example.NAME`, NAME stripped to letters, digits, and hyphens. It is reverse-DNS: two or more parts of letters, digits, and hyphens between dots, each beginning with a letter or digit, in at most 128 characters, an AppUserModelID's limit.
+- **identifier**: none (ADR 064). A windowed app without one fails, suggesting `io.github.OWNER.NAME` when the gemspec's homepage is on `github.com`, or else `com.example.NAME`, NAME stripped to letters, digits, and hyphens. It is reverse-DNS; the schema holds its pattern, and 128 characters is an AppUserModelID's limit.
 - **version**: the gemspec's, or else `0.0.0`. It begins with a number and is a version RubyGems reads. A version YAML reads as a number is refused, saying to quote it, since YAML would read `1.10` as `1.1`.
 - **publisher**: the gemspec's authors, joined with commas.
 - **copyright**, **description** (one line), **long_description**, **homepage** (an `http` or `https` URL with no spaces), and **icon**: none.
@@ -137,7 +137,7 @@ MimeType=TYPE;...            when the app opens files
 - **Windows:** `ICON.ico`, written into each program by rcedit and into the setup program by makensis.
 - **Linux:** `ICON-16.png`, `ICON-32.png`, `ICON-64.png`, `ICON-128.png`, `ICON-256.png`, and `ICON-512.png` (`Icon::LINUX`), Briefcase's six. The build ships each one there is into `share/icons/hicolor`, names the missing ones on standard error as a warning, and fails only when there is none, naming the smallest. The AppImage's top-level icon is the 256-pixel PNG, or else the largest there is, as Tauri's bundler picks the largest square.
 
-A missing file fails that platform's build with what it needs and how to make it (`Icon::MAKE`). Fledge reads none of these formats and checks no sizes. A phone's icons come from the same key (`doc/contributors/design/phones.md`).
+A missing file fails that platform's build with what it needs and how to make it (`Icon::MAKE`). Fledge reads none of these formats and checks no sizes. A phone's icons come from the same key (`doc/contributors/design/phone-projects.md`, "Identity on a phone").
 
 ## Several programs
 

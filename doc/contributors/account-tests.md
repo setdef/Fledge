@@ -122,7 +122,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 
 #### IOS-1: A Fledge iOS app passes App Store Connect's validation
 
-- **Proves:** a team's signature and profile, `xcodebuild -exportArchive`, and App Store Connect's own checks accept an archive of a Fledge iOS project. CI checks everything Apple's tools check without an account (`doc/contributors/design/phones.md`, "The App Store archive check").
+- **Proves:** a team's signature and profile, `xcodebuild -exportArchive`, and App Store Connect's own checks accept an archive of a Fledge iOS project. CI checks everything Apple's tools check without an account (`doc/contributors/design/phone-projects.md`, "The App Store archive check").
 - **Needs:** the Apple Developer Program, and an app record in App Store Connect.
 - **Steps:** `doc/phones.md`, "The App Store" (Product > Archive, or the `xcodebuild archive` and `-exportArchive` commands there), and its "Export compliance", which is a legal claim of yours. Set a `version` in `fledge.yml` first.
 - **Passing:** the upload is accepted and the build appears under TestFlight with no validation error. If App Store Connect refuses version 0.0.0, tell an agent: `fledge build ios` should then refuse it (ADR 012).
@@ -151,7 +151,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 
 #### AND-1: Google Play takes a Fledge app bundle
 
-- **Proves:** Play accepts the signed `.aab` that `./gradlew bundleRelease` makes, including the 16 KB alignment and the stored `fledge.zip` that CI checks with bundletool (`doc/contributors/design/phones.md`, "The Android App Bundle check").
+- **Proves:** Play accepts the signed `.aab` that `./gradlew bundleRelease` makes, including the 16 KB alignment and the stored `fledge.zip` that CI checks with bundletool (`doc/contributors/design/phone-projects.md`, "The Android App Bundle check").
 - **Needs:** a Google Play Console developer account, and an upload key made with `keytool`.
 - **Steps:** `doc/phones.md`, "Google Play". Upload to an internal testing track.
 - **Passing:** Play accepts the bundle with no error, and a device installs the app from the track and runs it. Your OnePlus Nord N30 5G is a device whose arm64-v8a library already ran Fledge's APK (proven, not in this list).

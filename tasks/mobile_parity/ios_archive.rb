@@ -11,7 +11,7 @@ require "open3"
 
 class MobileParity
   # The archive App Store Connect would take, as far as Apple's own tools
-  # show without an account (doc/contributors/design/phones.md,
+  # show without an account (doc/contributors/design/phone-projects.md,
   # "The App Store archive check"): an app's Xcode
   # project archived for devices with xcodebuild, unsigned, and what
   # App Store Connect requires of the archive and the app in it checked

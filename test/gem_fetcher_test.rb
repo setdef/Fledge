@@ -116,7 +116,7 @@ class GemFetcherTest < Minitest::Test
 
   # Bundler asks a gem server again when it fails for a moment
   # (Bundler::Retry, BUNDLE_RETRY), and so does Fledge
-  # (doc/contributors/design/releases.md, "Download retries"); a server
+  # (doc/contributors/design/runtimes.md, "Download retries"); a server
   # without the file is asked once.
   def test_a_server_that_fails_for_a_moment_is_asked_again_and_one_without_the_file_once
     answers = [[500, {}, "oops"], [200, {}, File.binread(@built.path)]]

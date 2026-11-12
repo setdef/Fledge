@@ -10,7 +10,7 @@ require_relative "support/gems"
 require_relative "support/loopback_server"
 require_relative "../tasks/mobile_parity"
 
-# The parts of the mobile check (doc/contributors/design/phones.md,
+# The parts of the mobile check (doc/contributors/design/phone-projects.md,
 # "Parity on a phone") that need no simulator or emulator: reading the
 # probe's report and an app's status back from the entries of a system
 # log, the apps it builds, the reference Ruby's environment, and the
@@ -36,7 +36,7 @@ class MobileParityTest < Minitest::Test
 
   # The host app of every project fledge build writes logs the app's
   # exit status when its program ends
-  # (doc/contributors/design/phones.md, "The host app").
+  # (doc/contributors/design/phone-projects.md, "The host app").
   def test_the_status_is_the_hosts_last_word
     assert_equal 0, MobileParity.status(["a", "Mobile App exited with status 0"])
     assert_equal 1, MobileParity.status(["Hello exited with status 1"])

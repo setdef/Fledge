@@ -18,7 +18,7 @@ module Fledge
   # the Android SDK's Gradle plugin, which Google supports on macOS,
   # Windows, and x86-64 Linux, for Android, as Briefcase, Flutter, React
   # Native, and Tauri build them (ADR 012). Each mobile runtime is one
-  # archive for two targets (doc/contributors/design/phones.md, "What a
+  # archive for two targets (doc/contributors/design/phone-runtimes.md, "What a
   # phone runtime holds"), named for the system, and no gem publishes a
   # build for any of them, so each of an app's gems is its +ruby+ build,
   # which Bundler picks, as it would on any computer it resolved no
@@ -70,7 +70,7 @@ module Fledge
     # (<tt>Gem::Platform.local</tt> there), which RubyGems and Bundler
     # name a built gem's extension folder by: iOS's two slices report the
     # same, and Android's one tree serves both ABIs
-    # (doc/contributors/design/phones.md, "What a phone runtime holds").
+    # (doc/contributors/design/phone-runtimes.md, "What a phone runtime holds").
     GEM_PLATFORMS = {
       "ios" => %w[arm64-darwin],
       "android" => %w[aarch64-linux-android x86_64-linux-android],

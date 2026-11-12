@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Desktop Runtimes
 
-This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, the build-only companion, the platform names, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 039 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phones.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
+This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, the build-only companion, the platform names, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 039 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phone-runtimes.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
 
 ## What a runtime is
 
@@ -74,18 +74,7 @@ The Windows launcher needs only Ruby's headers to build, never a library to link
 
 ## Sources and pins
 
-Every input that comes from outside the repository is in `runtime/sources.yml`, pinned by version and SHA-256, and `DownloadCache#fetch` (`tasks/download_cache.rb`) refuses a download whose SHA-256 differs. The file's comments say what each pin is and why. In outline:
-
-| Pin | What it gives |
-|---|---|
-| `ruby` | The pinned Ruby: rv-ruby's release assets for `arm64-darwin`, `x86_64-linux`, and `aarch64-linux`; RubyInstaller's x64 and ARM64 archives, each with its signature and key; and `bundled_gems`, the list from Ruby's `gems/bundled_gems` at its release tag. |
-| `llvm-mingw` | The Windows launcher's compiler, per host. |
-| `libxcrypt` | The release rv-ruby links, which glibc Linux runtimes build as a shared library. |
-| `gmp` | MSYS2's source package of GNU MP, the binary packages whose `libgmp-10.dll` RubyInstaller ships, for x64 and ARM64, and each DLL's SHA-256. |
-| `replaceability` | musl and an older GNU MP, which only CI's replaceability jobs read. |
-| `rcedit`, `llvm-readobj`, `nsis`, `appimage-runtime`, `libfuse` | What a runtime's `tools/` holds, and the sources the release publishes for it. |
-| `musl-ruby` | The musl build's sources: Ruby's release tarball, OpenSSL, libyaml, libffi, zlib, and Mozilla's CA bundle as curl publishes it. |
-| `mobile` | The phones' sources and tools (`doc/contributors/design/phones.md`). |
+Every input that comes from outside the repository is in `runtime/sources.yml`, pinned by version and SHA-256, and `DownloadCache#fetch` (`tasks/download_cache.rb`) refuses a download whose SHA-256 differs. The file's comments say what each pin is and why; its top-level keys group the pins by what they feed: each platform's Ruby (`ruby`, `musl-ruby`, `mobile`), the Windows launcher's compiler (`llvm-mingw`), the libraries a runtime adds (`libxcrypt`, `gmp`), the tools of a runtime's `tools/` folder (`rcedit`, `llvm-readobj`, `nsis`, `appimage-runtime`, `libfuse`), and what only CI's replaceability jobs read (`replaceability`). The phones' pins are described in `doc/contributors/design/phone-runtimes.md`.
 
 `test/runtime_builder_test.rb` checks the pins' shape. CI's tools that build runtimes are pinned beside them: the Ubuntu packages and Xcode version in `ci.yml`'s Runtime job, and the Alpine image and packages for musl ("musl Linux's Ruby, built in Alpine").
 
@@ -229,6 +218,23 @@ The assets:
 1. the folder `FLEDGE_RUNTIME_DIR` names, which a contributor points at `tmp/runtime` after `rake runtime`. A runtime there is used as it is, unchecked against the pins, since it was built from this checkout; when the variable is set and the file is missing, the build fails rather than download;
 2. the cache, `$XDG_CACHE_HOME/fledge/runtimes` or `~/.cache/fledge/runtimes`, when its SHA-256 matches the gem's pin;
 3. a download from the version's GitHub Release, or from `FLEDGE_RUNTIME_MIRROR` (ADR 031), into the cache, checked against the pin.
+
+## Download retries
+
+`fledge build` downloads runtimes, companions, and gems through `Fledge::Download.save`. A download that fails with `Download::Unavailable` (408, 429, or a 5xx) or `Download::Unreachable` (a connection refused, reset, timed out, unresolvable, or broken off) is tried again after 2, 4, and 8 seconds (`Download::WAITS`), four tries in all, and the last failure is raised when they run out. Each try starts again from the first byte into the same `.part` file and is checked against the pin; nothing reaches the destination unless it matches. A 401 or 403, a 404 or 410, any other 4xx, and a SHA-256 mismatch would answer the same a moment later, so each fails at once. Before each wait, `Fledge::Runtimes` and `Fledge::GemFetcher` say on their log why and how long: `could not download URL: 503 Service Unavailable; trying again in 2 seconds (2 of 4)`.
+
+A mirror (ADR 031) is retried the same way and then fails, still without trying the release.
+
+Why these numbers:
+
+- **Four tries** is Bundler's default: `download_gem` runs inside `Bundler::Retry` (`lib/bundler/rubygems_integration.rb`, line 384, at bundler 4.0.20), and `BUNDLE_RETRY` is 3 (`settings.rb`, line 84). Bundler's index requests likewise pass over a refused login, a 404, and other 4xx (`fetcher.rb`, lines 99 to 125).
+- **The waits double**, as Bundler's do (`retry.rb`, lines 22 to 31 and 67 to 76), from 2 seconds rather than Bundler's 1, because a release host's outage outlasts a second more often than a gem index's hiccup. They stop at 8, so a host that is truly down fails the build in about 14 seconds.
+- **No jitter**: one build's downloads run one after another and are no herd, and a fixed wait is what the log can promise.
+- **No setting.** Reading `BUNDLE_RETRY` would tie runtime downloads, which are not Bundler's, to a Bundler setting, and a variable of Fledge's own would be one more name to freeze for a need no one has shown.
+
+`Fledge::Download` starts Net::HTTP with `ignore_eof: false`. By default Net::HTTP reads a body that ends before its `Content-Length` as the whole body (`net/http.rb`, lines 1469 to 1472, net-http 0.9.1 in Ruby 4.0.9), so a connection that broke off mid-download would be a SHA-256 mismatch, which is never retried. With `ignore_eof: false` it raises `EOFError`, which is `Unreachable`. Net::HTTP's own retry of a GET does not "restart in the middle of a download" (lines 2458 to 2475), so it does not cover this.
+
+CI's download cache (`tasks/download_cache.rb`) tries five times, after 5, 10, 20, and 40 seconds, on the same two errors, since a hosted runner can wait longer than a developer at a terminal. It passes `waits: []` to `Download.save`, so its tries replace the product's rather than multiply them.
 
 ## Pins that name mirrors
 

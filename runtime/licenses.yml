@@ -74,7 +74,7 @@ platforms:
   aarch64-mingw-ucrt: {os: windows, arch: aarch64-mingw-ucrt, gem_arch: aarch64-mingw-ucrt, so: so}
   # iOS's Ruby reports arm64-darwin on devices and in the Simulator, and
   # each XCFramework slice carries its own
-  # (doc/contributors/design/phones.md, "What a phone runtime holds");
+  # (doc/contributors/design/phone-runtimes.md, "What a phone runtime holds");
   # Android's one tree holds each ABI's arch folder, named for its
   # platform.
   ios:

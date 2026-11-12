@@ -18,7 +18,7 @@ class Parity
   DESKTOP_ARCH = "(?:arm64-darwin23|x86_64-linux|aarch64-linux)"
   MOBILE_ARCH = "(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"
 
-  # What decisions 9 and 10 mean on a phone (doc/contributors/design/phones.md,
+  # What decisions 9 and 10 mean on a phone (doc/contributors/design/phone-projects.md,
   # "Parity on a phone"): each way an app's Ruby on iOS or Android differs from ruby main.rb on the
   # desktop that runs its simulator, and why each is right.
   MOBILE_JUSTIFIED = [

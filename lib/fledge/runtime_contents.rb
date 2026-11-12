@@ -127,7 +127,7 @@ module Fledge
     # The contents of the runtime archive at +path+, or of its folder
     # +under+ (relative to the archive's top folder, ending in a
     # <tt>/</tt>), such as an iOS runtime's XCFramework slice, which holds a
-    # Ruby of its own (doc/contributors/design/phones.md, "What a phone
+    # Ruby of its own (doc/contributors/design/phone-runtimes.md, "What a phone
     # runtime holds"); its paths are then relative to
     # that folder. Raises Fledge::Error when it holds no gem folder or no
     # rbconfig.rb.

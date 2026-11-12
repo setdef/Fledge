@@ -28,7 +28,7 @@ module Fledge
   # from HTTPS to plain HTTP. A host that fails for a moment, with a
   # 408, a 429, a 5xx, or a connection that fails or breaks off, is
   # asked again a few times, as Bundler asks again for a gem
-  # (doc/contributors/design/releases.md, "Download retries"); a missing
+  # (doc/contributors/design/runtimes.md, "Download retries"); a missing
   # file, a refusal, or a mismatch fails at once.
   #
   # Use it to fetch anything Fledge pins by SHA-256.

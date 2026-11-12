@@ -657,20 +657,31 @@ jobs:
             host: arm64-darwin
           - os: windows-latest
             host: x64-mingw-ucrt
+            mise: http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Read the Ruby pin
+        if: runner.os != 'Windows'
         id: pins
         run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
 
-      # RubyInstaller's Ruby on Windows, whose platform is the
-      # x64-mingw-ucrt Fledge builds on; Ruby's own elsewhere.
+      # Ruby's own on macOS. On Windows, RubyInstaller's build the
+      # x64-mingw-ucrt runtime came from, at mise.toml's pins, the
+      # platform Fledge builds on there.
       - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+        if: runner.os != 'Windows'
         with:
           ruby-version: ${{ steps.pins.outputs.ruby }}
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        if: runner.os == 'Windows'
+        with:
+          version: 2026.10.11
+          install_args: ${{ matrix.mise }}
+          add_shims_to_path: false
 
       - name: Use Java 21
         run: echo "JAVA_HOME=${JAVA_HOME_21_X64:-$JAVA_HOME_21_arm64}" >> "$GITHUB_ENV"
@@ -836,9 +847,10 @@ jobs:
       full: "${{ startsWith(github.event.head_commit.message, 'chore: release ') }}"
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
-  # Ruby, which the runtime ships too (ADR 035), through setup-ruby at
-  # mise.toml's pin, or for a preview, which RubyInstaller does not
-  # build, its head build of that day (.github/scripts/ruby-pin.sh).
+  # Ruby, which the runtime ships too (ADR 035): the very build the
+  # runtime came from, with the DLLs it lacks and the MSYS2 that compiles
+  # gems for it, which mise installs at mise.toml's pins, as on a
+  # contributor's Windows computer (matrix.mise names those tools).
   # test/built_app_test.rb unpacks hello and my_cool_app
   # with Windows' own Expand-Archive, from the .zip Windows' own tar
   # wrote, and runs Hello.exe and MyCoolApp.exe. As on the other
@@ -855,33 +867,42 @@ jobs:
         include:
           - os: windows-latest
             platform: x64-mingw-ucrt
+            mise: http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2
           # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 035).
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
+            mise: http:rubyinstaller-head http:msys2-zlib http:msys2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Read the Ruby pin
-        id: pins
-        run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
-
-      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
+      # PATH holds the tools' own folders, not mise's shims, so that
+      # ruby.exe is RubyInstaller's (the console checks below).
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
-          ruby-version: ${{ steps.pins.outputs.ruby }}
-          bundler-cache: true
+          version: 2026.10.11
+          install_args: ${{ matrix.mise }}
+          add_shims_to_path: false
+
+      - name: Place Bundler outside the checkout
+        id: paths
+        run: |
+          echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
+          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/fledge/bundle
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock', 'mise.toml') }}
+
+      - name: Install the bundle
+        run: bundle install
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: runtime-${{ matrix.platform }}
           path: ${{ runner.temp }}/runtimes
-
-      # test/native_build_test.rb compiles a C gem with the runtime's Ruby,
-      # which finds MSYS2's tools as RubyInstaller does, MSYS2_PATH first:
-      # the tree setup-ruby set up (ADR 006).
-      - name: Point RubyInstaller at setup-ruby's MSYS2
-        run: echo "MSYS2_PATH=$RI_DEVKIT" >> "$GITHUB_ENV"
 
       # ADR 016: a self-signed certificate for test/built_app_test.rb's
       # signed build, which no CI runner has otherwise.
@@ -967,28 +988,22 @@ jobs:
           - os: macos-15
             platform: arm64-darwin
             rust: ""
+            mise: ruby
     steps: &build-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      # Ruby at mise.toml's pin; on Windows, RubyInstaller's build the
+      # runtime came from, with the DLLs it lacks and the MSYS2 that
+      # compiles gems for it, which fledge build finds as RubyInstaller
+      # does (MSYS2_PATH, which mise sets, first), named by matrix.mise.
+      # There PATH holds the tools' own folders, not mise's shims.
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
-        if: runner.os != 'Windows'
         with:
           version: 2026.10.11
-          install_args: ruby
-
-      - name: Read the Ruby pin
-        if: runner.os == 'Windows'
-        id: pins
-        run: echo "ruby=$(.github/scripts/ruby-pin.sh)" >> "$GITHUB_OUTPUT"
-
-      # RubyInstaller's Ruby, with the MSYS2 UCRT64 toolchain ridk installs,
-      # which fledge build finds as RubyInstaller does (MSYS2_PATH first).
-      - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
-        if: runner.os == 'Windows'
-        with:
-          ruby-version: ${{ steps.pins.outputs.ruby }}
+          install_args: ${{ matrix.mise }}
+          add_shims_to_path: ${{ runner.os != 'Windows' }}
 
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         if: matrix.platform != 'aarch64-mingw-ucrt'
@@ -996,7 +1011,7 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}${{ matrix.rust }}
 
       # bindgen, which rb-sys runs, parses Ruby's MinGW headers, so clang
-      # must target MinGW and find the MSYS2 tree setup-ruby installs, as
+      # must target MinGW and find the MSYS2 tree mise installs, as
       # Ferro's CI sets it up (after oxidize-rb/actions' setup-ruby-and-rust,
       # with its two AVX-512 defines, rust-bindgen #2500); libclang comes
       # from the LLVM the runner image ships.
@@ -1009,14 +1024,14 @@ jobs:
       - name: Point bindgen and RubyInstaller at MSYS2
         if: matrix.platform == 'x64-mingw-ucrt'
         run: |
-          sysroot="${RI_DEVKIT//\\//}${MSYSTEM_PREFIX:?setup-ruby did not set MSYSTEM_PREFIX}"
+          sysroot="${MSYS2_PATH:?mise did not set MSYS2_PATH}"
+          sysroot="${sysroot//\\//}/ucrt64"
           libclang="C:/Program Files/LLVM/bin"
           test -f "$sysroot/include/stdio.h" || { echo "::error::no C headers (stdio.h) in $sysroot/include"; exit 1; }
           test -f "$libclang/libclang.dll" || { echo "::error::no libclang.dll in $libclang"; exit 1; }
           {
             echo "BINDGEN_EXTRA_CLANG_ARGS=--target=x86_64-pc-windows-gnu --sysroot=$sysroot -D__AVX512VLFP16INTRIN_H -D__AVX512FP16INTRIN_H"
             echo "LIBCLANG_PATH=$libclang"
-            echo "MSYS2_PATH=$RI_DEVKIT"
           } >> "$GITHUB_ENV"
       # SPDX-SnippetEnd
 
@@ -1247,6 +1262,7 @@ jobs:
           - os: ubuntu-24.04
             platform: x86_64-linux
             rust: ""
+            mise: ruby
     steps: *build-steps
 
   build-aarch64-linux:
@@ -1261,6 +1277,7 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
             rust: ""
+            mise: ruby
     steps: *build-steps
 
   build-x64-mingw-ucrt:
@@ -1278,6 +1295,7 @@ jobs:
           - os: windows-latest
             platform: x64-mingw-ucrt
             rust: -x86_64-pc-windows-gnu
+            mise: http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2
     steps: *build-steps
 
   build-aarch64-mingw-ucrt:
@@ -1296,6 +1314,7 @@ jobs:
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
             rust: ""
+            mise: http:rubyinstaller-head http:msys2-zlib http:msys2
     steps: *build-steps
 
   # musl Linux's apps (ADR 017), built in Alpine with Ruby, as a developer

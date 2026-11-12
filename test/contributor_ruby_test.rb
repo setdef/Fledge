@@ -1,0 +1,66 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+#++
+
+require_relative "test_helper"
+require "open3"
+require "yaml"
+
+# The Ruby a contributor runs Fledge on, which mise installs from
+# mise.toml (bin/setup), is the Ruby the runtimes come from on each
+# platform: runtime/sources.yml's release on macOS and Linux, and on
+# Windows the very archive of RubyInstaller's head build the Windows
+# runtimes are built from, by the same URL and SHA-256.
+class ContributorRubyTest < Minitest::Test
+  ROOT = File.expand_path("..", __dir__)
+
+  def mise_toml = File.read(File.join(ROOT, "mise.toml"))
+  def sources = YAML.safe_load_file(File.join(ROOT, "runtime", "sources.yml"))
+  def ruby_pins = sources.fetch("ruby")
+
+  def test_mise_installs_the_release_of_the_runtimes_on_macos_and_linux_only
+    assert_includes mise_toml, %(ruby = { version = "#{ruby_pins.fetch('version')}", os = ["linux", "macos"] }\n)
+  end
+
+  def test_mise_installs_on_windows_the_archive_the_windows_runtimes_are_built_from
+    { "windows-x64" => "x64-mingw-ucrt", "windows-arm64" => "aarch64-mingw-ucrt" }.each do |mise, platform|
+      pin = ruby_pins.fetch("platforms").fetch(platform)
+      line = %(platforms.#{mise} = { url = "#{pin.fetch('url')}", checksum = "sha256:#{pin.fetch('sha256')}" }\n)
+
+      assert_includes mise_toml, line
+    end
+    day = ruby_pins.dig("platforms", "x64-mingw-ucrt", "url")[/inputs-rubyinstaller-head-(\d{8})/, 1]
+
+    assert_includes mise_toml, %([tools."http:rubyinstaller-head"]\nversion = "#{day}"\nos = ["windows"]\n)
+  end
+
+  # The DLLs the head build needs and does not ship come from the MSYS2
+  # packages a Windows runtime takes them from, in the folder each pin
+  # names, which RUBY_DLL_PATH names too.
+  def test_mise_installs_on_windows_the_packages_of_the_dlls_the_runtimes_add
+    { "libz-1.dll" => "msys2-zlib", "libgcc_s_seh-1.dll" => "msys2-libgcc" }.each do |dll, tool|
+      sources.fetch("windows-dlls").fetch(dll).fetch("platforms").each do |platform, pin|
+        mise = { "x64-mingw-ucrt" => "windows-x64", "aarch64-mingw-ucrt" => "windows-arm64" }.fetch(platform)
+        package = pin.fetch("package")
+        folder = File.dirname(pin.fetch("path"))
+        line = %(platforms.#{mise} = { url = "#{package.fetch('url')}", checksum = "sha256:#{package.fetch('sha256')}", bin_path = "#{folder}" }\n)
+
+        assert_includes mise_toml, line, "#{tool} on #{platform}"
+      end
+    end
+  end
+
+  # CI's Windows jobs read the pin from mise.toml with this script.
+  def test_ruby_pin_reads_the_pin_and_takes_head_on_windows_for_a_preview
+    script = File.join(ROOT, ".github", "scripts", "ruby-pin.sh")
+    { "Linux" => ruby_pins.fetch("version"), "Windows" => "head" }.each do |os, expected|
+      out, status = Open3.capture2({ "RUNNER_OS" => os }, "sh", script, chdir: ROOT)
+
+      assert status.success?, "ruby-pin.sh failed on #{os}"
+      assert_equal "#{expected}\n", out
+    end
+  end
+end

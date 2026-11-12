@@ -66,13 +66,14 @@ jobs:
           install_args: ruby
 
       # The tag's own mise.toml, read as .github/scripts/ruby-pin.sh reads
-      # it, which a tag before that script lacks: RubyInstaller builds no
-      # Ruby preview, so for one Windows takes head.
+      # it, which a tag before that script lacks, in either of the forms
+      # a tag's mise.toml has pinned Ruby in: RubyInstaller builds no Ruby
+      # preview, so for one Windows takes head.
       - name: Read the Ruby pin
         if: runner.os == 'Windows'
         id: pins
         run: |
-          pin=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)
+          pin=$(sed -n -e 's/^ruby = "\(.*\)"$/\1/p' -e 's/^ruby = { version = "\([^"]*\)".*/\1/p' mise.toml)
           case "$pin" in *-*) pin="head" ;; esac
           echo "ruby=$pin" >> "$GITHUB_OUTPUT"
 

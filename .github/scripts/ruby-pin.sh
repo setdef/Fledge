@@ -18,7 +18,7 @@
 
 set -eu
 
-pin=$(sed -n 's/^ruby = "\(.*\)"$/\1/p' mise.toml)
+pin=$(sed -n 's/^ruby = { version = "\([^"]*\)".*/\1/p' mise.toml)
 [ -n "$pin" ] || { echo "ruby-pin.sh: mise.toml pins no Ruby" >&2; exit 1; }
 
 case "${RUNNER_OS:-}:$pin" in

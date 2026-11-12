@@ -401,3 +401,25 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: the release on Ruby 4.0.9 that the quotation above left out, which the orchestrating agent noted when it recorded that one.]
 
 *Governs:* one last Fledge release on Ruby 4.0.9 is made before the first on Ruby 4.1, as long as it does not meaningfully delay the move to 4.1; "now" in the quotation above means as soon as that release and the 4.1 work allow. *Applied in:* release 0.11.0; Plan 003; ADR 056; Plan 003, "1.0".
+
+## 2026-11-12
+
+The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
+
+> Very valuable, let's do it if we can.
+
+[re: the orchestrating agent's account, after the maintainer's public poll listed `.msix` among what Fledge ships to Windows, that the Microsoft Store takes an MSIX package and Microsoft signs it during certification, so a developer who ships through the Store needs no code-signing certificate of their own, where an EXE or MSI installer submitted to the Store must be signed with the developer's own certificate.]
+
+*Governs:* Fledge builds an MSIX package for a Windows app, if it can, so that a developer can ship through the Microsoft Store without a code-signing certificate of their own. *Applied in:* the work to add it.
+
+> Right, Tauri 2 does phones so it must be possible. If that's the case, we should do it.
+
+[re: the orchestrating agent's account that `fledge build` refuses a gem whose extension is written in Rust (rb-sys) for iOS and Android, because nobody has made it work there yet (ADR 022: "rb-sys was not tried"), not because it cannot work.]
+
+*Governs:* gems whose extensions are written in Rust build for iOS and Android, as they do for the desktops. *Applied in:* the work to add it.
+
+> Python and other languages that have Fledge-like tools must solve this somehow; so can we.
+
+[re: the orchestrating agent's account that on a phone `fledge build` compiles a gem's extension only through its `extconf.rb`, so a gem whose gemspec names a Rakefile, CMake, or `configure` directly is refused (ADR 022).]
+
+*Governs:* gems whose extensions build without an `extconf.rb` build for iOS and Android too, as the prior art of other languages' tools does it. *Applied in:* the work to add it.

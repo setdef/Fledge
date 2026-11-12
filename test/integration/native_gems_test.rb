@@ -13,6 +13,12 @@ require_relative "../test_helper"
 # where the app goes (Fledge::Linkage). They are kept in tmp/native-gems
 # between runs.
 #
+# nokogiri's and sqlite3's builds hold extensions for Rubies up to 4.0.
+# Their Linux and macOS files name no Ruby, so each is judged; their
+# Windows files each name their Ruby's DLL, which a runtime of Ruby 4.1
+# never loads, so none is. libusb's Windows builds need no Ruby at all,
+# so they fit Ruby 4.1 and are judged.
+#
 # nokogiri's builds for macOS and Windows compile GNU libiconv in
 # statically (nokogiri's LICENSE-DEPENDENCIES.md at 1.19.4). Fledge
 # refused them for it until the maintainer ruled, on 2026-10-28, that the
@@ -30,8 +36,8 @@ class NativeGemsTest < Minitest::Test
     "sqlite3-2.10.2-x64-mingw-ucrt" => "7fe1bf1adfca4fffeaec27371e0a20c1162d9d985681ec9560971a44fc41d198",
     "sqlite3-2.10.2-x86_64-linux-gnu" => "ca92731ab464df9cae503fa1a439a549e2724f6953c8c05a7769b59366e38f15",
     "sqlite3-2.10.2-aarch64-linux-gnu" => "e9aea2c2b3476fc875dd8a89313a9a2862818519c0186bfb5b56d6f57bb08d98",
-    "ratatui_ruby-1.5.2-arm64-darwin" => "4f61e09ec6a81c5cc557b9b17fd78a4f99974017562c7275bee06a49af3f5cf6",
-    "ratatui_ruby-1.5.2-x64-mingw-ucrt" => "e3279373e2cc02435a4e3a9ecfd9c72f1cf300019d946f67504f7fabbad46612",
+    "libusb-0.8.0-x64-mingw-ucrt" => "216ad4b95bc2cf9446c8c49ccb8b1ed92af2069caf2888cbb4a1f7792a1ba7ef",
+    "libusb-0.8.0-aarch64-mingw-ucrt" => "727af569f7764c9ab2ac9f76cd43b2469373f0d73243bffcef4e505f8a4046fe",
   }.freeze
 
   def contents(full_name)
@@ -51,7 +57,7 @@ class NativeGemsTest < Minitest::Test
 
   # What a runtime ships beside Ruby's own DLL on Windows, which a gem's
   # extension may load (runtime/licenses.yml).
-  WINDOWS = %w[x64-ucrt-ruby400.dll libwinpthread-1.dll].freeze
+  WINDOWS = %w[x64-ucrt-ruby410.dll libwinpthread-1.dll].freeze
 
   def os_of(full_name)
     case full_name
@@ -77,13 +83,29 @@ class NativeGemsTest < Minitest::Test
     end
   end
 
-  # ratatui_ruby's precompiled builds are Rust extensions built for each
-  # Ruby from 3.2 to 4.0 (lib/ratatui_ruby/RUBY/); those for older Rubies
-  # on Windows need those Rubies' DLLs, which the runtime's Ruby never
-  # loads, and the one for Ruby 4.0 loads what the runtime ships.
-  def test_ratatui_rubys_builds_ship
-    assert_empty problems("ratatui_ruby-1.5.2-arm64-darwin", os: "darwin")
-    assert_empty problems("ratatui_ruby-1.5.2-x64-mingw-ucrt", os: "windows", provided: WINDOWS)
+  # libusb's Windows builds carry libusb-1.0.dll, which ffi loads and
+  # which needs no Ruby, so they fit Ruby 4.1, and examples/native_app
+  # ships the x64 one. Every file in them is judged, and each needs only
+  # what Windows provides.
+  def test_libusbs_windows_builds_ship_and_need_nothing_from_the_runtime
+    GEMS.keys.grep(/\Alibusb-/).each do |gem|
+      assert_empty problems(gem, os: "windows"), gem
+    end
+  end
+
+  # sqlite3's Windows build holds one extension for each Ruby from 3.2 to
+  # 4.0 (lib/sqlite3/RUBY/), each naming its Ruby's DLL, and those for 3.2
+  # to 3.4 also need MinGW's libwinpthread-1.dll. A runtime of Ruby 4.1
+  # loads none of them, so none is judged; a runtime of Ruby 3.4 that
+  # carried no libwinpthread-1.dll would load the one for 3.4, which could
+  # not find it.
+  def test_a_windows_build_is_judged_only_for_the_runtimes_own_ruby
+    assert_empty problems("sqlite3-2.10.2-x64-mingw-ucrt", os: "windows", provided: WINDOWS)
+
+    found = problems("sqlite3-2.10.2-x64-mingw-ucrt", os: "windows", provided: %w[x64-ucrt-ruby340.dll])
+
+    assert_equal 1, found.size, found.inspect
+    assert_match %r{lib/sqlite3/3\.4/sqlite3_native\.so needs libwinpthread-1\.dll}, found.first
   end
 
   # The check reads the real files: each Ruby's build of nokogiri for

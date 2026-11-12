@@ -70,7 +70,7 @@
  * Ruby finds its standard library on its own. rv-ruby builds Ruby with
  * --enable-load-relative, so ruby_init_loadpath derives the install
  * prefix at run time from the file that holds libruby (ruby.c lines 593
- * to 737 at Ruby 4.1.0-preview1). Here that file is this program, so the
+ * to 743 at Ruby 4.1.0-preview1). Here that file is this program, so the
  * prefix is the folder this program sits in, and Ruby looks for
  * ROOT/lib/ruby/4.1.0+5 as rv-ruby's own bin/ruby does. One wrinkle:
  * when that folder is named bin (in any case) or lib, ruby.c takes its

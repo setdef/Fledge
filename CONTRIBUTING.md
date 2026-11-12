@@ -20,4 +20,6 @@ Start with [AGENTS.md](AGENTS.md), which is binding, then read:
 - [`doc/contributors/adr/`](doc/contributors/adr): the decisions behind each behavior.
 - [`doc/contributors/documentation_style.md`](doc/contributors/documentation_style.md): how to write the documents.
 
+Install [mise](https://mise.jdx.dev/) and run `bin/setup`. It installs the tools `mise.toml` pins, each by version, and the gems the `Gemfile.lock` locks. Fledge runs on the Ruby its runtimes come from: on macOS and Linux, the Ruby release `runtime/sources.yml` names, from jdx/ruby's builds; on Windows, until RubyInstaller builds that release, the very archive of RubyInstaller's head build the Windows runtimes are built from, which mise downloads from Fledge's `inputs-rubyinstaller-head-*` pre-release and checks against the SHA-256 that `runtime/sources.yml` pins, with the two MSYS2 DLLs that build needs and lacks, pinned the same way. On Windows, run `bin/setup` from a bash, such as Git's or MSYS2's; a gem that compiles C needs MSYS2 with its UCRT64 compiler, as with any RubyInstaller Ruby, which RubyInstaller finds through `MSYS2_PATH`, in `C:\msys64`, or by MSYS2's own installer.
+
 Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it must pass with zero errors and zero warnings.

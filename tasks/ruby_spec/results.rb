@@ -43,7 +43,10 @@ class RubySpec
     # default formatter numbers each failure ("1)"), then prints its
     # description ending in FAILED or ERROR, after "An exception occurred
     # during: HOOK" for an error in a hook, then the message and
-    # backtrace, until the next number or "Finished in".
+    # backtrace, until the next number or "Finished in". A spec file that
+    # fails to load is one line, "An exception occurred during: loading
+    # PATH ERROR", named here by PATH inside ruby/spec, since stock Ruby
+    # and the app load ruby/spec from different folders.
     def self.read(directory, output)
       lines = output.b.gsub("\r\n", "\n").lines
       failures = {}
@@ -51,13 +54,21 @@ class RubySpec
         next unless line.match?(/\A\d+\)\n\z/)
 
         at = index + 1
-        at += 1 if lines[at].to_s.start_with?("An exception occurred during:")
-        description = lines[at].to_s.chomp[/\A(.*) (?:FAILED|ERROR)\z/, 1] or next
+        description = loading(directory, lines[at].to_s.chomp)
+        at += 1 if description.nil? && lines[at].to_s.start_with?("An exception occurred during:")
+        description ||= lines[at].to_s.chomp[/\A(.*) (?:FAILED|ERROR)\z/, 1] or next
         detail = lines.drop(at + 1).take_while { |rest| !rest.match?(/\A(?:\d+\)|Finished in )/) }.join
         failures["#{directory}: #{description.dup.force_encoding(Encoding::UTF_8).scrub}"] = detail
       end
       totals = lines.grep(/\A\d+ files?, \d+ examples?, /).last&.chomp
       Run.new(directory:, failures:, totals:)
+    end
+
+    # "loading PATH", with PATH from where ruby/spec's +directory+ begins,
+    # when +line+ reports a spec file that failed to load, or nil.
+    def self.loading(directory, line)
+      path = line[/\AAn exception occurred during: loading (.+) ERROR\z/, 1] or return
+      "loading #{path[%r{/spec/(#{Regexp.escape(directory)}/.+)\z}, 1] || path}"
     end
 
     # The differences between the +stock+ and +app+ runs, Arrays of Run

@@ -13,8 +13,9 @@ require_relative "../tasks/ruby_spec"
 # itself (tasks/ruby_spec.rb) on real runtimes.
 class RubySpecTest < Minitest::Test
   # What mspec-run's default formatter prints, with an error whose
-  # description follows "An exception occurred during:", and Windows'
-  # line endings.
+  # description follows "An exception occurred during:", a spec file
+  # that failed to load, which MSpec names on that line itself, and
+  # Windows' line endings.
   OUTPUT = <<~OUT.gsub("\n", "\r\n")
     ruby 4.0.9 (2026-10-23 revision 3e93b23afc) +PRISM [x86_64-linux]
     ..F.E
@@ -30,9 +31,13 @@ class RubySpecTest < Minitest::Test
     mkmf can be required with --enable-frozen-string-literal ERROR
     RuntimeError: boom
 
+    3)
+    An exception occurred during: loading D:/work/reference/ruby_spec/spec/core/zlib/adler32_spec.rb ERROR
+    LoadError: 126: The specified module could not be found.   - D:/ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/zlib.so
+
     Finished in 1.234 seconds
 
-    2 files, 5 examples, 7 expectations, 1 failure, 1 error, 0 tagged
+    3 files, 5 examples, 7 expectations, 1 failure, 2 errors, 0 tagged
   OUT
 
   def test_a_report_lists_each_failure_and_error_and_its_totals
@@ -41,9 +46,21 @@ class RubySpecTest < Minitest::Test
     assert_equal [
       "core: Encoding.locale_charmap when setting LC_ALL=C returns a value based on the LC_ALL environment variable",
       "core: mkmf can be required with --enable-frozen-string-literal",
+      "core: loading core/zlib/adler32_spec.rb",
     ], result.failures.keys
     assert_includes result.failures.values.first, "Expected \"UTF-8\" == \"US-ASCII\""
-    assert_equal "2 files, 5 examples, 7 expectations, 1 failure, 1 error, 0 tagged", result.totals
+    assert_equal "3 files, 5 examples, 7 expectations, 1 failure, 2 errors, 0 tagged", result.totals
+  end
+
+  # Stock Ruby loads ruby/spec from one folder and the app from another,
+  # so a file that fails to load is named by its path inside ruby/spec,
+  # and the same failure on both sides is no difference.
+  def test_a_spec_file_that_fails_to_load_is_named_by_its_path_inside_ruby_spec
+    app = OUTPUT.sub("D:/work/reference/ruby_spec/spec/", "C:/Users/a/App/app/spec/")
+    name = "core: loading core/zlib/adler32_spec.rb"
+
+    assert_includes RubySpec::Results.read("core", app).failures.keys, name
+    assert_includes RubySpec::Results.read("core", OUTPUT).failures.fetch(name), "LoadError: 126"
   end
 
   def test_a_run_that_stopped_has_no_totals

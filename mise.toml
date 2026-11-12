@@ -2,19 +2,25 @@
 # SPDX-License-Identifier: MIT
 
 # mise finds a precompiled Ruby among jdx/ruby's releases, but not among
-# the ones GitHub marks as prereleases, as jdx/ruby marks 4.1.0-preview1,
-# and then fails (CI sets MISE_RUBY_COMPILE=false) or compiles Ruby for
-# ten minutes. This names jdx/ruby's own asset for each version and
+# the ones GitHub marks as prereleases, as jdx/ruby marks 4.1.0-preview1.
+# precompiled_url names jdx/ruby's own asset for each version and
 # platform, so mise downloads the build it would download for a release.
+# ruby.compile = false makes an install fail when that download does,
+# where mise would otherwise compile Ruby from source, for ten minutes,
+# against whatever libraries the computer has: a Mac's Homebrew gmp and
+# OpenSSL, which jdx/ruby's build (configured --without-gmp, with its
+# own OpenSSL) does not use, and which a program the tests link against
+# that Ruby then needs too. CI sets the same with MISE_RUBY_COMPILE.
 # For a URL it is given, mise checks no artifact attestation, as it does
 # for jdx/ruby's releases, and mise.toml gives jdx/ruby's ruby no
 # checksum option. Only a mise.lock could pin these downloads by
 # SHA-256, and Fledge keeps none: mise updates a lockfile it finds on
 # every install of any tool, on every contributor's computer, and CI's
-# setup would have to install from it too. The setting goes when Fledge
-# moves to Ruby 4.1.0.
+# setup would have to install from it too. precompiled_url goes when
+# Fledge moves to Ruby 4.1.0.
 [settings]
 ruby.precompiled_url = "https://github.com/jdx/ruby/releases/download/{version}/ruby-{version}.{platform}.tar.gz"
+ruby.compile = false
 
 [tools]
 # Fledge runs on the Ruby its runtimes come from (runtime/sources.yml's

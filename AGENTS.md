@@ -64,6 +64,7 @@ Where to look:
 ## Commands
 
 - Run Ruby with `bundle exec ruby`. Run tests with `bundle exec rake test`, and one file or glob with `bundle exec rake test TEST=test/foo_test.rb` (names separated by commas; `N=/pattern/` picks tests by name). Never `ruby -Ilib:test`.
+- An agent's shell runs no hook of `mise activate`, so its `ruby` may not be the one `mise.toml` pins, and Bundler then stops with a stack trace: start every command with `mise x --` (`mise x -- bundle exec rake test`), as CONTRIBUTING.md says.
 - `bundle exec rake` is the gate: RuboCop and REUSE fixes, tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck, RBS checks (no `untyped`, `rbs validate`, signature parity), Steep, and the package check. It must pass with zero errors and zero warnings. Run `bundle exec rake rubocop:autocorrect_all` first to save time.
 - RubyCritic reports a score and a rating for each file and fails nothing. Read its report after a change: no file in `lib/` may be rated F, and when one falls toward it, find the responsibility it took on and give that a class of its own.
 - Approved exceptions live in `rbs_exceptions.rb`; adding one needs a justification that it is impossible otherwise.

@@ -25,6 +25,13 @@ class ContributorToolsTest < Minitest::Test
     assert_includes mise_toml, %(ruby = { version = "#{ruby_pins.fetch('version')}", os = ["linux", "macos"] }\n)
   end
 
+  # A Ruby mise compiles on a contributor's computer links whatever
+  # libraries that computer has, such as Homebrew's gmp, and a program
+  # the tests link against it then needs them too. mise only downloads.
+  def test_mise_never_compiles_ruby
+    assert_match(/^\[settings\]\n(?:.*\n)*?ruby\.compile = false\n/, mise_toml)
+  end
+
   def test_mise_installs_on_windows_the_archive_the_windows_runtimes_are_built_from
     { "windows-x64" => "x64-mingw-ucrt", "windows-arm64" => "aarch64-mingw-ucrt" }.each do |mise, platform|
       pin = ruby_pins.fetch("platforms").fetch(platform)

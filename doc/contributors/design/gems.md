@@ -245,12 +245,12 @@ Two behaviors once given license reasons stand on technical ones: a git gem ship
 
 ## Examples that exercise these rules
 
-CI builds each on every desktop platform it names and runs the result on a fresh runner with no Ruby (`.github/workflows/ci.yml`, the Build and Delivery jobs):
+CI builds each on the desktop platforms named here and runs the result on a fresh runner with no Ruby (`.github/workflows/ci.yml`, the Build and Delivery jobs):
 
-- `examples/my_cool_app`: a gem-shaped app (i18n, which needs concurrent-ruby, and sqlite3, precompiled), compared with `bundle exec ruby exe/my_cool_app` by the parity check.
-- `examples/native_app`: gems compiled from source (redcarpet, bigdecimal for spreadsheet), a git gem with a Rust extension (ferro-idna, from its tag), and ratatui_ruby, precompiled where it has a build and compiled with cargo where it has none.
-- `examples/nokogiri_app`: nokogiri from source with a build option, on macOS and Windows.
-- `examples/real_gems`: a gem through a loopback mirror of RubyGems.org that asks for a login (`.github/scripts/gem-mirror.rb`, named by Bundler's own mirror and credential settings in the example's `.bundle/config`); a path gem with an executable outside the project (`examples/real_gems_shared`); a path gem with a C extension inside it; a git gem with a submodule; and a gem in an optional group the example's `.bundle/config` asks for. CI fails the build unless the mirror served the gems with the login. It runs no `bundle exec` comparison, since Bundler compiles no path gem's extension. Its lockfile was made through the mirror, as a developer behind one would make it, so locking it again needs the mirror.
-- `examples/system_library`: a path gem whose C extension links libpng, listed under `linux: system_libraries` (ADR 030).
+- `examples/my_cool_app`, on every desktop platform but ARM64 Windows: a gem-shaped app (i18n, which needs concurrent-ruby, and sqlite3, whose precompiled builds exclude Ruby 4.1, so it compiles from source), compared with `bundle exec ruby exe/my_cool_app` by the parity check.
+- `examples/native_app`, on macOS, both glibc Linuxes, and x64 Windows: redcarpet, a C gem published only as source; a git gem with a Rust extension (ferro-idna, from its tag); and spreadsheet, with the bigdecimal the runtime's Ruby bundles.
+- `examples/nokogiri_app`, on macOS and x64 Windows: nokogiri from source with a build option.
+- `examples/real_gems`, on macOS, both glibc Linuxes, and x64 Windows: a gem through a loopback mirror of RubyGems.org that asks for a login (`.github/scripts/gem-mirror.rb`, named by Bundler's own mirror and credential settings in the example's `.bundle/config`); a path gem with an executable outside the project (`examples/real_gems_shared`); a path gem with a C extension inside it; a git gem with a submodule; and a gem in an optional group the example's `.bundle/config` asks for. CI fails the build unless the mirror served the gems with the login. It runs no `bundle exec` comparison, since Bundler compiles no path gem's extension. Its lockfile was made through the mirror, as a developer behind one would make it, so locking it again needs the mirror.
+- `examples/system_library`, on both glibc Linuxes: a path gem whose C extension links libpng, listed under `linux: system_libraries` (ADR 030).
 
-The musl and ARM64 Windows builds take no part in the examples that compile, since their CI runners have no C toolchain.
+On musl Linux the only example that compiles a gem is my_cool_app, whose sqlite3 Alpine's build-base compiles. ARM64 Windows builds no example that compiles a gem: sqlite3 publishes no aarch64-mingw-ucrt build, and its source does not configure there.

@@ -129,6 +129,12 @@ jobs:
           install_args: ${{ matrix.mise || 'ruby' }}
           add_shims_to_path: ${{ runner.os != 'Windows' }}
 
+      # What setup-ruby gave a Windows job beyond mise.toml's environment
+      # (TMPDIR above all), so builds see what they saw under it.
+      - name: Give Windows' Ruby the rest of setup-ruby's environment
+        if: runner.os == 'Windows'
+        run: .github/scripts/windows-ruby-env.sh
+
       - name: Compare stock Ruby and the built app
         if: "!endsWith(matrix.platform, '-musl')"
         env:

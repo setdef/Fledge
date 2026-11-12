@@ -99,7 +99,16 @@ os = ["windows"]
 platforms.windows-x64 = { url = "https://github.com/ruby/setup-msys2-gcc/releases/download/v20261112.002116/msys2-ucrt64.7z", checksum = "sha256:2b1b2508f754bfed6e343b7a1f8211646c8df3bb7fb9cb5a42592929f11f1499", bin_path = "ucrt64/bin" }
 platforms.windows-arm64 = { url = "https://github.com/ruby/setup-msys2-gcc/releases/download/v20261112.002116/msys2-clangarm64.7z", checksum = "sha256:8c95e197ce13c53c48a0a3b13c0e73bdd7e7989579e2231b400dd19b559d74e7", bin_path = "clangarm64/bin" }
 
-# Elsewhere mise sets these empty, and only RubyInstaller reads them.
+# On Windows, the rest of what `ridk enable` sets, so a shell has what a
+# RubyInstaller user's has: RI_DEVKIT here, the variables that depend on
+# the architecture in .config/mise/windows-ARCH.env (no file exists for
+# another system, and mise reads none). PATH gets the compiler's folder
+# from the msys2 tool above; MSYS2's own usr/bin, which ridk puts on PATH
+# too, RubyInstaller adds itself whenever it installs a gem, as Fledge's
+# builds do (Fledge::NativeBuild). Elsewhere mise sets the three
+# variables below empty, and only RubyInstaller reads them.
 [env]
+_.file = { path = ".config/mise/{{ os() }}-{{ arch() }}.env", tools = true }
 MSYS2_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }
-RUBY_DLL_PATH ={ value = '{% if os() == "windows" %}{{ tools["http:msys2-zlib"].path }}/{{ arch(x64="ucrt64", arm64="clangarm64") }}/bin{% if arch() == "x64" %};{{ tools["http:msys2-libgcc"].path }}/ucrt64/bin{% endif %}{% endif %}', tools = true }
+RI_DEVKIT = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }
+RUBY_DLL_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2-zlib"].path }}/{{ arch(x64="ucrt64", arm64="clangarm64") }}/bin{% if arch() == "x64" %};{{ tools["http:msys2-libgcc"].path }}/ucrt64/bin{% endif %}{% endif %}', tools = true }

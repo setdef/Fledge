@@ -53,11 +53,14 @@ class CIRunsTest < Minitest::Test
     end
   end
 
+  # A commit inside a batch has no run of its own (ADR 069), so the
+  # message says how a commit gets one.
   def test_refuses_a_commit_with_no_run_on_a_push_to_the_branch
     with_api(runs: [], jobs: {}) do |_, runs|
       error = assert_raises(CIRuns::NotGreen) { runs.green(SHA) }
       assert_includes error.message, SHA
       assert_includes error.message, "no run of ci.yml on a push to trunk"
+      assert_includes error.message, "push it alone, as the head of its push"
     end
   end
 

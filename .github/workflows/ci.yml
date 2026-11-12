@@ -71,9 +71,23 @@ on:
 permissions:
   contents: read
 
+# A push to a branch cancels that branch's run in progress. A push to
+# trunk never does (ADR 069): GitHub keeps one run going and one waiting
+# in a group, and a newer push replaces only the waiting one, so every
+# run that starts finishes, and covers every commit pushed since the
+# run before it started. A red run blames that batch, and a commit
+# inside a batch has no run of its own. A release commit ("chore:
+# release X.Y.Z") and a pin commit ("chore: pin ...") get a group of
+# their own, named for the commit, so their runs start at once and no
+# push replaces them (doc/contributors/design/releases.md, "Runs,
+# batches, and the release commit"). fast.yml judges every push alone.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}${{
+    (startsWith(github.event.head_commit.message, 'chore: release ')
+    || startsWith(github.event.head_commit.message, 'chore: pin '))
+    && format('-{0}', github.sha) || '' }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
 
 defaults:
   run:

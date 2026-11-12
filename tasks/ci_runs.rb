@@ -47,6 +47,12 @@ class CIRuns
   # had been run again (41596806895), and answered 50 at once.
   PER_PAGE = 50
 
+  # Why a pushed commit can have no run, and how to give it one. A run
+  # of ci.yml on trunk covers every commit pushed since the run before it
+  # started, and only its head has a run of its own (ADR 069).
+  NO_RUN = "a commit pushed with others after it, or whose waiting run a newer push replaced, " \
+    "has none of its own; push it alone, as the head of its push, and wait for CI to pass"
+
   # How many times a request is made when GitHub fails on its side (5xx).
   ATTEMPTS = 4
 
@@ -67,7 +73,7 @@ class CIRuns
   # newest run and what is wrong with it when no run is green.
   def green(commit, skipped: true)
     runs = all("actions/workflows/#{WORKFLOW}/runs", "workflow_runs", head_sha: commit, branch: @branch, event: "push")
-    raise NotGreen, "#{commit} has no run of #{WORKFLOW} on a push to #{@branch}: push it there and wait for CI to pass" if runs.empty?
+    raise NotGreen, "#{commit} has no run of #{WORKFLOW} on a push to #{@branch}: #{NO_RUN}" if runs.empty?
 
     runs = runs.sort_by { |run| -run.fetch("id") }
     found = runs.find { |run| problems(run, skipped:).empty? }

@@ -15,6 +15,7 @@ require_relative "../checksum"
 require_relative "../error"
 require_relative "../gem_fetcher"
 require_relative "../git_checkout"
+require_relative "../long_path"
 require_relative "../mobile_extensions"
 require_relative "../mobile_platform"
 require_relative "../mobile_project"
@@ -140,7 +141,7 @@ module Fledge
       private def build(app, platform, out, signing)
         out_dir = out_dir(app, out)
         runtimes = Runtimes.new(env: @env, log: @err)
-        Dir.mktmpdir("fledge-build") do |work|
+        work_folder do |work|
           gems = gems_for(app, runtimes, work)
           runtime = runtimes.archive(platform)
           contents = same_ruby(RuntimeContents.read(runtime), platform)
@@ -182,7 +183,7 @@ module Fledge
 
         runtimes = Runtimes.new(env: @env, log: @err)
         writer = MobileProject.for(phone)
-        Dir.mktmpdir("fledge-build") do |work|
+        work_folder do |work|
           gems = gems_for(app, runtimes, work)
           runtime = runtimes.archive(phone)
           contents = same_ruby(RuntimeContents.read(runtime, under: writer.ruby_under), phone)
@@ -236,6 +237,16 @@ module Fledge
         fetcher = GemFetcher.new(cache: File.join(cache, "gems"), project: app.root, log: @err)
         checkouts = GitCheckout.new(cache: File.join(cache, "git"), work:, log: @err)
         AppGems.new(app:, bundle: Bundle.new(app), fetcher:, checkouts:, compiler: compiler(runtimes, work))
+      end
+
+      # Makes the build's work folder, where gems compile, in the
+      # computer's temporary folder, yields it, and removes it. Its path
+      # names each folder by its long name (Fledge::LongPath), whatever
+      # +TMP+ says: a gem's build may escape it for a POSIX shell and run
+      # that through cmd.exe, as mini_portile2 does, where an 8.3 name's
+      # escaped tilde names no file (ADR 006).
+      private def work_folder(&)
+        Dir.mktmpdir("fledge-build", LongPath.of(Dir.tmpdir), &)
       end
 
       private def compiler(runtimes, work)

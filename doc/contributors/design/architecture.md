@@ -106,4 +106,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [066](../adr/066.md) | Keep Every Platform on One Ruby 4.1 Release at a Time |
 | [067](../adr/067.md) | On a phone, a bundled gem's extension keeps every symbol but its Init function to itself |
 | [068](../adr/068.md) | On a phone, a bundled gem's linked extension is found only while its gem is active |
-| [071](../adr/071.md) | Trunk's Full CI Runs Are Never Cancelled, and a Fast Tier Judges Every Push (proposed) |
+| [071](../adr/071.md) | Trunk's Full CI Runs Are Never Cancelled, and a Fast Tier Judges Every Push |

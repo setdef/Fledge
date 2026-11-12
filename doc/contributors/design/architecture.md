@@ -100,3 +100,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [061](../adr/061.md) | The phone runtime does the launcher's work, in C |
 | [062](../adr/062.md) | Leave export compliance to the developer |
 | [063](../adr/063.md) | Run the Bundler the lockfile names, as `bundle exec` does |
+| [064](../adr/064.md) | A Windowed App's Identifier Is the Developer's, and No Default Makes One Up |

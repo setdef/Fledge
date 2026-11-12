@@ -666,7 +666,7 @@ read_config(void)
  * AppUserModelID, before any window opens: the taskbar groups the app's
  * windows under it, and Windows attributes the app's notifications to
  * it, rather than to an identity it derives from the program's path
- * (ADR 008). SetCurrentProcessExplicitAppUserModelID lives in shell32.dll
+ * (ADR 064). SetCurrentProcessExplicitAppUserModelID lives in shell32.dll
  * (shobjidl_core.h), which only such an app loads, from System32, when
  * it starts. A Start menu shortcut with the same System.AppUserModel.ID,
  * which an installer writes, is what lets Windows show the app's toasts;

@@ -259,6 +259,59 @@ jobs:
   # own musl Rubies, with docker run rather than a job container, since
   # GitHub's JavaScript actions cannot run in an Alpine container on an
   # ARM runner (rv-ruby's build-alpine.yml says the same).
+  runtime-musl:
+    name: Runtime (${{ matrix.platform }})
+    needs: changes
+    if: needs.changes.outputs.pins-only != 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux-musl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/downloads
+          key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
+
+      - name: Build the runtime in Alpine
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          export SOURCE_DATE_EPOCH
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e SOURCE_DATE_EPOCH -e PLATFORM "$ALPINE_RUBY" \
+            sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: runtime-${{ matrix.platform }}-logs
+          path: tmp/runtime/${{ matrix.platform }}/logs
+          retention-days: 14
+
+  # The mobile runtimes (ADR 011): CRuby built from its pinned source for
+  # iOS and iPadOS, on a Mac with the pinned Xcode, and for Android, on
+  # Linux with the pinned NDK and Gradle, each audited like every other
+  # runtime. Xcode 26.5 is the newest on macos-26 and the one whose iOS
+  # 26.5 Simulator runtime the image installs; the image's default Xcode
+  # has none (spike/mobile/FINDINGS.txt).
   runtime-mobile:
     name: Runtime (${{ matrix.platform }})
     needs: changes

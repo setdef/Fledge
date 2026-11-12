@@ -99,6 +99,22 @@ class MobileRuntimeTest < Minitest::Test
     assert_equal ios, RuntimeBuilder.new(platform: mobile("ios")).assets(version: "1.2.3")
   end
 
+  # Android's seccomp filter for apps stops a process that calls setgid,
+  # setuid, setregid, setreuid, setresgid, or setgroups, and lets it call
+  # setresuid (bionic, libc/SECCOMP_BLOCKLIST_APP.TXT, at 731631f);
+  # bionic's setegid calls setresgid, its initgroups setgroups, and its
+  # seteuid setresuid. Ruby is told each stopped call is missing, so
+  # Process.egid= raises NotImplementedError rather than ending the app,
+  # and keeps the two the filter allows, so Process.uid= works as on
+  # Linux.
+  def test_android_ruby_calls_nothing_that_sets_an_id_the_seccomp_filter_stops
+    told = RuntimeBuilder::Android::CONFIGURE.filter_map { |option| option[/\Aac_cv_func_(\w+)=no\z/, 1] }
+
+    assert_equal %w[initgroups setegid setgid setgroups setregid setresgid setreuid setuid], told.sort
+    refute_includes told, "setresuid"
+    refute_includes told, "seteuid"
+  end
+
   def test_platform_finds_desktop_and_mobile_runtimes_by_name
     assert_equal Fledge::Platform.find("x86_64-linux"), RuntimeBuilder.platform("x86_64-linux")
     assert_equal "android", RuntimeBuilder.platform("android").name

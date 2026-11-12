@@ -146,9 +146,17 @@ class RubySpec
     Justification.new(
       example: /\Acore: Process\.maxgroups sets the maximum number of gids allowed in the supplemental group access list\z/,
       side: :app, platforms: ANDROID,
-      reason: "The Android runtime's Ruby is configured, as Termux configures it, without setgroups, which Android's " \
-        "seccomp filter for apps forbids (RuntimeBuilder::Android::TERMUX), so Process.maxgroups= raises " \
-        "NotImplementedError, as Ruby does wherever the call is missing.",
+      reason: "The Android runtime's Ruby is configured without setgroups, which Android's seccomp filter for apps " \
+        "forbids (RuntimeBuilder::Android::CONFIGURE), so Process.maxgroups= raises NotImplementedError, as Ruby " \
+        "does wherever the call is missing.",
+    ),
+    Justification.new(
+      example: /\Acore: Process\.egid= (?:raises TypeError if not passed an Integer or String|raises Errno::ERPERM if run by a non superuser trying to set the (?:root group id|group id from group name)|sets the effective group id to its own gid if given the username corresponding to its own gid)\z/,
+      side: :app, platforms: ANDROID,
+      reason: "Android's seccomp filter for apps stops a process that sets any of its group IDs, as setgid, setregid, " \
+        "and setresgid do and bionic's setegid does through setresgid, so the Android runtime's Ruby is configured " \
+        "without them (RuntimeBuilder::Android::CONFIGURE) and Process.egid= raises NotImplementedError, as Ruby " \
+        "does wherever no call sets a group ID, where a desktop sets the group ID or refuses with EPERM.",
     ),
     Justification.new(
       example: /\Acore: Dir\.scan handles character devices\z/,

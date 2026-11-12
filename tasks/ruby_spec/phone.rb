@@ -138,27 +138,6 @@ class RubySpec
         ],
       ),
       Exclusion.new(
-        reason: "Each sets the process's user or group IDs, as most of Process::GID's and Process::UID's examples do, " \
-          "and Android's seccomp filter for apps kills a process that calls setresgid and its kin with SIGSYS, " \
-          "which ends the run; on a desktop, a process may set its IDs to its own.",
-        phones: %w[android],
-        files: %w[
-          core/process/gid
-          core/process/uid
-          core/process/sys/setegid_spec.rb
-          core/process/sys/seteuid_spec.rb
-          core/process/sys/setgid_spec.rb
-          core/process/sys/setregid_spec.rb
-          core/process/sys/setresgid_spec.rb
-          core/process/sys/setresuid_spec.rb
-          core/process/sys/setreuid_spec.rb
-          core/process/sys/setrgid_spec.rb
-          core/process/sys/setruid_spec.rb
-          core/process/sys/setuid_spec.rb
-        ],
-        examples: %w[Process.egid= Process.euid= Process.gid= Process.uid= Process.groups= Process.initgroups],
-      ),
-      Exclusion.new(
         reason: "CRuby sets the name of a thread that has ended with pthread_setname_np, on a pthread_t the C library " \
           "has freed; bionic aborts on it (\"invalid pthread_t passed to pthread_setname_np\"), as musl crashes, " \
           "for which the desktop's comparison leaves the same example out (RubySpec::EXCLUDED).",

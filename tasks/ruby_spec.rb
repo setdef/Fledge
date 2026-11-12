@@ -178,6 +178,26 @@ class RubySpec
         "headers are missing, which a phone's app does not carry: they are for the computer that builds the app " \
         "(doc/contributors/design/phone-runtimes.md, \"Ruby's C headers on a phone\").",
     ),
+    Justification.new(
+      example: /\Acore: (?:Process\.spawn uses the passed env\['PATH'\] to search the executable|Kernel#system executes with `sh` if the command is executable but not binary and there is no shebang)\z/,
+      side: :app, platforms: ANDROID,
+      reason: "Each example writes a script into a temporary folder and runs it, and Android lets an app run no file " \
+        "it writes into its own folders: \"Untrusted apps that target Android 10 cannot invoke execve() directly on " \
+        "files within the app's home directory\" (developer.android.com, Android 10 behavior changes; ADR 069), so " \
+        "execve fails with EACCES, which Process.spawn raises and Kernel#system answers with nil, where Ruby would " \
+        "run the script, or hand one with no shebang to sh. The app's ruby program runs, since the package installer " \
+        "extracts it.",
+    ),
+    Justification.new(
+      example: /\A(?:core: Process\.setproctitle should set the process title|language: Global variable \$0 actually sets the program name)\z/,
+      side: :app, platforms: ANDROID,
+      reason: "An Android app's process is one Android's zygote forks, and its command line, which the examples read " \
+        "from /proc/PID/cmdline, is the zygote's own memory, which Android names for the app. Ruby, a library in " \
+        "that process, sets its title by writing over the argv it was started with (missing/setproctitle.c, which " \
+        "ruby.c line 3259 at 4.1.0-preview1 hands it), and an embedded Ruby's argv is one the host allocates " \
+        "(fledge_ruby_run, runtime/mobile/fledge_ruby.c), not the process's, so the title Ruby sets is not the one " \
+        "the kernel shows. A Ruby the app starts as a program has its own command line.",
+    ),
   ].freeze
 
   attr_reader :platform

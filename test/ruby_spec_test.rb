@@ -185,7 +185,9 @@ class RubySpecTest < Minitest::Test
 
   # mspec-run's arguments load the phones' formatter, leave out each
   # excluded example and file on that phone, and run the desktop's
-  # directories, each exclusion with its reason.
+  # directories, each exclusion with its reason: iOS leaves out
+  # command_line, which starts ruby, and Android, which has a ruby
+  # program, runs it.
   def test_a_phones_arguments_leave_out_what_no_phone_can_run
     %w[ios android].each do |phone|
       arguments = RubySpec::Phone.arguments(phone)
@@ -201,8 +203,9 @@ class RubySpecTest < Minitest::Test
         end
       end
       assert_equal RubySpec::DIRECTORIES, arguments & RubySpec::DIRECTORIES
-      assert_includes arguments, "^command_line"
     end
+    assert_includes RubySpec::Phone.arguments("ios"), "^command_line"
+    refute_includes RubySpec::Phone.arguments("android"), "^command_line"
   end
 
   # The pins are commits of ruby/spec and MSpec, each downloaded from

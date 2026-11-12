@@ -18,7 +18,7 @@ class MobileExtensionsTest < Minitest::Test
   # The folder by its long names, as Dir.glob names what it finds in it
   # (Fledge::LongPath), where Windows' TMP names it by an 8.3 name.
   def setup
-    @dir = Fledge::LongPath.of(Dir.mktmpdir)
+    @dir = Dir.mktmpdir
   end
 
   def teardown

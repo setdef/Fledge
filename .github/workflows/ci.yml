@@ -99,6 +99,7 @@ env:
 
 jobs:
   gate:
+    if: false
     name: Gate
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -246,7 +247,6 @@ jobs:
   # archive go the release assets that describe it: the SBOM, the
   # NOTICES, and the source of its LGPL libraries.
   runtime:
-    if: false
     name: Runtime (${{ matrix.platform }})
     needs: changes
     runs-on: ${{ matrix.os }}
@@ -845,7 +845,6 @@ jobs:
   # platforms, sqlite3 compiles from source on Ruby 4.1, which the limits
   # below leave room for.
   test-windows:
-    if: false
     name: Test (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}

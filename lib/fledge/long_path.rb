@@ -41,11 +41,7 @@ module Fledge
     # The absolute path +path+, with each folder that exists named by its
     # long name.
     def self.of(path)
-      path = File.absolute_path(path)
-      parent = File.dirname(path)
-      return path if parent == path
-
-      File.absolute_path(File.basename(path), of(parent))
+      File.expand_path(path)
     end
   end
 end

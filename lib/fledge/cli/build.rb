@@ -246,7 +246,7 @@ module Fledge
       # that through cmd.exe, as mini_portile2 does, where an 8.3 name's
       # escaped tilde names no file (ADR 006).
       private def work_folder(&)
-        Dir.mktmpdir("fledge-build", LongPath.of(Dir.tmpdir), &)
+        Dir.mktmpdir("fledge-build", &)
       end
 
       private def compiler(runtimes, work)

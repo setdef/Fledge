@@ -20,9 +20,10 @@ require_relative "mobile_extensions/cmake"
 require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
 require_relative "mobile_extensions/rake_build"
+require_relative "mobile_extensions/rust"
 
 module Fledge
-  # Compiles an app's gems' C and C++ extensions for a phone (ADR 022).
+  # Compiles an app's gems' C, C++, and Rust extensions for a phone (ADR 022).
   #
   # A phone's Ruby loads no extension from a file (ADR 011), so
   # each one is compiled to a static archive, linked into the app, and
@@ -42,13 +43,18 @@ module Fledge
   # ones. Fledge::MobileProject::IOS and Fledge::MobileProject::Android
   # link the archives into the app as each system needs. An
   # <tt>extconf.rb</tt> that runs CMake first finds the target's CMake
-  # toolchain file in <tt>CMAKE_TOOLCHAIN_FILE</tt> (CMake, ADR 027).
+  # toolchain file in <tt>CMAKE_TOOLCHAIN_FILE</tt> (CMake, ADR 027). An
+  # <tt>extconf.rb</tt> that writes rb-sys's Makefile instead has Cargo
+  # build a static library for the target (Rust), which keeps the
+  # <tt>Init_</tt> function rb-sys names after the extension. Each
+  # <tt>extconf.rb</tt> finds the gems its gem depends on, such as
+  # rb_sys, on its load path.
   #
   # It compiles for every target of the phone, one after the other: the
   # device and the Simulator slices for iOS, which Xcode builds on a Mac;
   # arm64-v8a and x86_64 for Android, which the NDK builds on a Mac or on
-  # x86-64 Linux. It refuses an extension that mkmf does not build, or that
-  # is Rust, naming the gem and what to do (.problems).
+  # x86-64 Linux. It refuses an extension that no <tt>extconf.rb</tt>
+  # builds, naming the gem and what to do (.problems).
   #
   # Use it once in <tt>fledge build ios</tt> and <tt>fledge build
   # android</tt>, for an app with a gem that has an extension.
@@ -243,8 +249,8 @@ module Fledge
     # Why each of the gem's extensions cannot be compiled for +platform+
     # from +host+, as sentences naming +gem+ and what to do, or none:
     # an extension that something other than an <tt>extconf.rb</tt>
-    # builds (Rake, CMake, configure, Cargo), a Rust one, and, for Android,
-    # a computer the NDK's toolchain does not run on here.
+    # builds (Rake, CMake, configure, Cargo), and, for Android, a
+    # computer the NDK's toolchain does not run on here.
     #
     # === Example
     #
@@ -262,12 +268,6 @@ module Fledge
 
       spec = package.spec
       advice = "Leave it out of the app's #{platform} build (gem \"#{gem.name}\", platforms: [...] in the Gemfile)"
-      if spec.runtime_dependencies.any? { |dependency| dependency.name == "rb_sys" }
-        return [
-"#{gem} is a Rust extension (it depends on rb_sys), and Fledge compiles C and C++ extensions for #{platform}, " \
-  "not Rust ones yet. #{advice}, or use a gem with a C or C++ extension.",
-]
-      end
       other = spec.extensions.reject { |path| File.basename(path) == "extconf.rb" || rake?(path) }
       unless other.empty?
         return [
@@ -369,9 +369,13 @@ module Fledge
     # [work] A folder of the build's own, which the caller removes.
     # [log] Where the compilers' output goes, such as <tt>$stderr</tt>.
     # [env] The environment to start from (default: +ENV+).
-    def initialize(platform:, packages:, build_args:, host:, runtimes:, work:, log:, env: ENV)
+    # [dependencies] The packages of the gems those gems depend on, by
+    #                gem (default: none), whose code an extconf.rb may
+    #                require, as rb-sys's is.
+    def initialize(platform:, packages:, build_args:, host:, runtimes:, work:, log:, env: ENV, dependencies: {})
       @platform = platform
       @packages = packages
+      @dependencies = dependencies
       @build_args = build_args
       @host = host
       @runtimes = runtimes
@@ -380,6 +384,7 @@ module Fledge
       @env = env
       @ruby = nil # : String?
       @rake_build = nil # : RakeBuild?
+      @load_path = nil # : Array[String]?
     end
 
     # Compiles each gem with an extension, for every target of the phone,
@@ -417,6 +422,8 @@ module Fledge
         registrations = found
         [target.name, Linking.target_build(target, reports)]
       end
+      clash = registrations.group_by(&:last).values.find { |pairs| pairs.size > 1 }
+      raise Error, "The extensions #{clash.map(&:first).join(' and ')} both start with #{clash.first.last}, and one app can link only one" if clash
       Built.new(registrations:, targets: builds, ndk:)
     end
 
@@ -478,6 +485,7 @@ module Fledge
         "FLEDGE_HEADERS" => File.join(root, "Headers"),
         "FLEDGE_LIBRUBYARG" => "-L#{root} -lfledgeruby -lz $(MAINLIBS) -framework Security -framework CoreFoundation",
         "CMAKE_TOOLCHAIN_FILE" => toolchain_file(slice, CMake.ios(triple:, sysroot:, cc:, cxx:)),
+        **Rust.ios(slice, triple:, sysroot:),
       }
       Target.new(name: slice, root:, arch_dir:, libdir: root, environment:, abi: nil)
     end
@@ -499,8 +507,15 @@ module Fledge
         "FLEDGE_RANLIB" => File.join(ndk.bin, "llvm-ranlib"),
         "FLEDGE_LIBRUBYARG" => "-L#{libdir} -lfledgeruby",
         "CMAKE_TOOLCHAIN_FILE" => toolchain_file(arch, CMake.android(ndk: ndk.root, abi:, compiler:)),
+        **Rust.android(arch, bin: ndk.bin, cc:, resource: resource_dir(cc, ndk)),
       }
       Target.new(name: arch, root: tree, arch_dir:, libdir:, environment:, abi:)
+    end
+
+    # The resource folder of the NDK's compiler +cc+, which holds the
+    # headers it brings itself (<tt>stdarg.h</tt> and the rest).
+    private def resource_dir(cc, ndk)
+      Command.run(cc, "-print-resource-dir", install: "Install the Android NDK again: #{ndk.root} has no working #{File.basename(cc)}.").strip
     end
 
     # Writes +text+, the CMake toolchain file of the target +name+, into
@@ -543,13 +558,14 @@ module Fledge
     # feature, and its Init function, numbered from +first+.
     private def compile(target, gem, package, args, first)
       root = source_root(package, File.join(@work, target.name, package.spec.full_name))
+      rust = package.spec.runtime_dependencies.any? { |dependency| dependency.name == "rb_sys" }
       reports = [] # : Array[Report]
       package.spec.extensions.each do |extension|
         number = first + reports.size
         if self.class.rake?(extension)
           reports.concat(rake_build.call(target, gem, package.spec, root, extension, args, number))
         else
-          reports << extconf(target, gem, File.dirname(File.join(root, extension)), File.basename(extension), args, number)
+          reports << extconf(target, gem, File.dirname(File.join(root, extension)), File.basename(extension), args, number, rust:)
         end
       end
       reports
@@ -557,20 +573,45 @@ module Fledge
 
     # Compiles the extension an <tt>extconf.rb</tt> in +folder+ builds,
     # with mkmf's <tt>make static</tt>, its Init function renamed
-    # <tt>Init_fledge_NUMBER</tt>.
-    private def extconf(target, gem, folder, extconf, args, number)
+    # <tt>Init_fledge_NUMBER</tt>, or, when its gem depends on rb_sys
+    # (+rust+), with Cargo (Rust::SHIM and #make). The gems its gem
+    # depends on are on its load path (#load_path).
+    private def extconf(target, gem, folder, extconf, args, number, rust:)
       init = "Init_fledge_#{number}"
       report = File.join(folder, "fledge-report.json")
-      env = clean_env.merge(target.environment).merge("FLEDGE_INIT" => init, "FLEDGE_REPORT" => report)
+      env = clean_env.merge(target.environment).merge("FLEDGE_INIT" => init, "FLEDGE_REPORT" => report, **RUST_FILES)
       what = "compiling #{gem}'s extension #{extconf} for #{target.name}"
-      run(env, ruby, "--disable-gems", "-I", target.arch_dir, "-r", shim_path, extconf, *args, chdir: folder, what:)
-      run(env, "make", "static", chdir: folder, what:)
-      describe(JSON.parse(File.read(report)), folder, init, gem, target)
+      includes = [target.arch_dir, *load_path].flat_map { |path| ["-I", path] }
+      shims = rust ? [shim_path, rust_shim_path] : [shim_path]
+      run(env, ruby, "--disable-gems", *includes, *shims.flat_map { |shim| ["-r", shim] }, extconf, *args, chdir: folder, what:)
+      reports = JSON.parse(File.read(report))
+      make(env, reports, folder, gem, target, what:)
+      describe(reports, folder, init, gem, target)
     end
 
     # The builder of extensions a Rakefile builds (RakeBuild).
     private def rake_build
       @rake_build ||= RakeBuild.new(ruby:, work: @work, environment: clean_env, run: method(:run))
+    end
+
+    # The names of the files a Rust extension's build writes in its
+    # folder (Rust::SHIM).
+    RUST_FILES = {
+      "FLEDGE_RUST_NATIVE_LIBS" => Rust::NATIVE_LIBS, "FLEDGE_RUST_LIBRARY" => Rust::LIBRARY, "FLEDGE_RUST_MAKEFILE" => Rust::MAKEFILE
+    }.freeze
+    private_constant :RUST_FILES
+
+    # Runs the Makefile the extconf.rb in +folder+ wrote: <tt>make
+    # static</tt> for mkmf's, which makes the static archive, or for
+    # rb-sys's, the goal that has Cargo make the static library, with the
+    # Makefile's own Cargo arguments, which the shim made from the
+    # developer's RB_SYS_EXTRA_CARGO_ARGS where it is set.
+    private def make(env, reports, folder, gem, target, what:)
+      return run(env, "make", "static", chdir: folder, what:) unless reports.any? { |report| report["rust"] }
+
+      triple = target.environment.fetch("CARGO_BUILD_TARGET")
+      Rust.check(triple, gem: gem.to_s, env:)
+      run(env.merge("RB_SYS_EXTRA_CARGO_ARGS" => nil), "make", "-f", Rust::MAKEFILE, "SOEXT=a", "fledge-rust", chdir: folder, what:)
     end
 
     # What one extension's build came to, from the shim's +reports+ and
@@ -579,6 +620,8 @@ module Fledge
       raise Error, "#{gem}'s extconf.rb called create_makefile #{reports.size} times, and Fledge links one extension for each" if reports.size != 1
 
       report = reports.first
+      return describe_rust(report, folder, gem, target) if report["rust"]
+
       archive = File.join(folder, report.fetch("archive"))
       raise Error, "#{gem}'s extension made no #{File.basename(archive)} for #{target.name}" unless File.file?(archive)
 
@@ -587,6 +630,29 @@ module Fledge
         feature: report.fetch("feature"), init:, archive:, flags: Linking.link_flags(libs, dir: folder),
         cxx: File.read(File.join(folder, "Makefile")).match?(/^ORIG_SRCS = .*\.(?:cc|cpp|cxx|C)(?:\s|$)/) || Linking.cxx_runtime?(libs)
       )
+    end
+
+    # What a Rust extension's build in +folder+ came to: the static
+    # library Cargo made, which keeps the Init function rb-sys names
+    # after the extension, and the native libraries rustc said it needs.
+    private def describe_rust(report, folder, gem, target)
+      named = File.join(folder, Rust::LIBRARY)
+      archive = File.expand_path(File.read(named).strip, folder) if File.file?(named)
+      raise Error, "#{gem}'s Rust extension made no static library for #{target.name}" unless archive && File.file?(archive)
+
+      feature = report.fetch("feature")
+      libs = File.read(File.join(folder, Rust::NATIVE_LIBS))
+      Report.new(feature:, init: "Init_#{File.basename(feature)}", archive:, flags: Rust.link_flags(libs, dir: folder, apple: target.abi.nil?),
+        cxx: Linking.cxx_runtime?(libs))
+    end
+
+    # The folders of the code of the gems the compiled gems depend on,
+    # unpacked once, for each extconf.rb's load path.
+    private def load_path
+      @load_path ||= @dependencies.values.flat_map do |package|
+        root = source_root(package, File.join(@work, "dependencies", package.spec.full_name))
+        package.spec.require_paths.map { |path| File.expand_path(path, root) }
+      end
     end
 
     # The gem's files unpacked into +dir+, and the folder its extension
@@ -624,6 +690,12 @@ module Fledge
     private def shim_path
       path = File.join(@work, "fledge_mobile_mkmf.rb")
       File.write(path, SHIM)
+      path
+    end
+
+    private def rust_shim_path
+      path = File.join(@work, "fledge_mobile_rb_sys.rb")
+      File.write(path, Rust::SHIM)
       path
     end
 

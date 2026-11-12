@@ -196,7 +196,10 @@ class RubySpec
         "that process, sets its title by writing over the argv it was started with (missing/setproctitle.c, which " \
         "ruby.c line 3259 at 4.1.0-preview1 hands it), and an embedded Ruby's argv is one the host allocates " \
         "(fledge_ruby_run, runtime/mobile/fledge_ruby.c), not the process's, so the title Ruby sets is not the one " \
-        "the kernel shows. A Ruby the app starts as a program has its own command line.",
+        "the kernel shows. Android's own android.os.Process.setArgV0 writes the zygote's argument block " \
+        "(AndroidRuntime::setArgv0, core/jni/AndroidRuntime.cpp, lines 328 to 347 at android-14.0.0_r1), but it is " \
+        "hidden from apps that target API 32 or later (@UnsupportedAppUsage(maxTargetSdk = S)). A Ruby the app " \
+        "starts as a program has its own command line, and its $0= shows.",
     ),
   ].freeze
 

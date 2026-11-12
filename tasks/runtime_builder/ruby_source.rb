@@ -30,6 +30,7 @@ class RuntimeBuilder
       thread_pthread_c: "thread_pthread.c",
       thread_c: "thread.c",
       dir_c: "dir.c",
+      setproctitle_c: "missing/setproctitle.c",
     }.freeze
 
     # Applies the edits named in +edits+ (keys of FILES) to the source
@@ -229,6 +230,63 @@ class RuntimeBuilder
         "#if !defined(IFTODT) && defined(DT_UNKNOWN)\n# define IFTODT(mode) (((mode) & 0170000) >> 12)\n#endif\n\\1",
         "dir.c emulates IFTODT where it is missing")
     end
+
+    # $0= and Process.setproctitle write the title over the argv Ruby was
+    # started with (missing/setproctitle.c, setproctitle, lines 193 to 232
+    # at 4.1.0-preview1, given argv by ruby.c, line 3259), where the
+    # kernel reads a process's command line (/proc/PID/cmdline). An
+    # Android app's Ruby is a library in a process the zygote forked, and
+    # its argv is one fledge_ruby_run allocates, so the title went
+    # nowhere the kernel looks. Android names the process by writing the
+    # zygote's own argument area: AndroidRuntime::setArgv0 clears it and
+    # copies the name in, cut to its length (core/jni/AndroidRuntime.cpp,
+    # lines 328 to 347 at android-14.0.0_r1), and hides the call from
+    # apps. The kernel names that area in /proc/self/stat (arg_start and
+    # arg_end, fields 48 and 49, proc(5)), so where argv[0] is not in it,
+    # compat_init_setproctitle's edit points setproctitle there, which
+    # then clears and writes it as setArgv0 does. A ruby program the app
+    # starts has its argv in its own area, and keeps Ruby's way. Neither
+    # renames a thread: setArgv0 names the thread that calls it, Android's
+    # main thread, where Ruby's runs on a thread of its own, and Linux's
+    # Ruby leaves the kernel's name for its process as it was.
+    def self.setproctitle_c(text)
+      found = replace(text, /^(void\ncompat_init_setproctitle\(int argc, char \*argv\[\]\)\n)/,
+        "#{ARGUMENT_AREA}\n\\1", "setproctitle.c defines compat_init_setproctitle")
+      replace(found, %r{^(\talloc_environ\[i\] = environ\[i\] = NULL;\n)(#endif /\* SPT_REUSEARGV \*/\n\}\n)},
+        "\\1#if defined(__ANDROID__)\n\tfledge_use_process_argument_area(argv[0]);\n#endif\n\\2",
+        "compat_init_setproctitle copies environ")
+    end
+
+    # The C before compat_init_setproctitle that finds an Android
+    # process's argument area.
+    ARGUMENT_AREA = <<~C
+      #if ALLOCATE_ENVIRON && defined(__ANDROID__)
+      #include <stdint.h>
+      #include <stdio.h>
+      #include <string.h>
+      /* Fledge: where argv[0] is not in the process's own argument area, as
+         an Android app's Ruby's is not, the title goes into that area, which
+         the kernel names in /proc/self/stat, as Android's setArgv0 puts a
+         process's name there. */
+      static void
+      fledge_use_process_argument_area(const char *argv0)
+      {
+          char stat[2048];
+          unsigned long start, end;
+          FILE *file = fopen("/proc/self/stat", "re");
+          if (file == NULL) return;
+          size_t size = fread(stat, 1, sizeof(stat) - 1, file);
+          fclose(file);
+          stat[size] = 0;
+          char *field = strrchr(stat, ')');
+          for (int number = 3; field != NULL && number <= 48; number++) field = strchr(field + 1, ' ');
+          if (field == NULL || sscanf(field, "%lu %lu", &start, &end) != 2 || end <= start) return;
+          if ((uintptr_t)argv0 >= start && (uintptr_t)argv0 < end) return;
+          argv_start = (char *)start;
+          argv_len = argv_env_len = end - start;
+      }
+      #endif
+    C
 
     # rb_fork_ruby's release of the fork lock after fork, at
     # 4.1.0-preview1.

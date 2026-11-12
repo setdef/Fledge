@@ -47,6 +47,17 @@
  * fledge.cfg names (the launcher's bundler.c; ADR 063), sets ENV as
  * bundle exec would (Bundler::Runtime#setup, set_bundle_environment, at
  * Bundler 4.0.20).
+ *
+ * fledge_ruby_main is the main function of the Android runtime's ruby
+ * program, which RbConfig.ruby names in an app (ADR 069). It is what the
+ * desktop's bin/ruby is (runtime/launcher/ruby_main.c): Ruby's main.c,
+ * with the launcher's locale, and with the app's own program handed to
+ * the app's way of starting, as fledge_relaunch hands it to the launcher
+ * (ADR 026), here fledge_ruby_run_app in the program's own process. It
+ * takes Ruby's arguments as they come, RUBYOPT included, as ruby does,
+ * and leaves $stdout as Ruby sets it: a Ruby the app starts writes to
+ * the standard output the app gives it, by default the app's own, the
+ * log's pipe, and buffers a pipe as ruby does on a desktop.
  */
 
 #include "fledge_ruby.h"
@@ -217,22 +228,25 @@ join(char *path, const char *root, const char *suffix)
     return length >= 0 && length < PATH_MAX ? 0 : -1;
 }
 
-int
-fledge_ruby_run(const char *root, const char *script, int argc, char *const *argv)
+/*
+ * Readies this process for Ruby with its prefix at root: the runtime's
+ * CA certificates, the locale, and the path Ruby derives its prefix
+ * from. Returns 0, or prints why it could not, after caller's name, and
+ * returns FLEDGE_RUBY_SOFTWARE.
+ */
+static int
+prepare(const char *root, const char *caller)
 {
     static char libruby[PATH_MAX];
     static char certificates[PATH_MAX];
-    static char disable_rubyopt[] = "--disable=rubyopt";
-    static char end_of_options[] = "--";
-    static char program[] = "ruby";
 
     if (started) {
-        fputs("fledge_ruby_run: Ruby has already run in this process, and runs only once\n", stderr);
+        fprintf(stderr, "%s: Ruby has already run in this process, and runs only once\n", caller);
         return FLEDGE_RUBY_SOFTWARE;
     }
     started = 1;
     if (join(libruby, root, "/lib/libruby") != 0 || join(certificates, root, "/libexec/cert.pem") != 0) {
-        fputs("fledge_ruby_run: the path to Ruby is too long\n", stderr);
+        fprintf(stderr, "%s: the path to Ruby is too long\n", caller);
         return FLEDGE_RUBY_SOFTWARE;
     }
     if (access(certificates, R_OK) == 0) {
@@ -241,6 +255,18 @@ fledge_ruby_run(const char *root, const char *script, int argc, char *const *arg
     }
     fledge_coerce_locale();
     ruby_embed_libruby_path = libruby;
+    return 0;
+}
+
+int
+fledge_ruby_run(const char *root, const char *script, int argc, char *const *argv)
+{
+    static char disable_rubyopt[] = "--disable=rubyopt";
+    static char end_of_options[] = "--";
+    static char program[] = "ruby";
+
+    if (prepare(root, "fledge_ruby_run") != 0) return FLEDGE_RUBY_SOFTWARE;
+    fledge_ruby_link_program(root);
 
     size_t count = 4 + (size_t)(argc > 0 ? argc : 0);
     char **ruby_argv = calloc(count + 1, sizeof *ruby_argv);
@@ -272,29 +298,29 @@ fledge_ruby_run(const char *root, const char *script, int argc, char *const *arg
 
 /*
  * Reads root/fledge.cfg into config, whose strings point into text, a
- * buffer of size bytes. Returns 0, or prints why it could not and returns
- * the status fledge_ruby_run_app should.
+ * buffer of size bytes. Returns 0, or the status fledge_ruby_run_app
+ * should, after printing why unless quiet is nonzero.
  */
 static int
-read_config(const char *root, char *text, size_t size, struct fledge_config *config)
+read_config(const char *root, char *text, size_t size, struct fledge_config *config, int quiet)
 {
     char path[PATH_MAX];
     const char *problem = NULL;
 
     if (join(path, root, "/" FLEDGE_CONFIG) != 0) {
-        fputs("fledge_ruby_run_app: the path to the app is too long\n", stderr);
+        if (!quiet) fputs("fledge_ruby_run_app: the path to the app is too long\n", stderr);
         return FLEDGE_RUBY_SOFTWARE;
     }
     FILE *file = fopen(path, "rb");
     if (file == NULL) {
-        fprintf(stderr, "fledge_ruby_run_app: this app is incomplete: %s is missing\n", path);
+        if (!quiet) fprintf(stderr, "fledge_ruby_run_app: this app is incomplete: %s is missing\n", path);
         return FLEDGE_RUBY_NO_APP;
     }
     size_t length = fread(text, 1, size - 1, file);
     int unreadable = ferror(file);
     fclose(file);
     if (unreadable || length == size - 1 || memchr(text, '\0', length) != NULL) {
-        fprintf(stderr, "fledge_ruby_run_app: this app is damaged: %s is not a fledge.cfg\n", path);
+        if (!quiet) fprintf(stderr, "fledge_ruby_run_app: this app is damaged: %s is not a fledge.cfg\n", path);
         return FLEDGE_RUBY_SOFTWARE;
     }
     text[length] = '\0';
@@ -303,7 +329,7 @@ read_config(const char *root, char *text, size_t size, struct fledge_config *con
     int parsed = fledge_parse_config(text, NULL, fledge_same_ascii_name, config, &problem);
     if (parsed == FLEDGE_CONFIG_NO_PROGRAM) problem = "has several programs' sections, and a phone's app runs one";
     if (parsed != 0) {
-        fprintf(stderr, "fledge_ruby_run_app: this app is damaged: %s %s\n", path, problem);
+        if (!quiet) fprintf(stderr, "fledge_ruby_run_app: this app is damaged: %s %s\n", path, problem);
         return FLEDGE_RUBY_SOFTWARE;
     }
     return 0;
@@ -318,7 +344,7 @@ fledge_ruby_run_app(const char *root, int argc, char *const *argv)
     struct fledge_config config;
     struct stat status;
 
-    int problem = read_config(root, text, sizeof text, &config);
+    int problem = read_config(root, text, sizeof text, &config, 0);
     if (problem != 0) return problem;
     if (snprintf(script, sizeof script, "%s/app/%s", root, config.entry) >= (int)sizeof script ||
         (config.gemfile != NULL &&
@@ -333,4 +359,65 @@ fledge_ruby_run_app(const char *root, int argc, char *const *argv)
     if (config.gemfile != NULL) bundle_gemfile = gemfile;
     bundle_bundler = config.bundler;
     return fledge_ruby_run(root, script, argc, argv);
+}
+
+/*
+ * SPDX-SnippetBegin
+ * SPDX-License-Identifier: Ruby OR BSD-2-Clause
+ * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
+ * SPDX-SnippetComment: rb_main, from Ruby's main.c (lines 37 to 43) at
+ *   Ruby v4.1.0-preview1 (2d08b5f42f), with the extensions an app links
+ *   registered between ruby_options and ruby_run_node.
+ */
+static int
+run_program(int argc, char **argv)
+{
+    RUBY_INIT_STACK;
+    ruby_init();
+    void *node = ruby_options(argc, argv);
+    register_extensions();
+    return ruby_run_node(node);
+}
+/* SPDX-SnippetEnd */
+
+/*
+ * Whether script, the first argument of the runtime's ruby program, is
+ * the program root/fledge.cfg names, the one the host runs. Files are
+ * compared as the system sees them, by device and inode, as the
+ * desktop's fledge_relaunch compares them (runtime/launcher/relaunch.c),
+ * so a relative path or a link names the same program. An option, a
+ * file that is not the app's program, and an app whose fledge.cfg is
+ * missing or damaged are not.
+ */
+static int
+runs_app(const char *root, const char *script)
+{
+    static char text[4096];
+    char entry_path[PATH_MAX];
+    struct fledge_config config;
+    struct stat given;
+    struct stat entry;
+
+    if (script[0] == '-' || script[0] == '\0' || stat(script, &given) != 0 || !S_ISREG(given.st_mode)) return 0;
+    if (read_config(root, text, sizeof text, &config, 1) != 0) return 0;
+    if (snprintf(entry_path, sizeof entry_path, "%s/app/%s", root, config.entry) >= (int)sizeof entry_path) return 0;
+    return stat(entry_path, &entry) == 0 && entry.st_dev == given.st_dev && entry.st_ino == given.st_ino;
+}
+
+int
+fledge_ruby_main(const char *root, int argc, char **argv)
+{
+    if (argc >= 2 && runs_app(root, argv[1])) return fledge_ruby_run_app(root, argc - 2, argv + 2);
+    if (prepare(root, "ruby") != 0) return FLEDGE_RUBY_SOFTWARE;
+
+    /*
+     * SPDX-SnippetBegin
+     * SPDX-License-Identifier: Ruby OR BSD-2-Clause
+     * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
+     * SPDX-SnippetComment: The end of main, from Ruby's main.c (lines 61
+     *   to 62) at Ruby v4.1.0-preview1 (2d08b5f42f).
+     */
+    ruby_sysinit(&argc, &argv);
+    return ruby_start_main(run_program, argc, argv);
+    /* SPDX-SnippetEnd */
 }

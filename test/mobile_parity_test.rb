@@ -118,23 +118,26 @@ class MobileParityTest < Minitest::Test
     assert_raises(RuntimeError) { MobileParity::Android.build_tools(File.join(Dir.tmpdir, "no-sdk-here")) }
   end
 
-  # zipalign -c -P 16 passes a native library it finds compressed, since
-  # only a stored one needs aligning, so the check reads its verbose
-  # lines for what must be stored: every native library, which Android
-  # maps from the APK, and the asset fledge.zip, which FledgeRuby unpacks.
-  def test_what_zipalign_finds_compressed_that_must_be_stored
+  # zipalign -c -P 16 passes an entry whether it is stored or compressed,
+  # so the check reads its verbose lines for how each entry Android needs
+  # a certain way is packed: the asset fledge.zip stored, which
+  # FledgeRuby unpacks from the APK, and every native library
+  # compressed, which only the package installer's extraction puts where
+  # Android lets an app run its ruby program (ADR 069).
+  def test_what_zipalign_finds_packed_as_android_does_not_take_it
     aligned = <<~ALIGNED
       Verifying alignment of base-master.apk (4)...
             49 AndroidManifest.xml (OK - compressed)
           1332 assets/fledge.zip (OK - compressed)
       30261325 classes.dex (OK - compressed)
          16384 lib/x86_64/libfledgeruby.so (OK)
-      16416768 lib/x86_64/libfledgeext.so (OK - compressed)
+      16416768 lib/x86_64/libfledgerubyexe.so (OK - compressed)
       Verification succesful
     ALIGNED
 
-    assert_equal %w[assets/fledge.zip lib/x86_64/libfledgeext.so], MobileParity::Android.compressed_but_mapped(aligned)
-    assert_empty MobileParity::Android.compressed_but_mapped(aligned.gsub("(OK - compressed)", "(OK)"))
+    assert_equal ["assets/fledge.zip (compressed)", "lib/x86_64/libfledgeruby.so (stored)"], MobileParity::Android.packed_wrongly(aligned)
+    assert_empty MobileParity::Android.packed_wrongly(aligned.sub("fledge.zip (OK - compressed)", "fledge.zip (OK)")
+      .sub("libfledgeruby.so (OK)", "libfledgeruby.so (OK - compressed)"))
   end
 
   # bundletool get-size total prints the smallest and largest download

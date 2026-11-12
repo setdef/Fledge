@@ -165,7 +165,8 @@ components:
   # (runtime/mobile/), compiled with Ruby and what Ruby links into
   # libfledgeruby.a in each slice of the iOS XCFramework, and into
   # libfledgeruby.so for each ABI in the Android AAR, beside the AAR's
-  # Java class and its packaging.
+  # Java class and its packaging, and the Android runtime's ruby program,
+  # libfledgerubyexe.so, which links libfledgeruby.so (ADR 069).
   - id: fledge-embedding
     name: Fledge's embedding API, and the library and packages it is built into
     version: "{fledge_version}"
@@ -175,7 +176,7 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar
+    ships: libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar
     platforms: [ios, android]
     files:
       - FledgeRuby.xcframework/Info.plist
@@ -185,7 +186,8 @@ components:
       - FledgeRuby.aar!{AndroidManifest.xml,classes.jar,R.txt,proguard.txt}
       - FledgeRuby.aar!META-INF/**
       - FledgeRuby.aar!jni/*/libfledgeruby.so
-    binaries: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+      - FledgeRuby.aar!jni/*/libfledgerubyexe.so
+    binaries: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so, FledgeRuby.aar!jni/*/libfledgerubyexe.so]
 
   - id: rust-std
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
@@ -705,10 +707,10 @@ components:
     license: Apache-2.0 WITH LLVM-exception
     kind: program
     download: https://developer.android.com/ndk/downloads
-    ships: compiled into libfledgeruby.so
+    ships: compiled into libfledgeruby.so and the ruby program libfledgerubyexe.so
     platforms: [android]
     embedded:
-      - files: [FledgeRuby.aar!jni/*/libfledgeruby.so]
+      - files: [FledgeRuby.aar!jni/*/libfledgeruby.so, FledgeRuby.aar!jni/*/libfledgerubyexe.so]
 
   - id: libffi-dll
     name: libffi (libffi-8.dll, beside the fiddle gem's extension)

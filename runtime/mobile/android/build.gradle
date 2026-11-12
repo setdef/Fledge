@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT
 //
-// No CMake or ndk-build: the runtime builder links libfledgeruby.so with
-// the NDK itself, and the AAR carries it as it is, unstripped by the
-// plugin (it is stripped already), beside the Java class.
+// No CMake or ndk-build: the runtime builder links libfledgeruby.so and
+// the ruby program, libfledgerubyexe.so, with the NDK itself, and the
+// AAR carries them as they are, unstripped by the plugin (they are
+// stripped already), beside the Java class.
 plugins {
     id 'com.android.library'
 }

@@ -23,6 +23,11 @@ class RuntimeBuilder
       configure_macos_minimum: "configure",
       ruby_c: "ruby.c",
       load_c: "load.c",
+      file_c: "file.c",
+      process_c: "process.c",
+      thread_pthread_c: "thread_pthread.c",
+      thread_c: "thread.c",
+      dir_c: "dir.c",
     }.freeze
 
     # Applies the edits named in +edits+ (keys of FILES) to the source
@@ -120,6 +125,129 @@ class RuntimeBuilder
       replace(gated, /^static int\nsearch_required\(/, "#{format(GATE, table:)}\nstatic int\nsearch_required(",
         "load.c defines search_required")
     end
+
+    # rb_group_member, which File::Stat#readable?, #writable?,
+    # #executable?, and #grpowned? ask about a file of a group that is
+    # not the process's own (file.c, lines 1834 to 1862 at
+    # 4.1.0-preview1), takes what getgroups(0, NULL) returns for a
+    # count, -1 too, and ALLOCV_N then raises ArgumentError ("malloc:
+    # possible integer overflow"). In an iOS app getgroups fails with
+    # EINVAL: configure builds Ruby on Darwin with _DARWIN_C_SOURCE
+    # (configure.ac, line 1154), which selects Libc's getgroups in place
+    # of the kernel's (unistd.h's getgroups$DARWIN_EXTSN), and that one
+    # looks the process's user up with getpwuid and fails when it finds
+    # none (Libc, sys/getgroups.c, lines 35 to 58 at Libc-1752.120.2), as
+    # an iOS app finds no user for its own user ID. The edit answers that
+    # the process is in no other group, as file.c answers where there is
+    # no getgroups, so the check goes on to the file's permission bits for
+    # others, as it does on a desktop for a group the user is not in.
+    # Ruby's master has the same lines (file.c, lines 1956 to 1958 at
+    # ee74a10ca9).
+    def self.file_c(text)
+      replace(text, /^(    groups = getgroups\(0, NULL\);\n)(    gary = ALLOCV_N\(GETGROUPS_T, v, groups\);\n)/,
+        "\\1    if (groups == -1) return FALSE;\n\\2", "rb_group_member counts the groups with getgroups")
+    end
+
+    # rb_fork_ruby unlocks the fork lock in the child as in the parent,
+    # but on FreeBSD (process.c, lines 4084 to 4095 at 4.1.0-preview1),
+    # then destroys it and initializes it again (thread_pthread.c,
+    # rb_thread_reset_fork_lock, lines 1454 to 1466). The parent's
+    # thread holds it for writing across fork, and bionic's
+    # pthread_rwlock_unlock refuses with EPERM a write lock whose writer
+    # is not the calling thread, by thread ID (libc/bionic/pthread_rwlock.cpp,
+    # lines 487 to 495 at 731631f), while the child's only thread has an
+    # ID of its own, which fork's clone writes into it
+    # (libc/bionic/fork.cpp, lines 36 to 50), so the child stops in
+    # Ruby's [BUG] handler. Had it got past, bionic's
+    # pthread_rwlock_destroy returns EBUSY for a lock that is held (lines
+    # 255 to 262). Ruby's master resets the child's copy without
+    # unlocking it (ruby/ruby e06b9da3f2, [Bug #22445], for macOS's
+    # EBUSY), which these two edits take.
+    def self.process_c(text)
+      replace(text, Regexp.new(Regexp.escape(FORK_UNLOCK)), FORK_RESET, "rb_fork_ruby releases the fork lock in the child but on FreeBSD")
+    end
+
+    def self.thread_pthread_c(text)
+      replace(text, /^(rb_thread_reset_fork_lock\(void\)\n\{\n).*?^\}\n/m, "\\1#{RESET_FORK_LOCK}}\n",
+        "rb_thread_reset_fork_lock destroys and initializes the lock")
+    end
+
+    # Thread#name= names the native thread of a thread that has ended
+    # (thread.c, rb_thread_setname, lines 3977 to 3980 at
+    # 4.1.0-preview1), whose pthread_t the C library has freed with the
+    # thread. bionic looks a pthread_t up among its live threads and,
+    # for an app that targets API level 26 or later, aborts on one it
+    # does not find (libc/bionic/pthread_internal.cpp,
+    # __pthread_internal_find, lines 96 to 125 at 731631f), as
+    # pthread_setname_np does (libc/bionic/pthread_setname_np.cpp, line
+    # 98). Ruby's master names only a thread that has not ended
+    # (ruby/ruby 6fdd452087, [Bug #22471]), which this takes.
+    def self.thread_c(text)
+      replace(text, /^(    if \(threadptr_initialized\(target_th\) && target_th->has_dedicated_nt)\) \{\n/,
+        "\\1 &&\n        target_th->status != THREAD_KILLED) {\n", "rb_thread_setname names the native thread")
+    end
+
+    # dir.c reads each entry's type from readdir's d_type only where the
+    # C library defines IFTODT (lines 229 to 233 at 4.1.0-preview1), and
+    # bionic's dirent.h defines DT_UNKNOWN but not IFTODT
+    # (libc/include/dirent.h at 731631f), so Ruby on Android stats every
+    # entry a glob reads. That stat is glob_helper's one call that gives
+    # fstatat, relative to a base: Dir's descriptor, the entry's path
+    # with the base's own path before it (line 3127), where its call for
+    # a symbolic link takes the path relative to the base (at_subpath,
+    # line 3135), so a Dir opened by a relative path found nothing. glibc
+    # defines IFTODT (dirent/dirent.h), and Linux's Ruby takes each
+    # entry's type from d_type and makes that stat only for an entry of
+    # type DT_UNKNOWN. This defines IFTODT as glibc does, so Android's
+    # Ruby reads entries as Linux's does.
+    def self.dir_c(text)
+      replace(text, /^(#if defined\(IFTODT\) && defined\(DT_UNKNOWN\)\n)/,
+        "#if !defined(IFTODT) && defined(DT_UNKNOWN)\n# define IFTODT(mode) (((mode) & 0170000) >> 12)\n#endif\n\\1",
+        "dir.c emulates IFTODT where it is missing")
+    end
+
+    # rb_fork_ruby's release of the fork lock after fork, at
+    # 4.1.0-preview1.
+    FORK_UNLOCK = <<~C
+              if (
+      #if defined(__FreeBSD__)
+                  pid != 0 &&
+      #endif
+                  true) {
+                  rb_thread_release_fork_lock();
+              }
+              if (pid == 0) {
+                  rb_thread_reset_fork_lock();
+              }
+    C
+
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-License-Identifier: Ruby OR BSD-2-Clause
+    # SPDX-SnippetCopyrightText: Douglas Eichelberger
+    # SPDX-SnippetComment: From ruby/ruby e06b9da3f20455ba4cff99a7821f013b7bdde5de,
+    #   "Reset the fork lock in the child without unlocking it" (process.c,
+    #   release_fork_lock_after_fork, and thread_pthread.c,
+    #   rb_thread_reset_fork_lock).
+    #++
+    FORK_RESET = <<~C.gsub(/^/, " " * 8)
+      if (pid == 0) {
+          rb_thread_reset_fork_lock();
+      }
+      else {
+          rb_thread_release_fork_lock();
+      }
+    C
+
+    RESET_FORK_LOCK = <<~C.gsub(/^/, " " * 4)
+      // On macOS the child's copy still counts a thread waiting for this lock
+      // at fork: unlocking it leaves kernel state that later waiters hang on,
+      // and destroying or initializing it fails with EBUSY.
+      rb_thread_fork_rw_lock = (pthread_rwlock_t)PTHREAD_RWLOCK_INITIALIZER;
+    C
+    #--
+    # SPDX-SnippetEnd
+    #++
 
     # The gate's C, before search_required; %<table>s is each gem's
     # extension feature with its gem's full name.

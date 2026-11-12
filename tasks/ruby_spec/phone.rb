@@ -114,11 +114,10 @@ class RubySpec
         ],
       ),
       Exclusion.new(
-        reason: "Each forks a child that goes on running Ruby, and no phone lets an app's Ruby do that: Apple's sandbox " \
-          "denies fork on a device (doc/contributors/design/phone-projects.md, \"Parity on a phone\"), and on Android, " \
-          "whose app process has the runtime's threads, the child stops in Ruby's [BUG] handler " \
-          "(pthread_rwlock_unlock: EPERM), which ends the run. Starting another program does not fork Ruby, and runs.",
-        phones: nil,
+        reason: "Each forks a child that goes on running Ruby, which iOS lets no app's Ruby do: Apple's sandbox denies " \
+          "fork on a device (doc/contributors/design/phone-projects.md, \"Parity on a phone\"). Starting another " \
+          "program does not fork Ruby, and runs. Android lets an app fork, and runs these.",
+        phones: %w[ios],
         files: %w[
           core/kernel/fork_spec.rb
           core/process/_fork_spec.rb
@@ -138,15 +137,10 @@ class RubySpec
         ],
       ),
       Exclusion.new(
-        reason: "CRuby sets the name of a thread that has ended with pthread_setname_np, on a pthread_t the C library " \
-          "has freed; bionic aborts on it (\"invalid pthread_t passed to pthread_setname_np\"), as musl crashes, " \
-          "for which the desktop's comparison leaves the same example out (RubySpec::EXCLUDED).",
-        phones: %w[android], files: [],
-        examples: ["Thread#to_s returns a description including a thread name if given any"],
-      ),
-      Exclusion.new(
-        reason: "Android's fdsan stops the process when Dir.for_fd opens a descriptor a Dir already owns (bionic's " \
-          "fdsan, fatal for apps that target API 29 or later), where Linux's C library lets it; MSpec's run would end there.",
+        reason: "The example gives one descriptor to two Dirs, Dir.for_fd's over Dir.open's, and closes it twice, " \
+          "which Android's fdsan exists to stop: bionic's fdopendir tags the descriptor as its DIR's, and finding it " \
+          "already another DIR's, aborts the process (libc/bionic/dirent.cpp, lines 69 to 99, and fdsan.cpp, lines " \
+          "299 to 330 and 111 to 114, fatal by default, at 731631f), where glibc lets it; MSpec's run would end there.",
         phones: %w[android], files: [],
         examples: ["Dir#close raises an error if the file descriptor is closed with another Dir instance"],
       ),

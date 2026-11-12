@@ -78,8 +78,14 @@ Then each system packs what it built. iOS merges every archive Ruby's build made
 | `configure` | Android | the generated `configure` stops appending `-android` twice, so the platform is `aarch64-linux-android`, not `aarch64-linux-android-android` | Termux's guard |
 | `ruby_c` | both | `ruby.c` gains `ruby_embed_libruby_path`, through which an embedder names the file Ruby would otherwise find with `dladdr` and derive its prefix from (`runtime_libruby_path`, lines 593 to 663 at Ruby 4.1.0-preview1) | Fledge |
 | `load_c` | both | `load.c` finds a bundled gem's linked extension only while its gem is active (see "Bundled gems' extensions") | Fledge |
+| `file_c` | iOS | `rb_group_member` answers that the process is in no other group when `getgroups` fails, where it took the -1 for a count | Fledge; `doc/contributors/drafts/ruby-group-member.md` |
+| `process_c`, `thread_pthread_c` | Android | the child of a fork resets its copy of the fork lock without unlocking it | ruby/ruby e06b9da3f2 |
+| `thread_c` | Android | `Thread#name=` names the native thread only of a thread that has not ended | ruby/ruby 6fdd452087 |
+| `dir_c` | Android | `dir.c` gets the `IFTODT` bionic lacks, so it reads each entry's type from `d_type` as on Linux | Fledge; `doc/contributors/drafts/ruby-glob-base-dir.md` |
 
-The last exists because on Android Ruby's library sits in a folder of native libraries alone, and an iOS app may keep Ruby anywhere in its bundle, so neither prefix is where `dladdr` would point.
+`ruby_c` exists because on Android Ruby's library sits in a folder of native libraries alone, and an iOS app may keep Ruby anywhere in its bundle, so neither prefix is where `dladdr` would point.
+
+The last four mend bugs of CRuby's that a phone's C library brings out and a desktop's does not, each found by ruby/spec on the phones (`doc/contributors/design/parity.md`, "ruby/spec on phones"). In an iOS app `getgroups` fails, since Darwin's looks the process's user up with `getpwuid` and an app finds no user for its own ID (Libc, `sys/getgroups.c`, lines 35 to 58 at Libc-1752.120.2), and `file.c` took the -1 for a count, so `File::Stat#readable?` raised `ArgumentError` for a file of another group. bionic's `pthread_rwlock_unlock` refuses a write lock that another thread ID took (`libc/bionic/pthread_rwlock.cpp`, lines 487 to 495 at 731631f), and a forked child's thread has an ID of its own, so `fork`'s child stopped in Ruby's `[BUG]` handler; Ruby's master has since stopped unlocking there, for macOS, and the edits take its change. bionic aborts on a `pthread_t` of a thread that has ended (`libc/bionic/pthread_internal.cpp`, lines 96 to 125), which `Thread#name=` passed, and Ruby's master has since stopped. bionic's `dirent.h` has `d_type` but no `IFTODT`, so `dir.c` stats every entry a glob reads, and one of those stats takes the entry's path with a `base:` `Dir`'s own path before it, relative to that `Dir`, so a `Dir` opened by a relative path found nothing; Ruby's master has the same lines. Ruby's master's fixes arrive with Ruby 4.1.0, and the edits for them go then.
 
 ## The builtin binary
 

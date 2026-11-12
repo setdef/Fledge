@@ -1,0 +1,3 @@
+---
+BUNDLE_BUILD__FFI: "--disable-system-libffi"
+BUNDLE_BUILD__LIBUSB: "--disable-system-libusb --with-udevlib=none"

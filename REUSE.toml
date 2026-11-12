@@ -9,7 +9,8 @@ SPDX-License-Identifier = "CC0-1.0"
 # place for a header.
 [[annotations]]
 path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock', 'examples/nokogiri_app/Gemfile.lock',
-  'examples/nokogiri_app/.bundle/config', 'examples/mobile_app/Gemfile.lock', 'examples/real_gems/Gemfile.lock',
+  'examples/native_app/.bundle/config', 'examples/nokogiri_app/.bundle/config',
+  'examples/mobile_app/Gemfile.lock', 'examples/real_gems/Gemfile.lock',
   'examples/real_gems/.bundle/config', 'examples/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock',
   'examples/cmake_phone/Gemfile.lock', 'examples/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock',
   'test/fixtures/bundled_with/Gemfile.lock']

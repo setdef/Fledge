@@ -98,15 +98,13 @@ class RuntimeBuilder
     end
 
     # The DLL +name+ from the MSYS2 package +pin+ names, unpacked with
-    # zstd and checked against its own SHA-256.
+    # 7-Zip and checked against its own SHA-256.
     private def unpack_dll(name, pin)
       package = @builder.fetch_pin(pin.fetch("package"))
-      zstd = @builder.which("zstd") or raise "unpacking #{package} needs zstd on PATH"
       unpacked = File.join(@build_dir, "msys2", name)
       FileUtils.rm_rf(unpacked)
       FileUtils.mkdir_p(unpacked)
-      statuses = Open3.pipeline([zstd, "-dcq", package], ["tar", "-xf", "-", "-C", unpacked, pin.fetch("path")])
-      raise "could not unpack #{pin.fetch('path')} from #{package}" unless statuses.all?(&:success?)
+      extract_tar_zst(package, unpacked, pin.fetch("path"))
 
       file = File.join(unpacked, pin.fetch("path"))
       actual = Digest::SHA256.file(file).hexdigest
@@ -117,17 +115,15 @@ class RuntimeBuilder
 
     # llvm-readobj, which fledge build runs on Windows to read what an
     # app's compiled gems import (ADR 013): the one file of LLVM's own
-    # release, which zstd unpacks from its long-window archive, pinned by
+    # release, which 7-Zip unpacks from its long-window archive, pinned by
     # its archive's SHA-256 and its own.
     private def copy_readobj(to)
       pin = @builder.sources.fetch("llvm-readobj")
       archive = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
-      zstd = @builder.which("zstd") or raise "unpacking #{archive} needs zstd on PATH"
       unpacked = File.join(@build_dir, "llvm-readobj")
       FileUtils.rm_rf(unpacked)
       FileUtils.mkdir_p(unpacked)
-      statuses = Open3.pipeline([zstd, "-dcq", "--long=31", archive], ["tar", "-xf", "-", "-C", unpacked, pin.fetch("path")])
-      raise "could not unpack #{pin.fetch('path')} from #{archive}" unless statuses.all?(&:success?)
+      extract_tar_zst(archive, unpacked, pin.fetch("path"))
 
       file = File.join(unpacked, pin.fetch("path"))
       actual = Digest::SHA256.file(file).hexdigest
@@ -280,6 +276,16 @@ class RuntimeBuilder
       else
         raise "unpacking #{archive} needs 7z or bsdtar on PATH"
       end
+    end
+
+    # Unpacks the one +member+ of the Zstandard-compressed tarball
+    # +archive+ into +into+: 7-Zip decompresses it onto tar's input, as
+    # it reads RubyInstaller's archive, so the build needs no zstd
+    # program, which Linux releases of zstd do not ship.
+    private def extract_tar_zst(archive, into, member)
+      seven_zip = @builder.which("7z", "7zz") or raise "unpacking #{archive} needs 7z on PATH"
+      statuses = Open3.pipeline([seven_zip, "x", "-so", "-bd", archive], ["tar", "-xf", "-", "-C", into, member])
+      raise "could not unpack #{member} from #{archive}" unless statuses.all?(&:success?)
     end
 
     private def unpack_toolchain

@@ -188,19 +188,6 @@ class RubySpec
         "run the script, or hand one with no shebang to sh. The app's ruby program runs, since the package installer " \
         "extracts it.",
     ),
-    Justification.new(
-      example: /\A(?:core: Process\.setproctitle should set the process title|language: Global variable \$0 actually sets the program name)\z/,
-      side: :app, platforms: ANDROID,
-      reason: "An Android app's process is one Android's zygote forks, and its command line, which the examples read " \
-        "from /proc/PID/cmdline, is the zygote's own memory, which Android names for the app. Ruby, a library in " \
-        "that process, sets its title by writing over the argv it was started with (missing/setproctitle.c, which " \
-        "ruby.c line 3259 at 4.1.0-preview1 hands it), and an embedded Ruby's argv is one the host allocates " \
-        "(fledge_ruby_run, runtime/mobile/fledge_ruby.c), not the process's, so the title Ruby sets is not the one " \
-        "the kernel shows. Android's own android.os.Process.setArgV0 writes the zygote's argument block " \
-        "(AndroidRuntime::setArgv0, core/jni/AndroidRuntime.cpp, lines 328 to 347 at android-14.0.0_r1), but it is " \
-        "hidden from apps that target API 32 or later (@UnsupportedAppUsage(maxTargetSdk = S)). A Ruby the app " \
-        "starts as a program has its own command line, and its $0= shows.",
-    ),
   ].freeze
 
   attr_reader :platform

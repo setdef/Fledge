@@ -53,7 +53,7 @@ Fledge's launcher, the program an app's developer ships as their own, may never 
 - `gems`: notes on gems whose license texts are not where the audit looks.
 - `reviewed`: text files whose words name a copyleft license, each reviewed by a person, with why it is not copyleft code.
 
-Patterns are `File.fnmatch` globs relative to the tree; `{prefix}`, `{arch}`, `{gem_arch}`, `{so}`, and `{fledge_version}` expand per platform (`LicenseAudit#expand`).
+Patterns are `File.fnmatch` globs relative to the tree; `{prefix}`, `{arch}`, `{gem_arch}`, `{so}`, `{abi}`, and `{fledge_version}` expand per platform (`LicenseAudit#expand`); `{abi}` is the name of the folders Ruby keeps its library and gems in, such as `4.1.0+5`, which the audit reads from the tree (`LicenseAudit#abi`).
 
 ## What the audit reads
 

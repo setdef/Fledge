@@ -54,7 +54,7 @@ Each program builds with warnings as errors (`RuntimeBuilder::WARNINGS`) and und
 |---|---|
 | `launcher.exe` | The console launcher (`runtime/launcher/windows.c`), which loads Ruby's DLL when it runs. |
 | `launcherw.exe` | The same launcher built as a GUI program, for windowed apps (ADR 037). |
-| `ruby\` | RubyInstaller's tree, its shape unchanged (ADR 038): `bin\` with Ruby's DLL (`x64-ucrt-ruby400.dll` or `aarch64-ucrt-ruby400.dll` for Ruby 4.0), `ruby.exe`, `rubyw.exe`, the gems' wrappers, and `ruby_builtin_dlls\`; `include\`; `lib\ruby\`. |
+| `ruby\` | RubyInstaller's tree, its shape unchanged (ADR 038): `bin\` with Ruby's DLL (`x64-ucrt-ruby410.dll` or `aarch64-ucrt-ruby410.dll` for Ruby 4.1), `ruby.exe`, `rubyw.exe`, the gems' wrappers, and `ruby_builtin_dlls\`; `include\`; `lib\ruby\`. Fledge adds two DLLs RubyInstaller leaves out (`windows-dlls` in `runtime/sources.yml`, `RuntimeBuilder::Windows#add_missing_dlls`): `libz-1.dll` in Ruby's architecture folder under `lib\ruby\`, named in `zlib.so`'s assembly manifest, and, on x64, `libgcc_s_seh-1.dll` in `ruby_builtin_dlls\`. |
 | `tools\nsis\`, `tools\rcedit.exe`, `tools\llvm-readobj.exe` | What `fledge build` runs ("The tools folder"). |
 | `notices\` | `NOTICES.txt`, `sbom.spdx.json`, and `sources\`. |
 
@@ -78,7 +78,7 @@ Every input that comes from outside the repository is in `runtime/sources.yml`, 
 
 `test/runtime_builder_test.rb` checks the pins' shape. CI's tools that build runtimes are pinned beside them: the Ubuntu packages and Xcode version in `ci.yml`'s Runtime job, and the Alpine image and packages for musl ("musl Linux's Ruby, built in Alpine").
 
-The Ruby versions pinned today: `ruby`, `mobile.ruby`, and `musl-ruby.ruby` all name the same release, and the musl build runs in the Alpine Ruby image of that version. A move to a new Ruby moves all of them together.
+The Ruby versions pinned today: on macOS and Linux, `ruby`, `mobile.ruby`, and `musl-ruby.ruby` name the same release, 4.1.0-preview1, and the musl build runs in the Alpine Ruby image of that version. On Windows, `ruby` names RubyInstaller's head build of Ruby's main branch instead ("Windows' Ruby until Ruby 4.1.0", below). A move to a new Ruby moves all of them together.
 
 ## Windows' Ruby until Ruby 4.1.0
 
@@ -137,11 +137,11 @@ The parity check's reference on musl is this build's own `bin/ruby` with Fledge'
 Everything a standard Ruby of the pinned version installs that running Ruby code can reach (ADR 039):
 
 - the standard library;
-- every default gem, and every gem `runtime/sources.yml`'s `bundled_gems` lists that the Ruby installs (rv-ruby installs all but win32ole, which only Windows builds);
+- every default gem, and every gem `runtime/sources.yml`'s `bundled_gems` lists that the Ruby installs (rv-ruby installs all but win32ole and win32-registry, which only Windows builds; RubyInstaller all but syslog, which needs a Unix);
 - each gem's executables, its `.gem` in the cache (`gem pristine` and `Gem::Specification#cache_file` read it), its build information, plugins, and C extensions, and the libraries those extensions carry;
 - Ruby's own programs: Fledge's `bin/ruby` on macOS and Linux, and RubyInstaller's `ruby.exe` and `rubyw.exe` and the gems' command-line wrappers (`gem.cmd`, `bundle.bat`, and the rest) on Windows;
-- Ruby's C headers, `include/`, since `require "mkmf"` aborts without `ruby/ruby.h` ("mkmf.rb can't find header files for ruby", `mkmf.rb` at Ruby 4.0.9);
-- on Windows, every DLL, since an extension's manifest may name any of them, and RubyInstaller's own Ruby library in `site_ruby`.
+- Ruby's C headers, `include/`, since `require "mkmf"` aborts without `ruby/ruby.h` ("mkmf.rb can't find header files for ruby", `mkmf.rb` line 253 at Ruby 4.1.0-preview1);
+- on Windows, every DLL, those Fledge adds among them, since an extension's manifest may name any of them, and RubyInstaller's own Ruby library in `site_ruby`.
 
 ## What a runtime prunes, and why nothing reads it
 
@@ -170,7 +170,7 @@ The parity check lists bootsnap and msgpack, which are pruned, among the differe
 
 ## Fledge's RubyGems defaults
 
-Every runtime ships `runtime/rubygems/operating_system.rb` as `lib/ruby/X.Y.0/rubygems/defaults/operating_system.rb` (`RuntimeBuilder#install_rubygems_defaults`), the hook RubyGems loads for whoever packages Ruby (`rubygems.rb` at Ruby 4.0.9). rv-ruby ships none; on Windows it replaces RubyInstaller's. The file's own comments give the reasons. It does two things:
+Every runtime ships `runtime/rubygems/operating_system.rb` as `lib/ruby/X.Y.0/rubygems/defaults/operating_system.rb` (`RuntimeBuilder#install_rubygems_defaults`), the hook RubyGems loads for whoever packages Ruby (`rubygems.rb`, line 1465, at Ruby 4.1.0-preview1). rv-ruby ships none; on Windows it replaces RubyInstaller's. The file's own comments give the reasons. It does two things:
 
 - **The app's gems are the runtime's alone.** `Gem.default_path` is `[Gem.default_dir]`. Left alone, it puts `Gem.user_dir` first whenever the person's home folder exists, so a gem the person installed with their own Ruby of the same minor would shadow the app's, json included.
 - **A bundled gem the Gemfile does not name activates under a frozen bundle.** While `Gem::BUNDLED_GEMS.force_activate` runs (for `binding.irb`, say), and only on its thread, Bundler is told its bundle is not frozen; the temporary bundle is still never locked. The reason, and the frozen `.bundle/config`, are `doc/contributors/design/gems.md`, "binding.irb and force_activate".
@@ -193,7 +193,7 @@ The parity check allows the defaults' trace in `$LOADED_FEATURES` (`Parity::JUST
 
 Each desktop runtime build writes a companion, `fledge-runtime-VERSION-PLATFORM-dev.tar.gz`, with the runtime's own top folder, so it unpacks over the runtime (`RuntimeBuilder::DevCompanion`). It holds the library a gem's extension builds link against, and `DEV-NOTICES.txt`:
 
-- on macOS and Linux, the static libruby (`lib/libruby*-static.a`). A static Ruby's extensions link no libruby (mkmf leaves `LIBRUBYARG` empty unless Ruby is shared, `mkmf.rb` at Ruby 4.0.9), but mkmf links the test programs of `have_func` and the rest against `LIBRUBYARG_STATIC`, so an `extconf.rb` that checks for a function (nokogiri's) fails without it;
+- on macOS and Linux, the static libruby (`lib/libruby*-static.a`). A static Ruby's extensions link no libruby (mkmf leaves `LIBRUBYARG` empty unless Ruby is shared, `mkmf.rb`, lines 2790 and 2804 to 2806, at Ruby 4.1.0-preview1), but mkmf links the test programs of `have_func` and the rest against `LIBRUBYARG_STATIC`, so an `extconf.rb` that checks for a function (nokogiri's) fails without it;
 - on Windows, the import library of Ruby's DLL (`ruby/lib/*.dll.a`);
 - `DEV-NOTICES.txt`, which says what the archive is, then Ruby's license, and beside a static libruby Rust's too, since YJIT compiles in Rust's standard library.
 
@@ -240,7 +240,7 @@ Why these numbers:
 - **No jitter**: one build's downloads run one after another and are no herd, and a fixed wait is what the log can promise.
 - **No setting.** Reading `BUNDLE_RETRY` would tie runtime downloads, which are not Bundler's, to a Bundler setting, and a variable of Fledge's own would be one more name to freeze for a need no one has shown.
 
-`Fledge::Download` starts Net::HTTP with `ignore_eof: false`. By default Net::HTTP reads a body that ends before its `Content-Length` as the whole body (`net/http.rb`, lines 1469 to 1472, net-http 0.9.1 in Ruby 4.0.9), so a connection that broke off mid-download would be a SHA-256 mismatch, which is never retried. With `ignore_eof: false` it raises `EOFError`, which is `Unreachable`. Net::HTTP's own retry of a GET does not "restart in the middle of a download" (lines 2458 to 2475), so it does not cover this.
+`Fledge::Download` starts Net::HTTP with `ignore_eof: false`. By default Net::HTTP reads a body that ends before its `Content-Length` as the whole body (`net/http.rb`, lines 1473 to 1476, net-http 0.10.0 in Ruby 4.1.0-preview1), so a connection that broke off mid-download would be a SHA-256 mismatch, which is never retried. With `ignore_eof: false` it raises `EOFError`, which is `Unreachable`. Net::HTTP's own retry of a GET does not "restart in the middle of a download" (line 2519), so it does not cover this.
 
 CI's download cache (`tasks/download_cache.rb`) tries five times, after 5, 10, 20, and 40 seconds, on the same two errors, since a hosted runner can wait longer than a developer at a terminal. It passes `waits: []` to `Download.save`, so its tries replace the product's rather than multiply them.
 

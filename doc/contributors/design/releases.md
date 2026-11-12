@@ -26,11 +26,11 @@ No release moves an app to a new Ruby minor. Ruby does not follow SemVer, so a n
 
 ## Ruby minors and runtimes
 
-A release carries one runtime of each Ruby minor it supports, for each platform, at one patch, the one `runtime/sources.yml` pins. `fledge build` takes the runtime of the minor of the Ruby running it, and refuses a Ruby whose minor the release has no runtime for, naming both versions (`Fledge::CLI::Build#same_ruby`).
+A release carries one runtime of each Ruby minor it supports, for each platform, at one patch, the one `runtime/sources.yml` pins (on Windows, until RubyInstaller builds the release, the snapshot of Ruby's main branch that ADR 065 keeps and ADR 066 chooses). `fledge build` takes the runtime of the minor of the Ruby running it, and refuses a Ruby whose minor the release has no runtime for, naming both versions (`Fledge::CLI::Build#same_ruby`).
 
 The runtimes' asset names without a Ruby version mean the runtime of the Ruby minor 1.0 ships, for all of 1.x. A 1.x release that adds a second minor names that minor's assets with the reserved `-ruby-X.Y.Z-` part (`doc/contributors/design/public-interface.md`, "Reserved names"). Two minors side by side double the runtimes every CI run and release builds.
 
-Before 1.0, a release may carry a preview of a Ruby minor, and any 0.x release may move it to a later preview or to the minor's final release. 1.0 carries Ruby 4.1, which only a major drops (ADR 056).
+Before 1.0, a release may carry a preview of a Ruby minor, and any 0.x release may move it to a later preview or to the minor's final release; Windows runs RubyInstaller's head build of the day the preview appeared until RubyInstaller builds the release (ADR 065, ADR 066). 1.0 carries Ruby 4.1, which only a major drops (ADR 056).
 
 ## Platform floors
 

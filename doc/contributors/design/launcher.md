@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The Launcher and bin/ruby
 
-This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 003 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 041 the locale; ADR 045 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 026 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.0.9, where the launcher's comments cite them.
+This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 003 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 041 the locale; ADR 045 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 026 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
 
 ## Source files
 
@@ -56,7 +56,7 @@ Each follows a symbolic link someone or a package manager put on `PATH` to the f
 
 The launcher's file name, less `.exe` on Windows, is NAME in its messages and names its section of `fledge.cfg`.
 
-On macOS and Linux, `--enable-load-relative` makes Ruby derive its prefix from the file that holds libruby, which is the launcher, so Ruby looks for `ROOT/lib/ruby/` (`ruby.c`, lines 591 to 735). When that folder is named `bin` in any case, or `lib`, `ruby.c` takes its parent as the prefix instead (lines 710 to 720), so the launcher refuses to run there rather than use a standard library from somewhere else. `argv[0]` stays the pointer `ruby_sysinit` recorded: on Linux `ruby.c` recognizes the program that holds libruby by comparing `dladdr`'s file name with it (line 647), and only then reads `/proc/self/exe`, so a launcher found on `PATH` by its bare name still finds its root.
+On macOS and Linux, `--enable-load-relative` makes Ruby derive its prefix from the file that holds libruby, which is the launcher, so Ruby looks for `ROOT/lib/ruby/` (`ruby.c`, lines 593 to 743). When that folder is named `bin` in any case, or `lib`, `ruby.c` takes its parent as the prefix instead (lines 712 to 722), so the launcher refuses to run there rather than use a standard library from somewhere else. `argv[0]` stays the pointer `ruby_sysinit` recorded: on Linux `ruby.c` recognizes the program that holds libruby by comparing `dladdr`'s file name with it (line 649), and only then reads `/proc/self/exe`, so a launcher found on `PATH` by its bare name still finds its root.
 
 On Linux the launcher loads libxcrypt from `ROOT/lib` through a `DT_RPATH` of `$ORIGIN/lib`, which is searched before `LD_LIBRARY_PATH`, so the computer's libraries cannot stand in for it (`doc/contributors/design/runtimes.md`).
 
@@ -66,7 +66,7 @@ Ruby sees `argv[0]`, then `--disable=rubyopt`, `--`, the absolute path `APP/ENTR
 
 ## Signals and the console
 
-Ruby installs handlers for SIGINT and SIGHUP (`signal.c`, `install_sighandler`), and re-raises the signal with its default action after cleanup (`eval.c`, `rb_ec_cleanup`, and `signal.c`, `ruby_default_signal`, at Ruby 4.0.9). The launcher installs no handler and ignores no signal, so Ctrl-C raises `Interrupt` in the main thread, runs `ensure` clauses and `at_exit` hooks, and ends the app by SIGINT (130 to a shell on macOS and Linux, exit code 3 on Windows); a closed terminal raises `SignalException` for SIGHUP (129). A built app started in the background of a shell script ignores Ctrl-C, as `ruby` does there.
+Ruby installs handlers for SIGINT and SIGHUP (`signal.c`, `install_sighandler`), and re-raises the signal with its default action after cleanup (`eval.c`, `rb_ec_cleanup`, and `signal.c`, `ruby_default_signal`, at Ruby 4.1.0-preview1). The launcher installs no handler and ignores no signal, so Ctrl-C raises `Interrupt` in the main thread, runs `ensure` clauses and `at_exit` hooks, and ends the app by SIGINT (130 to a shell on macOS and Linux, exit code 3 on Windows); a closed terminal raises `SignalException` for SIGHUP (129). A built app started in the background of a shell script ignores Ctrl-C, as `ruby` does there.
 
 On Windows, the C runtime UCRT turns CTRL_C_EVENT into SIGINT and maps no other console event to a signal, and neither Ruby nor the launcher installs a console control handler. Closing a console window ends the app at once, with STATUS_CONTROL_C_EXIT, as it ends `ruby.exe`.
 
@@ -181,7 +181,7 @@ On Windows the launcher calls `setlocale(LC_CTYPE, "")` as `main.c` does, and it
 2. Find its own path (see "Finding itself"), split it into ROOT and the program's name.
 3. `read_config`; then `set_app_user_model_id`.
 4. `scrub_environment`.
-5. `load_ruby`: `LoadLibraryExW(ROOT\ruby\bin\DLL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)`, so the DLL finds its own dependencies in its folder and System32. Past `MAX_PATH`, `LoadLibraryExW` fails with `ERROR_FILENAME_EXCED_RANGE` even in a process aware of long paths, so it tries again with the `\\?\` form (`\\?\UNC\` for a network path). DLL is `FLEDGE_RUBY_DLL`, the name of the tree's Ruby DLL, such as `x64-ucrt-ruby400.dll`, compiled in. It looks up `ruby_sysinit`, `ruby_init_stack`, `ruby_init`, `ruby_options`, `ruby_executable_node`, `rb_eval_string_protect`, and `ruby_run_node` with `GetProcAddress`, typed by Ruby's headers, built with `RUBY_DONT_SUBST` since nothing of Ruby is linked.
+5. `load_ruby`: `LoadLibraryExW(ROOT\ruby\bin\DLL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)`, so the DLL finds its own dependencies in its folder and System32. Past `MAX_PATH`, `LoadLibraryExW` fails with `ERROR_FILENAME_EXCED_RANGE` even in a process aware of long paths, so it tries again with the `\\?\` form (`\\?\UNC\` for a network path). DLL is `FLEDGE_RUBY_DLL`, the name of the tree's Ruby DLL, such as `x64-ucrt-ruby410.dll`, compiled in. It looks up `ruby_sysinit`, `ruby_init_stack`, `ruby_init`, `ruby_options`, `ruby_executable_node`, `rb_eval_string_protect`, and `ruby_run_node` with `GetProcAddress`, typed by Ruby's headers, built with `RUBY_DONT_SUBST` since nothing of Ruby is linked.
 6. `setlocale(LC_CTYPE, "")`, then `ruby_sysinit` with no arguments: on Windows it rebuilds `argv` from `GetCommandLineW` as UTF-8 (`win32/win32.c`, `rb_w32_sysinit`). `wmain` keeps the C runtime from converting the command line to the ANSI code page on the way.
 7. `run_ruby`, a real stack frame below `wmain` whose local variable's address `ruby_init_stack` takes, then the steps of "Hiding and restoring the person's Ruby settings".
 
@@ -200,7 +200,7 @@ Files of the app are opened with `\\?\` paths where they may pass `MAX_PATH`.
 
 ## The app folder in a macOS bundle
 
-In a windowed macOS app the launcher is `NAME.app/Contents/MacOS/NAME`, beside links to `../Resources/app`, `bin`, `fledge.cfg`, `lib`, and `libexec` (`Fledge::MacBundle::LINKED`), and Ruby's prefix is `Contents/Resources`. Ruby resolves links in the main script's path for `__dir__` and keeps the path it was given for `$0` and `__FILE__` (`ruby.c`, lines 2674 to 2685). Run through the link, `$0` would name `Contents/MacOS/app/main.rb` and `__dir__` `Contents/Resources/app`, and `File.dirname(__FILE__) == __dir__` would be false.
+In a windowed macOS app the launcher is `NAME.app/Contents/MacOS/NAME`, beside links to `../Resources/app`, `bin`, `fledge.cfg`, `lib`, and `libexec` (`Fledge::MacBundle::LINKED`), and Ruby's prefix is `Contents/Resources`. Ruby resolves links in the main script's path for `__dir__` and keeps the path it was given for `$0` and `__FILE__` (`ruby.c`, lines 2688 to 2698). Run through the link, `$0` would name `Contents/MacOS/app/main.rb` and `__dir__` `Contents/Resources/app`, and `File.dirname(__FILE__) == __dir__` would be false.
 
 So `find_app_folder` names `ROOT/app` by `realpath` once, and the launcher runs ENTRY there and sets up Bundler with the Gemfile and `.bundle/config` there. In a bundle, `$0`, `__FILE__`, `__dir__`, `RbConfig::CONFIG["prefix"]`, `RbConfig.ruby`, and `BUNDLE_GEMFILE` all name `Contents/Resources`. Everywhere else ROOT is already real and `app` a real folder, so nothing changes. When `app` is missing the path stays `ROOT/app`, for the message.
 
@@ -227,7 +227,7 @@ Then it `execv`s the launcher with `argv[0]` the launcher's path and the argumen
 
 In an app of one program, whose `fledge.cfg` has no sections, the first executable file `bin/ruby` finds in the folder is taken as the launcher; `fledge build` puts no other there. A launcher found and not started exits 70 (see "Messages and exit statuses").
 
-On Windows `RbConfig.ruby` is RubyInstaller's `ruby.exe`, and nothing hands a program back; an app restarts by running `NAME.exe`, which it finds with `GetModuleFileNameW(NULL, ...)`. Windows has no `exec` that keeps the process: Ruby's `exec` there starts the program and waits for it (`process.c`, line 1660, calls `rb_w32_uaspawn` with `P_OVERLAY`, and `win32/win32.c`'s `child_result`, lines 1175 to 1190, waits and exits with the child's status, at Ruby 4.0.9). So a restart through `RbConfig.ruby` there boots with the person's settings, and in a windowed app opens a console and loses the app's AppUserModelID.
+On Windows `RbConfig.ruby` is RubyInstaller's `ruby.exe`, and nothing hands a program back; an app restarts by running `NAME.exe`, which it finds with `GetModuleFileNameW(NULL, ...)`. Windows has no `exec` that keeps the process: Ruby's `exec` there starts the program and waits for it (`process.c`, line 1639, calls `rb_w32_uaspawn` with `P_OVERLAY`, and `win32/win32.c`'s `child_result`, lines 1184 to 1200, waits and exits with the child's status, at Ruby 4.1.0-preview1). So a restart through `RbConfig.ruby` there boots with the person's settings, and in a windowed app opens a console and loses the app's AppUserModelID.
 
 ## System libraries on Linux
 

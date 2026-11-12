@@ -301,7 +301,7 @@ class BuiltAppTest < Minitest::Test
       platforms = %w[aarch64-linux aarch64-linux-musl aarch64-mingw-ucrt arm64-darwin x64-mingw-ucrt x86_64-linux x86_64-linux-musl]
       File.write(File.join(player, "Gemfile.lock"), "PATH\n  remote: vendor/greeter\n  specs:\n    greeter (1.0)\n\n" \
         "GEM\n  remote: https://rubygems.org/\n  specs:\n\nPLATFORMS\n#{platforms.map { |name| "  #{name}\n" }.join}\n" \
-        "DEPENDENCIES\n  greeter!\n\nCHECKSUMS\n  greeter (1.0)\n\nBUNDLED WITH\n  4.0.20\n")
+        "DEPENDENCIES\n  greeter!\n\nCHECKSUMS\n  greeter (1.0)\n\nBUNDLED WITH\n  #{FakeProject.runtime_bundler}\n")
       File.write(File.join(player, "main.rb"), "require \"greeter\"\nputs Greeter.hi(\"the player\")\n")
       File.write(File.join(player, "fledge.yml"), "name: Player\n")
       game = File.join(dir, "game")

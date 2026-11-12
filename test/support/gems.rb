@@ -69,10 +69,12 @@ module FakeProject
   # +gemfile+ adds lines to the Gemfile and +lock_dependencies+ to its
   # DEPENDENCIES; +checksums+ false leaves the CHECKSUMS section out;
   # +bundled_with+ is the Bundler that wrote it, whose checksum the
-  # section has when +bundler+ (a FakeGem::Built bundler) is given.
+  # section has when +bundler+ (a FakeGem::Built bundler) is given; by
+  # default the runtime's own (FakeProject.runtime_bundler), so that a
+  # real runtime ships no other.
   def self.write(directory, name: "my_app", dependencies: {}, locked: [], remote: "https://rubygems.org/",
     platforms: %w[arm64-darwin x64-mingw-ucrt aarch64-mingw-ucrt x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl], gemfile: "", lock_dependencies: [],
-    locked_dependencies: {}, checksums: true, bundled_with: "4.0.20", bundler: nil
+    locked_dependencies: {}, checksums: true, bundled_with: runtime_bundler, bundler: nil
   )
     root = File.join(directory, name)
     FileUtils.mkdir_p([File.join(root, "exe"), File.join(root, "lib")])
@@ -84,6 +86,18 @@ module FakeProject
     File.write(File.join(root, "Gemfile.lock"), lockfile(name, dependencies, locked, remote, platforms, lock_dependencies,
       locked_dependencies, checksums, bundled_with, bundler))
     root
+  end
+
+  # The version of the Bundler the real runtime for this computer ships,
+  # in FLEDGE_RUNTIME_DIR or tmp/runtime, as a lockfile that Bundler
+  # wrote names it; or, with no real runtime, this Ruby's own Bundler.
+  def self.runtime_bundler
+    @runtime_bundler ||= begin
+      runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
+      archive = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.local))
+      gems = File.file?(archive) ? Fledge::RuntimeContents.read(archive).gems : []
+      gems.filter_map { |gem| gem[/\Abundler-(\d[^-]*)\z/, 1] }.first || Bundler::VERSION
+    end
   end
 
   def self.gemspec(name, dependencies)

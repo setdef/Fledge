@@ -63,13 +63,28 @@ module FakeRuntime
 
   # Writes +entries+ under the folder +top+ into the archive +path+, with
   # the computer's tar, as rake runtime packs a runtime, and returns
-  # +path+.
+  # +path+. Each archive is packed once in a test run and copied
+  # wherever it is asked for again, as the same bytes: most tests write
+  # every platform's runtime, and packing each anew took most of their
+  # time.
   def self.pack(path, top, entries)
-    Dir.mktmpdir("fake-runtime") do |stage|
-      folder = File.join(stage, top)
-      FileUtils.mkdir_p(folder)
-      entries.each { |entry| entry.write_into(folder) }
-      Fledge::Archive.pack(folder, to: path)
+    FileUtils.cp(packed(File.basename(path), top, entries), path)
+    path
+  end
+
+  # The archive named +name+ of +entries+ under +top+, packed the first
+  # time it is asked for, into a folder the test run removes at its end.
+  private_class_method def self.packed(name, top, entries)
+    @packed ||= {}
+    @packed[[name, top, entries]] ||= begin
+      @cache ||= Dir.mktmpdir("fake-runtimes").tap { |dir| Minitest.after_run { FileUtils.rm_rf(dir) } }
+      Dir.mktmpdir("fake-runtime") do |stage|
+        folder = File.join(stage, top)
+        FileUtils.mkdir_p(folder)
+        entries.each { |entry| entry.write_into(folder) }
+        FileUtils.mkdir_p(File.join(@cache, @packed.size.to_s))
+        Fledge::Archive.pack(folder, to: File.join(@cache, @packed.size.to_s, name))
+      end
     end
   end
 

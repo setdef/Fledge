@@ -78,7 +78,7 @@ module BuildFromHelpers
         greeter (1.0)
 
       BUNDLED WITH
-        #{FakeProject.runtime_bundler}
+        #{Bundler::VERSION}
     LOCK
     File.write(File.join(root, "fledge.yml"), "name: Player\nversion: \"9.9\"\npublisher: Player Inc.\n#{config}")
     root

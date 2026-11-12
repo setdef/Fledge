@@ -38,6 +38,12 @@ class KeepRubyInstallerHeadTest < Minitest::Test
   BUILT = Time.utc(2026, 12, 2, 2, 11, 44)
   RELEASES = "/repos/setdef/Fledge/releases?per_page=100&page=1"
   HEAD_RELEASE = "/repos/oneclick/rubyinstaller2/releases/tags/rubyinstaller-head"
+  # curl's own configuration, which curl reads from CURL_HOME before
+  # its arguments (curl's manual, "-K, --config"): a person's ~/.curlrc
+  # stays out of the test, and a host that answers 503 is asked again
+  # as the script's --retry 3 says, but within a second, not over the
+  # 1, 2, and 4 seconds curl waits between tries.
+  CURLRC = "retry-max-time = 1\n"
   GH = <<~SH
     #!/bin/sh
     echo "$*" >> "$FAKE_GH_LOG"
@@ -61,8 +67,7 @@ class KeepRubyInstallerHeadTest < Minitest::Test
     skip "the workflow's script runs on Linux, with bash" if Gem.win_platform?
     skip "signing a test build needs gpg" unless system("gpg", "--version", out: File::NULL, err: File::NULL)
     @dir = Dir.mktmpdir
-    @gnupg = gnupg_home
-    @fingerprint = make_key
+    @gnupg, @fingerprint = self.class.signer
     @files = FILES.reject { |name| name.end_with?(".asc") }.to_h { |name| [name, "#{name} built #{BUILT}"] }
     @files.dup.each { |name, bytes| @files["#{name}.asc"] = sign(bytes) }
     @key = gpg("--armor", "--export", @fingerprint)
@@ -75,9 +80,45 @@ class KeepRubyInstallerHeadTest < Minitest::Test
 
   def teardown
     @server&.stop
-    system({ "GNUPGHOME" => @gnupg }, "gpgconf", "--kill", "gpg-agent", out: File::NULL, err: File::NULL) if @gnupg
-    FileUtils.rm_rf(@gnupg) if @gnupg
     FileUtils.rm_rf(@dir) if @dir
+  end
+
+  # The gpg home and the fingerprint of the test key every test signs
+  # with, made once: making a key and starting its gpg-agent take most
+  # of a second, and no test changes either. A test that needs another
+  # key makes one in a home of its own.
+  def self.signer
+    @signer ||= begin
+      home = gnupg_home
+      Minitest.after_run { remove_gnupg_home(home) }
+      [home, make_key(home)]
+    end
+  end
+
+  def self.make_key(home)
+    gpg("--passphrase", "", "--quick-gen-key", "RubyInstaller stand-in <test@example.invalid>", "ed25519", "sign", "never", home:)
+    gpg("--with-colons", "--list-keys", home:)[/^fpr:+(\h{40}):/, 1]
+  end
+
+  # A new home for gpg, directly under /tmp: gpg-agent's socket lives in
+  # it, and macOS refuses a socket path longer than 104 bytes, which a
+  # folder inside Dir.tmpdir's long /var/folders path already exceeds
+  # ("can't connect to the gpg-agent: File name too long").
+  def self.gnupg_home
+    Dir.mktmpdir("gpg", "/tmp").tap { |home| File.chmod(0o700, home) }
+  end
+
+  # Stops the gpg-agent of +home+, then removes it.
+  def self.remove_gnupg_home(home)
+    system({ "GNUPGHOME" => home }, "gpgconf", "--kill", "gpg-agent", out: File::NULL, err: File::NULL)
+    FileUtils.rm_rf(home)
+  end
+
+  def self.gpg(*args, home:)
+    out, err, status = Open3.capture3({ "GNUPGHOME" => home }, "gpg", "--batch", "--pinentry-mode", "loopback", "--quiet", *args)
+    raise "gpg #{args.join(' ')}: #{err}" unless status.success?
+
+    out
   end
 
   def test_nothing_after_preview1_has_appeared
@@ -205,16 +246,15 @@ class KeepRubyInstallerHeadTest < Minitest::Test
 
   def test_a_signature_from_another_key_fails
     @released = %w[4.1.0-preview2]
-    other = gnupg_home
-    @files["rubyinstaller-head-x64.7z.asc"] = sign(@files.fetch("rubyinstaller-head-x64.7z"), home: other, key: make_key(other))
+    other = self.class.gnupg_home
+    @files["rubyinstaller-head-x64.7z.asc"] = sign(@files.fetch("rubyinstaller-head-x64.7z"), home: other, key: self.class.make_key(other))
     out, status = keep
 
     refute_predicate status, :success?, out
     assert_includes out, "rubyinstaller-head-x64.7z is not signed by #{@fingerprint}"
     assert_empty published
   ensure
-    system({ "GNUPGHOME" => other }, "gpgconf", "--kill", "gpg-agent", out: File::NULL, err: File::NULL) if other
-    FileUtils.rm_rf(other) if other
+    self.class.remove_gnupg_home(other) if other
   end
 
   def test_a_key_that_does_not_match_its_pin_fails
@@ -270,6 +310,7 @@ class KeepRubyInstallerHeadTest < Minitest::Test
 
     refute_predicate status, :success?, out
     assert_includes out, "ruby-4.1.0-rc1.tar.gz answered 503"
+    assert_operator @server.requests.count("/pub/ruby/4.1/ruby-4.1.0-rc1.tar.gz"), :>, 1, "curl asks a busy host again"
     assert_empty published
   end
 
@@ -297,6 +338,7 @@ class KeepRubyInstallerHeadTest < Minitest::Test
     FileUtils.mkdir_p([bin, store])
     File.write(File.join(bin, "gh"), GH)
     File.chmod(0o755, File.join(bin, "gh"))
+    File.write(File.join(@dir, ".curlrc"), CURLRC)
     out, status = Open3.capture2e(environment(log, bin).merge(env), "bash", SCRIPT, chdir: @dir)
     @published = File.readlines(log, chomp: true)
     [out, status]
@@ -305,6 +347,11 @@ class KeepRubyInstallerHeadTest < Minitest::Test
   private def environment(log, bin)
     {
       "PATH" => "#{bin}#{File::PATH_SEPARATOR}#{ENV.fetch('PATH')}",
+      "CURL_HOME" => @dir,
+      # The workflow runs the script with no Bundler around it, so its
+      # Ruby loads no bundle, as Bundler's RUBYOPT would have each one
+      # here do, for a tenth of a second each.
+      "RUBYOPT" => nil,
       "KEEP_SOURCES" => sources,
       "KEEP_RUBY_RELEASES_URL" => @server.url("/pub/ruby/4.1"),
       "KEEP_HEAD_URL" => @server.url("/head"),
@@ -357,11 +404,6 @@ class KeepRubyInstallerHeadTest < Minitest::Test
     path
   end
 
-  private def make_key(home = @gnupg)
-    gpg("--passphrase", "", "--quick-gen-key", "RubyInstaller stand-in <test@example.invalid>", "ed25519", "sign", "never", home:)
-    gpg("--with-colons", "--list-keys", home:)[/^fpr:+(\h{40}):/, 1]
-  end
-
   # A real 7-Zip archive laid out as RubyInstaller's, whose Ruby DLL
   # holds a RUBY_DESCRIPTION among other bytes, signed with the test key.
   private def pack_build(seven, arch)
@@ -383,18 +425,5 @@ class KeepRubyInstallerHeadTest < Minitest::Test
     gpg("--armor", "--local-user", key, "--output", "-", "--detach-sign", file, home:)
   end
 
-  # A new home for gpg, directly under /tmp: gpg-agent's socket lives in
-  # it, and macOS refuses a socket path longer than 104 bytes, which a
-  # folder inside Dir.tmpdir's long /var/folders path already exceeds
-  # ("can't connect to the gpg-agent: File name too long").
-  private def gnupg_home
-    Dir.mktmpdir("gpg", "/tmp").tap { |home| File.chmod(0o700, home) }
-  end
-
-  private def gpg(*args, home: @gnupg)
-    out, err, status = Open3.capture3({ "GNUPGHOME" => home }, "gpg", "--batch", "--pinentry-mode", "loopback", "--quiet", *args)
-    raise "gpg #{args.join(' ')}: #{err}" unless status.success?
-
-    out
-  end
+  private def gpg(*, home: @gnupg) = self.class.gpg(*, home:)
 end

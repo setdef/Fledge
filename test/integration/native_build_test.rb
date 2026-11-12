@@ -103,7 +103,7 @@ class NativeBuildTest < Minitest::Test
   def test_a_gem_with_only_its_source_compiles_with_its_build_options_and_runs
     greeter = FakeGem.build(@dir, "greeter", "1.0.0", files: FILES, extensions: ["ext/greeter/extconf.rb"])
     @routes["/gems/#{greeter.file_name}"] = [200, {}, File.binread(greeter.path)]
-    root = FakeProject.write(@dir, dependencies: { "greeter" => ">= 0" }, locked: [greeter], remote: @server.url("/"))
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: { "greeter" => ">= 0" }, locked: [greeter], remote: @server.url("/"))
     program(root)
     FileUtils.mkdir_p(File.join(root, ".bundle"))
     File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_BUILD__GREETER: \"--with-greeting=bonjour\"\n")
@@ -146,7 +146,7 @@ class NativeBuildTest < Minitest::Test
     extconf = "abort \"compiled in \#{Dir.pwd}\" if Dir.pwd.match?(/~\\d/)\n#{EXTCONF}"
     greeter = FakeGem.build(@dir, "greeter", "1.0.0", files: FILES.merge("ext/greeter/extconf.rb" => extconf), extensions: ["ext/greeter/extconf.rb"])
     @routes["/gems/#{greeter.file_name}"] = [200, {}, File.binread(greeter.path)]
-    root = FakeProject.write(@dir, dependencies: { "greeter" => ">= 0" }, locked: [greeter], remote: @server.url("/"))
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: { "greeter" => ">= 0" }, locked: [greeter], remote: @server.url("/"))
     program(root)
 
     status, err = with_tmpdir(short) { build(root) }
@@ -167,7 +167,7 @@ class NativeBuildTest < Minitest::Test
 
   def test_a_git_gem_compiles_where_bundler_keeps_it_and_runs
     repo, revision = FakeRepo.write(@dir, "Greeters", gems: { "greeter" => FILES }, extensions: { "greeter" => ["ext/greeter/extconf.rb"] })
-    root = FakeProject.write(@dir, dependencies: {}, locked: [], remote: @server.url("/"),
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: {}, locked: [], remote: @server.url("/"),
       gemfile: "gem \"greeter\", git: #{repo.inspect}, branch: \"trunk\", glob: \"gems/*/*.gemspec\"\n", lock_dependencies: ["greeter!"])
     lock = File.join(root, "Gemfile.lock")
     text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  greeter (1.0)\n")
@@ -205,7 +205,7 @@ class NativeBuildTest < Minitest::Test
         s.extensions = ["ext/greeter/extconf.rb"]
       end
     GEMSPEC
-    root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "gem \"greeter\", path: #{path.inspect}\n", lock_dependencies: ["greeter!"])
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: {}, locked: [], gemfile: "gem \"greeter\", path: #{path.inspect}\n", lock_dependencies: ["greeter!"])
     lock = File.join(root, "Gemfile.lock")
     text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  greeter (1.0)\n")
     File.write(lock, "PATH\n  remote: #{path}\n  specs:\n    greeter (1.0)\n\n#{text}")
@@ -255,7 +255,7 @@ class NativeBuildTest < Minitest::Test
     cli = FakeGem.build(@dir, "tool", "1.0.0", executables: ["tool-cli"],
       files: { "lib/tool.rb" => "module Tool; def self.name = 'tool'; end\n", "exe/tool-cli" => "#!/usr/bin/env ruby\nrequire 'tool'\nputs \"tool-cli says \#{Tool.name}\"\n" })
     @routes["/gems/#{cli.file_name}"] = [200, {}, File.binread(cli.path)]
-    root = FakeProject.write(@dir, dependencies: { "tool" => ">= 0" }, locked: [cli], remote: @server.url("/"))
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: { "tool" => ">= 0" }, locked: [cli], remote: @server.url("/"))
     File.write(File.join(root, "exe", "my_app"), "puts IO.popen([File.join(Gem.bindir, Gem.win_platform? ? 'tool-cli.bat' : 'tool-cli')], &:read)\n")
 
     status, err = build(root)
@@ -277,7 +277,7 @@ class NativeBuildTest < Minitest::Test
     File.write(File.join(source, "tool.gemspec"), "Gem::Specification.new { |s| s.name = 'tool'; s.version = '1.0'; s.summary = 'x'; " \
       "s.authors = ['x']; s.files = ['exe/tool-cli']; s.bindir = 'exe'; s.executables = ['tool-cli', 'rake'] }\n")
     File.write(File.join(source, "exe", "rake"), "#!/usr/bin/env ruby\nputs 'not the runtime rake'\n")
-    root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "gem \"tool\", path: \"gems/tool\"\n", lock_dependencies: ["tool!"])
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: {}, locked: [], gemfile: "gem \"tool\", path: \"gems/tool\"\n", lock_dependencies: ["tool!"])
     lock = File.join(root, "Gemfile.lock")
     File.write(lock, "PATH\n  remote: gems/tool\n  specs:\n    tool (1.0)\n\n#{File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  tool (1.0)\n")}")
     File.write(File.join(root, "exe", "my_app"), "puts IO.popen([File.join(Gem.bindir, Gem.win_platform? ? 'tool-cli.bat' : 'tool-cli')], &:read)\n")
@@ -294,7 +294,7 @@ class NativeBuildTest < Minitest::Test
   def test_a_git_gems_executables_ship_in_the_runtimes_bin_folder
     files = { "lib/tool.rb" => "", "exe/tool-cli" => "#!/usr/bin/env ruby\nputs 'from a git gem'\n" }
     repo, revision = FakeRepo.write(@dir, "Tools", gems: { "tool" => files }, executables: { "tool" => ["tool-cli"] })
-    root = FakeProject.write(@dir, dependencies: {}, locked: [], remote: @server.url("/"),
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: {}, locked: [], remote: @server.url("/"),
       gemfile: "gem \"tool\", git: #{repo.inspect}, branch: \"trunk\", glob: \"gems/*/*.gemspec\"\n", lock_dependencies: ["tool!"])
     lock = File.join(root, "Gemfile.lock")
     text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  tool (1.0)\n")

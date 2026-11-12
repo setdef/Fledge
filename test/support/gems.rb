@@ -70,11 +70,12 @@ module FakeProject
   # DEPENDENCIES; +checksums+ false leaves the CHECKSUMS section out;
   # +bundled_with+ is the Bundler that wrote it, whose checksum the
   # section has when +bundler+ (a FakeGem::Built bundler) is given; by
-  # default the runtime's own (FakeProject.runtime_bundler), so that a
-  # real runtime ships no other.
+  # default this Ruby's own. A test that builds with a real runtime
+  # passes FakeProject.runtime_bundler, so that the runtime ships no
+  # other.
   def self.write(directory, name: "my_app", dependencies: {}, locked: [], remote: "https://rubygems.org/",
     platforms: %w[arm64-darwin x64-mingw-ucrt aarch64-mingw-ucrt x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl], gemfile: "", lock_dependencies: [],
-    locked_dependencies: {}, checksums: true, bundled_with: runtime_bundler, bundler: nil
+    locked_dependencies: {}, checksums: true, bundled_with: Bundler::VERSION, bundler: nil
   )
     root = File.join(directory, name)
     FileUtils.mkdir_p([File.join(root, "exe"), File.join(root, "lib")])

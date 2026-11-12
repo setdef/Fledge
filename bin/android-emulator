@@ -34,10 +34,15 @@ for candidate in $(seq 5554 2 5682); do
   if free "$candidate" && free $((candidate + 1)); then port=$candidate; break; fi
 done
 [ -n "$port" ] || { echo "no free pair of emulator ports from 5554 to 5683" >&2; exit 69; }
+# adb starts a server of its own on a port no other server holds, never
+# adb's usual 5037, so stopping it at the end leaves alone the server a
+# person's own adb, and the phones it holds, use.
+adb_port=""
 for candidate in $(seq 15037 15137); do
-  if free "$candidate"; then ANDROID_ADB_SERVER_PORT=$candidate; break; fi
+  if free "$candidate"; then adb_port=$candidate; break; fi
 done
-export ANDROID_ADB_SERVER_PORT
+[ -n "$adb_port" ] || { echo "no free port for adb's server from 15037 to 15137" >&2; exit 69; }
+export ANDROID_ADB_SERVER_PORT=$adb_port
 export ANDROID_SERIAL="emulator-$port"
 
 # The AVD, written as avdmanager writes one for a system image with no
@@ -70,7 +75,7 @@ stop() {
   adb emu kill > /dev/null 2>&1 || true
   for _ in $(seq 30); do kill -0 "$emulator" 2>/dev/null || break; sleep 1; done
   kill "$emulator" 2>/dev/null || true
-  adb kill-server > /dev/null 2>&1 || true
+  adb -P "$adb_port" kill-server > /dev/null 2>&1 || true
   rm -f "$log"
 }
 trap stop EXIT

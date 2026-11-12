@@ -116,7 +116,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 21. I don't understand what I'd be deciding here. [re: Windows console code pages and Ctrl-C — agents own this]
 
-*Governs:* console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 003 (the launcher matches `ruby.exe`); the parity check's `chcp 437` run; Plan 002, "Ctrl-C and the console."
+*Governs:* console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 003 (the launcher matches `ruby.exe`, but for the ANSI code page, ADR 070); the parity check's `chcp 437` run; Plan 002, "Ctrl-C and the console."
 
 > 22. I'd like to support Windows on ARM (and Linux on ARM) eventually, but it's not a blocker to continuing to iterate. It may be a blocker to 1.0 though.
 

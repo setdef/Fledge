@@ -15,13 +15,14 @@ A phone's Ruby has the standard library and gems of a desktop's, with one left o
 
 ## Gems with extensions
 
-Fledge compiles a gem's C or C++ extension for the phone and links it into the app: with Xcode on iOS, and with the [Android NDK](https://developer.android.com/ndk) on Android. Set `ANDROID_NDK_ROOT`, or install the NDK in the SDK's `ndk/` folder.
+Fledge compiles a gem's C, C++, or Rust extension for the phone and links it into the app: with Xcode on iOS, and with the [Android NDK](https://developer.android.com/ndk) on Android. Set `ANDROID_NDK_ROOT`, or install the NDK in the SDK's `ndk/` folder.
 
 - Load the extension with `require "name/name"`, not `require_relative`.
 - When an `extconf.rb` runs CMake, Fledge passes a toolchain file for each target in `CMAKE_TOOLCHAIN_FILE`, so CMake builds the library for the phone.
-- Fledge refuses, and names the gem, a Rust extension, and an extension built by Rake, CMake, or configure with no `extconf.rb`.
+- A Rust extension built with [rb-sys](https://github.com/oxidize-rb/rb-sys) needs Rust and Cargo, with Rust's standard library for each of the phone's targets: `rustup target add aarch64-apple-ios aarch64-apple-ios-sim` for iOS, and `rustup target add aarch64-linux-android x86_64-linux-android` for Android. Cargo builds it as a static library for each target. An app has been tested with one Rust extension; two can't share a name.
+- Fledge refuses, and names the gem, an extension built by Rake, CMake, configure, or Cargo with no `extconf.rb`.
 
-For each case, see [`examples/native_phone`](../examples/native_phone) and [`examples/cmake_phone`](../examples/cmake_phone).
+For each case, see [`examples/native_phone`](../examples/native_phone), [`examples/cmake_phone`](../examples/cmake_phone), and [`examples/rust_phone`](../examples/rust_phone).
 
 ## Frameworks that start the app themselves
 

@@ -120,6 +120,75 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_empty marks, "a path gem needs no mark, as on a desktop"
   end
 
+  # examples/rust_phone's gem has a Rust extension, built with rb-sys and
+  # magnus: rb_sys, which its extconf.rb requires, is found among the
+  # app's gems, and Cargo builds a static library for each slice, whose
+  # objects are for iOS and the Simulator, that keeps the Init function
+  # rb-sys names and is registered under the extension's name.
+  def test_fledge_build_ios_links_a_rust_extension_built_for_each_slice
+    runtimes = real_runtimes("ios")
+    rust_targets(%w[aarch64-apple-ios aarch64-apple-ios-sim])
+    project = build_example("ios", "rust_phone", runtimes, "RustPhone-ios")
+
+    unit = File.read(File.join(project, "Host", "fledge_extensions.c"))
+    assert_includes unit, 'fledge_ruby_add_extension("rusty/rusty", Init_rusty)'
+    refute_includes File.read(File.join(project, "project.yml")), "-lc++", "the extension has no C++"
+    platforms = %w[ios-arm64 ios-arm64-simulator].to_h do |slice|
+      library = File.join(project, "FledgeExtensions.xcframework", slice, "libFledgeExtensions.a")
+      assert_includes Open3.capture2("xcrun", "nm", "-g", library, err: File::NULL).first, " T _Init_rusty", slice
+      loads = Open3.capture2("xcrun", "otool", "-l", library, err: File::NULL).first
+      [slice, loads.scan(/^\s*platform (\d+)$/).flatten.uniq]
+    end
+    assert_equal({ "ios-arm64" => ["2"], "ios-arm64-simulator" => ["7"] }, platforms, "LC_BUILD_VERSION's platforms: 2 is iOS, 7 its Simulator")
+  end
+
+  # The same for each Android ABI: libfledgeext.so defines the Init
+  # function, takes Ruby from the runtime's library, and is for the
+  # ABI's processor.
+  def test_fledge_build_android_links_a_rust_extension_built_for_each_abi
+    runtimes = real_runtimes("android")
+    ndk = begin
+      Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local)
+    rescue Fledge::Error => e
+      skip e.message
+    end
+    rust_targets(%w[aarch64-linux-android x86_64-linux-android])
+    project = build_example("android", "rust_phone", runtimes, "RustPhone-android")
+
+    readelf = File.join(ndk.bin, "llvm-readelf")
+    machines = { "arm64-v8a" => "AArch64", "x86_64" => "Advanced Micro Devices X86-64" }.to_h do |abi, machine|
+      library = File.join(project, "src", "main", "jniLibs", abi, "libfledgeext.so")
+      dynamic = Open3.capture2(readelf, "-d", "--dyn-syms", library).first
+      refute_match(/UND\s+Init_rusty/, dynamic, "#{abi}: the extension is linked in")
+      assert_includes dynamic, "Shared library: [libfledgeruby.so]", "#{abi}: Ruby is the runtime's"
+      [abi, Open3.capture2(readelf, "-h", library).first[/Machine:\s+(.+)$/, 1] == machine]
+    end
+    assert_equal({ "arm64-v8a" => true, "x86_64" => true }, machines)
+  end
+
+  # Writes examples/+name+'s project for +phone+ with fledge build, from
+  # the runtimes in +runtimes+, and returns the project's folder, named
+  # +project+.
+  def build_example(phone, name, runtimes, project)
+    out = StringIO.new
+    err = StringIO.new
+    env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache"))
+    status = Fledge::CLI::Build.new(out:, err:, env:).call([phone, "-o", File.join(@dir, "dist"), File.expand_path("../../examples/#{name}", __dir__)])
+
+    assert_equal 0, status, err.string
+    File.join(@dir, "dist", project)
+  end
+
+  # Skips unless this computer's Rust has the standard library of each
+  # of +targets+, as rustup target add installs it.
+  def rust_targets(targets)
+    targets.each do |target|
+      Fledge::MobileExtensions::Rust.check(target, gem: "examples/rust_phone's rusty", env: ENV.to_h)
+    rescue Fledge::Error => e
+      skip e.message
+    end
+  end
+
   def tally_gem
     folder = File.expand_path("../../examples/cmake_phone/gems/tally", __dir__)
     Fledge::PathGem.new(name: "tally", version: "1.0.0", folder:, app_path: "vendor/cache/tally", glob: "{,*,*/*}.gemspec", inside: true)

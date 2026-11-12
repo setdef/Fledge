@@ -60,6 +60,8 @@ module Fledge
     @log: CLI::_Output
     @env: Runtimes::_Env
     @ruby: String?
+    @dependencies: Hash[locked_gem, package]
+    @load_path: Array[String]?
 
     def self.problems: (locked_gem gem, package package, MobilePlatform platform, Platform host) -> Array[String]
 
@@ -67,7 +69,7 @@ module Fledge
 
     private def self.c_string: (String text) -> String
 
-    def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, ?env: Runtimes::_Env) -> void
+    def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, ?env: Runtimes::_Env, ?dependencies: Hash[locked_gem, package]) -> void
 
     def call: (String tree) -> Built
 
@@ -78,6 +80,8 @@ module Fledge
     private def ios_target: (String slice, String root) -> Target
 
     private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
+
+    private def builtins: (String cc, NDK ndk) -> String
 
     private def toolchain_file: (String name, String text) -> String
 
@@ -91,13 +95,23 @@ module Fledge
 
     private def compile: (Target target, locked_gem gem, package package, Array[String] args, Integer first) -> Array[Report]
 
+    RUST_FILES: Hash[String, String]
+
+    private def make: (Hash[String, String?] env, Array[Hash[String, String]] reports, String folder, locked_gem gem, Target target, what: String) -> void
+
     private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target) -> Report
+
+    private def describe_rust: (Hash[String, String] report, String folder, locked_gem gem, Target target) -> Report
+
+    private def load_path: () -> Array[String]
 
     private def source_root: (package package, String dir) -> String
 
     private def ruby: () -> String
 
     private def shim_path: () -> String
+
+    private def rust_shim_path: () -> String
 
     private def clean_env: () -> Hash[String, String?]
 

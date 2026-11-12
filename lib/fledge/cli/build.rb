@@ -223,7 +223,7 @@ module Fledge
         return nil if packages.empty?
 
         MobileExtensions.new(platform: phone, packages:, build_args: gems.extension_build_args, host:, runtimes:,
-          work: File.join(work, "mobile-extensions"), log: @err, env: @env)
+          work: File.join(work, "mobile-extensions"), log: @err, env: @env, dependencies: gems.extension_dependencies)
       end
 
       # The app's gems, for an app with a Gemfile: Fledge keeps the gems it

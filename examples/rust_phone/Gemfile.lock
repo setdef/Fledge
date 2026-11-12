@@ -1,0 +1,31 @@
+PATH
+  remote: gems/rusty
+  specs:
+    rusty (1.0.0)
+      rb_sys (~> 0.9.130)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    rake-compiler-dock (1.12.0)
+    rb_sys (0.9.130)
+      rake-compiler-dock (= 1.12.0)
+
+PLATFORMS
+  aarch64-linux
+  arm64-darwin
+  ruby
+  x64-mingw-ucrt
+  x86_64-linux
+
+DEPENDENCIES
+  rusty!
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  rake-compiler-dock (1.12.0) sha256=f13205c2738f3d2053afcd03491a9e4541b22a59a0bfc53fc8bc883bd8188023
+  rb_sys (0.9.130) sha256=7d486d99c1da02635515deaf9860fc5aea90bb4ab2589b2deec7fdc7d3548615
+  rusty (1.0.0)
+
+BUNDLED WITH
+  4.0.20

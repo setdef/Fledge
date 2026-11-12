@@ -56,13 +56,67 @@ class MobileExtensionsTest < Minitest::Test
     end
   end
 
-  def test_a_rust_extension_through_rb_sys_is_refused_as_rust
+  # An extconf.rb that writes rb-sys's Makefile is compiled for a phone as
+  # any other: Cargo builds a static library (MobileExtensions::Rust).
+  def test_a_rust_extension_through_rb_sys_is_one_fledge_compiles
     gem, package = native_gem(name: "oxide", dependencies: { "rb_sys" => ">= 0" })
 
-    problems = Fledge::MobileExtensions.problems(gem, package, ios, Fledge::Platform.find("arm64-darwin"))
+    assert_empty Fledge::MobileExtensions.problems(gem, package, ios, Fledge::Platform.find("arm64-darwin"))
+    assert_empty Fledge::MobileExtensions.problems(gem, package, android, Fledge::Platform.find("x86_64-linux"))
+  end
 
-    assert_includes problems.first, "oxide 1.0.0 is a Rust extension (it depends on rb_sys)"
-    assert_includes problems.first, "Rust"
+  # Cargo's target for each target of a phone, which the runtime's
+  # targets name by an XCFramework slice or an Android Ruby architecture.
+  def test_each_phone_target_has_rusts_own_target
+    assert_equal %w[aarch64-apple-ios aarch64-apple-ios-sim aarch64-linux-android x86_64-linux-android],
+      %w[ios-arm64 ios-arm64-simulator aarch64-linux-android x86_64-linux-android].map { |name| Fledge::MobileExtensions::Rust.triple(name) }
+    assert_raises(Fledge::Error) { Fledge::MobileExtensions::Rust.triple("arm64-darwin") }
+  end
+
+  # An iOS slice aims Cargo and rustc at Rust's target for it, with the
+  # deployment target of the runtime's triple, bindgen alone at the
+  # slice's SDK, and rb-sys at iOS, the system Rust names.
+  def test_rust_for_an_ios_slice_takes_its_target_deployment_target_and_sdk
+    environment = Fledge::MobileExtensions::Rust.ios("ios-arm64-simulator", triple: "arm64-apple-ios15.0-simulator", sysroot: "/Xcode/Sim.sdk")
+
+    assert_equal({
+      "CARGO_BUILD_TARGET" => "aarch64-apple-ios-sim",
+      "IPHONEOS_DEPLOYMENT_TARGET" => "15.0",
+      "BINDGEN_EXTRA_CLANG_ARGS_aarch64_apple_ios_sim" => "-isysroot /Xcode/Sim.sdk",
+      "FLEDGE_RUST_TARGET_OS" => "ios",
+    }, environment)
+  end
+
+  # An Android ABI gives the cc crate the NDK's compilers for the target
+  # alone, and bindgen the NDK's sysroot, its clang's own headers
+  # (stdarg.h), and the target with the API level the compiler's name
+  # holds, so a build script compiled for this computer keeps this
+  # computer's, and a libclang without headers of its own still parses
+  # Ruby's, as the NDK's headers ask.
+  def test_rust_for_an_android_abi_takes_the_ndks_compilers_for_that_target_alone
+    bin = "/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin"
+    builtins = "/ndk/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/21/include"
+    environment = Fledge::MobileExtensions::Rust.android("x86_64-linux-android", bin:, cc: "#{bin}/x86_64-linux-android26-clang", builtins:)
+
+    assert_equal({
+      "CARGO_BUILD_TARGET" => "x86_64-linux-android",
+      "CC_x86_64_linux_android" => "#{bin}/x86_64-linux-android26-clang",
+      "CXX_x86_64_linux_android" => "#{bin}/x86_64-linux-android26-clang++",
+      "AR_x86_64_linux_android" => "#{bin}/llvm-ar",
+      "BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android" =>
+        "--target=x86_64-linux-android26 --sysroot=/ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot -isystem #{builtins}",
+    }, environment)
+  end
+
+  # Without Rust, or without its standard library for the target, the
+  # build says which target to add, naming the gem.
+  def test_a_missing_rust_says_which_target_to_add
+    error = assert_raises(Fledge::Error) do
+      Fledge::MobileExtensions::Rust.check("aarch64-apple-ios", gem: "oxide 1.0.0", env: { "PATH" => @dir })
+    end
+
+    assert_includes error.message, "oxide 1.0.0 is a Rust extension"
+    assert_includes error.message, "rustup target add aarch64-apple-ios"
   end
 
   def test_android_extensions_are_compiled_on_a_mac_or_linux_not_on_windows

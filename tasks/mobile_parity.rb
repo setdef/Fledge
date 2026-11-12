@@ -110,6 +110,24 @@ class MobileParity
     nil
   end
 
+  # What the block reads of a log, once two reads +interval+ seconds
+  # apart are the same, or after +limit+ seconds. The host logs the
+  # app's status from Ruby's thread while the embedding API's thread may
+  # still be logging what Ruby printed last (MobileParity.report), which
+  # for a long last burst, as MSpec's summary at the end of a run, takes
+  # longer than a moment on a slow emulator.
+  def self.settled(interval: 2, limit: 120)
+    deadline = Time.now + limit
+    last = yield
+    loop do
+      sleep interval
+      current = yield
+      return current if current == last || Time.now > deadline
+
+      last = current
+    end
+  end
+
   # The environment the reference Ruby runs main.rb in: a person's,
   # with a UTF-8 locale, a home folder of its own in +work+, and the
   # caller's PATH, but nothing of the caller's own Ruby, and none of

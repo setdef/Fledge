@@ -27,6 +27,10 @@ class MobileParity
     # How long an app may take, from launch to its status.
     TIMEOUT = 300
 
+    # The platform the Simulator's apps run on, as Parity::JUSTIFIED and
+    # RubySpec::JUSTIFIED name it.
+    TARGET = "arm64-ios-simulator"
+
     # The C functions Apple requires a reason for in an app's privacy
     # manifest, by the category the manifest names them under, from
     # "Describing use of required reason API" (developer.apple.com, read
@@ -81,12 +85,13 @@ class MobileParity
         check_privacy(device, File.join(device, app.name))
       end
       apps = projects.to_h { |app, project| [app, build_app(app, project)] }
-      FAMILIES.map { |family| on_simulator(family, apps) }.all?
+      parity = MobileParity.new(target: TARGET, work: @work, out: @out)
+      FAMILIES.map { |family| on_simulator(family, apps) { |app, entries, device| parity.check(app, entries, device) } }.all?
     end
 
     # The app built from +project+ for the Simulator, unsigned, with
     # xcodebuild, which must warn of nothing.
-    private def build_app(app, project)
+    def build_app(app, project)
       derived = File.join(@work, "derived-#{app.identifier}")
       log = File.join(@work, "xcodebuild-#{app.identifier}-iphonesimulator.log")
       built = system("xcodebuild", "-project", File.join(project, "#{app.name}.xcodeproj"), "-scheme", app.name,
@@ -120,18 +125,19 @@ class MobileParity
         "its privacy manifest names #{needed.keys.join(' and ')}"
     end
 
-    # Runs each app on a new simulator of +family+, and returns whether
-    # all passed.
-    private def on_simulator(family, apps)
+    # Runs each of +apps+, a Hash from App to its built bundle, on a new
+    # simulator of +family+, allowing each +timeout+ seconds, yields
+    # each app, the lines it logged, and the device's name to the block
+    # that checks them, and returns whether every check passed.
+    def on_simulator(family, apps, timeout: TIMEOUT)
       runtime, device_type = newest(family)
       udid = capture("xcrun", "simctl", "create", "fledge-mobile-#{family}", device_type, runtime).strip
       begin
         system("xcrun", "simctl", "bootstatus", udid, "-b", out: File::NULL, exception: true)
         name = "#{family} (#{device_type.split('.').last}, #{runtime.split('.').last})"
-        parity = MobileParity.new(target: "arm64-ios-simulator", work: @work, out: @out)
         apps.map do |app, bundle|
           system("xcrun", "simctl", "install", udid, bundle, exception: true)
-          parity.check(app, launch(udid, app), name)
+          yield app, launch(udid, app, timeout), name
         end.all?
       ensure
         system("xcrun", "simctl", "shutdown", udid, out: File::NULL, err: File::NULL)
@@ -157,26 +163,28 @@ class MobileParity
     end
 
     # Launches +app+ on the booted simulator +udid+, and returns the lines
-    # its process logged up to its status, and a moment after, as log show
+    # its process logged up to its status, and after, until the log
+    # settles (MobileParity.settled), as log show
     # reads them from the simulator's unified log. log stream would miss a
     # short program's lines on a slow runner, where it can attach after the
     # program has ended; and the process's ID, which simctl launch prints,
-    # keeps an earlier launch's lines out.
-    private def launch(udid, app)
+    # keeps an earlier launch's lines out. It fails when the app has not
+    # finished in +timeout+ seconds.
+    private def launch(udid, app, timeout)
       since = (Time.now - 2).strftime("%Y-%m-%d %H:%M:%S")
       launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier)
       pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
-      deadline = Time.now + TIMEOUT
+      deadline = Time.now + timeout
       until MobileParity.status(messages(udid, since, pid, app))
         if Time.now > deadline
-          raise "#{app.name} did not finish in #{TIMEOUT} seconds:\n#{messages(udid, since, pid, app).last(40).join("\n")}\n" \
+          raise "#{app.name} did not finish in #{timeout} seconds:\n#{messages(udid, since, pid, app).last(40).join("\n")}\n" \
             "#{diagnosis(udid, app)}"
         end
 
         sleep 5
       end
-      sleep 2
-      messages(udid, since, pid, app).tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
+      MobileParity.settled(interval: 5) { messages(udid, since, pid, app) }
+        .tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
     end
 
     # The messages the process +pid+ logged in the app's subsystem since

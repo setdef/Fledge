@@ -43,6 +43,17 @@ class MobileParityTest < Minitest::Test
     assert_nil MobileParity.status(["a", "exited with status 0"])
   end
 
+  # What Ruby printed last may reach the log after the host's status, so
+  # the log is read until it stops growing, or until the limit.
+  def test_the_log_is_read_until_it_settles
+    reads = [["status"], ["status", "a"], ["status", "a", "b"], ["status", "a", "b"]]
+    assert_equal ["status", "a", "b"], MobileParity.settled(interval: 0) { reads.shift }
+    assert_empty reads
+
+    growing = Enumerator.new { |lines| (1..).each { |n| lines << n } }
+    assert_operator MobileParity.settled(interval: 0.01, limit: 0.05) { growing.next }, :>, 1
+  end
+
   # Each app the check builds names itself as its fledge.yml does, so its
   # project, scheme, and log are found by those names.
   def test_each_app_is_named_as_its_fledge_yml_names_it

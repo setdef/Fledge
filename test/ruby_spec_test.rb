@@ -115,6 +115,76 @@ class RubySpecTest < Minitest::Test
     assert_equal 2, RubySpec::Results.compare(stopped, stopped, platform: "x86_64-linux").size
   end
 
+  # A phone runs every directory in one process, and its formatter
+  # names the directory before each description, after the hook an
+  # error happened in; the host app's line with the status is not
+  # MSpec's.
+  def test_a_phones_run_names_each_failures_directory_itself
+    entries = [
+      "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f) +PRISM [arm64-ios]",
+      "",
+      "1)",
+      "language: The if expression returns nil FAILED",
+      "Expected nil",
+      "",
+      "2)",
+      "An exception occurred during: before :each",
+      "library: Socket.getaddrinfo resolves ERROR",
+      "SocketError: none",
+      "",
+      "3)",
+      "An exception occurred during: loading /data/app/spec/library/prism/parse_spec.rb ERROR",
+      "LoadError: cannot load such file -- prism",
+      "",
+      "Finished in 9.5 seconds",
+      "",
+      "3000 files, 40000 examples, 90000 expectations, 1 failure, 1 error, 0 tagged",
+      "RubySpec exited with status 1",
+    ]
+    output = RubySpec::Phone.output(entries)
+    result = RubySpec::Results.read(nil, output)
+
+    assert_equal [
+      "language: The if expression returns nil",
+      "library: Socket.getaddrinfo resolves",
+      "library: loading library/prism/parse_spec.rb",
+], result.failures.keys
+    assert_equal "3000 files, 40000 examples, 90000 expectations, 1 failure, 1 error, 0 tagged", result.totals
+    refute_includes output, "exited with status"
+  end
+
+  # The app and stock Ruby must be the same Ruby, as RUBY_DESCRIPTION
+  # names it, whether a release's ("revision") or a preview's (its
+  # branch).
+  def test_a_phones_ruby_is_its_version_and_revision
+    assert_equal "4.1.0preview1 (revision 2d08b5f42f)",
+      RubySpec::Phone.ruby("ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f) +PRISM [arm64-darwin27]\n...")
+    assert_equal "4.0.9 (revision 3e93b23afc)", RubySpec::Phone.ruby(OUTPUT)
+    assert_raises(RuntimeError) { RubySpec::Phone.ruby("[BUG] Segmentation fault\n") }
+  end
+
+  # mspec-run's arguments load the phones' formatter, leave out each
+  # excluded example and file on that phone, and run the desktop's
+  # directories, each exclusion with its reason.
+  def test_a_phones_arguments_leave_out_what_no_phone_can_run
+    %w[ios android].each do |phone|
+      arguments = RubySpec::Phone.arguments(phone)
+
+      assert_equal ["-B", "../phone_config.rb"], arguments.first(2)
+      RubySpec::Phone::EXCLUDED.each do |exclusion|
+        refute_empty exclusion.reason
+        pairs = arguments.each_cons(2).to_a
+        exclusion.examples.each { |example| assert_equal exclusion.applies?(phone), pairs.include?(["-E", example]) }
+        exclusion.files.each do |file|
+          assert_equal exclusion.applies?(phone), arguments.include?("^#{file}")
+          assert_operator arguments.index("^#{file}"), :>, arguments.index("security") if exclusion.applies?(phone)
+        end
+      end
+      assert_equal RubySpec::DIRECTORIES, arguments & RubySpec::DIRECTORIES
+      assert_includes arguments, "^command_line"
+    end
+  end
+
   # The pins are commits of ruby/spec and MSpec, each downloaded from
   # GitHub's archive of that commit and checked against its SHA-256.
   def test_each_source_is_pinned_by_commit_and_sha256

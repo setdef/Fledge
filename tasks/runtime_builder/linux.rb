@@ -15,9 +15,16 @@ class RuntimeBuilder
   # the runtime's lib/ (see runtime/launcher/unix.c).
   class Linux < Unix
     # libxcrypt's configure options: those of rv-ruby's
-    # rv-portable-libxcrypt formula, shared instead of static. The LGPL
-    # source bundle (tasks/license_audit/source_bundle.rb) prints them
-    # as the way the runtime's copy was built.
+    # rv-portable-libxcrypt formula, shared instead of static, and with
+    # libxcrypt's own --disable-werror, which drops only the -Werror its
+    # configure adds and keeps every warning it enables. libxcrypt 4.5.2
+    # does not build otherwise where GCC defaults to C23 (GCC 15) and
+    # glibc's strchr keeps its argument's const (glibc 2.43): its
+    # crypt-sm3-yescrypt.c and crypt-gost-yescrypt.c assign that result
+    # to a char *, which libxcrypt fixed after 4.5.2, in commit
+    # 174c24d6e8. The LGPL source bundle
+    # (tasks/license_audit/source_bundle.rb) prints these options as the
+    # way the runtime's copy was built.
     LIBXCRYPT_CONFIGURE = %w[
       --enable-shared
       --disable-static
@@ -25,6 +32,7 @@ class RuntimeBuilder
       --disable-xcrypt-compat-files
       --disable-failure-tokens
       --disable-valgrind
+      --disable-werror
     ].freeze
 
     # The shared libraries the launcher may need: glibc's, and the

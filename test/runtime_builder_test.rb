@@ -88,6 +88,31 @@ class RuntimeBuilderTest < Minitest::Test
     assert_match(%r{\Ahttps://}, pin.fetch("url"))
   end
 
+  # libxcrypt 4.5.2 turns its warnings into errors, and GCC 15's C23
+  # default with glibc 2.43's const-preserving strchr warns in
+  # crypt-sm3-yescrypt.c and crypt-gost-yescrypt.c, so the build keeps
+  # warnings as warnings, with rv-ruby's options otherwise.
+  def test_libxcrypt_builds_with_rv_rubys_options_and_warnings_left_as_warnings
+    Dir.mktmpdir do |dir|
+      commands = Pinned.new(builder("x86_64-linux").sources)
+      recipe = RuntimeBuilder::Linux.new(builder: commands, build_dir: dir)
+
+      recipe.__send__(:build_libxcrypt)
+
+      configure = commands.ran.find { |command| command.first == "./configure" }
+      expected = %w[
+        --enable-shared
+        --disable-static
+        --disable-obsolete-api
+        --disable-xcrypt-compat-files
+        --disable-failure-tokens
+        --disable-valgrind
+        --disable-werror
+      ]
+      assert_equal ["./configure", "--prefix=#{File.join(dir, 'libxcrypt-prefix')}", *expected], configure
+    end
+  end
+
   def test_gmp_is_pinned_to_msys2s_source_package_and_the_dll_it_built
     pin = builder("x64-mingw-ucrt").sources.fetch("gmp")
 
@@ -566,6 +591,21 @@ class RuntimeBuilderTest < Minitest::Test
 
     def capture(*)
       ""
+    end
+  end
+
+  # Commands that also reads runtime/sources.yml and answers a download
+  # with its file name, for a recipe that builds a pinned source.
+  class Pinned < Commands
+    attr_reader :sources
+
+    def initialize(sources)
+      super()
+      @sources = sources
+    end
+
+    def fetch(url, _sha256)
+      File.basename(url)
     end
   end
 

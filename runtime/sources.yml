@@ -249,8 +249,8 @@ rcedit:
 # linked with zlib 1.3.2 and Zstandard 1.5.7, as LLVM's
 # llvm/utils/release/build_llvm_release.bat at llvmorg-23.1.4 builds it,
 # and it imports only Windows' own DLLs. The release's archive is
-# Zstandard-compressed with a long window, which zstd unpacks with
-# --long=31. The SHA-256s are of the archive, as GitHub records it, and
+# Zstandard-compressed with a long window, which 7-Zip, pinned in
+# mise.toml, unpacks. The SHA-256s are of the archive, as GitHub records it, and
 # of the file, which the license audit checks too.
 llvm-readobj:
   version: 23.1.4

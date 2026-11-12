@@ -123,6 +123,10 @@ module Fledge
     # phone's tools (TOOLS), and mkmf made to write a static archive
     # and a report. mkmf's own <tt>$static</tt> is what Ruby's
     # <tt>ext/extmk.rb</tt> sets for an extension it links in (line 651).
+    # The Init function's new name goes into <tt>$CPPFLAGS</tt>, which mkmf
+    # writes into the Makefile's +CPPFLAGS+ always, not <tt>$defs</tt>,
+    # which it leaves out once an <tt>extconf.rb</tt> has called
+    # <tt>create_header</tt> (<tt>mkmf.rb</tt>, lines 2133 and 2175).
     SHIM = TOOLS + <<~'RUBY'
       require "json"
       require "mkmf"
@@ -130,7 +134,7 @@ module Fledge
       module MakeMakefile
         alias_method :fledge_create_makefile, :create_makefile
         def create_makefile(target, *rest, &block)
-          $defs << "-DInit_#{File.basename(target)}=#{ENV.fetch('FLEDGE_INIT')}"
+          $CPPFLAGS << " -DInit_#{File.basename(target)}=#{ENV.fetch('FLEDGE_INIT')}"
           result = fledge_create_makefile(target, *rest, &block)
           reports = File.exist?(ENV.fetch("FLEDGE_REPORT")) ? JSON.parse(File.read(ENV.fetch("FLEDGE_REPORT"))) : []
           reports << {

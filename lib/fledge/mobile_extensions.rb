@@ -593,6 +593,7 @@ module Fledge
     # paths are relative to.
     private def source_root(package, dir)
       FileUtils.rm_rf(dir)
+      FileUtils.mkdir_p(File.dirname(dir))
       case package
       when GemPackage
         ::Gem::Package.new(package.path).extract_files(dir) # steep:ignore NoMethod

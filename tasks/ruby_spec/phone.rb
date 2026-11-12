@@ -83,7 +83,7 @@ class RubySpec
       Exclusion.new(
         reason: "These are about Ruby's ways to start a program and wait for it, Process.spawn, Kernel#system, " \
           "backquotes, IO.popen, Open3, Process.wait and its kin, and IO#pid, and check each by starting the Ruby " \
-          "under test, through RUBY_EXE or ruby_cmd rather than ruby_exe, or a program to report what ps sees; " \
+          "under test, through RUBY_EXE or ruby_cmd rather than ruby_exe; " \
           "whether such a child that cannot start has ended when an example looks is a race. iOS has no such Ruby, " \
           "since it lets no app start a program (doc/contributors/design/phone-projects.md, \"Parity on a phone\"), " \
           "so RbConfig.ruby names a program that is not there. Android runs them, as it runs command_line.",
@@ -103,11 +103,14 @@ class RubySpec
           core/io/pid_spec.rb
           core/io/tty_spec.rb
         ],
-        examples: [
-          "Process.setproctitle should set the process title",
-          "Global variable $0 actually sets the program name",
-          "IO#close on an IO.popen stream sets $?",
-        ],
+        examples: ["IO#close on an IO.popen stream sets $?"],
+      ),
+      Exclusion.new(
+        reason: "Each reads the process's command line from /proc/PID/cmdline, or, where there is no /proc, from ps, " \
+          "which it starts, and iOS has no /proc and lets no app start a program. Android has /proc, and its Ruby " \
+          "sets the title there (RuntimeBuilder::RubySource.setproctitle_c).",
+        phones: %w[ios], files: [],
+        examples: ["Process.setproctitle should set the process title", "Global variable $0 actually sets the program name"],
       ),
       Exclusion.new(
         reason: "Each starts a program of the system's to check what it tests, which iOS lets no app do, where " \

@@ -313,6 +313,7 @@ class MobileExtensionsTest < Minitest::Test
       refute_match(/UND\s+tally_/, dynamic, "#{name}: the library's code is linked in")
       refute_includes dynamic, "libc++_shared.so", "#{name}: the C++ runtime is linked in statically"
       refute_match(/UND\s+(?:_ZNSt|_Znwm|_ZdlPv|__gxx_personality)/, dynamic, "#{name}: the C++ runtime is linked in")
+      assert_match(/\(RUNPATH\)\s+Library runpath: \[\$ORIGIN\]/, dynamic, "#{name}: the ruby program finds what it needs beside it")
       [name, Open3.capture2(readelf, "-h", library).first[/Machine:\s+(.+)$/, 1]]
     end
     assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)

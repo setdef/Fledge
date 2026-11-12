@@ -59,9 +59,16 @@ android {
         noCompress += ['zip']
     }
 
+    // The native libraries are compressed, and the package installer
+    // extracts them into the app's native library folder, the only
+    // files Android lets an app run: among them is Ruby's own program,
+    // libfledgerubyexe.so, which RbConfig.ruby names. Set this to false
+    // to keep them stored in the APK instead, loaded from it and not
+    // extracted, which takes less space once installed; then the app's
+    // Ruby has no program to start, and RbConfig.ruby names nothing.
     packaging {
         jniLibs {
-            useLegacyPackaging = false
+            useLegacyPackaging = true
         }
     }
 

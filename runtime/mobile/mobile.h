@@ -7,8 +7,10 @@
  * What the mobile runtimes' C files share: output.c, which forwards
  * standard output and standard error to the system's log, with the file
  * that writes to that log on each system, apple.c (os_log) and android.c
- * (logcat); and fledge_ruby.c, which knows where the runtime's CA
- * certificates are, with android.c, which tells OpenSSL.
+ * (logcat); fledge_ruby.c, which knows where the runtime's CA
+ * certificates are, with android.c, which tells OpenSSL; and the
+ * runtime's ruby program on Android, which fledge_ruby.c runs and
+ * android.c finds and links.
  */
 
 #ifndef FLEDGE_MOBILE_H
@@ -54,5 +56,31 @@ void fledge_log_write(int error, const char *text, size_t length);
  * fledge_ruby_run has found them, or NULL.
  */
 const char *fledge_ruby_certificates(void);
+
+/*
+ * Makes root/bin/ruby, where RbConfig.ruby looks, a link to the
+ * runtime's ruby program, where the system lets an app run one, before
+ * Ruby boots in the app (android.c, ADR 069). iOS lets no app run a
+ * program, so apple.c does nothing.
+ */
+void fledge_ruby_link_program(const char *root);
+
+/*
+ * The main function of the runtime's ruby program, with Ruby's prefix
+ * at root (fledge_ruby.c, ADR 069): Ruby's main.c, with the locale and
+ * the certificates as fledge_ruby_run has them, and the extensions an
+ * app links registered; and, when its first argument is the program
+ * root/fledge.cfg names, fledge_ruby_run_app with the arguments after
+ * it, as the desktop's bin/ruby hands an app's program to its launcher
+ * (ADR 026).
+ */
+int fledge_ruby_main(const char *root, int argc, char **argv);
+
+/*
+ * The main function of the runtime's ruby program on Android, which
+ * runtime/mobile/ruby_program.c calls: finds the root it was run from
+ * and the app's extensions, then runs fledge_ruby_main (android.c).
+ */
+int fledge_ruby_program_main(int argc, char **argv);
 
 #endif

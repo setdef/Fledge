@@ -147,7 +147,8 @@ class MobileOutputTest < Minitest::Test
   # computer's Ruby reads no ruby_embed_libruby_path, which only the
   # mobile runtimes' Ruby has, and may keep ruby_init_ext to itself, so
   # the host defines both, the second weakly, for the linker to prefer
-  # Ruby's own where Ruby exports it; it registers no extension.
+  # Ruby's own where Ruby exports it; it registers no extension, and, as
+  # on iOS, links no ruby program.
   RUBY_HOST = <<~C
     #include "fledge_ruby.h"
     #include "mobile.h"
@@ -158,6 +159,7 @@ class MobileOutputTest < Minitest::Test
 
     static FILE *log_file;
 
+    void fledge_ruby_link_program(const char *root) { (void)root; }
     int fledge_log_echoes(void) { return 0; }
     int fledge_log_open(const char *tag) { (void)tag; return 0; }
     void fledge_log_write(int error, const char *text, size_t length) {

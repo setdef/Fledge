@@ -13,6 +13,9 @@ class Parity
   # The iOS targets, which leave fiddle out.
   IOS = RuntimeBuilder::Mobile::PLATFORMS.fetch("ios").targets.map(&:name).freeze
 
+  # The Android targets, whose runtime has a ruby program (ADR 069).
+  ANDROID = RuntimeBuilder::Mobile::PLATFORMS.fetch("android").targets.map(&:name).freeze
+
   # The folders of a Ruby's platform-specific files, named for its
   # platform, on the desktops the reference runs on and on the phones.
   DESKTOP_ARCH = "(?:arm64-darwin23|x86_64-linux|aarch64-linux)"
@@ -27,14 +30,16 @@ class Parity
         "HOME and TMPDIR inside the app's own container, and on iOS the Simulator's variables, with nothing of a " \
         "shell's. The runtime adds SSL_CERT_FILE, naming its CA certificates for OpenSSL, as rv-ruby's Ruby adds " \
         "PORTABLE_RUBY_SSL_CERT_FILE, and on Android HOME, the app's files folder, as iOS gives every app one."),
-    Justification.new(fact: "child ENV", reference: [/./], app: [/\A"Errno::/], platforms: MOBILE,
-      reason: "No phone has a Ruby program to start: iOS lets no app start a program, and Android, which starts " \
-        "the system's, has no ruby among them and runs no file an app writes (W^X, from target API 29), so spawning RbConfig.ruby " \
-        "fails as it does where Ruby is missing."),
-    Justification.new(fact: "RbConfig.ruby is a program", reference: [/\Atrue\z/], app: [/\Afalse\z/], platforms: MOBILE,
-      reason: "As for child ENV: a phone's runtime is a library inside the app, with no bin/ruby, since nothing on a " \
-        "phone could run it; RbConfig.ruby names where it would be."),
-    Justification.new(fact: "RbConfig.ruby runs", reference: [/\A"42"\z/], app: [/\A"Errno::/], platforms: MOBILE,
+    Justification.new(fact: "child ENV", reference: [/./], app: [/\A"Errno::/], platforms: IOS,
+      reason: "An app on iOS starts no programs, since iOS lets no app run one, so the iOS runtime has no Ruby " \
+        "program to start, and spawning RbConfig.ruby fails as it does where Ruby is missing."),
+    Justification.new(fact: "child ENV", reference: [/./], app: [/./], platforms: ANDROID,
+      reason: "As for ENV: a Ruby the app starts, the Android runtime's ruby program (ADR 069), inherits the app's " \
+        "environment, as a child of ruby main.rb inherits the shell's."),
+    Justification.new(fact: "RbConfig.ruby is a program", reference: [/\Atrue\z/], app: [/\Afalse\z/], platforms: IOS,
+      reason: "As for child ENV: the iOS runtime is a library inside the app, with no bin/ruby, since nothing on " \
+        "iOS could run it; RbConfig.ruby names where it would be."),
+    Justification.new(fact: "RbConfig.ruby runs", reference: [/\A"42"\z/], app: [/\A"Errno::/], platforms: IOS,
       reason: "As for child ENV."),
     Justification.new(fact: "RUBY_PLATFORM", reference: [/\A"#{DESKTOP_ARCH}"\z/o], app: [/\A"#{MOBILE_ARCH}"\z/o], platforms: MOBILE,
       reason: "Ruby names the platform it was built for: rv-ruby's for macOS 14 (darwin23) or glibc Linux, a " \

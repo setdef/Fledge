@@ -58,8 +58,8 @@ class RubySpec
 
     EXCLUDED = [
       Exclusion.new(
-        reason: "Every example starts ruby with options or a script, and no program can run on a phone: iOS lets no app " \
-          "start one, and Android lets no app run a file of its own (doc/contributors/design/phone-projects.md, " \
+        reason: "Every example starts ruby with options or a script, and no phone has a Ruby program to start: iOS lets no " \
+          "app start a program, and Android, which starts the system's, has no ruby (doc/contributors/design/phone-projects.md, " \
           "\"Parity on a phone\").",
         phones: nil, files: ["command_line"], examples: [],
       ),
@@ -73,7 +73,7 @@ class RubySpec
           "backquotes, IO.popen, Open3, Process.wait and its kin, and IO#pid, and check each by starting the Ruby " \
           "under test, through RUBY_EXE or ruby_cmd rather than ruby_exe, or a program to report what ps sees; " \
           "whether such a child that cannot start has ended when an example looks is a race. No phone has that Ruby: iOS lets no app start a " \
-          "program, and Android lets no app run a file of its own (doc/contributors/design/phone-projects.md, " \
+          "program, and Android, which starts the system's, has no ruby (doc/contributors/design/phone-projects.md, " \
           "\"Parity on a phone\"), so RbConfig.ruby names a program that is not there.",
         phones: nil,
         files: %w[
@@ -143,6 +143,13 @@ class RubySpec
           "299 to 330 and 111 to 114, fatal by default, at 731631f), where glibc lets it; MSpec's run would end there.",
         phones: %w[android], files: [],
         examples: ["Dir#close raises an error if the file descriptor is closed with another Dir instance"],
+      ),
+      Exclusion.new(
+        reason: "For now: the example fails on both sides on most runs and passed in the app once, on an iPad in CI run " \
+          "43226291212, so it differs by run, not by phone; it stays out of both runs until its cause is found, and " \
+          "goes when it is.",
+        phones: %w[ios], files: [],
+        examples: ["Class#initialize is not defined"],
       ),
     ].freeze
 

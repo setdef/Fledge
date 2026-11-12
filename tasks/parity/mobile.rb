@@ -70,5 +70,14 @@ class Parity
         "desktop's ruby main.rb runs, leave it out."),
     Justification.new(fact: "requireable", app: [/\A"win32-registry"=/], platforms: MOBILE,
       reason: "As for win32-registry's gem: it calls Windows' kernel32.dll through fiddle, so it loads nowhere else."),
+    Justification.new(fact: "requireable", reference: [/\A"io-nonblock"="loads"\z/],
+      app: [/\A"io-nonblock"="loads, but not its gem"\z/], platforms: MOBILE,
+      reason: "TEMPORARY, a defect to fix: a phone's Ruby is built out of its source folder, and tool/rbinstall.rb's " \
+        "load_gemspec (lines 921 to 928 at 4.1.0-preview1) prefixes lib/ to each .rb file a default gem's gemspec " \
+        "lists that it finds relative to the build folder, not the source, so io-nonblock's specification lists " \
+        "lib/ext/io/nonblock/extconf.rb. RubyGems then takes the specification for one whose files sit under lib/, " \
+        "and its register_default_spec skips io/nonblock.bundle, which is not under lib/ and has a slash " \
+        "(lib/rubygems.rb, lines 1312 to 1342), so require \"io/nonblock\" loads the extension without " \
+        "activating the default gem."),
   ].freeze
 end

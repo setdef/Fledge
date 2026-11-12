@@ -10,12 +10,13 @@ require_relative "mobile"
 
 class RuntimeBuilder
   # Android: Ruby for arm64-v8a and x86_64 phones and emulators, built
-  # with the NDK's compilers with Termux's configure settings
-  # (termux-packages, packages/ruby/build.sh), linked with the embedding
-  # API into one shared library per ABI, libfledgeruby.so, and packed by
-  # Gradle and the Android Gradle plugin as an AAR, FledgeRuby.aar, with
-  # the embedding API's Java class (doc/contributors/design/phone-runtimes.md,
-  # "What a phone runtime holds").
+  # with the NDK's compilers after Termux's configure settings
+  # (termux-packages, packages/ruby/build.sh; CONFIGURE), linked with the
+  # embedding API into one shared library per ABI, libfledgeruby.so, and
+  # packed by Gradle and the Android Gradle plugin as an AAR,
+  # FledgeRuby.aar, with the embedding API's Java class
+  # (doc/contributors/design/phone-runtimes.md, "What a phone runtime
+  # holds").
   #
   # Beside the AAR the runtime holds the Ruby both ABIs run: one lib/ruby
   # (Ruby names each ABI's folder for its own platform, so both fit in
@@ -24,13 +25,34 @@ class RuntimeBuilder
   # An app puts lib/ and libexec/ with its own code in one asset, which
   # the Java class unpacks on the first launch of each installed version.
   class Android < Mobile
-    # What Termux tells configure about bionic: no setgroups, setresuid,
-    # or setreuid an app may call, and no libcrypt, so String#crypt uses
-    # Ruby's own missing/crypt.c.
-    TERMUX = %w[
+    # What configure is told about bionic that it cannot find out by
+    # compiling. Android's seccomp filter for apps stops a process with
+    # SIGSYS when it calls setgid, setuid, setregid, setreuid, setresgid,
+    # or setgroups, and lets it call setresuid (bionic,
+    # libc/SECCOMP_BLOCKLIST_APP.TXT, lines 9 to 30 at 731631f), and
+    # bionic's setegid calls setresgid (libc/bionic/setegid.cpp), its
+    # initgroups setgroups (libc/bionic/grp_pwd.cpp, lines 624 to 626),
+    # and its seteuid setresuid, which the filter allows. Each function
+    # the filter would stop is one configure finds in bionic, so Ruby is
+    # told it is missing, and raises NotImplementedError for each call
+    # that needs it (process.c, as for setruid, which bionic lacks).
+    # Termux, whose settings Fledge's Android build follows, says the
+    # same of setgroups and setreuid, but also of setresuid, all three
+    # "to fix compilation on android" (termux-packages,
+    # packages/ruby/build.sh, line 19 at 750b3fc), not for the filter,
+    # and nothing of the rest; Process.uid= then calls setuid, and Process.egid=
+    # setresgid, and the filter ends the app. Without libcrypt, as for
+    # Termux, String#crypt uses Ruby's own missing/crypt.c, and
+    # rb_cv_type_deprecated is Termux's fix for clang.
+    CONFIGURE = %w[
+      ac_cv_func_initgroups=no
+      ac_cv_func_setegid=no
+      ac_cv_func_setgid=no
       ac_cv_func_setgroups=no
-      ac_cv_func_setresuid=no
+      ac_cv_func_setregid=no
+      ac_cv_func_setresgid=no
       ac_cv_func_setreuid=no
+      ac_cv_func_setuid=no
       ac_cv_lib_crypt_crypt=no
       rb_cv_type_deprecated=x
     ].freeze
@@ -113,7 +135,7 @@ class RuntimeBuilder
     private def target_options(_target, deps)
       ffi = deps.fetch(:libffi)
       [
-        *TERMUX,
+        *CONFIGURE,
         "--with-libffi-dir=#{ffi}",
         "CFLAGS=-O2 -fPIC -fno-strict-aliasing",
         "CPPFLAGS=-I#{File.join(ffi, 'include')}",

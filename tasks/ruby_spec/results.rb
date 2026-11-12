@@ -46,7 +46,10 @@ class RubySpec
     # backtrace, until the next number or "Finished in". A spec file that
     # fails to load is one line, "An exception occurred during: loading
     # PATH ERROR", named here by PATH inside ruby/spec, since stock Ruby
-    # and the app load ruby/spec from different folders.
+    # and the app load ruby/spec from different folders. A run of
+    # several directories in one process, as on a phone, names each
+    # failure's directory itself (RubySpecPhoneFormatter), and is read
+    # with +directory+ nil.
     def self.read(directory, output)
       lines = output.b.gsub("\r\n", "\n").lines
       failures = {}
@@ -58,17 +61,22 @@ class RubySpec
         at += 1 if description.nil? && lines[at].to_s.start_with?("An exception occurred during:")
         description ||= lines[at].to_s.chomp[/\A(.*) (?:FAILED|ERROR)\z/, 1] or next
         detail = lines.drop(at + 1).take_while { |rest| !rest.match?(/\A(?:\d+\)|Finished in )/) }.join
-        failures["#{directory}: #{description.dup.force_encoding(Encoding::UTF_8).scrub}"] = detail
+        failures[[directory, description.dup.force_encoding(Encoding::UTF_8).scrub].compact.join(": ")] = detail
       end
       totals = lines.grep(/\A\d+ files?, \d+ examples?, /).last&.chomp
       Run.new(directory:, failures:, totals:)
     end
 
     # "loading PATH", with PATH from where ruby/spec's +directory+ begins,
-    # when +line+ reports a spec file that failed to load, or nil.
+    # when +line+ reports a spec file that failed to load, or nil. With
+    # +directory+ nil, the directory is PATH's own, named before it as a
+    # run of one directory names it.
     def self.loading(directory, line)
       path = line[/\AAn exception occurred during: loading (.+) ERROR\z/, 1] or return
-      "loading #{path[%r{/spec/(#{Regexp.escape(directory)}/.+)\z}, 1] || path}"
+      return "loading #{path[%r{/spec/(#{Regexp.escape(directory)}/.+)\z}, 1] || path}" if directory
+
+      inside = path[%r{/spec/((?:#{DIRECTORIES.join('|')})/.+)\z}, 1] or return "loading #{path}"
+      "#{inside.split('/').first}: loading #{inside}"
     end
 
     # The differences between the +stock+ and +app+ runs, Arrays of Run

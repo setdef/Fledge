@@ -225,7 +225,7 @@ The `mobile-apps-ios` job archives each app's Xcode project with `xcodebuild arc
 
 ## Parity on a phone
 
-The mobile parity check (`tasks/mobile_parity.rb`, in the Mobile apps jobs) runs the parity probe as a phone app, built by `fledge build`, in the iOS Simulator on an iPhone and an iPad and on Android emulators with 4 KB and 16 KB pages, and compares its report with `ruby main.rb` under the runner's desktop Ruby. The report reaches the check through the system log, as an app's output reaches its developer. Every difference must be justified in `Parity::MOBILE_JUSTIFIED` (`tasks/parity/mobile.rb`), which says why each is right; `doc/contributors/design/parity.md` describes the check. What the probe cannot show, and an app on a phone should expect:
+The mobile parity check (`tasks/mobile_parity.rb`, in the Mobile apps jobs) runs the parity probe as a phone app, built by `fledge build`, in the iOS Simulator on an iPhone and an iPad and on Android emulators with 4 KB and 16 KB pages, and compares its report with `ruby main.rb` under the runner's desktop Ruby. The report reaches the check through the system log, as an app's output reaches its developer. Every difference must be justified in `Parity::MOBILE_JUSTIFIED` (`tasks/parity/mobile.rb`), which says why each is right; `doc/contributors/design/parity.md` describes the check. ruby/spec runs in a phone app on the same simulators and emulators too, against stock Ruby on the same computer (`doc/contributors/design/parity.md`, "ruby/spec on phones"). What the probe cannot show, and an app on a phone should expect:
 
 - the working folder is `/`, as for a macOS app started from the Finder;
 - standard input is at its end;

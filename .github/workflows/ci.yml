@@ -49,9 +49,9 @@
 # the runtimes; and the Replace jobs prove that whoever receives an app
 # can replace its LGPL libraries, as that page tells developers.
 #
-# ruby/spec runs on stock Ruby and in a built app from each runtime, and
-# any example that fails on one side only, unless justified, fails the
-# job (ruby-spec.yml, tasks/ruby_spec.rb).
+# ruby/spec runs on stock Ruby and in a built app from each runtime,
+# desktop and phone, and any example that fails on one side only, unless
+# justified, fails the job (ruby-spec.yml, tasks/ruby_spec.rb).
 #
 # release.yml, on a v* tag, publishes the runtimes this workflow built
 # from the release commit, once it has passed on trunk on the release
@@ -823,11 +823,12 @@ jobs:
           sh -c '.github/scripts/alpine-packages.sh apps && git config --global --add safe.directory /fledge && ruby tasks/parity.rb'
 
   # ruby/spec on stock Ruby and in a built app (ruby-spec.yml): on every
-  # push for x86_64-linux and arm64-darwin, and on a release commit for
-  # all seven desktop platforms, which also run every night.
+  # push for x86_64-linux and arm64-darwin and in phone apps in the iOS
+  # Simulator and on Android emulators, and on a release commit for all
+  # seven desktop platforms too, which also run every night.
   ruby-spec:
     name: ruby/spec
-    needs: [runtime, runtime-musl]
+    needs: [runtime, runtime-musl, runtime-mobile]
     permissions:
       contents: read
       actions: read

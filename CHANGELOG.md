@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - On iOS and Android, a phone's app has the prism gem, so `require "prism"` works, and so does requiring irb, minitest, rbs, rdoc, repl_type_completor, or typeprof: each bundled gem's extension keeps every symbol but its Init function to itself, so prism's own libprism no longer collides with libruby's.
+- On Windows, `fledge build` compiles gems in a work folder named by its long names when `TMP` names the user folder by its 8.3 short name (`C:\Users\RUNNER~1`), so a gem whose build escapes a path for a shell, as nokogiri's through mini_portile2 does, compiles. It failed with "a gem's extension did not compile".
 
 ## [0.12.0] - 2026-11-12
 

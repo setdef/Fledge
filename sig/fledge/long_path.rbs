@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  module LongPath
+    def self.of: (String path) -> String
+  end
+end

@@ -9,6 +9,7 @@ require_relative "test_helper"
 require_relative "support/gems"
 require_relative "support/git_repos"
 require_relative "support/loopback_server"
+require_relative "support/short_path"
 require "open3"
 require "stringio"
 
@@ -129,6 +130,39 @@ class NativeBuildTest < Minitest::Test
 
     minimum = Fledge::Binary.read([compiled], readers: Fledge::Binary::Readers.local("darwin")).fetch(compiled).macos_minimum
     assert_operator Gem::Version.new(minimum), :<=, Gem::Version.new("14.0")
+  end
+
+  # The build's work folder is named by its long names where TMPDIR names
+  # it by its 8.3 name, as Windows' TMP does for a user folder whose name
+  # is no 8.3 name: mini_portile2, which nokogiri's extconf.rb uses,
+  # escapes a path for a POSIX shell and runs it through cmd.exe, where
+  # the short name's escaped tilde names no file. This gem's extconf.rb
+  # refuses a short name in the folder it runs in.
+  def test_a_gem_compiles_in_a_folder_named_by_its_long_names_whatever_tmpdir_says
+    long = File.join(@dir, "longtemporaryfolder")
+    FileUtils.mkdir_p(long)
+    short = ShortPath.of(long)
+    skip "no 8.3 names here: off Windows, or 8.3 names are turned off on #{@dir}'s volume" unless short
+    extconf = "abort \"compiled in \#{Dir.pwd}\" if Dir.pwd.match?(/~\\d/)\n#{EXTCONF}"
+    greeter = FakeGem.build(@dir, "greeter", "1.0.0", files: FILES.merge("ext/greeter/extconf.rb" => extconf), extensions: ["ext/greeter/extconf.rb"])
+    @routes["/gems/#{greeter.file_name}"] = [200, {}, File.binread(greeter.path)]
+    root = FakeProject.write(@dir, dependencies: { "greeter" => ">= 0" }, locked: [greeter], remote: @server.url("/"))
+    program(root)
+
+    status, err = with_tmpdir(short) { build(root) }
+
+    assert_equal 0, status, err
+    out, ran, = run_app
+    assert_predicate ran, :success?, out
+    assert_equal "hello\n", out
+  end
+
+  def with_tmpdir(folder)
+    previous = ENV.fetch("TMPDIR", nil)
+    ENV["TMPDIR"] = folder
+    yield
+  ensure
+    ENV["TMPDIR"] = previous
   end
 
   def test_a_git_gem_compiles_where_bundler_keeps_it_and_runs

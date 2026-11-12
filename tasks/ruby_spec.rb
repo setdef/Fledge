@@ -178,14 +178,6 @@ class RubySpec
         "headers are missing, which a phone's app does not carry: they are for the computer that builds the app " \
         "(doc/contributors/design/phone-runtimes.md, \"Ruby's C headers on a phone\").",
     ),
-    Justification.new(
-      example: /\Acore: Process\.exec masks all permission bits when given umask: -1\z/,
-      side: :app, platforms: ANDROID,
-      reason: "TEMPORARY, a defect to fix: Ruby passes umask: -1 to umask(2) as every bit set, and Ruby's build " \
-        "compiles with -D_FORTIFY_SOURCE=2 (hardenflags), so bionic's fortified umask, __umask_chk, aborts the " \
-        "process for a mask with bits beyond 0777 (libc/bionic/fortify.cpp, lines 400 to 406 on bionic's main " \
-        "branch), where glibc's passes it to the kernel, which keeps the permission bits.",
-    ),
   ].freeze
 
   attr_reader :platform

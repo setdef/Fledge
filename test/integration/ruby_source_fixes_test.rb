@@ -159,6 +159,62 @@ class RubySourceFixesTest < Minitest::Test
 
   IFTODT_SCRIPT = "require %<extension>s\np fledge_iftodt\n"
 
+  # bionic's fortified umask aborts on a mask with bits beyond 0777,
+  # which Process.exec's umask: -1 and File.umask(-1) passed; the edits
+  # keep the permission bits, as Linux does with any mask.
+  def test_umask_is_given_only_the_permission_bits
+    assert_equal "        mode_t oldmask = umask(mask & 0777); /* never fail */\n",
+      Edits.process_c_umask("        mode_t oldmask = umask(mask); /* never fail */\n")
+    assert_equal "        omask = umask(NUM2MODET(argv[0]) & 0777);\n", Edits.file_c_umask(UMASK_LINES)
+    assert_raises(RuntimeError) { Edits.process_c_umask("        umask(mask);\n") }
+    assert_raises(RuntimeError) { Edits.file_c_umask("        omask = umask(0);\n") }
+  end
+
+  def test_file_umask_sets_every_permission_bit_where_umask_refuses_other_bits
+    skip "the phones' runtimes are built on macOS and Linux" if Gem.win_platform?
+    assert_match(/\Aumask: called with invalid mask \d+\z/, compile_and_run("umask", format(UMASK_HARNESS, lines: UMASK_LINES), UMASK_SCRIPT))
+    assert_equal "777\n", compile_and_run("umask", format(UMASK_HARNESS, lines: Edits.file_c_umask(UMASK_LINES)), UMASK_SCRIPT)
+  end
+
+  # rb_file_s_umask's call with an argument, at 4.1.0-preview1.
+  UMASK_LINES = "        omask = umask(NUM2MODET(argv[0]));\n"
+
+  # The call in an extension of this Ruby's, with a umask that refuses
+  # a mask as bionic's __umask_chk does (libc/bionic/fortify.cpp, lines
+  # 400 to 406 at 731631f), raising where bionic aborts.
+  UMASK_HARNESS = <<~C
+    #include <ruby.h>
+    #include <sys/stat.h>
+    static mode_t
+    checked(mode_t mode)
+    {
+        if ((mode & 0777) != mode) rb_raise(rb_eRuntimeError, "umask: called with invalid mask %%o", (unsigned int)mode);
+        return umask(mode);
+    }
+    #define umask checked
+    static VALUE
+    set(VALUE self, VALUE mask)
+    {
+        VALUE argv[1] = {mask};
+        mode_t omask;
+        (void)self;
+    %<lines>s
+        (void)omask;
+        omask = umask(0);
+        return INT2FIX(omask);
+    }
+    void Init_umask(void) { rb_define_global_function("fledge_umask", set, 1); }
+  C
+
+  UMASK_SCRIPT = <<~RUBY
+    require %<extension>s
+    begin
+      puts fledge_umask(-1).to_s(8)
+    rescue RuntimeError => e
+      print e.message
+    end
+  RUBY
+
   private def compile_and_run(name, source, script)
     Dir.mktmpdir do |dir|
       File.write(File.join(dir, "#{name}.c"), source)

@@ -78,6 +78,14 @@ class RuntimeBuilder
       Fledge::Binary::Readers.llvm(tools)
     end
 
+    # How a bundled gem's extension becomes one object with only its Init
+    # function global (BundledExtensions.relocate): the NDK's lld links it
+    # with -r, and the NDK's llvm-objcopy makes every symbol it defines
+    # but the Init function local (--keep-global-symbol).
+    private def relocatable
+      ["$(CC) -r -nostdlib -o $@ $(FLEDGE_OBJS)", "#{File.join(tools, 'llvm-objcopy')} --keep-global-symbol=$(FLEDGE_INIT) $@"]
+    end
+
     private def tools
       prebuilt = Dir.glob(File.join(ndk, "toolchains", "llvm", "prebuilt", "*")).first or raise "#{ndk} has no LLVM toolchain"
       File.join(prebuilt, "bin")

@@ -96,24 +96,21 @@ class RuntimeBuilder
     # Ruby's release tarball, unpacked once for every target of the
     # runtime (each configures in a folder of its own), with this
     # platform's edits made and the bundled gems' extensions copied among
-    # Ruby's own.
+    # Ruby's own, each to be linked into one relocatable object with only
+    # its Init function global (BundledExtensions.relocate, with the
+    # subclass's relocatable recipe).
     private def prepare_source
       source = unpack(pin("ruby"), "ruby")
       RubySource.apply(source, edits)
-      @kept = BundledExtensions.copy(source, omit: omitted_gems)
+      @kept = BundledExtensions.copy(source, omit: omitted_gems, recipe: relocatable)
       @without = [*BundledExtensions.without(source), "win32", "win32ole", "-test-/*"].uniq
       source
     end
 
-    # The bundled gems whose extensions this platform leaves out: prism's,
-    # for now, on both phones. Ruby 4.1's prism gem compiles its own copy
-    # of libprism into its extension, and libruby holds Ruby's own, so the
-    # two collide (pm_parse, and every pm_ symbol) once a phone's runtime
-    # links every extension into one library. Until it is linked with
-    # libruby's libprism, require "prism" fails on a phone
-    # (Parity::MOBILE_JUSTIFIED).
+    # The bundled gems whose extensions this platform leaves out: none
+    # but those a subclass names.
     private def omitted_gems
-      %w[prism]
+      []
     end
 
     # Unpacks the tarball +pin+ names into a fresh folder named +name+

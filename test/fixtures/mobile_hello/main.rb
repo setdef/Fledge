@@ -6,13 +6,15 @@
 #++
 
 # What the mobile runtimes promise an app, in one line (ADR 011): json, a
-# default gem, and csv, a bundled gem that RubyGems activates as a gem,
-# and HTTPS to rubygems.org, which needs the CA certificates the runtime
-# carries. tasks/mobile_parity.rb builds it as an app with fledge build
-# ios and fledge build android, runs it on each phone, and checks the
-# line.
+# default gem, and csv, a bundled gem that RubyGems activates as a gem;
+# prism, a bundled gem whose extension compiles its own libprism beside
+# the one libruby holds (ADR 067), parsing with its extension; and HTTPS
+# to rubygems.org, which needs the CA certificates the runtime carries.
+# tasks/mobile_parity.rb builds it as an app with fledge build ios and
+# fledge build android, runs it on each phone, and checks the line.
 require "json"
 require "csv"
+require "prism"
 require "net/http"
 require "timeout"
 
@@ -34,4 +36,6 @@ rescue SystemCallError, IOError, SocketError, Timeout::Error => e
   retry
 end
 puts "Hello from Ruby #{RUBY_VERSION} on #{RUBY_PLATFORM}: " \
-  "#{JSON.generate(CSV.parse_line("csv,#{Gem.loaded_specs.fetch('csv').version}"))} over HTTPS: #{status}"
+  "#{JSON.generate(CSV.parse_line("csv,#{Gem.loaded_specs.fetch('csv').version}"))}, " \
+  "prism #{Gem.loaded_specs.fetch('prism').version} parses 1 + 2 as #{Prism.parse('1 + 2').value.statements.body.first.name}, " \
+  "over HTTPS: #{status}"

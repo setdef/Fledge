@@ -9,9 +9,9 @@ require "fileutils"
 
 class RuntimeBuilder
   # How a mobile runtime keeps Ruby's bundled gems with C extensions
-  # (bigdecimal, debug, nkf, racc, rbs, syslog, and on Android fiddle; and
-  # prism, which the phones leave out for now) as gems while linking their
-  # extensions into Ruby (ADR 058).
+  # (bigdecimal, debug, nkf, prism, racc, rbs, syslog, and on Android
+  # fiddle) as gems while linking their extensions into Ruby (ADR 058),
+  # each keeping every symbol but its Init function to itself (ADR 067).
   #
   # A mobile Ruby loads no extension from a file: iOS forbids it, and
   # both runtimes link every extension into the one library an app
@@ -34,7 +34,48 @@ class RuntimeBuilder
   # its require of the extension finds the one Ruby links in (load.c,
   # search_required, which looks among statically linked extensions for a
   # feature no file provides).
+  #
+  # Ruby finds a gem's extension by its Init function alone. Linked
+  # statically, every other symbol the extension defines is global too,
+  # and two copies of one library collide: prism's extension compiles
+  # its own libprism, and libruby holds another, from other sources
+  # (pm_parse, and every pm_ symbol). So each gem's extension is linked
+  # into one relocatable object in which only its Init function stays
+  # global, as only it is looked up in its shared object on a desktop
+  # (ADR 067; relocate).
   module BundledExtensions
+    # The Makefile rules each copied gem's extension gets in its depend
+    # file, which mkmf appends to the Makefile it writes (lib/mkmf.rb,
+    # lines 2732 to 2746 at 4.1.0-preview1): the static library mkmf's
+    # rule archives (lines 2693 to 2699) holds one object, made by the
+    # platform's %<recipe>s from the extension's objects, rather than the
+    # objects themselves. The library's prerequisites keep the objects,
+    # since make expands a rule's prerequisites as it reads it, and its
+    # recipe only when it runs. FLEDGE_INIT is the extension's Init
+    # function, as extmk names it for its feature with -DInit_BASE=
+    # (ext/extmk.rb, line 565): Init_racc_cparse for racc/cparse. The
+    # extension is compiled with -fno-common, as its shared object is on
+    # a Mac (CCDLFLAGS, which mkmf leaves out of a static build,
+    # lib/mkmf.rb line 2171) and as GCC and Clang compile by default
+    # elsewhere: Xcode's clang makes a global without an initializer
+    # (VALUE rb_cPrism;) a common symbol, which no tool can make local and
+    # the linker merges with libruby's of the same name.
+    RELOCATABLE = <<~MAKE
+      CFLAGS += -fno-common
+      CXXFLAGS += -fno-common
+      FLEDGE_OBJS := $(OBJS)
+      FLEDGE_INIT := Init_$(subst /,_,$(patsubst /%%,%%,$(target_prefix)/$(TARGET)))
+      $(STATIC_LIB): OBJS = $(TARGET)-relocatable.o
+      $(STATIC_LIB): $(TARGET)-relocatable.o
+      $(TARGET)-relocatable.o: $(FLEDGE_OBJS)
+      \t$(ECHO) linking relocatable object $(@)
+      %<recipe>s
+    MAKE
+
+    # What mkmf writes when an extension has no depend file, and leaves
+    # out when it has one: its objects depend on its headers and Ruby's.
+    HEADERS = "$(OBJS): $(HDRS) $(ruby_headers)\n"
+
     # The names of Ruby's bundled gems in the source tree +source+ whose
     # files include a C extension, as configure's --with-out-ext must name
     # them to leave out their builds as gems: extmk matches a gem by the
@@ -51,8 +92,10 @@ class RuntimeBuilder
     # folders an extconf.rb reads beside it: lib/ (debug's reads its
     # version there), and include/ and src/ (rbs's). extmk installs only
     # an extension's own lib/ folder, so none of them is installed twice.
-    # Returns each copied gem's full name, by name.
-    def self.copy(source, omit:)
+    # Each extension is linked into one relocatable object by the
+    # commands +recipe+ names (relocate). Returns each copied gem's full
+    # name, by name.
+    def self.copy(source, omit:, recipe:)
       gems(source).reject { |name, _| name == "win32ole" || omit.include?(name) }.sort.to_h.each do |name, full|
         %w[ext include src lib].each do |folder|
           from = File.join(source, ".bundle", "gems", full, folder)
@@ -66,6 +109,22 @@ class RuntimeBuilder
             FileUtils.cp(File.join(from, path), target)
           end
         end
+        relocate(File.join(source, "ext", "gems", name), recipe:)
+      end
+    end
+
+    # Gives each extension in the copied gem +folder+ (each folder with
+    # an extconf.rb, but its tests) the rules RELOCATABLE holds, after the
+    # gem's own depend file or, without one, the line mkmf would have
+    # written. +recipe+ is the platform's shell commands that link
+    # $(FLEDGE_OBJS) with -r into $@ and leave no symbol but
+    # $(FLEDGE_INIT) global (IOS#relocatable, Android#relocatable).
+    def self.relocate(folder, recipe:)
+      rules = format(RELOCATABLE, recipe: recipe.map { |command| "\t$(Q) #{command}" }.join("\n"))
+      Dir.glob("**/extconf.rb", base: folder).reject { |path| path.split("/").include?("test") }.each do |path|
+        depend = File.join(folder, File.dirname(path), "depend")
+        own = File.file?(depend) ? File.read(depend) : HEADERS
+        File.write(depend, "#{own.chomp}\n\n#{rules}")
       end
     end
 

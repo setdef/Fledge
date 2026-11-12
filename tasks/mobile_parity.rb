@@ -24,7 +24,9 @@ require_relative "parity"
 # extension compiled for the phone and linked into the app (ADR 022);
 # examples/cmake_phone, whose gem's extconf.rb builds a C++ library with
 # CMake for each of the phone's targets (ADR 027); a script that requires json and csv, a bundled
-# gem, and reaches rubygems.org over HTTPS (test/fixtures/mobile_hello);
+# gem, parses with prism, a bundled gem whose extension compiles its own
+# libprism (ADR 067), and reaches rubygems.org over HTTPS
+# (test/fixtures/mobile_hello);
 # and the parity probe (test/fixtures/parity), whose report is compared
 # with the same main.rb under the desktop Ruby of the computer that runs
 # the simulator (rv-ruby's, as the desktop parity check runs it). The
@@ -46,9 +48,9 @@ class MobileParity
   App = Data.define(:path, :name, :identifier, :prints)
 
   # What test/fixtures/mobile_hello prints, when the runtime keeps csv a
-  # gem and can reach a server over HTTPS with the CA certificates it
-  # carries.
-  HELLO = /\AHello from Ruby 4\.1\.0 on \S+: \["csv","\d+\.\d+\.\d+"\] over HTTPS: 200\z/
+  # gem, keeps prism a gem whose extension parses, and can reach a server
+  # over HTTPS with the CA certificates it carries.
+  HELLO = /\AHello from Ruby 4\.1\.0 on \S+: \["csv","\d+\.\d+\.\d+"\], prism \d+\.\d+\.\d+ parses 1 \+ 2 as \+, over HTTPS: 200\z/
 
   # The apps, each built with fledge build for each phone.
   APPS = [

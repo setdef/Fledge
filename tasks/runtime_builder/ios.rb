@@ -36,10 +36,24 @@ class RuntimeBuilder
     end
 
     # fiddle is left out, as xord/cruby leaves it out "to pass the App
-    # Store review" (Rakefile, line 577): it would call any C function;
-    # and, for now, prism's extension, as on Android (Mobile).
+    # Store review" (Rakefile, line 577): it would call any C function.
     private def omitted_gems
       [*super, "fiddle"]
+    end
+
+    # How a bundled gem's extension becomes one object with only its Init
+    # function global (BundledExtensions.relocate): Apple's ld links it
+    # with -r, keeping its hidden symbols as they are (-keep_private_externs;
+    # without it ld makes them all local, ld(1), the Init function too,
+    # which iOS's -fvisibility=hidden hides), and Apple's nmedit makes
+    # every global but the Init function local (nmedit(1), -s).
+    private def relocatable
+      nmedit = @builder.capture("xcrun", "--find", "nmedit").strip
+      [
+        "$(CC) -r -nostdlib -Wl,-keep_private_externs -o $@ $(FLEDGE_OBJS)",
+        "echo _$(FLEDGE_INIT) > $@.keep",
+        "#{nmedit} -s $@.keep $@",
+      ]
     end
 
     private def edits

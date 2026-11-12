@@ -7,13 +7,22 @@
 # ten minutes. This names jdx/ruby's own asset for each version and
 # platform, so mise downloads the build it would download for a release.
 # For a URL it is given, mise checks no artifact attestation, as it does
-# for jdx/ruby's releases; the setting goes when Fledge moves to Ruby
-# 4.1.0.
+# for jdx/ruby's releases, and mise.toml gives jdx/ruby's ruby no
+# checksum option. Only a mise.lock could pin these downloads by
+# SHA-256, and Fledge keeps none: mise updates a lockfile it finds on
+# every install of any tool, on every contributor's computer, and CI's
+# setup would have to install from it too. The setting goes when Fledge
+# moves to Ruby 4.1.0.
 [settings]
 ruby.precompiled_url = "https://github.com/jdx/ruby/releases/download/{version}/ruby-{version}.{platform}.tar.gz"
 
 [tools]
-ruby = "4.1.0-preview1"
+# Fledge runs on the Ruby its runtimes come from (runtime/sources.yml's
+# ruby). On macOS and Linux that is the release, from jdx/ruby. On
+# Windows mise's ruby installs RubyInstaller's build of a version, which
+# does not exist for a preview, so there the table at the end installs
+# the Windows runtimes' own Ruby instead.
+ruby = { version = "4.1.0-preview1", os = ["linux", "macos"] }
 python = "3.12"
 pre-commit = "latest"
 uv = "0.13.4"
@@ -27,3 +36,42 @@ shellcheck = "0.11.0"
 # clang-format checks the launcher's C in the gate (rake lint:c), against
 # .clang-format.
 "pipx:clang-format" = "23.1.3"
+
+# On Windows, the very archive of RubyInstaller's head build the Windows
+# runtimes are built from: the URL and SHA-256 of runtime/sources.yml's
+# x64-mingw-ucrt and aarch64-mingw-ucrt pins, which
+# test/contributor_ruby_test.rb keeps equal to these. mise's http backend
+# refuses a download whose SHA-256 differs, unpacks the 7-Zip archive,
+# and puts its bin/ on PATH. It does not check the archive's PGP
+# signature, as a runtime build does; the SHA-256 is that of the archive
+# whose signature was checked when it was pinned. The version is the day
+# the build was taken. The table goes when RubyInstaller builds the Ruby
+# Fledge carries, and mise's own ruby then installs it on Windows too.
+[tools."http:rubyinstaller-head"]
+version = "20261110"
+os = ["windows"]
+platforms.windows-x64 = { url = "https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-x64.7z", checksum = "sha256:901473edafd6b174d79978fc109d3df3ab73b1436719233f35c1a31b5b18bf58" }
+platforms.windows-arm64 = { url = "https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-arm.7z", checksum = "sha256:7d1ae764cc530ded0ae7f0c6e610eea17c7ef4ce574e529963072674dc234b34" }
+
+# The head build's zlib.so imports libz-1.dll and, on x64, its
+# digest/blake3.so imports libgcc_s_seh-1.dll, neither of which the build
+# ships (runtime/sources.yml, windows-dlls), so Ruby's zlib, and with it
+# Bundler, does not load. A Windows runtime adds both DLLs; here mise
+# installs the MSYS2 packages they come from, by the URLs and SHA-256s
+# runtime/sources.yml pins, and RUBY_DLL_PATH, which RubyInstaller reads
+# at boot (RubyInstaller::Runtime.enable_dll_search_paths), names their
+# folders. Ruby searches no other folder on PATH for a DLL.
+[tools."http:msys2-zlib"]
+version = "1.4-2"
+os = ["windows"]
+platforms.windows-x64 = { url = "https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-zlib-1.4-2-any.pkg.tar.zst", checksum = "sha256:172541cf5e2391a402f092104988699b0163129d22be1d6b4b201bfb84af6fcf", bin_path = "ucrt64/bin" }
+platforms.windows-arm64 = { url = "https://repo.msys2.org/mingw/clangarm64/mingw-w64-clang-aarch64-zlib-1.4-2-any.pkg.tar.zst", checksum = "sha256:ff28742649461c300f8817cc106252ad817aab9611f391c8112ba73f30dafa70", bin_path = "clangarm64/bin" }
+
+[tools."http:msys2-libgcc"]
+version = "16.2.0-6"
+os = ["windows/x64"]
+platforms.windows-x64 = { url = "https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libgcc-16.2.0-6-any.pkg.tar.zst", checksum = "sha256:80b2497f019977dd9528b1abc8621b1328a0115ab1f724047ccbb56bf323f11d", bin_path = "ucrt64/bin" }
+
+# Elsewhere mise sets it empty, and only RubyInstaller reads it.
+[env]
+RUBY_DLL_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2-zlib"].path }}/{{ arch(x64="ucrt64", arm64="clangarm64") }}/bin{% if arch() == "x64" %};{{ tools["http:msys2-libgcc"].path }}/ucrt64/bin{% endif %}{% endif %}', tools = true }

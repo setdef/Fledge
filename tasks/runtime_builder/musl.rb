@@ -56,18 +56,23 @@ class RuntimeBuilder
     # Mozilla's CA certificates as libexec/cert.pem where rv-ruby keeps
     # them, and returns the prefix, which the Unix recipe copies a runtime
     # from as it copies rv-ruby's.
+    #
+    # Ruby is built in its source folder, as rv-ruby builds it
+    # (Abstract/rv-ruby.rb, lines 157 to 174, at spinel-coop/rv-ruby
+    # f57186e): tool/rbinstall.rb writes each default gem's specification
+    # from its gemspec in the folder make runs in, and built beside its
+    # source, io-nonblock's specification keeps RubyGems from activating
+    # the gem for require "io/nonblock" (Mobile#build_target).
     private def unpack_ruby
       deps = File.join(@build_dir, "deps")
       %w[zlib libyaml libffi].each { |name| build_autotools(name, deps) }
       build_openssl(deps)
       prefix = File.join(@build_dir, "prefix")
+      FileUtils.rm_rf(prefix)
       source = unpack(pin("ruby"), "ruby")
-      build = File.join(@build_dir, "ruby-build")
-      FileUtils.rm_rf([build, prefix])
-      FileUtils.mkdir_p(build)
-      logged("ruby-configure", File.join(source, "configure"), *configure_options(prefix, deps), chdir: build)
-      logged("ruby-make", "make", "-j#{Etc.nprocessors}", chdir: build)
-      logged("ruby-install", "make", "install-nodoc", chdir: build)
+      logged("ruby-configure", "./configure", *configure_options(prefix, deps), chdir: source)
+      logged("ruby-make", "make", "-j#{Etc.nprocessors}", chdir: source)
+      logged("ruby-install", "make", "install-nodoc", chdir: source)
       ca = pin("ca-certificates")
       FileUtils.mkdir_p(File.join(prefix, "libexec"))
       FileUtils.cp(@builder.fetch(ca.fetch("url"), ca.fetch("sha256")), File.join(prefix, "libexec", "cert.pem"))

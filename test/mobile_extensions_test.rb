@@ -238,6 +238,27 @@ class MobileExtensionsTest < Minitest::Test
     assert_includes error.message, "sdkmanager"
   end
 
+  # A git gem's checkout is copied whole into a folder of the target's
+  # own, which the copy makes along with the folders above it, and its
+  # extension paths are relative to the gemspec's folder in it.
+  def test_a_git_gems_source_is_copied_into_a_new_folder_of_the_targets
+    checkout = File.join(@dir, "checkout")
+    FileUtils.mkdir_p(File.join(checkout, "gems", "oxide", "ext", "oxide"))
+    File.write(File.join(checkout, "gems", "oxide", "ext", "oxide", "extconf.rb"), "# extconf\n")
+    File.write(File.join(checkout, "gems", "oxide", "oxide.gemspec"), <<~RUBY)
+      Gem::Specification.new { |spec| spec.name = "oxide"; spec.version = "1.0.0"; spec.summary = "oxide"; spec.authors = ["a"]; spec.extensions = ["ext/oxide/extconf.rb"] }
+    RUBY
+    gem = Fledge::GitGem.new(name: "oxide", version: "1.0.0", uri: "https://example.com/oxide.git", revision: "a" * 40,
+      glob: "gems/*/*.gemspec", ref: nil, submodules: false)
+    compiler = Fledge::MobileExtensions.new(platform: ios, packages: {}, build_args: {}, host: Fledge::Platform.find("arm64-darwin"),
+      runtimes: Fledge::Runtimes.new(env: {}), work: File.join(@dir, "work"), log: StringIO.new)
+
+    root = compiler.__send__(:source_root, Fledge::GitPackage.new(gem, checkout), File.join(@dir, "work", "ios-arm64", "oxide-1.0.0"))
+
+    assert_equal File.join(@dir, "work", "ios-arm64", "oxide-1.0.0", "gems", "oxide"), root
+    assert_equal "# extconf\n", File.read(File.join(root, "ext", "oxide", "extconf.rb"))
+  end
+
   def test_a_gem_without_extensions_asks_for_no_compiler
     gem, package = native_gem(extensions: [], files: { "lib/pure.rb" => "" })
 

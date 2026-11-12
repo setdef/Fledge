@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On iOS and Android, a gem from git with an extension compiles; its build failed with `Errno::ENOENT` before it began.
 - On Windows, an app runs with UTF-8 as its ANSI code page, which its manifest declares, so a gem that opens a file or DLL through a Windows `A` function works when the app is installed under a folder named outside ASCII: a gem whose DLL ffi loads, such as libusb, failed to load there. In a windowed app `Encoding.find("locale")` is UTF-8 where `rubyw.exe` gives the system's code page; `doc/differences_from_ruby.md` says what else differs.
 
 - On iOS and Android, a phone's app has the prism gem, so `require "prism"` works, and so does requiring irb, minitest, rbs, rdoc, repl_type_completor, or typeprof: each bundled gem's extension keeps every symbol but its Init function to itself, so prism's own libprism no longer collides with libruby's.

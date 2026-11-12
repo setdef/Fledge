@@ -126,8 +126,11 @@ class MobileParityTest < Minitest::Test
   # The Android SDK's newest build tools, found from ANDROID_HOME as the
   # runner sets it: with Windows's separators on Windows, which Dir.glob
   # reads as escapes, so the check finds them from the path made plain.
+  # The SDK's folder is named by its long names, as Dir.glob names what
+  # it finds (Fledge::LongPath), where Windows' TMP gives an 8.3 name.
   def test_the_build_tools_are_the_sdks_newest_wherever_its_path_comes_from
-    Dir.mktmpdir do |sdk|
+    Dir.mktmpdir do |folder|
+      sdk = Fledge::LongPath.of(folder)
       %w[35.0.0 36.1.0 36.0.0].each { |version| FileUtils.mkdir_p(File.join(sdk, "build-tools", version)) }
       native = File::ALT_SEPARATOR ? File.expand_path(sdk).tr("/", File::ALT_SEPARATOR) : sdk
 

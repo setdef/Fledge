@@ -15,8 +15,10 @@ require "stringio"
 # NDK is found, and, with the real mobile runtimes and tools where this
 # computer has them, a real gem compiled for every target of a phone.
 class MobileExtensionsTest < Minitest::Test
+  # The folder by its long names, as Dir.glob names what it finds in it
+  # (Fledge::LongPath), where Windows' TMP names it by an 8.3 name.
   def setup
-    @dir = Dir.mktmpdir
+    @dir = Fledge::LongPath.of(Dir.mktmpdir)
   end
 
   def teardown

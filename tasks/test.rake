@@ -6,21 +6,32 @@
 #++
 
 require "minitest/test_task"
+require_relative "test_tiers"
 
 # Clear the default test task created by Minitest::TestTask if it exists
 Rake::Task["test"].clear if Rake::Task.task_defined?("test")
 
-# Rake::TestTask runs just the named files when TEST is set, as
-# "rake test TEST=test/foo_test.rb" (rake 13.4.2, lib/rake/testtask.rb,
-# lines 18-31 and 165-167: comma-separated names). Minitest::TestTask
-# reads N, X, TESTOPTS and A but not TEST (minitest 6.0.6,
-# lib/minitest/test_task.rb, lines 166-181), so without this "rake test
-# TEST=..." silently ran the whole suite. Dir[] expands a glob too.
-TEST_GLOBS = ENV.fetch("TEST", "test/**/*_test.rb").split(",")
+# rake test runs the unit tier, rake test:integration the integration
+# tier, and rake test:all both, as the gate does (tasks/test_tiers.rb).
+# TEST names files to run instead, of either tier. Every test runs with
+# Ruby's warnings on, so a warning shows in the gate's output instead of
+# in a user's terminal.
+{
+  unit: "test",
+  integration: "test:integration",
+  all: "test:all",
+}.each do |tier, name|
+  Minitest::TestTask.create(name) do |t|
+    t.test_globs = TestTiers.globs(tier, File.expand_path("..", __dir__), named: ENV.fetch("TEST", nil))
+    t.warning = true
+  end
+end
 
-# Every test runs with Ruby's warnings on, so a warning shows in the
-# gate's output instead of in a user's terminal.
-TEST_TASK = Minitest::TestTask.create(:test) do |t|
-  t.test_globs = TEST_GLOBS
-  t.warning = true
+{
+  "test" => "Run the unit tests, or the files TEST names",
+  "test:integration" => "Run the integration tests, or the files TEST names",
+  "test:all" => "Run every test, as the gate does, or the files TEST names",
+}.each do |name, comment|
+  Rake::Task[name].clear_comments
+  Rake::Task[name].comment = comment
 end

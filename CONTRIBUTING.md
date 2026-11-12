@@ -26,10 +26,20 @@ mise puts that Ruby first on `PATH` only in a shell it has activated (`eval "$(m
 
 `bundle exec rake runtime` builds this computer's runtime, which the gate otherwise skips the checks of. On Linux it needs a C compiler, binutils, make, perl, and xz from your system, and patchelf 0.18.0, which mise installs from `mise.toml`, pinned by SHA-256.
 
-Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it must pass with zero errors and zero warnings. While you work:
+Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it runs every test, and must pass with zero errors and zero warnings.
 
-- `bundle exec rake test` runs every test, and `bundle exec rake test A=-v` names each test with its time as it runs.
-- `bundle exec rake test TEST=test/foo_test.rb` runs just that file; several files, or globs, go comma-separated.
-- `bundle exec rake test TEST=test/foo_test.rb N=/name/` runs just the tests in it whose names match.
+## The tests
 
-Some tests build and run whole apps and take minutes, so run one file at a time while you work, and every test before you push.
+Fledge's tests come in two tiers, by folder, as Rails keeps its system tests in `test/system` and Hanami and dry-rb keep `spec/unit` apart from `spec/integration`.
+
+- **Unit tests** are every test file under `test/` but those in `test/integration/`. Each runs in milliseconds, in the test's own Ruby process, on any computer, with or without a runtime. It may write a temporary folder, read the repository, serve a `LoopbackServer` in its own process, and run a short-lived tool such as tar. It builds no runtime, reads none that `rake runtime` built, builds no app that it then runs, compiles nothing, starts no Ruby or shell script, runs no signing or disk image tool, and reaches nothing past this computer. A wait the code under test would make, such as a retry's, is made short by passing the waits in, as `Fledge::Download` and `Fledge::Dmg` take them.
+- **Integration tests**, in `test/integration/`, are the rest: a real runtime, a built app run as a person runs it, a compiler, `exe/fledge` or a script in a process of its own, codesign, hdiutil, makensis, gpg, a repository that git makes, or the network. They take seconds, some take minutes, and many skip on a computer without what they need.
+
+A new test file is a unit test unless you put it in `test/integration/`. When a unit test needs one of the things above, or takes more than about a tenth of a second on your computer, make it fast without weakening it, or move it. Tests of one class can be in both tiers: `test/assembly_test.rb` and `test/integration/assembly_tools_test.rb` share `test/support/assembly.rb`.
+
+While you work:
+
+- `bundle exec rake test` runs the unit tests, in seconds. Run it as often as you like.
+- `bundle exec rake test:integration` runs the integration tests, and `bundle exec rake test:all` runs both, as the gate and CI do. Build a runtime first (`bundle exec rake runtime`), or the tests that need one skip.
+- `bundle exec rake test TEST=test/foo_test.rb` runs just that file, of either tier; several files, or globs, go comma-separated.
+- `N=/name/` runs just the tests whose names match, and `A=-v` names each test with its time as it runs.

@@ -46,7 +46,7 @@ All of these use the Developer ID Application certificate and notarization profi
 
 - **Proves:** the repeatable form of MAC-1, which agents can run again for a later release.
 - **Needs:** as MAC-1.
-- **Steps:** `signing-test.md`, Part 1, step 4, the `rake test N=/gatekeepers_blessing/` command.
+- **Steps:** `signing-test.md`, Part 1, step 4, the `rake test:integration N=/gatekeepers_blessing/` command.
 - **Passing:** `0 failures, 0 errors, 0 skips`. A skip means a variable was empty.
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.

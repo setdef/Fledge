@@ -18,4 +18,4 @@ end
 # Import all tasks from the tasks/ directory
 Dir.glob("tasks/*.rake").each { |r| import r }
 
-task default: %w[lint:fix test lint steep package:check]
+task default: %w[lint:fix test:all lint steep package:check]

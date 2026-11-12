@@ -150,7 +150,7 @@ Each should say `accepted`, then `source=Notarized Developer ID`, then `origin=D
 Then run Fledge's own contract test, which does the same with a fresh build. The runtime is the one step 3 downloaded:
 
 ```console
-$ FLEDGE_TEST_SIGN_IDENTITY="Developer ID Application: setdef (ABCDE12345)" FLEDGE_TEST_NOTARY_PROFILE=fledge-notary FLEDGE_RUNTIME_DIR=~/.cache/fledge/runtimes bundle exec rake test N=/gatekeepers_blessing/
+$ FLEDGE_TEST_SIGN_IDENTITY="Developer ID Application: setdef (ABCDE12345)" FLEDGE_TEST_NOTARY_PROFILE=fledge-notary FLEDGE_RUNTIME_DIR=~/.cache/fledge/runtimes bundle exec rake test:integration N=/gatekeepers_blessing/
 ```
 
 You should see `1 runs, … 0 failures, 0 errors, 0 skips` among the counts (the other tests are filtered out, not run). A skip means a variable above is empty.

@@ -39,6 +39,21 @@ class RubySourceTest < Minitest::Test
     assert_raises(RuntimeError) { Edits.configure("target_os=${target_os}\n") }
   end
 
+  # The check configure makes for a macOS deployment target of 10.6 or
+  # later (generated from configure.ac, lines 439 to 451, at 4.1.0-preview1,
+  # tab-indented as autoconf writes it). The iOS SDK's AvailabilityMacros.h
+  # sets the macro to 10.5, so the edit makes the check apply only where
+  # clang names a macOS deployment target.
+  def test_configure_keeps_its_macos_minimum_check_for_a_macos_target_only
+    check = "#include <AvailabilityMacros.h>\n\t#if MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_6\n\t#error pre OS X 10.6\n" \
+      "\t[!<===== pre OS X 10.6 =====>]\n\t#endif\n"
+
+    assert_equal "#include <AvailabilityMacros.h>\n\t#if defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && " \
+      "MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_6\n\t#error pre OS X 10.6\n\t[!<===== pre OS X 10.6 =====>]\n\t#endif\n",
+      Edits.configure_macos_minimum(check)
+    assert_raises(RuntimeError) { Edits.configure_macos_minimum(check.sub("< __MAC_10_6", "< __MAC_10_7")) }
+  end
+
   # An embedder names the file Ruby would derive its prefix from, as the
   # binary that holds libruby, since on Android that binary is in a folder
   # of native libraries alone, and an iOS app may keep Ruby's library

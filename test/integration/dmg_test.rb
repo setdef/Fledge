@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 
 # A Mac app's disk image when <tt>hdiutil create</tt> finds its volume
 # busy (doc/contributors/design/desktop-apps.md, "The disk image"). On a

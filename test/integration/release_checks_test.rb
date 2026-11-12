@@ -5,8 +5,8 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
-require_relative "../tasks/runtime_pins"
+require_relative "../test_helper"
+require_relative "../../tasks/runtime_pins"
 require "open3"
 require "yaml"
 
@@ -18,7 +18,7 @@ require "yaml"
 # with sha256sum, on assets pinned by rake runtime:pin's own code. Both
 # run on Linux runners; Windows' tests skip them.
 class ReleaseChecksTest < Minitest::Test
-  ROOT = File.expand_path("..", __dir__)
+  ROOT = File.expand_path("../..", __dir__)
   PINS_ONLY = File.join(ROOT, ".github", "scripts", "pins-only.sh")
   CHECK_PINS = File.join(ROOT, ".github", "scripts", "check-pins.sh")
 

@@ -7,22 +7,17 @@
 
 require_relative "test_helper"
 require_relative "support/stand_in_signer"
-require "digest"
-require "open3"
 
 # Fledge::SignCommand, a Windows app signed by its developer's own
 # command (fledge build --sign-command, ADR 051). No agent has a
 # certificate in a cloud signing service, so the command is the stand-in
 # of test/support/stand_in_signer.rb, which records each path and marks
-# each file. On Windows, with a runtime, a whole build runs it as a
-# developer would, through fledge build, and CI's Build jobs also run
-# the real signtool through --sign-command, which Delivery verifies
+# each file. test/integration/windows_signed_build_test.rb runs it
+# through a whole build on Windows, and CI's Build jobs also run the
+# real signtool through --sign-command, which Delivery verifies
 # (.github/scripts/deliver-signed.ps1).
 class SignCommandTest < Minitest::Test
   BINARIES = File.expand_path("fixtures/binaries", __dir__)
-  WINDOWED_APP = File.expand_path("../examples/windowed_app", __dir__)
-  EXE = File.expand_path("../exe/fledge", __dir__)
-  LIB = File.expand_path("../lib", __dir__)
 
   # The path, quoted, goes where %1 is, bare or in quotes, as Tauri's
   # signCommand and NSIS's !finalize write it, or after the command.
@@ -90,68 +85,6 @@ class SignCommandTest < Minitest::Test
         assert_equal 2, signed.call.size, "nothing after the file that failed"
       end
     end
-  end
-
-  # A whole build, on Windows, through fledge build as a developer runs
-  # it: every PE file of the app, then the uninstaller makensis writes,
-  # then the setup program, each once; what the archive holds and the
-  # setup program are what was signed, and the checksum is of the signed
-  # setup program. FLEDGE_SIGN_COMMAND gives the command as the option
-  # would.
-  def test_a_windows_build_signs_its_files_then_the_uninstaller_then_the_setup_program
-    runtimes = windows_runtimes
-    StandInSigner.with do |signer, signed|
-      Dir.mktmpdir do |dir|
-        out, err, status = fledge(runtimes, dir, { "FLEDGE_SIGN_COMMAND" => "\"#{signer}\" %1" })
-        assert_predicate status, :success?, err
-
-        archive, setup = out.lines.map { |line| File.expand_path(line.chomp, dir) }
-        folder = archive.delete_suffix(".zip")
-        files = Fledge::WindowsSigning.files(folder).map { |path| Fledge::Nsis.host_path(path) }
-        *programs, uninstaller, last = signed.call
-        assert_equal files, programs
-        refute_includes files, uninstaller
-        assert_match(/\.tmp\z|uninst/i, uninstaller)
-        assert_equal Fledge::Nsis.host_path(setup), last
-        assert File.binread(setup).end_with?(StandInSigner::MARKER), "the setup program is the one signed"
-        assert_equal Digest::SHA256.file(setup).hexdigest, File.read("#{setup}.sha256").split.first
-
-        Fledge::Archive.unpack(archive, into: File.join(dir, "unpacked"))
-        program = File.join(dir, "unpacked", File.basename(folder), "Hello Window.exe")
-        assert File.binread(program).end_with?(StandInSigner::MARKER), "the archive holds the signed program"
-      end
-    end
-  end
-
-  # makensis runs the command on the setup program; one that fails there
-  # fails the build, naming the setup program.
-  def test_a_windows_build_whose_setup_program_will_not_sign_names_it
-    runtimes = windows_runtimes
-    StandInSigner.with(fail_on: "-setup.exe") do |signer, _|
-      Dir.mktmpdir do |dir|
-        out, err, status = fledge(runtimes, dir, {}, "--sign-command", "\"#{signer}\" %1")
-
-        assert_equal [1, ""], [status.exitstatus, out]
-        assert_includes err, "fledge build: the signing command failed on Hello Window-#{Fledge::Platform.local}-setup.exe (exit 3)"
-      end
-    end
-  end
-
-  # Runs fledge build on examples/windowed_app into +dir+ with +env+ and
-  # +arguments+, and returns its output, its errors, and its status.
-  private def fledge(runtimes, dir, env, *)
-    Open3.capture3({ "FLEDGE_RUNTIME_DIR" => runtimes }.merge(env), RbConfig.ruby, "-I", LIB, EXE, "build", *,
-      "-o", File.join(dir, "dist"), WINDOWED_APP, chdir: dir)
-  end
-
-  # The folder of runtimes with this Windows computer's, or a skip.
-  private def windows_runtimes
-    runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
-    found = Gem.win_platform? && File.file?(File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.local)))
-    return runtimes if found
-
-    flunk "no Windows runtime in #{runtimes}" if ENV["FLEDGE_REQUIRE_RUNTIME"] && Gem.win_platform?
-    skip "a Windows app is built on Windows, with a Windows runtime"
   end
 
   # An app's folder under +dir+: a program, a library, and an extension,

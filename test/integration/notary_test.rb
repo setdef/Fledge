@@ -5,8 +5,8 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
-require_relative "support/stand_in_notary"
+require_relative "../test_helper"
+require_relative "../support/stand_in_notary"
 
 # Fledge::Notary, Fledge's gateway to Apple's notary service (ADR 033):
 # what it asks notarytool and stapler, in which order, and what it says
@@ -14,7 +14,7 @@ require_relative "support/stand_in_notary"
 # Apple Developer account, so the service is the stand-in xcrun of
 # test/support/stand_in_notary.rb, which answers as Apple documents;
 # ditto, which zips what is submitted, is the real one. A run with the
-# maintainer's own account is test/built_app_test.rb's
+# maintainer's own account is test/integration/built_app_test.rb's
 # test_a_notarized_build_opens_with_gatekeepers_blessing, with
 # FLEDGE_TEST_NOTARY_PROFILE set.
 class NotaryTest < Minitest::Test

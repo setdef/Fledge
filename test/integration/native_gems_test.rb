@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 
 # Real precompiled gems, downloaded from RubyGems.org and pinned by
 # SHA-256, as fledge build would fetch them, checked as fledge build
@@ -19,7 +19,7 @@ require_relative "test_helper"
 # licenses of an app's gems are its developer's to judge, not Fledge's
 # (ADR 007). Now they ship like every other build.
 class NativeGemsTest < Minitest::Test
-  CACHE = File.expand_path("../tmp/native-gems", __dir__)
+  CACHE = File.expand_path("../../tmp/native-gems", __dir__)
 
   GEMS = {
     "nokogiri-1.19.4-arm64-darwin" => "a46db9853286e6597b36ebc6953817d15acf3a299583eb3f89fdc6f91dd63527",

@@ -5,10 +5,10 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
-require_relative "../tasks/parity"
-require_relative "support/disk_images"
-require_relative "support/stand_in_notary"
+require_relative "../test_helper"
+require_relative "../../tasks/parity"
+require_relative "../support/disk_images"
+require_relative "../support/stand_in_notary"
 require "digest"
 require "json"
 require "open3"
@@ -26,19 +26,19 @@ require "stringio"
 # FLEDGE_REQUIRE_RUNTIME is set, as CI sets it on every platform with a
 # runtime, so a missing runtime there fails instead of passing silently.
 class BuiltAppTest < Minitest::Test
-  HELLO = File.expand_path("../examples/hello", __dir__)
-  MY_COOL_APP = File.expand_path("../examples/my_cool_app", __dir__)
-  WINDOWED_APP = File.expand_path("../examples/windowed_app", __dir__)
-  PROGRAMS = File.expand_path("../examples/programs", __dir__)
-  PROBE = File.expand_path("fixtures/parity", __dir__)
-  CONSOLE = File.expand_path("fixtures/console", __dir__)
-  DELIVER_CONSOLE = File.expand_path("../.github/scripts/deliver-console.sh", __dir__)
-  EXE = File.expand_path("../exe/fledge", __dir__)
-  LIB = File.expand_path("../lib", __dir__)
+  HELLO = File.expand_path("../../examples/hello", __dir__)
+  MY_COOL_APP = File.expand_path("../../examples/my_cool_app", __dir__)
+  WINDOWED_APP = File.expand_path("../../examples/windowed_app", __dir__)
+  PROGRAMS = File.expand_path("../../examples/programs", __dir__)
+  PROBE = File.expand_path("../fixtures/parity", __dir__)
+  CONSOLE = File.expand_path("../fixtures/console", __dir__)
+  DELIVER_CONSOLE = File.expand_path("../../.github/scripts/deliver-console.sh", __dir__)
+  EXE = File.expand_path("../../exe/fledge", __dir__)
+  LIB = File.expand_path("../../lib", __dir__)
 
   def setup
     @platform = Fledge::Platform.local
-    @runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
+    @runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
     return if File.file?(File.join(@runtimes, Fledge::Runtimes.file_name(@platform)))
 
     message = "no #{Fledge::Runtimes.file_name(@platform)} in #{@runtimes}; run bundle exec rake runtime"

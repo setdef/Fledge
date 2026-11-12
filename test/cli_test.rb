@@ -11,7 +11,7 @@ require "tmpdir"
 require "fledge/cli"
 
 # The fledge executable's argument handling, through real output
-# streams. test/exe_test.rb runs the executable itself.
+# streams. test/integration/exe_test.rb runs the executable itself.
 class CLITest < Minitest::Test
   EXE = File.expand_path("../exe/fledge", __dir__)
 

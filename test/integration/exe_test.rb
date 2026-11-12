@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 require "open3"
 require "rbconfig"
 require "tmpdir"
@@ -14,8 +14,8 @@ require "tmpdir"
 # standard streams and exit status. test/cli_test.rb covers each
 # argument in process.
 class ExeTest < Minitest::Test
-  EXE = File.expand_path("../exe/fledge", __dir__)
-  LIB = File.expand_path("../lib", __dir__)
+  EXE = File.expand_path("../../exe/fledge", __dir__)
+  LIB = File.expand_path("../../lib", __dir__)
 
   # Runs exe/fledge with warnings on, and returns its standard output,
   # standard error, and exit status. On Windows a process writes its

@@ -11,7 +11,7 @@ require_relative "../tasks/runtime_builder"
 
 # The parts of rake runtime that need no compiler: the pins it reads, the
 # pruning it does, and the license audit it runs before it archives. CI's runtime jobs build real
-# runtimes, and test/built_app_test.rb runs them.
+# runtimes, and test/integration/built_app_test.rb runs them.
 class RuntimeBuilderTest < Minitest::Test
   def builder(name)
     RuntimeBuilder.new(platform: Fledge::Platform.find(name))

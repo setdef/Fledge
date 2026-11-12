@@ -7,8 +7,8 @@
 
 require "open3"
 require "rbconfig"
-require_relative "test_helper"
-require_relative "../tasks/runtime_builder"
+require_relative "../test_helper"
+require_relative "../../tasks/runtime_builder"
 
 # A phone's runtime links every bundled gem's extension into one library
 # beside libruby, and prism's extension compiles its own libprism, which

@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 require "open3"
 require "rbconfig"
 
@@ -15,7 +15,7 @@ require "rbconfig"
 # a runtime's is, so the launcher finds its standard library through a
 # lib beside it that links to that Ruby's own.
 class LauncherEnvironmentTest < Minitest::Test
-  LAUNCHER = File.expand_path("../runtime/launcher", __dir__)
+  LAUNCHER = File.expand_path("../../runtime/launcher", __dir__)
 
   # Runs argv[1] with the environment argv[2..], exactly, whatever its
   # entries are: Ruby's own spawn writes every entry as NAME=value.

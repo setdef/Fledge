@@ -6,105 +6,15 @@
 #++
 
 require_relative "test_helper"
-require "open3"
-require "stringio"
+require_relative "support/build_from"
 
 # fledge build --from APP (ADR 032), through real streams: an app built
 # by fledge build from a fake runtime, with gems from folders inside and
 # outside its project, and a second project built from it.
+# test/integration/build_from_tools_test.rb covers what the tools of a
+# Mac or Windows add.
 class BuildFromTest < Minitest::Test
-  LINUX = "x86_64-linux"
-  PLATFORMS = %w[arm64-darwin x64-mingw-ucrt aarch64-mingw-ucrt x86_64-linux aarch64-linux x86_64-linux-musl aarch64-linux-musl].freeze
-
-  def setup
-    @dir = File.realpath(Dir.mktmpdir)
-    @runtimes = File.join(@dir, "runtimes")
-    FileUtils.mkdir_p(@runtimes)
-    Fledge::Platform.names.each { |name| FakeRuntime.write(@runtimes, Fledge::Platform.find(name)) }
-  end
-
-  def teardown
-    FileUtils.rm_rf(@dir)
-  end
-
-  def build(*argv, host: LINUX, env: { "FLEDGE_RUNTIME_DIR" => @runtimes })
-    out = StringIO.new
-    err = StringIO.new
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host)).call(argv) }
-    [out.string, err.string, status]
-  end
-
-  # A gem in +folder+ whose lib/NAME.rb defines +body+.
-  def path_gem(folder, name)
-    FileUtils.mkdir_p(File.join(folder, "lib"))
-    File.write(File.join(folder, "#{name}.gemspec"),
-      "Gem::Specification.new { |s| s.name = #{name.inspect}; s.version = '1.0'; s.summary = 'x'; s.authors = ['x']; " \
-        "s.files = ['lib/#{name}.rb'] }\n")
-    File.write(File.join(folder, "lib", "#{name}.rb"), "# #{name}\n")
-  end
-
-  # The project of the app others are built from: Player, whose Gemfile
-  # takes greeter from a folder inside it and elsewhere from one beside
-  # it, and whose fledge.yml adds +config+.
-  def player(config = "")
-    root = FakeApp.write(@dir, "player")
-    path_gem(File.join(root, "vendor", "greeter"), "greeter")
-    path_gem(File.join(@dir, "elsewhere"), "elsewhere")
-    File.write(File.join(root, "Gemfile"), "source \"https://rubygems.org\"\n\ngem \"greeter\", path: \"vendor/greeter\"\ngem \"elsewhere\", path: \"../elsewhere\"\n")
-    File.write(File.join(root, "Gemfile.lock"), <<~LOCK)
-      PATH
-        remote: ../elsewhere
-        specs:
-          elsewhere (1.0)
-
-      PATH
-        remote: vendor/greeter
-        specs:
-          greeter (1.0)
-
-      GEM
-        remote: https://rubygems.org/
-        specs:
-
-      PLATFORMS
-      #{PLATFORMS.sort.map { |platform| "  #{platform}" }.join("\n")}
-
-      DEPENDENCIES
-        elsewhere!
-        greeter!
-
-      CHECKSUMS
-        elsewhere (1.0)
-        greeter (1.0)
-
-      BUNDLED WITH
-        #{FakeProject.runtime_bundler}
-    LOCK
-    File.write(File.join(root, "fledge.yml"), "name: Player\nversion: \"9.9\"\npublisher: Player Inc.\n#{config}")
-    root
-  end
-
-  # A project with no gems of its own, which fledge.yml names Game.
-  def game(config = "")
-    root = FakeApp.write(@dir, "game")
-    File.write(File.join(root, "main.rb"), "require \"greeter\"\nputs 'game'\n")
-    FileUtils.mkdir_p(File.join(root, "assets"))
-    File.write(File.join(root, "assets", "level.txt"), "1\n")
-    File.write(File.join(root, "fledge.yml"), "name: Game\n#{config}")
-    root
-  end
-
-  # Builds Player for +host+ and returns its folder.
-  def built_player(config = "", host: LINUX)
-    player(config)
-    _, err, status = build("-o", "players", "player", host:)
-    assert_equal [0, ""], [status, err]
-    File.join(@dir, "players", "Player-#{Fledge::Platform.local(Gem::Platform.new(host))}")
-  end
-
-  def files(folder)
-    Dir.glob("**/*", File::FNM_DOTMATCH, base: folder).reject { |path| File.basename(path) == "." }.sort
-  end
+  include BuildFromHelpers
 
   # The new app is the old one copied: the runtime and the gems Bundler
   # sets up stay, the project is the new one's, and Bundler gets the old
@@ -197,44 +107,6 @@ class BuildFromTest < Minitest::Test
     assert_includes File.read(File.join(folder, "com.example.Game.desktop")), "Name=Game\n"
     assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\n" \
       "entry = main.rb\ngemfile = Gemfile\nidentifier = com.example.Game\n", File.read(File.join(folder, "fledge.cfg"))
-  end
-
-  # On macOS a windowed app is its bundle, which --from takes as APP too,
-  # and the new bundle is written and sealed again with the system's own
-  # plutil and codesign.
-  def test_on_macos_the_new_bundle_has_its_own_info_plist_and_seal
-    skip "codesign and plutil are macOS's" unless RUBY_PLATFORM.include?("darwin")
-    FakeRuntime.write(@runtimes, Fledge::Platform.find("arm64-darwin"), launcher: File.binread("/usr/bin/true"))
-    from = built_player("kind: windowed\nidentifier: com.example.Player\ninstallers: []\n", host: "arm64-darwin-25")
-    game("kind: windowed\nidentifier: com.example.Game\ninstallers: []\n")
-
-    _, err, status = build("--from", File.join(from, "Player.app"), "game", host: "arm64-darwin-25")
-
-    assert_equal [0, ""], [status, err]
-    bundle = File.join(@dir, "dist", "Game-arm64-darwin", "Game.app")
-    assert_equal ["Game.app"], Dir.children(File.dirname(bundle))
-    plist, = Open3.capture2("plutil", "-extract", "CFBundleIdentifier", "raw", "-o", "-", File.join(bundle, "Contents", "Info.plist"))
-    assert_equal "com.example.Game\n", plist
-    _, verify, = Open3.capture3("codesign", "--verify", "--deep", "--strict", "--verbose=2", bundle)
-    assert_includes verify, "valid on disk"
-    assert_path_exists File.join(bundle, "Contents", "Resources", "app", "vendor", "greeter", "lib", "greeter.rb")
-  end
-
-  # A console app built from a windowed one on macOS takes the bundle's
-  # program, signed again ad hoc so that it carries no seal of the old
-  # app's.
-  def test_on_macos_a_console_app_from_a_bundle_carries_none_of_its_signature
-    skip "codesign is macOS's" unless RUBY_PLATFORM.include?("darwin")
-    FakeRuntime.write(@runtimes, Fledge::Platform.find("arm64-darwin"), launcher: File.binread("/usr/bin/true"))
-    from = built_player("kind: windowed\nidentifier: com.example.Player\ninstallers: []\n", host: "arm64-darwin-25")
-    game
-    FileUtils.rm_f(File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::Platform.find("arm64-darwin"))))
-
-    _, err, status = build("--from", from, "game", host: "arm64-darwin-25")
-
-    assert_equal [0, ""], [status, err]
-    _, info, = Open3.capture3("codesign", "--display", "--verbose=2", File.join(@dir, "dist", "Game-arm64-darwin", "Game"))
-    refute_includes info, "com.example.Player"
   end
 
   # An app built from another builds no gems: one that has its own is
@@ -358,13 +230,6 @@ class BuildFromTest < Minitest::Test
     end
   end
 
-  # A folder of no runtimes, so that none is at hand.
-  def no_runtime
-    folder = File.join(@dir, "no runtimes")
-    FileUtils.mkdir_p(folder)
-    { "FLEDGE_RUNTIME_DIR" => folder }
-  end
-
   # build_tools (ADR 032): the app carries the runtime's tools, and
   # --from takes them from it when no runtime is at hand. The new app
   # keeps them only when its own fledge.yml asks for them too; an app
@@ -397,24 +262,6 @@ class BuildFromTest < Minitest::Test
     player("build_tools: true\nname: tools\n")
     _, err, status = build("-o", "players", "player")
     assert_equal [1, "fledge build: an app named tools would collide with the tools it carries. Give it another name.\n"], [status, err]
-  end
-
-  # On Windows the app carries the runtime's launchers, rcedit, and NSIS,
-  # but not llvm-readobj, which reads compiled gems, and --from builds
-  # none; with them, a Windows app is built from it with no runtime.
-  def test_on_windows_an_app_with_build_tools_is_built_from_with_no_runtime
-    skip "a Windows app is built on Windows, with the real runtime's launchers and rcedit" unless Gem.win_platform? && FakeRuntime.windows
-    host = Fledge::Platform.local.name
-    from = built_player("build_tools: true\n", host:)
-    assert_equal %w[launcher.exe launcherw.exe rcedit.exe], Dir.children(File.join(from, "tools")).sort
-    game("kind: windowed\nidentifier: com.example.Game\ninstallers: []\n")
-
-    _, err, status = build("--from", from, "game", host:, env: no_runtime)
-
-    assert_equal [0, ""], [status, err]
-    folder = File.join(@dir, "dist", "Game-#{host}")
-    assert_path_exists File.join(folder, "Game.exe")
-    refute_path_exists File.join(folder, "tools")
   end
 
   # Windows' programs carry their app's identity in their resources, so

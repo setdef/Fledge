@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 require "open3"
 require "rbconfig"
 
@@ -17,7 +17,7 @@ require "rbconfig"
 # errors, with a line longer than an entry holds sent as several entries
 # cut between UTF-8 characters.
 class MobileOutputTest < Minitest::Test
-  MOBILE = File.expand_path("../runtime/mobile", __dir__)
+  MOBILE = File.expand_path("../../runtime/mobile", __dir__)
 
   # A log for output.c that writes "E " or "O " and each entry to the
   # file the program is given, and a program that forwards its output and
@@ -139,7 +139,7 @@ class MobileOutputTest < Minitest::Test
     end
   end
 
-  LAUNCHER = File.expand_path("../runtime/launcher", __dir__)
+  LAUNCHER = File.expand_path("../../runtime/launcher", __dir__)
 
   # A host, as an app's would be, of the embedding API (fledge_ruby.c)
   # linked with the Ruby running these tests, beside the log of PROGRAM:

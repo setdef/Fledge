@@ -186,7 +186,7 @@ Two other ways were weighed and not taken:
 - **No `BUNDLE_FROZEN`** in the app's `.bundle/config`: Bundler would touch the lockfile on every setup (`Definition#write_lock`, `definition.rb`, lines 401 to 426), fail in a read-only folder, and add the running platform to its resolution.
 - **Adding irb to the app's bundle at build time:** the app's `$LOAD_PATH` and loaded gems would differ from what `bundle exec` gives.
 
-On Windows, `binding.irb` in such a bundle fails under `bundle exec` as well, and the app matches it: reline, which irb requires, requires `fiddle/import` there, and fiddle, a bundled gem, is a dependency of neither irb nor reline, so the temporary bundle leaves it out. With `fiddle` in the Gemfile it opens IRB. `test/built_app_test.rb` skips its `binding.irb` test on Windows for this reason.
+On Windows, `binding.irb` in such a bundle fails under `bundle exec` as well, and the app matches it: reline, which irb requires, requires `fiddle/import` there, and fiddle, a bundled gem, is a dependency of neither irb nor reline, so the temporary bundle leaves it out. With `fiddle` in the Gemfile it opens IRB. `test/integration/built_app_test.rb` skips its `binding.irb` test on Windows for this reason.
 
 ## The linkage check
 
@@ -214,7 +214,7 @@ A name that leads to no file of the gem fails, with a message that names the fil
 - Ruby, the program that loads every bundle, contributes no run paths: its own lead into the runtime, never into a gem.
 - An absolute name outside `/usr/lib` and `/System/Library/Frameworks` whose file name the gem carries is accepted by that name. dyld would load it only from that path, or from an image already loaded under the same install name, and telling those apart needs the load order, which a check of files at rest does not have.
 
-The fixtures for these rules are built by `test/linkage_test.rb` with Xcode's clang and `install_name_tool`, which only a Mac has; elsewhere those tests skip.
+The fixtures for these rules are built by `test/integration/linkage_mach_o_test.rb` with Xcode's clang and `install_name_tool`, which only a Mac has; elsewhere those tests skip.
 
 ## Libraries from the Linux distribution
 

@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 
 # Signing with a timestamp when Apple's timestamp server does not answer
 # (doc/contributors/design/signing.md, "Timestamps"). CI's signed build
@@ -18,7 +18,7 @@ require_relative "test_helper"
 # runs the real codesign, which signs ad hoc, and the real
 # Fledge::Command runs both.
 class MacSigningTest < Minitest::Test
-  BINARIES = File.expand_path("fixtures/binaries", __dir__)
+  BINARIES = File.expand_path("../fixtures/binaries", __dir__)
 
   # A codesign that counts its runs in COUNT, fails with FAILURE for the
   # first FAILS of them, as codesign does, naming the file, and otherwise

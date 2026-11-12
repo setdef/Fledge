@@ -246,7 +246,7 @@ class Parity
   # +source+ (examples/my_cool_app, unless given), without the
   # developer's .bundle, with the probe as its exe/PROGRAM, and with
   # +name+, when given, as the app's name in its fledge.yml. Returns
-  # +project+. CI builds one for Delivery, and test/built_app_test.rb for
+  # +project+. CI builds one for Delivery, and test/integration/built_app_test.rb for
   # the built app's tests.
   def self.gem_probe(project, name: nil, source: GEM_APP, program: "my_cool_app")
     FileUtils.cp_r(source, project)

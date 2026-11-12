@@ -5,8 +5,8 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
-require_relative "support/loopback_server"
+require_relative "../test_helper"
+require_relative "../support/loopback_server"
 require "digest"
 require "json"
 require "open3"
@@ -25,7 +25,7 @@ require "yaml"
 # given, so a test sees what would be published and what reading the
 # release back returns.
 class KeepRubyInstallerHeadTest < Minitest::Test
-  ROOT = File.expand_path("..", __dir__)
+  ROOT = File.expand_path("../..", __dir__)
   SCRIPT = File.join(ROOT, ".github", "scripts", "keep-rubyinstaller-head.sh")
   VERSIONS = %w[4.1.0-preview2 4.1.0-preview3 4.1.0-rc1 4.1.0-rc2 4.1.0].freeze
   FILES = %w[

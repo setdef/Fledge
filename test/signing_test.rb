@@ -10,7 +10,7 @@ require "open3"
 require "stringio"
 
 # Fledge::Signing (ADR 016): which files each system's signer signs, and
-# how. test/built_app_test.rb signs whole apps with the identity
+# how. test/integration/built_app_test.rb signs whole apps with the identity
 # FLEDGE_TEST_SIGN_IDENTITY names: "-", ad hoc, on any Mac, and in CI a
 # self-signed certificate it makes on macOS and Windows; Delivery verifies
 # the result with codesign and signtool on fresh runners

@@ -6,31 +6,16 @@
 #++
 
 require_relative "test_helper"
-require_relative "support/disk_images"
+require_relative "support/assembly"
 require_relative "support/gems"
-require "json"
-require "open3"
 
 # Fledge::Assembly with fake runtimes, on the computer the tests run on:
 # each platform's app is built on that platform (ADR 010), so a test of
 # what only one platform's tools make runs only there, and CI runs the
-# tests on every platform.
+# tests on every platform. test/integration/assembly_tools_test.rb has
+# those tools make what only they make.
 class AssemblyTest < Minitest::Test
-  LINUX = Fledge::Platform.find("x86_64-linux")
-  MACOS = Fledge::Platform.find("arm64-darwin")
-  WINDOWS = Fledge::Platform.find("x64-mingw-ucrt")
-
-  # A windowed app with an icon, whose name has a space, and, unless
-  # +installers+ says otherwise, no installers.
-  module WindowedApp
-    def self.write(dir, installers: "[]")
-      root = FakeApp.write(dir, "window")
-      File.write(File.join(root, "fledge.yml"),
-        "name: Hello Window\nkind: windowed\nidentifier: com.example.HelloWindow\nicon: art\n#{"installers: #{installers}\n" if installers}")
-      FakeRuntime.icons(root, "art")
-      root
-    end
-  end
+  include AssemblyHelpers
 
   RUNTIME_FILES = %w[
     lib
@@ -53,74 +38,6 @@ class AssemblyTest < Minitest::Test
 
   # What a runtime keeps for installers, in its installer folder.
   APPIMAGE_RUNTIME = Fledge::Entry.file("tools/appimage-runtime", "\x7FELF runtime".b, mode: 0o755)
-
-  def assemble(dir, app_root, platform: LINUX, runtime: FakeRuntime.write(dir, platform), app_files: {}, files: [])
-    out = File.join(dir, "dist")
-    Fledge::Assembly.new(app: Fledge::App.at(app_root), platform:, runtime:, out:, app_files:, files:).call
-  end
-
-  # What a build left in +dir+'s dist folder, but the cache directory
-  # tag the folder keeps.
-  def left_in(dir)
-    Dir.children(File.join(dir, "dist")) - [Fledge::CacheTag::FILE]
-  end
-
-  # The archive at +archive+, unpacked by the system's tar into a folder
-  # of +dir+, whose path it returns.
-  def unpacked(dir, archive)
-    place = File.join(dir, "unpacked")
-    FileUtils.rm_rf(place)
-    FileUtils.mkdir_p(place)
-    out, status = Open3.capture2e(Fledge::Archive.tar, "-xf", archive, "-C", place)
-    assert_predicate status, :success?, out
-    place
-  end
-
-  # Every path below +folder+, relative to it.
-  def tree(folder)
-    Dir.glob("**/*", File::FNM_DOTMATCH, base: folder).reject { |path| File.basename(path) == "." }.sort
-  end
-
-  def unix!
-    skip "a Unix app's symbolic links and modes are built on macOS or Linux" if Gem.win_platform?
-  end
-
-  # A Windows app is built on Windows, with the real Windows runtime's
-  # launchers and rcedit (FakeRuntime.windows).
-  def windows!
-    skip "a Windows app is built on Windows" unless Gem.win_platform?
-    return if FakeRuntime.windows
-
-    message = "no Windows runtime in FLEDGE_RUNTIME_DIR or tmp/runtime, whose launchers and rcedit these tests run"
-    ENV["FLEDGE_REQUIRE_RUNTIME"] ? flunk(message) : skip(message)
-  end
-
-  # The PE Subsystem of the Windows program at +path+: 2 for a GUI
-  # program, 3 for a console one, as the runtime's llvm-readobj reads it.
-  def subsystem(path)
-    TestReaders.need(self, :pe)
-    Fledge::Binary.read([path], readers: TestReaders.all).fetch(path).subsystem
-  end
-
-  # The version information Windows reads from the program at +path+, as
-  # Explorer's Properties dialog shows it.
-  def version_info(path)
-    script = "(Get-Item -LiteralPath $env:PROGRAM).VersionInfo | Select-Object FileDescription, ProductName, CompanyName, " \
-      "LegalCopyright, OriginalFilename, FileVersion, ProductVersion, FileMajorPart | ConvertTo-Json"
-    out, status = Open3.capture2e({ "PROGRAM" => path }, "powershell", "-NoProfile", "-NonInteractive", "-Command", script)
-    assert_predicate status, :success?, out
-    JSON.parse(out)
-  end
-
-  def mac!
-    skip "a Mac app is built on a Mac" unless RUBY_PLATFORM.include?("darwin")
-  end
-
-  # An AppImage is built on Linux, with mksquashfs (as app_image_test.rb
-  # checks).
-  def appimage!
-    skip "an AppImage is built on Linux, with mksquashfs" unless RUBY_PLATFORM.include?("linux") && system("mksquashfs", "-version", out: File::NULL)
-  end
 
   def test_the_runtime_and_app_land_in_a_folder_and_an_archive_with_the_launcher_renamed
     unix!
@@ -196,147 +113,6 @@ class AssemblyTest < Minitest::Test
 
       assert_equal "#{clash.path} is in #{runtime} already, so the build can't add its own", error.message
       assert_empty left_in(dir)
-    end
-  end
-
-  # Windows' layout differs from Unix's (Ruby's own tree in ruby\, not
-  # lib/ beside the launcher), but assembly hardly cares: it renames
-  # launcher.exe, with the app's version information in it, and copies the
-  # rest as the runtime holds it, but for launcherw.exe, which a console
-  # app does not run. Windows' own tar writes the .zip.
-  def test_a_windows_app_lands_in_a_folder_and_a_zip_with_the_exe_renamed
-    windows!
-    Dir.mktmpdir do |dir|
-      runtime = FakeRuntime.write(dir, WINDOWS, extra: [Fledge::Entry.file("ruby/bin/x64-ucrt-ruby400.dll", "MZ", mode: 0o755)])
-
-      app = FakeApp.write(dir)
-      archive = assemble(dir, app, platform: WINDOWS, runtime:)
-
-      assert_equal File.join(dir, "dist", "Hello-x64-mingw-ucrt.zip"), archive
-      folder = File.join(dir, "dist", "Hello-x64-mingw-ucrt")
-      assert_equal %w[Hello.exe app fledge.cfg ruby], Dir.children(folder).sort
-      program = File.join(folder, "Hello.exe")
-      assert_equal 3, subsystem(program)
-      info = version_info(program)
-      assert_equal ["Hello", "Hello", "Hello.exe", "0.0.0", "0.0.0"],
-        info.values_at("FileDescription", "ProductName", "OriginalFilename", "FileVersion", "ProductVersion")
-      top = File.join(unpacked(dir, archive), "Hello-x64-mingw-ucrt")
-      assert_path_exists File.join(top, "ruby/bin/x64-ucrt-ruby400.dll")
-      assert_equal File.binread(File.join(folder, "Hello.exe")), File.binread(File.join(top, "Hello.exe"))
-      assert_equal File.binread(File.join(app, "main.rb")), File.binread(File.join(top, "app/main.rb"))
-    end
-  end
-
-  # A windowed app runs launcherw.exe, a GUI program, renamed, with its
-  # identity; fledge.cfg names its identifier for the launcher's
-  # AppUserModelID.
-  def test_a_windowed_windows_app_runs_the_gui_launcher
-    windows!
-    Dir.mktmpdir do |dir|
-      app = WindowedApp.write(dir)
-      assemble(dir, app, platform: WINDOWS)
-
-      folder = File.join(dir, "dist", "Hello Window-x64-mingw-ucrt")
-      assert_equal ["Hello Window.exe", "app", "fledge.cfg", "ruby"], Dir.children(folder).sort
-      program = File.join(folder, "Hello Window.exe")
-      assert_equal 2, subsystem(program)
-      assert_equal "Hello Window", version_info(program).fetch("FileDescription")
-      assert_includes File.read(File.join(folder, "fledge.cfg")), "\nidentifier = com.example.HelloWindow\n"
-    end
-  end
-
-  def test_a_windowed_app_needs_a_runtime_with_a_windowed_launcher
-    windows!
-    Dir.mktmpdir do |dir|
-      runtime = FakeRuntime.pack(File.join(dir, "old.tar.gz"), "top", [Fledge::Entry.file("launcher.exe", FakeRuntime::WINDOWS_CONSOLE, mode: 0o755)])
-
-      error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir), platform: WINDOWS, runtime:) }
-      assert_equal "#{runtime} is not a Fledge runtime: it has no launcherw.exe", error.message
-    end
-  end
-
-  # A windowed app on macOS is an .app bundle: the launcher in MacOS, the
-  # runtime and the app in Resources, linked from MacOS where the launcher
-  # and Ruby look for them, an Info.plist and icon, and codesign's seal
-  # and ad hoc signature over all of it.
-  def test_a_windowed_macos_app_is_a_signed_bundle
-    mac!
-    Dir.mktmpdir do |dir|
-      runtime = FakeRuntime.write(dir, MACOS, launcher: File.binread("/usr/bin/true"), extra: [Fledge::Entry.file("libexec/cert.pem", "pem")])
-      archive = assemble(dir, WindowedApp.write(dir), platform: MACOS, runtime:)
-
-      folder = File.join(dir, "dist", "Hello Window-arm64-darwin")
-      contents = File.join(folder, "Hello Window.app", "Contents")
-      assert_equal ["Hello Window.app"], Dir.children(folder)
-      assert_equal %w[Info.plist MacOS Resources _CodeSignature], Dir.children(contents).sort
-      assert_equal ["Hello Window", "app", "fledge.cfg", "lib", "libexec"], Dir.children(File.join(contents, "MacOS")).sort
-      %w[app fledge.cfg lib libexec].each do |name|
-        assert_equal "../Resources/#{name}", File.readlink(File.join(contents, "MacOS", name)), name
-      end
-      assert_equal ["Hello Window.icns", "app", "fledge.cfg", "lib", "libexec"], Dir.children(File.join(contents, "Resources")).sort
-      plist = File.read(File.join(contents, "Info.plist"))
-      assert_includes plist, "<key>CFBundleIdentifier</key>\n\t<string>com.example.HelloWindow</string>"
-      assert_includes plist, "<key>CFBundleExecutable</key>\n\t<string>Hello Window</string>"
-      assert_includes plist, "<key>NSHighResolutionCapable</key>\n\t<true/>"
-
-      bundle = File.join(unpacked(dir, archive), "Hello Window-arm64-darwin", "Hello Window.app")
-      verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", "--verbose=2", bundle)
-      assert_predicate status, :success?, verified
-      signed, = Open3.capture2e("codesign", "--display", "--verbose=2", bundle)
-      assert_includes signed, "Identifier=com.example.HelloWindow"
-      assert_includes signed, "Signature=adhoc"
-      assert_equal 0o755, File.stat(File.join(bundle, "Contents/MacOS/Hello Window")).mode & 0o777
-      assert File.symlink?(File.join(bundle, "Contents/MacOS/lib"))
-    end
-  end
-
-  # fledge.yml's macos: build is the bundle's CFBundleVersion, as plutil
-  # reads it, and the version's numbers stay CFBundleShortVersionString;
-  # without it, both are the version's.
-  def test_a_macos_build_number_is_the_bundles_cfbundleversion
-    mac!
-    Dir.mktmpdir do |dir|
-      root = WindowedApp.write(dir)
-      File.write(File.join(root, "fledge.yml"), "version: \"2.1.0.pre.3\"\n#{File.read(File.join(root, 'fledge.yml'))}")
-      read = lambda do |key|
-        runtime = FakeRuntime.write(dir, MACOS, launcher: File.binread("/usr/bin/true"))
-        assemble(dir, root, platform: MACOS, runtime:)
-        plist = File.join(dir, "dist", "Hello Window-arm64-darwin", "Hello Window.app", "Contents", "Info.plist")
-        out, status = Open3.capture2e("plutil", "-extract", key, "raw", plist)
-        assert_predicate status, :success?, out
-        out.strip
-      end
-      assert_equal %w[2.1.0 2.1.0], [read.call("CFBundleVersion"), read.call("CFBundleShortVersionString")]
-
-      File.write(File.join(root, "fledge.yml"), "#{File.read(File.join(root, 'fledge.yml'))}macos:\n  build: \"2.1.417\"\n")
-      assert_equal %w[2.1.417 2.1.0], [read.call("CFBundleVersion"), read.call("CFBundleShortVersionString")]
-    end
-  end
-
-  # A project of several programs (ADR 024): a windowed one, with an
-  # icon, and two console ones, sharing one project.
-  module Programs
-    def self.write(dir, installers: "[]")
-      root = FakeApp.write(dir, "game")
-      FileUtils.mkdir_p(File.join(root, "bin"))
-      %w[gui.rb bin/cli bin/tui].each { |path| File.write(File.join(root, path), "") }
-      File.write(File.join(root, "fledge.yml"), <<~YAML)
-        name: Game
-        version: "1.2.3"
-        installers: #{installers}
-        programs:
-          - path: gui.rb
-            name: Play Game
-            kind: windowed
-            identifier: com.example.Game
-            icon: art
-          - path: bin/cli
-            name: game-cli
-          - path: bin/tui
-            identifier: com.example.GameTui
-      YAML
-      FakeRuntime.icons(root, "art")
-      root
     end
   end
 
@@ -453,49 +229,6 @@ class AssemblyTest < Minitest::Test
     end
   end
 
-  # On macOS the windowed program's bundle holds everything: the console
-  # programs are copies of the launcher in its MacOS folder, sealed by
-  # its signature, and linked from the app's folder.
-  def test_on_macos_console_programs_live_in_the_windowed_programs_bundle
-    mac!
-    Dir.mktmpdir do |dir|
-      runtime = FakeRuntime.write(dir, MACOS, launcher: File.binread("/usr/bin/true"), extra: [Fledge::Entry.file("libexec/cert.pem", "pem")])
-      archive = assemble(dir, Programs.write(dir), platform: MACOS, runtime:)
-
-      folder = File.join(dir, "dist", "Game-arm64-darwin")
-      assert_equal ["Play Game.app", "game-cli", "tui"], Dir.children(folder).sort
-      macos = File.join(folder, "Play Game.app", "Contents", "MacOS")
-      assert_equal ["Play Game", "app", "fledge.cfg", "game-cli", "lib", "libexec", "tui"], Dir.children(macos).sort
-      %w[game-cli tui].each do |program|
-        assert_equal "Play Game.app/Contents/MacOS/#{program}", File.readlink(File.join(folder, program)), program
-        assert_equal File.binread("/usr/bin/true"), File.binread(File.join(macos, program)), program
-      end
-      assert_includes File.read(File.join(macos, "fledge.cfg")), "\n[game-cli]\nentry = bin/cli\n"
-
-      place = File.join(unpacked(dir, archive), "Game-arm64-darwin")
-      assert_equal "Play Game.app/Contents/MacOS/tui", File.readlink(File.join(place, "tui"))
-      verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", "--verbose=2", File.join(place, "Play Game.app"))
-      assert_predicate status, :success?, verified
-      assert_includes verified, "MacOS/game-cli", "the bundle's signature covers its console programs"
-    end
-  end
-
-  # On Windows each program is its own launcher: the GUI one for the
-  # windowed program, the console one for the rest, each with its own
-  # name in its version information.
-  def test_on_windows_each_program_is_its_kinds_launcher
-    windows!
-    Dir.mktmpdir do |dir|
-      assemble(dir, Programs.write(dir), platform: WINDOWS)
-
-      folder = File.join(dir, "dist", "Game-x64-mingw-ucrt")
-      assert_equal ["Play Game.exe", "app", "fledge.cfg", "game-cli.exe", "ruby", "tui.exe"], Dir.children(folder).sort
-      assert_equal [2, 3, 3], ["Play Game.exe", "game-cli.exe", "tui.exe"].map { |program| subsystem(File.join(folder, program)) }
-      assert_equal ["Play Game", "game-cli", "tui"],
-        ["Play Game.exe", "game-cli.exe", "tui.exe"].map { |program| version_info(File.join(folder, program)).fetch("FileDescription") }
-    end
-  end
-
   # A windowed app on Linux keeps the folder, with a desktop entry beside
   # the program and its icons in the hicolor theme's folders.
   def test_a_windowed_linux_app_has_a_desktop_entry_and_icons
@@ -554,39 +287,6 @@ class AssemblyTest < Minitest::Test
     end
   end
 
-  # hdiutil writes the disk image of the signed bundle, with the link to
-  # Applications beside it, and the bundle stays signed in it.
-  def test_a_windowed_macos_app_gets_a_disk_image_of_its_bundle
-    mac!
-    Dir.mktmpdir do |dir|
-      runtime = FakeRuntime.write(dir, MACOS, launcher: File.binread("/usr/bin/true"))
-      app = Fledge::App.at(WindowedApp.write(dir, installers: nil))
-      assembly = Fledge::Assembly.new(app:, platform: MACOS, runtime:, out: File.join(dir, "dist"))
-      assembly.call
-
-      image = File.join(dir, "dist", "Hello Window-arm64-darwin.dmg")
-      assert_equal [image], assembly.installers
-      DiskImages.mounted(image) do |mount|
-        assert_equal ["Applications", "Hello Window.app"], Dir.children(mount).reject { |name| name.start_with?(".") }.sort
-        assert_equal "/Applications", File.readlink(File.join(mount, "Applications"))
-        verified, status = Open3.capture2e("codesign", "--verify", "--strict", "--deep", File.join(mount, "Hello Window.app"))
-        assert_predicate status, :success?, verified
-      end
-    end
-  end
-
-  # The fake Windows runtime has the real runtime's launchers and rcedit
-  # but no NSIS, so its installer fails, and leaves nothing behind.
-  def test_a_windows_runtime_without_nsis_fails_and_leaves_nothing
-    windows!
-    Dir.mktmpdir do |dir|
-      error = assert_raises(Fledge::Error) { assemble(dir, WindowedApp.write(dir, installers: "[nsis]"), platform: WINDOWS) }
-
-      assert_includes error.message, "the runtime has no tools/nsis"
-      assert_empty left_in(dir)
-    end
-  end
-
   def test_a_build_without_the_runtimes_tools_fails_and_leaves_nothing
     unix!
     Dir.mktmpdir do |dir|
@@ -604,17 +304,6 @@ class AssemblyTest < Minitest::Test
       assemble(dir, FakeApp.write(dir), platform: MACOS)
 
       assert_equal FakeRuntime::LAUNCHER, File.read(File.join(dir, "dist", "Hello-arm64-darwin", "Hello"))
-    end
-  end
-
-  def test_a_windows_runtime_without_launcher_exe_is_refused
-    windows!
-    Dir.mktmpdir do |dir|
-      runtime = FakeRuntime.pack(File.join(dir, "unix-launcher.tar.gz"), "top", [Fledge::Entry.file("launcher", "", mode: 0o755)])
-
-      error = assert_raises(Fledge::Error) { assemble(dir, FakeApp.write(dir), platform: WINDOWS, runtime:) }
-      assert_equal "#{runtime} is not a Fledge runtime: it has no launcher.exe", error.message
-      assert_empty left_in(dir)
     end
   end
 

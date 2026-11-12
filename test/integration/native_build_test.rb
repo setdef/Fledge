@@ -5,11 +5,11 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
-require_relative "support/gems"
-require_relative "support/git_repos"
-require_relative "support/loopback_server"
-require_relative "support/short_path"
+require_relative "../test_helper"
+require_relative "../support/gems"
+require_relative "../support/git_repos"
+require_relative "../support/loopback_server"
+require_relative "../support/short_path"
 require "open3"
 require "stringio"
 
@@ -47,7 +47,7 @@ class NativeBuildTest < Minitest::Test
 
   def setup
     @platform = Fledge::Platform.local
-    @runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
+    @runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
     missing = [Fledge::Runtimes.file_name(@platform), Fledge::Runtimes.dev_file_name(@platform)]
       .reject { |name| File.file?(File.join(@runtimes, name)) }
     unless missing.empty?

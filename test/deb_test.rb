@@ -6,82 +6,16 @@
 #++
 
 require_relative "test_helper"
-require "open3"
+require_relative "support/deb"
 
 # Fledge::Deb, which has dpkg-deb build a .deb of the built app's folder
-# (ADR 021), read back with dpkg-deb itself. CI's Delivery installs one
-# with apt in Debian and Ubuntu containers, runs the app, and removes it
-# (.github/scripts/deliver-deb.sh). Without dpkg-deb the tests that need
-# it skip, unless FLEDGE_REQUIRE_DPKG_DEB is set, as CI sets it on Linux.
+# (ADR 021), read back with dpkg-deb itself (test/support/deb.rb).
+# test/integration/deb_dependencies_test.rb covers what a gem's compiled
+# extension makes it depend on. CI's Delivery installs one with apt in
+# Debian and Ubuntu containers, runs the app, and removes it
+# (.github/scripts/deliver-deb.sh).
 class DebTest < Minitest::Test
-  X86 = Fledge::Platform.find("x86_64-linux")
-  ARM = Fledge::Platform.find("aarch64-linux")
-
-  def need_dpkg_deb
-    return if system("dpkg-deb", "--version", out: File::NULL, err: File::NULL)
-
-    message = "a .deb is built with dpkg-deb, from Debian's dpkg"
-    ENV["FLEDGE_REQUIRE_DPKG_DEB"] ? flunk(message) : skip(message)
-  end
-
-  def identity(icon: nil, version: "1.2.3", publisher: "Example, Inc.", identifier: "com.example.MyApp", **about)
-    Fledge::Identity.new(name: "My App", kind: "windowed", identifier:, version:, publisher:, copyright: nil, icon:,
-      description: nil, long_description: nil, homepage: nil, file_associations: [], **about)
-  end
-
-  # Writes the folder fledge build leaves for a windowed app on Linux:
-  # the program, a runtime file, a link, the notices, and, with an icon,
-  # the desktop entry and the hicolor icons, as Fledge::DesktopEntry
-  # writes them.
-  def folder(dir, identity)
-    folder = File.join(dir, "My App-x86_64-linux")
-    Fledge::Entry.file("My App", "#!/bin/sh\n", mode: 0o755).write_into(folder)
-    Fledge::Entry.file("ruby/bin/ruby", "ruby", mode: 0o755).write_into(folder)
-    Fledge::Entry.file("notices/NOTICES.txt", "notices\n").write_into(folder)
-    File.symlink("bin/ruby", File.join(folder, "ruby/ruby"))
-    Fledge::DesktopEntry.new(identity).entries.each { |entry| entry.write_into(folder) }
-    folder
-  end
-
-  def build(dir, identity: self.identity, platform: X86, system_libraries: [], extension: nil)
-    folder = folder(dir, identity)
-    if extension
-      path = File.join(folder, "lib/ruby/gems/4.0.0/gems/wrapper-1.0.0/lib/wrapper.so")
-      FileUtils.mkdir_p(File.dirname(path))
-      FileUtils.cp(extension, path)
-    end
-    Fledge::Deb.write(identity:, folder:, platform:, to: File.join(dir, "My App-#{platform.name}.deb"), system_libraries:)
-  end
-
-  # A gem's extension, compiled here, that needs zlib from the
-  # distribution, as a wrapper of a desktop library needs that library.
-  # Every Debian and Ubuntu has zlib1g; only its library is needed, not
-  # its headers.
-  def zlib_extension(dir)
-    shlibdeps = system("dpkg-shlibdeps", "--version", out: File::NULL, err: File::NULL)
-    compiler = system("cc", "--version", out: File::NULL, err: File::NULL)
-    unless shlibdeps && compiler
-      message = "a .deb depends on what dpkg-shlibdeps, from Debian's dpkg-dev, finds, here for a file cc compiles"
-      ENV["FLEDGE_REQUIRE_DPKG_DEB"] ? flunk(message) : skip(message)
-    end
-    path = File.join(dir, "wrapper.so")
-    source = "const char *zlibVersion(void);\nconst char *wrapper_version(void) { return zlibVersion(); }\n"
-    out, status = Open3.capture2e("cc", "-shared", "-fPIC", "-x", "c", "-", "-o", path, "-l:libz.so.1", stdin_data: source)
-    assert_predicate status, :success?, out
-    path
-  end
-
-  def field(deb, name)
-    out, status = Open3.capture2e("dpkg-deb", "--field", deb, name)
-    assert_predicate status, :success?, out
-    out.strip
-  end
-
-  def contents(deb)
-    out, status = Open3.capture2e("dpkg-deb", "--contents", deb)
-    assert_predicate status, :success?, out
-    out
-  end
+  include DebHelpers
 
   # Policy 5.6: a package name is lower case letters, digits, plus, minus,
   # and full stops; the identifier's letters are lower-cased.
@@ -192,23 +126,6 @@ class DebTest < Minitest::Test
 
       assert_includes entry, "Exec=\"/usr/lib/com.example.myapp/My App\"\n"
       assert_includes entry, "Icon=com.example.MyApp\n"
-    end
-  end
-
-  # ADR 030: a library fledge.yml lists as the distribution's becomes a
-  # dependency on the package that provides it, as dpkg-shlibdeps finds
-  # it for the files that need it, beside glibc's, which stays the
-  # runtime's. With nothing listed, glibc's stays the only one, whatever
-  # the gems' files need.
-  def test_a_library_listed_as_the_distributions_is_a_dependency_on_its_package
-    need_dpkg_deb
-    Dir.mktmpdir do |dir|
-      extension = zlib_extension(dir)
-      depends = field(build(File.join(dir, "listed").tap { |d| FileUtils.mkdir_p(d) }, extension:, system_libraries: ["libz.so.1"]), "Depends")
-      plain = field(build(File.join(dir, "plain").tap { |d| FileUtils.mkdir_p(d) }, extension:), "Depends")
-
-      assert_match(/\Alibc6 \(>= 2\.39\), zlib1g \(>= [^)]+\)\z/, depends)
-      assert_equal "libc6 (>= 2.39)", plain
     end
   end
 

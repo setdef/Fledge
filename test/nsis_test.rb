@@ -6,13 +6,10 @@
 #++
 
 require_relative "test_helper"
-require "open3"
 
-# Fledge::Nsis: the script it writes, and, on Windows, where
-# FLEDGE_RUNTIME_DIR holds the Windows runtime (as CI's Windows test job
-# does), the installer that the runtime's makensis compiles from it.
-# Delivery installs a real one on Windows
-# (.github/scripts/deliver-installer.ps1).
+# Fledge::Nsis: the script it writes. test/integration/makensis_test.rb
+# has the Windows runtime's makensis compile one, and Delivery installs
+# a real one on Windows (.github/scripts/deliver-installer.ps1).
 class NsisTest < Minitest::Test
   def identity(name: "My App", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", version: "1.2.3.pre.4", homepage: nil, file_associations: [], identifier: "com.example.MyApp")
     Fledge::Identity.new(name:, kind: "windowed", identifier:, version:, publisher:, copyright:, icon: nil,
@@ -284,27 +281,6 @@ class NsisTest < Minitest::Test
 
       assert_match(%r{the runtime has no tools/nsis}, assert_raises(Fledge::Error) { nsis.write(nil) }.message)
       assert_match(%r{the runtime has no tools/nsis}, assert_raises(Fledge::Error) { nsis.write(dir) }.message)
-    end
-  end
-
-  def test_makensis_compiles_the_installer
-    runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
-    windows = File.join(runtimes, Fledge::Runtimes.file_name(Fledge::Platform.local))
-    unless Gem.win_platform? && File.file?(windows)
-      flunk "no Windows runtime in #{runtimes}" if ENV["FLEDGE_REQUIRE_RUNTIME"] && Gem.win_platform?
-      skip "an NSIS installer is built on Windows, with the Windows runtime's NSIS"
-    end
-
-    Dir.mktmpdir do |dir|
-      Fledge::Archive.unpack(windows, into: File.join(dir, "runtime"))
-      tools = File.join(Dir.glob(File.join(dir, "runtime", "*")).first.to_s, "tools")
-      folder = File.join(dir, "My App-x64-mingw-ucrt")
-      Fledge::Entry.file("My App.exe", "MZ", mode: 0o755).write_into(folder)
-      nsis = Fledge::Nsis.new(identity: identity(file_associations:), folder:, to: "#{folder}-setup.exe")
-
-      path = nsis.write(tools)
-      assert_equal "MZ", File.binread(path, 2)
-      assert_includes File.binread(path), "My App Setup".encode(Encoding::UTF_16LE).b, "its version information names it"
     end
   end
 end

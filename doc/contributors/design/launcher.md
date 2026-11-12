@@ -155,7 +155,7 @@ The launcher prints `NAME: message` to standard error and exits. On Windows `sho
 | 70 | Bundler cannot start or set up the app's gems |
 | 70 | anything else before the program runs |
 
-The messages follow Ruby's `ruby: message` form and name the app, never Ruby: for example `NAME: this app is incomplete: PATH is missing` for a missing program, and `NAME: this app needs LIB, which this computer does not have (REASON). Install it from your Linux distribution's packages, then run the app again` for status 72. Their exact wording is the launcher's C source (`runtime/launcher/`), which `test/built_app_test.rb` and Delivery read back; this table lists the statuses.
+The messages follow Ruby's `ruby: message` form and name the app, never Ruby: for example `NAME: this app is incomplete: PATH is missing` for a missing program, and `NAME: this app needs LIB, which this computer does not have (REASON). Install it from your Linux distribution's packages, then run the app again` for status 72. Their exact wording is the launcher's C source (`runtime/launcher/`), which `test/integration/built_app_test.rb` and Delivery read back; this table lists the statuses.
 
 Once the program runs, the status is the program's own. `bin/ruby`, which is Ruby's program, says `ruby: could not run LAUNCHER: REASON` and exits 70 when it finds the app's launcher and cannot start it.
 

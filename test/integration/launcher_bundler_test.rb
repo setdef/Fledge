@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 require "open3"
 require "rbconfig"
 
@@ -15,7 +15,7 @@ require "rbconfig"
 # up the app's gems, compiled with this computer's C compiler and run by
 # the Ruby running these tests.
 class LauncherBundlerTest < Minitest::Test
-  LAUNCHER = File.expand_path("../runtime/launcher", __dir__)
+  LAUNCHER = File.expand_path("../../runtime/launcher", __dir__)
 
   # Prints what fledge.cfg, given as argv[1], names as the Bundler, or why
   # it is refused; or with argv[1] "code", the Ruby that requires Bundler

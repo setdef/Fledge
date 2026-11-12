@@ -273,33 +273,6 @@ class GemAppBuildTest < Minitest::Test
     end
   end
 
-  # A git gem ships as Bundler keeps one, for every platform, when it has
-  # nothing to compile (ADR 006).
-  def test_a_git_gem_ships_where_bundler_keeps_it_for_every_platform
-    require_relative "support/git_repos"
-    repo, revision = FakeRepo.write(@dir, "Monorepo", gems: { "alpha" => { "lib/alpha.rb" => "# alpha\n", "LICENSE" => "MIT\n" } })
-    root = FakeProject.write(@dir, dependencies: {}, locked: [], remote: @server.url("/"),
-      gemfile: "gem \"alpha\", git: #{repo.inspect}, branch: \"trunk\", glob: \"gems/*/*.gemspec\"\n", lock_dependencies: ["alpha!"])
-    lock = File.join(root, "Gemfile.lock")
-    text = File.read(lock).sub("CHECKSUMS\n", "CHECKSUMS\n  alpha (1.0)\n")
-    File.write(lock, "GIT\n  remote: #{repo}\n  revision: #{revision}\n  branch: trunk\n  glob: gems/*/*.gemspec\n  specs:\n" \
-      "    alpha (1.0)\n\n#{text}")
-
-    _, err, status = build(root, host: "aarch64-linux")
-    assert_equal 0, status, err
-
-    scope = "Monorepo-#{revision[0, 12]}"
-    if FakeRuntime.windows
-      _, err, status = build(root, host: "x64-mingw-ucrt")
-      assert_equal 0, status, err
-      assert_equal "# alpha\n", File.read(File.join(@dir, "dist/MyApp-x64-mingw-ucrt/ruby/lib/ruby/gems/4.1.0+5/bundler/gems", scope,
-        "gems/alpha/lib/alpha.rb"))
-    end
-    gemspec = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", scope, "gems/alpha/alpha.gemspec"))
-    refute_includes gemspec, "git ls-files"
-    assert_equal "MIT\n", File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", scope, "gems/alpha/LICENSE"))
-  end
-
   def test_a_gem_whose_file_differs_from_the_lockfile_is_refused
     foo = FakeGem.build(@gems, "foo", "1.0.0")
     root = project(dependencies: { "foo" => ">= 0" }, locked: [foo])

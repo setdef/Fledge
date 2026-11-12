@@ -5,8 +5,8 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
-require_relative "support/git_repos"
+require_relative "../test_helper"
+require_relative "../support/git_repos"
 require "stringio"
 
 # A git gem fetched at the revision its lockfile locks, and laid out as

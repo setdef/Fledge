@@ -5,9 +5,9 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
-require_relative "support/binaries"
-require_relative "../tasks/licensing_page"
+require_relative "../test_helper"
+require_relative "../support/binaries"
+require_relative "../../tasks/licensing_page"
 
 # The licensing page from runtime archives for all nine platforms, small
 # but made of real (minimal) ELF, Mach-O, and PE files, which the real

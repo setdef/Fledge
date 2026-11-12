@@ -683,6 +683,12 @@ jobs:
           install_args: ${{ matrix.mise }}
           add_shims_to_path: false
 
+      # What setup-ruby gave a Windows job beyond mise.toml's environment
+      # (TMPDIR above all), so builds see what they saw under it.
+      - name: Give Windows' Ruby the rest of setup-ruby's environment
+        if: runner.os == 'Windows'
+        run: .github/scripts/windows-ruby-env.sh
+
       - name: Use Java 21
         run: echo "JAVA_HOME=${JAVA_HOME_21_X64:-$JAVA_HOME_21_arm64}" >> "$GITHUB_ENV"
 
@@ -885,6 +891,12 @@ jobs:
           install_args: ${{ matrix.mise }}
           add_shims_to_path: false
 
+      # What setup-ruby gave a Windows job beyond mise.toml's environment
+      # (TMPDIR above all), so builds see what they saw under it.
+      - name: Give Windows' Ruby the rest of setup-ruby's environment
+        if: runner.os == 'Windows'
+        run: .github/scripts/windows-ruby-env.sh
+
       - name: Place Bundler outside the checkout
         id: paths
         run: |
@@ -1004,6 +1016,12 @@ jobs:
           version: 2026.10.11
           install_args: ${{ matrix.mise }}
           add_shims_to_path: ${{ runner.os != 'Windows' }}
+
+      # What setup-ruby gave a Windows job beyond mise.toml's environment
+      # (TMPDIR above all), so builds see what they saw under it.
+      - name: Give Windows' Ruby the rest of setup-ruby's environment
+        if: runner.os == 'Windows'
+        run: .github/scripts/windows-ruby-env.sh
 
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         if: matrix.platform != 'aarch64-mingw-ucrt'

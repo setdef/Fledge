@@ -25,6 +25,8 @@ class RuntimeBuilder
       load_c: "load.c",
       file_c: "file.c",
       process_c: "process.c",
+      process_c_umask: "process.c",
+      file_c_umask: "file.c",
       thread_pthread_c: "thread_pthread.c",
       thread_c: "thread.c",
       dir_c: "dir.c",
@@ -165,6 +167,28 @@ class RuntimeBuilder
     # EBUSY), which these two edits take.
     def self.process_c(text)
       replace(text, Regexp.new(Regexp.escape(FORK_UNLOCK)), FORK_RESET, "rb_fork_ruby releases the fork lock in the child but on FreeBSD")
+    end
+
+    # Process.spawn's, #exec's, and #system's umask: option, and
+    # File.umask, pass the mask they are given to umask(2) as it is
+    # (process.c, rb_execarg_run_options, line 3441, and file.c,
+    # rb_file_s_umask, line 4485, at 4.1.0-preview1; the same at master
+    # acc624e47b), so umask: -1 passes every bit set. Linux keeps a
+    # mask's permission bits and drops the rest (kernel/sys.c, lines
+    # 1906 to 1910 at v6.12, mask & S_IRWXUGO), and glibc's umask asks
+    # the kernel. Ruby's build compiles with -D_FORTIFY_SOURCE=2
+    # (configure.ac's hardenflags), with which bionic's sys/stat.h sends
+    # a umask whose argument is not a constant to __umask_chk
+    # (libc/include/bits/fortify/stat.h, lines 36 to 47 at 731631f),
+    # and that aborts the process for a mask with any bit beyond 0777
+    # (libc/bionic/fortify.cpp, lines 400 to 406). These two edits keep
+    # the permission bits before the call, as the kernel would.
+    def self.process_c_umask(text)
+      replace(text, /^(        mode_t oldmask = umask\(mask)\);/, "\\1 & 0777);", "rb_execarg_run_options calls umask with the option's mask")
+    end
+
+    def self.file_c_umask(text)
+      replace(text, /^(        omask = umask\(NUM2MODET\(argv\[0\]\))\);/, "\\1 & 0777);", "rb_file_s_umask calls umask with its argument")
     end
 
     def self.thread_pthread_c(text)

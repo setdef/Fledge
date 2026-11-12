@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On iOS, `File::Stat#readable?`, `#writable?`, `#executable?`, and `#grpowned?` answer for a file of another group, as `File.readable?` does, instead of raising `ArgumentError` (malloc: possible integer overflow).
 - On Android, `fork`, `Process.fork`, `Process.daemon`, and `IO.popen("-")` run the child, which ended in Ruby's `[BUG]` handler (`pthread_rwlock_unlock`: EPERM).
 - On Android, `Thread#name=` on a thread that has ended names it, instead of aborting the app.
+- On Android, `File.umask` and the `umask:` option of `Process.spawn`, `exec`, and `system` keep a mask's permission bits, as Linux does, instead of aborting the app for a mask with other bits set, such as `umask: -1`.
 - On Android, `Dir.glob` and `Dir[]` with `base:` a `Dir` opened by a relative path find what they find on Linux, where they found nothing.
 - On musl Linux, iOS, and Android, `require "io/nonblock"` activates the io-nonblock default gem, so `Gem.loaded_specs` has it, as on a desktop, and every default gem's specification lists the files a desktop's does.
 

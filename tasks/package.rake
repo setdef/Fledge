@@ -40,8 +40,15 @@ namespace :package do
     stray = spec.files.grep(%r{\A(?:test|tasks|doc|examples|\.github)/})
     abort "❌ The gem packs development files: #{stray.join(', ')}" if stray.any?
 
+    # gem build runs in the empty GEM_HOME too. Every gem command loads
+    # the RubyGems plugins of the gem folders it can see, and Bundler
+    # 4.0.20 rewrites a gem's plugin for whatever version of it Bundler
+    # installs last, even an older one (Bundler::RubyGemsGemInstaller
+    # #generate_plugins, where RubyGems' own Gem::Installer keeps the
+    # newest): a Ruby with RDoc 8.1.0 and, from another project's bundle,
+    # 7.2.0 loads 7.2.0's plugin, which loads 8.1.0's files over its own
+    # and warns of every constant it defines again.
     Bundler.with_unbundled_env do
-      sh "gem", "build", File.join(root, "fledge.gemspec"), "--output", File.join(work, "fledge.gem"), chdir: root
       home = File.join(work, "home")
       env = {
         "GEM_HOME" => home,
@@ -50,6 +57,7 @@ namespace :package do
         "RUBYOPT" => nil,
         "BUNDLE_GEMFILE" => nil,
       }
+      sh env, "gem", "build", File.join(root, "fledge.gemspec"), "--output", File.join(work, "fledge.gem"), chdir: root
       sh env, "gem", "install", "--local", "--no-document", "--install-dir", home, File.join(work, "fledge.gem")
 
       exe = File.join(home, "bin", "fledge")

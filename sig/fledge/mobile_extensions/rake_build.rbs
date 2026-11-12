@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    class RakeBuild
+      interface _Run
+        def call: (Hash[String, String?] env, *String command, what: String, ?chdir: String?) -> void
+      end
+
+      BUILD: String
+      SHARED: Regexp
+      DEBUG: Regexp
+
+      @ruby: String
+      @work: String
+      @environment: Hash[String, String?]
+      @run: _Run
+
+      def initialize: (ruby: String, work: String, environment: Hash[String, String?], run: _Run) -> void
+
+      def call: (Target target, locked_gem gem, Gem::Specification spec, String root, String extension, Array[String] args, Integer _first) -> Array[Report]
+
+      private def environment: (Target target, String folder) -> Hash[String, String?]
+
+      private def refuse: (locked_gem gem, String extension, Target target, Array[String] paths) -> void
+
+      private def shared_libraries: (String folder) -> Array[String]
+
+      private def write: (String folder, String name, String text) -> String
+    end
+  end
+end

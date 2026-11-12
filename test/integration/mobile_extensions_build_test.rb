@@ -101,6 +101,36 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)
   end
 
+  # A Rakefile that links a library for Ruby's ffi, as ffi-compiler's
+  # tasks do with RbConfig's compiler, makes no extension of Ruby's,
+  # which is all a phone app links in: the build says so, naming the gem
+  # and the library.
+  def test_a_library_for_ffi_a_rakefile_links_is_refused_by_name
+    runtimes = real_runtimes("ios")
+    gem = rake_gem("thing", <<~'RAKEFILE', "thing.c" => "int thing(void) { return 1; }\n")
+      task :default do
+        sh "#{RbConfig::CONFIG['CC']} -c thing.c -o thing.o"
+        sh "#{RbConfig::CONFIG['CC']} -shared -o libthing.so thing.o"
+      end
+    RAKEFILE
+
+    error = assert_raises(Fledge::Error) { compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) }) }
+
+    assert_includes error.message, "thing 1.0.0's Rakefile linked libthing.so for ios-arm64, a shared library."
+  end
+
+  # A Rakefile that builds nothing, as the mkrf_conf scripts that install
+  # a gem's dependencies leave behind, makes no extension to link.
+  def test_a_rakefile_that_builds_nothing_registers_nothing
+    runtimes = real_runtimes("ios")
+    gem = rake_gem("quiet", "task :default\n")
+
+    built = compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) })
+
+    assert_empty built.registrations
+    assert_equal({ "ios-arm64" => [], "ios-arm64-simulator" => [] }, built.targets.transform_values(&:archives))
+  end
+
   def test_fledge_build_ios_links_the_extensions_into_the_project
     runtimes = real_runtimes("ios")
     out = StringIO.new
@@ -123,6 +153,26 @@ class MobileExtensionsBuildTest < Minitest::Test
   def tally_gem
     folder = File.expand_path("../../examples/cmake_phone/gems/tally", __dir__)
     Fledge::PathGem.new(name: "tally", version: "1.0.0", folder:, app_path: "vendor/cache/tally", glob: "{,*,*/*}.gemspec", inside: true)
+  end
+
+  # A path gem +name+ whose gemspec names ext/Rakefile, with +rakefile+
+  # and +files+ in ext/.
+  def rake_gem(name, rakefile, files = {})
+    folder = File.join(@dir, "gems", name)
+    FileUtils.mkdir_p(File.join(folder, "ext"))
+    File.write(File.join(folder, "ext", "Rakefile"), rakefile)
+    files.each { |file, text| File.write(File.join(folder, "ext", file), text) }
+    File.write(File.join(folder, "#{name}.gemspec"), <<~RUBY)
+      Gem::Specification.new do |spec|
+        spec.name = #{name.inspect}
+        spec.version = "1.0.0"
+        spec.authors = ["Kerrick Long"]
+        spec.summary = "A Rakefile's extension"
+        spec.files = #{(['ext/Rakefile'] + files.keys.map { |file| "ext/#{file}" }).inspect}
+        spec.extensions = ["ext/Rakefile"]
+      end
+    RUBY
+    Fledge::PathGem.new(name:, version: "1.0.0", folder:, app_path: "vendor/cache/#{name}", glob: "{,*,*/*}.gemspec", inside: true)
   end
 
   def cmake?

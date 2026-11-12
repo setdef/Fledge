@@ -115,6 +115,7 @@ A framework that ships to an iPhone, an iPad, or an Android device through Fledg
 - `fledge build ios`, on a Mac with Xcode and XcodeGen, and `fledge build android`, on a Mac, x86-64 Linux, or Windows, which write an Xcode or Gradle project holding the project, its gems, and a runtime. The framework's team builds, signs, and submits that project with Xcode or Gradle.
 - A gem with a C or C++ extension built by an `extconf.rb` is compiled for each of the phone's targets, linked into the app, and registered, so `require "name/name"` finds it. Static libraries an `extconf.rb` links are linked per iOS slice; shared ones are carried into the Android app.
 - An `extconf.rb` that runs CMake finds each target's toolchain file in `CMAKE_TOOLCHAIN_FILE`.
+- A gem whose gemspec names a Rakefile or an `mkrf_conf` script is built as RubyGems builds it, for each of the phone's targets, with the phone's `rbconfig.rb` in every Ruby the build starts and this computer's Ruby as `RbConfig.ruby`.
 - `ios: host: DIR` and `android: host: DIR` in `fledge.yml` name a folder of files that `fledge build` copies over the project it writes, so a framework that must own the app's startup supplies its own files and keeps them across builds (see `doc/contributors/design/phone-projects.md`, "Host files"). The templates' file paths and marks stay, so a host's copy keeps working.
 - The embedding API, `fledge_ruby_forward_output` and `fledge_ruby_run_app` (and on Android `FledgeRuby.startApp`), which a framework's host calls wherever its framework runs the main function.
 
@@ -127,7 +128,7 @@ A framework that ships to an iPhone, an iPad, or an Android device through Fledg
 - Its native libraries, built for the phone's targets: a static library per iOS slice (or an XCFramework), and a shared library per Android ABI, found by the `extconf.rb` through `dir_config` or Bundler's `build.NAME` options (`bundle config build.NAME --with-NAME-dir=...`), which Fledge passes as `extconf.rb` arguments for every target.
 - Its host files, when its framework owns startup, in the `host:` folder: on iOS any of `Host/main.m`, `Host/Info.plist`, `Host/PrivacyInfo.xcprivacy`, the asset catalog, and `project.yml`; on Android `MainActivity.java` at its package's path, the manifest, the Gradle files, `strings.xml`, and any Java sources of its own.
 
-Fledge refuses, naming the gem, an extension that the gemspec says Rake, CMake, configure, or Cargo builds with no `extconf.rb`, and a Rust extension.
+Fledge refuses, naming the gem, an extension that the gemspec says CMake, configure, or Cargo builds with no `extconf.rb`, a Rust extension, and a Rakefile's build that leaves a shared library.
 
 **Known limits:**
 

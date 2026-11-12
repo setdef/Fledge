@@ -96,7 +96,7 @@ CI checks each built app's imports against its manifest (`MobileParity::IOS#chec
 
 `Fledge::MobileExtensions` (`lib/fledge/mobile_extensions.rb`) compiles an app's gems' C and C++ extensions for every target of the phone, one after the other (ADR 022): `ios-arm64` and `ios-arm64-simulator` with Xcode on a Mac; `aarch64-linux-android` and `x86_64-linux-android` with the NDK on a Mac or x86-64 Linux. Windows is refused for gems with extensions.
 
-For each target and each gem with an extension, it:
+For each target and each extension an `extconf.rb` builds, it does the following (a Rakefile's is under "Rakefiles", below):
 
 1. unpacks the gem's source afresh into a folder of the target's own, from where Fledge already has it: a server's `.gem` with `Gem::Package#extract_files`, a path gem with `PathPackage#copy_to`, a git gem from its checkout;
 2. runs `bin/ruby --disable-gems -I ARCHDIR -r SHIM extconf.rb ARGS` with **this computer's desktop runtime's Ruby**, where ARCHDIR is the folder of the phone runtime's `rbconfig.rb` for the target (iOS: the slice's `lib/ruby/VERSION/arm64-darwin`; Android: `lib/ruby/VERSION/ABI-linux-android`), and ARGS are Bundler's `build.NAME` options for the gem; `rbconfig.rb` finds its prefix from its own path, so mkmf reads the phone Ruby's configuration, `CROSS_COMPILING` included;
@@ -108,6 +108,16 @@ For each target and each gem with an extension, it:
 **The NDK** is the developer's own, found as Gradle's Android plugin and Android Studio find it (`MobileExtensions::NDK.find`): `ANDROID_NDK_ROOT`, then `ANDROID_NDK_HOME`, then the newest in `ndk/` of `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or the SDK Manager's default folder. Fledge downloads no toolchain onto a developer's computer, and says how to install the recommended one with `sdkmanager` when there is none. CI pins the NDK it uses by SHA-256, as the runtime build does.
 
 **RubyGems' marks.** RubyGems and Bundler ignore a gem with extensions unless `gem.build_complete` is in its extension folder (`Gem::BasicSpecification#missing_extensions?`). So `fledge build` writes the empty mark where RubyGems looks (`extensions/PLATFORM/ABI-static/NAME-VERSION`) and where Bundler looks for a git gem (`bundler/gems/extensions/PLATFORM/ABI-static/SCOPE`), with `Gem.extension_api_version`'s `-static` suffix for a Ruby with no shared libruby. A path gem needs no mark, as on a desktop.
+
+## Rakefiles
+
+A gemspec may name a Rakefile or an `mkrf_conf` script in `extensions`, which RubyGems builds with Rake (`Gem::Ext::Builder#builder_for`; `MobileExtensions.rake?`). Most such builds compile nothing: an `mkrf_conf` script installs a dependency and writes a Rakefile of `task :default`, and a Ruby-GNOME gem checks for a system library (`doc/contributors/research/2026-11-12-phone-extension-build-systems.md`). For each target, `MobileExtensions::RakeBuild`:
+
+1. runs RubyGems' own builder for the extension, `Gem::Ext::RakeBuilder`, under this computer's desktop runtime's Ruby, which runs the `mkrf_conf` script, if any, then `rake RUBYARCHDIR=DEST RUBYLIBDIR=DEST` in the extension's folder, with Bundler's `build.NAME` options;
+2. gives every Ruby the build starts the phone's `rbconfig.rb` and the shim's tools (`MobileExtensions::TOOLS`, through `RUBYOPT=-I ARCHDIR -r FILE`), as crossenv and cibuildwheel give a Python build the target's sysconfig, with this computer's Ruby as `RbConfig.ruby` (`FLEDGE_RUBY`) and in `RUBY`, which Rake's `ruby` runs;
+3. refuses, naming the gem and the first, any shared library (`.so`, `.bundle`, `.dylib`) the build left in the gem or in `DEST`, since a phone app opens no library at run time: a library for Ruby's ffi, or an extension it does not yet link.
+
+The builder's own process ignores `RUBYOPT` (`--disable=rubyopt`), so RubyGems finds Rake among this computer's runtime's gems. A Rakefile that builds nothing gives no extension, and the gem ships as RubyGems installs it, with its `gem.build_complete` mark.
 
 ## Registering extensions
 
@@ -152,11 +162,11 @@ An extension whose Makefile lists a C++ source (`.cc`, `.cpp`, `.cxx`, `.C` in m
 
 `MobileExtensions.problems` refuses, naming the gem, what to do, and the Gemfile's `platforms:` that leaves the gem out of the phone's build:
 
-- an extension the gemspec says something other than an `extconf.rb` builds (a `CMakeLists.txt`, `Rakefile`, `configure`, or `Cargo.toml` in `extensions`), since RubyGems' own builders for those would each need their own cross-compiling, and none makes the static archive and renamed `Init_` function that mkmf's `$static` does; the message says an `extconf.rb` may run CMake;
+- an extension the gemspec says something other than an `extconf.rb` or Rake builds (a `CMakeLists.txt`, `configure`, or `Cargo.toml` in `extensions`), since RubyGems' own builders for those would each need their own cross-compiling, and none makes the static archive and renamed `Init_` function that mkmf's `$static` does; the message says an `extconf.rb` may run CMake. None of the 10,000 most-downloaded gems names a bare `CMakeLists.txt` or `configure` (`doc/contributors/research/2026-11-12-phone-extension-build-systems.md`);
 - a Rust extension (`rb_sys` among its runtime dependencies), which would need `cargo` aimed at each phone's Rust target, a `staticlib`, and rb-sys reading the phone Ruby's `RbConfig`, none of which was tried;
 - for Android, a Windows computer.
 
-The build also fails when an `extconf.rb` calls `create_makefile` more than once, since Fledge links one extension for each, and when `make static` makes no archive.
+The build also fails when a Rakefile's build leaves a shared library ("Rakefiles", above), when an `extconf.rb` calls `create_makefile` more than once, since Fledge links one extension for each, when `make static` makes no archive, and when the gems build different extensions for different targets of one phone, since the app registers one list for all of them.
 
 ## Host files
 

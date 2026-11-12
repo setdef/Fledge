@@ -935,9 +935,35 @@ class BuiltAppTest < Minitest::Test
       else
         assert_equal "Hello Window-#{@platform}-setup.exe", File.basename(installer)
         assert_equal "MZ", File.binread(installer, 2)
+        assert_msix(out.lines.fetch(2).chomp, dir)
       end
       assert_equal facts, JSON.parse(File.read(report)).slice(*facts.keys) unless @platform.windows?
     end
+  end
+
+  # The MSIX package at +path+, which the Windows SDK's MakeAppx packed
+  # (Fledge::Msix), read back with Windows' own tar, which reads a zip:
+  # examples/windowed_app's identity, its logos, its program, and a
+  # fledge.cfg with no identifier. Delivery installs and runs it
+  # (.github/scripts/deliver-msix.ps1).
+  def assert_msix(path, dir)
+    msix = File.expand_path(path, Dir.pwd)
+    assert_equal "Hello Window-#{@platform}.msix", File.basename(msix)
+    into = File.join(dir, "msix")
+    FileUtils.mkdir_p(into)
+    listed, status = Open3.capture2e("tar", "-tf", msix)
+    assert_predicate status, :success?, listed
+    entries = listed.lines.map(&:chomp)
+    %w[AppxManifest.xml AppxBlockMap.xml Assets/StoreLogo.png Assets/Square44x44Logo.png Assets/Square150x150Logo.png].each do |entry|
+      assert_includes entries, entry
+    end
+    assert entries.any? { |entry| entry.match?(/\AHello(?:%20| )Window\.exe\z/) }, "the package holds the program"
+    extracted, status = Open3.capture2e("tar", "-xf", msix, "-C", into, "AppxManifest.xml", "fledge.cfg")
+    assert_predicate status, :success?, extracted
+    manifest = File.read(File.join(into, "AppxManifest.xml"))
+    architecture = Fledge::Msix::ARCHITECTURES.fetch(@platform.name)
+    assert_includes manifest, %(<Identity Name="com.setdef.fledge.HelloWindow" Publisher="CN=Fledge Test Signing" Version="1.2.3.0" ProcessorArchitecture="#{architecture}" />)
+    refute_includes File.read(File.join(into, "fledge.cfg")), "identifier"
   end
 
   # The .deb at +path+, which dpkg-deb reads back as examples/windowed_app's

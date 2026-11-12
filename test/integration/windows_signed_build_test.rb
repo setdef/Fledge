@@ -22,27 +22,29 @@ class WindowsSignedBuildTest < Minitest::Test
 
   # A whole build, on Windows, through fledge build as a developer runs
   # it: every PE file of the app, then the uninstaller makensis writes,
-  # then the setup program, each once; what the archive holds and the
-  # setup program are what was signed, and the checksum is of the signed
-  # setup program. FLEDGE_SIGN_COMMAND gives the command as the option
-  # would.
-  def test_a_windows_build_signs_its_files_then_the_uninstaller_then_the_setup_program
+  # then the setup program, then the MSIX package, each once; what the
+  # archive holds and the installers are what was signed, and each
+  # checksum is of the signed installer. FLEDGE_SIGN_COMMAND gives the
+  # command as the option would.
+  def test_a_windows_build_signs_its_files_then_the_uninstaller_then_the_installers
     runtimes = windows_runtimes
     StandInSigner.with do |signer, signed|
       Dir.mktmpdir do |dir|
         out, err, status = fledge(runtimes, dir, { "FLEDGE_SIGN_COMMAND" => "\"#{signer}\" %1" })
         assert_predicate status, :success?, err
 
-        archive, setup = out.lines.map { |line| File.expand_path(line.chomp, dir) }
+        archive, setup, msix = out.lines.map { |line| File.expand_path(line.chomp, dir) }
         folder = archive.delete_suffix(".zip")
         files = Fledge::WindowsSigning.files(folder).map { |path| Fledge::Nsis.host_path(path) }
-        *programs, uninstaller, last = signed.call
+        *programs, uninstaller, setup_signed, msix_signed = signed.call
         assert_equal files, programs
         refute_includes files, uninstaller
         assert_match(/\.tmp\z|uninst/i, uninstaller)
-        assert_equal Fledge::Nsis.host_path(setup), last
-        assert File.binread(setup).end_with?(StandInSigner::MARKER), "the setup program is the one signed"
-        assert_equal Digest::SHA256.file(setup).hexdigest, File.read("#{setup}.sha256").split.first
+        assert_equal [Fledge::Nsis.host_path(setup), Fledge::Nsis.host_path(msix)], [setup_signed, msix_signed]
+        [setup, msix].each do |installer|
+          assert File.binread(installer).end_with?(StandInSigner::MARKER), "#{File.basename(installer)} is the one signed"
+          assert_equal Digest::SHA256.file(installer).hexdigest, File.read("#{installer}.sha256").split.first
+        end
 
         Fledge::Archive.unpack(archive, into: File.join(dir, "unpacked"))
         program = File.join(dir, "unpacked", File.basename(folder), "Hello Window.exe")

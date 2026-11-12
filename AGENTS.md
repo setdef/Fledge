@@ -45,6 +45,7 @@ Where to look:
 
 - Proceed through the plan of record without checking in with the maintainer. Decide what is the agents' to decide (Questions, below), record it, and go on to the next story. Come back only when truly blocked.
 - A session that orchestrates others delegates each story to a subagent and verifies what the subagent reports before passing it on: its commits with `git log` and `git show`, its CI runs and releases with `gh run view` and `gh release view`. A claim nobody checked is not reported as done.
+- No change leaves an ADR or a design document false. A change that departs from an ADR's decision either follows the ADR instead, or comes with a new ADR that records the new decision. A fact an ADR cites as proof that the change makes false (a test, an example, a path) is corrected in the same change. Code that falls short of an ADR on purpose, for now, is a defect: its design document says so, and the fix is the code's.
 - Give a subagent the context the work needs, the rules that bind it, and nothing the maintainer did not ask for.
 - A subagent that works in parallel uses its own worktree and branch, and does not push `trunk`. An experiment of CI changes goes on an `experiment/*` branch that runs only the jobs in question. Leave existing `spike/*`, `wip/*`, and `experiment/*` branches alone, and do not delete branches.
 - `doc/contributors/decisions.md` holds only the maintainer's meaningful decisions, the ones that shape what Fledge is or does. Corrections, wording changes, and asides go into the document they touch.

@@ -248,13 +248,33 @@ class MobileParity
         "#{memory} MB of memory"
     end
 
+    # The messages logged under +tag+ in +log+, what logcat -v tag
+    # prints ("I/tag: message", the tag padded to eight characters, as
+    # logprint.cpp's android_log_formatLogLine writes it), in order,
+    # without those of standard error unless +standard_error+. The
+    # embedding API logs what Ruby writes to standard error as warnings
+    # and standard output as information, as the host logs its own lines
+    # (runtime/mobile/android.c, fledge_log_write), each stream read by a
+    # thread of its own, so logcat holds each stream's lines in order but
+    # the two interleaved as those threads happen to run
+    # (doc/contributors/design/phone-runtimes.md, "Output to the system
+    # log").
+    def self.messages(log, tag, standard_error: true)
+      entry = %r{\A([VDIWEF])/#{Regexp.escape(tag)} *: ?(.*)\z}
+      log.each_line(chomp: true).filter_map do |line|
+        priority, message = line.match(entry)&.captures
+        message if priority && (standard_error || priority != "W")
+      end
+    end
+
     # Starts +app+ after clearing logcat, and returns the lines it logged
     # up to its status and after, until the log settles, then stops it,
-    # since Ruby boots once per process.
-    # It fails when the app has not finished in +timeout+ seconds, or
-    # when its process has ended without the host's status, as when
-    # Android stopped it.
-    def launch(app, timeout: TIMEOUT)
+    # since Ruby boots once per process. Those of standard error are left
+    # out of what it returns unless +standard_error+, but not out of what
+    # it reports when it fails: when the app has not finished in
+    # +timeout+ seconds, or when its process has ended without the host's
+    # status, as when Android stopped it.
+    def launch(app, timeout: TIMEOUT, standard_error: true)
       adb("logcat", "-c")
       adb("shell", "am", "start", "-W", "-n", "#{app.identifier}/#{ACTIVITY}")
       deadline = Time.now + timeout
@@ -267,7 +287,7 @@ class MobileParity
 
         sleep 2
       end
-      MobileParity.settled { logged(app) }.tap { adb("shell", "am", "force-stop", app.identifier) }
+      MobileParity.settled { logged(app, standard_error:) }.tap { adb("shell", "am", "force-stop", app.identifier) }
     end
 
     # What the emulator says of +app+, for one that never finished:
@@ -298,10 +318,10 @@ class MobileParity
       end
     end
 
-    # What +app+ logged under its identifier, one entry a line, as logcat
-    # -v raw prints them.
-    private def logged(app)
-      adb("logcat", "-d", "-v", "raw", "-s", "#{app.identifier}:V").lines.map(&:chomp).reject { |line| line.start_with?("--------- ") }
+    # What +app+ logged under its identifier, as Android.messages reads
+    # it.
+    private def logged(app, standard_error: true)
+      Android.messages(adb("logcat", "-d", "-v", "tag", "-s", "#{app.identifier}:V"), app.identifier, standard_error:)
     end
 
     private def running?(app)

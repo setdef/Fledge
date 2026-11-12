@@ -153,6 +153,26 @@ class RubySpecTest < Minitest::Test
     refute_includes output, "exited with status"
   end
 
+  # A phone's log holds standard error's lines among standard output's,
+  # as two threads forward them, so in run 43226291212 on an iPad the
+  # warning MSpec prints when it exits came between a failure's number
+  # and its description. The phones' runs read standard output alone.
+  def test_a_phones_report_is_read_from_standard_output_alone
+    lines = [
+      ["Default", "2)"],
+      ["Error", ""],
+      ["Default", "core: Class#initialize is not defined FAILED"],
+      ["Error", "The rubyspec temp directory is not empty. Ensure that"],
+      ["Default", "Expected [:initialize, :inherited].include? :initialize"],
+      ["Default", "1 file, 1 example, 1 expectation, 1 failure, 0 errors, 0 tagged"],
+    ]
+    ndjson = lines.map { |type, text| JSON.generate({ "processID" => 7, "messageType" => type, "eventMessage" => text }) }.join("\n")
+    read = -> (standard_error) { RubySpec::Results.read(nil, RubySpec::Phone.output(MobileParity::IOS.messages(ndjson, 7, standard_error:))) }
+
+    assert_empty read.call(true).failures
+    assert_equal ["core: Class#initialize is not defined"], read.call(false).failures.keys
+  end
+
   # The app and stock Ruby must be the same Ruby, as RUBY_DESCRIPTION
   # names it, whether a release's ("revision") or a preview's (its
   # branch).

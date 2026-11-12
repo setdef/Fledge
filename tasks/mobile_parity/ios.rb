@@ -66,6 +66,27 @@ class MobileParity
       end.select { |category, reasons| REASONS.key?(category) && !reasons.include?(REASONS.fetch(category)) }
     end
 
+    # The messages of the process +pid+ in +ndjson+, what log show
+    # --style ndjson prints, in order, without those of standard error
+    # unless +standard_error+. The embedding API logs what Ruby writes to
+    # standard error as errors, and standard output and the host's own
+    # lines as default messages (runtime/mobile/apple.c,
+    # fledge_log_write), each stream read by a thread of its own, so the
+    # log holds each stream's lines in order but the two interleaved as
+    # those threads happen to run (doc/contributors/design/phone-runtimes.md,
+    # "Output to the system log").
+    def self.messages(ndjson, pid, standard_error: true)
+      ndjson.each_line.filter_map do |line|
+        entry = JSON.parse(line)
+        next unless entry.is_a?(Hash) && entry["processID"] == pid
+        next if !standard_error && entry["messageType"] == "Error"
+
+        entry["eventMessage"]
+      rescue JSON::ParserError
+        nil
+      end
+    end
+
     def initialize(runtimes:, work: File.join(ROOT, "tmp", "mobile-parity", "ios"), out: $stdout)
       @runtimes = File.expand_path(runtimes)
       @work = File.expand_path(work)
@@ -127,9 +148,10 @@ class MobileParity
 
     # Runs each of +apps+, a Hash from App to its built bundle, on a new
     # simulator of +family+, allowing each +timeout+ seconds, yields
-    # each app, the lines it logged, and the device's name to the block
-    # that checks them, and returns whether every check passed.
-    def on_simulator(family, apps, timeout: TIMEOUT)
+    # each app, the lines it logged, without those of standard error
+    # unless +standard_error+ (IOS.messages), and the device's name to
+    # the block that checks them, and returns whether every check passed.
+    def on_simulator(family, apps, timeout: TIMEOUT, standard_error: true)
       runtime, device_type = newest(family)
       udid = capture("xcrun", "simctl", "create", "fledge-mobile-#{family}", device_type, runtime).strip
       begin
@@ -137,7 +159,7 @@ class MobileParity
         name = "#{family} (#{device_type.split('.').last}, #{runtime.split('.').last})"
         apps.map do |app, bundle|
           system("xcrun", "simctl", "install", udid, bundle, exception: true)
-          yield app, launch(udid, app, timeout), name
+          yield app, launch(udid, app, timeout, standard_error), name
         end.all?
       ensure
         system("xcrun", "simctl", "shutdown", udid, out: File::NULL, err: File::NULL)
@@ -168,9 +190,11 @@ class MobileParity
     # reads them from the simulator's unified log. log stream would miss a
     # short program's lines on a slow runner, where it can attach after the
     # program has ended; and the process's ID, which simctl launch prints,
-    # keeps an earlier launch's lines out. It fails when the app has not
-    # finished in +timeout+ seconds.
-    private def launch(udid, app, timeout)
+    # keeps an earlier launch's lines out. Those of standard error are
+    # left out of what it returns unless +standard_error+, but not out of
+    # what it reports when the app has not finished in +timeout+ seconds,
+    # when it fails.
+    private def launch(udid, app, timeout, standard_error)
       since = (Time.now - 2).strftime("%Y-%m-%d %H:%M:%S")
       launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier)
       pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
@@ -183,22 +207,18 @@ class MobileParity
 
         sleep 5
       end
-      MobileParity.settled(interval: 5) { messages(udid, since, pid, app) }
+      MobileParity.settled(interval: 5) { messages(udid, since, pid, app, standard_error:) }
         .tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
     end
 
     # The messages the process +pid+ logged in the app's subsystem since
-    # +since+, in order, kept beside the check's other files.
-    private def messages(udid, since, pid, app)
+    # +since+, as IOS.messages reads them, the log kept beside the
+    # check's other files.
+    private def messages(udid, since, pid, app, standard_error: true)
       log = File.join(@work, "#{udid}-#{app.identifier}.ndjson")
       system("xcrun", "simctl", "spawn", udid, "log", "show", "--start", since, "--style", "ndjson", "--info", "--predicate",
         "subsystem == \"#{app.identifier}\"", out: log, err: File::NULL)
-      File.readlines(log).filter_map do |line|
-        entry = JSON.parse(line)
-        entry["eventMessage"] if entry.is_a?(Hash) && entry["processID"] == pid
-      rescue JSON::ParserError
-        nil
-      end
+      IOS.messages(File.read(log), pid, standard_error:)
     end
 
     # What the simulator +udid+ says of +app+, for one that never

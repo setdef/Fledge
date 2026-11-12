@@ -9,12 +9,12 @@ require_relative "test_helper"
 require "open3"
 require "yaml"
 
-# The Ruby a contributor runs Fledge on, which mise installs from
-# mise.toml (bin/setup), is the Ruby the runtimes come from on each
-# platform: runtime/sources.yml's release on macOS and Linux, and on
-# Windows the very archive of RubyInstaller's head build the Windows
-# runtimes are built from, by the same URL and SHA-256.
-class ContributorRubyTest < Minitest::Test
+# The tools mise installs for a contributor from mise.toml (bin/setup).
+# Each is pinned by SHA-256, and the Ruby is the one the runtimes come
+# from on each platform: runtime/sources.yml's release on macOS and
+# Linux, and on Windows the very archive of RubyInstaller's head build
+# the Windows runtimes are built from, by the same URL and SHA-256.
+class ContributorToolsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
 
   def mise_toml = File.read(File.join(ROOT, "mise.toml"))
@@ -51,6 +51,15 @@ class ContributorRubyTest < Minitest::Test
         assert_includes mise_toml, line, "#{tool} on #{platform}"
       end
     end
+  end
+
+  # Every file mise.toml names by URL, patchelf's among them, is pinned
+  # by SHA-256 (AGENTS.md).
+  def test_every_download_mise_toml_names_is_pinned_by_sha256
+    downloads = mise_toml.lines.grep(/\burl = "/)
+
+    refute_empty downloads
+    downloads.each { |line| assert_match(/checksum = "sha256:\h{64}"/, line) }
   end
 
   # CI's Windows jobs read the pin from mise.toml with this script.

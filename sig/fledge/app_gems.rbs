@@ -12,6 +12,7 @@ module Fledge
     @compiler: NativeBuild
     @path_files: Hash[String, String]
     @extension_packages: Hash[locked_gem, package]
+    @extension_dependencies: Hash[locked_gem, package]
     @bundler: String?
 
     def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild) -> void
@@ -25,6 +26,10 @@ module Fledge
     private def locked_bundler: (RuntimeContents runtime) -> LockedGem?
 
     def extension_packages: () -> Hash[locked_gem, package]
+
+    def extension_dependencies: () -> Hash[locked_gem, package]
+
+    private def dependencies_of: (Hash[locked_gem, package] wanted, Hash[locked_gem, package] packages) -> Hash[locked_gem, package]
 
     def extension_build_args: () -> Hash[String, Array[String]]
 

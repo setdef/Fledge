@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    module Rust
+      TRIPLES: Hash[String, String]
+      NATIVE_LIBS: String
+      LIBRARY: String
+      MAKEFILE: String
+      SHIM: String
+
+      def self.triple: (String name) -> String
+
+      def self.ios: (String name, triple: String, sysroot: String) -> Hash[String, String]
+
+      def self.android: (String name, bin: String, cc: String, resource: String) -> Hash[String, String]
+
+      private def self.bindgen: (String rust) -> String
+
+      def self.check: (String rust, gem: String, env: Hash[String, String?]) -> void
+    end
+  end
+end

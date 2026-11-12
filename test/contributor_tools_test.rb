@@ -69,6 +69,17 @@ class ContributorToolsTest < Minitest::Test
     downloads.each { |line| assert_match(/checksum = "sha256:\h{64}"/, line) }
   end
 
+  # The Rust a contributor's mise installs is the release CI's desktop
+  # jobs install, with the standard library of every phone target, which
+  # a Rust gem's extension is compiled for (MobileExtensions::Rust).
+  def test_mise_installs_cis_rust_with_every_phone_target
+    rust = YAML.safe_load_file(File.join(ROOT, ".github", "workflows", "ci.yml"), aliases: true).fetch("env").fetch("RUST_TOOLCHAIN")
+    line = mise_toml.lines.find { |candidate| candidate.start_with?("rust = ") } or flunk "mise.toml installs no Rust"
+
+    assert_includes line, %(version = "#{rust}")
+    assert_includes line, %(targets = "#{Fledge::MobileExtensions::Rust::TRIPLES.values.join(',')}")
+  end
+
   # CI's Windows jobs read the pin from mise.toml with this script.
   def test_ruby_pin_reads_the_pin_and_takes_head_on_windows_for_a_preview
     script = File.join(ROOT, ".github", "scripts", "ruby-pin.sh")

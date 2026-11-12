@@ -27,9 +27,9 @@
 #
 # A windowed app gets an installer too (ADR 009): a disk image for macOS,
 # an NSIS setup program for Windows, and an AppImage for Linux (and a
-# .deb, which windowed_app asks for), each written on its own platform's
-# runner; and Delivery installs each on a
-# fresh runner and runs the app it installed.
+# .deb and an MSIX package, which windowed_app asks for), each written
+# on its own platform's runner; and Delivery installs each on a fresh
+# runner and runs the app it installed.
 #
 # The mobile runtimes (ADR 011) build from Ruby's source, iOS's on a Mac
 # with Xcode and Android's on Linux with the NDK, and their Delivery is
@@ -1211,8 +1211,10 @@ jobs:
             dist-signed/*-${{ matrix.platform }}.zip
             dist-signed/*-${{ matrix.platform }}.dmg
             dist-signed/*-${{ matrix.platform }}-setup.exe
+            dist-signed/*-${{ matrix.platform }}.msix
             dist-signed/command/*-${{ matrix.platform }}.zip
             dist-signed/command/*-${{ matrix.platform }}-setup.exe
+            dist-signed/command/*-${{ matrix.platform }}.msix
             dist-signed/certificate.*
           if-no-files-found: error
           retention-days: 14
@@ -1305,6 +1307,7 @@ jobs:
             dist/*-${{ matrix.platform }}.zip
             dist/*-${{ matrix.platform }}.dmg
             dist/*-${{ matrix.platform }}-setup.exe
+            dist/*-${{ matrix.platform }}.msix
             dist/*-${{ matrix.platform }}.AppImage
             dist/*-${{ matrix.platform }}.deb
             dist/*.expected
@@ -2010,6 +2013,25 @@ jobs:
         with:
           name: signed-${{ matrix.platform }}
           path: ${{ runner.temp }}/signed
+
+      # The MSIX package (Fledge::Msix): the unsigned one, as the
+      # Microsoft Store takes it, read and refused; the ones --sign and
+      # --sign-command signed, refused until the run's test certificate
+      # is trusted, then installed, listed in the Start menu, started
+      # through their AppUserModelID with the package's identity, and
+      # removed (.github/scripts/deliver-msix.ps1). The certificate
+      # leaves TrustedPeople after each, so the step after it still sees
+      # a Windows that trusts it nowhere.
+      - name: Install Hello Window's MSIX packages, run them, and remove them
+        shell: pwsh
+        run: |
+          foreach ($signed in "signed", "signed/command") {
+            pwsh -NoProfile -File .github/scripts/deliver-msix.ps1 `
+              -Package "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.msix" `
+              -Signed "$env:RUNNER_TEMP/$signed/Hello Window-$env:PLATFORM.msix" `
+              -Certificate "$env:RUNNER_TEMP/signed/certificate.cer"
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
 
       - name: Verify, install, and run the signed apps
         shell: pwsh

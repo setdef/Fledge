@@ -291,16 +291,19 @@ class MobileParity
     # stops it, since Ruby boots once per process. It fails, reporting
     # both streams, when the app has not finished in +timeout+ seconds,
     # or when its process has ended without the host's status, as when
-    # Android stopped it.
+    # Android stopped it. The process is the one ActivityManager says it
+    # started, by its ID, since an app that sets $0 changes the command
+    # line pidof looks for its identifier in.
     def launch(app, timeout: TIMEOUT)
       adb("logcat", "-c")
       adb("shell", "am", "start", "-W", "-n", "#{app.identifier}/#{ACTIVITY}")
+      pid = Android.started(app, adb("logcat", "-d", "-v", "threadtime")).first || pidof(app)
       deadline = Time.now + timeout
       until MobileParity.status(logged(app).entries)
-        ended = !running?(app) && !MobileParity.status(logged(app).entries)
+        ended = !running?(pid) && !MobileParity.status(logged(app).entries)
         if ended || Time.now > deadline
           why = ended ? "ended without a status" : "did not finish in #{timeout} seconds"
-          raise "#{app.name} #{why}:\n#{logged(app).entries.last(40).join("\n")}\n#{diagnosis(app)}"
+          raise "#{app.name} #{why}:\n#{logged(app).entries.last(40).join("\n")}\n#{diagnosis(app, pid)}"
         end
 
         sleep 2
@@ -314,12 +317,11 @@ class MobileParity
     # that name it, those its processes logged, by the process IDs
     # ActivityManager gave them, and those of Android's crash reporters,
     # where Android writes why an app did not start or died.
-    private def diagnosis(app)
-      pid = Open3.capture2e("adb", "shell", "pidof", app.identifier).first.strip
+    private def diagnosis(app, pid)
       everything = Open3.capture2e("adb", "logcat", "-d", "-v", "threadtime").first
       File.write(File.join(@work, "logcat-#{app.identifier}.txt"), everything)
       [
-        "The app's process: #{pid.empty? ? 'not running' : pid}",
+        "The app's process: #{running?(pid) ? pid : 'not running'}",
         "What logcat says of it:",
         *MobileParity::Android.about(app, everything).last(150),
       ].join("\n")
@@ -329,11 +331,17 @@ class MobileParity
     # that name it, those of its processes, and those of the crash
     # reporters (DEBUG, AndroidRuntime, libc).
     def self.about(app, log)
-      started = log.scan(%r{Start proc (\d+):#{Regexp.escape(app.identifier)}[/:]}).flatten
+      started = started(app, log)
       log.lines.map(&:chomp).select do |line|
         fields = line.split(" ", 6)
         line.include?(app.identifier) || started.include?(fields[2]) || %w[DEBUG AndroidRuntime libc].include?(fields[5]&.split(":")&.first&.strip)
       end
+    end
+
+    # The IDs of the processes ActivityManager started for +app+, by
+    # logcat's lines in +log+, oldest first.
+    def self.started(app, log)
+      log.scan(%r{Start proc (\d+):#{Regexp.escape(app.identifier)}[/:]}).flatten
     end
 
     # What +app+ logged under its identifier, as Android.messages reads
@@ -343,8 +351,14 @@ class MobileParity
       Logged.new(entries: Android.messages(log, app.identifier), output: Android.messages(log, app.identifier, standard_error: false))
     end
 
-    private def running?(app)
-      !Open3.capture2e("adb", "shell", "pidof", app.identifier).first.strip.empty?
+    # Whether the process +pid+ still runs, by its folder in /proc.
+    private def running?(pid)
+      !pid.nil? && Open3.capture2e("adb", "shell", "test", "-d", "/proc/#{pid}").last.success?
+    end
+
+    # The ID of +app+'s running process, by its command line, or nil.
+    private def pidof(app)
+      Open3.capture2e("adb", "shell", "pidof", app.identifier).first.strip.split.first
     end
 
     private def abi

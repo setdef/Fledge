@@ -186,6 +186,20 @@ class MobileParityTest < Minitest::Test
     assert_equal [0, 2, 3, 4, 5], lines.map { |line| log.lines.map(&:chomp).index(line) }
   end
 
+  # An app that sets $0 changes the command line pidof finds it by, so
+  # the harness follows the process ActivityManager says it started.
+  def test_an_apps_process_is_the_one_activity_manager_started_for_it
+    app = MobileParity::APPS.fetch(1)
+    log = <<~LOG
+      11-01 05:26:40.100   745   859 I ActivityManager: Start proc 8123:com.setdef.fledge.MobileApp/u0a213 for next-top-activity {com.setdef.fledge.MobileApp/org.setdef.fledge.host.MainActivity}
+      11-01 05:26:40.200   745   859 I ActivityManager: Start proc 8200:com.setdef.fledge.MobileAppOther/u0a214 for service {}
+      11-01 05:26:44.100   745   859 I ActivityManager: Start proc 8301:com.setdef.fledge.MobileApp:worker/u0a213 for service {}
+    LOG
+
+    assert_equal %w[8123 8301], MobileParity::Android.started(app, log)
+    assert_empty MobileParity::Android.started(app, "11-01 05:26:40.300   745  1024 D WifiScoreCard: txRate: 1\n")
+  end
+
   # The embedding API logs standard error as errors on iOS, and standard
   # output and the host's lines as default messages, so a reader that
   # wants one stream in its own order can leave the other out; lines of

@@ -26,6 +26,20 @@ On macOS and Linux, a double-click starts a program with no locale variable set,
 
 When your users set `LC_ALL` or `LC_CTYPE`, `C` included, the app uses it as `ruby` does, and Fledge adds nothing to `ENV`. To see it, print `Encoding.default_external` from your program, then run the app with `env -i`, and again with `env -i LC_ALL=C`. If this surprises you, [open an issue](https://github.com/setdef/Fledge/issues).
 
+## Windows' ANSI code page
+
+On Windows, the app runs with UTF-8 as its ANSI code page, the character set Windows reads a narrow (`char *`) string in when a program calls a Windows function whose name ends in `A`. `ruby.exe` runs with the system's, such as Windows-1252 on an English or Western European Windows. The app's program declares UTF-8 in its manifest (`activeCodePage`), which Windows 10 version 1903 and later honor.
+
+Without it, a gem that hands Ruby's UTF-8 paths to such a function fails once your users install the app under a folder whose name is not ASCII, such as `C:\Users\José\`. The ffi gem is one: it opens a DLL with `LoadLibraryExA`, so a gem that loads its own DLL through ffi, such as libusb, fails to load there with "The specified module could not be found". It fails the same way under `ruby.exe`, but your users would meet it as an app that does not start.
+
+What you can see from Ruby:
+
+- In a windowed app, `Encoding.locale_charmap` is `"CP65001"` and `Encoding.find("locale")` is UTF-8, where `rubyw.exe` gives the system's code page, such as `"CP1252"` and Windows-1252. A console app takes them from the console's code page, as `ruby.exe` does, and the console's code page stays as it was.
+- With `TZ` set to a zone whose name is not ASCII, `Time#zone` is a UTF-8 string, not Windows-1252.
+- A C extension's `fopen` and the C runtime's other narrow functions read UTF-8, because the C runtime's locale is UTF-8 too.
+
+`Encoding.default_external` and `Encoding.find("filesystem")` are UTF-8 under `ruby.exe` already, and do not change. The Ruby that `RbConfig.ruby` names is RubyInstaller's `ruby.exe`, which keeps the system's code page, so a gem loaded through ffi from a folder named outside ASCII fails in a Ruby your app starts, as it does under `ruby.exe`. If this surprises you, [open an issue](https://github.com/setdef/Fledge/issues).
+
 ## Restarts
 
 On macOS and Linux, `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first started, with the same setup. On Windows, start the app's `NAME.exe` again.

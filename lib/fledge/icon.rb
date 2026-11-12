@@ -37,7 +37,11 @@ module Fledge
   #   (IOS);
   # * <tt>ICON-48.png</tt> to <tt>ICON-192.png</tt> for Android, one for
   #   each screen density's launcher icon (ANDROID), the sizes Briefcase
-  #   asks for.
+  #   asks for;
+  # * <tt>ICON-44.png</tt>, <tt>ICON-50.png</tt>, and <tt>ICON-150.png</tt>
+  #   for a Windows app's MSIX package, the logos its manifest must name
+  #   at their base sizes (MSIX): the Start menu's and taskbar's, the
+  #   Store's, and the Start menu's tile.
   #
   # Use it through Fledge::Identity, which knows where your icon is.
   #
@@ -74,6 +78,13 @@ module Fledge
     # by the density's name in its <tt>mipmap-</tt> folder.
     ANDROID = { "mdpi" => 48, "hdpi" => 72, "xhdpi" => 96, "xxhdpi" => 144, "xxxhdpi" => 192 }.freeze
 
+    # The size of each logo an MSIX package's manifest must name, by the
+    # manifest's name for it, at 100% scale (Microsoft Learn, "Construct
+    # your Windows app's icon"): Square44x44Logo in the Start menu's list
+    # and the taskbar, StoreLogo in the Store and the installer, and
+    # Square150x150Logo as the Start menu's tile.
+    MSIX = { "Square44x44Logo" => 44, "StoreLogo" => 50, "Square150x150Logo" => 150 }.freeze
+
     # How to make each file, for the message when it is missing: by its
     # extension, or for a PNG by the system that takes it.
     MAKE = {
@@ -83,6 +94,8 @@ module Fledge
       "ios" => "iOS apps take one PNG of #{IOS} pixels a side, -#{IOS}, from which Xcode makes the rest.",
       "android" => "Android apps take one PNG of each size, #{ANDROID.values.map { |size| "-#{size}" }.join(', ')}, " \
         "one for each screen density.",
+      "msix" => "An MSIX package takes one PNG of each size, #{MSIX.values.map { |size| "-#{size}" }.join(', ')}, " \
+        "the logos its manifest names.",
     }.freeze
 
     # The icon file with +extension+ beside the icon's base, such as

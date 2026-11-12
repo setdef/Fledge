@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class Config
+    class Windows < Data
+      KEYS: Array[String]
+      NAME: Regexp
+      PUBLISHER_MAX: Integer
+
+      attr_reader msix_name: String?
+      attr_reader msix_publisher: String?
+
+      def self.new: (msix_name: String?, msix_publisher: String?) -> instance
+
+      def self.from: (Hash[Object, Object] data, String file) -> Windows?
+
+      private def self.package_name: (Object value, String file) -> String?
+
+      private def self.package_publisher: (Object value, String file) -> String?
+    end
+  end
+end

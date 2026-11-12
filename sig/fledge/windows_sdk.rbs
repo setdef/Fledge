@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  module WindowsSdk
+    INSTALL: String
+
+    def self.tool: (String file, Runtimes::_Env env, needed_by: String) -> String
+  end
+end

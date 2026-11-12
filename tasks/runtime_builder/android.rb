@@ -65,6 +65,11 @@ class RuntimeBuilder
     # every LOAD segment so by default, and the link says so anyway.
     PAGE = 16_384
 
+    # The runtime's ruby program in each ABI's folder of native
+    # libraries, named as the package installer extracts only lib*.so
+    # (ADR 069; runtime/mobile/android.c, FLEDGE_RUBY_PROGRAM).
+    PROGRAM = "libfledgerubyexe.so"
+
     private def edits
       %i[psych_extconf configure ruby_c]
     end
@@ -158,7 +163,8 @@ class RuntimeBuilder
     # libyaml, and libffi, whose symbols it keeps to itself
     # (--exclude-libs), so an app's own copies cannot clash with them; and
     # OpenSSL's X509_get_default_cert_file answered by android.c, since
-    # OpenSSL reads no SSL_CERT_FILE in an Android app.
+    # OpenSSL reads no SSL_CERT_FILE in an Android app. Returns it, with
+    # the ruby program linked against it (#program).
     private def link(target, root)
       folder = File.join(@build_dir, target.name, "package")
       FileUtils.rm_rf(folder)
@@ -184,7 +190,27 @@ class RuntimeBuilder
         "-ldl", "-lm", "-o", library)
       @builder.run(File.join(tools, "llvm-strip"), "--strip-unneeded", library)
       check(library)
-      library
+      [library, program(cc, root, folder)]
+    end
+
+    # The runtime's ruby program for one ABI, PROGRAM, which RbConfig.ruby
+    # names through the link android.c makes (ADR 069): a position-
+    # independent executable with Ruby's main.c in libfledgeruby.so, which
+    # it finds beside itself, where the package installer extracts both,
+    # through its run path ($ORIGIN, which bionic expands), so that it
+    # carries no second copy of Ruby.
+    private def program(cc, root, folder)
+      source = File.join(MOBILE, "ruby_program.c")
+      executable = File.join(folder, PROGRAM)
+      @builder.run(cc, "--analyze", "-Xclang", "-analyzer-werror", *compile_flags(root), source, "-o", File.join(folder, "analysis.plist"))
+      @builder.run(cc, "-fPIE", "-pie", "-O2", *compile_flags(root), source, "-L#{folder}", "-lfledgeruby", "-Wl,-rpath,$ORIGIN",
+        "-Wl,-z,max-page-size=#{PAGE}", "-o", executable)
+      @builder.run(File.join(tools, "llvm-strip"), "--strip-unneeded", executable)
+      check(executable, also: "libfledgeruby.so")
+      runpath = @builder.capture(File.join(tools, "llvm-readelf"), "-dW", executable)[/\(RUNPATH\)\s+Library runpath: \[([^\]]*)\]/, 1]
+      raise "#{executable} does not look for libfledgeruby.so beside itself: its run path is #{runpath.inspect}" unless runpath == "$ORIGIN"
+
+      executable
     end
 
     # The embedding API's sources (runtime/mobile/): its C, the logcat
@@ -207,10 +233,12 @@ class RuntimeBuilder
       ["-std=gnu11", *WARNINGS, "-isystem", arch, "-isystem", headers, "-I", MOBILE, "-I", Recipe::LAUNCHER]
     end
 
-    private def check(library)
+    # Fails unless +library+ needs only Android's own libraries and +also+,
+    # and every LOAD segment of it is aligned for 16 KB pages.
+    private def check(library, also: nil)
       readelf = File.join(tools, "llvm-readelf")
       needed = @builder.capture(readelf, "-dW", library).scan(/\(NEEDED\)\s+Shared library: \[([^\]]+)\]/).flatten
-      foreign = needed.grep_v(SYSTEM)
+      foreign = needed.grep_v(SYSTEM) - [also]
       raise "#{library} needs libraries Android does not provide: #{foreign.join(', ')}" unless foreign.empty?
 
       alignments = @builder.capture(readelf, "-lW", library).lines.grep(/\A\s*LOAD\s/).map { |line| Integer(line.split.last) }
@@ -240,13 +268,14 @@ class RuntimeBuilder
     end
 
     # The AAR, packed by the Android Gradle plugin from the Java class in
-    # runtime/mobile/android/ and each ABI's library, with the pinned
+    # runtime/mobile/android/ and each ABI's library and ruby program,
+    # with the pinned
     # Gradle, its project files and caches kept out of the repository.
     private def pack_aar(libraries, aar)
       jni = File.join(@build_dir, "jniLibs")
-      libraries.each do |target, library|
+      libraries.each do |target, files|
         FileUtils.mkdir_p(File.join(jni, target.abi))
-        FileUtils.cp(library, File.join(jni, target.abi))
+        FileUtils.cp(files, File.join(jni, target.abi))
       end
       out = File.join(@build_dir, "gradle")
       @builder.run(gradle, "--no-daemon", "--quiet", "--project-dir", File.join(MOBILE, "android"), "--project-cache-dir",

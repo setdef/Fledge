@@ -13,6 +13,8 @@ Lock `ruby` as a platform first (`bundle lock --add-platform ruby`). To build a 
 
 A phone's Ruby has the standard library and gems of a desktop's, with one left out: `fiddle` on iOS, which can call any C function, and which other iOS Rubies leave out for App Review.
 
+On Android, your program can start Ruby as it would on a desktop: `RbConfig.ruby` and `Gem.ruby` name a Ruby program the app carries, so `system(RbConfig.ruby, "worker.rb")`, `IO.popen`, and backquotes run it, with your app's gems. Android lets an app run only the native libraries its installer unpacks, so the project packs them compressed (`useLegacyPackaging = true` in `build.gradle`), and the app takes more space once installed. If your program never starts Ruby, you may set it to `false`; then `RbConfig.ruby` names a file that is not there. iOS lets no app start a program, so on iOS it never is.
+
 ## Gems with extensions
 
 Fledge compiles a gem's C or C++ extension for the phone and links it into the app: with Xcode on iOS, and with the [Android NDK](https://developer.android.com/ndk) on Android. Set `ANDROID_NDK_ROOT`, or install the NDK in the SDK's `ndk/` folder.

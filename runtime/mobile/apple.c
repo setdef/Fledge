@@ -25,6 +25,13 @@
 
 static os_log_t ruby_log;
 
+/* iOS lets no app run a program, so the runtime has none to link. */
+void
+fledge_ruby_link_program(const char *root)
+{
+    (void)root;
+}
+
 int
 fledge_log_echoes(void)
 {

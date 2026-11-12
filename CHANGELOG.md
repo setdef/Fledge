@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- On Android, the runtime carries a ruby program, which `RbConfig.ruby` and `Gem.ruby` name, so `system(RbConfig.ruby, ...)`, `IO.popen`, and backquotes start Ruby as on a desktop, with the app's gems; the app's own program started so runs as the app first ran it.
+
+### Changed
+
+- The Android project packs native libraries compressed (`useLegacyPackaging = true`), so the installer extracts them where Android lets the app run its ruby program; an installed app takes more space. Set it to `false` to keep them stored, without a ruby program.
+
 ### Fixed
 
 - On iOS and Android, a phone's app has the prism gem, so `require "prism"` works, and so does requiring irb, minitest, rbs, rdoc, repl_type_completor, or typeprof: each bundled gem's extension keeps every symbol but its Init function to itself, so prism's own libprism no longer collides with libruby's.

@@ -381,7 +381,10 @@ module Fledge
     # the extensions' archives, against the runtime's
     # <tt>libfledgeruby.so</tt>, aligned for 16 KB pages as the runtime's
     # own library is, with the NDK's C++ runtime linked statically (a shared one would be a
-    # library the package does not carry) when an extension has C++. Returns +into+.
+    # library the package does not carry) when an extension has C++, and
+    # with its run path <tt>$ORIGIN</tt>, so that the runtime's ruby
+    # program, which loads it outside the app's own library namespace,
+    # finds the shared libraries it needs beside it (ADR 069). Returns +into+.
     def shared_library(built, build, registration:, into:)
       ndk = built.ndk or raise Error, "only an Android app links a shared library"
       target = build.target
@@ -391,7 +394,7 @@ module Fledge
       FileUtils.mkdir_p(File.dirname(into))
       run(clean_env, cc, "-shared", "-fPIC", "-O2", "-I", File.join(target.root, "include"), "-o", into, *stl, "-x", "c", registration, "-x", "none",
         *build.archives, "-L#{target.libdir}", "-lfledgeruby", *build.flags, "-llog", "-lm", "-Wl,-z,max-page-size=16384",
-        "-Wl,--exclude-libs,ALL", what: "linking the app's extensions for #{target.name} with #{File.basename(ndk.root)}")
+        "-Wl,--exclude-libs,ALL", "-Wl,-rpath,$ORIGIN", what: "linking the app's extensions for #{target.name} with #{File.basename(ndk.root)}")
       run(clean_env, File.join(ndk.bin, "llvm-strip"), "--strip-unneeded", into, what: "stripping #{File.basename(into)} for #{target.name}")
       into
     end

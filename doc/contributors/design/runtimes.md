@@ -243,3 +243,40 @@ A pin in `runtime/sources.yml` may list `mirrors` after its `url`. `DownloadCach
 One SHA-256 per pin, not one per mirror, keeps the component the same whichever host answered: the license audit and the source bundles read only that a source pin exists.
 
 Only `.github/scripts/fetch_pin.rb` passes mirrors, and only the `replaceability` pins, which it alone reads, name them. `test/runtime_builder_test.rb` fails if any other pin names one, since the runtime builder would never try them, or if a mirror is not HTTPS. Each mirror is downloaded and matched against the pin before it is added.
+
+## Keeping RubyInstaller's head build
+
+RubyInstaller publishes Ruby 4.1 for Windows only as its rolling `rubyinstaller-head` release, and replaces its files every night. Its CI keeps each night's build as an artifact for about 90 days, but without a signature; only the release's `.asc` files let a build be checked against RubyInstaller's key. Fledge moves every platform to each Ruby 4.1 release together (preview2, any later preview, each RC, and 4.1.0), so the Windows runtimes need the head build of each release's day, and that build is gone the next night.
+
+`.github/workflows/keep-rubyinstaller-head.yml` keeps it. Every three hours, at 17 minutes past, it runs `.github/scripts/keep-rubyinstaller-head.sh`, which:
+
+1. asks `cache.ruby-lang.org` for `ruby-VERSION.tar.gz` of each version watched, and takes the newest that is there. Only the newest release's day can still be kept, so an older one that was missed is never kept with a later build. A host that answers anything but found or not found fails the run, so that a release it hid is not passed over;
+2. stops when this repository has a pre-release named `inputs-rubyinstaller-head-YYYYMMDD-for-VERSION` for that version. The pre-releases are the only state;
+3. reads the times RubyInstaller's API gives its four head files, `rubyinstaller-head-x64.7z`, `rubyinstaller-head-arm.7z`, and their `.asc` signatures, and fails when any is older than the release's tarball (its `Last-Modified`): that build is the night before's, and the next run tries again;
+4. downloads the key `runtime/sources.yml` pins for both Windows platforms, checks it against its SHA-256, downloads the four files, and checks both archives with `gpgv` against that key, by fingerprint, as `rake runtime` does ("The RubyInstaller signing key", above);
+5. asks RubyInstaller's API again, and fails if the files changed while they downloaded;
+6. publishes the four files unchanged on the pre-release, with `gh release create --prerelease --latest=false` on the commit the workflow runs on, and reads each one back from the release and checks its SHA-256.
+
+YYYYMMDD is the day RubyInstaller built the x64 archive, in UTC. The notes give each file's SHA-256 and the time RubyInstaller reports for it, the key's fingerprint and URL, the time the release appeared, and each build's Ruby, read from the `RUBY_DESCRIPTION` in its DLL without running it (`ruby 4.1.0dev (2026-11-12 master 0738c9dfaa) [x64-mingw-ucrt]`, say).
+
+Nothing is overwritten or deleted. A failed download, a bad signature, or a stale build publishes nothing and fails the run, so a failure shows on the Actions page. Only the job's `contents: write` lets it publish, with the repository's own token. Run it by hand with `workflow_dispatch` to try it: `dry-run`, on by default, does everything up to publishing and prints the notes instead. `versions` names the versions to watch; `4.1.0-preview1` shows the whole path, since it exists. The script runs on any computer the same way, with `DRY_RUN=1` and `KEEP_VERSIONS`; its header lists the rest of its environment. `test/keep_rubyinstaller_head_test.rb` runs it against a loopback server standing in for both hosts, and a signing key of its own.
+
+To verify a kept build, download its files and the key, and check them as the workflow did:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```sh
+gh release download inputs-rubyinstaller-head-YYYYMMDD-for-VERSION --repo setdef/Fledge
+curl -fsSLO https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc
+sha256sum appveyor-repo-key.asc   # the key's sha256 in runtime/sources.yml
+gpg --dearmor < appveyor-repo-key.asc > key.gpg
+gpgv --keyring ./key.gpg rubyinstaller-head-x64.7z.asc rubyinstaller-head-x64.7z
+gpgv --keyring ./key.gpg rubyinstaller-head-arm.7z.asc rubyinstaller-head-arm.7z
+sha256sum rubyinstaller-head-*   # the SHA-256s in the release's notes
+```
+<!-- SPDX-SnippetEnd -->
+
+`gpgv` names the key that made each signature; it is RubyInstaller's when it is `79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5`, the fingerprint the pin names.

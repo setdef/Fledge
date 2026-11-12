@@ -53,7 +53,7 @@ class CIRunsTest < Minitest::Test
     end
   end
 
-  # A commit inside a batch has no run of its own (ADR 069), so the
+  # A commit inside a batch has no run of its own (ADR 071), so the
   # message says how a commit gets one.
   def test_refuses_a_commit_with_no_run_on_a_push_to_the_branch
     with_api(runs: [], jobs: {}) do |_, runs|

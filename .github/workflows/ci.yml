@@ -72,7 +72,7 @@ permissions:
   contents: read
 
 # A push to a branch cancels that branch's run in progress. A push to
-# trunk never does (ADR 069): GitHub keeps one run going and one waiting
+# trunk never does (ADR 071): GitHub keeps one run going and one waiting
 # in a group, and a newer push replaces only the waiting one, so every
 # run that starts finishes, and covers every commit pushed since the
 # run before it started. A red run blames that batch, and a commit

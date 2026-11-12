@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# The fast tier (ADR 069): on every push and pull request, the lint and
+# The fast tier (ADR 071): on every push and pull request, the lint and
 # the unit tests (bundle exec rake test, CONTRIBUTING.md, "The tests"),
 # in a few minutes, so each push to trunk gets a verdict of its own
 # while ci.yml's full run, about an hour, covers the pushes in batches.

@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Versions and Releases
 
-This document says how Fledge is versioned, what each kind of release may change, which Rubies and platforms a release keeps, and how a release is made and published. ADR 028 decides SemVer and when a major ships; ADR 055 decides which Ruby an app gets; ADR 056 the move to Ruby 4.1 and what 1.0 waits for; ADR 014 the pins; ADR 053 how a release reuses CI; ADR 069 how CI's runs queue; ADR 031 the mirror; ADR 054 the schema's address. The steps a release takes are in `doc/contributors/handoff.md`, "How to release". What 1.x freezes is in `doc/contributors/design/public-interface.md`. App developers read the same rules in `doc/runtimes.md`.
+This document says how Fledge is versioned, what each kind of release may change, which Rubies and platforms a release keeps, and how a release is made and published. ADR 028 decides SemVer and when a major ships; ADR 055 decides which Ruby an app gets; ADR 056 the move to Ruby 4.1 and what 1.0 waits for; ADR 014 the pins; ADR 053 how a release reuses CI; ADR 071 how CI's runs queue; ADR 031 the mirror; ADR 054 the schema's address. The steps a release takes are in `doc/contributors/handoff.md`, "How to release". What 1.x freezes is in `doc/contributors/design/public-interface.md`. App developers read the same rules in `doc/runtimes.md`.
 
 ## Versions
 
@@ -93,7 +93,7 @@ The pin commit changing only the pins is what ties the published runtimes to the
 
 ## Runs, batches, and the release commit
 
-A push to `trunk` never cancels the run of `ci.yml` in progress there (ADR 069). GitHub keeps at most one run going and one waiting in a concurrency group, and a newer push replaces the waiting one. So every run that starts finishes, and it covers a batch: every commit pushed since the run before it started. A red run blames the whole batch. `.github/workflows/fast.yml`, the lint and the unit tests on Linux, macOS, and Windows, runs on every push in a few minutes, never cancelled on `trunk`, and its verdict on each push narrows the blame. A push to any other branch cancels that branch's runs of both workflows.
+A push to `trunk` never cancels the run of `ci.yml` in progress there (ADR 071). GitHub keeps at most one run going and one waiting in a concurrency group, and a newer push replaces the waiting one. So every run that starts finishes, and it covers a batch: every commit pushed since the run before it started. A red run blames the whole batch. `.github/workflows/fast.yml`, the lint and the unit tests on Linux, macOS, and Windows, runs on every push in a few minutes, never cancelled on `trunk`, and its verdict on each push narrows the blame. A push to any other branch cancels that branch's runs of both workflows.
 
 A run belongs to the commit at the head of its push. A commit pushed with others after it, or one whose waiting run a newer push replaced, has no run of its own, and `tasks/ci_runs.rb` finds nothing for it: it says so, and that the commit has to be pushed alone, as the head of its push. A batch's run proves its head, so a commit inside a batch cannot be a release commit, and cannot be a pin commit's parent.
 

@@ -49,7 +49,7 @@ class CIRuns
 
   # Why a pushed commit can have no run, and how to give it one. A run
   # of ci.yml on trunk covers every commit pushed since the run before it
-  # started, and only its head has a run of its own (ADR 069).
+  # started, and only its head has a run of its own (ADR 071).
   NO_RUN = "a commit pushed with others after it, or whose waiting run a newer push replaced, " \
     "has none of its own; push it alone, as the head of its push, and wait for CI to pass"
 

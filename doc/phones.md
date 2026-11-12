@@ -11,7 +11,7 @@ For a phone, [Fledge](../README.md) writes a project that holds your program and
 
 Lock `ruby` as a platform first (`bundle lock --add-platform ruby`). To build a folder named `ios` or `android`, write `./ios` or `./android`. [`examples/mobile_app`](../examples/mobile_app) is a complete example.
 
-A phone's Ruby has the standard library and gems of a desktop's, with one left out: `fiddle` on iOS, which can call any C function, and which other iOS Rubies leave out for App Review.
+A phone's Ruby has the standard library and gems of a desktop's, with one left out: `fiddle` on iOS, which can call any C function, and which other iOS Rubies leave out for App Review. A phone also forbids some things a desktop lets your code do, such as starting a program. [What a phone forbids](#what-a-phone-forbids) lists them, with what to do instead.
 
 ## Gems with extensions
 
@@ -89,6 +89,47 @@ Every Fledge iOS app contains OpenSSL, which Ruby uses for HTTPS and the `openss
 - **A report to the U.S. government.** Apple adds that "if your app uses exempt forms of encryption, you might alternatively be required to submit a year-end self-classification report" to the Bureau of Industry and Security, and that it is your responsibility to review the Export Administration Regulations to find out whether the app needs a formal classification. BIS's [encryption controls page](https://www.bis.gov/learn-support/encryption-controls) points to sections 740.17 and 742.15 of the regulations, its mass-market and publicly-available provisions among them. Fledge could not read their text here, so it says nothing of when they apply to you.
 
 Fledge's template writes no `ITSAppUsesNonExemptEncryption`, so App Store Connect asks every time. When you know your answer, add the key to `Host/Info.plist`, `false` for exempt or no encryption, `true` with the `ITSEncryptionExportComplianceCode` Apple gives you once it approves your documents, and Apple says the questions stop: "Including the key streamlines the app submission process."
+
+## What a phone forbids
+
+Your code runs on a phone as under `ruby main.rb`, with the exceptions here. A phone's operating system refuses some calls that a desktop answers, and a few gaps in Fledge's Ruby for phones remain. Each item says which it is. A gap marked **Temporary** is a defect Fledge means to fix, so read the item again after you update Fledge. Everything not listed here ran the same as on a desktop in Fledge's tests; [What has run where](#what-has-run-where) says on which phones.
+
+The Simulator and the Android emulators are looser than a phone. Test what this page names on a device.
+
+### On iOS
+
+What follows holds on an iPhone 12 mini with iOS 27.0 and a development-signed build. A development build is the least restricted kind, so no iOS app does better.
+
+- **Starting a program.** No app can start one, and Apple's sandbox is the reason. On that iPhone, `system("/bin/echo", "hi")` returned `nil`, and backticks, `Process.spawn`, and `IO.popen` raised `Errno::EPERM: Operation not permitted - /bin/echo`. Do the work in your own process: call a Ruby library where you would call a command, or a gem with a C extension that Fledge links into the app ([Gems with extensions](#gems-with-extensions)).
+- **`fork`.** `fork` raised `Errno::EPERM - fork(2)`. The Simulator allows it, so a program that forks can pass there and fail on an iPhone. The sandbox is the reason. Use a `Thread` for work in the background, or a `Ractor` for work that shares nothing.
+- **`RbConfig.ruby`.** It names where `bin/ruby` would be, and nothing is there: a phone's Ruby is a library inside the app. Starting it raises `Errno::EPERM`. Anything that restarts your app with `exec RbConfig.ruby, ...` or runs a script with `system(RbConfig.ruby, ...)` fails. Call `load` or `require` in the same process instead.
+- **`fiddle`.** `require "fiddle"` does not load. Fledge leaves `fiddle` out of the iOS Ruby because it calls any C function by name, as other iOS Rubies do for App Review. Write the C once as a gem extension, which Fledge compiles for the phone, and `require` that.
+- **`mkmf`.** `require "mkmf"` aborts. The app carries no C headers, and a phone has no toolchain. An extension compiles on your computer, when you run `fledge build ios`.
+- **Set-user-ID, set-group-ID, and sticky bits.** The sandbox keeps an app from setting these bits on its own files, so `File.setuid?`, `File.setgid?`, and `File.sticky?` do not report a bit you set with `chmod` (the Simulator's runs of ruby/spec show this). Keep that information in your own data, not in a file's mode.
+- **User and group names.** An iOS app has no user or group database. `Etc` finds no user or group for the app's own IDs (the Simulator's runs of ruby/spec show this). `ENV["USER"]` and `ENV["LOGNAME"]` both read `mobile`, whoever owns the phone. Name a person from what your app asks them, or from an account service, not from `Etc`.
+- **User and group IDs.** Setting your own IDs works: `Process.uid=`, `Process.euid=`, `Process.gid=`, and `Process.egid=` raised nothing when given the current value on the iPhone.
+- **Temporary: `getgroups` fails.** In an iOS app, `getgroups` returns -1, and Ruby's `file.c` takes that for a count. So `File.executable?`, `File.readable?`, `File.writable?`, and `File.grpowned?` (and the same methods of `File::Stat` and `FileTest`) can raise `ArgumentError` (`malloc: possible integer overflow`) or `Errno::EINVAL` in the Simulator. This is a gap in Fledge's Ruby, not the system's rule. Until Fledge fixes it, test for a file's use by opening it, and rescue `SystemCallError`.
+
+### On Android
+
+What follows holds on a OnePlus Nord with Android 14 (API 34).
+
+- **Starting a program.** Programs the system holds start. On that phone `system`, backticks, `Process.spawn`, and `IO.popen` all ran `/bin/echo` and `/system/bin/echo`, and each exited 0. A program your app writes at run time does not: an app that targets API 29 or later may not run a file from its own writable folders. Whether a program the app ships in its native libraries runs has not been tested yet. Until it has, link the code into the app as a gem extension ([Gems with extensions](#gems-with-extensions)), or call the system's own tools.
+- **Temporary: `fork`.** `fork` does not work today. The child crashes inside Ruby with `[BUG] pthread_rwlock_unlock`. This is a defect in Fledge's Ruby for Android, not Android's rule. Until it is fixed, use a `Thread` or `Process.spawn` of a system program.
+- **Temporary: `RbConfig.ruby`.** It names where `bin/ruby` would be, and nothing is there: starting it raises `Errno::ENOENT`. Fledge means to add a `ruby` program, but none exists today, so `system(RbConfig.ruby, ...)` and `exec RbConfig.ruby, ...` fail. Call `load` or `require` in the same process.
+- **Group IDs.** `Process.egid=` and `Process.gid=` raise `NotImplementedError` (`egid=() function is unimplemented on this machine`). Android's seccomp filter stops an app that calls `setgid`, `setregid`, `setresgid`, or `setgroups`, so Fledge builds Ruby without them. The same holds for `Process::GID`'s changes, `Process.initgroups`, `Process.groups=`, and `Process.maxgroups=`. Setting your own user ID works: `Process.uid=` and `Process.euid=` raised nothing with the current value. No workaround exists.
+- **`mkmf`.** `require "mkmf"` aborts, as on iOS: the app carries no C headers, and a phone has no toolchain. An extension compiles on your computer, when you run `fledge build android`.
+- **Temporary: `Dir.glob` with `base:`.** `Dir.glob` and `Dir[]` with a `base:` that is a `Dir` opened by a relative path find nothing on Android, where they find the files on Linux. Until Fledge fixes it, pass `base:` as a path, not as a `Dir`.
+- **Files the system keeps back.** SELinux forbids an app to read `/dev`, so listing it, as `Dir.scan("/dev")` does, raises `Errno::EACCES`. Android's `fdsan` ends the process, not only the call, when `Dir.for_fd` opens a descriptor that another `Dir` owns, and bionic aborts the process when Ruby names a `Thread` that has ended. Keep one `Dir` to a descriptor, and name a thread while it runs.
+- **Set-ID bits and `Etc`.** Fledge's tests list no difference from Linux for these on Android, so treat them as Linux's.
+
+### On both
+
+- **No terminal.** An app's standard output goes to the system log. Fledge puts `$stdout` in sync mode so each line appears as it prints, where a desktop program writing to a pipe buffers. Standard input is at its end, and the working directory is `/`.
+- **A read-only bundle.** On a device the app's own folder cannot be written to (it can in the Simulator). Write under `Dir.home` or `Dir.tmpdir`.
+- **No JIT.** `RubyVM::YJIT` is not defined. Guard its use with `defined?(RubyVM::YJIT)`.
+- **Stopped in the background.** The system may stop an app that is not in front without running `at_exit`. Save what matters as you go.
+- **Native code in the app.** A phone's Ruby links each extension in, and holds no `archdir` of them; `RbConfig::CONFIG["archdir"]` names a folder with no extensions in it.
 
 ## What has run where
 

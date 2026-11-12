@@ -34,6 +34,10 @@ On macOS and Linux, `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first
 
 The app carries Ruby's C headers, so `require "mkmf"` and `find_executable` work. Fledge leaves out the static and import libraries, so an app cannot compile an extension. On a phone, `mkmf` cannot load.
 
+## On a phone
+
+A phone's operating system forbids some things your code can do on a desktop, such as starting a program, and Fledge's Ruby for phones has a few gaps of its own. [What a phone forbids](phones.md#what-a-phone-forbids) lists them for iOS and Android, with what to do instead.
+
 ## What a standard Ruby installs and the app does not
 
 On macOS and Linux, Fledge starts from Ruby builds that install `bootsnap` and `msgpack`, and leaves both out of the app. On Windows, the app does not load RubyInstaller's files at start.

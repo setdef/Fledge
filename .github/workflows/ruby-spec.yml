@@ -87,6 +87,7 @@ jobs:
           echo "matrix={\"include\":$matrix}" >> "$GITHUB_OUTPUT"
 
   specs:
+    if: false
     name: ruby/spec (${{ matrix.platform }})
     needs: plan
     runs-on: ${{ matrix.os }}

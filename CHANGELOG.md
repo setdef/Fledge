@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On iOS and Android, a phone's app has the prism gem, so `require "prism"` works, and so does requiring irb, minitest, rbs, rdoc, repl_type_completor, or typeprof: each bundled gem's extension keeps every symbol but its Init function to itself, so prism's own libprism no longer collides with libruby's.
 - On iOS and Android, `require "bigdecimal"` activates the bigdecimal gem and loads its Ruby, as on a desktop, so `BigDecimal#sqrt`, `#power`, `#**`, and `BigMath` are there; the same holds for nkf, and for fiddle on Android.
 - On Android, `Process.egid=`, `Process.gid=`, `Process::GID`'s changes, and `Process.initgroups` raise `NotImplementedError` instead of ending the app, which Android's seccomp filter stops for setting a group ID, and `Process.uid=` sets the user ID as on Linux instead of ending it.
+- On iOS, `File::Stat#readable?`, `#writable?`, `#executable?`, and `#grpowned?` answer for a file of another group, as `File.readable?` does, instead of raising `ArgumentError` (malloc: possible integer overflow).
+- On Android, `fork`, `Process.fork`, `Process.daemon`, and `IO.popen("-")` run the child, which ended in Ruby's `[BUG]` handler (`pthread_rwlock_unlock`: EPERM).
+- On Android, `Thread#name=` on a thread that has ended names it, instead of aborting the app.
+- On Android, `Dir.glob` and `Dir[]` with `base:` a `Dir` opened by a relative path find what they find on Linux, where they found nothing.
 - On musl Linux, iOS, and Android, `require "io/nonblock"` activates the io-nonblock default gem, so `Gem.loaded_specs` has it, as on a desktop, and every default gem's specification lists the files a desktop's does.
 
 ## [0.12.0] - 2026-11-12

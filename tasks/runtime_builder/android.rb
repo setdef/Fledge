@@ -66,7 +66,7 @@ class RuntimeBuilder
     PAGE = 16_384
 
     private def edits
-      %i[psych_extconf configure ruby_c]
+      %i[psych_extconf configure ruby_c process_c thread_pthread_c thread_c dir_c]
     end
 
     private def needs_libffi?

@@ -130,11 +130,19 @@ class RubySpec
         "which these examples set with chmod and then read back.",
     ),
     Justification.new(
-      example: /\A(?:core: (?:File|File::Stat|FileTest)[.#](?:grpowned|executable|readable|writable)\? |core: Process\.(?:egid|euid)= sets the effective (?:group|user) id to its own [gu]id if given the username|library: Etc\.getlogin )/,
+      example: /\A(?:core: (?:File|File::Stat|FileTest)[.#]grpowned\? takes non primary groups into account|core: Process\.(?:egid|euid)= sets the effective (?:group|user) id to its own [gu]id if given the username)/,
       side: :app, platforms: %w[arm64-ios-simulator],
-      reason: "TEMPORARY, a gap to look into: an iOS app has no user or group database and getgroups fails in it, " \
-        "and Ruby's file.c takes getgroups' -1 for a count, so these raise ArgumentError (malloc: possible integer " \
-        "overflow) or EINVAL, and Etc finds no user or group for the app's own IDs.",
+      reason: "An iOS app's C library finds no user for the app's own user ID: Etc.getpwuid(Process.uid) raises " \
+        "\"can't find user\", and Process.groups raises EINVAL, since Darwin's getgroups, which Ruby is built to " \
+        "call, looks the user up with getpwuid and fails when it finds none (Libc, sys/getgroups.c, lines 35 to 58 " \
+        "at Libc-1752.120.2). These examples ask for the process's groups or its user's name.",
+    ),
+    Justification.new(
+      example: /\Alibrary: Etc\.getlogin returns the name associated with the current login activity\z/,
+      side: :app, platforms: %w[arm64-ios-simulator],
+      reason: "The example's one expectation for a login name compares it with what logname or id -un prints, and an " \
+        "iOS app can start neither, so MSpec finds no expectation in it (doc/contributors/design/phone-projects.md, " \
+        "\"Parity on a phone\").",
     ),
     Justification.new(
       example: /\Alibrary: RbConfig::CONFIG \['(?:AR|STRIP)'\] exists and can be executed\z/,
@@ -162,12 +170,6 @@ class RubySpec
       example: /\Acore: Dir\.scan handles character devices\z/,
       side: :app, platforms: ANDROID,
       reason: "The example lists /dev, which Android's SELinux policy forbids an app to read (EACCES).",
-    ),
-    Justification.new(
-      example: /\Acore: Dir\.(?:glob|\[\]) with base: follows directory symlinks relative to a Dir opened with a relative path\z/,
-      side: :app, platforms: ANDROID,
-      reason: "TEMPORARY, a gap to look into: on Android, Dir.glob with a base: Dir opened by a relative path finds " \
-        "nothing, where it finds the files on Linux.",
     ),
   ].freeze
 

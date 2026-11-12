@@ -14,10 +14,11 @@
 # it. CI installs none of this: its runner image has a JDK and an SDK,
 # and android-emulator-runner installs the emulator and a system image.
 #
-# Each package is the one CI's jobs used on 2026-11-12, run 43244631646:
-# Temurin's Java 21, as the runner's is, at its newest release;
-# build-tools 37.0.0, platforms;android-36, and the newest
-# platform-tools, which android-emulator-runner installs; the emulator
+# Each package is the one CI's jobs used on 2026-11-12, run 43244631646,
+# on the runner image ubuntu24/20261111.370 (its Ubuntu2404-Readme.md,
+# "Java" and "Android"): Temurin's Java 21.0.13+9, JAVA_HOME_21_X64;
+# build-tools 36.0.0 and 37.0.0, platforms;android-36, and
+# platform-tools 37.0.1, which android-emulator-runner installs too; the emulator
 # of its stable channel, 37.2.13; and the API 36 system images it
 # installs, revision 7. Google publishes each package's URL and SHA-1 in
 # its SDK repository,
@@ -69,7 +70,16 @@ version = "36-r02"
 os = ["linux/x64"]
 platforms.linux-x64 = { url = "https://dl.google.com/android/repository/platform-36_r02.zip", checksum = "sha256:37607369a28c5b640b3a7998868d45898ebcb777565a0e85f9acf36f29631d2e" }
 
-# The version is the folder's name in the SDK (bin/android-sdk).
+# Two build-tools, as CI's runner has both, among others: 36.0.0, which
+# the Android Gradle plugin builds with by default, and 37.0.0, the
+# newest, whose zipalign and aapt2 the mobile check runs
+# (MobileParity::Android.build_tools). Each version is its folder's
+# name in the SDK (bin/android-sdk).
+[tools."http:android-build-tools-agp"]
+version = "36.0.0"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://dl.google.com/android/repository/build-tools_r36_linux.zip", checksum = "sha256:5d9ac77fb6ff43d9da518a337b4fcf8f9097113df531d99ccefe80ef7ce8250b" }
+
 [tools."http:android-build-tools"]
 version = "37.0.0"
 os = ["linux/x64"]

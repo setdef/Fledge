@@ -32,6 +32,7 @@ link() {
 rm -rf "${ANDROID_HOME:?}"
 link http:android-platform-tools platform-tools
 link http:android-platform platforms/android-36
+link http:android-build-tools-agp "build-tools/$(basename "$(mise where http:android-build-tools-agp)")"
 link http:android-build-tools "build-tools/$(basename "$(mise where http:android-build-tools)")"
 link http:android-emulator emulator
 link http:android-system-image-google-apis system-images/android-36/google_apis/x86_64

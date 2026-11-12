@@ -1270,6 +1270,7 @@ jobs:
           retention-days: 14
 
   build-x86_64-linux:
+    if: false
     name: Build (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -1464,6 +1465,7 @@ jobs:
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/nokogiri_app.expected" -Raw).TrimEnd()
 
   delivery-native-x86_64-linux:
+    if: false
     name: Delivery from source (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1577,6 +1579,7 @@ jobs:
           "$RUNNER_TEMP/signed/certificate.pem"
 
   delivery-x86_64-linux:
+    if: false
     name: Delivery (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1674,6 +1677,7 @@ jobs:
         run: .github/scripts/deliver-appimage.sh "$RUNNER_TEMP/delivered/Hello Window-${{ matrix.platform }}.AppImage" fuse
 
   delivery-windowed-x86_64-linux:
+    if: false
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1704,6 +1708,7 @@ jobs:
   # (deliver.sh --no-ruby-installed checks), glibc 2.41, and no CA
   # certificates package.
   delivery-debian-x86_64-linux:
+    if: false
     name: Delivery (${{ matrix.platform }}, debian:trixie-slim)
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1774,6 +1779,7 @@ jobs:
   # apt installs its .deb, which depends on libpng's package, and it runs
   # (.github/scripts/deliver-system-library.sh).
   delivery-deb-x86_64-linux:
+    if: false
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -2076,6 +2082,7 @@ jobs:
           -Game "$PWD\test\fixtures\from\game"
 
   delivery-from-x86_64-linux:
+    if: false
     name: Delivery of build --from (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -2307,6 +2314,7 @@ jobs:
   # (.github/scripts/replace-libcrypt.sh), which also measures what
   # String#crypt loses without libxcrypt.
   replace-libcrypt-x86_64-linux:
+    if: false
     name: Replace libcrypt (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}

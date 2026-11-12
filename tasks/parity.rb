@@ -92,10 +92,12 @@ class Parity
         reason: "bundle exec ruby exe/my_cool_app names the program as typed. The launcher runs it by its absolute " \
           "path, since a person may start the app from any folder.")
     end,
-    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/gems/}], app: [%r{\A"#{APP_GEMS}/gems/}], checks: %i[bundle],
+    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/(?:gems|extensions)/}],
+      app: [%r{\A"#{APP_GEMS}/(?:gems|extensions)/}], checks: %i[bundle],
       reason: "bundle install put the gems in the person's GEM_HOME; fledge build put the same gems in the runtime's gem " \
         "folder, beside Ruby's own (doc/contributors/design/gems.md, \"Installing into the runtime's gem folder\"). " \
-        "Bundler sets up the same gems, in the same order, from each."),
+        "Bundler sets up the same gems, in the same order, from each, and a gem compiled as it installs, as sqlite3 " \
+        "is on a Ruby its prebuilt gems do not yet support, adds its extensions folder from each."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"#{PERSON_GEMS}/gems/bundler-}], app: [%r{\A"#{APP_GEMS}/gems/bundler-}],
       checks: %i[bundle],
       reason: "bundle exec runs the Bundler the lockfile names, which bundle install put in the person's GEM_HOME; " \

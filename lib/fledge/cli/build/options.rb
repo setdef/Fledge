@@ -21,7 +21,7 @@ module Fledge
       # the one PATH, with <tt>--</tt> ending the options. A desktop build
       # is for the computer it runs on (ADR 010); a phone's, which no phone
       # builds, is named first, as Briefcase's <tt>briefcase create
-      # iOS</tt> and Flutter's <tt>flutter build ios</tt> name it (ADR 060).
+      # iOS</tt> and Flutter's <tt>flutter build ios</tt> name it (doc/contributors/design/phones.md).
       class Options < Data.define(:out, :path, :phone, :sign, :from, :sign_command, :notarize)
         # The options +argv+ gives. A first operand that names a phone
         # (Fledge::MobilePlatform.names) is the phone; a folder of that

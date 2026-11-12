@@ -12,7 +12,7 @@ This document names the parts of Fledge and how they fit, points to the design d
 
 Fledge copies a program its developer already runs, with its project and the gems its `Gemfile.lock` locks, into a relocatable CRuby runtime for the platform it runs on, beside a small C launcher, and archives the result.
 
-- **The command line.** `exe/fledge` is the command; its comment header is the help `fledge --help` prints. `Fledge::CLI` runs it and `Fledge::CLI::Build` runs `fledge build`, through streams a test can replace (ADR 002). `Fledge::Config` reads the optional `fledge.yml` (ADR 044), which `lib/fledge/config.schema.json` describes (ADR 023).
+- **The command line.** `exe/fledge` is the command; its comment header is the help `fledge --help` prints. `Fledge::CLI` runs it and `Fledge::CLI::Build` runs `fledge build`, through streams a test can replace (ADR 002). `Fledge::Config` reads the optional `fledge.yml` (ADR 044), which `lib/fledge/config.schema.json` describes (`doc/contributors/design/public-interface.md`, "The fledge.yml schema").
 - **Assembly.** For a desktop build, `fledge build` finds the project's root and program (`Fledge::App`; ADR 005), reads the lockfile with Bundler and picks each gem's build for the platform (`Fledge::Bundle`), fetches, installs, and when needed compiles the gems into the runtime's gem folder (ADR 006), downloads the runtime and checks it against the pins the gem carries (`Fledge::Runtimes`; ADR 014), copies the project into `app/`, writes `fledge.cfg`, gives the app its identity (ADR 008), signs it on request (ADR 016), archives it with the computer's own tar (ADR 047), and writes its installers (ADR 009). `doc/contributors/design/desktop-apps.md` and `doc/contributors/design/gems.md` describe this.
 - **Desktop runtimes.** A runtime is a relocatable CRuby, whole (ADR 039), with the launcher, Fledge's RubyGems defaults, the tools installers need, and the notices its licenses ask for. `tasks/runtime_builder/` builds one per platform from the inputs `runtime/sources.yml` pins (ADR 035, ADR 017), and the license audit (`tasks/license_audit/`, `runtime/licenses.yml`) passes each before it is archived (ADR 004). `doc/contributors/design/runtimes.md` and `doc/contributors/design/license-audit.md` describe them.
 - **The launcher.** `runtime/launcher/` is the C program at the top of every desktop app, and `bin/ruby` beside it. It embeds CRuby (ADR 001), runs the program as `ruby` would (ADR 003), hides the person's Ruby settings from Ruby's boot (ADR 040), and sets up Bundler as `bundle exec` would (ADR 045), with the Bundler the lockfile names (ADR 063). `doc/contributors/design/launcher.md` describes it.
@@ -38,7 +38,7 @@ Fledge copies a program its developer already runs, with its project and the gem
 
 ## Architecture Decision Records
 
-Each ADR in `doc/contributors/adr/` records one decision: its context, the options weighed, the choice, and what it costs. Numbers are never reused; 015, 018, 019, and 020 were retired, their decisions folded into other ADRs.
+Each ADR in `doc/contributors/adr/` records one decision: its context, the options weighed, the choice, and what it costs. Numbers are never reused; 015, 018, 019, and 020 were retired, their decisions folded into other ADRs, and 023, 036, and 060 became sections of design documents.
 
 Dated records, such as finished plans and research notes, cite ADRs by number and section as they stood on their dates; git keeps those versions.
 
@@ -62,7 +62,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [017](../adr/017.md) | Build musl Linux's Ruby from source in Alpine |
 | [021](../adr/021.md) | Offer a `.deb`, opt-in, built by dpkg-deb |
 | [022](../adr/022.md) | Compile a phone's extensions with mkmf against the phone Ruby, link them in, and register them |
-| [023](../adr/023.md) | Write `fledge.yml`'s JSON Schema by hand, and test it against Config |
 | [024](../adr/024.md) | Ship a project's several programs in one folder, with one runtime |
 | [025](../adr/025.md) | A phone project takes its host's files from the app's own project |
 | [026](../adr/026.md) | A restart through `RbConfig.ruby` starts the app's launcher again |
@@ -75,7 +74,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [033](../adr/033.md) | Notarize on request, through a notarytool keychain profile |
 | [034](../adr/034.md) | Prebuild each platform's runtime in Fledge's CI, and publish it with the release |
 | [035](../adr/035.md) | Take CRuby from rv-ruby on macOS and glibc Linux, and from RubyInstaller on Windows, x64 and ARM64 |
-| [036](../adr/036.md) | Name targets by their RubyGems platform |
 | [037](../adr/037.md) | Two kinds of app, console and windowed, each with a launcher built for its kind |
 | [038](../adr/038.md) | On Windows, keep RubyInstaller's tree whole and load Ruby's DLL at run time |
 | [039](../adr/039.md) | A runtime is a whole standard Ruby, pruned only of what no running code reads |
@@ -99,7 +97,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [057](../adr/057.md) | Name phone targets so that no desktop gem fits them |
 | [058](../adr/058.md) | On a phone, bundled gems with extensions stay gems |
 | [059](../adr/059.md) | A phone app's standard streams reach the system log line by line |
-| [060](../adr/060.md) | `fledge build` takes the phone as its first operand |
 | [061](../adr/061.md) | The phone runtime does the launcher's work, in C |
 | [062](../adr/062.md) | Leave export compliance to the developer |
 | [063](../adr/063.md) | Run the Bundler the lockfile names, as `bundle exec` does |

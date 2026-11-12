@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Phones
 
-This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, what `fledge build ios` and `fledge build android` write, how a gem's extension is compiled and linked into a phone app, how a framework's own startup files enter the project, and what CI checks before a store would. The decisions are ADR 011 (Ruby as a static library built from source), ADR 012 (a project the developer builds and signs), ADR 022 (extensions through mkmf), ADR 025 (host files), ADR 027 (CMake toolchain files), ADR 057 (target names), ADR 058 (bundled gems stay gems), ADR 059 (output to the system log), ADR 060 (the phone as the first operand), ADR 061 (`fledge_ruby_run_app`), and ADR 062 (export compliance). What a developer does with the project is in `doc/phones.md`; this document adds the internals.
+This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, what `fledge build ios` and `fledge build android` write, how a gem's extension is compiled and linked into a phone app, how a framework's own startup files enter the project, and what CI checks before a store would. The decisions are ADR 011 (Ruby as a static library built from source), ADR 012 (a project the developer builds and signs), ADR 022 (extensions through mkmf), ADR 025 (host files), ADR 027 (CMake toolchain files), ADR 057 (target names), ADR 058 (bundled gems stay gems), ADR 059 (output to the system log), ADR 061 (`fledge_ruby_run_app`), and ADR 062 (export compliance). What a developer does with the project is in `doc/phones.md`; this document adds the internals.
 
 ## Targets
 
@@ -145,7 +145,13 @@ It is Java, not Kotlin, so an app need not depend on Kotlin's standard library; 
 
 ## The projects
 
-`fledge build ios [PATH]` and `fledge build android [PATH]` (ADR 060) write `OUT/NAME-ios/` or `OUT/NAME-android/`, named as a desktop's folder is, replacing an earlier one, and print its path. `Fledge::MobileProject` (`lib/fledge/mobile_project.rb`) does what both share:
+### The operand
+
+`fledge build ios [PATH]` and `fledge build android [PATH]` name the phone as the first operand, where Briefcase's `briefcase create iOS` and Flutter's `flutter build ios` name it. Which phone is a question of each build, as which desktop is, and not a property of the app, so `fledge.yml` has no `targets:` key (one build would write several outputs that need different computers), and the command takes no option such as `--ios` (no prior art reads one). The build stays one command, not Tauri's `tauri ios build`, which splits one action in two. A first operand named `ios` or `android` is the phone; a folder of that name is written `./ios`, or follows `--`. `exe/fledge`'s help header documents it, and `test/cli_test.rb` and `test/mobile_build_test.rb` test the operand, the `./ios` form, and the refusal on a computer that cannot build the phone's project.
+
+### What a build writes
+
+`fledge build ios` and `fledge build android` write `OUT/NAME-ios/` or `OUT/NAME-android/`, named as a desktop's folder is, replacing an earlier one, and print its path. `Fledge::MobileProject` (`lib/fledge/mobile_project.rb`) does what both share:
 
 1. checks the app has an identifier, and that a host folder `fledge.yml` names is a folder in the project;
 2. unpacks the phone's runtime, found and checked against the pins as every runtime is (`Fledge::Runtimes`; ADR 014);

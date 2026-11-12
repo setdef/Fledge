@@ -47,7 +47,7 @@ module Fledge
   #
   # An editor can check the file as you type, before a build does.
   # <tt>config.schema.json</tt>, beside this file, is a JSON Schema of
-  # these keys and rules (ADR 023). Name it on the file's first line, at
+  # these keys and rules (doc/contributors/design/public-interface.md). Name it on the file's first line, at
   # the tag your Gemfile installs Fledge from, and an editor that runs
   # Red Hat's YAML language server, such as VS Code with Red Hat's YAML
   # extension, completes each key and value, shows what each means, and

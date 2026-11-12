@@ -39,7 +39,7 @@ path = 'lib/fledge/templates/ios/Host/Assets.xcassets/**'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT"
 
-# The JSON Schema of fledge.yml (ADR 023), which editors read as JSON,
+# The JSON Schema of fledge.yml (doc/contributors/design/public-interface.md), which editors read as JSON,
 # which has no comments.
 [[annotations]]
 path = 'lib/fledge/config.schema.json'

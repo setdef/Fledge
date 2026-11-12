@@ -10,7 +10,7 @@ require "json"
 require "json_schemer"
 
 # lib/fledge/config.schema.json is written by hand, and Fledge::Config
-# is what fledge build obeys (ADR 023). These tests hold the two
+# is what fledge build obeys (doc/contributors/design/public-interface.md). These tests hold the two
 # together: the schema's keys, kinds, installers, and identifier rule
 # are compared with Config's constants, and each document below must be
 # accepted by both or refused by both.

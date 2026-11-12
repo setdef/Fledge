@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Desktop Runtimes
 
-This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, the build-only companion, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 036 the platform names, ADR 039 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phones.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
+This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, the build-only companion, the platform names, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 039 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phones.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
 
 ## What a runtime is
 
@@ -202,7 +202,13 @@ Each desktop runtime build writes a companion, `fledge-runtime-VERSION-PLATFORM-
 
 **Why it is apart from the runtime.** A runtime prunes what no running code reads, static and import libraries among it, and its SBOM lists every file it holds; it cannot carry them and still be exactly what ships. The companion holds only these, which `runtime/licenses.yml` already owns as Ruby's, and never rv-ruby's `lib/libcrypt.a`, which is libxcrypt. `Fledge::Runtimes#dev_archive` finds it as it finds a runtime, checked against the SHA-256 the gem pins (ADR 014), and `fledge build` fetches it only when it compiles a gem (ADR 006). Nothing in it is copied into an app. Phone runtimes have no companion: their libraries and headers are in the runtime itself.
 
-## Asset names
+## Platform names and asset names
+
+A platform is named by its RubyGems platform: `arm64-darwin`, `x86_64-linux`, `aarch64-linux`, `x86_64-linux-musl`, `aarch64-linux-musl`, `x64-mingw-ucrt`, and `aarch64-mingw-ucrt`. A Ruby developer already meets these names in `Gemfile.lock` and in precompiled gems, and they decide which precompiled gem fits a runtime, so Fledge prints no other name for a platform: not in a runtime's asset, `fledge build`'s output, `dist/NAME-PLATFORM`, an error message, a CI job, or the license map. `Fledge::Platform::NAMES` lists them, `Fledge::Platform.local` maps `Gem::Platform.local` to one, and `test/platform_test.rb` checks the mapping. A build's target is the platform Fledge runs on (ADR 010). A phone's targets follow RubyGems' grammar but are chosen so that no desktop gem fits them (ADR 057).
+
+RubyGems' names are irregular: `arm64` on macOS against `aarch64` on Linux and Windows, `x64` on Windows against `x86_64` elsewhere. A Mach-O gem may also be named for a macOS version (`arm64-darwin-23`), which fits a runtime only as RubyGems decides, so `fledge build` matches as RubyGems does, not by string. Other ecosystems name platforms differently (LLVM target triples such as `aarch64-apple-darwin`, Go's `darwin/arm64`, Python's wheel tags such as `manylinux_2_39_x86_64`, Electron's `--platform darwin --arch arm64`). Each is more regular, and none tells a Ruby developer which precompiled gem fits.
+
+The assets:
 
 `RuntimeBuilder#assets` names what a release publishes for each platform, and `RuntimeBuilder.release_assets` lists them all, which `release.yml` checks a release against.
 
@@ -214,7 +220,7 @@ Each desktop runtime build writes a companion, `fledge-runtime-VERSION-PLATFORM-
 | Its sources | `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz` (`LicenseAudit::Notices.source_bundle`) | each platform that ships a component whose source Fledge publishes: glibc and musl Linux, and Windows |
 | The build-only companion | `fledge-runtime-VERSION-PLATFORM-dev.tar.gz` (`Fledge::Runtimes.dev_file_name`) | every desktop runtime |
 
-`PLATFORM` is the RubyGems name (ADR 036), or `ios` and `android` for the phones. The SBOM and NOTICES assets are copies of the files inside the runtime, which CI compares. The source bundle keeps its `lgpl-sources` name though it holds NSIS's source, under the CPL, too. `SHA256SUMS` covers them all (`doc/contributors/design/releases.md`).
+`PLATFORM` is the RubyGems name, or `ios` and `android` for the phones. The SBOM and NOTICES assets are copies of the files inside the runtime, which CI compares. The source bundle keeps its `lgpl-sources` name though it holds NSIS's source, under the CPL, too. `SHA256SUMS` covers them all (`doc/contributors/design/releases.md`).
 
 ## Where fledge build finds a runtime
 

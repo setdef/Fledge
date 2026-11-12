@@ -14,7 +14,7 @@ module Fledge
   # You already meet RubyGems' platform names in a Gemfile.lock and in
   # precompiled gems: +arm64-darwin+, +x86_64-linux+. The same names say
   # which precompiled gem fits a runtime, so Fledge names its targets
-  # with them (ADR 036). But RubyGems also knows platforms
+  # with them (doc/contributors/design/runtimes.md). But RubyGems also knows platforms
   # Fledge has no runtime for, and names the computer you are on in more
   # detail (<tt>arm64-darwin-25</tt>) than a target needs.
   #

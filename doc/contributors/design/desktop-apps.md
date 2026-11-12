@@ -34,7 +34,7 @@ The options, their forms, and the exit statuses are `exe/fledge`'s help header, 
 
 ## The folder and the archive
 
-A build writes `OUT/NAME-PLATFORM/`, to try, and `OUT/NAME-PLATFORM.tar.gz`, or `.zip` on Windows, to ship (`Fledge::Assembly`). PLATFORM is the RubyGems platform of the computer that builds (ADR 036). The folder is the runtime with the app in it, as LÖVE's fused games and PyInstaller's one-folder bundles ship a folder beside the program:
+A build writes `OUT/NAME-PLATFORM/`, to try, and `OUT/NAME-PLATFORM.tar.gz`, or `.zip` on Windows, to ship (`Fledge::Assembly`). PLATFORM is the RubyGems platform of the computer that builds (`doc/contributors/design/runtimes.md`, "Platform names and asset names"). The folder is the runtime with the app in it, as LÖVE's fused games and PyInstaller's one-folder bundles ship a folder beside the program:
 
 - **macOS and Linux:** the program `NAME`, `fledge.cfg`, `app/`, the runtime's `bin/`, `lib/`, and `libexec/`, and `notices/` with `NOTICES.txt` and `sbom.spdx.json` from the license audit (ADR 004). A windowed macOS app's folder holds `NAME.app` in their place (see "Identity on each system"); a windowed Linux app's adds `IDENTIFIER.desktop` and `share/icons/`.
 - **Windows:** `NAME.exe`, `fledge.cfg`, `app\`, `notices\`, and RubyInstaller's tree in `ruby\` (ADR 038).

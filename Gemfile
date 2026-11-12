@@ -26,7 +26,7 @@ gem "steep"
 gem "rdoc", "~> 7.0"
 
 # Checks lib/fledge/config.schema.json and the examples against it
-# (ADR 023). Development only: nothing Fledge ships loads it.
+# (doc/contributors/design/public-interface.md). Development only: nothing Fledge ships loads it.
 gem "json_schemer", "~> 2.5", group: :development
 
 # Takes the desktop input lock around local runs that can take focus or

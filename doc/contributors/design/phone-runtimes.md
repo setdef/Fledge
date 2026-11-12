@@ -91,7 +91,9 @@ Ruby's build links its standard library's extensions in and registers each in `e
 3. Once Ruby is built, it writes each gem's `gem.build_complete` where its own build would (`.bundle/extensions/PLATFORM/ABI-static/NAME-VERSION/`), so `tool/rbinstall.rb` installs the gem, specification and all, and RubyGems loads it rather than ignoring it because its extensions are not built.
 4. After install it checks that every such gem has its specification and its mark.
 
-When the gem's Ruby requires its extension, `load.c`'s `search_required` finds no file and looks among the statically linked extensions, which have it. On iOS fiddle is left out, as xord/cruby leaves it out "to pass the App Store review", since it calls any C function by name. win32ole and win32 are Windows' alone. Every other bundled and default gem is as a desktop runtime has it.
+When the gem's Ruby requires its extension, `load.c`'s `search_required` finds no file and looks among the statically linked extensions, which have it. On iOS fiddle is left out, as xord/cruby leaves it out "to pass the App Store review", since it calls any C function by name. win32ole and win32 are Windows' alone. Every other bundled and default gem is as a desktop runtime has it, but one.
+
+On Ruby 4.1 the phones' runtimes also leave out the bundled prism gem (`RuntimeBuilder::Mobile#omitted_gems`), which breaks ADR 058. Its extension compiles its own copy of libprism, and libruby holds Ruby's own, so linking both into one library defines the same symbols twice. Without it, `require "prism"` fails on a phone, and so does activating irb, minitest, rbs, rdoc, repl_type_completor, or typeprof, which depend on it. `Parity::MOBILE_JUSTIFIED` records the difference as temporary. This is a defect to fix, not a decision: the fix links prism's extension beside libruby's prism, and removes this paragraph and those entries.
 
 ## The embedding API
 

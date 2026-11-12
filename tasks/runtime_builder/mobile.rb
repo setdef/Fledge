@@ -83,7 +83,7 @@ class RuntimeBuilder
     end
 
     def build(stage)
-      @source = prepare_source
+      @source = prepare_source(File.join(@build_dir, "sources", "ruby"))
       @host = build_host_miniruby
       @roots = @builder.platform.targets.to_h { |target| [target, build_target(target)] }
       package(stage)
@@ -93,15 +93,16 @@ class RuntimeBuilder
       @builder.sources.fetch("mobile").fetch(name)
     end
 
-    # Ruby's release tarball, unpacked once for every target of the
-    # runtime (each configures in a folder of its own), with this
-    # platform's edits made and the bundled gems' extensions copied among
-    # Ruby's own, each to be linked into one relocatable object with only
-    # its Init function global (BundledExtensions.relocate, with the
-    # subclass's relocatable recipe), and found only once its gem is
-    # active (RubySource.load_c).
-    private def prepare_source
-      source = unpack(pin("ruby"), "ruby")
+    # Ruby's release tarball, unpacked into the fresh folder +source+,
+    # with this platform's edits made and the bundled gems' extensions
+    # copied among Ruby's own, each to be linked into one relocatable
+    # object with only its Init function global
+    # (BundledExtensions.relocate, with the subclass's relocatable
+    # recipe), and found only once its gem is active (RubySource.load_c).
+    # Each target builds in a source folder of its own (build_target),
+    # and the build machine's miniruby from one more.
+    private def prepare_source(source)
+      unpack_into(pin("ruby"), source)
       RubySource.apply(source, edits)
       @kept = BundledExtensions.copy(source, omit: omitted_gems, recipe: relocatable)
       RubySource.edit(source, :load_c, BundledExtensions.features(source, @kept))
@@ -118,8 +119,13 @@ class RuntimeBuilder
     # Unpacks the tarball +pin+ names into a fresh folder named +name+
     # and returns the folder it holds.
     private def unpack(pin, name)
+      unpack_into(pin, File.join(@build_dir, "sources", name))
+    end
+
+    # Unpacks the tarball +pin+ names into the fresh folder +folder+, and
+    # returns it.
+    private def unpack_into(pin, folder)
       tarball = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
-      folder = File.join(@build_dir, "sources", name)
       FileUtils.rm_rf(folder)
       FileUtils.mkdir_p(folder)
       @builder.run("tar", "-xzf", tarball, "-C", folder, "--strip-components=1")
@@ -156,13 +162,26 @@ class RuntimeBuilder
     # returns the folder it installed into: its prefix, lib/ruby and
     # include/ among it, with Fledge's RubyGems defaults, pruned as a
     # desktop runtime prunes Ruby (ADR 039).
+    #
+    # Ruby is configured in its own source folder, as rv-ruby configures
+    # the Ruby a desktop runtime is (Abstract/rv-ruby.rb, lines 157 to
+    # 174, at spinel-coop/rv-ruby f57186e). tool/rbinstall.rb evaluates
+    # each default gem's gemspec in the folder make runs in, and its
+    # load_gemspec (lines 921 to 928 at 4.1.0-preview1) puts lib/ before
+    # each .rb file the gemspec lists that is not there. Built in another
+    # folder, io-nonblock's specification listed
+    # lib/ext/io/nonblock/extconf.rb, and RubyGems' register_default_spec
+    # (lib/rubygems.rb, lines 1312 to 1342) took it for a gem whose files
+    # sit under lib/, and left out io/nonblock.bundle, so
+    # require "io/nonblock" loaded the extension without activating the
+    # gem; bundler's listed none of the files its gemspec globs for.
     private def build_target(target)
       deps = build_dependencies(target)
       build = File.join(@build_dir, target.name, "ruby")
       root = File.join(@build_dir, target.name, "root")
-      FileUtils.rm_rf([build, root])
-      FileUtils.mkdir_p(build)
-      logged("#{target.name}-configure", File.join(@source, "configure"), *configure_options(target, deps), chdir: build,
+      FileUtils.rm_rf(root)
+      prepare_source(build)
+      logged("#{target.name}-configure", "./configure", *configure_options(target, deps), chdir: build,
         env: environment(target))
       use_host_builtin_binary(build)
       logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", *MAKE_VARIABLES, chdir: build, env: environment(target))

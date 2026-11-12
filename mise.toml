@@ -84,6 +84,22 @@ version = "16.2.0-6"
 os = ["windows/x64"]
 platforms.windows-x64 = { url = "https://repo.msys2.org/mingw/ucrt64/mingw-w64-ucrt-x86_64-libgcc-16.2.0-6-any.pkg.tar.zst", checksum = "sha256:80b2497f019977dd9528b1abc8621b1328a0115ab1f724047ccbb56bf323f11d", bin_path = "ucrt64/bin" }
 
-# Elsewhere mise sets it empty, and only RubyInstaller reads it.
+# MSYS2 with its UCRT64 compiler (CLANGARM64 on ARM64), which compiles a
+# gem's C for RubyInstaller's Ruby: the build ruby/setup-msys2-gcc made
+# on 2026-11-12, the one ruby/setup-ruby installs for RubyInstaller's
+# head build, pinned to that day's release and the SHA-256 GitHub
+# records for it, where setup-ruby takes whichever release is newest.
+# MSYS2_PATH points RubyInstaller at it before any other MSYS2
+# (RubyInstaller::Runtime::Msys2Installation), and its compiler's folder
+# is on PATH, as setup-ruby puts it there. The packages it holds are
+# listed in the release's msys2-ucrt64.packages.txt.
+[tools."http:msys2"]
+version = "20261112.002116"
+os = ["windows"]
+platforms.windows-x64 = { url = "https://github.com/ruby/setup-msys2-gcc/releases/download/v20261112.002116/msys2-ucrt64.7z", checksum = "sha256:2b1b2508f754bfed6e343b7a1f8211646c8df3bb7fb9cb5a42592929f11f1499", bin_path = "ucrt64/bin" }
+platforms.windows-arm64 = { url = "https://github.com/ruby/setup-msys2-gcc/releases/download/v20261112.002116/msys2-clangarm64.7z", checksum = "sha256:8c95e197ce13c53c48a0a3b13c0e73bdd7e7989579e2231b400dd19b559d74e7", bin_path = "clangarm64/bin" }
+
+# Elsewhere mise sets these empty, and only RubyInstaller reads them.
 [env]
-RUBY_DLL_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2-zlib"].path }}/{{ arch(x64="ucrt64", arm64="clangarm64") }}/bin{% if arch() == "x64" %};{{ tools["http:msys2-libgcc"].path }}/ucrt64/bin{% endif %}{% endif %}', tools = true }
+MSYS2_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }
+RUBY_DLL_PATH ={ value = '{% if os() == "windows" %}{{ tools["http:msys2-zlib"].path }}/{{ arch(x64="ucrt64", arm64="clangarm64") }}/bin{% if arch() == "x64" %};{{ tools["http:msys2-libgcc"].path }}/ucrt64/bin{% endif %}{% endif %}', tools = true }

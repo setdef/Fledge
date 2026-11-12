@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 require "open3"
 require "rbconfig"
 
@@ -18,8 +18,8 @@ require "rbconfig"
 # (fledge_ruby_run_app), as the desktop's bin/ruby hands it to the
 # app's launcher (ADR 026).
 class MobileRubyProgramTest < Minitest::Test
-  MOBILE = File.expand_path("../runtime/mobile", __dir__)
-  LAUNCHER = File.expand_path("../runtime/launcher", __dir__)
+  MOBILE = File.expand_path("../../runtime/mobile", __dir__)
+  LAUNCHER = File.expand_path("../../runtime/launcher", __dir__)
 
   # The program: HOST ROOT ARGV0 ARGS runs fledge_ruby_main with ROOT
   # and ARGV0 ARGS. This computer's Ruby reads no
@@ -112,11 +112,17 @@ class MobileRubyProgramTest < Minitest::Test
   # these tests, with -rdynamic, as the launcher is, for a Ruby with a
   # static libruby whose extensions find its symbols in the program, and
   # Ruby's LDFLAGS first, which name the folders of the libraries its
-  # MAINLIBS link, as Ruby's own ruby is linked.
+  # MAINLIBS link, as Ruby's own ruby is linked. It is ROOT/bin/ruby,
+  # as RbConfig.ruby names the program in an app: a Ruby built with
+  # --enable-load-relative and a static libruby, as jdx/ruby's are,
+  # takes its prefix from the program that holds libruby, the parent of
+  # its bin folder (ruby.c, ruby_init_loadpath, lines 712 to 722 at
+  # 4.1.0-preview1), and finds its library in ROOT/lib, this Ruby's.
   private def compile
     config = RbConfig::CONFIG
     File.write(File.join(@dir, "main.c"), HOST)
-    program = File.join(@dir, "host")
+    FileUtils.mkdir_p(File.join(@root, "bin"))
+    program = File.join(@root, "bin", "ruby")
     sources = [
       File.join(@dir, "main.c"),
       File.join(MOBILE, "fledge_ruby.c"),

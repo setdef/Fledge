@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Lays out ANDROID_HOME, the Android SDK, from the packages mise installs
+# from mise.android.toml, each checked there against its SHA-256. mise
+# installs each package in a folder of its own, while Android's tools
+# and the Android Gradle plugin find a package only at its place in one
+# SDK folder (platforms/android-36, build-tools/VERSION, and the rest),
+# so this links each package's folder there. It downloads nothing, and
+# the SDK holds no licenses/ folder, so the Android Gradle plugin never
+# downloads a package of its own either: it fails, naming the package,
+# when a build needs one mise.android.toml does not pin.
+#
+#   MISE_ENV=android mise install
+#   MISE_ENV=android mise x -- bin/android-sdk
+set -euo pipefail
+IFS=$'\n\t'
+
+: "${ANDROID_HOME:?run this under mise with MISE_ENV=android, which sets ANDROID_HOME}"
+
+# Links the folder mise installed TOOL in at PLACE in the SDK.
+link() {
+  local tool=$1 place=$2 folder
+  folder=$(mise where "$tool")
+  mkdir -p "$(dirname "$ANDROID_HOME/$place")"
+  ln -sfn "$folder" "$ANDROID_HOME/$place"
+}
+
+# Anew each time, so the SDK holds the packages pinned now and no other.
+# The folder holds only links, which rm does not follow.
+rm -rf "${ANDROID_HOME:?}"
+link http:android-platform-tools platform-tools
+link http:android-platform platforms/android-36
+link http:android-build-tools "build-tools/$(basename "$(mise where http:android-build-tools)")"
+link http:android-emulator emulator
+link http:android-system-image-google-apis system-images/android-36/google_apis/x86_64
+link http:android-system-image-google-apis-ps16k system-images/android-36/google_apis_ps16k/x86_64
+echo "$ANDROID_HOME"

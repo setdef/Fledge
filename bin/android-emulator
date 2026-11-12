@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Boots an x86_64 Android emulator of API 36 with no window, from the
+# system image TARGET (google_apis, with 4 KB pages, or
+# google_apis_ps16k, with 16 KB), runs COMMAND with ANDROID_SERIAL naming
+# it, and shuts it down, as CI's Mobile apps job does with
+# ReactiveCircus/android-emulator-runner: the same AVD of 4 GB of RAM,
+# the same emulator options, and animations off. Run bin/android-sdk
+# first. It needs KVM (/dev/kvm, readable and writable).
+#
+# The emulator and its adb server take ports of their own, so another
+# emulator on the computer, and another adb server, are left alone.
+#
+#   MISE_ENV=android mise x -- bin/android-emulator google_apis -- ruby tasks/mobile_parity.rb android
+set -euo pipefail
+IFS=$'\n\t'
+
+target=${1:?usage: bin/android-emulator TARGET -- COMMAND...}
+shift
+[ "${1:-}" = "--" ] && shift
+[ "$#" -gt 0 ] || { echo "usage: bin/android-emulator TARGET -- COMMAND..." >&2; exit 64; }
+: "${ANDROID_HOME:?run this under mise with MISE_ENV=android, which sets ANDROID_HOME}"
+[ -r /dev/kvm ] && [ -w /dev/kvm ] || { echo "the emulator needs KVM, and /dev/kvm is not readable and writable" >&2; exit 69; }
+
+# Whether nothing listens on 127.0.0.1:PORT.
+free() { ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+
+# The emulator takes an even console port from 5554 to 5682 and the one
+# after it for adb (the emulator's -port option).
+port=""
+for candidate in $(seq 5554 2 5682); do
+  if free "$candidate" && free $((candidate + 1)); then port=$candidate; break; fi
+done
+[ -n "$port" ] || { echo "no free pair of emulator ports from 5554 to 5683" >&2; exit 69; }
+for candidate in $(seq 15037 15137); do
+  if free "$candidate"; then ANDROID_ADB_SERVER_PORT=$candidate; break; fi
+done
+export ANDROID_ADB_SERVER_PORT
+export ANDROID_SERIAL="emulator-$port"
+
+# The AVD, written as avdmanager writes one for a system image with no
+# device profile, with the 4 GB of RAM CI gives it. avdmanager itself
+# finds no package in an SDK whose folders are links, as bin/android-sdk
+# makes them: it takes the SDK to be two folders above its own real
+# folder, in mise's, and it would name the 16 KB image, read from its
+# source.properties, google_apis,page_size_16kb rather than its folder's
+# google_apis_ps16k. The emulator needs only the image's folder.
+name="fledge-api36-$target"
+image="system-images/android-36/$target/x86_64"
+[ -f "$ANDROID_HOME/$image/system.img" ] || { echo "no system image at $ANDROID_HOME/$image; run bin/android-sdk" >&2; exit 66; }
+# The emulator reads neither ANDROID_USER_HOME nor its avd/ folder, only
+# ANDROID_EMULATOR_HOME and ANDROID_AVD_HOME, so they are set from it.
+export ANDROID_EMULATOR_HOME=${ANDROID_EMULATOR_HOME:-${ANDROID_USER_HOME:-$HOME/.android}}
+export ANDROID_AVD_HOME=${ANDROID_AVD_HOME:-$ANDROID_EMULATOR_HOME/avd}
+avds=$ANDROID_AVD_HOME
+rm -rf "${avds:?}/$name.avd"
+mkdir -p "$avds/$name.avd"
+printf '%s\n' "avd.ini.encoding=UTF-8" "path=$avds/$name.avd" "path.rel=avd/$name.avd" "target=android-36" > "$avds/$name.ini"
+printf '%s\n' "AvdId=$name" "PlayStore.enabled=false" "abi.type=x86_64" "avd.ini.displayname=$name" "avd.ini.encoding=UTF-8" \
+  "hw.cpu.arch=x86_64" "hw.ramSize=4096" "image.sysdir.1=$image/" "tag.id=$target" "target=android-36" > "$avds/$name.avd/config.ini"
+
+log=$(mktemp)
+"$ANDROID_HOME/emulator/emulator" -avd "$name" -port "$port" -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim \
+  -no-snapshot -accel on > "$log" 2>&1 &
+emulator=$!
+
+stop() {
+  adb emu kill > /dev/null 2>&1 || true
+  for _ in $(seq 30); do kill -0 "$emulator" 2>/dev/null || break; sleep 1; done
+  kill "$emulator" 2>/dev/null || true
+  adb kill-server > /dev/null 2>&1 || true
+  rm -f "$log"
+}
+trap stop EXIT
+
+booted=""
+for _ in $(seq 300); do
+  if ! kill -0 "$emulator" 2>/dev/null; then cat "$log" >&2; echo "the emulator stopped before it booted" >&2; exit 70; fi
+  if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then booted=yes; break; fi
+  sleep 2
+done
+[ -n "$booted" ] || { cat "$log" >&2; echo "the emulator did not boot in 10 minutes" >&2; exit 70; }
+
+adb shell settings put global window_animation_scale 0.0
+adb shell settings put global transition_animation_scale 0.0
+adb shell settings put global animator_duration_scale 0.0
+echo "$ANDROID_SERIAL booted: $(adb shell getprop ro.product.cpu.abi | tr -d '\r'), API $(adb shell getprop ro.build.version.sdk | tr -d '\r'), pages of $(adb shell getconf PAGE_SIZE | tr -d '\r') bytes"
+
+"$@"

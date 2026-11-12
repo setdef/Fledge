@@ -21,7 +21,7 @@ A phone runtime has two targets, named in RubyGems' grammar so that no desktop g
 
 Gem::Platform reads `arm64-ios` as `arm64-unknown`, which matches no desktop gem, and reads the Android names as Linux with Android's C library, which no `-linux`, `-gnu`, or `-musl` gem matches. The floors are iOS 15.0 (xord/cruby's and the spike's) and API 26, Android 8.0, the first whose C library has `nl_langinfo`, which Ruby's `localeinit.c` calls.
 
-The iOS runtime is built on a Mac (`arm64-darwin`), since only Xcode builds for iOS. The Android runtime is built on x86-64 Linux in CI, and a Mac may build it too, with Google's NDK. Neither is built on the other's runner.
+The iOS runtime is built on a Mac (`arm64-darwin`), since only Xcode builds for iOS. The Android runtime is built on x86-64 Linux in CI, and a Mac may build it too, with Google's NDK. An x86-64 Linux computer with KVM builds it, and the apps around it, and runs them on an emulator with nothing but what `mise.android.toml` pins by SHA-256: the JDK, the NDK, and the SDK's packages, which `bin/android-sdk` lays out as one SDK and `bin/android-emulator` boots an emulator from (`CONTRIBUTING.md`, "Android on Linux"). Neither is built on the other's runner.
 
 ## What a phone runtime holds
 

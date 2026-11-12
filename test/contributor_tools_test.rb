@@ -69,6 +69,35 @@ class ContributorToolsTest < Minitest::Test
     downloads.each { |line| assert_match(/checksum = "sha256:\h{64}"/, line) }
   end
 
+  def android_toml = File.read(File.join(ROOT, "mise.android.toml"))
+
+  # The Android tools mise installs with MISE_ENV=android, from Google's
+  # and Adoptium's own downloads, are pinned by SHA-256 too (AGENTS.md).
+  def test_every_download_mise_android_toml_names_is_pinned_by_sha256
+    downloads = android_toml.lines.grep(/\burl = "/)
+
+    refute_empty downloads
+    downloads.each { |line| assert_match(/checksum = "sha256:\h{64}"/, line) }
+  end
+
+  # fledge build android compiles a gem's extension with the very NDK the
+  # Android runtime is built with, as CI's Mobile apps job installs it.
+  def test_mise_installs_for_android_the_ndk_the_android_runtime_is_built_with
+    pin = sources.dig("mobile", "ndk", "hosts", "x86_64-linux")
+
+    assert_includes android_toml, %(platforms.linux-x64 = { url = "#{pin.fetch('url')}", checksum = "sha256:#{pin.fetch('sha256')}" }\n)
+  end
+
+  # bin/android-sdk lays out every Android package mise.android.toml pins
+  # as one SDK, and no package it does not pin.
+  def test_bin_android_sdk_lays_out_every_android_package_mise_installs
+    pinned = android_toml.scan(/^\[tools\."(http:android-(?!ndk)[\w-]+)"\]$/).flatten
+    laid_out = File.read(File.join(ROOT, "bin", "android-sdk")).scan(/^link (http:android-[\w-]+) /).flatten
+
+    refute_empty pinned
+    assert_equal pinned.sort, laid_out.sort
+  end
+
   # CI's Windows jobs read the pin from mise.toml with this script.
   def test_ruby_pin_reads_the_pin_and_takes_head_on_windows_for_a_preview
     script = File.join(ROOT, ".github", "scripts", "ruby-pin.sh")

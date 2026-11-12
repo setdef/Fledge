@@ -1,0 +1,102 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# What building the Android runtime and Android apps on an x86-64 Linux
+# computer needs, and running them on an emulator, as CI's Runtime
+# (android) and Mobile apps (Android emulator) jobs do: a JDK, for
+# Gradle, which packs the runtime's AAR and builds each app, and for
+# bundletool; the NDK; and the packages of Android's SDK that Gradle and
+# the emulator need. mise reads this file beside
+# mise.toml only when MISE_ENV is android (MISE_ENV=android mise install),
+# so a contributor who never builds for Android downloads none of its
+# five gigabytes; bin/android-sdk then lays the SDK's packages out as one
+# SDK, in ANDROID_HOME, and bin/android-emulator boots an emulator from
+# it. CI installs none of this: its runner image has a JDK and an SDK,
+# and android-emulator-runner installs the emulator and a system image.
+#
+# Each package is the one CI's jobs used on 2026-11-12, run 43244631646:
+# Temurin's Java 21, as the runner's is, at its newest release;
+# build-tools 37.0.0, platforms;android-36, and the newest
+# platform-tools, which android-emulator-runner installs; the emulator
+# of its stable channel, 37.2.13; and the API 36 system images it
+# installs, revision 7. Google publishes each package's URL and SHA-1 in
+# its SDK repository,
+# https://dl.google.com/android/repository/repository2-3.xml, and the
+# system images' in
+# https://dl.google.com/android/repository/sys-img/google_apis/sys-img2-3.xml,
+# but no SHA-256. Each SHA-256 here is that of the archive downloaded on
+# 2026-11-12 whose SHA-1 matched Google's, and, for every one but the
+# 16 KB system image, the same on a second download from another
+# computer. Temurin's is Adoptium's own, published beside the archive
+# (.sha256.txt). mise's http backend refuses a download whose SHA-256
+# differs, and unpacks it into a folder of its own, without the
+# archive's one top-level folder.
+#
+# Android's command-line tools are left out: nothing here runs
+# sdkmanager, and avdmanager finds no package in an SDK of links, so
+# bin/android-emulator writes the AVD itself.
+#
+# The emulator and system images run on x86-64 Linux with KVM alone, as
+# on CI's runner, so this file pins nothing for any other computer.
+
+# A system image is nearly two gigabytes, and dl.google.com may serve it
+# at a few hundred kilobytes a second, past mise's default of half an
+# hour for a download.
+[settings]
+http_download_timeout = "3h"
+
+[tools."http:temurin-jdk"]
+version = "21.0.13+9"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_x64_linux_hotspot_21.0.13_9.tar.gz", checksum = "sha256:d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c" }
+
+# fledge build android compiles a gem's extension with the NDK the
+# Android runtime is built with: runtime/sources.yml's pin, which
+# test/contributor_tools_test.rb keeps equal to this.
+[tools."http:android-ndk"]
+version = "r30"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://dl.google.com/android/repository/android-ndk-r30-linux.zip", checksum = "sha256:753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2" }
+
+# adb.
+[tools."http:android-platform-tools"]
+version = "37.0.1"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://dl.google.com/android/repository/platform-tools_r37.0.1-linux.zip", checksum = "sha256:d230f13842f60f782a8645f9c813f8f845bf36089ea7289f28c48f17979313f1" }
+
+[tools."http:android-platform"]
+version = "36-r02"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://dl.google.com/android/repository/platform-36_r02.zip", checksum = "sha256:37607369a28c5b640b3a7998868d45898ebcb777565a0e85f9acf36f29631d2e" }
+
+# The version is the folder's name in the SDK (bin/android-sdk).
+[tools."http:android-build-tools"]
+version = "37.0.0"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://dl.google.com/android/repository/build-tools_r37_linux.zip", checksum = "sha256:01af179347cbcd9c208b7f8171f7b21f6dd1d2f85bcd15e88caa51d5d7b86060" }
+
+[tools."http:android-emulator"]
+version = "37.2.13"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://dl.google.com/android/repository/emulator-linux_x64-16740729.zip", checksum = "sha256:cbc7c3cfb83220b8a0f9c513fdab557712e74d339ec19ddffa43f23350ae9bdd" }
+
+# API 36 with Google's APIs, as CI's emulators run it: with 4 KB pages,
+# and with 16 KB.
+[tools."http:android-system-image-google-apis"]
+version = "36-r07"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://dl.google.com/android/repository/sys-img/google_apis/x86_64-36_r07.zip", checksum = "sha256:b1bb0769d0bed7698e61f203d7dc9bf6e7c37cd01a39d0d8788a11186bc78160" }
+
+[tools."http:android-system-image-google-apis-ps16k"]
+version = "36-r07"
+os = ["linux/x64"]
+platforms.linux-x64 = { url = "https://dl.google.com/android/repository/sys-img/google_apis/x86_64-ps16k-36_r07.zip", checksum = "sha256:56005e428f0d30105789bde96f60bbd32c5c62e710321abd7c10f9e591889ff7" }
+
+# ANDROID_HOME is a folder of the build's own, which bin/android-sdk
+# fills; Android's tools keep the AVDs, adb's key, and the emulator's
+# settings in ANDROID_USER_HOME, here beside it rather than in ~/.android.
+[env]
+JAVA_HOME = { value = '{{ tools["http:temurin-jdk"].path }}', tools = true }
+ANDROID_NDK_ROOT = { value = '{{ tools["http:android-ndk"].path }}', tools = true }
+ANDROID_HOME = "{{ config_root }}/tmp/android/sdk"
+ANDROID_USER_HOME = "{{ config_root }}/tmp/android/user"

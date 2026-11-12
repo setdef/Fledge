@@ -28,6 +28,20 @@ mise puts that Ruby first on `PATH` only in a shell it has activated (`eval "$(m
 
 Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it runs every test, and must pass with zero errors and zero warnings.
 
+### Android on Linux
+
+On an x86-64 Linux computer with KVM (`/dev/kvm`, which your user can read and write), you can build the Android runtime and Android apps, and run them on an emulator, as CI's Runtime (android) and Mobile apps (Android emulator) jobs do. `mise.android.toml` pins what that needs, each by its SHA-256: Temurin's JDK 21, the NDK the Android runtime is built with, and the packages of Android's SDK CI uses (platform-tools, the API 36 platform, build-tools, the emulator, and the API 36 system images with 4 KB and 16 KB pages). mise reads it only when `MISE_ENV` is `android`, so `mise install` leaves out its five gigabytes otherwise. `bin/android-sdk` lays its packages out as one SDK in `tmp/android/sdk`, which `ANDROID_HOME` names, and downloads nothing. `bin/android-emulator TARGET -- COMMAND` boots an API 36 emulator with no window from the system image `google_apis` (4 KB pages) or `google_apis_ps16k` (16 KB), runs the command, and shuts it down.
+
+```sh
+export MISE_ENV=android
+mise install
+mise x -- bin/android-sdk
+mise x -- ruby tasks/runtime_builder.rb x86_64-linux   # whose Ruby compiles a gem's extension for the phone
+mise x -- ruby tasks/runtime_builder.rb android
+mise x -- bash -c 'BUNDLETOOL=$(ruby .github/scripts/fetch_pin.rb mobile bundletool) ruby tasks/mobile_parity.rb android-build tmp/runtime'
+mise x -- bash -c 'BUNDLETOOL=$(ruby .github/scripts/fetch_pin.rb mobile bundletool) bin/android-emulator google_apis -- ruby tasks/mobile_parity.rb android'
+```
+
 ## The tests
 
 Fledge's tests come in two tiers, by folder, as Rails keeps its system tests in `test/system` and Hanami and dry-rb keep `spec/unit` apart from `spec/integration`.

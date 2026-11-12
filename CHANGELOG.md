@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fledge build ios` and `fledge build android` take a gem whose gemspec names a Rakefile or an `mkrf_conf` script in `extensions`, running it as RubyGems does, with the phone's `rbconfig.rb`, for each of the phone's targets; such a gem had been refused. The extensions such a build makes with mkmf, as digest-crc's Rakefile does, are linked into the app, and `require` finds each by its path in the gem's require paths. A build that leaves any other shared library, such as one for ffi, fails naming the gem and the library.
 - On Android, the runtime carries a ruby program, which `RbConfig.ruby` and `Gem.ruby` name, so `system(RbConfig.ruby, ...)`, `IO.popen`, and backquotes start Ruby as on a desktop, with the app's gems; the app's own program started so runs as the app first ran it.
+- On iOS and Android, a gem with a Rust extension built with rb-sys compiles for the phone, where it was refused: Cargo builds it as a static library for each of the phone's targets, which the app links. It needs Rust and Cargo with each target's standard library (`rustup target add`).
+- On iOS and Android, a gem's `extconf.rb` can require the gems its gem depends on, such as rb_sys or mini_portile2.
 
 ### Changed
 

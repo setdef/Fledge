@@ -6,13 +6,14 @@ SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "CC0-1.0"
 
 # Bundler writes a lockfile, and its own settings, and gives neither a
-# place for a header.
+# place for a header; nor does Cargo its lockfile.
 [[annotations]]
 path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock', 'examples/nokogiri_app/Gemfile.lock',
   'examples/native_app/.bundle/config', 'examples/nokogiri_app/.bundle/config',
   'examples/mobile_app/Gemfile.lock', 'examples/real_gems/Gemfile.lock',
   'examples/real_gems/.bundle/config', 'examples/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock',
   'examples/cmake_phone/Gemfile.lock', 'examples/rake_phone/Gemfile.lock', 'examples/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock',
+  'examples/rust_phone/Gemfile.lock', 'examples/rust_phone/gems/rusty/ext/rusty/Cargo.lock',
   'test/fixtures/bundled_with/Gemfile.lock']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"

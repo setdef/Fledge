@@ -25,7 +25,9 @@ require_relative "parity"
 # examples/cmake_phone, whose gem's extconf.rb builds a C++ library with
 # CMake for each of the phone's targets (ADR 027); examples/rake_phone,
 # whose gem from rubygems.org, digest-crc, builds its C extensions from a
-# Rakefile, with mkmf, and prints whether they ran; a script that requires json and csv, a bundled
+# Rakefile, with mkmf, and prints whether they ran; examples/rust_phone,
+# whose gem's Rust extension (rb-sys and magnus) Cargo builds for each of
+# the phone's targets (ADR 022); a script that requires json and csv, a bundled
 # gem, parses with prism, a bundled gem whose extension compiles its own
 # libprism (ADR 067), and reaches rubygems.org over HTTPS
 # (test/fixtures/mobile_hello);
@@ -66,6 +68,8 @@ class MobileParity
       prints: /\ACmakePhone totals 10 in C\+\+ that CMake \d+\.\d+\.\d+ built for (?:iOS Simulator on arm64, on arm64-darwin|Android on x86_64, on x86_64-linux-android)\z/),
     App.new(path: "examples/rake_phone", name: "RakePhone", identifier: "com.setdef.fledge.RakePhone",
       prints: /\ARakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0\.7\.0's Rakefile, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
+    App.new(path: "examples/rust_phone", name: "RustPhone", identifier: "com.setdef.fledge.RustPhone",
+      prints: /\ARustPhone totals 10 in Rust built for (?:ios on aarch64, on arm64-darwin|android on x86_64, on x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
   ].freeze

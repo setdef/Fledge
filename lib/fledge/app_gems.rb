@@ -254,6 +254,7 @@ module Fledge
     # not marked, as a desktop's is not (#entries_for).
     private def mark_extensions(packages, platform, runtime)
       @extension_packages = packages.select { |_, package| package.extensions? }
+      @extension_dependencies = dependencies_of(@extension_packages, packages)
       api = "#{File.basename(runtime.gem_dir)}-static"
       packages.to_h do |gem, package|
         root, folder = extension_folder(package, api)
@@ -287,6 +288,31 @@ module Fledge
     # empty before #for, and for a desktop.
     def extension_packages
       @extension_packages ||= {} # : Hash[locked_gem, package]
+    end
+
+    # The gems the gems of #extension_packages depend on, at any depth,
+    # by gem, as #for found them: those whose code an extconf.rb may
+    # require, as one that writes a Rust extension's Makefile requires
+    # rb_sys. Empty before #for, and for a desktop.
+    def extension_dependencies
+      @extension_dependencies ||= {} # : Hash[locked_gem, package]
+    end
+
+    # The packages among +packages+ that those of +wanted+ depend on, at
+    # any depth.
+    private def dependencies_of(wanted, packages)
+      by_name = packages.keys.to_h { |gem| [gem.name, gem] }
+      found = {} # : Hash[locked_gem, package]
+      names = wanted.values.flat_map { |package| package.spec.runtime_dependencies.map(&:name) }
+      until names.empty?
+        gem = by_name[names.shift.to_s]
+        next if gem.nil? || found.key?(gem)
+
+        package = packages.fetch(gem)
+        found[gem] = package
+        names.concat(package.spec.runtime_dependencies.map(&:name))
+      end
+      found
     end
 
     # The build options the app's Bundler settings give each of the

@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+
+[package]
+name = "rusty"
+version = "1.0.0"
+edition = "2021"
+license = "MIT-0"
+publish = false
+
+# A Ruby extension is a cdylib, as bundle gem --ext=rust writes it; on a
+# phone fledge build asks Cargo for a static library instead.
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+magnus = "0.9.3"
+rb-sys = "0.9.130"

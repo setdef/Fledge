@@ -487,11 +487,13 @@ jobs:
   # category of API the app's executable imports that Apple asks a reason
   # for; then each run in the Simulator on an iPhone and an iPad, its
   # output read from os_log: examples/hello; examples/mobile_app, whose
-  # pure-Ruby gems Bundler sets up; examples/native_phone and
-  # examples/cmake_phone, whose gems' extensions are compiled for the
-  # phone, the second's C++ library by CMake from its extconf.rb, with
-  # the runner's CMake (ADR 022, ADR 027); examples/rake_phone, whose
-  # digest-crc builds its extensions from a Rakefile; a script that requires json and csv,
+  # pure-Ruby gems Bundler sets up; examples/native_phone,
+  # examples/cmake_phone, and examples/rust_phone, whose gems' extensions
+  # are compiled for the phone, the second's C++ library by CMake from
+  # its extconf.rb, with the runner's CMake, and the third's Rust by
+  # Cargo, with mise.toml's Rust and its phone targets (ADR 022, ADR
+  # 027); examples/rake_phone, whose digest-crc builds its extensions
+  # from a Rakefile (ADR 072); a script that requires json and csv,
   # a bundled gem, and reaches rubygems.org over HTTPS; and the parity
   # probe, against ruby main.rb on this Mac's desktop Ruby, with every
   # difference justified for a phone (tasks/mobile_parity.rb).
@@ -508,7 +510,7 @@ jobs:
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
           version: 2026.10.11
-          install_args: ruby
+          install_args: ruby rust
 
       - name: Select the pinned Xcode
         run: |
@@ -567,7 +569,9 @@ jobs:
   # and again from its bundle's APKs, as Play installs them. No GitHub-hosted
   # runner boots an arm64-v8a emulator with hardware acceleration (ADR
   # 011), so the arm64-v8a library is built and checked but run on no
-  # emulator here.
+  # emulator here. examples/rust_phone's Rust is compiled with mise.toml's
+  # Rust and its Android targets, and bindgen reads the phone's headers
+  # with the runner's libclang.
   mobile-apps-android:
     name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
     needs: [runtime, runtime-mobile]
@@ -585,7 +589,7 @@ jobs:
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
           version: 2026.10.11
-          install_args: ruby
+          install_args: ruby rust
 
       - name: Use Java 21
         run: |

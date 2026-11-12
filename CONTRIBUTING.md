@@ -24,4 +24,4 @@ Install [mise](https://mise.jdx.dev/) and run `bin/setup`. It installs the tools
 
 `bundle exec rake runtime` builds this computer's runtime, which the gate otherwise skips the checks of. On Linux it needs a C compiler, binutils, make, perl, and xz from your system, and patchelf 0.18.0, which mise installs from `mise.toml`, pinned by SHA-256.
 
-Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it must pass with zero errors and zero warnings.
+Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it must pass with zero errors and zero warnings. While you work, `bundle exec rake test TEST=test/foo_test.rb` runs just that file.

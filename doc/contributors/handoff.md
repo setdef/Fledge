@@ -54,7 +54,7 @@ Plan 003 holds it. In short:
 
 ## How to check it
 
-- **The gate**: `bundle exec rake` on your computer, after `bundle exec rake rubocop:autocorrect_all`. It must pass with no errors and no warnings. It skips what needs a runtime unless you build one with `bundle exec rake runtime`.
+- **The gate**: `bundle exec rake` on your computer, after `bundle exec rake rubocop:autocorrect_all`. It must pass with no errors and no warnings. It skips what needs a runtime unless you build one with `bundle exec rake runtime`. `bundle exec rake test TEST=test/foo_test.rb` runs just that test file.
 - **CI**: every push to `trunk` runs `.github/workflows/ci.yml`, about 30 minutes: the gate, every runtime, the tests and parity on each platform, each platform building its own apps, and Delivery on fresh runners. `gh run list --branch trunk --limit 3`, then `gh run view RUN --json conclusion,jobs --jq '.jobs[]|select(.conclusion!="success")|.name'` to see what did not pass, and `gh run view RUN --log-failed | tail -80` to read why.
 - **ruby/spec**: `ci.yml` calls `ruby-spec.yml`, which runs ruby/spec on stock Ruby and in a built app from each runtime and fails on an example that fails on one side only, unless `RubySpec::JUSTIFIED` (`tasks/ruby_spec.rb`) explains it: on every push for x86_64-linux and arm64-darwin, on a release commit for all seven desktop platforms, and every night for all seven on trunk's newest green runtimes. `bundle exec rake ruby_spec` runs it here after `bundle exec rake runtime`; each run's MSpec output is in `tmp/ruby-spec`, and in CI in the `ruby-spec-PLATFORM` artifact.
 - **Releases**: `gh release view vX.Y.Z` lists the assets; `gh run list --workflow release.yml --limit 2` shows the release run, which ends by calling `installed.yml`.

@@ -213,7 +213,10 @@ class MobileOutputTest < Minitest::Test
   # running these tests, and returns the program's path.
   # A Ruby with a static libruby loads its extensions as shared objects
   # that find Ruby's symbols in the program that embeds it, so the host
-  # is linked with -rdynamic, as the launcher is.
+  # is linked with -rdynamic, as the launcher is. It links as Ruby's own
+  # ruby does (template/Makefile.in, the $(PROGRAM) rule, at
+  # 4.1.0-preview1): Ruby's LDFLAGS first, which name the folders of the
+  # libraries its MAINLIBS link, then libruby and those libraries.
   def compile_ruby_host(compiler, dir)
     config = RbConfig::CONFIG
     File.write(File.join(dir, "main.c"), RUBY_HOST)
@@ -227,7 +230,7 @@ class MobileOutputTest < Minitest::Test
 ]
     libraries = "#{config.fetch('LIBRUBYARG')} #{config.fetch('LIBS')} #{config.fetch('MAINLIBS', '')}".split
     _, err, status = Open3.capture3(compiler, "-std=gnu11", "-I", MOBILE, "-I", LAUNCHER, "-I", config.fetch("rubyhdrdir"),
-      "-I", config.fetch("rubyarchhdrdir"), *sources, "-L", config.fetch("libdir"), *libraries, "-Wl,-rpath,#{config.fetch('libdir')}", "-rdynamic", "-lpthread", "-o", program)
+      "-I", config.fetch("rubyarchhdrdir"), *config.fetch("LDFLAGS").split, *sources, "-L", config.fetch("libdir"), *libraries, "-Wl,-rpath,#{config.fetch('libdir')}", "-rdynamic", "-lpthread", "-o", program)
     assert status.success?, err
     program
   end

@@ -67,7 +67,11 @@ class LauncherEnvironmentTest < Minitest::Test
   end
 
   # A built app's folder in +dir+/App, whose program runs +main+: the
-  # launcher, its fledge.cfg, its app/main.rb, and its Ruby's lib.
+  # launcher, its fledge.cfg, its app/main.rb, and its Ruby's lib. The
+  # program links as Ruby's own ruby does (template/Makefile.in, the
+  # $(PROGRAM) rule, at 4.1.0-preview1): Ruby's LDFLAGS first, which
+  # name the folders of the libraries its MAINLIBS link, then libruby
+  # and those libraries.
   def compile_app(dir, main)
     config = RbConfig::CONFIG
     root = File.join(dir, "App")
@@ -80,7 +84,7 @@ class LauncherEnvironmentTest < Minitest::Test
     program = File.join(root, "Probe")
     libraries = "#{config.fetch('LIBRUBYARG')} #{config.fetch('LIBS')} #{config.fetch('MAINLIBS', '')}".split
     _, err, status = Open3.capture3(@compiler, "-std=gnu11", "-I", LAUNCHER, "-isystem", config.fetch("rubyhdrdir"),
-      "-isystem", config.fetch("rubyarchhdrdir"), *sources, "-L", config.fetch("libdir"), *libraries,
+      "-isystem", config.fetch("rubyarchhdrdir"), *config.fetch("LDFLAGS").split, *sources, "-L", config.fetch("libdir"), *libraries,
       "-Wl,-rpath,#{config.fetch('libdir')}", "-rdynamic", "-lpthread", "-o", program)
     assert status.success?, err
     program

@@ -6,6 +6,7 @@ module Fledge
     LINUX: Array[Integer]
     IOS: Integer
     ANDROID: Hash[String, Integer]
+    MSIX: Hash[String, Integer]
     MAKE: Hash[String, String]
 
     attr_reader base: String

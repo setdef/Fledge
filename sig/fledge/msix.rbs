@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class Msix
+    ARCHITECTURES: Hash[String, String]
+    MIN_VERSION: String
+    MAX_VERSION_TESTED: String
+    ASSETS: String
+    APPLICATION: String
+    CONFIG: String
+    NAMESPACES: Hash[String, String]
+
+    @identity: Identity
+    @windows: Config::Windows?
+    @folder: String
+    @platform: Platform
+    @to: String
+    @signing: (WindowsSigning | SignCommand)?
+    @env: Runtimes::_Env
+
+    def initialize: (identity: Identity, windows: Config::Windows?, folder: String, platform: Platform, to: String, ?signing: (WindowsSigning | SignCommand)?, ?env: Runtimes::_Env) -> void
+
+    def write: () -> String
+
+    def manifest: () -> String
+
+    def mapping: (String work) -> String
+
+    def self.packaged_config: (String config) -> String
+
+    private def package_name: () -> String
+
+    private def publisher: () -> String
+
+    private def publisher_display_name: () -> String
+
+    private def version: () -> String
+
+    private def architecture: () -> String
+
+    private def logos: () -> Hash[String, String]
+
+    private def logo: (String name) -> String
+
+    private def extensions: () -> Array[String]
+
+    private def association_name: (String name, Array[String] taken) -> String
+
+    private def attributes: (Hash[String, String] pairs) -> String
+
+    private def xml: (String? text) -> String
+  end
+end

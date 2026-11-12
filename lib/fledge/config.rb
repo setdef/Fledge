@@ -32,7 +32,10 @@ module Fledge
   # can it know which libraries a project's gems may load from a Linux
   # distribution, such as a webview's WebKitGTK: list them under +linux+
   # (Config::Linux), and the build accepts them, and a <tt>.deb</tt>
-  # depends on them (ADR 030). Nor can it know which files and folders a
+  # depends on them (ADR 030). Nor can it know the package identity of
+  # a Windows app's MSIX package, which Partner Center gives an app for
+  # the Microsoft Store: name it under +windows+ (Config::Windows). Nor
+  # can it know which files and folders a
   # windowed app opens: list them under +file_associations+
   # (Config::FileAssociation), and each system offers the app for them
   # (ADR 052). Nor can it know whether the app builds others from itself
@@ -84,7 +87,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :license_file, :installers, :programs, :ios, :android, :linux, :macos, :file_associations, :build_tools)
+  class Config < Data.define(:name, :kind, :identifier, :version, :icon, :publisher, :copyright, :description, :long_description, :homepage, :license_file, :installers, :programs, :ios, :android, :linux, :macos, :windows, :file_associations, :build_tools)
     ##
     # :attr_reader: name
     # The app's name, or +nil+ for the one Fledge makes.
@@ -167,6 +170,11 @@ module Fledge
     # number (Config::Macos), or +nil+ for nothing.
 
     ##
+    # :attr_reader: windows
+    # The package identity of a Windows app's MSIX package
+    # (Config::Windows), or +nil+ for none.
+
+    ##
     # :attr_reader: file_associations
     # The files and folders a windowed app opens
     # (Config::FileAssociation), or +nil+ for none (ADR 052).
@@ -181,10 +189,10 @@ module Fledge
     FILE = "fledge.yml"
 
     # The keys the file may hold.
-    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage license_file installers programs ios android linux macos file_associations build_tools].freeze
+    KEYS = %w[name kind identifier version icon publisher copyright description long_description homepage license_file installers programs ios android linux macos windows file_associations build_tools].freeze
 
     # KEYS, as a sentence lists them.
-    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, file_associations, and build_tools"
+    KNOWN = "name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, windows, file_associations, and build_tools"
 
     # The keys that, beside +programs+, belong to each program instead.
     PER_PROGRAM = %w[kind identifier icon].freeze
@@ -194,13 +202,16 @@ module Fledge
     PHONES = %w[ios android].freeze
 
     # The installers a windowed app may have: a disk image for macOS, an
-    # NSIS setup program for Windows, an AppImage for Linux, and a
-    # <tt>.deb</tt> for Debian and Ubuntu.
-    INSTALLERS = %w[dmg nsis appimage deb].freeze
+    # NSIS setup program for Windows, an AppImage for Linux, a
+    # <tt>.deb</tt> for Debian and Ubuntu, and an MSIX package for
+    # Windows, which the Microsoft Store takes.
+    INSTALLERS = %w[dmg nsis appimage deb msix].freeze
 
     # The installers a windowed app gets when <tt>fledge.yml</tt> lists
     # none of its own: every one but +deb+, which needs dpkg-deb, a tool
-    # not every Linux computer has, so a developer asks for it (ADR 021).
+    # not every Linux computer has, so a developer asks for it (ADR 021),
+    # and +msix+, which needs the Windows SDK's MakeAppx and a publisher
+    # only the developer can name (Config::Windows).
     DEFAULT_INSTALLERS = %w[dmg nsis appimage].freeze
 
     # The kinds of app (ADR 037): one that runs in a terminal,
@@ -234,7 +245,7 @@ module Fledge
     #++
     def self.none
       new(name: nil, kind: nil, identifier: nil, version: nil, icon: nil, publisher: nil, copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil,
-        android: nil, linux: nil, macos: nil, file_associations: nil, build_tools: nil)
+        android: nil, linux: nil, macos: nil, windows: nil, file_associations: nil, build_tools: nil)
     end
 
     # The configuration in +root+/fledge.yml, or Config.none when there is
@@ -289,6 +300,7 @@ module Fledge
         android: Phone.from(data, "android", path),
         linux: Linux.from(data, path),
         macos: Macos.from(data, path),
+        windows: Windows.from(data, path),
         file_associations: file_associations(data, path),
         build_tools: build_tools(data, path)
       )
@@ -419,6 +431,10 @@ module Fledge
       if !value.empty? && !windowed?(data)
         raise Error, "#{path}: only a windowed app has installers; a console app ships as its archive, so leave out installers"
       end
+      if value.include?("msix") && !(data["windows"].is_a?(Hash) && data["windows"]["msix_publisher"])
+        raise Error, "#{path}: an msix installer needs windows: msix_publisher, the package's publisher: Partner Center's " \
+          "Package/Identity/Publisher for the Microsoft Store, or the subject of the certificate you sign with, such as CN=Example"
+      end
 
       value.uniq
     end
@@ -523,3 +539,4 @@ require_relative "config/linux"
 require_relative "config/macos"
 require_relative "config/phone"
 require_relative "config/program"
+require_relative "config/windows"

@@ -59,14 +59,14 @@ Fledge then builds:
 
 | macOS | Windows | Linux |
 | --- | --- | --- |
-| a `.tar.gz` holding `NAME.app`, and a `.dmg` | a `.zip` holding `NAME.exe`, which opens no console, and a `-setup.exe` that installs without an administrator | a `.tar.gz` holding the program, a desktop entry, and icons; an AppImage; and a `.deb` if you ask for one |
+| a `.tar.gz` holding `NAME.app`, and a `.dmg` | a `.zip` holding `NAME.exe`, which opens no console; a `-setup.exe` that installs without an administrator; and an `.msix` package if you ask for one | a `.tar.gz` holding the program, a desktop entry, and icons; an AppImage; and a `.deb` if you ask for one |
 
 Each system shows the app's name, icon, and version in its usual places. If you change `identifier` later, each system sees a new app, and Windows and `apt` install it beside the old one. [`examples/windowed_app`](../examples/windowed_app) is a complete example.
 
 What each key does:
 
-- **`icon`** names the icon's files without their extension. Make one `.icns` for macOS, one `.ico` for Windows, and for Linux a PNG of each size you have, of 16, 32, 64, 128, 256, and 512 pixels. Linux needs at least one. `fledge build` warns about each size you lack, and the desktop scales the nearest one.
-- In **`installers`**, list which of `dmg`, `nsis`, `appimage`, and `deb` to build. The default is the first three. A `.deb` needs `dpkg-deb` on your computer, and an AppImage needs `mksquashfs` from squashfs-tools 4.4 or newer.
+- **`icon`** names the icon's files without their extension. Make one `.icns` for macOS, one `.ico` for Windows, and for Linux a PNG of each size you have, of 16, 32, 64, 128, 256, and 512 pixels. Linux needs at least one. `fledge build` warns about each size you lack, and the desktop scales the nearest one. An MSIX package also needs PNGs of 44, 50, and 150 pixels, such as `icons/app-44.png`.
+- In **`installers`**, list which of `dmg`, `nsis`, `appimage`, `deb`, and `msix` to build. The default is the first three. A `.deb` needs `dpkg-deb` on your computer, and an AppImage needs `mksquashfs` from squashfs-tools 4.4 or newer. An `.msix` needs MakeAppx from Microsoft's Windows SDK, and a publisher under `windows`, as [The Microsoft Store](#the-microsoft-store) says.
 - **`description`** is the tooltip that Linux menus show, and the summary line of a `.deb`. **`long_description`**, in paragraphs, follows it in the `.deb`, for `apt show` and software centers.
 - **`homepage`** is the `.deb`'s homepage, and the link that Windows' Settings shows for the installed app.
 - **`license_file`**, a UTF-8 file in your project, is a page that the Windows setup program shows before it installs, and the `.deb`'s copyright file.
@@ -96,7 +96,7 @@ file_associations:
 <!-- SPDX-SnippetEnd -->
 
 - **macOS** lists the app under "Open With" for them, and never makes it their default unless your users do. Add `content_types` for macOS's types, such as `public.zip-archive`, where you know them.
-- **Windows:** the setup program adds the app to each extension's "Open with" list and to every folder's menu, and its uninstaller removes them. Windows registers nothing for an app your users unpack from the `.zip`.
+- **Windows:** the setup program adds the app to each extension's "Open with" list and to every folder's menu, and its uninstaller removes them. An MSIX package adds the app to each extension's "Open with" list only: a package cannot add a plain command to the folders' menu. Windows registers nothing for an app your users unpack from the `.zip`.
 - **Linux** desktops know a file by its MIME type, so list `mime_types` for Linux.
 
 On Windows and Linux, your program receives the path of a file or folder opened with it, or dropped on it, in `ARGV`. On macOS, the system sends the path as an Apple event instead, and your GUI library's event loop receives it, as SDL3 does with `SDL_EVENT_DROP_FILE`. `ARGV` stays empty there, as it does under `ruby main.rb`.
@@ -176,7 +176,7 @@ A certificate kept in a cloud or a hardware service, such as [Azure Artifact Sig
 ```
 <!-- SPDX-SnippetEnd -->
 
-Fledge runs the command through `cmd.exe` once for each program and library, then for the uninstaller and the setup program as it writes them, with the path in quotes. Without `%1`, the path goes at the end, so a `.cmd` file of your own works too. A command that exits with anything but 0 stops the build and names the file. Fledge never prints the command, which may hold a password. To keep the command out of your build scripts, set `FLEDGE_SIGN_COMMAND` instead, as a CI secret can.
+Fledge runs the command through `cmd.exe` once for each program and library, then for the uninstaller and the setup program as it writes them, then for the MSIX package if you build one, with the path in quotes. Without `%1`, the path goes at the end, so a `.cmd` file of your own works too. A command that exits with anything but 0 stops the build and names the file. Fledge never prints the command, which may hold a password. To keep the command out of your build scripts, set `FLEDGE_SIGN_COMMAND` instead, as a CI secret can.
 
 ### What is proven
 
@@ -188,7 +188,40 @@ No Fledge app has been through any store's review. This section says what each s
 
 ### The Microsoft Store
 
-The Store's [policy 10.2.9](https://learn.microsoft.com/windows/apps/publish/store-policies) takes a desktop program as an `.exe` installer at a link you give it, and the setup program Fledge writes fits what it lists:
+The Store takes a Windows app in two ways: as an MSIX package, which it signs for you, or as an `.exe` installer, which you sign.
+
+**An MSIX package needs no certificate of yours.** Microsoft [re-signs an MSIX package](https://learn.microsoft.com/windows/apps/publish/publish-your-app/msix/app-package-requirements#code-signing-for-microsoft-store-submissions) with its own certificate once the app passes certification, and hosts it. To ship one:
+
+1. Open a [Partner Center account](https://learn.microsoft.com/windows/apps/publish/partner-center/open-a-developer-account) and reserve your app's name.
+2. Copy the three values on the app's [Product identity page](https://learn.microsoft.com/windows/apps/publish/view-app-identity-details) into `fledge.yml`. The values are case-sensitive, so paste them exactly:
+
+   <!-- SPDX-SnippetBegin -->
+   <!--
+     SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+     SPDX-License-Identifier: MIT-0
+   -->
+   ```yaml
+   publisher: Example, Inc.               # Package/Properties/PublisherDisplayName
+   installers: [nsis, msix]
+   windows:
+     msix_name: 12345Example.MyCoolApp    # Package/Identity/Name
+     msix_publisher: CN=1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D   # Package/Identity/Publisher
+   ```
+   <!-- SPDX-SnippetEnd -->
+
+3. Add PNGs of 44, 50, and 150 pixels beside your icon, such as `icons/app-44.png`, `icons/app-50.png`, and `icons/app-150.png`. These are the logos the Start menu, the taskbar, and the Store show.
+4. Run `bundle exec fledge build` on Windows without `--sign`. Fledge writes `NAME-PLATFORM.msix` with Microsoft's MakeAppx, which comes with the [Windows SDK](https://learn.microsoft.com/windows/apps/windows-sdk/downloads) and with Microsoft's `Microsoft.Windows.SDK.BuildTools` package. Fledge looks on your `PATH` first, then where the SDK installs it.
+5. Upload the `.msix` for each architecture you build, x64 and ARM64, on the submission's Packages page.
+
+Your app runs with full trust, as it does outside a package. The package declares `runFullTrust`, a [restricted capability](https://learn.microsoft.com/windows/apps/package-and-deploy/app-capability-declarations), so Partner Center asks you why the app needs it. Write that it is a desktop program that runs Ruby, as it runs outside a package.
+
+The package installs on Windows 10 version 1809 and newer. Its version is your `version`'s first three numbers and a 0, because the Store keeps the fourth number for itself. The Store also refuses a version whose first number is 0, so ship `1.0.0` or later.
+
+To try the package on your own computer before you submit it, sign it with a test certificate whose subject is your `msix_publisher`, trust that certificate in the computer's Trusted People store, and install the package with `Add-AppxPackage`, as Microsoft's [signing guide](https://learn.microsoft.com/windows/msix/package/create-certificate-package-signing) says. `fledge build --sign THUMBPRINT` signs the package as it signs the setup program. Fledge's CI installs a package signed that way, runs the app from it, and removes it.
+
+To sideload an MSIX package without the Store, sign it with `--sign` or `--sign-command` and a certificate from a certificate authority, and set `msix_publisher` to that certificate's subject. Windows installs the package only when the subject and `msix_publisher` match.
+
+**An `.exe` installer you sign yourself.** The Store's [policy 10.2.9](https://learn.microsoft.com/windows/apps/publish/store-policies) takes a desktop program as an `.exe` installer at a link you give it, and the setup program Fledge writes fits what it lists:
 
 - It holds the whole app, and is no downloader stub.
 - `/S` installs it silently, which the policy asks for. Fledge's CI installs it this way, runs the app from the Start menu, and uninstalls it.
@@ -200,9 +233,7 @@ What the setup program lacks, you bring:
 - **A versioned HTTPS address**, whose file never changes. A GitHub Release's address redirects to a download host, and whether the Store's check takes that is unknown.
 - **A Partner Center account.** Microsoft's [new onboarding flow](https://learn.microsoft.com/windows/apps/publish/partner-center/open-a-developer-account) charges no registration fee.
 
-No one has tried this. Fledge's CI signs the setup program with a self-signed certificate only, so the Store's certification, and its malware scan of a Ruby runtime, are unknown.
-
-The Store's other route takes an MSIX package, which it signs and hosts for free. Fledge writes no MSIX.
+No one has submitted either to the Store. Fledge's CI signs with a self-signed certificate only, so the Store's certification, and its malware scan of a Ruby runtime, are unknown for both routes.
 
 ### The Mac App Store
 

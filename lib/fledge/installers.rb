@@ -9,6 +9,7 @@ require_relative "app_image"
 require_relative "config"
 require_relative "deb"
 require_relative "dmg"
+require_relative "msix"
 require_relative "nsis"
 require_relative "signing"
 
@@ -20,17 +21,21 @@ module Fledge
   # (ADR 009): a windowed app gets, beside each archive, a disk image for
   # macOS, an NSIS setup program for Windows, and an AppImage for Linux,
   # and a <tt>.deb</tt> for Debian and Ubuntu when <tt>fledge.yml</tt> asks
-  # for one, since not every Linux computer has dpkg-deb (ADR 021),
-  # unless <tt>fledge.yml</tt> lists the ones it wants under +installers+,
-  # or none (<tt>installers: []</tt>). A console app gets none: a terminal
+  # for one, since not every Linux computer has dpkg-deb (ADR 021), and
+  # an MSIX package for Windows, which the Microsoft Store takes, when it
+  # asks for that, since it needs the Windows SDK's MakeAppx and a
+  # publisher only the developer can name, unless <tt>fledge.yml</tt>
+  # lists the ones it wants under +installers+, or none
+  # (<tt>installers: []</tt>). A console app gets none: a terminal
   # tool is installed by putting its program on a +PATH+, which a disk
   # image's drag, a Start menu shortcut, and an AppImage all leave undone.
   #
   # This module chooses each target's installers and writes each one
   # from the built app's folder (Fledge::Dmg, Fledge::Nsis,
-  # Fledge::AppImage, Fledge::Deb), named after the archive: <tt>NAME-PLATFORM.dmg</tt>,
+  # Fledge::AppImage, Fledge::Deb, Fledge::Msix), named after the archive: <tt>NAME-PLATFORM.dmg</tt>,
   # <tt>NAME-PLATFORM-setup.exe</tt> (as Tauri ends an NSIS installer's
-  # name), <tt>NAME-PLATFORM.AppImage</tt>, and <tt>NAME-PLATFORM.deb</tt>.
+  # name), <tt>NAME-PLATFORM.AppImage</tt>, <tt>NAME-PLATFORM.deb</tt>,
+  # and <tt>NAME-PLATFORM.msix</tt>.
   #
   # Use it through Fledge::Assembly and <tt>fledge build</tt>.
   #
@@ -49,10 +54,10 @@ module Fledge
   #++
   module Installers
     # The operating system each installer is for.
-    OS = { "dmg" => "darwin", "nsis" => "windows", "appimage" => "linux", "deb" => "linux" }.freeze
+    OS = { "dmg" => "darwin", "nsis" => "windows", "appimage" => "linux", "deb" => "linux", "msix" => "windows" }.freeze
 
     # What follows an archive's base name in each installer's name.
-    SUFFIX = { "dmg" => ".dmg", "nsis" => "-setup.exe", "appimage" => ".AppImage", "deb" => ".deb" }.freeze
+    SUFFIX = { "dmg" => ".dmg", "nsis" => "-setup.exe", "appimage" => ".AppImage", "deb" => ".deb", "msix" => ".msix" }.freeze
 
     # The installers +app+ gets for +platform+: those its
     # <tt>fledge.yml</tt> lists, or Config::DEFAULT_INSTALLERS, for a
@@ -130,8 +135,15 @@ module Fledge
       when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:, signing: (signing if signing.is_a?(MacSigning)))
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
       when "deb" then deb(app, folder:, platform:, to:)
-      else Nsis.new(identity:, folder:, to:, signing: (signing.is_a?(MacSigning) ? nil : signing), license: license(app)).write(tools)
+      when "msix" then Msix.new(identity:, windows: app.config.windows, folder:, platform:, to:, signing: windows_signer(signing)).write
+      else Nsis.new(identity:, folder:, to:, signing: windows_signer(signing), license: license(app)).write(tools)
       end
+    end
+
+    # The signer among +signing+ that signs a Windows installer: none for
+    # a Mac's.
+    private_class_method def self.windows_signer(signing)
+      signing.is_a?(MacSigning) ? nil : signing
     end
 
     # Writes +app+'s <tt>.deb</tt>, with its license text and changelog.

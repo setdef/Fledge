@@ -58,7 +58,8 @@
 #     image for macOS, a setup program for Windows, which makes the
 #     Start menu shortcut Windows needs before it shows the app's
 #     notifications, and an AppImage for Linux, and, when fledge.yml
-#     asks for it, a .deb for Debian and Ubuntu.
+#     asks for them, a .deb for Debian and Ubuntu and an MSIX package
+#     for Windows, which the Microsoft Store takes and signs itself.
 #
 #     An app Fledge built already holds a runtime and its gems, each
 #     built for its platform, so a project that needs no other gems
@@ -85,10 +86,12 @@
 #     (--sign), so that macOS's Gatekeeper and Windows' SmartScreen
 #     can trust it: on macOS every Mach-O file, the bundle, and the
 #     disk image, with the hardened runtime and a timestamp, by
-#     codesign; on Windows every program and library, and the setup
-#     program and its uninstaller, by signtool from the Windows SDK,
-#     or by a signing command of your own (--sign-command), for a
-#     certificate kept in a cloud or hardware service. On macOS,
+#     codesign; on Windows every program and library, the setup
+#     program and its uninstaller, and the MSIX package, which is
+#     otherwise left unsigned for the Store to sign, by signtool from
+#     the Windows SDK, or by a signing command of your own
+#     (--sign-command), for a certificate kept in a cloud or hardware
+#     service. On macOS,
 #     --notarize then has Apple's notary service notarize the signed
 #     app, with notarytool and the credentials you stored in your
 #     keychain once, and staples Apple's ticket to the disk image and
@@ -97,7 +100,9 @@
 #     Each system's own tools do the work. macOS has them all (tar,
 #     plutil, codesign, ditto, hdiutil). Windows 10 and 11 have tar;
 #     the runtime brings rcedit, for a program's version information
-#     and icon, and NSIS, for a setup program. Linux has tar, and an
+#     and icon, and NSIS, for a setup program; an MSIX package needs
+#     the Windows SDK's MakeAppx, on PATH or where the SDK installs it.
+#     Linux has tar, and an
 #     AppImage needs squashfs-tools' mksquashfs (4.4 or newer), and a
 #     .deb needs dpkg-deb, from dpkg, and, when fledge.yml lists system
 #     libraries, dpkg-shlibdeps, from dpkg-dev. A missing tool fails
@@ -165,8 +170,9 @@
 #                        Sign a Windows app with your own command, in
 #                        place of --sign: Fledge runs COMMAND, through
 #                        cmd.exe, once for each program and library,
-#                        then the uninstaller and the setup program,
-#                        with the file's path, quoted, in place of %1,
+#                        then the uninstaller, the setup program, and
+#                        the MSIX package, with the file's path,
+#                        quoted, in place of %1,
 #                        or after COMMAND when it has no %1. A COMMAND
 #                        that exits with anything but 0 fails the
 #                        build, naming the file. Windows only.
@@ -234,9 +240,10 @@
 #                          pixels), icons/app-16.png, -32, -64, -128,
 #                          -256, and -512 on Linux (those there are,
 #                          at least one; the build names the rest),
-#                          icons/app-1024.png for iOS, and
+#                          icons/app-1024.png for iOS,
 #                          icons/app-48.png, -72, -96, -144, and -192
-#                          for Android
+#                          for Android, and icons/app-44.png, -50, and
+#                          -150 for an MSIX package
 #                        publisher: who makes it (default: the
 #                          gemspec's authors)
 #                        copyright: such as "© 2026 Example, Inc."
@@ -254,9 +261,11 @@
 #                          setup program shows on a page before it
 #                          installs, and a .deb installs as
 #                          /usr/share/doc/PACKAGE/copyright
-#                        installers: which of dmg, nsis, appimage, and
-#                          deb a windowed app gets, such as [dmg] or []
-#                          for none (default: dmg, nsis, and appimage)
+#                        installers: which of dmg, nsis, appimage, deb,
+#                          and msix a windowed app gets, such as [dmg]
+#                          or [] for none (default: dmg, nsis, and
+#                          appimage). An msix needs windows:
+#                          msix_publisher.
 #                        programs: the programs to ship in one folder,
 #                          sharing one runtime, project, and set of
 #                          gems, each a mapping of path (its file, such
@@ -295,6 +304,16 @@
 #                          between periods, quoted, such as "42"
 #                          (default: the version's first three
 #                          numbers). Other builds ignore it.
+#                        windows: a mapping of msix_publisher, the MSIX
+#                          package's publisher, a distinguished name
+#                          such as CN=Example: Partner Center's
+#                          Package/Identity/Publisher for the Microsoft
+#                          Store, or the subject of the certificate you
+#                          sign with; and msix_name, the package's name,
+#                          Partner Center's Package/Identity/Name
+#                          (default: the identifier). The package's
+#                          version is the version's first three numbers
+#                          and a 0. Other builds ignore it.
 #                        file_associations: what a windowed app opens,
 #                          a list of mappings of name (what a person
 #                          calls the documents), role (viewer, the
@@ -306,8 +325,10 @@
 #                          is offered and never made their default; the
 #                          setup program adds the app to each
 #                          extension's "Open with" and to every
-#                          folder's menu, under HKCU, and a portable
-#                          folder registers nothing; the desktop entry
+#                          folder's menu, under HKCU, an MSIX package
+#                          to each extension's "Open with" only, and a
+#                          portable folder registers nothing; the
+#                          desktop entry
 #                          lists the MIME types, inode/directory for
 #                          folders, and takes their paths (%F). A file
 #                          or folder dropped on a Windows program, or
@@ -429,6 +450,16 @@
 #                        run time, such as the X11, Wayland, or OpenGL
 #                        that SDL opens, is the desktop's, and apt does
 #                        not check for it.
+#     DIR/NAME-PLATFORM.msix
+#                        A windowed app's MSIX package for Windows, when
+#                        fledge.yml lists msix, which the Windows SDK's
+#                        MakeAppx packs: the app's folder as a full-trust
+#                        desktop app for Windows 10 1809 and newer, with
+#                        its logos and windows: msix_publisher. Unsigned
+#                        unless --sign or --sign-command signs it, it is
+#                        what the Microsoft Store takes, and signs with
+#                        Microsoft's certificate; signed, Windows
+#                        installs it where the certificate is trusted.
 #     DIR/FILE.sha256    Beside the archive and each installer, its
 #                        SHA-256, as sha256sum prints it: the hash, two
 #                        spaces, and FILE's name. In DIR,

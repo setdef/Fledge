@@ -9,13 +9,17 @@
 # controls; its version, publisher, and copyright, which Explorer's
 # Properties dialog shows; and its icon, the files each operating system
 # takes it from, named as Briefcase names them: icons/icon.icns for
-# macOS, icons/icon.ico for Windows, and icons/icon-16.png to
-# icons/icon-512.png for Linux; what it says about itself, a line, a
-# paragraph, and a web page, which menus, packages, and Windows' Settings
-# show; its license, which its setup program shows and its .deb installs,
-# and its changelog, which the .deb installs too; and its Mac build
-# number. Like hello, it sits inside Fledge's own gem, and this file makes
-# its folder a project's root (ADR 005).
+# macOS, icons/icon.ico for Windows, icons/icon-16.png to
+# icons/icon-512.png for Linux, and icons/icon-44.png, -50, and -150 for
+# its MSIX package; what it says about itself, a line, a paragraph, and
+# a web page, which menus, packages, and Windows' Settings show; its
+# license, which its setup program shows and its .deb installs, and its
+# changelog, which the .deb installs too; its Mac build number; and its
+# MSIX package's publisher, which here is the subject of the test
+# certificate CI signs with (.github/scripts/make-test-identity.ps1),
+# and for the Microsoft Store would be Partner Center's. Like hello, it
+# sits inside Fledge's own gem, and this file makes its folder a
+# project's root (ADR 005).
 name: Hello Window
 kind: windowed
 identifier: com.setdef.fledge.HelloWindow
@@ -31,17 +35,19 @@ long_description: |
 homepage: https://github.com/setdef/Fledge
 license_file: LICENSE.txt
 icon: icons/icon
-installers: [dmg, nsis, appimage, deb]
+installers: [dmg, nsis, appimage, deb, msix]
 linux:
   deb_changelog: CHANGES.txt
 macos:
   build: "1.2.417"
+windows:
+  msix_publisher: CN=Fledge Test Signing
 
 # The files and folders it opens (ADR 052): every folder, which
 # it writes its report into, and its own reports, which it writes over.
 # macOS offers it for them, Windows' setup program adds it to their "Open
-# with" and to every folder's menu, and a Linux desktop passes their
-# paths to it.
+# with" and to every folder's menu, its MSIX package to the reports'
+# "Open with", and a Linux desktop passes their paths to it.
 file_associations:
   - name: Hello Window folder
     folders: true

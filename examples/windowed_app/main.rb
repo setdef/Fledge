@@ -29,7 +29,9 @@
 # On Windows it also asks Windows, through Fiddle (one of Ruby's bundled
 # gems), whether it has a console, which a windowed app must not, and
 # what its AppUserModelID is, which Fledge's launcher sets from the
-# identifier in fledge.yml. Run from an AppImage, it reports the name of
+# identifier in fledge.yml, and, installed from its MSIX package, the
+# package's full name, which says the app runs with the package's
+# identity. Run from an AppImage, it reports the name of
 # the folder the AppImage's runtime ran it from (APPDIR), which says
 # whether it was mounted with FUSE (.mount_*) or extracted
 # (appimage_extracted_*). Where Ruby has YJIT (macOS and Linux), it
@@ -69,6 +71,15 @@ if Gem.win_platform?
     length += 2 until wide[length, 2] == "\0\0"
     facts["app_user_model_id"] = wide[0, length].force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)
     Fiddle::Function.new(Fiddle.dlopen("ole32")["CoTaskMemFree"], [Fiddle::TYPE_VOIDP], Fiddle::TYPE_VOID).call(wide)
+  end
+  # GetCurrentPackageFullName (appmodel.h) says ERROR_INSUFFICIENT_BUFFER
+  # (122), with the length the name needs, to a process with a package's
+  # identity, and APPMODEL_ERROR_NO_PACKAGE to any other.
+  get_package = Fiddle::Function.new(Fiddle.dlopen("kernel32")["GetCurrentPackageFullName"], [Fiddle::TYPE_VOIDP, Fiddle::TYPE_VOIDP], Fiddle::TYPE_LONG)
+  length = [0].pack("L")
+  if get_package.call(length, nil) == 122
+    name = "\0\0".b * length.unpack1("L")
+    facts["package"] = name.force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8).delete("\0") if get_package.call(length, name).zero?
   end
 end
 File.write(report, "#{JSON.generate(facts)}\n")

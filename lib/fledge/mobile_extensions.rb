@@ -19,6 +19,7 @@ require_relative "native_build"
 require_relative "mobile_extensions/cmake"
 require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
+require_relative "mobile_extensions/rake_build"
 
 module Fledge
   # Compiles an app's gems' C and C++ extensions for a phone (ADR 022).
@@ -93,13 +94,13 @@ module Fledge
     # How to get Xcode, for the message when its tools are missing.
     INSTALL_XCODE = "Install Xcode from the App Store or developer.apple.com, and run xcode-select --install."
 
-    # What the runtime's Ruby loads before an <tt>extconf.rb</tt>: the
-    # phone's tools in place of the ones its <tt>rbconfig.rb</tt> records
-    # (a build machine's paths), and mkmf made to write a static archive
-    # and a report. mkmf's own <tt>$static</tt> is what Ruby's
-    # <tt>ext/extmk.rb</tt> sets for an extension it links in (line 651).
-    SHIM = <<~'RUBY'
-      require "json"
+    # What the runtime's Ruby loads before it reads a phone's
+    # <tt>rbconfig.rb</tt> for a build: the phone's tools in place of the
+    # ones that file records (a build machine's paths), and, when
+    # +FLEDGE_RUBY+ names it, this computer's Ruby in place of the phone's,
+    # which cannot run here, so that a build that starts Ruby again
+    # (<tt>RbConfig.ruby</tt>, mkmf's <tt>$(RUBY)</tt>) starts this one.
+    TOOLS = <<~RUBY
       require "rbconfig"
       {
         "CC" => "FLEDGE_CC", "CXX" => "FLEDGE_CXX", "AR" => "FLEDGE_AR", "RANLIB" => "FLEDGE_RANLIB",
@@ -110,6 +111,20 @@ module Fledge
 
         [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].each { |config| config[key] = ENV.fetch(name).dup }
       end
+      if ENV.key?("FLEDGE_RUBY")
+        ruby = ENV.fetch("FLEDGE_RUBY")
+        { "bindir" => File.dirname(ruby), "ruby_install_name" => File.basename(ruby), "EXEEXT" => "" }.each do |key, value|
+          [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].each { |config| config[key] = value.dup }
+        end
+      end
+    RUBY
+
+    # What the runtime's Ruby loads before an <tt>extconf.rb</tt>: the
+    # phone's tools (TOOLS), and mkmf made to write a static archive
+    # and a report. mkmf's own <tt>$static</tt> is what Ruby's
+    # <tt>ext/extmk.rb</tt> sets for an extension it links in (line 651).
+    SHIM = TOOLS + <<~'RUBY'
+      require "json"
       require "mkmf"
       $static = true
       module MakeMakefile
@@ -249,12 +264,11 @@ module Fledge
   "not Rust ones yet. #{advice}, or use a gem with a C or C++ extension.",
 ]
       end
-      other = spec.extensions.reject { |path| File.basename(path) == "extconf.rb" }
+      other = spec.extensions.reject { |path| File.basename(path) == "extconf.rb" || rake?(path) }
       unless other.empty?
         return [
 "#{gem} has an extension built by #{other.join(', ')}, and Fledge compiles for #{platform} only extensions that an " \
-  "extconf.rb builds, with mkmf, as Ruby's own tools do (an extconf.rb may run CMake first). #{advice}, or ask its " \
-  "author for an extconf.rb.",
+  "extconf.rb or a Rakefile builds (an extconf.rb may run CMake first). #{advice}, or ask its author for an extconf.rb.",
 ]
       end
       if platform.name == "android" && host.windows?
@@ -311,6 +325,26 @@ module Fledge
       C
     end
 
+    # Whether RubyGems builds the extension at +path+ with Rake, as
+    # <tt>Gem::Ext::Builder#builder_for</tt> chooses: a path that names
+    # a Rakefile or an <tt>mkrf_conf</tt> script, and neither an
+    # <tt>extconf</tt> nor a <tt>configure</tt>, which it tries first.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::MobileExtensions.rake?("ext/digest/Rakefile") # => true
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.rake?(path)
+      !path.match?(/extconf|configure/) && path.match?(/rakefile|mkrf_conf/i)
+    end
+
     # +text+ as a C string literal.
     def self.c_string(text)
       "\"#{text.gsub(/["\\]/) { |character| "\\#{character}" }}\""
@@ -341,6 +375,7 @@ module Fledge
       @log = log
       @env = env
       @ruby = nil # : String?
+      @rake_build = nil # : RakeBuild?
     end
 
     # Compiles each gem with an extension, for every target of the phone,
@@ -370,7 +405,12 @@ module Fledge
         wanted.each do |gem, package|
           reports.concat(compile(target, gem, package, @build_args.fetch(gem.name, []), reports.size))
         end
-        registrations = reports.map { |report| [report.feature, report.init] }
+        found = reports.map { |report| [report.feature, report.init] }
+        unless registrations.empty? || found == registrations
+          raise Error, "the app's gems built different extensions for each target of #{@platform}: #{registrations.to_h.keys} and #{found.to_h.keys}"
+        end
+
+        registrations = found
         [target.name, Linking.target_build(target, reports)]
       end
       Built.new(registrations:, targets: builds, ndk:)
@@ -499,16 +539,34 @@ module Fledge
     # feature, and its Init function, numbered from +first+.
     private def compile(target, gem, package, args, first)
       root = source_root(package, File.join(@work, target.name, package.spec.full_name))
-      package.spec.extensions.each_with_index.map do |extension, index|
-        folder = File.dirname(File.join(root, extension))
-        init = "Init_fledge_#{first + index}"
-        report = File.join(folder, "fledge-report.json")
-        env = clean_env.merge(target.environment).merge("FLEDGE_INIT" => init, "FLEDGE_REPORT" => report)
-        what = "compiling #{gem}'s extension #{extension} for #{target.name}"
-        run(env, ruby, "--disable-gems", "-I", target.arch_dir, "-r", shim_path, File.basename(extension), *args, chdir: folder, what:)
-        run(env, "make", "static", chdir: folder, what:)
-        describe(JSON.parse(File.read(report)), folder, init, gem, target)
+      reports = [] # : Array[Report]
+      package.spec.extensions.each do |extension|
+        number = first + reports.size
+        if self.class.rake?(extension)
+          reports.concat(rake_build.call(target, gem, package.spec, root, extension, args, number))
+        else
+          reports << extconf(target, gem, File.dirname(File.join(root, extension)), File.basename(extension), args, number)
+        end
       end
+      reports
+    end
+
+    # Compiles the extension an <tt>extconf.rb</tt> in +folder+ builds,
+    # with mkmf's <tt>make static</tt>, its Init function renamed
+    # <tt>Init_fledge_NUMBER</tt>.
+    private def extconf(target, gem, folder, extconf, args, number)
+      init = "Init_fledge_#{number}"
+      report = File.join(folder, "fledge-report.json")
+      env = clean_env.merge(target.environment).merge("FLEDGE_INIT" => init, "FLEDGE_REPORT" => report)
+      what = "compiling #{gem}'s extension #{extconf} for #{target.name}"
+      run(env, ruby, "--disable-gems", "-I", target.arch_dir, "-r", shim_path, extconf, *args, chdir: folder, what:)
+      run(env, "make", "static", chdir: folder, what:)
+      describe(JSON.parse(File.read(report)), folder, init, gem, target)
+    end
+
+    # The builder of extensions a Rakefile builds (RakeBuild).
+    private def rake_build
+      @rake_build ||= RakeBuild.new(ruby:, work: @work, environment: clean_env, run: method(:run))
     end
 
     # What one extension's build came to, from the shim's +reports+ and

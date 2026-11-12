@@ -43,15 +43,37 @@ class MobileExtensionsTest < Minitest::Test
     assert_empty Fledge::MobileExtensions.problems(gem, package, android, Fledge::Platform.find("x86_64-linux"))
   end
 
+  # RubyGems runs Rake for a Rakefile or an mkrf_conf script
+  # (Gem::Ext::Builder#builder_for), and Fledge runs that builder aimed
+  # at the phone (Fledge::MobileExtensions::RubyGemsBuild).
+  def test_an_extension_rake_builds_is_one_fledge_compiles
+    %w[ext/native/Rakefile ext/native/rakefile.rb ext/native/mkrf_conf.rb].each do |builder|
+      gem, package = native_gem(extensions: [builder])
+
+      assert_empty Fledge::MobileExtensions.problems(gem, package, ios, Fledge::Platform.find("arm64-darwin")), builder
+      assert_empty Fledge::MobileExtensions.problems(gem, package, android, Fledge::Platform.find("x86_64-linux")), builder
+    end
+  end
+
+  # As RubyGems' own choice, an extconf or a configure in the path comes
+  # before a Rakefile.
+  def test_rake_builds_what_rubygems_gives_rake
+    assert Fledge::MobileExtensions.rake?("ext/digest/Rakefile")
+    assert Fledge::MobileExtensions.rake?("ext/mkrf_conf.rb")
+    refute Fledge::MobileExtensions.rake?("ext/rakefile_extconf.rb")
+    refute Fledge::MobileExtensions.rake?("ext/configure/Rakefile")
+    refute Fledge::MobileExtensions.rake?("ext/native/CMakeLists.txt")
+  end
+
   def test_any_other_way_to_build_an_extension_is_refused_by_gem_and_by_what_to_do
-    %w[Rakefile CMakeLists.txt configure Cargo.toml ext/native/mkrf_conf.rb].each do |builder|
+    %w[CMakeLists.txt configure Cargo.toml].each do |builder|
       gem, package = native_gem(extensions: [builder])
 
       problems = Fledge::MobileExtensions.problems(gem, package, ios, Fledge::Platform.find("arm64-darwin"))
 
       assert_equal 1, problems.size, builder
       assert_includes problems.first, "native 1.0.0 has an extension built by #{builder}"
-      assert_includes problems.first, "extconf.rb"
+      assert_includes problems.first, "an extconf.rb or a Rakefile"
       assert_includes problems.first, 'gem "native", platforms: [...]'
     end
   end

@@ -5,6 +5,7 @@ module Fledge
   class MobileExtensions
     FOREIGN: Array[String]
     INSTALL_XCODE: String
+    TOOLS: String
     SHIM: String
     IOS_SLICES: Array[String]
     ANDROID_ABIS: Hash[String, String]
@@ -60,8 +61,11 @@ module Fledge
     @log: CLI::_Output
     @env: Runtimes::_Env
     @ruby: String?
+    @rake_build: RakeBuild?
 
     def self.problems: (locked_gem gem, package package, MobilePlatform platform, Platform host) -> Array[String]
+
+    def self.rake?: (String path) -> bool
 
     def self.registration_source: (Array[[String, String]] registrations) -> String
 
@@ -90,6 +94,10 @@ module Fledge
     private def unpack_aar: (String aar) -> String
 
     private def compile: (Target target, locked_gem gem, package package, Array[String] args, Integer first) -> Array[Report]
+
+    private def extconf: (Target target, locked_gem gem, String folder, String extconf, Array[String] args, Integer number) -> Report
+
+    private def rake_build: () -> RakeBuild
 
     private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target) -> Report
 

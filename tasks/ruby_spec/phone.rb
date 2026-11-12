@@ -20,6 +20,17 @@ class RubySpec
   # desktop runtime is made from, of the same version and revision as
   # the phone runtime, which the check confirms from RUBY_DESCRIPTION.
   #
+  # Each side's report is MSpec's standard output alone, where MSpec
+  # prints RUBY_DESCRIPTION, each failure, and the totals. A phone's log
+  # holds standard output and standard error as two threads forward them,
+  # interleaved as those threads happen to run (MobileParity::IOS.messages,
+  # MobileParity::Android.messages), so a line of standard error, such as
+  # the warning MSpec prints when it exits that its temporary folder is
+  # not empty (mspec/helpers/tmp.rb), can land between a failure's number
+  # and its description, where the failure would go unread. Stock Ruby's
+  # standard error goes to a file of its own, so both sides are read
+  # alike; the app's stays in the system log.
+  #
   # A phone app takes no arguments and runs Ruby once a launch, so the
   # app runs the desktop's DIRECTORIES in one mspec-run, with the arguments main.rb
   # reads from arguments.txt, and RubySpecPhoneFormatter names the
@@ -144,13 +155,6 @@ class RubySpec
         phones: %w[android], files: [],
         examples: ["Dir#close raises an error if the file descriptor is closed with another Dir instance"],
       ),
-      Exclusion.new(
-        reason: "For now: the example fails on both sides on most runs and passed in the app once, on an iPad in CI run " \
-          "43226291212, so it differs by run, not by phone; it stays out of both runs until its cause is found, and " \
-          "goes when it is.",
-        phones: %w[ios], files: [],
-        examples: ["Class#initialize is not defined"],
-      ),
     ].freeze
 
     # The arguments of mspec-run for both runs on +phone+, one to a line
@@ -203,7 +207,7 @@ class RubySpec
       bundles = projects.to_h { |built, project| [built, simulator.build_app(built, project)] }
       run_stock
       MobileParity::IOS::FAMILIES.map do |family|
-        simulator.on_simulator(family, bundles, timeout: TIMEOUT) do |_, entries, device|
+        simulator.on_simulator(family, bundles, timeout: TIMEOUT, standard_error: false) do |_, entries, device|
           compare(entries, MobileParity::IOS::TARGET, device)
         end
       end.all?
@@ -231,7 +235,7 @@ class RubySpec
       emulator = MobileParity::Android.new(work: @work, out: @log)
       system("adb", "logcat", "-G", "16M", exception: true)
       system("adb", "install", "-r", apk_path, exception: true)
-      compare(emulator.launch(app, timeout: TIMEOUT), emulator.target, emulator.device)
+      compare(emulator.launch(app, timeout: TIMEOUT, standard_error: false), emulator.target, emulator.device)
     end
 
     # The project's two copies, one for stock Ruby and one to build, in
@@ -262,8 +266,8 @@ class RubySpec
     # Runs ruby main.rb from the project's copy for stock Ruby, with the
     # Ruby the desktop runtime of this computer is made from, as the
     # desktop's comparison runs it, in its clean environment with a UTF-8
-    # locale, as a phone's app has, and keeps its output in the output
-    # folder.
+    # locale, as a phone's app has, and keeps its standard output and its
+    # standard error apart in the output folder.
     private def run_stock
       parity = File.join(@work, "parity")
       FileUtils.mkdir_p(parity)
@@ -271,7 +275,7 @@ class RubySpec
       project = File.join(@work, "reference", "ruby_spec")
       env = environment("stock").merge("LANG" => "en_US.UTF-8")
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      pid = Process.spawn(env, ruby, "main.rb", chdir: project, unsetenv_others: true, out: stock_path, err: %i[child out], in: File::NULL)
+      pid = Process.spawn(env, ruby, "main.rb", chdir: project, unsetenv_others: true, out: stock_path, err: stock_error_path, in: File::NULL)
       Process.wait(pid)
       seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       @log.puts format("stock %4.0fs  %s", seconds, read(File.binread(stock_path)).totals || "did not finish")
@@ -301,6 +305,10 @@ class RubySpec
 
     private def stock_path
       File.join(@out, "stock.out")
+    end
+
+    private def stock_error_path
+      File.join(@out, "stock.err")
     end
 
     private def apk_path

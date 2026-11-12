@@ -163,4 +163,55 @@ class MobileParityTest < Minitest::Test
 
     assert_equal [0, 2, 3, 4, 5], lines.map { |line| log.lines.map(&:chomp).index(line) }
   end
+
+  # The embedding API logs standard error as errors on iOS, and standard
+  # output and the host's lines as default messages, so a reader that
+  # wants one stream in its own order can leave the other out; lines of
+  # other processes, and what is not JSON, are not the app's.
+  def test_ios_messages_are_the_processes_own_and_may_leave_out_standard_error
+    ndjson = [
+      { "processID" => 7, "messageType" => "Default", "eventMessage" => "1)" },
+      { "processID" => 7, "messageType" => "Error", "eventMessage" => "The rubyspec temp directory is not empty." },
+      { "processID" => 8, "messageType" => "Default", "eventMessage" => "another launch" },
+      { "processID" => 7, "messageType" => "Default", "eventMessage" => "core: Class#initialize is not defined FAILED" },
+      { "processID" => 7, "messageType" => "Default", "eventMessage" => "RubySpec exited with status 1" },
+    ].map { |entry| JSON.generate(entry) }.push("Filtering the log data using ...").join("\n")
+
+    assert_equal [
+      "1)",
+      "The rubyspec temp directory is not empty.",
+      "core: Class#initialize is not defined FAILED",
+      "RubySpec exited with status 1",
+], MobileParity::IOS.messages(ndjson, 7)
+    assert_equal ["1)", "core: Class#initialize is not defined FAILED", "RubySpec exited with status 1"],
+      MobileParity::IOS.messages(ndjson, 7, standard_error: false)
+  end
+
+  # On Android the embedding API logs standard error as warnings and
+  # standard output as information, as the host logs its status, which
+  # logcat -v tag prints before each message, an empty one included.
+  def test_android_messages_are_the_tags_own_and_may_leave_out_standard_error
+    tag = "com.setdef.fledge.RubySpec"
+    log = <<~LOG
+      --------- beginning of main
+      I/#{tag}: 1)
+      W/#{tag}: The rubyspec temp directory is not empty.
+      I/#{tag}:#{' '}
+      I/#{tag}:   indented
+      I/#{tag}: core: Class#initialize is not defined FAILED
+      I/OtherTag: not the app's
+      I/#{tag}: RubySpec exited with status 1
+    LOG
+
+    assert_equal [
+      "1)",
+      "The rubyspec temp directory is not empty.",
+      "",
+      "  indented",
+      "core: Class#initialize is not defined FAILED",
+      "RubySpec exited with status 1",
+], MobileParity::Android.messages(log, tag)
+    assert_equal ["1)", "", "  indented", "core: Class#initialize is not defined FAILED", "RubySpec exited with status 1"],
+      MobileParity::Android.messages(log, tag, standard_error: false)
+  end
 end

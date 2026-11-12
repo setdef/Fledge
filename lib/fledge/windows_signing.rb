@@ -8,6 +8,7 @@
 require_relative "command"
 require_relative "error"
 require_relative "nsis"
+require_relative "windows_sdk"
 
 module Fledge
   # Signs a Windows app with its developer's certificate, through
@@ -52,7 +53,7 @@ module Fledge
     EXTENSIONS = %w[.exe .dll .so].freeze
 
     # Where signtool comes from.
-    INSTALL = "Install the Windows SDK's Signing Tools for Desktop Apps (winget install Microsoft.WindowsSDK.10.0.26100)."
+    INSTALL = WindowsSdk::INSTALL
 
     # Creates the signer for the certificate whose SHA-1 thumbprint is
     # +thumbprint+, finding signtool through +env+. Raises Fledge::Error
@@ -96,20 +97,19 @@ module Fledge
       ["\"#{Nsis.host_path(WindowsSigning.signtool(@env))}\"", *arguments, "\"%1\""].join(" ")
     end
 
-    # The path of signtool: the first on +env+'s PATH, or else the newest
-    # the Windows SDK installed for this computer's architecture. Raises
-    # Fledge::Error when there is none.
-    def self.signtool(env)
-      env["PATH"].to_s.split(File::PATH_SEPARATOR).each do |folder|
-        path = File.join(folder, "signtool.exe")
-        return path if !folder.empty? && File.file?(path)
-      end
-      arch = env["PROCESSOR_ARCHITECTURE"].to_s.casecmp?("ARM64") ? "arm64" : "x64"
-      kits = File.join(env["ProgramFiles(x86)"].to_s, "Windows Kits", "10", "bin")
-      found = Dir.glob("*/#{arch}/signtool.exe", base: kits).max_by { |path| Gem::Version.new(path.split("/").first.to_s) }
-      return File.join(kits, found) if found
+    # Signs the one file at +path+, such as an MSIX package
+    # (Fledge::Msix), which signtool signs with the hash its block map
+    # was made with, SHA-256, as Microsoft's "Sign an app package using
+    # SignTool" says.
+    def sign(path)
+      Command.run(WindowsSigning.signtool(@env), *arguments, Nsis.host_path(path), install: INSTALL)
+    end
 
-      raise Error, "fledge build --sign needs signtool, which is on no PATH and in no Windows SDK. #{INSTALL}"
+    # The path of signtool: the first on +env+'s PATH, or else the newest
+    # the Windows SDK installed for this computer's architecture
+    # (Fledge::WindowsSdk). Raises Fledge::Error when there is none.
+    def self.signtool(env)
+      WindowsSdk.tool("signtool.exe", env, needed_by: "fledge build --sign")
     end
   end
 end

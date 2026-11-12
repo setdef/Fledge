@@ -157,7 +157,22 @@ class SigningTest < Minitest::Test
       assert_equal File.join(on_path, "signtool.exe"), Fledge::WindowsSigning.signtool(env.merge("PATH" => on_path))
 
       error = assert_raises(Fledge::Error) { Fledge::WindowsSigning.signtool({ "PATH" => "" }) }
-      assert_includes error.message, "Windows SDK"
+      assert_match(/\Afledge build --sign needs signtool, which is on no PATH and in no Windows SDK\. Install the Windows SDK/, error.message)
+    end
+  end
+
+  # MakeAppx comes from the same SDK folder, or the same folder of
+  # Microsoft's Microsoft.Windows.SDK.BuildTools package on PATH.
+  def test_makeappx_is_found_as_signtool_is
+    Dir.mktmpdir do |dir|
+      kits = File.join(dir, "Windows Kits", "10", "bin", "10.0.26100.0", "x64")
+      FileUtils.mkdir_p(kits)
+      File.write(File.join(kits, "makeappx.exe"), "")
+      env = { "PATH" => "", "ProgramFiles(x86)" => dir }
+
+      assert_equal File.join(kits, "makeappx.exe"), Fledge::WindowsSdk.tool("makeappx.exe", env, needed_by: "an msix installer")
+      error = assert_raises(Fledge::Error) { Fledge::WindowsSdk.tool("makeappx.exe", env.merge("PROCESSOR_ARCHITECTURE" => "ARM64"), needed_by: "an msix installer") }
+      assert_includes error.message, "Microsoft.Windows.SDK.BuildTools"
     end
   end
 end

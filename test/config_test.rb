@@ -36,7 +36,7 @@ class ConfigTest < Minitest::Test
       copyright: © 2026 Example, Inc.
     YAML
     assert_equal Fledge::Config.new(name: "Hello Window", kind: "windowed", identifier: "com.example.Hello-Window", version: "1.10",
-      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil,
+      icon: "art/icon", publisher: "Example, Inc.", copyright: "© 2026 Example, Inc.", description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil, windows: nil,
       file_associations: nil, build_tools: nil), config
     assert_equal "console", load("kind: console\n").kind
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
@@ -69,14 +69,33 @@ class ConfigTest < Minitest::Test
     assert_nil load("kind: windowed\n").installers
   end
 
+  # An MSIX package's name and publisher are Partner Center's for the
+  # Store, or the signing certificate's subject; msix asks for the
+  # publisher, and the name defaults to the identifier.
+  def test_reads_the_package_identity_of_an_msix
+    config = load(<<~YAML)
+      kind: windowed
+      identifier: com.example.Hello
+      installers: [nsis, msix]
+      windows:
+        msix_name: 12345Example.Hello
+        msix_publisher: CN=1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D
+    YAML
+
+    assert_equal %w[nsis msix], config.installers
+    assert_equal Fledge::Config::Windows.new(msix_name: "12345Example.Hello", msix_publisher: "CN=1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D"), config.windows
+    assert_nil load("windows:\n  msix_publisher: \"CN=Example, O=Example, C=US\"\n").windows.msix_name
+    assert_nil load("kind: windowed\n").windows
+  end
+
   # Fledge takes no position on an app's gems' licenses (2026-10-28; ADR
   # 007), so the keys that corrected a gem's license or said what its
   # compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
-    known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, file_associations, and build_tools."
+    known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, windows, file_associations, and build_tools."
     {
       "name: [" => /is not valid YAML/,
-      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, file_associations, and build_tools\z/,
+      "- name" => /must be a mapping of name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, windows, file_associations, and build_tools\z/,
       "nmae: x\n" => /has 'nmae', which Fledge does not know\. #{known}\z/,
       "licenses:\n  gem: MIT\n" => /has 'licenses', which Fledge does not know\. #{known}\z/,
       "compiled:\n  gem: []\n" => /has 'compiled', which Fledge does not know\. #{known}\z/,
@@ -105,9 +124,18 @@ class ConfigTest < Minitest::Test
       "macos:\n  build: \"1.0b2\"\n" => /: macos: build must be one to three whole numbers between periods/,
       "homepage: example.com\n" => %r{: homepage must be an http or https URL with no spaces, such as https://example\.com/cool-app, not example\.com\z},
       "homepage: \"https://example.com/a b\"\n" => /: homepage must be an http or https URL/,
-      "kind: windowed\ninstallers: dmg\n" => /: installers must be a list of dmg, nsis, appimage, deb, such as installers: \[dmg, nsis, appimage, deb\], or \[\] for none\z/,
-      "kind: windowed\ninstallers: [msi]\n" => /: installers has msi, which Fledge does not build\. It builds dmg, nsis, appimage, deb\.\z/,
+      "kind: windowed\ninstallers: dmg\n" => /: installers must be a list of dmg, nsis, appimage, deb, msix, such as installers: \[dmg, nsis, appimage, deb\], or \[\] for none\z/,
+      "kind: windowed\ninstallers: [msi]\n" => /: installers has msi, which Fledge does not build\. It builds dmg, nsis, appimage, deb, msix\.\z/,
       "installers: [dmg]\n" => /: only a windowed app has installers; a console app ships as its archive/,
+      "kind: windowed\ninstallers: [msix]\n" => /: an msix installer needs windows: msix_publisher, the package's publisher: Partner Center's .* such as CN=Example\z/,
+      "kind: windowed\ninstallers: [msix]\nwindows: {}\n" => /: an msix installer needs windows: msix_publisher/,
+      "windows: CN=Example\n" => /: windows must be a mapping of msix_name and msix_publisher, such as windows: \{ msix_publisher: CN=Example \}\z/,
+      "windows:\n  publisher: CN=Example\n" => /: windows has 'publisher', which Fledge does not know\. It knows msix_name and msix_publisher\.\z/,
+      "windows:\n  msix_name: ab\n" => /: windows: msix_name must be 3 to 50 letters, digits, periods, and hyphens, .* not "ab"\z/,
+      "windows:\n  msix_name: My_App\n" => /: windows: msix_name must be 3 to 50/,
+      "windows:\n  msix_name: #{'a' * 51}\n" => /: windows: msix_name must be 3 to 50/,
+      "windows:\n  msix_publisher: Example\n" => /: windows: msix_publisher must be a distinguished name, such as CN=Example: .* not "Example"\z/,
+      "windows:\n  msix_publisher: 3\n" => /: windows: msix_publisher must be a distinguished name/,
     }.each do |yaml, message|
       error = assert_raises(Fledge::Error, yaml) { load(yaml) }
       assert_match message, error.message, yaml
@@ -160,7 +188,7 @@ class ConfigTest < Minitest::Test
     config = load("version: \"2.0\"\npublisher: Me\nprograms:\n  - path: w.rb\n    name: W\n    kind: windowed\n    identifier: com.example.W\n    icon: art\n")
 
     assert_equal Fledge::Config.new(name: "W", kind: "windowed", identifier: "com.example.W", version: "2.0", icon: "art",
-      publisher: "Me", copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil,
+      publisher: "Me", copyright: nil, description: nil, long_description: nil, homepage: nil, license_file: nil, installers: nil, programs: nil, ios: nil, android: nil, linux: nil, macos: nil, windows: nil,
       file_associations: nil, build_tools: nil), config.for_program(config.programs.to_a.first)
   end
 

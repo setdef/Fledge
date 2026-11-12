@@ -70,6 +70,18 @@ class InstallersTest < Minitest::Test
     end
   end
 
+  # An MSIX package needs the Windows SDK's MakeAppx and a publisher only
+  # the developer can name, so it is asked for, and is for Windows.
+  def test_an_msix_is_asked_for_and_is_for_windows
+    Dir.mktmpdir do |dir|
+      chosen = app(dir, "kind: windowed\nidentifier: com.example.Hello\ninstallers: [dmg, nsis, appimage, msix]\nwindows:\n  msix_publisher: CN=Example\n")
+      arm64 = Fledge::Platform.find("aarch64-mingw-ucrt")
+
+      assert_equal [["dmg"], ["appimage"], %w[nsis msix], %w[nsis msix]], [MACOS, LINUX, WINDOWS, arm64].map { |platform| Fledge::Installers.formats(chosen, platform) }
+      refute_includes Fledge::Config::DEFAULT_INSTALLERS, "msix"
+    end
+  end
+
   def test_a_console_app_gets_none
     Dir.mktmpdir do |dir|
       assert_empty Fledge::Installers.formats(Fledge::App.at(FakeApp.write(dir)), MACOS)
@@ -77,7 +89,7 @@ class InstallersTest < Minitest::Test
   end
 
   def test_each_is_named_after_the_archive
-    assert_equal ["A-arm64-darwin.dmg", "A-x64-mingw-ucrt-setup.exe", "A-aarch64-linux.AppImage", "A-aarch64-linux.deb"],
-      [["dmg", MACOS], ["nsis", WINDOWS], ["appimage", LINUX], ["deb", LINUX]].map { |format, platform| Fledge::Installers.file_name(format, "A-#{platform}") }
+    assert_equal ["A-arm64-darwin.dmg", "A-x64-mingw-ucrt-setup.exe", "A-aarch64-linux.AppImage", "A-aarch64-linux.deb", "A-x64-mingw-ucrt.msix"],
+      [["dmg", MACOS], ["nsis", WINDOWS], ["appimage", LINUX], ["deb", LINUX], ["msix", WINDOWS]].map { |format, platform| Fledge::Installers.file_name(format, "A-#{platform}") }
   end
 end

@@ -14,6 +14,8 @@ module Fledge
 
     def self.write: (String format, app: App, folder: String, platform: Platform, tools: String?, ?signing: Signing::signer?) -> String
 
+    private def self.windows_signer: (Signing::signer? signing) -> (WindowsSigning | SignCommand)?
+
     private def self.deb: (App app, folder: String, platform: Platform, to: String) -> String
 
     def self.license: (App app) -> String?

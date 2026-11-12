@@ -16,6 +16,8 @@ module Fledge
 
     def sign_folder: (String folder) -> void
 
+    def sign: (String path) -> void
+
     def command_line: () -> String
 
     def self.files: (String folder) -> Array[String]

@@ -68,10 +68,10 @@
       "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
     },
     "installers": {
-      "description": "Which of dmg, nsis, appimage, and deb a windowed app gets, such as [dmg] or [] for none (default: dmg, nsis, and appimage). A console app gets none.",
+      "description": "Which of dmg, nsis, appimage, deb, and msix a windowed app gets, such as [dmg] or [] for none (default: dmg, nsis, and appimage). An msix needs windows: msix_publisher. A console app gets none.",
       "type": ["array", "null"],
       "items": {
-        "enum": ["dmg", "nsis", "appimage", "deb"]
+        "enum": ["dmg", "nsis", "appimage", "deb", "msix"]
       },
       "default": ["dmg", "nsis", "appimage"]
     },
@@ -173,6 +173,24 @@
         }
       }
     },
+    "windows": {
+      "description": "The package identity of a Windows app's MSIX package, which an msix installer needs (default: nothing). Other builds ignore it.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "msix_name": {
+          "description": "The package's name, Partner Center's Package/Identity/Name for an app in the Microsoft Store: 3 to 50 letters, digits, periods, and hyphens (default: the identifier).",
+          "type": ["string", "null"],
+          "pattern": "^[A-Za-z0-9.-]{3,50}$"
+        },
+        "msix_publisher": {
+          "description": "The package's publisher, a distinguished name, such as CN=Example: Partner Center's Package/Identity/Publisher for the Microsoft Store, which signs the package, or the subject of the certificate you sign it with.",
+          "type": ["string", "null"],
+          "maxLength": 8192,
+          "pattern": "^[A-Za-z][A-Za-z0-9.]*=\\S"
+        }
+      }
+    },
     "file_associations": {
       "description": "The files and folders a windowed app opens, in Tauri's and electron-builder's terms (default: none). macOS lists them as the bundle's document types, ranked Alternate, so the app is offered and never made the default; Windows' setup program adds the app to Open with for each extension, and to the menu of every folder for folders; a Linux desktop entry lists their MIME types, and inode/directory for folders, and passes the paths as arguments. A file or folder dropped on a Windows program arrives in ARGV; on macOS it arrives as an Apple event, which only a GUI library's event loop receives. Only a windowed app has them.",
       "type": ["array", "null"],
@@ -270,6 +288,16 @@
       "then": {
         "properties": { "identifier": { "type": "string" } },
         "required": ["identifier"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "installers": { "type": "array", "contains": { "const": "msix" } } },
+        "required": ["installers"]
+      },
+      "then": {
+        "properties": { "windows": { "type": "object", "required": ["msix_publisher"], "properties": { "msix_publisher": { "type": "string" } } } },
+        "required": ["windows"]
       }
     },
     {

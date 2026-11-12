@@ -36,6 +36,8 @@ require_relative "ruby_spec/results"
 #
 # Run it as rake ruby_spec, after rake runtime or with FLEDGE_RUNTIME_DIR
 # set; RUBY_SPEC_OUT names the output folder (default tmp/ruby-spec).
+# RubySpec::Phone runs it in phone apps (ruby tasks/ruby_spec.rb ios,
+# android-build, and android).
 class RubySpec
   ROOT = File.expand_path("..", __dir__)
 
@@ -73,6 +75,11 @@ class RubySpec
     [platform, ["Thread#to_s returns a description including a thread name if given any"]]
   end.freeze
 
+  # The platforms of the phones' runs, as the mobile parity check names
+  # them (MobileParity::IOS::TARGET, MobileParity::Android#target).
+  ANDROID = %w[x86_64-linux-android aarch64-linux-android].freeze
+  PHONES = ["arm64-ios-simulator", *ANDROID].freeze
+
   JUSTIFIED = [
     Justification.new(
       example: /\Acore: (?:Dir\.chdir|File\.readlink|File\.realpath) accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters/,
@@ -94,6 +101,73 @@ class RubySpec
       side: :stock, platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reason: "As for Refinement#import_methods: every spec file of library/zlib requires zlib, which stock " \
         "RubyInstaller head cannot load without MSYS2's libz-1.dll, and the runtime ships.",
+    ),
+    # The phones (RubySpec::Phone), against stock Ruby on the computer
+    # that runs the simulator.
+    Justification.new(
+      example: /\Alibrary: (?:BigDecimal[#. ]|Kernel#BigDecimal |Core extension by bigdecimal )/,
+      side: :app, platforms: PHONES,
+      reason: "TEMPORARY, a defect to fix: a phone runtime links bigdecimal's extension in and registers it as " \
+        "bigdecimal.so (RuntimeBuilder::BundledExtensions), so require \"bigdecimal\" finds the linked extension " \
+        "before RubyGems activates the gem, and the gem's lib/bigdecimal.rb, which defines BigDecimal#power, #**, " \
+        "#sqrt, and BigMath, never loads. Remove this entry with the fix.",
+    ),
+    Justification.new(
+      example: %r{\Alibrary: loading library/fiddle/},
+      side: :app, platforms: %w[arm64-ios-simulator],
+      reason: "The iOS runtime leaves fiddle out, as xord/cruby does, since it calls any C function by name, which " \
+        "App Store review refuses (doc/contributors/design/phone-runtimes.md, \"Bundled gems' extensions\").",
+    ),
+    Justification.new(
+      example: /\Acore: IO#sync is false by default for STDOUT\z/,
+      side: :app, platforms: PHONES,
+      reason: "A phone's host sends standard output to the system log through a pipe, and the embedding API puts " \
+        "$stdout in sync mode, so each line reaches the log as it is printed (ADR 059; " \
+        "doc/contributors/design/phone-runtimes.md, \"Output to the system log\").",
+    ),
+    Justification.new(
+      example: /\Alibrary: RbConfig::CONFIG \['archdir'\] returns the directory containing standard libraries C extensions\z/,
+      side: :app, platforms: PHONES,
+      reason: "A phone runtime links every extension into the app, where Android and iOS load native code from, " \
+        "so no archdir holds them (doc/contributors/design/phone-runtimes.md, \"What a phone runtime holds\").",
+    ),
+    Justification.new(
+      example: /\Acore: (?:File|File::Stat|FileTest)[.#](?:setuid|setgid|sticky)\? /,
+      side: :app, platforms: %w[arm64-ios-simulator],
+      reason: "iOS's sandbox keeps an app from setting the set-user-ID, set-group-ID, and sticky bits on its files, " \
+        "which these examples set with chmod and then read back.",
+    ),
+    Justification.new(
+      example: /\A(?:core: (?:File|File::Stat|FileTest)[.#](?:grpowned|executable|readable|writable)\? |core: Process\.(?:egid|euid)= sets the effective (?:group|user) id to its own [gu]id if given the username|library: Etc\.getlogin )/,
+      side: :app, platforms: %w[arm64-ios-simulator],
+      reason: "TEMPORARY, a gap to look into: an iOS app has no user or group database and getgroups fails in it, " \
+        "and Ruby's file.c takes getgroups' -1 for a count, so these raise ArgumentError (malloc: possible integer " \
+        "overflow) or EINVAL, and Etc finds no user or group for the app's own IDs.",
+    ),
+    Justification.new(
+      example: /\Alibrary: RbConfig::CONFIG \['(?:AR|STRIP)'\] exists and can be executed\z/,
+      side: :app, platforms: ANDROID,
+      reason: "RbConfig names the NDK's archiver and strip the runtime was built with, on the computer that built " \
+        "it; a phone has no toolchain, and an app needs one only to compile, which Fledge does on the developer's " \
+        "computer (doc/contributors/design/phone-projects.md, \"Gems with extensions\").",
+    ),
+    Justification.new(
+      example: /\Acore: Process\.maxgroups sets the maximum number of gids allowed in the supplemental group access list\z/,
+      side: :app, platforms: ANDROID,
+      reason: "The Android runtime's Ruby is configured, as Termux configures it, without setgroups, which Android's " \
+        "seccomp filter for apps forbids (RuntimeBuilder::Android::TERMUX), so Process.maxgroups= raises " \
+        "NotImplementedError, as Ruby does wherever the call is missing.",
+    ),
+    Justification.new(
+      example: /\Acore: Dir\.scan handles character devices\z/,
+      side: :app, platforms: ANDROID,
+      reason: "The example lists /dev, which Android's SELinux policy forbids an app to read (EACCES).",
+    ),
+    Justification.new(
+      example: /\Acore: Dir\.(?:glob|\[\]) with base: follows directory symlinks relative to a Dir opened with a relative path\z/,
+      side: :app, platforms: ANDROID,
+      reason: "TEMPORARY, a gap to look into: on Android, Dir.glob with a base: Dir opened by a relative path finds " \
+        "nothing, where it finds the files on Linux.",
     ),
   ].freeze
 
@@ -221,21 +295,33 @@ class RubySpec
     folder
   end
 
-  private def report(stock, built, differences)
+  # Prints the totals of the +stock+ and +built+ runs and the
+  # +differences+ under +title+, and adds them to the summary in the
+  # output folder and, in CI, to the job summary.
+  private def report(stock, built, differences, title: "ruby/spec on #{platform}")
     lines = [
-      "ruby/spec on #{platform}: #{differences.count(&:justified?)} justified, " \
+      "#{title}: #{differences.count(&:justified?)} justified, " \
         "#{differences.count { |difference| !difference.justified? }} unjustified differences",
       *stock.zip(built).map { |reference, app| "  #{reference.directory}: stock #{reference.totals || 'did not finish'}; app #{app.totals || 'did not finish'}" },
       *differences.map(&:to_s),
     ]
     @log.puts lines
-    File.write(File.join(@out, "summary.txt"), "#{lines.join("\n")}\n")
+    File.write(File.join(@out, "summary.txt"), "#{lines.join("\n")}\n", mode: "a")
     summary = ENV.fetch("GITHUB_STEP_SUMMARY", nil)
     File.write(summary, "```\n#{lines.join("\n")}\n```\n", mode: "a") if summary
   end
 end
 
+require_relative "ruby_spec/phone"
+
 if $PROGRAM_NAME == __FILE__
-  platform = ARGV.first ? Fledge::Platform.find(ARGV.first) : Fledge::Platform.local
-  exit RubySpec.new(platform:).call
+  command, runtimes = ARGV
+  options = { runtimes: }.compact
+  passed = case command
+  when "ios" then RubySpec::Phone.new("ios", **options).ios
+  when "android-build" then RubySpec::Phone.new("android", **options).android_build
+  when "android" then RubySpec::Phone.new("android").android
+  else RubySpec.new(platform: command ? Fledge::Platform.find(command) : Fledge::Platform.local).call
+  end
+  exit passed
 end

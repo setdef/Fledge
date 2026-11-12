@@ -217,12 +217,8 @@ class MobileParity
     # app printed what it should each time and every difference the probe
     # found is justified.
     def call
-      abi = adb("shell", "getprop", "ro.product.cpu.abi").strip
-      memory = adb("shell", "cat", "/proc/meminfo")[/\AMemTotal:\s+(\d+) kB/, 1].to_i / 1024
-      device = "#{abi} API #{adb('shell', 'getprop', 'ro.build.version.sdk').strip}, #{adb('shell', 'getconf', 'PAGE_SIZE').strip}-byte pages, " \
-        "#{memory} MB of memory"
       adb("logcat", "-G", "16M")
-      parity = MobileParity.new(target: "#{abi.sub('arm64-v8a', 'aarch64')}-linux-android", work: @work, out: @out)
+      parity = MobileParity.new(target:, work: @work, out: @out)
       APPS.flat_map do |app|
         adb("install", "-r", File.join(APKS, "#{app.identifier}.apk"))
         from_apk = parity.check(app, launch(app), "#{device}, from its debug APK")
@@ -234,19 +230,44 @@ class MobileParity
       end.all?
     end
 
+    # The platform of the running emulator, as Parity::JUSTIFIED and
+    # RubySpec::JUSTIFIED name it.
+    def target
+      "#{abi.sub('arm64-v8a', 'aarch64')}-linux-android"
+    end
+
+    # The running emulator, described: its ABI, API level, page size, and
+    # memory.
+    def device
+      @device ||= device_description
+    end
+
+    private def device_description
+      memory = adb("shell", "cat", "/proc/meminfo")[/\AMemTotal:\s+(\d+) kB/, 1].to_i / 1024
+      "#{abi} API #{adb('shell', 'getprop', 'ro.build.version.sdk').strip}, #{adb('shell', 'getconf', 'PAGE_SIZE').strip}-byte pages, " \
+        "#{memory} MB of memory"
+    end
+
     # Starts +app+ after clearing logcat, and returns the lines it logged
-    # up to its status, then stops it, since Ruby boots once per process.
-    private def launch(app)
+    # up to its status and after, until the log settles, then stops it,
+    # since Ruby boots once per process.
+    # It fails when the app has not finished in +timeout+ seconds, or
+    # when its process has ended without the host's status, as when
+    # Android stopped it.
+    def launch(app, timeout: TIMEOUT)
       adb("logcat", "-c")
       adb("shell", "am", "start", "-W", "-n", "#{app.identifier}/#{ACTIVITY}")
-      deadline = Time.now + TIMEOUT
+      deadline = Time.now + timeout
       until MobileParity.status(logged(app))
-        raise "#{app.name} did not finish in #{TIMEOUT} seconds:\n#{logged(app).last(40).join("\n")}\n#{diagnosis(app)}" if Time.now > deadline
+        ended = !running?(app) && !MobileParity.status(logged(app))
+        if ended || Time.now > deadline
+          why = ended ? "ended without a status" : "did not finish in #{timeout} seconds"
+          raise "#{app.name} #{why}:\n#{logged(app).last(40).join("\n")}\n#{diagnosis(app)}"
+        end
 
         sleep 2
       end
-      sleep 3
-      logged(app).tap { adb("shell", "am", "force-stop", app.identifier) }
+      MobileParity.settled { logged(app) }.tap { adb("shell", "am", "force-stop", app.identifier) }
     end
 
     # What the emulator says of +app+, for one that never finished:
@@ -281,6 +302,14 @@ class MobileParity
     # -v raw prints them.
     private def logged(app)
       adb("logcat", "-d", "-v", "raw", "-s", "#{app.identifier}:V").lines.map(&:chomp).reject { |line| line.start_with?("--------- ") }
+    end
+
+    private def running?(app)
+      !Open3.capture2e("adb", "shell", "pidof", app.identifier).first.strip.empty?
+    end
+
+    private def abi
+      @abi ||= adb("shell", "getprop", "ro.product.cpu.abi").strip
     end
 
     private def adb(*arguments)

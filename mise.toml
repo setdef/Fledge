@@ -55,6 +55,18 @@ os = ["linux"]
 platforms.linux-x64 = { url = "https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz", checksum = "sha256:ce84f2447fb7a8679e58bc54a20dc2b01b37b5802e12c57eece772a6f14bf3f0", bin_path = "bin" }
 platforms.linux-arm64 = { url = "https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-aarch64.tar.gz", checksum = "sha256:ae13e2effe077e829be759182396b931d8f85cfb9cfe9d49385516ea367ef7b2", bin_path = "bin" }
 
+# 7-Zip unpacks RubyInstaller's .7z archive when rake runtime builds a
+# Windows runtime on Linux (tasks/runtime_builder/windows.rb,
+# extract_7z), which finds its 7zz. GitHub's Ubuntu runners have 7-Zip
+# already, a stock Linux computer does not. 26.05, from ip7z/7zip's own
+# Linux builds, by the SHA-256 GitHub records for each asset. It runs
+# at build time only, and no runtime carries it.
+[tools."http:7zip"]
+version = "26.05"
+os = ["linux"]
+platforms.linux-x64 = { url = "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz", checksum = "sha256:22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e" }
+platforms.linux-arm64 = { url = "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-arm64.tar.xz", checksum = "sha256:0b71f6cfc34669b3bf69f2347efd3429f77020665003a13b9cdc53b784270421" }
+
 # On Windows, the very archive of RubyInstaller's head build the Windows
 # runtimes are built from: the URL and SHA-256 of runtime/sources.yml's
 # x64-mingw-ucrt and aarch64-mingw-ucrt pins, which

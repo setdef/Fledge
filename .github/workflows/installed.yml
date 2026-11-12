@@ -219,7 +219,9 @@ jobs:
           ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
 
       # Compiling a gem downloads the runtime's build-only companion from
-      # the release too (ADR 006).
+      # the release too (ADR 006). On Ruby 4.1 my_cool_app's sqlite3 has no
+      # build either, so the step before may have downloaded it already,
+      # into the same cache.
       - name: Build native_app from source with the release's build-only companion
         if: matrix.platform != 'aarch64-mingw-ucrt'
         run: |
@@ -228,7 +230,7 @@ jobs:
           cd "$RUNNER_TEMP/project"
           bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/native_app" 2> "$RUNNER_TEMP/native.err" ||
             { cat "$RUNNER_TEMP/native.err"; exit 1; }
-          grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/native.err" | grep -F -- "-dev.tar.gz"
+          cat "$RUNNER_TEMP/build.err" "$RUNNER_TEMP/native.err" | grep -F "Downloading fledge-runtime-" | grep -F -- "-dev.tar.gz"
           cd "$GITHUB_WORKSPACE/examples/native_app"
           bundle install
           bundle exec ruby main.rb | tee "$RUNNER_TEMP/native_app.expected"

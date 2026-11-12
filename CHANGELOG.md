@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-12
+
 ### Changed
 
 - Breaking: the runtimes carry Ruby 4.1.0-preview1 in place of Ruby 4.0.9, so `fledge build` needs Ruby 4.1 to run it, and an app gets Ruby 4.1's standard library, default gems, and bundled gems (prism, tsort, and win32-registry join them; net-ftp and net-pop leave).
@@ -368,7 +370,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/setdef/Fledge/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/setdef/Fledge/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/setdef/Fledge/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/setdef/Fledge/compare/v0.8.0...v0.9.0

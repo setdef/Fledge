@@ -5,7 +5,7 @@ run into an app that people without Ruby can download and run. Your users
 unpack one file and run it. They install nothing, and never learn what Ruby
 is.
 
-  gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.11.0", group: :development
+  gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.12.0", group: :development
 
 === A First App
 

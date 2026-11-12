@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Keeps RubyInstaller's signed head build of the day each Ruby 4.1
+# release appears: preview2, any later preview, each RC, and 4.1.0
+# (doc/contributors/design/runtimes.md, "Keeping RubyInstaller's head
+# build"). RubyInstaller publishes Ruby 4.1 for Windows only as its
+# rolling rubyinstaller-head release and replaces its files every night,
+# and only those files' .asc signatures let a build be checked against
+# RubyInstaller's key, so a release day's build has to be kept within
+# the day. When a release is new, .github/scripts/keep-rubyinstaller-head.sh
+# checks both archives against the key runtime/sources.yml pins, and
+# publishes the four files unchanged on a pre-release named
+# inputs-rubyinstaller-head-YYYYMMDD-for-VERSION, which is also the
+# record that the release is kept: nothing else holds state.
+#
+# Run it by hand (workflow_dispatch) to try it: by default a dry run,
+# which downloads and verifies everything and publishes nothing, for the
+# versions given (4.1.0-preview1, which exists, shows the whole path).
+
+name: Keep RubyInstaller head
+
+on:
+  schedule:
+    # Every three hours, at a minute when few other schedules start.
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Download and verify, but publish nothing
+        type: boolean
+        default: true
+      versions:
+        description: The Ruby versions to watch, oldest first (empty for the script's own list)
+        type: string
+        default: ""
+
+permissions: {}
+
+# Two runs at once could both find a release new and both keep it.
+concurrency:
+  group: keep-rubyinstaller-head
+  cancel-in-progress: false
+
+jobs:
+  keep:
+    name: Keep
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Keep the head build of a new Ruby 4.1 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run && '1' || '' }}
+          KEEP_VERSIONS: ${{ inputs.versions }}
+        run: .github/scripts/keep-rubyinstaller-head.sh

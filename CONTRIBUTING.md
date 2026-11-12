@@ -39,7 +39,7 @@ A new test file is a unit test unless you put it in `test/integration/`. When a 
 
 While you work:
 
-- `bundle exec rake test` runs the unit tests, in seconds. Run it as often as you like.
+- `bundle exec rake test` runs the unit tests, in seconds. Run it as often as you like. CI's fast tier, `.github/workflows/fast.yml`, runs them on Linux, macOS, and Windows on every push.
 - `bundle exec rake test:integration` runs the integration tests, and `bundle exec rake test:all` runs both, as the gate and CI do. Build a runtime first (`bundle exec rake runtime`), or the tests that need one skip.
 - `bundle exec rake test TEST=test/foo_test.rb` runs just that file, of either tier; several files, or globs, go comma-separated.
 - `N=/name/` runs just the tests whose names match, and `A=-v` names each test with its time as it runs.

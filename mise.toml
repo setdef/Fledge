@@ -126,6 +126,22 @@ os = ["windows"]
 platforms.windows-x64 = { url = "https://github.com/ruby/setup-msys2-gcc/releases/download/v20261112.002116/msys2-ucrt64.7z", checksum = "sha256:2b1b2508f754bfed6e343b7a1f8211646c8df3bb7fb9cb5a42592929f11f1499", bin_path = "ucrt64/bin" }
 platforms.windows-arm64 = { url = "https://github.com/ruby/setup-msys2-gcc/releases/download/v20261112.002116/msys2-clangarm64.7z", checksum = "sha256:8c95e197ce13c53c48a0a3b13c0e73bdd7e7989579e2231b400dd19b559d74e7", bin_path = "clangarm64/bin" }
 
+# On Windows, Microsoft's MakeAppx, which fledge build runs to make an
+# MSIX package (Fledge::Msix), and signtool, from Microsoft's own
+# Microsoft.Windows.SDK.BuildTools package on nuget.org, by the SHA-256
+# of the package as downloaded when it was pinned, for a Windows
+# computer with no Windows SDK installed (GitHub's runners have one).
+# The package is a zip; bin_path puts its tools' folder for this
+# computer's architecture on PATH, where fledge build looks first
+# (Fledge::WindowsSdk). Installing it accepts the Windows SDK's license
+# terms (https://aka.ms/WinSDKLicenseURL). It runs at build time only,
+# and no runtime or app carries it.
+[tools."http:windows-sdk-buildtools"]
+version = "10.0.28000.2705"
+os = ["windows"]
+platforms.windows-x64 = { url = "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/10.0.28000.2705/microsoft.windows.sdk.buildtools.10.0.28000.2705.nupkg", checksum = "sha256:8bfdfb6ca2633f531cf80b5fa22512ba61a394d7988f0970db83baadc67929ed", format = "zip", bin_path = "bin/10.0.28000.0/x64" }
+platforms.windows-arm64 = { url = "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/10.0.28000.2705/microsoft.windows.sdk.buildtools.10.0.28000.2705.nupkg", checksum = "sha256:8bfdfb6ca2633f531cf80b5fa22512ba61a394d7988f0970db83baadc67929ed", format = "zip", bin_path = "bin/10.0.28000.0/arm64" }
+
 # On Windows, the rest of what `ridk enable` sets, so a shell has what a
 # RubyInstaller user's has: RI_DEVKIT here, the variables that depend on
 # the architecture in .config/mise/windows-ARCH.env (no file exists for

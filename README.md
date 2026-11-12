@@ -48,7 +48,7 @@ The archive is 22 MB, and 74 MB unpacked. Anyone with an Apple silicon Mac on ma
 | Your app | macOS | Windows | Linux |
 | --- | --- | --- | --- |
 | Runs in a terminal (the default) | a `.tar.gz` | a `.zip` | a `.tar.gz` |
-| Opens its own windows | a `.app` bundle, and a `.dmg` | a `.zip`, and a setup program that needs no administrator | a `.tar.gz` with a desktop entry, an AppImage, and a `.deb` if you ask for one |
+| Opens its own windows | a `.app` bundle, and a `.dmg` | a `.zip`, a setup program that needs no administrator, and an `.msix` for the Microsoft Store if you ask for one | a `.tar.gz` with a desktop entry, an AppImage, and a `.deb` if you ask for one |
 
 For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you build and submit as you would any other phone app.
 

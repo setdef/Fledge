@@ -37,8 +37,9 @@ installed a Ruby.
   SHA-256 beside each for Scoop, Homebrew, winget, Chocolatey, and the
   AUR.
 [Windowed apps]
-  A <tt>.app</tt> and a <tt>.dmg</tt> on macOS, a setup program on Windows,
-  and an AppImage, and a <tt>.deb</tt> if you ask, on Linux, with your name, icon,
+  A <tt>.app</tt> and a <tt>.dmg</tt> on macOS; a setup program on Windows,
+  and an MSIX package for the Microsoft Store if you ask; and an AppImage
+  on Linux, and a <tt>.deb</tt> if you ask. Each carries your name, icon,
   version, and the files your app opens.
 [Phones]
   An Xcode or Gradle project for iPhone, iPad, and Android, with your C

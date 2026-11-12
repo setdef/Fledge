@@ -348,6 +348,40 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # On Windows both launchers declare UTF-8 as the process's ANSI code
+  # page, so a Windows function that takes a narrow string reads Ruby's
+  # UTF-8 path as UTF-8. ffi opens a gem's DLL with LoadLibraryExA
+  # (ext/ffi_c/DynamicLibrary.c, lines 215 to 225, at ffi 1.17.4), which
+  # under code page 1252 finds no DLL under a folder named outside ASCII,
+  # as every app here is unpacked under "Ünïcödé 日本".
+  def test_a_windows_app_reads_a_narrow_strings_path_as_utf8
+    skip "the ANSI code page is Windows'" unless @platform.windows?
+
+    Dir.mktmpdir do |dir|
+      project = File.join(dir, "acp")
+      FileUtils.mkdir_p(project)
+      File.write(File.join(project, "main.rb"), <<~RUBY)
+        require "fiddle"
+        kernel32 = Fiddle.dlopen("kernel32.dll")
+        acp = Fiddle::Function.new(kernel32["GetACP"], [], Fiddle::TYPE_INT).call
+        load = Fiddle::Function.new(kernel32["LoadLibraryExA"], [Fiddle::TYPE_VOIDP, Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT], Fiddle::TYPE_VOIDP)
+        dll = Dir.glob(File.join(RbConfig::TOPDIR, "lib", "ruby", "*", "*-mingw-ucrt", "libz-1.dll")).fetch(0)
+        handle = load.call(dll, nil, 8) # LOAD_WITH_ALTERED_SEARCH_PATH, as ffi passes for a full path
+        File.write(ARGV.fetch(0), "code page \#{acp}, \#{handle.null? ? "no DLL" : "loaded"} from \#{dll.encoding}\\n")
+      RUBY
+      %w[console windowed].each do |kind|
+        File.write(File.join(project, "fledge.yml"), "name: Acp#{kind}\nkind: #{kind}\nidentifier: com.setdef.fledge.Acp#{kind}\n")
+        launcher = build_and_unpack(dir, project, name: "Acp#{kind}")
+        report = File.join(dir, "#{kind}.txt")
+
+        _, err, status = run_app({ "HOME" => dir }, launcher, report, chdir: dir)
+
+        assert_equal ["", 0], [err, status.exitstatus], kind
+        assert_equal "code page 65001, loaded from UTF-8\n", File.read(report), kind
+      end
+    end
+  end
+
   # require "mkmf" loads in a built app, as under ruby, since the
   # runtime keeps Ruby's headers (ADR 039), and some gems require it at
   # run time for MakeMakefile#find_executable.

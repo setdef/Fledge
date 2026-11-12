@@ -171,7 +171,17 @@ Once the program runs, the status is the program's own. `bin/ruby`, which is Rub
 
 Nothing is exported: `ENV`, and programs that are not Ruby, see the person's own locale. Every Ruby the app starts through `RbConfig.ruby` coerces for itself.
 
-On Windows the launcher calls `setlocale(LC_CTYPE, "")` as `main.c` does, and its manifest sets no `activeCodePage`. Ruby's `Encoding.default_external` is UTF-8 there whatever the code page (since Ruby 3.0, Feature #16604), `Encoding.locale_charmap` is the console's input code page (`localeinit.c`, `GetConsoleCP`), and Ruby writes to a console with `WriteConsoleW` (`win32/win32.c`, `rb_w32_write_console`), so text outside the code page still shows as written.
+On Windows the launcher calls `setlocale(LC_CTYPE, "")` as `main.c` does, and its manifest declares UTF-8 as the process's ANSI code page (`activeCodePage`), which `ruby.exe` does not. Ruby's `Encoding.default_external` is UTF-8 there whatever the code page (since Ruby 3.0, Feature #16604), and so is `Encoding.find("filesystem")` (`localeinit.c`, `Init_enc_set_filesystem_encoding`, lines 117 to 137 at Ruby 0e25874222). `Encoding.locale_charmap` is the console's input code page, or, in a process with no console, such as a windowed app, the ANSI code page (`localeinit.c`, lines 48 to 54: `GetConsoleCP`, then `GetACP`). Ruby writes to a console with `WriteConsoleW` (`win32/win32.c`, `rb_w32_write_console`), so text outside the code page still shows as written.
+
+The ANSI code page is what every Windows function whose name ends in `A` reads a narrow string in. Ruby's own file, environment, and process functions convert UTF-8 to UTF-16 themselves and call the `W` functions, and `ruby/win32.h` points a C extension's `open`, `stat`, `access`, `mkdir`, `unlink`, and `getenv` at them too (lines 125 to 183 and 664). What reaches an `A` function with Ruby's UTF-8 bytes is a gem's own: ffi opens a DLL with `LoadLibraryExA` (`ext/ffi_c/DynamicLibrary.c`, lines 215 to 225, at ffi 1.17.4), and an extension may call `fopen` or a Windows function directly. Under code page 1252 those name no file whose path holds a character outside ASCII, such as a DLL in `C:\Users\José\`; under UTF-8 they do. What `activeCodePage` UTF-8 changes in the launcher's process, from Windows 10 version 1903 ("Use UTF-8 code pages in Windows apps", Microsoft Learn), and nothing else:
+
+- `GetACP` is 65001, so every `A` function, and `MultiByteToWideChar` with `CP_ACP`, reads UTF-8.
+- `setlocale(LC_CTYPE, "")` takes its code page from `GetACP` (UCRT's `setlocale` reference, "Remarks"), so the C runtime's locale is UTF-8 (`English_United States.utf8` where `ruby.exe` gets `.1252`), and UCRT's narrow functions, `fopen` and `_mkdir` among them, read UTF-8 (the same page, "UTF-8 support").
+- `Encoding.locale_charmap` with no console is `CP65001`, so `Encoding.find("locale")` is UTF-8 in a windowed app, where `rubyw.exe` gives the system's, such as Windows-1252. With a console it is the console's code page, as under `ruby.exe`: the manifest changes neither of the console's code pages.
+- `Time#zone`, when `TZ` is set, takes the C runtime's zone name in the encoding `GetACP` names (`time.c`, lines 769 to 774), UTF-8 rather than Windows-1252.
+- GDI's `A` functions keep the system's code page, as Microsoft's page says, so a gem that draws text with them gains nothing.
+
+A child process has its own code page: `bin\ruby.exe`, which `RbConfig.ruby` names, is RubyInstaller's, declares none, and keeps the system's.
 
 ## Windows
 
@@ -192,7 +202,7 @@ Files of the app are opened with `\\?\` paths where they may pass `MAX_PATH`.
 - `longPathAware`, as RubyInstaller's `ruby.exe` declares, so RubyGems loads from an app unpacked deep in a folder tree;
 - `supportedOS` for Windows 10 and 11, so Windows runs it without compatibility shims;
 - `requestedExecutionLevel` `asInvoker`, which also turns off Windows' installer detection, which would ask for an administrator's password for an app whose name holds "setup", "install", or "update";
-- no `activeCodePage` (see "The locale").
+- `activeCodePage` UTF-8, so a gem's `A` calls read Ruby's UTF-8 paths as UTF-8 (see "The locale").
 
 **The AppUserModelID.** When `fledge.cfg` names an `identifier`, console or windowed, the launcher loads `shell32.dll` from System32 and calls `SetCurrentProcessExplicitAppUserModelID` with it before any window opens, so the taskbar groups the app's windows under it and Windows attributes its notifications to it. Failing changes how Windows groups and names the app, never whether it runs, so failure is ignored. Windows shows the app's toasts only when a Start menu shortcut carries the same `System.AppUserModel.ID`, which the NSIS installer writes (`doc/contributors/design/desktop-apps.md`).
 

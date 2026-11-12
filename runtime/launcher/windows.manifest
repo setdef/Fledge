@@ -14,7 +14,12 @@ runs the program without compatibility shims. requestedExecutionLevel
 asInvoker runs it with the rights of whoever starts it, and turns off
 Windows' installer detection, which would otherwise ask for an
 administrator's password before running an app whose name contains
-"setup", "install", or "update".
+"setup", "install", or "update". activeCodePage UTF-8 makes UTF-8 the
+process's ANSI code page (GetACP), from Windows 10 version 1903, so a
+Windows function that takes a narrow string reads Ruby's UTF-8 paths as
+UTF-8: ffi opens a gem's DLL with LoadLibraryExA, which under code page
+1252 finds no DLL under a folder named outside ASCII. ruby.exe declares
+no activeCodePage; doc/differences_from_ruby.md says what differs.
 -->
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
@@ -32,6 +37,7 @@ administrator's password before running an app whose name contains
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings xmlns:ws2="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
       <ws2:longPathAware>true</ws2:longPathAware>
+      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
     </windowsSettings>
   </application>
 </assembly>

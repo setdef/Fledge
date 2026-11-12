@@ -21,6 +21,10 @@
 name: Keep RubyInstaller head
 
 on:
+  # Experiment only: a push registers the workflow on this branch, so
+  # that it can be dispatched here; every run here is a dry run.
+  push:
+    branches: [experiment/keep-rubyinstaller-head]
   schedule:
     # Every three hours, at a minute when few other schedules start.
     - cron: "17 */3 * * *"
@@ -57,6 +61,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run && '1' || '' }}
-          KEEP_VERSIONS: ${{ inputs.versions }}
+          DRY_RUN: "1"
+          KEEP_VERSIONS: ${{ inputs.versions || '4.1.0-preview1' }}
         run: .github/scripts/keep-rubyinstaller-head.sh

@@ -11,6 +11,7 @@ module Fledge
       BUILD: String
       SHARED: Regexp
       DEBUG: Regexp
+      HOOK: String
 
       @ruby: String
       @work: String
@@ -19,11 +20,13 @@ module Fledge
 
       def initialize: (ruby: String, work: String, environment: Hash[String, String?], run: _Run) -> void
 
-      def call: (Target target, locked_gem gem, Gem::Specification spec, String root, String extension, Array[String] args, Integer _first) -> Array[Report]
+      def call: (Target target, locked_gem gem, Gem::Specification spec, String root, String extension, Array[String] args, Integer first) -> Array[Report]
 
-      private def environment: (Target target, String folder) -> Hash[String, String?]
+      private def environment: (Target target, String folder, String report, Integer first) -> Hash[String, String?]
 
       private def refuse: (locked_gem gem, String extension, Target target, Array[String] paths) -> void
+
+      private def describe: (Hash[String, String] entry, Hash[String, String?] env, Array[String] places, locked_gem gem, Target target, String what) -> Report
 
       private def shared_libraries: (String folder) -> Array[String]
 

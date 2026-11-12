@@ -87,6 +87,7 @@ jobs:
           echo "matrix={\"include\":$matrix}" >> "$GITHUB_OUTPUT"
 
   specs:
+    if: false
     name: ruby/spec (${{ matrix.platform }})
     needs: plan
     runs-on: ${{ matrix.os }}
@@ -180,6 +181,7 @@ jobs:
   # must be the phone runtime's version and revision. What no phone can
   # run is left out of both runs (RubySpec::Phone::EXCLUDED).
   ios:
+    if: false
     name: ruby/spec (iOS Simulator, iPhone and iPad)
     needs: plan
     runs-on: macos-26

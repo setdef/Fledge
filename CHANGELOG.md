@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On iOS and Android, a gem from git with an extension compiles; its build failed with `Errno::ENOENT` before it began.
 - On Windows, an app runs with UTF-8 as its ANSI code page, which its manifest declares, so a gem that opens a file or DLL through a Windows `A` function works when the app is installed under a folder named outside ASCII: a gem whose DLL ffi loads, such as libusb, failed to load there. In a windowed app `Encoding.find("locale")` is UTF-8 where `rubyw.exe` gives the system's code page; `doc/differences_from_ruby.md` says what else differs.
 
 - On iOS and Android, a gem whose `extconf.rb` writes `extconf.h` with `create_header`, as many do, has its extension's Init function renamed as Fledge registers it, so the app links on iOS and starts on Android; it failed with an undefined `Init_fledge_N` symbol.

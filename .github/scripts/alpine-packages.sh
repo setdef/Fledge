@@ -31,7 +31,7 @@ case "${1:?usage: alpine-packages.sh build|apps|deliver}" in
       zstd=1.5.7-r2
     ;;
   apps)
-    set -- git=2.54.0-r0 binutils=2.45.1-r1 tar=1.35-r5 squashfs-tools=4.7.5-r0
+    set -- git=2.54.1-r0 binutils=2.45.1-r1 tar=1.35-r5 squashfs-tools=4.7.5-r0
     ;;
   deliver)
     set -- util-linux-misc=2.42.3-r1 procps-ng=4.0.6-r0 desktop-file-utils=0.28-r0 file=5.47-r2

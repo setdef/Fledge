@@ -11,12 +11,25 @@ source "https://rubygems.org"
 # against the runtime's Ruby on the platform it builds for (ADR 006).
 gem "redcarpet", "~> 3.6"
 
-# ratatui_ruby, a Rust extension published precompiled for three
-# platforms and as source, stood here until Fledge moved to Ruby 4.1: its
-# 1.5.2 builds exclude Ruby 4.1, and its source locks the rb-sys crate at
-# 0.9.123, whose bindings do not compile against Ruby 4.1's headers, so
-# bundle install fails as fledge build does. It returns with a release
-# that builds on Ruby 4.1.
+# A gem published precompiled for some platforms and as source, so that
+# fledge build ships its precompiled build where one fits and compiles it
+# where none does (ADR 006). libusb's Windows builds carry a libusb DLL
+# that ffi loads, so they fit any Ruby, Ruby 4.1 among them; its source
+# build's extconf.rb compiles the libusb it carries with mini_portile2,
+# which every other platform does. The project's .bundle/config asks for
+# that libusb rather than one the build computer happens to have, and,
+# where the build computer has libudev's headers, for a libusb without
+# udev's hotplug, which would need libudev.so.1 where the app goes: its
+# extconf.rb leaves udev out when mkmf cannot link it, and mkmf's
+# have_library links the library --with-udevlib names, here none. These
+# are what a developer who ships libusb would ask for. libusb needs ffi,
+# whose precompiled builds exclude Ruby 4.1, so ffi compiles from source
+# on every platform, and .bundle/config asks it for the libffi it
+# carries, linked in, rather than the build computer's libffi.so.8.
+# ratatui_ruby stood here until Fledge moved to Ruby 4.1: its 1.5.2
+# builds exclude Ruby 4.1, and its source locks the rb-sys crate at
+# 0.9.123, whose bindings do not compile against Ruby 4.1's headers.
+gem "libusb", "~> 0.8"
 
 # Pure Ruby, under the GPL. Which licenses an app's gems are under is its
 # developer's to decide, not Fledge's, so it ships like any other gem

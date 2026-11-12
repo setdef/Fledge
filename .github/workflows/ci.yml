@@ -988,8 +988,10 @@ jobs:
   # examples/native_app, whose gems must be compiled (ADR 006): redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
   # its git tag, each compiled against the runtime's own Ruby and its
-  # build-only companion, and spreadsheet, a GPL gem, with the bigdecimal
-  # it needs, the one the runtime's Ruby bundles.
+  # build-only companion; libusb, whose precompiled build ships on
+  # Windows and which compiles from source elsewhere, with the ffi it
+  # needs compiled everywhere; and spreadsheet, a GPL gem, with the
+  # bigdecimal it needs, the one the runtime's Ruby bundles.
   # examples/real_gems (doc/contributors/design/gems.md, "Examples that
   # exercise these rules"): the gems real apps lock, from a credentialed
   # mirror, a folder outside the project, a path gem with an extension, git

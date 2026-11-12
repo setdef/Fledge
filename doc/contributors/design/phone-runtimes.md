@@ -75,6 +75,7 @@ Then each system packs what it built. iOS merges every archive Ruby's build made
 |---|---|---|---|
 | `psych_extconf` | both | psych's `extconf.rb` stops preferring pkg-config's libyaml | xord/cruby |
 | `vm_dump` | iOS | `vm_dump.c` stops calling `system()` | xord/cruby |
+| `configure_macos_minimum` | iOS | the generated `configure` keeps its check for macOS 10.6 or later for a macOS target only, since the iOS SDK reports 10.5 for an iOS one (ruby/ruby 3e96f16643) | Fledge; `doc/contributors/drafts/ruby-ios-configure.md` |
 | `configure` | Android | the generated `configure` stops appending `-android` twice, so the platform is `aarch64-linux-android`, not `aarch64-linux-android-android` | Termux's guard |
 | `ruby_c` | both | `ruby.c` gains `ruby_embed_libruby_path`, through which an embedder names the file Ruby would otherwise find with `dladdr` and derive its prefix from (`runtime_libruby_path`, lines 593 to 663 at Ruby 4.1.0-preview1) | Fledge |
 | `load_c` | both | `load.c` finds a bundled gem's linked extension only while its gem is active (see "Bundled gems' extensions") | Fledge |

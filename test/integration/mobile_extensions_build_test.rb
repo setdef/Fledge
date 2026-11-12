@@ -52,6 +52,28 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }, platforms)
   end
 
+  # An extconf.rb that writes extconf.h, as many do, takes mkmf's $defs
+  # off the compile line (mkmf.rb's create_makefile), so the extension's
+  # Init function is still renamed only if the rename goes elsewhere.
+  def test_an_extconf_that_writes_its_header_has_its_init_function_renamed
+    runtimes = real_runtimes("ios")
+    gem = extconf_gem("headed", <<~RUBY, "headed.c" => "#include <ruby.h>\nvoid Init_headed(void) { rb_define_module(\"Headed\"); }\n")
+      require "mkmf"
+      have_header("stdint.h")
+      create_header
+      create_makefile("headed/headed")
+    RUBY
+
+    built = compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) })
+
+    assert_equal [["headed/headed", "Init_fledge_0"]], built.registrations
+    built.targets.each_value do |target|
+      symbols = Open3.capture2("xcrun", "nm", "-g", "--defined-only", target.archives.fetch(0)).first
+      assert_match(/ T _Init_fledge_0$/, symbols)
+      refute_match(/ T _Init_headed$/, symbols)
+    end
+  end
+
   # examples/cmake_phone's extconf.rb runs CMake, which builds its C++
   # library from CMAKE_TOOLCHAIN_FILE for each slice (ADR 027): the
   # device's objects are for iOS and the Simulator's for the Simulator,
@@ -186,6 +208,26 @@ class MobileExtensionsBuildTest < Minitest::Test
   def rakesum_gem
     folder = File.expand_path("../fixtures/rakesum", __dir__)
     Fledge::PathGem.new(name: "rakesum", version: "1.0.0", folder:, app_path: "vendor/cache/rakesum", glob: "{,*,*/*}.gemspec", inside: true)
+  end
+
+  # A path gem +name+ whose gemspec names ext/NAME/extconf.rb, with
+  # +extconf+ and +files+ in ext/NAME/.
+  def extconf_gem(name, extconf, files = {})
+    folder = File.join(@dir, "gems", name)
+    FileUtils.mkdir_p(File.join(folder, "ext", name))
+    File.write(File.join(folder, "ext", name, "extconf.rb"), extconf)
+    files.each { |file, text| File.write(File.join(folder, "ext", name, file), text) }
+    File.write(File.join(folder, "#{name}.gemspec"), <<~RUBY)
+      Gem::Specification.new do |spec|
+        spec.name = #{name.inspect}
+        spec.version = "1.0.0"
+        spec.authors = ["Kerrick Long"]
+        spec.summary = "An extconf.rb's extension"
+        spec.files = #{(["ext/#{name}/extconf.rb"] + files.keys.map { |file| "ext/#{name}/#{file}" }).inspect}
+        spec.extensions = ["ext/#{name}/extconf.rb"]
+      end
+    RUBY
+    Fledge::PathGem.new(name:, version: "1.0.0", folder:, app_path: "vendor/cache/#{name}", glob: "{,*,*/*}.gemspec", inside: true)
   end
 
   # A path gem +name+ whose gemspec names ext/Rakefile, with +rakefile+

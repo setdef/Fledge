@@ -73,7 +73,8 @@ module Fledge
       # Rakefile's own +make+ still builds (mkmf writes the rule when
       # <tt>$static</tt> is not +nil+, and <tt>false</tt> leaves the shared
       # link as it is), to rename the extension's Init function, as Ruby's
-      # <tt>ext/extmk.rb</tt> does, and to report where it ran. On iOS
+      # <tt>ext/extmk.rb</tt> does (through <tt>$CPPFLAGS</tt>, as SHIM
+      # does), and to report where it ran. On iOS
       # that shared link names no Ruby, since mkmf links an extension of a
       # static Ruby against none, so it looks Ruby's functions up when
       # loaded (<tt>-undefined dynamic_lookup</tt>, as a Mac's static Ruby
@@ -86,7 +87,7 @@ module Fledge
             $static = false
             $DLDFLAGS << " -undefined dynamic_lookup" if RbConfig::CONFIG["target_os"].start_with?("darwin")
             name = File.basename(target)
-            $defs << "-DInit_#{name}=#{ENV.fetch('FLEDGE_INIT_PREFIX')}#{name}"
+            $CPPFLAGS << " -DInit_#{name}=#{ENV.fetch('FLEDGE_INIT_PREFIX')}#{name}"
             result = super
             report = { "target" => target, "dir" => Dir.pwd, "libs" => [$libs, $LOCAL_LIBS].join(" "),
                        "archive" => "#{name}.#{CONFIG['LIBEXT']}", "library" => "#{name}.#{CONFIG['DLEXT']}" }

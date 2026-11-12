@@ -101,6 +101,34 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)
   end
 
+  # A Rakefile shaped like digest-crc's runs an extconf.rb and make in
+  # the folder of each extension, and leaves each where the gem's require
+  # path ext finds it. RubyGems' builder runs it with the phone's
+  # rbconfig.rb, the compiler wrapper turns each shared link into an
+  # archive for the slice, and each extension registers under the name
+  # its path gives it, its Init function renamed.
+  def test_the_extensions_a_rakefile_builds_are_archived_for_each_ios_slice
+    runtimes = real_runtimes("ios")
+    built = compile(runtimes, ios, { rakesum_gem => Fledge::PathPackage.new(rakesum_gem) })
+
+    assert_equal [%w[rakesum/adler/adler_ext Init_fledge_0_adler_ext], %w[rakesum/fletcher/fletcher_ext Init_fledge_0_fletcher_ext]],
+      built.registrations.sort
+    platforms = built.targets.transform_values do |target|
+      assert_equal 2, target.archives.size
+      target.archives.map do |archive|
+        symbols = Open3.capture2("xcrun", "nm", "-g", "--defined-only", archive).first
+        assert_match(/ T _Init_fledge_0_(?:adler|fletcher)_ext$/, symbols)
+        refute_match(/ T _Init_(?:adler|fletcher)_ext$/, symbols, "the extension's own Init function is renamed")
+        members = File.join(@dir, "members", File.basename(archive))
+        FileUtils.mkdir_p(members)
+        system("ar", "-x", archive, chdir: members, exception: true)
+        object = Dir.children(members).find { |member| member.end_with?(".o") }.to_s
+        Open3.capture2("xcrun", "vtool", "-show-build", File.join(members, object)).first[/platform (\S+)/, 1]
+      end.uniq
+    end
+    assert_equal({ "ios-arm64" => ["IOS"], "ios-arm64-simulator" => ["IOSSIMULATOR"] }, platforms)
+  end
+
   # A Rakefile that links a library for Ruby's ffi, as ffi-compiler's
   # tasks do with RbConfig's compiler, makes no extension of Ruby's,
   # which is all a phone app links in: the build says so, naming the gem
@@ -116,7 +144,7 @@ class MobileExtensionsBuildTest < Minitest::Test
 
     error = assert_raises(Fledge::Error) { compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) }) }
 
-    assert_includes error.message, "thing 1.0.0's Rakefile linked libthing.so for ios-arm64, a shared library."
+    assert_includes error.message, "thing 1.0.0's Rakefile linked libthing.so for ios-arm64, a shared library that is not an extension mkmf built"
   end
 
   # A Rakefile that builds nothing, as the mkrf_conf scripts that install
@@ -153,6 +181,11 @@ class MobileExtensionsBuildTest < Minitest::Test
   def tally_gem
     folder = File.expand_path("../../examples/cmake_phone/gems/tally", __dir__)
     Fledge::PathGem.new(name: "tally", version: "1.0.0", folder:, app_path: "vendor/cache/tally", glob: "{,*,*/*}.gemspec", inside: true)
+  end
+
+  def rakesum_gem
+    folder = File.expand_path("../fixtures/rakesum", __dir__)
+    Fledge::PathGem.new(name: "rakesum", version: "1.0.0", folder:, app_path: "vendor/cache/rakesum", glob: "{,*,*/*}.gemspec", inside: true)
   end
 
   # A path gem +name+ whose gemspec names ext/Rakefile, with +rakefile+

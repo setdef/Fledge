@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# Builds each extension in its own folder, as digest-crc 0.7.0's
+# ext/digest/Rakefile does: an extconf.rb, then make, with the
+# extension left beside its sources.
+require "mkmf"
+
+%w[adler fletcher].each do |name|
+  library = "#{name}/#{name}_ext.#{RbConfig::CONFIG['DLEXT']}"
+  file "#{name}/Makefile" => "#{name}/extconf.rb" do
+    Dir.chdir(name) { ruby "-S", "extconf.rb" }
+  end
+  file library => "#{name}/Makefile" do
+    Dir.chdir(name) { sh "make" }
+  end
+  task default: library
+end

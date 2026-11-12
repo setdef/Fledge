@@ -115,9 +115,11 @@ A gemspec may name a Rakefile or an `mkrf_conf` script in `extensions`, which Ru
 
 1. runs RubyGems' own builder for the extension, `Gem::Ext::RakeBuilder`, under this computer's desktop runtime's Ruby, which runs the `mkrf_conf` script, if any, then `rake RUBYARCHDIR=DEST RUBYLIBDIR=DEST` in the extension's folder, with Bundler's `build.NAME` options;
 2. gives every Ruby the build starts the phone's `rbconfig.rb` and the shim's tools (`MobileExtensions::TOOLS`, through `RUBYOPT=-I ARCHDIR -r FILE`), as crossenv and cibuildwheel give a Python build the target's sysconfig, with this computer's Ruby as `RbConfig.ruby` (`FLEDGE_RUBY`) and in `RUBY`, which Rake's `ruby` runs;
-3. refuses, naming the gem and the first, any shared library (`.so`, `.bundle`, `.dylib`) the build left in the gem or in `DEST`, since a phone app opens no library at run time: a library for Ruby's ffi, or an extension it does not yet link.
+3. with them a hook (`RakeBuild::HOOK`), prepended to mkmf's `MakeMakefile` whenever the build loads mkmf, so that each `create_makefile` renames the extension's Init function `Init_fledge_N_NAME`, N counting the app's extensions before the gem's, writes the `static:` rule (mkmf writes it when `$static` is not `nil`, and `false` leaves the Rakefile's own shared link as it is), and reports its folder;
+4. runs `make static` in each folder the hook reported, and names each extension by that folder's path in the first of the gem's require paths that holds it, joined to the name `create_makefile` was given (`ext/digest/crc32` in a gem whose require paths hold `ext` gives `digest/crc32/crc32_ext`), or by that name alone when no require path holds it;
+5. refuses, naming the gem and the first, any other shared library (`.so`, `.bundle`, `.dylib`) the build left in the gem or in `DEST`, since a phone app opens no library at run time: a library for Ruby's ffi, as ffi-compiler and mini_portile2 builds make.
 
-The builder's own process ignores `RUBYOPT` (`--disable=rubyopt`), so RubyGems finds Rake among this computer's runtime's gems. A Rakefile that builds nothing gives no extension, and the gem ships as RubyGems installs it, with its `gem.build_complete` mark.
+The builder's own process ignores `RUBYOPT` (`--disable=rubyopt`), so RubyGems finds Rake among this computer's runtime's gems. On iOS, mkmf links an extension of a static Ruby against no Ruby, and the phone's `rbconfig.rb` has no `-undefined dynamic_lookup`, so the hook adds it on Apple targets: the Rakefile's own shared link then succeeds, and no phone loads what it makes. A Rakefile that builds nothing gives no extension, and the gem ships as RubyGems installs it, with its `gem.build_complete` mark.
 
 ## Registering extensions
 

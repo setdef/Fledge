@@ -80,7 +80,7 @@ jobs:
           rest+='"mise":"http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2"},'
           rest+='{"os":"windows-11-arm","platform":"aarch64-mingw-ucrt","mise":"http:rubyinstaller-head http:msys2-zlib http:msys2"},{"os":"ubuntu-24.04","platform":"x86_64-linux-musl"},'
           rest+='{"os":"ubuntu-24.04-arm","platform":"aarch64-linux-musl"}'
-          if [ "$FULL" = true ]; then matrix="[$two,$rest]"; else matrix="[$two]"; fi
+          matrix='[{"os":"windows-latest","platform":"x64-mingw-ucrt","mise":"http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2"},{"os":"windows-11-arm","platform":"aarch64-mingw-ucrt","mise":"http:rubyinstaller-head http:msys2-zlib http:msys2"}]'
           echo "run=$run" >> "$GITHUB_OUTPUT"
           echo "matrix={\"include\":$matrix}" >> "$GITHUB_OUTPUT"
 

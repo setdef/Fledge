@@ -312,11 +312,11 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 
-Its 80 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
-- `MIT`: bundler, did_you_mean, error_highlight, minitest, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
@@ -339,11 +339,11 @@ Its 80 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 
-Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
-- `MIT`: bundler, did_you_mean, error_highlight, minitest, psych, rake, repl_type_completor, syntax_suggest, typeprof
+- `MIT`: bundler, did_you_mean, error_highlight, minitest, prism, psych, rake, repl_type_completor, syntax_suggest, typeprof
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc

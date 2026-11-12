@@ -104,3 +104,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [064](../adr/064.md) | A Windowed App's Identifier Is the Developer's, and No Default Makes One Up |
 | [065](../adr/065.md) | Keep an Input Whose URL Rolls Over as a Pre-release of Fledge |
 | [066](../adr/066.md) | Keep Every Platform on One Ruby 4.1 Release at a Time |
+| [067](../adr/067.md) | On a phone, a bundled gem's extension keeps every symbol but its Init function to itself |

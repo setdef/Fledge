@@ -91,7 +91,7 @@ class RubySourceTest < Minitest::Test
       gem.call("csv-3.3.5", %w[lib/csv.rb])
       gem.call("racc-1.8.1", %w[ext/racc/cparse/extconf.rb ext/racc/cparse/test/extconf.rb])
 
-      copied = RuntimeBuilder::BundledExtensions.copy(source, omit: %w[fiddle])
+      copied = RuntimeBuilder::BundledExtensions.copy(source, omit: %w[fiddle], recipe: ["true"])
 
       assert_equal({ "bigdecimal" => "bigdecimal-4.0.1", "racc" => "racc-1.8.1", "rbs" => "rbs-3.10.0" }, copied)
       assert_equal %w[bigdecimal bigdecimal-* fiddle fiddle-* racc racc-* rbs rbs-* win32ole win32ole-*],
@@ -100,15 +100,38 @@ class RubySourceTest < Minitest::Test
       copies = Dir.glob("**/*", base: ext).select { |path| File.file?(File.join(ext, path)) }.sort
       expected = %w[
         bigdecimal/ext/bigdecimal/bigdecimal.c
+        bigdecimal/ext/bigdecimal/depend
         bigdecimal/ext/bigdecimal/extconf.rb
         bigdecimal/lib/bigdecimal.rb
+        racc/ext/racc/cparse/depend
         racc/ext/racc/cparse/extconf.rb
+        rbs/ext/rbs_extension/depend
         rbs/ext/rbs_extension/extconf.rb
         rbs/include/rbs.h
         rbs/lib/rbs.rb
         rbs/src/parser.c
       ]
       assert_equal expected, copies
+    end
+  end
+
+  # A gem's own depend file keeps its rules, and the relocatable link's
+  # follow them; an extension without one keeps the header dependencies
+  # mkmf writes only when there is none. The rules' behavior is
+  # BundledExtensionsTest's.
+  def test_each_copied_extension_gets_the_relocatable_link_after_its_own_rules
+    Dir.mktmpdir do |source|
+      write(File.join(source, ".bundle/gems/fiddle-1.1.8/ext/fiddle/extconf.rb"), "x")
+      write(File.join(source, ".bundle/gems/fiddle-1.1.8/ext/fiddle/depend"), "$(OBJS): $(FFI_H)\n")
+      write(File.join(source, ".bundle/gems/prism-1.9.0/ext/prism/extconf.rb"), "x")
+
+      RuntimeBuilder::BundledExtensions.copy(source, omit: [], recipe: ["$(CC) -r -o $@ $(FLEDGE_OBJS)", "strip $@"])
+
+      fiddle = File.read(File.join(source, "ext/gems/fiddle/ext/fiddle/depend"))
+      prism = File.read(File.join(source, "ext/gems/prism/ext/prism/depend"))
+      assert fiddle.start_with?("$(OBJS): $(FFI_H)\n\nCFLAGS += -fno-common\n"), fiddle
+      assert prism.start_with?("$(OBJS): $(HDRS) $(ruby_headers)\n\nCFLAGS += -fno-common\n"), prism
+      assert_includes prism, "\n\t$(Q) $(CC) -r -o $@ $(FLEDGE_OBJS)\n\t$(Q) strip $@\n"
     end
   end
 

@@ -59,16 +59,15 @@ class RubySpec
     EXCLUDED = [
       Exclusion.new(
         reason: "Every example starts ruby with options or a script, and iOS lets no app start a program " \
-          "(doc/contributors/design/phone-projects.md, \"Parity on a phone\"). TEMPORARY on Android, whose runtime " \
-          "has a ruby program since ADR 069: these examples have not yet run there, and are to be brought in and " \
-          "compared with stock Ruby.",
-        phones: nil, files: ["command_line"], examples: [],
+          "(doc/contributors/design/phone-projects.md, \"Parity on a phone\"). Android's runtime has a ruby program, " \
+          "which RbConfig.ruby names (ADR 069), and runs them.",
+        phones: %w[ios], files: ["command_line"], examples: [],
       ),
       Exclusion.new(
         reason: "Its examples signal Rubies they start through MSpec's ruby_exe, which skips on iOS " \
           "(tasks/ruby_spec/phone_config.rb), and then clean up after them in hooks that fail when none started. " \
-          "TEMPORARY on Android, where ruby_exe runs since ADR 069: as for command_line.",
-        phones: nil, files: ["core/process/kill_spec.rb"], examples: [],
+          "Android runs them, as it runs command_line.",
+        phones: %w[ios], files: ["core/process/kill_spec.rb"], examples: [],
       ),
       Exclusion.new(
         reason: "These are about Ruby's ways to start a program and wait for it, Process.spawn, Kernel#system, " \
@@ -76,9 +75,8 @@ class RubySpec
           "under test, through RUBY_EXE or ruby_cmd rather than ruby_exe, or a program to report what ps sees; " \
           "whether such a child that cannot start has ended when an example looks is a race. iOS has no such Ruby, " \
           "since it lets no app start a program (doc/contributors/design/phone-projects.md, \"Parity on a phone\"), " \
-          "so RbConfig.ruby names a program that is not there. TEMPORARY on Android, whose RbConfig.ruby runs since " \
-          "ADR 069: as for command_line.",
-        phones: nil,
+          "so RbConfig.ruby names a program that is not there. Android runs them, as it runs command_line.",
+        phones: %w[ios],
         files: %w[
           core/process/spawn_spec.rb
           core/kernel/spawn_spec.rb

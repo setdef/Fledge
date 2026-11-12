@@ -98,11 +98,13 @@ class RuntimeBuilder
     # platform's edits made and the bundled gems' extensions copied among
     # Ruby's own, each to be linked into one relocatable object with only
     # its Init function global (BundledExtensions.relocate, with the
-    # subclass's relocatable recipe).
+    # subclass's relocatable recipe), and found only once its gem is
+    # active (RubySource.load_c).
     private def prepare_source
       source = unpack(pin("ruby"), "ruby")
       RubySource.apply(source, edits)
       @kept = BundledExtensions.copy(source, omit: omitted_gems, recipe: relocatable)
+      RubySource.edit(source, :load_c, BundledExtensions.features(source, @kept))
       @without = [*BundledExtensions.without(source), "win32", "win32ole", "-test-/*"].uniq
       source
     end

@@ -105,14 +105,6 @@ class RubySpec
     # The phones (RubySpec::Phone), against stock Ruby on the computer
     # that runs the simulator.
     Justification.new(
-      example: /\Alibrary: (?:BigDecimal[#. ]|Kernel#BigDecimal |Core extension by bigdecimal )/,
-      side: :app, platforms: PHONES,
-      reason: "TEMPORARY, a defect to fix: a phone runtime links bigdecimal's extension in and registers it as " \
-        "bigdecimal.so (RuntimeBuilder::BundledExtensions), so require \"bigdecimal\" finds the linked extension " \
-        "before RubyGems activates the gem, and the gem's lib/bigdecimal.rb, which defines BigDecimal#power, #**, " \
-        "#sqrt, and BigMath, never loads. Remove this entry with the fix.",
-    ),
-    Justification.new(
       example: %r{\Alibrary: loading library/fiddle/},
       side: :app, platforms: %w[arm64-ios-simulator],
       reason: "The iOS runtime leaves fiddle out, as xord/cruby does, since it calls any C function by name, which " \

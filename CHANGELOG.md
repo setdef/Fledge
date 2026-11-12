@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - On iOS and Android, a phone's app has the prism gem, so `require "prism"` works, and so does requiring irb, minitest, rbs, rdoc, repl_type_completor, or typeprof: each bundled gem's extension keeps every symbol but its Init function to itself, so prism's own libprism no longer collides with libruby's.
+- On iOS and Android, `require "bigdecimal"` activates the bigdecimal gem and loads its Ruby, as on a desktop, so `BigDecimal#sqrt`, `#power`, `#**`, and `BigMath` are there; the same holds for nkf, and for fiddle on Android.
 
 ## [0.12.0] - 2026-11-12
 

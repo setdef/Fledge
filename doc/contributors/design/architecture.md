@@ -105,3 +105,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [065](../adr/065.md) | Keep an Input Whose URL Rolls Over as a Pre-release of Fledge |
 | [066](../adr/066.md) | Keep Every Platform on One Ruby 4.1 Release at a Time |
 | [067](../adr/067.md) | On a phone, a bundled gem's extension keeps every symbol but its Init function to itself |
+| [068](../adr/068.md) | On a phone, a bundled gem's linked extension is found only while its gem is active |

@@ -93,7 +93,10 @@ RESOLVE_ONLY = %w[debug test-unit].freeze
 
 # A gem that exits while it loads (prism 2.1 does, when the parser gem it
 # translates for is missing) raises SystemExit, which is no StandardError:
-# the probe reports it as it reports a LoadError and keeps going.
+# the probe reports it as it reports a LoadError and keeps going. A gem
+# loads when its require leaves it active, as RubyGems activates it; a
+# require that loads something else of the same name, as a linked
+# extension found before the gem, is "loads, but not its gem".
 def requireable(spec)
   feature = feature_of(spec)
   if RESOLVE_ONLY.include?(spec.name)
@@ -101,7 +104,7 @@ def requireable(spec)
   end
 
   require feature
-  "loads"
+  Gem.loaded_specs.key?(spec.name) ? "loads" : "loads, but not its gem"
 rescue LoadError, StandardError, SystemExit => e
   "#{e.class}: #{e.message.lines.first.to_s.chomp}"
 end

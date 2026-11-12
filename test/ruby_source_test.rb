@@ -5,6 +5,8 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "open3"
+require "rbconfig"
 require_relative "test_helper"
 require_relative "../tasks/runtime_builder"
 
@@ -65,6 +67,66 @@ class RubySourceTest < Minitest::Test
       assert_includes File.read(File.join(source, "vm_dump.c")), "#if defined(HAVE_SYSTEM)"
     end
   end
+
+  # A linked extension of a bundled gem is found only once its gem is
+  # active, as a desktop finds the gem's shared object only in its
+  # folders: the gate goes into the lookup of linked extensions, with
+  # each gem's extension and the gem it belongs to.
+  def test_ruby_finds_a_gems_linked_extension_only_through_the_gate
+    text = "typedef int (*feature_func)(void);\n\nstatic int\nsearch_required(const rb_box_t *box)\n{\n" \
+      "            ftptr = RSTRING_PTR(lookup_name);\n" \
+      "            if (st_lookup(&vm->static_ext_inits, (st_data_t)ftptr, NULL)) {\n"
+
+    edited = Edits.load_c(text, { "racc/cparse.so" => "racc-1.8.1", "bigdecimal.so" => "bigdecimal-4.1.3" })
+    assert_includes edited, "    {\"bigdecimal.so\", \"bigdecimal-4.1.3\"},\n    {\"racc/cparse.so\", \"racc-1.8.1\"},\n};\n"
+    assert_includes edited,
+      "if (st_lookup(&vm->static_ext_inits, (st_data_t)ftptr, NULL) && fledge_gem_extension_reachable_p(box, ftptr)) {\n"
+    assert_operator edited.index("fledge_gem_extension_reachable_p(const rb_box_t"), :<, edited.index("search_required(const")
+    assert_raises(RuntimeError) { Edits.load_c(text.sub("NULL)) {", "NULL) == 1) {"), { "nkf.so" => "nkf-0.3.0" }) }
+    assert_raises(ArgumentError) { Edits.load_c(text, {}) }
+  end
+
+  # The gate's own C, compiled by this computer's mkmf against this
+  # Ruby, with $LOAD_PATH for the expanded load path load.c reads: a
+  # gem's extension is found only while a folder named for its gem is
+  # on it, and any other extension always.
+  def test_the_gate_finds_a_gems_extension_while_a_folder_named_for_the_gem_is_on_the_load_path
+    skip "the phones' runtimes are built on macOS and Linux" if Gem.win_platform?
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "gate.c"), GATE_HARNESS.sub("GATE\n", format(Edits::GATE, table: "    {\"gate.so\", \"gate-1.0.0\"},\n")))
+      sh(dir, RbConfig.ruby, "-rmkmf", "-e", 'create_makefile("gate")')
+      sh(dir, "make")
+
+      assert_equal "[false, true, false, true]\n", sh(dir, RbConfig.ruby, "-e", format(GATE_SCRIPT, gate: File.join(dir, "gate").dump))
+    end
+  end
+
+  # The gate inside an extension of this Ruby's, which load.c's own
+  # get_expanded_load_path stands in for.
+  GATE_HARNESS = <<~C
+    #include <ruby.h>
+    #include <string.h>
+    typedef void rb_box_t;
+    static VALUE get_expanded_load_path(rb_box_t *box) { (void)box; return rb_gv_get("$LOAD_PATH"); }
+    GATE
+    static VALUE reachable(VALUE self, VALUE feature) {
+        (void)self;
+        return fledge_gem_extension_reachable_p(NULL, StringValueCStr(feature)) ? Qtrue : Qfalse;
+    }
+    void Init_gate(void) { rb_define_global_function("fledge_gate_reachable?", reachable, 1); }
+  C
+
+  # What the gate answers for a gem's extension and etc's, before
+  # the gem's folders are on $LOAD_PATH, beside a folder whose name only
+  # starts with the gem's, and with the gem's extension folder.
+  GATE_SCRIPT = <<~RUBY
+    require %<gate>s
+    before = [fledge_gate_reachable?("gate.so"), fledge_gate_reachable?("etc.so")]
+    $LOAD_PATH << "/gems/extensions/arm64-darwin/4.1.0-static/gate-1.0.00" << "/gems/gate-1.0.0/lib"
+    between = fledge_gate_reachable?("gate.so")
+    $LOAD_PATH << "/gems/extensions/arm64-darwin/4.1.0-static/gate-1.0.0"
+    p [*before, between, fledge_gate_reachable?("gate.so")]
+  RUBY
 
   # The iOS SDK lacks sys/vnode.h, which dir.c includes on Apple systems
   # for the vnode types; xord/cruby writes a stub with XNU's values.
@@ -140,6 +202,24 @@ class RubySourceTest < Minitest::Test
   # FULL_NAME/gem.build_complete), and copies that folder to the gem's
   # extension folder, where RubyGems looks for the same file before it
   # will load the gem.
+  # The gate in load.c needs the feature each copied extension is
+  # registered as, which extmk takes from its extconf.rb's
+  # create_makefile, and the gem it belongs to.
+  def test_names_the_feature_of_each_copied_gems_extension
+    Dir.mktmpdir do |source|
+      write(File.join(source, "ext/gems/bigdecimal/ext/bigdecimal/extconf.rb"), "create_makefile('bigdecimal') {|mf|\n")
+      write(File.join(source, "ext/gems/racc/ext/racc/cparse/extconf.rb"), "require 'mkmf'\ncreate_makefile 'racc/cparse'\n")
+      write(File.join(source, "ext/gems/racc/ext/racc/cparse/test/extconf.rb"), "create_makefile 'test'\n")
+      write(File.join(source, "ext/gems/syslog/ext/syslog/extconf.rb"), "if have_header('syslog.h')\n    create_makefile(\"syslog_ext\")\nend\n")
+      gems = { "bigdecimal" => "bigdecimal-4.1.3", "racc" => "racc-1.8.1", "syslog" => "syslog-0.4.0" }
+
+      expected = { "bigdecimal.so" => "bigdecimal-4.1.3", "racc/cparse.so" => "racc-1.8.1", "syslog_ext.so" => "syslog-0.4.0" }
+      assert_equal expected, RuntimeBuilder::BundledExtensions.features(source, gems)
+      write(File.join(source, "ext/gems/nkf/ext/nkf/extconf.rb"), "create_makefile(target)\n")
+      assert_raises(RuntimeError) { RuntimeBuilder::BundledExtensions.features(source, { "nkf" => "nkf-0.3.0" }) }
+    end
+  end
+
   def test_marks_each_copied_gems_extension_built_where_rbinstall_and_rubygems_look
     Dir.mktmpdir do |build|
       RuntimeBuilder::BundledExtensions.mark_built(build, { "nkf" => "nkf-0.2.0" }, platform: "arm64-darwin", api: "4.0.0-static")
@@ -160,6 +240,12 @@ class RubySourceTest < Minitest::Test
       end
       assert_equal "racc-1.8.1 was not installed as a gem with its extension marked built", error.message
     end
+  end
+
+  def sh(dir, *command)
+    out, status = Open3.capture2e(*command, chdir: dir)
+    assert status.success?, "#{command.join(' ')} failed:\n#{out}"
+    out
   end
 
   def write(path, content)

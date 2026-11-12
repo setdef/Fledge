@@ -33,7 +33,12 @@ class RuntimeBuilder
   # and all. RubyGems then activates the gem as it would on a desktop, and
   # its require of the extension finds the one Ruby links in (load.c,
   # search_required, which looks among statically linked extensions for a
-  # feature no file provides).
+  # feature no file provides). A desktop finds a gem's extension only in
+  # the gem's own folders, once RubyGems has put them on $LOAD_PATH, so
+  # load.c is edited to find a gem's linked extension only then too
+  # (RubySource.load_c, given features): else a plain require "bigdecimal"
+  # finds the linked bigdecimal.so before RubyGems activates the gem, and
+  # the gem's lib/bigdecimal.rb never loads.
   #
   # Ruby finds a gem's extension by its Init function alone. Linked
   # statically, every other symbol the extension defines is global too,
@@ -126,6 +131,25 @@ class RuntimeBuilder
         own = File.file?(depend) ? File.read(depend) : HEADERS
         File.write(depend, "#{own.chomp}\n\n#{rules}")
       end
+    end
+
+    # The feature each extension of the copied +gems+ (full names, by
+    # name) in +source+ is registered as, with .so as extmk's extinit.c
+    # gives it (template/extinit.c.tmpl), mapped to its gem's full name:
+    # what its extconf.rb names its Makefile's target for
+    # (create_makefile("racc/cparse"), which extmk registers as
+    # racc/cparse.so). Raises for an extconf.rb that names none, as a new
+    # gem's might.
+    def self.features(source, gems)
+      gems.sort.to_h.flat_map do |name, full|
+        folder = File.join(source, "ext", "gems", name)
+        Dir.glob("**/extconf.rb", base: folder).reject { |path| path.split("/").include?("test") }.sort.map do |path|
+          target = File.read(File.join(folder, path))[/^\s*create_makefile\s*\(?\s*(["'])([^"']+)\1/, 2]
+          raise "#{full}'s #{path} names no create_makefile target" unless target
+
+          ["#{target}.so", full]
+        end
+      end.to_h
     end
 
     # Marks the extension of each of +gems+ (full names, by name) built,

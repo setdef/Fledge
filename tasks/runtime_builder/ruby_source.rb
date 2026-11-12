@@ -22,15 +22,20 @@ class RuntimeBuilder
       configure: "configure",
       configure_macos_minimum: "configure",
       ruby_c: "ruby.c",
+      load_c: "load.c",
     }.freeze
 
     # Applies the edits named in +edits+ (keys of FILES) to the source
     # tree +source+.
     def self.apply(source, edits)
-      edits.each do |edit|
-        path = File.join(source, FILES.fetch(edit))
-        File.write(path, public_send(edit, File.read(path)))
-      end
+      edits.each { |edit| edit(source, edit) }
+    end
+
+    # Applies the one edit +edit+ (a key of FILES), given the arguments
+    # after the file's text, to the source tree +source+.
+    def self.edit(source, edit, *)
+      path = File.join(source, FILES.fetch(edit))
+      File.write(path, public_send(edit, File.read(path), *))
     end
 
     # psych's extconf.rb prefers pkg-config's yaml-0.1, which is the
@@ -89,6 +94,64 @@ class RuntimeBuilder
         "ruby.c finds libruby with dladdr")
       "#{edited}\nconst char *ruby_embed_libruby_path;\n"
     end
+
+    # The gate before load.c's lookup of statically linked extensions
+    # (search_required, lines 1199 to 1218 at 4.1.0-preview1), which a
+    # require that finds no file reaches. +extensions+ is the full name of
+    # the bundled gem each linked extension belongs to, by the feature
+    # its gem requires it as (bigdecimal.so). A desktop Ruby finds a
+    # gem's shared object only in the gem's own folders, which RubyGems
+    # adds to $LOAD_PATH as it activates the gem (Gem::BasicSpecification#full_require_paths,
+    # lib/rubygems/basic_specification.rb, lines 184 to 195): the gem's
+    # extension folder, named for the gem's full name, among them. So
+    # the gate lets the lookup find a gem's linked extension only while
+    # a folder of that name is on $LOAD_PATH. Without it, a plain
+    # require "bigdecimal" finds the linked bigdecimal.so before RubyGems
+    # activates the gem, whose lib/bigdecimal.rb then never loads
+    # (lib/rubygems/core_ext/kernel_require.rb, lines 79 to 81 and 138 to
+    # 148: RubyGems tries Ruby's own require first, and activates a gem
+    # only when that fails).
+    def self.load_c(text, extensions)
+      raise ArgumentError, "the gate needs a gem's extension to guard" if extensions.empty?
+
+      table = extensions.sort.map { |feature, full| "    {#{feature.dump}, #{full.dump}},\n" }.join
+      gated = replace(text, /^(            if \(st_lookup\(&vm->static_ext_inits, \(st_data_t\)ftptr, NULL\))\) \{\n/,
+        "\\1 && fledge_gem_extension_reachable_p(box, ftptr)) {\n", "search_required looks up a linked extension")
+      replace(gated, /^static int\nsearch_required\(/, "#{format(GATE, table:)}\nstatic int\nsearch_required(",
+        "load.c defines search_required")
+    end
+
+    # The gate's C, before search_required; %<table>s is each gem's
+    # extension feature with its gem's full name.
+    GATE = <<~C
+      /* Fledge: each bundled gem's extension this Ruby links in, by the
+         feature it is registered as, with the full name of its gem. */
+      static const char *const fledge_gem_extensions[][2] = {
+      %<table>s};
+
+      /* Whether the linked extension +feature+ may be found: always, but for
+         a gem's, which only while a folder named for its gem is on
+         $LOAD_PATH, as RubyGems puts the gem's extension folder there when
+         it activates the gem. */
+      static int
+      fledge_gem_extension_reachable_p(const rb_box_t *box, const char *feature)
+      {
+          for (size_t i = 0; i < sizeof(fledge_gem_extensions) / sizeof(fledge_gem_extensions[0]); i++) {
+              if (strcmp(feature, fledge_gem_extensions[i][0]) != 0) continue;
+              const char *gem = fledge_gem_extensions[i][1];
+              long length = (long)strlen(gem);
+              VALUE load_path = get_expanded_load_path((rb_box_t *)box);
+              for (long j = 0; j < RARRAY_LEN(load_path); j++) {
+                  VALUE folder = RARRAY_AREF(load_path, j);
+                  const char *name = RSTRING_PTR(folder);
+                  long size = RSTRING_LEN(folder);
+                  if (size > length && name[size - length - 1] == '/' && memcmp(name + size - length, gem, length) == 0) return 1;
+              }
+              return 0;
+          }
+          return 1;
+      }
+    C
 
     # Writes sys/vnode.h into the folder +stub+, which a build puts first
     # on its include path: the iOS SDK lacks it, and dir.c includes it on

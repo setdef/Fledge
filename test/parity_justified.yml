@@ -87,7 +87,7 @@
   - bundle
 - fact: "$LOAD_PATH"
   reference:
-  - \A"(?-mix:<work>\/person-gems)/gems/rake-
+  - \A"(?:(?-mix:<work>\/person-gems)|(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?))/gems/rake-
   app: []
   platforms:
   checks:

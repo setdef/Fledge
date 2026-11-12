@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "bundler"
 require "digest"
 require "fileutils"
 require "json"
@@ -227,19 +228,29 @@ class RuntimeBuilder
 
   # Runs a command, echoing it, and raises when it fails. A Hash before
   # the command sets (or, with nil, unsets) variables of its environment,
-  # as for Kernel#system.
+  # as for Kernel#system. The command runs outside Bundler: under
+  # bundle exec rake, RUBYOPT=-rbundler/setup and the BUNDLE_ variables
+  # would reach the miniruby that a cross build runs on the build machine,
+  # which loads Bundler before it can find rbconfig.
   def run(*command, chdir: ROOT, out: $stdout, err: $stderr)
     env = command.first.is_a?(Hash) ? command.shift : {}
     puts "+ #{command.join(' ')}"
-    system(env, *command, chdir:, out:, err:, exception: true)
+    unbundled { system(env, *command, chdir:, out:, err:, exception: true) }
   end
 
-  # Runs a command and returns its standard output.
+  # Runs a command outside Bundler, as #run does, and returns its
+  # standard output.
   def capture(*command)
-    out, status = Open3.capture2(*command)
+    out, status = unbundled { Open3.capture2(*command) }
     raise "#{command.join(' ')} failed" unless status.success?
 
     out
+  end
+
+  # Runs the block with the environment the person's shell had before
+  # bundle exec changed it.
+  private def unbundled(&)
+    Bundler.with_unbundled_env(&)
   end
 
   # Ruby's bundled gems, as runtime/sources.yml lists them.

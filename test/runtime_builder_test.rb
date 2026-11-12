@@ -13,8 +13,40 @@ require_relative "../tasks/runtime_builder"
 # pruning it does, and the license audit it runs before it archives. CI's runtime jobs build real
 # runtimes, and test/integration/built_app_test.rb runs them.
 class RuntimeBuilderTest < Minitest::Test
+  LEAKED = { "RUBYOPT" => "-rbundler/setup", "BUNDLE_GEMFILE" => "/nowhere/Gemfile", "RUBYLIB" => "/nowhere/lib" }.freeze
+  PRINT_LEAKED = LEAKED.keys.map { |name| "echo #{name}=${#{name}-unset}" }.join("; ").freeze
+
   def builder(name)
     RuntimeBuilder.new(platform: Fledge::Platform.find(name))
+  end
+
+  # bundle exec rake runtime sets RUBYOPT=-rbundler/setup, which the
+  # miniruby of a cross build on the build machine cannot load without
+  # rbconfig; the steps run as they do under ruby tasks/runtime_builder.rb.
+  def test_a_step_runs_without_the_bundler_variables_of_the_rake_that_started_it
+    seen = with_env(LEAKED) do
+      Dir.mktmpdir do |dir|
+        out = File.join(dir, "seen")
+        builder("x86_64-linux").run("sh", "-c", PRINT_LEAKED, out:)
+        File.read(out)
+      end
+    end
+
+    assert_equal(LEAKED.keys.map { |name| "#{name}=unset" }, seen.lines.map(&:chomp))
+  end
+
+  def test_a_captured_step_runs_without_the_bundler_variables_of_the_rake_that_started_it
+    seen = with_env(LEAKED) { builder("x86_64-linux").capture("sh", "-c", PRINT_LEAKED) }
+
+    assert_equal(LEAKED.keys.map { |name| "#{name}=unset" }, seen.lines.map(&:chomp))
+  end
+
+  def with_env(variables)
+    saved = ENV.to_h.slice(*variables.keys)
+    ENV.update(variables)
+    yield
+  ensure
+    variables.each_key { |name| saved.key?(name) ? ENV[name] = saved[name] : ENV.delete(name) }
   end
 
   def test_every_platform_pins_a_ruby_build_by_sha256

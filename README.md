@@ -65,7 +65,7 @@ For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you
 | Android | Android 8.0 (API 26) or newer | a Mac, x86-64 Linux, or Windows |
 
 - Fledge builds for the computer it runs on. To ship to three systems, build on three computers, such as a CI runner of each. There is no runtime for Intel Macs or 32-bit systems.
-- Fledge runs on Ruby 4.1, with Bundler: on its preview, 4.1.0-preview1, until Ruby 4.1.0 is released. Your app gets the Ruby you run Fledge with, at the version on the Ruby badge above. See [Runtimes and Ruby versions](doc/runtimes.md).
+- Fledge runs on Ruby 4.1, with Bundler: on its preview, 4.1.0-preview1, until Ruby 4.1.0 is released. Your app gets the Ruby you run Fledge with, at the version on the Ruby badge above, and on Windows, until 4.1.0, RubyInstaller's build of Ruby's development branch nearest it. See [Runtimes and Ruby versions](doc/runtimes.md).
 - Your code runs as it does under `ruby main.rb`. Fledge's CI compares the two on every platform. Your code can see [a few differences](doc/differences_from_ruby.md), each with its reason.
 - On every change, CI builds each desktop app and runs it on a clean computer that has no Ruby. CI runs phone apps in the iOS Simulator and Android emulators, and a game has run on a real iPad and iPhone. See [What has run where](doc/phones.md#what-has-run-where).
 - CI signs apps with a self-signed certificate only, and notarizes them against a stand-in for Apple's service. Signing with a certificate from Apple or a certificate authority, and notarizing with Apple, are untested.

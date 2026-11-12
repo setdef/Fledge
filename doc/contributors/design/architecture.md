@@ -102,3 +102,5 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [062](../adr/062.md) | Leave export compliance to the developer |
 | [063](../adr/063.md) | Run the Bundler the Lockfile Names, as bundle exec Does |
 | [064](../adr/064.md) | A Windowed App's Identifier Is the Developer's, and No Default Makes One Up |
+| [065](../adr/065.md) | Keep an Input Whose URL Rolls Over as a Pre-release of Fledge |
+| [066](../adr/066.md) | Keep Every Platform on One Ruby 4.1 Release at a Time |

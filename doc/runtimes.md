@@ -10,7 +10,7 @@ A runtime is the copy of Ruby that [Fledge](../README.md) puts in each app: CRub
 
 Your app gets the Ruby you run Fledge with. Fledge has a runtime for each Ruby it supports, Ruby 4.1 today, at the version on the [README](../README.md)'s Ruby badge: 4.1.0-preview1, until Ruby 4.1.0 is released. On a Ruby it has no runtime for, such as 4.0, `fledge build` stops and says so.
 
-On Windows, RubyInstaller builds no Ruby preview, so the Windows runtimes carry its build of Ruby's own development branch of 2026-11-10, a Ruby 4.1 a month newer than the preview, which reports itself as `4.1.0dev`. Your code sees Ruby 4.1 on every platform, and `RUBY_VERSION` is `4.1.0`.
+On Windows, RubyInstaller builds no Ruby preview, so until Ruby 4.1.0 the Windows runtimes carry its build of Ruby's own development branch from the day of the latest Ruby release, or the nearest day with one: today the build of 2026-11-10, a Ruby 4.1 a month newer than 4.1.0-preview1, which reports itself as `4.1.0dev`. Your code sees Ruby 4.1 on every platform, and `RUBY_VERSION` is `4.1.0`, but Windows' default and bundled gems, and the C API a gem's extension compiles against, may differ from the preview's, so test your app on Windows too. Each Fledge release moves every platform to the next Ruby 4.1 release together, and from Ruby 4.1.0 on, every platform runs the same Ruby.
 
 Name your Ruby in a `.ruby-version` file, which version managers and CI's [`setup-ruby`](https://github.com/ruby/setup-ruby) read, so that every computer that builds your app builds it with the same Ruby. With `ruby file: ".ruby-version"` in your `Gemfile`, Bundler holds every computer to it too.
 

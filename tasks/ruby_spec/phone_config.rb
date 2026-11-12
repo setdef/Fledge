@@ -18,15 +18,18 @@
 # comparison names each failure by its run's directory
 # (RubySpec::Results.read).
 #
-# No program can run on a phone, Ruby least of all
+# iOS lets no app run a program, Ruby least of all
 # (doc/contributors/design/phone-projects.md, "Parity on a phone"), so
-# MSpec's ruby_exe helper, which starts the Ruby under test, skips its
-# example where that Ruby is not a program, as it skips on WASI, which
-# has no processes either (mspec/helpers/ruby_exe.rb). Where it is,
-# under stock Ruby, it runs as MSpec's own. It skips as MSpec's skip
-# does, by raising SkippedSpecError, since fixtures call it outside
+# there MSpec's ruby_exe helper, which starts the Ruby under test, skips
+# its example where that Ruby is not a program, as it skips on WASI,
+# which has no processes either (mspec/helpers/ruby_exe.rb). Where it
+# is, under stock Ruby, it runs as MSpec's own. It skips as MSpec's
+# skip does, by raising SkippedSpecError, since fixtures call it outside
 # examples too. ruby_exe is MSpec's, not Ruby's; the examples of Ruby's
-# own ways to start a program still run, where a phone can.
+# own ways to start a program still run, where a phone can. Android's
+# runtime has a ruby program, which RbConfig.ruby names (ADR 069), so
+# on Android ruby_exe never skips: a Ruby that is not there fails its
+# examples, as it would on a desktop.
 
 require "mspec/runner/formatters/summary"
 
@@ -48,7 +51,9 @@ class RubySpecPhoneFormatter < SummaryFormatter
     Object.class_eval do
       alias_method :ruby_spec_phone_ruby_exe, :ruby_exe
       private def ruby_exe(...)
-        raise SkippedSpecError, "no program can run on a phone" unless File.executable?(RUBY_EXE.split.first)
+        unless RUBY_PLATFORM.include?("android") || File.executable?(RUBY_EXE.split.first)
+          raise SkippedSpecError, "iOS lets no app run a program"
+        end
         ruby_spec_phone_ruby_exe(...)
       end
     end

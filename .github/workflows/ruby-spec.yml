@@ -128,6 +128,7 @@ jobs:
           version: 2026.10.11
           install_args: ${{ matrix.mise || 'ruby' }}
           add_shims_to_path: ${{ runner.os != 'Windows' }}
+          mise_dir: ${{ runner.os == 'Windows' && format('{0}\mise', runner.temp) || '' }}
 
       # What setup-ruby gave a Windows job beyond mise.toml's environment
       # (TMPDIR above all), so builds see what they saw under it.

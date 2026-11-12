@@ -682,6 +682,8 @@ jobs:
           version: 2026.10.11
           install_args: ${{ matrix.mise }}
           add_shims_to_path: false
+          # On the runner's fast drive, where setup-ruby put Ruby and MSYS2.
+          mise_dir: ${{ runner.temp }}\mise
 
       # What setup-ruby gave a Windows job beyond mise.toml's environment
       # (TMPDIR above all), so builds see what they saw under it.
@@ -890,6 +892,8 @@ jobs:
           version: 2026.10.11
           install_args: ${{ matrix.mise }}
           add_shims_to_path: false
+          # On the runner's fast drive, where setup-ruby put Ruby and MSYS2.
+          mise_dir: ${{ runner.temp }}\mise
 
       # What setup-ruby gave a Windows job beyond mise.toml's environment
       # (TMPDIR above all), so builds see what they saw under it.
@@ -900,12 +904,12 @@ jobs:
       - name: Place Bundler outside the checkout
         id: paths
         run: |
-          echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
+          echo "BUNDLE_PATH=$RUNNER_TEMP/bundle" >> "$GITHUB_ENV"
           echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/fledge/bundle
+          path: ${{ runner.temp }}/bundle
           key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock', 'mise.toml') }}
 
       - name: Install the bundle
@@ -1016,6 +1020,7 @@ jobs:
           version: 2026.10.11
           install_args: ${{ matrix.mise }}
           add_shims_to_path: ${{ runner.os != 'Windows' }}
+          mise_dir: ${{ runner.os == 'Windows' && format('{0}\mise', runner.temp) || '' }}
 
       # What setup-ruby gave a Windows job beyond mise.toml's environment
       # (TMPDIR above all), so builds see what they saw under it.

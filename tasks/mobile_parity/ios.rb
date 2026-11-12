@@ -107,7 +107,7 @@ class MobileParity
       end
       apps = projects.to_h { |app, project| [app, build_app(app, project)] }
       parity = MobileParity.new(target: TARGET, work: @work, out: @out)
-      FAMILIES.map { |family| on_simulator(family, apps) { |app, entries, device| parity.check(app, entries, device) } }.all?
+      FAMILIES.map { |family| on_simulator(family, apps) { |app, logged, device| parity.check(app, logged, device) } }.all?
     end
 
     # The app built from +project+ for the Simulator, unsigned, with
@@ -148,10 +148,9 @@ class MobileParity
 
     # Runs each of +apps+, a Hash from App to its built bundle, on a new
     # simulator of +family+, allowing each +timeout+ seconds, yields
-    # each app, the lines it logged, without those of standard error
-    # unless +standard_error+ (IOS.messages), and the device's name to
-    # the block that checks them, and returns whether every check passed.
-    def on_simulator(family, apps, timeout: TIMEOUT, standard_error: true)
+    # each app, what it logged (Logged), and the device's name to the
+    # block that checks them, and returns whether every check passed.
+    def on_simulator(family, apps, timeout: TIMEOUT)
       runtime, device_type = newest(family)
       udid = capture("xcrun", "simctl", "create", "fledge-mobile-#{family}", device_type, runtime).strip
       begin
@@ -159,7 +158,7 @@ class MobileParity
         name = "#{family} (#{device_type.split('.').last}, #{runtime.split('.').last})"
         apps.map do |app, bundle|
           system("xcrun", "simctl", "install", udid, bundle, exception: true)
-          yield app, launch(udid, app, timeout, standard_error), name
+          yield app, launch(udid, app, timeout), name
         end.all?
       ensure
         system("xcrun", "simctl", "shutdown", udid, out: File::NULL, err: File::NULL)
@@ -190,35 +189,34 @@ class MobileParity
     # reads them from the simulator's unified log. log stream would miss a
     # short program's lines on a slow runner, where it can attach after the
     # program has ended; and the process's ID, which simctl launch prints,
-    # keeps an earlier launch's lines out. Those of standard error are
-    # left out of what it returns unless +standard_error+, but not out of
-    # what it reports when the app has not finished in +timeout+ seconds,
-    # when it fails.
-    private def launch(udid, app, timeout, standard_error)
+    # keeps an earlier launch's lines out. It fails when the app has not
+    # finished in +timeout+ seconds, and reports both streams.
+    private def launch(udid, app, timeout)
       since = (Time.now - 2).strftime("%Y-%m-%d %H:%M:%S")
       launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier)
       pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
       deadline = Time.now + timeout
-      until MobileParity.status(messages(udid, since, pid, app))
+      until MobileParity.status(messages(udid, since, pid, app).entries)
         if Time.now > deadline
-          raise "#{app.name} did not finish in #{timeout} seconds:\n#{messages(udid, since, pid, app).last(40).join("\n")}\n" \
+          raise "#{app.name} did not finish in #{timeout} seconds:\n#{messages(udid, since, pid, app).entries.last(40).join("\n")}\n" \
             "#{diagnosis(udid, app)}"
         end
 
         sleep 5
       end
-      MobileParity.settled(interval: 5) { messages(udid, since, pid, app, standard_error:) }
+      MobileParity.settled(interval: 5) { messages(udid, since, pid, app) }
         .tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
     end
 
     # The messages the process +pid+ logged in the app's subsystem since
     # +since+, as IOS.messages reads them, the log kept beside the
     # check's other files.
-    private def messages(udid, since, pid, app, standard_error: true)
+    private def messages(udid, since, pid, app)
       log = File.join(@work, "#{udid}-#{app.identifier}.ndjson")
       system("xcrun", "simctl", "spawn", udid, "log", "show", "--start", since, "--style", "ndjson", "--info", "--predicate",
         "subsystem == \"#{app.identifier}\"", out: log, err: File::NULL)
-      IOS.messages(File.read(log), pid, standard_error:)
+      ndjson = File.read(log)
+      Logged.new(entries: IOS.messages(ndjson, pid), output: IOS.messages(ndjson, pid, standard_error: false))
     end
 
     # What the simulator +udid+ says of +app+, for one that never

@@ -28,6 +28,25 @@ class MobileParityTest < Minitest::Test
     assert_equal JSON.parse(json), MobileParity.report(entries)
   end
 
+  # A line of standard error, which the embedding API logs from a thread
+  # of its own, can land inside the report, so the report is read from
+  # standard output alone while a failure still shows both streams.
+  def test_reads_the_report_from_standard_output_when_standard_error_lands_inside_it
+    json = JSON.generate({ "ARGV" => [], "long" => "é" * 900 })
+    ndjson = [
+      { "processID" => 7, "messageType" => "Default", "eventMessage" => "FLEDGE-PARITY #{json[0, 700]}" },
+      { "processID" => 7, "messageType" => "Error", "eventMessage" => "warning: something on standard error" },
+      { "processID" => 7, "messageType" => "Default", "eventMessage" => json[700..] },
+      { "processID" => 7, "messageType" => "Default", "eventMessage" => "Parity exited with status 0" },
+    ].map { |entry| JSON.generate(entry) }.join("\n")
+    logged = MobileParity::Logged.new(entries: MobileParity::IOS.messages(ndjson, 7),
+      output: MobileParity::IOS.messages(ndjson, 7, standard_error: false))
+
+    refute_equal JSON.parse(json), MobileParity.report(logged.entries)
+    assert_equal JSON.parse(json), MobileParity.report(logged.output)
+    assert_includes logged.entries, "warning: something on standard error"
+  end
+
   def test_a_log_without_a_whole_report_fails
     assert_raises(RuntimeError) { MobileParity.report(["FLEDGE-PARITY {\"ARGV\":"]) }
     assert_raises(RuntimeError) { MobileParity.report(["nothing here"]) }

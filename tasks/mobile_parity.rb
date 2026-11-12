@@ -70,6 +70,16 @@ class MobileParity
   # the app's program ends, with its exit status.
   STATUS = / exited with status (-?\d+)\z/
 
+  # What an app logged: every +entries+ (its lines, in order), for
+  # reporting its failures to a person, and its +output+ alone, without
+  # the lines of standard error, for reading what it printed. The
+  # embedding API forwards each stream through a pipe, read by a thread
+  # of its own, so a line of standard error can land anywhere among those
+  # of standard output, inside a report included (IOS.messages,
+  # Android.messages).
+  class Logged < Data.define(:entries, :output)
+  end
+
   # Writes each app's project for +phone+ into +out+ with fledge build,
   # as a developer would, taking the runtime from +runtimes+, and
   # returns each app's project folder: what fledge build prints on
@@ -86,7 +96,7 @@ class MobileParity
   end
 
   # The probe's report, from the system log's +entries+ (its lines, in
-  # order): the entry that begins it, joined with those after it up to
+  # order, those of standard output alone, Logged#output): the entry that begins it, joined with those after it up to
   # where they make a JSON object. The host's line with the app's status
   # may come among them, since the host logs it from Ruby's thread while
   # the embedding API's thread is still logging what Ruby printed, so it
@@ -163,14 +173,16 @@ class MobileParity
     differences.all?(&:justified?)
   end
 
-  # Checks what +app+ logged on the device named +device+, its +entries+:
+  # Checks what +app+ logged on the device named +device+, a Logged:
   # that it exited with status 0 and printed its line, or, for the parity
-  # probe, that every difference its report shows is justified. Returns
+  # probe, that every difference its report shows, read from its standard
+  # output alone, is justified. A failure reports both streams. Returns
   # whether it passed.
-  def check(app, entries, device)
+  def check(app, logged, device)
+    entries = logged.entries
     status = MobileParity.status(entries)
     raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}" unless status&.zero?
-    return compare(MobileParity.report(entries), device) unless app.prints
+    return compare(MobileParity.report(logged.output), device) unless app.prints
 
     line = entries.find { |entry| entry.match?(app.prints) }
     raise "#{app.name} on #{device} printed no line matching #{app.prints.source}:\n#{entries.join("\n")}" unless line

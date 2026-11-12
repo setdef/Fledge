@@ -207,8 +207,8 @@ class RubySpec
       bundles = projects.to_h { |built, project| [built, simulator.build_app(built, project)] }
       run_stock
       MobileParity::IOS::FAMILIES.map do |family|
-        simulator.on_simulator(family, bundles, timeout: TIMEOUT, standard_error: false) do |_, entries, device|
-          compare(entries, MobileParity::IOS::TARGET, device)
+        simulator.on_simulator(family, bundles, timeout: TIMEOUT) do |_, logged, device|
+          compare(logged.output, MobileParity::IOS::TARGET, device)
         end
       end.all?
     end
@@ -235,7 +235,7 @@ class RubySpec
       emulator = MobileParity::Android.new(work: @work, out: @log)
       system("adb", "logcat", "-G", "16M", exception: true)
       system("adb", "install", "-r", apk_path, exception: true)
-      compare(emulator.launch(app, timeout: TIMEOUT, standard_error: false), emulator.target, emulator.device)
+      compare(emulator.launch(app, timeout: TIMEOUT).output, emulator.target, emulator.device)
     end
 
     # The project's two copies, one for stock Ruby and one to build, in

@@ -267,27 +267,26 @@ class MobileParity
       end
     end
 
-    # Starts +app+ after clearing logcat, and returns the lines it logged
-    # up to its status and after, until the log settles, then stops it,
-    # since Ruby boots once per process. Those of standard error are left
-    # out of what it returns unless +standard_error+, but not out of what
-    # it reports when it fails: when the app has not finished in
-    # +timeout+ seconds, or when its process has ended without the host's
-    # status, as when Android stopped it.
-    def launch(app, timeout: TIMEOUT, standard_error: true)
+    # Starts +app+ after clearing logcat, and returns what it logged
+    # (Logged) up to its status and after, until the log settles, then
+    # stops it, since Ruby boots once per process. It fails, reporting
+    # both streams, when the app has not finished in +timeout+ seconds,
+    # or when its process has ended without the host's status, as when
+    # Android stopped it.
+    def launch(app, timeout: TIMEOUT)
       adb("logcat", "-c")
       adb("shell", "am", "start", "-W", "-n", "#{app.identifier}/#{ACTIVITY}")
       deadline = Time.now + timeout
-      until MobileParity.status(logged(app))
-        ended = !running?(app) && !MobileParity.status(logged(app))
+      until MobileParity.status(logged(app).entries)
+        ended = !running?(app) && !MobileParity.status(logged(app).entries)
         if ended || Time.now > deadline
           why = ended ? "ended without a status" : "did not finish in #{timeout} seconds"
-          raise "#{app.name} #{why}:\n#{logged(app).last(40).join("\n")}\n#{diagnosis(app)}"
+          raise "#{app.name} #{why}:\n#{logged(app).entries.last(40).join("\n")}\n#{diagnosis(app)}"
         end
 
         sleep 2
       end
-      MobileParity.settled { logged(app, standard_error:) }.tap { adb("shell", "am", "force-stop", app.identifier) }
+      MobileParity.settled { logged(app) }.tap { adb("shell", "am", "force-stop", app.identifier) }
     end
 
     # What the emulator says of +app+, for one that never finished:
@@ -320,8 +319,9 @@ class MobileParity
 
     # What +app+ logged under its identifier, as Android.messages reads
     # it.
-    private def logged(app, standard_error: true)
-      Android.messages(adb("logcat", "-d", "-v", "tag", "-s", "#{app.identifier}:V"), app.identifier, standard_error:)
+    private def logged(app)
+      log = adb("logcat", "-d", "-v", "tag", "-s", "#{app.identifier}:V")
+      Logged.new(entries: Android.messages(log, app.identifier), output: Android.messages(log, app.identifier, standard_error: false))
     end
 
     private def running?(app)

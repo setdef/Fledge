@@ -69,6 +69,32 @@ class RubySourceTest < Minitest::Test
     assert_raises(RuntimeError) { Edits.ruby_c("#elif defined(HAVE_DLADDR)\n    Dl_info info;\n") }
   end
 
+  # An Android app's Ruby is given an argv its host allocates, so the
+  # title $0= writes over it never reaches /proc/PID/cmdline. The edit
+  # points setproctitle at the process's own argument area, which
+  # /proc/self/stat names, once compat_init_setproctitle has measured the
+  # argv it was given.
+  def test_an_android_apps_ruby_titles_the_process_in_its_own_argument_area
+    edited = Edits.setproctitle_c(SETPROCTITLE_LINES)
+
+    assert_includes edited, "#if ALLOCATE_ENVIRON && defined(__ANDROID__)\n"
+    assert_includes edited, "FILE *file = fopen(\"/proc/self/stat\", \"re\");\n"
+    assert_includes edited, "    argv_start = (char *)start;\n    argv_len = argv_env_len = end - start;\n}\n#endif\n\n" \
+      "void\ncompat_init_setproctitle(int argc, char *argv[])\n"
+    assert_includes edited, "\talloc_environ[i] = environ[i] = NULL;\n#if defined(__ANDROID__)\n" \
+      "\tfledge_use_process_argument_area(argv[0]);\n#endif\n#endif /* SPT_REUSEARGV */\n}\n"
+    assert_raises(RuntimeError) { Edits.setproctitle_c(SETPROCTITLE_LINES.sub("NULL;\n#endif", "NULL;\n\n#endif")) }
+    assert_raises(RuntimeError) { Edits.setproctitle_c(SETPROCTITLE_LINES.sub("int argc, char *argv[]", "int argc, char **argv")) }
+  end
+
+  # compat_init_setproctitle's first and last lines in
+  # missing/setproctitle.c, lines 116 to 118 and 166 to 172 at
+  # 4.1.0-preview1.
+  SETPROCTITLE_LINES = "void\ncompat_init_setproctitle(int argc, char *argv[])\n{\n" \
+    "\targv_env_len = lastenvp - argv[0];\n\n\tfor (i = 0; envp[i] != NULL; i++)\n" \
+    "\t\talloc_environ[i] = environ[i] = ruby_strdup(envp[i]);\n\talloc_environ[i] = environ[i] = NULL;\n" \
+    "#endif /* SPT_REUSEARGV */\n}\n"
+
   def test_applies_each_edit_to_its_file_in_a_source_tree
     Dir.mktmpdir do |source|
       FileUtils.mkdir_p(File.join(source, "ext", "psych"))

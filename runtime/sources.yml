@@ -29,11 +29,13 @@
 # pinned commit and pinned by SHA-256; the signature must be that key's,
 # by fingerprint. The key expires on 2027-06-15; how to move to a renewed
 # key is in doc/contributors/design/runtimes.md, "The RubyInstaller
-# signing key". RubyInstaller's URL serves each day's build
-# in place of the last, so these exact files are kept where Fledge
-# publishes its runtimes (url) and fetched from RubyInstaller (mirrors)
-# only while it still serves them; every download is checked against the
-# one sha256 either way. RubyInstaller-4.1.0-1 replaces this snapshot
+# signing key". RubyInstaller published these files at
+# https://github.com/oneclick/rubyinstaller2/releases/tag/rubyinstaller-head,
+# which serves each day's build in place of the last, so Fledge keeps the
+# exact files, unchanged, as a pre-release of its own repository named
+# for their source and day, inputs-rubyinstaller-head-20261110
+# (doc/contributors/design/runtimes.md, "Rolling upstream inputs"), and
+# the pins name that copy. RubyInstaller-4.1.0-1 replaces this snapshot
 # once it is released.
 #
 # bundled_gems lists Ruby 4.1.0-preview1's bundled gems, from
@@ -62,12 +64,10 @@ ruby:
       url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.arm64_linux.tar.gz
       sha256: 5462ee70c273007fa21ff63991f9bcaf68edbcf01f50f81bd416f9a6ed71e1ac
     x64-mingw-ucrt:
-      url: https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-x64.7z
-      mirrors: [https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x64.7z]
+      url: https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-x64.7z
       sha256: 901473edafd6b174d79978fc109d3df3ab73b1436719233f35c1a31b5b18bf58
       signature:
-        url: https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-x64.7z.asc
-        mirrors: [https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x64.7z.asc]
+        url: https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-x64.7z.asc
         sha256: 5189bb5ecd07a1cf758102a303da5178966dea37081fa9c1c3f981cf0d01da7d
         key:
           url: https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc
@@ -77,12 +77,10 @@ ruby:
     # RubyInstaller's build for Windows on ARM64 (ADR 035), of the same
     # day and commit, signed with the same key.
     aarch64-mingw-ucrt:
-      url: https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-arm.7z
-      mirrors: [https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-arm.7z]
+      url: https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-arm.7z
       sha256: 7d1ae764cc530ded0ae7f0c6e610eea17c7ef4ce574e529963072674dc234b34
       signature:
-        url: https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-arm.7z.asc
-        mirrors: [https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-arm.7z.asc]
+        url: https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-arm.7z.asc
         sha256: def88921529dcc7998bb301f2511ecf2f0c8c6d731a504cdedfe458a55a46135
         key:
           url: https://raw.githubusercontent.com/oneclick/rubyinstaller2/866be16701f052d01f03fb28807cb3689c65b92d/recipes/unpack/appveyor-repo-key.asc

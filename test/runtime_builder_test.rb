@@ -47,28 +47,23 @@ class RuntimeBuilderTest < Minitest::Test
     platforms = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms")
     arm = platforms.fetch("aarch64-mingw-ucrt")
 
-    assert_equal "https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-arm.7z", arm.fetch("url")
-    assert_equal ["https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-arm.7z"],
-      arm.fetch("mirrors")
+    assert_equal "https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-arm.7z", arm.fetch("url")
     assert_equal "#{arm.fetch('url')}.asc", arm.fetch("signature").fetch("url")
-    assert_equal arm.fetch("mirrors").map { |url| "#{url}.asc" }, arm.fetch("signature").fetch("mirrors")
     assert_equal platforms.fetch("x64-mingw-ucrt").fetch("signature").fetch("key"), arm.fetch("signature").fetch("key")
   end
 
   # RubyInstaller's rubyinstaller-head URL serves each day's build in
   # place of the last, so the pin names the copy of the day's files that
-  # Fledge publishes, and RubyInstaller's URL only as a mirror.
+  # Fledge keeps as a pre-release of its own repository, named for the
+  # source and the day (doc/contributors/design/runtimes.md).
   def test_windows_pins_rubyinstaller_its_signature_and_the_key_that_signed_it
     pin = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms").fetch("x64-mingw-ucrt")
     signature = pin.fetch("signature")
     key = signature.fetch("key")
 
-    assert_equal "https://github.com/setdef/Fledge/releases/download/v0.12.0/rubyinstaller-head-x64.7z", pin.fetch("url")
-    assert_equal ["https://github.com/oneclick/rubyinstaller2/releases/download/rubyinstaller-head/rubyinstaller-head-x64.7z"],
-      pin.fetch("mirrors")
+    assert_equal "https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-x64.7z", pin.fetch("url")
     assert_equal "901473edafd6b174d79978fc109d3df3ab73b1436719233f35c1a31b5b18bf58", pin.fetch("sha256")
     assert_equal "#{pin.fetch('url')}.asc", signature.fetch("url")
-    assert_equal pin.fetch("mirrors").map { |url| "#{url}.asc" }, signature.fetch("mirrors")
     assert_match(/\A\h{64}\z/, signature.fetch("sha256"))
     assert_match(%r{\Ahttps://raw\.githubusercontent\.com/oneclick/rubyinstaller2/\h{40}/}, key.fetch("url"))
     assert_match(/\A\h{64}\z/, key.fetch("sha256"))
@@ -145,19 +140,13 @@ class RuntimeBuilderTest < Minitest::Test
     assert_match(/names no zlib\.dll/, error.message)
   end
 
-  # Only RuntimeBuilder#fetch_pin passes a pin's mirrors to the download:
-  # .github/scripts/fetch_pin.rb, which alone reads the replaceability
-  # pins, and whatever fetches Ruby's Windows pins, the build, its
-  # signature check, and the parity check, whose RubyInstaller URL serves
-  # a pinned snapshot for one day only. Mirrors named anywhere else would
-  # never be tried.
+  # Only .github/scripts/fetch_pin.rb passes a pin's mirrors to the
+  # download (RuntimeBuilder#fetch_pin), and it alone reads the
+  # replaceability pins; mirrors named anywhere else would never be tried.
   def test_only_the_pins_fetch_pin_reads_name_mirrors_and_each_is_https
     mirrored = mirrored_pins(builder("x86_64-linux").sources)
-    windows = %w[x64-mingw-ucrt aarch64-mingw-ucrt].flat_map do |name|
-      [["ruby", "platforms", name], ["ruby", "platforms", name, "signature"]]
-    end
 
-    assert_equal [*windows, %w[replaceability gmp], %w[replaceability musl]].sort, mirrored.keys.sort
+    assert_equal [%w[replaceability gmp], %w[replaceability musl]], mirrored.keys.sort
     mirrored.each_value do |urls|
       refute_empty urls
       urls.each { |url| assert_match(%r{\Ahttps://}, url) }

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Windows, `fledge build` compiles gems in a work folder named by its long names when `TMP` names the user folder by its 8.3 short name (`C:\Users\RUNNER~1`), so a gem whose build escapes a path for a shell, as nokogiri's through mini_portile2 does, compiles. It failed with "a gem's extension did not compile".
 - On iOS and Android, `require "bigdecimal"` activates the bigdecimal gem and loads its Ruby, as on a desktop, so `BigDecimal#sqrt`, `#power`, `#**`, and `BigMath` are there; the same holds for nkf, and for fiddle on Android.
 - On Android, `Process.egid=`, `Process.gid=`, `Process::GID`'s changes, and `Process.initgroups` raise `NotImplementedError` instead of ending the app, which Android's seccomp filter stops for setting a group ID, and `Process.uid=` sets the user ID as on Linux instead of ending it.
+- On iOS and Android, `require "io/nonblock"` activates the io-nonblock default gem, so `Gem.loaded_specs` has it, as on a desktop, and every default gem's specification lists the files a desktop's does.
 
 ## [0.12.0] - 2026-11-12
 

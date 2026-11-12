@@ -413,16 +413,3 @@
   checks:
   - script
   - bundle
-- fact: requireable
-  reference:
-  - \A"io-nonblock"="loads"\z
-  app:
-  - \A"io-nonblock"="loads, but not its gem"\z
-  platforms:
-  - arm64-ios
-  - arm64-ios-simulator
-  - aarch64-linux-android
-  - x86_64-linux-android
-  checks:
-  - script
-  - bundle

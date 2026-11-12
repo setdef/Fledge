@@ -224,6 +224,8 @@ The fixtures for these rules are built by `test/linkage_test.rb` with Xcode's cl
 
 The list goes into `fledge.cfg` as `system_libraries = …`, which the Linux launcher checks before Ruby starts, exiting 72 with the missing library's name (`doc/contributors/design/launcher.md`). A `.deb` depends on the packages dpkg-shlibdeps finds for the files that need them (`doc/contributors/design/desktop-apps.md`). An AppImage and a `.tar.gz` do not carry them.
 
+The prior art behind the soname list: auditwheel 6.4.2, `src/auditwheel/main_repair.py`, lines 102 to 112 (`--exclude`); delvewheel at 0cf6869e, `delvewheel/__main__.py`, line 63; Tauri at 32576120, `crates/tauri-utils/src/config.rs` lines 339 and 340, `crates/tauri-bundler/src/bundle/linux/debian.rs` lines 204 to 207, `crates/tauri-cli/src/interface/rust.rs` lines 1419 to 1430, and `appimage/linuxdeploy.rs` lines 150 to 165, 197 to 203, and 242 to 245; Briefcase at fee777ed, `docs/en/reference/platforms/linux/system.md` lines 182 to 194 and `appimage.md` lines 55 and 138 to 153; AppImage's excludelist (pkg2appimage at 19e30b27); Debian Policy 8.6.1; dpkg-shlibdeps(1) at dpkg 1.22; sysexits(3). These were read when ADR 030 was decided.
+
 ## Checks that are not about licenses
 
 Fledge judges no gem by its license, whether it declares one, or what its compiled files hold (ADR 007). Each check that remains decides whether the app runs where it goes, or whether its inputs are the ones the developer locked:

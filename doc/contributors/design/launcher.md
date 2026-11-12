@@ -64,6 +64,12 @@ On Linux the launcher loads libxcrypt from `ROOT/lib` through a `DT_RPATH` of `$
 
 Ruby sees `argv[0]`, then `--disable=rubyopt`, `--`, the absolute path `APP/ENTRY`, and every argument the person passed, where APP is the app folder by its real path and ENTRY is `fledge.cfg`'s `entry`. On Windows ENTRY's `/` become `\`, and the path is UTF-8. A missing or non-regular ENTRY exits 66.
 
+## Signals and the console
+
+Ruby installs handlers for SIGINT and SIGHUP (`signal.c`, `install_sighandler`), and re-raises the signal with its default action after cleanup (`eval.c`, `rb_ec_cleanup`, and `signal.c`, `ruby_default_signal`, at Ruby 4.0.9). The launcher installs no handler and ignores no signal, so Ctrl-C raises `Interrupt` in the main thread, runs `ensure` clauses and `at_exit` hooks, and ends the app by SIGINT (130 to a shell on macOS and Linux, exit code 3 on Windows); a closed terminal raises `SignalException` for SIGHUP (129). A built app started in the background of a shell script ignores Ctrl-C, as `ruby` does there.
+
+On Windows, the C runtime UCRT turns CTRL_C_EVENT into SIGINT and maps no other console event to a signal, and neither Ruby nor the launcher installs a console control handler. Closing a console window ends the app at once, with STATUS_CONTROL_C_EXIT, as it ends `ruby.exe`.
+
 ## Hiding and restoring the person's Ruby settings
 
 `scrub.c` names the prefixes: `RUBY`, `GEM_`, `GEMRC`, `BUNDLE_`, `BUNDLER_`, and `RI_FORCE_PATH_FOR_DLL`, with a comment of which variable each covers and where Ruby, RubyGems, Bundler, and RubyInstaller read it. Variables outside them, such as `SSL_CERT_FILE`, `HOME`, and the `XDG_` folders, describe the computer, not the person's Ruby, and stay.
@@ -163,7 +169,7 @@ Once the program runs, the status is the program's own. `bin/ruby`, which is Rub
 
 Nothing is exported: `ENV`, and programs that are not Ruby, see the person's own locale. Every Ruby the app starts through `RbConfig.ruby` coerces for itself.
 
-On Windows the launcher calls `setlocale(LC_CTYPE, "")` as `main.c` does, and its manifest sets no `activeCodePage`. Ruby's `Encoding.default_external` is UTF-8 there whatever the code page, `Encoding.locale_charmap` is the console's input code page (`localeinit.c`, `GetConsoleCP`), and Ruby writes to a console with `WriteConsoleW` (`win32/win32.c`, `rb_w32_write_console`), so text outside the code page still shows as written.
+On Windows the launcher calls `setlocale(LC_CTYPE, "")` as `main.c` does, and its manifest sets no `activeCodePage`. Ruby's `Encoding.default_external` is UTF-8 there whatever the code page (since Ruby 3.0, Feature #16604), `Encoding.locale_charmap` is the console's input code page (`localeinit.c`, `GetConsoleCP`), and Ruby writes to a console with `WriteConsoleW` (`win32/win32.c`, `rb_w32_write_console`), so text outside the code page still shows as written.
 
 ## Windows
 
@@ -219,7 +225,7 @@ Then it `execv`s the launcher with `argv[0]` the launcher's path and the argumen
 
 In an app of one program, whose `fledge.cfg` has no sections, the first executable file `bin/ruby` finds in the folder is taken as the launcher; `fledge build` puts no other there. A launcher found and not started exits 70 (see "Messages and exit statuses").
 
-On Windows `RbConfig.ruby` is RubyInstaller's `ruby.exe`, and nothing hands a program back; an app restarts by running `NAME.exe`, which it finds with `GetModuleFileNameW(NULL, ...)`.
+On Windows `RbConfig.ruby` is RubyInstaller's `ruby.exe`, and nothing hands a program back; an app restarts by running `NAME.exe`, which it finds with `GetModuleFileNameW(NULL, ...)`. Windows has no `exec` that keeps the process: Ruby's `exec` there starts the program and waits for it (`process.c`, line 1660, calls `rb_w32_uaspawn` with `P_OVERLAY`, and `win32/win32.c`'s `child_result`, lines 1175 to 1190, waits and exits with the child's status, at Ruby 4.0.9). So a restart through `RbConfig.ruby` there boots with the person's settings, and in a windowed app opens a console and loses the app's AppUserModelID.
 
 ## System libraries on Linux
 

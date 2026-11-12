@@ -142,6 +142,19 @@ os = ["windows"]
 platforms.windows-x64 = { url = "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/10.0.28000.2705/microsoft.windows.sdk.buildtools.10.0.28000.2705.nupkg", checksum = "sha256:8bfdfb6ca2633f531cf80b5fa22512ba61a394d7988f0970db83baadc67929ed", format = "zip", bin_path = "bin/10.0.28000.0/x64" }
 platforms.windows-arm64 = { url = "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.buildtools/10.0.28000.2705/microsoft.windows.sdk.buildtools.10.0.28000.2705.nupkg", checksum = "sha256:8bfdfb6ca2633f531cf80b5fa22512ba61a394d7988f0970db83baadc67929ed", format = "zip", bin_path = "bin/10.0.28000.0/arm64" }
 
+# On Windows, PowerShell 7, which runs the Delivery scripts in
+# .github/scripts as CI runs them (pwsh -NoProfile -File SCRIPT), on a
+# Windows computer that has only Windows PowerShell, whose execution
+# policy may forbid scripts; pwsh's own default on Windows,
+# RemoteSigned, runs a local one. PowerShell's own release zips, by the
+# SHA-256 its hashes.sha256 and GitHub both record. It runs on a
+# contributor's computer only, and no runtime or app carries it.
+[tools."http:pwsh"]
+version = "7.6.9"
+os = ["windows"]
+platforms.windows-x64 = { url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-x64.zip", checksum = "sha256:ce7484804c0f0ad4dda10c958e71acdaf7eebfb22505c1b480f89e0e9f1da94d" }
+platforms.windows-arm64 = { url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-arm64.zip", checksum = "sha256:2157fb002178e606c2a5532c56647118d90d029742f04d4900a71e3b478c2363" }
+
 # On Windows, the rest of what `ridk enable` sets, so a shell has what a
 # RubyInstaller user's has: RI_DEVKIT here, the variables that depend on
 # the architecture in .config/mise/windows-ARCH.env (no file exists for

@@ -61,8 +61,7 @@ class KeepRubyInstallerHeadTest < Minitest::Test
     skip "the workflow's script runs on Linux, with bash" if Gem.win_platform?
     skip "signing a test build needs gpg" unless system("gpg", "--version", out: File::NULL, err: File::NULL)
     @dir = Dir.mktmpdir
-    @gnupg = File.join(@dir, "gnupg")
-    FileUtils.mkdir_p(@gnupg, mode: 0o700)
+    @gnupg = gnupg_home
     @fingerprint = make_key
     @files = FILES.reject { |name| name.end_with?(".asc") }.to_h { |name| [name, "#{name} built #{BUILT}"] }
     @files.dup.each { |name, bytes| @files["#{name}.asc"] = sign(bytes) }
@@ -77,6 +76,7 @@ class KeepRubyInstallerHeadTest < Minitest::Test
   def teardown
     @server&.stop
     system({ "GNUPGHOME" => @gnupg }, "gpgconf", "--kill", "gpg-agent", out: File::NULL, err: File::NULL) if @gnupg
+    FileUtils.rm_rf(@gnupg) if @gnupg
     FileUtils.rm_rf(@dir) if @dir
   end
 
@@ -205,7 +205,7 @@ class KeepRubyInstallerHeadTest < Minitest::Test
 
   def test_a_signature_from_another_key_fails
     @released = %w[4.1.0-preview2]
-    other = Dir.mktmpdir(nil, @dir)
+    other = gnupg_home
     @files["rubyinstaller-head-x64.7z.asc"] = sign(@files.fetch("rubyinstaller-head-x64.7z"), home: other, key: make_key(other))
     out, status = keep
 
@@ -214,6 +214,7 @@ class KeepRubyInstallerHeadTest < Minitest::Test
     assert_empty published
   ensure
     system({ "GNUPGHOME" => other }, "gpgconf", "--kill", "gpg-agent", out: File::NULL, err: File::NULL) if other
+    FileUtils.rm_rf(other) if other
   end
 
   def test_a_key_that_does_not_match_its_pin_fails
@@ -380,6 +381,14 @@ class KeepRubyInstallerHeadTest < Minitest::Test
     file = File.join(@dir, "to-sign")
     File.binwrite(file, bytes)
     gpg("--armor", "--local-user", key, "--output", "-", "--detach-sign", file, home:)
+  end
+
+  # A new home for gpg, directly under /tmp: gpg-agent's socket lives in
+  # it, and macOS refuses a socket path longer than 104 bytes, which a
+  # folder inside Dir.tmpdir's long /var/folders path already exceeds
+  # ("can't connect to the gpg-agent: File name too long").
+  private def gnupg_home
+    Dir.mktmpdir("gpg", "/tmp").tap { |home| File.chmod(0o700, home) }
   end
 
   private def gpg(*args, home: @gnupg)

@@ -259,6 +259,15 @@
   platforms:
   - arm64-ios
   - arm64-ios-simulator
+  checks:
+  - script
+  - bundle
+- fact: child ENV
+  reference:
+  - "."
+  app:
+  - "."
+  platforms:
   - aarch64-linux-android
   - x86_64-linux-android
   checks:
@@ -272,8 +281,6 @@
   platforms:
   - arm64-ios
   - arm64-ios-simulator
-  - aarch64-linux-android
-  - x86_64-linux-android
   checks:
   - script
   - bundle
@@ -285,8 +292,6 @@
   platforms:
   - arm64-ios
   - arm64-ios-simulator
-  - aarch64-linux-android
-  - x86_64-linux-android
   checks:
   - script
   - bundle

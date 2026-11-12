@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Phone Runtimes
 
-This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, and what a phone runtime's licenses are. The decisions are ADR 011 (Ruby as a static library built from source), ADR 057 (target names), ADR 058 (bundled gems stay gems), ADR 067 (their extensions keep every symbol but their Init functions), ADR 059 (output to the system log), and ADR 061 (`fledge_ruby_run_app`). The projects `fledge build` writes around a runtime, and what CI checks before a store would, are `doc/contributors/design/phone-projects.md`. What a developer does with the project is in `doc/phones.md`; this document adds the internals.
+This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, and what a phone runtime's licenses are. The decisions are ADR 011 (Ruby as a static library built from source), ADR 057 (target names), ADR 058 (bundled gems stay gems), ADR 067 (their extensions keep every symbol but their Init functions), ADR 059 (output to the system log), ADR 061 (`fledge_ruby_run_app`), and ADR 069 (the ruby program on Android). The projects `fledge build` writes around a runtime, and what CI checks before a store would, are `doc/contributors/design/phone-projects.md`. What a developer does with the project is in `doc/phones.md`; this document adds the internals.
 
 ## Targets
 
@@ -35,17 +35,17 @@ Each runtime is a release asset of its own, `fledge-runtime-VERSION-ios.tar.gz` 
 
 The two slices' Rubies differ only in the compiler their `rbconfig.rb` records. One binary runs on iPhone and iPad.
 
-**Android** is `FledgeRuby.aar`, packed by the pinned Gradle and Android Gradle plugin from `runtime/mobile/android/`, holding `libfledgeruby.so` for arm64-v8a and x86_64 and the Java class `org.setdef.fledge.FledgeRuby`. Beside it are one `lib/ruby` for both ABIs (Ruby names each ABI's folder of platform-specific files for its platform, so both fit one tree, and the build fails if any other file differs between them), `libexec/cert.pem`, and `include/`.
+**Android** is `FledgeRuby.aar`, packed by the pinned Gradle and Android Gradle plugin from `runtime/mobile/android/`, holding `libfledgeruby.so` and the ruby program `libfledgerubyexe.so` for arm64-v8a and x86_64 (see "The ruby program on Android"), and the Java class `org.setdef.fledge.FledgeRuby`. Beside it are one `lib/ruby` for both ABIs (Ruby names each ABI's folder of platform-specific files for its platform, so both fit one tree, and the build fails if any other file differs between them), `libexec/cert.pem`, and `include/`.
 
 `libfledgeruby.so` holds all of Ruby, so native code that links it finds Ruby's whole C API. It keeps OpenSSL's, libyaml's, and libffi's symbols to itself (`--exclude-libs`), so an app's own copies cannot clash with them. The build fails unless it needs only Android's `libc`, `libm`, `libdl`, `liblog`, and `libz`, and unless every LOAD segment is aligned to 16 KB, which Google Play requires of 64-bit apps from 2027-02-01.
 
-Neither runtime has a `bin/ruby` or the gems' executables: nothing on a phone could run them.
+Neither runtime has the gems' executables, and the iOS runtime has no Ruby program, since iOS lets no app run one. The Android runtime's ruby program is a native library by name, which the app's installer extracts, and `ROOT/bin/ruby` is a link to it that the embedding API makes as the app starts (ADR 069).
 
 ## Ruby's C headers on a phone
 
 Both phone runtimes ship Ruby's C headers, for the computer that builds the app: each iOS slice in `Headers/`, and the Android runtime in `include/` (both ABIs' `include/ruby-VERSION/` merged, with each ABI's configuration folder, and `fledge_ruby.h`). mkmf compiles a gem's extension against them (see `doc/contributors/design/phone-projects.md`, "Gems with extensions"), and native code that links the runtime includes them.
 
-The app on the phone carries no headers. The iOS project's build phase copies the slice's `lib/` and `libexec/` into the bundle, and the Android project puts the runtime's `lib/` and `libexec/` in `fledge/`, so the Ruby root an app runs from has no `include/`. `require "mkmf"` on a phone therefore aborts as it does where Ruby's headers are missing. A desktop runtime keeps its headers for that reason (`doc/contributors/design/runtimes.md`); on a phone an app starts no programs, so mkmf's `find_executable` could find nothing it may run, and the mobile parity check does not test it.
+The app on the phone carries no headers. The iOS project's build phase copies the slice's `lib/` and `libexec/` into the bundle, and the Android project puts the runtime's `lib/` and `libexec/` in `fledge/`, so the Ruby root an app runs from has no `include/`. `require "mkmf"` on a phone therefore aborts as it does where Ruby's headers are missing. A desktop runtime keeps its headers for that reason (`doc/contributors/design/runtimes.md`); a phone has no compiler for mkmf to run, iOS lets an app start no program, and Android only the ones its package carries, so the mobile parity check does not test it.
 
 ## Building Ruby for a phone
 
@@ -122,9 +122,23 @@ On iOS fiddle is left out, as xord/cruby leaves it out "to pass the App Store re
 
 `fledge_ruby_run_app` reads `root/fledge.cfg` with the launcher's reader and runs `root/app/ENTRY`. For an app with a Gemfile it sets `BUNDLE_GEMFILE` to the app's Gemfile, whose `.bundle/config` Bundler then reads as the app's settings, and requires `bundler/setup` from Ruby's own library, or from the gem of the Bundler `fledge.cfg` names, as the desktop launcher does (`doc/contributors/design/launcher.md`, "The Bundler environment"), which sets `ENV` as `bundle exec` would (`Bundler::Runtime#setup`, `set_bundle_environment`). It returns 66 (`FLEDGE_RUBY_NO_APP`) when `fledge.cfg` or the program is missing, and 70 when the configuration is damaged or Bundler cannot set up the gems.
 
+On Android, `fledge_ruby_run` first makes `root/bin/ruby` a link to the runtime's ruby program (see "The ruby program on Android").
+
 Unlike the desktop launcher, neither function sets anything of the environment aside: iOS and Android start an app with an environment of their own, which no person sets. Ruby needs a deep stack: Fledge's hosts run it on a thread with 64 MB.
 
 Swift needs no shim: the module map imports the C functions.
+
+## The ruby program on Android
+
+An Android app may run only the files its package installer extracts from the APK into its native library folder, `nativeLibraryDir`, and only when its native libraries are compressed, so that the installer extracts them; the files in the app's own folders it may not run (W^X, from target API 29). The Android runtime therefore carries its ruby program as a native library by name, `libfledgerubyexe.so`, beside `libfledgeruby.so` in each ABI's folder of the AAR, and the Gradle project packs native libraries compressed (`doc/contributors/design/phone-projects.md`, "The Gradle project"). ADR 069 weighs the alternatives.
+
+**Built.** `RuntimeBuilder::Android#program` compiles `runtime/mobile/ruby_program.c`, a `main` that calls `fledge_ruby_program_main`, as a position-independent executable linked against `libfledgeruby.so` with the run path `$ORIGIN`, which bionic's linker expands to the folder of the program's own file, and with `-z max-page-size=16384`. It checks the program with clang's static analyzer, strips it, and fails unless it needs only Android's libraries and `libfledgeruby.so`, has that run path, and aligns every LOAD segment to 16 KB. It carries no Ruby of its own: Ruby's `main.c` is `fledge_ruby_main` in `fledge_ruby.c`.
+
+**Named.** `RbConfig.ruby` is `ROOT/bin/ruby`, from the prefix Ruby derives, as a desktop's is. Before Ruby boots in the app, `fledge_ruby_run` calls `fledge_ruby_link_program` (`android.c`), which finds `nativeLibraryDir` with `dladdr` on `libfledgeruby.so`, and makes `ROOT/bin/ruby` a link to the program there, through a new link renamed into place, whenever it is not that link already: the folder changes with each install. Where the libraries load from inside the APK (`base.apk!/lib/ABI/`), not extracted, there is no program, and an old link is removed.
+
+**Run.** The kernel runs the file the link resolves to. `fledge_ruby_program_main` finds `ROOT` from the path the program was run by, which the kernel keeps as `AT_EXECFN` (`getauxval`): the parent of its folder, `ROOT/bin`, resolved, since `/proc/self/exe` and `dladdr` name the file in `nativeLibraryDir`. It loads `libfledgeext.so` from beside `libfledgeruby.so` when the app has one, as the host loads it, so that its constructor registers the app's gems' extensions; `libfledgeext.so` has the run path `$ORIGIN` too, so that a shared library an extension carries is found beside it outside the app's library namespace (`doc/contributors/design/phone-projects.md`, "Linking extensions on Android"). Then `fledge_ruby_main` runs, which is what a desktop's `bin/ruby` is (`runtime/launcher/ruby_main.c`): the locale, the certificates, and Ruby's prefix as `fledge_ruby_run` has them, then `ruby_sysinit` and `ruby_start_main`, with the extensions registered between `ruby_options` and `ruby_run_node`, and Ruby's arguments as given, `RUBYOPT` honored. When its first argument is the program `ROOT/fledge.cfg` names, compared by device and inode as the desktop's `fledge_relaunch` compares it, it runs `fledge_ruby_run_app` with the arguments after it instead, as the host ran the app: the desktop's `bin/ruby` hands such a program to the app's launcher (ADR 026), and an Android app's starting is its host's, which the program does in its own process.
+
+A Ruby the app starts inherits the app's environment and standard streams, so its output reaches the log through the same pipe, buffered as Ruby buffers a pipe. It has no Java virtual machine, and Android may stop it with the app.
 
 ## Output to the system log
 
@@ -159,7 +173,7 @@ It is Java, not Kotlin, so an app need not depend on Kotlin's standard library; 
 
 ## Licenses of a phone runtime
 
-Each phone runtime passes the license audit before it is archived (ADR 004; `doc/contributors/design/license-audit.md`), and ships only what decision 8 allows, with no LGPL library. Its components are recorded in `runtime/licenses.yml`: Ruby, OpenSSL, libyaml, libffi on Android, the NDK's compiler-rt builtins and libunwind on Android (`compiler-rt-ndk`), Mozilla's CA certificates as a file, and Fledge's own embedding API (`fledge-embedding`, MIT). GMP is configured out, iOS's `crypt` is its libSystem's, and Android's `String#crypt` is Ruby's own `missing/crypt.c`, so neither runtime carries libxcrypt.
+Each phone runtime passes the license audit before it is archived (ADR 004; `doc/contributors/design/license-audit.md`), and ships only what decision 8 allows, with no LGPL library. Its components are recorded in `runtime/licenses.yml`: Ruby, OpenSSL, libyaml, libffi on Android, the NDK's compiler-rt builtins and libunwind on Android (`compiler-rt-ndk`), Mozilla's CA certificates as a file, and Fledge's own embedding API (`fledge-embedding`, MIT), which includes the Android runtime's ruby program. GMP is configured out, iOS's `crypt` is its libSystem's, and Android's `String#crypt` is Ruby's own `missing/crypt.c`, so neither runtime carries libxcrypt.
 
 Two things in the audit exist for phones. An iOS runtime has a Ruby per slice, so a platform's map entry names several prefixes (`runtime/licenses.yml`, `prefixes`), and each gem in them is one component. An AAR is a zip whose entries the app ships, so the audit reads each entry with `unzip`, as `FledgeRuby.aar!ENTRY`, and a copyleft library's code in one fails as it would in a file. The audit's readers for the Android runtime are the NDK's own LLVM tools (`RuntimeBuilder::Android#readers`).
 

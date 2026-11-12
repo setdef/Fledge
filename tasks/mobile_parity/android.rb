@@ -76,6 +76,13 @@ class MobileParity
       found.first(3)
     end
 
+    # What bundletool dump config prints for a bundle whose APKs store
+    # their native libraries, which the package installer then does not
+    # extract: the plugin asks for it when useLegacyPackaging is false.
+    # The template compresses them, so that Android extracts the ruby
+    # program where an app may run it (ADR 069).
+    UNCOMPRESSED_NATIVE_LIBRARIES = /"uncompressNativeLibraries":\s*\{[^}]*"enabled":\s*true/
+
     # Checks the release bundle +aab+ as Play would take it, in +work+:
     # signed with an upload key by jarsigner, as Android's documentation
     # signs a bundle from the command line, then validated by bundletool,
@@ -97,7 +104,9 @@ class MobileParity
 
       bundletool("validate", "--bundle=#{signed}")
       config = bundletool("dump", "config", "--bundle=#{signed}")
-      raise "#{aab} does not ask for native libraries aligned for 16 KB pages:\n#{config}" unless config.include?("PAGE_ALIGNMENT_16K")
+      if config.match?(UNCOMPRESSED_NATIVE_LIBRARIES)
+        raise "#{aab} asks for its native libraries stored, so Android would not extract the ruby program:\n#{config}"
+      end
 
       bundletool("build-apks", "--bundle=#{signed}", "--output=#{apks}", "--overwrite", "--ks=#{key}", "--ks-pass=pass:#{KEY[:password]}",
         "--ks-key-alias=#{KEY[:alias]}", "--key-pass=pass:#{KEY[:password]}")
@@ -111,8 +120,8 @@ class MobileParity
 
     # Checks every APK in the APK set +apks+, unpacked into +work+ with the
     # JDK's jar, which every computer that builds the project has: each
-    # aligned for 16 KB pages with its native libraries and fledge.zip
-    # stored, and the base module's main APKs, one for each range of API
+    # aligned for 16 KB pages with fledge.zip stored and its native
+    # libraries compressed, and the base module's main APKs, one for each range of API
     # levels from API 26, each holding fledge.zip and targeting API 36.
     def self.check_splits(apks, work:, out:)
       into = File.join(work, "apks")
@@ -136,13 +145,22 @@ class MobileParity
       Integer(row.split(",").last)
     end
 
-    # The entries zipalign's verbose lines, +aligned+, report compressed
-    # that Android maps, or FledgeRuby unpacks, straight from the APK, and
-    # so must be stored: the native libraries and fledge.zip.
-    def self.compressed_but_mapped(aligned)
+    # The entries zipalign's verbose lines, +aligned+, report packed as
+    # Android does not take them, each with how it is packed: fledge.zip
+    # compressed, which FledgeRuby unpacks straight from the APK and so
+    # must be stored, and a native library stored, which the package
+    # installer then does not extract where an app may run the ruby
+    # program (ADR 069).
+    def self.packed_wrongly(aligned)
       aligned.lines.filter_map do |line|
-        name = line[/\A\s*\d+ (\S+) \(OK - compressed\)\s*\z/, 1]
-        name if name && (name == "assets/fledge.zip" || name.end_with?(".so"))
+        name, compressed = line.match(/\A\s*\d+ (\S+) \(OK( - compressed)?\)\s*\z/)&.captures
+        next unless name
+
+        if name == "assets/fledge.zip" && compressed
+          "#{name} (compressed)"
+        elsif name.end_with?(".so") && !compressed
+          "#{name} (stored)"
+        end
       end
     end
 
@@ -165,9 +183,10 @@ class MobileParity
       jdk("java", "-jar", jar, *)
     end
 
-    # Play's rules for what the app carries: every native library stored
-    # aligned for 16 KB pages (zipalign -c -P 16), and fledge.zip stored
-    # too, both of which zipalign passes when they are compressed; and,
+    # Play's rules for what the app carries: every stored entry aligned
+    # for 16 KB pages (zipalign -c -P 16), fledge.zip stored, and every
+    # native library compressed, so that the installer extracts it,
+    # which zipalign passes either way (#packed_wrongly); and,
     # unless +base+ is false, as for a split APK that holds one ABI's
     # libraries, fledge.zip there and API 36 targeted (aapt2 dump
     # badging), from API +from+ unless that is nil, as for a split APK
@@ -181,8 +200,8 @@ class MobileParity
       aligned, status = Open3.capture2e(File.join(tools, host.executable("zipalign")), "-c", "-P", "16", "-v", "4", apk)
       raise "#{apk} is not aligned for 16 KB pages:\n#{aligned}" unless status.success?
 
-      compressed = compressed_but_mapped(aligned)
-      raise "#{apk} compresses what Android needs stored: #{compressed.join(', ')}" unless compressed.empty?
+      wrong = packed_wrongly(aligned)
+      raise "#{apk} packs what Android needs otherwise: #{wrong.join(', ')}" unless wrong.empty?
 
       out.puts aligned.lines.grep(/\.so|fledge\.zip|Verification/).join
       return unless base

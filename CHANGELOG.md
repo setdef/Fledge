@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - A download of a runtime or a gem that slows below 10 kB a second for 30 seconds is given up and tried again, as one that breaks off is; it could hang the build for as long as the server trickled. A download still going after 15 seconds says how far it got every 15 seconds.
+- Builds running at once that need one runtime or gem download it once: the others wait for it, saying so, where they could write over each other's download and fail. The cache keeps an empty `.lock` file beside each file it downloads.
 - In an app with a `Gemfile`, `defined?(Psych)` is false until something loads Psych, as under `bundle exec`: Bundler takes the app's settings from the environment as it sets the app up, instead of reading its `.bundle/config` with RubyGems' YAML serializer, which defined a hollow `Psych` module.
 - A desktop app carries the library mkmf links its test programs against, a static `libruby` on macOS and Linux and the import library of Ruby's DLL on Windows, so `have_func`, `have_library`, and `try_link` in an app's own running code work where a compiler is; they raised "The compiler failed to generate an executable file".
 - An app with a gemspec loads the project's files that its gemspec requires before the program's first line, as Bundler does under `bundle exec`, so `MyCoolApp::VERSION` from `bundle gem`'s `lib/my_cool_app/version.rb` is defined from the start; it raised `NameError` until the program required the file.

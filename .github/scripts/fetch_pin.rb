@@ -8,11 +8,11 @@
 #++
 
 # Downloads one input runtime/sources.yml pins, checked against its
-# SHA-256, into tmp/downloads, and prints where it is. When the pin's url
-# fails, each of its mirrors is tried in order, checked against the same
-# SHA-256. Exits nonzero, printing nothing on standard output, when none
-# serves the file, so a caller that assigns the path to a variable stops
-# there.
+# SHA-256, into the download cache (DownloadCache.folder), and prints
+# where it is. When the pin's url fails, each of its mirrors is tried in
+# order, checked against the same SHA-256. Exits nonzero, printing
+# nothing on standard output, when none serves the file, so a caller that
+# assigns the path to a variable stops there.
 #
 #   ruby .github/scripts/fetch_pin.rb KEY...
 #

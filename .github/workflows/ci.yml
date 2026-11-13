@@ -326,7 +326,7 @@ jobs:
       # before using it.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: tmp/downloads
+          path: ~/.cache/fledge/downloads
           key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
 
       # The archive's timestamps are the commit's, so two builds of one
@@ -388,7 +388,7 @@ jobs:
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: tmp/downloads
+          path: ~/.cache/fledge/downloads
           key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
 
       - name: Build the runtime in Alpine
@@ -463,7 +463,7 @@ jobs:
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: tmp/downloads
+          path: ~/.cache/fledge/downloads
           key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
 
       - name: Build the runtime
@@ -527,7 +527,7 @@ jobs:
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: tmp/downloads
+          path: ~/.cache/fledge/downloads
           key: mobile-parity-downloads-ios-${{ hashFiles('runtime/sources.yml') }}
 
       # XcodeGen writes each app's Xcode project in fledge build ios, as a
@@ -2276,7 +2276,7 @@ jobs:
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: tmp/downloads
+          path: ~/.cache/fledge/downloads
           key: upstream-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
 
       # LLVM's llvm-objdump and llvm-readobj, which read every platform's

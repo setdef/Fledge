@@ -49,6 +49,8 @@ module Fledge
 
     def self.save: (String url, to: String, sha256: String, ?credentials: String?, ?waits: Array[Integer], ?log: CLI::_Output?, ?pace: Pace) -> String
 
+    private def self.locked: (String to, CLI::_Output? log) { () -> void } -> void
+
     private def self.stream: (String url, String partial, String? credentials, Pace pace, CLI::_Output? log) -> String
 
     private def self.again: [T] (Array[Integer] waits, CLI::_Output? log) { () -> T } -> T

@@ -35,7 +35,7 @@ class LicenseAudit
     # Where in a runtime, and so in an app, the sources are.
     FOLDER = "notices/sources"
 
-    def initialize(platform:, version:, map: MAP, sources: SOURCES, downloads: File.join(ROOT, "tmp", "downloads"))
+    def initialize(platform:, version:, map: MAP, sources: SOURCES, downloads: DownloadCache.folder)
       @platform = platform
       @version = version
       @map = YAML.safe_load_file(map)

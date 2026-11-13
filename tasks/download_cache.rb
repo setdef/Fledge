@@ -7,10 +7,15 @@
 
 require "digest"
 require_relative "../lib/fledge/download"
+require_relative "../lib/fledge/runtimes"
 
 # The folder the build tasks download their pinned inputs into, each
-# checked against the SHA-256 runtime/sources.yml pins it to, and kept,
-# so a second build downloads nothing it already has.
+# checked against the SHA-256 runtime/sources.yml pins it to, and kept
+# under that SHA-256, so no build downloads what one before it already
+# has. By default it is the computer's, beside the runtimes and gems
+# fledge build keeps, and builds running at once share it: each file is
+# fetched once, while the others wait for it (Fledge::Download.save), and
+# a file once there never changes.
 class DownloadCache
   # How many times a URL is tried before the next one is.
   TRIES = 5
@@ -21,8 +26,17 @@ class DownloadCache
   # The longest wait, in seconds, between two tries.
   LONGEST_WAIT = 60
 
-  # A cache in the folder +folder+. A URL that answers 408, 429, or a 5xx
-  # status, or whose connection fails, is tried up to +tries+ times,
+  # The cache folder every build on this computer shares:
+  # <tt>$XDG_CACHE_HOME/fledge/downloads</tt>, or
+  # <tt>~/.cache/fledge/downloads</tt>, beside fledge build's own runtimes
+  # (Fledge::Runtimes#cache), read from +env+.
+  def self.folder(env = ENV)
+    File.join(File.dirname(Fledge::Runtimes.new(env:).cache), "downloads")
+  end
+
+  # A cache in the folder +folder+ (default: DownloadCache.folder). A
+  # URL that answers 408, 429, or a 5xx status, or whose connection
+  # fails, is tried up to +tries+ times,
   # waiting +first_wait+ seconds, then twice that and so on up to
   # LONGEST_WAIT, by calling +sleeper+ (a hosted runner's download from
   # GitHub or Gradle fails now and then, and passes a minute later). Any
@@ -31,7 +45,7 @@ class DownloadCache
   # developer at a terminal waits for, rather than multiply them. A
   # download slower than +pace+ (Fledge::Download::PACE) has stalled, and
   # is tried again as a broken connection is.
-  def initialize(folder, tries: TRIES, first_wait: FIRST_WAIT, sleeper: Kernel.method(:sleep), pace: Fledge::Download::PACE)
+  def initialize(folder = DownloadCache.folder, tries: TRIES, first_wait: FIRST_WAIT, sleeper: Kernel.method(:sleep), pace: Fledge::Download::PACE)
     @folder = folder
     @tries = tries
     @first_wait = first_wait
@@ -39,14 +53,14 @@ class DownloadCache
     @pace = pace
   end
 
-  # The path of +url+'s file in the cache, downloaded and checked against
-  # +sha256+ unless a file with that SHA-256 is already there. When +url+
+  # The path of +url+'s file in the cache, in a folder named for
+  # +sha256+, downloaded and checked against +sha256+ unless a file with that SHA-256 is already there. When +url+
   # fails, each of +mirrors+ is tried in order, every one checked against
   # the same +sha256+, so a mirror can serve the pinned file and nothing
   # else; the file keeps +url+'s name whichever served it. Raises
   # Fledge::Error naming every URL and why it failed when none served it.
   def fetch(url, sha256, mirrors: [])
-    path = File.join(@folder, File.basename(url))
+    path = File.join(@folder, sha256.downcase, File.basename(url))
     return path if File.file?(path) && Digest::SHA256.file(path).hexdigest == sha256
 
     errors = [url, *mirrors].map do |source|

@@ -42,13 +42,43 @@ class DownloadCacheTest < Minitest::Test
     $stdout = STDOUT
   end
 
+  # The files under +dir+, but folders and the empty lock files
+  # Fledge::Download.save keeps.
+  def saved(dir)
+    Dir.glob("**/*", base: dir).reject { |name| name.end_with?(".lock") || File.directory?(File.join(dir, name)) }
+  end
+
+  # Each file is kept under its SHA-256, so two pins of one name, such
+  # as two nights' rubyinstaller-head-x64.7z, never take each other's
+  # place while a build reads one.
+  def test_two_pins_of_one_file_name_are_kept_apart
+    other = "#{BODY}, changed"
+    server = LoopbackServer.new({ "/a/musl.tar.gz" => [200, {}, BODY], "/b/musl.tar.gz" => [200, {}, other] })
+    Dir.mktmpdir do |dir|
+      first = quietly { cache(dir).fetch(server.url("/a/musl.tar.gz"), SHA) }
+      second = quietly { cache(dir).fetch(server.url("/b/musl.tar.gz"), Digest::SHA256.hexdigest(other)) }
+
+      assert_equal [BODY, other], [File.read(first), File.read(second)]
+      assert_equal [File.join(dir, SHA, "musl.tar.gz"), File.join(dir, Digest::SHA256.hexdigest(other), "musl.tar.gz")], [first, second]
+    end
+  ensure
+    server&.stop
+  end
+
+  # The build tasks' downloads are kept where fledge build keeps its
+  # runtimes and gems, so every build on a computer shares them.
+  def test_the_cache_is_beside_fledge_builds_own_in_the_users_cache_folder
+    assert_equal File.expand_path("/var/cache/me/fledge/downloads"), DownloadCache.folder({ "XDG_CACHE_HOME" => "/var/cache/me" })
+    assert_equal File.expand_path("/home/me/.cache/fledge/downloads"), DownloadCache.folder({ "HOME" => "/home/me" })
+  end
+
   def test_a_mirror_serves_the_file_when_the_url_cannot_and_keeps_the_urls_file_name
     Dir.mktmpdir do |dir|
       path = quietly { cache(dir).fetch(@dead, SHA, mirrors: [@server.url("/mirror/musl_1.2.5.orig.tar.gz")]) }
 
-      assert_equal File.join(dir, "musl-1.2.5.tar.gz"), path
+      assert_equal File.join(dir, SHA, "musl-1.2.5.tar.gz"), path
       assert_equal BODY, File.read(path)
-      assert_equal ["musl-1.2.5.tar.gz"], Dir.children(dir)
+      assert_equal ["#{SHA}/musl-1.2.5.tar.gz"], saved(dir)
     end
   end
 
@@ -85,7 +115,7 @@ class DownloadCacheTest < Minitest::Test
       assert_match(/\A  #{Regexp.escape(other)} has SHA-256 \h{64}, but #{SHA} was expected\./, lines[2])
       assert_match(/\A  could not download #{Regexp.escape(@dead)}: /, lines[3])
       assert_equal 4, lines.size
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   end
 
@@ -99,9 +129,10 @@ class DownloadCacheTest < Minitest::Test
 
   def test_a_cached_file_is_used_without_downloading
     Dir.mktmpdir do |dir|
-      File.write(File.join(dir, "musl-1.2.5.tar.gz"), BODY)
+      FileUtils.mkdir_p(File.join(dir, SHA))
+      File.write(File.join(dir, SHA, "musl-1.2.5.tar.gz"), BODY)
 
-      assert_equal File.join(dir, "musl-1.2.5.tar.gz"), cache(dir).fetch(@dead, SHA, mirrors: [@dead])
+      assert_equal File.join(dir, SHA, "musl-1.2.5.tar.gz"), cache(dir).fetch(@dead, SHA, mirrors: [@dead])
     end
   end
 
@@ -159,7 +190,7 @@ class DownloadCacheTest < Minitest::Test
       assert_match(/has SHA-256 \h{64}, but #{SHA} was expected/, error.message)
       assert_equal ["/f"], server.requests
       assert_empty @waits
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   ensure
     server&.stop

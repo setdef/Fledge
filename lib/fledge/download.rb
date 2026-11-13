@@ -148,7 +148,10 @@ module Fledge
     end
 
     # Saves the file at +url+ to the path +to+, creating its folder, and
-    # returns +to+. Raises Fledge::Error, and leaves nothing at +to+,
+    # returns +to+, unless +to+ already holds a file whose SHA-256 is
+    # +sha256+. Processes that save one +to+ at once take turns, so it is
+    # downloaded once and never read half-written; each keeps an empty
+    # <tt>.lock</tt> file beside +to+. Raises Fledge::Error, and leaves nothing at +to+,
     # when the download fails, and Fledge::Download::Mismatch when its
     # SHA-256 is not +sha256+. +credentials+
     # (<tt>USER:PASSWORD</tt>, each percent-encoded as in a URL's userinfo,
@@ -180,12 +183,34 @@ module Fledge
     #++
     def self.save(url, to:, sha256:, credentials: nil, waits: WAITS, log: nil, pace: PACE)
       FileUtils.mkdir_p(File.dirname(to))
-      partial = "#{to}.part"
-      verify(url, again(waits, log) { stream(url, partial, credentials, pace, log) }, sha256)
-      File.rename(partial, to)
+      locked(to, log) do
+        next if File.file?(to) && Digest::SHA256.file(to).hexdigest == sha256.downcase
+
+        partial = "#{to}.part"
+        begin
+          verify(url, again(waits, log) { stream(url, partial, credentials, pace, log) }, sha256)
+          File.rename(partial, to)
+        ensure
+          FileUtils.rm_f(partial)
+        end
+      end
       to
-    ensure
-      FileUtils.rm_f(partial) if partial
+    end
+
+    # Calls the block holding the lock on +to+, an empty file beside it
+    # named for it with <tt>.lock</tt> added, which every process that
+    # saves +to+ takes in turn (flock, as Cargo locks its package cache),
+    # saying on +log+ when it must wait. So builds that share a cache
+    # download each file once: the next finds it there when its turn
+    # comes.
+    private_class_method def self.locked(to, log) # :nodoc:
+      File.open("#{to}.lock", File::RDWR | File::CREAT, 0o644) do |lock|
+        unless lock.flock(File::LOCK_EX | File::LOCK_NB)
+          log&.puts "waiting for another download of #{File.basename(to)} to finish"
+          lock.flock(File::LOCK_EX)
+        end
+        yield
+      end
     end
 
     # Writes the body at +url+ to +partial+, from its first byte, held to

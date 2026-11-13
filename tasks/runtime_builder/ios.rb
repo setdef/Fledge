@@ -24,9 +24,15 @@ class RuntimeBuilder
   # into its bundle for the slice it builds.
   class IOS < Mobile
     # What iOS declares in its headers but forbids or lacks, for
-    # configure (xord/cruby's Rakefile, line 578): system, syscall,
-    # backtrace, getentropy, dup3, and pipe2.
-    MISSING = %w[system syscall __syscall backtrace getentropy dup3 pipe2].freeze
+    # configure (after xord/cruby's Rakefile, line 578): system, which
+    # the SDK marks __IOS_PROHIBITED (_stdlib.h); syscall, deprecated
+    # there and turned off on macOS too (configure.ac, lines 1155 to
+    # 1165); getentropy, which the SDK does not declare; and dup3 and
+    # pipe2, which are iOS 27's, past the iOS 15 floor. xord/cruby's list
+    # also names backtrace, which the SDK has had since iPhone OS 2.0
+    # (execinfo.h, line 39), and with which a [BUG] report lists the C
+    # frames, as on macOS, so it is not here.
+    MISSING = %w[system syscall __syscall getentropy dup3 pipe2].freeze
 
     # Writes the stub sys/vnode.h the iOS SDK lacks (RubySource), then
     # builds.

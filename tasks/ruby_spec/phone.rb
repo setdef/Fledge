@@ -203,9 +203,13 @@ class RubySpec
         ],
       ),
       Exclusion.new(
-        reason: "Each forks a child that goes on running Ruby, which iOS lets no app's Ruby do: Apple's sandbox denies " \
-          "fork on a device (doc/contributors/design/phone-projects.md, \"Parity on a phone\"). Starting another " \
-          "program does not fork Ruby, and runs. Android lets an app fork, and runs these.",
+        reason: "Each forks a child that goes on running Ruby, and whether an iOS device lets an app fork is " \
+          "unchecked: Apple's SDK marks fork prohibited only on watchOS and tvOS (usr/include/unistd.h, line 459, " \
+          "iOS 27.2 SDK), and that a device's sandbox denies it is others' report, such as CPython's iOS build's " \
+          "(\"no fork syscall\", configure.ac, line 7732 at v3.14.0), not Apple's " \
+          "(doc/contributors/design/phone-projects.md, \"Parity on a phone\"). The Simulator lets an app fork, as " \
+          "the Mac does, so a pass there would claim for iOS what only the Mac showed. Android lets an app fork, " \
+          "and runs these.",
         phones: %w[ios],
         files: %w[
           core/kernel/fork_spec.rb

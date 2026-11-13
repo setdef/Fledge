@@ -140,16 +140,22 @@ class RuntimeBuilder
     # Ruby boots with no RubyGems. An iseq binary depends only on Ruby's
     # version, endianness, and word size (compile.c,
     # ibf_load_setup_bytes), so this miniruby writes the one the target's
-    # Ruby would. Beside it, dump_ast, the program that turns the builtin
-    # Ruby files into the .rbinc files the build compiles in: a cross
-    # build would compile it for the target, which the build machine
-    # cannot run, and configure.ac (lines 119 to 136) takes the build
-    # machine's instead with --with-dump-ast.
+    # Ruby would, once it is built with the target's JITs (jits): the
+    # binary holds the builtins this miniruby loaded (RubyVM.each_builtin,
+    # miniinit.c, and template/builtin_binary.rbbin.tmpl), and a Ruby
+    # without YJIT never loads yjit.rb (vm.c, lines 5101 to 5103, stubs
+    # Init_builtin_yjit), which a Ruby with YJIT then looks for at boot
+    # (inits.c, line 92) and stops at, "[BUG] builtin_lookup: can not find
+    # yjit" (builtin.c, line 68). Beside it, dump_ast, the program that
+    # turns the builtin Ruby files into the .rbinc files the build
+    # compiles in: a cross build would compile it for the target, which
+    # the build machine cannot run, and configure.ac (lines 119 to 136)
+    # takes the build machine's instead with --with-dump-ast.
     private def build_host_miniruby
       host = File.join(@build_dir, "host")
       FileUtils.mkdir_p(host)
-      logged("host-configure", File.join(@source, "configure"), "--disable-shared", "--disable-yjit", "--disable-zjit",
-        "--disable-install-doc", "--with-baseruby=#{RbConfig.ruby}", chdir: host, env: host_environment)
+      logged("host-configure", File.join(@source, "configure"), "--disable-shared", *jits, "--disable-install-doc",
+        "--with-baseruby=#{RbConfig.ruby}", chdir: host, env: host_environment)
       logged("host-make", "make", "-j#{Etc.nprocessors}", "miniruby", "dump_ast", chdir: host, env: host_environment)
       host
     end
@@ -274,9 +280,26 @@ class RuntimeBuilder
     # memory it may write code into and run: neither is built.
     NO_JIT = %w[--disable-yjit --disable-zjit].freeze
 
-    # Ruby's JITs for +target+: none, unless a subclass builds one.
-    private def jit_options(_target)
+    # Which of Ruby's JITs are built, as configure is told it for each
+    # target and for the build machine's miniruby alike, whose builtin
+    # binary must hold the builtins of the same JITs
+    # (build_host_miniruby): none, unless a subclass builds one.
+    private def jits
       NO_JIT
+    end
+
+    # What configure is told of Ruby's JITs for +target+: which are built
+    # (jits), and nothing more, unless a subclass needs tools for them.
+    private def jit_options(_target)
+      jits
+    end
+
+    # The JITs configure chose for the Ruby whose Makefile is +makefile+:
+    # YJIT_SUPPORT and ZJIT_SUPPORT (template/Makefile.in, lines 110 and
+    # 113 at 4.1.0-preview1).
+    def self.jits_built(makefile)
+      text = File.read(makefile)
+      %w[YJIT_SUPPORT ZJIT_SUPPORT].to_h { |name| [name, text[/^#{name}=(.*)$/, 1] || raise("#{makefile} has no #{name}")] }
     end
 
     # Writes the build machine's builtin binary into the target's build
@@ -291,6 +314,9 @@ class RuntimeBuilder
       raise "#{binary} holds no builtin binary" unless File.read(binary).include?("BUILTIN_BINARY_SIZE")
 
       makefile = File.join(build, "Makefile")
+      host, built = [File.join(@host, "Makefile"), makefile].map { |path| Mobile.jits_built(path) }
+      raise "the build machine's miniruby has the JITs #{host}, the target's Ruby #{built}, so its builtins differ" unless host == built
+
       text = File.read(makefile)
       raise "#{makefile} has no BUILTIN_BINARY = no" unless text.match?(/^BUILTIN_BINARY = no$/)
 

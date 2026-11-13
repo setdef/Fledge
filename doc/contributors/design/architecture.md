@@ -112,6 +112,7 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [077](../adr/077.md) | Android's Ruby has YJIT, off until the app enables it, as on a desktop |
 | [078](../adr/078.md) | A phone app's standard streams reach the system log as they are printed, with nothing an app can read changed |
 | [079](../adr/079.md) | On a phone, Ruby is a static library Fledge builds from source |
+| [080](../adr/080.md) | On a phone, a Ruby file stands where a desktop has an extension's file, and requires the linked extension |
 | [081](../adr/081.md) | An app's program runs as `ruby PROGRAM` runs it, with nothing of Fledge's between |
 | [082](../adr/082.md) | On Android, the runtime carries a ruby program the installer extracts with the app's native libraries |
 | [083](../adr/083.md) | On Android, RbConfig.ruby names the ruby program through a link at the path stock Ruby derives |

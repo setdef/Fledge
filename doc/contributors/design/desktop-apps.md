@@ -280,6 +280,7 @@ No program is linked into `/usr/bin`, since a windowed app starts from a menu an
 | `Capabilities` | `rescap:runFullTrust`, which a full-trust app needs ("App capability declarations") |
 | `Application` | `Id` `App`, `Executable` `NAME.exe`, `EntryPoint` `Windows.FullTrustApplication`, which installs on Windows 10 before 2004, where `uap10:RuntimeBehavior` does not |
 | `uap:VisualElements` | the name, the description, `BackgroundColor` `transparent`, and the 150- and 44-pixel logos |
+| `uap:Extension` `windows.fileTypeAssociation` | one for each of `file_associations`' entries that names `extensions` (`Msix#extensions`), which lists the app in each extension's "Open with" and never makes it the default, as the setup program does (ADR 052); folders and MIME types alone have no place in a package's manifest |
 
 **The logos** are the developer's PNGs beside the icon (`Icon::MSIX`), `ICON-44.png`, `ICON-50.png`, and `ICON-150.png`, the base sizes of `Square44x44Logo`, `StoreLogo`, and `Square150x150Logo` ("Construct your Windows app's icon"), mapped to `Assets\` in the package. Fledge reads none and checks no sizes (ADR 048). Scaled variants (`.scale-200`) would need MakePri's resource index, which the package does without.
 

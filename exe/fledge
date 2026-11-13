@@ -198,11 +198,14 @@
 #                        vendor/cache, DIR, and every folder that holds
 #                        a CACHEDIR.TAG, as each folder a build went to
 #                        does.
-#     ROOT/Gemfile.lock  The gems to ship, without the development and
-#                        test groups. It must lock this computer's
-#                        platform (bundle lock --add-platform), each
-#                        gem's checksum (bundle lock --add-checksums),
-#                        and each git gem's commit. Every gem ships
+#     ROOT/Gemfile.lock  The gems to ship: every group bundle exec sets
+#                        up, development and test among them, less those
+#                        Bundler's without setting leaves out (bundle
+#                        config set --local without test). It must lock
+#                        this computer's platform (bundle lock
+#                        --add-platform), each gem's checksum (bundle
+#                        lock --add-checksums), and each git gem's
+#                        commit. Every gem ships
 #                        with its own files and notices, whatever its
 #                        license, which is yours to comply with. A gem
 #                        that does not support the runtime's Ruby, or

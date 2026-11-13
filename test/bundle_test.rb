@@ -98,13 +98,18 @@ class BundleTest < Minitest::Test
     assert_equal ["lite 1.0.0 (x86_64-linux-gnu)"], picked.call("3.1.7"), "with no build that fits, the best one stays, to fail"
   end
 
-  def test_leaves_out_development_and_test_gems_and_gems_for_other_platforms
+  # bundle exec sets up every group of the Gemfile, development and test
+  # among them, unless Bundler's own without setting leaves one out
+  # (Bundler::Definition#requested_groups), so a program that requires a
+  # development gem, as debug or dotenv, finds it in the app too.
+  def test_sets_up_development_and_test_gems_as_bundle_exec_does_and_leaves_out_gems_for_other_platforms
     bundle = bundle(dependencies: { "foo" => ">= 0" }, locked: [@foo, @bar, @windows],
       gemfile: "group :development, :test do\n  gem \"bar\"\nend\ngem \"native\", platforms: :windows\n",
       lock_dependencies: ["bar", "native"])
 
-    assert_equal ["foo 1.0.0"], names(bundle, LINUX)
-    assert_equal ["foo 1.0.0", "native 1.0.0 (x64-mingw-ucrt)"], names(bundle, WINDOWS)
+    assert_equal ["bar 2.0.0", "foo 1.0.0"], names(bundle, LINUX)
+    assert_equal ["bar 2.0.0", "foo 1.0.0", "native 1.0.0 (x64-mingw-ucrt)"], names(bundle, WINDOWS)
+    assert_includes bundle.app_files.fetch(".bundle/config"), "BUNDLE_WITHOUT: \"\"\n"
   end
 
   # Bundler leaves out the gems of an optional group unless `with` names
@@ -116,40 +121,73 @@ class BundleTest < Minitest::Test
     plain = bundle(dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar])
 
     assert_equal ["bar 2.0.0"], names(plain, LINUX)
-    assert_includes plain.app_files.fetch(".bundle/config"), "BUNDLE_WITHOUT: \"development:test\"\n"
-    refute_includes plain.app_files.fetch(".bundle/config"), "BUNDLE_WITH:"
+    assert_includes plain.app_files.fetch(".bundle/config"), "BUNDLE_WITH: \"\"\n"
 
     root = FakeProject.write(@dir, name: "with_app", dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar])
     FileUtils.mkdir_p(File.join(root, ".bundle"))
-    File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_WITH: \"extras:development\"\nBUNDLE_WITHOUT: \"docs\"\n")
+    File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_WITH: \"extras\"\nBUNDLE_WITHOUT: \"docs\"\n")
     chosen = Fledge::Bundle.new(Fledge::App.at(root))
 
     assert_equal ["foo 1.0.0"], names(chosen, LINUX)
     config = chosen.app_files.fetch(".bundle/config")
-    assert_includes config, "BUNDLE_WITHOUT: \"development:test:docs\"\n"
+    assert_includes config, "BUNDLE_WITHOUT: \"docs\"\n"
     assert_includes config, "BUNDLE_WITH: \"extras\"\n"
   end
 
-  # Bundler's settings store an empty list as no value at all
-  # (Bundler::Settings#array_to_s and #set_key), so a `with` that names
-  # only development or test, from the environment or the project's
-  # .bundle/config, must still leave those groups out.
-  def test_development_and_test_gems_are_left_out_whatever_with_says
+  # A Ruby the app starts with bundler/setup reads the app's
+  # .bundle/config and the person's ~/.bundle/config, and Bundler takes
+  # each setting from the first that has it; the app's file names its
+  # groups even when it leaves none out and asks for none, so the
+  # person's without and with change nothing.
+  def test_the_apps_groups_win_over_the_persons_bundler_settings_when_there_are_none
+    app = File.join(@dir, "app")
+    home = File.join(@dir, "home")
+    FileUtils.mkdir_p([File.join(app, ".bundle"), File.join(home, ".bundle")])
+    File.write(File.join(app, "Gemfile"), "")
+    File.write(File.join(app, ".bundle", "config"), bundle(dependencies: {}, locked: []).app_files.fetch(".bundle/config"))
+    File.write(File.join(home, ".bundle", "config"), "---\nBUNDLE_WITHOUT: \"default\"\nBUNDLE_WITH: \"extras\"\n")
+
+    out, err, status = Open3.capture3({ "PATH" => ENV.fetch("PATH"), "HOME" => home, "USERPROFILE" => home,
+                                        "BUNDLE_GEMFILE" => File.join(app, "Gemfile") },
+                                      RbConfig.ruby, "-rbundler", "-e", "p Bundler.settings[:without], Bundler.settings[:with]",
+                                      unsetenv_others: true)
+
+    assert status.success?, err
+    assert_equal "[]\n[]\n", out
+  end
+
+  # A developer who leaves development or test out, from the environment
+  # or the project's .bundle/config, as for any deployment, gets an app
+  # without them, whose Bundler leaves them out too, as bundle exec
+  # under the same settings does.
+  def test_development_and_test_gems_are_left_out_when_bundlers_without_says_so
     gemfile = "group :development do\n  gem \"foo\"\nend\ngroup :test do\n  gem \"bar\"\nend\n"
-    %w[development test development:test].each do |with|
-      ENV["BUNDLE_WITH"] = with
-      assert_empty names(bundle(name: "env_#{with.tr(':', '_')}", dependencies: {}, locked: [@foo, @bar], gemfile:,
-        lock_dependencies: %w[foo bar]), LINUX), "BUNDLE_WITH=#{with}"
+    { "development" => ["bar 2.0.0"], "test" => ["foo 1.0.0"], "development:test" => [] }.each do |without, shipped|
+      ENV["BUNDLE_WITHOUT"] = without
+      assert_equal shipped, names(bundle(name: "env_#{without.tr(':', '_')}", dependencies: {}, locked: [@foo, @bar], gemfile:,
+        lock_dependencies: %w[foo bar]), LINUX), "BUNDLE_WITHOUT=#{without}"
     ensure
-      ENV.delete("BUNDLE_WITH")
+      ENV.delete("BUNDLE_WITHOUT")
     end
     root = FakeProject.write(@dir, name: "config_app", dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar])
     FileUtils.mkdir_p(File.join(root, ".bundle"))
-    File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_WITH: \"development:test\"\n")
+    File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_WITHOUT: \"development:test\"\n")
     configured = Fledge::Bundle.new(Fledge::App.at(root))
 
     assert_empty names(configured, LINUX)
-    refute_includes configured.app_files.fetch(".bundle/config"), "BUNDLE_WITH:"
+    assert_includes configured.app_files.fetch(".bundle/config"), "BUNDLE_WITHOUT: \"development:test\"\n"
+  end
+
+  # Bundler on the target cannot install a gem of a group it sets up that
+  # has no build there, so neither can fledge build, which says how
+  # Bundler leaves the group out.
+  def test_a_development_gem_with_no_build_for_the_target_fails_naming_bundlers_without
+    bundle = bundle(dependencies: {}, locked: [@linux], gemfile: "group :development do\n  gem \"native\"\nend\n",
+      lock_dependencies: ["native"])
+
+    error = assert_raises(Fledge::Error) { names(bundle, WINDOWS) }
+    assert_includes error.message, "locks no build of native for x64-mingw-ucrt"
+    assert_includes error.message, "leave it out with bundle config set --local without development, as bundle install on x64-mingw-ucrt would need"
   end
 
   def test_a_gem_limited_to_a_ruby_version_follows_the_runtimes
@@ -363,7 +401,7 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
 
     assert_equal [".bundle/config", "my_app.gemspec"], files.keys
     assert_equal "---\nBUNDLE_VERSION: \"system\"\nBUNDLE_FROZEN: \"true\"\nBUNDLE_PATH__SYSTEM: \"true\"\n" \
-      "BUNDLE_AUTO_INSTALL: \"false\"\nBUNDLE_WITHOUT: \"development:test\"\n", files.fetch(".bundle/config")
+      "BUNDLE_AUTO_INSTALL: \"false\"\nBUNDLE_WITHOUT: \"\"\nBUNDLE_WITH: \"\"\n", files.fetch(".bundle/config")
     spec = Gem::Specification.from_yaml(Gem::Specification.load(File.join(@dir, "my_app", "my_app.gemspec")).to_yaml)
     evaluated = files.fetch("my_app.gemspec")
     refute_includes evaluated, "IO.popen"

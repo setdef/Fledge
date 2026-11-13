@@ -4,7 +4,7 @@
 -->
 # Gems in a Fledge app
 
-[Fledge](../README.md) ships the gems your `Gemfile.lock` locks, without the `development` and `test` groups. An optional group ships only if your Bundler `with` setting names it. Git gems, git submodules, path gems, mirrors, and credentials work as they do in [Bundler](https://bundler.io/). [`examples/real_gems`](../examples/real_gems) uses each of them.
+[Fledge](../README.md) ships the gems your `Gemfile.lock` locks in every group `bundle exec` loads, `development` and `test` included, less the groups your Bundler `without` setting names (`bundle config set --local without test`, or `BUNDLE_WITHOUT`). An optional group ships only if your Bundler `with` setting names it. A gem of a group that ships must have a build for each platform you build on, as `bundle install` there would need; if it has none, and the app never needs it, leave its group out. Git gems, git submodules, path gems, mirrors, and credentials work as they do in [Bundler](https://bundler.io/). [`examples/real_gems`](../examples/real_gems) uses each of them.
 
 ## Lock every platform and checksum
 

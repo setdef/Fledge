@@ -712,11 +712,11 @@ components:
     embedded:
       - files: [FledgeRuby.aar!jni/*/libfledgeruby.so, FledgeRuby.aar!jni/*/libfledgerubyexe.so]
 
-  # The Android runtime's YJIT is compiled with mise.toml's Rust, whose
-  # rustup adds each Android target's standard library, and its commit
-  # names the release.
+  # The Android runtime's YJIT and ZJIT are compiled with mise.toml's
+  # Rust, whose rustup adds each Android target's standard library, and
+  # its commit names the release.
   - id: rust-std
-    name: The Rust standard library, compiled into Ruby's YJIT
+    name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
     version: 1.99.1
     license: MIT OR Apache-2.0
     kind: program

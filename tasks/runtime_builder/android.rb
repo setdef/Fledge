@@ -70,26 +70,26 @@ class RuntimeBuilder
     # (ADR 082; runtime/mobile/android.c, FLEDGE_RUBY_PROGRAM).
     PROGRAM = "libfledgerubyexe.so"
 
-    # Ruby's JITs for +target+, with the NDK's tools in +tools+: YJIT, as
-    # a desktop Ruby has it, off until the app enables it (the phone
-    # parity audit, doc/contributors/research/
-    # 2026-11-12-phone-parity-audit.md, item 3). ZJIT, Ruby's
-    # experimental second JIT, which rv-ruby's desktop builds carry too
-    # (Abstract/rv-ruby.rb, line 122 at f57186e), is not built yet.
-    # Android lets an app write code and run it ("WebView and other
-    # application-specific JIT compilers", AOSP system/sepolicy,
-    # private/app.te, lines 188 and 189 at 4571ddd), and YJIT reads the page size, 4 KB or 16 KB, from
-    # sysconf (jit.c, rb_jit_get_page_size, at 4.1.0-preview1).
-    # configure.ac (lines 3894 to 3910) builds no JIT by itself when
-    # cross-compiling, "we can't easily cross-compile with rustc", which
-    # --enable-yjit overrides. Ruby compiles YJIT with rustc alone, and
-    # rustc_flags, which configure adds to every rustc it runs, names
-    # Rust's own name for the target, the same as the NDK's; mise.toml's
-    # Rust adds both targets' standard libraries. libruby holds YJIT as
-    # one object that $(LD) -r makes and $(OBJCOPY) leaves only rb_*
-    # global in (defs/jit.mk, RUST_LIBOBJ); configure would find neither
-    # tool for the NDK's clang, and take the build machine's, so both
-    # are the NDK's.
+    # Ruby's JITs for +target+, with the NDK's tools in +tools+: YJIT and
+    # ZJIT, as a desktop Ruby has them, each off until the app enables
+    # it (the phone parity audit, doc/contributors/research/
+    # 2026-11-12-phone-parity-audit.md, item 3). Android lets an app
+    # write code and run it ("WebView and other application-specific JIT
+    # compilers", AOSP system/sepolicy, private/app.te, lines 188 and 189
+    # at 4571ddd), and both JITs read the page size, 4 KB or 16 KB, from
+    # sysconf (jit.c, rb_jit_get_page_size, and zjit/src/virtualmem.rs,
+    # at 4.1.0-preview1). configure.ac (lines 3894 to 3910) builds no JIT
+    # by itself when cross-compiling, "we can't easily cross-compile
+    # with rustc", which --enable-yjit and --enable-zjit override. With
+    # both, Ruby compiles them with rustc alone, as three rlibs and a
+    # static library that links them (configure.ac, the release build of
+    # YJIT+ZJIT; defs/jit.mk), and rustc_flags, which configure adds to
+    # every rustc it runs, names Rust's own name for the target, the
+    # same as the NDK's; mise.toml's Rust adds both targets' standard
+    # libraries. libruby holds the JITs as one object that $(LD) -r makes
+    # and $(OBJCOPY) leaves only rb_* global in (defs/jit.mk,
+    # RUST_LIBOBJ); configure would find neither tool for the NDK's
+    # clang, and take the build machine's, so both are the NDK's.
     def self.jit_options(target, tools)
       [
         *JITS,
@@ -103,9 +103,10 @@ class RuntimeBuilder
       Android.jit_options(target, tools)
     end
 
-    # The JITs Android's Ruby has, YJIT alone, as configure is told them
-    # for each target and for the build machine's miniruby (Mobile#jits).
-    JITS = %w[--enable-yjit --disable-zjit].freeze
+    # The JITs Android's Ruby has, YJIT and ZJIT, as configure is told
+    # them for each target and for the build machine's miniruby
+    # (Mobile#jits).
+    JITS = %w[--enable-yjit --enable-zjit].freeze
 
     private def jits
       JITS

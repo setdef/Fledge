@@ -12,8 +12,9 @@ require_relative "recipe"
 
 class RuntimeBuilder
   # iOS and iPadOS, and Android: CRuby built from its own source for a
-  # phone, with every extension linked in (ADR 079), and with YJIT where
-  # the phone lets an app run code it writes (Android; jit_options).
+  # phone, with every extension linked in (ADR 079), and with YJIT and
+  # ZJIT where the phone lets an app run code it writes (Android;
+  # jit_options).
   #
   # No prebuilt Ruby exists for a phone, so a mobile runtime is built as
   # xord/cruby (the runtime behind RubySketch on the App Store) and
@@ -328,9 +329,9 @@ class RuntimeBuilder
     # Every static archive Ruby's build made for the target (libruby,
     # each extension's, the encodings' and transcoders'), the objects
     # that register the extensions and encodings (extinit.o, encinit.o),
-    # and the libraries built for it. YJIT's static library, which rustc
-    # writes under target/, is left out: libruby already holds it, as
-    # the one object defs/jit.mk partly links it into (RUST_LIBOBJ).
+    # and the libraries built for it. The JITs' static library, which
+    # rustc writes under target/, is left out: libruby already holds it,
+    # as the one object defs/jit.mk partly links it into (RUST_LIBOBJ).
     private def archives(build, deps)
       ruby = Dir.glob("**/*.a", base: build).reject { |path| path.start_with?(".bundle/", "target/") || path == "libruby.a" }.sort
       raise "#{build} built no static libruby" unless ruby.any? { |path| path.match?(LIBRUBY) }

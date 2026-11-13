@@ -6,6 +6,7 @@ module Fledge
     WITHOUT: Array[Symbol]
     SETTINGS: String
     GEMSPECS: String
+    GEMSPEC_LOADS: String
     FORCE_RUBY_PLATFORM: String
 
     @app: App
@@ -50,6 +51,10 @@ module Fledge
     private def check_locked: (target platform, Gem::Platform target) -> void
 
     def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
+
+    private def with_requires: (String ruby, String path) -> String
+
+    private def relative: (String path, String folder) -> String
 
     private def group_settings: () -> String
 

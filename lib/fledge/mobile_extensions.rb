@@ -113,8 +113,41 @@ module Fledge
     # +FLEDGE_RUBY+ names it, this computer's Ruby in place of the phone's,
     # which cannot run here, so that a build that starts Ruby again
     # (<tt>RbConfig.ruby</tt>, mkmf's <tt>$(RUBY)</tt>) starts this one.
-    TOOLS = <<~RUBY
+    #
+    # And the folders of the computer that built the runtime taken out of
+    # its flags and its configure options. That build gave Ruby's
+    # configure its OpenSSL, libyaml, and libffi as
+    # <tt>--with-NAME-dir</tt> options, and libffi's headers and library
+    # in +CPPFLAGS+ and +LDFLAGS+ (<tt>tasks/runtime_builder/mobile.rb</tt>,
+    # <tt>ios.rb</tt>, and <tt>android.rb</tt>), and <tt>rbconfig.rb</tt>
+    # records them all; mkmf starts <tt>$CPPFLAGS</tt>, <tt>$LDFLAGS</tt>,
+    # and <tt>$DLDFLAGS</tt> from them, compiles and links each of its
+    # checks with them (+TRY_LINK+), and reads the options as the
+    # extension's own, so <tt>dir_config("openssl")</tt> takes that
+    # folder (<tt>lib/mkmf.rb</tt>, lines 110, 1895, 2778, and 2957 at
+    # Ruby 4.1.0-preview1). On a computer where those folders still are,
+    # as where the runtime was built, the ffi gem's
+    # <tt>have_library("ffi")</tt> found the runtime's own libffi, which
+    # the app's link, with no such folder, could not find
+    # (<tt>unable to find library -lffi</tt>); everywhere else they name
+    # nothing. A folder in the runtime itself is kept, and so are the
+    # developer's own options for a gem, which reach mkmf as arguments.
+    TOOLS = <<~'RUBY'
       require "rbconfig"
+      require "shellwords"
+      top = RbConfig::TOPDIR
+      outside = ->(path) { path.start_with?("/") && !(top && path.start_with?("#{top}/")) }
+      [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].each do |config|
+        %w[CPPFLAGS CFLAGS CXXFLAGS LDFLAGS DLDFLAGS].each do |key|
+          next unless config[key]
+
+          config[key] = config[key].gsub(/(?<=\A|\s)-(?:I|L|F|isystem)\s*(\/\S*)\s*/) { |flag| outside[$1] ? "" : flag }
+        end
+        config["configure_args"] = config["configure_args"].to_s.shellsplit.reject do |arg|
+          name, value = arg.split("=", 2)
+          value && name.match?(/\A--with-[\w-]+-(?:dir|include|lib)\z/) && outside[value]
+        end.shelljoin
+      end
       {
         "CC" => "FLEDGE_CC", "CXX" => "FLEDGE_CXX", "AR" => "FLEDGE_AR", "RANLIB" => "FLEDGE_RANLIB",
         "rubyhdrdir" => "FLEDGE_HEADERS", "rubyarchhdrdir" => "FLEDGE_HEADERS",

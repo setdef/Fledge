@@ -53,6 +53,94 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }, platforms)
   end
 
+  # A phone runtime's rbconfig.rb records the folders of the computer that
+  # built it: libffi's headers and library in CPPFLAGS and LDFLAGS, and
+  # each library's folder as a --with-NAME-dir option, which mkmf would
+  # search for every gem. What Ruby reads after the shim's tools keeps
+  # every other flag and option, and the runtime's own folders.
+  def test_the_folders_of_the_computer_that_built_a_runtime_leave_its_rbconfig
+    arch = File.join(@dir, "lib", "ruby", "4.1.0", "arm64-darwin")
+    FileUtils.mkdir_p(arch)
+    built = "/Users/runner/work/Fledge/tmp/runtime/ios"
+    File.write(File.join(arch, "rbconfig.rb"), <<~RUBY)
+      module RbConfig
+        TOPDIR = #{@dir.inspect}
+        CONFIG = {
+          "CPPFLAGS" => "-I#{built}/stub -I #{built}/libffi/include -I#{@dir}/include -D_REENTRANT $(DEFS) $(cppflags)",
+          "LDFLAGS" => "-L. -framework Security -L#{built}/libffi/lib -fstack-protector-strong",
+          "DLDFLAGS" => "-framework Security -L#{built}/libffi/lib",
+          "configure_args" => " '--prefix=/' '--with-openssl-dir=#{built}/openssl' '--with-libffi-dir=#{built}/libffi' '--without-gmp' 'PKG_CONFIG=false'",
+        }
+        MAKEFILE_CONFIG = CONFIG.transform_values(&:dup)
+      end
+    RUBY
+    shim = File.join(@dir, "tools.rb")
+    File.write(shim, Fledge::MobileExtensions::TOOLS)
+    script = 'require "json"; puts JSON.generate [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].map { |c| [*c.values_at("CPPFLAGS", "LDFLAGS", "DLDFLAGS"), c["configure_args"].shellsplit] }'
+
+    output, status = Open3.capture2e({ "RUBYOPT" => nil, "RUBYLIB" => nil }, RbConfig.ruby, "--disable-gems", "-I", arch, "-r", shim, "-e", script)
+
+    assert status.success?, output
+    expected = [
+      "-I#{@dir}/include -D_REENTRANT $(DEFS) $(cppflags)",
+      "-L. -framework Security -fstack-protector-strong",
+      "-framework Security ",
+      %w[--prefix=/ --without-gmp PKG_CONFIG=false],
+    ]
+    assert_equal [expected, expected], JSON.parse(output)
+  end
+
+  # A phone runtime's rbconfig.rb records the folders of the computer that
+  # built it, libffi's among them, which mkmf would search for every gem.
+  # Where those folders still are, as where the runtime was built, the
+  # ffi gem's extconf.rb found that libffi, and the app's link, which has
+  # no such folder, failed (unable to find library -lffi). A libffi there
+  # is found for the gem only when its build names the folder itself.
+  # The libffi is a text stub ld64 links against, defining the function
+  # for both slices.
+  IOS_LIBFFI = <<~TBD
+    --- !tapi-tbd
+    tbd-version: 4
+    targets: [ arm64-ios, arm64-ios-simulator ]
+    install-name: '/usr/lib/libffi.dylib'
+    exports:
+      - targets: [ arm64-ios, arm64-ios-simulator ]
+        symbols: [ _ffi_prep_closure_loc ]
+    ...
+  TBD
+
+  def test_a_libffi_where_the_ios_runtime_was_built_is_not_found_for_an_extension
+    flags = flags_with_the_runtime_builders_libffi(real_runtimes("ios"), ios, "libffi.tbd", IOS_LIBFFI)
+
+    assert_equal %w[ios-arm64 ios-arm64-simulator], flags.keys
+    flags.each { |slice, list| refute_includes list, "-lffi", slice }
+  end
+
+  def test_a_libffi_an_ios_gems_build_names_is_found
+    flags = flags_with_the_runtime_builders_libffi(real_runtimes("ios"), ios, "libffi.tbd", IOS_LIBFFI, own: true)
+
+    flags.each { |slice, list| assert_includes list, "-lffi", slice }
+  end
+
+  # The same on Android, where the libffi is a linker script that lld
+  # reads as a library and that defines the function for any ABI.
+  def test_a_libffi_where_the_android_runtime_was_built_is_not_found_for_an_extension
+    runtimes = real_runtimes("android")
+    android_ndk
+    flags = flags_with_the_runtime_builders_libffi(runtimes, android, "libffi.so", "ffi_prep_closure_loc = 0;\n")
+
+    assert_equal %w[aarch64-linux-android x86_64-linux-android], flags.keys
+    flags.each { |abi, list| refute_includes list, "-lffi", abi }
+  end
+
+  def test_a_libffi_an_android_gems_build_names_is_found
+    runtimes = real_runtimes("android")
+    android_ndk
+    flags = flags_with_the_runtime_builders_libffi(runtimes, android, "libffi.so", "ffi_prep_closure_loc = 0;\n", own: true)
+
+    flags.each { |abi, list| assert_includes list, "-lffi", abi }
+  end
+
   # An extconf.rb that writes extconf.h, as many do, takes mkmf's $defs
   # off the compile line (mkmf.rb's create_makefile), so the extension's
   # Init function is still renamed only if the rename goes elsewhere.
@@ -332,6 +420,13 @@ class MobileExtensionsBuildTest < Minitest::Test
     Fledge::PathGem.new(name:, version: "1.0.0", folder:, app_path: "vendor/cache/#{name}", glob: "{,*,*/*}.gemspec", inside: true)
   end
 
+  # The NDK where this computer has one; the test skips without it.
+  def android_ndk
+    Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local)
+  rescue Fledge::Error => e
+    skip e.message
+  end
+
   def cmake?
     system("cmake", "--version", out: File::NULL, err: File::NULL) || false
   end
@@ -348,14 +443,44 @@ class MobileExtensionsBuildTest < Minitest::Test
     Fledge::PathGem.new(name: "adder", version: "1.0.0", folder:, app_path: "vendor/cache/adder", glob: "{,*,*/*}.gemspec", inside: true)
   end
 
-  def compile(runtimes_dir, phone, packages)
+  # The probe gem's extension, compiled for +phone+ where the folder the
+  # runtime's build gave Ruby's configure for libffi holds a libffi, as
+  # on the computer that built the runtime: +library+, named +name+,
+  # defines ffi_prep_closure_loc for the phone. The libffi folder each
+  # rbconfig.rb records is moved to that one. With +own+, the gem's build
+  # names that folder itself (--with-ffi-dir).
+  def flags_with_the_runtime_builders_libffi(runtimes, phone, name, library, own: false)
+    libffi = File.join(@dir, "built", "libffi")
+    FileUtils.mkdir_p([File.join(libffi, "include"), File.join(libffi, "lib")])
+    File.write(File.join(libffi, "include", "ffi.h"), "int ffi_prep_closure_loc(void);\n")
+    File.write(File.join(libffi, "lib", name), library)
+    gem = extconf_gem("probe", <<~RUBY, "probe.c" => "#include <ruby.h>\nvoid Init_probe(void) { rb_define_module(\"Probe\"); }\n")
+      require "mkmf"
+      dir_config("ffi")
+      have_header("ffi.h") && have_library("ffi", "ffi_prep_closure_loc", ["ffi.h"])
+      create_makefile("probe/probe")
+    RUBY
+    build_args = own ? { "probe" => ["--with-ffi-dir=#{libffi}"] } : {}
+    built = compile(runtimes, phone, { gem => Fledge::PathPackage.new(gem) }, build_args:) do |root|
+      Dir.glob(File.join(root, "**", "rbconfig.rb")).each do |rbconfig|
+        text = File.read(rbconfig)
+        recorded = text[/--with-libffi-dir=([^' ]+)/, 1] or flunk "#{rbconfig} records no libffi folder"
+        File.write(rbconfig, text.gsub(recorded, libffi))
+      end
+    end
+    built.targets.transform_values(&:flags)
+  end
+
+  def compile(runtimes_dir, phone, packages, build_args: {})
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes_dir)
     runtimes = Fledge::Runtimes.new(env:)
     tree = File.join(@dir, "tree")
     Fledge::Archive.unpack(runtimes.archive(phone), into: tree)
+    root = File.join(tree, Dir.children(tree).first)
+    yield root if block_given?
     log = StringIO.new
-    Fledge::MobileExtensions.new(platform: phone, packages:, build_args: {}, host: Fledge::Platform.local, runtimes:,
-      work: File.join(@dir, "work"), log:, gem_dir: "lib/ruby/gems/4.1.0+5", env:).call(File.join(tree, Dir.children(tree).first))
+    Fledge::MobileExtensions.new(platform: phone, packages:, build_args:, host: Fledge::Platform.local, runtimes:,
+      work: File.join(@dir, "work"), log:, gem_dir: "lib/ruby/gems/4.1.0+5", env:).call(root)
   rescue Fledge::Error => e
     raise Fledge::Error, "#{e.message}\n#{log&.string}"
   end

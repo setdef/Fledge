@@ -46,10 +46,11 @@ enum { FLEDGE_RUBY_NO_APP = 66, FLEDGE_RUBY_SOFTWARE = 70 };
  * loads, unless SSL_CERT_FILE names others, as rv-ruby's Ruby does on a
  * desktop; the environment gains nothing before. A bare C locale becomes a
  * UTF-8 one, as under the desktop launcher. When standard output is not
- * a terminal, as on a phone it never is, $stdout is in sync mode before
- * the program runs, so that each line reaches the log or the developer
- * tool reading it when it is printed, as it reaches a terminal, rather
- * than when the program ends.
+ * a terminal, as on a phone it never is, $stdout writes through before
+ * the program runs, as Ruby writes to a terminal, so that each line
+ * reaches the log or the developer tool reading it when it is printed,
+ * rather than when the program ends; $stdout.sync and $stdout.tty? stay
+ * false, as under ruby main.rb with its output to a pipe.
  *
  * Ruby boots once per process, so a second call returns
  * FLEDGE_RUBY_SOFTWARE at once. Ruby needs the deep stack a process's

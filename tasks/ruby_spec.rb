@@ -111,13 +111,6 @@ class RubySpec
         "App Store review refuses (doc/contributors/design/phone-runtimes.md, \"Bundled gems' extensions\").",
     ),
     Justification.new(
-      example: /\Acore: IO#sync is false by default for STDOUT\z/,
-      side: :app, platforms: PHONES,
-      reason: "A phone's host sends standard output to the system log through a pipe, and the embedding API puts " \
-        "$stdout in sync mode, so each line reaches the log as it is printed (ADR 059; " \
-        "doc/contributors/design/phone-runtimes.md, \"Output to the system log\").",
-    ),
-    Justification.new(
       example: /\Alibrary: RbConfig::CONFIG \['archdir'\] returns the directory containing standard libraries C extensions\z/,
       side: :app, platforms: PHONES,
       reason: "A phone runtime links every extension into the app, where Android and iOS load native code from, " \

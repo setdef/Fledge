@@ -66,6 +66,7 @@
 #include "mobile.h"
 
 #include <ruby.h>
+#include <ruby/io.h>
 
 #include <errno.h>
 #include <limits.h>
@@ -184,16 +185,35 @@ register_extensions(void)
  * writes through to a terminal but buffers a pipe until its buffer fills
  * or the program ends (io.c, io_binwrite_requires_flush_write, lines
  * 1941 to 1954 at 4.1.0-preview1), so without this an app's lines
- * reached the log only when it ended. This is $stdout.sync = true, as
- * Briefcase's iOS host unbuffers Python's streams so that "output
- * appears in the log immediately" (config.buffered_stdio = 0); standard
- * error is in sync mode already (rb_io_prep_stderr). On a terminal it is
- * left as it is.
+ * reached the log only when it ended. Briefcase's iOS host unbuffers
+ * Python's streams so that "output appears in the log immediately"
+ * (config.buffered_stdio = 0); standard error is in sync mode already
+ * (rb_io_prep_stderr).
+ *
+ * It is done as a terminal does it: $stdout's IO gets the FMODE_TTY
+ * that io_check_tty gives an IO on a terminal (io.c, line 7386), which
+ * every write reads (lines 1945 and 2326), and which nothing else reads
+ * for a descriptor other than standard input. So $stdout.sync stays
+ * false, as under ruby main.rb, and $stdout.tty?, which asks isatty of
+ * the descriptor itself (rb_io_isatty, line 5547), stays false, so no
+ * library sends a terminal's escape codes into the log. Ruby's header
+ * deprecates the field, with no other way to set it, and says of
+ * FMODE_TTY "You cannot change this" (include/ruby/io.h, lines 188 to
+ * 191), since Ruby sets it once, as it opens the IO: it is set once
+ * here too, before the program has written anything. On a terminal it
+ * is left as it is.
  */
 static void
 write_lines_as_printed(void)
 {
-    if (!isatty(STDOUT_FILENO)) rb_funcall(rb_stdout, rb_intern("sync="), 1, Qtrue);
+    rb_io_t *stdout_io;
+
+    if (isatty(STDOUT_FILENO)) return;
+    GetOpenFile(rb_stdout, stdout_io);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    stdout_io->mode |= FMODE_TTY;
+#pragma GCC diagnostic pop
 }
 
 /*
@@ -203,7 +223,7 @@ write_lines_as_printed(void)
  * SPDX-SnippetComment: rb_main, from Ruby's main.c (lines 37 to 43) at
  *   Ruby v4.1.0-preview1 (2d08b5f42f), with setup_bundler between
  *   ruby_options and ruby_run_node, as in the desktop launcher's
- *   run_ruby, and standard output's sync mode set before either.
+ *   run_ruby, and standard output written through before either.
  */
 static int
 run_ruby(int argc, char **argv)

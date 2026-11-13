@@ -32,7 +32,7 @@ module Fledge
 
       private def minor: (String version) -> String
 
-      private def extensions: (AppGems? gems, MobilePlatform phone, Platform host, Runtimes runtimes, String work) -> MobileExtensions?
+      private def extensions: (AppGems? gems, MobilePlatform phone, Platform host, Runtimes runtimes, String work, RuntimeContents contents) -> MobileExtensions?
 
       private def gems_for: (App app, Runtimes runtimes, String work) -> AppGems?
 

@@ -22,7 +22,7 @@ jobs:
   seal:
     name: Seal (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -150,6 +150,7 @@ jobs:
             echo "################ $app ($exe)"
             echo "+ codesign -dvvv $app"; codesign -dvvv "$app" 2>&1; echo "exit $?"
             echo "+ codesign -dvvv $exe"; codesign -dvvv "$exe" 2>&1; echo "exit $?"
+            echo "+ codesign --verify --strict -vv (not deep)"; codesign --verify --strict -vv "$app" 2>&1; echo "exit $?"
             echo "+ codesign --verify --strict --deep -vv"; codesign --verify --strict --deep -vv "$app" 2>&1; echo "exit $?"
             echo "+ spctl --assess --type execute -vv"; spctl --assess --type execute -vv "$app" 2>&1; echo "exit $?"
             echo "+ spctl --assess --type execute -vv $exe"; spctl --assess --type execute -vv "$exe" 2>&1; echo "exit $?"
@@ -159,35 +160,62 @@ jobs:
           done; done
 
       - name: Launch
+        timeout-minutes: 25
         run: |
           set +e +o pipefail
           cd "$HOME/seal"
+          mkdir -p shots
+          t() { perl -e 'alarm shift; exec @ARGV' "$@"; }
           logs() {
-            log show --start "$1" --info --debug --style compact --predicate \
-              'subsystem BEGINSWITH "com.apple.syspolicy" OR process == "syspolicyd" OR process == "CoreServicesUIAgent" OR process == "amfid" OR (subsystem == "com.apple.launchservices" AND eventMessage CONTAINS[c] ".app") OR eventMessage CONTAINS[c] "quarantine"' \
-              2>&1 | grep -v -e 'Recording' | tail -n 60
+            t 60 log show --start "$1" --info --debug --style compact --predicate \
+              'subsystem BEGINSWITH "com.apple.syspolicy" OR process == "syspolicyd" OR process == "CoreServicesUIAgent" OR process == "amfid" OR eventMessage CONTAINS[c] "quarantine" OR eventMessage CONTAINS[c] "Gatekeeper"' \
+              2>&1 | grep -v -e 'Recording' | tail -n 50
           }
-          markers() { echo "+ markers:"; tail -n +1 /tmp/mac-seal/* 2>/dev/null; }
+          procs() { ps -axo pid,stat,command | grep -F "$1/Contents/MacOS" | grep -v grep; }
+          dialog() {
+            echo "+ dialog text:"
+            t 20 osascript -e 'tell application "System Events" to tell process "CoreServicesUIAgent" to get value of every static text of every window' 2>&1
+            echo "+ dialog buttons:"
+            t 20 osascript -e 'tell application "System Events" to tell process "CoreServicesUIAgent" to get name of every button of every window' 2>&1
+            t 20 screencapture -x "shots/$1.png" 2>&1
+          }
           for where in quarantined clean; do for dir in "$where"/*; do
+            form=$(basename "$dir")
             app="$PWD/$(echo "$dir"/*.app)"
             exe="$app/Contents/MacOS/$(defaults read "$app/Contents/Info" CFBundleExecutable)"
-            echo "################ $where $(basename "$dir") $app"
+            echo "################ $where $form $app"
+            rm -f /tmp/mac-seal/*
             start=$(date '+%Y-%m-%d %H:%M:%S')
-            echo "+ open"; open "$app" 2>&1; echo "exit $?"
+            echo "+ open"; open "$app" > open.out 2>&1 & opid=$!
+            sleep 10
+            if kill -0 "$opid" 2>/dev/null; then echo "open still waiting after 10 s"; else wait "$opid"; echo "open exited $?"; fi
+            cat open.out
+            echo "+ processes:"; procs "$app"
+            dialog "open-$where-$form"
+            echo "+ markers:"; tail -n +1 /tmp/mac-seal/* 2>/dev/null
+            echo "+ log:"; logs "$start"
+            kill -9 "$opid" 2>/dev/null; pkill -9 -f "$app/Contents/MacOS"; killall CoreServicesUIAgent 2>/dev/null
+            sleep 2
+            start=$(date '+%Y-%m-%d %H:%M:%S')
+            echo "+ exec $exe"; "$exe" > exec.out 2>&1 & pid=$!
             sleep 8
-            echo "+ running after open:"; pgrep -fl "Contents/MacOS" || echo none
-            pkill -f "$app/Contents/MacOS" || true
-            markers
-            echo "+ log"; logs "$start"
-            start=$(date '+%Y-%m-%d %H:%M:%S')
-            echo "+ exec $exe"; "$exe" & pid=$!
-            sleep 6
-            if kill -0 "$pid" 2>/dev/null; then echo "still running after 6 s"; kill "$pid"; wait "$pid"; echo "killed, exit $?"; else wait "$pid"; echo "exit $?"; fi
-            markers
-            echo "+ log"; logs "$start"
+            if kill -0 "$pid" 2>/dev/null; then echo "exec still running after 8 s"; else wait "$pid"; echo "exec exited $?"; fi
+            cat exec.out
+            echo "+ processes:"; procs "$app"
+            dialog "exec-$where-$form"
+            echo "+ markers:"; tail -n +1 /tmp/mac-seal/* 2>/dev/null
+            echo "+ log:"; logs "$start"
+            kill -9 "$pid" 2>/dev/null; pkill -9 -f "$app/Contents/MacOS"; killall CoreServicesUIAgent 2>/dev/null
+            sleep 2
             echo "+ xattr after"; xattr -l "$app" 2>&1
-            echo "+ spctl --add (the old Open Anyway by command)"; spctl --add --label mac-seal "$app" 2>&1; echo "exit $?"
           done; done
-          echo "+ windows"
-          osascript -e 'tell application "System Events" to get name of every process whose visible is true' 2>&1 || true
-          ls -l /tmp/mac-seal
+          echo "+ spctl --add (the old Open Anyway by command)"
+          t 30 spctl --add --label mac-seal "$PWD/quarantined/A/T.app" 2>&1; echo "exit $?"
+
+      - name: Screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shots-${{ matrix.os }}
+          path: ~/seal/shots/
+          retention-days: 7

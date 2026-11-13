@@ -8,7 +8,7 @@
 require "fileutils"
 
 class RuntimeBuilder
-  # A runtime's build-only companion (ADR 091): what compiling a gem's
+  # A runtime's build-only companion (ADR 006): what compiling a gem's
   # extension against the runtime's Ruby needs and no app holds, the
   # library to link against, with its notices. Ruby's headers are in the
   # runtime (ADR 085).
@@ -23,7 +23,7 @@ class RuntimeBuilder
       Ruby needs beside the C headers: Ruby's library to link against,
       which is static libruby on macOS and Linux (whose extension builds
       link test programs against it) and the import library of Ruby's DLL
-      on Windows (ADR 091), the same file the runtime itself keeps for an
+      on Windows (ADR 006), the same file the runtime itself keeps for an
       app's own mkmf. fledge build uses this archive to compile gems on
       the platform it builds for, and never copies it into an app.
 

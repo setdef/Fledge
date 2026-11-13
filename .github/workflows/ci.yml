@@ -1010,7 +1010,7 @@ jobs:
   # windowed app (ADR 037, ADR 008) with its installer (ADR 009);
   # examples/programs, a windowed and a console program of one project in
   # one folder (ADR 024); and
-  # examples/native_app, whose gems must be compiled (ADR 091): redcarpet,
+  # examples/native_app, whose gems must be compiled (ADR 006): redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
   # its git tag, each compiled against the runtime's own Ruby and its
   # build-only companion; libusb, whose precompiled build ships on
@@ -1268,7 +1268,7 @@ jobs:
       # nokogiri and the Rust gems for that Ruby took most of nine
       # minutes of the longest chain in CI. They only make the .expected
       # files; fledge build compiled each app's gems afresh above, for the
-      # runtime's Ruby, which is the check (ADR 091). The key names the
+      # runtime's Ruby, which is the check (ADR 006). The key names the
       # Ruby, the Rust, and each lockfile and Bundler setting, and only an
       # exact match restores.
       - name: Read the runner's Ruby

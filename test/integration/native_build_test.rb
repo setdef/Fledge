@@ -15,7 +15,7 @@ require "stringio"
 
 # fledge build compiling a gem's C extension on this computer, for this
 # computer's platform, against the real runtime's own Ruby and its
-# build-only companion (ADR 091): a gem that publishes only its source,
+# build-only companion (ADR 006): a gem that publishes only its source,
 # served by a real gem server, with build options from the project's
 # .bundle/config, and the same gem from git. Then the built app runs.
 #

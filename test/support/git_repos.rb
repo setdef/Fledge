@@ -9,7 +9,7 @@ require "fileutils"
 require "open3"
 
 # Real git repositories holding gems, as Ferro's holds its gems under
-# gems/*/, for the tests of git gems (ADR 091). Each gemspec lists its
+# gems/*/, for the tests of git gems (ADR 006). Each gemspec lists its
 # files with git ls-files, as most do, so a checkout without git would
 # break it.
 module FakeRepo

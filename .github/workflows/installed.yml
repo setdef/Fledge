@@ -219,7 +219,7 @@ jobs:
           ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
 
       # Compiling a gem downloads the runtime's build-only companion from
-      # the release too (ADR 091). On Ruby 4.1 my_cool_app's sqlite3 has no
+      # the release too (ADR 006). On Ruby 4.1 my_cool_app's sqlite3 has no
       # build either, so the step before may have downloaded it already,
       # into the same cache.
       - name: Build native_app from source with the release's build-only companion

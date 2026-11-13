@@ -12,7 +12,7 @@ require_relative "../support/loopback_server"
 require "stringio"
 
 # fledge build for a gem-shaped app whose lockfile locks a gem from a
-# git repository (ADR 091), through real streams, into fake runtimes:
+# git repository (ADR 006), through real streams, into fake runtimes:
 # git itself makes the repository and checks it out.
 # test/gem_app_build_test.rb covers gems from a gem server.
 class GitGemBuildTest < Minitest::Test
@@ -39,7 +39,7 @@ class GitGemBuildTest < Minitest::Test
   end
 
   # A git gem ships as Bundler keeps one, for every platform, when it has
-  # nothing to compile (ADR 091).
+  # nothing to compile (ADR 006).
   def test_a_git_gem_ships_where_bundler_keeps_it_for_every_platform
     repo, revision = FakeRepo.write(@dir, "Monorepo", gems: { "alpha" => { "lib/alpha.rb" => "# alpha\n", "LICENSE" => "MIT\n" } })
     root = FakeProject.write(@dir, dependencies: {}, locked: [], remote: @server.url("/"),

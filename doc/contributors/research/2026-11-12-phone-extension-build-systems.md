@@ -245,7 +245,7 @@ Commits: tauri-apps/tauri at 5edd31c8a8914674c217b21a660a914823da2dae; tauri-app
 ## 5. Options for Fledge
 
 1. **Aim RubyGems' own builder at the phone, and intercept the shared link.**
-   - Run `Gem::Ext::Builder`'s builder for the extension under this computer's Ruby, as a desktop build does (the former ADR 006, now ADR 091).
+   - Run `Gem::Ext::Builder`'s builder for the extension under this computer's Ruby, as a desktop build does (ADR 006).
    - Every Ruby the build starts reads the phone's `rbconfig.rb` (prior art 4).
    - `CC` and `CXX` are wrappers of the phone's compilers (prior art 1 and kivy-ios's wrappers).
    - When the build links a shared library, the wrapper merges the objects with `clang -r`, renames `Init_NAME` as Ruby's `ext/extmk.rb` renames an extension it links in, and writes a static archive where the library was asked for (kivy-ios's liblink).

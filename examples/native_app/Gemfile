@@ -8,12 +8,12 @@
 source "https://rubygems.org"
 
 # A C extension published only as source, which fledge build compiles
-# against the runtime's Ruby on the platform it builds for (ADR 091).
+# against the runtime's Ruby on the platform it builds for (ADR 006).
 gem "redcarpet", "~> 3.6"
 
 # A gem published precompiled for some platforms and as source, so that
 # fledge build ships its precompiled build where one fits and compiles it
-# where none does (ADR 091). libusb's Windows builds carry a libusb DLL
+# where none does (ADR 006). libusb's Windows builds carry a libusb DLL
 # that ffi loads, so they fit any Ruby, Ruby 4.1 among them; its source
 # build's extconf.rb compiles the libusb it carries with mini_portile2,
 # which every other platform does. The project's .bundle/config asks for

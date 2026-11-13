@@ -108,17 +108,51 @@ class MobileParityTest < Minitest::Test
     assert_equal({ "PATH" => "/bin", "HOME" => "/work/home", "LANG" => "en_US.UTF-8" }, env)
   end
 
-  # A phone starts an app with the system's own environment, so ENV and
-  # the facts that come from it differ wholly from a person's, on every
-  # mobile target, and only there.
-  def test_a_phones_environment_is_justified_on_mobile_targets_only
-    reference = { "ENV" => { "PATH" => "/bin", "HOME" => "<home>" } }
-    app = { "ENV" => { "HOME" => "<home>", "SIMULATOR_UDID" => "X", "SSL_CERT_FILE" => "<prefix>/libexec/cert.pem" } }
+  # A phone starts an app with an environment of its own, so the check
+  # compares the app's ENV, and a child's, with the one the system gave
+  # it, which its host logged, not with the desktop's: a variable Fledge
+  # adds fails, but for the HOME Android gives no app, which FledgeRuby
+  # sets.
+  def test_a_phones_env_is_compared_with_the_environment_the_system_gave_the_app
+    paths = { "app" => "/data/app", "prefix" => "/data/ruby", "home" => "/data/files" }
+    reference = { "paths" => { "app" => "/w/app", "prefix" => "/w/ruby", "home" => "/w/home" }, "ENV" => { "PATH" => "/bin", "LANG" => "C" } }
+    given = { "PATH" => "/system/bin", "TMPDIR" => "/data/cache" }
+    app = -> (env) { { "paths" => paths, "ENV" => env, "child ENV" => env } }
+    differences = -> (target, env) { MobileParity.differences(reference, app.call(env), given, platform: target, work: "/w") }
 
     %w[arm64-ios-simulator x86_64-linux-android].each do |target|
-      assert Parity::Reports.compare(reference, app, platform: target).all?(&:justified?), target
+      assert_empty differences.call(target, given), target
+      certificates = differences.call(target, given.merge("SSL_CERT_FILE" => "/data/ruby/libexec/cert.pem"))
+      assert_equal ["ENV", "child ENV"], certificates.map(&:fact), target
+      refute certificates.any?(&:justified?), target
     end
-    refute Parity::Reports.compare(reference, app, platform: "x86_64-linux").all?(&:justified?)
+    home = given.merge("HOME" => "/data/files")
+    assert differences.call("x86_64-linux-android", home).all?(&:justified?)
+    refute differences.call("arm64-ios-simulator", home).any?(&:justified?)
+  end
+
+  # The probe's host logs the environment the system gave it, a line
+  # for each variable, before it starts Ruby: the host fledge build
+  # writes, with one loop more, which the check reads back.
+  def test_the_probes_host_logs_the_environment_it_was_given
+    MobileParity::Environment::HOSTS.each do |phone, (file, _, loop)|
+      Dir.mktmpdir do |project|
+        template = File.join(MobileParity::ROOT, "lib", "fledge", "templates", phone, file)
+        FileUtils.mkdir_p(File.dirname(File.join(project, file)))
+        FileUtils.cp(template, File.join(project, file))
+
+        MobileParity::Environment.record(phone, project)
+        host = File.read(File.join(project, file))
+
+        assert_includes host, loop, phone
+        assert_operator host.index(loop), :<, host.index((phone == "ios") ? "= fledge_ruby_run_app(" : "FledgeRuby.startApp("), phone
+        File.write(File.join(project, file), "")
+        assert_raises(RuntimeError, phone) { MobileParity::Environment.record(phone, project) }
+      end
+    end
+    entries = ["FLEDGE-ENVIRON PATH=/system/bin", "booting", "FLEDGE-ENVIRON EMPTY=", "FLEDGE-ENVIRON A=b=c"]
+    assert_equal({ "PATH" => "/system/bin", "EMPTY" => "", "A" => "b=c" }, MobileParity::Environment.read(entries))
+    assert_raises(RuntimeError) { MobileParity::Environment.read(["booting"]) }
   end
 
   # The Android SDK's newest build tools, found from ANDROID_HOME as the

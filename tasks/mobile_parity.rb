@@ -99,7 +99,56 @@ class MobileParity
         "-o", out, File.expand_path(app.path, ROOT), chdir: ROOT)
       raise "fledge build #{phone} #{app.path} failed:\n#{printed}#{logged}" unless status.success?
 
-      [app, File.expand_path(printed.strip, ROOT)]
+      project = File.expand_path(printed.strip, ROOT)
+      Environment.record(phone, project) unless app.prints
+      [app, project]
+    end
+  end
+
+  # The environment the phone's system gave the parity probe's app,
+  # which the probe's ENV is compared with, so that the check sees
+  # anything Fledge adds to it, as no desktop's environment could show:
+  # a phone starts an app with an environment of its own, which no
+  # person's ruby main.rb has. The probe's host logs it, a line for each
+  # variable, before it calls anything of Fledge's: the host fledge
+  # build writes, but for that loop (Environment.record).
+  module Environment
+    # What begins each of the host's lines.
+    LINE = "FLEDGE-ENVIRON "
+
+    # Each host, by the phone it is for: the file fledge build writes it
+    # to in a project, the line before which the loop goes, and the loop.
+    HOSTS = {
+      "ios" => [
+        "Host/main.m",
+        "        if (fledge_ruby_forward_output(",
+        "        extern char **environ;\n" \
+          "        for (char **variable = environ; *variable != NULL; variable++) os_log(log, \"#{LINE}%{public}s\", *variable);\n",
+      ],
+      "android" => [
+        "src/main/java/org/setdef/fledge/host/MainActivity.java",
+        "        FledgeRuby.startApp(",
+        "        for (String variable : android.system.Os.environ()) Log.i(tag, \"#{LINE}\" + variable);\n",
+      ],
+    }.freeze
+
+    # Has the host of the project fledge build wrote for +phone+ in
+    # +project+ log its environment as it starts.
+    def self.record(phone, project)
+      file, before, loop = HOSTS.fetch(phone)
+      path = File.join(project, file)
+      text = File.read(path)
+      raise "#{path} no longer has the line #{before.strip}" unless text.scan(before).one?
+
+      File.write(path, text.sub(before, "#{loop}#{before}"))
+    end
+
+    # The environment the host logged among +entries+, as a Hash.
+    def self.read(entries)
+      lines = entries.filter_map { |entry| entry.delete_prefix(LINE) if entry.start_with?(LINE) }
+      raise "the probe's host logged no environment" if lines.empty?
+
+      lines.to_h { |line| line.split("=", 2).then { |name, value| [name, value.to_s] } }
     end
   end
 
@@ -157,6 +206,16 @@ class MobileParity
     { "PATH" => env.fetch("PATH"), "HOME" => File.join(work, "home"), "LANG" => "en_US.UTF-8" }
   end
 
+  # The differences between the phone's +report+ and the +reference+
+  # Ruby's on +platform+, both normalized with +work+, ENV and a child's
+  # taken from +environment+, the one the phone gave the app
+  # (Environment), in place of the reference's.
+  def self.differences(reference, report, environment, platform:, work:)
+    given = Parity::Reports.normalize({ "paths" => report.fetch("paths"), "ENV" => environment }, work:).fetch("ENV")
+    expected = Parity::Reports.normalize(reference, work:).merge("ENV" => given, "child ENV" => given)
+    Parity::Reports.compare(expected, Parity::Reports.normalize(report, work:), platform:)
+  end
+
   def initialize(target:, work: File.join(ROOT, "tmp", "mobile-parity"), out: $stdout)
     @target = target
     @work = File.expand_path(work)
@@ -165,13 +224,14 @@ class MobileParity
 
   # Compares the probe's +report+ from the phone with the reference
   # Ruby's, for the device named +device+, prints and records the
-  # differences, and returns whether every one is justified.
-  def compare(report, device)
-    reference = reference_report
-    differences = Parity::Reports.compare(Parity::Reports.normalize(reference, work: @work),
-      Parity::Reports.normalize(report, work: @work), platform: @target)
+  # differences, and returns whether every one is justified. Its ENV,
+  # and a child's, are compared with +environment+, the one the phone
+  # gave the app (Environment), not with the desktop's.
+  def compare(report, device, environment:)
+    differences = MobileParity.differences(reference_report, report, environment, platform: @target, work: @work)
     lines = [
-      "Parity on #{@target} (#{device}) with ruby main.rb on #{desktop}: #{differences.count(&:justified?)} justified, " \
+      "Parity on #{@target} (#{device}) with ruby main.rb on #{desktop}, and with the environment the phone gave the app: " \
+        "#{differences.count(&:justified?)} justified, " \
         "#{differences.count { |difference| !difference.justified? }} unjustified differences",
       *differences.map(&:to_s),
     ]
@@ -184,13 +244,14 @@ class MobileParity
   # Checks what +app+ logged on the device named +device+, a Logged:
   # that it exited with status 0 and printed its line, or, for the parity
   # probe, that every difference its report shows, read from its standard
-  # output alone, is justified. A failure reports both streams. Returns
+  # output alone, from ruby main.rb's and from the environment its host
+  # logged, is justified. A failure reports both streams. Returns
   # whether it passed.
   def check(app, logged, device)
     entries = logged.entries
     status = MobileParity.status(entries)
     raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}" unless status&.zero?
-    return compare(MobileParity.report(logged.output), device) unless app.prints
+    return compare(MobileParity.report(logged.output), device, environment: Environment.read(entries)) unless app.prints
 
     line = entries.find { |entry| entry.match?(app.prints) }
     raise "#{app.name} on #{device} printed no line matching #{app.prints.source}:\n#{entries.join("\n")}" unless line

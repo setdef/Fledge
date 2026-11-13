@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    class Runner
+      @log: CLI::_Output
+      @env: Runtimes::_Env
+
+      def initialize: (log: CLI::_Output, env: Runtimes::_Env) -> void
+
+      def clean_env: () -> Hash[String, String?]
+
+      def call: (Hash[String, String?] env, *String command, what: String, ?chdir: String?) -> void
+    end
+  end
+end

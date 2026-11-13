@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    class ExtconfBuild
+      RUST_FILES: Hash[String, String]
+
+      @ruby: String
+      @work: String
+      @load_path: Array[String]
+      @environment: Hash[String, String?]
+      @run: RakeBuild::_Run
+
+      def initialize: (ruby: String, work: String, load_path: Array[String], environment: Hash[String, String?], run: RakeBuild::_Run) -> void
+
+      def call: (Target target, locked_gem gem, String folder, String extconf, Array[String] args, Integer number, rust: bool) -> Report
+
+      private def make: (Hash[String, String?] env, Array[Hash[String, String]] reports, String folder, locked_gem gem, Target target, what: String) -> void
+
+      private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target, Hash[String, String?] env) -> Report
+
+      private def describe_rust: (Hash[String, String] report, String folder, locked_gem gem, Target target) -> Report
+
+      private def write: (String name, String text) -> String
+    end
+  end
+end

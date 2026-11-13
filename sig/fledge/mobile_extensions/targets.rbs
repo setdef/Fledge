@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    class Target < Data
+      attr_reader name: String
+      attr_reader root: String
+      attr_reader arch_dir: String
+      attr_reader libdir: String
+      attr_reader environment: Hash[String, String]
+      attr_reader abi: String?
+
+      def self.new: (name: String, root: String, arch_dir: String, libdir: String, environment: Hash[String, String], abi: String?) -> instance
+                  | (String name, String root, String arch_dir, String libdir, Hash[String, String] environment, String? abi) -> instance
+    end
+
+    class Targets
+      IOS_SLICES: Array[String]
+      ANDROID_ABIS: Hash[String, String]
+
+      @work: String
+
+      def initialize: (work: String) -> void
+
+      def call: (String tree, NDK? ndk) -> Array[Target]
+
+      private def ios_target: (String slice, String root) -> Target
+
+      private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
+
+      private def with_tools: (Hash[String, String] environment) -> Hash[String, String]
+
+      private def resource_dir: (String cc, NDK ndk) -> String
+
+      private def toolchain_file: (String name, String text) -> String
+
+      private def xcrun: (String sdk, *String arguments) -> String
+
+      private def rbconfig_dir: (String root) -> String
+
+      private def recorded_compiler: (String arch_dir) -> String
+
+      private def unpack_aar: (String aar) -> String
+    end
+  end
+end

@@ -111,20 +111,6 @@
   - script
   - bundle
 - fact: "$LOADED_FEATURES"
-  reference: []
-  app:
-  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/rubygems/yaml_serializer\.rb"\z
-  platforms:
-  checks:
-  - bundle
-- fact: Object.constants
-  reference: []
-  app:
-  - \A"Psych"\z
-  platforms:
-  checks:
-  - bundle
-- fact: "$LOADED_FEATURES"
   reference:
   - \A"(?:<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?|(?-mix:<work>\/person-gems)/gems/bundler-[^/"]+/lib)/bundler/feature_flag\.rb"\z
   app: []

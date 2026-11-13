@@ -120,19 +120,10 @@ class Parity
     Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
       reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1; ADR 040), " \
         "so it cannot change how the app runs; it still reaches the app's ENV and every program the app starts."),
-    Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/#{ABI}/rubygems/yaml_serializer\.rb"\z}o],
-      checks: %i[bundle],
-      reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
-        "Ruby's own gem folder as the bundle's, as bundle config set --local would (ADR 045). Reading a " \
-        "configuration file loads RubyGems' YAML serializer."),
-    Justification.new(fact: "Object.constants", app: [/\A"Psych"\z/], checks: %i[bundle],
-      reason: "As for RubyGems' YAML serializer in $LOADED_FEATURES: where Psych is not loaded, the serializer defines a " \
-        "Psych module of its own, for its errors (rubygems/yaml_serializer.rb, lines 7 to 8, at Ruby 4.1.0-preview1), " \
-        "as it does under bundle exec in any project with a .bundle/config."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"(?:<prefix>/lib/ruby/#{ABI}|#{PERSON_GEMS}/gems/bundler-[^/"]+/lib)/bundler/feature_flag\.rb"\z}o],
       checks: %i[bundle],
       reason: "With no setting that says where the bundle's gems are, Bundler asks its feature flags whether to use " \
-        "Ruby's own gem folder; the app's .bundle/config says so (path.system, as Warbler's does), so it never asks."),
+        "Ruby's own gem folder; the app's settings say so (path.system, as Warbler's does), so it never asks."),
     Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, %r{\A"<home>/\.(?:gem|local/share/gem)/}],
       reason: "The app's gems are the runtime's alone (ADR 040): the person's GEM_HOME, GEM_PATH, and " \
         "Gem.user_dir never shadow them. Their ENV still reaches the app and its child processes."),

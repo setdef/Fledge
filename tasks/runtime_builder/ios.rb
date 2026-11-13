@@ -16,7 +16,7 @@ class RuntimeBuilder
   # (doc/contributors/design/phone-runtimes.md, "What a phone runtime holds").
   #
   # Each slice holds libfledgeruby.a (Ruby, its extensions and encodings,
-  # OpenSSL, libyaml, and the embedding API, in one archive), its headers
+  # OpenSSL, libyaml, libffi, and the embedding API, in one archive), its headers
   # with a module map, so Swift imports it as FledgeRuby, and, as
   # CPython's XCFramework for iOS does, the Ruby the slice runs: its
   # lib/ruby and its CA certificates in libexec/, which an app copies into
@@ -35,22 +35,22 @@ class RuntimeBuilder
       super
     end
 
-    # fiddle is left out, as xord/cruby leaves it out "to pass the App
-    # Store review" (Rakefile, line 577): it would call any C function.
-    private def omitted_gems
-      [*super, "fiddle"]
-    end
-
     # How a bundled gem's extension becomes one object with only its Init
     # function global (BundledExtensions.relocate): Apple's ld links it
     # with -r, keeping its hidden symbols as they are (-keep_private_externs;
     # without it ld makes them all local, ld(1), the Init function too,
     # which iOS's -fvisibility=hidden hides), and Apple's nmedit makes
-    # every global but the Init function local (nmedit(1), -s).
+    # every global but the Init function local (nmedit(1), -s). fiddle's
+    # object takes in the libffi it links (-lffi, from the folder
+    # --with-libffi-dir puts in the Makefile's LIBPATH; the Makefile has
+    # no LDFLAGS, only ldflags), so that libffi's symbols are local to it
+    # too, as Android's library keeps them to itself (--exclude-libs): an
+    # app whose gem links a libffi of its own, as the ffi gem does, gets
+    # no second definition of any (#library leaves libffi.a out).
     private def relocatable
       nmedit = @builder.capture("xcrun", "--find", "nmedit").strip
       [
-        "$(CC) -r -nostdlib -Wl,-keep_private_externs -o $@ $(FLEDGE_OBJS)",
+        "$(CC) -r -nostdlib -Wl,-keep_private_externs -o $@ $(FLEDGE_OBJS) $(filter -L%,$(LIBPATH) $(ldflags)) $(filter -lffi,$(LIBS))",
         "echo _$(FLEDGE_INIT) > $@.keep",
         "#{nmedit} -s $@.keep $@",
       ]
@@ -87,14 +87,16 @@ class RuntimeBuilder
       [(target.sdk == "iphonesimulator") ? "-mios-simulator-version-min=#{IOS_MINIMUM}" : "-mios-version-min=#{IOS_MINIMUM}"]
     end
 
-    private def target_options(target, _deps)
+    private def target_options(_target, deps)
+      ffi = deps.fetch(:libffi)
       [
         "--disable-dln",
         *MISSING.map { |name| "ac_cv_func_#{name}=no" },
         "ac_cv_func_setpgrp_void=yes",
-        "CPPFLAGS=-I#{@stub}",
+        "--with-libffi-dir=#{ffi}",
+        "CPPFLAGS=-I#{@stub} -I#{File.join(ffi, 'include')}",
         "CFLAGS=-Os -fvisibility=hidden",
-        "LDFLAGS=-framework Security",
+        "LDFLAGS=-framework Security -L#{File.join(ffi, 'lib')}",
       ]
     end
 
@@ -116,7 +118,8 @@ class RuntimeBuilder
     end
 
     # libfledgeruby.a for +target+: every archive Ruby's build made, the
-    # libraries it links, and the embedding API, merged by Apple's libtool,
+    # libraries it links but libffi, which fiddle's object holds
+    # (#relocatable), and the embedding API, merged by Apple's libtool,
     # without libruby's dmyext.o and dmyenc.o, which define empty Init_ext
     # and Init_enc for a Ruby without static extensions: the linker would
     # take them before extinit.o's and encinit.o's, and require "json"
@@ -129,7 +132,8 @@ class RuntimeBuilder
       FileUtils.mkdir_p(folder)
       objects = compile_api(target, root, folder)
       library = File.join(folder, "libfledgeruby.a")
-      @builder.run("xcrun", "libtool", "-static", "-no_warning_for_no_symbols", "-o", library, *@archives.fetch(target), *objects)
+      archives = @archives.fetch(target).reject { |path| File.basename(path) == "libffi.a" }
+      @builder.run("xcrun", "libtool", "-static", "-no_warning_for_no_symbols", "-o", library, *archives, *objects)
       @builder.run("xcrun", "ar", "-d", library, "dmyext.o", "dmyenc.o")
       @builder.run("xcrun", "ranlib", library)
       @builder.run("xcrun", "strip", "-S", library)

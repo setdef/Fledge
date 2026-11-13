@@ -74,10 +74,6 @@ class RuntimeBuilder
       %i[psych_extconf configure ruby_c process_c process_c_umask file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
     end
 
-    private def needs_libffi?
-      true
-    end
-
     private def host_triple(target)
       target.triple
     end

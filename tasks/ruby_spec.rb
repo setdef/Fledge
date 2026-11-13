@@ -105,12 +105,6 @@ class RubySpec
     # The phones (RubySpec::Phone), against stock Ruby on the computer
     # that runs the simulator.
     Justification.new(
-      example: %r{\Alibrary: loading library/fiddle/},
-      side: :app, platforms: %w[arm64-ios-simulator],
-      reason: "The iOS runtime leaves fiddle out, as xord/cruby does, since it calls any C function by name, which " \
-        "App Store review refuses (doc/contributors/design/phone-runtimes.md, \"Bundled gems' extensions\").",
-    ),
-    Justification.new(
       example: /\Acore: IO#sync is false by default for STDOUT\z/,
       side: :app, platforms: PHONES,
       reason: "A phone's host sends standard output to the system log through a pipe, and the embedding API puts " \

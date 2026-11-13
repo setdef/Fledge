@@ -9,8 +9,8 @@ require "fileutils"
 
 class RuntimeBuilder
   # How a mobile runtime keeps Ruby's bundled gems with C extensions
-  # (bigdecimal, debug, nkf, prism, racc, rbs, syslog, and on Android
-  # fiddle) as gems while linking their extensions into Ruby (ADR 058),
+  # (bigdecimal, debug, fiddle, nkf, prism, racc, rbs, and syslog) as
+  # gems while linking their extensions into Ruby (ADR 058),
   # each keeping every symbol but its Init function to itself (ADR 067).
   #
   # A mobile Ruby loads no extension from a file: iOS forbids it, and

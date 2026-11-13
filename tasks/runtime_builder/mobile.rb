@@ -299,18 +299,14 @@ class RuntimeBuilder
       [*ruby.map { |path| File.join(build, path) }, File.join(build, "ext", "extinit.o"), File.join(build, "enc", "encinit.o"), *libraries]
     end
 
-    # Builds libyaml, OpenSSL, and on Android libffi for +target+, once,
+    # Builds libyaml, OpenSSL, and libffi, for fiddle, for +target+, once,
     # and returns each one's prefix by name.
     private def build_dependencies(target)
       prefixes = {}
       prefixes[:libyaml] = build_autotools("libyaml", target)
       prefixes[:openssl] = build_openssl(target)
-      prefixes[:libffi] = build_autotools("libffi", target, "--disable-docs", "--disable-multi-os-directory") if needs_libffi?
+      prefixes[:libffi] = build_autotools("libffi", target, "--disable-docs", "--disable-multi-os-directory")
       prefixes
-    end
-
-    private def needs_libffi?
-      false
     end
 
     private def build_autotools(name, target, *options)

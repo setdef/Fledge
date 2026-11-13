@@ -11,7 +11,7 @@ For a phone, [Fledge](../README.md) writes a project that holds your program and
 
 Lock `ruby` as a platform first (`bundle lock --add-platform ruby`). To build a folder named `ios` or `android`, write `./ios` or `./android`. [`examples/mobile_app`](../examples/mobile_app) is a complete example.
 
-A phone's Ruby has the standard library and gems of a desktop's, with one left out: `fiddle` on iOS, which can call any C function, and which other iOS Rubies leave out for App Review. A phone also forbids some things a desktop lets your code do, such as starting a program. [What a phone forbids](#what-a-phone-forbids) lists them, with what to do instead.
+A phone's Ruby has the standard library and gems of a desktop's, `fiddle` among them. A phone also forbids some things a desktop lets your code do, such as starting a program. [What a phone forbids](#what-a-phone-forbids) lists them, with what to do instead.
 
 ## Gems with extensions
 
@@ -104,7 +104,6 @@ What follows holds on an iPhone 12 mini with iOS 27.0 and a development-signed b
 - **Starting a program.** No app can start one, and Apple's sandbox is the reason. On that iPhone, `system("/bin/echo", "hi")` returned `nil`, and backticks, `Process.spawn`, and `IO.popen` raised `Errno::EPERM: Operation not permitted - /bin/echo`. Do the work in your own process: call a Ruby library where you would call a command, or a gem with a C extension that Fledge links into the app ([Gems with extensions](#gems-with-extensions)).
 - **`fork`.** `fork` raised `Errno::EPERM - fork(2)`. The Simulator allows it, so a program that forks can pass there and fail on an iPhone. The sandbox is the reason. Use a `Thread` for work in the background, or a `Ractor` for work that shares nothing.
 - **`RbConfig.ruby`.** It names where `bin/ruby` would be, and nothing is there: a phone's Ruby is a library inside the app. Starting it raises `Errno::EPERM`. Anything that restarts your app with `exec RbConfig.ruby, ...` or runs a script with `system(RbConfig.ruby, ...)` fails. Call `load` or `require` in the same process instead.
-- **`fiddle`.** `require "fiddle"` does not load. Fledge leaves `fiddle` out of the iOS Ruby because it calls any C function by name, as other iOS Rubies do for App Review. Write the C once as a gem extension, which Fledge compiles for the phone, and `require` that.
 - **`mkmf`.** `require "mkmf"` aborts. The app carries no C headers, and a phone has no toolchain. An extension compiles on your computer, when you run `fledge build ios`.
 - **Set-user-ID, set-group-ID, and sticky bits.** The sandbox keeps an app from setting these bits on its own files, so `File.setuid?`, `File.setgid?`, and `File.sticky?` do not report a bit you set with `chmod` (the Simulator's runs of ruby/spec show this). Keep that information in your own data, not in a file's mode.
 - **User and group names.** An iOS app has no user or group database. `Etc` finds no user or group for the app's own IDs (the Simulator's runs of ruby/spec show this). `ENV["USER"]` and `ENV["LOGNAME"]` both read `mobile`, whoever owns the phone. Name a person from what your app asks them, or from an account service, not from `Etc`.

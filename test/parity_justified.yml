@@ -375,26 +375,6 @@
   - script
   - bundle
 - fact: gems
-  reference:
-  - '\A"fiddle '
-  app: []
-  platforms:
-  - arm64-ios
-  - arm64-ios-simulator
-  checks:
-  - script
-  - bundle
-- fact: requireable
-  reference:
-  - \A"fiddle"=
-  app: []
-  platforms:
-  - arm64-ios
-  - arm64-ios-simulator
-  checks:
-  - script
-  - bundle
-- fact: gems
   reference: []
   app:
   - '\A"win32-registry '

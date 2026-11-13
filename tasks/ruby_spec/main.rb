@@ -33,7 +33,13 @@ require "rbconfig"
 arguments = File.join(__dir__, "arguments.txt")
 if ARGV.empty? && File.file?(arguments)
   require "tmpdir"
-  ARGV.replace(File.readlines(arguments, chomp: true))
+  # A line --ruby-spec-keep=FILE:DESCRIPTION is no argument of
+  # mspec-run's: it names an example of FILE that runs, where the rest
+  # of FILE's examples do not (phone_config.rb, RubySpecPhoneFormatter::Keep).
+  kept, given = File.readlines(arguments, chomp: true).partition { |line| line.start_with?("--ruby-spec-keep=") }
+  RUBY_SPEC_KEEP = kept.map { |line| line.delete_prefix("--ruby-spec-keep=").split(":", 2) }
+    .group_by(&:first).transform_values { |pairs| pairs.map(&:last) }.freeze
+  ARGV.replace(given)
   ENV["SPEC_TEMP_DIR"] ||= File.writable?("/tmp") ? "/tmp/fledge-rs-#{Process.pid}" : File.join(Dir.tmpdir, "rs-#{Process.pid}")
   ENV["RUBY_SPEC_LISTING"] ||= File.join(Dir.tmpdir, "ruby-spec-listing-#{Process.pid}.txt")
   # MSpec's ruby_exe helper refuses to load unless the Ruby it would

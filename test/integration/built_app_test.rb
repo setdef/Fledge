@@ -951,14 +951,14 @@ class BuiltAppTest < Minitest::Test
     assert_equal "Hello Window-#{@platform}.msix", File.basename(msix)
     into = File.join(dir, "msix")
     FileUtils.mkdir_p(into)
-    listed, status = Open3.capture2e("tar", "-tf", msix)
+    listed, status = Open3.capture2e(Fledge::Archive.tar, "-tf", msix)
     assert_predicate status, :success?, listed
     entries = listed.lines.map(&:chomp)
     %w[AppxManifest.xml AppxBlockMap.xml Assets/StoreLogo.png Assets/Square44x44Logo.png Assets/Square150x150Logo.png].each do |entry|
       assert_includes entries, entry
     end
     assert entries.any? { |entry| entry.match?(/\AHello(?:%20| )Window\.exe\z/) }, "the package holds the program"
-    extracted, status = Open3.capture2e("tar", "-xf", msix, "-C", into, "AppxManifest.xml", "fledge.cfg")
+    extracted, status = Open3.capture2e(Fledge::Archive.tar, "-xf", msix, "-C", into, "AppxManifest.xml", "fledge.cfg")
     assert_predicate status, :success?, extracted
     manifest = File.read(File.join(into, "AppxManifest.xml"))
     architecture = Fledge::Msix::ARCHITECTURES.fetch(@platform.name)

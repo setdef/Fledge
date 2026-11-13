@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Windows, `RubyInstaller` is defined in an app, as under `ruby.exe`, so a gem that tests `defined?(RubyInstaller)` takes the same branch: mysql2 0.5.6 loaded `libmysql.dll` by bare name instead, and could abort.
 - On iOS and Android, a gem from git with an extension compiles; its build failed with `Errno::ENOENT` before it began.
 - On iOS and Android, a gem whose Ruby loads its extension by its path, with `require_relative "name/name"` as `bundle gem --ext` wrote it from Bundler 2.2.0 to 4.0.0, finds it: `fledge build` puts a Ruby file that requires the linked extension where a desktop has the extension's file. It failed with a `LoadError`.
 - On iOS and Android, a require of a bundled gem's extension before its gem is active, such as `require "racc/cparse"`, activates the gem and loads the extension as on a desktop; it failed with a `LoadError`.

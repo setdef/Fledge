@@ -162,17 +162,19 @@ class Parity
         "rv-ruby ships no such file, nor does the Ruby a musl runtime is built from."),
     Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reference: [
-        %r{\A"<prefix>/lib/ruby/site_ruby/#{ABI}/ruby_installer/}o,
+        %r{\A"<prefix>/lib/ruby/site_ruby/#{ABI}/ruby_installer/runtime/(?:colors|dll_directory|msys2_installation)\.rb"\z}o,
         %r{\A"<prefix>/lib/ruby/#{ABI}/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)}o,
       ],
       reason: "Fledge's RubyGems defaults replace RubyInstaller's (ADR 038; " \
-        "doc/contributors/design/runtimes.md, \"Fledge's RubyGems defaults\"), which load " \
-        "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
-        "encodings its messages use. Ruby loads an encoding when code first needs it, so an app " \
-        "that uses one finds it either way."),
-    Justification.new(fact: "Object.constants", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt], reference: [/\A"(?:RubyInstaller|Win32)"\z/],
-      reason: "As for RubyInstaller's files in $LOADED_FEATURES, which define RubyInstaller, and Win32 in " \
-        "win32/dll_directory."),
+        "doc/contributors/design/runtimes.md, \"Fledge's RubyGems defaults\"). Both require RubyInstaller's " \
+        "runtime, which defines RubyInstaller and its autoloads; only RubyInstaller's then calls it to look for " \
+        "MSYS2, which loads the files of the autoloads it uses (Colors, DllDirectory, Msys2Installation), " \
+        "win32/dll_directory, and the encodings its " \
+        "messages use. Each autoload loads when code first uses it, and Ruby loads an encoding when code first " \
+        "needs it, so an app that uses one finds it either way."),
+    Justification.new(fact: "Object.constants", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt], reference: [/\A"Win32"\z/],
+      reason: "As for RubyInstaller's files in $LOADED_FEATURES: win32/dll_directory defines Win32, and loads when " \
+        "code first uses RubyInstaller::Runtime::DllDirectory."),
     *LOCALE_FACTS.map do |fact|
       Justification.new(fact:, reference: [/\A"US-ASCII"\z/], app: [/\A"UTF-8"\z/], checks: %i[no_locale],
         reason: "With no locale at all (no LC_ALL, LC_CTYPE, or LANG, or LANG=C), as a desktop, a service manager, " \

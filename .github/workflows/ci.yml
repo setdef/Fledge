@@ -63,10 +63,10 @@
 name: CI
 
 on:
+  # experiment/ruby-spec-rebased: the desktop, musl, and iOS runtimes, built here, and
+  # ruby/spec on every desktop and in the iOS Simulator; nothing else runs.
   push:
-    # Not on tags: release.yml looks up the tagged commit's run on trunk.
-    branches: ["**"]
-  pull_request:
+    branches: [experiment/ruby-spec-rebased]
 
 permissions:
   contents: read
@@ -113,6 +113,7 @@ env:
 
 jobs:
   gate:
+    if: false
     name: Gate
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -432,8 +433,6 @@ jobs:
         include:
           - os: macos-26
             platform: ios
-          - os: ubuntu-24.04
-            platform: android
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -498,6 +497,7 @@ jobs:
   # probe, against ruby main.rb on this Mac's desktop Ruby, with every
   # difference justified for a phone (tasks/mobile_parity.rb).
   mobile-apps-ios:
+    if: false
     name: Mobile apps (iOS Simulator, iPhone and iPad)
     needs: [runtime, runtime-mobile]
     runs-on: macos-26
@@ -573,6 +573,7 @@ jobs:
   # Rust and its Android targets, and bindgen reads the phone's headers
   # with the runner's libclang.
   mobile-apps-android:
+    if: false
     name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
     needs: [runtime, runtime-mobile]
     runs-on: ubuntu-24.04
@@ -664,6 +665,7 @@ jobs:
   # runner's Android SDK, as an APK and as the release bundle Play takes,
   # which is signed, validated, and made into Play's APKs with bundletool.
   mobile-apps-android-hosts:
+    if: false
     name: Mobile apps (Android project on ${{ matrix.host }})
     needs: runtime-mobile
     runs-on: ${{ matrix.os }}
@@ -750,6 +752,7 @@ jobs:
   # builds of examples/my_cool_app and the gem-shaped probe compile it
   # from source, which the limits below leave room for.
   test:
+    if: false
     name: Test (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -840,6 +843,7 @@ jobs:
   # runtime in Alpine, against the Ruby the runtime build compiled, as
   # ruby main.rb, then as my_cool_app's program against bundle exec.
   parity-musl:
+    if: false
     name: Parity (${{ matrix.platform }})
     needs: runtime-musl
     runs-on: ${{ matrix.os }}
@@ -879,7 +883,7 @@ jobs:
       actions: read
     uses: ./.github/workflows/ruby-spec.yml
     with:
-      full: "${{ startsWith(github.event.head_commit.message, 'chore: release ') }}"
+      full: true
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 035): the very build the
@@ -892,6 +896,7 @@ jobs:
   # platforms, sqlite3 compiles from source on Ruby 4.1, which the limits
   # below leave room for.
   test-windows:
+    if: false
     name: Test (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -1029,6 +1034,7 @@ jobs:
   # fifteen minutes after their own had finished; now each waits for its
   # own platform's build only.
   build-arm64-darwin:
+    if: false
     name: Build (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -1319,6 +1325,7 @@ jobs:
           retention-days: 14
 
   build-x86_64-linux:
+    if: false
     name: Build (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -1334,6 +1341,7 @@ jobs:
     steps: *build-steps
 
   build-aarch64-linux:
+    if: false
     name: Build (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -1349,6 +1357,7 @@ jobs:
     steps: *build-steps
 
   build-x64-mingw-ucrt:
+    if: false
     name: Build (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -1367,6 +1376,7 @@ jobs:
     steps: *build-steps
 
   build-aarch64-mingw-ucrt:
+    if: false
     name: Build (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
@@ -1390,6 +1400,7 @@ jobs:
   # probe as a gem-shaped app's program, my_cool_app, whose sqlite3 is
   # precompiled for musl, windowed_app, with its AppImage, and programs.
   build-musl:
+    if: false
     name: Build (${{ matrix.platform }})
     needs: runtime-musl
     runs-on: ${{ matrix.os }}
@@ -1442,6 +1453,7 @@ jobs:
   # Delivery of native_app and nokogiri_app, on a fresh runner of each
   # platform, as Delivery runs the others.
   delivery-native-arm64-darwin:
+    if: false
     name: Delivery from source (${{ matrix.platform }})
     needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
@@ -1510,6 +1522,7 @@ jobs:
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/nokogiri_app.expected" -Raw).TrimEnd()
 
   delivery-native-x86_64-linux:
+    if: false
     name: Delivery from source (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1523,6 +1536,7 @@ jobs:
     steps: *delivery-native-steps
 
   delivery-native-aarch64-linux:
+    if: false
     name: Delivery from source (${{ matrix.platform }})
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
@@ -1536,6 +1550,7 @@ jobs:
     steps: *delivery-native-steps
 
   delivery-native-x64-mingw-ucrt:
+    if: false
     name: Delivery from source (${{ matrix.platform }})
     needs: build-x64-mingw-ucrt
     runs-on: ${{ matrix.os }}
@@ -1555,6 +1570,7 @@ jobs:
   # runs it in a clean and in a hostile environment
   # (.github/scripts/deliver.sh).
   delivery-arm64-darwin:
+    if: false
     name: Delivery (${{ matrix.platform }})
     needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
@@ -1620,6 +1636,7 @@ jobs:
           "$RUNNER_TEMP/signed/certificate.pem"
 
   delivery-x86_64-linux:
+    if: false
     name: Delivery (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1634,6 +1651,7 @@ jobs:
     steps: *delivery-steps
 
   delivery-aarch64-linux:
+    if: false
     name: Delivery (${{ matrix.platform }})
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
@@ -1662,6 +1680,7 @@ jobs:
   # 024): a windowed and a console program from one folder, with one
   # project and one Ruby, sharing one save (deliver-programs.sh).
   delivery-windowed-arm64-darwin:
+    if: false
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
@@ -1715,6 +1734,7 @@ jobs:
         run: .github/scripts/deliver-appimage.sh "$RUNNER_TEMP/delivered/Hello Window-${{ matrix.platform }}.AppImage" fuse
 
   delivery-windowed-x86_64-linux:
+    if: false
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1728,6 +1748,7 @@ jobs:
     steps: *delivery-windowed-steps
 
   delivery-windowed-aarch64-linux:
+    if: false
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
@@ -1744,6 +1765,7 @@ jobs:
   # (deliver.sh --no-ruby-installed checks), glibc 2.41, and no CA
   # certificates package.
   delivery-debian-x86_64-linux:
+    if: false
     name: Delivery (${{ matrix.platform }}, debian:trixie-slim)
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1789,6 +1811,7 @@ jobs:
           "delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat delivered/native_app.expected)" --no-ruby-installed
 
   delivery-debian-aarch64-linux:
+    if: false
     name: Delivery (${{ matrix.platform }}, debian:trixie-slim)
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
@@ -1813,6 +1836,7 @@ jobs:
   # apt installs its .deb, which depends on libpng's package, and it runs
   # (.github/scripts/deliver-system-library.sh).
   delivery-deb-x86_64-linux:
+    if: false
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -1855,6 +1879,7 @@ jobs:
         run: .github/scripts/deliver-deb.sh "delivered/Hello Window-${{ matrix.platform }}.deb"
 
   delivery-deb-aarch64-linux:
+    if: false
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
@@ -1875,6 +1900,7 @@ jobs:
   # windowed app, its desktop entry, and its AppImage, which has no FUSE
   # in a container, so says so and runs extracted.
   delivery-musl:
+    if: false
     name: Delivery (${{ matrix.platform }}, alpine:3.24)
     needs: build-musl
     runs-on: ${{ matrix.os }}
@@ -1923,6 +1949,7 @@ jobs:
   # outside ASCII, in a clean and in a hostile environment, and checks
   # the version information each carries (.github/scripts/deliver.ps1).
   delivery-windows-x64-mingw-ucrt:
+    if: false
     name: Delivery (${{ matrix.platform }})
     needs: build-x64-mingw-ucrt
     runs-on: ${{ matrix.os }}
@@ -2058,6 +2085,7 @@ jobs:
           -Certificate "$env:RUNNER_TEMP/signed/certificate.cer" -Trusted
 
   delivery-windows-aarch64-mingw-ucrt:
+    if: false
     name: Delivery (${{ matrix.platform }})
     needs: build-aarch64-mingw-ucrt
     runs-on: ${{ matrix.os }}
@@ -2083,6 +2111,7 @@ jobs:
   # job for each operating system's family; the other platforms run the
   # same code paths.
   delivery-from-arm64-darwin:
+    if: false
     name: Delivery of build --from (${{ matrix.platform }})
     needs: build-arm64-darwin
     runs-on: ${{ matrix.os }}
@@ -2129,6 +2158,7 @@ jobs:
           -Game "$PWD\test\fixtures\from\game"
 
   delivery-from-x86_64-linux:
+    if: false
     name: Delivery of build --from (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -2142,6 +2172,7 @@ jobs:
     steps: *delivery-from-steps
 
   delivery-from-x64-mingw-ucrt:
+    if: false
     name: Delivery of build --from (${{ matrix.platform }})
     needs: build-x64-mingw-ucrt
     runs-on: ${{ matrix.os }}
@@ -2163,6 +2194,7 @@ jobs:
   # LLVM's tools, which read every format, so one Linux runner checks
   # every platform.
   licenses:
+    if: false
     name: Licenses (${{ matrix.platform }})
     needs: [runtime, runtime-musl, runtime-mobile]
     runs-on: ubuntu-24.04
@@ -2249,9 +2281,9 @@ jobs:
   # statically, and its libcrypt.a; nkf's Java sources; MSYS2's keyring).
   # It shows the audit catching the real thing, not only planted files.
   licenses-upstream:
+    if: false
     name: Licenses of the whole upstream tree (${{ matrix.platform }})
     needs: changes
-    if: needs.changes.outputs.pins-only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -2308,6 +2340,7 @@ jobs:
   # platform's runtime (tasks/licensing_page.rb); it fails here when it
   # no longer matches them.
   licensing-page:
+    if: false
     name: Licensing page is current
     needs: [runtime, runtime-musl, runtime-mobile]
     runs-on: ubuntu-24.04
@@ -2357,6 +2390,7 @@ jobs:
   # (.github/scripts/replace-libcrypt.sh), which also measures what
   # String#crypt loses without libxcrypt.
   replace-libcrypt-x86_64-linux:
+    if: false
     name: Replace libcrypt (${{ matrix.platform }})
     needs: build-x86_64-linux
     runs-on: ${{ matrix.os }}
@@ -2395,6 +2429,7 @@ jobs:
           sh .github/scripts/replace-libcrypt.sh "$RUNNER_TEMP/Hello-${{ matrix.platform }}" Hello "$xcrypt" "$musl"
 
   replace-libcrypt-aarch64-linux:
+    if: false
     name: Replace libcrypt (${{ matrix.platform }})
     needs: build-aarch64-linux
     runs-on: ${{ matrix.os }}
@@ -2410,9 +2445,9 @@ jobs:
   # Another GNU MP for Windows, cross-built with the pinned llvm-mingw
   # against the UCRT, for Replace GMP to swap in.
   gmp-replacement:
+    if: false
     name: Build a replacement libgmp-10.dll (${{ matrix.platform }})
     needs: changes
-    if: needs.changes.outputs.pins-only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -2468,6 +2503,7 @@ jobs:
   # the replacement (Integer::GMP_VERSION changes) and compute the same
   # big numbers (.github/scripts/replace-gmp.ps1).
   replace-gmp-x64-mingw-ucrt:
+    if: false
     name: Replace GMP (${{ matrix.platform }})
     needs: [build-x64-mingw-ucrt, gmp-replacement]
     runs-on: ${{ matrix.os }}
@@ -2503,6 +2539,7 @@ jobs:
           -Dll "$env:RUNNER_TEMP/gmp-dll/libgmp-10.dll" -Version 6.2.1
 
   replace-gmp-aarch64-mingw-ucrt:
+    if: false
     name: Replace GMP (${{ matrix.platform }})
     needs: [build-aarch64-mingw-ucrt, gmp-replacement]
     runs-on: ${{ matrix.os }}

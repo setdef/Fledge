@@ -20,9 +20,10 @@ Fledge compiles a gem's C, C++, or Rust extension for the phone and links it int
 - Load the extension with `require "name/name"`, not `require_relative`.
 - When an `extconf.rb` runs CMake, Fledge passes a toolchain file for each target in `CMAKE_TOOLCHAIN_FILE`, so CMake builds the library for the phone.
 - A Rust extension built with [rb-sys](https://github.com/oxidize-rb/rb-sys) needs Rust and Cargo, with Rust's standard library for each of the phone's targets: `rustup target add aarch64-apple-ios aarch64-apple-ios-sim` for iOS, and `rustup target add aarch64-linux-android x86_64-linux-android` for Android. Cargo builds it as a static library for each target. An app has been tested with one Rust extension; two can't share a name.
-- Fledge refuses, and names the gem, an extension built by CMake, configure, or Cargo with no `extconf.rb` or Rakefile.
+- The ffi gem works, with the libffi it bundles, and so does Ruby's `fiddle`. Each calls a C function by its name, such as one of the phone's C library or a system framework, and turns a Ruby block into a C callback.
+- Fledge refuses, and names the gem, an extension built by CMake, configure, or Cargo with no `extconf.rb` or Rakefile, and a shared library a Rakefile builds for ffi to load.
 
-For each case, see [`examples/native_phone`](../examples/native_phone), [`examples/cmake_phone`](../examples/cmake_phone), and [`examples/rust_phone`](../examples/rust_phone).
+For each case, see [`examples/native_phone`](../examples/native_phone), [`examples/cmake_phone`](../examples/cmake_phone), [`examples/rake_phone`](../examples/rake_phone), [`examples/rust_phone`](../examples/rust_phone), and [`examples/ffi_phone`](../examples/ffi_phone).
 
 ## Frameworks that start the app themselves
 

@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# The ffi gem, whose extconf.rb builds the libffi it bundles before its
+# own extension, and adds that library to the Makefile mkmf wrote.
+# fledge build ios and fledge build android compile both for each of the
+# phone's targets and link them into the app.
+source "https://rubygems.org"
+
+gem "ffi", "1.17.4"

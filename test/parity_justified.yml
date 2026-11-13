@@ -342,6 +342,28 @@
   checks:
   - script
   - bundle
+- fact: RubyVM::ZJIT.enabled?
+  reference:
+  - "\\Afalse\\z"
+  app:
+  - "\\Anull\\z"
+  platforms:
+  - arm64-ios
+  - arm64-ios-simulator
+  checks:
+  - script
+  - bundle
+- fact: RbConfig::CONFIG's JITs
+  reference:
+  - \A"(?<jit>[YZ]JIT)_SUPPORT"="yes"\z
+  app:
+  - \A"(?<jit>[YZ]JIT)_SUPPORT"="no"\z
+  platforms:
+  - arm64-ios
+  - arm64-ios-simulator
+  checks:
+  - script
+  - bundle
 - fact: "$stdout writes through"
   reference:
   - "\\Afalse\\z"

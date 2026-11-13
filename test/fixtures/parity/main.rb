@@ -270,6 +270,8 @@ def facts
     "RUBY_PLATFORM" => RUBY_PLATFORM,
     "RUBY_DESCRIPTION" => RUBY_DESCRIPTION,
     "RubyVM::YJIT.enabled?" => defined?(RubyVM::YJIT) ? RubyVM::YJIT.enabled? : nil,
+    "RubyVM::ZJIT.enabled?" => defined?(RubyVM::ZJIT) ? RubyVM::ZJIT.enabled? : nil,
+    "RbConfig::CONFIG's JITs" => RbConfig::CONFIG.slice("YJIT_SUPPORT", "ZJIT_SUPPORT"),
   }
 end
 

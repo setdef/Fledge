@@ -66,10 +66,11 @@ class Parity
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{DESKTOP_ARCH}/rbconfig\.rb"\z}o],
       app: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{MOBILE_ARCH}/rbconfig\.rb"\z}o], platforms: MOBILE,
       reason: "As for $LOAD_PATH: rbconfig.rb is in the folder of Ruby's platform."),
-    Justification.new(fact: "RubyVM::YJIT.enabled?", reference: [/\Afalse\z/], app: [/\Anull\z/], platforms: MOBILE,
-      reason: "A phone's Ruby is an interpreter only: iOS gives no app memory it may write code into and run, and " \
-        "Ruby builds no JIT for Android (configure.ac at 4.1.0-preview1), so RubyVM::YJIT is not defined, as in any Ruby " \
-        "built without YJIT. An app that turns YJIT on only where it is defined runs either way."),
+    Justification.new(fact: "RubyVM::YJIT.enabled?", reference: [/\Afalse\z/], app: [/\Anull\z/], platforms: IOS,
+      reason: "iOS's Ruby is an interpreter only: iOS gives no app memory it may write code into and run, but a " \
+        "browser's web content extension (BrowserEngineKit, \"Protecting code compiled just in time\"), so RubyVM::YJIT " \
+        "is not defined, as in any Ruby built without YJIT. An app that turns YJIT on only where it is defined runs " \
+        "either way. Android's Ruby has YJIT, off until the app enables it, as on a desktop."),
     Justification.new(fact: "$stdout writes through", reference: [/\Afalse\z/], app: [/\Atrue\z/], platforms: MOBILE,
       reason: "A phone has no terminal: an app's standard output is the pipe the embedding API reads into the " \
         "system log, where a developer watches the app run. Ruby writes through to a terminal but buffers a pipe " \

@@ -53,8 +53,11 @@ class MobileParity
 
   # What test/fixtures/mobile_hello prints, when the runtime keeps csv a
   # gem, keeps prism a gem whose extension parses, and can reach a server
-  # over HTTPS with the CA certificates it carries.
-  HELLO = /\AHello from Ruby 4\.1\.0 on \S+: \["csv","\d+\.\d+\.\d+"\], prism \d+\.\d+\.\d+ parses 1 \+ 2 as \+, over HTTPS: 200\z/
+  # over HTTPS with the CA certificates it carries; and, on Android, when
+  # YJIT, once the app enables it, writes machine code and runs it, where
+  # iOS's Ruby has no YJIT.
+  HELLO_LIBRARIES = '\["csv","\d+\.\d+\.\d+"\], prism \d+\.\d+\.\d+ parses 1 \+ 2 as \+, over HTTPS: 200'
+  HELLO = /\AHello from Ruby 4\.1\.0 on (?:arm64-darwin: #{HELLO_LIBRARIES}, no YJIT|(?:aarch64|x86_64)-linux-android: #{HELLO_LIBRARIES}, YJIT on: fib\(20\) is 6765 in [1-9]\d* bytes of machine code)\z/o
 
   # The apps, each built with fledge build for each phone.
   APPS = [

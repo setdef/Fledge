@@ -9,7 +9,10 @@
 # default gem, and csv, a bundled gem that RubyGems activates as a gem;
 # prism, a bundled gem whose extension compiles its own libprism beside
 # the one libruby holds (ADR 067), parsing with its extension; and HTTPS
-# to rubygems.org, which needs the CA certificates the runtime carries.
+# to rubygems.org, which needs the CA certificates the runtime carries;
+# and YJIT, where the runtime has it (Android's, as a desktop's; iOS
+# lets an app write no code it then runs), enabled as Rails enables it,
+# compiling a method it calls often enough into machine code.
 # tasks/mobile_parity.rb builds it as an app with fledge build ios and
 # fledge build android, runs it on each phone, and checks the line.
 require "json"
@@ -35,7 +38,18 @@ rescue SystemCallError, IOError, SocketError, Timeout::Error => e
   sleep 5
   retry
 end
+def fib(number) = (number < 2) ? number : fib(number - 1) + fib(number - 2)
+
+jit = if defined?(RubyVM::YJIT)
+  RubyVM::YJIT.enable
+  before = RubyVM::YJIT.runtime_stats.fetch(:inline_code_size)
+  value = fib(20)
+  written = RubyVM::YJIT.runtime_stats.fetch(:inline_code_size) - before
+  "YJIT #{RubyVM::YJIT.enabled? ? 'on' : 'off'}: fib(20) is #{value} in #{written} bytes of machine code"
+else
+  "no YJIT"
+end
 puts "Hello from Ruby #{RUBY_VERSION} on #{RUBY_PLATFORM}: " \
   "#{JSON.generate(CSV.parse_line("csv,#{Gem.loaded_specs.fetch('csv').version}"))}, " \
   "prism #{Gem.loaded_specs.fetch('prism').version} parses 1 + 2 as #{Prism.parse('1 + 2').value.statements.body.first.name}, " \
-  "over HTTPS: #{status}"
+  "over HTTPS: #{status}, #{jit}"

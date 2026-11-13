@@ -419,7 +419,9 @@ jobs:
   # Linux with the pinned NDK and Gradle, each audited like every other
   # runtime. Xcode 26.5 is the newest on macos-26 and the one whose iOS
   # 26.5 Simulator runtime the image installs; the image's default Xcode
-  # has none (spike/mobile/FINDINGS.txt).
+  # has none (spike/mobile/FINDINGS.txt). Android's Ruby has YJIT, which
+  # rustc compiles, so its job installs mise.toml's Rust with the
+  # Android targets' standard libraries.
   runtime-mobile:
     name: Runtime (${{ matrix.platform }})
     needs: changes
@@ -432,8 +434,10 @@ jobs:
         include:
           - os: macos-26
             platform: ios
+            mise: ruby
           - os: ubuntu-24.04
             platform: android
+            mise: ruby rust
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -442,7 +446,7 @@ jobs:
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
           version: 2026.10.11
-          install_args: ruby
+          install_args: ${{ matrix.mise }}
 
       - name: Select the pinned Xcode
         if: matrix.platform == 'ios'

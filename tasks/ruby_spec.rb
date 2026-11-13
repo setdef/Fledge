@@ -74,7 +74,7 @@ class RubySpec
     # crashes setting the name of a thread that has ended
     # (pthread_setname_np on a thread musl has freed), at
     # core/thread/to_s_spec.rb line 18, and the whole core run stops.
-    [platform, ["Thread#to_s returns a description including a thread name if given any"]]
+    [platform, []] # experiment/ruby-spec-holes: does the crash happen?
   end.freeze
 
   # The platforms of the phones' runs, as the mobile parity check names

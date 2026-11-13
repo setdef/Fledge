@@ -28,6 +28,7 @@ class RuntimeBuilder
       process_c: "process.c",
       process_c_umask: "process.c",
       process_c_maxgroups: "process.c",
+      process_c_ids: "process.c",
       file_c_umask: "file.c",
       thread_pthread_c: "thread_pthread.c",
       thread_c: "thread.c",
@@ -177,11 +178,11 @@ class RuntimeBuilder
     # calls nothing of the system's (process.c, proc_setmaxgroups, lines
     # 6845 to 6862 at 4.1.0-preview1), yet Ruby defines it only where
     # configure found setgroups (line 6835), and raises
-    # NotImplementedError elsewhere. Android's runtime is configured
-    # without setgroups, which Android's seccomp filter for apps stops
-    # (Android::CONFIGURE), and so lost the setter with the call. This
-    # defines it where Process.maxgroups is defined, on the same
-    # condition (line 6632), as on Linux.
+    # NotImplementedError elsewhere. Android's seccomp filter for apps
+    # stops setgroups, and Android's Ruby has one only because
+    # process_c_ids gives process.c its own, so the setter would hang on
+    # that edit. This defines it where Process.maxgroups is defined, on
+    # the same condition (line 6632), as on Linux.
     def self.process_c_maxgroups(text)
       replace(text, %r{^#ifdef HAVE_SETGROUPS\n(/\*\n \*  call-seq:\n \*    Process\.maxgroups = new_max -> new_max\n)},
         "#if defined(_SC_NGROUPS_MAX) || defined(NGROUPS_MAX)\n\\1", "Process.maxgroups= is defined only with setgroups")
@@ -204,6 +205,152 @@ class RuntimeBuilder
     def self.process_c_umask(text)
       replace(text, /^(        mode_t oldmask = umask\(mask)\);/, "\\1 & 0777);", "rb_execarg_run_options calls umask with the option's mask")
     end
+
+    # Android's seccomp filter for apps ends a process that calls setgid,
+    # setuid, setregid, setreuid, setresgid, or setgroups (bionic,
+    # libc/SECCOMP_BLOCKLIST_APP.TXT, lines 9 to 30 at 731631f), and
+    # bionic's setegid calls setresgid and its initgroups setgroups. An
+    # app's process has no CAP_SETUID or CAP_SETGID, so Linux's answer to
+    # each is settled without the call (kernel/sys.c at v6.12:
+    # __sys_setregid, lines 381 to 435; __sys_setgid, 447 to 480;
+    # __sys_setreuid, 538 to 617; __sys_setuid, 619 to 674;
+    # __sys_setresgid, 778 to 835; and kernel/groups.c, may_setgroups,
+    # for setgroups): an ID the process already has as its real,
+    # effective, or saved one may be asked for, as the rules for each
+    # call say, and any other is EPERM, as setgroups always is. This edit
+    # gives process.c its own of each, under its own name, which answer
+    # so: a group ID's changes, which no allowed call could make, succeed
+    # only when they change nothing, and a user ID's go through
+    # setresuid, which the filter allows. Ruby is then built with them,
+    # where it raised NotImplementedError (RuntimeBuilder::Android::CONFIGURE).
+    def self.process_c_ids(text)
+      replace(text, /^(#include "hrtime.h"\n#include "internal.h"\n)/, "\\1#{UNPRIVILEGED_IDS}", "process.c includes internal.h")
+    end
+
+    # The C after process.c's includes that answers for the calls
+    # Android's filter stops, as Linux answers a process without the
+    # capabilities.
+    UNPRIVILEGED_IDS = <<~C
+      #if defined(__ANDROID__)
+      /* Fledge: Android's seccomp filter ends an app that calls these, and
+         an app has no CAP_SETUID or CAP_SETGID, so they answer as Linux's
+         kernel/sys.c does for such a process, without the calls it stops. */
+      static int
+      fledge_id_in(unsigned int id, unsigned int real, unsigned int effective, unsigned int saved)
+      {
+          return id == real || id == effective || id == saved;
+      }
+
+      static int
+      fledge_refuse(void)
+      {
+          errno = EPERM;
+          return -1;
+      }
+
+      /* A group ID change no allowed call can make: it succeeds when it
+         changes nothing, and is EPERM otherwise. */
+      static int
+      fledge_keep_gids(gid_t real, gid_t effective, gid_t saved)
+      {
+          gid_t old_real, old_effective, old_saved;
+          if (getresgid(&old_real, &old_effective, &old_saved) != 0) return -1;
+          if (real == old_real && effective == old_effective && saved == old_saved) return 0;
+          return fledge_refuse();
+      }
+
+      static int
+      fledge_setresgid(gid_t real, gid_t effective, gid_t saved)
+      {
+          gid_t r, e, s;
+          if (getresgid(&r, &e, &s) != 0) return -1;
+          if ((real != (gid_t)-1 && !fledge_id_in(real, r, e, s)) || (effective != (gid_t)-1 && !fledge_id_in(effective, r, e, s)) ||
+              (saved != (gid_t)-1 && !fledge_id_in(saved, r, e, s))) return fledge_refuse();
+          return fledge_keep_gids(real == (gid_t)-1 ? r : real, effective == (gid_t)-1 ? e : effective, saved == (gid_t)-1 ? s : saved);
+      }
+
+      static int
+      fledge_setregid(gid_t real, gid_t effective)
+      {
+          gid_t r, e, s;
+          if (getresgid(&r, &e, &s) != 0) return -1;
+          if (real != (gid_t)-1 && real != r && real != e) return fledge_refuse();
+          if (effective != (gid_t)-1 && !fledge_id_in(effective, r, e, s)) return fledge_refuse();
+          gid_t new_real = real == (gid_t)-1 ? r : real, new_effective = effective == (gid_t)-1 ? e : effective;
+          int resave = real != (gid_t)-1 || (effective != (gid_t)-1 && effective != r);
+          return fledge_keep_gids(new_real, new_effective, resave ? new_effective : s);
+      }
+
+      static int
+      fledge_setgid(gid_t gid)
+      {
+          gid_t r, e, s;
+          if (gid == (gid_t)-1) {
+              errno = EINVAL;
+              return -1;
+          }
+          if (getresgid(&r, &e, &s) != 0) return -1;
+          if (gid != r && gid != s) return fledge_refuse();
+          return fledge_keep_gids(r, gid, s);
+      }
+
+      static int
+      fledge_setegid(gid_t gid)
+      {
+          return fledge_setresgid((gid_t)-1, gid, (gid_t)-1);
+      }
+
+      static int
+      fledge_setgroups(size_t size, const gid_t *list)
+      {
+          (void)size;
+          (void)list;
+          return fledge_refuse();
+      }
+
+      static int
+      fledge_initgroups(const char *user, gid_t group)
+      {
+          (void)user;
+          (void)group;
+          return fledge_refuse();
+      }
+
+      static int
+      fledge_setreuid(uid_t real, uid_t effective)
+      {
+          uid_t r, e, s;
+          if (getresuid(&r, &e, &s) != 0) return -1;
+          if (real != (uid_t)-1 && real != r && real != e) return fledge_refuse();
+          if (effective != (uid_t)-1 && !fledge_id_in(effective, r, e, s)) return fledge_refuse();
+          uid_t new_effective = effective == (uid_t)-1 ? e : effective;
+          int resave = real != (uid_t)-1 || (effective != (uid_t)-1 && effective != r);
+          return setresuid(real, effective, resave ? new_effective : (uid_t)-1);
+      }
+
+      static int
+      fledge_setuid(uid_t uid)
+      {
+          uid_t r, e, s;
+          if (uid == (uid_t)-1) {
+              errno = EINVAL;
+              return -1;
+          }
+          if (getresuid(&r, &e, &s) != 0) return -1;
+          if (uid != r && uid != s) return fledge_refuse();
+          return setresuid((uid_t)-1, uid, (uid_t)-1);
+      }
+
+      #define setresgid fledge_setresgid
+      #define setregid fledge_setregid
+      #define setgid fledge_setgid
+      #define setegid fledge_setegid
+      #define setgroups fledge_setgroups
+      #define initgroups fledge_initgroups
+      #define setreuid fledge_setreuid
+      #define setuid fledge_setuid
+      #endif
+    C
 
     def self.file_c_umask(text)
       replace(text, /^(        omask = umask\(NUM2MODET\(argv\[0\]\))\);/, "\\1 & 0777);", "rb_file_s_umask calls umask with its argument")

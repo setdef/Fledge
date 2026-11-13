@@ -104,17 +104,25 @@ class MobileRuntimeTest < Minitest::Test
   # Android's seccomp filter for apps stops a process that calls setgid,
   # setuid, setregid, setreuid, setresgid, or setgroups, and lets it call
   # setresuid (bionic, libc/SECCOMP_BLOCKLIST_APP.TXT, at 731631f);
-  # bionic's setegid calls setresgid, its initgroups setgroups, and its
-  # seteuid setresuid. Ruby is told each stopped call is missing, so
-  # Process.egid= raises NotImplementedError rather than ending the app,
-  # and keeps the two the filter allows, so Process.uid= works as on
-  # Linux.
-  def test_android_ruby_calls_nothing_that_sets_an_id_the_seccomp_filter_stops
-    told = RuntimeBuilder::Android::CONFIGURE.filter_map { |option| option[/\Aac_cv_func_(\w+)=no\z/, 1] }
+  # bionic's setegid calls setresgid, and its initgroups setgroups.
+  # configure finds each, as on Linux, and process.c calls its own in
+  # their place, which answer as Linux answers a process without
+  # CAP_SETGID or CAP_SETUID: Process.egid= with the current group ID
+  # succeeds and with another raises EPERM, where the app would end or
+  # NotImplementedError rise.
+  def test_android_ruby_answers_each_id_call_the_seccomp_filter_stops
+    assert_empty RuntimeBuilder::Android::CONFIGURE.grep(/\Aac_cv_func_/)
+    assert_includes RuntimeBuilder::Android.allocate.__send__(:edits), :process_c_ids
+    edited = RuntimeBuilder::RubySource.process_c_ids("#include \"hrtime.h\"\n#include \"internal.h\"\n#ifndef WTERMSIG\n")
 
-    assert_equal %w[initgroups setegid setgid setgroups setregid setresgid setreuid setuid], told.sort
-    refute_includes told, "setresuid"
-    refute_includes told, "seteuid"
+    %w[setgid setegid setregid setresgid setgroups initgroups setuid setreuid].each do |call|
+      assert_includes edited, "#define #{call} fledge_#{call}\n"
+    end
+    assert_match(/fledge_setgid\(gid_t gid\)\n\{.*?if \(gid != r && gid != s\) return fledge_refuse\(\);/m, edited)
+    assert_match(/fledge_setgroups\(size_t size, const gid_t \*list\)\n\{.*?return fledge_refuse\(\);/m, edited)
+    assert_match(/fledge_setuid\(uid_t uid\)\n\{.*?return setresuid\(\(uid_t\)-1, uid, \(uid_t\)-1\);/m, edited)
+    assert edited.end_with?("#define setuid fledge_setuid\n#endif\n#ifndef WTERMSIG\n")
+    assert_raises(RuntimeError) { RuntimeBuilder::RubySource.process_c_ids("#include \"internal.h\"\n") }
   end
 
   # A phone's Ruby, as a musl runtime's, finds its CA certificates as

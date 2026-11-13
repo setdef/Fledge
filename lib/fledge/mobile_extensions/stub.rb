@@ -24,8 +24,11 @@ module Fledge
     # through 4.0.0 (<tt>lib/bundler/templates/newgem/lib/newgem.rb.tt</tt>,
     # line 5). A phone's extension is linked in and registered by its
     # feature (ADR 022), and Ruby looks one up only by the name a require
-    # was given, never by a path (<tt>search_required</tt>, <tt>load.c</tt>
-    # lines 1199 to 1218), so this file at that path requires the
+    # was given (<tt>search_required</tt>, <tt>load.c</tt> lines 1199 to
+    # 1218), but for the phones' edit to that lookup, which turns a path
+    # that no file answers into the feature. So this file at that path,
+    # which a require of the path finds as a desktop finds the
+    # extension's file, requires the
     # feature, as CPython on iOS puts a <tt>.fwork</tt> file where a
     # binary module's <tt>.so</tt> was (<tt>Doc/using/ios.rst</tt>, lines
     # 90 to 115 at v3.13.0).

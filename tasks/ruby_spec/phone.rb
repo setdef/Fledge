@@ -162,6 +162,22 @@ class RubySpec
         examples: ["Process.setproctitle should set the process title", "Global variable $0 actually sets the program name"],
       ),
       Exclusion.new(
+        reason: "Each example reads the Process::Status of a Ruby that its before :each hook starts with MSpec's " \
+          "ruby_exe, which skips on iOS (tasks/ruby_spec/phone_config.rb), since iOS lets no app start a program; a " \
+          "skip in a hook leaves the example uncounted, so the app ran 13 fewer examples than stock Ruby in run " \
+          "43357360436, which the comparison of examples run found. Android runs them, as it runs command_line.",
+        phones: %w[ios],
+        files: %w[
+          core/process/status/exited_spec.rb
+          core/process/status/exitstatus_spec.rb
+          core/process/status/pid_spec.rb
+          core/process/status/signaled_spec.rb
+          core/process/status/success_spec.rb
+          core/process/status/termsig_spec.rb
+        ],
+        examples: [],
+      ),
+      Exclusion.new(
         reason: "Each starts a program of the system's to check what it tests, which iOS lets no app do, where " \
           "Android has them: IO#close_read's, #close_write's, and #stat's examples open a pipe to cat first, the " \
           "examples start cat, id, or whoami, getgrgid's and struct_group's files start id as they load, and " \

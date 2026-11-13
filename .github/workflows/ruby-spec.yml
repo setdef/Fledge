@@ -87,6 +87,7 @@ jobs:
           echo "matrix={\"include\":$matrix}" >> "$GITHUB_OUTPUT"
 
   specs:
+    if: false
     name: ruby/spec (${{ matrix.platform }})
     needs: plan
     runs-on: ${{ matrix.os }}
@@ -247,6 +248,7 @@ jobs:
   # the x86_64-linux runtime is made from. GitHub's Linux runners
   # emulate only x86_64.
   android:
+    if: false
     name: ruby/spec (Android emulator, API 36, ${{ matrix.target }})
     needs: plan
     runs-on: ubuntu-24.04

@@ -63,8 +63,8 @@
 name: CI
 
 on:
-  # experiment/ruby-spec-holes: the musl and Android runtimes, built
-  # here, and ruby/spec on them and on run 43313316095's iOS runtime.
+  # experiment/ruby-spec-holes: ruby/spec in the iOS Simulator alone, on
+  # run 43313316095's iOS runtime.
   push:
     branches: [experiment/ruby-spec-holes]
 
@@ -369,9 +369,9 @@ jobs:
   # GitHub's JavaScript actions cannot run in an Alpine container on an
   # ARM runner (rv-ruby's build-alpine.yml says the same).
   runtime-musl:
+    if: false
     name: Runtime (${{ matrix.platform }})
     needs: changes
-    if: needs.changes.outputs.pins-only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -422,9 +422,9 @@ jobs:
   # 26.5 Simulator runtime the image installs; the image's default Xcode
   # has none (spike/mobile/FINDINGS.txt).
   runtime-mobile:
+    if: false
     name: Runtime (${{ matrix.platform }})
     needs: changes
-    if: needs.changes.outputs.pins-only != 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -877,7 +877,7 @@ jobs:
   # seven desktop platforms too, which also run every night.
   ruby-spec:
     name: ruby/spec
-    needs: [runtime-musl, runtime-mobile]
+    needs: [changes]
     permissions:
       contents: read
       actions: read

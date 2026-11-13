@@ -54,28 +54,4 @@ ENV["RUBY_FLAGS"] ||= ""
 Dir.chdir(File.join(__dir__, "spec"))
 $LOAD_PATH.unshift(File.join(__dir__, "mspec", "lib"))
 require "mspec/commands/mspec-run"
-# experiment/ruby-spec-holes only: what an app may do to its own files'
-# mode bits, and who it runs as, printed after MSpec's run.
-if File.file?(arguments)
-  at_exit do
-    require "etc"
-    file = File.join(Dir.tmpdir, "fledge-probe-#{Process.pid}")
-    folder = "#{file}-d"
-    File.write(file, "")
-    Dir.mkdir(folder)
-    found = { 04644 => :setuid?, 02644 => :setgid?, 01755 => :sticky? }.map do |mode, predicate|
-      target = mode == 01755 ? folder : file
-      File.chmod(mode, target)
-      "#{predicate}=#{File.public_send(predicate, target)} mode=#{File.stat(target).mode.to_s(8)}"
-    rescue SystemCallError => e
-      "#{predicate} #{e.class}: #{e.message}"
-    end
-    user = begin
-      Etc.getpwuid(Process.uid).name
-    rescue StandardError => e
-      "#{e.class}: #{e.message}"
-    end
-    puts "probe: #{found.join('; ')}", "probe: uid=#{Process.uid} euid=#{Process.euid} gid=#{Process.gid} user=#{user} login=#{Etc.getlogin.inspect}"
-  end
-end
 MSpecRun.main

@@ -147,8 +147,13 @@ class RubySpec
         "core: FileTest.sticky? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
       ],
       side: :app, platforms: %w[arm64-ios-simulator],
-      reason: "iOS's sandbox keeps an app from setting the set-user-ID, set-group-ID, and sticky bits on its files, " \
-        "which these examples set with chmod and then read back.",
+      reason: "Each example sets the bit by starting chmod (system \"chmod u+s ...\" or \"chmod +t ...\": " \
+        "core/file/setuid_spec.rb, line 29; core/file/sticky_spec.rb, line 29; shared/file/setuid.rb, line 10; " \
+        "shared/file/sticky.rb, line 32) and then reads it back, and iOS lets no app start a program: Apple's SDK marks " \
+        "system() prohibited there, \"On iOS, process spawning is unavailable\" (iPhoneOS27.2.sdk, " \
+        "usr/include/_stdlib.h, lines 205 to 208), so the bit is never set. The bits are the app's to set: in the " \
+        "Simulator, File.chmod with 04644, 02644, and 01755 set them on the app's own file and folder, and " \
+        "File.setuid?, File.setgid?, and File.sticky? read them back (run 43357360436).",
     ),
     Justification.new(
       examples: [
@@ -158,10 +163,13 @@ class RubySpec
         "core: Process.euid= sets the effective user id to its own uid if given the username corresponding to its own uid",
       ],
       side: :app, platforms: %w[arm64-ios-simulator],
-      reason: "An iOS app's C library finds no user for the app's own user ID: Etc.getpwuid(Process.uid) raises " \
-        "\"can't find user\", and Process.groups raises EINVAL, since Darwin's getgroups, which Ruby is built to " \
-        "call, looks the user up with getpwuid and fails when it finds none (Libc, sys/getgroups.c, lines 35 to 58 " \
-        "at Libc-1752.120.2). These examples ask for the process's groups or its user's name.",
+      reason: "In the iOS Simulator an app runs as the Mac's user, 501 on CI's runner, and the Simulator's user " \
+        "database has no entry for it: Etc.getpwuid(501) raises \"can't find user for 501\" in the app, where stock " \
+        "Ruby on the same Mac finds the user runner (run 43357360436). Process.groups then raises EINVAL, since " \
+        "Darwin's getgroups, which Ruby is built to call, looks the user up with getpwuid and fails when it finds none " \
+        "(Libc, sys/getgroups.c, lines 35 to 58 at Libc-1752.120.2). These examples ask for the process's groups or " \
+        "its user's name, so any Ruby in the Simulator would fail them; a device runs an app as a user of its own, " \
+        "and no run has checked them there.",
     ),
     Justification.new(
       examples: [
@@ -226,6 +234,18 @@ class RubySpec
     ),
     # Examples that run on one side only (Listing.compare), beyond those
     # ruby/spec's platform guards leave out.
+    Justification.new(
+      examples: [
+        "core: Dir.scan handles block devices",
+        "core: File.ftype returns 'blockSpecial' when the file is a block",
+        "core: File::Stat#ftype returns 'blockSpecial' when the file is a block",
+      ],
+      side: :stock, platforms: %w[arm64-ios-simulator], outcome: :runs,
+      reason: "MSpec's with_block_device runs these only where find /dev /devices -type b finds a block device " \
+        "(mspec/guards/block_device.rb, lines 4 to 11 at MSpec 521207f), and iOS lets no app start find: Apple's SDK " \
+        "marks system() prohibited there, \"On iOS, process spawning is unavailable\" (iPhoneOS27.2.sdk, " \
+        "usr/include/_stdlib.h, lines 205 to 208).",
+    ),
     Justification.new(
       examples: [
         "core: Dir.scan handles block devices",

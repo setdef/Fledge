@@ -29,8 +29,8 @@ class LauncherBundlerTest < Minitest::Test
     int main(int argc, char **argv) {
         (void)argc;
         if (strcmp(argv[1], "code") == 0) {
-            char require[512];
-            char setup[512];
+            char require[FLEDGE_BUNDLER_CODE_MAX];
+            char setup[FLEDGE_BUNDLER_CODE_MAX];
             const char *version = strcmp(argv[2], "-") == 0 ? NULL : argv[2];
             if (fledge_bundler_code(require, sizeof require, version, 0) != 0) return 2;
             if (fledge_bundler_code(setup, sizeof setup, version, 1) != 0) return 2;
@@ -100,16 +100,80 @@ class LauncherBundlerTest < Minitest::Test
     code, status = driver("code", "9.9.9")
     assert_equal 0, status
     require_bundler, setup = code.split("\n--\n")
+    settings = File.join(@dir, "app", ".bundle", "config")
+    FileUtils.mkdir_p(File.dirname(settings))
+    File.write(settings, "---\n")
 
-    script = "$loaded = []\nGem.paths = { 'GEM_HOME' => ARGV[0] }\n#{require_bundler}\n#{setup}\n" \
+    script = "$loaded = []\nGem.paths = { 'GEM_HOME' => ARGV[0] }\n#{require_bundler}\nENV['BUNDLE_USER_CONFIG'] = ARGV[1]\n#{setup}\n" \
       "p $loaded, $LOAD_PATH.first, $LOADED_FEATURES.grep(/bundler-9/).map { File.basename(_1) }"
-    out, err, ruby_status = Open3.capture3(RbConfig.ruby, "-e", script, gems)
+    out, err, ruby_status = Open3.capture3(RbConfig.ruby, "-e", script, gems, settings)
     assert ruby_status.success?, err
     assert_equal "[:bundler, :setup]\n#{lib.inspect}\n[\"bundler.rb\", \"setup.rb\"]\n", out
 
     runtime, = driver("code", "-")
-    assert_equal "require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler')\n--\nbegin\n" \
-      "  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\nrescue StandardError => e\n  $stderr.puts(e.message)\n" \
-      "  raise\nend\n", runtime
+    assert_includes runtime, "begin\n  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\nrescue StandardError => e\n"
+  end
+
+  # Bundler sets the app up with the settings fledge build wrote into its
+  # .bundle/config, taken from the environment, since reading a settings
+  # file loads RubyGems' YAML serializer, which defines a hollow Psych
+  # where Psych is not loaded; the settings leave ENV once it is done,
+  # and on a phone, which sets only BUNDLE_GEMFILE, the file beside the
+  # Gemfile is the one read.
+  def test_bundler_sets_the_app_up_with_its_settings_from_the_environment_and_no_settings_file
+    gems = File.join(@dir, "gems")
+    lib = File.join(gems, "gems", "bundler-9.9.9", "lib")
+    FileUtils.mkdir_p(File.join(lib, "bundler"))
+    File.write(File.join(lib, "bundler.rb"), "")
+    File.write(File.join(lib, "bundler", "setup.rb"), <<~RUBY)
+      $seen = ENV.select { |name, _| name.start_with?("BUNDLE_") }.sort.to_h
+      $seen["user config exists"] = File.exist?(ENV.fetch("BUNDLE_USER_CONFIG"))
+      $seen["app config exists"] = File.exist?(File.join(ENV.fetch("BUNDLE_APP_CONFIG"), "config"))
+    RUBY
+    app = File.join(@dir, "app")
+    FileUtils.mkdir_p(File.join(app, ".bundle"))
+    File.write(File.join(app, "Gemfile"), "")
+    File.write(File.join(app, ".bundle", "config"), "#{Fledge::Bundle::SETTINGS}BUNDLE_WITHOUT: \"docs:test\"\n")
+    require_bundler, setup = driver("code", "9.9.9").first.split("\n--\n")
+
+    script = "Gem.paths = { 'GEM_HOME' => ARGV[0] }\n#{require_bundler}\nENV['BUNDLE_GEMFILE'] = ARGV[1]\n#{setup}\n" \
+      "p $seen.reject { |name, _| name == 'BUNDLE_GEMFILE' }, ENV.keys.grep(/\\ABUNDLE_/), defined?(Psych)"
+    out, err, status = Open3.capture3({ "PATH" => ENV.fetch("PATH"), "HOME" => @dir }, RbConfig.ruby, "-e", script, gems, File.join(app, "Gemfile"),
+      unsetenv_others: true)
+
+    assert status.success?, err
+    none = File.join(app, ".bundle", "none")
+    expected = {
+"BUNDLE_APP_CONFIG" => none,
+"BUNDLE_AUTO_INSTALL" => "false",
+"BUNDLE_FROZEN" => "true",
+"BUNDLE_PATH__SYSTEM" => "true",
+"BUNDLE_USER_CONFIG" => none,
+"BUNDLE_VERSION" => "system",
+"BUNDLE_WITHOUT" => "docs:test",
+"user config exists" => false,
+"app config exists" => false,
+}
+    assert_equal "#{expected.inspect}\n[\"BUNDLE_GEMFILE\"]\nnil\n", out
+  end
+
+  # With this Ruby's own Bundler, the app's bundle is set up frozen, as
+  # its .bundle/config says, and nothing defines Psych.
+  def test_rubys_own_bundler_sets_the_app_up_frozen_and_leaves_psych_undefined
+    app = File.join(@dir, "app")
+    FileUtils.mkdir_p(File.join(app, ".bundle"))
+    File.write(File.join(app, "Gemfile"), "source \"https://rubygems.org\"\n")
+    File.write(File.join(app, "Gemfile.lock"), "GEM\n  remote: https://rubygems.org/\n  specs:\n\nPLATFORMS\n  ruby\n  " \
+      "#{Gem::Platform.local}\n\nDEPENDENCIES\n\nBUNDLED WITH\n  #{Bundler::VERSION}\n")
+    File.write(File.join(app, ".bundle", "config"), Fledge::Bundle::SETTINGS)
+    require_bundler, setup = driver("code", "-").first.split("\n--\n")
+
+    script = "#{require_bundler}\nENV['BUNDLE_GEMFILE'] = ARGV[0]\n#{setup}\n" \
+      "p Bundler.frozen_bundle?, Bundler.settings[:path__system], defined?(Psych), $LOADED_FEATURES.grep(/yaml_serializer/)"
+    out, err, status = Open3.capture3({ "PATH" => ENV.fetch("PATH"), "HOME" => @dir }, RbConfig.ruby, "-e", script, File.join(app, "Gemfile"),
+      unsetenv_others: true)
+
+    assert status.success?, err
+    assert_equal "true\n\"true\"\nnil\n[]\n", out
   end
 end

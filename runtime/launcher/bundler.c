@@ -76,11 +76,40 @@ static const char code_after_variables[] =
  * bundle exec does not. bundler/setup prints its own message and exits
  * when standard output is a terminal; otherwise it raises, quietly, and
  * the code prints what went wrong.
+ *
+ * Bundler takes the app's settings from the environment while it sets
+ * the app up, not from a file. Bundler reads a settings file with
+ * RubyGems' YAML serializer (Bundler::Settings#load_config and
+ * #serializer_class, settings.rb lines 800 to 833, at Bundler 4.0.20),
+ * which defines a hollow Psych module of its own when Psych is not
+ * loaded (rubygems/yaml_serializer.rb, lines 7 to 15, at Ruby
+ * 4.1.0-preview1), so an app that read its .bundle/config would have
+ * defined?(Psych) true where bundle exec in a project with no settings
+ * file has it false, and a library that tests for Psych would take the
+ * wrong path. Bundler reads no file that is missing (load_config, line
+ * 802), and keeps the BUNDLE_ variables it found when its settings were
+ * made (Settings#initialize, lines 107 to 120). So the code reads the
+ * settings fledge build wrote into the app's .bundle/config, lines of
+ * NAME: "VALUE" (Fledge::Bundle#app_files), from BUNDLE_USER_CONFIG, or
+ * on a phone beside BUNDLE_GEMFILE, puts each in ENV, points
+ * BUNDLE_APP_CONFIG and BUNDLE_USER_CONFIG at a folder that holds
+ * nothing, and takes them all out of ENV once Bundler has set up the
+ * app. The file stays in the app for whatever makes Bundler's settings
+ * again later, a Ruby the app starts with bundler/setup or Bundler.reset!.
  */
 #define RUNTIME_BUNDLER "RbConfig::CONFIG['rubylibdir']"
 #define LOCKED_BUNDLER "File.join(Gem.dir, 'gems', 'bundler-%s', 'lib')"
-#define SETUP_BEFORE "begin\n  require File.join("
-#define SETUP_AFTER ", 'bundler/setup')\nrescue StandardError => e\n  $stderr.puts(e.message)\n  raise\nend\n"
+#define SETUP_BEFORE                                                                                                   \
+    "settings = ENV['BUNDLE_USER_CONFIG'] || File.join(File.dirname(ENV.fetch('BUNDLE_GEMFILE')), '.bundle', "         \
+    "'config')\n"                                                                                                      \
+    "none = File.join(File.dirname(settings), 'none')\n"                                                               \
+    "fledge = File.foreach(settings).filter_map { |line| line.match(/\\A(BUNDLE_[A-Z0-9_]+): \"(.*)\"$/)&.captures }"  \
+    ".to_h.merge('BUNDLE_APP_CONFIG' => none, 'BUNDLE_USER_CONFIG' => none)\n"                                         \
+    "ENV.update(fledge)\n"                                                                                             \
+    "begin\n  require File.join("
+#define SETUP_AFTER                                                                                                    \
+    ", 'bundler/setup')\nrescue StandardError => e\n  $stderr.puts(e.message)\n  raise\n"                              \
+    "ensure\n  fledge.each_key { |name| ENV.delete(name) }\nend\n"
 
 int
 fledge_bundler_code(char *code, size_t size, const char *version, int setup)

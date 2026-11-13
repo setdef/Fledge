@@ -16,7 +16,7 @@ The app boots the same whatever your users set in `RUBYOPT`, `RUBYLIB`, `GEM_HOM
 
 ## Your gems
 
-`Gem.dir` and `Gem.path` name the gem folder inside the app, and never your users' `GEM_HOME` or `~/.gem`. The app sets up the groups `bundle exec` would, `development` and `test` among them, less those your Bundler `without` setting names. Fledge marks the bundle frozen in the app's `.bundle/config`, so Bundler never writes `Gemfile.lock`, even in a read-only folder, and RubyGems loads a defaults file from Fledge at start. Reading that `.bundle/config` loads RubyGems' YAML serializer, which defines a small `Psych` module of its own when Psych is not loaded, as `bundle exec` does in any project with a `.bundle/config`.
+`Gem.dir` and `Gem.path` name the gem folder inside the app, and never your users' `GEM_HOME` or `~/.gem`. The app sets up the groups `bundle exec` would, `development` and `test` among them, less those your Bundler `without` setting names. Fledge marks the bundle frozen in the app's `.bundle/config`, so Bundler never writes `Gemfile.lock`, even in a read-only folder, and RubyGems loads a defaults file from Fledge at start.
 
 RubyGems still activates a bundled gem your lockfile does not lock, such as `irb`, when your code requires it, as under `bundle exec`. So on macOS and Linux, `binding.irb` works in an app with a `Gemfile`. On Windows it fails in the app and under `bundle exec` alike, because `irb` there needs `fiddle`, and Bundler leaves `fiddle` out of a bundle that does not lock it.
 

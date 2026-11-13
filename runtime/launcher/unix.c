@@ -280,7 +280,8 @@ static char app_folder[PATH_MAX];
  * set aside: BUNDLE_GEMFILE names the app's Gemfile, and
  * BUNDLE_USER_CONFIG names the app's own .bundle/config, which fledge
  * build wrote, in place of ~/.bundle/config, so nothing of the person's
- * changes which gems load. The Bundler is the one fledge.cfg names, or
+ * changes which gems load; Bundler gets its settings through the
+ * environment, and reads no settings file (bundler.c). The Bundler is the one fledge.cfg names, or
  * the runtime's own (bundler.c). It is required first, so the environment
  * it records as the one it started from (Bundler.original_env) is the one
  * Ruby booted with, without the launcher's two variables, which
@@ -291,8 +292,8 @@ setup_bundler(void)
 {
     static char gemfile[PATH_MAX];
     static char settings[PATH_MAX];
-    static char require_bundler[512];
-    static char bundler_setup[512];
+    static char require_bundler[FLEDGE_BUNDLER_CODE_MAX];
+    static char bundler_setup[FLEDGE_BUNDLER_CODE_MAX];
     int gemfile_length = snprintf(gemfile, sizeof gemfile, "%s/%s", app_folder, app_config.gemfile);
     int settings_length = snprintf(settings, sizeof settings, "%s/.bundle/config", app_folder);
     int state = 0;

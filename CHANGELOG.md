@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- In an app with a `Gemfile`, `defined?(Psych)` is false until something loads Psych, as under `bundle exec`: Bundler takes the app's settings from the environment as it sets the app up, instead of reading its `.bundle/config` with RubyGems' YAML serializer, which defined a hollow `Psych` module.
 - A desktop app carries the library mkmf links its test programs against, a static `libruby` on macOS and Linux and the import library of Ruby's DLL on Windows, so `have_func`, `have_library`, and `try_link` in an app's own running code work where a compiler is; they raised "The compiler failed to generate an executable file".
 - An app with a gemspec loads the project's files that its gemspec requires before the program's first line, as Bundler does under `bundle exec`, so `MyCoolApp::VERSION` from `bundle gem`'s `lib/my_cool_app/version.rb` is defined from the start; it raised `NameError` until the program required the file.
 - On Windows, `RubyInstaller` is defined in an app, as under `ruby.exe`, so a gem that tests `defined?(RubyInstaller)` takes the same branch: mysql2 0.5.6 loaded `libmysql.dll` by bare name instead, and could abort.

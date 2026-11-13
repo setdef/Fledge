@@ -159,11 +159,11 @@ class ParityTest < Minitest::Test
   # Each element may be explained by a different justification of its
   # fact, as long as every one is.
   def test_justifications_combine_element_by_element
-    reference = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/4.0.0/bundler/feature_flag.rb"] }
+    reference = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/4.0.0/bundler/feature_flag.rb", "<work>/person-gems/gems/bundler-4.0.19/lib/bundler.rb"] }
     app = {
 "$LOADED_FEATURES" => [
   "<prefix>/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb",
-  "<prefix>/lib/ruby/4.0.0/rubygems/yaml_serializer.rb",
+  "<prefix>/lib/ruby/gems/4.0.0/gems/bundler-4.0.19/lib/bundler.rb",
 ],
 }
 
@@ -172,6 +172,15 @@ class ParityTest < Minitest::Test
     assert_predicate difference, :justified?
     assert_equal 3, difference.justifications.size
     refute_predicate Parity::Reports.compare(reference, app, platform: "arm64-darwin").first, :justified?, "the bundle check's only"
+  end
+
+  # The app's Bundler reads no settings file, so RubyGems' YAML
+  # serializer and its hollow Psych may not show in a built app.
+  def test_the_yaml_serializer_and_its_psych_must_not_load_in_the_app
+    serializer = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/4.1.0+5/rubygems/yaml_serializer.rb"], "Object.constants" => ["Psych"] }
+    none = { "$LOADED_FEATURES" => [], "Object.constants" => [] }
+
+    assert_equal 2, Parity::Reports.compare(none, serializer, platform: "x86_64-linux", check: :bundle).count { |difference| !difference.justified? }
   end
 
   # A built app sets up the development and test groups, as bundle exec

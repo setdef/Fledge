@@ -11,7 +11,9 @@
 # first. It needs KVM (/dev/kvm, readable and writable).
 #
 # The emulator and its adb server take ports of their own, so another
-# emulator on the computer, and another adb server, are left alone.
+# emulator on the computer, and another adb server, are left alone, and
+# each knows only the other: two adb servers that both hold an emulator
+# take its adb connection from each other.
 #
 #   MISE_ENV=android mise x -- bin/android-emulator google_apis -- ruby tasks/mobile_parity.rb android
 set -euo pipefail
@@ -27,22 +29,32 @@ shift
 # Whether nothing listens on 127.0.0.1:PORT.
 free() { ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 
-# The emulator takes an even console port from 5554 to 5682 and the one
-# after it for adb (the emulator's -port option).
+# The emulator takes an even console port and the one after it for adb
+# (the emulator's -port option, from 5554 to 5682): one from 5586 up,
+# beyond the emulators every adb server looks for when it starts
+# (consoles 5554 to 5584, and their adb ports to 5585:
+# adb_local_transport_max_port in adb's client/transport_emulator.cpp),
+# so a person's adb server, or another check's, never takes this one.
 port=""
-for candidate in $(seq 5554 2 5682); do
+for candidate in $(seq 5586 2 5682); do
   if free "$candidate" && free $((candidate + 1)); then port=$candidate; break; fi
 done
-[ -n "$port" ] || { echo "no free pair of emulator ports from 5554 to 5683" >&2; exit 69; }
+[ -n "$port" ] || { echo "no free pair of emulator ports from 5586 to 5683" >&2; exit 69; }
 # adb starts a server of its own on a port no other server holds, never
 # adb's usual 5037, so stopping it at the end leaves alone the server a
-# person's own adb, and the phones it holds, use.
+# person's own adb, and the phones it holds, use. The emulator tells that
+# server of itself (ANDROID_ADB_SERVER_PORT), and the server looks for no
+# other emulator (ADB_LOCAL_TRANSPORT_MAX_PORT below 5555 ends its search
+# before it begins), so it never takes another's adb connection, and
+# bundletool, which asks the server for every device and talks to the
+# console of each emulator before it lists any, sees only this one.
 adb_port=""
 for candidate in $(seq 15037 15137); do
   if free "$candidate"; then adb_port=$candidate; break; fi
 done
 [ -n "$adb_port" ] || { echo "no free port for adb's server from 15037 to 15137" >&2; exit 69; }
 export ANDROID_ADB_SERVER_PORT=$adb_port
+export ADB_LOCAL_TRANSPORT_MAX_PORT=0
 export ANDROID_SERIAL="emulator-$port"
 
 # The AVD, written as avdmanager writes one for a system image with no
@@ -91,6 +103,9 @@ done
 adb shell settings put global window_animation_scale 0.0
 adb shell settings put global transition_animation_scale 0.0
 adb shell settings put global animator_duration_scale 0.0
+# adb's server must hold this emulator alone (above).
+held=$(adb devices | tail -n +2 | cut -f1 | grep -v '^$' | tr '\n' ' ' || true)
+[ "$held" = "$ANDROID_SERIAL " ] || { echo "adb's server holds ${held:-nothing}, not $ANDROID_SERIAL alone" >&2; exit 70; }
 echo "$ANDROID_SERIAL booted: $(adb shell getprop ro.product.cpu.abi | tr -d '\r'), API $(adb shell getprop ro.build.version.sdk | tr -d '\r'), pages of $(adb shell getconf PAGE_SIZE | tr -d '\r') bytes"
 
 "$@"

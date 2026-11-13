@@ -159,7 +159,7 @@ class ParityTest < Minitest::Test
   # Each element may be explained by a different justification of its
   # fact, as long as every one is.
   def test_justifications_combine_element_by_element
-    reference = { "$LOADED_FEATURES" => ["<project>/lib/my_cool_app/version.rb"] }
+    reference = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/4.0.0/bundler/feature_flag.rb"] }
     app = {
 "$LOADED_FEATURES" => [
   "<prefix>/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb",
@@ -172,6 +172,16 @@ class ParityTest < Minitest::Test
     assert_predicate difference, :justified?
     assert_equal 3, difference.justifications.size
     refute_predicate Parity::Reports.compare(reference, app, platform: "arm64-darwin").first, :justified?, "the bundle check's only"
+  end
+
+  # The built app's gemspec requires what the project's gemspec requires,
+  # as Bundler evaluates it under bundle exec, so neither the file nor its
+  # constant may be missing.
+  def test_a_file_the_gemspec_requires_must_load_in_the_app
+    version = { "$LOADED_FEATURES" => ["<project>/lib/my_cool_app/version.rb"], "Object.constants" => ["MyCoolApp"] }
+    none = { "$LOADED_FEATURES" => [], "Object.constants" => [] }
+
+    assert_equal 2, Parity::Reports.compare(version, none, platform: "x86_64-linux", check: :bundle).count { |difference| !difference.justified? }
   end
 
   def test_the_gem_shaped_check_has_its_own_names_for_the_program

@@ -152,20 +152,6 @@
   platforms:
   checks:
   - bundle
-- fact: "$LOADED_FEATURES"
-  reference:
-  - \A"<project>/lib/my_cool_app/version\.rb"\z
-  app: []
-  platforms:
-  checks:
-  - bundle
-- fact: Object.constants
-  reference:
-  - \A"MyCoolApp"\z
-  app: []
-  platforms:
-  checks:
-  - bundle
 - fact: Gem.path
   reference:
   - \A"<work>/person-gems"\z

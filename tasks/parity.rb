@@ -139,13 +139,6 @@ class Parity
       checks: %i[bundle],
       reason: "With no setting that says where the bundle's gems are, Bundler asks its feature flags whether to use " \
         "Ruby's own gem folder; the app's .bundle/config says so (path.system, as Warbler's does), so it never asks."),
-    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<project>/lib/my_cool_app/version\.rb"\z}], checks: %i[bundle],
-      reason: "Bundler evaluates the project's gemspec as it sets up the bundle, and this one requires its version file. " \
-        "A built app ships the gemspec evaluated, as Bundler caches a git gem's " \
-        "(doc/contributors/design/gems.md, \"The app's .bundle/config and gemspecs\"), so that one that runs git needs no git; " \
-        "the version file loads when the app requires it, as every other file of the app does."),
-    Justification.new(fact: "Object.constants", reference: [/\A"MyCoolApp"\z/], checks: %i[bundle],
-      reason: "As for the version file in $LOADED_FEATURES, which defines MyCoolApp."),
     Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, %r{\A"<home>/\.(?:gem|local/share/gem)/}],
       reason: "The app's gems are the runtime's alone (ADR 040): the person's GEM_HOME, GEM_PATH, and " \
         "Gem.user_dir never shadow them. Their ENV still reaches the app and its child processes."),

@@ -371,6 +371,30 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
     assert_equal spec.name, eval(evaluated, binding, "my_app.gemspec").name
   end
 
+  # Under bundle exec, Bundler evaluates the project's gemspec at every
+  # start, so the files it requires load before the program's first
+  # line, in the order they finish loading; the shipped gemspec requires
+  # the same files, and nothing from outside the project.
+  def test_the_evaluated_gemspec_requires_the_projects_files_its_evaluation_loaded
+    root = FakeProject.write(@dir, name: "versioned_app")
+    FileUtils.mkdir_p(File.join(root, "lib", "versioned_app"))
+    File.write(File.join(root, "lib", "versioned_app", "edition.rb"), "module VersionedApp\n  EDITION = \"first\"\nend\n")
+    File.write(File.join(root, "lib", "versioned_app", "version.rb"),
+      "require_relative \"edition\"\nmodule VersionedApp\n  VERSION = \"0.1.0\"\nend\n")
+    gemspec = File.join(root, "versioned_app.gemspec")
+    File.write(gemspec, "require \"English\"\nrequire_relative \"lib/versioned_app/version\"\n#{File.read(gemspec)}")
+
+    evaluated = Fledge::Bundle.new(Fledge::App.at(root)).app_files.fetch("versioned_app.gemspec")
+
+    assert_includes evaluated, "\nrequire_relative \"lib/versioned_app/edition\"\nrequire_relative \"lib/versioned_app/version\"\n\n" \
+      "Gem::Specification.new do |s|\n"
+    refute_includes evaluated, "English"
+    File.write(gemspec, evaluated)
+    out, err, status = Open3.capture3(RbConfig.ruby, "-e", "load ARGV[0]; print VersionedApp::VERSION, VersionedApp::EDITION", gemspec)
+    assert status.success?, err
+    assert_equal "0.1.0first", out
+  end
+
   def test_leaves_bundlers_own_root_as_it_found_it
     before = Bundler.root
     bundle(dependencies: {}, locked: [])

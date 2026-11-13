@@ -19,14 +19,13 @@ class RuntimeBuilder
       THE RUNTIME'S BUILD-ONLY FILES
 
       This archive unpacks over the Fledge runtime of the same name. It holds
-      what that runtime prunes because no running app reads it, and what
-      compiling a gem's C or Rust extension against the runtime's own Ruby
-      needs beside the C headers the runtime already holds: Ruby's library
-      to link against, which is static libruby on macOS and Linux (whose
-      extension builds link test programs against it) and the import
-      library of Ruby's DLL on Windows (ADR 006). fledge build uses it to
-      compile gems on the platform it builds for, and never copies it into
-      an app.
+      what compiling a gem's C or Rust extension against the runtime's own
+      Ruby needs beside the C headers: Ruby's library to link against,
+      which is static libruby on macOS and Linux (whose extension builds
+      link test programs against it) and the import library of Ruby's DLL
+      on Windows (ADR 006), the same file the runtime itself keeps for an
+      app's own mkmf. fledge build uses this archive to compile gems on
+      the platform it builds for, and never copies it into an app.
 
       It is Ruby's, under Ruby's license (Ruby OR BSD-2-Clause), and static
       libruby holds the Rust standard library too, compiled into YJIT (MIT

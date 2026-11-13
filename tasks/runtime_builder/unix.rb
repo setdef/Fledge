@@ -11,7 +11,8 @@ require_relative "recipe"
 class RuntimeBuilder
   # macOS and Linux: rv-ruby's Ruby, whose static libruby the launcher
   # links, so each builds only on its own platform. The runtime is the
-  # launcher with bin/, lib/ruby, and libexec/cert.pem beside it.
+  # launcher with bin/, lib/ruby, the static libruby, and
+  # libexec/cert.pem beside it.
   class Unix < Recipe
     def build(stage)
       @prefix = @tree = unpack_ruby
@@ -60,12 +61,21 @@ class RuntimeBuilder
     # Copies rv-ruby's bin/ (whose ruby compile then replaces with one
     # built from the same libruby as the launcher; the rest are the gems'
     # executables), lib/ruby, Ruby's headers (include/, which require
-    # "mkmf" looks for; Pruning.prune), and the CA bundle.
+    # "mkmf" looks for; Pruning.prune), the static libruby, and the CA
+    # bundle. mkmf links the test program of every have_func,
+    # have_library, and try_link against $(LIBRUBYARG), which for a static
+    # Ruby is LIBRUBYARG_STATIC, -lruby.4.1-static from $(libdir)
+    # (mkmf.rb, link_config, lines 541 to 553, at Ruby 4.1.0-preview1), so
+    # without it an app's own running mkmf raises "The compiler failed to
+    # generate an executable file". No other static library comes along:
+    # rv-ruby's lib/libcrypt.a is libxcrypt, which is LGPL, and the linker
+    # finds the system's -lcrypt instead.
     private def copy_ruby(stage)
       FileUtils.mkdir_p(File.join(stage, "lib"))
       FileUtils.cp_r(File.join(@prefix, "bin"), File.join(stage, "bin"))
       FileUtils.rm_f(File.join(stage, "bin", "ruby"))
       FileUtils.cp_r(File.join(@prefix, "lib", "ruby"), File.join(stage, "lib", "ruby"))
+      FileUtils.cp(Dir.glob(File.join(@prefix, "lib", "libruby*-static.a")), File.join(stage, "lib"))
       FileUtils.cp_r(File.join(@prefix, "include"), File.join(stage, "include"))
       FileUtils.chmod_R("u+w", [File.join(stage, "lib"), File.join(stage, "bin"), File.join(stage, "include")])
       removed = Pruning.prune(File.join(stage, "lib", "ruby"), @builder.bundled_gems)

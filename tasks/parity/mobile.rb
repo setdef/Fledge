@@ -76,11 +76,5 @@ class Parity
         "until the program ends, so the runtime has $stdout write through as to a terminal, with Ruby's own " \
         "FMODE_TTY, as under ruby main.rb in one, and as Briefcase's iOS host unbuffers Python's streams; " \
         "$stdout.sync and $stdout.tty? stay false, as under ruby main.rb with its output to a pipe."),
-    Justification.new(fact: "gems", app: [/\A"win32-registry /], platforms: MOBILE,
-      reason: "Ruby's own install puts every bundled gem it can in a Ruby it builds from source, as the phones' " \
-        "runtimes are, win32-registry among them, which only Windows can use; rv-ruby's builds, which the " \
-        "desktop's ruby main.rb runs, leave it out."),
-    Justification.new(fact: "requireable", app: [/\A"win32-registry"=/], platforms: MOBILE,
-      reason: "As for win32-registry's gem: it calls Windows' kernel32.dll through fiddle, so it loads nowhere else."),
   ].freeze
 end

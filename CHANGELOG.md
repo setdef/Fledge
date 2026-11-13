@@ -27,9 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On iOS and Android, `$stdout.sync` is false, as under `ruby main.rb`: `$stdout` still writes each line as it prints, as Ruby writes to a terminal, and `$stdout.tty?` stays false.
 - On iOS and Android, an app's `ENV` no longer holds `SSL_CERT_FILE`: as under rv-ruby's Ruby on a desktop, `require "openssl"` sets `PORTABLE_RUBY_SSL_CERT_FILE` to the runtime's CA certificates, or to the file `SSL_CERT_FILE` names, which OpenSSL then trusts, on Android too.
 - The Android project packs native libraries compressed (`useLegacyPackaging = true`), so the installer extracts them where Android lets the app run its ruby program; an installed app takes more space. Set it to `false` to keep them stored, without a ruby program.
+- The iOS and Android runtimes leave out the win32-registry gem, which only Windows can load, as the macOS and Linux runtimes' Ruby does.
 
 ### Fixed
 
+- On iOS, Ruby's `[BUG]` crash report lists the C frames, as on macOS.
 - On iOS and Android, a gem from git with an extension compiles; its build failed with `Errno::ENOENT` before it began.
 - On Windows, an app runs with UTF-8 as its ANSI code page, which its manifest declares, so a gem that opens a file or DLL through a Windows `A` function works when the app is installed under a folder named outside ASCII: a gem whose DLL ffi loads, such as libusb, failed to load there. In a windowed app `Encoding.find("locale")` is UTF-8 where `rubyw.exe` gives the system's code page; `doc/differences_from_ruby.md` says what else differs.
 

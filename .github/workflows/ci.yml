@@ -819,7 +819,7 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test:all
 
-      # ADR 003 and ADR 005: the probe app, built from this runtime,
+      # ADR 081 and ADR 005: the probe app, built from this runtime,
       # against rv-ruby's own ruby running the same main.rb, then the probe
       # as examples/my_cool_app's program, built with its gems, against
       # bundle exec on that Ruby. The report lands in the job summary; an
@@ -830,13 +830,13 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: bundle exec rake parity
 
-      # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
+      # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
       # Ctrl-C and a hangup, in a terminal of the probe's own,
       # end ruby main.rb as the console Delivery expects of a built app.
       - name: Interrupt ruby main.rb in a terminal
         run: .github/scripts/deliver-console.sh --reference "$(command -v ruby)" test/fixtures/console/main.rb
 
-  # ADR 003 on musl Linux (ADR 017): the probe app, built from this
+  # ADR 081 on musl Linux (ADR 017): the probe app, built from this
   # runtime in Alpine, against the Ruby the runtime build compiled, as
   # ruby main.rb, then as my_cool_app's program against bundle exec.
   parity-musl:
@@ -968,7 +968,7 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test:all
 
-      # ADR 003 and ADR 005: the probe app, built from this runtime,
+      # ADR 081 and ADR 005: the probe app, built from this runtime,
       # against RubyInstaller's own ruby.exe running the same main.rb, then
       # both again under code page 437, then the probe as
       # examples/my_cool_app's program against bundle exec. The report
@@ -979,7 +979,7 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
         run: bundle exec rake parity
 
-      # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
+      # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
       # Ctrl-C on two code pages and closing the console end
       # ruby.exe main.rb as the console Delivery expects of a built app,
       # and rubyw.exe, typed into a console, gets none.
@@ -1596,7 +1596,7 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/BundledWith-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/bundled_with.expected")"
 
-      # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
+      # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
       # the console probe in a terminal of its own, a
       # pseudo-terminal, ended by Ctrl-C typed into it and by a hangup,
       # must end as ruby main.rb does (.github/scripts/deliver-console.sh).
@@ -1974,7 +1974,7 @@ jobs:
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-$env:PLATFORM.zip" -Platform $env:PLATFORM
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/bundled_with.expected" -Raw).TrimEnd()
 
-      # ADR 003 (doc/contributors/design/parity.md, "Console checks"):
+      # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
       # the console probe in a console of its own, ended by
       # Ctrl-C on code pages 65001 and 437 and by its window closing, and
       # the windowed app typed into a console, which gets none, each as

@@ -70,7 +70,7 @@
  *   4. Runs the app with arguments equivalent to
  *        NAME --disable=rubyopt -- ROOT\app\ENTRY ARGS
  *      which is what ruby ROOT\app\ENTRY ARGS does with no RUBYOPT
- *      (ADR 003): no -I, so the app loads its own files with
+ *      (ADR 081): no -I, so the app loads its own files with
  *      require_relative.
  *   5. Once Ruby has booted and before ENTRY runs, fixes RubyGems'
  *      paths, and for an app with a Gemfile has Bundler set up the app's

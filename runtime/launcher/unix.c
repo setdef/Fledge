@@ -50,7 +50,7 @@
  *   4. It runs the app with arguments equivalent to
  *        NAME --disable=rubyopt -- ROOT/app/ENTRY ARGS
  *      which is what ruby ROOT/app/ENTRY ARGS does with no RUBYOPT
- *      (ADR 003): no -I, so the app loads its own files with
+ *      (ADR 081): no -I, so the app loads its own files with
  *      require_relative, and no --yjit, so RubyVM::YJIT.enabled? is
  *      false until the app enables it, as under ruby. ROOT/app is named
  *      by its real path, which in a macOS .app is Contents/Resources/app

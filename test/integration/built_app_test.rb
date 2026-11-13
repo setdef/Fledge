@@ -127,7 +127,7 @@ class BuiltAppTest < Minitest::Test
     def built = (@built ||= {})
   end
 
-  # ADR 003: Ctrl-C typed into a terminal, and a hangup, end the built
+  # ADR 081: Ctrl-C typed into a terminal, and a hangup, end the built
   # console probe as they end ruby main.rb, through Ruby's own handlers
   # (.github/scripts/deliver-console.sh, which CI's Delivery runs too;
   # doc/contributors/design/parity.md, "Console checks"). Windows'
@@ -261,7 +261,7 @@ class BuiltAppTest < Minitest::Test
   # never coerces under LC_ALL). The probe and the script run from a
   # folder whose name is ASCII, where ruby itself runs in a C locale.
   def test_an_explicit_c_locale_is_kept_and_only_a_bare_one_becomes_utf8
-    skip "Windows takes its encoding from the console's code page (ADR 003)" if @platform.windows?
+    skip "Windows takes its encoding from the console's code page (ADR 081)" if @platform.windows?
 
     Dir.mktmpdir do |dir|
       launcher = build_and_unpack(dir, PROBE, place: File.join(dir, "ascii"))

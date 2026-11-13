@@ -68,11 +68,11 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 9. When using fledge, your ruby source code should be able to be identical to how it was without Fledge, so the things you had to `require` before you can still need the app dev to `require`, but the things you didn't have to `require` before the app dev still shouldn't have to require.
 
-*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 003 and ADR 039; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
+*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 081 and ADR 039; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
 
 > 10. All the ruby globals should be non-surprising to app devs, for the same motivation as #9.
 
-*Governs:* `$0`, `$LOAD_PATH`, `$LOADED_FEATURES`, and every other global an app sees. *Applied in:* ADR 003; the launcher (no `-I`, no `--yjit`); the parity check.
+*Governs:* `$0`, `$LOAD_PATH`, `$LOADED_FEATURES`, and every other global an app sees. *Applied in:* ADR 081; the launcher (no `-I`, no `--yjit`); the parity check.
 
 > 11. I don't understand what I'd be deciding here. [re: restoring the person's own RUBY*/GEM*/BUNDLE* env for child processes — orchestrator is explaining; still open]
 
@@ -116,7 +116,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 21. I don't understand what I'd be deciding here. [re: Windows console code pages and Ctrl-C — agents own this]
 
-*Governs:* console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 003 (the launcher matches `ruby.exe`, but for the ANSI code page, ADR 070); the parity check's `chcp 437` run; Plan 002, "Ctrl-C and the console."
+*Governs:* console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 081 (the launcher matches `ruby.exe`, but for the ANSI code page, ADR 070); the parity check's `chcp 437` run; Plan 002, "Ctrl-C and the console."
 
 > 22. I'd like to support Windows on ARM (and Linux on ARM) eventually, but it's not a blocker to continuing to iterate. It may be a blocker to 1.0 though.
 

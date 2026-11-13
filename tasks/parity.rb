@@ -18,7 +18,7 @@ require_relative "parity/justification"
 require_relative "parity/reports"
 require_relative "parity/mobile"
 
-# The parity check (ADR 003 and ADR 045): an app's Ruby code must see the
+# The parity check (ADR 081 and ADR 045): an app's Ruby code must see the
 # same Ruby under Fledge as it does run as its developer runs it.
 #
 # It builds the probe app in test/fixtures/parity with fledge build, from

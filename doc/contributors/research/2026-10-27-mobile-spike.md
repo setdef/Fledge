@@ -554,7 +554,7 @@ What decisions 9 and 10 then cost on mobile
      platform's nature (cwd, stdin, HOME, subprocesses).
   2. Host fixes for what is not the platform's nature, as the desktop
      launcher already makes:
-     - a UTF-8 locale when LANG is unset (ADR 003, section 5, already
+     - a UTF-8 locale when LANG is unset (the former ADR 003, now ADR 081, section 5, already
        does this on macOS and Linux);
      - a CA bundle;
      - HOME set to a writable folder on Android;

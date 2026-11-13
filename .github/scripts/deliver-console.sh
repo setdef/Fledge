@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of the console (ADR 003; doc/contributors/design/parity.md,
+# Delivery of the console (ADR 081; doc/contributors/design/parity.md,
 # "Console checks"): runs the console probe
 # (test/fixtures/console) in a terminal of its own, a pseudo-terminal
 # that script(1) opens, as a person runs an app in Terminal or a Linux

@@ -9,7 +9,7 @@
 # inside it.
 #
 # An app's Ruby code should run under Fledge exactly as it runs under
-# ruby main.rb (ADR 003). tasks/parity.rb builds this app with fledge
+# ruby main.rb (ADR 081). tasks/parity.rb builds this app with fledge
 # build, runs it, runs the same file with the Ruby the runtime came from
 # as ruby main.rb, and compares the two reports.
 #

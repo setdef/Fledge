@@ -159,7 +159,7 @@ From the 0.2.1 `arm64-darwin` runtime's archive, `lib/fledge/assembly.rb`, `runt
 
 ### 2.8 The launcher, and how it differs from `ruby main.rb`
 
-The launcher hides the person's `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the rest from Ruby's boot, puts them back in `ENV` after, coerces a bare C locale to UTF-8, sets Bundler up as `bundle exec` would, and runs `app/ENTRY` by its real path (ADR 003, ADR 005, ADR 026). On macOS and Linux, `bin/ruby` hands `exec RbConfig.ruby, $0, *ARGV` back to the launcher; on Windows, restarting means running `NAME.exe` (ADR 026, sections 3 and 4).
+The launcher hides the person's `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the rest from Ruby's boot, puts them back in `ENV` after, coerces a bare C locale to UTF-8, sets Bundler up as `bundle exec` would, and runs `app/ENTRY` by its real path (the former ADR 003, now ADR 081, ADR 005, ADR 026). On macOS and Linux, `bin/ruby` hands `exec RbConfig.ruby, $0, *ARGV` back to the launcher; on Windows, restarting means running `NAME.exe` (ADR 026, sections 3 and 4).
 
 Every difference the parity check allows is in `Parity::JUSTIFIED` (`tasks/parity.rb`, lines 64 to 128) and `MOBILE_JUSTIFIED` (`tasks/parity/mobile.rb`, lines 24 to 62). On the desktop:
 

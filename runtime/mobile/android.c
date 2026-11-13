@@ -31,7 +31,7 @@
  * not stop: SSL_CERT_FILE's, or else the runtime's CA certificates, as
  * on a desktop; and OpenSSL::X509::DEFAULT_CERT_FILE names it.
  *
- * And the runtime's ruby program, which RbConfig.ruby names (ADR 069):
+ * And the runtime's ruby program, which RbConfig.ruby names (ADR 083):
  * fledge_ruby_link_program makes ROOT/bin/ruby a link to it before an
  * app's Ruby boots, and fledge_ruby_program_main is its main function.
  */
@@ -54,7 +54,7 @@
 /*
  * The runtime's ruby program, and the library of an app's gems'
  * extensions, as the package installer extracts them beside
- * libfledgeruby.so (ADR 069).
+ * libfledgeruby.so (ADR 082).
  */
 #define FLEDGE_RUBY_PROGRAM "libfledgerubyexe.so"
 #define FLEDGE_EXTENSIONS "libfledgeext.so"

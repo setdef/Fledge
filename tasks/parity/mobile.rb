@@ -13,7 +13,7 @@ class Parity
   # The iOS targets, whose sandbox lets an app start no program.
   IOS = RuntimeBuilder::Mobile::PLATFORMS.fetch("ios").targets.map(&:name).freeze
 
-  # The Android targets, whose runtime has a ruby program (ADR 069).
+  # The Android targets, whose runtime has a ruby program (ADR 082).
   ANDROID = RuntimeBuilder::Mobile::PLATFORMS.fetch("android").targets.map(&:name).freeze
 
   # The folders of a Ruby's platform-specific files, named for its
@@ -36,7 +36,7 @@ class Parity
           "app, which its host logs (MobileParity::Environment): a phone starts an app with an environment of its " \
           "own, and no person's shell. Android gives an app no HOME, so FledgeRuby sets it to the app's files " \
           "folder, as iOS gives every app one, so that Dir.home is a folder the app may write, as every desktop's " \
-          "is; a Ruby the app starts, the Android runtime's ruby program (ADR 069), inherits it.")
+          "is; a Ruby the app starts, the Android runtime's ruby program (ADR 082), inherits it.")
     end,
     Justification.new(fact: "child ENV", reference: [/\A"[^"]+"=/], app: [ERRNO_SPAWN], platforms: IOS,
       reason: "An app on iOS starts no programs, since iOS lets no app run one, so the iOS runtime has no Ruby " \

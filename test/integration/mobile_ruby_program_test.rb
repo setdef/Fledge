@@ -10,7 +10,7 @@ require "open3"
 require "rbconfig"
 
 # The main function of the Android runtime's ruby program,
-# fledge_ruby_main (runtime/mobile/fledge_ruby.c; ADR 069), compiled with
+# fledge_ruby_main (runtime/mobile/fledge_ruby.c; ADR 082), compiled with
 # this computer's C compiler and linked with the Ruby running these
 # tests, and run as a Ruby the app starts would be: plain Ruby, as
 # Ruby's main.c is, RUBYOPT and all, unless its first argument is the

@@ -435,7 +435,7 @@ module Fledge
     # library the package does not carry) when an extension has C++, and
     # with its run path <tt>$ORIGIN</tt>, so that the runtime's ruby
     # program, which loads it outside the app's own library namespace,
-    # finds the shared libraries it needs beside it (ADR 069). Returns +into+.
+    # finds the shared libraries it needs beside it (ADR 082). Returns +into+.
     def shared_library(built, build, registration:, into:)
       ndk = built.ndk or raise Error, "only an Android app links a shared library"
       target = build.target

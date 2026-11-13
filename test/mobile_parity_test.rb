@@ -176,7 +176,7 @@ class MobileParityTest < Minitest::Test
   # a certain way is packed: the asset fledge.zip stored, which
   # FledgeRuby unpacks from the APK, and every native library
   # compressed, which only the package installer's extraction puts where
-  # Android lets an app run its ruby program (ADR 069).
+  # Android lets an app run its ruby program (ADR 082).
   def test_what_zipalign_finds_packed_as_android_does_not_take_it
     aligned = <<~ALIGNED
       Verifying alignment of base-master.apk (4)...

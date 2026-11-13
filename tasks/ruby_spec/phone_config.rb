@@ -27,7 +27,7 @@
 # skip does, by raising SkippedSpecError, since fixtures call it outside
 # examples too. ruby_exe is MSpec's, not Ruby's; the examples of Ruby's
 # own ways to start a program still run, where a phone can. Android's
-# runtime has a ruby program, which RbConfig.ruby names (ADR 069), so
+# runtime has a ruby program, which RbConfig.ruby names (ADR 083), so
 # on Android ruby_exe never skips: a Ruby that is not there fails its
 # examples, as it would on a desktop.
 

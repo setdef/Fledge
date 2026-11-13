@@ -50,7 +50,7 @@
  * Bundler 4.0.20).
  *
  * fledge_ruby_main is the main function of the Android runtime's ruby
- * program, which RbConfig.ruby names in an app (ADR 069). It is what the
+ * program, which RbConfig.ruby names in an app (ADR 083). It is what the
  * desktop's bin/ruby is (runtime/launcher/ruby_main.c): Ruby's main.c,
  * with the launcher's locale, and with the app's own program handed to
  * the app's way of starting, as fledge_relaunch hands it to the launcher

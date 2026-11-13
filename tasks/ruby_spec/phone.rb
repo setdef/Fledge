@@ -71,7 +71,7 @@ class RubySpec
       Exclusion.new(
         reason: "Every example starts ruby with options or a script, and iOS lets no app start a program " \
           "(doc/contributors/design/phone-projects.md, \"Parity on a phone\"). Android's runtime has a ruby program, " \
-          "which RbConfig.ruby names (ADR 069), and runs them.",
+          "which RbConfig.ruby names (ADR 083), and runs them.",
         phones: %w[ios], files: ["command_line"], examples: [],
       ),
       Exclusion.new(

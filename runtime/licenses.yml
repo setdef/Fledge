@@ -166,7 +166,7 @@ components:
   # libfledgeruby.a in each slice of the iOS XCFramework, and into
   # libfledgeruby.so for each ABI in the Android AAR, beside the AAR's
   # Java class and its packaging, and the Android runtime's ruby program,
-  # libfledgerubyexe.so, which links libfledgeruby.so (ADR 069).
+  # libfledgerubyexe.so, which links libfledgeruby.so (ADR 082).
   - id: fledge-embedding
     name: Fledge's embedding API, and the library and packages it is built into
     version: "{fledge_version}"

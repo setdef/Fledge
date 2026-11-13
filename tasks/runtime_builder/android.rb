@@ -67,7 +67,7 @@ class RuntimeBuilder
 
     # The runtime's ruby program in each ABI's folder of native
     # libraries, named as the package installer extracts only lib*.so
-    # (ADR 069; runtime/mobile/android.c, FLEDGE_RUBY_PROGRAM).
+    # (ADR 082; runtime/mobile/android.c, FLEDGE_RUBY_PROGRAM).
     PROGRAM = "libfledgerubyexe.so"
 
     private def edits
@@ -190,7 +190,7 @@ class RuntimeBuilder
     end
 
     # The runtime's ruby program for one ABI, PROGRAM, which RbConfig.ruby
-    # names through the link android.c makes (ADR 069): a position-
+    # names through the link android.c makes (ADR 083): a position-
     # independent executable with Ruby's main.c in libfledgeruby.so, which
     # it finds beside itself, where the package installer extracts both,
     # through its run path ($ORIGIN, which bionic expands), so that it

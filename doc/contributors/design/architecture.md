@@ -104,7 +104,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [066](../adr/066.md) | Keep Every Platform on One Ruby 4.1 Release at a Time |
 | [067](../adr/067.md) | On a phone, a bundled gem's extension keeps every symbol but its Init function to itself |
 | [068](../adr/068.md) | On a phone, a bundled gem's linked extension is found only while its gem is active |
-| [069](../adr/069.md) | On Android, the runtime carries a ruby program the installer extracts with the app's native libraries |
 | [070](../adr/070.md) | A Windows App Declares UTF-8 as Its ANSI Code Page |
 | [071](../adr/071.md) | Trunk's Full CI Runs Are Never Cancelled, and a Fast Tier Judges Every Push |
 | [072](../adr/072.md) | On a phone, a gem's Rakefile runs as RubyGems runs it, and the extensions it builds with mkmf are linked in |
@@ -113,3 +112,5 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [075](../adr/075.md) | A windowed Windows app can ship as an MSIX package, built with the Windows SDK's MakeAppx |
 | [078](../adr/078.md) | A phone app's standard streams reach the system log as they are printed, with nothing an app can read changed |
 | [081](../adr/081.md) | An app's program runs as `ruby PROGRAM` runs it, with nothing of Fledge's between |
+| [082](../adr/082.md) | On Android, the runtime carries a ruby program the installer extracts with the app's native libraries |
+| [083](../adr/083.md) | On Android, RbConfig.ruby names the ruby program through a link at the path stock Ruby derives |

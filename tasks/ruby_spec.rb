@@ -161,7 +161,7 @@ class RubySpec
     Justification.new(
       example: /\Alibrary: mkmf can be required with --enable-frozen-string-literal\z/,
       side: :app, platforms: ANDROID,
-      reason: "The example requires mkmf in the runtime's ruby program (ADR 069), and mkmf aborts where Ruby's C " \
+      reason: "The example requires mkmf in the runtime's ruby program (ADR 082), and mkmf aborts where Ruby's C " \
         "headers are missing, which a phone's app does not carry: they are for the computer that builds the app " \
         "(doc/contributors/design/phone-runtimes.md, \"Ruby's C headers on a phone\").",
     ),
@@ -170,7 +170,7 @@ class RubySpec
       side: :app, platforms: ANDROID,
       reason: "Each example writes a script into a temporary folder and runs it, and Android lets an app run no file " \
         "it writes into its own folders: \"Untrusted apps that target Android 10 cannot invoke execve() directly on " \
-        "files within the app's home directory\" (developer.android.com, Android 10 behavior changes; ADR 069), so " \
+        "files within the app's home directory\" (developer.android.com, Android 10 behavior changes; ADR 082), so " \
         "execve fails with EACCES, which Process.spawn raises and Kernel#system answers with nil, where Ruby would " \
         "run the script, or hand one with no shebang to sh. The app's ruby program runs, since the package installer " \
         "extracts it.",

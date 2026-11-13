@@ -43,13 +43,23 @@ class RubySpec
     # default formatter numbers each failure ("1)"), then prints its
     # description ending in FAILED or ERROR, after "An exception occurred
     # during: HOOK" for an error in a hook, then the message and
-    # backtrace, until the next number or "Finished in". A spec file that
-    # fails to load is one line, "An exception occurred during: loading
-    # PATH ERROR", named here by PATH inside ruby/spec, since stock Ruby
-    # and the app load ruby/spec from different folders. A run of
-    # several directories in one process, as on a phone, names each
-    # failure's directory itself (RubySpecPhoneFormatter), and is read
-    # with +directory+ nil.
+    # backtrace, until the next number or "Finished in". A run of several
+    # directories in one process, as on a phone, names each failure's
+    # directory itself (RubySpecPhoneFormatter), and is read with
+    # +directory+ nil.
+    #
+    # An error outside any example has no description of an example, so
+    # MSpec prints its one line, "An exception occurred during: WHERE
+    # ERROR" (ExceptionState#initialize, mspec/runner/exception.rb, lines
+    # 11 to 19 at MSpec 521207f, with no state): WHERE is "loading PATH"
+    # for a spec file that fails to load, a hook ("before :all", "after
+    # :all") for an error in one that runs before or after a describe's
+    # examples, or the describe's own name for an error in its body. A
+    # file that fails to load is named by PATH inside ruby/spec, since
+    # stock Ruby and the app load ruby/spec from different folders; the
+    # rest by the spec file being loaded when it happened, the backtrace's
+    # frame of "<top (required)>", and the line of that file the error
+    # came through (Results.outside).
     def self.read(directory, output)
       lines = output.b.gsub("\r\n", "\n").lines
       failures = {}
@@ -57,26 +67,47 @@ class RubySpec
         next unless line.match?(/\A\d+\)\n\z/)
 
         at = index + 1
-        description = loading(directory, lines[at].to_s.chomp)
-        at += 1 if description.nil? && lines[at].to_s.start_with?("An exception occurred during:")
-        description ||= lines[at].to_s.chomp[/\A(.*) (?:FAILED|ERROR)\z/, 1] or next
+        first = lines[at].to_s.chomp
+        during = first[/\AAn exception occurred during: (.+) (?:FAILED|ERROR)\z/, 1]
+        at += 1 if during.nil? && first.start_with?("An exception occurred during:")
         detail = lines.drop(at + 1).take_while { |rest| !rest.match?(/\A(?:\d+\)|Finished in )/) }.join
+        description = during ? outside(directory, during, detail) : lines[at].to_s.chomp[/\A(.*) (?:FAILED|ERROR)\z/, 1]
+        next unless description
+
         failures[[directory, description.dup.force_encoding(Encoding::UTF_8).scrub].compact.join(": ")] = detail
       end
       totals = lines.grep(/\A\d+ files?, \d+ examples?, /).last&.chomp
       Run.new(directory:, failures:, totals:)
     end
 
-    # "loading PATH", with PATH from where ruby/spec's +directory+ begins,
-    # when +line+ reports a spec file that failed to load, or nil. With
-    # +directory+ nil, the directory is PATH's own, named before it as a
-    # run of one directory names it.
-    def self.loading(directory, line)
-      path = line[/\AAn exception occurred during: loading (.+) ERROR\z/, 1] or return
-      return "loading #{path[%r{/spec/(#{Regexp.escape(directory)}/.+)\z}, 1] || path}" if directory
+    # The name of an error outside any example, in +during+ (WHERE, as
+    # Results.read describes it) with +detail+ its message and backtrace:
+    # "loading PATH", or "An exception occurred during: WHERE, at
+    # FILE:LINE", with FILE the spec file being loaded and LINE the line
+    # of it nearest the error, or without them when the backtrace names
+    # no spec file. Each PATH and FILE is from where ruby/spec's
+    # +directory+ begins; with +directory+ nil, the directory is FILE's
+    # own, named before it as a run of one directory names it.
+    def self.outside(directory, during, detail)
+      if (path = during[/\Aloading (.+)\z/, 1])
+        inside = inside(directory, path) or return "loading #{path}"
+        return directory ? "loading #{inside}" : "#{inside.split('/').first}: loading #{inside}"
+      end
 
-      inside = path[%r{/spec/((?:#{DIRECTORIES.join('|')})/.+)\z}, 1] or return "loading #{path}"
-      "#{inside.split('/').first}: loading #{inside}"
+      frames = detail.lines.filter_map { |frame| frame.chomp.match(/\A(.+?):(\d+):in /) }
+      file = frames.reverse_each.find { |frame| frame.post_match.include?("<top (required)>") && inside(directory, frame[1]) }
+      return "An exception occurred during: #{during}" unless file
+
+      line = frames.find { |frame| frame[1] == file[1] }[2]
+      inside = inside(directory, file[1])
+      named = "An exception occurred during: #{during}, at #{inside}:#{line}"
+      directory ? named : "#{inside.split('/').first}: #{named}"
+    end
+
+    # +path+ from where ruby/spec's +directory+, or any of DIRECTORIES
+    # when nil, begins, or nil when it is not inside one.
+    def self.inside(directory, path)
+      path[%r{/spec/((?:#{directory ? Regexp.escape(directory) : DIRECTORIES.join('|')})/.+)\z}, 1]
     end
 
     # The differences between the +stock+ and +app+ runs, Arrays of Run

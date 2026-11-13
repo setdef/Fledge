@@ -162,6 +162,40 @@ class MobileExtensionsBuildTest < Minitest::Test
     end
   end
 
+  # The ffi gem's extconf.rb appends a makefile to the one mkmf wrote,
+  # which builds its own libffi with configure, given the compiler only
+  # in the environment, and adds the library to LOCAL_LIBS. This gem's
+  # does the same with one C file: the library is built for each slice
+  # by the phone's compiler, and linked with the extension.
+  def test_a_library_an_extconf_adds_to_its_makefile_is_built_and_linked_for_each_ios_slice
+    runtimes = real_runtimes("ios")
+    gem = extconf_gem("twice", <<~RUBY, "twice.c" => <<~C, "lib.c" => "int twice_lib(int n) { return 2 * n; }\n", "lib.mk" => <<~MAKE)
+      require "mkmf"
+      create_makefile("twice/twice")
+      File.open("Makefile", "a") { |makefile| makefile.puts "include $(srcdir)/lib.mk" }
+    RUBY
+      #include <ruby.h>
+      int twice_lib(int n);
+      static VALUE twice(VALUE self, VALUE n) { return INT2FIX(twice_lib(FIX2INT(n))); }
+      void Init_twice(void) { rb_define_module_function(rb_define_module("Twice"), "twice", twice, 1); }
+    C
+      LIBTWICE = $(shell pwd)/libtwice/libtwice.a
+      LOCAL_LIBS += "$(LIBTWICE)"
+      $(OBJS): $(LIBTWICE)
+      $(LIBTWICE):
+      \tmkdir -p $(@D) && $$CC -c $(srcdir)/lib.c -o $(@D)/lib.o && $${AR:-ar} rcs $@ $(@D)/lib.o
+    MAKE
+
+    built = compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) })
+
+    platforms = built.targets.transform_values do |target|
+      library = target.archives.find { |path| File.basename(path) == "libtwice.a" } or flunk "#{target.archives} has no libtwice.a"
+      assert_includes Open3.capture2("xcrun", "nm", library).first, " T _twice_lib"
+      Open3.capture2("xcrun", "vtool", "-show-build", File.join(File.dirname(library), "lib.o")).first[/platform (\S+)/, 1]
+    end
+    assert_equal({ "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }, platforms)
+  end
+
   # examples/cmake_phone's extconf.rb runs CMake, which builds its C++
   # library from CMAKE_TOOLCHAIN_FILE for each slice (ADR 027): the
   # device's objects are for iOS and the Simulator's for the Simulator,

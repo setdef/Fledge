@@ -240,6 +240,39 @@ class MobileExtensionsTest < Minitest::Test
     assert_equal "ELF", File.read(File.join(jni, "libSDL3.so"))
   end
 
+  # The ffi gem's extconf.rb appends to the Makefile mkmf wrote a makefile
+  # that adds the libffi it builds to LOCAL_LIBS, which the extension's
+  # shared library links on a desktop, so a phone's link must take it
+  # too. Make reads the value from the whole Makefile, quotes and all,
+  # and builds nothing. Fledge compiles a phone's extensions only on a
+  # Mac or Linux, so this make is never MSYS2's, whose $(shell pwd)
+  # names a folder by a POSIX path Ruby on Windows cannot read.
+  def test_what_a_makefile_adds_to_local_libs_after_mkmf_is_linked
+    skip "Fledge compiles a phone's extensions on a Mac or Linux, never with Windows' make" if Gem.win_platform?
+
+    File.write(File.join(@dir, "Makefile"), <<~MAKE)
+      LOCAL_LIBS = ./libown.a
+      all:
+      \tfalse
+      include extra.mk
+    MAKE
+    File.write(File.join(@dir, "extra.mk"), "BUILD_DIR = $(shell pwd)\nLOCAL_LIBS += \"$(BUILD_DIR)/libffi-x\"/.libs/libffi_convenience.a\n")
+
+    libs = Fledge::MobileExtensions::Linking.local_libs({}, @dir)
+
+    here = File.realpath(@dir)
+    assert_equal %(./libown.a "#{here}/libffi-x"/.libs/libffi_convenience.a), libs
+    assert_equal [File.join(@dir, "libown.a"), "#{here}/libffi-x/.libs/libffi_convenience.a"],
+      Fledge::MobileExtensions::Linking.link_flags(libs, dir: @dir)
+  end
+
+  def test_a_makefile_make_cannot_read_is_an_error_naming_its_folder
+    File.write(File.join(@dir, "Makefile"), "include missing.mk\n")
+
+    error = assert_raises(Fledge::Error) { Fledge::MobileExtensions::Linking.local_libs({}, @dir) }
+    assert_includes error.message, "make could not read the Makefile in #{@dir}"
+  end
+
   # A C extension over a C++ library names the C++ runtime as it must on
   # a desktop, -lc++ on a Mac and -lstdc++ on Linux. Neither is the
   # runtime a phone's link takes (on Android, -lc++ is libc++_shared.so,

@@ -178,7 +178,7 @@ module Fledge
           reports = File.exist?(ENV.fetch("FLEDGE_REPORT")) ? JSON.parse(File.read(ENV.fetch("FLEDGE_REPORT"))) : []
           reports << {
             "feature" => target, "archive" => "#{File.basename(target)}.#{CONFIG['LIBEXT']}",
-            "libs" => [$libs, $LOCAL_LIBS].join(" "), "dir" => Dir.pwd
+            "libs" => $libs, "dir" => Dir.pwd
           }
           File.write(ENV.fetch("FLEDGE_REPORT"), JSON.generate(reports))
           result
@@ -520,7 +520,7 @@ module Fledge
         "CMAKE_TOOLCHAIN_FILE" => toolchain_file(slice, CMake.ios(triple:, sysroot:, cc:, cxx:)),
         **Rust.ios(slice, triple:, sysroot:),
       }
-      Target.new(name: slice, root:, arch_dir:, libdir: root, environment:, abi: nil)
+      Target.new(name: slice, root:, arch_dir:, libdir: root, environment: with_tools(environment), abi: nil)
     end
 
     # The ABI's tools: the NDK's clang of the very name the runtime was
@@ -542,7 +542,27 @@ module Fledge
         "CMAKE_TOOLCHAIN_FILE" => toolchain_file(arch, CMake.android(ndk: ndk.root, abi:, compiler:)),
         **Rust.android(arch, bin: ndk.bin, cc:, resource: resource_dir(cc, ndk)),
       }
-      Target.new(name: arch, root: tree, arch_dir:, libdir:, environment:, abi:)
+      Target.new(name: arch, root: tree, arch_dir:, libdir:, environment: with_tools(environment), abi:)
+    end
+
+    # +environment+, a target's, with the phone's tools also under the
+    # names autoconf and make read, CC, CXX, AR, and RANLIB, in place of
+    # the developer's (FOREIGN), so that a build an extension's Makefile
+    # starts is aimed at the phone too: the ffi gem's runs libffi's
+    # configure with no compiler of its own on Android
+    # (<tt>ext/ffi_c/libffi.mk</tt> at 1.17.4), as a cross build's
+    # environment names the target's compiler for rake-compiler-dock and
+    # crossenv. And no pkg-config, as the runtime's own configure is
+    # given none (PKG_CONFIG=false): pkg-config finds this computer's
+    # libraries, not the phone's, and mkmf runs it, where the phone's
+    # rbconfig.rb names none, as the environment's PKG_CONFIG names it
+    # (<tt>lib/mkmf.rb</tt>, line 1969 at Ruby 4.1.0-preview1). It found
+    # a Mac's libffi for the ffi gem, whose extconf.rb then linked the
+    # Simulator's with <tt>-lffi</tt>. A gem's
+    # <tt>--with-pkg-config</tt> option still names one.
+    private def with_tools(environment)
+      tools = %w[CC CXX AR RANLIB].to_h { |name| [name, environment["FLEDGE_#{name}"]] }.compact
+      environment.merge(tools, "PKG_CONFIG" => "false")
     end
 
     # The resource folder of the NDK's compiler +cc+, which holds the
@@ -619,7 +639,7 @@ module Fledge
       run(env, ruby, "--disable-gems", *includes, *shims.flat_map { |shim| ["-r", shim] }, extconf, *args, chdir: folder, what:)
       reports = JSON.parse(File.read(report))
       make(env, reports, folder, gem, target, what:)
-      describe(reports, folder, init, gem, target)
+      describe(reports, folder, init, gem, target, env)
     end
 
     # The builder of extensions a Rakefile builds (RakeBuild).
@@ -648,8 +668,8 @@ module Fledge
     end
 
     # What one extension's build came to, from the shim's +reports+ and
-    # the Makefile in +folder+.
-    private def describe(reports, folder, init, gem, target)
+    # the Makefile in +folder+, which make reads with +env+.
+    private def describe(reports, folder, init, gem, target, env)
       raise Error, "#{gem}'s extconf.rb called create_makefile #{reports.size} times, and Fledge links one extension for each" if reports.size != 1
 
       report = reports.first
@@ -658,7 +678,7 @@ module Fledge
       archive = File.join(folder, report.fetch("archive"))
       raise Error, "#{gem}'s extension made no #{File.basename(archive)} for #{target.name}" unless File.file?(archive)
 
-      libs = report.fetch("libs")
+      libs = "#{report.fetch('libs')} #{Linking.local_libs(env, folder)}"
       Report.new(
         feature: report.fetch("feature"), init:, archive:, flags: Linking.link_flags(libs, dir: folder),
         cxx: File.read(File.join(folder, "Makefile")).match?(/^ORIG_SRCS = .*\.(?:cc|cpp|cxx|C)(?:\s|$)/) || Linking.cxx_runtime?(libs)

@@ -205,15 +205,6 @@ class RubySpec
     ),
     Justification.new(
       examples: [
-        "library: mkmf can be required with --enable-frozen-string-literal",
-      ],
-      side: :app, platforms: ANDROID,
-      reason: "The example requires mkmf in the runtime's ruby program (ADR 082), and mkmf aborts where Ruby's C " \
-        "headers are missing, which a phone's app does not carry: they are for the computer that builds the app " \
-        "(doc/contributors/design/phone-runtimes.md, \"Ruby's C headers on a phone\").",
-    ),
-    Justification.new(
-      examples: [
         "core: Process.spawn uses the passed env['PATH'] to search the executable",
         "core: Kernel#system executes with `sh` if the command is executable but not binary and there is no shebang",
       ],

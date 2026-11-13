@@ -100,7 +100,14 @@ module FakeRuntime
     library = (phone.name == "ios") ? Fledge::Entry.file("FledgeRuby.xcframework/Info.plist", "<plist/>\n") : Fledge::Entry.file("FledgeRuby.aar", "PK aar")
     pack(path, top, [
       library,
-      *rubies.flat_map { |prefix| [*ruby("#{prefix}lib/ruby", phone), Fledge::Entry.file("#{prefix}libexec/cert.pem", "certificates\n")] },
+      *rubies.flat_map do |prefix|
+        [
+          *ruby("#{prefix}lib/ruby", phone),
+          Fledge::Entry.file("#{prefix}libexec/cert.pem", "certificates\n"),
+          Fledge::Entry.file("#{prefix}include/ruby-4.1.0+5/ruby.h", "/* ruby.h */\n"),
+        ]
+      end,
+      *((phone.name == "ios") ? [] : [Fledge::Entry.file("include/fledge_ruby.h", "/* fledge_ruby.h */\n")]),
       Fledge::Entry.file("notices/NOTICES.txt", "Fledge's runtime for #{phone}\n"),
     ])
   end

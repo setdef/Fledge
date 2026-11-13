@@ -97,7 +97,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [056](../adr/056.md) | Move Fledge to Ruby 4.1 Now, and Release 1.0 Only After Ruby 4.1.0 |
 | [057](../adr/057.md) | Name phone targets so that no desktop gem fits them |
 | [058](../adr/058.md) | On a phone, bundled gems with extensions stay gems |
-| [059](../adr/059.md) | A phone app's standard streams reach the system log line by line |
 | [061](../adr/061.md) | The phone runtime does the launcher's work, in C: `fledge_ruby_run_app` |
 | [062](../adr/062.md) | Leave export compliance to the developer |
 | [063](../adr/063.md) | Run the Bundler the Lockfile Names, as bundle exec Does |
@@ -113,4 +112,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [073](../adr/073.md) | On a phone, a gem's Rust extension is built by its own extconf.rb, as a static library, and linked in |
 | [074](../adr/074.md) | fiddle and the ffi gem work on both phones |
 | [075](../adr/075.md) | A windowed Windows app can ship as an MSIX package, built with the Windows SDK's MakeAppx |
-| [076](../adr/076.md) | A phone app's $stdout writes through as a terminal's, with $stdout.sync false |
+| [078](../adr/078.md) | A phone app's standard streams reach the system log as they are printed, with nothing an app can read changed |

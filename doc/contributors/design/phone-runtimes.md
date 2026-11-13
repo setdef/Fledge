@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Phone Runtimes
 
-This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, and what a phone runtime's licenses are. The decisions are ADR 011 (Ruby as a static library built from source), ADR 057 (target names), ADR 058 (bundled gems stay gems), ADR 067 (their extensions keep every symbol but their Init functions), ADR 059 (output to the system log), ADR 061 (`fledge_ruby_run_app`), and ADR 069 (the ruby program on Android). The projects `fledge build` writes around a runtime, and what CI checks before a store would, are `doc/contributors/design/phone-projects.md`. What a developer does with the project is in `doc/phones.md`; this document adds the internals.
+This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, and what a phone runtime's licenses are. The decisions are ADR 011 (Ruby as a static library built from source), ADR 057 (target names), ADR 058 (bundled gems stay gems), ADR 067 (their extensions keep every symbol but their Init functions), ADR 078 (output to the system log), ADR 061 (`fledge_ruby_run_app`), and ADR 069 (the ruby program on Android). The projects `fledge build` writes around a runtime, and what CI checks before a store would, are `doc/contributors/design/phone-projects.md`. What a developer does with the project is in `doc/phones.md`; this document adds the internals.
 
 ## Targets
 
@@ -123,7 +123,7 @@ fiddle is on both phones. xord/cruby leaves it out of its iOS Ruby "to pass the 
 | `fledge_ruby_run_app(root, argc, argv)` | Runs the app `fledge build` put in `root`, as the desktop launcher runs one (ADR 061). |
 | `fledge_ruby_add_extension(feature, init)` | Tells Ruby that an extension is linked in (see `doc/contributors/design/phone-projects.md`, "Registering extensions"). |
 
-`fledge_ruby_run` starts Ruby as the desktop launcher does, after Ruby's own `main.c` (`doc/contributors/design/launcher.md`): the locale, `ruby_sysinit`, then `ruby_start_main`, whose callback runs `RUBY_INIT_STACK`, `ruby_init`, and `ruby_run_node(ruby_options(...))`, with `ruby --disable=rubyopt -- SCRIPT ARGS`. Between `ruby_options` and `ruby_run_node` it registers the extensions added so far and puts `$stdout` in sync mode when descriptor 1 is not a terminal (ADR 059). Ruby's prefix is `root`, through `ruby_embed_libruby_path`, so the load path and `Gem.path` are `root/lib/ruby`, which Fledge's RubyGems defaults keep `Gem.path` to. A bare C locale becomes a UTF-8 one, with the launcher's own `fledge_coerce_locale` (ADR 041). Ruby boots once per process, so a second call returns 70 (`FLEDGE_RUBY_SOFTWARE`).
+`fledge_ruby_run` starts Ruby as the desktop launcher does, after Ruby's own `main.c` (`doc/contributors/design/launcher.md`): the locale, `ruby_sysinit`, then `ruby_start_main`, whose callback runs `RUBY_INIT_STACK`, `ruby_init`, and `ruby_run_node(ruby_options(...))`, with `ruby --disable=rubyopt -- SCRIPT ARGS`. Between `ruby_options` and `ruby_run_node` it registers the extensions added so far and gives `$stdout` a terminal's line timing when descriptor 1 is not a terminal ("Line timing", below; ADR 078). Ruby's prefix is `root`, through `ruby_embed_libruby_path`, so the load path and `Gem.path` are `root/lib/ruby`, which Fledge's RubyGems defaults keep `Gem.path` to. A bare C locale becomes a UTF-8 one, with the launcher's own `fledge_coerce_locale` (ADR 041). Ruby boots once per process, so a second call returns 70 (`FLEDGE_RUBY_SOFTWARE`).
 
 `fledge_ruby_run_app` reads `root/fledge.cfg` with the launcher's reader and runs `root/app/ENTRY`. For an app with a Gemfile it sets `BUNDLE_GEMFILE` to the app's Gemfile, whose `.bundle/config` Bundler then reads as the app's settings, and requires `bundler/setup` from Ruby's own library, or from the gem of the Bundler `fledge.cfg` names, as the desktop launcher does (`doc/contributors/design/launcher.md`, "The Bundler environment"), which sets `ENV` as `bundle exec` would (`Bundler::Runtime#setup`, `set_bundle_environment`). It returns 66 (`FLEDGE_RUBY_NO_APP`) when `fledge.cfg` or the program is missing, and 70 when the configuration is damaged or Bundler cannot set up the gems.
 
@@ -147,7 +147,7 @@ A Ruby the app starts inherits the app's environment and standard streams, so it
 
 ## Output to the system log
 
-iOS and Android discard an app's standard streams unless a debugger holds them. `fledge_ruby_forward_output` (`runtime/mobile/output.c`) makes standard output and standard error each the write end of a pipe, which a thread of its own reads line by line into the system log (ADR 059):
+iOS and Android discard an app's standard streams unless a debugger holds them. `fledge_ruby_forward_output` (`runtime/mobile/output.c`) makes standard output and standard error each the write end of a pipe, which a thread of its own reads line by line into the system log (ADR 078):
 
 - on Apple's systems, os_log with the tag as subsystem (`apple.c`);
 - on Android, logcat with the tag as tag, standard error's lines as warnings, as CPython's Android support logs them (`android.c`).

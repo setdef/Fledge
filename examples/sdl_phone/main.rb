@@ -16,8 +16,9 @@ require "sdl_demo"
 
 # Each line reaches the log as it is printed, not when the game ends:
 # standard output is a pipe on a phone, which Ruby otherwise buffers.
-# The runtimes after Fledge 0.5.0 set this themselves (ADR 059); this
-# line keeps the game's lines prompt with 0.5.0's and earlier.
+# The runtimes after Fledge 0.5.0 write each line through themselves
+# (ADR 078); this line keeps the game's lines prompt with 0.5.0's and
+# earlier.
 $stdout.sync = true
 
 # How deep Ruby recurses here before SystemStackError, through a C

@@ -369,7 +369,7 @@
   checks:
   - script
   - bundle
-- fact: "$stdout.sync"
+- fact: "$stdout writes through"
   reference:
   - "\\Afalse\\z"
   app:

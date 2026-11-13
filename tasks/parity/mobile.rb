@@ -70,11 +70,12 @@ class Parity
       reason: "A phone's Ruby is an interpreter only: iOS gives no app memory it may write code into and run, and " \
         "Ruby builds no JIT for Android (configure.ac at 4.1.0-preview1), so RubyVM::YJIT is not defined, as in any Ruby " \
         "built without YJIT. An app that turns YJIT on only where it is defined runs either way."),
-    Justification.new(fact: "$stdout.sync", reference: [/\Afalse\z/], app: [/\Atrue\z/], platforms: MOBILE,
+    Justification.new(fact: "$stdout writes through", reference: [/\Afalse\z/], app: [/\Atrue\z/], platforms: MOBILE,
       reason: "A phone has no terminal: an app's standard output is the pipe the embedding API reads into the " \
         "system log, where a developer watches the app run. Ruby writes through to a terminal but buffers a pipe " \
-        "until the program ends, so the runtime puts $stdout in sync mode, which writes each line when it is " \
-        "printed, as under ruby main.rb in a terminal, and as Briefcase's iOS host unbuffers Python's streams."),
+        "until the program ends, so the runtime has $stdout write through as to a terminal, with Ruby's own " \
+        "FMODE_TTY, as under ruby main.rb in one, and as Briefcase's iOS host unbuffers Python's streams; " \
+        "$stdout.sync and $stdout.tty? stay false, as under ruby main.rb with its output to a pipe."),
     Justification.new(fact: "gems", app: [/\A"win32-registry /], platforms: MOBILE,
       reason: "Ruby's own install puts every bundled gem it can in a Ruby it builds from source, as the phones' " \
         "runtimes are, win32-registry among them, which only Windows can use; rv-ruby's builds, which the " \

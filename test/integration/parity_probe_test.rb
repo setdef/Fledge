@@ -40,6 +40,7 @@ class ParityProbeTest < Minitest::Test
     assert_equal "42", facts.fetch("RbConfig.ruby runs")
     assert_equal "loads", facts.fetch("requireable").fetch("csv")
     assert_equal "found", facts.fetch("requireable").fetch("debug")
+    assert_equal [false, false], [facts.fetch("$stdout writes through"), facts.fetch("$stdout.sync")], "a pipe buffers"
     %w[$0 $LOAD_PATH $LOADED_FEATURES Gem.path ENV child\ ENV Encoding.default_external RUBY_DESCRIPTION].each do |fact|
       assert facts.key?(fact), fact
     end

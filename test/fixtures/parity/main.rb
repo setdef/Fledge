@@ -15,8 +15,9 @@
 #
 # With no command, it prints one line, "FLEDGE-PARITY " followed by a
 # JSON object of facts: the globals an app sees, what is loaded and
-# loadable, RubyGems' paths, the encodings, the environment, what
-# require "openssl" adds to it, and what a child Ruby sees. Under Bundler (bundle exec, or a built app with a
+# loadable, RubyGems' paths, the encodings, whether $stdout writes
+# through or buffers, the environment, what require "openssl" adds to
+# it, and what a child Ruby sees. Under Bundler (bundle exec, or a built app with a
 # Gemfile) it also reports the environment Bundler recorded as the one it
 # started from, and what a child Ruby sees inside
 # Bundler.with_original_env and Bundler.with_unbundled_env, which is how
@@ -145,6 +146,35 @@ def main_bundle
   identifier.null? ? nil : message.call(identifier, selector.call("UTF8String")).to_s
 end
 
+# Collects what Ruby warns, in place of $stderr.
+class Warnings
+  attr_reader :text
+
+  def initialize
+    @text = +""
+  end
+
+  def write(*strings)
+    strings.each { |string| @text << string.to_s }
+  end
+end
+
+# Whether $stdout has written what it was given, rather than buffered
+# it: Ruby warns when IO#syswrite would pass bytes still in the buffer.
+# It writes a newline to learn it.
+def stdout_writes_through
+  verbose = $VERBOSE
+  stderr = $stderr
+  $VERBOSE = false
+  $stderr = Warnings.new
+  $stdout.write("\n")
+  $stdout.syswrite("")
+  !$stderr.text.include?("syswrite for buffered IO")
+ensure
+  $VERBOSE = verbose
+  $stderr = stderr
+end
+
 # +value+ with every string as valid UTF-8, for JSON: a path read in a C
 # locale is US-ASCII with bytes outside it, which is itself what a
 # restart compares, in "encoding".
@@ -241,6 +271,7 @@ else
   before = ENV.to_h
   require "openssl"
   report["ENV from require 'openssl'"] = ENV.to_h.reject { |name, value| before[name] == value }
+  report["$stdout writes through"] = stdout_writes_through
   # Last, since requiring changes $LOADED_FEATURES.
   report["requireable"] = Gem::Specification.to_h { |spec| [spec.name, requireable(spec)] }.sort.to_h
   # In a C locale, ARGV and paths outside ASCII are US-ASCII strings with

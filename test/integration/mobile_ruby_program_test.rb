@@ -45,11 +45,20 @@ class MobileRubyProgramTest < Minitest::Test
   C
 
   # What each script prints: its $0 relative to the root, its ARGV,
-  # whether RUBYOPT's -rdate was taken, and whether $stdout writes each
-  # line as it is printed.
+  # whether RUBYOPT's -rdate was taken, whether $stdout writes each line
+  # as it is printed, rather than buffering it (Ruby warns when
+  # IO#syswrite passes buffered bytes), and its sync and tty? as Ruby
+  # answers them.
   REPORT = <<~'RUBY'
     root = File.realpath(File.join(__dir__, ".."))
-    print [$0.delete_prefix("#{root}/"), ARGV, defined?(Date) ? "rubyopt" : "no rubyopt", $stdout.sync].inspect
+    require "stringio"
+    $VERBOSE = false
+    warnings, $stderr = $stderr, StringIO.new
+    $stdout.write(" ")
+    $stdout.syswrite("")
+    through = !$stderr.string.include?("buffered IO")
+    $stderr = warnings
+    print [$0.delete_prefix("#{root}/"), ARGV, defined?(Date) ? "rubyopt" : "no rubyopt", through, $stdout.sync, $stdout.tty?].inspect
   RUBY
 
   def setup
@@ -72,22 +81,22 @@ class MobileRubyProgramTest < Minitest::Test
   end
 
   def test_the_apps_program_runs_as_the_host_runs_it
-    assert_equal '["app/main.rb", ["one", "two"], "no rubyopt", true]', run_program(File.join(@root, "app", "main.rb"), "one", "two")
+    assert_equal ' ["app/main.rb", ["one", "two"], "no rubyopt", true, false, false]', run_program(File.join(@root, "app", "main.rb"), "one", "two")
   end
 
   def test_the_apps_program_by_a_relative_path_or_a_link_runs_as_the_host_runs_it
     File.symlink(File.join(@root, "app", "main.rb"), File.join(@dir, "link.rb"))
 
-    assert_equal '["app/main.rb", [], "no rubyopt", true]', run_program("root/app/main.rb", chdir: @dir)
-    assert_equal '["app/main.rb", [], "no rubyopt", true]', run_program("link.rb", chdir: @dir)
+    assert_equal ' ["app/main.rb", [], "no rubyopt", true, false, false]', run_program("root/app/main.rb", chdir: @dir)
+    assert_equal ' ["app/main.rb", [], "no rubyopt", true, false, false]', run_program("link.rb", chdir: @dir)
   end
 
   def test_another_script_runs_as_plain_ruby
-    assert_equal '["app/other.rb", ["one"], "rubyopt", false]', run_program(File.join(@root, "app", "other.rb"), "one")
+    assert_equal ' ["app/other.rb", ["one"], "rubyopt", false, false, false]', run_program(File.join(@root, "app", "other.rb"), "one")
   end
 
   def test_an_option_before_the_apps_program_runs_it_as_plain_ruby
-    assert_equal '["app/main.rb", [], "rubyopt", false]', run_program("-W0", File.join(@root, "app", "main.rb"))
+    assert_equal ' ["app/main.rb", [], "rubyopt", false, false, false]', run_program("-W0", File.join(@root, "app", "main.rb"))
   end
 
   def test_ruby_options_run_as_ruby_runs_them
@@ -97,7 +106,7 @@ class MobileRubyProgramTest < Minitest::Test
   def test_without_a_fledge_cfg_the_apps_program_runs_as_plain_ruby
     File.delete(File.join(@root, "fledge.cfg"))
 
-    assert_equal '["app/main.rb", [], "rubyopt", false]', run_program(File.join(@root, "app", "main.rb"))
+    assert_equal ' ["app/main.rb", [], "rubyopt", false, false, false]', run_program(File.join(@root, "app", "main.rb"))
   end
 
   # The runtime's CA certificates are found as rv-ruby's Ruby finds its

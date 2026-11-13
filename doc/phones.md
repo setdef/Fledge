@@ -125,7 +125,7 @@ What follows holds on a OnePlus Nord with Android 14 (API 34).
 
 ### On both
 
-- **No terminal.** An app's standard output goes to the system log. Fledge puts `$stdout` in sync mode so each line appears as it prints, where a desktop program writing to a pipe buffers. Standard input is at its end, and the working directory is `/`.
+- **No terminal.** An app's standard output goes to the system log. Fledge has `$stdout` write each line as it prints, as Ruby writes to a terminal, where a desktop program writing to a pipe buffers; `$stdout.sync` and `$stdout.tty?` stay false, as under `ruby main.rb` with its output to a pipe. Standard input is at its end, and the working directory is `/`.
 - **A read-only bundle.** On a device the app's own folder cannot be written to (it can in the Simulator). Write under `Dir.home` or `Dir.tmpdir`.
 - **No JIT.** `RubyVM::YJIT` is not defined. Guard its use with `defined?(RubyVM::YJIT)`.
 - **Stopped in the background.** The system may stop an app that is not in front without running `at_exit`. Save what matters as you go.

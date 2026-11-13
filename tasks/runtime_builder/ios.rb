@@ -42,14 +42,15 @@ class RuntimeBuilder
     # which iOS's -fvisibility=hidden hides), and Apple's nmedit makes
     # every global but the Init function local (nmedit(1), -s). fiddle's
     # object takes in the libffi it links (-lffi, from the folder
-    # --with-libffi-dir names), so that libffi's symbols are local to it
+    # --with-libffi-dir puts in the Makefile's LIBPATH; the Makefile has
+    # no LDFLAGS, only ldflags), so that libffi's symbols are local to it
     # too, as Android's library keeps them to itself (--exclude-libs): an
     # app whose gem links a libffi of its own, as the ffi gem does, gets
     # no second definition of any (#library leaves libffi.a out).
     private def relocatable
       nmedit = @builder.capture("xcrun", "--find", "nmedit").strip
       [
-        "$(CC) -r -nostdlib -Wl,-keep_private_externs -o $@ $(FLEDGE_OBJS) $(filter -L%,$(LDFLAGS)) $(filter -lffi,$(LIBS))",
+        "$(CC) -r -nostdlib -Wl,-keep_private_externs -o $@ $(FLEDGE_OBJS) $(filter -L%,$(LIBPATH) $(ldflags)) $(filter -lffi,$(LIBS))",
         "echo _$(FLEDGE_INIT) > $@.keep",
         "#{nmedit} -s $@.keep $@",
       ]

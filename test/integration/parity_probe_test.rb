@@ -45,6 +45,22 @@ class ParityProbeTest < Minitest::Test
     end
   end
 
+  # rv-ruby's openssl.rb names the CA certificates it carries in ENV as
+  # openssl loads, and so do the phones' (RuntimeBuilder::Certificates),
+  # so the probe reports what require "openssl" adds to ENV, here from
+  # an openssl.rb that stands in for one.
+  def test_the_probe_reports_what_requiring_openssl_adds_to_env
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "openssl.rb"), "ENV['FLEDGE_PROBE_CERTIFICATES'] = 'named'\n")
+      out, err, status = probe(env: { "RUBYLIB" => dir })
+
+      assert_predicate status, :success?, err
+      facts = Parity::Reports.report(out)
+      assert_equal({ "FLEDGE_PROBE_CERTIFICATES" => "named" }, facts.fetch("ENV from require 'openssl'"))
+      refute facts.fetch("ENV").key?("FLEDGE_PROBE_CERTIFICATES")
+    end
+  end
+
   # In a C locale an argument outside ASCII is a US-ASCII string with
   # bytes outside it; the probe still reports. Windows has no C locale:
   # Ruby takes its locale from the console's code page, never from

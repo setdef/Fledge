@@ -15,8 +15,8 @@
 #
 # With no command, it prints one line, "FLEDGE-PARITY " followed by a
 # JSON object of facts: the globals an app sees, what is loaded and
-# loadable, RubyGems' paths, the encodings, the environment, and what a
-# child Ruby sees. Under Bundler (bundle exec, or a built app with a
+# loadable, RubyGems' paths, the encodings, the environment, what
+# require "openssl" adds to it, and what a child Ruby sees. Under Bundler (bundle exec, or a built app with a
 # Gemfile) it also reports the environment Bundler recorded as the one it
 # started from, and what a child Ruby sees inside
 # Bundler.with_original_env and Bundler.with_unbundled_env, which is how
@@ -235,6 +235,12 @@ when "restarted"
   puts(changed.empty? ? "restarted as itself" : changed.map { |key| "#{key}: #{before[key].inspect} became #{after[key].inspect}" })
 else
   report = facts
+  # After the facts, since requiring changes $LOADED_FEATURES and ENV:
+  # what require "openssl" adds to ENV, as openssl.rb names the CA
+  # certificates OpenSSL is to read.
+  before = ENV.to_h
+  require "openssl"
+  report["ENV from require 'openssl'"] = ENV.to_h.reject { |name, value| before[name] == value }
   # Last, since requiring changes $LOADED_FEATURES.
   report["requireable"] = Gem::Specification.to_h { |spec| [spec.name, requireable(spec)] }.sort.to_h
   # In a C locale, ARGV and paths outside ASCII are US-ASCII strings with

@@ -100,10 +100,26 @@ class MobileRubyProgramTest < Minitest::Test
     assert_equal '["app/main.rb", [], "rubyopt", false]', run_program(File.join(@root, "app", "main.rb"))
   end
 
-  # Runs the program as ruby ARGS, with RUBYOPT=-rdate and standard
-  # output a pipe, and returns what it printed, failing unless it exited 0.
-  private def run_program(*, chdir: @dir)
-    out, err, status = Open3.capture3({ "RUBYOPT" => "-rdate" }, @host, @root, "ruby", *, chdir:)
+  # The runtime's CA certificates are found as rv-ruby's Ruby finds its
+  # own, by openssl.rb as openssl loads (RuntimeBuilder::Certificates),
+  # so an app's ENV holds nothing the system did not give it: neither the
+  # app's program nor a Ruby it starts sees an SSL_CERT_FILE of the
+  # runtime's.
+  def test_the_runtimes_certificates_add_nothing_to_env
+    FileUtils.mkdir_p(File.join(@root, "libexec"))
+    File.write(File.join(@root, "libexec", "cert.pem"), "")
+    File.write(File.join(@root, "app", "main.rb"), 'print ENV.fetch("SSL_CERT_FILE", "unset")')
+    unset = { "SSL_CERT_FILE" => nil }
+
+    assert_equal "unset", run_program(File.join(@root, "app", "main.rb"), env: unset)
+    assert_equal "unset", run_program("-e", 'print ENV.fetch("SSL_CERT_FILE", "unset")', env: unset)
+  end
+
+  # Runs the program as ruby ARGS, with RUBYOPT=-rdate and +env+, and
+  # standard output a pipe, and returns what it printed, failing unless
+  # it exited 0.
+  private def run_program(*, chdir: @dir, env: {})
+    out, err, status = Open3.capture3({ "RUBYOPT" => "-rdate" }.merge(env), @host, @root, "ruby", *, chdir:)
     assert_predicate status, :success?, err
     out
   end

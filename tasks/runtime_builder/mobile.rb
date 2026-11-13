@@ -200,6 +200,7 @@ class RuntimeBuilder
       gems = File.join(ruby, "gems", RuntimeBuilder.ruby_abi(ruby))
       BundledExtensions.check_installed(gems, @kept, platform: target.ruby_platform, api: @extension_api.to_s)
       Pruning.prune(ruby, @builder.bundled_gems)
+      Certificates.point_openssl_rb(ruby)
       @builder.install_rubygems_defaults(ruby)
     end
 
@@ -325,12 +326,15 @@ class RuntimeBuilder
     end
 
     # OpenSSL with its own target for the platform, no shared library, no
-    # programs, tests, or documents, and no loadable modules.
+    # programs, tests, or documents, and no loadable modules, reading its
+    # CA certificates from the variable rv-ruby's OpenSSL reads them from
+    # (Certificates).
     private def build_openssl(target)
       prefix = File.join(@build_dir, target.name, "openssl")
       return prefix if File.file?(File.join(prefix, "lib", "libssl.a"))
 
       source = unpack(pin("openssl"), "#{target.name}-openssl")
+      Certificates.rename_variable(source)
       logged("#{target.name}-openssl-configure", "./Configure", target.openssl, "no-shared", "no-tests", "no-apps", "no-docs",
         "no-module", *openssl_options(target), "--prefix=#{prefix}", "--libdir=lib", chdir: source, env: openssl_environment(target))
       logged("#{target.name}-openssl-make", "make", "-j#{Etc.nprocessors}", "build_libs", chdir: source, env: openssl_environment(target))
@@ -340,7 +344,7 @@ class RuntimeBuilder
 
     # Copies the pinned CA certificates into the folder +libexec+ as
     # cert.pem, where a desktop runtime keeps rv-ruby's copy of the same
-    # file and the embedding API points OpenSSL (SSL_CERT_FILE).
+    # file and openssl.rb points OpenSSL (Certificates).
     private def copy_certificates(libexec)
       certificates = pin("ca-certificates")
       FileUtils.mkdir_p(libexec)

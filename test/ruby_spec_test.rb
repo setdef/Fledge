@@ -113,7 +113,7 @@ class RubySpecTest < Minitest::Test
     failures_by_side.transform_values do |failures|
       [
 RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| ["core: #{name}", ""] },
-  totals: "1 file, 0 examples, 0 expectations", listing: RubySpec::Listing.new(examples: {}, denied: {}, count: 0)),
+  totals: "1 file, 0 examples, 0 expectations", listing: RubySpec::Listing.new(examples: [], denied: {}, count: 0)),
 ]
     end
   end
@@ -124,7 +124,7 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
   # +denied+.
   def listed(directory, examples, denied: {}, failures: {})
     lines = ["ruby/spec listing: begin"]
-    examples.each { |file, guards, description| lines.push("@ #{file}", "=#{guards.join(',')} #{description}") }
+    examples.each { |file, guards, location, description| lines.push("@ #{file}", "=#{guards.join(',')} #{location} #{description}") }
     denied.each { |location, name| lines << "- #{location} #{name}" }
     lines << "ruby/spec listing: #{examples.size} examples"
     totals = "1 file, #{examples.size} examples, 1 expectation, #{failures.size} failures, 0 errors, 0 tagged"
@@ -137,19 +137,34 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
     differences.first
   end
 
-  GROUPS = ["core/process/groups_spec.rb", ["core/process/groups_spec.rb:4"], "Process.groups gets an Array of the gids"].freeze
-  EACH = ["core/array/each_spec.rb", [], "Array#each yields each element"].freeze
+  GROUPS = [
+    "core/process/groups_spec.rb", ["core/process/groups_spec.rb:4"], "core/process/groups_spec.rb:5", "Process.groups gets an Array of the gids"
+  ].freeze
+  EACH = ["core/array/each_spec.rb", [], "core/array/each_spec.rb:9", "Array#each yields each element"].freeze
 
   def test_a_listing_names_each_example_by_its_directory_and_counts_them
     run = listed(nil, [GROUPS, EACH], denied: { "core/process/groups_spec.rb:33" => "platform_is aix" })
 
-    assert_equal ["core: Process.groups gets an Array of the gids", "core: Array#each yields each element"], run.listing.examples.keys
-    assert_equal ["core/process/groups_spec.rb:4"], run.listing.examples.fetch("core: Process.groups gets an Array of the gids").first.guards
+    assert_equal ["core: Process.groups gets an Array of the gids", "core: Array#each yields each element"], run.listing.examples.map(&:name)
+    assert_equal ["core/process/groups_spec.rb:4"], run.listing.examples.first.guards
+    assert_equal "core/process/groups_spec.rb:5", run.listing.examples.first.location
     assert_equal({ "core/process/groups_spec.rb:33" => "platform_is aix" }, run.listing.denied)
     assert run.listing.complete?(run)
     refute run.listing.complete?(run.with(totals: "1 file, 3 examples, 1 expectation")), "the totals count one more"
-    lost = RubySpec::Results.read(nil, "1 file, 2 examples, 0 expectations\nruby/spec listing: begin\n@ core/a_spec.rb\n= A\n")
+    lost = RubySpec::Results.read(nil, "1 file, 2 examples, 0 expectations\nruby/spec listing: begin\n@ core/a_spec.rb\n= - A\n")
     refute lost.listing.complete?(lost), "a listing that never ended"
+  end
+
+  # A description holds what the spec inspected as it loaded, which the
+  # locale changes: in run 43350707323 on x86_64-linux, stock Ruby with
+  # no locale named Symbol#inspect's example for :ê as :"ê". The
+  # two sides' examples are matched by their block's file and line.
+  def test_an_example_the_locale_names_differently_is_the_same_example
+    symbol = ["core/symbol/inspect_spec.rb", [], "core/symbol/inspect_spec.rb:110", "Symbol#inspect returns self as a symbol literal for "]
+    stock = listed("core", [symbol.dup.tap { |example| example[3] += ':"ê"' }])
+    app = listed("core", [symbol.dup.tap { |example| example[3] += ":ê" }])
+
+    assert_empty RubySpec::Results.compare([stock], [app], platform: "x86_64-linux")
   end
 
   # Run 43313316095 ran 33 fewer examples in iOS's app than in stock
@@ -190,6 +205,18 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
 
     assert_equal ["fails in the built app only: core: An exception occurred during: before :all, at core/process/groups_spec.rb:9"],
       differences.map { |d| d.to_s.lines.first.chomp.delete_prefix("DIFFERENT: ") }
+  end
+
+  # Logcat dropped a fifth of the listing an Android emulator's app
+  # printed in run 43350707323, so a phone's run writes it to a file and
+  # prints where, and the comparison reads it from there.
+  def test_a_phones_listing_is_read_from_the_file_it_names
+    output = "1 file, 1 example, 1 expectation, 0 failures, 0 errors, 0 tagged\nruby/spec listing: in /data/user/0/a/cache/l.txt\n"
+    listing = "ruby/spec listing: begin\n@ core/array/each_spec.rb\n= core/array/each_spec.rb:9 Array#each yields\nruby/spec listing: 1 examples\n"
+
+    run = RubySpec::Results.read(nil, RubySpec::Phone.listed(output) { |path| (path == "/data/user/0/a/cache/l.txt") ? listing : "" })
+    assert run.listing.complete?(run)
+    assert_equal "1 file\n", RubySpec::Phone.listed("1 file\n") { raise "no file to read" }
   end
 
   def test_a_run_with_no_listing_or_one_that_does_not_add_up_is_a_difference

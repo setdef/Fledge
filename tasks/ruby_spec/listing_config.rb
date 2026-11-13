@@ -14,18 +14,25 @@
 # one a guard of ruby/spec's left out on one side, or one in a file or
 # describe whose error kept it from running there. So when the run
 # finishes, after MSpec's totals, the formatter prints every example
-# that ran, as TallyAction counts them (each :example event, so the
+# MSpec counted, as TallyAction counts them (each :example event, and
+# each :tagged one, for an example a filter such as -E left out, so the
 # count matches the totals' "N examples"), under the spec file it ran
-# in, with the guards that enclosed it where it was defined, and every
-# guard that left its block out, each by the file and line of its block
-# and what MSpec names it in its reports (SpecGuard#report_key):
+# in: the guards that enclosed it where it was defined, the file and
+# line of its block, and its description. Then every guard that left
+# its block out, each by the file and line of its block and what MSpec
+# names it in its reports (SpecGuard#report_key):
 #
 #   ruby/spec listing: begin
 #   @ core/array/each_spec.rb
-#   = Array#each yields each element to the block
-#   =core/process/groups_spec.rb:3,core/process/groups_spec.rb:5 Process.groups gets an Array
+#   = core/array/each_spec.rb:12 Array#each yields each element to the block
+#   =core/process/groups_spec.rb:3,core/process/groups_spec.rb:5 core/process/groups_spec.rb:6 Process.groups gets an Array
 #   - core/process/groups_spec.rb:5 platform_is_not android
 #   ruby/spec listing: 32681 examples
+#
+# The block's line, not the description, is what the comparison matches
+# the two sides' examples by: a description holds what the spec
+# inspected as it loaded, which the locale changes, as String#inspect
+# escapes a character the default external encoding cannot show.
 #
 # A guard is MSpec's: a SpecGuard's run_if or run_unless with a block,
 # as platform_is and ruby_version_is call them, or the guard and
@@ -42,6 +49,13 @@ module RubySpecListing
   # Where mspec-run runs, ruby/spec's folder, as it is named and as it
   # is resolved, in lower case, since Windows names a drive either way.
   SPEC = [Dir.pwd, File.realpath(Dir.pwd)].map { |folder| "#{folder.tr('\\', '/').downcase}/" }.uniq.freeze
+
+  # Where to write the listing, when RUBY_SPEC_LISTING names a file, as
+  # main.rb has it on a phone, whose log drops lines when a process
+  # writes tens of thousands at once; the formatter then prints only
+  # "ruby/spec listing: in PATH". Read as MSpec starts, before any
+  # example changes ENV.
+  FILE = ENV.fetch("RUBY_SPEC_LISTING", nil)
 
   # ruby/spec's own folders, which a path inside it begins with.
   FOLDERS = %w[language core library command_line security shared fixtures optional].freeze
@@ -133,6 +147,7 @@ module RubySpecListing
     MSpec.register :load, self
     MSpec.register :add, self
     MSpec.register :example, self
+    MSpec.register :tagged, self
     @ran = []
   end
 
@@ -149,21 +164,33 @@ module RubySpecListing
   # As each example has run.
   def example(state, _block)
     guards = state.instance_variable_get(:@ruby_spec_guards) || []
-    @ran << [RubySpecListing.relative(MSpec.file), guards.join(","), state.description.gsub("\n", "\\n")]
+    block = state.example&.source_location
+    location = block ? "#{RubySpecListing.relative(block[0])}:#{block[1]}" : "-"
+    @ran << [RubySpecListing.relative(MSpec.file), guards.join(","), location, state.description.gsub("\n", "\\n")]
+  end
+
+  # As each example a filter left out is counted.
+  def tagged(state)
+    example(state, nil)
   end
 
   def finish
     super
     file = nil
     lines = ["ruby/spec listing: begin\n"]
-    @ran.each do |path, guards, description|
+    @ran.each do |path, guards, location, description|
       lines << "@ #{path}\n" unless path == file
       file = path
-      lines << "=#{guards} #{description}\n"
+      lines << "=#{guards} #{location} #{description}\n"
     end
     RubySpecListing.denied.each { |location, name| lines << "- #{location} #{name}\n" }
     lines << "ruby/spec listing: #{@ran.size} examples\n"
-    print(*lines)
+    if RubySpecListing::FILE
+      File.binwrite(RubySpecListing::FILE, lines.join)
+      print "ruby/spec listing: in #{RubySpecListing::FILE}\n"
+    else
+      print(*lines)
+    end
   end
 end
 

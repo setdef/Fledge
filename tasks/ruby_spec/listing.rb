@@ -6,43 +6,49 @@
 #++
 
 class RubySpec
-  # The examples a run of mspec-run ran, as listing_config.rb prints
+  # The examples a run of mspec-run counted, as listing_config.rb prints
   # them after the totals, and the comparison of two runs' lists: each
   # example that ran on one side only, and what explains it.
   #
-  # +examples+ maps each example's directory and description, named as
-  # Results names a failure, to where it ran each time: the spec file
-  # and the locations of the guards that enclosed it. +denied+ maps the
-  # location of each guard that left its block out to its name, as
-  # "platform_is_not android". +count+ is the number the list ends with,
-  # or nil when it never ended, or held a line it should not, as when a
-  # log loses or splits a line.
+  # +examples+ holds each example as it ran (Ran), in order. +denied+
+  # maps the location of each guard that left its block out to its name,
+  # as "platform_is_not android". +count+ is the number the list ends
+  # with, or nil when it never ended, or held a line it should not, as
+  # when a log loses or splits a line.
   class Listing < Data.define(:examples, :denied, :count)
     BEGIN_LINE = "ruby/spec listing: begin\n"
     END_LINE = %r{\Aruby/spec listing: (\d+) examples\n\z}
 
-    # An occurrence of an example: the spec +file+ it ran in, and the
-    # locations of the +guards+ that enclosed it.
-    class Ran < Data.define(:file, :guards)
+    # An example as it ran: its +name+, its directory and description as
+    # Results names a failure, the spec +file+ it ran in, the +location+
+    # of its block ("-" for none), and the locations of the +guards+ that
+    # enclosed it.
+    class Ran < Data.define(:name, :file, :location, :guards)
+      # What the two sides' examples are matched by: the block's file
+      # and line, which hold for both sides where a description may not.
+      def key
+        [file, (location == "-") ? name : location]
+      end
     end
 
     # The listing in +lines+, mspec-run's output for +directory+ (nil
     # for a phone's run of every directory), or nil when it has none.
     def self.read(directory, lines)
       start = lines.rindex(BEGIN_LINE) or return
-      examples = Hash.new { |hash, name| hash[name] = [] }
+      examples = []
       denied = {}
       file = nil
       lines.drop(start + 1).each do |line|
-        if (ended = line[END_LINE, 1])
+        line = line.chomp.dup.force_encoding(Encoding::UTF_8).scrub
+        if (ended = "#{line}\n"[END_LINE, 1])
           return new(examples:, denied:, count: ended.to_i)
         elsif line.start_with?("@ ")
-          file = line.delete_prefix("@ ").chomp.force_encoding(Encoding::UTF_8)
+          file = line.delete_prefix("@ ")
         elsif line.start_with?("=") && file
-          guards, description = line.delete_prefix("=").chomp.split(/ /, 2)
-          name = "#{directory || file.split('/').first}: #{description.to_s.dup.force_encoding(Encoding::UTF_8).scrub}"
-          examples[name] << Ran.new(file:, guards: guards.to_s.split(","))
-        elsif (denial = line.chomp.match(/\A- (\S+) (.+)\z/))
+          guards, location, description = line.delete_prefix("=").split(/ /, 3)
+          examples << Ran.new(name: "#{directory || file.split('/').first}: #{description}", file:, location:,
+            guards: guards.split(","))
+        elsif (denial = line.match(/\A- (\S+) (.+)\z/))
           denied[denial[1]] = denial[2]
         else
           break
@@ -54,7 +60,7 @@ class RubySpec
     # Whether the list ended, and holds as many examples as it says and
     # as the +run+'s totals count.
     def complete?(run)
-      !count.nil? && examples.sum { |_, ran| ran.size } == count && run.examples == count
+      !count.nil? && examples.size == count && run.examples == count
     end
 
     # The differences between the examples the +stock+ and +app+ Runs of
@@ -88,28 +94,32 @@ class RubySpec
       end
 
       { stock: [stock, app], app: [app, stock] }.flat_map do |side, (ran, other)|
-        ran.listing.only(other.listing).flat_map do |name, missing|
-          missing.filter_map { |occurrence| other.listing.explain(name, occurrence, other, side, failing:, platform:) }
+        ran.listing.only(other.listing).filter_map do |occurrence|
+          other.listing.explain(occurrence, other, side, failing:, platform:)
         end
       end.then { |differences| group(differences) }
     end
 
-    # Each example this listing holds more often than +other+, mapped to
-    # the occurrences +other+ lacks.
+    # The examples this listing ran that +other+ did not: for each
+    # example's block, those beyond as many as +other+ ran, matched first
+    # by name and then by guards.
     def only(other)
-      examples.filter_map do |name, ran|
-        missing = ran.dup
-        other.examples.fetch(name, []).each do |occurrence|
-          index = missing.index(occurrence) || (missing.size - 1)
+      theirs = other.examples.group_by(&:key)
+      examples.group_by(&:key).flat_map do |key, mine|
+        missing = mine.dup
+        theirs.fetch(key, []).each do |occurrence|
+          index = missing.index { |ran| ran.name == occurrence.name } || missing.index { |ran| ran.guards == occurrence.guards } ||
+            (missing.size - 1)
           missing.delete_at(index) unless index.negative?
         end
-        [name, missing] unless missing.empty?
+        missing
       end
     end
 
-    # The difference, if any, that the example +name+, which ran on
-    # +side+ as +occurrence+ and not in +run+, this listing's run, is.
-    def explain(name, occurrence, run, side, failing:, platform:)
+    # The difference, if any, that +occurrence+, which ran on +side+ and
+    # not in +run+, this listing's run, is.
+    def explain(occurrence, run, side, failing:, platform:)
+      name = occurrence.name
       other_side = (side == :stock) ? :app : :stock
       return if run.failures.key?(name)
       return if failing.any? { |difference| difference.side == other_side && Listing.file(difference.name) == occurrence.file }
@@ -123,7 +133,7 @@ class RubySpec
 
       detail = left_out.map { |location| "left out by #{denied.fetch(location)} at #{location} in #{Results::Difference::SIDES.fetch(other_side)}\n" }
       justification = JUSTIFIED.find { |candidate| candidate.explains?(name, side, platform, :runs) }
-      Results::Difference.new(name:, side:, kind: :runs, detail: "in #{occurrence.file}\n#{detail.join}", justification:)
+      Results::Difference.new(name:, side:, kind: :runs, detail: "at #{occurrence.location} in #{occurrence.file}\n#{detail.join}", justification:)
     end
 
     # The spec file a difference of :fails names when it is a file that

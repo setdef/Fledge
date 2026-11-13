@@ -200,6 +200,17 @@ class RubySpec
       "#{entries.grep_v(MobileParity::STATUS).join("\n")}\n"
     end
 
+    # +output+, with the listing of the examples it ran in its place: a
+    # phone's run writes it to a file, whose path it prints (main.rb,
+    # listing_config.rb), since a phone's log drops lines when a process
+    # writes tens of thousands at once, as logcat dropped a fifth of the
+    # listing on an Android emulator in run 43350707323. The block
+    # returns the file's contents, read where the run wrote it.
+    def self.listed(output)
+      path = output[%r{^ruby/spec listing: in (.+)$}, 1] or return output
+      "#{output}#{yield(path.chomp)}"
+    end
+
     def initialize(phone, runtimes: ENV.fetch("FLEDGE_RUNTIME_DIR", File.join(ROOT, "tmp", "runtime")),
       work: File.join(ROOT, "tmp", "ruby-spec-#{phone}-work"), out: ENV.fetch("RUBY_SPEC_OUT", File.join(ROOT, "tmp", "ruby-spec-#{phone}")),
       log: $stdout
@@ -248,7 +259,11 @@ class RubySpec
       emulator = MobileParity::Android.new(work: @work, out: @log)
       system("adb", "logcat", "-G", "16M", exception: true)
       system("adb", "install", "-r", apk_path, exception: true)
-      compare(emulator.launch(app, timeout: TIMEOUT).output, emulator.target, emulator.device)
+      compare(emulator.launch(app, timeout: TIMEOUT).output, emulator.target, emulator.device) do |path|
+        # As the app, whose files the shell may not read; a debug APK
+        # lets run-as do that.
+        IO.popen(["adb", "exec-out", "run-as", IDENTIFIER, "cat", path], "rb", &:read)
+      end
     end
 
     # The project's two copies, one for stock Ruby and one to build, in
@@ -286,7 +301,7 @@ class RubySpec
       FileUtils.mkdir_p(parity)
       ruby = Parity.new(platform:, work: parity, runtimes: @runtimes, out: @log).unpack_reference
       project = File.join(@work, "reference", "ruby_spec")
-      env = environment("stock").merge("LANG" => "en_US.UTF-8")
+      env = environment("stock").merge("LANG" => "en_US.UTF-8", "RUBY_SPEC_LISTING" => File.join(@out, "stock-listing.txt"))
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       pid = Process.spawn(env, ruby, "main.rb", chdir: project, unsetenv_others: true, out: stock_path, err: stock_error_path, in: File::NULL)
       Process.wait(pid)
@@ -297,10 +312,10 @@ class RubySpec
     # Compares the app's run on +device+, of the platform +target+, from
     # its log +entries+, with stock Ruby's, prints and records the
     # differences, and returns whether every one is justified.
-    private def compare(entries, target, device)
-      output = Phone.output(entries)
+    private def compare(entries, target, device, &app_file)
+      output = Phone.listed(Phone.output(entries), &app_file || -> (path) { File.binread(path) })
       File.binwrite(File.join(@out, "#{device.gsub(/[^\w.-]+/, '-')}.out"), output)
-      stock_output = File.binread(stock_path)
+      stock_output = Phone.listed(File.binread(stock_path)) { |path| File.binread(path) }
       unless Phone.ruby(output) == Phone.ruby(stock_output)
         raise "the app runs Ruby #{Phone.ruby(output)}, but stock Ruby is #{Phone.ruby(stock_output)}"
       end

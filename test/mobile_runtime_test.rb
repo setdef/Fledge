@@ -167,6 +167,25 @@ class MobileRuntimeTest < Minitest::Test
     refute RuntimeBuilder::IOS.method_defined?(:jit_options, false) || RuntimeBuilder::IOS.private_method_defined?(:jit_options, false)
   end
 
+  # The builtin binary the build machine's miniruby writes holds the
+  # builtins it loaded, and a Ruby without YJIT never loads yjit.rb,
+  # which a Ruby with YJIT then cannot find at boot ("[BUG]
+  # builtin_lookup: can not find yjit"), so that miniruby is built with
+  # the target's JITs, and the build stops where configure chose others.
+  def test_the_build_machines_miniruby_has_the_targets_jits
+    assert_equal RuntimeBuilder::Android::JITS, RuntimeBuilder::Android.allocate.__send__(:jits)
+    assert_equal RuntimeBuilder::Android::JITS, RuntimeBuilder::Android.jit_options(mobile("android").targets.first, "/ndk/bin").first(2)
+    assert_equal RuntimeBuilder::Mobile::NO_JIT, RuntimeBuilder::IOS.allocate.__send__(:jits)
+    Dir.mktmpdir do |dir|
+      makefile = File.join(dir, "Makefile")
+      File.write(makefile, "RUSTC = rustc\nYJIT_SUPPORT=yes\nYJIT_LIBS=target/release/libyjit.a\nZJIT_SUPPORT=no\n")
+
+      assert_equal({ "YJIT_SUPPORT" => "yes", "ZJIT_SUPPORT" => "no" }, RuntimeBuilder::Mobile.jits_built(makefile))
+      File.write(makefile, "YJIT_SUPPORT=no\n")
+      assert_raises(RuntimeError) { RuntimeBuilder::Mobile.jits_built(makefile) }
+    end
+  end
+
   def test_platform_finds_desktop_and_mobile_runtimes_by_name
     assert_equal Fledge::Platform.find("x86_64-linux"), RuntimeBuilder.platform("x86_64-linux")
     assert_equal "android", RuntimeBuilder.platform("android").name

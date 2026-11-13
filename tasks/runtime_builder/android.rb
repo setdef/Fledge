@@ -92,8 +92,7 @@ class RuntimeBuilder
     # are the NDK's.
     def self.jit_options(target, tools)
       [
-        "--enable-yjit",
-        "--disable-zjit",
+        *JITS,
         "rustc_flags=--target=#{target.triple}",
         "LD=#{File.join(tools, 'ld.lld')}",
         "OBJCOPY=#{File.join(tools, 'llvm-objcopy')}",
@@ -102,6 +101,14 @@ class RuntimeBuilder
 
     private def jit_options(target)
       Android.jit_options(target, tools)
+    end
+
+    # The JITs Android's Ruby has, YJIT alone, as configure is told them
+    # for each target and for the build machine's miniruby (Mobile#jits).
+    JITS = %w[--enable-yjit --disable-zjit].freeze
+
+    private def jits
+      JITS
     end
 
     private def edits

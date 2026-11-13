@@ -79,7 +79,9 @@ class RubySourceTest < Minitest::Test
 
     assert_includes edited, "#if ALLOCATE_ENVIRON && defined(__ANDROID__)\n"
     assert_includes edited, "FILE *file = fopen(\"/proc/self/stat\", \"re\");\n"
-    assert_includes edited, "    argv_start = (char *)start;\n    argv_len = argv_env_len = end - start;\n}\n#endif\n\n" \
+    assert_includes edited, "&start, &end, &env_start, &env_end) != 4 || end <= start) return;\n"
+    assert_includes edited, "    argv_len = argv_env_len = end - start;\n"
+    assert_includes edited, "    if (env_start == end && env_end > env_start) argv_env_len = env_end - start;\n}\n#endif\n\n" \
       "void\ncompat_init_setproctitle(int argc, char *argv[])\n"
     assert_includes edited, "\talloc_environ[i] = environ[i] = NULL;\n#if defined(__ANDROID__)\n" \
       "\tfledge_use_process_argument_area(argv[0]);\n#endif\n#endif /* SPT_REUSEARGV */\n}\n"

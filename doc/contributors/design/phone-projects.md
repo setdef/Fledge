@@ -249,7 +249,7 @@ The mobile parity check (`tasks/mobile_parity.rb`, in the Mobile apps jobs) runs
 
 - the working folder is `/`, as for a macOS app started from the Finder;
 - standard input is at its end;
-- the app's bundle is read-only on a device (writable in the Simulator), so an app writes under `Dir.home` or `Dir.tmpdir`;
+- an iOS app's bundle is read-only on a device (writable in the Simulator), so an app writes under `Dir.home` or `Dir.tmpdir`; an Android app's Ruby root is unpacked into its own files folder, which it may write;
 - on iOS under Fledge's host, Ruby's thread has 64 MB; under a host that runs Ruby on the main thread, the main thread's stack is what the system grants;
-- iOS lets no app start a program, so there `RbConfig.ruby` names where `bin/ruby` would be, and starting it fails with ENOENT; Apple's sandbox denies `fork` on a device, though the Simulator allows it. An Android app starts the system's programs and the native libraries its installer extracted, but no file it writes (W^X, from target API 29), so `RbConfig.ruby` is a link to the runtime's ruby program, which runs (ADR 069);
+- iOS lets no app start a program, so there `RbConfig.ruby` names where `bin/ruby` would be, and starting it fails with ENOENT in the Simulator, where nothing is there, and with EPERM on a device, whose sandbox refuses every program; Apple's sandbox denies `fork` on a device, though the Simulator allows it. An Android app starts the system's programs and the native libraries its installer extracted, but no file it writes (W^X, from target API 29), so `RbConfig.ruby` is a link to the runtime's ruby program, which runs (ADR 069);
 - the system may stop an app in the background without running `at_exit`.

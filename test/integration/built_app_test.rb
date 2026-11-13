@@ -239,11 +239,11 @@ class BuiltAppTest < Minitest::Test
   # The runtime's own bin/ruby, the Ruby an app restarts or a gem's
   # executable runs on, chooses its locale as the launcher does (ADR
   # 041, after PEP 538): with no locale in the environment, which is C,
-  # it reads a folder whose name is not ASCII as UTF-8. Windows keeps
-  # RubyInstaller's ruby.exe, which reads the console's code page (ADR
-  # 003; doc/contributors/design/launcher.md, "The locale").
+  # it reads a folder whose name is not ASCII as UTF-8. Windows has no C
+  # locale to turn: its ruby.exe reads paths as UTF-8 whatever the code
+  # page (doc/contributors/design/launcher.md, "The locale").
   def test_the_runtimes_own_ruby_turns_a_c_locale_into_utf8_as_the_launcher_does
-    skip "Windows keeps RubyInstaller's ruby.exe (ADR 038)" if @platform.windows?
+    skip "Windows has no C locale (doc/contributors/design/launcher.md, \"The locale\")" if @platform.windows?
 
     Dir.mktmpdir do |dir|
       script = File.join(dir, "Ünïcödé", "encoding.rb")
@@ -328,23 +328,31 @@ class BuiltAppTest < Minitest::Test
   # DLLs it imports in the runtime: on Windows, RubyInstaller's head build
   # ships neither the libz-1.dll its zlib.so imports nor the GCC runtime
   # library its x64 digest/blake3.so does, and the runtime adds both
-  # (runtime/sources.yml, windows-dlls). BLAKE3 of nothing, and CRC-32 of
-  # "abc", are those algorithms' published test vectors.
+  # (runtime/sources.yml, windows-dlls). A Ruby the app starts through
+  # RbConfig.ruby loads them too: on Windows the runtime's ruby.exe looks
+  # for DLLs where the launcher does (windows_relaunch.c,
+  # fledge_limit_dll_search). BLAKE3 of nothing, and CRC-32 of "abc", are
+  # those algorithms' published test vectors.
   def test_zlib_and_rubys_new_digests_load_in_a_built_app
     Dir.mktmpdir do |dir|
       project = File.join(dir, "digests")
       FileUtils.mkdir_p(project)
-      File.write(File.join(project, "main.rb"), <<~RUBY)
+      File.write(File.join(project, "digests.rb"), <<~RUBY)
         require "zlib"
         require "digest"
         puts Digest::BLAKE3.hexdigest(""), Digest::CRC32.hexdigest("abc"), Zlib.crc32("abc").to_s(16)
+      RUBY
+      File.write(File.join(project, "main.rb"), <<~RUBY)
+        load File.join(__dir__, "digests.rb")
+        $stdout.flush
+        system(RbConfig.ruby, File.join(__dir__, "digests.rb"), exception: true)
       RUBY
       File.write(File.join(project, "fledge.yml"), "name: Digests\n")
       launcher = build_and_unpack(dir, project, name: "Digests")
 
       out, err, status = run_app({ "HOME" => dir }, launcher, chdir: dir)
 
-      assert_equal ["af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262\n352441c2\n352441c2\n", "", 0],
+      assert_equal ["af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262\n352441c2\n352441c2\n" * 2, "", 0],
         [out, err, status.exitstatus]
     end
   end
@@ -354,21 +362,27 @@ class BuiltAppTest < Minitest::Test
   # UTF-8 path as UTF-8. ffi opens a gem's DLL with LoadLibraryExA
   # (ext/ffi_c/DynamicLibrary.c, lines 215 to 225, at ffi 1.17.4), which
   # under code page 1252 finds no DLL under a folder named outside ASCII,
-  # as every app here is unpacked under "Ünïcödé 日本".
+  # as every app here is unpacked under "Ünïcödé 日本". The runtime's
+  # ruby.exe, which RbConfig.ruby names, declares it too, so a Ruby the
+  # app starts reads it the same way.
   def test_a_windows_app_reads_a_narrow_strings_path_as_utf8
     skip "the ANSI code page is Windows'" unless @platform.windows?
 
     Dir.mktmpdir do |dir|
       project = File.join(dir, "acp")
       FileUtils.mkdir_p(project)
-      File.write(File.join(project, "main.rb"), <<~RUBY)
+      File.write(File.join(project, "acp.rb"), <<~RUBY)
         require "fiddle"
         kernel32 = Fiddle.dlopen("kernel32.dll")
         acp = Fiddle::Function.new(kernel32["GetACP"], [], Fiddle::TYPE_INT).call
         load = Fiddle::Function.new(kernel32["LoadLibraryExA"], [Fiddle::TYPE_VOIDP, Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT], Fiddle::TYPE_VOIDP)
         dll = Dir.glob(File.join(RbConfig::TOPDIR, "lib", "ruby", "*", "*-mingw-ucrt", "libz-1.dll")).fetch(0)
         handle = load.call(dll, nil, 8) # LOAD_WITH_ALTERED_SEARCH_PATH, as ffi passes for a full path
-        File.write(ARGV.fetch(0), "code page \#{acp}, \#{handle.null? ? "no DLL" : "loaded"} from \#{dll.encoding}\\n")
+        File.write(ARGV.fetch(0), "code page \#{acp}, \#{handle.null? ? "no DLL" : "loaded"} from \#{dll.encoding}\\n", mode: "a")
+      RUBY
+      File.write(File.join(project, "main.rb"), <<~RUBY)
+        load File.join(__dir__, "acp.rb")
+        system(RbConfig.ruby, File.join(__dir__, "acp.rb"), ARGV.fetch(0), exception: true)
       RUBY
       %w[console windowed].each do |kind|
         File.write(File.join(project, "fledge.yml"), "name: Acp#{kind}\nkind: #{kind}\nidentifier: com.setdef.fledge.Acp#{kind}\n")
@@ -378,7 +392,7 @@ class BuiltAppTest < Minitest::Test
         _, err, status = run_app({ "HOME" => dir }, launcher, report, chdir: dir)
 
         assert_equal ["", 0], [err, status.exitstatus], kind
-        assert_equal "code page 65001, loaded from UTF-8\n", File.read(report), kind
+        assert_equal "code page 65001, loaded from UTF-8\n" * 2, File.read(report), "#{kind}, then a child through RbConfig.ruby"
       end
     end
   end
@@ -498,12 +512,13 @@ class BuiltAppTest < Minitest::Test
   # same process running the same program, in the same locale, with the
   # same gems and environment: with no locale, from a folder whose name
   # is not ASCII, in the person's environment and in a hostile one, with
-  # a Gemfile and without, and in a macOS .app, in the same bundle. The
-  # probe compares what it sees after the restart with what it saw
-  # before.
+  # a Gemfile and without, and in a macOS .app, in the same bundle. On
+  # Windows, where the runtime's ruby.exe runs the app's launcher in a
+  # process of its own and waits for it, as Ruby's own exec does there,
+  # the restart is a new process, and the same program, with the same
+  # code page and AppUserModelID, console and windowed alike. The probe
+  # compares what it sees after the restart with what it saw before.
   def test_a_restart_through_rbconfig_ruby_is_the_same_app_again
-    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026)" if @platform.windows?
-
     Dir.mktmpdir do |dir|
       evil = File.join(dir, "evil")
       FileUtils.mkdir_p(evil)
@@ -512,7 +527,7 @@ class BuiltAppTest < Minitest::Test
       hostile = person.merge("RUBYOPT" => "-rnonexistent", "BUNDLER_SETUP" => File.join(evil, "bundler_setup.rb"),
         "BUNDLE_GEMFILE" => File.join(evil, "Gemfile"), "RUBYGEMS_GEMDEPS" => "-")
       programs = [probe]
-      programs << windowed_probe if @platform.os == "darwin"
+      programs << windowed_probe if @platform.os == "darwin" || @platform.windows?
       programs << bundled_probe unless Parity::WITHOUT_GEM_APP.include?(@platform.name)
 
       programs.product([{ "HOME" => dir }, person, hostile]).each do |program, env|
@@ -528,9 +543,7 @@ class BuiltAppTest < Minitest::Test
   # an option before the program, it is plain Ruby, whose RubyGems reads
   # the person's GEM_HOME, as ruby -W1 main.rb would.
   def test_bin_ruby_runs_an_apps_program_through_its_launcher_unless_an_option_comes_first
-    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026)" if @platform.windows?
-
-    ruby = File.join(File.dirname(probe), "bin", "ruby")
+    ruby = runtimes_ruby(File.dirname(probe))
     main = File.join(File.dirname(probe), "app", "main.rb")
     Dir.mktmpdir do |dir|
       gems = File.join(dir, "person gems")
@@ -571,22 +584,57 @@ class BuiltAppTest < Minitest::Test
   # bin/ruby hands an app's own script to the app's launcher (ADR 026),
   # and exits with EX_SOFTWARE when it finds the launcher and the system
   # will not run it. The launcher here is executable, so bin/ruby finds
-  # it, and is no program, so execv fails.
+  # it, and is no program, so execv fails. On Windows a launcher is a
+  # program that holds the launcher's mark (windows_relaunch.c), which
+  # this file holds, and CreateProcessW fails.
   def test_bin_ruby_exits_with_ex_software_when_it_cannot_run_the_launcher
-    skip "On Windows, RbConfig.ruby is RubyInstaller's ruby.exe (ADR 026)" if @platform.windows?
     folder = File.realpath(File.dirname(app))
     launcher = File.join(folder, @platform.executable("Hello"))
     # Kept out of the folder, where any executable file is a launcher.
     kept = "#{folder}.launcher"
     File.rename(launcher, kept)
-    File.write(launcher, "not a program\n")
+    File.write(launcher, "not a program\n#{launcher_mark if @platform.windows?}\n")
     File.chmod(0o755, launcher)
-    out, err, status = run_app({}, File.join(folder, "bin", "ruby"), File.join(folder, "app", "main.rb"))
+    out, err, status = run_app({}, runtimes_ruby(folder), File.join(folder, "app", "main.rb"))
 
     assert_equal ["", 70], [out, status.exitstatus], err
-    assert_includes err, "ruby: could not run #{launcher}: "
+    assert_includes err.tr("\\", "/"), "ruby: could not run #{launcher}: "
   ensure
     File.rename(kept, launcher) if kept && File.exist?(kept)
+  end
+
+  # In an app of one program, whose fledge.cfg has no sections, a
+  # Windows runtime's ruby.exe takes only a program that holds the
+  # launcher's mark for the app's launcher, so an installer's
+  # uninstall.exe beside it is never run in its place
+  # (windows_relaunch.c). With no launcher there, the app's program runs
+  # as plain Ruby, and prints what it prints in the app, where whoami.exe,
+  # standing in for uninstall.exe, would print a user's name.
+  def test_ruby_exe_runs_no_other_program_beside_the_launcher_in_its_place
+    skip "only Windows finds a launcher by its mark" unless @platform.windows?
+    folder = File.realpath(File.dirname(app))
+    launcher = File.join(folder, @platform.executable("Hello"))
+    impostor = File.join(folder, "uninstall.exe")
+    kept = "#{folder}.launcher"
+    File.rename(launcher, kept)
+    FileUtils.cp(File.join(ENV.fetch("SystemRoot", "C:/Windows"), "System32", "whoami.exe"), impostor)
+    out, err, status = run_app({}, runtimes_ruby(folder), File.join(folder, "app", "main.rb"))
+
+    assert_equal [expected, "", 0], [out, err, status.exitstatus]
+  ensure
+    FileUtils.rm_f(impostor) if impostor
+    File.rename(kept, launcher) if kept && File.exist?(kept)
+  end
+
+  # The runtime's own Ruby in the built app's +folder+: bin/ruby, or on
+  # Windows ruby\bin\ruby.exe.
+  def runtimes_ruby(folder)
+    @platform.windows? ? File.join(folder, "ruby", "bin", "ruby.exe") : File.join(folder, "bin", "ruby")
+  end
+
+  # The bytes every Windows launcher holds (runtime/launcher/launcher.h).
+  def launcher_mark
+    File.read(File.expand_path("../../runtime/launcher/launcher.h", __dir__))[/#define FLEDGE_LAUNCHER_MARK "([^"]+)"/, 1]
   end
 
   # ADR 030: on Linux, a library the app's gems load from the

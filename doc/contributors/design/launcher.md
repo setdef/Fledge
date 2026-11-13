@@ -184,7 +184,7 @@ The ANSI code page is what every Windows function whose name ends in `A` reads a
 
 CI run 43278468138, on the `experiment/windows-acp` branch, printed each of these from both launchers and from the runtime's `ruby.exe` and `rubyw.exe` on x64 and ARM64 runners, under code pages 65001 and 437.
 
-A child process has its own code page: `bin\ruby.exe`, which `RbConfig.ruby` names, is RubyInstaller's, declares none, and keeps the system's. A `ruby.exe.manifest` file beside it changes nothing, since `ruby.exe` embeds a manifest (for `longPathAware`) and Windows reads the embedded one (the same run).
+A child process has its own code page, from its own program's manifest. RubyInstaller's `ruby.exe` declares none and keeps the system's, and a `ruby.exe.manifest` file beside it changes nothing, since `ruby.exe` embeds a manifest (for `longPathAware`) and Windows reads the embedded one (the same run). So the runtime's `ruby.exe` and `rubyw.exe`, which `RbConfig.ruby` names, are Fledge's, and embed the launcher's manifest (see "bin/ruby and restarts"): a Ruby the app starts has the app's code page. The parity check's `Windows` fact compares a child's with its parent's.
 
 ## Windows
 
@@ -240,7 +240,22 @@ Then it `execv`s the launcher with `argv[0]` the launcher's path and the argumen
 
 In an app of one program, whose `fledge.cfg` has no sections, the first executable file `bin/ruby` finds in the folder is taken as the launcher; `fledge build` puts no other there. A launcher found and not started exits 70 (see "Messages and exit statuses").
 
-On Windows `RbConfig.ruby` is RubyInstaller's `ruby.exe`, and nothing hands a program back; an app restarts by running `NAME.exe`, which it finds with `GetModuleFileNameW(NULL, ...)`. Windows has no `exec` that keeps the process: Ruby's `exec` there starts the program and waits for it (`process.c`, line 1639, calls `rb_w32_uaspawn` with `P_OVERLAY`, and `win32/win32.c`'s `child_result`, lines 1184 to 1200, waits and exits with the child's status, at Ruby 4.1.0-preview1). So a restart through `RbConfig.ruby` there boots with the person's settings, and in a windowed app opens a console and loses the app's AppUserModelID.
+On Windows the runtime's `ruby\bin\ruby.exe` and `rubyw.exe` are `ruby_main.c` too, in place of RubyInstaller's, compiled by `RuntimeBuilder::Windows#compile_ruby` with llvm-mingw, linked against Ruby's DLL through the tree's import library (`lib\libx64-ucrt-ruby410.dll.a`) as RubyInstaller links its own, `rubyw.exe` with `-mwindows`, and with the launcher's resources, so its manifest is `windows.manifest`. RubyInstaller's tree keeps its shape: `RbConfig.ruby`, `Gem.ruby`, the gems' `.bat` wrappers, and mkmf name `ruby.exe` by its place, and nothing else of the tree changes. `wmain`:
+
+1. `fledge_limit_dll_search` (`windows_relaunch.c`): `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)` and `AddDllDirectory` of `ruby_builtin_dlls` beside it, as the launcher does, so a Ruby the app starts loads DLLs from where the app's Ruby does. RubyInstaller's own `operating_system.rb`, which a runtime replaces, called `SetDefaultDllDirectories` for its `ruby.exe` (`ruby_installer/runtime/msys2_installation.rb`, `enable_dll_search_paths`).
+2. `setlocale(LC_CTYPE, "")` and `ruby_sysinit`, as `main.c`.
+3. `fledge_relaunch` (`windows_relaunch.c`), with the arguments `ruby_sysinit` read as Ruby reads them, then `ruby_start_main`.
+
+`fledge_relaunch` on Windows runs the app's launcher when all of these hold:
+
+1. `argv[1]` is not empty, does not begin with `-`, and names a regular file that is no link.
+2. The command line's first two arguments are written as Ruby's own `exec` writes them (`win32/win32.c`, `join_argv`): plain, with no quote, or in double quotes with no quote inside, and the script with none of `* ? [ {`, which Ruby would expand. Ruby splits a command line by its own rules (`w32_cmdvector`), with single quotes and file name patterns beyond Microsoft's; anything else stays plain Ruby, rather than be split differently.
+3. ROOT, three folders above `ruby.exe`, holds a readable `fledge.cfg`.
+4. A launcher is a file in ROOT whose name ends in `.exe`, that is no link, whose section of `fledge.cfg` (or the whole file without sections) names an `entry` that, under `ROOT\app`, is the same file as `argv[1]` by volume serial number and file index (`GetFileInformationByHandle`), and that holds `FLEDGE_LAUNCHER_MARK`, bytes `windows.c` keeps. The mark keeps an installer's `uninstall.exe`, which sits beside the launcher, from passing for it in an app of one program.
+
+Then it runs the launcher with `CreateProcessW`, its path quoted and the rest of its own command line after the script exactly as given, inheriting its handles and standard streams as Ruby's own `CreateChild` does, waits for it, and exits with its status. Windows has no `exec` that keeps the process: Ruby's `exec` there does the same, starting the program and waiting for it (`process.c`, line 1639, calls `rb_w32_uaspawn` with `P_OVERLAY`, and `win32/win32.c`'s `child_result`, lines 1188 to 1203, waits and exits with the child's status, at Ruby 0e25874222). While it waits it handles Ctrl-C and Ctrl-Break by doing nothing, as CPython's `py` launcher does (`PC/launcher.c`, `ctrl_c_handler`), so the launcher, which shares its console, decides what they do; a handler, unlike ignoring them, is not inherited. A launcher found and not started exits 70.
+
+So a restart through `RbConfig.ruby` boots as the app first booted, with its AppUserModelID and code page. What stays as under `ruby.exe` is the new PID, and, in a windowed app, the console `ruby.exe`, a console program, opens while the restarted app runs.
 
 ## System libraries on Linux
 

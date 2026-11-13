@@ -267,10 +267,14 @@ def utf8(value)
 end
 
 # What a restart keeps: the process, the program it runs, where the app
-# and Ruby are, the locale, the gems, and the environment.
+# and Ruby are, the locale, the gems, and the environment. Windows has
+# no exec that keeps the process: Ruby's own starts the program, waits
+# for it, and exits with its status (win32/win32.c, child_result), so
+# there a restart is a new process, under ruby.exe as in an app, and its
+# PID is not asked.
 def restart_facts
   utf8(
-    "pid" => Process.pid,
+    "pid" => RUBY_PLATFORM.match?(/mingw|mswin/) ? nil : Process.pid,
     "program" => running_program,
     "main bundle" => main_bundle,
     "$0" => $0,

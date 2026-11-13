@@ -110,9 +110,10 @@ class LicensingPageTest < Minitest::Test
     refute_empty section(text, "iOS and iPadOS (arm64-ios, arm64-ios-simulator)")
   end
 
-  # bin/ruby on macOS and Linux carries Fledge's own code (ADR 026), so
-  # the page counts it among Fledge's files, whose MIT notice goes with
-  # it, and the desktop rows say so.
+  # bin/ruby on macOS and Linux, and ruby.exe and rubyw.exe on Windows,
+  # carry Fledge's own code (ADR 026), so the page counts them among
+  # Fledge's files, whose MIT notice goes with them, and the desktop rows
+  # say so.
   def test_it_counts_bin_ruby_among_fledges_own_files
     text = page
     everywhere = section(text, "On every platform").split.join(" ")
@@ -120,7 +121,7 @@ class LicensingPageTest < Minitest::Test
     assert_includes everywhere, "**Fledge's own files** in an app are `launcher`, the program your app's users run, renamed for your app; " \
       "`bin/ruby`, the Ruby that `RbConfig.ruby` names, which is Ruby's `main.c` with Fledge's code compiled in; " \
       "and `lib/ruby/4.0.0/rubygems/defaults/operating_system.rb`."
-    assert_includes section(text, "Linux on x86-64 (x86_64-linux)"), "; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's;"
+    assert_includes section(text, "Linux on x86-64 (x86_64-linux)"), "; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's;"
   end
 
   # A phone's app is built from the project fledge build writes (ADR 012),

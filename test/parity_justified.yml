@@ -138,6 +138,13 @@
   platforms:
   checks:
   - bundle
+- fact: Object.constants
+  reference: []
+  app:
+  - \A"Psych"\z
+  platforms:
+  checks:
+  - bundle
 - fact: "$LOADED_FEATURES"
   reference:
   - \A"(?:<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?|(?-mix:<work>\/person-gems)/gems/bundler-[^/"]+/lib)/bundler/feature_flag\.rb"\z
@@ -148,6 +155,13 @@
 - fact: "$LOADED_FEATURES"
   reference:
   - \A"<project>/lib/my_cool_app/version\.rb"\z
+  app: []
+  platforms:
+  checks:
+  - bundle
+- fact: Object.constants
+  reference:
+  - \A"MyCoolApp"\z
   app: []
   platforms:
   checks:
@@ -207,6 +221,16 @@
   reference:
   - \A"<prefix>/lib/ruby/site_ruby/\d+\.\d+\.0(?:\+\d+)?/ruby_installer/
   - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)
+  app: []
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - script
+  - bundle
+- fact: Object.constants
+  reference:
+  - \A"(?:RubyInstaller|Win32)"\z
   app: []
   platforms:
   - x64-mingw-ucrt

@@ -137,6 +137,20 @@ rescue LoadError => e
   e.class.name
 end
 
+# A gem's extension required by the path of its file, extension and all,
+# as a gem asks for it with File.join(__dir__, "name.#{DLEXT}"): nkf's,
+# from nkf's extension folder, once nkf is active, by DLEXT (".bundle"
+# on Apple's systems) and then by ".so", and its name by DLEXT; whether
+# each loaded it, and its constant, or the class of what it raised.
+def extension_by_its_file
+  gem "nkf"
+  path = File.join(Gem.loaded_specs.fetch("nkf").extension_dir, "nkf")
+  dlext = RbConfig::CONFIG.fetch("DLEXT")
+  [require("#{path}.#{dlext}"), require("#{path}.so"), require("nkf.#{dlext}"), defined?(NKF)]
+rescue LoadError => e
+  e.class.name
+end
+
 # The root of the project the probe runs in: Bundler's, when Bundler set
 # it up (bundle exec, or a built gem-shaped app), and the probe's own
 # folder otherwise.
@@ -297,6 +311,7 @@ else
   # requireable, which activates every gem.
   report["require racc/cparse before racc is active"] = extension_before_its_gem
   report["require syslog's extension by its path"] = extension_by_its_path
+  report["require nkf's extension by the path of its file"] = extension_by_its_file
   # After the facts, since requiring changes $LOADED_FEATURES and ENV:
   # what require "openssl" adds to ENV, as openssl.rb names the CA
   # certificates OpenSSL is to read.

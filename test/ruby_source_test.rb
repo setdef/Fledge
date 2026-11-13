@@ -115,7 +115,8 @@ class RubySourceTest < Minitest::Test
   def test_ruby_finds_a_gems_linked_extension_only_through_the_gate
     text = "typedef int (*feature_func)(void);\n\nstatic int\nsearch_required(const rb_box_t *box)\n{\n" \
       "            ftptr = RSTRING_PTR(lookup_name);\n" \
-      "            if (st_lookup(&vm->static_ext_inits, (st_data_t)ftptr, NULL)) {\n"
+      "            if (st_lookup(&vm->static_ext_inits, (st_data_t)ftptr, NULL)) {\n" \
+      "                return 's';\n            }\n        }\n    }\n\n    switch (type) {\n"
 
     edited = Edits.load_c(text, { "racc/cparse.so" => "racc-1.8.1", "bigdecimal.so" => "bigdecimal-4.1.3" })
     assert_includes edited, "    {\"bigdecimal.so\", \"bigdecimal-4.1.3\"},\n    {\"racc/cparse.so\", \"racc-1.8.1\"},\n};\n"
@@ -124,6 +125,24 @@ class RubySourceTest < Minitest::Test
     assert_operator edited.index("fledge_gem_extension_reachable_p(const rb_box_t"), :<, edited.index("search_required(const")
     assert_raises(RuntimeError) { Edits.load_c(text.sub("NULL)) {", "NULL) == 1) {"), { "nkf.so" => "nkf-0.3.0" }) }
     assert_raises(ArgumentError) { Edits.load_c(text, {}) }
+  end
+
+  # A require of a linked extension's file by its path or by DLEXT, which
+  # finds no file, looks the extension up by the feature it is registered
+  # as: after Ruby's own lookup of linked extensions, before the switch on
+  # the file it found, with the function that names the features before
+  # search_required.
+  def test_ruby_finds_a_linked_extension_by_the_path_of_its_file
+    text = "static int\nsearch_required(const rb_box_t *box)\n{\n" \
+      "            if (st_lookup(&vm->static_ext_inits, (st_data_t)ftptr, NULL)) {\n" \
+      "                return 's';\n            }\n        }\n    }\n\n    switch (type) {\n"
+
+    edited = Edits.load_c(text, { "racc/cparse.so" => "racc-1.8.1" })
+    assert_includes edited, "                return 's';\n            }\n        }\n        if (type == 0) {\n" \
+      "            VALUE fledge_features = fledge_linked_features(box, tmp);\n"
+    assert_includes edited, "            }\n        }\n    }\n\n    switch (type) {\n"
+    assert_operator edited.index("fledge_linked_features(const rb_box_t"), :<, edited.index("search_required(const")
+    assert_raises(RuntimeError) { Edits.load_c(text.sub("    switch (type)", "    switch (kind)"), { "nkf.so" => "nkf-0.3.0" }) }
   end
 
   # The gate's own C, compiled by this computer's mkmf against this

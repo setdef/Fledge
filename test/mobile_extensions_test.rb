@@ -240,6 +240,46 @@ class MobileExtensionsTest < Minitest::Test
     assert_equal "ELF", File.read(File.join(jni, "libSDL3.so"))
   end
 
+  # The ffi gem's extconf.rb appends to the Makefile mkmf wrote a makefile
+  # that adds the libffi it builds to LOCAL_LIBS, which the extension's
+  # shared library links on a desktop, so a phone's link must take it
+  # too. Make reads the value from the whole Makefile, quotes and all,
+  # and builds nothing.
+  def test_what_a_makefile_adds_to_local_libs_after_mkmf_is_linked
+    File.write(File.join(@dir, "Makefile"), <<~MAKE)
+      LOCAL_LIBS = ./libown.a
+      all:
+      \tfalse
+      include extra.mk
+    MAKE
+    File.write(File.join(@dir, "extra.mk"), "BUILD_DIR = $(shell pwd)\nLOCAL_LIBS += \"$(BUILD_DIR)/libffi-x\"/.libs/libffi_convenience.a\n")
+
+    libs = Fledge::MobileExtensions::Linking.local_libs({}, @dir)
+
+    here = File.realpath(@dir)
+    assert_equal %(./libown.a "#{here}/libffi-x"/.libs/libffi_convenience.a), libs
+    assert_equal [File.join(@dir, "libown.a"), "#{here}/libffi-x/.libs/libffi_convenience.a"],
+      Fledge::MobileExtensions::Linking.link_flags(libs, dir: @dir)
+  end
+
+  # On Windows, MSYS2's make prints what $(shell pwd) gave, a folder's
+  # POSIX path, which Ruby and the linker read as a path on the current
+  # drive. Each drive path where a word, a quoted word, or a -I or -L
+  # flag begins is read as Windows names it, and nothing else changes.
+  def test_an_msys2_drive_path_make_prints_is_read_as_windows_names_it
+    text = %(./libown.a "/d/a/_temp/libffi-x"/.libs/libffi_convenience.a -L/c/lib -I/c/include '/e/q' /usr/lib/x.a lib/d/a.a)
+
+    assert_equal %(./libown.a "D:/a/_temp/libffi-x"/.libs/libffi_convenience.a -LC:/lib -IC:/include 'E:/q' /usr/lib/x.a lib/d/a.a),
+      Fledge::MobileExtensions::Linking.windows_paths(text)
+  end
+
+  def test_a_makefile_make_cannot_read_is_an_error_naming_its_folder
+    File.write(File.join(@dir, "Makefile"), "include missing.mk\n")
+
+    error = assert_raises(Fledge::Error) { Fledge::MobileExtensions::Linking.local_libs({}, @dir) }
+    assert_includes error.message, "make could not read the Makefile in #{@dir}"
+  end
+
   # A C extension over a C++ library names the C++ runtime as it must on
   # a desktop, -lc++ on a Mac and -lstdc++ on Linux. Neither is the
   # runtime a phone's link takes (on Android, -lc++ is libc++_shared.so,

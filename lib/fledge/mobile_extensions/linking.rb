@@ -6,6 +6,7 @@
 #++
 
 require "fileutils"
+require "open3"
 require "shellwords"
 
 module Fledge
@@ -106,6 +107,72 @@ module Fledge
       def self.cxx_runtime?(text)
         text.shellsplit.intersect?(CXX_RUNTIMES)
       end
+
+      # What the Makefile in +dir+ links an extension's shared library
+      # with of its own: <tt>LOCAL_LIBS</tt>, as make expands it, with the
+      # environment +env+. mkmf writes <tt>$LOCAL_LIBS</tt> there and
+      # links the shared library with it (<tt>lib/mkmf.rb</tt>, lines 2499
+      # and 2969 at Ruby 4.1.0-preview1), and an extconf.rb may add to it
+      # once mkmf is done: the ffi gem's appends a makefile that builds its
+      # own libffi and adds the library to <tt>LOCAL_LIBS</tt>
+      # (<tt>ext/ffi_c/libffi.gnu.mk</tt>, line 8 at 1.17.4). Make reads
+      # its rules, runs none, and prints the value, on Windows with its
+      # paths in Windows' form (#windows_paths). Raises Fledge::Error when
+      # make fails.
+      #
+      # === Example
+      #
+      #--
+      # SPDX-SnippetBegin
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+      # SPDX-License-Identifier: MIT-0
+      #++
+      #   Fledge::MobileExtensions::Linking.local_libs({}, "/work/ffi/ext/ffi_c")
+      #   # => "\"/work/ffi/ext/ffi_c/libffi-arm64-darwin\"/.libs/libffi_convenience.a"
+      #--
+      # SPDX-SnippetEnd
+      #++
+      def self.local_libs(env, dir)
+        printer = "$(info #{LOCAL_LIBS_MARK}$(LOCAL_LIBS))\n#{LOCAL_LIBS_GOAL}:\n\t@:\n"
+        output, status = Open3.capture2e(env, "make", "-s", "-f", "Makefile", "-f", "-", LOCAL_LIBS_GOAL, stdin_data: printer, chdir: dir)
+        raise Error, "make could not read the Makefile in #{dir}:\n#{output}" unless status.success?
+
+        value = output.lines.find { |line| line.start_with?(LOCAL_LIBS_MARK) }.to_s.delete_prefix(LOCAL_LIBS_MARK).strip
+        Gem.win_platform? ? windows_paths(value) : value
+      end
+
+      # +text+, flags make printed on Windows, with each MSYS2 drive path
+      # in it named as Windows names it: <tt>/c/work</tt> as
+      # <tt>C:/work</tt>, where a word, a quoted word, or a +-I+ or +-L+
+      # flag begins. MSYS2's make runs <tt>$(shell pwd)</tt>, as the ffi
+      # gem's makefile does, in MSYS2's shell, which names a folder by its
+      # POSIX path, and MSYS2 converts such a path only in the arguments
+      # it hands a native program, as here, not in what a program prints
+      # (MSYS2's "Filesystem Paths",
+      # https://www.msys2.org/docs/filesystem-paths/). Ruby and the
+      # linker, both native, find only the converted path.
+      #
+      # === Example
+      #
+      #--
+      # SPDX-SnippetBegin
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+      # SPDX-License-Identifier: MIT-0
+      #++
+      #   Fledge::MobileExtensions::Linking.windows_paths(%("/c/work/libffi"/.libs/libffi.a -L/d/lib))
+      #   # => "\"C:/work/libffi\"/.libs/libffi.a -LD:/lib"
+      #--
+      # SPDX-SnippetEnd
+      #++
+      def self.windows_paths(text)
+        text.gsub(%r{(?:\A|(?<=[\s"'=]|-[IL]))/([A-Za-z])(?=/)}) { "#{Regexp.last_match(1).to_s.upcase}:" }
+      end
+
+      # What begins the line #local_libs has make print, and the goal it
+      # names, which does nothing.
+      LOCAL_LIBS_MARK = "FLEDGE_LOCAL_LIBS="
+      LOCAL_LIBS_GOAL = "fledge-local-libs"
+      private_constant :LOCAL_LIBS_MARK, :LOCAL_LIBS_GOAL
 
       # What +target+ links of its extensions' +reports+, a TargetBuild: each
       # extension's archive and then the static libraries its extconf.rb

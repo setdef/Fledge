@@ -10,6 +10,14 @@ module Fledge
 
       def self.cxx_runtime?: (String text) -> bool
 
+      def self.local_libs: (Hash[String, String?] env, String dir) -> String
+
+      def self.windows_paths: (String text) -> String
+
+      LOCAL_LIBS_MARK: String
+
+      LOCAL_LIBS_GOAL: String
+
       def self.target_build: (Target target, Array[Report] reports) -> TargetBuild
 
       def self.shared_libraries: (Array[String] flags) -> Array[String]

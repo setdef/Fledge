@@ -41,7 +41,9 @@ jobs:
           csrutil status || true
           command -v syspolicy_check || true
 
-      - name: Build A, B, C
+      - name: Build A, B, C, D, E
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -x
           mkdir -p "$HOME/seal/src" /tmp/mac-seal
@@ -93,6 +95,45 @@ jobs:
             mkapp c "$where" "$where/C/T.app"
             alter "$where/C/T.app"
           done
+          # D: LÖVE as released, plain (D) and fused with a .love (E).
+          # Pinned; nothing runs unless the digest matches.
+          curl -sSLf -o love-11.5-macos.zip \
+            https://github.com/love2d/love/releases/download/11.5/love-11.5-macos.zip
+          echo "6795bb3a1656af6a2fdfe741e150787b481886d3a280327a261a3fdded586913  love-11.5-macos.zip" | shasum -a 256 -c
+          mkdir love115 && ditto -x -k love-11.5-macos.zip love115
+          ls love115
+          mkdir -p game
+          cat > game/main.lua <<'EOF'
+          local f = io.open("/tmp/mac-seal/" .. MARK, "a")
+          if f then f:write("ran love\n") f:close() end
+          love.event.quit()
+          EOF
+          for where in quarantined clean; do
+            mkdir -p "$where/D" "$where/E"
+            ditto love115/love.app "$where/D/love.app"
+            ditto love115/love.app "$where/E/love.app"
+            (cd game && printf 'MARK = "e-%s"\n' "$where" > conf.lua && zip -q -r "../$where/E/love.app/Contents/Resources/game.love" main.lua conf.lua)
+          done
+          # LÖVE 12 (main, def245102c): run 41957924703's love-macos
+          # artifact, if this job's token may read it.
+          if curl -sSLf -H "Authorization: Bearer $GH_TOKEN" -o love12.zip \
+              https://api.github.com/repos/love2d/love/actions/artifacts/13384396891/zip; then
+            echo "e2c753765af21f7ffb7d68d7bd9be12f88760ee38bf67198aaed21a1afbfba5b  love12.zip" | shasum -a 256 -c
+            mkdir love12 && ditto -x -k love12.zip love12
+            find love12 -maxdepth 3 | head -20
+            inner=$(find love12 -maxdepth 2 -name '*.zip' | head -1)
+            if [ -n "$inner" ]; then ditto -x -k "$inner" love12/x; fi
+            app12=$(find love12 -maxdepth 4 -name '*.app' -type d | head -1)
+            echo "LÖVE 12 app: $app12"
+            for where in quarantined clean; do
+              mkdir -p "$where/F" "$where/G"
+              ditto "$app12" "$where/F/love.app"
+              ditto "$app12" "$where/G/love.app"
+              (cd game && printf 'MARK = "g-%s"\n' "$where" > conf.lua && zip -q -r "../$where/G/love.app/Contents/Resources/game.love" main.lua conf.lua)
+            done
+          else
+            echo "LOVE12_UNAVAILABLE: the job's token cannot read love2d/love's artifact"
+          fi
           # As a browser marks a download, and Archive Utility every file
           # it extracts from one.
           q="0081;$(printf %x "$(date +%s)");Safari;$(uuidgen)"
@@ -102,14 +143,15 @@ jobs:
       - name: Inspect
         run: |
           cd "$HOME/seal"
-          for where in quarantined clean; do for form in A B C; do
-            app="$where/$form/T.app"
-            echo "################ $app"
+          for where in quarantined clean; do for dir in "$where"/*; do
+            app=$(echo "$dir"/*.app)
+            exe="$app/Contents/MacOS/$(defaults read "$PWD/$app/Contents/Info" CFBundleExecutable)"
+            echo "################ $app ($exe)"
             echo "+ codesign -dvvv $app"; codesign -dvvv "$app" 2>&1; echo "exit $?"
-            echo "+ codesign -dvvv Contents/MacOS/T"; codesign -dvvv "$app/Contents/MacOS/T" 2>&1; echo "exit $?"
+            echo "+ codesign -dvvv $exe"; codesign -dvvv "$exe" 2>&1; echo "exit $?"
             echo "+ codesign --verify --strict --deep -vv"; codesign --verify --strict --deep -vv "$app" 2>&1; echo "exit $?"
             echo "+ spctl --assess --type execute -vv"; spctl --assess --type execute -vv "$app" 2>&1; echo "exit $?"
-            echo "+ spctl --assess --type execute -vv Contents/MacOS/T"; spctl --assess --type execute -vv "$app/Contents/MacOS/T" 2>&1; echo "exit $?"
+            echo "+ spctl --assess --type execute -vv $exe"; spctl --assess --type execute -vv "$exe" 2>&1; echo "exit $?"
             if command -v syspolicy_check >/dev/null; then
               echo "+ syspolicy_check distribution"; syspolicy_check distribution "$app" 2>&1; echo "exit $?"
             fi
@@ -118,27 +160,32 @@ jobs:
       - name: Launch
         run: |
           cd "$HOME/seal"
-          for where in quarantined clean; do for form in A B C; do
-            app="$PWD/$where/$form/T.app"
-            echo "################ $where $form"
+          logs() {
+            log show --start "$1" --info --debug --style compact --predicate \
+              'subsystem BEGINSWITH "com.apple.syspolicy" OR process == "syspolicyd" OR process == "CoreServicesUIAgent" OR process == "amfid" OR (subsystem == "com.apple.launchservices" AND eventMessage CONTAINS[c] ".app") OR eventMessage CONTAINS[c] "quarantine"' \
+              2>&1 | grep -v -e 'Recording' | tail -n 60
+          }
+          markers() { echo "+ markers:"; tail -n +1 /tmp/mac-seal/* 2>/dev/null; }
+          for where in quarantined clean; do for dir in "$where"/*; do
+            app="$PWD/$(echo "$dir"/*.app)"
+            exe="$app/Contents/MacOS/$(defaults read "$app/Contents/Info" CFBundleExecutable)"
+            echo "################ $where $(basename "$dir") $app"
             start=$(date '+%Y-%m-%d %H:%M:%S')
-            echo "+ open $app"; open "$app" 2>&1; echo "exit $?"
+            echo "+ open"; open "$app" 2>&1; echo "exit $?"
             sleep 8
-            echo "+ marker:"; cat "/tmp/mac-seal/$(echo $form | tr A-Z a-z)-$where" 2>&1
-            echo "+ log (syspolicy, launchservices, CoreServicesUIAgent)"
-            log show --start "$start" --info --debug --style compact --predicate \
-              'subsystem BEGINSWITH "com.apple.syspolicy" OR process == "syspolicyd" OR process == "CoreServicesUIAgent" OR (subsystem == "com.apple.launchservices" AND eventMessage CONTAINS[c] "T.app") OR eventMessage CONTAINS[c] "quarantine"' \
-              2>&1 | grep -v -e 'com.apple.syspolicy.exec:default] Recording' | tail -n 60
+            echo "+ running after open:"; pgrep -fl "Contents/MacOS" || echo none
+            pkill -f "$app/Contents/MacOS" || true
+            markers
+            echo "+ log"; logs "$start"
             start=$(date '+%Y-%m-%d %H:%M:%S')
-            echo "+ exec Contents/MacOS/T"; "$app/Contents/MacOS/T"; echo "exit $?"
-            echo "+ marker:"; cat "/tmp/mac-seal/$(echo $form | tr A-Z a-z)-$where" 2>&1
-            log show --start "$start" --info --debug --style compact --predicate \
-              'subsystem BEGINSWITH "com.apple.syspolicy" OR process == "syspolicyd" OR process == "amfid"' \
-              2>&1 | tail -n 30
+            echo "+ exec $exe"; "$exe" & pid=$!
+            sleep 6
+            if kill -0 "$pid" 2>/dev/null; then echo "still running after 6 s"; kill "$pid"; wait "$pid"; echo "killed, exit $?"; else wait "$pid"; echo "exit $?"; fi
+            markers
+            echo "+ log"; logs "$start"
             echo "+ xattr after"; xattr -l "$app" 2>&1
             echo "+ spctl --add (the old Open Anyway by command)"; spctl --add --label mac-seal "$app" 2>&1; echo "exit $?"
           done; done
           echo "+ windows"
           osascript -e 'tell application "System Events" to get name of every process whose visible is true' 2>&1 || true
           ls -l /tmp/mac-seal
-          tail -n +1 /tmp/mac-seal/* || true

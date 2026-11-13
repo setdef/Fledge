@@ -121,13 +121,26 @@ class RuntimeBuilder
     # (lib/rubygems/core_ext/kernel_require.rb, lines 79 to 81 and 138 to
     # 148: RubyGems tries Ruby's own require first, and activates a gem
     # only when that fails).
+    #
+    # And where a require finds no file, the lookup then tries the
+    # feature a linked extension is registered as for a name that asks
+    # for the extension's file by its path or by DLEXT (LINKED_FEATURES),
+    # and finds it loaded, or registered and through the gate
+    # (LINKED_LOOKUP). A desktop finds the extension's file by such a
+    # name (<tt>require_relative "adder/adder.so"</tt>, <tt>require
+    # File.join(dir, "syslog_ext.bundle")</tt>, or <tt>require
+    # "adder/adder.bundle"</tt> on a Mac), where a phone's Ruby registers
+    # the extension only by its feature with ".so" (extinit.c, and
+    # fledge_ruby_add_extension in <tt>runtime/mobile/fledge_ruby.c</tt>).
     def self.load_c(text, extensions)
       raise ArgumentError, "the gate needs a gem's extension to guard" if extensions.empty?
 
       table = extensions.sort.map { |feature, full| "    {#{feature.dump}, #{full.dump}},\n" }.join
       gated = replace(text, /^(            if \(st_lookup\(&vm->static_ext_inits, \(st_data_t\)ftptr, NULL\))\) \{\n/,
         "\\1 && fledge_gem_extension_reachable_p(box, ftptr)) {\n", "search_required looks up a linked extension")
-      replace(gated, /^static int\nsearch_required\(/, "#{format(GATE, table:)}\nstatic int\nsearch_required(",
+      linked = replace(gated, /^(        }\n)(    }\n\n    switch \(type\) \{\n)/, "\\1#{LINKED_LOOKUP}\\2",
+        "search_required ends its lookup of linked extensions before it switches on the type of file it found")
+      replace(linked, /^static int\nsearch_required\(/, "#{format(GATE, table:)}\n#{LINKED_FEATURES}\nstatic int\nsearch_required(",
         "load.c defines search_required")
     end
 
@@ -546,6 +559,77 @@ class RuntimeBuilder
               return 0;
           }
           return 1;
+      }
+    C
+
+    # The C before search_required that turns the name of an extension's
+    # file that a require found no file for into the features a linked
+    # extension may be registered as: with DLEXT (".bundle" on iOS) made
+    # ".so", as Ruby registers each one (extinit.c), and, for an absolute
+    # path, made relative to each folder on $LOAD_PATH that holds it,
+    # where a desktop's RubyGems leaves an extension's file: a gem's
+    # require path for an extconf.rb's, its extension folder for a
+    # bundled gem's. An absolute path with no extension gets ".so", as
+    # Ruby's own lookup gives a feature. A relative name with ".so", or
+    # none, was looked up already.
+    LINKED_FEATURES = <<~C
+      /* Fledge: the features a linked extension may be registered as, for
+         +name+, the name of an extension's file that a require found no
+         file for; none for any other name. */
+      static VALUE
+      fledge_linked_features(const rb_box_t *box, VALUE name)
+      {
+          VALUE features = rb_ary_new();
+          const char *text = RSTRING_PTR(name);
+          long length = RSTRING_LEN(name), stem = length, dlext = (long)strlen(DLEXT);
+          const char *slash = memrchr(text, '/', length);
+          const char *dot = memrchr(text, '.', length);
+          int dlext_p = 0;
+          if (dot && (!slash || dot > slash)) {
+              long suffix = length - (dot - text);
+              if (suffix == dlext && memcmp(dot, DLEXT, dlext) == 0 && strcmp(DLEXT, ".so") != 0) dlext_p = 1;
+              else if (suffix != 3 || memcmp(dot, ".so", 3) != 0) return features;
+              stem = dot - text;
+          }
+          if (!rb_is_absolute_path(text)) {
+              if (dlext_p) rb_ary_push(features, rb_str_cat_cstr(rb_str_new(text, stem), ".so"));
+              return features;
+          }
+          VALUE load_path = get_expanded_load_path((rb_box_t *)box);
+          for (long j = 0; j < RARRAY_LEN(load_path); j++) {
+              VALUE folder = RARRAY_AREF(load_path, j);
+              long size = RSTRING_LEN(folder);
+              if (size + 1 < stem && text[size] == '/' && memcmp(text, RSTRING_PTR(folder), size) == 0) {
+                  rb_ary_push(features, rb_str_cat_cstr(rb_str_new(text + size + 1, stem - size - 1), ".so"));
+              }
+          }
+          return features;
+      }
+    C
+
+    # The C at the end of search_required's lookup of linked extensions,
+    # for a require that found no file (+type+ 0): for each feature
+    # fledge_linked_features gives, the feature already loaded, which a
+    # second require of the path then finds, though Ruby deletes a
+    # registration once it has run it (run_static_ext_init), or else the
+    # registered one, through the gate, which the require then runs and
+    # records in $LOADED_FEATURES by its feature, as it does a linked
+    # extension it finds by its feature.
+    LINKED_LOOKUP = <<~C.gsub(/^(?=.)/, " " * 8)
+      if (type == 0) {
+          VALUE fledge_features = fledge_linked_features(box, tmp);
+          for (long i = 0; i < RARRAY_LEN(fledge_features); i++) {
+              VALUE feature = RARRAY_AREF(fledge_features, i);
+              const char *name = RSTRING_PTR(feature);
+              if (rb_feature_p(box, name, name + RSTRING_LEN(feature) - 3, FALSE, FALSE, &loading)) {
+                  if (loading) *path = rb_filesystem_str_new_cstr(loading);
+                  return 's';
+              }
+              if (st_lookup(&vm->static_ext_inits, (st_data_t)name, NULL) && fledge_gem_extension_reachable_p(box, name)) {
+                  *path = rb_filesystem_str_new_cstr(name);
+                  return 's';
+              }
+          }
       }
     C
 

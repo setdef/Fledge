@@ -104,17 +104,22 @@ class ParityTest < Minitest::Test
 
   # rv-ruby has no RubyGems defaults file, so on macOS and Linux only the
   # app loads Fledge's; RubyInstaller has one at the same path, which
-  # loads RubyInstaller's runtime, so on Windows only ruby main.rb loads
-  # that.
+  # calls RubyInstaller's runtime to look for MSYS2, so on Windows only
+  # ruby main.rb loads the files that search uses. Both load the runtime
+  # itself, which defines RubyInstaller.
   def test_a_justification_holds_only_on_its_platforms
     defaults = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"] }
-    installer = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/4.0.0/ruby_installer/runtime.rb"] }
+    installer = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/4.0.0/ruby_installer/runtime/msys2_installation.rb"] }
+    runtime = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/4.0.0/ruby_installer/runtime.rb"] }
     none = { "$LOADED_FEATURES" => [] }
 
     assert_predicate Parity::Reports.compare(none, defaults, platform: "x86_64-linux").first, :justified?
     refute_predicate Parity::Reports.compare(none, defaults, platform: "x64-mingw-ucrt").first, :justified?
     assert_predicate Parity::Reports.compare(installer, none, platform: "x64-mingw-ucrt").first, :justified?
     refute_predicate Parity::Reports.compare(installer, none, platform: "x86_64-linux").first, :justified?
+    refute_predicate Parity::Reports.compare(runtime, none, platform: "x64-mingw-ucrt").first, :justified?
+    refute_predicate Parity::Reports.compare({ "Object.constants" => ["RubyInstaller"] }, { "Object.constants" => [] },
+      platform: "x64-mingw-ucrt").first, :justified?
   end
 
   # A Ruby's folders are named for its ruby_version, which a preview or a

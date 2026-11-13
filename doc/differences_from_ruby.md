@@ -54,4 +54,4 @@ A phone's operating system forbids some things your code can do on a desktop, su
 
 ## What a standard Ruby installs and the app does not
 
-On macOS and Linux, Fledge starts from Ruby builds that install `bootsnap` and `msgpack`, and leaves both out of the app. On Windows, the app does not load RubyInstaller's files at start.
+On macOS and Linux, Fledge starts from Ruby builds that install `bootsnap` and `msgpack`, and leaves both out of the app. On Windows, the app loads RubyInstaller's library at start, so `defined?(RubyInstaller)` is true as under `ruby.exe`, but runs none of RubyInstaller's start-up: it writes nothing into the app's gem folder, sets no `GEM_HOME`, and never adds MSYS2's DLLs to the app's search.

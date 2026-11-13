@@ -107,8 +107,9 @@ class RubySpec
       ),
       Exclusion.new(
         reason: "Each reads the process's command line from /proc/PID/cmdline, or, where there is no /proc, from ps, " \
-          "which it starts, and iOS has no /proc and lets no app start a program. Android has /proc, and its Ruby " \
-          "sets the title there (RuntimeBuilder::RubySource.setproctitle_c).",
+          "which it starts, and iOS has no /proc and lets no app start a program. iOS's Ruby sets the title where " \
+          "ps reads it (RuntimeBuilder::RubySource.setproctitle_c), and the parity probe reads it there through " \
+          "sysctl, which needs no program (\"$0= titles the process\"). Android has /proc, and runs both examples.",
         phones: %w[ios], files: [],
         examples: ["Process.setproctitle should set the process title", "Global variable $0 actually sets the program name"],
       ),

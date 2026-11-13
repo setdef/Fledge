@@ -68,15 +68,11 @@ class RubySpec
   ].freeze
 
   # Examples left out of both runs, by platform, each because it stops
-  # the process for stock Ruby and the app alike (mspec-run -E).
-  EXCLUDED = %w[x86_64-linux-musl aarch64-linux-musl].to_h do |platform|
-    # CRuby 4.1.0-preview1 on musl (runtime/sources.yml, musl-ruby)
-    # crashes setting the name of a thread that has ended
-    # (pthread_setname_np on a thread musl has freed), at
-    # core/thread/to_s_spec.rb line 18, and the whole core run stops,
-    # as runs 43354884978 showed on both musl runtimes.
-    [platform, ["Thread#to_s returns a description including a thread name if given any"]]
-  end.freeze
+  # the process for stock Ruby and the app alike (mspec-run -E). None
+  # now: the musl runtimes, which are stock Ruby there too, crashed in
+  # Thread#to_s's example until they took the thread_c edit
+  # (RuntimeBuilder::Musl::EDITS).
+  EXCLUDED = {}.freeze
 
   # The platforms of the phones' runs, as the mobile parity check names
   # them (MobileParity::IOS::TARGET, MobileParity::Android#target).

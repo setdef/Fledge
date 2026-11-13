@@ -641,6 +641,45 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
+  # Pinned commands whose tar writes the lines of Ruby's and OpenSSL's
+  # sources the musl recipe edits, and that stop at Ruby's configure.
+  class UnpackedMusl < Pinned
+    Configured = Class.new(StandardError)
+
+    def run(*command, chdir: nil, **)
+      super
+      raise Configured if command.include?("./configure") && chdir.to_s.end_with?("ruby")
+
+      folder = command[command.index("-C") + 1] if command.first == "tar"
+      write(folder) if folder
+    end
+
+    private def write(folder)
+      if folder.end_with?("openssl")
+        FileUtils.mkdir_p(File.join(folder, "include", "internal"))
+        File.write(File.join(folder, "include", "internal", "common.h"), "getenv(\"SSL_CERT_FILE\")\n")
+      elsif folder.end_with?("ruby")
+        File.write(File.join(folder, "thread.c"),
+          "    if (threadptr_initialized(target_th) && target_th->has_dedicated_nt) {\n")
+      end
+    end
+  end
+
+  # Thread#name= on a thread that has ended crashed Ruby on musl, as it
+  # aborted it on Android (run 43354884978: ruby/spec's
+  # core/thread/to_s_spec.rb, line 18), so the musl runtime takes the
+  # Android runtime's edit of thread.c before it configures Ruby.
+  def test_a_musl_ruby_names_only_a_thread_that_has_not_ended
+    Dir.mktmpdir do |dir|
+      commands = UnpackedMusl.new(YAML.safe_load_file(File.join(RuntimeBuilder::ROOT, "runtime", "sources.yml")))
+      recipe = RuntimeBuilder::Musl.new(builder: commands, build_dir: dir)
+      commands.define_singleton_method(:platform) { Fledge::Platform.find("x86_64-linux-musl") }
+
+      assert_raises(UnpackedMusl::Configured) { recipe.__send__(:unpack_ruby) }
+      assert_includes File.read(File.join(dir, "sources", "ruby", "thread.c")), "target_th->status != THREAD_KILLED"
+    end
+  end
+
   # gcc's analyzer checks every musl launcher source, warnings as errors,
   # as it does on glibc Linux, before anything links.
   def test_a_musl_compile_analyzes_each_source_before_it_links

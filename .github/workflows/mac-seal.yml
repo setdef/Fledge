@@ -1,0 +1,144 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Experiment, not for trunk: how Gatekeeper treats a downloaded
+# (quarantined) app sealed ad hoc (A), sealed then altered (B), and
+# unsealed with only the linker's signature, then altered (C).
+
+name: Mac seal
+
+on:
+  push:
+    branches: ["experiment/mac-seal"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  seal:
+    name: Seal (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    steps:
+      - name: System
+        run: |
+          set -x
+          sw_vers
+          uname -a
+          xcodebuild -version || true
+          clang --version
+          spctl --status || true
+          sudo spctl --global-enable || sudo spctl --master-enable || true
+          spctl --status || true
+          csrutil status || true
+          command -v syspolicy_check || true
+
+      - name: Build A, B, C
+        run: |
+          set -x
+          mkdir -p "$HOME/seal/src" /tmp/mac-seal
+          cd "$HOME/seal"
+          cat > src/t.c <<'EOF'
+          #include <stdio.h>
+          int main(int argc, char **argv) {
+            FILE *f = fopen("/tmp/mac-seal/" FORM, "a");
+            if (!f) return 1;
+            fprintf(f, "ran %s\n", argv[0]);
+            fclose(f);
+            return 0;
+          }
+          EOF
+          mkapp() {
+            form=$1; where=$2; app=$3
+            mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+            clang -O2 -arch arm64 -DFORM="\"$form-$where\"" \
+              -o "$app/Contents/MacOS/T" src/t.c
+            cat > "$app/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key><string>T</string>
+            <key>CFBundleIdentifier</key><string>com.example.t$form</string>
+            <key>CFBundleName</key><string>T</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>1.0</string>
+            <key>CFBundleVersion</key><string>1</string>
+            <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+          </dict>
+          </plist>
+          EOF
+            sed -i '' 's/^          //' "$app/Contents/Info.plist"
+            echo resource > "$app/Contents/Resources/original.txt"
+          }
+          alter() {
+            echo fused > "$1/Contents/Resources/game.love"
+            plutil -replace CFBundleShortVersionString -string 1.1 "$1/Contents/Info.plist"
+          }
+          for where in quarantined clean; do
+            mkdir -p "$where/A" "$where/B" "$where/C"
+            mkapp a "$where" "$where/A/T.app"
+            codesign --force --sign - --identifier com.example.t "$where/A/T.app"
+            mkapp b "$where" "$where/B/T.app"
+            codesign --force --sign - --identifier com.example.t "$where/B/T.app"
+            alter "$where/B/T.app"
+            mkapp c "$where" "$where/C/T.app"
+            alter "$where/C/T.app"
+          done
+          # As a browser marks a download, and Archive Utility every file
+          # it extracts from one.
+          q="0081;$(printf %x "$(date +%s)");Safari;$(uuidgen)"
+          find quarantined -mindepth 2 -exec xattr -w com.apple.quarantine "$q" {} +
+          xattr -l quarantined/A/T.app quarantined/A/T.app/Contents/MacOS/T
+
+      - name: Inspect
+        run: |
+          cd "$HOME/seal"
+          for where in quarantined clean; do for form in A B C; do
+            app="$where/$form/T.app"
+            echo "################ $app"
+            echo "+ codesign -dvvv $app"; codesign -dvvv "$app" 2>&1; echo "exit $?"
+            echo "+ codesign -dvvv Contents/MacOS/T"; codesign -dvvv "$app/Contents/MacOS/T" 2>&1; echo "exit $?"
+            echo "+ codesign --verify --strict --deep -vv"; codesign --verify --strict --deep -vv "$app" 2>&1; echo "exit $?"
+            echo "+ spctl --assess --type execute -vv"; spctl --assess --type execute -vv "$app" 2>&1; echo "exit $?"
+            echo "+ spctl --assess --type execute -vv Contents/MacOS/T"; spctl --assess --type execute -vv "$app/Contents/MacOS/T" 2>&1; echo "exit $?"
+            if command -v syspolicy_check >/dev/null; then
+              echo "+ syspolicy_check distribution"; syspolicy_check distribution "$app" 2>&1; echo "exit $?"
+            fi
+          done; done
+
+      - name: Launch
+        run: |
+          cd "$HOME/seal"
+          for where in quarantined clean; do for form in A B C; do
+            app="$PWD/$where/$form/T.app"
+            echo "################ $where $form"
+            start=$(date '+%Y-%m-%d %H:%M:%S')
+            echo "+ open $app"; open "$app" 2>&1; echo "exit $?"
+            sleep 8
+            echo "+ marker:"; cat "/tmp/mac-seal/$(echo $form | tr A-Z a-z)-$where" 2>&1
+            echo "+ log (syspolicy, launchservices, CoreServicesUIAgent)"
+            log show --start "$start" --info --debug --style compact --predicate \
+              'subsystem BEGINSWITH "com.apple.syspolicy" OR process == "syspolicyd" OR process == "CoreServicesUIAgent" OR (subsystem == "com.apple.launchservices" AND eventMessage CONTAINS[c] "T.app") OR eventMessage CONTAINS[c] "quarantine"' \
+              2>&1 | grep -v -e 'com.apple.syspolicy.exec:default] Recording' | tail -n 60
+            start=$(date '+%Y-%m-%d %H:%M:%S')
+            echo "+ exec Contents/MacOS/T"; "$app/Contents/MacOS/T"; echo "exit $?"
+            echo "+ marker:"; cat "/tmp/mac-seal/$(echo $form | tr A-Z a-z)-$where" 2>&1
+            log show --start "$start" --info --debug --style compact --predicate \
+              'subsystem BEGINSWITH "com.apple.syspolicy" OR process == "syspolicyd" OR process == "amfid"' \
+              2>&1 | tail -n 30
+            echo "+ xattr after"; xattr -l "$app" 2>&1
+            echo "+ spctl --add (the old Open Anyway by command)"; spctl --add --label mac-seal "$app" 2>&1; echo "exit $?"
+          done; done
+          echo "+ windows"
+          osascript -e 'tell application "System Events" to get name of every process whose visible is true' 2>&1 || true
+          ls -l /tmp/mac-seal
+          tail -n +1 /tmp/mac-seal/* || true

@@ -89,7 +89,7 @@ module Fledge
             name = File.basename(target)
             $CPPFLAGS << " -DInit_#{name}=#{ENV.fetch('FLEDGE_INIT_PREFIX')}#{name}"
             result = super
-            report = { "target" => target, "dir" => Dir.pwd, "libs" => $libs,
+            report = { "target" => target, "dir" => Dir.pwd, "libs" => [$libs, $LOCAL_LIBS].join(" "),
                        "archive" => "#{name}.#{CONFIG['LIBEXT']}", "library" => "#{name}.#{CONFIG['DLEXT']}" }
             File.open(ENV.fetch("FLEDGE_REPORT"), "a") { |file| file.puts(JSON.generate(report)) }
             result
@@ -197,7 +197,7 @@ module Fledge
         name = File.basename(entry.fetch("target"))
         place = places.find { |path| "#{dir}/".start_with?("#{path}/") }
         feature = place ? File.join(dir.delete_prefix(place).delete_prefix("/"), name).delete_prefix("/") : entry.fetch("target")
-        libs = "#{entry.fetch('libs')} #{Linking.local_libs(env, dir)}"
+        libs = entry.fetch("libs")
         Report.new(
           feature:, init: "#{env.fetch('FLEDGE_INIT_PREFIX')}#{name}", archive:, flags: Linking.link_flags(libs, dir:),
           cxx: File.read(File.join(dir, "Makefile")).match?(/^ORIG_SRCS = .*\.(?:cc|cpp|cxx|C)(?:\s|$)/) || Linking.cxx_runtime?(libs)

@@ -20,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On iOS and Android, a gem with a Rust extension built with rb-sys compiles for the phone, where it was refused: Cargo builds it as a static library for each of the phone's targets, which the app links. It needs Rust and Cargo with each target's standard library (`rustup target add`).
 - On iOS and Android, a gem's `extconf.rb` can require the gems its gem depends on, such as rb_sys or mini_portile2.
 - The iOS runtime carries the fiddle gem, with libffi 3.5.2 compiled in, as the Android runtime does; it had been left out.
-- `fledge build ios` and `fledge build android` build the ffi gem with the libffi it bundles, and link with an extension whatever its `extconf.rb` adds to the Makefile's `LOCAL_LIBS` after mkmf, as ffi's does. A build that an extension's Makefile starts gets the phone's compiler in `CC` and `CXX`, and on Android `AR` and `RANLIB`.
 
 ### Changed
 
@@ -33,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On iOS and Android, a gem from git with an extension compiles; its build failed with `Errno::ENOENT` before it began.
 - On Windows, an app runs with UTF-8 as its ANSI code page, which its manifest declares, so a gem that opens a file or DLL through a Windows `A` function works when the app is installed under a folder named outside ASCII: a gem whose DLL ffi loads, such as libusb, failed to load there. In a windowed app `Encoding.find("locale")` is UTF-8 where `rubyw.exe` gives the system's code page; `doc/differences_from_ruby.md` says what else differs.
 
-- On iOS and Android, a gem's `extconf.rb` no longer finds this computer's libraries through pkg-config, which gave the ffi gem a Mac's libffi for the Simulator; `PKG_CONFIG` is `false` in a phone's build, and a gem's `--with-pkg-config` option still names one.
 - On iOS and Android, a gem whose `extconf.rb` writes `extconf.h` with `create_header`, as many do, has its extension's Init function renamed as Fledge registers it, so the app links on iOS and starts on Android; it failed with an undefined `Init_fledge_N` symbol.
 - On iOS and Android, a phone's app has the prism gem, so `require "prism"` works, and so does requiring irb, minitest, rbs, rdoc, repl_type_completor, or typeprof: each bundled gem's extension keeps every symbol but its Init function to itself, so prism's own libprism no longer collides with libruby's.
 - On Windows, `fledge build` compiles gems in a work folder named by its long names when `TMP` names the user folder by its 8.3 short name (`C:\Users\RUNNER~1`), so a gem whose build escapes a path for a shell, as nokogiri's through mini_portile2 does, compiles. It failed with "a gem's extension did not compile".

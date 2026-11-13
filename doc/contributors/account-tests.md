@@ -140,7 +140,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 
 #### IOS-3: App Review approves a Fledge iOS app
 
-- **Proves:** Apple's review accepts an app that carries a Ruby runtime and OpenSSL, with Fledge's privacy manifest. No Fledge app has been through it.
+- **Proves:** Apple's review accepts an app that carries a Ruby runtime, OpenSSL, and fiddle with libffi, with Fledge's privacy manifest. No Fledge app has been through it. Fledge left fiddle out of iOS for App Review until no guideline was found that forbids it (`doc/contributors/research/2026-11-12-ffi-and-fiddle-on-phones.md`); an app with the ffi gem, such as `examples/ffi_phone`, tests that claim most directly.
 - **Needs:** IOS-1 passed, and an app worth submitting. The app is yours to choose.
 - **Steps:** `doc/phones.md`, "The App Store", "Export compliance", and "The privacy manifest". Submit for review in App Store Connect.
 - **Passing:** approved. A rejection is also a result: keep Apple's reason, which an agent then turns into a change or a note in `doc/phones.md`.

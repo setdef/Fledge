@@ -278,7 +278,7 @@ class RuntimeBuilderTest < Minitest::Test
       assert_equal %w[DEV-NOTICES.txt ruby/lib/libx64-ucrt-ruby400.dll.a], files(windows)
       assert_equal %w[DEV-NOTICES.txt lib/libruby-static.a], files(unix)
       notices = File.read(File.join(unix, "DEV-NOTICES.txt"))
-      assert_includes notices, "never copies it into\nan app"
+      assert_includes notices, "never copies it into an app"
       %w[ruby/COPYING ruby/BSDL rust/LICENSE-MIT rust/LICENSE-APACHE].each do |notice|
         assert_includes notices, File.read(File.join(RuntimeBuilder::ROOT, "runtime/notices", notice))
       end
@@ -470,6 +470,35 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
+  # mkmf links the test program of every have_func and have_library
+  # against the static libruby in $(libdir), so a runtime keeps it beside
+  # lib/ruby; rv-ruby's other static library, libxcrypt's, and its
+  # pkg-config files stay out.
+  def test_a_unix_runtime_keeps_the_static_libruby_mkmf_links_against
+    Dir.mktmpdir do |dir|
+      prefix = File.join(dir, "prefix")
+      make_files(prefix, %w[
+        bin/ruby
+        bin/gem
+        include/ruby-4.1.0+5/ruby.h
+        lib/libruby.4.1-static.a
+        lib/libcrypt.a
+        lib/pkgconfig/ruby-4.1.pc
+        lib/ruby/4.1.0+5/rubygems.rb
+        libexec/cert.pem
+      ])
+      FileUtils.mkdir_p(File.join(prefix, "lib/ruby/gems/4.1.0+5/specifications"))
+      recipe = RuntimeBuilder::Linux.new(builder: builder("x86_64-linux"), build_dir: dir)
+      recipe.instance_variable_set(:@prefix, prefix)
+      stage = File.join(dir, "stage")
+
+      recipe.__send__(:copy_ruby, stage)
+
+      assert_equal %w[lib/libruby.4.1-static.a], kept(File.join(stage)).grep(/\.a\z/)
+      refute_path_exists File.join(stage, "lib/pkgconfig")
+    end
+  end
+
   def test_prune_bin_drops_the_executables_of_removed_gems_only
     Dir.mktmpdir do |bin|
       make_files(bin, %w[ruby gem bundle rake bootsnap])
@@ -481,8 +510,9 @@ class RuntimeBuilderTest < Minitest::Test
   end
 
   # RubyInstaller's tree keeps its shape; what goes is documentation,
-  # headers and import libraries, and RubyInstaller's tools for setting
-  # up MSYS2 and a developer's shell. The gems' wrappers stay.
+  # static libraries and pkg-config files, and RubyInstaller's tools for
+  # setting up MSYS2 and a developer's shell. The gems' wrappers stay, and
+  # so does the import library of Ruby's DLL, which mkmf links against.
   def test_prune_windows_keeps_rubys_programs_dlls_wrappers_and_gems
     Dir.mktmpdir do |tree|
       make_files(tree, %w[
@@ -501,6 +531,7 @@ class RuntimeBuilderTest < Minitest::Test
         bin/startmenu.rb
         include/ruby-4.0.0/ruby.h
         lib/libx64-ucrt-ruby400.dll.a
+        lib/libother-static.a
         lib/pkgconfig/ruby-4.0.pc
         lib/ruby/4.0.0/json.rb
         lib/ruby/4.0.0/x64-mingw-ucrt/zlib1.dll
@@ -533,6 +564,7 @@ class RuntimeBuilderTest < Minitest::Test
         bin/rubyw.exe
         bin/x64-ucrt-ruby400.dll
         include/ruby-4.0.0/ruby.h
+        lib/libx64-ucrt-ruby400.dll.a
         lib/ruby/4.0.0/etc/ssl/cert.pem
         lib/ruby/4.0.0/json.rb
         lib/ruby/4.0.0/x64-mingw-ucrt/zlib.so

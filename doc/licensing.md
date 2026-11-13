@@ -47,7 +47,7 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/openssl.bundle |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
-| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
+| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 
 Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
@@ -84,7 +84,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux/openssl.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
-| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
+| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/x86_64-linux/zlib.so |
 | zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
 | Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
@@ -124,7 +124,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux/openssl.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
-| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out) |
+| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/aarch64-linux/zlib.so |
 | zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
 | Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
@@ -162,7 +162,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/openssl.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
-| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby |
+| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/zlib.so |
 | zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
 | Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |
@@ -200,7 +200,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/openssl.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
-| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher and bin/ruby |
+| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/zlib.so |
 | zlib, linked into the AppImage runtime | 1.3.1 | `Zlib` | linked into tools/appimage-runtime |
 | Zstandard (libzstd), which decompresses the AppImage's file system, linked into the AppImage runtime | 1.5.6 | `BSD-3-Clause OR GPL-2.0-only` | linked into tools/appimage-runtime |

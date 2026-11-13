@@ -403,6 +403,68 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # mkmf's checks link a test program against Ruby's library, a static
+  # libruby on macOS and Linux and the import library of Ruby's DLL on
+  # Windows, which the runtime keeps, so they work in a built app where a
+  # compiler is, as under the Ruby the runtime was made from; without the
+  # library they raise "The compiler failed to generate an executable
+  # file". In a folder whose path has a space they fail, as that Ruby's
+  # own do when it runs the same program by the same path: mkmf builds
+  # its link command with paths it does not quote (mkmf.rb, link_config,
+  # lines 541 to 553, at Ruby 4.1.0-preview1), among them the program's
+  # own folder, -I$(srcdir), from $0 (line 2876), which the launcher
+  # gives as ruby /path/to/app/main.rb would, and on Linux rv-ruby's
+  # LIBRUBYARG_STATIC, -Wl,-rpath,$(libdir), so the linker takes the part
+  # after the space for a file ("ld.bfd: cannot find
+  # space/rv/rv-ruby@4.1.0-preview1/4.1.0-preview1/lib" for rv-ruby's own
+  # ruby on Linux; "ld.exe: cannot find Apps/MkmfLinkApp-x64-mingw-ucrt/app"
+  # for the app on Windows, 2026-11-12). The stock Ruby is rv-ruby's
+  # release, as the parity check unpacks it, or on Windows
+  # RubyInstaller's own ruby.exe in the app's tree.
+  def test_mkmf_checks_link_in_a_built_app_as_under_stock_ruby_where_a_compiler_is
+    compiler = @platform.windows? ? "gcc" : "cc"
+    skip "no #{compiler} on PATH to link with" unless ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? do |folder|
+      File.executable?(File.join(folder, compiler)) || File.executable?(File.join(folder, "#{compiler}.exe"))
+    end
+
+    Dir.mktmpdir do |dir|
+      code = "require \"mkmf\"\nputs \"linked \#{have_func('rb_str_new', 'ruby.h')}\"\n"
+      project = File.join(dir, "mkmf-link-app")
+      FileUtils.mkdir_p(project)
+      File.write(File.join(project, "main.rb"), code)
+      File.write(File.join(project, "fledge.yml"), "name: MkmfLinkApp\n")
+      # A person's TMP and TEMP, where MinGW's gcc writes its temporary
+      # files; without them it tries C:\Windows.
+      env = { "HOME" => dir, "PATH" => ENV.fetch("PATH"), "TMP" => dir, "TEMP" => dir }
+      log = File.join(dir, "mkmf.log")
+      outcome = lambda do |command|
+        FileUtils.rm_f(log)
+        out, err, status = run_app(env, *command, chdir: dir)
+        [status.success? && out.include?("linked true"), "#{out}\n#{err}\n#{File.read(log) if File.file?(log)}"]
+      end
+
+      results = { "apps" => true, "My Apps" => nil }.to_h do |folder, expected|
+        place = File.join(dir, folder)
+        launcher = build_and_unpack(dir, project, name: "MkmfLinkApp", place:)
+        stock = if @platform.windows?
+          File.join(File.dirname(launcher), "ruby", "bin", "ruby.exe")
+        else
+          FileUtils.mkdir_p(File.join(place, "stock"))
+          Parity.new(platform: @platform, work: File.join(place, "stock"), runtimes: @runtimes).unpack_reference
+        end
+        # As the launcher runs it (ruby /path/to/app/main.rb): mkmf takes
+        # $(srcdir) from the program's folder (mkmf.rb, line 2876).
+        stock_linked, stock_output = outcome.call([stock, File.join(File.dirname(launcher), "app", "main.rb")])
+        app_linked, app_output = outcome.call([launcher])
+        assert_equal stock_linked, app_linked, "in #{folder.inspect}: stock Ruby\n#{stock_output}\nthe app\n#{app_output}"
+        assert stock_linked, stock_output if expected
+        [folder, app_linked]
+      end
+
+      assert results.fetch("apps")
+    end
+  end
+
   # binding.irb in an app with a Gemfile that does not lock irb opens
   # IRB, as under bundle exec: Ruby activates irb in a temporary bundle,
   # which the app's frozen bundle would refuse without Fledge's RubyGems

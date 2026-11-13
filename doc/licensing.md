@@ -313,7 +313,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 
-Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -321,7 +321,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** Nothing beyond keeping the notices: no LGPL library ships on this platform.
@@ -341,7 +341,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
 | The Rust standard library, compiled into Ruby's YJIT | 1.99.1 | `MIT OR Apache-2.0` | compiled into libfledgeruby.so |
 
-Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
+Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
 - `BSD-2-Clause`: rexml, rss
 - `BSD-2-Clause OR Ruby`: power_assert, rbs
@@ -349,7 +349,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 - `Ruby`: json, readline
 - `Ruby AND BSD-3-Clause`: reline
 - `Ruby AND BSD-3-Clause AND MIT AND OFL-1.1 AND CC-BY-2.5`: rdoc
-- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, win32-registry, yaml, zlib
+- `Ruby OR BSD-2-Clause`: abbrev, base64, benchmark, bigdecimal, csv, date, debug, delegate, digest, drb, english, erb, etc, fcntl, fiddle, fileutils, find, forwardable, getoptlong, io-console, io-nonblock, ipaddr, irb, logger, matrix, mutex_m, net-http, net-imap, net-protocol, net-smtp, nkf, observer, open-uri, open3, openssl, optparse, ostruct, pp, prettyprint, prime, pstore, racc, resolv, resolv-replace, rinda, ruby2_keywords, securerandom, shellwords, singleton, stringio, strscan, syslog, tempfile, time, timeout, tmpdir, tsort, un, uri, weakref, yaml, zlib
 - `Ruby OR BSD-2-Clause OR PSF-2.0`: test-unit
 
 **What you must do on this platform:** Nothing beyond keeping the notices: no LGPL library ships on this platform.

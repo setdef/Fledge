@@ -66,6 +66,15 @@ const char *fledge_ruby_certificates(void);
 void fledge_ruby_link_program(const char *root);
 
 /*
+ * Makes each path under root that root/fledge.links lists for abi a link
+ * to the library it names in folder, the app's native library folder,
+ * whenever it is not that link already, and removes the link of a
+ * library folder lacks (library_links.c). Returns how many lines it
+ * could not link, each said on standard error; none without the list.
+ */
+int fledge_link_libraries(const char *root, const char *folder, const char *abi);
+
+/*
  * The main function of the runtime's ruby program, with Ruby's prefix
  * at root (fledge_ruby.c, ADR 082): Ruby's main.c, with the locale and
  * the certificates as fledge_ruby_run has them, and the extensions an

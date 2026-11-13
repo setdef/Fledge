@@ -34,6 +34,9 @@
  * And the runtime's ruby program, which RbConfig.ruby names (ADR 083):
  * fledge_ruby_link_program makes ROOT/bin/ruby a link to it before an
  * app's Ruby boots, and fledge_ruby_program_main is its main function.
+ * With it, each link ROOT/fledge.links lists, from where the app's Ruby
+ * looks for a file to a native library of the app's
+ * (fledge_link_libraries, library_links.c).
  */
 
 #include "fledge_ruby.h"
@@ -58,6 +61,19 @@
  */
 #define FLEDGE_RUBY_PROGRAM "libfledgerubyexe.so"
 #define FLEDGE_EXTENSIONS "libfledgeext.so"
+
+/* The ABI this library was compiled for, as Android names the folder of its native libraries. */
+#if defined(__aarch64__)
+#define FLEDGE_ABI "arm64-v8a"
+#elif defined(__x86_64__)
+#define FLEDGE_ABI "x86_64"
+#elif defined(__arm__)
+#define FLEDGE_ABI "armeabi-v7a"
+#elif defined(__i386__)
+#define FLEDGE_ABI "x86"
+#else
+#error "an ABI Android has no native library folder for"
+#endif
 
 /* The JNI functions FledgeRuby declares native. */
 JNIEXPORT jint JNICALL Java_org_setdef_fledge_FledgeRuby_nativeForwardOutput(JNIEnv *env, jclass type, jbyteArray tag);
@@ -225,7 +241,9 @@ fledge_ruby_link_program(const char *root)
         snprintf(fresh, sizeof fresh, "%s/.ruby-%d", bin, (int)getpid()) >= (int)sizeof fresh) {
         return;
     }
-    if (library_folder(folder) != 0 ||
+    if (library_folder(folder) != 0) folder[0] = '\0';
+    fledge_link_libraries(root, folder, FLEDGE_ABI);
+    if (folder[0] == '\0' ||
         snprintf(program, sizeof program, "%s/" FLEDGE_RUBY_PROGRAM, folder) >= (int)sizeof program ||
         access(program, X_OK) != 0) {
         if (lstat(link, &status) == 0 && S_ISLNK(status.st_mode)) unlink(link);

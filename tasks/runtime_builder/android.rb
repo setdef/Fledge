@@ -251,6 +251,7 @@ class RuntimeBuilder
         File.join(MOBILE, "fledge_ruby.c"),
         File.join(MOBILE, "output.c"),
         File.join(MOBILE, "android.c"),
+        File.join(MOBILE, "library_links.c"),
         File.join(Recipe::LAUNCHER, "locale.c"),
         File.join(Recipe::LAUNCHER, "config.c"),
         File.join(Recipe::LAUNCHER, "bundler.c"),

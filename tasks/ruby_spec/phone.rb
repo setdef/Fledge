@@ -230,14 +230,6 @@ class RubySpec
           "doesn't block if no child is available when WNOHANG is used",
         ],
       ),
-      Exclusion.new(
-        reason: "The example gives one descriptor to two Dirs, Dir.for_fd's over Dir.open's, and closes it twice, " \
-          "which Android's fdsan exists to stop: bionic's fdopendir tags the descriptor as its DIR's, and finding it " \
-          "already another DIR's, aborts the process (libc/bionic/dirent.cpp, lines 69 to 99, and fdsan.cpp, lines " \
-          "299 to 330 and 111 to 114, fatal by default, at 731631f), where glibc lets it; MSpec's run would end there.",
-        phones: %w[android], files: [],
-        examples: ["Dir#close raises an error if the file descriptor is closed with another Dir instance"],
-      ),
     ].freeze
 
     # The arguments of mspec-run for both runs on +phone+, one to a line

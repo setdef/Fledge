@@ -37,6 +37,9 @@
  *     is no RUBYOPT or GEM_HOME of a person's own to hide (ADR 061),
  *     and so nothing to pin RubyGems' paths against or to
  *     put back once Bundler is set up.
+ *   - On Android, bionic's fdsan warns once in logcat where it would
+ *     end the process, so that Ruby's descriptors fail as on Linux
+ *     (soften_fdsan).
  *
  * fledge_ruby_run_app reads the fledge.cfg fledge build writes into an
  * app's root with the launcher's own reader (config.c), and for an app
@@ -76,6 +79,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#ifdef __ANDROID__
+#include <android/fdsan.h>
+#include <dlfcn.h>
+#endif
 
 /* The runtimes' edit to ruby.c (RubySource.ruby_c). */
 extern const char *ruby_embed_libruby_path;
@@ -251,6 +259,37 @@ join(char *path, const char *root, const char *suffix)
 }
 
 /*
+ * On Android from API 30, lowers fdsan, bionic's file descriptor
+ * sanitizer, from ending the process to warning once in logcat, the
+ * level API 29 had (bionic's docs/fdsan.md, lines 5 to 7 and 56 to 66,
+ * at 731631f). fdsan ends the process when a descriptor one owner has
+ * tagged is tagged or closed as another's (libc/bionic/fdsan.cpp, lines
+ * 134 to 177 and 299 to 330), which Ruby does with no bug of the app's:
+ * Dir.for_fd hands a Dir's descriptor to fdopendir, which tags it as its
+ * own DIR's (libc/bionic/dirent.cpp, lines 69 to 99), so a second Dir on
+ * one descriptor, which glibc and every desktop allow, ended the app
+ * where ruby main.rb raises Errno::EBADF at the second close. A level
+ * the host or debug.fdsan set lower stays. The functions are looked up,
+ * since they are API 29's and the runtime runs from API 26, where
+ * nothing checks descriptors.
+ */
+static void
+soften_fdsan(void)
+{
+#ifdef __ANDROID__
+    enum android_fdsan_error_level (*get_level)(void) =
+        (enum android_fdsan_error_level (*)(void))dlsym(RTLD_DEFAULT, "android_fdsan_get_error_level");
+    enum android_fdsan_error_level (*set_level)(enum android_fdsan_error_level) =
+        (enum android_fdsan_error_level (*)(enum android_fdsan_error_level))dlsym(RTLD_DEFAULT,
+                                                                                  "android_fdsan_set_error_level");
+
+    if (get_level != NULL && set_level != NULL && get_level() == ANDROID_FDSAN_ERROR_LEVEL_FATAL) {
+        set_level(ANDROID_FDSAN_ERROR_LEVEL_WARN_ONCE);
+    }
+#endif
+}
+
+/*
  * Readies this process for Ruby with its prefix at root: where the
  * runtime's CA certificates are, for android.c, the locale, and the path
  * Ruby derives its prefix from. Returns 0, or prints why it could not,
@@ -272,6 +311,7 @@ prepare(const char *root, const char *caller)
         return FLEDGE_RUBY_SOFTWARE;
     }
     if (access(certificates, R_OK) == 0) found_certificates = certificates;
+    soften_fdsan();
     fledge_coerce_locale();
     ruby_embed_libruby_path = libruby;
     return 0;

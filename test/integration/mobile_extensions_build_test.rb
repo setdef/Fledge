@@ -243,12 +243,16 @@ class MobileExtensionsBuildTest < Minitest::Test
   # magnus: rb_sys, which its extconf.rb requires, is found among the
   # app's gems, and Cargo builds a static library for each slice, whose
   # objects are for iOS and the Simulator, that keeps the Init function
-  # rb-sys names and is registered under the extension's name.
+  # rb-sys names and is registered under the extension's name. rb-sys's
+  # Makefile installs the extension where mkmf's does, so the app has a
+  # Ruby file at that path that requires it (Stub).
   def test_fledge_build_ios_links_a_rust_extension_built_for_each_slice
     runtimes = real_runtimes("ios")
     rust_targets(%w[aarch64-apple-ios aarch64-apple-ios-sim])
     project = build_example("ios", "rust_phone", runtimes, "RustPhone-ios")
 
+    stub = File.join(project, "fledge", "app", "gems", "rusty", "lib", "rusty", "rusty.rb")
+    assert_equal Fledge::MobileExtensions::Stub.source("rusty/rusty"), File.read(stub), "a require_relative of the extension finds it"
     unit = File.read(File.join(project, "Host", "fledge_extensions.c"))
     assert_includes unit, 'fledge_ruby_add_extension("rusty/rusty", Init_rusty)'
     yml = File.read(File.join(project, "project.yml"))
@@ -276,6 +280,8 @@ class MobileExtensionsBuildTest < Minitest::Test
     rust_targets(%w[aarch64-linux-android x86_64-linux-android])
     project = build_example("android", "rust_phone", runtimes, "RustPhone-android")
 
+    stub = File.join(project, "fledge", "app", "gems", "rusty", "lib", "rusty", "rusty.rb")
+    assert_equal Fledge::MobileExtensions::Stub.source("rusty/rusty"), File.read(stub), "a require_relative of the extension finds it"
     readelf = File.join(ndk.bin, "llvm-readelf")
     machines = { "arm64-v8a" => "AArch64", "x86_64" => "Advanced Micro Devices X86-64" }.to_h do |abi, machine|
       library = File.join(project, "src", "main", "jniLibs", abi, "libfledgeext.so")

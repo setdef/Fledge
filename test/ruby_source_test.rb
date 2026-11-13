@@ -87,6 +87,28 @@ class RubySourceTest < Minitest::Test
     assert_raises(RuntimeError) { Edits.setproctitle_c(SETPROCTITLE_LINES.sub("int argc, char *argv[]", "int argc, char **argv")) }
   end
 
+  # An iOS app's Ruby is given an argv its host allocates too, and Darwin
+  # reads a process's arguments from the strings it started with, so the
+  # edit has compat_init_setproctitle measure the process's own argv,
+  # which _NSGetArgv keeps, before anything else.
+  def test_an_ios_apps_ruby_titles_the_process_over_its_own_arguments
+    edited = Edits.setproctitle_c(SETPROCTITLE_LINES)
+
+    assert_includes edited, "#if ALLOCATE_ENVIRON && defined(__APPLE__)\n#include <crt_externs.h>\n#endif\n"
+    assert_includes edited, "void\ncompat_init_setproctitle(int argc, char *argv[])\n{\n" \
+      "#if ALLOCATE_ENVIRON && defined(__APPLE__)\n\tif (*_NSGetArgv() != NULL && argv != *_NSGetArgv()) {\n" \
+      "\t\targc = *_NSGetArgc();\n\t\targv = *_NSGetArgv();\n\t}\n#endif\n\targv_env_len"
+    assert_raises(RuntimeError) { Edits.setproctitle_c(SETPROCTITLE_LINES.sub("char *argv[])\n{", "char *argv[]) {")) }
+  end
+
+  # The edits each mobile runtime makes to Ruby's source: the title's on
+  # both phones.
+  def test_both_phones_title_their_process
+    [RuntimeBuilder::IOS, RuntimeBuilder::Android].each do |builder|
+      assert_includes builder.allocate.__send__(:edits), :setproctitle_c, builder.name
+    end
+  end
+
   # compat_init_setproctitle's first and last lines in
   # missing/setproctitle.c, lines 116 to 118 and 166 to 172 at
   # 4.1.0-preview1.

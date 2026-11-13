@@ -187,15 +187,6 @@ class RubySpec
     ),
     Justification.new(
       examples: [
-        "core: Process.maxgroups sets the maximum number of gids allowed in the supplemental group access list",
-      ],
-      side: :app, platforms: ANDROID,
-      reason: "The Android runtime's Ruby is configured without setgroups, which Android's seccomp filter for apps " \
-        "forbids (RuntimeBuilder::Android::CONFIGURE), so Process.maxgroups= raises NotImplementedError, as Ruby " \
-        "does wherever the call is missing.",
-    ),
-    Justification.new(
-      examples: [
         "core: Process.egid= raises TypeError if not passed an Integer or String",
         "core: Process.egid= raises Errno::ERPERM if run by a non superuser trying to set the root group id",
         "core: Process.egid= raises Errno::ERPERM if run by a non superuser trying to set the group id from group name",

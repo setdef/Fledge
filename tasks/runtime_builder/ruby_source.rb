@@ -26,6 +26,7 @@ class RuntimeBuilder
       file_c: "file.c",
       process_c: "process.c",
       process_c_umask: "process.c",
+      process_c_maxgroups: "process.c",
       file_c_umask: "file.c",
       thread_pthread_c: "thread_pthread.c",
       thread_c: "thread.c",
@@ -168,6 +169,21 @@ class RuntimeBuilder
     # EBUSY), which these two edits take.
     def self.process_c(text)
       replace(text, Regexp.new(Regexp.escape(FORK_UNLOCK)), FORK_RESET, "rb_fork_ruby releases the fork lock in the child but on FreeBSD")
+    end
+
+    # Process.maxgroups= stores the number of group IDs Ruby asks for at
+    # most, in the static _maxgroups that Process.maxgroups reads, and
+    # calls nothing of the system's (process.c, proc_setmaxgroups, lines
+    # 6845 to 6862 at 4.1.0-preview1), yet Ruby defines it only where
+    # configure found setgroups (line 6835), and raises
+    # NotImplementedError elsewhere. Android's runtime is configured
+    # without setgroups, which Android's seccomp filter for apps stops
+    # (Android::CONFIGURE), and so lost the setter with the call. This
+    # defines it where Process.maxgroups is defined, on the same
+    # condition (line 6632), as on Linux.
+    def self.process_c_maxgroups(text)
+      replace(text, %r{^#ifdef HAVE_SETGROUPS\n(/\*\n \*  call-seq:\n \*    Process\.maxgroups = new_max -> new_max\n)},
+        "#if defined(_SC_NGROUPS_MAX) || defined(NGROUPS_MAX)\n\\1", "Process.maxgroups= is defined only with setgroups")
     end
 
     # Process.spawn's, #exec's, and #system's umask: option, and

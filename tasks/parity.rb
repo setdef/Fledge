@@ -157,9 +157,11 @@ class Parity
       Justification.new(fact:, reference: [/\A"US-ASCII"\z/], app: [/\A"UTF-8"\z/], checks: %i[no_locale],
         reason: "With no locale at all (no LC_ALL, LC_CTYPE, or LANG, or LANG=C), as a desktop, a service manager, " \
           "or env -i starts an app, ruby takes the C locale, whose character set is ASCII; the launcher and the " \
-          "runtime's bin/ruby take a UTF-8 locale instead, as Python does under PEP 538, so that a folder name " \
-          "outside ASCII in the app's path, or the person's home, cannot break Ruby's boot and Bundler's setup " \
-          "(ADR 087). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
+          "runtime's bin/ruby take a UTF-8 locale instead, as Python does under PEP 538. launchd gives a " \
+          "double-clicked app no locale at all, and Ruby still boots in the C locale, but it gives a folder " \
+          "named outside ASCII in the app's path, or the person's home, three encodings, so Bundler's setup " \
+          "and the app's own code fail for a person who never meets Ruby (Design precedence 1; ADR 087, and " \
+          "doc/contributors/research/2026-11-13-c-locale.md, Verdict). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
           "nothing is exported: ENV and every program the app starts see the person's own locale.")
     end,
     *MOBILE_JUSTIFIED,

@@ -70,9 +70,11 @@ class RubySpec
   # Examples left out of both runs, by platform, each because it stops
   # the process for stock Ruby and the app alike (mspec-run -E).
   EXCLUDED = %w[x86_64-linux-musl aarch64-linux-musl].to_h do |platform|
-    # CRuby 4.0.9 on musl crashes setting the name of a thread that has
-    # ended (pthread_setname_np on a thread musl has freed), at
-    # core/thread/to_s_spec.rb line 18, and the whole core run stops.
+    # CRuby 4.1.0-preview1 on musl (runtime/sources.yml, musl-ruby)
+    # crashes setting the name of a thread that has ended
+    # (pthread_setname_np on a thread musl has freed), at
+    # core/thread/to_s_spec.rb line 18, and the whole core run stops,
+    # as runs 43354884978 showed on both musl runtimes.
     [platform, ["Thread#to_s returns a description including a thread name if given any"]]
   end.freeze
 
@@ -132,8 +134,13 @@ class RubySpec
         "core: FileTest.sticky? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
       ],
       side: :app, platforms: %w[arm64-ios-simulator],
-      reason: "iOS's sandbox keeps an app from setting the set-user-ID, set-group-ID, and sticky bits on its files, " \
-        "which these examples set with chmod and then read back.",
+      reason: "Each example sets the bit by starting chmod (system \"chmod u+s ...\" or \"chmod +t ...\": " \
+        "core/file/setuid_spec.rb, line 29; core/file/sticky_spec.rb, line 29; shared/file/setuid.rb, line 10; " \
+        "shared/file/sticky.rb, line 32) and then reads it back, and iOS lets no app start a program: Apple's SDK marks " \
+        "system() prohibited there, \"On iOS, process spawning is unavailable\" (iPhoneOS27.2.sdk, " \
+        "usr/include/_stdlib.h, lines 205 to 208), so the bit is never set. The bits are the app's to set: in the " \
+        "Simulator, File.chmod with 04644, 02644, and 01755 set them on the app's own file and folder, and " \
+        "File.setuid?, File.setgid?, and File.sticky? read them back (run 43357360436).",
     ),
     Justification.new(
       examples: [
@@ -143,10 +150,13 @@ class RubySpec
         "core: Process.euid= sets the effective user id to its own uid if given the username corresponding to its own uid",
       ],
       side: :app, platforms: %w[arm64-ios-simulator],
-      reason: "An iOS app's C library finds no user for the app's own user ID: Etc.getpwuid(Process.uid) raises " \
-        "\"can't find user\", and Process.groups raises EINVAL, since Darwin's getgroups, which Ruby is built to " \
-        "call, looks the user up with getpwuid and fails when it finds none (Libc, sys/getgroups.c, lines 35 to 58 " \
-        "at Libc-1752.120.2). These examples ask for the process's groups or its user's name.",
+      reason: "In the iOS Simulator an app runs as the Mac's user, 501 on CI's runner, and the Simulator's user " \
+        "database has no entry for it: Etc.getpwuid(501) raises \"can't find user for 501\" in the app, where stock " \
+        "Ruby on the same Mac finds the user runner (run 43357360436). Process.groups then raises EINVAL, since " \
+        "Darwin's getgroups, which Ruby is built to call, looks the user up with getpwuid and fails when it finds none " \
+        "(Libc, sys/getgroups.c, lines 35 to 58 at Libc-1752.120.2). These examples ask for the process's groups or " \
+        "its user's name, so any Ruby in the Simulator would fail them; a device runs an app as a user of its own, " \
+        "and no run has checked them there.",
     ),
     Justification.new(
       examples: [

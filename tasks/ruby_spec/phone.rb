@@ -262,7 +262,7 @@ class RubySpec
     # returns the file's contents, read where the run wrote it.
     def self.listed(output)
       path = output[%r{^ruby/spec listing: in (.+)$}, 1] or return output
-      "#{output}#{yield(path.chomp)}"
+      output.b + yield(path.chomp).to_s.b
     end
 
     def initialize(phone, runtimes: ENV.fetch("FLEDGE_RUNTIME_DIR", File.join(ROOT, "tmp", "runtime")),

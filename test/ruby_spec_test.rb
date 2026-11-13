@@ -221,10 +221,12 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
 
   # Logcat dropped a fifth of the listing an Android emulator's app
   # printed in run 43350707323, so a phone's run writes it to a file and
-  # prints where, and the comparison reads it from there.
+  # prints where, and the comparison reads it from there. The log is
+  # text and the file bytes, as the iOS run of 43354884978 found when a
+  # failure's message held "ê".
   def test_a_phones_listing_is_read_from_the_file_it_names
-    output = "1 file, 1 example, 1 expectation, 0 failures, 0 errors, 0 tagged\nruby/spec listing: in /data/user/0/a/cache/l.txt\n"
-    listing = "ruby/spec listing: begin\n@ core/array/each_spec.rb\n= core/array/each_spec.rb:9 Array#each yields\nruby/spec listing: 1 examples\n"
+    output = "Expected \"ê\"\n1 file, 1 example, 1 expectation, 0 failures, 0 errors, 0 tagged\nruby/spec listing: in /data/user/0/a/cache/l.txt\n"
+    listing = "ruby/spec listing: begin\n@ core/array/each_spec.rb\n= core/array/each_spec.rb:9 Array#each yields ê\nruby/spec listing: 1 examples\n".b
 
     run = RubySpec::Results.read(nil, RubySpec::Phone.listed(output) { |path| (path == "/data/user/0/a/cache/l.txt") ? listing : "" })
     assert run.listing.complete?(run)

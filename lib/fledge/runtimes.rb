@@ -162,27 +162,6 @@ module Fledge
       find(self.class.file_name(platform))
     end
 
-    # The path of the build-only companion of +platform+'s runtime
-    # (Runtimes.dev_file_name), found and downloaded as #archive finds and
-    # downloads the runtime. Raises Fledge::Error when it cannot be found
-    # or downloaded.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   Fledge::Runtimes.new.dev_archive(Fledge::Platform.local)
-    #   # => "/home/you/.cache/fledge/runtimes/fledge-runtime-0.0.0-x86_64-linux-dev.tar.gz"
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def dev_archive(platform)
-      find(self.class.dev_file_name(platform))
-    end
-
     # The path of the runtime archive for +platform+ when this computer
     # has it, in FLEDGE_RUNTIME_DIR or, matching its pin, in the cache, or
     # +nil+. Downloads nothing: <tt>fledge build --from</tt> needs nothing

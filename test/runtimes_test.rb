@@ -24,35 +24,6 @@ class RuntimesTest < Minitest::Test
       Fledge::Runtimes.dev_file_name(Fledge::Platform.find("arm64-darwin"), version: "1.2.3")
   end
 
-  # A gem compiled from source needs the runtime's C headers, which the
-  # runtime itself prunes; they come from the same place it does.
-  def test_the_build_only_companion_comes_from_where_the_runtime_does
-    Dir.mktmpdir do |dir|
-      dev = File.join(dir, Fledge::Runtimes.dev_file_name(LINUX))
-      File.write(dev, "headers")
-      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir }, release_url: "http://127.0.0.1:1")
-
-      assert_equal dev, runtimes.dev_archive(LINUX)
-      error = assert_raises(Fledge::Error) { runtimes.dev_archive(Fledge::Platform.find("aarch64-linux")) }
-      assert_includes error.message, "which has no fledge-runtime-#{Fledge::VERSION}-aarch64-linux-dev.tar.gz"
-    end
-  end
-
-  def test_a_missing_build_only_companion_downloads_checked_against_the_gems_pins
-    body = "headers"
-    name = Fledge::Runtimes.dev_file_name(LINUX)
-    server = LoopbackServer.new("/v/#{name}" => [200, {}, body])
-    Dir.mktmpdir do |home|
-      pins = write_pins(home, name => body)
-      path = Fledge::Runtimes.new(env: { "HOME" => home }, release_url: server.url("/v"), pins:).dev_archive(LINUX)
-
-      assert_equal File.join(home, ".cache/fledge/runtimes", name), path
-      assert_equal body, File.binread(path)
-    end
-  ensure
-    server&.stop
-  end
-
   def test_the_runtime_directory_wins_and_is_the_only_place_looked
     Dir.mktmpdir do |dir|
       archive = FakeRuntime.write(dir, LINUX)
@@ -218,14 +189,14 @@ class RuntimesTest < Minitest::Test
   # from the release, as uv and rustup do with theirs.
   def test_a_mirror_without_the_file_fails_and_does_not_fall_back_to_the_release
     body = "the released runtime"
-    name = Fledge::Runtimes.dev_file_name(LINUX)
+    name = Fledge::Runtimes.file_name(LINUX)
     mirror = LoopbackServer.new
     release = LoopbackServer.new("/v/#{name}" => [200, {}, body])
     Dir.mktmpdir do |home|
       runtimes = Fledge::Runtimes.new(env: { "HOME" => home, "FLEDGE_RUNTIME_MIRROR" => mirror.url("/m") },
         release_url: release.url("/v"), pins: write_pins(home, name => body))
 
-      error = assert_raises(Fledge::Error) { runtimes.dev_archive(LINUX) }
+      error = assert_raises(Fledge::Error) { runtimes.archive(LINUX) }
       assert_equal "FLEDGE_RUNTIME_MIRROR is #{mirror.url('/m')}: could not download " \
         "#{mirror.url("/m/v#{Fledge::VERSION}/#{name}")}: 404 X", error.message
       assert_empty release.requests

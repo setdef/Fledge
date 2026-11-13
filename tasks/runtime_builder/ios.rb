@@ -57,7 +57,7 @@ class RuntimeBuilder
     end
 
     private def edits
-      %i[psych_extconf vm_dump ruby_c configure_macos_minimum file_c]
+      %i[psych_extconf vm_dump ruby_c configure_macos_minimum file_c setproctitle_c]
     end
 
     private def host_triple(_target)

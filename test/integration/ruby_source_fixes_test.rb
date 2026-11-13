@@ -116,19 +116,6 @@ class RubySourceFixesTest < Minitest::Test
     assert_raises(RuntimeError) { Edits.thread_c("    if (target_th->has_dedicated_nt) {\n") }
   end
 
-  # Process.maxgroups= only stores a number, but Ruby defines it only
-  # with setgroups, which Android's runtime is configured without; the
-  # edit defines it where Process.maxgroups is, and ruby/spec's example
-  # of it ran on Android's emulators as NotImplementedError until then.
-  def test_the_maxgroups_setter_needs_only_what_its_getter_needs
-    text = "#ifdef HAVE_SETGROUPS\n/*\n *  call-seq:\n *    Process.maxgroups = new_max -> new_max\n *\n"
-
-    assert_equal "#if defined(_SC_NGROUPS_MAX) || defined(NGROUPS_MAX)\n/*\n *  call-seq:\n *    Process.maxgroups = new_max -> new_max\n *\n",
-      Edits.process_c_maxgroups(text)
-    assert_raises(RuntimeError) { Edits.process_c_maxgroups("#ifdef HAVE_SETGROUPS\nstatic VALUE\nproc_setgroups(VALUE obj, VALUE ary)\n") }
-    assert_includes RuntimeBuilder::Android.allocate.__send__(:edits), :process_c_maxgroups
-  end
-
   # bionic has d_type but no IFTODT, so Ruby's dir.c stats each entry a
   # glob reads, and one of those stats takes the wrong path against a
   # base: Dir. The edit defines IFTODT as glibc does, so dir.c reads

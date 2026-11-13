@@ -14,6 +14,8 @@ An app that [Fledge](../README.md) builds runs your code as `ruby main.rb` does,
 
 The app boots the same whatever your users set in `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the other variables Ruby reads, so a Ruby they installed cannot break it. They still appear in `ENV`, and every program your app starts receives them. You can see the difference in `$VERBOSE`: with `RUBYOPT=-W0`, `ruby main.rb` sets it to `nil`, and the app leaves it as it was.
 
+On Windows, where variable names ignore case, a user may spell Bundler's `BUNDLE_GEMFILE` as `bundle_gemfile`. `bundle exec` keeps their spelling in `ENV` and in `Bundler.original_env`; in an app with a `Gemfile`, `ENV` spells it `BUNDLE_GEMFILE`, naming the app's Gemfile, and `Bundler.original_env` does not hold it. Bundler reads its settings by its own spelling, so with theirs a Ruby your app starts would set up whatever Gemfile their own Bundler settings name.
+
 ## Your gems
 
 `Gem.dir` and `Gem.path` name the gem folder inside the app, and never your users' `GEM_HOME` or `~/.gem`. The app sets up the groups `bundle exec` would, `development` and `test` among them, less those your Bundler `without` setting names. Bundler sets up the app's gems frozen, as the app's `.bundle/config` says, so it never writes `Gemfile.lock`, even in a read-only folder; your code then finds `Bundler.frozen_bundle?` as `bundle exec` gives it, unless it calls `Bundler.reset!`, which reads that file again. RubyGems loads a defaults file from Fledge at start.
@@ -43,8 +45,6 @@ What you can see from Ruby:
 ## Restarts
 
 `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first started, with the same setup. On Windows, as under `ruby.exe`, the restarted app is a new process with a new PID, since Windows has no `exec` that keeps a process, and a windowed app that restarts through `RbConfig.ruby`, which is a console program, opens a console while it runs.
-
-A known defect on Windows: in an app with a `Gemfile`, when your users spell Bundler's `BUNDLE_GEMFILE` in another case, such as `bundle_gemfile`, `Bundler.original_env` holds it at the first start and loses it after a restart, where `bundle exec` keeps it. If this bites you, [open an issue](https://github.com/setdef/Fledge/issues).
 
 ## C headers
 

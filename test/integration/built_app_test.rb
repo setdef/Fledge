@@ -537,6 +537,52 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # A child Ruby the app starts with the bundler/setup Bundler put in
+  # RUBYOPT sets up the app's own Gemfile, as under bundle exec, though
+  # the person's own Bundler settings, in HOME's .bundle/config, name
+  # another, and so does their BUNDLE_GEMFILE, which on Windows, whose
+  # variable names ignore case, they may spell bundle_gemfile (AGENTS.md,
+  # Design precedence 1; doc/contributors/design/launcher.md, "Bundler's
+  # variables spelled otherwise").
+  def test_a_child_ruby_of_a_bundler_app_sets_up_the_apps_gemfile
+    Dir.mktmpdir do |dir|
+      evil = person_gemfile(dir)
+      gemfile = File.join(File.dirname(bundled_probe), "app", "Gemfile")
+      spellings = @platform.windows? ? %w[BUNDLE_GEMFILE bundle_gemfile] : %w[BUNDLE_GEMFILE]
+
+      spellings.each do |name|
+        out, err, status = run_app({ "HOME" => dir, name => evil }, bundled_probe, "child-gemfile")
+        assert_equal ["", 0], [err, status.exitstatus], name
+        assert File.identical?(out.chomp, gemfile), "#{name}: the child set up #{out.inspect}, not #{gemfile}"
+      end
+    end
+  end
+
+  # On Windows a person's bundle_gemfile is Bundler's BUNDLE_GEMFILE, but
+  # Bundler's settings read ENV by Bundler's spelling alone (settings.rb,
+  # Settings#initialize, at Bundler 4.0.20), so the app's ENV names its
+  # Gemfile as BUNDLE_GEMFILE, where bundle exec keeps the person's
+  # spelling, and a restart finds nothing changed. The probe's report
+  # requires racc/cparse with no racc in its Gemfile, for which Ruby
+  # warns under Bundler, as under bundle exec (lib/bundled_gems.rb,
+  # build_message), and the report says nothing else on standard error.
+  def test_a_bundler_app_spells_its_gemfile_as_bundler_does_through_a_restart
+    skip "only Windows' variable names ignore case" unless @platform.windows?
+    Dir.mktmpdir do |dir|
+      gemfile = File.join(File.dirname(bundled_probe), "app", "Gemfile")
+      env = { "HOME" => dir, "bundle_gemfile" => person_gemfile(dir) }
+
+      out, err, status = run_app(env, bundled_probe)
+      report = JSON.parse(out[/^FLEDGE-PARITY (.*)$/, 1])
+      racc = %r{\A.+:\d+: warning: racc/cparse is found in racc, which .*\r?\nYou can add racc to your Gemfile or gemspec to \w+ this \w+\.\r?\n}
+
+      assert_equal ["", 0], [err.sub(racc, ""), status.exitstatus]
+      assert_equal ["BUNDLE_GEMFILE"], report.fetch("ENV").keys.grep(/\Abundle_gemfile\z/i)
+      assert File.identical?(report.fetch("ENV").fetch("BUNDLE_GEMFILE"), gemfile), report.fetch("ENV").fetch("BUNDLE_GEMFILE")
+      assert_equal ["restarted as itself\n", "", 0], run_app(env, bundled_probe, "restart").then { |o, e, s| [o, e, s.exitstatus] }
+    end
+  end
+
   # bin/ruby hands only its first argument to the launcher, and only
   # when it is an app's program (ADR 026;
   # doc/contributors/design/launcher.md, "bin/ruby and restarts"): with
@@ -1120,6 +1166,17 @@ class BuiltAppTest < Minitest::Test
     end
     out, status = Open3.capture2e({ "ARCHIVE" => archive, "PLACE" => place }, *command)
     assert_predicate status, :success?, out
+  end
+
+  # A Gemfile of the person's own that fails when Bundler reads it, in
+  # +home+, which a .bundle/config there names too, as the person's own
+  # Bundler settings. Returns its path.
+  def person_gemfile(home)
+    gemfile = File.join(home, "person", "Gemfile")
+    FileUtils.mkdir_p([File.dirname(gemfile), File.join(home, ".bundle")])
+    File.write(gemfile, "raise \"the person's own Gemfile reached the app\"\n")
+    File.write(File.join(home, ".bundle", "config"), "---\nBUNDLE_GEMFILE: \"#{gemfile}\"\n")
+    gemfile
   end
 
   # Runs the app, never through a shell, with nothing in its environment

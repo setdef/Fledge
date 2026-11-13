@@ -450,6 +450,10 @@ end
 case ARGV.first
 when "child-env"
   puts child_ruby("print ENV.fetch(#{ARGV.fetch(1).inspect}, '(unset)')")
+when "child-gemfile"
+  # The Gemfile the bundler/setup in RUBYOPT sets a child Ruby up with,
+  # or nothing when that fails.
+  puts child_ruby("print defined?(Bundler) ? Bundler.default_gemfile : '(no Bundler)'")
 when "original-child-env", "unbundled-child-env"
   method = (ARGV.first == "original-child-env") ? :with_original_env : :with_unbundled_env
   puts bundler_child_ruby(method, "print ENV.fetch(#{ARGV.fetch(1).inspect}, '(unset)')") || "(no Bundler)"

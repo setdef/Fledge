@@ -157,6 +157,31 @@ class ParityTest < Minitest::Test
       "a C locale where ruby has UTF-8 is not"
   end
 
+  # Windows' own spelling of PATH naming the bundle's gems is justified
+  # only in the gem-shaped run with Bundler's variables spelled otherwise,
+  # which still allows what the gem-shaped run allows.
+  def test_a_path_spelled_as_windows_spells_it_is_justified_only_in_the_spelled_run
+    reference = { "Bundler.original_env" => { "Path" => "<work>/person-gems/bin" }, "ENV" => { "GEM_HOME" => "<work>/person-gems" } }
+    app = { "Bundler.original_env" => { "Path" => "<prefix>/bin" }, "ENV" => { "GEM_HOME" => "<prefix>" } }
+
+    assert Parity::Reports.compare(reference, app, platform: "x64-mingw-ucrt", check: :spelled).all?(&:justified?)
+    refute Parity::Reports.compare(reference, app, platform: "x64-mingw-ucrt", check: :bundle).all?(&:justified?)
+    refute Parity::Reports.compare(reference, app, platform: "x86_64-linux", check: :spelled).all?(&:justified?)
+  end
+
+  # The app's BUNDLE_GEMFILE where bundle exec keeps the person's
+  # bundle_gemfile is justified only in the spelled run, and only when it
+  # names the same Gemfile.
+  def test_bundlers_spelling_of_the_gemfile_is_justified_only_in_the_spelled_run_for_the_same_gemfile
+    reference = { "ENV" => { "bundle_gemfile" => "<project>/Gemfile" }, "Bundler.original_env" => { "bundle_gemfile" => "<project>/Gemfile" } }
+    app = { "ENV" => { "BUNDLE_GEMFILE" => "<project>/Gemfile" }, "Bundler.original_env" => {} }
+    elsewhere = app.merge("ENV" => { "BUNDLE_GEMFILE" => "<work>/Gemfile" })
+
+    assert Parity::Reports.compare(reference, app, platform: "x64-mingw-ucrt", check: :spelled).all?(&:justified?)
+    refute Parity::Reports.compare(reference, app, platform: "x64-mingw-ucrt", check: :bundle).all?(&:justified?)
+    refute Parity::Reports.compare(reference, elsewhere, platform: "x64-mingw-ucrt", check: :spelled).all?(&:justified?)
+  end
+
   def test_the_same_elements_in_another_order_differ
     difference = Parity::Reports.compare({ "$LOAD_PATH" => %w[a b] }, { "$LOAD_PATH" => %w[b a] }, platform: "x86_64-linux").first
 

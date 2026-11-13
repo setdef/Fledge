@@ -20,9 +20,8 @@
 name: Fast
 
 on:
-  push:
-    branches: ["**"]
-  pull_request:
+  # experiment/ruby-spec-holes: not run.
+  workflow_dispatch:
 
 permissions:
   contents: read

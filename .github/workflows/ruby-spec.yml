@@ -26,8 +26,10 @@ on:
         description: Run on all seven desktop platforms, not only x86_64-linux and arm64-darwin
         type: boolean
         default: false
-  schedule:
-    - cron: "17 4 * * *"
+  # experiment/ruby-spec-holes: every platform, on the runtimes of run
+  # 43313316095 (Android's of 43315555155, with its process title).
+  push:
+    branches: [experiment/ruby-spec-holes]
   workflow_dispatch:
 
 permissions:
@@ -61,8 +63,9 @@ jobs:
           FULL: ${{ inputs.full }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          run=""
-          if [ "$GITHUB_EVENT_NAME" = schedule ] || [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+          run=43313316095
+          FULL=true
+          if false; then
             FULL=true
             # A pin commit's short run passes too, and holds no runtimes: take
             # the newest passing run that has them.
@@ -271,7 +274,7 @@ jobs:
         with:
           name: runtime-android
           path: runtimes
-          run-id: ${{ needs.plan.outputs.run }}
+          run-id: 43315555155
           github-token: ${{ github.token }}
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

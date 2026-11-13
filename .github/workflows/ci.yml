@@ -63,10 +63,9 @@
 name: CI
 
 on:
-  push:
-    # Not on tags: release.yml looks up the tagged commit's run on trunk.
-    branches: ["**"]
-  pull_request:
+  # experiment/ruby-spec-holes: ruby-spec.yml runs on its own, on the
+  # runtimes of earlier runs.
+  workflow_dispatch:
 
 permissions:
   contents: read

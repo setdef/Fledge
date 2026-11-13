@@ -391,7 +391,12 @@ class RuntimeBuilder
     # apps. The kernel names that area in /proc/self/stat (arg_start and
     # arg_end, fields 48 and 49, proc(5)), so where argv[0] is not in it,
     # compat_init_setproctitle's edit points setproctitle there, which
-    # then clears and writes it as setArgv0 does. A ruby program the app
+    # then clears and writes it as setArgv0 does. Where the environment's
+    # strings follow that area (env_start and env_end, fields 50 and 51),
+    # a longer title goes on into them, as Linux's Ruby writes on into
+    # its own (compat_init_setproctitle, lines 155 to 166) once it has
+    # copied them, and the kernel reads it there only then
+    # (fs/proc/base.c, get_mm_cmdline, lines 313 to 320 at v6.12). A ruby program the app
     # starts has its argv in its own area, and keeps Ruby's way. Neither
     # renames a thread: setArgv0 names the thread that calls it, Android's
     # main thread, where Ruby's runs on a thread of its own, and Linux's
@@ -445,7 +450,7 @@ class RuntimeBuilder
       fledge_use_process_argument_area(const char *argv0)
       {
           char stat[2048];
-          unsigned long start, end;
+          unsigned long start, end, env_start, env_end;
           FILE *file = fopen("/proc/self/stat", "re");
           if (file == NULL) return;
           size_t size = fread(stat, 1, sizeof(stat) - 1, file);
@@ -453,10 +458,14 @@ class RuntimeBuilder
           stat[size] = 0;
           char *field = strrchr(stat, ')');
           for (int number = 3; field != NULL && number <= 48; number++) field = strchr(field + 1, ' ');
-          if (field == NULL || sscanf(field, "%lu %lu", &start, &end) != 2 || end <= start) return;
+          if (field == NULL || sscanf(field, "%lu %lu %lu %lu", &start, &end, &env_start, &env_end) != 4 || end <= start) return;
           if ((uintptr_t)argv0 >= start && (uintptr_t)argv0 < end) return;
           argv_start = (char *)start;
           argv_len = argv_env_len = end - start;
+          /* As Linux's Ruby writes on into the environment's strings, which
+             compat_init_setproctitle has copied, where the kernel reads a
+             title on into them: when they follow the arguments. */
+          if (env_start == end && env_end > env_start) argv_env_len = env_end - start;
       }
       #endif
     C

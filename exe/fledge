@@ -478,9 +478,7 @@
 #                        Release for this version (or from
 #                        FLEDGE_RUNTIME_MIRROR), each checked
 #                        against the SHA-256 this Fledge pins for it,
-#                        in the cache too, and, to
-#                        compile gems, each one's build-only companion
-#                        of Ruby's headers and libraries. A runtime's
+#                        in the cache too. A runtime's
 #                        tools/ (rcedit and NSIS on Windows, AppImage's
 #                        runtime on Linux) never ships in an app.
 #     ~/.cache/fledge/gems/
@@ -494,9 +492,8 @@
 #
 # ENVIRONMENT
 #     FLEDGE_RUNTIME_DIR Take runtimes from this folder of
-#                        fledge-runtime-VERSION-PLATFORM.tar.gz files
-#                        (and their -dev.tar.gz companions), and never
-#                        download them.
+#                        fledge-runtime-VERSION-PLATFORM.tar.gz files,
+#                        and never download them.
 #     FLEDGE_RUNTIME_MIRROR
 #                        Download runtimes from this server instead
 #                        of Fledge's GitHub Release, as

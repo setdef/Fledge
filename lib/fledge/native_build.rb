@@ -27,10 +27,9 @@ module Fledge
   # platform it runs on, as <tt>gem install</tt> does, and cross-compiles
   # no desktop gem (ADR 006).
   #
-  # This class unpacks the runtime and its build-only companion
-  # (Fledge::Runtimes#dev_archive: the library to link against) into the
-  # build's work folder, and runs the runtime's
-  # own Ruby, with none of the developer's Ruby settings, to install each
+  # This class unpacks the runtime, which holds Ruby's headers and the
+  # library mkmf links against (ADR 085), into the build's work folder,
+  # and runs the runtime's own Ruby, with none of the developer's Ruby settings, to install each
   # gem as RubyGems installs one (Gem::Installer, with the options
   # <tt>bundle config build.NAME</tt> gives) into a gem folder of its own,
   # after the gems it depends on, which its extconf.rb may require; a git
@@ -156,8 +155,7 @@ module Fledge
     # Creates the build.
     #
     # [platform] The Fledge::Platform Fledge runs on.
-    # [runtimes] The Fledge::Runtimes that finds the runtime and its
-    #            build-only companion.
+    # [runtimes] The Fledge::Runtimes that finds the runtime.
     # [work] The build's own folder, which the caller removes.
     # [log] Where the compiler's output goes, such as <tt>$stderr</tt>.
     # [env] The environment to start from (default: +ENV+).

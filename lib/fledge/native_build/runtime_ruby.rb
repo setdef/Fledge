@@ -13,9 +13,11 @@ require_relative "../archive"
 
 module Fledge
   class NativeBuild
-    # The runtime's own Ruby, unpacked with its build-only companion into
-    # the build's work folder, which runs SCRIPT with none of the
-    # developer's Ruby settings and its own gem folder.
+    # The runtime's own Ruby, unpacked into the build's work folder, which
+    # runs SCRIPT with none of the developer's Ruby settings and its own
+    # gem folder. The runtime alone has what compiling a gem's extension
+    # needs of Ruby: its headers and the library mkmf links against
+    # (ADR 085).
     class RuntimeRuby # :nodoc:
       # The Ruby of +platform+'s runtime, which +runtimes+ finds, unpacked
       # under +work+ when it first runs, its output going to +log+, in an
@@ -52,13 +54,12 @@ module Fledge
         JSON.parse(File.read(result))
       end
 
-      # Unpacks the runtime and its build-only companion, once, and returns
-      # the path of the runtime's Ruby.
+      # Unpacks the runtime, once, and returns the path of its Ruby.
       private def prepare
         @ruby ||= begin
           ruby = File.join(@work, "ruby")
           FileUtils.rm_rf(ruby)
-          [@runtimes.archive(@platform), @runtimes.dev_archive(@platform)].each { |archive| Archive.unpack(archive, into: ruby) }
+          Archive.unpack(@runtimes.archive(@platform), into: ruby)
           top = Dir.children(ruby).first.to_s
           File.join(ruby, top, *(@platform.windows? ? %w[ruby bin ruby.exe] : %w[bin ruby]))
         end

@@ -14,18 +14,22 @@ require "open3"
 require "stringio"
 
 # fledge build compiling a gem's C extension on this computer, for this
-# computer's platform, against the real runtime's own Ruby and its
-# build-only companion (ADR 006): a gem that publishes only its source,
+# computer's platform, against the real runtime's own Ruby and nothing
+# else (ADR 006 and ADR 085): a gem that publishes only its source,
 # served by a real gem server, with build options from the project's
-# .bundle/config, and the same gem from git. Then the built app runs.
+# .bundle/config, and the same gem from git. Its extconf.rb checks for a
+# function with have_func, as nokogiri's does, whose test program mkmf
+# links against Ruby's own library, which only the runtime gives. Then
+# the built app runs.
 #
-# The runtime and its companion come from FLEDGE_RUNTIME_DIR, or from
-# tmp/runtime, where rake runtime writes them. Without them the test
-# skips, unless FLEDGE_REQUIRE_RUNTIME is set, as CI sets it.
+# The runtime comes from FLEDGE_RUNTIME_DIR, or from tmp/runtime, where
+# rake runtime writes it. Without it the test skips, unless
+# FLEDGE_REQUIRE_RUNTIME is set, as CI sets it.
 class NativeBuildTest < Minitest::Test
   EXTCONF = <<~RUBY
     require "mkmf"
     greeting = arg_config("--with-greeting", "hello")
+    abort "mkmf links no program against the runtime's Ruby" unless have_func("rb_str_new_cstr", "ruby.h")
     $defs << %(-DGREETING=\\\\"\#{greeting}\\\\")
     create_makefile("greeter/greeter")
   RUBY
@@ -48,10 +52,9 @@ class NativeBuildTest < Minitest::Test
   def setup
     @platform = Fledge::Platform.local
     @runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
-    missing = [Fledge::Runtimes.file_name(@platform), Fledge::Runtimes.dev_file_name(@platform)]
-      .reject { |name| File.file?(File.join(@runtimes, name)) }
-    unless missing.empty?
-      message = "no #{missing.join(' or ')} in #{@runtimes}; run bundle exec rake runtime"
+    name = Fledge::Runtimes.file_name(@platform)
+    unless File.file?(File.join(@runtimes, name))
+      message = "no #{name} in #{@runtimes}; run bundle exec rake runtime"
       flunk message if ENV["FLEDGE_REQUIRE_RUNTIME"]
       skip message
     end
@@ -122,7 +125,6 @@ class NativeBuildTest < Minitest::Test
     assert_includes File.read(File.join(gems, "build_info", "greeter-1.0.0.info")), "--with-greeting=bonjour"
     refute(Dir.glob(File.join(gems, "gems/greeter-1.0.0/ext/greeter/*")).any? { |path| path.end_with?(".o", "Makefile") },
       "the build's own leftovers stay behind")
-    refute_path_exists File.join(folder, "DEV-NOTICES.txt"), "nothing of the build-only companion ships"
     assert_equal 1, Dir.glob(File.join(folder, @platform.windows? ? "ruby/lib/*.dll.a" : "lib/libruby*-static.a")).size,
       "the runtime's own library to link against, which mkmf's checks read, ships as the runtime holds it"
     assert_path_exists File.join(folder, @platform.windows? ? "ruby/include" : "include"), "Ruby's headers ship, for require \"mkmf\""

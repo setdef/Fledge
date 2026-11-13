@@ -266,17 +266,43 @@ class RuntimeBuilder
     # renames a thread: setArgv0 names the thread that calls it, Android's
     # main thread, where Ruby's runs on a thread of its own, and Linux's
     # Ruby leaves the kernel's name for its process as it was.
+    #
+    # An iOS app's Ruby is given an argv fledge_ruby_run allocates too,
+    # where Darwin reads a process's arguments from the strings its
+    # process started with (sysctl's KERN_PROCARGS2, which ps reads), so
+    # the title went nowhere there either (measured in the Simulator,
+    # 2026-11-12: ps and KERN_PROCARGS2 still showed the executable's
+    # path). Darwin keeps the process's own argv for anyone to find
+    # (_NSGetArgc and _NSGetArgv, crt_externs.h, in the iOS SDK), so
+    # there compat_init_setproctitle measures that argv instead of the
+    # one it was given, and Ruby then writes over the process's own
+    # strings, as macOS's Ruby, started by the kernel, does.
     def self.setproctitle_c(text)
-      found = replace(text, /^(void\ncompat_init_setproctitle\(int argc, char \*argv\[\]\)\n)/,
-        "#{ARGUMENT_AREA}\n\\1", "setproctitle.c defines compat_init_setproctitle")
+      found = replace(text, /^(void\ncompat_init_setproctitle\(int argc, char \*argv\[\]\)\n\{\n)/,
+        "#{ARGUMENT_AREA}\n\\1#{PROCESS_ARGUMENTS}", "setproctitle.c defines compat_init_setproctitle")
       replace(found, %r{^(\talloc_environ\[i\] = environ\[i\] = NULL;\n)(#endif /\* SPT_REUSEARGV \*/\n\}\n)},
         "\\1#if defined(__ANDROID__)\n\tfledge_use_process_argument_area(argv[0]);\n#endif\n\\2",
         "compat_init_setproctitle copies environ")
     end
 
+    # The first lines of compat_init_setproctitle on Darwin: the argv the
+    # process started with, in place of the one Ruby was given.
+    PROCESS_ARGUMENTS = <<~C
+      #if ALLOCATE_ENVIRON && defined(__APPLE__)
+      \tif (*_NSGetArgv() != NULL && argv != *_NSGetArgv()) {
+      \t\targc = *_NSGetArgc();
+      \t\targv = *_NSGetArgv();
+      \t}
+      #endif
+    C
+
     # The C before compat_init_setproctitle that finds an Android
-    # process's argument area.
+    # process's argument area, and on Darwin the declarations of the
+    # process's own argv.
     ARGUMENT_AREA = <<~C
+      #if ALLOCATE_ENVIRON && defined(__APPLE__)
+      #include <crt_externs.h>
+      #endif
       #if ALLOCATE_ENVIRON && defined(__ANDROID__)
       #include <stdint.h>
       #include <stdio.h>

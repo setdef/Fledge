@@ -157,9 +157,13 @@ end
 # is a bundled gem that a Gemfile's bundle leaves out, so under Bundler
 # it is not asked.
 def main_bundle
-  return unless RUBY_PLATFORM.include?("darwin") && !defined?(Bundler)
+  return unless RUBY_PLATFORM.include?("darwin")
 
-  require "fiddle"
+  begin
+    require "fiddle"
+  rescue LoadError
+    return
+  end
   objc = Fiddle.dlopen("/usr/lib/libobjc.A.dylib")
   Fiddle.dlopen("/System/Library/Frameworks/Foundation.framework/Foundation")
   pointer = Fiddle::TYPE_VOIDP
@@ -198,6 +202,38 @@ def stdout_writes_through
 ensure
   $VERBOSE = verbose
   $stderr = stderr
+end
+
+# The title the probe gives its process with $0=.
+TITLE = "fledge-parity-title"
+
+# Whether, once $0 = TITLE, the system names the process by it: the first
+# word of its command line, as ps reads it, is TITLE. That is
+# /proc/self/cmdline where there is one, and on Darwin, macOS and iOS
+# alike, what sysctl's KERN_PROCARGS2 reads (the argument count, the
+# executable's path, then the arguments), through fiddle, which a
+# Gemfile's bundle may leave out, and then it is not asked. Windows
+# keeps no title, and is not asked.
+def titled?
+  $0 = TITLE
+  return File.binread("/proc/self/cmdline").split("\0").first == TITLE if File.exist?("/proc/self/cmdline")
+  return unless RUBY_PLATFORM.include?("darwin")
+  # A bundle that leaves fiddle out would have Ruby warn as it refuses it.
+  return if defined?(Bundler) && !Gem.loaded_specs.key?("fiddle")
+
+  begin
+    require "fiddle"
+  rescue LoadError
+    return
+  end
+  pointer = Fiddle::TYPE_VOIDP
+  sysctl = Fiddle::Function.new(Fiddle.dlopen(nil)["sysctl"], [pointer, Fiddle::TYPE_UINT, pointer, pointer, pointer, Fiddle::TYPE_SIZE_T],
+    Fiddle::TYPE_INT)
+  buffer = "\0" * 65_536
+  size = [buffer.bytesize].pack("J")
+  return "sysctl: #{Fiddle.last_error}" unless sysctl.call([1, 49, Process.pid].pack("i*"), 3, buffer, size, nil, 0).zero?
+
+  buffer.byteslice(4, size.unpack1("J") - 4).split("\0").reject(&:empty?)[1] == TITLE
 end
 
 # +value+ with every string as valid UTF-8, for JSON: a path read in a C
@@ -303,6 +339,8 @@ else
   report["$stdout writes through"] = stdout_writes_through
   # Last, since requiring changes $LOADED_FEATURES.
   report["requireable"] = Gem::Specification.to_h { |spec| [spec.name, requireable(spec)] }.sort.to_h
+  # Last of all, since it changes $0.
+  report["$0= titles the process"] = titled?
   # In a C locale, ARGV and paths outside ASCII are US-ASCII strings with
   # bytes outside it, which JSON refuses; the encodings are among the
   # facts.

@@ -42,6 +42,19 @@ end
 # SPDX-SnippetEnd
 #++
 
+# On Windows, RubyInstaller's library defines RubyInstaller, as it does
+# under ruby.exe, where RubyInstaller's own operating_system.rb requires
+# it first. Gems test for the constant: mysql2 0.5.6 preloads
+# libmysql.dll by bare name unless defined?(RubyInstaller)
+# (lib/mysql2.rb, lines 7 to 30). Requiring it only defines modules and
+# autoloads (ruby_installer/runtime.rb and runtime/singleton.rb, at
+# RubyInstaller 92a692c); nothing of what RubyInstaller's file then
+# calls runs here, since that writes into the gem folder, may set
+# GEM_HOME, creates %ProgramData%\gemrc, and adds the person's MSYS2 to
+# the DLL search (doc/contributors/design/runtimes.md, "Fledge's
+# RubyGems defaults").
+require "ruby_installer/runtime" if Gem.win_platform?
+
 # A bundled gem that the app's Gemfile does not name, such as irb for
 # binding.irb, activates under Bundler as it does under bundle exec.
 #

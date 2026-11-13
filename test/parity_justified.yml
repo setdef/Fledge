@@ -219,7 +219,7 @@
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/site_ruby/\d+\.\d+\.0(?:\+\d+)?/ruby_installer/
+  - \A"<prefix>/lib/ruby/site_ruby/\d+\.\d+\.0(?:\+\d+)?/ruby_installer/runtime/(?:colors|dll_directory|msys2_installation)\.rb"\z
   - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:x64|aarch64)-mingw-ucrt/(?:enc/|win32/dll_directory\.so"\z)
   app: []
   platforms:
@@ -230,7 +230,7 @@
   - bundle
 - fact: Object.constants
   reference:
-  - \A"(?:RubyInstaller|Win32)"\z
+  - \A"Win32"\z
   app: []
   platforms:
   - x64-mingw-ucrt

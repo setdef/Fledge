@@ -38,11 +38,11 @@ What you can see from Ruby:
 - With `TZ` set to a zone whose name is not ASCII, `Time#zone` is a UTF-8 string, not Windows-1252.
 - A C extension's `fopen` and the C runtime's other narrow functions read UTF-8, because the C runtime's locale is UTF-8 too.
 
-`Encoding.default_external` and `Encoding.find("filesystem")` are UTF-8 under `ruby.exe` already, and do not change. The Ruby that `RbConfig.ruby` names is RubyInstaller's `ruby.exe`, which keeps the system's code page, so a gem loaded through ffi from a folder named outside ASCII fails in a Ruby your app starts, as it does under `ruby.exe`. If this surprises you, [open an issue](https://github.com/setdef/Fledge/issues).
+`Encoding.default_external` and `Encoding.find("filesystem")` are UTF-8 under `ruby.exe` already, and do not change. The `ruby.exe` that `RbConfig.ruby` names in the app declares UTF-8 too, so a Ruby your app starts has the app's code page, and a gem loaded through ffi from a folder named outside ASCII works there as in the app. If this surprises you, [open an issue](https://github.com/setdef/Fledge/issues).
 
 ## Restarts
 
-On macOS and Linux, `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first started, with the same setup. On Windows, start the app's `NAME.exe` again.
+`exec RbConfig.ruby, $0, *ARGV` restarts the app as it first started, with the same setup. On Windows, as under `ruby.exe`, the restarted app is a new process with a new PID, since Windows has no `exec` that keeps a process, and a windowed app that restarts through `RbConfig.ruby`, which is a console program, opens a console while it runs.
 
 ## C headers
 

@@ -366,10 +366,9 @@
 #                        with 66 when it is missing, 72 on Linux when
 #                        a library fledge.yml lists is not on the
 #                        computer, and 70 when the rest of the folder
-#                        is broken. On macOS and
-#                        Linux, exec RbConfig.ruby, $0, *ARGV
-#                        restarts it the same way; on Windows, start
-#                        NAME.exe again. Its notices/
+#                        is broken. exec RbConfig.ruby, $0, *ARGV
+#                        restarts it the same way, on Windows in a
+#                        new process, as there under ruby. Its notices/
 #                        holds the licenses of what Fledge put in it,
 #                        and on Linux and Windows, in sources/, the
 #                        source of the LGPL libraries and the

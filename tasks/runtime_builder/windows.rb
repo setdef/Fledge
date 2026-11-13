@@ -281,12 +281,13 @@ class RuntimeBuilder
     # Unpacks the one +member+ of the Zstandard-compressed tarball
     # +archive+ into +into+, with zstd where the computer has it, as
     # GitHub's runners do, or else with 7-Zip's own 7zz, which mise.toml
-    # pins, since Linux releases of zstd ship no program. The 7z of
+    # pins, since Linux releases of zstd ship no program. LLVM's release is
+    # compressed with a 2 GB window, which zstd reads only with --long=31. The 7z of
     # p7zip, which Ubuntu's runners also carry, is 16.02 and reads no
     # Zstandard, so it is never used here.
     private def extract_tar_zst(archive, into, member)
       decompress = if (zstd = @builder.which("zstd"))
-        [zstd, "-dc", archive]
+        [zstd, "-dc", "--long=31", archive]
       elsif (seven_zip = @builder.which("7zz"))
         [seven_zip, "x", "-so", "-bd", archive]
       else

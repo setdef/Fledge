@@ -370,10 +370,7 @@ class MobileExtensionsTest < Minitest::Test
     RUBY
     gem = Fledge::GitGem.new(name: "oxide", version: "1.0.0", uri: "https://example.com/oxide.git", revision: "a" * 40,
       glob: "gems/*/*.gemspec", ref: nil, submodules: false)
-    compiler = Fledge::MobileExtensions.new(platform: ios, packages: {}, build_args: {}, host: Fledge::Platform.find("arm64-darwin"),
-      runtimes: Fledge::Runtimes.new(env: {}), work: File.join(@dir, "work"), log: StringIO.new, gem_dir: "lib/ruby/gems/4.1.0+5")
-
-    root = compiler.__send__(:source_root, Fledge::GitPackage.new(gem, checkout), File.join(@dir, "work", "ios-arm64", "oxide-1.0.0"))
+    root = Fledge::MobileExtensions::Sources.unpack(Fledge::GitPackage.new(gem, checkout), File.join(@dir, "work", "ios-arm64", "oxide-1.0.0"))
 
     assert_equal File.join(@dir, "work", "ios-arm64", "oxide-1.0.0", "gems", "oxide"), root
     assert_equal "# extconf\n", File.read(File.join(root, "ext", "oxide", "extconf.rb"))

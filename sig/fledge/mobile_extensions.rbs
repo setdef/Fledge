@@ -7,8 +7,6 @@ module Fledge
     INSTALL_XCODE: String
     TOOLS: String
     SHIM: String
-    IOS_SLICES: Array[String]
-    ANDROID_ABIS: Hash[String, String]
 
     class TargetBuild < Data
       attr_reader target: Target
@@ -31,18 +29,6 @@ module Fledge
                   | (String feature, String init, String archive, Array[String] flags, bool cxx) -> instance
     end
 
-    class Target < Data
-      attr_reader name: String
-      attr_reader root: String
-      attr_reader arch_dir: String
-      attr_reader libdir: String
-      attr_reader environment: Hash[String, String]
-      attr_reader abi: String?
-
-      def self.new: (name: String, root: String, arch_dir: String, libdir: String, environment: Hash[String, String], abi: String?) -> instance
-                  | (String name, String root, String arch_dir, String libdir, Hash[String, String] environment, String? abi) -> instance
-    end
-
     class Built < Data
       attr_reader registrations: Array[[String, String]]
       attr_reader targets: Hash[String, TargetBuild]
@@ -59,11 +45,12 @@ module Fledge
     @host: Platform
     @runtimes: Runtimes
     @work: String
-    @log: CLI::_Output
+    @runner: Runner
     @env: Runtimes::_Env
     @gem_dir: String
     @ruby: String?
     @rake_build: RakeBuild?
+    @extconf_build: ExtconfBuild?
     @dependencies: Hash[locked_gem, package]
     @load_path: Array[String]?
     @stubs: Hash[String, Entry]
@@ -82,51 +69,22 @@ module Fledge
 
     def shared_library: (Built built, TargetBuild build, registration: String, into: String) -> String
 
-    private def targets: (String tree, NDK? ndk) -> Array[Target]
+    private def compile_target: (Target target) -> Array[Report]
 
-    private def ios_target: (String slice, String root) -> Target
+    private def same_registrations: (Array[[String, String]] registrations, Array[Report] reports) -> Array[[String, String]]
 
-    private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
-
-    private def resource_dir: (String cc, NDK ndk) -> String
-    private def with_tools: (Hash[String, String] environment) -> Hash[String, String]
-
-    private def toolchain_file: (String name, String text) -> String
-
-    private def xcrun: (String sdk, *String arguments) -> String
-
-    private def rbconfig_dir: (String root) -> String
-
-    private def recorded_compiler: (String arch_dir) -> String
-
-    private def unpack_aar: (String aar) -> String
+    private def refuse_clash: (Array[[String, String]] registrations) -> void
 
     private def compile: (Target target, locked_gem gem, package package, Array[String] args, Integer first) -> Array[Report]
 
-    private def extconf: (Target target, locked_gem gem, String folder, String extconf, Array[String] args, Integer number, rust: bool) -> Report
+    private def extconf: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> Report
+
+    private def extconf_build: () -> ExtconfBuild
 
     private def rake_build: () -> RakeBuild
 
-    RUST_FILES: Hash[String, String]
-
-    private def make: (Hash[String, String?] env, Array[Hash[String, String]] reports, String folder, locked_gem gem, Target target, what: String) -> void
-
-    private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target, Hash[String, String?] env) -> Report
-
-    private def describe_rust: (Hash[String, String] report, String folder, locked_gem gem, Target target) -> Report
-
     private def load_path: () -> Array[String]
 
-    private def source_root: (package package, String dir) -> String
-
     private def ruby: () -> String
-
-    private def shim_path: () -> String
-
-    private def rust_shim_path: () -> String
-
-    private def clean_env: () -> Hash[String, String?]
-
-    private def run: (Hash[String, String?] env, *String command, what: String, ?chdir: String?) -> void
   end
 end

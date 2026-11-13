@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    class AndroidLibrary
+      @runner: Runner
+
+      def initialize: (runner: Runner) -> void
+
+      def call: (Built built, TargetBuild build, registration: String, into: String) -> String
+    end
+  end
+end

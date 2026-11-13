@@ -105,7 +105,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [073](../adr/073.md) | On a phone, a gem's Rust extension is built by its own extconf.rb, as a static library, and linked in |
 | [074](../adr/074.md) | fiddle and the ffi gem work on both phones |
 | [075](../adr/075.md) | A windowed Windows app can ship as an MSIX package, built with the Windows SDK's MakeAppx |
-| [077](../adr/077.md) | Android's Ruby has YJIT, off until the app enables it, as on a desktop |
 | [078](../adr/078.md) | A phone app's standard streams reach the system log as they are printed, with nothing an app can read changed |
 | [079](../adr/079.md) | On a phone, Ruby is a static library Fledge builds from source |
 | [080](../adr/080.md) | On a phone, a Ruby file stands where a desktop has an extension's file, and requires the linked extension |
@@ -118,3 +117,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [087](../adr/087.md) | Turn a bare C locale into a UTF-8 one in every Ruby of a runtime, where the app is started with no locale |
 | [088](../adr/088.md) | On a phone, a require of a linked extension's file by its path finds the extension |
 | [089](../adr/089.md) | A restart through `RbConfig.ruby` starts the app's launcher again |
+| [090](../adr/090.md) | Android's Ruby has YJIT and ZJIT, each off until the app enables it, as on a desktop |

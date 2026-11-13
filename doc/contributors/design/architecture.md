@@ -117,3 +117,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [085](../adr/085.md) | A Runtime Is a Whole Standard Ruby, Pruned Only of What No Running Code Reads |
 | [086](../adr/086.md) | Run an App That Has a Gemfile Under the Real Bundler, as bundle exec Does |
 | [087](../adr/087.md) | Turn a bare C locale into a UTF-8 one in every Ruby of a runtime, where the app is started with no locale |
+| [088](../adr/088.md) | On a phone, a require of a linked extension's file by its path finds the extension |

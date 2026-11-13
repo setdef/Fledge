@@ -4,7 +4,7 @@
 // Written by fledge build (ADR 012): the app, with its identity from
 // fledge.yml, targeting API 36, as Google Play requires of new apps and
 // updates since 2026-08-31, and running on API 26 and later, as Fledge's
-// Android runtime does (ADR 011). Its Ruby, its program, and its gems
+// Android runtime does (ADR 079). Its Ruby, its program, and its gems
 // are the folder fledge/, which the task fledgeAsset stores, uncompressed,
 // as the asset fledge.zip, which org.setdef.fledge.FledgeRuby, in
 // libs/FledgeRuby.aar, unpacks on the app's first launch. Native

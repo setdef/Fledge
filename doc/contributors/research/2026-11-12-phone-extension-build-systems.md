@@ -236,7 +236,7 @@ Commits: tauri-apps/tauri at 5edd31c8a8914674c217b21a660a914823da2dae; tauri-app
 ## 4. Fledge's constraints
 
 - **Its own system and tools** (ADR 010): Xcode on a Mac for iOS, the NDK on a Mac or Linux for Android. Fledge downloads no toolchain onto a developer's computer.
-- **Static, linked, and registered** (ADR 011, ADR 022): every extension becomes an archive, linked into the app's executable on iOS or `libfledgeext.so` on Android, and registered with Ruby under the name `require` asks for.
+- **Static, linked, and registered** (the former ADR 011, now ADR 079, ADR 022): every extension becomes an archive, linked into the app's executable on iOS or `libfledgeext.so` on Android, and registered with Ruby under the name `require` asks for.
 - **The developer's gems are theirs** (ADR 007): Fledge runs each gem's own build and changes none of its files.
 - **Every input is pinned** (AGENTS.md): a recipe database of Fledge's own would be one more input to pin and keep, for others' gems.
 - **Code is a liability** (`decisions.md`, 2026-10-28): reuse RubyGems' builders and Ruby's own tools, and write only what none does.

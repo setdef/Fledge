@@ -31,7 +31,7 @@
 # on its own platform's runner; and Delivery installs each on a fresh
 # runner and runs the app it installed.
 #
-# The mobile runtimes (ADR 011) build from Ruby's source, iOS's on a Mac
+# The mobile runtimes (ADR 079) build from Ruby's source, iOS's on a Mac
 # with Xcode and Android's on Linux with the NDK, and their Delivery is
 # apps built with fledge build ios and fledge build android (ADR 012),
 # whose Xcode and Gradle projects build unsigned, the Gradle ones as APKs
@@ -414,7 +414,7 @@ jobs:
           path: tmp/runtime/${{ matrix.platform }}/logs
           retention-days: 14
 
-  # The mobile runtimes (ADR 011): CRuby built from its pinned source for
+  # The mobile runtimes (ADR 079): CRuby built from its pinned source for
   # iOS and iPadOS, on a Mac with the pinned Xcode, and for Android, on
   # Linux with the pinned NDK and Gradle, each audited like every other
   # runtime. Xcode 26.5 is the newest on macos-26 and the one whose iOS

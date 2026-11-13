@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-# What the mobile runtimes promise an app, in one line (ADR 011): json, a
+# What the mobile runtimes promise an app, in one line (ADR 079): json, a
 # default gem, and csv, a bundled gem that RubyGems activates as a gem;
 # prism, a bundled gem whose extension compiles its own libprism beside
 # the one libruby holds (ADR 067), parsing with its extension; and HTTPS

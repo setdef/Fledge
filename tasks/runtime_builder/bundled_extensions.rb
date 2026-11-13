@@ -14,7 +14,7 @@ class RuntimeBuilder
   # each keeping every symbol but its Init function to itself (ADR 067).
   #
   # A mobile Ruby loads no extension from a file: both runtimes link
-  # every extension into the one library an app carries (ADR 011), and
+  # every extension into the one library an app carries (ADR 079), and
   # iOS loads no loose library. Ruby's build links its own extensions in that way
   # (--with-static-linked-ext), registering each in extinit.c, but never a
   # bundled gem's: template/configure-ext.mk.tmpl builds .bundle/gems with

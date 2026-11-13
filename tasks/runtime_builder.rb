@@ -113,13 +113,13 @@ class RuntimeBuilder
   end
 
   # The runtime named +name+: a desktop platform's (Fledge::Platform), or
-  # a mobile one's (Mobile::PLATFORMS, ADR 011), which fledge build does
+  # a mobile one's (Mobile::PLATFORMS, ADR 079), which fledge build does
   # not build apps for yet. Raises Fledge::UsageError for any other name.
   def self.platform(name)
     Mobile::PLATFORMS.fetch(name) { Fledge::Platform.find(name) }
   end
 
-  # Whether this is a mobile runtime (ADR 011).
+  # Whether this is a mobile runtime (ADR 079).
   def mobile?
     platform.is_a?(Mobile::Platform)
   end

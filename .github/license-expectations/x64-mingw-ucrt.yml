@@ -22,7 +22,7 @@
 - "unresolved: lib/ruby/4.1.0+6/x64-mingw-ucrt/digest/blake3.so: needs libgcc_s_seh-1.dll"
 # RubyInstaller's own ruby.exe and rubyw.exe are Ruby's main.c alone; a
 # runtime's carry Fledge's code beside it (runtime/launcher/ruby_main.c and
-# windows_relaunch.c, ADR 026), which the audit looks for by a string of
+# windows_relaunch.c, ADR 089), which the audit looks for by a string of
 # windows_relaunch.c's.
 - "stale: bin/ruby.exe: should hold Fledge launcher and RubyGems defaults"
 - "stale: bin/rubyw.exe: should hold Fledge launcher and RubyGems defaults"

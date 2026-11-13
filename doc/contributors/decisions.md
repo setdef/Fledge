@@ -268,7 +268,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: Design precedence 2, in the discussion of whether a restart through `RbConfig.ruby` in a built app differs from `ruby main.rb`.]
 
-*Governs:* the purpose of Design precedence 2 and of the parity check: a difference between a Fledge app and the same program run without Fledge is a bug unless it is justified and documented. *Applied in:* AGENTS.md, Design precedence 2; ADR 026.
+*Governs:* the purpose of Design precedence 2 and of the parity check: a difference between a Fledge app and the same program run without Fledge is a bug unless it is justified and documented. *Applied in:* AGENTS.md, Design precedence 2; ADR 089.
 
 ## 2026-11-03
 

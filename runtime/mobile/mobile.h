@@ -72,7 +72,7 @@ void fledge_ruby_link_program(const char *root);
  * app links registered; and, when its first argument is the program
  * root/fledge.cfg names, fledge_ruby_run_app with the arguments after
  * it, as the desktop's bin/ruby hands an app's program to its launcher
- * (ADR 026).
+ * (ADR 089).
  */
 int fledge_ruby_main(const char *root, int argc, char **argv);
 

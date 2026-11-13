@@ -508,7 +508,7 @@ class BuiltAppTest < Minitest::Test
 
   # A program restarts itself as Ruby programs do, with exec
   # RbConfig.ruby, $0, *ARGV, and the runtime's bin/ruby hands the app's
-  # own program back to its launcher (ADR 026). So the restart is the
+  # own program back to its launcher (ADR 089). So the restart is the
   # same process running the same program, in the same locale, with the
   # same gems and environment: with no locale, from a folder whose name
   # is not ASCII, in the person's environment and in a hostile one, with
@@ -563,7 +563,7 @@ class BuiltAppTest < Minitest::Test
   end
 
   # bin/ruby hands only its first argument to the launcher, and only
-  # when it is an app's program (ADR 026;
+  # when it is an app's program (ADR 089;
   # doc/contributors/design/launcher.md, "bin/ruby and restarts"): with
   # an option before the program, it is plain Ruby, whose RubyGems reads
   # the person's GEM_HOME, as ruby -W1 main.rb would.
@@ -606,7 +606,7 @@ class BuiltAppTest < Minitest::Test
     File.rename("#{config}.away", config) if config && File.exist?("#{config}.away")
   end
 
-  # bin/ruby hands an app's own script to the app's launcher (ADR 026),
+  # bin/ruby hands an app's own script to the app's launcher (ADR 089),
   # and exits with EX_SOFTWARE when it finds the launcher and the system
   # will not run it. The launcher here is executable, so bin/ruby finds
   # it, and is no program, so execv fails. On Windows a launcher is a

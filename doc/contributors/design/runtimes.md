@@ -29,7 +29,7 @@ A recipe builds only on the computers it names (`Recipe#hosts`): each Unix runti
 | Path | What it is |
 |---|---|
 | `launcher` | Fledge's launcher, `runtime/launcher/unix.c` and the rest, linked with the static libruby. `fledge build` renames it for the app. |
-| `bin/ruby` | Ruby's own `main.c` (`runtime/launcher/ruby_main.c`), linked with the same libruby and the same link line, so `RbConfig.ruby` and `Gem.ruby` run. Given the app's own program, it hands it back to the app's launcher (ADR 026; `doc/contributors/design/launcher.md`). |
+| `bin/ruby` | Ruby's own `main.c` (`runtime/launcher/ruby_main.c`), linked with the same libruby and the same link line, so `RbConfig.ruby` and `Gem.ruby` run. Given the app's own program, it hands it back to the app's launcher (ADR 089; `doc/contributors/design/launcher.md`). |
 | `bin/*` | The default and bundled gems' executables, as rv-ruby installs them. |
 | `include/ruby-X.Y.0/` | Ruby's C headers, which `require "mkmf"` reads at run time (ADR 085). |
 | `lib/libruby*-static.a` | Ruby's static library, which `mkmf` links the test program of every `have_func`, `have_library`, and `try_link` against ("What a runtime keeps"). |

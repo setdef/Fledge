@@ -345,7 +345,7 @@ Write-Host "ok: the app's own gems ignore the person's GEM_HOME"
 
 # A program restarts itself as Ruby programs do, with exec RbConfig.ruby,
 # $0, and the runtime's ruby.exe runs the app's own program through its
-# launcher (ADR 026), waiting for it as Ruby's own exec waits on Windows.
+# launcher (ADR 089), waiting for it as Ruby's own exec waits on Windows.
 # The probe restarts from this folder, whose name is not ASCII, in a
 # clean, a person's, and a hostile environment, and the restarted probe
 # must find nothing changed (doc/contributors/design/parity.md, "Restart

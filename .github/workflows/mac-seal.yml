@@ -142,6 +142,7 @@ jobs:
 
       - name: Inspect
         run: |
+          set +e +o pipefail
           cd "$HOME/seal"
           for where in quarantined clean; do for dir in "$where"/*; do
             app=$(echo "$dir"/*.app)
@@ -159,6 +160,7 @@ jobs:
 
       - name: Launch
         run: |
+          set +e +o pipefail
           cd "$HOME/seal"
           logs() {
             log show --start "$1" --info --debug --style compact --predicate \

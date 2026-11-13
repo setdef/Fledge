@@ -10,7 +10,8 @@ require "fileutils"
 class RuntimeBuilder
   # The edits a mobile runtime makes to Ruby's own source before it builds
   # it (doc/contributors/design/phone-runtimes.md, "Scripted edits to
-  # Ruby's source"). Each replaces lines of Ruby 4.1.0-preview1's files
+  # Ruby's source"), and the one a musl runtime makes (Musl::EDITS). Each
+  # replaces lines of Ruby 4.1.0-preview1's files
   # that it names, and raises when they are not there, so that a new Ruby
   # whose files moved on fails the build at the edit to look at again,
   # rather than building a Ruby that is quietly different.

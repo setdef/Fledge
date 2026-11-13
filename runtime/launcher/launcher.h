@@ -22,7 +22,8 @@
  * how macOS, Linux, and the mobile runtimes choose a UTF-8 locale, for
  * the launcher and for the runtime's bin/ruby (ruby_main.c) alike.
  * relaunch.c holds how bin/ruby hands an app's own program back to the
- * app's launcher.
+ * app's launcher, and windows_relaunch.c how a Windows runtime's
+ * ruby.exe and rubyw.exe do.
  */
 
 #ifndef FLEDGE_LAUNCHER_H
@@ -140,13 +141,36 @@ int fledge_executable_path(char *out, size_t size);
 int fledge_find_system_libraries(const char *names, char *library, char *reason, size_t size);
 #endif
 
+#endif
+
 /*
- * In the runtime's bin/ruby: when argv[1] is the program a launcher of
- * this app runs, runs that launcher in this process with the arguments
- * after it, and does not return; otherwise returns, and bin/ruby is
- * plain Ruby (relaunch.c).
+ * In the runtime's own Ruby, bin/ruby or ruby\bin\ruby.exe and
+ * rubyw.exe: when argv[1] is the program a launcher of this app runs,
+ * runs that launcher with the arguments after it, and does not return;
+ * otherwise returns, and the program is plain Ruby. On macOS and Linux
+ * the launcher replaces this program, with execv (relaunch.c); on
+ * Windows, which has no exec that keeps the process, this program waits
+ * for it and exits with its status (windows_relaunch.c), and must be
+ * called after ruby_sysinit, whose argv it reads.
  */
 void fledge_relaunch(int argc, char **argv);
+
+#ifdef _WIN32
+/*
+ * Bytes every Windows launcher holds (windows.c), by which ruby.exe
+ * tells the app's launcher from another program beside it, such as an
+ * installer's uninstall.exe (windows_relaunch.c).
+ */
+#define FLEDGE_LAUNCHER_MARK "Fledge launcher: runs the program fledge.cfg names (ADR 005)"
+
+/*
+ * In a Windows runtime's ruby.exe and rubyw.exe: keeps every DLL loaded
+ * by name to System32, the folders a DLL names for itself, and
+ * ruby_builtin_dlls beside the program, as the launcher does
+ * (windows.c, add_builtin_dlls), so a Ruby the app starts loads what the
+ * app's own Ruby loads (windows_relaunch.c).
+ */
+void fledge_limit_dll_search(void);
 #endif
 
 #endif

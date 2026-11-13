@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- On Windows, a runtime's `ruby.exe` and `rubyw.exe`, which `RbConfig.ruby` and `Gem.ruby` name, are Fledge's, built from Ruby's `main.c` against RubyInstaller's DLL, in place of RubyInstaller's: `exec RbConfig.ruby, $0, *ARGV`, and any other start of the app's own program through them, runs the app's launcher again, so the restarted app has its gems set up, the person's `RUBYOPT`, `RUBYLIB`, and `GEM_HOME` hidden from its boot, and its AppUserModelID; a Ruby the app starts has the app's ANSI code page, UTF-8, so a gem's DLL loads through ffi there under a folder named outside ASCII; and it loads DLLs as the app's Ruby does, so `digest/blake3` loads in it on x64. A script other than the app's program, or one after a Ruby option, runs as plain Ruby.
 - The Android project packs native libraries compressed (`useLegacyPackaging = true`), so the installer extracts them where Android lets the app run its ruby program; an installed app takes more space. Set it to `false` to keep them stored, without a ruby program.
 
 ### Fixed

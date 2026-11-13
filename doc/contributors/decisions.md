@@ -439,3 +439,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: the orchestrating agent's statement that every platform has 7 to 16 justified differences from `ruby main.rb` in the parity check, after two accepted justifications that day (Android's `$0 =` and `fiddle` on iOS) proved to be closable.]
 
 *Governs:* a difference from `ruby main.rb` is accepted only when it is inherent to where the app ships or a platform truly forbids what Ruby does, shown from primary sources; one that could be closed is a bug to fix. *Applied in:* the audits of every justification and exclusion.
+
+> experiment branches? landing commits? Merge conflicts?
+>
+> What happened to trunk-based development?
+
+> I don't know why AGENTS.md says that. Read the trunk-based development skill; that's how we should work.
+
+[re: the orchestrating agent's sub-agents each working on a branch for hours, landed later by the orchestrator, with conflicts between them; and the agent's question whether sub-agents should push `trunk` themselves, since AGENTS.md said a parallel sub-agent does not.]
+
+*Governs:* every agent works trunk-based as trunkbaseddevelopment.com describes: small green commits pushed straight to `trunk` within minutes of being proven, no long-lived or sideways branches, no push to find out whether CI passes, and a red `trunk` reverted at once. *Applied in:* AGENTS.md, Working as an agent.

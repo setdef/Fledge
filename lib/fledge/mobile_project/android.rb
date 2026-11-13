@@ -20,8 +20,9 @@ module Fledge
     # Tauri's, and React Native's Android projects carry one, so
     # <tt>./gradlew assembleDebug</tt> builds it with nothing but a JDK
     # and the Android SDK, and Android Studio opens it. The runtime's
-    # <tt>FledgeRuby.aar</tt> is in <tt>libs/</tt>; its <tt>lib/</tt> and
-    # <tt>libexec/</tt> are in ROOT, which the build stores as the asset
+    # <tt>FledgeRuby.aar</tt> is in <tt>libs/</tt>; its <tt>lib/</tt>,
+    # <tt>libexec/</tt>, and Ruby's headers in <tt>include/</tt>, which
+    # mkmf looks for as on a desktop, are in ROOT, which the build stores as the asset
     # <tt>fledge.zip</tt> that <tt>org.setdef.fledge.FledgeRuby</tt>
     # unpacks (doc/contributors/design/phone-runtimes.md, "The Java class"). The
     # app's identifier is its <tt>applicationId</tt>, its name its
@@ -168,6 +169,8 @@ module Fledge
         root = File.join(project, ROOT)
         FileUtils.mkdir_p([root, File.join(project, "libs")])
         %w[lib libexec].each { |folder| FileUtils.mv(File.join(tree, folder), root) }
+        FileUtils.mkdir_p(File.join(root, "include"))
+        Dir.glob(File.join(tree, "include", "ruby-*")).each { |headers| FileUtils.mv(headers, File.join(root, "include")) }
         FileUtils.mv(File.join(tree, AAR), File.join(project, "libs"))
       end
 

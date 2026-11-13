@@ -7,7 +7,7 @@
 # iPad, iOS 15 and later, on arm64 devices and Apple silicon Simulators,
 # as Fledge's iOS runtime is (ADR 011), linking
 # FledgeRuby.xcframework, with the identity fledge.yml gives. Its Ruby
-# is the XCFramework slice's lib/ and libexec/, which the build phase
+# is the XCFramework slice's lib/, libexec/, and include/, which the build phase
 # "Copy Ruby and the app" copies into the bundle's fledge/ folder for the
 # SDK it builds for, as CPython's iOS apps copy their slice's standard
 # library, and then the folder fledge/: the app's program, its gems, and
@@ -40,6 +40,7 @@ targets:
           rm -rf "$root"
           ditto "$PROJECT_DIR/FledgeRuby.xcframework/$slice/lib" "$root/lib"
           ditto "$PROJECT_DIR/FledgeRuby.xcframework/$slice/libexec" "$root/libexec"
+          ditto "$PROJECT_DIR/FledgeRuby.xcframework/$slice/include" "$root/include"
           ditto "$PROJECT_DIR/fledge" "$root"
     scheme: {}
     settings:

@@ -112,3 +112,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [072](../adr/072.md) | On a phone, a gem's Rakefile runs as RubyGems runs it, and the extensions it builds with mkmf are linked in |
 | [073](../adr/073.md) | On a phone, a gem's Rust extension is built by its own extconf.rb, as a static library, and linked in |
 | [074](../adr/074.md) | fiddle and the ffi gem work on both phones |
+| [075](../adr/075.md) | A windowed Windows app can ship as an MSIX package, built with the Windows SDK's MakeAppx |

@@ -118,6 +118,15 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
 
+#### WIN-6: The Microsoft Store takes an MSIX package and signs it
+
+- **Proves:** the Store's certification accepts an MSIX package Fledge builds (`installers: [msix]`, ADR 075), with the `runFullTrust` capability a desktop app declares, and signs it itself, so a developer needs no certificate of their own.
+- **Needs:** a Partner Center account, with an app name reserved, whose Publisher goes in `fledge.yml` as `windows: msix_publisher`.
+- **Steps:** build `examples/windowed_app` with its `msix_publisher` set to the reservation's Publisher and no `--sign`, and submit the `.msix` in Partner Center (`doc/desktop_apps.md`, "The Microsoft Store").
+- **Passing:** the Store certifies the submission, approves `runFullTrust`, and installing the app from the Store runs it.
+- **Status:** not run.
+- **Blocks 1.0.0?** not decided.
+
 ### On an iPhone or iPad, with an Apple Developer Program account
 
 #### IOS-1: A Fledge iOS app passes App Store Connect's validation
@@ -209,7 +218,7 @@ Every recipe in `doc/package_managers.md` is proven with the manager's own tool 
 
 ### Not testable yet
 
-The Mac App Store needs a sandboxed mode and a `.pkg`, which Fledge does not build, and an MSIX for the Microsoft Store is after 1.0. They are not on this list until Fledge builds them.
+The Mac App Store needs a sandboxed mode and a `.pkg`, which Fledge does not build, which Fledge does not build. It is not on this list until Fledge builds it.
 
 ## Not account-blocked, needs a person
 

@@ -43,10 +43,10 @@ Evidence is Ruby 4.1.0-preview1's own library as mise installs it on this Mac (`
 | J21 | `Gem.dir` | the person's `GEM_HOME` against the runtime's gem folder | B | developer |
 | J22–J23 | `gems`, `requireable` | rv-ruby's bootsnap and msgpack missing from the app | A | developer, rarely |
 | J24 | `$LOADED_FEATURES`; Unix | Fledge's `rubygems/defaults/operating_system.rb` | B | probe |
-| J25 | `$LOADED_FEATURES`; Windows | RubyInstaller's `ruby_installer/*`, `win32/dll_directory.so`, and `enc/*` missing from the app | narrowed: `fix: define RubyInstaller in a Windows app, as ruby.exe does`; `ruby_installer/runtime/*`, `win32/dll_directory.so`, and `enc/*` remain, and `RubyInstaller` is defined | developer |
+| J25 | `$LOADED_FEATURES`; Windows | RubyInstaller's `ruby_installer/*`, `win32/dll_directory.so`, and `enc/*` missing from the app | closed: `fix: define RubyInstaller in a Windows app, as ruby.exe does`, then `fix: load what RubyInstaller's start-up loads in a Windows app` | developer |
 | J26–J28 | the three encodings; no locale | `US-ASCII` against `UTF-8` | B | developer |
 
-Counts: 15 entries A, 7 B, 1 C in part (J25), 5 closed (J11, J12, J13, J17, J19). The static libruby that `mkmf` links against is kept in every desktop runtime (`fix: keep the library mkmf links against in every desktop runtime`).
+Counts: 15 entries A, 7 B, 6 closed (J11, J12, J13, J17, J19, J25). The static libruby that `mkmf` links against is kept in every desktop runtime (`fix: keep the library mkmf links against in every desktop runtime`).
 
 ### J1–J6: the program's path (A)
 
@@ -116,9 +116,9 @@ rv-ruby installs both; no standard Ruby 4.1 does (`gems/bundled_gems` at the v4_
 
 The file is the means of J20, through the hook RubyGems documents for whoever packages Ruby (`rubygems.rb`, lines 1464 to 1476, cited in the file's header), which Debian's Ruby and RubyInstaller use too. A Debian `ruby main.rb` loads such a file. Patching `rubygems/defaults.rb` instead would hide the trace but change a file of Ruby's own. Only the probe sees it.
 
-### J25: RubyInstaller's start-up files on Windows (C, in part; narrowed)
+### J25: RubyInstaller's start-up files on Windows (closed)
 
-Narrowed by `fix: define RubyInstaller in a Windows app, as ruby.exe does`: Fledge's `operating_system.rb` requires `ruby_installer/runtime` and calls nothing, so `RubyInstaller` is defined and mysql2 takes its `ruby.exe` branch. The files RubyInstaller's start-up loads beyond that stay missing. What follows is the finding that led to it.
+Narrowed by `fix: define RubyInstaller in a Windows app, as ruby.exe does`: Fledge's `operating_system.rb` requires `ruby_installer/runtime` and calls nothing, so `RubyInstaller` is defined and mysql2 takes its `ruby.exe` branch. Closed by `fix: load what RubyInstaller's start-up loads in a Windows app`: the file also loads the autoloads `enable_dll_search_paths` loads (`Msys2Installation`, with `Colors`, and `DllDirectory`, with `win32/dll_directory` and `Win32`) and converts Ruby's archdir to UTF-16LE as its first `DllDirectory.new` does, so the encodings that call loads are loaded too, and still calls nothing (`runtimes.md`, "Fledge's RubyGems defaults"). What follows is the finding that led to the first fix.
 
 Replacing RubyInstaller's `operating_system.rb` is forced. At 92a692c (`resources/files/operating_system.rb`) it writes and deletes `Gem.default_dir/writable_p` on every start; when that fails, as in `C:\Program Files`, it sets `ENV['GEM_HOME'] ||= Gem.user_dir`, an `ENV` change of its own; it creates `%ProgramData%\gemrc` when missing; and it calls `RubyInstaller::Runtime.enable_dll_search_paths`, which adds every folder of `RUBY_DLL_PATH` and then calls `msys2_installation.enable_dll_search_paths` (`lib/ruby_installer/build/singleton.rb`), so a person's MSYS2 DLLs can load into the app. All of it is precedence 1 harm in an app. That part is B.
 
@@ -165,7 +165,7 @@ That is an ordinary line of app code failing for a person whose folder name is n
 | Restarts | **C** on Windows, A in part | Below. |
 | C headers | closed | Below. |
 | On a phone | out of scope | The phone audit's. |
-| What a standard Ruby installs and the app does not | A and **C** | bootsnap and msgpack are A (J22–J23); RubyInstaller's start-up is C in part, narrowed (J25). |
+| What a standard Ruby installs and the app does not | A | bootsnap and msgpack are A (J22–J23); RubyInstaller's start-up is closed (J25). |
 
 ### Restarts on Windows (C, developer)
 

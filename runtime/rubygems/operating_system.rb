@@ -42,18 +42,34 @@ end
 # SPDX-SnippetEnd
 #++
 
-# On Windows, RubyInstaller's library defines RubyInstaller, as it does
+# On Windows, the app starts with what RubyInstaller's start-up loads
 # under ruby.exe, where RubyInstaller's own operating_system.rb requires
-# it first. Gems test for the constant: mysql2 0.5.6 preloads
-# libmysql.dll by bare name unless defined?(RubyInstaller)
-# (lib/mysql2.rb, lines 7 to 30). Requiring it only defines modules and
-# autoloads (ruby_installer/runtime.rb and runtime/singleton.rb, at
-# RubyInstaller 92a692c); nothing of what RubyInstaller's file then
-# calls runs here, since that writes into the gem folder, may set
+# its library first and then calls
+# RubyInstaller::Runtime.enable_dll_search_paths. Gems test for what it
+# defines: mysql2 0.5.6 preloads libmysql.dll by bare name unless
+# defined?(RubyInstaller) (lib/mysql2.rb, lines 7 to 30). Requiring the
+# library only defines modules and autoloads (ruby_installer/runtime.rb
+# and runtime/singleton.rb, at RubyInstaller 92a692c). The call loads
+# the files of three of those autoloads: Msys2Installation, whose class
+# includes Colors, and DllDirectory, which requires win32/dll_directory
+# and so defines Win32. Its first DllDirectory.new, of Ruby's archdir
+# (Msys2Installation#enable_dll_search_paths), hands
+# Win32::DllDirectory.AddDllDirectory the folder's expanded path, which
+# converts it to UTF-16LE (rb_str_export_to_enc), and so loads that
+# encoding and its converters. Here the same constants are loaded,
+# which only defines classes and modules, and the same path is
+# converted, which only loads encodings; nothing of RubyInstaller's is
+# called, since what its file calls writes into the gem folder, may set
 # GEM_HOME, creates %ProgramData%\gemrc, and adds the person's MSYS2 to
 # the DLL search (doc/contributors/design/runtimes.md, "Fledge's
 # RubyGems defaults").
-require "ruby_installer/runtime" if Gem.win_platform?
+if Gem.win_platform?
+  require "rbconfig"
+  require "ruby_installer/runtime"
+  RubyInstaller::Runtime.const_get(:Msys2Installation)
+  RubyInstaller::Runtime.const_get(:DllDirectory)
+  File.expand_path(RbConfig::CONFIG["rubyarchdir"]).encode(Encoding::UTF_16LE)
+end
 
 # A bundled gem that the app's Gemfile does not name, such as irb for
 # binding.irb, activates under Bundler as it does under bundle exec.

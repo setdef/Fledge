@@ -103,23 +103,31 @@ class ParityTest < Minitest::Test
   end
 
   # rv-ruby has no RubyGems defaults file, so on macOS and Linux only the
-  # app loads Fledge's; RubyInstaller has one at the same path, which
-  # calls RubyInstaller's runtime to look for MSYS2, so on Windows only
-  # ruby main.rb loads the files that search uses. Both load the runtime
-  # itself, which defines RubyInstaller.
+  # app loads Fledge's; RubyInstaller has one at the same path, and on
+  # Windows both load what RubyInstaller's start-up loads, so none of it
+  # may differ there.
   def test_a_justification_holds_only_on_its_platforms
     defaults = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/4.0.0/rubygems/defaults/operating_system.rb"] }
-    installer = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/4.0.0/ruby_installer/runtime/msys2_installation.rb"] }
-    runtime = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/site_ruby/4.0.0/ruby_installer/runtime.rb"] }
     none = { "$LOADED_FEATURES" => [] }
 
     assert_predicate Parity::Reports.compare(none, defaults, platform: "x86_64-linux").first, :justified?
     refute_predicate Parity::Reports.compare(none, defaults, platform: "x64-mingw-ucrt").first, :justified?
-    assert_predicate Parity::Reports.compare(installer, none, platform: "x64-mingw-ucrt").first, :justified?
-    refute_predicate Parity::Reports.compare(installer, none, platform: "x86_64-linux").first, :justified?
-    refute_predicate Parity::Reports.compare(runtime, none, platform: "x64-mingw-ucrt").first, :justified?
-    refute_predicate Parity::Reports.compare({ "Object.constants" => ["RubyInstaller"] }, { "Object.constants" => [] },
-      platform: "x64-mingw-ucrt").first, :justified?
+    installer_files = [
+      "site_ruby/4.0.0/ruby_installer/runtime.rb",
+      "site_ruby/4.0.0/ruby_installer/runtime/msys2_installation.rb",
+      "site_ruby/4.0.0/ruby_installer/runtime/colors.rb",
+      "site_ruby/4.0.0/ruby_installer/runtime/dll_directory.rb",
+      "4.0.0/x64-mingw-ucrt/win32/dll_directory.so",
+      "4.0.0/x64-mingw-ucrt/enc/utf_16le.so",
+    ]
+    installer_files.each do |file|
+      installer = { "$LOADED_FEATURES" => ["<prefix>/lib/ruby/#{file}"] }
+      refute_predicate Parity::Reports.compare(installer, none, platform: "x64-mingw-ucrt").first, :justified?, file
+    end
+    %w[RubyInstaller Win32].each do |constant|
+      refute_predicate Parity::Reports.compare({ "Object.constants" => [constant] }, { "Object.constants" => [] },
+        platform: "x64-mingw-ucrt").first, :justified?, constant
+    end
   end
 
   # A Ruby's folders are named for its ruby_version, which a preview or a

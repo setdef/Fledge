@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    module Stub
+      def self.for: (package package, String feature, root: String, gem_dir: String) -> Entry?
+
+      def self.source: (String feature) -> String
+    end
+  end
+end

@@ -47,9 +47,10 @@ module Fledge
       attr_reader registrations: Array[[String, String]]
       attr_reader targets: Hash[String, TargetBuild]
       attr_reader ndk: NDK?
+      attr_reader stubs: Array[Entry]
 
-      def self.new: (registrations: Array[[String, String]], targets: Hash[String, TargetBuild], ndk: NDK?) -> instance
-                  | (Array[[String, String]] registrations, Hash[String, TargetBuild] targets, NDK? ndk) -> instance
+      def self.new: (registrations: Array[[String, String]], targets: Hash[String, TargetBuild], ndk: NDK?, stubs: Array[Entry]) -> instance
+                  | (Array[[String, String]] registrations, Hash[String, TargetBuild] targets, NDK? ndk, Array[Entry] stubs) -> instance
     end
 
     @platform: MobilePlatform
@@ -60,10 +61,12 @@ module Fledge
     @work: String
     @log: CLI::_Output
     @env: Runtimes::_Env
+    @gem_dir: String
     @ruby: String?
     @rake_build: RakeBuild?
     @dependencies: Hash[locked_gem, package]
     @load_path: Array[String]?
+    @stubs: Hash[String, Entry]
 
     def self.problems: (locked_gem gem, package package, MobilePlatform platform, Platform host) -> Array[String]
 
@@ -73,7 +76,7 @@ module Fledge
 
     private def self.c_string: (String text) -> String
 
-    def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, ?env: Runtimes::_Env, ?dependencies: Hash[locked_gem, package]) -> void
+    def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, gem_dir: String, ?env: Runtimes::_Env, ?dependencies: Hash[locked_gem, package]) -> void
 
     def call: (String tree) -> Built
 

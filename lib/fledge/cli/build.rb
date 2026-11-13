@@ -189,7 +189,7 @@ module Fledge
           contents = same_ruby(RuntimeContents.read(runtime, under: writer.ruby_under), phone)
           files = gems ? gems.for(phone, runtime: contents) : [] # : Array[Entry]
           app_files = gems ? gems.app_files(force_ruby_platform: true) : {} # : Hash[String, String]
-          project = writer.new(app:, runtime:, out: out_dir, app_files:, files:, extensions: extensions(gems, phone, host, runtimes, work),
+          project = writer.new(app:, runtime:, out: out_dir, app_files:, files:, extensions: extensions(gems, phone, host, runtimes, work, contents),
             bundler: gems&.bundler, log: @err).call
           @out.puts File.join(out, File.basename(project))
         end
@@ -214,16 +214,18 @@ module Fledge
         version.split(".").first(2).join(".")
       end
 
-      # The compiler of the app's gems' extensions for +phone+ (ADR 022), or
-      # +nil+ for an app with none.
-      private def extensions(gems, phone, host, runtimes, work)
+      # The compiler of the app's gems' extensions for +phone+ (ADR 022),
+      # against the runtime whose RuntimeContents are +contents+, or +nil+
+      # for an app with none.
+      private def extensions(gems, phone, host, runtimes, work, contents)
         return nil unless gems
 
         packages = gems.extension_packages
         return nil if packages.empty?
 
         MobileExtensions.new(platform: phone, packages:, build_args: gems.extension_build_args, host:, runtimes:,
-          work: File.join(work, "mobile-extensions"), log: @err, env: @env, dependencies: gems.extension_dependencies)
+          work: File.join(work, "mobile-extensions"), log: @err, gem_dir: contents.gem_dir, env: @env,
+          dependencies: gems.extension_dependencies)
       end
 
       # The app's gems, for an app with a Gemfile: Fledge keeps the gems it

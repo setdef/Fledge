@@ -34,7 +34,8 @@ module Fledge
   # This class does what both projects share: it unpacks the runtime with
   # tar, copies the project's template (<tt>lib/fledge/templates/</tt>),
   # has Fledge::MobileExtensions compile the app's gems' extensions
-  # against it when the app has any, fills in the app's identity where the
+  # against it when the app has any, and puts a Ruby file where a
+  # desktop has each one's file (MobileExtensions::Stub), fills in the app's identity where the
   # template marks it (<tt>@@NAME@@</tt>), and writes ROOT, with the
   # runtime's notices, so the app carries them. When <tt>fledge.yml</tt>
   # names a host for the system (Config::Phone), it copies that folder's
@@ -178,7 +179,8 @@ module Fledge
 
     private def build(tree, project, host)
       FileUtils.cp_r(File.join(TEMPLATES, system), project, preserve: true)
-      @built = @extensions&.call(tree)
+      built = @built = @extensions&.call(tree)
+      stubs = built ? built.stubs : [] # : Array[Entry]
       place_runtime(tree, project)
       place_extensions(project) if @built
       root = File.join(project, ROOT)
@@ -187,7 +189,7 @@ module Fledge
       FileUtils.cp_r(File.join(tree, "notices"), root)
       skip = [@out]
       skip << File.join(@app.root, host) if host
-      [*Assembly.app_entries(@app, @app_files, skip:), *@files].each { |entry| add(project, root, entry) }
+      [*Assembly.app_entries(@app, @app_files, skip:), *@files, *stubs].each { |entry| add(project, root, entry) }
       place_host(host, project) if host
       template_files.each { |path| fill(File.join(project, path)) }
       place_icons(project)

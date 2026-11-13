@@ -42,6 +42,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     built = compile(runtimes, ios, { path_gem(greeter) => spec_package })
 
     assert_equal [["adder/adder", "Init_fledge_0"]], built.registrations
+    assert_equal ["app/vendor/cache/adder/lib/adder/adder.rb"], built.stubs.map(&:path)
     assert_equal %w[ios-arm64 ios-arm64-simulator], built.targets.keys
     platforms = built.targets.transform_values do |target|
       archive = target.archives.fetch(0)
@@ -109,7 +110,8 @@ class MobileExtensionsBuildTest < Minitest::Test
     registration = File.join(@dir, "registration.c")
     File.write(registration, Fledge::MobileExtensions.registration_source(built.registrations))
     compiler = Fledge::MobileExtensions.new(platform: android, packages: {}, build_args: {}, host: Fledge::Platform.local,
-      runtimes: Fledge::Runtimes.new(env: ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes)), work: File.join(@dir, "work"), log: StringIO.new)
+      runtimes: Fledge::Runtimes.new(env: ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes)), work: File.join(@dir, "work"), log: StringIO.new,
+      gem_dir: "lib/ruby/gems/4.1.0+5")
     machines = built.targets.to_h do |name, build|
       library = compiler.shared_library(built, build, registration:, into: File.join(@dir, name, "libfledgeext.so"))
       readelf = File.join(ndk.bin, "llvm-readelf")
@@ -135,6 +137,7 @@ class MobileExtensionsBuildTest < Minitest::Test
 
     assert_equal [%w[rakesum/adler/adler_ext Init_fledge_0_adler_ext], %w[rakesum/fletcher/fletcher_ext Init_fledge_0_fletcher_ext]],
       built.registrations.sort
+    assert_empty built.stubs, "RubyGems copies no Rakefile's extension into the gem's require path"
     platforms = built.targets.transform_values do |target|
       assert_equal 2, target.archives.size
       target.archives.map do |archive|
@@ -193,6 +196,8 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal %w[Info.plist ios-arm64 ios-arm64-simulator], Dir.children(File.join(project, "FledgeExtensions.xcframework")).sort
     unit = File.read(File.join(project, "Host", "fledge_extensions.c"))
     assert_includes unit, 'fledge_ruby_add_extension("adder/adder", Init_fledge_0)'
+    stub = File.join(project, "fledge", "app", "gems", "adder", "lib", "adder", "adder.rb")
+    assert_equal Fledge::MobileExtensions::Stub.source("adder/adder"), File.read(stub), "lib/adder.rb's require_relative finds it"
     yml = File.read(File.join(project, "project.yml"))
     assert_includes yml, "- framework: FledgeExtensions.xcframework"
     assert_includes yml, 'OTHER_LDFLAGS: "$(inherited) -lc++"'
@@ -344,7 +349,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     Fledge::Archive.unpack(runtimes.archive(phone), into: tree)
     log = StringIO.new
     Fledge::MobileExtensions.new(platform: phone, packages:, build_args: {}, host: Fledge::Platform.local, runtimes:,
-      work: File.join(@dir, "work"), log:, env:).call(File.join(tree, Dir.children(tree).first))
+      work: File.join(@dir, "work"), log:, gem_dir: "lib/ruby/gems/4.1.0+5", env:).call(File.join(tree, Dir.children(tree).first))
   rescue Fledge::Error => e
     raise Fledge::Error, "#{e.message}\n#{log&.string}"
   end

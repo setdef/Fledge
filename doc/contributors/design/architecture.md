@@ -110,3 +110,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [070](../adr/070.md) | A Windows App Declares UTF-8 as Its ANSI Code Page |
 | [071](../adr/071.md) | Trunk's Full CI Runs Are Never Cancelled, and a Fast Tier Judges Every Push |
 | [072](../adr/072.md) | On a phone, a gem's Rakefile runs as RubyGems runs it, and the extensions it builds with mkmf are linked in |
+| [073](../adr/073.md) | On a phone, a gem's Rust extension is built by its own extconf.rb, as a static library, and linked in |

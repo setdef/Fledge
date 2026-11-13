@@ -115,9 +115,18 @@ class RubySpec
       Exclusion.new(
         reason: "Each starts a program of the system's to check what it tests, which iOS lets no app do, where " \
           "Android has them: IO#close_read's, #close_write's, and #stat's examples open a pipe to cat first, the " \
-          "examples start cat, id, or whoami, and getgrgid's file starts id as it loads.",
+          "examples start cat, id, or whoami, getgrgid's and struct_group's files start id as they load, and " \
+          "getpwuid's and struct_passwd's start id in a before :all hook, whose error leaves out every example of the file.",
         phones: %w[ios],
-        files: %w[library/etc/getgrgid_spec.rb core/io/close_read_spec.rb core/io/close_write_spec.rb core/io/stat_spec.rb],
+        files: %w[
+          library/etc/getgrgid_spec.rb
+          library/etc/getpwuid_spec.rb
+          library/etc/struct_group_spec.rb
+          library/etc/struct_passwd_spec.rb
+          core/io/close_read_spec.rb
+          core/io/close_write_spec.rb
+          core/io/stat_spec.rb
+        ],
         examples: [
           "IO#lineno raises an IOError on a duplexed stream with the read side closed",
           "IO#lineno= raises an IOError on a duplexed stream with the read side closed",

@@ -138,8 +138,11 @@ class RubySpec
         "library: RbConfig::CONFIG ['archdir'] returns the directory containing standard libraries C extensions",
       ],
       side: :app, platforms: PHONES,
-      reason: "A phone runtime links every extension into the app, where Android and iOS load native code from, " \
-        "so no archdir holds them (doc/contributors/design/phone-runtimes.md, \"What a phone runtime holds\").",
+      reason: "A phone runtime links every extension into the app by Fledge's choice (ADRs 022, 058, and 079), not " \
+        "because a phone forbids loading them as files, so no archdir holds them " \
+        "(doc/contributors/research/2026-11-13-phone-extensions-as-files.md; doc/contributors/design/" \
+        "phone-runtimes.md, \"What a phone runtime holds\"). Loading them as files is in progress, and closes " \
+        "this difference when it lands.",
     ),
     Justification.new(
       examples: [

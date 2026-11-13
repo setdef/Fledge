@@ -239,13 +239,20 @@
   checks:
   - no_locale
 - fact: ENV
-  reference:
-  - "."
+  reference: []
   app:
-  - "."
+  - \A"HOME"="<home>"\z
   platforms:
-  - arm64-ios
-  - arm64-ios-simulator
+  - aarch64-linux-android
+  - x86_64-linux-android
+  checks:
+  - script
+  - bundle
+- fact: child ENV
+  reference: []
+  app:
+  - \A"HOME"="<home>"\z
+  platforms:
   - aarch64-linux-android
   - x86_64-linux-android
   checks:
@@ -253,23 +260,12 @@
   - bundle
 - fact: child ENV
   reference:
-  - "."
+  - \A"[^"]+"=
   app:
-  - '\A"Errno::'
+  - '\A"Errno::(?:ENOENT|EPERM): '
   platforms:
   - arm64-ios
   - arm64-ios-simulator
-  checks:
-  - script
-  - bundle
-- fact: child ENV
-  reference:
-  - "."
-  app:
-  - "."
-  platforms:
-  - aarch64-linux-android
-  - x86_64-linux-android
   checks:
   - script
   - bundle
@@ -288,7 +284,7 @@
   reference:
   - \A"42"\z
   app:
-  - '\A"Errno::'
+  - '\A"Errno::(?:ENOENT|EPERM): '
   platforms:
   - arm64-ios
   - arm64-ios-simulator

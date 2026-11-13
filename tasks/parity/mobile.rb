@@ -21,24 +21,31 @@ class Parity
   DESKTOP_ARCH = "(?:arm64-darwin23|x86_64-linux|aarch64-linux)"
   MOBILE_ARCH = "(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"
 
+  # What starting a program raises on iOS: ENOENT in the Simulator,
+  # where the program RbConfig.ruby names is missing, and EPERM on a
+  # device, where iOS refuses to start any (doc/phones.md).
+  ERRNO_SPAWN = /\A"Errno::(?:ENOENT|EPERM): /
+
   # What decisions 9 and 10 mean on a phone (doc/contributors/design/phone-projects.md,
   # "Parity on a phone"): each way an app's Ruby on iOS or Android differs from ruby main.rb on the
   # desktop that runs its simulator, and why each is right.
   MOBILE_JUSTIFIED = [
-    Justification.new(fact: "ENV", reference: [/./], app: [/./], platforms: MOBILE,
-      reason: "iOS and Android start an app with an environment of their own, which no person sets: the system's " \
-        "HOME and TMPDIR inside the app's own container, and on iOS the Simulator's variables, with nothing of a " \
-        "shell's. The runtime adds only HOME on Android, the app's files folder, as iOS gives every app one."),
-    Justification.new(fact: "child ENV", reference: [/./], app: [/\A"Errno::/], platforms: IOS,
+    *["ENV", "child ENV"].map do |fact|
+      Justification.new(fact:, app: [/\A"HOME"="<home>"\z/], platforms: ANDROID,
+        reason: "The check compares a phone app's ENV, and a child's, with the environment the system gave the " \
+          "app, which its host logs (MobileParity::Environment): a phone starts an app with an environment of its " \
+          "own, and no person's shell. Android gives an app no HOME, so FledgeRuby sets it to the app's files " \
+          "folder, as iOS gives every app one, so that Dir.home is a folder the app may write, as every desktop's " \
+          "is; a Ruby the app starts, the Android runtime's ruby program (ADR 069), inherits it.")
+    end,
+    Justification.new(fact: "child ENV", reference: [/\A"[^"]+"=/], app: [ERRNO_SPAWN], platforms: IOS,
       reason: "An app on iOS starts no programs, since iOS lets no app run one, so the iOS runtime has no Ruby " \
-        "program to start, and spawning RbConfig.ruby fails as it does where Ruby is missing."),
-    Justification.new(fact: "child ENV", reference: [/./], app: [/./], platforms: ANDROID,
-      reason: "As for ENV: a Ruby the app starts, the Android runtime's ruby program (ADR 069), inherits the app's " \
-        "environment, as a child of ruby main.rb inherits the shell's."),
+        "program to start, and spawning RbConfig.ruby fails as it does where Ruby is missing (ENOENT in the " \
+        "Simulator) or as iOS refuses it (EPERM on a device), and the child sees none of the environment."),
     Justification.new(fact: "RbConfig.ruby is a program", reference: [/\Atrue\z/], app: [/\Afalse\z/], platforms: IOS,
       reason: "As for child ENV: the iOS runtime is a library inside the app, with no bin/ruby, since nothing on " \
         "iOS could run it; RbConfig.ruby names where it would be."),
-    Justification.new(fact: "RbConfig.ruby runs", reference: [/\A"42"\z/], app: [/\A"Errno::/], platforms: IOS,
+    Justification.new(fact: "RbConfig.ruby runs", reference: [/\A"42"\z/], app: [ERRNO_SPAWN], platforms: IOS,
       reason: "As for child ENV."),
     Justification.new(fact: "RUBY_PLATFORM", reference: [/\A"#{DESKTOP_ARCH}"\z/o], app: [/\A"#{MOBILE_ARCH}"\z/o], platforms: MOBILE,
       reason: "Ruby names the platform it was built for: rv-ruby's for macOS 14 (darwin23) or glibc Linux, a " \

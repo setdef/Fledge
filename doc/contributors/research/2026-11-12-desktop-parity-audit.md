@@ -151,7 +151,7 @@ $ env -i ruby /…/Ünïcödé/main.rb
 …/main.rb:3:in 'File.join': incompatible character encodings: US-ASCII and UTF-8 (Encoding::CompatibilityError)
 ```
 
-That is an ordinary line of app code failing for a person whose folder name is not ASCII, before anything of Bundler's; ADR 041 adds that Ruby's boot and Bundler's setup fail too under a prefix outside ASCII, which this audit did not measure, having no runtime built. A double-clicked macOS app gets no `LANG`. Python's PEP 538 is the prior art. The maintainer accepted it conditionally (2026-11-03): "I can buy that for now, but will easily be swayed by the first app dev who gets upset by the deviation." B, with that condition.
+That is an ordinary line of app code failing for a person whose folder name is not ASCII, before anything of Bundler's; the former ADR 041, now ADR 087 adds that Ruby's boot and Bundler's setup fail too under a prefix outside ASCII, which this audit did not measure, having no runtime built. A double-clicked macOS app gets no `LANG`. Python's PEP 538 is the prior art. The maintainer accepted it conditionally (2026-11-03): "I can buy that for now, but will easily be swayed by the first app dev who gets upset by the deviation." B, with that condition.
 
 ## The sections of `doc/differences_from_ruby.md`
 

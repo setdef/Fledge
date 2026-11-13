@@ -138,7 +138,7 @@ components:
     binaries: [launcher, launcher.exe, launcherw.exe]
     # bin/ruby on macOS and Linux is Ruby's main.c with Fledge's code that
     # chooses its locale and hands an app's own program back to its
-    # launcher (runtime/launcher/ruby_main.c; ADR 041 and ADR 026).
+    # launcher (runtime/launcher/ruby_main.c; ADR 087 and ADR 026).
     embedded:
       - files: ["{prefix}bin/ruby"]
         evidence: "ruby: could not run "

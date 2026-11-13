@@ -38,7 +38,7 @@
  * person has, which for an app a desktop started is C; with main.c's
  * setlocale they would read the app's folder, whose name need not be
  * ASCII, as US-ASCII, and Bundler would fail to set up the app's gems
- * (ADR 041).
+ * (ADR 087).
  *
  * Its license is Ruby's, like the rest of what it is made of; the
  * runtime's notices/ruby/ covers it. relaunch.c, config.c, locale.c, and

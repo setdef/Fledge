@@ -62,7 +62,7 @@ fi
 
 # A locale every runner has, so that Ruby's choice of encoding is the
 # terminal's, not a bare C locale's, which the launcher turns into UTF-8
-# and ruby does not (ADR 041).
+# and ruby does not (ADR 087).
 case "$(uname -s)" in
   Darwin) locale=en_US.UTF-8 ;;
   *) locale=C.UTF-8 ;;

@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Parity: Proving an App Runs as Ruby Runs It
 
-This document describes how Fledge proves that a built app's Ruby code sees what it would see under `ruby main.rb`, or `bundle exec`, and ends as Ruby ends: the parity check, its probe and its references, how a difference is justified, the gem-shaped run, the mobile parity, the console checks of Delivery, the restart checks, and the ruby/spec comparison. ADR 081 decides that nothing of Fledge's stands between Ruby and the program, and these checks are its Confirmation; ADR 040, ADR 041, ADR 086, and ADR 026 decide the differences they allow. `doc/differences_from_ruby.md` tells app developers each difference their code can see, and why; keep it true to `Parity::JUSTIFIED`.
+This document describes how Fledge proves that a built app's Ruby code sees what it would see under `ruby main.rb`, or `bundle exec`, and ends as Ruby ends: the parity check, its probe and its references, how a difference is justified, the gem-shaped run, the mobile parity, the console checks of Delivery, the restart checks, and the ruby/spec comparison. ADR 081 decides that nothing of Fledge's stands between Ruby and the program, and these checks are its Confirmation; ADR 040, ADR 087, ADR 086, and ADR 026 decide the differences they allow. `doc/differences_from_ruby.md` tells app developers each difference their code can see, and why; keep it true to `Parity::JUSTIFIED`.
 
 ## The parity check
 

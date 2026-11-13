@@ -113,7 +113,7 @@ class RubySpec
       side: :stock, platforms: %w[arm64-darwin],
       reason: "With no locale, stock Ruby takes the C locale and reads paths as US-ASCII, and these macOS-only " \
         "examples fail converting one; the built app's launcher takes a UTF-8 locale in place of a bare C one " \
-        "(ADR 041; Parity::JUSTIFIED), so they pass there.",
+        "(ADR 087; Parity::JUSTIFIED), so they pass there.",
     ),
     Justification.new(
       examples: [

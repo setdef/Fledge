@@ -22,7 +22,7 @@ RubyGems still activates a bundled gem your lockfile does not lock, such as `irb
 
 ## The locale
 
-On macOS and Linux, a double-click starts a program with no locale variable set, or with `LANG` set to `C` or `POSIX`. Then the launcher, and the Ruby that `RbConfig.ruby` names, use UTF-8, where `ruby` would stay in C. `Encoding.default_external`, `Encoding.find("locale")`, and `Encoding.find("filesystem")` are UTF-8, not US-ASCII. Without this, Ruby and Bundler would fail for a user whose home folder has a name that is not ASCII.
+On macOS and Linux, a double-click starts a program with no locale variable set, or with `LANG` set to `C` or `POSIX`. Then the launcher, and the Ruby that `RbConfig.ruby` names, use UTF-8, where `ruby` would stay in C. `Encoding.default_external`, `Encoding.find("locale")`, and `Encoding.find("filesystem")` are UTF-8, not US-ASCII. Without this, Bundler, and any code that matches or joins the app's paths, would fail when the app sits in a folder whose name is not ASCII.
 
 When your users set `LC_ALL` or `LC_CTYPE`, `C` included, the app uses it as `ruby` does, and Fledge adds nothing to `ENV`. To see it, print `Encoding.default_external` from your program, then run the app with `env -i`, and again with `env -i LC_ALL=C`. If this surprises you, [open an issue](https://github.com/setdef/Fledge/issues).
 

@@ -284,7 +284,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the orchestrator's argument for keeping the launcher's turning a bare C locale into a UTF-8 one, a deviation from plain Ruby that Design precedence 1 justifies.]
 
-*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; ADR 041; `Parity::JUSTIFIED`.
+*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; ADR 087; `Parity::JUSTIFIED`.
 
 > A minor release can make additional rubies available, but can only change the defaults' patch versions--unless we abandon the concept of default entirely, and require app devs to specify a version (maybe better?); then it's limited to e.g. generated config files, which can change in a minor version because they don't get re-generated on upgrade.
 >

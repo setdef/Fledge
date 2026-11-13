@@ -258,7 +258,7 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
   end
 
   # With no locale, stock Ruby reads paths as US-ASCII where a built
-  # app, whose launcher takes a UTF-8 locale (ADR 041), reads them as
+  # app, whose launcher takes a UTF-8 locale (ADR 087), reads them as
   # UTF-8, so examples that need an ASCII-compatible encoding other than
   # UTF-8 fail under stock Ruby only, and only on macOS and Linux.
   def test_a_justified_difference_names_its_reason_and_holds_only_where_listed

@@ -215,7 +215,7 @@ class BuiltAppTest < Minitest::Test
   # app uses to start a person's own tools, give the person's
   # environment back. The app's own gems stay the runtime's. The
   # environment names no locale, so the child's is C, which bin/ruby
-  # makes a UTF-8 one as the launcher does (ADR 041): in a C locale,
+  # makes a UTF-8 one as the launcher does (ADR 087): in a C locale,
   # Bundler 4.0.20 cannot set up a bundle in a folder whose name is not
   # ASCII, and the app is unpacked in one.
   def test_a_bundler_apps_children_see_the_persons_ruby_settings_as_under_bundle_exec
@@ -257,7 +257,7 @@ class BuiltAppTest < Minitest::Test
 
   # The launcher and bin/ruby keep a character set the person chose, C
   # included, as ruby does, and turn only a C locale that comes from
-  # LANG or from no variable at all into a UTF-8 one (ADR 041; PEP 538
+  # LANG or from no variable at all into a UTF-8 one (ADR 087; PEP 538
   # never coerces under LC_ALL). The probe and the script run from a
   # folder whose name is ASCII, where ruby itself runs in a C locale.
   def test_an_explicit_c_locale_is_kept_and_only_a_bare_one_becomes_utf8

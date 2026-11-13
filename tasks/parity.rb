@@ -43,7 +43,7 @@ require_relative "parity/mobile"
 # under code page 437, as a console in the United States starts. On
 # macOS and Linux it runs it again with no locale at all, as a desktop
 # starts an app, and under LC_ALL=C and LC_CTYPE=C, which a person sets
-# on purpose (ADR 041).
+# on purpose (ADR 087).
 #
 # Run it as rake parity, after rake runtime or with FLEDGE_RUNTIME_DIR set.
 class Parity
@@ -159,7 +159,7 @@ class Parity
           "or env -i starts an app, ruby takes the C locale, whose character set is ASCII; the launcher and the " \
           "runtime's bin/ruby take a UTF-8 locale instead, as Python does under PEP 538, so that a folder name " \
           "outside ASCII in the app's path, or the person's home, cannot break Ruby's boot and Bundler's setup " \
-          "(ADR 041). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
+          "(ADR 087). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
           "nothing is exported: ENV and every program the app starts see the person's own locale.")
     end,
     *MOBILE_JUSTIFIED,

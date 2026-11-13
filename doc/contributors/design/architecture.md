@@ -76,7 +76,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [037](../adr/037.md) | Two kinds of app, console and windowed, each with a launcher built for its kind |
 | [038](../adr/038.md) | On Windows, keep RubyInstaller's tree whole and load Ruby's DLL at run time |
 | [040](../adr/040.md) | Hide the person's Ruby settings from Ruby's boot, and restore them before the program runs |
-| [041](../adr/041.md) | Turn a bare C locale into a UTF-8 one in every Ruby of a runtime, until a developer finds it a surprise |
 | [042](../adr/042.md) | Ship libxcrypt and GNU MP as Shared Libraries a Person Can Replace |
 | [043](../adr/043.md) | Each Runtime Carries the Sources Its Licenses Ask For, in notices/sources/ |
 | [044](../adr/044.md) | Configure an App With an Optional fledge.yml |
@@ -117,3 +116,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [084](../adr/084.md) | An app sets up the groups bundle exec would, under the developer's own Bundler settings |
 | [085](../adr/085.md) | A Runtime Is a Whole Standard Ruby, Pruned Only of What No Running Code Reads |
 | [086](../adr/086.md) | Run an App That Has a Gemfile Under the Real Bundler, as bundle exec Does |
+| [087](../adr/087.md) | Turn a bare C locale into a UTF-8 one in every Ruby of a runtime, where the app is started with no locale |

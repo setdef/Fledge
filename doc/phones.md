@@ -111,6 +111,7 @@ What follows holds on an iPhone 12 mini with iOS 27.0 and a development-signed b
 - **User and group IDs.** Setting your own IDs works: `Process.uid=`, `Process.euid=`, `Process.gid=`, and `Process.egid=` raised nothing when given the current value on the iPhone.
 - **Groups.** An iOS app gets no list of the groups it belongs to: `Process.groups` raises `Errno::EINVAL`. So `File.grpowned?` (and the same method of `File::Stat` and `FileTest`) is true only for a file of the app's own primary group, and `File.readable?`, `File.writable?`, and `File.executable?` answer as on a desktop.
 - **No JIT.** iOS lets no app but a browser write machine code and run it, so the iOS Ruby has no YJIT: `RubyVM::YJIT` is not defined. Guard its use with `defined?(RubyVM::YJIT)`. Android's Ruby has YJIT, off until your app enables it, as on a desktop.
+- **A read-only bundle.** On a device the app's own folder cannot be written to (it can in the Simulator). Write under `Dir.home` or `Dir.tmpdir`.
 
 ### On Android
 
@@ -126,7 +127,6 @@ What follows holds on a OnePlus Nord with Android 14 (API 34).
 ### On both
 
 - **No terminal.** An app's standard output goes to the system log. Fledge has `$stdout` write each line as it prints, as Ruby writes to a terminal, where a desktop program writing to a pipe buffers; `$stdout.sync` and `$stdout.tty?` stay false, as under `ruby main.rb` with its output to a pipe. Standard input is at its end, and the working directory is `/`.
-- **A read-only bundle.** On a device the app's own folder cannot be written to (it can in the Simulator). Write under `Dir.home` or `Dir.tmpdir`.
 - **Stopped in the background.** The system may stop an app that is not in front without running `at_exit`. Save what matters as you go.
 - **Native code in the app.** A phone's Ruby links each extension in, and holds no `archdir` of them; `RbConfig::CONFIG["archdir"]` names a folder with no extensions in it.
 

@@ -9,6 +9,7 @@ require "fileutils"
 require_relative "download_cache"
 require_relative "parity"
 require_relative "ruby_spec/results"
+require_relative "ruby_spec/listing"
 
 # The ruby/spec comparison: ruby/spec, run by MSpec, on stock Ruby and in
 # a built app, with every example that fails on one side only either
@@ -237,7 +238,7 @@ class RubySpec
   # or MSpec's own specs, and a fledge.yml naming the app.
   private def project(into, sources)
     FileUtils.mkdir_p(into)
-    FileUtils.cp(File.join(__dir__, "ruby_spec", "main.rb"), into)
+    FileUtils.cp(%w[main.rb listing_config.rb].map { |file| File.join(__dir__, "ruby_spec", file) }, into)
     sources.each { |name, folder| FileUtils.cp_r(folder, File.join(into, name)) }
     FileUtils.rm_rf(Dir.glob(File.join(into, "{spec,mspec}", ".git*")) + [File.join(into, "mspec", "spec")])
     File.write(File.join(into, "fledge.yml"), "name: RubySpec\n")
@@ -251,7 +252,7 @@ class RubySpec
     env = environment(label)
     folder = File.join(@out, label)
     FileUtils.mkdir_p(folder)
-    options = ["--timeout", "300", *EXCLUDED.fetch(platform.name, []).flat_map { |example| ["-E", example] }]
+    options = ["-B", "../listing_config.rb", "--timeout", "300", *EXCLUDED.fetch(platform.name, []).flat_map { |example| ["-E", example] }]
     DIRECTORIES.map do |directory|
       file = File.join(folder, "#{directory}.out")
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)

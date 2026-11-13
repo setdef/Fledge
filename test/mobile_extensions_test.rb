@@ -422,6 +422,10 @@ class MobileExtensionsTest < Minitest::Test
     stub = Fledge::MobileExtensions::Stub.for(Fledge::PathPackage.new(gem), "twice/twice", root: folder, gem_dir: "lib/ruby/gems/4.1.0+5")
 
     assert_equal "app/gems/twice/src/twice/twice.rb", stub.path
+    FileUtils.mkdir_p(File.join(folder, "lib", "twice"))
+    File.write(File.join(folder, "lib", "twice", "twice.rb"), "")
+    assert_nil Fledge::MobileExtensions::Stub.for(Fledge::PathPackage.new(gem), "twice/twice", root: folder, gem_dir: "lib/ruby/gems/4.1.0+5"),
+      "a stub in src would hide lib's file from require \"twice/twice\""
   end
 
   # The stub asks for the feature by its .so name, which Ruby looks up

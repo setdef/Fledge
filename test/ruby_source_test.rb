@@ -230,6 +230,24 @@ class RubySourceTest < Minitest::Test
     end
   end
 
+  # A require of racc/cparse before racc is active finds racc by a file
+  # in its extension folder, as a desktop's RubyGems finds cparse.so
+  # there; a gem whose lib/ has the extension's name keeps its own file.
+  def test_writes_a_stub_where_a_desktop_has_each_gems_extension_but_where_its_ruby_has_the_name
+    Dir.mktmpdir do |build|
+      write(File.join(build, "ext/gems/racc/ext/racc/cparse/extconf.rb"), "create_makefile 'racc/cparse'\n")
+      write(File.join(build, "ext/gems/nkf/ext/nkf/extconf.rb"), "create_makefile('nkf')\n")
+      write(File.join(build, ".bundle/gems/nkf-0.3.0/lib/nkf.rb"), "require 'nkf.so'\n")
+      gems = { "racc" => "racc-1.8.1", "nkf" => "nkf-0.3.0" }
+
+      RuntimeBuilder::BundledExtensions.write_stubs(build, gems, platform: "arm64-darwin", api: "4.1.0+5-static")
+
+      folder = File.join(build, ".bundle/extensions/arm64-darwin/4.1.0+5-static")
+      assert_equal Fledge::MobileExtensions::Stub.source("racc/cparse"), File.read(File.join(folder, "racc-1.8.1/racc/cparse.rb"))
+      assert_empty Dir.glob("nkf-0.3.0/**/*.rb", base: folder)
+    end
+  end
+
   def test_an_installed_gem_without_its_specification_or_mark_fails
     Dir.mktmpdir do |gems|
       write(File.join(gems, "specifications", "nkf-0.2.0.gemspec"), "")

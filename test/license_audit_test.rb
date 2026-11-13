@@ -530,8 +530,8 @@ class LicenseAuditTest < Minitest::Test
 
   # The bytes each mobile runtime's one library holds of what is linked
   # into it (runtime/licenses.yml): Ruby's revision, OpenSSL's version
-  # string, libyaml's, and on Android libffi's.
-  MOBILE_LIBRARY = "ruby 4.1.0preview1 (revision 2d08b5f42f) OpenSSL 3.6.5 0.2.5\0 BLAKE3 1.8.5\0"
+  # string, libyaml's, and libffi's.
+  MOBILE_LIBRARY = "ruby 4.1.0preview1 (revision 2d08b5f42f) OpenSSL 3.6.5 0.2.5\0 BLAKE3 1.8.5\0 3.5.2\0"
 
   # An iOS runtime: an XCFramework whose two slices each carry the Ruby
   # it runs, as CPython's iOS XCFramework does (ADR 011), audited as one
@@ -561,6 +561,7 @@ class LicenseAuditTest < Minitest::Test
       report = LicenseAudit.new(platform: "ios", tree:, fledge_version: "0.0.0").call
 
       assert_empty report.violations.map(&:to_s)
+      assert_includes report.present.map(&:id), "libffi-mobile"
       assert_equal 1, report.present.count { |component| component.id == "gem-csv-3.3.5" }
       owners = report.owners.transform_values(&:id)
       assert_equal "gem-csv-3.3.5", owners.fetch("FledgeRuby.xcframework/ios-arm64-simulator/lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/lib/csv.rb")
@@ -576,7 +577,7 @@ class LicenseAuditTest < Minitest::Test
   def test_an_aar_is_audited_by_what_it_holds
     Dir.mktmpdir do |tree|
       aar = File.join(tree, "aar")
-      library = Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so], payload: "#{MOBILE_LIBRARY} 3.5.2\0")
+      library = Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so], payload: MOBILE_LIBRARY)
       { "AndroidManifest.xml" => "<manifest/>\n", "classes.jar" => "PK\x03\x04", "jni/x86_64/libfledgeruby.so" => library }.each do |path, bytes|
         FileUtils.mkdir_p(File.dirname(File.join(aar, path)))
         File.binwrite(File.join(aar, path), bytes)

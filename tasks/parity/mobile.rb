@@ -10,7 +10,7 @@ class Parity
   # check (tasks/mobile_parity.rb) runs the probe.
   MOBILE = RuntimeBuilder::Mobile::PLATFORMS.values.flat_map(&:targets).map(&:name).freeze
 
-  # The iOS targets, which leave fiddle out.
+  # The iOS targets, whose sandbox lets an app start no program.
   IOS = RuntimeBuilder::Mobile::PLATFORMS.fetch("ios").targets.map(&:name).freeze
 
   # The Android targets, whose runtime has a ruby program (ADR 069).
@@ -65,10 +65,6 @@ class Parity
         "system log, where a developer watches the app run. Ruby writes through to a terminal but buffers a pipe " \
         "until the program ends, so the runtime puts $stdout in sync mode, which writes each line when it is " \
         "printed, as under ruby main.rb in a terminal, and as Briefcase's iOS host unbuffers Python's streams."),
-    Justification.new(fact: "gems", reference: [/\A"fiddle /], platforms: IOS,
-      reason: "The iOS runtime leaves out fiddle, which calls any C function by name, as xord/cruby leaves it out " \
-        "of RubySketch's Ruby \"to pass the App Store review\" (ADR 058)."),
-    Justification.new(fact: "requireable", reference: [/\A"fiddle"=/], platforms: IOS, reason: "As for gems."),
     Justification.new(fact: "gems", app: [/\A"win32-registry /], platforms: MOBILE,
       reason: "Ruby's own install puts every bundled gem it can in a Ruby it builds from source, as the phones' " \
         "runtimes are, win32-registry among them, which only Windows can use; rv-ruby's builds, which the " \

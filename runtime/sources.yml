@@ -324,8 +324,7 @@ nsis:
 # Linux with the NDK below. Their sources are Ruby's release tarball, the
 # same 4.1.0-preview1 the macOS and Linux runtimes carry; OpenSSL 3.6.5, the release
 # RubyInstaller's Windows Ruby links; libyaml 0.2.5, as every desktop
-# runtime has; libffi 3.5.2, for fiddle, on Android only (iOS leaves
-# fiddle out, as xord/cruby does for the App Store); and Mozilla's CA
+# runtime has; libffi 3.5.2, for fiddle; and Mozilla's CA
 # certificates as curl publishes them, the very file rv-ruby's runtimes
 # carry as libexec/cert.pem. The NDK is pinned for each computer that
 # runs it, and Gradle, which packs the Android runtime's AAR with the

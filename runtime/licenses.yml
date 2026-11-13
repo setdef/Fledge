@@ -686,16 +686,16 @@ components:
         evidence: "3.5.2\0"
 
   - id: libffi-mobile
-    name: libffi, compiled into the Android runtime's library for the fiddle gem
+    name: libffi, compiled into the mobile runtimes' library for the fiddle gem
     version: 3.5.2
     license: MIT
     kind: program
     download: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
     notice: libffi
-    ships: compiled into libfledgeruby.so
-    platforms: [android]
+    ships: compiled into libfledgeruby.a and libfledgeruby.so
+    platforms: [ios, android]
     embedded:
-      - files: [FledgeRuby.aar!jni/*/libfledgeruby.so]
+      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
         evidence: "3.5.2\0"
 
   # The NDK's clang links its own runtime into every library it links:

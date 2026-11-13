@@ -9,8 +9,8 @@ source "https://rubygems.org"
 
 gemspec
 
-# Development gems stay on the developer's computer: a built app leaves
-# out the development and test groups (ADR 005).
+# A built app sets up the groups bundle exec does, so rake ships too, and
+# require "rake" works in the app as under bundle exec.
 group :development do
   gem "rake", "~> 13.0"
 end

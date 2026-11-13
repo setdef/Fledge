@@ -85,27 +85,6 @@
   platforms:
   checks:
   - bundle
-- fact: "$LOAD_PATH"
-  reference:
-  - \A"(?:(?-mix:<work>\/person-gems)|(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?))/gems/rake-
-  app: []
-  platforms:
-  checks:
-  - bundle
-- fact: gems
-  reference:
-  - '\A"rake '
-  app: []
-  platforms:
-  checks:
-  - bundle
-- fact: requireable
-  reference:
-  - \A"rake"=
-  app: []
-  platforms:
-  checks:
-  - bundle
 - fact: ENV
   reference:
   - \A"(?<name>GEM_HOME|PATH)"=

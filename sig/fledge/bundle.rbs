@@ -3,7 +3,6 @@
 
 module Fledge
   class Bundle
-    WITHOUT: Array[Symbol]
     SETTINGS: String
     GEMSPECS: String
     GEMSPEC_LOADS: String

@@ -34,9 +34,9 @@ module Fledge
   # refuses a lockfile the Gemfile has moved past (as Bundler refuses one
   # in frozen mode), and, for a platform, picks each gem the lockfile
   # locks for it as Bundler picks one at run time
-  # (Bundler::MatchPlatform), leaving out the +development+ and +test+
-  # groups, as Warbler and <tt>bundle install --without</tt> do, and gems
-  # the Gemfile limits to other platforms. A gem from git comes at the
+  # (Bundler::MatchPlatform), in the groups <tt>bundle exec</tt> would
+  # set up, every one but those Bundler's own +without+ setting leaves
+  # out, and leaving out gems the Gemfile limits to other platforms. A gem from git comes at the
   # revision the lockfile locks (Fledge::GitGem). It refuses what it
   # cannot ship: a platform the lockfile does not lock, a git gem the
   # lockfile does not pin to a commit, a path gem outside the project
@@ -61,10 +61,6 @@ module Fledge
   # SPDX-SnippetEnd
   #++
   class Bundle
-    # The groups a built app leaves out, as Warbler's bundle_without does
-    # (Warbler::Config, <tt>bundle_without</tt>, development and test).
-    WITHOUT = %i[development test].freeze
-
     # Bundler's settings for the built app, in its .bundle/config, the
     # level of Bundler's settings that wins over every other
     # (Bundler::Settings#configs), which the launcher also has Bundler
@@ -194,21 +190,15 @@ module Fledge
     # The groups the app sets up, as Bundler sets them up
     # (Bundler::Definition#requested_groups at Bundler 4.0.20: the
     # Gemfile's groups, less <tt>without</tt> and the optional groups,
-    # plus <tt>with</tt>), with WITHOUT left out whatever the settings
-    # say, since a built app has no development or test gems. The
+    # plus <tt>with</tt>), +development+ and +test+ among them unless the
+    # settings leave them out, as <tt>bundle exec</tt> sets them up. The
     # settings Bundler reads are the project's <tt>.bundle/config</tt>,
     # BUNDLE_WITH and BUNDLE_WITHOUT, and the developer's own.
-    #
-    # WITHOUT is taken from what Bundler answers as well as from +with+:
-    # Bundler stores an empty list as no value at all
-    # (Bundler::Settings#array_to_s and #set_key), so a temporary
-    # <tt>with</tt> of none lets the next level's <tt>with</tt>, such as
-    # BUNDLE_WITH=development, show through (Bundler::Settings#[]).
     private def read_groups(definition)
       settings = Bundler.settings
-      @with = settings[:with].map(&:to_s) - WITHOUT.map(&:to_s)
-      @without = (WITHOUT.map(&:to_s) + settings[:without].map(&:to_s)).uniq
-      @groups = settings.temporary(with: @with, without: @without) { definition.__send__(:requested_groups) }.map(&:to_sym) - WITHOUT
+      @with = settings[:with].map(&:to_s)
+      @without = settings[:without].map(&:to_s)
+      @groups = definition.__send__(:requested_groups).map(&:to_sym)
     end
 
     # Every build.NAME setting Bundler has, by NAME.
@@ -246,7 +236,8 @@ module Fledge
     # The gems from a gem server or from git that +platform+'s app ships:
     # each gem the lockfile locks for +platform+ that the app's
     # dependencies reach, leaving out Bundler, the project's own gems,
-    # WITHOUT's groups, and gems the Gemfile limits to other platforms.
+    # the groups Bundler's +without+ setting leaves out, and gems the
+    # Gemfile limits to other platforms.
     # +ruby_version+ is the runtime's Ruby, for a dependency limited to
     # some Ruby versions, and +arch+ its architecture (RbConfig's), whose
     # RubyGems platform is the one the built app's Bundler runs as, so a
@@ -468,9 +459,12 @@ module Fledge
     end
 
     # The groups the app leaves out and asks for, as the settings of those
-    # names in the app's own <tt>.bundle/config</tt>.
+    # names in the app's own <tt>.bundle/config</tt>, when the project has
+    # them.
     private def group_settings
-      "BUNDLE_WITHOUT: \"#{@without.join(':')}\"\n#{"BUNDLE_WITH: \"#{@with.join(':')}\"\n" unless @with.empty?}"
+      { "BUNDLE_WITHOUT" => @without, "BUNDLE_WITH" => @with }.filter_map do |name, groups|
+        "#{name}: \"#{groups.join(':')}\"\n" unless groups.empty?
+      end.join
     end
 
     private def own_folders

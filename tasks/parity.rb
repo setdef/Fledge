@@ -111,12 +111,6 @@ class Parity
           "lockfile's, in the person's GEM_HOME on their computer and in the runtime's gem folder in the app (ADR 063). " \
           "The rest of each value is the same in both.")
     end,
-    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"(?:#{PERSON_GEMS}|#{APP_GEMS})/gems/rake-}o], checks: %i[bundle],
-      reason: "A built app leaves out the Gemfile's development and test groups, as Warbler does, and its Bundler " \
-        "sets up the rest (ADR 045); bundle exec on the developer's computer sets up all of them, rake from the " \
-        "person's gem folder, or, since Ruby 4.1 bundles rake, from Ruby's own."),
-    Justification.new(fact: "gems", reference: [/\A"rake /], checks: %i[bundle], reason: "As for $LOAD_PATH: rake is a development gem."),
-    Justification.new(fact: "requireable", reference: [/\A"rake"=/], checks: %i[bundle], reason: "As for gems."),
     *["ENV", "child ENV"].map do |fact|
       Justification.new(fact:, reference: [BUNDLE_LOCATIONS], app: [BUNDLE_LOCATIONS], checks: %i[bundle],
         reason: "Bundler points GEM_HOME and PATH at the bundle's gems, as bundle exec does: the person's GEM_HOME on " \
@@ -129,7 +123,7 @@ class Parity
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/#{ABI}/rubygems/yaml_serializer\.rb"\z}o],
       checks: %i[bundle],
       reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
-        "without the development and test groups, as bundle config set --local would (ADR 045). Reading a " \
+        "Ruby's own gem folder as the bundle's, as bundle config set --local would (ADR 045). Reading a " \
         "configuration file loads RubyGems' YAML serializer."),
     Justification.new(fact: "Object.constants", app: [/\A"Psych"\z/], checks: %i[bundle],
       reason: "As for RubyGems' YAML serializer in $LOADED_FEATURES: where Psych is not loaded, the serializer defines a " \

@@ -5,10 +5,14 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "json"
+require "open3"
+require "rbconfig"
 require "shellwords"
 require_relative "error"
 require_relative "git_gem"
 require_relative "locked_gem"
+require_relative "native_build"
 require_relative "bundle/selection"
 require_relative "bundle/sources"
 
@@ -396,7 +400,11 @@ module Fledge
     # +force_ruby_platform+ is true, for a phone), and each gemspec of the
     # project's own gems, evaluated now, as Bundler caches a git gem's
     # gemspecs evaluated so that one that runs git keeps working without
-    # it (Bundler::Source::Git#serialize_gemspecs_in).
+    # it (Bundler::Source::Git#serialize_gemspecs_in), and led by a
+    # require_relative of each of the project's files its evaluation
+    # loaded, such as <tt>lib/my_cool_app/version.rb</tt>, which the
+    # app's Bundler then loads at every start, as Bundler does under
+    # <tt>bundle exec</tt>.
     #
     # === Example
     #
@@ -415,8 +423,48 @@ module Fledge
       gemspecs.uniq.sort.each_with_object({ ".bundle/config" => settings }) do |path, files|
         spec = Bundler.load_gemspec(path) or next
         spec.installed_by_version = Gem::VERSION
-        files[path.delete_prefix("#{@app.root}/")] = spec.to_ruby
+        files[path.delete_prefix("#{@app.root}/")] = with_requires(spec.to_ruby, path)
       end
+    end
+
+    # What a Ruby runs to report the files evaluating a gemspec loads, as
+    # Bundler evaluates it (Bundler.load_gemspec), in the order they
+    # finish loading.
+    GEMSPEC_LOADS = <<~RUBY
+      require "bundler"
+      require "json"
+      before = $LOADED_FEATURES.dup
+      Bundler.load_gemspec(ARGV.fetch(0))
+      print JSON.generate($LOADED_FEATURES - before)
+    RUBY
+
+    # The evaluated gemspec +ruby+ of the gemspec at +path+, led by a
+    # require_relative of each file in the project that evaluating it
+    # loads, in the order it loads them. Under <tt>bundle exec</tt>
+    # Bundler evaluates the gemspec at every start, so what it requires
+    # (<tt>bundle gem</tt>'s <tt>lib/NAME/version.rb</tt>, and the
+    # constant it defines) is loaded before the program's first line; the
+    # app's Bundler evaluates the shipped one at every start too, and
+    # loads the same files, by the same paths, with no git. The gemspec
+    # is evaluated in a Ruby of its own, with none of the developer's
+    # Ruby settings, since this process may have loaded those files
+    # already. Raises Fledge::Error when that Ruby cannot evaluate it.
+    private def with_requires(ruby, path)
+      env = ENV.keys.grep(NativeBuild::SCRUBBED).to_h { |name| [name, nil] } # : Hash[String, String?]
+      out, err, status = Open3.capture3(env, RbConfig.ruby, "-e", GEMSPEC_LOADS, path)
+      raise Error, "Ruby can't evaluate #{path}:\n#{err.rstrip}" unless status.success?
+
+      folder = File.dirname(File.realpath(path))
+      root = "#{File.realpath(@app.root)}/"
+      loaded = JSON.parse(out).map { |feature| File.realpath(feature) }.select { |feature| feature.start_with?(root) }
+      requires = loaded.map { |feature| "require_relative #{relative(feature, folder).inspect}\n" }.join
+      requires.empty? ? ruby : ruby.sub(/^Gem::Specification\.new/) { "#{requires}\n#{Regexp.last_match(0)}" }
+    end
+
+    # +path+ relative to +folder+, without its .rb, as require_relative
+    # takes it.
+    private def relative(path, folder)
+      Pathname.new(path).relative_path_from(Pathname.new(folder)).to_s.delete_suffix(".rb")
     end
 
     # The groups the app leaves out and asks for, as the settings of those

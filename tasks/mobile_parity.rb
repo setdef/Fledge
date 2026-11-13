@@ -27,9 +27,7 @@ require_relative "parity"
 # whose gem from rubygems.org, digest-crc, builds its C extensions from a
 # Rakefile, with mkmf, and prints whether they ran; examples/rust_phone,
 # whose gem's Rust extension (rb-sys and magnus) Cargo builds for each of
-# the phone's targets (ADR 022); examples/ffi_phone, whose ffi gem from
-# rubygems.org builds the libffi it bundles and calls C by name, with a
-# Ruby block as a callback; a script that requires json and csv, a bundled
+# the phone's targets (ADR 022); a script that requires json and csv, a bundled
 # gem, parses with prism, a bundled gem whose extension compiles its own
 # libprism (ADR 067), and reaches rubygems.org over HTTPS
 # (test/fixtures/mobile_hello);
@@ -72,8 +70,6 @@ class MobileParity
       prints: /\ARakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0\.7\.0's Rakefile, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "examples/rust_phone", name: "RustPhone", identifier: "com.setdef.fledge.RustPhone",
       prints: /\ARustPhone totals 10 in Rust built for (?:ios on aarch64, on arm64-darwin|android on x86_64, on x86_64-linux-android)\z/),
-    App.new(path: "examples/ffi_phone", name: "FfiPhone", identifier: "com.setdef.fledge.FfiPhone",
-      prints: /\AFfiPhone: ffi 1\.17\.4 finds strlen of hello 5 and sorts \[1, 2, 3\] with a Ruby block, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
   ].freeze

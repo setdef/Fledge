@@ -493,9 +493,7 @@ jobs:
   # its extconf.rb, with the runner's CMake, and the third's Rust by
   # Cargo, with mise.toml's Rust and its phone targets (ADR 022, ADR
   # 027); examples/rake_phone, whose digest-crc builds its extensions
-  # from a Rakefile (ADR 072); examples/ffi_phone,
-  # whose ffi gem builds its own libffi and calls C with a Ruby block as
-  # a callback; a script that requires json and csv,
+  # from a Rakefile (ADR 072); a script that requires json and csv,
   # a bundled gem, and reaches rubygems.org over HTTPS; and the parity
   # probe, against ruby main.rb on this Mac's desktop Ruby, with every
   # difference justified for a phone (tasks/mobile_parity.rb).

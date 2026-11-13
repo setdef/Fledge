@@ -19,7 +19,7 @@ require_relative "../lib/fledge/platform"
 require_relative "../lib/fledge/runtimes"
 require_relative "../lib/fledge/version"
 
-# Builds a runtime (ADR 034; doc/contributors/design/runtimes.md,
+# Builds a runtime (ADR 093; doc/contributors/design/runtimes.md,
 # "What a runtime is").
 #
 # On macOS and Linux, a runtime is the launcher in runtime/launcher/,

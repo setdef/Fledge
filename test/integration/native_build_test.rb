@@ -15,7 +15,7 @@ require "stringio"
 
 # fledge build compiling a gem's C extension on this computer, for this
 # computer's platform, against the real runtime's own Ruby and nothing
-# else (ADR 006 and ADR 085): a gem that publishes only its source,
+# else (ADR 091 and ADR 085): a gem that publishes only its source,
 # served by a real gem server, with build options from the project's
 # .bundle/config, and the same gem from git. Its extconf.rb checks for a
 # function with have_func, as nokogiri's does, whose test program mkmf

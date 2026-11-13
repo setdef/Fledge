@@ -218,7 +218,7 @@ jobs:
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" "$RUNNER_TEMP/build.err"
           ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
 
-      # Compiling a gem needs nothing but the runtime (ADR 006 and ADR
+      # Compiling a gem needs nothing but the runtime (ADR 091 and ADR
       # 085), which the step before downloaded into the same cache, so
       # this step downloads nothing of Fledge's.
       - name: Build native_app from source with the release's runtime alone

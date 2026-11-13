@@ -17,7 +17,7 @@ module Fledge
   #
   # A runtime is a launcher and a relocatable Ruby, built once per
   # platform by Fledge's own CI and attached to the GitHub Release of
-  # the Fledge version that built it (ADR 034). You should not need to
+  # the Fledge version that built it (ADR 093). You should not need to
   # build a Ruby, or own the toolchain that builds one, to ship an app,
   # so <tt>fledge build</tt> does not build runtimes itself; it fetches
   # them. Fetching on every build
@@ -221,7 +221,7 @@ module Fledge
 
     # Downloads +name+ from the mirror, where this version's release
     # keeps it under the mirror's base: MIRROR/vVERSION/NAME. A mirror
-    # that fails is not passed over for the release (ADR 031).
+    # that fails is not passed over for the release (ADR 092).
     private def from_mirror(mirror, name, destination, sha256)
       base = "#{mirror}/v#{VERSION}"
       @log&.puts "Downloading #{name} from #{base}"

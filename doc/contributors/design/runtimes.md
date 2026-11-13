@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Desktop Runtimes
 
-This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, what compiling a gem takes from a runtime, the platform names, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 085 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phone-runtimes.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
+This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, what compiling a gem takes from a runtime, the platform names, and the release assets. ADR 093 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 085 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phone-runtimes.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
 
 ## What a runtime is
 
@@ -220,13 +220,13 @@ The assets:
 
 1. the folder `FLEDGE_RUNTIME_DIR` names, which a contributor points at `tmp/runtime` after `rake runtime`. A runtime there is used as it is, unchecked against the pins, since it was built from this checkout; when the variable is set and the file is missing, the build fails rather than download;
 2. the cache, `$XDG_CACHE_HOME/fledge/runtimes` or `~/.cache/fledge/runtimes`, when its SHA-256 matches the gem's pin;
-3. a download from the version's GitHub Release, or from `FLEDGE_RUNTIME_MIRROR` (ADR 031), into the cache, checked against the pin.
+3. a download from the version's GitHub Release, or from `FLEDGE_RUNTIME_MIRROR` (ADR 092), into the cache, checked against the pin.
 
 ## Download retries
 
 `fledge build` downloads runtimes and gems through `Fledge::Download.save`. A download that fails with `Download::Unavailable` (408, 429, or a 5xx) or `Download::Unreachable` (a connection refused, reset, timed out, unresolvable, broken off, or stalled) is tried again after 2, 4, and 8 seconds (`Download::WAITS`), four tries in all, and the last failure is raised when they run out. Each try starts again from the first byte into the same `.part` file and is checked against the pin; nothing reaches the destination unless it matches. A 401 or 403, a 404 or 410, any other 4xx, and a SHA-256 mismatch would answer the same a moment later, so each fails at once. Before each wait, `Fledge::Runtimes` and `Fledge::GemFetcher` say on their log why and how long: `could not download URL: 503 Service Unavailable; trying again in 2 seconds (2 of 4)`.
 
-A mirror (ADR 031) is retried the same way and then fails, still without trying the release.
+A mirror (ADR 092) is retried the same way and then fails, still without trying the release.
 
 Why these numbers:
 

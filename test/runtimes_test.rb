@@ -223,7 +223,7 @@ class RuntimesTest < Minitest::Test
   end
 
   # A mirror is asked again as the release is, and still not passed over
-  # when it keeps failing (ADR 031).
+  # when it keeps failing (ADR 092).
   def test_a_mirror_that_keeps_failing_is_asked_again_and_then_fails_without_the_release
     body = "the released runtime"
     name = Fledge::Runtimes.file_name(LINUX)

@@ -246,7 +246,7 @@ module Fledge
       # names each folder by its long name (Fledge::LongPath), whatever
       # +TMP+ says: a gem's build may escape it for a POSIX shell and run
       # that through cmd.exe, as mini_portile2 does, where an 8.3 name's
-      # escaped tilde names no file (ADR 006).
+      # escaped tilde names no file (ADR 091).
       private def work_folder(&)
         Dir.mktmpdir("fledge-build", LongPath.of(Dir.tmpdir), &)
       end

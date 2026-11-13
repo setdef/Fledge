@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Versions and Releases
 
-This document says how Fledge is versioned, what each kind of release may change, which Rubies and platforms a release keeps, and how a release is made and published. ADR 028 decides SemVer and when a major ships; ADR 055 decides which Ruby an app gets; ADR 056 the move to Ruby 4.1 and what 1.0 waits for; ADR 014 the pins; ADR 053 how a release reuses CI; ADR 071 how CI's runs queue; ADR 031 the mirror; ADR 054 the schema's address. The steps a release takes are in `doc/contributors/handoff.md`, "How to release". What 1.x freezes is in `doc/contributors/design/public-interface.md`. App developers read the same rules in `doc/runtimes.md`.
+This document says how Fledge is versioned, what each kind of release may change, which Rubies and platforms a release keeps, and how a release is made and published. ADR 028 decides SemVer and when a major ships; ADR 055 decides which Ruby an app gets; ADR 056 the move to Ruby 4.1 and what 1.0 waits for; ADR 014 the pins; ADR 053 how a release reuses CI; ADR 071 how CI's runs queue; ADR 092 the mirror; ADR 054 the schema's address. The steps a release takes are in `doc/contributors/handoff.md`, "How to release". What 1.x freezes is in `doc/contributors/design/public-interface.md`. App developers read the same rules in `doc/runtimes.md`.
 
 ## Versions
 

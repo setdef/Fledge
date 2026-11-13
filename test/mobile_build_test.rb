@@ -350,6 +350,42 @@ class MobileBuildTest < Minitest::Test
       "numbers, three digits each, and 1.1000.0 does not fit", error.message
   end
 
+  # An Android extension built as a file goes to each ABI's jniLibs as
+  # libfledgeext.FEATURE.so, and fledge.links names where a desktop has
+  # its file; with nothing linked in, the host loads no libfledgeext.so.
+  def test_an_android_extension_built_as_a_file_is_a_native_library_named_for_its_feature
+    project = android_project_with_library("adder/adder")
+
+    library = File.join(project, "src/main/jniLibs/x86_64/libfledgeext.adder.adder.so")
+    assert_equal "ELF adder", File.read(library)
+    refute_path_exists File.join(project, "src/main/jniLibs/x86_64/libfledgeext.so")
+    assert_equal "x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n", File.read(File.join(project, "fledge/fledge.links"))
+    refute_includes File.read(File.join(project, "src/main/java/org/setdef/fledge/host/MainActivity.java")), "fledgeext"
+  end
+
+  # The package installer extracts only a library whose name has the
+  # characters isFilenameSafe takes (AOSP's ApkParsing.cpp).
+  def test_an_android_extension_whose_feature_android_cannot_install_is_refused
+    error = assert_raises(Fledge::Error) { android_project_with_library("my ext/ext") }
+
+    assert_equal "the extension my ext/ext has a name Android cannot install as a native library: only letters, digits, and + , - . = _",
+      error.message
+  end
+
+  # Writes an Android project for a script app whose one extension,
+  # +feature+, was built as a file for x86_64, and returns its folder.
+  private def android_project_with_library(feature)
+    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
+    shared = File.join(@dir, "adder.so")
+    File.write(shared, "ELF adder")
+    target = Fledge::MobileExtensions::Target.new(name: "x86_64-linux-android", root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi: "x86_64")
+    library = Fledge::MobileExtensions::Library.new(feature:, path: shared, flags: [], links: ["app/gems/adder/lib/#{feature}.so"])
+    build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [library])
+    built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [])
+    runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
+    Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(@dir, "dist"), extensions: -> (_tree) { built }).call
+  end
+
   private def xcodegen?
     ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? { |folder| File.executable?(File.join(folder, "xcodegen")) }
   end

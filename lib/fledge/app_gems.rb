@@ -283,7 +283,7 @@ module Fledge
       [*(1..(parts.size)).map { |count| Entry.directory(parts.first(count).join("/")) }, Entry.file("#{path}/gem.build_complete", "")]
     end
 
-    # The gems with an extension that fledge build linked into the app,
+    # The gems with an extension that fledge build compiles for a phone,
     # as #for found them, by gem, for Fledge::MobileExtensions to compile:
     # empty before #for, and for a desktop.
     def extension_packages

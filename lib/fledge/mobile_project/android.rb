@@ -6,6 +6,7 @@
 #++
 
 require "fileutils"
+require_relative "../command"
 require_relative "../error"
 require_relative "../icon"
 require_relative "../mac_bundle"
@@ -63,6 +64,12 @@ module Fledge
       # The name of the library that holds the app's gems' extensions and
       # their registration, <tt>libfledgeext.so</tt> (ADR 022).
       EXTENSIONS = "fledgeext"
+
+      # The file in the Ruby root that names, for each ABI, an extension
+      # built as a native library and each path the app's Ruby looks for
+      # it at, which the runtime links to the library as the app starts
+      # (<tt>runtime/mobile/library_links.c</tt>).
+      LINKS = "fledge.links"
 
       # The <tt>versionCode</tt> for +version+: each of its first three
       # numbers in three digits, as Briefcase pads a version's parts into
@@ -140,7 +147,7 @@ module Fledge
           "VERSION_NAME" => groovy(version),
           "NAME" => string_resource(@app.name),
           "ICON" => @app.identity.icon ? ' android:icon="@mipmap/ic_launcher"' : "",
-          "LOAD_EXTENSIONS" => @built ? "static { System.loadLibrary(\"fledgeruby\"); System.loadLibrary(\"#{EXTENSIONS}\"); }" : "",
+          "LOAD_EXTENSIONS" => linked? ? "static { System.loadLibrary(\"fledgeruby\"); System.loadLibrary(\"#{EXTENSIONS}\"); }" : "",
         }
       end
 
@@ -180,9 +187,18 @@ module Fledge
       # and which the host loads next to Ruby's, with the shared libraries
       # the extensions link from their own folders (ADR 025). The registration unit is
       # kept in <tt>extensions/</tt> for whoever reads the project.
+      #
+      # An extension built as a file (MobileExtensions::Library) goes to
+      # <tt>jniLibs/</tt> on its own, named for its feature, and
+      # <tt>fledge.links</tt> in the Ruby root names, for each ABI, the
+      # paths where a desktop has its file, which the runtime links to
+      # it as the app starts (<tt>fledge_link_libraries</tt>).
       private def place_extensions(project)
         built = @built or return
         compiler = @extensions or return
+        place_libraries(project, built)
+        return unless linked?
+
         source = File.join(project, "extensions", "fledge_extensions.c")
         FileUtils.mkdir_p(File.dirname(source))
         File.write(source, MobileExtensions.registration_source(built.registrations))
@@ -191,6 +207,48 @@ module Fledge
           compiler.shared_library(built, build, registration: source, into:)
           MobileExtensions::Linking.carry_shared_libraries(build.flags, into: File.dirname(into))
         end
+      end
+
+      # Whether any extension is linked into <tt>libfledgeext.so</tt>.
+      private def linked?
+        built = @built or return false
+        !built.registrations.empty?
+      end
+
+      # Copies each extension built as a file into the ABI's folder of
+      # <tt>jniLibs/</tt>, stripped, with the shared libraries it links,
+      # and writes <tt>fledge.links</tt>.
+      private def place_libraries(project, built)
+        lines = built.targets.values.flat_map do |build|
+          abi = build.target.abi.to_s
+          folder = File.join(project, "src", "main", "jniLibs", abi)
+          FileUtils.mkdir_p(folder)
+          build.libraries.flat_map do |library|
+            name = library_name(library.feature)
+            FileUtils.cp(library.path, File.join(folder, name))
+            built.ndk&.then { |ndk| strip(ndk, File.join(folder, name)) }
+            MobileExtensions::Linking.carry_shared_libraries(library.flags, into: folder)
+            library.links.map { |link| "#{abi}\t#{name}\t#{link}\n" }
+          end
+        end
+        File.write(File.join(ruby_root(project), LINKS), lines.join) unless lines.empty?
+      end
+
+      # The file name in <tt>jniLibs/</tt> of the extension +feature+:
+      # one the package installer extracts, which begins with +lib+, ends
+      # with <tt>.so</tt>, and holds only the characters it takes
+      # (<tt>isFilenameSafe</tt>, AOSP's <tt>ApkParsing.cpp</tt>), with
+      # the feature's slashes as dots. Raises Fledge::Error for a feature
+      # that has others.
+      private def library_name(feature)
+        name = "lib#{EXTENSIONS}.#{feature.tr('/', '.')}.so"
+        return name if name.match?(/\A[A-Za-z0-9+,\-.=_]+\z/)
+
+        raise Error, "the extension #{feature} has a name Android cannot install as a native library: only letters, digits, and + , - . = _"
+      end
+
+      private def strip(ndk, library)
+        Command.run(File.join(ndk.bin, "llvm-strip"), "--strip-unneeded", library, install: "Install the Android NDK again: #{ndk.root} has no llvm-strip.")
       end
 
       private def ruby_root(project)

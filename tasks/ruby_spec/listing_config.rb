@@ -73,11 +73,17 @@ module RubySpecListing
     # +path+ inside ruby/spec, as stock Ruby and the app, which run it
     # from different folders, both name it.
     def relative(path)
+      inside(path) || path.to_s
+    end
+
+    # +path+ inside ruby/spec, or nil when it is not, as for a block
+    # MSpec's own helpers define.
+    def inside(path)
       path = path.to_s.tr("\\", "/")
       folder = SPEC.find { |spec| path.downcase.start_with?(spec) }
       return path.byteslice(folder.bytesize, path.bytesize) if folder
 
-      path[%r{/spec/((?:#{FOLDERS.join('|')})/.+)\z}, 1] || path
+      path[%r{/spec/((?:#{FOLDERS.join('|')})/.+)\z}, 1]
     end
 
     # Runs the guard whose +block+ the given block passes on to it,
@@ -165,7 +171,8 @@ module RubySpecListing
   def example(state, _block)
     guards = state.instance_variable_get(:@ruby_spec_guards) || []
     block = state.example&.source_location
-    location = block ? "#{RubySpecListing.relative(block[0])}:#{block[1]}" : "-"
+    inside = block && RubySpecListing.inside(block[0])
+    location = inside ? "#{inside}:#{block[1]}" : "-"
     @ran << [RubySpecListing.relative(MSpec.file), guards.join(","), location, state.description.gsub("\n", "\\n")]
   end
 

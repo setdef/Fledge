@@ -21,13 +21,16 @@ class RubySpec
 
     # An example as it ran: its +name+, its directory and description as
     # Results names a failure, the spec +file+ it ran in, the +location+
-    # of its block ("-" for none), and the locations of the +guards+ that
-    # enclosed it.
+    # of its block inside ruby/spec, and the locations of the +guards+
+    # that enclosed it.
     class Ran < Data.define(:name, :file, :location, :guards)
       # What the two sides' examples are matched by: the block's file
-      # and line, which hold for both sides where a description may not.
+      # and line, which hold for both sides where a description may not,
+      # or, for a block outside ruby/spec ("-", or a path of its own, as
+      # MSpec's evaluate helper defines one block for many examples), the
+      # name.
       def key
-        [file, (location == "-") ? name : location]
+        [file, location.match?(%r{\A(?:-|/|[A-Za-z]:)}) ? name : location]
       end
     end
 

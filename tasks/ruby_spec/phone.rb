@@ -60,8 +60,14 @@ class RubySpec
     # "android", or both when nil): +files+, spec files or folders
     # relative to spec/, and +examples+, descriptions (mspec-run -E,
     # which leaves out each example whose description holds one), each
-    # for the +reason+ given.
-    class Exclusion < Data.define(:reason, :phones, :files, :examples)
+    # for the +reason+ given, but for +keep+, which maps some of +files+
+    # to the descriptions of their examples that run, since they start
+    # nothing the reason is about.
+    class Exclusion < Data.define(:reason, :phones, :files, :examples, :keep)
+      def initialize(reason:, phones:, files:, examples:, keep: {})
+        super
+      end
+
       def applies?(phone)
         phones.nil? || phones.include?(phone)
       end
@@ -75,10 +81,24 @@ class RubySpec
         phones: %w[ios], files: ["command_line"], examples: [],
       ),
       Exclusion.new(
-        reason: "Its examples signal Rubies they start through MSpec's ruby_exe, which skips on iOS " \
-          "(tasks/ruby_spec/phone_config.rb), and then clean up after them in hooks that fail when none started. " \
-          "Android runs them, as it runs command_line.",
-        phones: %w[ios], files: ["core/process/kill_spec.rb"], examples: [],
+        reason: "Each signals a Ruby it starts, through ProcessSpecs::Signalizer, which starts it with MSpec's ruby_exe " \
+          "in a thread of its own, or through Process.spawn, and iOS lets no app start a program: Apple's SDK marks " \
+          "system() prohibited there, \"On iOS, process spawning is unavailable\" (iPhoneOS27.2.sdk, " \
+          "usr/include/_stdlib.h, lines 205 to 208). The rest of core/process/kill_spec.rb runs, among it a signal " \
+          "to the app's own process. Android runs them, as it runs command_line.",
+        phones: %w[ios], files: [],
+        examples: [
+          "Process.kill raises Errno::ESRCH if the process does not exist",
+          "Process.kill accepts a Symbol as a signal name",
+          "Process.kill accepts a String as signal name",
+          "Process.kill accepts a signal name without the 'SIG' prefix",
+          "Process.kill accepts a signal name with the 'SIG' prefix",
+          "Process.kill accepts an Integer as a signal value",
+          "Process.kill calls #to_int to coerce the pid to an Integer",
+          "Process.kill signals multiple processes",
+          "Process.kill returns the number of processes signaled",
+          "Process.kill signals the process group if",
+        ],
       ),
       Exclusion.new(
         reason: "These are about Ruby's ways to start a program and wait for it, Process.spawn, Kernel#system, " \
@@ -86,8 +106,37 @@ class RubySpec
           "under test, through RUBY_EXE or ruby_cmd rather than ruby_exe; " \
           "whether such a child that cannot start has ended when an example looks is a race. iOS has no such Ruby, " \
           "since it lets no app start a program (doc/contributors/design/phone-projects.md, \"Parity on a phone\"), " \
-          "so RbConfig.ruby names a program that is not there. Android runs them, as it runs command_line.",
+          "so RbConfig.ruby names a program that is not there. Android runs them, as it runs command_line. The " \
+          "examples kept start nothing: each asks whether a method is public or private, raises before any child " \
+          "could be, waits with no child, or asks IO#tty? of a file or a closed stream.",
         phones: %w[ios],
+        keep: {
+          "core/process/spawn_spec.rb" => [
+            "Process.spawn with a single argument raises an ArgumentError if the command includes a null byte",
+            "Process.spawn with a single argument raises a TypeError if the argument does not respond to #to_str",
+            "Process.spawn with multiple arguments raises an ArgumentError if an argument includes a null byte",
+            "Process.spawn with multiple arguments raises a TypeError if an argument does not respond to #to_str",
+            "Process.spawn with a command array raises an ArgumentError if the Strings in the Array include a null byte",
+            "Process.spawn with a command array raises a TypeError if an element in the Array does not respond to #to_str",
+            "Process.spawn raises an ArgumentError if passed no command arguments",
+            "Process.spawn raises an ArgumentError if passed env or options but no command arguments",
+            "Process.spawn raises an ArgumentError if passed env and options but no command arguments",
+          ],
+          "core/kernel/spawn_spec.rb" => ["Kernel#spawn is a private method", "Kernel.spawn is a public method"],
+          "core/kernel/system_spec.rb" => ["Kernel#system is a private method", "Kernel.system is a public method"],
+          "core/process/wait_spec.rb" => ["Process.wait raises an Errno::ECHILD if there are no child processes"],
+          "core/process/wait2_spec.rb" => ["Process.wait2 raises a StandardError if no child processes exist"],
+          "core/process/waitall_spec.rb" => [
+            "Process.waitall returns an empty array when there are no children",
+            "Process.waitall takes no arguments",
+          ],
+          "core/process/status/wait_spec.rb" => ["Process::Status.wait returns a status with pid -1 if there are no child processes"],
+          "core/io/tty_spec.rb" => [
+            "IO#tty? returns true if this stream is a terminal device (TTY)",
+            "IO#tty? returns false if this stream is not a terminal device (TTY)",
+            "IO#tty? raises IOError on closed stream",
+          ],
+        },
         files: %w[
           core/process/spawn_spec.rb
           core/kernel/spawn_spec.rb
@@ -174,9 +223,13 @@ class RubySpec
     # in arguments.txt: the formatter, the timeout the desktop's run
     # has, the examples EXCLUDED leaves out there, then the desktop's
     # DIRECTORIES less the files it leaves out (MSpecScript#files
-    # subtracts a pattern that begins with ^).
+    # subtracts a pattern that begins with ^), and a line
+    # --ruby-spec-keep=FILE:DESCRIPTION for each example of a file that
+    # runs alone of its file's, which main.rb takes out of mspec-run's
+    # arguments for phone_config.rb.
     def self.arguments(phone)
       excluded = EXCLUDED.select { |exclusion| exclusion.applies?(phone) }
+      kept = excluded.flat_map { |exclusion| exclusion.keep.to_a }
       [
         "-B",
         "../phone_config.rb",
@@ -184,7 +237,8 @@ class RubySpec
         "300",
         *excluded.flat_map(&:examples).flat_map { |example| ["-E", example] },
         *DIRECTORIES,
-        *excluded.flat_map(&:files).map { |file| "^#{file}" },
+        *(excluded.flat_map(&:files) - kept.map(&:first)).map { |file| "^#{file}" },
+        *kept.flat_map { |file, descriptions| descriptions.map { |description| "--ruby-spec-keep=#{file}:#{description}" } },
       ]
     end
 

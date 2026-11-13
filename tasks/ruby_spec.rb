@@ -70,8 +70,9 @@ class RubySpec
   # Examples left out of both runs, by platform, each because it stops
   # the process for stock Ruby and the app alike (mspec-run -E).
   EXCLUDED = %w[x86_64-linux-musl aarch64-linux-musl].to_h do |platform|
-    # CRuby 4.0.9 on musl crashes setting the name of a thread that has
-    # ended (pthread_setname_np on a thread musl has freed), at
+    # CRuby 4.1.0-preview1 on musl (runtime/sources.yml, musl-ruby)
+    # crashes setting the name of a thread that has ended
+    # (pthread_setname_np on a thread musl has freed), at
     # core/thread/to_s_spec.rb line 18, and the whole core run stops.
     [platform, ["Thread#to_s returns a description including a thread name if given any"]]
   end.freeze
@@ -234,6 +235,49 @@ class RubySpec
         "execve fails with EACCES, which Process.spawn raises and Kernel#system answers with nil, where Ruby would " \
         "run the script, or hand one with no shebang to sh. The app's ruby program runs, since the package installer " \
         "extracts it.",
+    ),
+    # Examples that run on one side only (Listing.compare), beyond those
+    # ruby/spec's platform guards leave out.
+    Justification.new(
+      examples: [
+        "core: Dir.scan handles block devices",
+        "core: File.ftype returns 'blockSpecial' when the file is a block",
+        "core: File::Stat#ftype returns 'blockSpecial' when the file is a block",
+      ],
+      side: :stock, platforms: ANDROID, outcome: :runs,
+      reason: "MSpec's with_block_device runs these only where find /dev /devices -type b finds a block device " \
+        "(mspec/guards/block_device.rb, lines 4 to 11 at MSpec 521207f), and Android's SELinux policy keeps an app " \
+        "from reading /dev, as for Dir.scan's example of character devices, so the app finds none.",
+    ),
+    Justification.new(
+      examples: ["core: Time.utc handles real leap seconds in zone 'right/UTC'"],
+      side: :stock, platforms: ANDROID, outcome: :runs,
+      reason: "ruby/spec runs it only where the zone right/UTC counts a leap second (core/time/utc_spec.rb, lines 88 " \
+        "to 92), and Android's time zone data has no right/ zones: AOSP compiles it with zic from the zones and links " \
+        "of IANA's rearguard.zi alone, without zic's -L leapseconds (system/timezone, update-tzdata.py, lines 54 to 66 " \
+        "and 178 at 0470df3d), so bionic finds no right/UTC and takes UTC, which has no leap seconds.",
+    ),
+    Justification.new(
+      examples: [
+        "command_line: Processing RUBYOPT prints the version number for '-v'",
+        "command_line: Processing RUBYOPT ignores whitespace around the option",
+      ],
+      side: :stock, platforms: ANDROID, outcome: :runs,
+      reason: "ruby/spec runs these only where RbConfig::CONFIG['CROSS_COMPILING'] is not \"yes\" " \
+        "(command_line/rubyopt_spec.rb, line 25), and the Android runtime's Ruby is compiled with the NDK on the " \
+        "computer that builds it, a cross build (doc/contributors/design/" \
+        "phone-runtimes.md, \"Building Ruby for a phone\").",
+    ),
+    Justification.new(
+      examples: [
+        "core: File.expand_path when HOME is not set uses the user database when passed '~' if HOME is nil",
+        "core: File.expand_path when HOME is not set uses the user database when passed '~/' if HOME is nil",
+      ],
+      side: :app, platforms: ANDROID, outcome: :runs,
+      reason: "ruby/spec runs these only where Etc.getlogin names a user with USER unset (core/file/expand_path_spec.rb, " \
+        "lines 221 to 233). glibc's getlogin names the user logged in on the process's controlling terminal, and stock " \
+        "Ruby's run, in CI's clean environment, has none; bionic's names the user of getuid() " \
+        "(libc/bionic/grp_pwd.cpp, lines 629 to 632 at 731631f), so the app runs them, and they pass.",
     ),
   ].freeze
 

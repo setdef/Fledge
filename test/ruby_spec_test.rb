@@ -167,6 +167,18 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
     assert_empty RubySpec::Results.compare([stock], [app], platform: "x86_64-linux")
   end
 
+  # MSpec's evaluate helper defines one block, in MSpec, for many
+  # examples, as language/lambda_spec.rb's are, so those are matched by
+  # name, and two of them are two examples.
+  def test_examples_of_a_block_outside_ruby_spec_are_matched_by_name
+    lambda_spec = ["language/lambda_spec.rb", [], "/w/stock/mspec/lib/mspec/runner/evaluate.rb:45", "A lambda literal for definition"]
+    stock = listed("language", [lambda_spec.dup.tap { |e| e[3] += " a" }, lambda_spec.dup.tap { |e| e[3] += " b" }])
+    app = listed("language", [lambda_spec.dup.tap { |e| e[2] = "-"; e[3] += " a" }])
+
+    assert_equal ["runs in stock Ruby only: language: A lambda literal for definition b"],
+      RubySpec::Results.compare([stock], [app], platform: "x86_64-linux").map { |d| d.to_s.lines.first.chomp.delete_prefix("DIFFERENT: ") }
+  end
+
   # Run 43313316095 ran 33 fewer examples in iOS's app than in stock
   # Ruby, and nothing compared them. An example that runs on one side
   # only is a difference unless something explains it.
@@ -369,15 +381,34 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
         refute_empty exclusion.reason
         pairs = arguments.each_cons(2).to_a
         exclusion.examples.each { |example| assert_equal exclusion.applies?(phone), pairs.include?(["-E", example]) }
-        exclusion.files.each do |file|
+        (exclusion.files - exclusion.keep.keys).each do |file|
           assert_equal exclusion.applies?(phone), arguments.include?("^#{file}")
           assert_operator arguments.index("^#{file}"), :>, arguments.index("security") if exclusion.applies?(phone)
+        end
+        exclusion.keep.each do |file, descriptions|
+          assert_includes exclusion.files, file
+          refute_includes arguments, "^#{file}"
+          descriptions.each { |description| assert_equal exclusion.applies?(phone), arguments.include?("--ruby-spec-keep=#{file}:#{description}") }
         end
       end
       assert_equal RubySpec::DIRECTORIES, arguments & RubySpec::DIRECTORIES
     end
     assert_includes RubySpec::Phone.arguments("ios"), "^command_line"
     refute_includes RubySpec::Phone.arguments("android"), "^command_line"
+  end
+
+  # iOS left out every example of Process.kill's file and of the files
+  # about starting a program, at least 21 of which start nothing; only
+  # those that start a program stay out.
+  def test_ios_runs_the_examples_of_its_process_files_that_start_nothing
+    arguments = RubySpec::Phone.arguments("ios")
+
+    refute_includes arguments, "^core/process/kill_spec.rb"
+    refute_includes arguments, "Process.kill checks for existence and permissions to signal a process"
+    assert_includes arguments, "Process.kill accepts a Symbol as a signal name"
+    assert_includes arguments, "--ruby-spec-keep=core/process/wait_spec.rb:Process.wait raises an Errno::ECHILD if there are no child processes"
+    assert_includes arguments, "^core/io/popen_spec.rb"
+    assert_operator arguments.grep(/\A--ruby-spec-keep=/).size, :>=, 15
   end
 
   # Each of these starts id before any example, which iOS lets no app

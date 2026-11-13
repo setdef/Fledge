@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The iOS runtime carries the fiddle gem, with libffi 3.5.2 compiled in, as the Android runtime does; it had been left out.
 - `fledge build ios` and `fledge build android` build the ffi gem with the libffi it bundles, and link with an extension whatever its `extconf.rb` adds to the Makefile's `LOCAL_LIBS` after mkmf, as ffi's does. A build that an extension's Makefile starts gets the phone's compiler in `CC` and `CXX`, and on Android `AR` and `RANLIB`.
 - On Android, the runtime's Ruby has YJIT, compiled with Rust 1.99.1, off until the app enables it with `RubyVM::YJIT.enable`, as on a desktop; `RubyVM::YJIT` had not been defined there.
+- `require "mkmf"` loads in an iOS or Android app, as on a desktop: a phone's app carries Ruby's C headers (`include/`), where mkmf aborted for want of them. An app grows by about 1.6 MB before compression.
 
 ### Changed
 

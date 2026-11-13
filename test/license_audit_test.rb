@@ -384,14 +384,21 @@ class LicenseAuditTest < Minitest::Test
   # libfuse is linked into AppImage's runtime, the runtime's own source
   # and libfuse's (LGPL-2.1, section 6(a)), each with its license and how
   # it was built.
+  # Puts +content+ in the download cache +downloads+ as the file +name+,
+  # where DownloadCache keeps it, under its SHA-256.
+  def in_download_cache(downloads, name, content)
+    folder = File.join(downloads, Digest::SHA256.hexdigest(content))
+    FileUtils.mkdir_p(folder)
+    File.binwrite(File.join(folder, name), content)
+  end
+
   # A sources.yml in +directory+ that pins libxcrypt, AppImage's runtime,
   # and libfuse to small files already in its download cache, and the
   # SourceBundle for x86_64-linux that reads it.
   def linux_bundle(directory)
     downloads = File.join(directory, "downloads")
-    FileUtils.mkdir_p(downloads)
     pin = lambda do |name|
-      File.binwrite(File.join(downloads, name), "pretend #{name}")
+      in_download_cache(downloads, name, "pretend #{name}")
       { "url" => "https://example.com/#{name}", "sha256" => Digest::SHA256.hexdigest("pretend #{name}") }
     end
     sources = File.join(directory, "sources.yml")
@@ -483,9 +490,8 @@ class LicenseAuditTest < Minitest::Test
   def test_the_windows_on_arm_source_bundle_names_msys2s_clangarm64_build
     Dir.mktmpdir do |directory|
       downloads = File.join(directory, "downloads")
-      FileUtils.mkdir_p(downloads)
-      File.binwrite(File.join(downloads, "gmp.src.tar.zst"), "pretend gmp")
-      File.binwrite(File.join(downloads, "nsis-src.tar.bz2"), "pretend nsis")
+      in_download_cache(downloads, "gmp.src.tar.zst", "pretend gmp")
+      in_download_cache(downloads, "nsis-src.tar.bz2", "pretend nsis")
       sources = File.join(directory, "sources.yml")
       File.write(sources, {
         "nsis" => {

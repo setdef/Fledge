@@ -27,13 +27,61 @@ class DownloadTest < Minitest::Test
     @server.stop
   end
 
+  # The files in +dir+ but the empty lock files #save keeps beside what
+  # it saves.
+  def saved(dir)
+    Dir.children(dir).reject { |name| name.end_with?(".lock") }
+  end
+
+  # Two builds on one computer that need one pinned file at once, as
+  # runtime builds sharing a cache do: the first downloads it, the
+  # second waits for it, says so, and downloads nothing.
+  def test_two_processes_saving_one_file_at_once_download_it_once
+    slowly = -> (client) { BODY.each_char.each_slice(14_000) { |bytes| client.write(bytes.join) && sleep(0.1) } }
+    server = LoopbackServer.new({ "/runtime.tar.gz" => [200, {}, slowly] })
+    script = "require ARGV[0]; Fledge::Download.save(ARGV[1], to: ARGV[2], sha256: ARGV[3], log: $stdout)"
+    Dir.mktmpdir do |dir|
+      to = File.join(dir, "cache", "runtime.tar.gz")
+      command = [RbConfig.ruby, "-e", script, File.expand_path("../lib/fledge/download", __dir__), server.url("/runtime.tar.gz"), to, SHA]
+      outputs = Array.new(2) { IO.popen(command, err: %i[child out]) }.map(&:read)
+
+      assert_equal %w[/runtime.tar.gz], server.requests
+      assert_equal BODY, File.read(to)
+      assert_equal ["runtime.tar.gz"], saved(File.dirname(to))
+      assert_equal 1, outputs.count { |out| out.include?("waiting for another download of runtime.tar.gz to finish") }, outputs.inspect
+    end
+  ensure
+    server&.stop
+  end
+
+  def test_save_downloads_nothing_when_the_file_is_already_there_with_its_sha256
+    Dir.mktmpdir do |dir|
+      to = File.join(dir, "runtime.tar.gz")
+      File.write(to, BODY)
+
+      assert_equal to, Fledge::Download.save(@server.url("/file"), to:, sha256: SHA)
+      assert_empty @server.requests
+    end
+  end
+
+  def test_save_replaces_a_file_that_is_there_with_another_sha256
+    Dir.mktmpdir do |dir|
+      to = File.join(dir, "runtime.tar.gz")
+      File.write(to, "damaged")
+
+      Fledge::Download.save(@server.url("/file"), to:, sha256: SHA)
+
+      assert_equal BODY, File.read(to)
+    end
+  end
+
   def test_save_writes_a_file_whose_sha256_matches
     Dir.mktmpdir do |dir|
       to = File.join(dir, "deep/runtime.tar.gz")
 
       assert_equal to, Fledge::Download.save(@server.url("/file"), to:, sha256: SHA)
       assert_equal BODY, File.read(to)
-      assert_equal ["runtime.tar.gz"], Dir.children(File.dirname(to))
+      assert_equal ["runtime.tar.gz"], saved(File.dirname(to))
     end
   end
 
@@ -56,7 +104,7 @@ class DownloadTest < Minitest::Test
         "The file changed since it was pinned, or the download was damaged; nothing was saved.", error.message
       assert_equal [SHA, wrong], [error.actual, error.expected]
       assert_kind_of Fledge::Error, error
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   end
 
@@ -83,7 +131,7 @@ class DownloadTest < Minitest::Test
 
       assert_equal 404, error.status
       assert_equal "could not download #{@server.url('/nothing')}: 404 X", error.message
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   end
 
@@ -118,7 +166,7 @@ class DownloadTest < Minitest::Test
       error = assert_raises(Fledge::Error) { Fledge::Download.save(@server.url("/nope"), to: File.join(dir, "f"), sha256: SHA) }
 
       assert_equal "could not download #{@server.url('/nope')}: 404 X", error.message
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   end
 
@@ -144,7 +192,7 @@ class DownloadTest < Minitest::Test
       assert_equal %w[/file] * 3, server.requests
       assert_equal "could not download #{server.url('/file')}: 503 X; trying again in 0 seconds (2 of 4)\n" \
         "could not download #{server.url('/file')}: 429 X; trying again in 0 seconds (3 of 4)\n", log.string
-      assert_equal ["runtime.tar.gz"], Dir.children(dir)
+      assert_equal ["runtime.tar.gz"], saved(dir)
     end
   ensure
     server&.stop
@@ -225,7 +273,7 @@ class DownloadTest < Minitest::Test
 
       assert_equal "could not download #{server.url('/file')}: less than 100000 bytes a second for 0.2 seconds", error.message
       assert_equal 2, server.requests.size
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   ensure
     server&.stop
@@ -279,7 +327,7 @@ class DownloadTest < Minitest::Test
 
       assert_equal "could not download #{server.url('/file')}: 502 X", error.message
       assert_equal 3, server.requests.size
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   ensure
     server&.stop
@@ -294,7 +342,7 @@ class DownloadTest < Minitest::Test
 
       assert_match(%r{\Acould not download http://127.0.0.1:1/file: }, error.message)
       assert_equal 1, log.string.lines.size
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   end
 
@@ -315,7 +363,7 @@ class DownloadTest < Minitest::Test
 
       assert_equal %w[/gone /denied /bad /changed], server.requests
       assert_empty log.string
-      assert_empty Dir.children(dir)
+      assert_empty saved(dir)
     end
   ensure
     server&.stop

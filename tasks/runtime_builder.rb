@@ -82,7 +82,7 @@ class RuntimeBuilder
   attr_reader :platform, :host, :sources
 
   def initialize(platform: Fledge::Platform.local, host: Fledge::Platform.local, work: File.join(ROOT, "tmp", "runtime"),
-    downloads: File.join(ROOT, "tmp", "downloads"), sources: File.join(ROOT, "runtime", "sources.yml")
+    downloads: DownloadCache.folder, sources: File.join(ROOT, "runtime", "sources.yml")
   )
     @platform = platform
     @host = host

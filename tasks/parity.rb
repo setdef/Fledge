@@ -174,7 +174,7 @@ class Parity
     @work = File.expand_path(work)
     @runtimes = runtimes
     @out = out
-    @builder = RuntimeBuilder.new(platform:, downloads: File.join(ROOT, "tmp", "downloads"))
+    @builder = RuntimeBuilder.new(platform:)
   end
 
   # Runs the check and returns true when every difference is justified.

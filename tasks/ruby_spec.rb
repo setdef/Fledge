@@ -286,7 +286,7 @@ class RubySpec
     @out = File.expand_path(out)
     @runtimes = runtimes
     @log = log
-    @downloads = DownloadCache.new(File.join(ROOT, "tmp", "downloads"))
+    @downloads = DownloadCache.new
   end
 
   # Runs the comparison and returns true when every difference is

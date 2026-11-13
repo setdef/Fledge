@@ -118,7 +118,7 @@ jobs:
       # every cached file's SHA-256 again before using it.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: tmp/downloads
+          path: ~/.cache/fledge/downloads
           key: ruby-spec-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml', 'tasks/ruby_spec.rb') }}
 
       # Ruby at mise.toml's pin; on Windows, RubyInstaller's build the
@@ -205,7 +205,7 @@ jobs:
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: tmp/downloads
+          path: ~/.cache/fledge/downloads
           key: ruby-spec-downloads-ios-${{ hashFiles('runtime/sources.yml', 'tasks/ruby_spec.rb') }}
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
@@ -276,7 +276,7 @@ jobs:
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: tmp/downloads
+          path: ~/.cache/fledge/downloads
           key: ruby-spec-downloads-android-${{ hashFiles('runtime/sources.yml', 'tasks/ruby_spec.rb') }}
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3

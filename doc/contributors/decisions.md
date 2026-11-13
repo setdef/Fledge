@@ -423,3 +423,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: the orchestrating agent's account that on a phone `fledge build` compiles a gem's extension only through its `extconf.rb`, so a gem whose gemspec names a Rakefile, CMake, or `configure` directly is refused (ADR 022).]
 
 *Governs:* gems whose extensions build without an `extconf.rb` build for iOS and Android too, as the prior art of other languages' tools does it. *Applied in:* the work to add it.
+
+> Why can't we have it on both? And why does Fledge leave Ruby's `fiddle` out?
+
+[re: the orchestrating agent's recommendation to support gems that build a library for Ruby's ffi to load on Android only, and to keep refusing them on iOS, as Fledge leaves Ruby's fiddle out of iOS runtimes for App Review; the agent then found that reason was one sentence borrowed from xord/cruby, never checked, and proposed to check it against its sources and, if it fails, to support ffi libraries on both phones and restore fiddle on iOS.]
+
+> Yes.
+
+[re: the agent's question whether to start that work.]
+
+*Governs:* gems whose libraries Ruby's ffi loads work on iOS and Android, and fiddle is in the iOS runtime, unless checked sources show App Review or iOS forbids them; the reason to leave either out must be cited, not assumed. *Applied in:* the work to add them.

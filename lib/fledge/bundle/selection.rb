@@ -35,16 +35,16 @@ module Fledge
       def specs
         lookup = @definition.locked_gems.specs.group_by(&:name)
         queue = @definition.dependencies.select { |dependency| ships?(dependency) }
-          .map { |dependency| [dependency.name, dependency.force_ruby_platform || false] } # : Array[[String, bool]]
+          .map { |dependency| [dependency.name, dependency.force_ruby_platform || false, dependency.groups] } # : Array[[String, bool, Array[Symbol]]]
         seen = {} # : Hash[String, bool]
         specs = [] # : Array[Bundler::LazySpecification]
-        while (name, force_ruby = queue.shift)
+        while (name, force_ruby, groups = queue.shift)
           next if seen[name] || name == "bundler"
 
           seen[name] = true
-          spec = best(lookup, name, force_ruby)
+          spec = best(lookup, name, force_ruby, groups)
           specs << spec
-          spec.dependencies.each { |dependency| queue << [dependency.name, false] unless dependency.type == :development }
+          spec.dependencies.each { |dependency| queue << [dependency.name, false, groups] unless dependency.type == :development }
         end
         specs
       end
@@ -79,13 +79,13 @@ module Fledge
       #   bundler/lazy_specification.rb at Bundler 4.0.20 (lines 192 to 216),
       #   with the runtime's platform as Bundler's local one.
       #++
-      private def best(lookup, name, force_ruby)
+      private def best(lookup, name, force_ruby, groups)
         candidates = lookup[name] or raise Error, "#{@lockfile_name} locks no #{name}. Run bundle lock, then build again."
         force_ruby ||= @platform.force_ruby_platform?
         builds = [@target, Gem::Platform::RUBY].uniq.map do |platform|
           Bundler::MatchPlatform.select_best_platform_match(candidates, platform, force_ruby:)
         end
-        locked = builds.first.first or no_build(name, candidates)
+        locked = builds.first.first or no_build(name, candidates, groups)
         choices = builds.flatten.uniq
         return locked if choices.one?
 
@@ -95,10 +95,16 @@ module Fledge
       # SPDX-SnippetEnd
       #++
 
-      private def no_build(name, candidates)
+      # Raises, saying what to run. A gem of the Gemfile's groups other
+      # than the default, +groups+, which bundle install on the platform
+      # could not install either, can be left out as Bundler leaves out a
+      # group, with its +without+ setting.
+      private def no_build(name, candidates, groups)
+        without = groups.include?(:default) ? "" : " If the app never needs it, leave it out with bundle config set " \
+          "--local without #{groups.join(' ')}, as bundle install on #{@platform} would need, then build again."
         raise Error, "#{@lockfile_name} locks no build of #{name} for #{@platform}, only for " \
           "#{candidates.map { |spec| spec.platform.to_s }.sort.join(', ')}. If #{name} has one, run bundle lock " \
-          "--add-platform #{@platform.lockfile_names.first}, then build again."
+          "--add-platform #{@platform.lockfile_names.first}, then build again.#{without}"
       end
 
       # Whether the dependency is one Bundler sets up on the platform, in

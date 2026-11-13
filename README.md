@@ -72,7 +72,7 @@ For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you
 
 ## Installation
 
-Add Fledge to your `Gemfile`, in the `development` group, so that it stays out of your app:
+Add Fledge to your `Gemfile`, in the `development` group:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -96,7 +96,7 @@ Fledge names the app after your gemspec, or else after your folder: `greeter` be
 
 ### Lock your gems
 
-Fledge ships the gems your `Gemfile.lock` locks, without the `development` and `test` groups. Lock each platform you build on, and every gem's checksum:
+Fledge ships the gems your `Gemfile.lock` locks in every group that `bundle exec` loads, `development` and `test` included, so a program that requires a development gem, such as `debug` or `dotenv`, finds it in the app, and Fledge itself goes in too. To leave a group out, set it in Bundler's `without`, as for any deployment: `bundle config set --local without test`. Lock each platform you build on, and every gem's checksum:
 
 <!-- SPDX-SnippetBegin -->
 <!--

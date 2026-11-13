@@ -174,6 +174,15 @@ class ParityTest < Minitest::Test
     refute_predicate Parity::Reports.compare(reference, app, platform: "arm64-darwin").first, :justified?, "the bundle check's only"
   end
 
+  # A built app sets up the development and test groups, as bundle exec
+  # does, so a development gem may not be missing from it.
+  def test_a_development_gem_must_be_in_the_app
+    rake = { "gems" => ["rake 13.4.2"], "requireable" => { "rake" => "loads" } }
+    none = { "gems" => [], "requireable" => {} }
+
+    assert_equal 2, Parity::Reports.compare(rake, none, platform: "x86_64-linux", check: :bundle).count { |difference| !difference.justified? }
+  end
+
   # The built app's gemspec requires what the project's gemspec requires,
   # as Bundler evaluates it under bundle exec, so neither the file nor its
   # constant may be missing.

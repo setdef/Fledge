@@ -16,9 +16,9 @@ module Fledge
 
       def specs: () -> Array[Bundler::LazySpecification]
 
-      private def best: (Hash[String, Array[Bundler::LazySpecification]] lookup, String name, bool force_ruby) -> Bundler::LazySpecification
+      private def best: (Hash[String, Array[Bundler::LazySpecification]] lookup, String name, bool force_ruby, Array[Symbol] groups) -> Bundler::LazySpecification
 
-      private def no_build: (String name, Array[Bundler::LazySpecification] candidates) -> bot
+      private def no_build: (String name, Array[Bundler::LazySpecification] candidates, Array[Symbol] groups) -> bot
 
       private def ships?: (Bundler::Dependency dependency) -> bool
 

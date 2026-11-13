@@ -226,7 +226,7 @@ class MobileBuildTest < Minitest::Test
     assert_path_exists File.join(gems, "gems/pure-1.0.0/lib/pure.rb")
     assert_path_exists File.join(gems, "gems/dual-2.0.0/lib/dual.rb"), "a gem with a build for Linux ships its ruby one"
     refute_path_exists File.join(gems, "gems/dual-2.0.0-x86_64-linux-gnu")
-    assert_equal "#{Fledge::Bundle::SETTINGS}BUNDLE_WITHOUT: \"development:test\"\nBUNDLE_FORCE_RUBY_PLATFORM: \"true\"\n", read("dist/MyApp-android/fledge/app/.bundle/config")
+    assert_equal "#{Fledge::Bundle::SETTINGS}BUNDLE_WITHOUT: \"\"\nBUNDLE_WITH: \"\"\nBUNDLE_FORCE_RUBY_PLATFORM: \"true\"\n", read("dist/MyApp-android/fledge/app/.bundle/config")
     assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = exe/my_app\ngemfile = Gemfile\n" \
       "identifier = com.example.MyApp\n", read("dist/MyApp-android/fledge/fledge.cfg")
   end

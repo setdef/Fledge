@@ -537,6 +537,31 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # Windows' variable names ignore case, and bundle exec there keeps a
+  # person's bundle_gemfile in ENV as they spelled it, and in
+  # Bundler.original_env with the value ENV holds, before a restart and
+  # after it (doc/contributors/design/launcher.md, "Bundler's variables
+  # spelled otherwise"). The app does the same. The probe's report
+  # requires racc/cparse with no racc in its Gemfile, for which Ruby
+  # warns under Bundler, as under bundle exec (lib/bundled_gems.rb,
+  # build_message), and the report says nothing else on standard error.
+  def test_a_bundler_app_keeps_a_variable_spelled_otherwise_through_a_restart
+    skip "only Windows' variable names ignore case" unless @platform.windows?
+    Dir.mktmpdir do |dir|
+      gemfile = File.join(File.dirname(bundled_probe), "app", "Gemfile").tr("/", "\\")
+      env = { "HOME" => dir, "bundle_gemfile" => gemfile }
+
+      out, err, status = run_app(env, bundled_probe)
+      report = JSON.parse(out[/^FLEDGE-PARITY (.*)$/, 1])
+      racc = %r{\A.+:\d+: warning: racc/cparse is found in racc, which .*\r?\nYou can add racc to your Gemfile or gemspec to \w+ this \w+\.\r?\n}
+
+      assert_equal ["", 0], [err.sub(racc, ""), status.exitstatus]
+      assert_equal [["bundle_gemfile"], gemfile.tr("\\", "/")],
+        [report.fetch("ENV").keys.grep(/\Abundle_gemfile\z/i), report.fetch("Bundler.original_env").fetch("bundle_gemfile").tr("\\", "/")]
+      assert_equal ["restarted as itself\n", "", 0], run_app(env, bundled_probe, "restart").then { |o, e, s| [o, e, s.exitstatus] }
+    end
+  end
+
   # bin/ruby hands only its first argument to the launcher, and only
   # when it is an app's program (ADR 026;
   # doc/contributors/design/launcher.md, "bin/ruby and restarts"): with

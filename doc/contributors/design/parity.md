@@ -79,6 +79,8 @@ The second check compares a gem-shaped app with `bundle exec`. `Parity.gem_probe
 
 A third check does the same for `test/fixtures/bundled_with`, whose `Gemfile.lock` was written by Bundler 4.0.19, a version no runtime ships, with the probe as its `exe/bundled_with`, built as `BundledWith`. Its reference `bundle install` installs Bundler 4.0.19 into the person's `GEM_HOME` and `bundle exec` switches to it; the app runs the same Bundler from the runtime's gem folder (ADR 063). Beyond the `:bundle` differences above, it allows only where that Bundler's files are: its files in `$LOADED_FEATURES`, and `BUNDLE_BIN_PATH`, `BUNDLER_SETUP`, `RUBYLIB`, and `RUBYOPT`, which name them, in `ENV` and a child's `ENV`. It runs on every platform, since the fixture locks only concurrent-ruby. `Parity.gem_probe` takes the project and program to copy for it.
 
+On Windows, whose variable names ignore case, the `my_cool_app` run is done again with Bundler's variables spelled as a person may spell them: `bundle_gemfile`, naming the reference's Gemfile, and `Path`, as Windows itself spells `PATH` (`Parity#check_spelled_otherwise`; `launcher.md`, "Bundler's variables spelled otherwise"). Beyond the `:bundle` differences, this `:spelled` check allows only `Path` naming each one's gems, in `ENV`, `Bundler.original_env`, `Bundler.unbundled_env`, and each child's `ENV`, since Bundler's `EnvironmentPreserver` looks `PATH` up by its own spelling and keeps the `Path` it composed there, under `bundle exec` as in the app. Then each restarts through `RbConfig.ruby`, and the app's restart must print what `bundle exec`'s prints, `restarted as itself`.
+
 On `aarch64-mingw-ucrt` the `my_cool_app` run is skipped (`Parity::WITHOUT_GEM_APP`): `examples/my_cool_app` locks sqlite3, which publishes no build for that platform, and whose source build fails there.
 
 CI's Delivery jobs build the same gem-shaped probe as `ParityBundle` for `deliver.sh` and `deliver.ps1`.
@@ -110,7 +112,9 @@ The probe's `restart` command runs `exec RbConfig.ruby, $0, "restarted", FACTS`,
 - `.github/scripts/deliver.ps1` restarts the probe, unpacked under a folder whose name is not ASCII, in a clean, a person's, and a hostile environment, on fresh x64 and ARM64 Windows runners, for the lone probe and the gem-shaped one.
 - `test/integration/built_app_test.rb` restarts the probe as a lone script, as a gem-shaped program, and as a windowed app (a macOS `.app`, or on Windows the windowed launcher), and checks that `bin/ruby`, or `ruby.exe`, hands only the app's program to its launcher, that `ruby.exe` takes no program without the launcher's mark, such as an installer's `uninstall.exe`, for the launcher, and the status 70 of a launcher found and not started.
 
-The parity check does not see restarts, because its child Rubies run `-e` code, which stays plain Ruby.
+- On Windows, the parity check's `:spelled` run restarts the gem-shaped probe and `bundle exec`'s, with `bundle_gemfile` and `Path` so spelled, and compares what each prints (see "The gem-shaped run"); `built_app_test.rb` restarts the gem-shaped app with `bundle_gemfile` so spelled.
+
+Otherwise the parity check does not see restarts, because its child Rubies run `-e` code, which stays plain Ruby.
 
 ## ruby/spec
 

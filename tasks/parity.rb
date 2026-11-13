@@ -69,6 +69,9 @@ class Parity
   # name where the gems are (ADR 086).
   BUNDLE_LOCATIONS = /\A"(?<name>GEM_HOME|PATH)"=/
 
+  # PATH, as Windows itself spells it.
+  SPELLED_LOCATIONS = /\A"(?<name>Path)"=/
+
   # The variables bundle exec sets that name where its Bundler is, when
   # that is a gem bundle install installed for the person, or fledge
   # build for the app: its bundle program, its bundler/setup, and its lib
@@ -116,6 +119,14 @@ class Parity
         reason: "Bundler points GEM_HOME and PATH at the bundle's gems, as bundle exec does: the person's GEM_HOME on " \
           "their computer, the runtime's gem folder in the app. Everything else Bundler sets, it sets over the " \
           "person's own values in both, and records theirs as BUNDLER_ORIG_*.")
+    end,
+    *["ENV", "child ENV", "Bundler.original_env", "Bundler.unbundled_env", "original child ENV", "unbundled child ENV"].map do |fact|
+      Justification.new(fact:, reference: [SPELLED_LOCATIONS], app: [SPELLED_LOCATIONS], platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
+        checks: %i[spelled],
+        reason: "As for GEM_HOME and PATH: Bundler puts the bundle's gems first in PATH, which Windows spells Path, the " \
+          "person's GEM_HOME on their computer and the runtime's gem folder in the app. Bundler's EnvironmentPreserver " \
+          "looks PATH up by its own spelling, so under bundle exec, as in the app, Bundler.original_env keeps that Path " \
+          "rather than the person's (doc/contributors/design/launcher.md, \"Bundler's variables spelled otherwise\").")
     end,
     Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
       reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1; ADR 040), " \
@@ -237,7 +248,35 @@ class Parity
     differences = Reports.compare(Reports.normalize(expected, work: @work), Reports.normalize(actual, work: @work),
       platform: platform.name, check: :bundle)
     report(label, env, differences)
-    differences.all?(&:justified?)
+    return differences.all?(&:justified?) unless platform.windows? && source == GEM_APP
+
+    [differences.all?(&:justified?), check_spelled_otherwise(env, [@ruby, bundle, "exec", @ruby, "exe/#{program}"], reference, launcher)].all?
+  end
+
+  # On Windows, whose variable names ignore case, the gem-shaped check
+  # again with Bundler's variables spelled as a person may spell them:
+  # bundle_gemfile, naming the reference's Gemfile, and Path, as Windows
+  # itself spells it. Bundler's EnvironmentPreserver looks its keys up
+  # case-sensitively, so bundle exec keeps both in ENV as spelled, and
+  # Bundler.original_env takes their values from ENV
+  # (doc/contributors/design/launcher.md, "Bundler's variables spelled
+  # otherwise"). Then each restarts through RbConfig.ruby, and the app's
+  # restart must say what bundle exec's says.
+  private def check_spelled_otherwise(env, stock, reference, launcher)
+    path = env.keys.find { |name| name.casecmp?("PATH") }
+    env = env.except(path).merge("Path" => env.fetch(path), "bundle_gemfile" => File.join(reference, "Gemfile"))
+    app = File.join(File.dirname(launcher), "app")
+    expected = run([*stock, *ARGUMENTS], reference, env)
+    actual = run([launcher, *ARGUMENTS], app, env)
+    differences = Reports.compare(Reports.normalize(expected, work: @work), Reports.normalize(actual, work: @work),
+      platform: platform.name, check: :spelled)
+    label = " of a gem-shaped app with bundle exec, with bundle_gemfile and Path so spelled"
+    report(label, env, differences)
+    restarts = [[[*stock, "restart"], reference], [[launcher, "restart"], app]].map do |command, chdir|
+      Open3.capture3(env, *command, chdir:, unsetenv_others: true).then { |out, err, status| [out, err, status.exitstatus] }
+    end
+    @out.puts "Restart#{label}: bundle exec's #{restarts[0].inspect}, the app's #{restarts[1].inspect}"
+    differences.all?(&:justified?) && restarts[0] == ["restarted as itself\n", "", 0] && restarts[1] == restarts[0]
   end
 
   # Writes the gem-shaped probe into the new folder +project+: a copy of

@@ -101,6 +101,66 @@
   platforms:
   checks:
   - bundle
+- fact: ENV
+  reference:
+  - \A"(?<name>Path)"=
+  app:
+  - \A"(?<name>Path)"=
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - spelled
+- fact: child ENV
+  reference:
+  - \A"(?<name>Path)"=
+  app:
+  - \A"(?<name>Path)"=
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - spelled
+- fact: Bundler.original_env
+  reference:
+  - \A"(?<name>Path)"=
+  app:
+  - \A"(?<name>Path)"=
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - spelled
+- fact: Bundler.unbundled_env
+  reference:
+  - \A"(?<name>Path)"=
+  app:
+  - \A"(?<name>Path)"=
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - spelled
+- fact: original child ENV
+  reference:
+  - \A"(?<name>Path)"=
+  app:
+  - \A"(?<name>Path)"=
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - spelled
+- fact: unbundled child ENV
+  reference:
+  - \A"(?<name>Path)"=
+  app:
+  - \A"(?<name>Path)"=
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - spelled
 - fact: "$VERBOSE"
   reference:
   - "\\Anull\\z"

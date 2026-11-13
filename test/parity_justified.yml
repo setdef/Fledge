@@ -55,33 +55,33 @@
   - bundle
 - fact: "$LOAD_PATH"
   reference:
-  - \A"(?-mix:<work>\/person-gems)/(?:gems|extensions)/
+  - \A"(?-mix:<work>\/person-gems)/(?<gem>(?:gems|extensions)/.*)\z
   app:
-  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/(?:gems|extensions)/
+  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/(?<gem>(?:gems|extensions)/.*)\z
   platforms:
   checks:
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"(?-mix:<work>\/person-gems)/gems/bundler-
+  - \A"(?-mix:<work>\/person-gems)/gems/(?<file>bundler-.*)\z
   app:
-  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/bundler-
+  - \A"(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/(?<file>bundler-.*)\z
   platforms:
   checks:
   - bundle
 - fact: ENV
   reference:
-  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<work>\/person-gems)/gems/bundler-
+  - (?-mix:\A"(?<name>BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="(?<before>[^"]*))(?-mix:<work>\/person-gems)/gems/(?<after>bundler-.*)\z
   app:
-  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/bundler-
+  - (?-mix:\A"(?<name>BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="(?<before>[^"]*))(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/(?<after>bundler-.*)\z
   platforms:
   checks:
   - bundle
 - fact: child ENV
   reference:
-  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<work>\/person-gems)/gems/bundler-
+  - (?-mix:\A"(?<name>BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="(?<before>[^"]*))(?-mix:<work>\/person-gems)/gems/(?<after>bundler-.*)\z
   app:
-  - (?-mix:\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*)(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/bundler-
+  - (?-mix:\A"(?<name>BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="(?<before>[^"]*))(?-mix:<prefix>\/lib\/ruby\/gems\/\d+\.\d+\.0(?:\+\d+)?)/gems/(?<after>bundler-.*)\z
   platforms:
   checks:
   - bundle
@@ -108,17 +108,17 @@
   - bundle
 - fact: ENV
   reference:
-  - \A"(?:GEM_HOME|PATH)"=
+  - \A"(?<name>GEM_HOME|PATH)"=
   app:
-  - \A"(?:GEM_HOME|PATH)"=
+  - \A"(?<name>GEM_HOME|PATH)"=
   platforms:
   checks:
   - bundle
 - fact: child ENV
   reference:
-  - \A"(?:GEM_HOME|PATH)"=
+  - \A"(?<name>GEM_HOME|PATH)"=
   app:
-  - \A"(?:GEM_HOME|PATH)"=
+  - \A"(?<name>GEM_HOME|PATH)"=
   platforms:
   checks:
   - bundle
@@ -306,9 +306,9 @@
   - bundle
 - fact: RUBY_DESCRIPTION
   reference:
-  - \[(?:arm64-darwin23|x86_64-linux|aarch64-linux)\]"\z
+  - \A(?<version>"[^"]*) \[(?:arm64-darwin23|x86_64-linux|aarch64-linux)\]"\z
   app:
-  - \[(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)\]"\z
+  - \A(?<version>"[^"]*) \[(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)\]"\z
   platforms:
   - arm64-ios
   - arm64-ios-simulator
@@ -319,9 +319,9 @@
   - bundle
 - fact: "$LOAD_PATH"
   reference:
-  - \A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin23|x86_64-linux|aarch64-linux)"\z
+  - \A"<prefix>/lib/ruby/(?<folder>(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin23|x86_64-linux|aarch64-linux)"\z
   app:
-  - \A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"\z
+  - \A"<prefix>/lib/ruby/(?<folder>(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"\z
   platforms:
   - arm64-ios
   - arm64-ios-simulator
@@ -332,10 +332,22 @@
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/[^"]+\.(?:bundle|so|rb)"\z
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/(?:enc/)?(?<feature>[^"]+)\.(?:bundle|so)"\z
   app:
-  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/rbconfig\.rb"\z
-  - \A"[a-z0-9_/]+\.so"\z
+  - \A"(?<feature>[a-z0-9_/]+)\.so"\z
+  platforms:
+  - arm64-ios
+  - arm64-ios-simulator
+  - aarch64-linux-android
+  - x86_64-linux-android
+  checks:
+  - script
+  - bundle
+- fact: "$LOADED_FEATURES"
+  reference:
+  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/rbconfig\.rb"\z
+  app:
+  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/rbconfig\.rb"\z
   platforms:
   - arm64-ios
   - arm64-ios-simulator

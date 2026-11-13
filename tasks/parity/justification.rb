@@ -21,6 +21,12 @@ class Parity
   # ruby main.rb), the gem-shaped one (:bundle, against bundle exec), or
   # the script check run with no locale at all (:no_locale), which also
   # allows whatever the script check allows.
+  #
+  # When patterns on both sides name groups, the justification pairs
+  # the elements it explains: what the groups capture from those found
+  # in the reference only must be what they capture from those found in
+  # the app only, one for one, so that a folder or a feature renamed is
+  # allowed and one missing from either side is not.
   class Justification < Data.define(:fact, :reference, :app, :reason, :platforms, :checks)
     def self.new(fact:, reason:, reference: [], app: [], platforms: nil, checks: %i[script bundle])
       super
@@ -32,7 +38,21 @@ class Parity
     end
 
     def explains?(element, side)
-      ((side == :reference) ? reference : app).any? { |pattern| pattern.match?(element) }
+      patterns(side).any? { |pattern| pattern.match?(element) }
+    end
+
+    def paired?
+      [reference, app].all? { |patterns| patterns.any? { |pattern| !pattern.names.empty? } }
+    end
+
+    # What the named groups of the first of +side+'s patterns that
+    # matches +element+ capture.
+    def captures(element, side)
+      patterns(side).lazy.filter_map { |pattern| pattern.match(element) }.first&.named_captures
+    end
+
+    private def patterns(side)
+      (side == :reference) ? reference : app
     end
   end
 end

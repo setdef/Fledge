@@ -67,14 +67,14 @@ class Parity
 
   # The variables Bundler sets for the bundle it set up, whose values
   # name where the gems are (ADR 045).
-  BUNDLE_LOCATIONS = /\A"(?:GEM_HOME|PATH)"=/
+  BUNDLE_LOCATIONS = /\A"(?<name>GEM_HOME|PATH)"=/
 
   # The variables bundle exec sets that name where its Bundler is, when
   # that is a gem bundle install installed for the person, or fledge
   # build for the app: its bundle program, its bundler/setup, and its lib
   # folder (Bundler::SharedHelpers#set_bundle_variables, #set_rubyopt, and
   # #set_rubylib, at Bundler 4.0.20; ADR 063).
-  BUNDLER_VARIABLES = /\A"(?:BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="[^"]*/
+  BUNDLER_VARIABLES = /\A"(?<name>BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="(?<before>[^"]*)/
 
   # The facts a C locale decides: the character set Ruby reads text,
   # paths, and arguments in.
@@ -92,20 +92,21 @@ class Parity
         reason: "bundle exec ruby exe/my_cool_app names the program as typed. The launcher runs it by its absolute " \
           "path, since a person may start the app from any folder.")
     end,
-    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/(?:gems|extensions)/}],
-      app: [%r{\A"#{APP_GEMS}/(?:gems|extensions)/}], checks: %i[bundle],
+    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/(?<gem>(?:gems|extensions)/.*)\z}],
+      app: [%r{\A"#{APP_GEMS}/(?<gem>(?:gems|extensions)/.*)\z}], checks: %i[bundle],
       reason: "bundle install put the gems in the person's GEM_HOME; fledge build put the same gems in the runtime's gem " \
         "folder, beside Ruby's own (doc/contributors/design/gems.md, \"Installing into the runtime's gem folder\"). " \
         "Bundler sets up the same gems, in the same order, from each, and a gem compiled as it installs, as sqlite3 " \
         "is on a Ruby its prebuilt gems do not yet support, adds its extensions folder from each."),
-    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"#{PERSON_GEMS}/gems/bundler-}], app: [%r{\A"#{APP_GEMS}/gems/bundler-}],
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"#{PERSON_GEMS}/gems/(?<file>bundler-.*)\z}],
+      app: [%r{\A"#{APP_GEMS}/gems/(?<file>bundler-.*)\z}],
       checks: %i[bundle],
       reason: "bundle exec runs the Bundler the lockfile names, which bundle install put in the person's GEM_HOME; " \
         "fledge build put the same Bundler in the runtime's gem folder, and the app runs it (ADR 063). The same files " \
         "load, in the same order, from each."),
     *["ENV", "child ENV"].map do |fact|
-      Justification.new(fact:, reference: [%r{#{BUNDLER_VARIABLES}#{PERSON_GEMS}/gems/bundler-}],
-        app: [%r{#{BUNDLER_VARIABLES}#{APP_GEMS}/gems/bundler-}], checks: %i[bundle],
+      Justification.new(fact:, reference: [%r{#{BUNDLER_VARIABLES}#{PERSON_GEMS}/gems/(?<after>bundler-.*)\z}],
+        app: [%r{#{BUNDLER_VARIABLES}#{APP_GEMS}/gems/(?<after>bundler-.*)\z}], checks: %i[bundle],
         reason: "bundle exec names the Bundler it runs in BUNDLE_BIN_PATH, BUNDLER_SETUP, RUBYLIB, and RUBYOPT: the " \
           "lockfile's, in the person's GEM_HOME on their computer and in the runtime's gem folder in the app (ADR 063). " \
           "The rest of each value is the same in both.")

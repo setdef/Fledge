@@ -109,6 +109,31 @@ rescue LoadError, StandardError, SystemExit => e
   "#{e.class}: #{e.message.lines.first.to_s.chomp}"
 end
 
+# A gem's extension required before its gem is active: racc/cparse, which
+# a desktop's RubyGems finds among racc's files and activates racc for.
+# Whether the require loaded it, and whether racc is then active, or the
+# class of what it raised. A phone links the extension in, where no
+# file of racc's would be found but for the one fledge's runtime puts in
+# racc's extension folder (ADR 068).
+def extension_before_its_gem
+  [require("racc/cparse"), Gem.loaded_specs.key?("racc")]
+rescue LoadError => e
+  e.class.name
+end
+
+# A gem's extension required by its path in the gem's own folders, as
+# a gem's require_relative asks for it: syslog's syslog_ext, from
+# syslog's extension folder, once syslog is active; whether that loaded
+# it, whether its name then finds it loaded, and its constant; or the
+# class of what it raised, since Windows has no syslog.
+def extension_by_its_path
+  gem "syslog"
+  path = File.join(Gem.loaded_specs.fetch("syslog").extension_dir, "syslog_ext")
+  [require(path), require("syslog_ext"), defined?(Syslog)]
+rescue LoadError => e
+  e.class.name
+end
+
 # The root of the project the probe runs in: Bundler's, when Bundler set
 # it up (bundle exec, or a built gem-shaped app), and the probe's own
 # folder otherwise.
@@ -235,6 +260,10 @@ when "restarted"
   puts(changed.empty? ? "restarted as itself" : changed.map { |key| "#{key}: #{before[key].inspect} became #{after[key].inspect}" })
 else
   report = facts
+  # After the facts, since requiring changes $LOADED_FEATURES, and before
+  # requireable, which activates every gem.
+  report["require racc/cparse before racc is active"] = extension_before_its_gem
+  report["require syslog's extension by its path"] = extension_by_its_path
   # Last, since requiring changes $LOADED_FEATURES.
   report["requireable"] = Gem::Specification.to_h { |spec| [spec.name, requireable(spec)] }.sort.to_h
   # In a C locale, ARGV and paths outside ASCII are US-ASCII strings with

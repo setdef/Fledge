@@ -29,9 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On iOS and Android, `$stdout.sync` is false, as under `ruby main.rb`: `$stdout` still writes each line as it prints, as Ruby writes to a terminal, and `$stdout.tty?` stays false.
 - On iOS and Android, an app's `ENV` no longer holds `SSL_CERT_FILE`: as under rv-ruby's Ruby on a desktop, `require "openssl"` sets `PORTABLE_RUBY_SSL_CERT_FILE` to the runtime's CA certificates, or to the file `SSL_CERT_FILE` names, which OpenSSL then trusts, on Android too.
 - The Android project packs native libraries compressed (`useLegacyPackaging = true`), so the installer extracts them where Android lets the app run its ruby program; an installed app takes more space. Set it to `false` to keep them stored, without a ruby program.
+- The iOS and Android runtimes leave out the win32-registry gem, which only Windows can load, as the macOS and Linux runtimes' Ruby does.
 
 ### Fixed
 
+- On iOS, Ruby's `[BUG]` crash report lists the C frames, as on macOS.
 - On iOS and Android, a gem from git with an extension compiles; its build failed with `Errno::ENOENT` before it began.
 - On iOS and Android, a gem whose Ruby loads its extension by its path, with `require_relative "name/name"` as `bundle gem --ext` wrote it from Bundler 2.2.0 to 4.0.0, finds it: `fledge build` puts a Ruby file that requires the linked extension where a desktop has the extension's file. It failed with a `LoadError`.
 - On iOS and Android, a require of a bundled gem's extension before its gem is active, such as `require "racc/cparse"`, activates the gem and loads the extension as on a desktop; it failed with a `LoadError`.

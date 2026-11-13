@@ -149,6 +149,48 @@ class ParityTest < Minitest::Test
       "a C locale where ruby has UTF-8 is not"
   end
 
+  # A desktop may start a windowed app with no locale, as Launch Services
+  # does, so the windowed check allows what the check with no locale
+  # allows, and what the script check does, but not the gem-shaped one's.
+  def test_the_windowed_check_allows_the_script_and_no_locale_justifications
+    reference = { "Encoding.default_external" => "US-ASCII", "$0" => "main.rb" }
+    app = { "Encoding.default_external" => "UTF-8", "$0" => "<app>/main.rb" }
+
+    assert Parity::Reports.compare(reference, app, platform: "arm64-darwin", check: :windowed).all?(&:justified?)
+    refute_predicate Parity::Reports.compare({ "$0" => "exe/my_cool_app" }, { "$0" => "<app>/my_cool_app" }, platform: "arm64-darwin",
+      check: :windowed).first, :justified?
+  end
+
+  # A windowed Windows app has no console, so Ruby takes its locale from
+  # the ANSI code page, which the launcher's manifest makes UTF-8 (ADR
+  # 070); only there, and only for that encoding.
+  def test_a_windowed_windows_app_may_take_utf8_as_its_locale
+    reference = { "Encoding.find('locale')" => "Windows-1252" }
+    app = { "Encoding.find('locale')" => "UTF-8" }
+
+    assert Parity::Reports.compare(reference, app, platform: "x64-mingw-ucrt", check: :windowed).all?(&:justified?)
+    refute_predicate Parity::Reports.compare(reference, app, platform: "x64-mingw-ucrt").first, :justified?
+    refute_predicate Parity::Reports.compare(reference, { "Encoding.find('locale')" => "UTF-16LE" }, platform: "x64-mingw-ucrt",
+      check: :windowed).first, :justified?
+  end
+
+  # gio launch gives each start its own process ID, which no two starts
+  # share; nothing else of ENV is touched.
+  def test_a_windowed_start_makes_the_values_each_start_has_its_own_one
+    started = {
+"ENV" => { "GIO_LAUNCHED_DESKTOP_FILE_PID" => "4242", "A" => "1" },
+"child ENV" => { "GIO_LAUNCHED_DESKTOP_FILE_PID" => "4242" },
+"ARGV" => ["report"],
+}
+
+    made = Parity::Windowed.per_start(started)
+
+    assert_equal({ "GIO_LAUNCHED_DESKTOP_FILE_PID" => "<per start>", "A" => "1" }, made.fetch("ENV"))
+    assert_equal({ "GIO_LAUNCHED_DESKTOP_FILE_PID" => "<per start>" }, made.fetch("child ENV"))
+    assert_equal ["report"], made.fetch("ARGV")
+    assert_equal "4242", started.dig("ENV", "GIO_LAUNCHED_DESKTOP_FILE_PID"), "the report it was given is left alone"
+  end
+
   def test_the_same_elements_in_another_order_differ
     difference = Parity::Reports.compare({ "$LOAD_PATH" => %w[a b] }, { "$LOAD_PATH" => %w[b a] }, platform: "x86_64-linux").first
 

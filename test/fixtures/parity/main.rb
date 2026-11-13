@@ -27,6 +27,10 @@
 # comparison normalizes them. The arguments it was given are among the
 # facts.
 #
+# A windowed app has no terminal to print to, so started as parity report
+# FILE it writes the same line to FILE instead, which the windowed check
+# (tasks/parity/windowed.rb) reads.
+#
 # Delivery, which has no Ruby to compare with, asks it one thing at a
 # time instead:
 #
@@ -273,6 +277,29 @@ def facts
   }
 end
 
+# The report: the facts, then what requiring changes, as one line,
+# "FLEDGE-PARITY " followed by JSON.
+def parity_line
+  report = facts
+  # After the facts, since requiring changes $LOADED_FEATURES, and before
+  # requireable, which activates every gem.
+  report["require racc/cparse before racc is active"] = extension_before_its_gem
+  report["require syslog's extension by its path"] = extension_by_its_path
+  # After the facts, since requiring changes $LOADED_FEATURES and ENV:
+  # what require "openssl" adds to ENV, as openssl.rb names the CA
+  # certificates OpenSSL is to read.
+  before = ENV.to_h
+  require "openssl"
+  report["ENV from require 'openssl'"] = ENV.to_h.reject { |name, value| before[name] == value }
+  report["$stdout writes through"] = stdout_writes_through
+  # Last, since requiring changes $LOADED_FEATURES.
+  report["requireable"] = Gem::Specification.to_h { |spec| [spec.name, requireable(spec)] }.sort.to_h
+  # In a C locale, ARGV and paths outside ASCII are US-ASCII strings with
+  # bytes outside it, which JSON refuses; the encodings are among the
+  # facts.
+  "FLEDGE-PARITY #{JSON.generate(utf8(report))}"
+end
+
 case ARGV.first
 when "child-env"
   puts child_ruby("print ENV.fetch(#{ARGV.fetch(1).inspect}, '(unset)')")
@@ -291,23 +318,13 @@ when "restarted"
   after = JSON.parse(JSON.generate(restart_facts))
   changed = before.keys.reject { |key| before[key] == after[key] }
   puts(changed.empty? ? "restarted as itself" : changed.map { |key| "#{key}: #{before[key].inspect} became #{after[key].inspect}" })
+when "report"
+  # A windowed app has no terminal to print to: the report goes to the
+  # file named, written whole and then moved into place, so whoever
+  # waits for it never reads half of one.
+  path = ARGV.fetch(1)
+  File.write("#{path}.partial", "#{parity_line}\n")
+  File.rename("#{path}.partial", path)
 else
-  report = facts
-  # After the facts, since requiring changes $LOADED_FEATURES, and before
-  # requireable, which activates every gem.
-  report["require racc/cparse before racc is active"] = extension_before_its_gem
-  report["require syslog's extension by its path"] = extension_by_its_path
-  # After the facts, since requiring changes $LOADED_FEATURES and ENV:
-  # what require "openssl" adds to ENV, as openssl.rb names the CA
-  # certificates OpenSSL is to read.
-  before = ENV.to_h
-  require "openssl"
-  report["ENV from require 'openssl'"] = ENV.to_h.reject { |name, value| before[name] == value }
-  report["$stdout writes through"] = stdout_writes_through
-  # Last, since requiring changes $LOADED_FEATURES.
-  report["requireable"] = Gem::Specification.to_h { |spec| [spec.name, requireable(spec)] }.sort.to_h
-  # In a C locale, ARGV and paths outside ASCII are US-ASCII strings with
-  # bytes outside it, which JSON refuses; the encodings are among the
-  # facts.
-  puts "FLEDGE-PARITY #{JSON.generate(utf8(report))}"
+  puts parity_line
 end

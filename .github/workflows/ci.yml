@@ -801,12 +801,14 @@ jobs:
           name: runtime-${{ matrix.platform }}
           path: ${{ runner.temp }}/runtimes
 
-      # Pinned to Ubuntu 24.04's build.
-      - name: Install mksquashfs
+      # mksquashfs, pinned to Ubuntu 24.04's build, and GLib's gio, which
+      # the parity check launches a desktop entry with, of the GLib the
+      # runner has.
+      - name: Install mksquashfs and gio
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
+          sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1 "libglib2.0-bin=$(dpkg-query -W -f '${Version}' libglib2.0-0t64)"
           echo "FLEDGE_REQUIRE_MKSQUASHFS=1" >> "$GITHUB_ENV"
           echo "FLEDGE_REQUIRE_DPKG_DEB=1" >> "$GITHUB_ENV"
 
@@ -871,7 +873,7 @@ jobs:
       - name: Check parity with ruby main.rb and bundle exec, in Alpine
         run: >-
           docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes "$ALPINE_RUBY"
-          sh -c '.github/scripts/alpine-packages.sh apps && git config --global --add safe.directory /fledge && ruby tasks/parity.rb'
+          sh -c '.github/scripts/alpine-packages.sh apps && .github/scripts/alpine-packages.sh parity && git config --global --add safe.directory /fledge && ruby tasks/parity.rb'
 
   # ruby/spec on stock Ruby and in a built app (ruby-spec.yml): on every
   # push for x86_64-linux and arm64-darwin and in phone apps in the iOS

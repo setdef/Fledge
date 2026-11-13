@@ -20,7 +20,9 @@ class Parity
   # those platforms, and +checks+ to the script check (:script, against
   # ruby main.rb), the gem-shaped one (:bundle, against bundle exec), or
   # the script check run with no locale at all (:no_locale), which also
-  # allows whatever the script check allows.
+  # allows whatever the script check allows. The windowed check
+  # (:windowed), whose desktop may start an app with no locale, allows
+  # whatever the script check and the check with no locale allow.
   #
   # When patterns on both sides name groups, the justification pairs
   # the elements it explains: what the groups capture from those found
@@ -34,8 +36,11 @@ class Parity
 
     def applies?(fact_name, platform, check)
       fact == fact_name && (platforms.nil? || platforms.include?(platform)) &&
-        (checks.include?(check) || (check == :no_locale && checks.include?(:script)))
+        (checks.include?(check) || (ALSO.fetch(check, []) & checks).any?)
     end
+
+    # The checks whose justifications a check allows beside its own.
+    ALSO = { no_locale: %i[script], windowed: %i[script no_locale] }.freeze
 
     def explains?(element, side)
       patterns(side).any? { |pattern| pattern.match?(element) }

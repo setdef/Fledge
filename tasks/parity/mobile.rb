@@ -28,8 +28,7 @@ class Parity
     Justification.new(fact: "ENV", reference: [/./], app: [/./], platforms: MOBILE,
       reason: "iOS and Android start an app with an environment of their own, which no person sets: the system's " \
         "HOME and TMPDIR inside the app's own container, and on iOS the Simulator's variables, with nothing of a " \
-        "shell's. The runtime adds SSL_CERT_FILE, naming its CA certificates for OpenSSL, as rv-ruby's Ruby adds " \
-        "PORTABLE_RUBY_SSL_CERT_FILE, and on Android HOME, the app's files folder, as iOS gives every app one."),
+        "shell's. The runtime adds only HOME on Android, the app's files folder, as iOS gives every app one."),
     Justification.new(fact: "child ENV", reference: [/./], app: [/\A"Errno::/], platforms: IOS,
       reason: "An app on iOS starts no programs, since iOS lets no app run one, so the iOS runtime has no Ruby " \
         "program to start, and spawning RbConfig.ruby fails as it does where Ruby is missing."),

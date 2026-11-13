@@ -20,13 +20,16 @@
  * them only through ossl_safe_getenv, which refuses them in a process
  * whose AT_SECURE is set (crypto/uid.c, OPENSSL_issetugid, at 3.6.5),
  * and every app inherits AT_SECURE from zygote, which Android starts in
- * an SELinux domain of its own. So SSL_CERT_FILE, which serves on iOS,
- * goes unread, and OpenSSL trusts only its compiled-in file, the build
- * machine's. The runtime's library is linked with the linker's own
+ * an SELinux domain of its own. So PORTABLE_RUBY_SSL_CERT_FILE, which
+ * openssl.rb sets and OpenSSL reads on iOS, as on a desktop
+ * (tasks/runtime_builder/certificates.rb), goes unread by OpenSSL, which
+ * would trust only its compiled-in file, the build machine's. The
+ * runtime's library is linked with the linker's own
  * --wrap=X509_get_default_cert_file (tasks/runtime_builder/android.rb),
  * which sends OpenSSL's every call of that function here, so its default
- * file is the runtime's CA certificates, and OpenSSL::X509::
- * DEFAULT_CERT_FILE names them.
+ * file is the one that variable names, with getenv, which AT_SECURE does
+ * not stop: SSL_CERT_FILE's, or else the runtime's CA certificates, as
+ * on a desktop; and OpenSSL::X509::DEFAULT_CERT_FILE names it.
  *
  * And the runtime's ruby program, which RbConfig.ruby names (ADR 069):
  * fledge_ruby_link_program makes ROOT/bin/ruby a link to it before an
@@ -70,6 +73,8 @@ const char *__wrap_X509_get_default_cert_file(void);
 const char *
 __wrap_X509_get_default_cert_file(void)
 {
+    const char *named = getenv("PORTABLE_RUBY_SSL_CERT_FILE");
+    if (named != NULL && named[0] != '\0') return named;
     const char *certificates = fledge_ruby_certificates();
 
     return certificates != NULL ? certificates : __real_X509_get_default_cert_file();

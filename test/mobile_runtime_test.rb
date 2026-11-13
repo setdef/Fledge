@@ -117,6 +117,37 @@ class MobileRuntimeTest < Minitest::Test
     refute_includes told, "seteuid"
   end
 
+  # A phone's Ruby, as a musl runtime's, finds its CA certificates as
+  # rv-ruby's Ruby does: OpenSSL reads them from a variable of rv-ruby's
+  # name, which openssl.rb sets as openssl loads, to SSL_CERT_FILE or
+  # else to libexec/cert.pem beside the Ruby, so ENV holds nothing of the
+  # runtime's before require "openssl" and the same after it as under
+  # rv-ruby's ruby main.rb.
+  def test_a_built_ruby_finds_its_certificates_as_rv_rubys_does
+    Dir.mktmpdir do |dir|
+      header = File.join(dir, "openssl", "include", "internal", "common.h")
+      FileUtils.mkdir_p(File.dirname(header))
+      File.write(header, "# define X509_CERT_FILE_EVP \"SSL_CERT_FILE\"\n")
+      ruby = File.join(dir, "root", "lib", "ruby")
+      FileUtils.mkdir_p(File.join(ruby, "4.1.0"))
+      File.write(File.join(ruby, "4.1.0", "openssl.rb"), "require 'openssl.so'\n")
+
+      RuntimeBuilder::Certificates.rename_variable(File.join(dir, "openssl"))
+      RuntimeBuilder::Certificates.point_openssl_rb(ruby)
+
+      assert_equal "# define X509_CERT_FILE_EVP \"PORTABLE_RUBY_SSL_CERT_FILE\"\n", File.read(header)
+      set, load = File.readlines(File.join(ruby, "4.1.0", "openssl.rb"), chomp: true)
+      assert_equal "require 'openssl.so'", load
+      script = File.join(dir, "set.rb")
+      File.write(script, "RbConfig.singleton_class.define_method(:ruby) { #{File.join(dir, 'root', 'bin', 'ruby').dump} }\n" \
+        "#{set}\nprint ENV.fetch('PORTABLE_RUBY_SSL_CERT_FILE')")
+      named = -> (value) { IO.popen({ "SSL_CERT_FILE" => value }, [RbConfig.ruby, script], &:read) }
+      assert_equal File.join(dir, "root", "libexec", "cert.pem"), named.call(nil)
+      assert_equal "/elsewhere.pem", named.call("/elsewhere.pem")
+      assert_raises(RuntimeError) { RuntimeBuilder::Certificates.rename_variable(File.join(dir, "openssl")) }
+    end
+  end
+
   def test_platform_finds_desktop_and_mobile_runtimes_by_name
     assert_equal Fledge::Platform.find("x86_64-linux"), RuntimeBuilder.platform("x86_64-linux")
     assert_equal "android", RuntimeBuilder.platform("android").name

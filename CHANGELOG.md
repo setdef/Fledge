@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- On iOS and Android, an app's `ENV` no longer holds `SSL_CERT_FILE`: as under rv-ruby's Ruby on a desktop, `require "openssl"` sets `PORTABLE_RUBY_SSL_CERT_FILE` to the runtime's CA certificates, or to the file `SSL_CERT_FILE` names, which OpenSSL then trusts, on Android too.
 - The Android project packs native libraries compressed (`useLegacyPackaging = true`), so the installer extracts them where Android lets the app run its ruby program; an installed app takes more space. Set it to `false` to keep them stored, without a ruby program.
 
 ### Fixed

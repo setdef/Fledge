@@ -25,12 +25,13 @@
  *     (tasks/runtime_builder/ruby_source.rb, RubySource.ruby_c). Ruby
  *     strips the file's name and a lib folder from it, so ROOT/lib/libruby
  *     makes ROOT the prefix.
- *   - OpenSSL is told where the runtime's CA certificates are, through
- *     the SSL_CERT_FILE it reads itself, since its compiled-in folder is
- *     the build machine's; desktop runtimes get the same file from
- *     rv-ruby, whose OpenSSL finds it beside Ruby. On Android, OpenSSL
- *     reads no environment variable in an app, so android.c answers for
- *     its default file instead (fledge_ruby_certificates).
+ *   - Nothing is added to the environment. OpenSSL finds the runtime's
+ *     CA certificates as rv-ruby's, the desktops', finds them: openssl.rb
+ *     names them in PORTABLE_RUBY_SSL_CERT_FILE as openssl loads, which
+ *     the runtime's OpenSSL reads (tasks/runtime_builder/certificates.rb).
+ *     On Android, OpenSSL reads no environment variable in an app, so
+ *     android.c answers for its default file instead
+ *     (fledge_ruby_certificates).
  *   - Nothing is set aside from the environment: iOS and Android start
  *     an app with their own environment, which no person sets, so there
  *     is no RUBYOPT or GEM_HOME of a person's own to hide (ADR 061),
@@ -229,10 +230,10 @@ join(char *path, const char *root, const char *suffix)
 }
 
 /*
- * Readies this process for Ruby with its prefix at root: the runtime's
- * CA certificates, the locale, and the path Ruby derives its prefix
- * from. Returns 0, or prints why it could not, after caller's name, and
- * returns FLEDGE_RUBY_SOFTWARE.
+ * Readies this process for Ruby with its prefix at root: where the
+ * runtime's CA certificates are, for android.c, the locale, and the path
+ * Ruby derives its prefix from. Returns 0, or prints why it could not,
+ * after caller's name, and returns FLEDGE_RUBY_SOFTWARE.
  */
 static int
 prepare(const char *root, const char *caller)
@@ -249,10 +250,7 @@ prepare(const char *root, const char *caller)
         fprintf(stderr, "%s: the path to Ruby is too long\n", caller);
         return FLEDGE_RUBY_SOFTWARE;
     }
-    if (access(certificates, R_OK) == 0) {
-        found_certificates = certificates;
-        setenv("SSL_CERT_FILE", certificates, 0);
-    }
+    if (access(certificates, R_OK) == 0) found_certificates = certificates;
     fledge_coerce_locale();
     ruby_embed_libruby_path = libruby;
     return 0;

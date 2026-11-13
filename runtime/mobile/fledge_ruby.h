@@ -42,8 +42,9 @@ enum { FLEDGE_RUBY_NO_APP = 66, FLEDGE_RUBY_SOFTWARE = 70 };
  * as its ARGV, on the calling thread, and returns its exit status, as
  * ruby script ARGS would. Ruby's prefix is root: its standard library,
  * default gems, and bundled gems are root/lib/ruby, and OpenSSL trusts
- * the certificate authorities in root/libexec/cert.pem (SSL_CERT_FILE,
- * unless the environment names another). A bare C locale becomes a
+ * the certificate authorities in root/libexec/cert.pem once openssl
+ * loads, unless SSL_CERT_FILE names others, as rv-ruby's Ruby does on a
+ * desktop; the environment gains nothing before. A bare C locale becomes a
  * UTF-8 one, as under the desktop launcher. When standard output is not
  * a terminal, as on a phone it never is, $stdout is in sync mode before
  * the program runs, so that each line reaches the log or the developer

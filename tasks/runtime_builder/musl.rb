@@ -54,8 +54,9 @@ class RuntimeBuilder
     # Builds Ruby, and the libraries its extensions link statically, from
     # their pinned sources, installs it into a prefix of its own, with
     # Mozilla's CA certificates as libexec/cert.pem where rv-ruby keeps
-    # them, and returns the prefix, which the Unix recipe copies a runtime
-    # from as it copies rv-ruby's.
+    # them, found as rv-ruby's Ruby finds them (Certificates), and
+    # returns the prefix, which the Unix recipe copies a runtime from as
+    # it copies rv-ruby's.
     #
     # Ruby is built in its source folder, as rv-ruby builds it
     # (Abstract/rv-ruby.rb, lines 157 to 174, at spinel-coop/rv-ruby
@@ -76,48 +77,9 @@ class RuntimeBuilder
       ca = pin("ca-certificates")
       FileUtils.mkdir_p(File.join(prefix, "libexec"))
       FileUtils.cp(@builder.fetch(ca.fetch("url"), ca.fetch("sha256")), File.join(prefix, "libexec", "cert.pem"))
-      find_certificates(prefix)
+      Certificates.point_openssl_rb(File.join(prefix, "lib", "ruby"))
       prefix
     end
-
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-License-Identifier: BSD-2-Clause
-    # SPDX-SnippetCopyrightText: Homebrew contributors
-    # SPDX-SnippetComment: Adapted from rv-ruby's Formula/rv-portable-openssl.rb
-    #   (line 77) and Abstract/rv-ruby.rb (lines 203 to 208) at
-    #   spinel-coop/rv-ruby 7a0e584a71246aaaf5572547b53670267935aaed.
-    #++
-    # OpenSSL bakes its certificate folder in when it is built, so a Ruby
-    # that moves finds no certificates. rv-ruby renames the variable
-    # OpenSSL reads them from, so that no other program's OpenSSL takes
-    # it, and has Ruby's openssl.rb point it at libexec/cert.pem beside
-    # the Ruby, unless SSL_CERT_FILE names others; every glibc runtime
-    # carries that, so the musl runtimes do too.
-    PORTABLE_CERT_FILE = "PORTABLE_RUBY_SSL_CERT_FILE"
-
-    private def rename_certificate_variable(source)
-      header = File.join(source, "include", "internal", "common.h")
-      text = File.read(header)
-      raise "#{header} no longer names SSL_CERT_FILE" unless text.include?('"SSL_CERT_FILE"')
-
-      File.write(header, text.sub('"SSL_CERT_FILE"', "\"#{PORTABLE_CERT_FILE}\""))
-    end
-
-    private def find_certificates(prefix)
-      ruby = File.join(prefix, "lib", "ruby")
-      openssl_rb = File.join(ruby, RuntimeBuilder.ruby_abi(ruby), "openssl.rb")
-      text = File.read(openssl_rb)
-      raise "#{openssl_rb} no longer requires 'openssl.so'" unless text.include?("require 'openssl.so'")
-
-      File.write(openssl_rb, text.sub("require 'openssl.so'", <<~RUBY.chomp))
-        ENV["#{PORTABLE_CERT_FILE}"] = ENV["SSL_CERT_FILE"] || File.expand_path("../../libexec/cert.pem", RbConfig.ruby)
-        require 'openssl.so'
-      RUBY
-    end
-    #--
-    # SPDX-SnippetEnd
-    #++
 
     # With Mobile::NO_GIT, the build takes the bundled gems the pinned
     # tarball carries in gems/, and downloads none.
@@ -159,7 +121,7 @@ class RuntimeBuilder
 
     private def build_openssl(prefix)
       source = unpack(pin("openssl"), "openssl")
-      rename_certificate_variable(source)
+      Certificates.rename_variable(source)
       target = "linux-#{ARCHES.fetch(@builder.platform.name)}"
       logged("openssl-configure", "./Configure", target, "no-shared", "no-tests", "no-apps", "no-docs", "no-module", "-fPIC",
         "--prefix=#{prefix}", "--libdir=lib", "--openssldir=/etc/ssl", chdir: source)

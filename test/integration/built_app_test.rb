@@ -8,6 +8,7 @@
 require_relative "../test_helper"
 require_relative "../../tasks/parity"
 require_relative "../support/disk_images"
+require_relative "../support/gems"
 require_relative "../support/stand_in_notary"
 require "digest"
 require "json"

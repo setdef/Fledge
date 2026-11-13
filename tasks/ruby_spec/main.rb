@@ -25,13 +25,17 @@
 # working folder, which is in the app's bundle, read-only on a device,
 # and a UNIX socket's path, which MSpec makes there, holds at most 104
 # bytes on Apple's systems, fewer than an app container's tmp folder
-# leaves, as the desktop's comparison keeps them short too.
+# leaves, as the desktop's comparison keeps them short too. The list of
+# the examples that ran goes to a file under Dir.tmpdir, unless
+# RUBY_SPEC_LISTING names another (listing_config.rb), since a phone's
+# log drops lines when tens of thousands come at once.
 require "rbconfig"
 arguments = File.join(__dir__, "arguments.txt")
 if ARGV.empty? && File.file?(arguments)
   require "tmpdir"
   ARGV.replace(File.readlines(arguments, chomp: true))
   ENV["SPEC_TEMP_DIR"] ||= File.writable?("/tmp") ? "/tmp/fledge-rs-#{Process.pid}" : File.join(Dir.tmpdir, "rs-#{Process.pid}")
+  ENV["RUBY_SPEC_LISTING"] ||= File.join(Dir.tmpdir, "ruby-spec-listing-#{Process.pid}.txt")
   # MSpec's ruby_exe helper refuses to load unless the Ruby it would
   # start exists, as on a phone it does not (RbConfig.ruby names where
   # bin/ruby would be). RUBY_EXE, when defined, is the one it takes,

@@ -86,6 +86,7 @@ module Fledge
     private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
 
     private def resource_dir: (String cc, NDK ndk) -> String
+    private def with_tools: (Hash[String, String] environment) -> Hash[String, String]
 
     private def toolchain_file: (String name, String text) -> String
 
@@ -107,7 +108,7 @@ module Fledge
 
     private def make: (Hash[String, String?] env, Array[Hash[String, String]] reports, String folder, locked_gem gem, Target target, what: String) -> void
 
-    private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target) -> Report
+    private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target, Hash[String, String?] env) -> Report
 
     private def describe_rust: (Hash[String, String] report, String folder, locked_gem gem, Target target) -> Report
 

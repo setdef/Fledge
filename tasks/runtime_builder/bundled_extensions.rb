@@ -6,6 +6,7 @@
 #++
 
 require "fileutils"
+require_relative "../../lib/fledge/mobile_extensions/stub"
 
 class RuntimeBuilder
   # How a mobile runtime keeps Ruby's bundled gems with C extensions
@@ -162,6 +163,35 @@ class RuntimeBuilder
         folder = File.join(build, ".bundle", "extensions", platform, api, full)
         FileUtils.mkdir_p(folder)
         FileUtils.touch(File.join(folder, "gem.build_complete"))
+      end
+    end
+
+    # Writes, in each of +gems+' (full names, by name) extension folders
+    # in the build folder +build+, which tool/rbinstall.rb copies whole
+    # into the gem's extension folder (install_recursive, line 1309 at
+    # 4.1.0-preview1), a Ruby file for each extension that requires the
+    # one Ruby links in (Fledge::MobileExtensions::Stub), at the path a
+    # desktop has its file: racc/cparse.rb where a desktop has
+    # racc/cparse.so. RubyGems' require finds a gem by a file of its
+    # extension folder (Gem::BasicSpecification#have_file?,
+    # lib/rubygems/basic_specification.rb lines 376 to 388), so a
+    # require "racc/cparse" before racc is active activates racc, as on a
+    # desktop, and then finds this file, whose require of racc/cparse.so
+    # the gate (RubySource.load_c) lets through once the gem is active. A
+    # gem whose lib/ has a Ruby file of the extension's name, as
+    # bigdecimal's lib/bigdecimal.rb, gets none: the extension folder
+    # comes first on $LOAD_PATH, and Ruby tries .rb in every folder before
+    # an extension's (rb_find_file_ext, file.c lines 8107 to 8119), so the
+    # file would hide the gem's own. Each such gem's require path at
+    # 4.1.0-preview1 is lib alone.
+    def self.write_stubs(build, gems, platform:, api:)
+      features(build, gems).each do |name, full|
+        feature = name.delete_suffix(".so")
+        next if File.exist?(File.join(build, ".bundle", "gems", full, "lib", "#{feature}.rb"))
+
+        path = File.join(build, ".bundle", "extensions", platform, api, full, "#{feature}.rb")
+        FileUtils.mkdir_p(File.dirname(path))
+        File.write(path, Fledge::MobileExtensions::Stub.source(feature))
       end
     end
 

@@ -194,6 +194,7 @@ class RuntimeBuilder
       logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", *MAKE_VARIABLES, chdir: build, env: environment(target))
       @extension_api = Mobile.extension_api(build)
       BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: @extension_api)
+      BundledExtensions.write_stubs(build, @kept, platform: target.ruby_platform, api: @extension_api)
       logged("#{target.name}-install", "make", "install-nodoc", "DESTDIR=#{root}", *MAKE_VARIABLES, chdir: build,
         env: environment(target))
       finish_tree(target, root)

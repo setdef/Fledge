@@ -45,13 +45,16 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     module Stub
-      # The file for +package+'s extension +feature+, as an Entry with its
-      # path below the runtime's gem folder +gem_dir+; or +nil+ where the
-      # gem's files in +root+ have a Ruby file of that name, which a
-      # require of the path finds first on a desktop too, since Ruby tries
-      # <tt>.rb</tt> before the extension's (<tt>loadable_ext</tt>,
-      # <tt>load.c</tt> lines 35 to 38), as bigdecimal's
-      # <tt>lib/bigdecimal.rb</tt> is.
+      # The file for +package+'s extension +feature+, in its first require
+      # path, as an Entry with its path below the runtime's gem folder
+      # +gem_dir+; or +nil+ where the gem's files in +root+ have a Ruby
+      # file of that name in any require path, as bigdecimal's
+      # <tt>lib/bigdecimal.rb</tt> is. A require of the path finds that
+      # file first on a desktop too, since Ruby tries <tt>.rb</tt> before
+      # the extension's (<tt>loadable_ext</tt>, <tt>load.c</tt> lines 35 to
+      # 38), and a require by name tries <tt>.rb</tt> in every folder of
+      # <tt>$LOAD_PATH</tt> before any extension (<tt>rb_find_file_ext</tt>,
+      # <tt>file.c</tt> lines 8107 to 8119), so a stub would hide it.
       #
       # === Example
       #
@@ -65,15 +68,12 @@ module Fledge
       # SPDX-SnippetEnd
       #++
       def self.for(package, feature, root:, gem_dir:)
-        # The gemspec's own first require path: require_paths puts the
-        # extension folder, an absolute path, before it.
-        folder = package.spec.require_paths.find { |path| !File.absolute_path?(path) }
-        return nil if folder.nil?
+        # The gemspec's own require paths: require_paths puts the
+        # extension folder, an absolute path, before them.
+        folders = package.spec.require_paths.reject { |path| File.absolute_path?(path) }
+        return nil if folders.empty? || folders.any? { |folder| File.exist?(File.join(root, folder, "#{feature}.rb")) }
 
-        path = File.join(folder, "#{feature}.rb")
-        return nil if File.exist?(File.join(root, path))
-
-        Entry.file("#{package.installed_path(gem_dir)}/#{path}", source(feature))
+        Entry.file("#{package.installed_path(gem_dir)}/#{folders.first}/#{feature}.rb", source(feature))
       end
 
       # The file's Ruby: a require of +feature+ by its <tt>.so</tt> name,

@@ -356,7 +356,10 @@ class Parity
     into = File.join(@work, "reference")
     FileUtils.mkdir_p(into)
     if platform.windows?
-      seven_zip = tool("7z") || [File.join(ENV.fetch("ProgramFiles", "C:/Program Files"), "7-Zip", "7z.exe")].find { |path| File.file?(path) }
+      # 7-Zip on PATH, as 7zz, 7z, or the 7za that mise.toml pins on
+      # Windows, or where its installer puts it, as on GitHub's runners.
+      seven_zip = %w[7zz 7z 7za].lazy.filter_map { |name| tool(name) }.first ||
+        [File.join(ENV.fetch("ProgramFiles", "C:/Program Files"), "7-Zip", "7z.exe")].find { |path| File.file?(path) }
       raise "unpacking #{archive} needs 7-Zip" unless seven_zip
 
       system(seven_zip, "x", "-y", "-bd", "-o#{into}", archive, out: File::NULL, exception: true)

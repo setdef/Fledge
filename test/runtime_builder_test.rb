@@ -225,9 +225,7 @@ class RuntimeBuilderTest < Minitest::Test
       sbom: "fledge-runtime-1.2.3-x86_64-linux.spdx.json",
       notices: "fledge-runtime-1.2.3-x86_64-linux-NOTICES.txt",
       sources: "fledge-runtime-1.2.3-x86_64-linux-lgpl-sources.tar.gz",
-      dev: "fledge-runtime-1.2.3-x86_64-linux-dev.tar.gz",
     }, builder("x86_64-linux").assets(version: "1.2.3"))
-    assert_equal Fledge::Runtimes.dev_file_name(Fledge::Platform.find("x86_64-linux")), builder("x86_64-linux").assets.fetch(:dev)
     assert_equal Fledge::Runtimes.file_name(Fledge::Platform.find("x64-mingw-ucrt")), builder("x64-mingw-ucrt").assets.fetch(:runtime)
   end
 
@@ -237,53 +235,15 @@ class RuntimeBuilderTest < Minitest::Test
   def test_a_release_publishes_every_platforms_assets_and_the_lgpl_sources_where_they_ship
     assets = RuntimeBuilder.release_assets(version: "1.2.3")
 
-    assert_equal 40, assets.size
+    assert_equal 33, assets.size
     assert_equal assets.sort, assets
-    Fledge::Platform.names.each { |name| assert_includes assets, "fledge-runtime-1.2.3-#{name}-dev.tar.gz" }
+    Fledge::Platform.names.each { |name| refute_includes assets, "fledge-runtime-1.2.3-#{name}-dev.tar.gz" }
     assert_includes assets, "fledge-runtime-1.2.3-x64-mingw-ucrt-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-aarch64-mingw-ucrt-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-aarch64-linux-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-x86_64-linux-musl-lgpl-sources.tar.gz"
     refute_includes assets, "fledge-runtime-1.2.3-arm64-darwin-lgpl-sources.tar.gz"
     assert_includes assets, "fledge-runtime-1.2.3-arm64-darwin.spdx.json"
-  end
-
-  # The build-only companion holds what compiling an extension against
-  # the runtime's Ruby needs and the runtime prunes (ADR 006): the
-  # library to link against, the import library of Ruby's DLL on Windows
-  # and static libruby elsewhere, with their licenses beside it. Ruby's
-  # headers are in the runtime itself (ADR 085). Nothing else of Ruby's
-  # tree, and never libxcrypt's static archive.
-  def test_copy_dev_takes_the_library_to_link_against
-    Dir.mktmpdir do |dir|
-      tree = File.join(dir, "tree")
-      {
-"include/ruby-4.0.0/ruby.h" => "/* ruby */\n",
-"include/ruby-4.0.0/x64-mingw-ucrt/ruby/config.h" => "/* config */\n",
-"lib/libx64-ucrt-ruby400.dll.a" => "!<arch>\n",
-"lib/libruby-static.a" => "!<arch>\n",
-"lib/libcrypt.a" => "!<arch>\n",
-"lib/ruby/4.0.0/set.rb" => "",
-"bin/ruby.exe" => "MZ",
-}.each do |path, content|
-        FileUtils.mkdir_p(File.dirname(File.join(tree, path)))
-        File.write(File.join(tree, path), content)
-      end
-      windows = File.join(dir, "windows")
-      unix = File.join(dir, "unix")
-
-      RuntimeBuilder::DevCompanion.copy(tree, windows, windows: true)
-      RuntimeBuilder::DevCompanion.copy(tree, unix, windows: false)
-
-      assert_equal %w[DEV-NOTICES.txt ruby/lib/libx64-ucrt-ruby400.dll.a], files(windows)
-      assert_equal %w[DEV-NOTICES.txt lib/libruby-static.a], files(unix)
-      notices = File.read(File.join(unix, "DEV-NOTICES.txt"))
-      assert_includes notices, "never copies it into an app"
-      %w[ruby/COPYING ruby/BSDL rust/LICENSE-MIT rust/LICENSE-APACHE].each do |notice|
-        assert_includes notices, File.read(File.join(RuntimeBuilder::ROOT, "runtime/notices", notice))
-      end
-      refute_includes File.read(File.join(windows, "DEV-NOTICES.txt")), File.read(File.join(RuntimeBuilder::ROOT, "runtime/notices/rust/LICENSE-MIT"))
-    end
   end
 
   def files(root)

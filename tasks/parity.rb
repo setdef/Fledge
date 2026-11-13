@@ -359,12 +359,6 @@ class Parity
       system("tar", "-xzf", archive, "-C", into, exception: true)
     end
     if platform.musl?
-      # The static libruby the runtime leaves out, which its build-only
-      # companion holds and which mkmf links a gem's extension against, as
-      # the Ruby the build compiled has it: bundle install compiles any
-      # gem with no build for this Ruby, such as sqlite3 2.10.2 on 4.1.
-      companion = File.join(@runtimes, Fledge::Runtimes.dev_file_name(platform))
-      system("tar", "-xzf", companion, "-C", into, exception: true)
       # Fledge's RubyGems defaults are Fledge's, not the Ruby's it built.
       FileUtils.rm_f(Dir.glob(File.join(into, "**", "rubygems", "defaults", "operating_system.rb")))
     end

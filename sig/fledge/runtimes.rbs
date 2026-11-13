@@ -21,8 +21,6 @@ module Fledge
 
     def self.file_name: (target platform, ?version: String) -> String
 
-    def self.dev_file_name: (Platform platform, ?version: String) -> String
-
     def initialize: (?env: _Env, ?release_url: String, ?log: CLI::_Output?, ?pins: String, ?waits: Array[Integer]) -> void
 
     def archive: (target platform) -> String

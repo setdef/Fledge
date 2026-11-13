@@ -29,9 +29,5 @@ class RuntimeBuilder
     def readers
       LicenseAudit.readers
     end
-
-    # The Ruby tree the runtime was made from, once #build has unpacked
-    # it, for the build-only companion (RuntimeBuilder::DevCompanion.copy).
-    attr_reader :tree
   end
 end

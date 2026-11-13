@@ -38,7 +38,7 @@ class RuntimeBuilder
     end
 
     def build(stage)
-      tree = @tree = unpack_rubyinstaller
+      tree = unpack_rubyinstaller
       @toolchain = unpack_toolchain
       compile(tree, File.join(stage, "launcher.exe"))
       ruby = File.join(stage, "ruby")

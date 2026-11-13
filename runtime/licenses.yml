@@ -128,7 +128,7 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: "the program the app's user runs; on macOS and Linux bin/ruby, which holds Fledge's code beside Ruby's; and {prefix}lib/ruby/{abi}/rubygems/defaults/operating_system.rb"
+    ships: "the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and {prefix}lib/ruby/{abi}/rubygems/defaults/operating_system.rb"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt]
     files:
       - launcher
@@ -138,9 +138,11 @@ components:
     binaries: [launcher, launcher.exe, launcherw.exe]
     # bin/ruby on macOS and Linux is Ruby's main.c with Fledge's code that
     # chooses its locale and hands an app's own program back to its
-    # launcher (runtime/launcher/ruby_main.c; ADR 087 and ADR 026).
+    # launcher (runtime/launcher/ruby_main.c; ADR 087 and ADR 026), and so
+    # are ruby.exe and rubyw.exe on Windows, in place of RubyInstaller's
+    # (runtime/launcher/windows_relaunch.c).
     embedded:
-      - files: ["{prefix}bin/ruby"]
+      - files: ["{prefix}bin/ruby", "{prefix}bin/{ruby,rubyw}.exe"]
         evidence: "ruby: could not run "
 
   # A phone's app has no Fledge launcher: the host app the project
@@ -249,8 +251,9 @@ components:
     download: https://github.com/msys2/MINGW-packages/tree/master/mingw-w64-gcc
     ships: compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built
     platforms: [x64-mingw-ucrt]
+    # Not ruby.exe and rubyw.exe, which a runtime compiles with llvm-mingw.
     embedded:
-      - files: ["{prefix}bin/*.{dll,exe}", "{prefix}bin/ruby_builtin_dlls/*.dll", "{prefix}lib/ruby/**/*.{dll,so}"]
+      - files: ["{prefix}bin/*.dll", "{prefix}bin/ruby_builtin_dlls/*.dll", "{prefix}lib/ruby/**/*.{dll,so}"]
         evidence: "Built by MSYS2 project"
 
   - id: mingw-w64-runtime
@@ -260,21 +263,21 @@ components:
     kind: program
     download: https://github.com/mingw-w64/mingw-w64/tree/v14.0.0
     notice: mingw-w64
-    ships: compiled into launcher.exe, launcherw.exe, and every DLL and extension in ruby/
+    ships: compiled into launcher.exe, launcherw.exe, ruby/bin/ruby.exe and rubyw.exe, and every DLL and extension in ruby/
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     embedded:
       - files: [launcher.exe, launcherw.exe, "{prefix}bin/*.{dll,exe}", "{prefix}lib/ruby/**/*.{dll,so}"]
 
   - id: compiler-rt
-    name: LLVM's compiler-rt builtins, linked into the launcher by llvm-mingw
+    name: LLVM's compiler-rt builtins, linked into the launcher and the runtime's ruby.exe by llvm-mingw
     version: "20261020"
     license: Apache-2.0 WITH LLVM-exception
     kind: program
     download: https://github.com/mstorsjo/llvm-mingw/releases/tag/20261020
-    ships: compiled into launcher.exe and launcherw.exe
+    ships: compiled into launcher.exe, launcherw.exe, and ruby/bin/ruby.exe and rubyw.exe
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     embedded:
-      - files: [launcher.exe, launcherw.exe]
+      - files: [launcher.exe, launcherw.exe, "{prefix}bin/{ruby,rubyw}.exe"]
 
   - id: openssl
     name: OpenSSL, compiled into Ruby's openssl extension
@@ -1012,7 +1015,7 @@ components:
     supplier: "Organization: Ruby core team"
     download: https://github.com/ruby/ruby/tree/0e258742221c81dddb807e48a5691ce44b46dadd
     notice: ruby
-    ships: "compiled into Ruby's DLL in ruby/bin/, and its standard library in ruby/lib/ruby/"
+    ships: "compiled into Ruby's DLL in ruby/bin/ and, as main.c, into ruby.exe and rubyw.exe beside it, and its standard library in ruby/lib/ruby/"
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     fallback: true
     embedded:

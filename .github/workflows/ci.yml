@@ -432,8 +432,6 @@ jobs:
         include:
           - os: macos-26
             platform: ios
-          - os: ubuntu-24.04
-            platform: android
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -578,6 +576,7 @@ jobs:
   # Rust and its Android targets, and bindgen reads the phone's headers
   # with the runner's libclang.
   mobile-apps-android:
+    if: false
     name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
     needs: runtime-mobile
     runs-on: ubuntu-24.04

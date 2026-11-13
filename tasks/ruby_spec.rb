@@ -9,6 +9,7 @@ require "fileutils"
 require_relative "download_cache"
 require_relative "parity"
 require_relative "ruby_spec/results"
+require_relative "ruby_spec/listing"
 
 # The ruby/spec comparison: ruby/spec, run by MSpec, on stock Ruby and in
 # a built app, with every example that fails on one side only either
@@ -175,6 +176,47 @@ class RubySpec
         "run the script, or hand one with no shebang to sh. The app's ruby program runs, since the package installer " \
         "extracts it.",
     ),
+    # Examples that run on one side only (Listing.compare), beyond those
+    # ruby/spec's platform guards leave out.
+    Justification.new(
+      example: /\Acore: (?:Dir\.scan handles block devices|(?:File\.|File::Stat#)ftype returns 'blockSpecial' when the file is a block)\z/,
+      side: :stock, platforms: %w[arm64-ios-simulator], outcome: :runs,
+      reason: "MSpec's with_block_device runs these only where find /dev /devices -type b finds a block device " \
+        "(mspec/guards/block_device.rb, lines 4 to 11 at MSpec 521207f), and iOS lets no app start find: Apple's SDK " \
+        "marks system() prohibited there, \"On iOS, process spawning is unavailable\" (iPhoneOS27.2.sdk, " \
+        "usr/include/_stdlib.h, lines 205 to 208).",
+    ),
+    Justification.new(
+      example: /\Acore: (?:Dir\.scan handles block devices|(?:File\.|File::Stat#)ftype returns 'blockSpecial' when the file is a block)\z/,
+      side: :stock, platforms: ANDROID, outcome: :runs,
+      reason: "MSpec's with_block_device runs these only where find /dev /devices -type b finds a block device " \
+        "(mspec/guards/block_device.rb, lines 4 to 11 at MSpec 521207f), and Android's SELinux policy keeps an app " \
+        "from reading /dev, as for Dir.scan's example of character devices, so the app finds none.",
+    ),
+    Justification.new(
+      example: %r{\Acore: Time\.utc handles real leap seconds in zone 'right/UTC'\z},
+      side: :stock, platforms: ANDROID, outcome: :runs,
+      reason: "ruby/spec runs it only where the zone right/UTC counts a leap second (core/time/utc_spec.rb, lines 88 " \
+        "to 92), and Android's time zone data has no right/ zones: AOSP compiles it with zic from the zones and links " \
+        "of IANA's rearguard.zi alone, without zic's -L leapseconds (system/timezone, update-tzdata.py, lines 54 to 66 " \
+        "and 178 at 0470df3d), so bionic finds no right/UTC and takes UTC, which has no leap seconds.",
+    ),
+    Justification.new(
+      example: /\Acommand_line: Processing RUBYOPT (?:prints the version number for '-v'|ignores whitespace around the option)\z/,
+      side: :stock, platforms: ANDROID, outcome: :runs,
+      reason: "ruby/spec runs these only where RbConfig::CONFIG['CROSS_COMPILING'] is not \"yes\" " \
+        "(command_line/rubyopt_spec.rb, line 25), and the Android runtime's Ruby is compiled with the NDK on the " \
+        "computer that builds it, a cross build (doc/contributors/design/phone-runtimes.md, \"Building Ruby for a " \
+        "phone\").",
+    ),
+    Justification.new(
+      example: %r{\Acore: File\.expand_path when HOME is not set uses the user database when passed '~/?' if HOME is nil\z},
+      side: :app, platforms: ANDROID, outcome: :runs,
+      reason: "ruby/spec runs these only where Etc.getlogin names a user with USER unset (core/file/expand_path_spec.rb, " \
+        "lines 221 to 233). glibc's getlogin names the user logged in on the process's controlling terminal, and stock " \
+        "Ruby's run, in CI's clean environment, has none; bionic's names the user of getuid() " \
+        "(libc/bionic/grp_pwd.cpp, lines 629 to 632 at 731631f), so the app runs them, and they pass.",
+    ),
   ].freeze
 
   attr_reader :platform
@@ -224,7 +266,7 @@ class RubySpec
   # or MSpec's own specs, and a fledge.yml naming the app.
   private def project(into, sources)
     FileUtils.mkdir_p(into)
-    FileUtils.cp(File.join(__dir__, "ruby_spec", "main.rb"), into)
+    FileUtils.cp(%w[main.rb listing_config.rb].map { |file| File.join(__dir__, "ruby_spec", file) }, into)
     sources.each { |name, folder| FileUtils.cp_r(folder, File.join(into, name)) }
     FileUtils.rm_rf(Dir.glob(File.join(into, "{spec,mspec}", ".git*")) + [File.join(into, "mspec", "spec")])
     File.write(File.join(into, "fledge.yml"), "name: RubySpec\n")
@@ -238,7 +280,7 @@ class RubySpec
     env = environment(label)
     folder = File.join(@out, label)
     FileUtils.mkdir_p(folder)
-    options = ["--timeout", "300", *EXCLUDED.fetch(platform.name, []).flat_map { |example| ["-E", example] }]
+    options = ["-B", "../listing_config.rb", "--timeout", "300", *EXCLUDED.fetch(platform.name, []).flat_map { |example| ["-E", example] }]
     DIRECTORIES.map do |directory|
       file = File.join(folder, "#{directory}.out")
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)

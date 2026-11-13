@@ -111,8 +111,134 @@ class RubySpecTest < Minitest::Test
 
   def results(**failures_by_side)
     failures_by_side.transform_values do |failures|
-      [RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| ["core: #{name}", ""] }, totals: "1 file")]
+      [
+RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| ["core: #{name}", ""] },
+  totals: "1 file, 0 examples, 0 expectations", listing: RubySpec::Listing.new(examples: [], denied: {}, count: 0)),
+]
     end
+  end
+
+  # What listing_config.rb prints after the totals, for a run of
+  # +directory+ (nil for a phone's), with +examples+ ran, each a spec
+  # file, its guards' locations, and its description, and the guards
+  # +denied+.
+  def listed(directory, examples, denied: {}, failures: {})
+    lines = ["ruby/spec listing: begin"]
+    examples.each { |file, guards, location, description| lines.push("@ #{file}", "=#{guards.join(',')} #{location} #{description}") }
+    denied.each { |location, name| lines << "- #{location} #{name}" }
+    lines << "ruby/spec listing: #{examples.size} examples"
+    totals = "1 file, #{examples.size} examples, 1 expectation, #{failures.size} failures, 0 errors, 0 tagged"
+    failed = failures.each_with_index.map { |(name, detail), index| "#{index + 1})\n#{name} ERROR\n#{detail}\n" }
+    RubySpec::Results.read(directory, "#{failed.join("\n")}\nFinished in 1 second\n\n#{totals}\n#{lines.join("\n")}\n")
+  end
+
+  def sole(differences)
+    assert_equal 1, differences.size, differences.join("\n")
+    differences.first
+  end
+
+  GROUPS = [
+    "core/process/groups_spec.rb", ["core/process/groups_spec.rb:4"], "core/process/groups_spec.rb:5", "Process.groups gets an Array of the gids"
+  ].freeze
+  EACH = ["core/array/each_spec.rb", [], "core/array/each_spec.rb:9", "Array#each yields each element"].freeze
+
+  def test_a_listing_names_each_example_by_its_directory_and_counts_them
+    run = listed(nil, [GROUPS, EACH], denied: { "core/process/groups_spec.rb:33" => "platform_is aix" })
+
+    assert_equal ["core: Process.groups gets an Array of the gids", "core: Array#each yields each element"], run.listing.examples.map(&:name)
+    assert_equal ["core/process/groups_spec.rb:4"], run.listing.examples.first.guards
+    assert_equal "core/process/groups_spec.rb:5", run.listing.examples.first.location
+    assert_equal({ "core/process/groups_spec.rb:33" => "platform_is aix" }, run.listing.denied)
+    assert run.listing.complete?(run)
+    refute run.listing.complete?(run.with(totals: "1 file, 3 examples, 1 expectation")), "the totals count one more"
+    lost = RubySpec::Results.read(nil, "1 file, 2 examples, 0 expectations\nruby/spec listing: begin\n@ core/a_spec.rb\n= - A\n")
+    refute lost.listing.complete?(lost), "a listing that never ended"
+  end
+
+  # A description holds what the spec inspected as it loaded, which the
+  # locale changes: in run 43350707323 on x86_64-linux, stock Ruby with
+  # no locale named Symbol#inspect's example for :ê as :"ê". The
+  # two sides' examples are matched by their block's file and line.
+  def test_an_example_the_locale_names_differently_is_the_same_example
+    symbol = ["core/symbol/inspect_spec.rb", [], "core/symbol/inspect_spec.rb:110", "Symbol#inspect returns self as a symbol literal for "]
+    stock = listed("core", [symbol.dup.tap { |example| example[3] += ':"ê"' }])
+    app = listed("core", [symbol.dup.tap { |example| example[3] += ":ê" }])
+
+    assert_empty RubySpec::Results.compare([stock], [app], platform: "x86_64-linux")
+  end
+
+  # MSpec's evaluate helper defines one block, in MSpec, for many
+  # examples, as language/lambda_spec.rb's are, so those are matched by
+  # name, and two of them are two examples.
+  def test_examples_of_a_block_outside_ruby_spec_are_matched_by_name
+    lambda_spec = ["language/lambda_spec.rb", [], "/w/stock/mspec/lib/mspec/runner/evaluate.rb:45", "A lambda literal for definition"]
+    stock = listed("language", [lambda_spec.dup.tap { |e| e[3] += " a" }, lambda_spec.dup.tap { |e| e[3] += " b" }])
+    app = listed("language", [lambda_spec.dup.tap { |e| e[2] = "-"; e[3] += " a" }])
+
+    assert_equal ["runs in stock Ruby only: language: A lambda literal for definition b"],
+      RubySpec::Results.compare([stock], [app], platform: "x86_64-linux").map { |d| d.to_s.lines.first.chomp.delete_prefix("DIFFERENT: ") }
+  end
+
+  # Run 43313316095 ran 33 fewer examples in iOS's app than in stock
+  # Ruby, and nothing compared them. An example that runs on one side
+  # only is a difference unless something explains it.
+  def test_an_example_that_runs_on_one_side_only_is_a_difference
+    differences = RubySpec::Results.compare([listed("core", [GROUPS, EACH])], [listed("core", [EACH])], platform: "arm64-darwin")
+
+    assert_equal ["DIFFERENT: runs in stock Ruby only: core: Process.groups gets an Array of the gids"], differences.map { |d| d.to_s.lines.first.chomp }
+    assert_empty RubySpec::Results.compare([listed("core", [EACH, EACH])], [listed("core", [EACH, EACH])], platform: "arm64-darwin")
+    assert_equal 1, RubySpec::Results.compare([listed("core", [EACH, EACH])], [listed("core", [EACH])], platform: "arm64-darwin").size,
+      "an example that runs twice on one side and once on the other"
+  end
+
+  # ruby/spec's platform_is_not :android leaves examples out on Android
+  # that stock Ruby on Linux runs: explained by the guard, one difference
+  # for each guard, where a guard of another kind explains nothing.
+  def test_a_platform_guard_explains_an_example_it_left_out_on_one_side
+    stock = listed(nil, [GROUPS, EACH])
+    android = listed(nil, [EACH], denied: { "core/process/groups_spec.rb:4" => "platform_is_not android" })
+    lambda_guard = listed(nil, [EACH], denied: { "core/process/groups_spec.rb:4" => "guard" })
+
+    difference = RubySpec::Results.compare([stock], [android], platform: "x86_64-linux-android").then { |found| sole(found) }
+    assert_predicate difference, :justified?
+    assert_equal "1 example under platform_is_not android at core/process/groups_spec.rb:4", difference.name
+    assert_includes difference.to_s, "core: Process.groups gets an Array of the gids"
+    unjustified = RubySpec::Results.compare([stock], [lambda_guard], platform: "x86_64-linux-android").then { |found| sole(found) }
+    refute_predicate unjustified, :justified?
+    assert_includes unjustified.to_s, "left out by guard at core/process/groups_spec.rb:4 in the built app"
+  end
+
+  # An error that kept examples from running on one side is the
+  # difference to report, justified or not, not each example it kept.
+  def test_examples_an_error_on_one_side_kept_from_running_are_that_error
+    hook = "An exception occurred during: before :all"
+    detail = "Errno::ENOENT: id\n/w/spec/core/process/groups_spec.rb:9:in 'b'\n/w/spec/core/process/groups_spec.rb:1:in '<top (required)>'"
+    differences = RubySpec::Results.compare([listed(nil, [GROUPS])], [listed(nil, [], failures: { hook => detail })], platform: "arm64-darwin")
+
+    assert_equal ["fails in the built app only: core: An exception occurred during: before :all, at core/process/groups_spec.rb:9"],
+      differences.map { |d| d.to_s.lines.first.chomp.delete_prefix("DIFFERENT: ") }
+  end
+
+  # Logcat dropped a fifth of the listing an Android emulator's app
+  # printed in run 43350707323, so a phone's run writes it to a file and
+  # prints where, and the comparison reads it from there. The log is
+  # text and the file bytes, as the iOS run of 43354884978 found when a
+  # failure's message held "ê".
+  def test_a_phones_listing_is_read_from_the_file_it_names
+    output = "Expected \"ê\"\n1 file, 1 example, 1 expectation, 0 failures, 0 errors, 0 tagged\nruby/spec listing: in /data/user/0/a/cache/l.txt\n"
+    listing = "ruby/spec listing: begin\n@ core/array/each_spec.rb\n= core/array/each_spec.rb:9 Array#each yields ê\nruby/spec listing: 1 examples\n".b
+
+    run = RubySpec::Results.read(nil, RubySpec::Phone.listed(output) { |path| (path == "/data/user/0/a/cache/l.txt") ? listing : "" })
+    assert run.listing.complete?(run)
+    assert_equal "1 file\n", RubySpec::Phone.listed("1 file\n") { raise "no file to read" }
+  end
+
+  def test_a_run_with_no_listing_or_one_that_does_not_add_up_is_a_difference
+    finished = listed("core", [EACH])
+    unlisted = finished.with(listing: nil)
+
+    assert_equal ["DIFFERENT: core in the built app listed no examples, or not as many as its totals count"],
+      RubySpec::Results.compare([finished], [unlisted], platform: "x86_64-linux").map(&:to_s)
   end
 
   def test_the_same_failures_on_both_sides_are_no_difference

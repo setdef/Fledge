@@ -12,16 +12,29 @@ class RubySpec
   module Results
     # One run of mspec-run over +directory+ (core, library, ...):
     # +failures+, each failed or errored example's directory and
-    # description mapped to what MSpec printed about it, and +totals+,
+    # description mapped to what MSpec printed about it, +totals+,
     # MSpec's last line ("N files, N examples, ..."), or nil when the run
-    # stopped before it printed one.
-    class Run < Data.define(:directory, :failures, :totals)
+    # stopped before it printed one, and +listing+, the examples it ran
+    # (RubySpec::Listing), or nil when it printed none.
+    class Run < Data.define(:directory, :failures, :totals, :listing)
+      def initialize(directory:, failures:, totals:, listing: nil)
+        super
+      end
+
+      # How many examples the totals count, or nil.
+      def examples
+        totals.to_s[/(\d+) examples?,/, 1]&.to_i
+      end
     end
 
-    # An example that fails on one +side+ only (:stock or :app), or a
-    # run of +name+ that did not finish there (+stopped+), and the
-    # justification that explains it, or nil.
-    class Difference < Data.define(:name, :side, :stopped, :detail, :justification)
+    # A difference between the two sides, of a +kind+: an example that
+    # fails on one +side+ only (:stock or :app) (:fails), an example that
+    # runs on one side only (:runs), a run of +name+ that did not finish
+    # there (:stopped), or one whose list of the examples it ran is
+    # missing or does not add up to its totals (:listing); with what
+    # MSpec printed about it, and the justification that explains it, or
+    # nil.
+    class Difference < Data.define(:name, :side, :kind, :detail, :justification)
       SIDES = { stock: "stock Ruby", app: "the built app" }.freeze
 
       def justified?
@@ -30,11 +43,17 @@ class RubySpec
 
       def to_s
         status = justified? ? "justified" : "DIFFERENT"
-        return "#{status}: #{name} did not finish in #{SIDES.fetch(side)}" if stopped
-
-        lines = ["#{status}: fails in #{SIDES.fetch(side)} only: #{name}"]
+        where = SIDES.fetch(side)
+        lines = [
+          case kind
+          when :stopped then "#{status}: #{name} did not finish in #{where}"
+          when :listing then "#{status}: #{name} in #{where} listed no examples, or not as many as its totals count"
+          when :runs then "#{status}: runs in #{where} only: #{name}"
+          else "#{status}: fails in #{where} only: #{name}"
+          end,
+        ]
         lines << "    why: #{justification.reason}" if justification
-        lines.concat(detail.lines.first(6).map { |line| "    #{line.chomp}" }) unless justified?
+        lines.concat(detail.lines.first(6).map { |line| "    #{line.chomp}" }) unless justified? && kind != :runs
         lines.join("\n")
       end
     end
@@ -77,7 +96,7 @@ class RubySpec
         failures[[directory, description.dup.force_encoding(Encoding::UTF_8).scrub].compact.join(": ")] = detail
       end
       totals = lines.grep(/\A\d+ files?, \d+ examples?, /).last&.chomp
-      Run.new(directory:, failures:, totals:)
+      Run.new(directory:, failures:, totals:, listing: Listing.read(directory, lines))
     end
 
     # The name of an error outside any example, in +during+ (WHERE, as
@@ -111,31 +130,40 @@ class RubySpec
     end
 
     # The differences between the +stock+ and +app+ runs, Arrays of Run
-    # over the same directories, on +platform+.
+    # over the same directories in the same order, on +platform+: each
+    # run that did not finish, each example that fails on one side only,
+    # and each that runs on one side only (Listing.compare).
     def self.compare(stock, app, platform:)
       stopped = { stock:, app: }.flat_map do |side, runs|
         runs.select { |run| run.totals.nil? }.map do |run|
-          Difference.new(name: run.directory, side:, stopped: true, detail: "", justification: nil)
+          Difference.new(name: run.directory, side:, kind: :stopped, detail: "", justification: nil)
         end
       end
       stock_failures = stock.map(&:failures).reduce({}, :merge)
       app_failures = app.map(&:failures).reduce({}, :merge)
       only = { stock: stock_failures.except(*app_failures.keys), app: app_failures.except(*stock_failures.keys) }
-      stopped + only.flat_map do |side, failures|
+      failing = only.flat_map do |side, failures|
         failures.map do |name, detail|
           justification = JUSTIFIED.find { |candidate| candidate.explains?(name, side, platform) }
-          Difference.new(name:, side:, stopped: false, detail:, justification:)
+          Difference.new(name:, side:, kind: :fails, detail:, justification:)
         end
       end
+      stopped + failing + stock.zip(app).flat_map { |pair| Listing.compare(*pair, failing:, platform:) }
     end
   end
 
-  # An example that may fail on one +side+ only (:stock or :app), on
-  # +platforms+ (every platform when nil), when its directory and
-  # description match +example+, and why that is right.
-  class Justification < Data.define(:example, :side, :platforms, :reason)
-    def explains?(name, side_failing, platform)
-      side == side_failing && (platforms.nil? || platforms.include?(platform)) && example.match?(name)
+  # An example that may fail, or with +outcome+ :runs run, on one +side+
+  # only (:stock or :app), on +platforms+ (every platform when nil), when
+  # its directory and description match +example+, and why that is
+  # right.
+  class Justification < Data.define(:example, :side, :platforms, :reason, :outcome)
+    def initialize(example:, side:, platforms:, reason:, outcome: :fails)
+      super
+    end
+
+    def explains?(name, side_differing, platform, outcome_differing = :fails)
+      side == side_differing && outcome == outcome_differing && (platforms.nil? || platforms.include?(platform)) &&
+        example.match?(name)
     end
   end
 end

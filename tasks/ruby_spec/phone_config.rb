@@ -16,7 +16,8 @@
 # for each example, and names before each failure's description the
 # directory of the spec file it happened in, as the desktop's
 # comparison names each failure by its run's directory
-# (RubySpec::Results.read).
+# (RubySpec::Results.read), and after the totals lists the examples
+# that ran, as listing_config.rb does on the desktop.
 #
 # iOS lets no app run a program, Ruby least of all
 # (doc/contributors/design/phone-projects.md, "Parity on a phone"), so
@@ -32,8 +33,11 @@
 # examples, as it would on a desktop.
 
 require "mspec/runner/formatters/summary"
+require_relative "listing_config"
 
 class RubySpecPhoneFormatter < SummaryFormatter
+  include RubySpecListing
+
   # The folder of ruby/spec, which main.rb made the working folder
   # before mspec-run loaded this file.
   SPEC = "#{File.realpath(Dir.pwd)}/".freeze

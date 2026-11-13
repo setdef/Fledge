@@ -83,6 +83,8 @@ module Fledge
 
     private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
 
+    private def with_tools: (Hash[String, String] environment) -> Hash[String, String]
+
     private def toolchain_file: (String name, String text) -> String
 
     private def xcrun: (String sdk, *String arguments) -> String
@@ -99,7 +101,7 @@ module Fledge
 
     private def rake_build: () -> RakeBuild
 
-    private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target) -> Report
+    private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target, Hash[String, String?] env) -> Report
 
     private def source_root: (package package, String dir) -> String
 

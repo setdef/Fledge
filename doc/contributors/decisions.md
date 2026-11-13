@@ -433,3 +433,9 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: the agent's question whether to start that work.]
 
 *Governs:* gems whose libraries Ruby's ffi loads work on iOS and Android, and fiddle is in the iOS runtime, unless checked sources show App Review or iOS forbids them; the reason to leave either out must be cited, not assumed. *Applied in:* the work to add them.
+
+> TRULY justified? Every difference, every lack of parity, is a knife in Fledge's back that could kill the project before it launches.
+
+[re: the orchestrating agent's statement that every platform has 7 to 16 justified differences from `ruby main.rb` in the parity check, after two accepted justifications that day (Android's `$0 =` and `fiddle` on iOS) proved to be closable.]
+
+*Governs:* a difference from `ruby main.rb` is accepted only when it is inherent to where the app ships or a platform truly forbids what Ruby does, shown from primary sources; one that could be closed is a bug to fix. *Applied in:* the audits of every justification and exclusion.

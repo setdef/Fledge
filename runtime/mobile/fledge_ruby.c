@@ -43,7 +43,8 @@
  * with a Gemfile has Bundler set up its gems between ruby_options and
  * ruby_run_node, as the desktop launcher's setup_bundler does
  * (runtime/launcher/unix.c): BUNDLE_GEMFILE names the app's Gemfile, so
- * Bundler reads its settings from the app's .bundle/config beside it, and
+ * Bundler takes its settings from the app's .bundle/config beside it,
+ * through the environment (the launcher's bundler.c), and
  * bundler/setup, from Ruby's own library or from the gem of the Bundler
  * fledge.cfg names (the launcher's bundler.c; ADR 063), sets ENV as
  * bundle exec would (Bundler::Runtime#setup, set_bundle_environment, at
@@ -119,8 +120,8 @@ fledge_ruby_certificates(void)
 static int
 setup_bundler(void)
 {
-    static char require_bundler[512];
-    static char bundler_setup[512];
+    static char require_bundler[FLEDGE_BUNDLER_CODE_MAX];
+    static char bundler_setup[FLEDGE_BUNDLER_CODE_MAX];
     int state = 0;
 
     if (fledge_bundler_code(require_bundler, sizeof require_bundler, bundle_bundler, 0) != 0 ||

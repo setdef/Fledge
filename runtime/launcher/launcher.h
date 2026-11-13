@@ -68,6 +68,9 @@ char *fledge_bundle_environment_code(const char *variables, size_t length);
  */
 int fledge_bundler_code(char *code, size_t size, const char *version, int setup);
 
+/* Room enough for the code fledge_bundler_code writes. */
+#define FLEDGE_BUNDLER_CODE_MAX 2048
+
 /* The file beside the launcher that says what the app runs (config.c). */
 #define FLEDGE_CONFIG "fledge.cfg"
 

@@ -32,6 +32,7 @@ A recipe builds only on the computers it names (`Recipe#hosts`): each Unix runti
 | `bin/ruby` | Ruby's own `main.c` (`runtime/launcher/ruby_main.c`), linked with the same libruby and the same link line, so `RbConfig.ruby` and `Gem.ruby` run. Given the app's own program, it hands it back to the app's launcher (ADR 026; `doc/contributors/design/launcher.md`). |
 | `bin/*` | The default and bundled gems' executables, as rv-ruby installs them. |
 | `include/ruby-X.Y.0/` | Ruby's C headers, which `require "mkmf"` reads at run time (ADR 039). |
+| `lib/libruby*-static.a` | Ruby's static library, which `mkmf` links the test program of every `have_func`, `have_library`, and `try_link` against ("What a runtime keeps"). |
 | `lib/ruby/` | The standard library, `gems/X.Y.0` with every default and bundled gem, `site_ruby`, and `vendor_ruby`, as Ruby lays them out. |
 | `lib/libcrypt.so.2` | libxcrypt, glibc Linux only (ADR 042). |
 | `libexec/cert.pem` | Mozilla's CA bundle, which Ruby's `openssl.rb` points OpenSSL at unless `SSL_CERT_FILE` names others. |
@@ -140,22 +141,23 @@ Everything a standard Ruby of the pinned version installs that running Ruby code
 - every default gem, and every gem `runtime/sources.yml`'s `bundled_gems` lists that the Ruby installs (rv-ruby installs all but win32ole and win32-registry, which only Windows builds; RubyInstaller all but syslog, which needs a Unix);
 - each gem's executables, its `.gem` in the cache (`gem pristine` and `Gem::Specification#cache_file` read it), its build information, plugins, and C extensions, and the libraries those extensions carry;
 - Ruby's own programs: Fledge's `bin/ruby` on macOS and Linux, and RubyInstaller's `ruby.exe` and `rubyw.exe` and the gems' command-line wrappers (`gem.cmd`, `bundle.bat`, and the rest) on Windows;
+- the library `mkmf` links its checks against: on macOS and Linux the static libruby beside `lib/ruby`, and on Windows the import library of Ruby's DLL (`lib\*.dll.a`). `mkmf` links each check's program against `$(LIBRUBYARG)` (`mkmf.rb`, lines 541 to 553, at Ruby 4.1.0-preview1), which for a static Ruby names `-lruby.X.Y-static` in `$(libdir)`; without the file an app's own `have_func` raises "The compiler failed to generate an executable file". rv-ruby's `lib/libcrypt.a` stays out: it is libxcrypt, which is LGPL, and the linker finds the system's `-lcrypt`;
 - Ruby's C headers, `include/`, since `require "mkmf"` aborts without `ruby/ruby.h` ("mkmf.rb can't find header files for ruby", `mkmf.rb` line 253 at Ruby 4.1.0-preview1);
 - on Windows, every DLL, those Fledge adds among them, since an extension's manifest may name any of them, and RubyInstaller's own Ruby library in `site_ruby`.
 
 ## What a runtime prunes, and why nothing reads it
 
-`RuntimeBuilder::Pruning.prune` (every Unix and phone runtime, and `ruby\lib\ruby` on Windows) and `prune_windows` give each removal its reason in their comments. The Unix recipe also copies only `bin/`, `lib/ruby`, `include/`, and `libexec/cert.pem` from rv-ruby's prefix, so `share/` (man pages and documentation) never comes along.
+`RuntimeBuilder::Pruning.prune` (every Unix and phone runtime, and `ruby\lib\ruby` on Windows) and `prune_windows` give each removal its reason in their comments. The Unix recipe also copies only `bin/`, `lib/ruby`, the static libruby, `include/`, and `libexec/cert.pem` from rv-ruby's prefix, so `share/` (man pages and documentation) never comes along.
 
 | Removed | Why no app can miss it |
 |---|---|
 | `*.dSYM` | macOS debug symbols, read by debuggers and crash reporters, never by Ruby. |
-| `*.a`, `*.h` under `lib/ruby`, `pkgconfig/` | Static libraries, the C headers of gems' extensions, and pkg-config files, for compiling against Ruby. Ruby code never loads them, and Ruby's own headers in `include/` stay. |
+| `*.a`, `*.h` under `lib/ruby`, `pkgconfig/` | Static libraries, the C headers of gems' extensions, and pkg-config files, for compiling against Ruby. Ruby code never loads them, and `mkmf` reads none of them. Ruby's own headers in `include/` and the static libruby beside `lib/ruby` stay. |
 | `lib/ruby/gems/X.Y.0/doc` | RDoc and ri documentation, read by the `rdoc` and `ri` tools a developer runs, never by an app's requires. |
 | nkf's `ext/java/` | See "nkf's JRuby sources". |
 | `portable_ruby_gems.rb`, and every gem that is neither a default gem nor in `bundled_gems` | rv-ruby's own additions, a load-path helper and the bootsnap and msgpack gems. No standard Ruby installs them, so an app that worked under `ruby` never needed them. Each goes with its specification, cache, build information, extensions, and executables. |
 | Windows: `share\` | Ruby's HTML documentation and ri data. |
-| Windows: `lib\*.a`, `lib\pkgconfig` | Import libraries and pkg-config files, for compiling against Ruby. The import library of Ruby's DLL goes to the build-only companion. |
+| Windows: `lib\*.a`, `lib\pkgconfig` | Static libraries and pkg-config files, for compiling against Ruby. The import library of Ruby's DLL (`lib\*.dll.a`) stays, for `mkmf`. |
 | Windows: `packages\`, `ridk_use\`, `bin\ridk.cmd`, `bin\ridk.ps1`, `bin\setrbvars.cmd`, `bin\startmenu.rb` | The MSYS2 keyring and `ridk`, which install and select MSYS2 compilers for a developer, and the scripts that set up a developer's shell and Start menu. They work only beside an installed RubyInstaller and MSYS2. |
 
 Extensions are also stripped of debug sections on Linux, and the programs Fledge links are stripped.
@@ -175,7 +177,7 @@ Every runtime ships `runtime/rubygems/operating_system.rb` as `lib/ruby/X.Y.0/ru
 - **The app's gems are the runtime's alone.** `Gem.default_path` is `[Gem.default_dir]`. Left alone, it puts `Gem.user_dir` first whenever the person's home folder exists, so a gem the person installed with their own Ruby of the same minor would shadow the app's, json included.
 - **A bundled gem the Gemfile does not name activates under a frozen bundle.** While `Gem::BUNDLED_GEMS.force_activate` runs (for `binding.irb`, say), and only on its thread, Bundler is told its bundle is not frozen; the temporary bundle is still never locked. The reason, and the frozen `.bundle/config`, are `doc/contributors/design/gems.md`, "binding.irb and force_activate".
 
-RubyInstaller's own `operating_system.rb` is for a developer's Ruby: it writes and deletes a file in the runtime's gem folder on every start, creates `%ProgramData%\gemrc`, searches for MSYS2 and adds its DLL folder, and leaves `Gem.user_dir` first in `Gem.path`. A runtime needs none of it: RubyInstaller's DLLs load through their manifests without its runtime, and compiling a gem enables MSYS2 through RubyInstaller's Ruby library, which the runtime keeps (`doc/contributors/design/gems.md`).
+RubyInstaller's own `operating_system.rb` is for a developer's Ruby: it writes and deletes a file in the runtime's gem folder on every start, creates `%ProgramData%\gemrc`, searches for MSYS2 and adds its DLL folder, and leaves `Gem.user_dir` first in `Gem.path`. A runtime needs none of it: RubyInstaller's DLLs load through their manifests without its runtime, and compiling a gem enables MSYS2 through RubyInstaller's Ruby library, which the runtime keeps (`doc/contributors/design/gems.md`). Fledge's file on Windows requires `ruby_installer/runtime` and calls nothing, so `RubyInstaller` is defined, as under `ruby.exe`, and a gem that tests `defined?(RubyInstaller)`, such as mysql2, takes the branch it takes there.
 
 The parity check allows the defaults' trace in `$LOADED_FEATURES` (`Parity::JUSTIFIED`).
 
@@ -197,7 +199,7 @@ Each desktop runtime build writes a companion, `fledge-runtime-VERSION-PLATFORM-
 - on Windows, the import library of Ruby's DLL (`ruby/lib/*.dll.a`);
 - `DEV-NOTICES.txt`, which says what the archive is, then Ruby's license, and beside a static libruby Rust's too, since YJIT compiles in Rust's standard library.
 
-**Why it is apart from the runtime.** A runtime prunes what no running code reads, static and import libraries among it, and its SBOM lists every file it holds; it cannot carry them and still be exactly what ships. The companion holds only these, which `runtime/licenses.yml` already owns as Ruby's, and never rv-ruby's `lib/libcrypt.a`, which is libxcrypt. `Fledge::Runtimes#dev_archive` finds it as it finds a runtime, checked against the SHA-256 the gem pins (ADR 014), and `fledge build` fetches it only when it compiles a gem (ADR 006). Nothing in it is copied into an app. Phone runtimes have no companion: their libraries and headers are in the runtime itself.
+**The companion is redundant, and its removal is pending.** Every desktop runtime now keeps the library the companion holds, so the runtime alone serves `fledge build` and an app's own `mkmf`. The companion still ships until a change removes it. It holds only that library, which `runtime/licenses.yml` already owns as Ruby's, and never rv-ruby's `lib/libcrypt.a`, which is libxcrypt. `Fledge::Runtimes#dev_archive` finds it as it finds a runtime, checked against the SHA-256 the gem pins (ADR 014), and `fledge build` still fetches it, only when it compiles a gem (ADR 006). Nothing in it is copied into an app. Phone runtimes have no companion: their libraries and headers are in the runtime itself.
 
 ## Platform names and asset names
 

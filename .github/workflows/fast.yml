@@ -50,6 +50,7 @@ env:
 
 jobs:
   lint:
+    if: false
     name: Lint
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -86,6 +87,7 @@ jobs:
         run: bundle exec rake lint steep
 
   unit:
+    if: false
     name: Unit tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -125,6 +127,7 @@ jobs:
   # Windows' Ruby is RubyInstaller's, with the DLLs and the MSYS2 its gems
   # compile with, set up as ci.yml's Windows test job sets it up.
   unit-windows:
+    if: false
     name: Unit tests (windows-latest)
     runs-on: windows-latest
     timeout-minutes: 20

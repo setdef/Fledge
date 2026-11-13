@@ -9,14 +9,15 @@
 #
 #   pwsh -NoProfile -File deliver-msix.ps1 -Package "Hello Window-x64-mingw-ucrt.msix"
 #     -Signed "signed/Hello Window-x64-mingw-ucrt.msix" -Certificate certificate.cer
-#     [-Store Cert:\CurrentUser\TrustedPeople] [-Trusted]
+#     [-StoreLocation CurrentUser] [-Trusted] [-UntrustedOnly]
 #
 # The unsigned package must hold the app's identity in its manifest, its
 # logos, its program, and a fledge.cfg with no identifier, and Windows
 # must refuse to install it. The signed one must be refused too until
-# the certificate is trusted, in the store -Store names
-# (Cert:\LocalMachine\TrustedPeople by default, as Microsoft's "Create a
-# certificate for package signing" trusts one; -Trusted skips the
+# the certificate is trusted, in the Trusted People store of
+# -StoreLocation (LocalMachine by default, as Microsoft's "Create a
+# certificate for package signing" trusts one, which needs an
+# administrator, as GitHub's Windows runners are; -Trusted skips the
 # refusal, when an earlier step trusted the certificate already). Then
 # Add-AppxPackage must install it with the app's identity, list it in
 # the Start menu's apps by its name, and register its file type in the
@@ -25,16 +26,26 @@
 # app must write its report there, which says it ran with the package's
 # identity, with no console, and with no AppUserModelID of its own in
 # place of the package's. Removed, it must leave nothing registered.
+#
+# Windows accepts a sideloaded package only when the root of its
+# signature is trusted machine-wide: a certificate in the current user's
+# TrustedPeople store is still refused with 0x800B0109, and one in the
+# current user's Root store raises a dialog. So -UntrustedOnly, for a
+# computer without an administrator, stops after the two refusals and
+# installs nothing. A failure to trust the certificate, or to install
+# the package once it is trusted, is reported by name and fails the
+# script.
 
 param(
   [Parameter(Mandatory)] [string] $Package,
   [Parameter(Mandatory)] [string] $Signed,
   [Parameter(Mandatory)] [string] $Certificate,
-  [string] $Store = 'Cert:\LocalMachine\TrustedPeople',
+  [ValidateSet('LocalMachine', 'CurrentUser')] [string] $StoreLocation = 'LocalMachine',
   [string] $Identifier = 'com.setdef.fledge.HelloWindow',
   [string] $Publisher = 'CN=Fledge Test Signing',
   [string] $Work = $env:RUNNER_TEMP,
-  [switch] $Trusted
+  [switch] $Trusted,
+  [switch] $UntrustedOnly
 )
 
 Set-StrictMode -Version Latest
@@ -151,11 +162,31 @@ if (-not $Trusted) {
   if (-not $refusal) { Fail 'Windows installed the signed package before it trusted the test certificate' }
   Write-Host "ok: before the certificate is trusted, Windows refuses the signed package: $($refusal.Trim())"
 }
-$certificate = Import-Certificate -FilePath $Certificate -CertStoreLocation $Store
-Write-Host "Trusted $($certificate.Subject) in $Store"
+if ($UntrustedOnly) {
+  Write-Host 'Delivered: the MSIX packages are refused as they should be; nothing was installed, as this run cannot trust the certificate machine-wide'
+  exit 0
+}
+
+# Through .NET's store, not the PKI module's Import-Certificate, which
+# PowerShell 7 reaches through a Windows PowerShell session, and whose
+# result had no Subject when this ran as a standard user.
+$trust = $null
+try {
+  $trust = [Security.Cryptography.X509Certificates.X509Certificate2]::new($Certificate)
+  $store = [Security.Cryptography.X509Certificates.X509Store]::new('TrustedPeople', $StoreLocation)
+  $store.Open('ReadWrite')
+  try { $store.Add($trust) } finally { $store.Close() }
+} catch {
+  Fail "could not trust $Certificate in $StoreLocation\TrustedPeople: $($_.Exception.Message)"
+}
+Write-Host "Trusted $($trust.Subject) in $StoreLocation\TrustedPeople"
 
 try {
-  Add-AppxPackage -Path $Signed
+  try {
+    Add-AppxPackage -Path $Signed
+  } catch {
+    Fail "Windows refused the signed package although $($trust.Subject) is trusted in $StoreLocation\TrustedPeople: $($_.Exception.Message.Trim())"
+  }
   $installed = Get-AppxPackage -Name $Identifier
   if (-not $installed) { Fail "Get-AppxPackage finds no $Identifier after the install" }
   Expect 'the installed publisher' $installed.Publisher $Publisher
@@ -204,7 +235,7 @@ try {
 } finally {
   $left = Get-AppxPackage -Name $Identifier
   if ($left) { Remove-AppxPackage -Package $left.PackageFullName -ErrorAction SilentlyContinue }
-  Remove-Item -LiteralPath (Join-Path $Store $certificate.Thumbprint) -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath "Cert:\$StoreLocation\TrustedPeople\$($trust.Thumbprint)" -ErrorAction SilentlyContinue
 }
 
 Write-Host "Delivered: $appName's MSIX package, installed, run, and removed"

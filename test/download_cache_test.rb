@@ -165,6 +165,37 @@ class DownloadCacheTest < Minitest::Test
     server&.stop
   end
 
+  # Standard output that counts its flushes.
+  class Flushed < StringIO
+    attr_reader :flushes
+
+    def flush
+      @flushes = @flushes.to_i + 1
+      super
+    end
+  end
+
+  # A build's log is a pipe, where Ruby holds standard output back until
+  # its buffer fills, so a download's lines are flushed as they are
+  # written, and a long one says how far it got.
+  def test_a_slow_download_reports_its_progress_on_standard_output_at_once
+    slowly = -> (client) { BODY.each_char.each_slice(2_000) { |bytes| client.write(bytes.join) && sleep(0.05) } }
+    server = LoopbackServer.new({ "/musl.tar.gz" => [200, { "Content-Length" => BODY.bytesize.to_s }, slowly] })
+    out = Flushed.new
+    $stdout = out
+    Dir.mktmpdir do |dir|
+      cache(dir, pace: Fledge::Download::Pace.new(bytes: 1, seconds: 5, report: 0.1)).fetch(server.url("/musl.tar.gz"), SHA)
+    end
+    lines = out.string.lines(chomp: true)
+
+    assert_equal "Downloading #{server.url('/musl.tar.gz')}", lines.first
+    assert_match(%r{\Amusl\.tar\.gz: \d+\.\d MB of 0\.0 MB \(\d+%\), \d+\.\d MB/s\z}, lines[1])
+    assert_equal lines.size, out.flushes
+  ensure
+    $stdout = STDOUT
+    server&.stop
+  end
+
   def test_a_4xx_is_not_retried
     server = LoopbackServer.new({ "/gone" => [404, {}, ""], "/denied" => [403, {}, ""], "/bad" => [400, {}, ""] })
     Dir.mktmpdir do |dir|

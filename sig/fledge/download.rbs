@@ -24,6 +24,19 @@ module Fledge
     class Unreachable < Error
     end
 
+    class Stalled < Unreachable
+    end
+
+    class Pace < Data
+      attr_reader bytes: Integer
+      attr_reader seconds: Float | Integer
+      attr_reader report: Float | Integer
+
+      def self.new: (bytes: Integer, seconds: Float | Integer, report: Float | Integer) -> instance
+    end
+
+    PACE: Pace
+
     class Mismatch < Error
       attr_reader actual: String
 
@@ -34,19 +47,19 @@ module Fledge
 
     def self.read: (String url) -> String
 
-    def self.save: (String url, to: String, sha256: String, ?credentials: String?, ?waits: Array[Integer], ?log: CLI::_Output?) -> String
+    def self.save: (String url, to: String, sha256: String, ?credentials: String?, ?waits: Array[Integer], ?log: CLI::_Output?, ?pace: Pace) -> String
 
-    private def self.stream: (String url, String partial, String? credentials) -> String
+    private def self.stream: (String url, String partial, String? credentials, Pace pace, CLI::_Output? log) -> String
 
     private def self.again: [T] (Array[Integer] waits, CLI::_Output? log) { () -> T } -> T
 
     private def self.verify: (String url, String actual, String expected) -> void
 
-    private def self.get: (String url, ?Integer redirects, ?credentials: String?) { (Net::HTTPResponse) -> void } -> void
+    private def self.get: (String url, ?Integer redirects, ?credentials: String?, ?pace: Pace) { (Net::HTTPResponse) -> void } -> void
 
     private def self.status_error: (String url, Net::HTTPResponse response) -> Unsuccessful
 
-    private def self.follow: (URI::Generic from, String location, Integer redirects, String? credentials) { (Net::HTTPResponse) -> void } -> void
+    private def self.follow: (URI::Generic from, String location, Integer redirects, String? credentials, Pace pace) { (Net::HTTPResponse) -> void } -> void
 
     private def self.login: (String credentials) -> [String, String]
   end

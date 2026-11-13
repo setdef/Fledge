@@ -28,12 +28,15 @@ class DownloadCache
   # GitHub or Gradle fails now and then, and passes a minute later). Any
   # other failure, a 4xx or a SHA-256 mismatch, is final at once. These
   # tries replace Fledge::Download.save's own shorter ones, which a
-  # developer at a terminal waits for, rather than multiply them.
-  def initialize(folder, tries: TRIES, first_wait: FIRST_WAIT, sleeper: Kernel.method(:sleep))
+  # developer at a terminal waits for, rather than multiply them. A
+  # download slower than +pace+ (Fledge::Download::PACE) has stalled, and
+  # is tried again as a broken connection is.
+  def initialize(folder, tries: TRIES, first_wait: FIRST_WAIT, sleeper: Kernel.method(:sleep), pace: Fledge::Download::PACE)
     @folder = folder
     @tries = tries
     @first_wait = first_wait
     @sleeper = sleeper
+    @pace = pace
   end
 
   # The path of +url+'s file in the cache, downloaded and checked against
@@ -59,7 +62,7 @@ class DownloadCache
   private def save_with_retries(source, path, sha256)
     tries = 1
     begin
-      Fledge::Download.save(source, to: path, sha256:, waits: [])
+      Fledge::Download.save(source, to: path, sha256:, waits: [], log: self, pace: @pace)
     rescue Fledge::Download::Unavailable, Fledge::Download::Unreachable => e
       raise if tries >= @tries
 
@@ -69,5 +72,16 @@ class DownloadCache
       tries += 1
       retry
     end
+  end
+
+  # Writes +lines+ to standard output and flushes it, so a build log
+  # shows each download as it starts and moves. Through a pipe, Ruby
+  # holds standard output back until its buffer fills, and a build killed
+  # for taking too long would lose what it said last. Fledge::Download
+  # reports a download's progress here.
+  def puts(*lines)
+    $stdout.puts(*lines)
+    $stdout.flush
+    nil
   end
 end

@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  module Download
+    class Meter
+      @url: String
+      @pace: Pace
+      @total: Integer?
+      @log: CLI::_Output?
+      @name: String
+      @started: Float
+      @window: Float
+      @reported: Float
+      @bytes: Integer
+      @window_bytes: Integer
+
+      def initialize: (String url, Pace pace, Integer? total, CLI::_Output? log) -> void
+
+      def add: (Integer size) -> void
+
+      private def check: (Float time) -> void
+
+      private def report: (Float time) -> void
+
+      private def of_total: () -> String
+
+      private def megabytes: (Float | Integer bytes) -> String
+
+      private def now: () -> Float
+    end
+  end
+end

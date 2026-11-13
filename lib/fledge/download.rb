@@ -86,6 +86,30 @@ module Fledge
     # or unresolvable): the same request may succeed a moment later.
     class Unreachable < Error; end
 
+    # A connection that kept sending, but too slowly to finish: it is
+    # Unreachable, and tried again, as curl gives up a transfer slower
+    # than its <tt>--speed-limit</tt> and Cargo retries one slower than
+    # its <tt>http.low-speed-limit</tt>.
+    class Stalled < Unreachable; end
+
+    # How slow a download may go, and how often a long one says how far
+    # it got. One that moves fewer than +bytes+ a second, on average, over
+    # +seconds+ (which is also the longest any one read may wait) has
+    # stalled, as curl's <tt>--speed-limit</tt> and
+    # <tt>--speed-time</tt> decide. One still going after +report+
+    # seconds says on the log how far it got, and again every +report+
+    # seconds.
+    class Pace < Data.define(:bytes, :seconds, :report); end
+
+    # The pace every download keeps: 10 kB a second over 30 seconds, and
+    # a report every 15 seconds. curl's window is 30 seconds once it is
+    # asked for a floor, and Cargo's floor is 10 bytes a second over 30;
+    # Fledge's files are tens to hundreds of megabytes, where 10 kB a
+    # second already means hours, and a new connection usually reaches a
+    # faster server (doc/contributors/design/runtimes.md, "Download
+    # retries").
+    PACE = Pace.new(bytes: 10_000, seconds: 30, report: 15)
+
     # A download whose SHA-256 is not the one it was pinned to.
     class Mismatch < Error
       # The SHA-256 of what the server sent.
@@ -139,7 +163,9 @@ module Fledge
     # after each of +waits+, in seconds, saying so on +log+ when one is
     # given, and the last failure is raised when they run out. Any other
     # failure is raised at once, and every try is checked against
-    # +sha256+.
+    # +sha256+. A try held below +pace+ (a Pace, by default PACE) raises
+    # Fledge::Download::Stalled, an Unreachable, and one that takes long
+    # says on +log+ how far it got.
     #
     # === Example
     #
@@ -152,25 +178,27 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.save(url, to:, sha256:, credentials: nil, waits: WAITS, log: nil)
+    def self.save(url, to:, sha256:, credentials: nil, waits: WAITS, log: nil, pace: PACE)
       FileUtils.mkdir_p(File.dirname(to))
       partial = "#{to}.part"
-      verify(url, again(waits, log) { stream(url, partial, credentials) }, sha256)
+      verify(url, again(waits, log) { stream(url, partial, credentials, pace, log) }, sha256)
       File.rename(partial, to)
       to
     ensure
       FileUtils.rm_f(partial) if partial
     end
 
-    # Writes the body at +url+ to +partial+, from its first byte, and
-    # returns its SHA-256.
-    private_class_method def self.stream(url, partial, credentials) # :nodoc:
+    # Writes the body at +url+ to +partial+, from its first byte, held to
+    # +pace+ and reporting on +log+, and returns its SHA-256.
+    private_class_method def self.stream(url, partial, credentials, pace, log) # :nodoc:
       digest = Digest::SHA256.new
       File.open(partial, "wb") do |file|
-        get(url, credentials:) do |response|
+        get(url, credentials:, pace:) do |response|
+          meter = Meter.new(url, pace, response.content_length, log)
           response.read_body do |chunk|
             digest << chunk
             file.write(chunk)
+            meter.add(chunk.bytesize)
           end
         end
       end
@@ -207,11 +235,11 @@ module Fledge
     # Net::HTTP would otherwise take for the whole body (+ignore_eof+ is
     # true by default), so a connection that broke off is Unreachable
     # and tried again, not a Mismatch.
-    private_class_method def self.get(url, redirects = REDIRECTS, credentials: nil, &block) # :nodoc:
+    private_class_method def self.get(url, redirects = REDIRECTS, credentials: nil, pace: PACE, &block) # :nodoc:
       uri = URI(url)
       raise Error, "#{url} is not an http or https URL" unless uri.is_a?(URI::HTTP) && uri.host
 
-      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", ignore_eof: false) do |http|
+      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", ignore_eof: false, read_timeout: pace.seconds) do |http|
         request = Net::HTTP::Get.new(uri.request_uri)
         if credentials
           user, password = login(credentials)
@@ -220,7 +248,7 @@ module Fledge
         http.request(request) do |response|
           case response
           when Net::HTTPSuccess then block.call(response)
-          when Net::HTTPRedirection then follow(uri, response["location"].to_s, redirects, credentials, &block)
+          when Net::HTTPRedirection then follow(uri, response["location"].to_s, redirects, credentials, pace, &block)
           when Net::HTTPUnauthorized, Net::HTTPForbidden
             raise Refused.new("could not download #{url}: #{response.code} #{response.message}", response.code.to_i)
           when Net::HTTPNotFound, Net::HTTPGone
@@ -242,13 +270,13 @@ module Fledge
       kind.new("could not download #{url}: #{response.code} #{response.message}", status)
     end
 
-    private_class_method def self.follow(from, location, redirects, credentials, &) # :nodoc:
+    private_class_method def self.follow(from, location, redirects, credentials, pace, &) # :nodoc:
       raise Error, "#{from} redirected more than #{REDIRECTS} times" if redirects.zero?
 
       to = from.merge(location)
       raise Error, "#{from} redirected from HTTPS to plain HTTP (#{to}); refusing" if from.scheme == "https" && to.scheme != "https"
 
-      get(to.to_s, redirects - 1, credentials: (credentials if to.host == from.host && to.port == from.port), &)
+      get(to.to_s, redirects - 1, credentials: (credentials if to.host == from.host && to.port == from.port), pace:, &)
     end
 
     # The user and password in +credentials+, decoded as a URL's are.
@@ -258,3 +286,4 @@ module Fledge
     end
   end
 end
+require_relative "download/meter"

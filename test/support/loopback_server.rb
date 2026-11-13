@@ -16,16 +16,21 @@ class LoopbackServer
   # [status, headers, body], or to something whose call returns one, for a
   # route whose answer changes from one request to the next. A route's
   # own Content-Length wins over the body's, so a route can promise more
-  # than it sends and close, as a connection broken off does. With
-  # +credentials+ ("user:password"), every request without that HTTP
-  # Basic login gets 401, as a credentialed gem server answers.
+  # than it sends and close, as a connection broken off does. A body that
+  # responds to +call+ is called with the connection once the headers are
+  # sent, so a route can send its body slowly, or stop sending, as a
+  # stalled server does. Each connection is served on a thread of its own,
+  # so a stalled one holds up no other. With +credentials+
+  # ("user:password"), every request without that HTTP Basic login gets
+  # 401, as a credentialed gem server answers.
   def initialize(routes = {}, credentials: nil, **inline)
     @routes = inline.empty? ? routes : routes.merge(inline)
     @credentials = credentials
     @authorizations = []
     @server = TCPServer.new("127.0.0.1", 0)
     @requests = []
-    @thread = Thread.new { loop { serve(@server.accept) } }
+    @clients = []
+    @thread = Thread.new { loop { serve_on_its_own(@server.accept) } }
   end
 
   def url(path)
@@ -34,11 +39,16 @@ class LoopbackServer
 
   def stop
     @thread.kill
+    @clients.each(&:kill)
     @server.close
   end
 
   private def login
     "Basic #{[@credentials.to_s].pack('m0')}"
+  end
+
+  private def serve_on_its_own(client)
+    @clients << Thread.new { serve(client) }
   end
 
   private def serve(client)
@@ -52,8 +62,12 @@ class LoopbackServer
     answer = @routes.fetch(path) { [404, {}, "missing"] }
     status, headers, body = answer.respond_to?(:call) ? answer.call : answer
     status, headers, body = [401, { "WWW-Authenticate" => "Basic realm=\"gems\"" }, "login"] if @credentials && authorization != login
-    headers = { "Content-Length" => body.bytesize.to_s, "Connection" => "close" }.merge(headers)
-    client.write("HTTP/1.1 #{status} X\r\n#{headers.map { |k, v| "#{k}: #{v}\r\n" }.join}\r\n#{body}")
+    headers = { "Connection" => "close" }.merge(headers)
+    headers = { "Content-Length" => body.bytesize.to_s }.merge(headers) unless body.respond_to?(:call)
+    client.write("HTTP/1.1 #{status} X\r\n#{headers.map { |k, v| "#{k}: #{v}\r\n" }.join}\r\n")
+    body.respond_to?(:call) ? body.call(client) : client.write(body)
+  rescue IOError, SystemCallError
+    nil
   ensure
     client.close
   end

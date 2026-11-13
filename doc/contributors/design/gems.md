@@ -69,7 +69,7 @@ The app's `.bundle/config` keeps `BUNDLE_VERSION: "system"`, so neither the app'
 2. the `cache` folder of each folder on RubyGems' path;
 3. Fledge's own cache, `gems/` beside its runtimes (`$XDG_CACHE_HOME/fledge/gems`, or `~/.cache/fledge/gems`).
 
-Otherwise it downloads `REMOTE/gems/FILE` into its own cache through `Fledge::Download`, which streams to a `.part` file, checks the SHA-256, and only then moves it into place.
+Otherwise it downloads `REMOTE/gems/FILE` into its own cache through `Fledge::Download`, which takes the lock on the file, streams to a `.part` file, checks the SHA-256, and only then moves it into place, so builds at once download each gem once (`doc/contributors/design/runtimes.md`, "Download retries").
 
 **Sources, mirrors, and logins.** `Fledge::Bundle::Sources` builds each gem's remote with `Bundler::Source::Rubygems::Remote`, which applies `Bundler.settings.mirror_for` (`bundle config mirror.URL`) and `credentials_for` (`bundle config HOST USER:PASSWORD`, `BUNDLE_HOST`, or a login in the Gemfile's source URL), the same two calls Bundler's fetcher makes, with Bundler's root at the project. `Fledge::LockedGem` keeps the address (with the mirror, without the login) and the login apart, so no message shows a password. The login goes by HTTP Basic authentication to that host and port only, never to another host a redirect leads to. A redirect from HTTPS to plain HTTP is refused. Fledge adds no `fallback_timeout` probe of its own: `mirror_for` runs Bundler's.
 

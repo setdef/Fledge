@@ -149,8 +149,11 @@ def main_bundle
   identifier.null? ? nil : message.call(identifier, selector.call("UTF8String")).to_s
 end
 
-# The title the probe gives its process with $0=.
-TITLE = "fledge-parity-title"
+# The title the probe gives its process with $0=: 150 characters, longer
+# than the arguments an Android app's process started with, so that it
+# fits only where Ruby writes on into the environment's strings, as on
+# Linux.
+TITLE = "fledge-parity-title-#{'x' * 130}".freeze
 
 # Whether, once $0 = TITLE, the system names the process by it: the first
 # word of its command line, as ps reads it, is TITLE. That is

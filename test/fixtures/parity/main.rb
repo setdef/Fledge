@@ -276,6 +276,8 @@ def facts
     "RbConfig.ruby" => RbConfig.ruby,
     "RbConfig.ruby is a program" => File.file?(RbConfig.ruby) && File.executable?(RbConfig.ruby),
     "RbConfig.ruby runs" => child_ruby("print 6 * 7"),
+    # What require "mkmf" looks for before it aborts (lib/mkmf.rb).
+    "Ruby's headers" => File.exist?(File.join(RbConfig::CONFIG["rubyhdrdir"], "ruby", "ruby.h")),
     "Gem.ruby" => Gem.ruby,
     "Gem.path" => Gem.path,
     "Gem.dir" => Gem.dir,

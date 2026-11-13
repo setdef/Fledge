@@ -91,6 +91,8 @@ class MobileBuildTest < Minitest::Test
     assert_equal "puts 'hi'\n", File.read(File.join(project, "fledge/app/main.rb"))
     assert_equal "# stdlib\n", File.read(File.join(project, "fledge/lib/ruby/stdlib.rb")), "the runtime's Ruby is the asset's"
     assert_equal "certificates\n", File.read(File.join(project, "fledge/libexec/cert.pem"))
+    assert_equal "/* ruby.h */\n", File.read(File.join(project, "fledge/include/ruby-4.1.0+5/ruby.h")), "mkmf finds Ruby's headers"
+    refute_path_exists File.join(project, "fledge/include/fledge_ruby.h"), "the app's Ruby has Ruby's headers, not the embedding API's"
     assert_equal "Fledge's runtime for android\n", File.read(File.join(project, "fledge/notices/NOTICES.txt")), "the app carries the notices"
     assert_equal "PK aar", File.read(File.join(project, "libs/FledgeRuby.aar"))
     # Windows keeps no executable bit, and runs the wrapper's batch file.
@@ -198,6 +200,8 @@ class MobileBuildTest < Minitest::Test
     assert_equal "puts 'hi'\n", File.read(File.join(project, "fledge/app/main.rb"))
     assert_path_exists File.join(project, "fledge/fledge.cfg")
     refute_path_exists File.join(project, "fledge/lib"), "the build copies each slice's Ruby, so ROOT holds none of its own"
+    copy = spec.dig("targets", "My App", "postCompileScripts", 0, "script")
+    assert_includes copy, "ditto \"$PROJECT_DIR/FledgeRuby.xcframework/$slice/include\" \"$root/include\"\n", "mkmf finds Ruby's headers"
   end
 
   def test_an_ios_app_without_an_icon_has_no_asset_catalog

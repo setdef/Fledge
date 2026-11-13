@@ -46,7 +46,7 @@ On macOS and Linux, `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first
 
 ## C headers
 
-The app carries Ruby's C headers, so `require "mkmf"` and `find_executable` work. Fledge leaves out the static and import libraries, so an app cannot compile an extension. On a phone, `mkmf` cannot load.
+The app carries Ruby's C headers, so `require "mkmf"` and `find_executable` work. Fledge leaves out the static and import libraries, so an app cannot compile an extension. On a phone the same holds: `mkmf` loads, and nothing compiles.
 
 ## On a phone
 

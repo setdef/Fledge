@@ -156,16 +156,16 @@ class MobileRuntimeTest < Minitest::Test
     end
   end
 
-  # Android lets an app write code and run it, so its Ruby has YJIT, as
-  # a desktop's does, compiled by rustc for each target and taken into
-  # libruby by the NDK's linker and objcopy, not the build machine's.
-  # iOS gives an app no such memory, so its Ruby has no JIT.
-  def test_android_ruby_has_yjit_as_a_desktops_does_and_ios_ruby_none
+  # Android lets an app write code and run it, so its Ruby has YJIT and
+  # ZJIT, as a desktop's does, compiled by rustc for each target and
+  # taken into libruby by the NDK's linker and objcopy, not the build
+  # machine's. iOS gives an app no such memory, so its Ruby has no JIT.
+  def test_android_ruby_has_yjit_and_zjit_as_a_desktops_does_and_ios_ruby_none
     arm, intel = mobile("android").targets
 
     assert_equal [
       "--enable-yjit",
-      "--disable-zjit",
+      "--enable-zjit",
       "rustc_flags=--target=aarch64-linux-android",
       "LD=/ndk/bin/ld.lld",
       "OBJCOPY=/ndk/bin/llvm-objcopy",

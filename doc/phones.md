@@ -110,7 +110,7 @@ What follows holds on an iPhone 12 mini with iOS 27.0 and a development-signed b
 - **User and group names.** An iOS app has no user or group database. `Etc` finds no user or group for the app's own IDs (the Simulator's runs of ruby/spec show this). `ENV["USER"]` and `ENV["LOGNAME"]` both read `mobile`, whoever owns the phone. Name a person from what your app asks them, or from an account service, not from `Etc`.
 - **User and group IDs.** Setting your own IDs works: `Process.uid=`, `Process.euid=`, `Process.gid=`, and `Process.egid=` raised nothing when given the current value on the iPhone.
 - **Groups.** An iOS app gets no list of the groups it belongs to: `Process.groups` raises `Errno::EINVAL`. So `File.grpowned?` (and the same method of `File::Stat` and `FileTest`) is true only for a file of the app's own primary group, and `File.readable?`, `File.writable?`, and `File.executable?` answer as on a desktop.
-- **No JIT.** iOS lets no app but a browser write machine code and run it, so the iOS Ruby has no YJIT: `RubyVM::YJIT` is not defined. Guard its use with `defined?(RubyVM::YJIT)`. Android's Ruby has YJIT, off until your app enables it, as on a desktop.
+- **No JIT.** iOS lets no app but a browser write machine code and run it, so the iOS Ruby has neither YJIT nor ZJIT: `RubyVM::YJIT` and `RubyVM::ZJIT` are not defined. Guard their use with `defined?(RubyVM::YJIT)`. Android's Ruby has both, each off until your app enables it, as on a desktop.
 - **A read-only bundle.** On a device the app's own folder cannot be written to (it can in the Simulator). Write under `Dir.home` or `Dir.tmpdir`.
 
 ### On Android

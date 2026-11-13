@@ -339,7 +339,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
-| The Rust standard library, compiled into Ruby's YJIT | 1.99.1 | `MIT OR Apache-2.0` | compiled into libfledgeruby.so |
+| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.99.1 | `MIT OR Apache-2.0` | compiled into libfledgeruby.so |
 
 Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 

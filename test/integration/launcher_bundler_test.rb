@@ -48,6 +48,10 @@ class LauncherBundlerTest < Minitest::Test
     }
   C
 
+  # A stand-in Bundler's own module, with the two calls the launcher
+  # makes of it once bundler/setup has run.
+  SETTINGS_ONLY = "module Bundler\n  def self.reset_settings_and_root! = nil\n  def self.settings = nil\nend\n"
+
   def setup
     @compiler = RbConfig::CONFIG.fetch("CC").split.first
     skip "no C compiler (#{@compiler}) on this computer" unless system(@compiler, "--version", out: File::NULL, err: File::NULL)
@@ -95,7 +99,7 @@ class LauncherBundlerTest < Minitest::Test
     gems = File.join(@dir, "gems")
     lib = File.join(gems, "gems", "bundler-9.9.9", "lib")
     FileUtils.mkdir_p(File.join(lib, "bundler"))
-    File.write(File.join(lib, "bundler.rb"), "$loaded << :bundler\n")
+    File.write(File.join(lib, "bundler.rb"), "$loaded << :bundler\n#{SETTINGS_ONLY}")
     File.write(File.join(lib, "bundler", "setup.rb"), "$loaded << :setup\n")
     code, status = driver("code", "9.9.9")
     assert_equal 0, status
@@ -111,7 +115,7 @@ class LauncherBundlerTest < Minitest::Test
     assert_equal "[:bundler, :setup]\n#{lib.inspect}\n[\"bundler.rb\", \"setup.rb\"]\n", out
 
     runtime, = driver("code", "-")
-    assert_includes runtime, "begin\n  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\nrescue StandardError => e\n"
+    assert_includes runtime, "begin\n  require File.join(RbConfig::CONFIG['rubylibdir'], 'bundler/setup')\n  ENV.delete('BUNDLE_FROZEN')\n"
   end
 
   # Bundler sets the app up with the settings fledge build wrote into its
@@ -124,7 +128,7 @@ class LauncherBundlerTest < Minitest::Test
     gems = File.join(@dir, "gems")
     lib = File.join(gems, "gems", "bundler-9.9.9", "lib")
     FileUtils.mkdir_p(File.join(lib, "bundler"))
-    File.write(File.join(lib, "bundler.rb"), "")
+    File.write(File.join(lib, "bundler.rb"), SETTINGS_ONLY)
     File.write(File.join(lib, "bundler", "setup.rb"), <<~RUBY)
       $seen = ENV.select { |name, _| name.start_with?("BUNDLE_") }.sort.to_h
       $seen["user config exists"] = File.exist?(ENV.fetch("BUNDLE_USER_CONFIG"))
@@ -157,23 +161,55 @@ class LauncherBundlerTest < Minitest::Test
     assert_equal "#{expected.inspect}\n[\"BUNDLE_GEMFILE\"]\nnil\n", out
   end
 
-  # With this Ruby's own Bundler, the app's bundle is set up frozen, as
-  # its .bundle/config says, and nothing defines Psych.
-  def test_rubys_own_bundler_sets_the_app_up_frozen_and_leaves_psych_undefined
+  # An app, with this Ruby's own Bundler, whose Gemfile says +gemfile+
+  # and whose lockfile locks nothing; then the script that sets it up and
+  # runs +program+, and the lockfile's path.
+  def frozen_app(gemfile, program)
     app = File.join(@dir, "app")
     FileUtils.mkdir_p(File.join(app, ".bundle"))
-    File.write(File.join(app, "Gemfile"), "source \"https://rubygems.org\"\n")
-    File.write(File.join(app, "Gemfile.lock"), "GEM\n  remote: https://rubygems.org/\n  specs:\n\nPLATFORMS\n  ruby\n  " \
+    File.write(File.join(app, "Gemfile"), gemfile)
+    lockfile = File.join(app, "Gemfile.lock")
+    File.write(lockfile, "GEM\n  remote: https://rubygems.org/\n  specs:\n\nPLATFORMS\n  ruby\n  " \
       "#{Gem::Platform.local}\n\nDEPENDENCIES\n\nBUNDLED WITH\n  #{Bundler::VERSION}\n")
     File.write(File.join(app, ".bundle", "config"), Fledge::Bundle::SETTINGS)
     require_bundler, setup = driver("code", "-").first.split("\n--\n")
+    ["#{require_bundler}\nENV['BUNDLE_GEMFILE'] = ARGV[0]\n#{setup}\n#{program}", lockfile]
+  end
 
-    script = "#{require_bundler}\nENV['BUNDLE_GEMFILE'] = ARGV[0]\n#{setup}\n" \
-      "p Bundler.frozen_bundle?, Bundler.settings[:path__system], defined?(Psych), $LOADED_FEATURES.grep(/yaml_serializer/)"
-    out, err, status = Open3.capture3({ "PATH" => ENV.fetch("PATH"), "HOME" => @dir }, RbConfig.ruby, "-e", script, File.join(app, "Gemfile"),
+  def run_frozen_app(script, lockfile)
+    Open3.capture3({ "PATH" => ENV.fetch("PATH"), "HOME" => @dir }, RbConfig.ruby, "-e", script, File.join(File.dirname(lockfile), "Gemfile"),
       unsetenv_others: true)
+  end
+
+  # With this Ruby's own Bundler, the app's bundle is set up frozen, as
+  # its .bundle/config says, so the lockfile is never touched, and
+  # nothing defines Psych. Then the program sees Bundler's settings
+  # unfrozen, as bundle exec in a developer's project gives them, with
+  # the app's other settings kept; a Bundler.reset! reads the app's
+  # .bundle/config, frozen, again.
+  def test_rubys_own_bundler_sets_the_app_up_frozen_then_leaves_the_program_its_settings_unfrozen
+    script, lockfile = frozen_app("source \"https://rubygems.org\"\n",
+      "p Bundler.frozen_bundle?, Bundler.settings[:frozen], Bundler.settings[:path__system], defined?(Psych), " \
+        "$LOADED_FEATURES.grep(/yaml_serializer/)\nBundler.reset!\nBundler.setup\np Bundler.frozen_bundle?")
+    before = [File.binread(lockfile), File.mtime(lockfile)]
+    out, err, status = run_frozen_app(script, lockfile)
 
     assert status.success?, err
-    assert_equal "true\n\"true\"\nnil\n[]\n", out
+    assert_equal "nil\nnil\n\"true\"\nnil\n[]\ntrue\n", out
+    assert_equal before, [File.binread(lockfile), File.mtime(lockfile)]
+  end
+
+  # Frozen while it sets the app up, Bundler refuses a Gemfile that moved
+  # past its lockfile, in its own words, and writes nothing, where
+  # unfrozen it would resolve the gem and rewrite the lockfile.
+  def test_bundler_sets_the_app_up_frozen_and_refuses_a_gemfile_that_moved_past_its_lockfile
+    script, lockfile = frozen_app("source \"https://rubygems.org\"\ngem \"rake\"\n", "p :ran")
+    before = [File.binread(lockfile), File.mtime(lockfile)]
+    out, err, status = run_frozen_app(script, lockfile)
+
+    refute_predicate status, :success?
+    assert_empty out
+    assert_includes err, "You have added to the Gemfile:\n* rake"
+    assert_equal before, [File.binread(lockfile), File.mtime(lockfile)]
   end
 end

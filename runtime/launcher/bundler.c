@@ -96,6 +96,24 @@ static const char code_after_variables[] =
  * nothing, and takes them all out of ENV once Bundler has set up the
  * app. The file stays in the app for whatever makes Bundler's settings
  * again later, a Ruby the app starts with bundler/setup or Bundler.reset!.
+ *
+ * The bundle is frozen only while Bundler sets the app up. Frozen,
+ * Bundler takes the lockfile's resolution as it is, refuses a Gemfile
+ * that moved past it, and never touches or rewrites it, so the app
+ * starts in a folder the person cannot write (Definition#resolve,
+ * #ensure_equivalent_gemfile_and_lockfile, and #write_lock,
+ * definition.rb lines 342 to 345, 475 to 476, and 401 to 426, at
+ * Bundler 4.0.20). Under bundle exec, in a developer's project with no
+ * such setting, the program's Bundler.frozen_bundle? and
+ * Bundler.settings[:frozen] are nil. So once Bundler has set the app
+ * up, the code makes Bundler's settings again without BUNDLE_FROZEN,
+ * while the settings files are still the ones that hold nothing:
+ * Bundler.setup and Bundler.require then return the setup already done
+ * (bundler.rb, line 157), and whatever makes the settings again, as
+ * Bundler.reset! does, reads the app's .bundle/config, frozen.
+ * Bundler.settings.temporary would not last the setup, which makes the
+ * settings again itself whenever BUNDLE_GEMFILE is set
+ * (configure_custom_gemfile, bundler.rb lines 590 to 597).
  */
 #define RUNTIME_BUNDLER "RbConfig::CONFIG['rubylibdir']"
 #define LOCKED_BUNDLER "File.join(Gem.dir, 'gems', 'bundler-%s', 'lib')"
@@ -108,7 +126,8 @@ static const char code_after_variables[] =
     "ENV.update(fledge)\n"                                                                                             \
     "begin\n  require File.join("
 #define SETUP_AFTER                                                                                                    \
-    ", 'bundler/setup')\nrescue StandardError => e\n  $stderr.puts(e.message)\n  raise\n"                              \
+    ", 'bundler/setup')\n  ENV.delete('BUNDLE_FROZEN')\n  Bundler.reset_settings_and_root!\n  Bundler.settings\n"      \
+    "rescue StandardError => e\n  $stderr.puts(e.message)\n  raise\n"                                                  \
     "ensure\n  fledge.each_key { |name| ENV.delete(name) }\nend\n"
 
 int

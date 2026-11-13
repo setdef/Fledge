@@ -32,27 +32,19 @@ class RuntimeBuilder
     # libc/SECCOMP_BLOCKLIST_APP.TXT, lines 9 to 30 at 731631f), and
     # bionic's setegid calls setresgid (libc/bionic/setegid.cpp), its
     # initgroups setgroups (libc/bionic/grp_pwd.cpp, lines 624 to 626),
-    # and its seteuid setresuid, which the filter allows. Each function
-    # the filter would stop is one configure finds in bionic, so Ruby is
-    # told it is missing, and raises NotImplementedError for each call
-    # that needs it (process.c, as for setruid, which bionic lacks).
-    # Termux, whose settings Fledge's Android build follows, says the
-    # same of setgroups and setreuid, but also of setresuid, all three
-    # "to fix compilation on android" (termux-packages,
-    # packages/ruby/build.sh, line 19 at 750b3fc), not for the filter,
-    # and nothing of the rest; Process.uid= then calls setuid, and Process.egid=
-    # setresgid, and the filter ends the app. Without libcrypt, as for
-    # Termux, String#crypt uses Ruby's own missing/crypt.c, and
-    # rb_cv_type_deprecated is Termux's fix for clang.
+    # and its seteuid setresuid, which the filter allows. configure finds
+    # each in bionic, as on Linux, and Ruby's process.c calls its own in
+    # their place, which answer as Linux does for a process without the
+    # capabilities to change its IDs, without the calls the filter stops
+    # (RubySource.process_c_ids). Termux, whose settings Fledge's Android
+    # build follows, tells configure that setgroups, setreuid, and
+    # setresuid are missing "to fix compilation on android"
+    # (termux-packages, packages/ruby/build.sh, line 19 at 750b3fc), not
+    # for the filter; Fledge's build compiles with them. Without
+    # libcrypt, as for Termux, String#crypt uses Ruby's own
+    # missing/crypt.c, and rb_cv_type_deprecated is Termux's fix for
+    # clang.
     CONFIGURE = %w[
-      ac_cv_func_initgroups=no
-      ac_cv_func_setegid=no
-      ac_cv_func_setgid=no
-      ac_cv_func_setgroups=no
-      ac_cv_func_setregid=no
-      ac_cv_func_setresgid=no
-      ac_cv_func_setreuid=no
-      ac_cv_func_setuid=no
       ac_cv_lib_crypt_crypt=no
       rb_cv_type_deprecated=x
     ].freeze
@@ -112,7 +104,7 @@ class RuntimeBuilder
     end
 
     private def edits
-      %i[psych_extconf configure ruby_c process_c process_c_umask process_c_maxgroups file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
+      %i[psych_extconf configure ruby_c process_c process_c_umask process_c_maxgroups process_c_ids file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
     end
 
     private def host_triple(target)

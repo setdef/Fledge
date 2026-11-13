@@ -104,7 +104,7 @@ class RuntimeBuilder
     end
 
     private def edits
-      %i[psych_extconf configure ruby_c process_c process_c_umask process_c_maxgroups process_c_ids file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
+      %i[psych_extconf configure ruby_c process_c process_c_umask process_c_ids file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
     end
 
     private def host_triple(target)

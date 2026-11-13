@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On iOS and Android, a gem with a Rust extension built with rb-sys compiles for the phone, where it was refused: Cargo builds it as a static library for each of the phone's targets, which the app links. It needs Rust and Cargo with each target's standard library (`rustup target add`).
 - On iOS and Android, a gem's `extconf.rb` can require the gems its gem depends on, such as rb_sys or mini_portile2.
 - The iOS runtime carries the fiddle gem, with libffi 3.5.2 compiled in, as the Android runtime does; it had been left out.
+- `fledge build ios` and `fledge build android` build the ffi gem with the libffi it bundles, and link with an extension whatever its `extconf.rb` adds to the Makefile's `LOCAL_LIBS` after mkmf, as ffi's does. A build that an extension's Makefile starts gets the phone's compiler in `CC` and `CXX`, and on Android `AR` and `RANLIB`.
+- On Android, the runtime's Ruby has YJIT, compiled with Rust 1.99.1, off until the app enables it with `RubyVM::YJIT.enable`, as on a desktop; `RubyVM::YJIT` had not been defined there.
 
 ### Changed
 

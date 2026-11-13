@@ -533,6 +533,10 @@ class LicenseAuditTest < Minitest::Test
   # string, libyaml's, and libffi's.
   MOBILE_LIBRARY = "ruby 4.1.0preview1 (revision 2d08b5f42f) OpenSSL 3.6.5 0.2.5\0 BLAKE3 1.8.5\0 3.5.2\0"
 
+  # A path of Rust's standard library, as YJIT's panic messages carry it
+  # into Android's libfledgeruby.so.
+  ANDROID_RUST = "/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs\0"
+
   # An iOS runtime: an XCFramework whose two slices each carry the Ruby
   # it runs, as CPython's iOS XCFramework does (ADR 011), audited as one
   # runtime with a Ruby tree per slice, each gem one component.
@@ -577,7 +581,7 @@ class LicenseAuditTest < Minitest::Test
   def test_an_aar_is_audited_by_what_it_holds
     Dir.mktmpdir do |tree|
       aar = File.join(tree, "aar")
-      library = Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so], payload: MOBILE_LIBRARY)
+      library = Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so], payload: "#{MOBILE_LIBRARY} #{ANDROID_RUST}")
       { "AndroidManifest.xml" => "<manifest/>\n", "classes.jar" => "PK\x03\x04", "jni/x86_64/libfledgeruby.so" => library }.each do |path, bytes|
         FileUtils.mkdir_p(File.dirname(File.join(aar, path)))
         File.binwrite(File.join(aar, path), bytes)
@@ -592,7 +596,7 @@ class LicenseAuditTest < Minitest::Test
       assert_empty report.violations.map(&:to_s)
       assert_equal "fledge-embedding", report.owners.fetch("FledgeRuby.aar!jni/x86_64/libfledgeruby.so").id
       assert_equal :system, report.links.fetch("FledgeRuby.aar!jni/x86_64/libfledgeruby.so").fetch("liblog.so")
-      %w[ruby openssl-mobile libyaml-mobile libffi-mobile].each { |id| assert_includes report.present.map(&:id), id }
+      %w[ruby openssl-mobile libyaml-mobile libffi-mobile rust-std].each { |id| assert_includes report.present.map(&:id), id }
       sbom = LicenseAudit::Spdx.new(report, version: "0.0.0", created: Time.utc(2026, 10, 28)).to_h
       assert_includes sbom.fetch("files").map { |file| file.fetch("fileName") }, "./FledgeRuby.aar!jni/x86_64/libfledgeruby.so"
 

@@ -12,7 +12,8 @@ require_relative "recipe"
 
 class RuntimeBuilder
   # iOS and iPadOS, and Android: CRuby built from its own source for a
-  # phone, interpreter only, with every extension linked in (ADR 011).
+  # phone, with every extension linked in (ADR 011), and with YJIT where
+  # the phone lets an app run code it writes (Android; jit_options).
   #
   # No prebuilt Ruby exists for a phone, so a mobile runtime is built as
   # xord/cruby (the runtime behind RubySketch on the App Store) and
@@ -20,7 +21,7 @@ class RuntimeBuilder
   # spike/mobile/FINDINGS.txt): Ruby's own configure and make, cross-
   # compiling for each target with Xcode's or the NDK's compiler, against
   # OpenSSL and libyaml built the same way, with --with-static-linked-ext
-  # and no JIT. A miniruby built for the build machine from the same
+  # and no JIT on iOS. A miniruby built for the build machine from the same
   # source writes the builtin binary a cross build cannot
   # (doc/contributors/design/phone-runtimes.md, "The builtin binary"), and the bundled
   # gems with C extensions stay gems (BundledExtensions). Each subclass names its targets' toolchains and
@@ -239,7 +240,8 @@ class RuntimeBuilder
     NO_GIT = "--without-git"
 
     # What configure is told for every target: a static Ruby, every
-    # extension linked in, interpreter only, finding its library relative
+    # extension linked in, with the JIT the platform allows
+    # (jit_options), finding its library relative
     # to itself, built with the libraries built for the target and none
     # of the build machine's (PKG_CONFIG=false), and without GMP (LGPL),
     # Windows' extensions, Ruby's test extensions, or the bundled gems' own
@@ -253,8 +255,7 @@ class RuntimeBuilder
         "--enable-load-relative",
         "--disable-shared",
         "--with-static-linked-ext",
-        "--disable-yjit",
-        "--disable-zjit",
+        *jit_options(target),
         "--disable-install-doc",
         "--disable-install-rdoc",
         NO_GIT,
@@ -267,6 +268,15 @@ class RuntimeBuilder
         "PKG_CONFIG=false",
         *target_options(target, deps),
       ]
+    end
+
+    # What configure is told of Ruby's JITs where a phone gives an app no
+    # memory it may write code into and run: neither is built.
+    NO_JIT = %w[--disable-yjit --disable-zjit].freeze
+
+    # Ruby's JITs for +target+: none, unless a subclass builds one.
+    private def jit_options(_target)
+      NO_JIT
     end
 
     # Writes the build machine's builtin binary into the target's build
@@ -291,9 +301,11 @@ class RuntimeBuilder
     # Every static archive Ruby's build made for the target (libruby,
     # each extension's, the encodings' and transcoders'), the objects
     # that register the extensions and encodings (extinit.o, encinit.o),
-    # and the libraries built for it.
+    # and the libraries built for it. YJIT's static library, which rustc
+    # writes under target/, is left out: libruby already holds it, as
+    # the one object defs/jit.mk partly links it into (RUST_LIBOBJ).
     private def archives(build, deps)
-      ruby = Dir.glob("**/*.a", base: build).reject { |path| path.start_with?(".bundle/") || path == "libruby.a" }.sort
+      ruby = Dir.glob("**/*.a", base: build).reject { |path| path.start_with?(".bundle/", "target/") || path == "libruby.a" }.sort
       raise "#{build} built no static libruby" unless ruby.any? { |path| path.match?(LIBRUBY) }
 
       libraries = deps.values.flat_map { |prefix| Dir.glob(File.join(prefix, "lib", "*.a")) }.sort

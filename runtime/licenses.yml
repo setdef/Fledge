@@ -196,7 +196,7 @@ components:
     kind: program
     download: https://github.com/rust-lang/rust/tree/1.85.1
     notice: rust
-    ships: compiled into the launcher and bin/ruby (and into rv-ruby's static libruby, which a runtime leaves out)
+    ships: compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
     embedded:
       - files: [launcher, "{prefix}bin/ruby", "{prefix}lib/libruby*-static.a"]
@@ -223,10 +223,10 @@ components:
     kind: program
     download: https://github.com/rust-lang/rust/tree/1.96.1
     notice: rust
-    ships: compiled into the launcher and bin/ruby
+    ships: compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against
     platforms: [x86_64-linux-musl, aarch64-linux-musl]
     embedded:
-      - files: [launcher, "{prefix}bin/ruby"]
+      - files: [launcher, "{prefix}bin/ruby", "{prefix}lib/libruby*-static.a"]
         evidence: /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/
 
   - id: gcc-runtime

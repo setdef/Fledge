@@ -22,9 +22,10 @@ class RuntimeBuilder
     # [*.dSYM] macOS debug symbols, read by debuggers and crash reporters,
     #          never by Ruby.
     # [*.a, *.h, pkgconfig] Static libraries, the C headers of gems'
-    #          extensions, and pkg-config files, for compiling against
-    #          Ruby; a runtime compiles nothing, and Ruby code never loads
-    #          them. Ruby's own headers, in include/ beside lib/ruby, stay:
+    #          extensions, and pkg-config files under lib/ruby, for
+    #          compiling against Ruby; Ruby code never loads them, and mkmf
+    #          reads none of them. (The static libruby beside lib/ruby,
+    #          which mkmf links against, stays: Unix#copy_ruby.) Ruby's own headers, in include/ beside lib/ruby, stay:
     #          require "mkmf", which some gems do at run time for
     #          MakeMakefile#find_executable, aborts without ruby/ruby.h
     #          (mkmf.rb, "can't find header files for ruby").
@@ -102,9 +103,13 @@ class RuntimeBuilder
     #
     # [share\] Ruby's HTML documentation and ri data, for the rdoc and ri
     #          tools.
-    # [lib\*.a, lib\pkgconfig] Import libraries and pkg-config files, for
-    #          compiling against Ruby. Ruby's headers (include\) stay, as
-    #          prune says.
+    # [lib\*.a but Ruby's DLL's, lib\pkgconfig] Static libraries and
+    #          pkg-config files, for compiling against Ruby. Ruby's headers
+    #          (include\) stay, as prune says, and so does the import
+    #          library of Ruby's DLL (lib\*.dll.a), which mkmf links the
+    #          test program of every have_func, have_library, and try_link
+    #          against ($(LIBRUBYARG), mkmf.rb, link_config), so that an
+    #          app's own running mkmf works.
     # [packages\, ridk_use\, bin\ridk.cmd, bin\ridk.ps1,
     #          bin\setrbvars.cmd, bin\startmenu.rb] The MSYS2 keyring and
     #          ridk, which install and select MSYS2 compilers for a
@@ -118,7 +123,7 @@ class RuntimeBuilder
     # RubyInstaller's own Ruby library in site_ruby.
     def self.prune_windows(tree, bundled)
       FileUtils.rm_rf(%w[share packages ridk_use lib/pkgconfig].map { |path| File.join(tree, path) })
-      FileUtils.rm_f(Dir.glob(File.join(tree, "lib", "*.a")))
+      FileUtils.rm_f(Dir.glob(File.join(tree, "lib", "*.a")) - Dir.glob(File.join(tree, "lib", "*.dll.a")))
       FileUtils.rm_f(%w[ridk.cmd ridk.ps1 setrbvars.cmd startmenu.rb].map { |name| File.join(tree, "bin", name) })
       prune_bin(File.join(tree, "bin"), prune(File.join(tree, "lib", "ruby"), bundled))
     end

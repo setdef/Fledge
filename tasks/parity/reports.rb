@@ -65,7 +65,8 @@ class Parity
     # check or, with +check+ :bundle, the gem-shaped one. A difference is
     # justified when every element found on one side only is explained by
     # some justification for that fact, and the elements both sides share
-    # come in the same order.
+    # come in the same order, and each justification that pairs elements
+    # (Justification#paired?) pairs those it explains.
     def self.compare(reference, app, platform:, check: :script)
       (reference.keys | app.keys).filter_map do |fact|
         expected = elements(reference[fact])
@@ -75,10 +76,26 @@ class Parity
         only_in_reference = expected - actual
         only_in_app = actual - expected
         applicable = JUSTIFIED.select { |candidate| candidate.applies?(fact, platform, check) }
-        used = only_in_reference.map { |element| applicable.find { |candidate| candidate.explains?(element, :reference) } } +
-          only_in_app.map { |element| applicable.find { |candidate| candidate.explains?(element, :app) } }
-        justified = !used.empty? && used.none?(&:nil?) && (expected - only_in_reference) == (actual - only_in_app)
+        explained = only_in_reference.map { |element| [element, :reference, applicable.find { |candidate| candidate.explains?(element, :reference) }] } +
+          only_in_app.map { |element| [element, :app, applicable.find { |candidate| candidate.explains?(element, :app) }] }
+        used = explained.map(&:last)
+        justified = !used.empty? && used.none?(&:nil?) && (expected - only_in_reference) == (actual - only_in_app) && paired?(explained)
         Difference.new(fact:, only_in_reference:, only_in_app:, justifications: justified ? used.compact.uniq : [])
+      end
+    end
+
+    # Whether each justification in +explained+ (element, side, and
+    # justification, for each element found on one side only) that pairs
+    # elements captures the same from the reference's as from the app's.
+    def self.paired?(explained)
+      explained.group_by(&:last).all? do |justification, entries|
+        next true unless justification&.paired?
+
+        sides = entries.group_by { |_, side, _| side }
+        captured = %i[reference app].map do |side|
+          sides.fetch(side, []).map { |element, _, _| justification.captures(element, side).to_a }.sort
+        end
+        captured.first == captured.last
       end
     end
   end

@@ -51,17 +51,21 @@ class Parity
       reason: "Ruby names the platform it was built for: rv-ruby's for macOS 14 (darwin23) or glibc Linux, a " \
         "phone's for iOS, which Ruby calls arm64-darwin, or Android, which it calls ARCH-linux-android. Fledge's " \
         "target names for them are ADR 057's."),
-    Justification.new(fact: "RUBY_DESCRIPTION", reference: [/\[#{DESKTOP_ARCH}\]"\z/o], app: [/\[#{MOBILE_ARCH}\]"\z/o],
+    Justification.new(fact: "RUBY_DESCRIPTION", reference: [/\A(?<version>"[^"]*) \[#{DESKTOP_ARCH}\]"\z/o],
+      app: [/\A(?<version>"[^"]*) \[#{MOBILE_ARCH}\]"\z/o],
       platforms: MOBILE, reason: "As for RUBY_PLATFORM, which it ends with; the version, date, and revision are the same."),
-    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?#{ABI}/#{DESKTOP_ARCH}"\z}o],
-      app: [%r{\A"<prefix>/lib/ruby/(?:site_ruby/|vendor_ruby/)?#{ABI}/#{MOBILE_ARCH}"\z}o], platforms: MOBILE,
+    Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"<prefix>/lib/ruby/(?<folder>(?:site_ruby/|vendor_ruby/)?#{ABI})/#{DESKTOP_ARCH}"\z}o],
+      app: [%r{\A"<prefix>/lib/ruby/(?<folder>(?:site_ruby/|vendor_ruby/)?#{ABI})/#{MOBILE_ARCH}"\z}o], platforms: MOBILE,
       reason: "As for RUBY_PLATFORM: Ruby's folders of platform-specific files are named for its platform, in the " \
         "same places and order."),
-    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/#{ABI}/#{DESKTOP_ARCH}/[^"]+\.(?:bundle|so|rb)"\z}o],
-      app: [%r{\A"<prefix>/lib/ruby/#{ABI}/#{MOBILE_ARCH}/rbconfig\.rb"\z}o, %r{\A"[a-z0-9_/]+\.so"\z}], platforms: MOBILE,
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/#{ABI}/#{DESKTOP_ARCH}/(?:enc/)?(?<feature>[^"]+)\.(?:bundle|so)"\z}o],
+      app: [%r{\A"(?<feature>[a-z0-9_/]+)\.so"\z}], platforms: MOBILE,
       reason: "A phone's Ruby links every extension in, since iOS loads no code from files, and records each as the " \
-        "feature it registers (json/ext/parser.so, encdb.so), where a desktop Ruby records the file it loaded; " \
-        "rbconfig.rb is in the folder of Ruby's platform, as for $LOAD_PATH. The same extensions load."),
+        "feature it registers (json/ext/parser.so, encdb.so, with no enc/), where a desktop Ruby records the file it " \
+        "loaded. The same extensions load."),
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{DESKTOP_ARCH}/rbconfig\.rb"\z}o],
+      app: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{MOBILE_ARCH}/rbconfig\.rb"\z}o], platforms: MOBILE,
+      reason: "As for $LOAD_PATH: rbconfig.rb is in the folder of Ruby's platform."),
     Justification.new(fact: "RubyVM::YJIT.enabled?", reference: [/\Afalse\z/], app: [/\Anull\z/], platforms: MOBILE,
       reason: "A phone's Ruby is an interpreter only: iOS gives no app memory it may write code into and run, and " \
         "Ruby builds no JIT for Android (configure.ac at 4.1.0-preview1), so RubyVM::YJIT is not defined, as in any Ruby " \

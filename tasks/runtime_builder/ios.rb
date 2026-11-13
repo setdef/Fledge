@@ -19,8 +19,9 @@ class RuntimeBuilder
   # OpenSSL, libyaml, libffi, and the embedding API, in one archive), its headers
   # with a module map, so Swift imports it as FledgeRuby, and, as
   # CPython's XCFramework for iOS does, the Ruby the slice runs: its
-  # lib/ruby and its CA certificates in libexec/, which an app copies into
-  # its bundle for the slice it builds.
+  # lib/ruby, Ruby's headers in include/, which mkmf looks for as on a
+  # desktop, and its CA certificates in libexec/, which an app copies
+  # into its bundle for the slice it builds.
   class IOS < Mobile
     # What iOS declares in its headers but forbids or lacks, for
     # configure (xord/cruby's Rakefile, line 578): system, syscall,
@@ -113,6 +114,7 @@ class RuntimeBuilder
 
         FileUtils.mkdir_p(File.join(slice, "lib"))
         FileUtils.cp_r(File.join(root, "lib", "ruby"), File.join(slice, "lib", "ruby"))
+        FileUtils.cp_r(File.join(root, "include"), File.join(slice, "include"))
         copy_certificates(File.join(slice, "libexec"))
       end
     end

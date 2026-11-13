@@ -144,13 +144,6 @@ class RubySpec
       reason: "The example lists /dev, which Android's SELinux policy forbids an app to read (EACCES).",
     ),
     Justification.new(
-      example: /\Alibrary: mkmf can be required with --enable-frozen-string-literal\z/,
-      side: :app, platforms: ANDROID,
-      reason: "The example requires mkmf in the runtime's ruby program (ADR 082), and mkmf aborts where Ruby's C " \
-        "headers are missing, which a phone's app does not carry: they are for the computer that builds the app " \
-        "(doc/contributors/design/phone-runtimes.md, \"Ruby's C headers on a phone\").",
-    ),
-    Justification.new(
       example: /\Acore: (?:Process\.spawn uses the passed env\['PATH'\] to search the executable|Kernel#system executes with `sh` if the command is executable but not binary and there is no shebang)\z/,
       side: :app, platforms: ANDROID,
       reason: "Each example writes a script into a temporary folder and runs it, and Android lets an app run no file " \

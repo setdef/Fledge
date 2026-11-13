@@ -11,7 +11,7 @@ class RuntimeBuilder
   # A runtime's build-only companion (ADR 006): what compiling a gem's
   # extension against the runtime's Ruby needs and no app holds, the
   # library to link against, with its notices. Ruby's headers are in the
-  # runtime (ADR 039).
+  # runtime (ADR 085).
   module DevCompanion
     # What a runtime's build-only companion explains about itself, before
     # the text of Ruby's license (DEV-NOTICES.txt).

@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Desktop Runtimes
 
-This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, the build-only companion, the platform names, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 039 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phone-runtimes.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
+This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, the build-only companion, the platform names, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 085 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phone-runtimes.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
 
 ## What a runtime is
 
@@ -31,7 +31,7 @@ A recipe builds only on the computers it names (`Recipe#hosts`): each Unix runti
 | `launcher` | Fledge's launcher, `runtime/launcher/unix.c` and the rest, linked with the static libruby. `fledge build` renames it for the app. |
 | `bin/ruby` | Ruby's own `main.c` (`runtime/launcher/ruby_main.c`), linked with the same libruby and the same link line, so `RbConfig.ruby` and `Gem.ruby` run. Given the app's own program, it hands it back to the app's launcher (ADR 026; `doc/contributors/design/launcher.md`). |
 | `bin/*` | The default and bundled gems' executables, as rv-ruby installs them. |
-| `include/ruby-X.Y.0/` | Ruby's C headers, which `require "mkmf"` reads at run time (ADR 039). |
+| `include/ruby-X.Y.0/` | Ruby's C headers, which `require "mkmf"` reads at run time (ADR 085). |
 | `lib/libruby*-static.a` | Ruby's static library, which `mkmf` links the test program of every `have_func`, `have_library`, and `try_link` against ("What a runtime keeps"). |
 | `lib/ruby/` | The standard library, `gems/X.Y.0` with every default and bundled gem, `site_ruby`, and `vendor_ruby`, as Ruby lays them out. |
 | `lib/libcrypt.so.2` | libxcrypt, glibc Linux only (ADR 042). |
@@ -135,7 +135,7 @@ The parity check's reference on musl is this build's own `bin/ruby` with Fledge'
 
 ## What a runtime keeps
 
-Everything a standard Ruby of the pinned version installs that running Ruby code can reach (ADR 039):
+Everything a standard Ruby of the pinned version installs that running Ruby code can reach (ADR 085):
 
 - the standard library;
 - every default gem, and every gem `runtime/sources.yml`'s `bundled_gems` lists that the Ruby installs (rv-ruby installs all but win32ole and win32-registry, which only Windows builds; RubyInstaller all but syslog, which needs a Unix);

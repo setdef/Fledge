@@ -42,9 +42,26 @@ class RubySpecPhoneFormatter < SummaryFormatter
   # before mspec-run loaded this file.
   SPEC = "#{File.realpath(Dir.pwd)}/".freeze
 
+  # MSpec's filter of the examples to leave out of the spec files of
+  # which only some run (RubySpec::Phone::Exclusion's +keep+, which
+  # main.rb reads from arguments.txt as RUBY_SPEC_KEEP): every example of
+  # such a file but those kept. MSpec asks it, as it asks -E's, while
+  # the file is being loaded, so MSpec.file is the example's own.
+  class Keep
+    def initialize(kept)
+      @kept = kept
+    end
+
+    def ===(description)
+      kept = @kept[RubySpecListing.relative(MSpec.file)] or return false
+      !kept.include?(description)
+    end
+  end
+
   def register
     super
     MSpec.register :start, self
+    MSpec.register :exclude, Keep.new(RUBY_SPEC_KEEP) if defined?(RUBY_SPEC_KEEP) && !RUBY_SPEC_KEEP.empty?
   end
 
   # When the run starts, MSpec has defined its helpers, ruby_exe among

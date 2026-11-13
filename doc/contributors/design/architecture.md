@@ -113,3 +113,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [074](../adr/074.md) | fiddle and the ffi gem work on both phones |
 | [075](../adr/075.md) | A windowed Windows app can ship as an MSIX package, built with the Windows SDK's MakeAppx |
 | [078](../adr/078.md) | A phone app's standard streams reach the system log as they are printed, with nothing an app can read changed |
+| [080](../adr/080.md) | On a phone, a Ruby file stands where a desktop has an extension's file, and requires the linked extension |

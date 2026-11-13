@@ -151,7 +151,8 @@ module Fledge
       # extension's archive and then the static libraries its extconf.rb
       # named, which are that target's alone (an iOS slice's libSDL3.a), as
       # its archives; and the rest of the flags, which every target may
-      # share, once each.
+      # share, once each; with the extensions built as files, +libraries+,
+      # which link nothing into the app.
       #
       # === Example
       #
@@ -160,21 +161,21 @@ module Fledge
       # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
-      #   build = Fledge::MobileExtensions::Linking.target_build(target, reports)
+      #   build = Fledge::MobileExtensions::Linking.target_build(target, reports, libraries: [])
       #   build.archives # => ["/work/x/x.a", "/sdl/ios-arm64/lib/libSDL3.a"]
       #   build.flags # => ["-Wl,-framework,UIKit", "-lm"]
       #--
       # SPDX-SnippetEnd
       #++
-      def self.target_build(target, reports)
+      def self.target_build(target, reports, libraries:)
         archives = [] # : Array[String]
         flags = [] # : Array[String]
         reports.each do |report|
-          libraries, rest = report.flags.partition { |flag| flag.end_with?(".a") }
-          archives.push(report.archive, *libraries)
+          statics, rest = report.flags.partition { |flag| flag.end_with?(".a") }
+          archives.push(report.archive, *statics)
           flags.concat(rest)
         end
-        TargetBuild.new(target:, archives: archives.uniq, flags: flags.uniq, cxx: reports.any?(&:cxx))
+        TargetBuild.new(target:, archives: archives.uniq, flags: flags.uniq, cxx: reports.any?(&:cxx), libraries:)
       end
 
       # The shared libraries +flags+ link from the folders they name, each

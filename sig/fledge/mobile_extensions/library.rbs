@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    class Library < Data
+      attr_reader feature: String
+      attr_reader path: String
+      attr_reader flags: Array[String]
+      attr_reader links: Array[String]
+
+      def self.new: (feature: String, path: String, flags: Array[String], links: Array[String]) -> instance
+                  | (String feature, String path, Array[String] flags, Array[String] links) -> instance
+
+      def self.links: (package package, String feature, platform: String, gem_dir: String) -> Array[String]
+    end
+  end
+end

@@ -14,11 +14,11 @@ module Fledge
 
       def initialize: (ruby: String, work: String, load_path: Array[String], environment: Hash[String, String?], run: RakeBuild::_Run) -> void
 
-      def call: (Target target, locked_gem gem, String folder, String extconf, Array[String] args, Integer number, rust: bool) -> Report
+      def call: (Target target, locked_gem gem, String folder, String extconf, Array[String] args, Integer number, rust: bool, ?shared: bool) -> (Report | Library)
 
-      private def make: (Hash[String, String?] env, Array[Hash[String, String]] reports, String folder, locked_gem gem, Target target, what: String) -> void
+      private def make: (Hash[String, String?] env, Array[Hash[String, String]] reports, String folder, locked_gem gem, Target target, what: String, shared: bool) -> void
 
-      private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target, Hash[String, String?] env) -> Report
+      private def describe: (Array[Hash[String, String]] reports, String folder, String init, locked_gem gem, Target target, Hash[String, String?] env, shared: bool) -> (Report | Library)
 
       private def describe_rust: (Hash[String, String] report, String folder, locked_gem gem, Target target) -> Report
 

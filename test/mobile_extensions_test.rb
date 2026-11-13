@@ -208,7 +208,7 @@ class MobileExtensionsTest < Minitest::Test
     build = Fledge::MobileExtensions::Linking.target_build(target, [
       report("/w/x.a", ["/sdl/ios-arm64/lib/libSDL3.a", "-Wl,-framework,UIKit", "-lm"]),
       report("/w/y.a", ["-Wl,-framework,UIKit", "-lm"], cxx: true),
-    ])
+    ], libraries: [])
 
     assert_equal ["/w/x.a", "/sdl/ios-arm64/lib/libSDL3.a", "/w/y.a"], build.archives
     assert_equal ["-Wl,-framework,UIKit", "-lm"], build.flags
@@ -427,6 +427,48 @@ class MobileExtensionsTest < Minitest::Test
     File.write(File.join(folder, "lib", "twice", "twice.rb"), "")
     assert_nil Fledge::MobileExtensions::Stub.for(Fledge::PathPackage.new(gem), "twice/twice", root: folder, gem_dir: "lib/ruby/gems/4.1.0+5"),
       "a stub in src would hide lib's file from require \"twice/twice\""
+  end
+
+  # An extension loaded from a file on Android is where a desktop's
+  # RubyGems leaves it: copied into the gem's first require path, which
+  # Ruby finds first, and in the gem's extension folder for the target's
+  # platform, which RubyGems puts on $LOAD_PATH after it
+  # (Gem::Ext::ExtConfBuilder.build; Gem::BasicSpecification#full_require_paths).
+  def test_a_gems_extension_file_is_in_its_require_path_and_its_extension_folder
+    _, package = native_gem(name: "adder", extensions: ["ext/adder/extconf.rb"])
+
+    links = Fledge::MobileExtensions::Library.links(package, "adder/adder", platform: "x86_64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5")
+
+    assert_equal [
+      "lib/ruby/gems/4.1.0+5/gems/adder-1.0.0/lib/adder/adder.so",
+      "lib/ruby/gems/4.1.0+5/extensions/x86_64-linux-android/4.1.0+5-static/adder-1.0.0/adder/adder.so",
+], links
+  end
+
+  # Bundler keeps a git gem's extensions under bundler/gems/extensions,
+  # named for the checkout; a path gem has no extension folder.
+  def test_a_git_or_path_gems_extension_file_is_where_bundler_leaves_it
+    gem = Fledge::GitGem.new(name: "oxide", version: "1.0.0", uri: "https://example.com/oxide.git", revision: "a" * 40,
+      glob: "{,*,*/*}.gemspec", ref: nil, submodules: false)
+    File.write(File.join(@dir, "oxide.gemspec"), <<~RUBY)
+      Gem::Specification.new { |spec| spec.name = "oxide"; spec.version = "1.0.0"; spec.summary = "o"; spec.authors = ["a"] }
+    RUBY
+    git = Fledge::GitPackage.new(gem, @dir)
+    folder = File.join(@dir, "gems", "twice")
+    FileUtils.mkdir_p(folder)
+    File.write(File.join(folder, "twice.gemspec"), <<~RUBY)
+      Gem::Specification.new { |spec| spec.name = "twice"; spec.version = "1.0.0"; spec.summary = "t"; spec.authors = ["a"]; spec.require_paths = ["src", "lib"] }
+    RUBY
+    path = Fledge::PathPackage.new(Fledge::PathGem.new(name: "twice", version: "1.0.0", folder:, app_path: "gems/twice", glob: "{,*,*/*}.gemspec",
+      inside: true))
+
+    assert_equal [
+      "lib/ruby/gems/4.1.0+5/bundler/gems/#{git.scope}/lib/oxide/oxide.so",
+      "lib/ruby/gems/4.1.0+5/bundler/gems/extensions/aarch64-linux-android/4.1.0+5-static/#{git.scope}/oxide/oxide.so",
+],
+      Fledge::MobileExtensions::Library.links(git, "oxide/oxide", platform: "aarch64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5")
+    assert_equal ["app/gems/twice/src/twice/twice.so"],
+      Fledge::MobileExtensions::Library.links(path, "twice/twice", platform: "aarch64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5")
   end
 
   # The stub asks for the feature by its .so name, which Ruby looks up

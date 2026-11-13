@@ -68,6 +68,15 @@ module Fledge
       # The Android targets' Ruby architectures, and the ABI Android calls each.
       ANDROID_ABIS = { "aarch64-linux-android" => "arm64-v8a", "x86_64-linux-android" => "x86_64" }.freeze
 
+      # What an Android extension built as a file links with besides
+      # mkmf's flags, as the runtime's libfledgeext.so does: LOAD segments
+      # aligned for 16 KB pages, which Google Play requires, and the run
+      # path of its own folder, so that the ruby program, which runs
+      # outside the app's library namespace, finds a library it carries
+      # beside it. The quotes and the doubled dollar sign reach the
+      # linker through make and the shell as <tt>$ORIGIN</tt>.
+      DLDFLAGS = "-Wl,-z,max-page-size=16384 -Wl,-rpath,'$$ORIGIN'"
+
       # Creates the finder, which writes its toolchain files and unpacks
       # the AAR in +work+, a folder of the build's own.
       def initialize(work:)
@@ -123,6 +132,8 @@ module Fledge
           "FLEDGE_AR" => File.join(ndk.bin, "llvm-ar"),
           "FLEDGE_RANLIB" => File.join(ndk.bin, "llvm-ranlib"),
           "FLEDGE_LIBRUBYARG" => "-L#{libdir} -lfledgeruby",
+          "FLEDGE_DLDFLAGS" => DLDFLAGS,
+          "FLEDGE_LDSHAREDXX" => "$(CXX) -shared -static-libstdc++",
           "CMAKE_TOOLCHAIN_FILE" => toolchain_file(arch, CMake.android(ndk: ndk.root, abi:, compiler:)),
           **Rust.android(arch, bin: ndk.bin, cc:, resource: resource_dir(cc, ndk)),
         }

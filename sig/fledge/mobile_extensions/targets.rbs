@@ -18,6 +18,7 @@ module Fledge
     class Targets
       IOS_SLICES: Array[String]
       ANDROID_ABIS: Hash[String, String]
+      DLDFLAGS: String
 
       @work: String
 

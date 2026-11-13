@@ -13,9 +13,10 @@ module Fledge
       attr_reader archives: Array[String]
       attr_reader flags: Array[String]
       attr_reader cxx: bool
+      attr_reader libraries: Array[Library]
 
-      def self.new: (target: Target, archives: Array[String], flags: Array[String], cxx: bool) -> instance
-                  | (Target target, Array[String] archives, Array[String] flags, bool cxx) -> instance
+      def self.new: (target: Target, archives: Array[String], flags: Array[String], cxx: bool, libraries: Array[Library]) -> instance
+                  | (Target target, Array[String] archives, Array[String] flags, bool cxx, Array[Library] libraries) -> instance
     end
 
     class Report < Data
@@ -40,6 +41,7 @@ module Fledge
     end
 
     @platform: MobilePlatform
+    @files: bool
     @packages: Hash[locked_gem, package]
     @build_args: Hash[String, Array[String]]
     @host: Platform
@@ -63,21 +65,23 @@ module Fledge
 
     private def self.c_string: (String text) -> String
 
-    def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, gem_dir: String, ?env: Runtimes::_Env, ?dependencies: Hash[locked_gem, package]) -> void
+    def initialize: (platform: MobilePlatform, packages: Hash[locked_gem, package], build_args: Hash[String, Array[String]], host: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, gem_dir: String, ?env: Runtimes::_Env, ?dependencies: Hash[locked_gem, package], ?files: bool) -> void
 
     def call: (String tree) -> Built
 
     def shared_library: (Built built, TargetBuild build, registration: String, into: String) -> String
 
-    private def compile_target: (Target target) -> Array[Report]
+    private def compile_target: (Target target) -> Array[Report | Library]
 
     private def same_registrations: (Array[[String, String]] registrations, Array[Report] reports) -> Array[[String, String]]
 
+    private def same_files: (Array[TargetBuild] builds) -> void
+
     private def refuse_clash: (Array[[String, String]] registrations) -> void
 
-    private def compile: (Target target, locked_gem gem, package package, Array[String] args, Integer first) -> Array[Report]
+    private def compile: (Target target, locked_gem gem, package package, Array[String] args, Integer first) -> Array[Report | Library]
 
-    private def extconf: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> Report
+    private def extconf: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> (Report | Library)
 
     private def extconf_build: () -> ExtconfBuild
 

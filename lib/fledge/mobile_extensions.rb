@@ -11,6 +11,7 @@ require_relative "entry"
 require_relative "error"
 require_relative "mobile_extensions/android_library"
 require_relative "mobile_extensions/extconf_build"
+require_relative "mobile_extensions/library"
 require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
 require_relative "mobile_extensions/rake_build"
@@ -168,18 +169,42 @@ module Fledge
     # writes into the Makefile's +CPPFLAGS+ always, not <tt>$defs</tt>,
     # which it leaves out once an <tt>extconf.rb</tt> has called
     # <tt>create_header</tt> (<tt>mkmf.rb</tt>, lines 2133 and 2175).
+    #
+    # With +FLEDGE_SHARED+ set, mkmf makes the shared object a desktop's
+    # does instead (Library), its Init function its own, linked against
+    # +FLEDGE_LIBRUBYARG+, which mkmf leaves out for a Ruby with no shared
+    # libruby (<tt>init_mkmf</tt>, line 2804), with +FLEDGE_DLDFLAGS+
+    # added to its link and +FLEDGE_LDSHAREDXX+, when set, linking C++:
+    # an extension with C++ sources, and one whose <tt>extconf.rb</tt>
+    # names a desktop's C++ runtime (<tt>-lc++</tt>, <tt>-lstdc++</tt>),
+    # which the NDK would link as <tt>libc++_shared.so</tt>, a library the
+    # package does not carry (Linking.cxx_runtime?).
     SHIM = TOOLS + <<~'RUBY'
       require "json"
+      shared = ENV.key?("FLEDGE_SHARED")
+      if shared && ENV.key?("FLEDGE_LDSHAREDXX")
+        [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].each { |config| config["LDSHAREDXX"] = ENV.fetch("FLEDGE_LDSHAREDXX").dup }
+      end
       require "mkmf"
-      $static = true
+      if shared
+        $LIBRUBYARG = ENV.fetch("FLEDGE_LIBRUBYARG").dup
+        $DLDFLAGS << " #{ENV.fetch('FLEDGE_DLDFLAGS', '')}"
+      else
+        $static = true
+      end
       module MakeMakefile
         alias_method :fledge_create_makefile, :create_makefile
         def create_makefile(target, *rest, &block)
-          $CPPFLAGS << " -DInit_#{File.basename(target)}=#{ENV.fetch('FLEDGE_INIT')}"
+          shared = ENV.key?("FLEDGE_SHARED")
+          $CPPFLAGS << " -DInit_#{File.basename(target)}=#{ENV.fetch('FLEDGE_INIT')}" unless shared
+          if shared && ENV.key?("FLEDGE_LDSHAREDXX") && $libs.match?(/(?:\A|\s)-l(?:c\+\+|stdc\+\+)(?=\s|\z)/)
+            $libs = $libs.gsub(/(?:\A|\s)-l(?:c\+\+|stdc\+\+)(?=\s|\z)/, "")
+            CONFIG["LDSHARED"] = CONFIG["LDSHAREDXX"]
+          end
           result = fledge_create_makefile(target, *rest, &block)
           reports = File.exist?(ENV.fetch("FLEDGE_REPORT")) ? JSON.parse(File.read(ENV.fetch("FLEDGE_REPORT"))) : []
           reports << {
-            "feature" => target, "archive" => "#{File.basename(target)}.#{CONFIG['LIBEXT']}",
+            "feature" => target, "archive" => "#{File.basename(target)}.#{CONFIG[shared ? 'DLEXT' : 'LIBEXT']}",
             "libs" => $libs, "dir" => Dir.pwd
           }
           File.write(ENV.fetch("FLEDGE_REPORT"), JSON.generate(reports))
@@ -192,10 +217,15 @@ module Fledge
     # the flags that link them (libraries, frameworks, and paths their
     # extconf.rb added), and whether any is C++, whose runtime the link
     # must bring.
-    class TargetBuild < Data.define(:target, :archives, :flags, :cxx)
+    class TargetBuild < Data.define(:target, :archives, :flags, :cxx, :libraries)
       ##
       # :attr_reader: target
       # The Target compiled for.
+
+      ##
+      # :attr_reader: libraries
+      # The Library of each extension built as a file, which Ruby loads
+      # from it rather than from the app's linked code.
 
       ##
       # :attr_reader: archives
@@ -386,8 +416,13 @@ module Fledge
     # [dependencies] The packages of the gems those gems depend on, by
     #                gem (default: none), whose code an extconf.rb may
     #                require, as rb-sys's is.
-    def initialize(platform:, packages:, build_args:, host:, runtimes:, work:, log:, gem_dir:, env: ENV, dependencies: {})
+    # [files] Whether to build each C or C++ extension an
+    #         <tt>extconf.rb</tt> builds for Android as a file Ruby loads,
+    #         a Library, as on a desktop, rather than to link it in
+    #         (default: +false+).
+    def initialize(platform:, packages:, build_args:, host:, runtimes:, work:, log:, gem_dir:, env: ENV, dependencies: {}, files: false)
       @platform = platform
+      @files = files
       @gem_dir = gem_dir
       @packages = packages
       @dependencies = dependencies
@@ -426,10 +461,13 @@ module Fledge
       registrations = [] # : Array[[String, String]]
       @stubs = {} # : Hash[String, Entry]
       builds = Targets.new(work: @work).call(tree, ndk).to_h do |target|
-        reports = compile_target(target)
+        built = compile_target(target)
+        libraries = built.grep(Library) # : Array[Library]
+        reports = built.grep(Report) # : Array[Report]
         registrations = same_registrations(registrations, reports)
-        [target.name, Linking.target_build(target, reports)]
+        [target.name, Linking.target_build(target, reports, libraries:)]
       end
+      same_files(builds.values)
       refuse_clash(registrations)
       Built.new(registrations:, targets: builds, ndk:, stubs: @stubs.values)
     end
@@ -442,9 +480,10 @@ module Fledge
     end
 
     # Compiles every gem's extensions for +target+, and returns a Report
-    # for each, their Init functions numbered from 0.
+    # for each, their Init functions numbered from 0, or a Library for
+    # each built as a file.
     private def compile_target(target)
-      reports = [] # : Array[Report]
+      reports = [] # : Array[Report | Library]
       @packages.each do |gem, package|
         reports.concat(compile(target, gem, package, @build_args.fetch(gem.name, []), reports.size)) if package.extensions?
       end
@@ -460,6 +499,14 @@ module Fledge
       raise Error, "the app's gems built different extensions for each target of #{@platform}: #{registrations.to_h.keys} and #{found.to_h.keys}"
     end
 
+    # Refuses +builds+ whose targets built different extensions as files.
+    private def same_files(builds)
+      features = builds.map { |build| build.libraries.map(&:feature) }.uniq
+      return if features.size <= 1
+
+      raise Error, "the app's gems built different extensions for each target of #{@platform}: #{features.map(&:inspect).join(' and ')}"
+    end
+
     # Refuses two of +registrations+ with one Init function, which one app
     # cannot link.
     private def refuse_clash(registrations)
@@ -473,7 +520,7 @@ module Fledge
     # feature, and its Init function, numbered from +first+.
     private def compile(target, gem, package, args, first)
       root = Sources.unpack(package, File.join(@work, target.name, package.spec.full_name))
-      reports = [] # : Array[Report]
+      reports = [] # : Array[Report | Library]
       package.spec.extensions.each do |extension|
         number = first + reports.size
         next reports.concat(rake_build.call(target, gem, package.spec, root, extension, args, number)) if self.class.rake?(extension)
@@ -486,10 +533,17 @@ module Fledge
     # Compiles the extension the <tt>extconf.rb</tt> at +extension+, a
     # path in +package+'s gem unpacked at +root+, builds (ExtconfBuild),
     # with Cargo when the gem depends on rb_sys, and keeps the Stub that
-    # stands where a desktop has its file. Returns its Report.
+    # stands where a desktop has its file. Returns its Report; or, built
+    # as a file (+files+, for Android, and not Rust), its Library, with
+    # the paths where a desktop has its file, and no Stub.
     private def extconf(target, gem, package, root, extension, args, number)
       rust = package.spec.runtime_dependencies.any? { |dependency| dependency.name == "rb_sys" }
-      report = extconf_build.call(target, gem, File.dirname(File.join(root, extension)), File.basename(extension), args, number, rust:)
+      shared = @files && !target.abi.nil? && !rust
+      report = extconf_build.call(target, gem, File.dirname(File.join(root, extension)), File.basename(extension), args, number, rust:, shared:)
+      if report.is_a?(Library)
+        return report.with(links: Library.links(package, report.feature, platform: target.name, gem_dir: @gem_dir))
+      end
+
       stub = Stub.for(package, report.feature, root:, gem_dir: @gem_dir)
       @stubs[stub.path] = stub if stub
       report

@@ -61,27 +61,32 @@ module Fledge
       # Compiles the extension the +extconf+ in +folder+ builds for
       # +target+, with the gem's build options +args+, its Init function
       # renamed <tt>Init_fledge_NUMBER</tt>, or, when its gem depends on
-      # rb_sys (+rust+), with Cargo, and returns its Report.
-      def call(target, gem, folder, extconf, args, number, rust:)
+      # rb_sys (+rust+), with Cargo, and returns its Report. With +shared+
+      # it makes the shared object mkmf makes on a desktop instead, its
+      # Init function its own, and returns its Library, whose links the
+      # caller knows.
+      def call(target, gem, folder, extconf, args, number, rust:, shared: false)
         init = "Init_fledge_#{number}"
         report = File.join(folder, "fledge-report.json")
         env = @environment.merge(target.environment).merge("FLEDGE_INIT" => init, "FLEDGE_REPORT" => report, **RUST_FILES)
+        env["FLEDGE_SHARED"] = "1" if shared
         what = "compiling #{gem}'s extension #{extconf} for #{target.name}"
         includes = [target.arch_dir, *@load_path].flat_map { |path| ["-I", path] }
         shims = rust ? [write("fledge_mobile_mkmf.rb", SHIM), write("fledge_mobile_rb_sys.rb", Rust::SHIM)] : [write("fledge_mobile_mkmf.rb", SHIM)]
         @run.call(env, @ruby, "--disable-gems", *includes, *shims.flat_map { |shim| ["-r", shim] }, extconf, *args, chdir: folder, what:)
         reports = JSON.parse(File.read(report))
-        make(env, reports, folder, gem, target, what:)
-        describe(reports, folder, init, gem, target, env)
+        make(env, reports, folder, gem, target, what:, shared:)
+        describe(reports, folder, init, gem, target, env, shared:)
       end
 
       # Runs the Makefile the extconf.rb in +folder+ wrote: <tt>make
-      # static</tt> for mkmf's, which makes the static archive, or for
+      # static</tt> for mkmf's, which makes the static archive, or with
+      # +shared+ its default goal, the shared object; or for
       # rb-sys's, the goal that has Cargo make the static library, with the
       # Makefile's own Cargo arguments, which the shim made from the
       # developer's RB_SYS_EXTRA_CARGO_ARGS where it is set.
-      private def make(env, reports, folder, gem, target, what:)
-        return @run.call(env, "make", "static", chdir: folder, what:) unless reports.any? { |report| report["rust"] }
+      private def make(env, reports, folder, gem, target, what:, shared:)
+        return @run.call(env, "make", *(shared ? [] : ["static"]), chdir: folder, what:) unless reports.any? { |report| report["rust"] }
 
         triple = target.environment.fetch("CARGO_BUILD_TARGET")
         Rust.check(triple, gem: gem.to_s, env:)
@@ -90,7 +95,7 @@ module Fledge
 
       # What one extension's build came to, from the shim's +reports+ and
       # the Makefile in +folder+, which make reads with +env+.
-      private def describe(reports, folder, init, gem, target, env)
+      private def describe(reports, folder, init, gem, target, env, shared:)
         raise Error, "#{gem}'s extconf.rb called create_makefile #{reports.size} times, and Fledge links one extension for each" if reports.size != 1
 
         report = reports.first
@@ -100,6 +105,8 @@ module Fledge
         raise Error, "#{gem}'s extension made no #{File.basename(archive)} for #{target.name}" unless File.file?(archive)
 
         libs = "#{report.fetch('libs')} #{Linking.local_libs(env, folder)}"
+        return Library.new(feature: report.fetch("feature"), path: archive, flags: Linking.link_flags(libs, dir: folder), links: []) if shared
+
         Report.new(
           feature: report.fetch("feature"), init:, archive:, flags: Linking.link_flags(libs, dir: folder),
           cxx: File.read(File.join(folder, "Makefile")).match?(/^ORIG_SRCS = .*\.(?:cc|cpp|cxx|C)(?:\s|$)/) || Linking.cxx_runtime?(libs)

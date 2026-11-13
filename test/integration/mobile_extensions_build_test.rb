@@ -141,6 +141,59 @@ class MobileExtensionsBuildTest < Minitest::Test
     flags.each { |abi, list| assert_includes list, "-lffi", abi }
   end
 
+  # Built as files, an Android extension is what a desktop's mkmf makes:
+  # a shared object that keeps its own Init function, which Ruby's dln
+  # looks up, and needs the runtime's libfledgeruby.so, which the app
+  # has already loaded, for Ruby's C API. It carries the C++ runtime it
+  # needs, since the package has no libc++_shared.so; finds a library it
+  # links beside itself; and aligns its LOAD segments for 16 KB pages.
+  # It registers nothing and needs no Ruby file at its path: a link is
+  # made there, where a desktop's RubyGems leaves its file.
+  def test_an_android_extension_built_as_a_file_is_a_shared_object_with_its_own_init_function
+    runtimes = real_runtimes("android")
+    ndk = android_ndk
+    adder = File.expand_path("../../examples/native_phone/gems/adder", __dir__)
+
+    built = compile(runtimes, android, { path_gem(adder) => Fledge::PathPackage.new(path_gem(adder)) }, files: true)
+
+    assert_equal [], built.registrations
+    assert_equal [], built.stubs
+    readelf = File.join(ndk.bin, "llvm-readelf")
+    machines = built.targets.to_h do |name, target|
+      assert_equal [], target.archives
+      library = target.libraries.fetch(0)
+      assert_equal ["adder/adder", ["app/vendor/cache/adder/lib/adder/adder.so"]], [library.feature, library.links]
+      dynamic = Open3.capture2(readelf, "-d", "--dyn-syms", "-lW", library.path).first
+      assert_match(/\d+ FUNC\s+GLOBAL\s+DEFAULT\s+\d+ Init_adder$/, dynamic, "#{name}: dln finds the extension's own Init function")
+      assert_includes dynamic, "Shared library: [libfledgeruby.so]", "#{name}: Ruby is the runtime's"
+      refute_includes dynamic, "libc++_shared.so", "#{name}: the C++ runtime is linked in statically"
+      assert_match(/\(RUNPATH\)\s+Library runpath: \[\$ORIGIN\]/, dynamic, "#{name}: what it links is found beside it")
+      alignments = dynamic.lines.grep(/\A\s*LOAD\s/).map { |line| Integer(line.split.last) }
+      assert_operator alignments.min, :>=, 16_384, "#{name}: aligned for 16 KB pages"
+      [name, Open3.capture2(readelf, "-h", library.path).first[/Machine:\s+(.+)$/, 1]]
+    end
+    assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)
+  end
+
+  # A C extension over a C++ library names a desktop's C++ runtime
+  # (-lstdc++), which the NDK links as libc++_shared.so; built as a file,
+  # it links the C++ runtime in instead, as libfledgeext.so does.
+  def test_an_android_c_extension_over_a_cpp_library_built_as_a_file_carries_its_cpp_runtime
+    runtimes = real_runtimes("android")
+    skip "examples/cmake_phone needs CMake on the PATH" unless cmake?
+    ndk = android_ndk
+
+    built = compile(runtimes, android, { tally_gem => Fledge::PathPackage.new(tally_gem) }, files: true)
+
+    readelf = File.join(ndk.bin, "llvm-readelf")
+    built.targets.each do |name, target|
+      dynamic = Open3.capture2(readelf, "-d", "--dyn-syms", target.libraries.fetch(0).path).first
+      refute_includes dynamic, "libc++_shared.so", "#{name}: the C++ runtime is linked in statically"
+      refute_match(/UND\s+(?:_ZNSt|_Znwm|_ZdlPv|__gxx_personality)/, dynamic, "#{name}: the C++ runtime is linked in")
+      refute_match(/UND\s+tally_/, dynamic, "#{name}: the library's code is linked in")
+    end
+  end
+
   # An extconf.rb that writes extconf.h, as many do, takes mkmf's $defs
   # off the compile line (mkmf.rb's create_makefile), so the extension's
   # Init function is still renamed only if the rename goes elsewhere.
@@ -505,7 +558,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     built.targets.transform_values(&:flags)
   end
 
-  def compile(runtimes_dir, phone, packages, build_args: {})
+  def compile(runtimes_dir, phone, packages, build_args: {}, files: false)
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes_dir)
     runtimes = Fledge::Runtimes.new(env:)
     tree = File.join(@dir, "tree")
@@ -514,7 +567,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     yield root if block_given?
     log = StringIO.new
     Fledge::MobileExtensions.new(platform: phone, packages:, build_args:, host: Fledge::Platform.local, runtimes:,
-      work: File.join(@dir, "work"), log:, gem_dir: "lib/ruby/gems/4.1.0+5", env:).call(root)
+      work: File.join(@dir, "work"), log:, gem_dir: "lib/ruby/gems/4.1.0+5", env:, files:).call(root)
   rescue Fledge::Error => e
     raise Fledge::Error, "#{e.message}\n#{log&.string}"
   end

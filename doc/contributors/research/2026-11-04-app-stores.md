@@ -39,7 +39,7 @@ Read from the repository at c20a629, not from other documents.
 - **Linux.** A folder with a desktop entry and icons, an AppImage, and, when asked, a `.deb` (`lib/fledge/deb.rb`) that installs to `/usr/lib/PACKAGE` with `dpkg-deb`.
 - **iOS.** `lib/fledge/templates/ios/project.yml` makes an Xcode project that links `FledgeRuby.xcframework`. Native gems are compiled and linked into the executable (ADR 022). The template carries `PrivacyInfo.xcprivacy` with reasons for the file timestamp and boot time APIs. No signing is configured.
 - **Android.** `lib/fledge/templates/android/build.gradle` sets `targetSdk = 36`, `minSdk = 26`, and `useLegacyPackaging = false`. The runtime links with `-Wl,-z,max-page-size=16384` (`tasks/runtime_builder/android.rb`, `lib/fledge/mobile_extensions.rb`). The app unpacks `fledge.zip` from its assets on the first launch (`build.gradle`). The manifest asks only for `INTERNET`. No signing is configured.
-- **What no store has seen.** ADR 011 and ADR 012 say that a real iPhone or iPad and App Store review are not yet proven.
+- **What no store has seen.** the former ADR 011, now ADR 079 and ADR 012 say that a real iPhone or iPad and App Store review are not yet proven.
 
 ## Mac App Store
 
@@ -162,7 +162,7 @@ US$99 a year (above). Fledge cannot enroll. ADR 012 already records that the mai
 
 ### Prior art
 
-RubySketch is a free iPhone and iPad app by Noritaka Suzuki whose description says it "includes Ruby language interpreter known as CRuby or MRI", on the store since version 1.1 of 12/02/2020 (`apps.apple.com/us/app/rubysketch-fun-w-processing/id1491477639`, fetched 2026-11-04). It builds CRuby into an XCFramework with `xord/cruby`, the project ADR 011 names. RubyMotion apps ship too, but RubyMotion compiles Ruby and does not interpret it (its FAQ, per search results; not fetched). CPython documents the App Store path in PEP 730 terms (above), and Kivy answers "Yes, absolutely" to whether anyone has submitted a Kivy app.
+RubySketch is a free iPhone and iPad app by Noritaka Suzuki whose description says it "includes Ruby language interpreter known as CRuby or MRI", on the store since version 1.1 of 12/02/2020 (`apps.apple.com/us/app/rubysketch-fun-w-processing/id1491477639`, fetched 2026-11-04). It builds CRuby into an XCFramework with `xord/cruby`, the project the former ADR 011, now ADR 079 names. RubyMotion apps ship too, but RubyMotion compiles Ruby and does not interpret it (its FAQ, per search results; not fetched). CPython documents the App Store path in PEP 730 terms (above), and Kivy answers "Yes, absolutely" to whether anyone has submitted a Kivy app.
 
 ### Smallest change, and whether it is worth it
 

@@ -212,7 +212,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: `questions.md` entry C, which asked for a device cloud account or an Apple-silicon Mac with hardware virtualization so CI could run Android's arm64-v8a build, after no free GitHub-hosted runner could boot an arm64-v8a emulator.]
 
-*Governs:* agents spend no money on Android's arm64-v8a proof: no device cloud, paid runner, or machine; the story waits for a free way to run it. *Applied in:* Plan 003, "Android on arm64"; ADR 011 and ADR 012; the handoff.
+*Governs:* agents spend no money on Android's arm64-v8a proof: no device cloud, paid runner, or machine; the story waits for a free way to run it. *Applied in:* Plan 003, "Android on arm64"; ADR 079 and ADR 012; the handoff.
 
 > We can't spend money on this right now.
 

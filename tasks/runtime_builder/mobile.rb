@@ -12,7 +12,7 @@ require_relative "recipe"
 
 class RuntimeBuilder
   # iOS and iPadOS, and Android: CRuby built from its own source for a
-  # phone, with every extension linked in (ADR 011), and with YJIT where
+  # phone, with every extension linked in (ADR 079), and with YJIT where
   # the phone lets an app run code it writes (Android; jit_options).
   #
   # No prebuilt Ruby exists for a phone, so a mobile runtime is built as

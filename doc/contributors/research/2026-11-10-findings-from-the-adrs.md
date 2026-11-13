@@ -178,7 +178,7 @@ From old ADR 011, Consequences. In run 40787414670, building the iOS runtime too
 
 ### arm64-v8a on an Apple-silicon Mac (2026-10-28)
 
-From old ADR 011, Consequences. While ADR 011 was written, the parity check passed with the arm64-v8a library, and hello.rb reached rubygems.org, on an arm64-v8a API 36 emulator on an Apple-silicon Mac. This is not a gate.
+From old ADR 011, Consequences. While the former ADR 011, now ADR 079 was written, the parity check passed with the arm64-v8a library, and hello.rb reached rubygems.org, on an arm64-v8a API 36 emulator on an Apple-silicon Mac. This is not a gate.
 
 ### No free GitHub-hosted runner runs an arm64-v8a emulator (2026-11-02)
 

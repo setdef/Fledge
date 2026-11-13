@@ -317,7 +317,7 @@ nsis:
     url: https://downloads.sourceforge.net/project/nsis/NSIS%203/3.13/nsis-3.13-src.tar.bz2
     sha256: a8ffe024602d46b6d766f9e1ce30c324ad2a24daeacd3efc2642d436a0c157ac
 
-# The mobile runtimes (ADR 011): CRuby built from its own source for
+# The mobile runtimes (ADR 079): CRuby built from its own source for
 # iOS and iPadOS and for Android, interpreter only, with its extensions
 # linked statically, which no prebuilt Ruby offers. Each builds on its
 # own system (AGENTS.md): iOS on a Mac with the Xcode below, Android on

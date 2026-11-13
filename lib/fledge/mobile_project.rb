@@ -20,7 +20,7 @@ module Fledge
   # project that builds the app for iPhones and iPads, or for Android.
   #
   # A phone runs no launcher of Fledge's: Ruby is a library linked into an
-  # app that Xcode or Gradle builds and the developer signs (ADR 011). So a
+  # app that Xcode or Gradle builds and the developer signs (ADR 079). So a
   # phone's build is not an app but the project that builds one, as
   # Briefcase's <tt>create iOS</tt> and <tt>create android</tt>, Flutter's
   # and React Native's templates, and Tauri's <tt>ios init</tt> and

@@ -538,7 +538,7 @@ class LicenseAuditTest < Minitest::Test
   ANDROID_RUST = "/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs\0"
 
   # An iOS runtime: an XCFramework whose two slices each carry the Ruby
-  # it runs, as CPython's iOS XCFramework does (ADR 011), audited as one
+  # it runs, as CPython's iOS XCFramework does (ADR 079), audited as one
   # runtime with a Ruby tree per slice, each gem one component.
   def test_an_ios_runtime_accounts_for_the_ruby_of_each_slice
     Dir.mktmpdir do |tree|

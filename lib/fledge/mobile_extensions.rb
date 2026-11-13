@@ -25,7 +25,7 @@ require_relative "mobile_extensions/rust"
 module Fledge
   # Compiles an app's gems' C, C++, and Rust extensions for a phone (ADR 022).
   #
-  # A phone's Ruby loads no extension from a file (ADR 011), so
+  # A phone's Ruby loads no extension from a file (ADR 079), so
   # each one is compiled to a static archive, linked into the app, and
   # registered under the name <tt>require</tt> asks for, which Ruby's own
   # <tt>extinit.c</tt> does for the extensions of its standard library.

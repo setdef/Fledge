@@ -28,7 +28,7 @@ Plan 001 (the walking skeleton) and Plan 002 (toward 1.0) are done. What each Pl
 - **App identity**, **Windowed apps**, **Installers** (ADR 008 and ADR 009, `pre.6` and `pre.7`): name, icon, version, and identifier on every system; `.app`, GUI program, desktop entry; `.dmg`, NSIS setup program, AppImage.
 - **Each target on its own system, with its own tools** (ADR 010 and ADR 013, `pre.8` and `pre.11`): Fledge's own format writers were replaced by maintained tools.
 - **musl Linux** (ADR 017, `pre.15`): Ruby built from source in Alpine.
-- **iOS, iPadOS, and Android**, **Mobile runtimes**, **Mobile apps from fledge build** (ADR 011 and ADR 012, `pre.9` on): proven in the iOS Simulator and on x86-64 Android emulators, on Android also from the APKs bundletool makes from each app's release bundle, the format Google Play takes (`doc/contributors/design/phone-projects.md`, "The Android App Bundle check").
+- **iOS, iPadOS, and Android**, **Mobile runtimes**, **Mobile apps from fledge build** (ADR 079 and ADR 012, `pre.9` on): proven in the iOS Simulator and on x86-64 Android emulators, on Android also from the APKs bundletool makes from each app's release bundle, the format Google Play takes (`doc/contributors/design/phone-projects.md`, "The Android App Bundle check").
 - **A `.deb` for windowed apps on glibc Linux** (ADR 021, `v0.1.0`): `dpkg-deb`, asked for with `installers: [appimage, deb]`, delivered by apt in Debian and Ubuntu containers.
 - **Windows on ARM** (ADR 035, `pre.16`): RubyInstaller's ARM64 Ruby, delivered natively on `windows-11-arm`.
 - **Ctrl-C and the console** (ADR 003 and `doc/contributors/design/parity.md`, "Console checks", `pre.13`; closing a Windows console, proven through a pseudoconsole, `pre.17`).

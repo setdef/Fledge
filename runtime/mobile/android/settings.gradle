@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT
 //
-// The Android library that packs a mobile runtime's AAR (ADR 011): the
+// The Android library that packs a mobile runtime's AAR (ADR 079): the
 // embedding API's Java class and each ABI's libfledgeruby.so, which
 // tasks/runtime_builder/android.rb builds and names with
 // -Pfledge.jniLibs. The Android Gradle plugin's version comes from

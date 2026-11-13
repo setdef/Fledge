@@ -79,6 +79,29 @@ class RubySpec
   ANDROID = %w[x86_64-linux-android aarch64-linux-android].freeze
   PHONES = ["arm64-ios-simulator", *ANDROID].freeze
 
+  # Whether glibc's time zone data on this computer, which runs stock
+  # Ruby against an Android emulator, has right/UTC, the zone with leap
+  # seconds. Ubuntu ships the right/ zones in tzdata-legacy, apart from
+  # tzdata: CI's ubuntu-24.04 runner has them, and an Ubuntu 26.04
+  # laptop without that package does not (run 20261113-053941-620957).
+  RIGHT_UTC = File.exist?("/usr/share/zoneinfo/right/UTC")
+
+  # Whether this process, and so stock Ruby, has no login UID, which
+  # Linux gives a process no login session started, such as a service's,
+  # and its children inherit. glibc's getlogin names the user of
+  # /proc/self/loginuid when it is set, and only when it is the sentinel
+  # -1 looks at standard input's terminal (sysdeps/unix/sysv/linux/
+  # getlogin_r.c, lines 36 to 62 and 108 to 115 at glibc-2.42), which
+  # stock Ruby's run, its standard input /dev/null, has none of. CI's
+  # runner, a service, has none; a run under a login session, as on a
+  # laptop's job agent with login UID 1002 (run 20261113-053941-620957),
+  # has one, and getlogin names its user there.
+  NO_LOGIN_UID = begin
+    File.read("/proc/self/loginuid").strip == "4294967295"
+  rescue SystemCallError
+    true
+  end
+
   JUSTIFIED = [
     Justification.new(
       examples: [
@@ -242,11 +265,12 @@ class RubySpec
     ),
     Justification.new(
       examples: ["core: Time.utc handles real leap seconds in zone 'right/UTC'"],
-      side: :stock, platforms: ANDROID, outcome: :runs,
+      side: :stock, platforms: RIGHT_UTC ? ANDROID : [], outcome: :runs,
       reason: "ruby/spec runs it only where the zone right/UTC counts a leap second (core/time/utc_spec.rb, lines 88 " \
         "to 92), and Android's time zone data has no right/ zones: AOSP compiles it with zic from the zones and links " \
         "of IANA's rearguard.zi alone, without zic's -L leapseconds (system/timezone, update-tzdata.py, lines 54 to 66 " \
-        "and 178 at 0470df3d), so bionic finds no right/UTC and takes UTC, which has no leap seconds.",
+        "and 178 at 0470df3d), so bionic finds no right/UTC and takes UTC, which has no leap seconds. Stock Ruby " \
+        "runs it only where this computer has right/UTC (RIGHT_UTC); where it has not, neither side runs it.",
     ),
     Justification.new(
       examples: [
@@ -264,11 +288,12 @@ class RubySpec
         "core: File.expand_path when HOME is not set uses the user database when passed '~' if HOME is nil",
         "core: File.expand_path when HOME is not set uses the user database when passed '~/' if HOME is nil",
       ],
-      side: :app, platforms: ANDROID, outcome: :runs,
+      side: :app, platforms: NO_LOGIN_UID ? ANDROID : [], outcome: :runs,
       reason: "ruby/spec runs these only where Etc.getlogin names a user with USER unset (core/file/expand_path_spec.rb, " \
-        "lines 221 to 233). glibc's getlogin names the user logged in on the process's controlling terminal, and stock " \
-        "Ruby's run, in CI's clean environment, has none; bionic's names the user of getuid() " \
-        "(libc/bionic/grp_pwd.cpp, lines 629 to 632 at 731631f), so the app runs them, and they pass.",
+        "lines 221 to 233). bionic's getlogin names the user of getuid() (libc/bionic/grp_pwd.cpp, lines 629 to 632 " \
+        "at 731631f), so the app runs them, and they pass. glibc's names the user of the process's login UID, and " \
+        "without one, the user logged in on standard input's terminal, which stock Ruby's run has none of, so stock " \
+        "Ruby runs them only where it has a login UID (NO_LOGIN_UID); there both sides run them.",
     ),
   ].freeze
 

@@ -98,7 +98,7 @@ class Parity
         "folder, beside Ruby's own (doc/contributors/design/gems.md, \"Installing into the runtime's gem folder\"). " \
         "Bundler sets up the same gems, in the same order, from each, and a gem compiled as it installs, as sqlite3 " \
         "is on a Ruby its prebuilt gems do not yet support, adds its extensions folder from each."),
-    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"#{PERSON_GEMS}/gems/(?<file>bundler-.*)\z}],
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"#{PERSON_GEMS}/gems/(?<file>bundler-(?!.*/bundler/feature_flag\.rb"\z).*)\z}],
       app: [%r{\A"#{APP_GEMS}/gems/(?<file>bundler-.*)\z}],
       checks: %i[bundle],
       reason: "bundle exec runs the Bundler the lockfile names, which bundle install put in the person's GEM_HOME; " \
@@ -131,7 +131,7 @@ class Parity
       reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
         "without the development and test groups, as bundle config set --local would (ADR 045). Reading a " \
         "configuration file loads RubyGems' YAML serializer."),
-    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/#{ABI}/bundler/feature_flag\.rb"\z}o],
+    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"(?:<prefix>/lib/ruby/#{ABI}|#{PERSON_GEMS}/gems/bundler-[^/"]+/lib)/bundler/feature_flag\.rb"\z}o],
       checks: %i[bundle],
       reason: "With no setting that says where the bundle's gems are, Bundler asks its feature flags whether to use " \
         "Ruby's own gem folder; the app's .bundle/config says so (path.system, as Warbler's does), so it never asks."),

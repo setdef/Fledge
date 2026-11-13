@@ -88,6 +88,20 @@ class ParityTest < Minitest::Test
       .all?(&:justified?)
   end
 
+  # bundle exec runs the lockfile's Bundler from the person's gems, the
+  # app from the runtime's, the same files paired one for one, but for
+  # the feature flags only the person's Bundler asks.
+  def test_the_bundlers_files_pair_but_for_the_feature_flags
+    person = "<work>/person-gems/gems/bundler-4.0.20/lib"
+    app = "<prefix>/lib/ruby/gems/4.1.0+5/gems/bundler-4.0.20/lib"
+    reference = { "$LOADED_FEATURES" => ["#{person}/bundler.rb", "#{person}/bundler/feature_flag.rb"] }
+
+    assert_predicate Parity::Reports.compare(reference, { "$LOADED_FEATURES" => ["#{app}/bundler.rb"] }, platform: "x86_64-linux",
+      check: :bundle).first, :justified?
+    refute_predicate Parity::Reports.compare(reference, { "$LOADED_FEATURES" => [] }, platform: "x86_64-linux", check: :bundle).first,
+      :justified?
+  end
+
   # rv-ruby has no RubyGems defaults file, so on macOS and Linux only the
   # app loads Fledge's; RubyInstaller has one at the same path, which
   # loads RubyInstaller's runtime, so on Windows only ruby main.rb loads

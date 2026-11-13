@@ -27,7 +27,6 @@ class RuntimeBuilder
       file_c: "file.c",
       process_c: "process.c",
       process_c_umask: "process.c",
-      process_c_maxgroups: "process.c",
       process_c_ids: "process.c",
       file_c_umask: "file.c",
       thread_pthread_c: "thread_pthread.c",
@@ -173,21 +172,6 @@ class RuntimeBuilder
       replace(text, Regexp.new(Regexp.escape(FORK_UNLOCK)), FORK_RESET, "rb_fork_ruby releases the fork lock in the child but on FreeBSD")
     end
 
-    # Process.maxgroups= stores the number of group IDs Ruby asks for at
-    # most, in the static _maxgroups that Process.maxgroups reads, and
-    # calls nothing of the system's (process.c, proc_setmaxgroups, lines
-    # 6845 to 6862 at 4.1.0-preview1), yet Ruby defines it only where
-    # configure found setgroups (line 6835), and raises
-    # NotImplementedError elsewhere. Android's seccomp filter for apps
-    # stops setgroups, and Android's Ruby has one only because
-    # process_c_ids gives process.c its own, so the setter would hang on
-    # that edit. This defines it where Process.maxgroups is defined, on
-    # the same condition (line 6632), as on Linux.
-    def self.process_c_maxgroups(text)
-      replace(text, %r{^#ifdef HAVE_SETGROUPS\n(/\*\n \*  call-seq:\n \*    Process\.maxgroups = new_max -> new_max\n)},
-        "#if defined(_SC_NGROUPS_MAX) || defined(NGROUPS_MAX)\n\\1", "Process.maxgroups= is defined only with setgroups")
-    end
-
     # Process.spawn's, #exec's, and #system's umask: option, and
     # File.umask, pass the mask they are given to umask(2) as it is
     # (process.c, rb_execarg_run_options, line 3441, and file.c,
@@ -222,7 +206,10 @@ class RuntimeBuilder
     # so: a group ID's changes, which no allowed call could make, succeed
     # only when they change nothing, and a user ID's go through
     # setresuid, which the filter allows. Ruby is then built with them,
-    # where it raised NotImplementedError (RuntimeBuilder::Android::CONFIGURE).
+    # where it raised NotImplementedError (RuntimeBuilder::Android::CONFIGURE),
+    # and so with Process.maxgroups=, which only stores a number but
+    # which Ruby defines only where configure found setgroups (process.c,
+    # line 6835 at 4.1.0-preview1).
     def self.process_c_ids(text)
       replace(text, /^(#include "hrtime.h"\n#include "internal.h"\n)/, "\\1#{UNPRIVILEGED_IDS}", "process.c includes internal.h")
     end

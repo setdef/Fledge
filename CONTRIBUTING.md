@@ -26,7 +26,7 @@ mise puts that Ruby first on `PATH` only in a shell it has activated (`eval "$(m
 
 `bundle exec rake runtime` builds this computer's runtime, which the gate otherwise skips the checks of. On Linux it needs a C compiler, binutils, make, perl, and xz from your system, and patchelf 0.18.0, which mise installs from `mise.toml`, pinned by SHA-256.
 
-Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it runs every test, and must pass with zero errors and zero warnings.
+Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it runs every test, and must pass with zero errors and zero warnings. `bin/ci` runs the whole gate from a checkout in one command: `bin/setup`, then `bundle exec rake`, and then it fails if a check's autocorrect changed a file, so what was checked is what you commit.
 
 ### Android on Linux
 

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# The gate, as one command from a checkout: set up, run every check
+# (bundle exec rake), and fail if a check's autocorrect changed a file,
+# since the change that was checked is then not the change committed.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+bin/setup
+if command -v mise >/dev/null 2>&1; then
+  mise x -- bundle exec rake
+else
+  bundle exec rake
+fi
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  git status --short >&2
+  echo "bin/ci: the checks changed the files above; commit their changes and run bin/ci again." >&2
+  exit 1
+fi

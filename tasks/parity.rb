@@ -117,6 +117,12 @@ class Parity
           "their computer, the runtime's gem folder in the app. Everything else Bundler sets, it sets over the " \
           "person's own values in both, and records theirs as BUNDLER_ORIG_*.")
     end,
+    *["Bundler.frozen_bundle?", "Bundler.settings[:frozen]"].map do |fact|
+      Justification.new(fact:, reference: [/\Anull\z/], app: [/\Atrue\z/], checks: %i[bundle],
+        reason: "The app's .bundle/config freezes its bundle (BUNDLE_FROZEN, Warbler's setting for a packed app), so " \
+          "that Bundler never touches or rewrites the lockfile in a folder the person may not write (ADR 086); a " \
+          "developer's project, as bundle exec runs it, has no such setting.")
+    end,
     Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
       reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1; ADR 040), " \
         "so it cannot change how the app runs; it still reaches the app's ENV and every program the app starts."),

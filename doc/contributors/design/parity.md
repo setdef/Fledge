@@ -30,7 +30,7 @@ It fails when any difference is unjustified. CI runs it in the Test jobs (`arm64
 - the encodings: `Encoding.default_external`, `default_internal`, `find('locale')`, `find('filesystem')`, and `$stdout.external_encoding`;
 - the standard streams' `sync`, `$VERBOSE`, `$DEBUG`;
 - `ENV`, and the `ENV` a child Ruby started through `RbConfig.ruby` sees;
-- under Bundler, `Bundler.original_env`, `Bundler.unbundled_env`, and the `ENV` a child Ruby sees inside `with_original_env` and `with_unbundled_env`;
+- under Bundler, `Bundler.original_env`, `Bundler.unbundled_env`, the `ENV` a child Ruby sees inside `with_original_env` and `with_unbundled_env`, and whether Bundler takes the bundle as frozen, `Bundler.frozen_bundle?` and `Bundler.settings[:frozen]`;
 - the constants defined at the top level, `Object.constants`;
 - `RUBY_PLATFORM`, `RUBY_DESCRIPTION`, `RubyVM::YJIT.enabled?`, `RubyVM::ZJIT.enabled?`, and the `YJIT_SUPPORT` and `ZJIT_SUPPORT` that `RbConfig::CONFIG` records.
 

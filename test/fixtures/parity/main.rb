@@ -21,9 +21,12 @@
 # buffers, the environment, what require "openssl" adds to it, and what a
 # child Ruby sees. Under Bundler (bundle exec, or a built app with a
 # Gemfile) it also reports the environment Bundler recorded as the one it
-# started from, and what a child Ruby sees inside
+# started from, what a child Ruby sees inside
 # Bundler.with_original_env and Bundler.with_unbundled_env, which is how
-# a Bundler app starts a person's own tools. Paths are raw; the
+# a Bundler app starts a person's own tools, and whether Bundler takes
+# its bundle as frozen, which decides whether Bundler may write the
+# lockfile (Bundler.frozen_bundle?, and the frozen setting it reads
+# first). Paths are raw; the
 # comparison normalizes them. The arguments it was given are among the
 # facts.
 #
@@ -318,6 +321,8 @@ def facts
     "Bundler.unbundled_env" => defined?(Bundler) ? Bundler.unbundled_env : nil,
     "original child ENV" => child_env(:bundler_child_ruby, :with_original_env),
     "unbundled child ENV" => child_env(:bundler_child_ruby, :with_unbundled_env),
+    "Bundler.frozen_bundle?" => defined?(Bundler) ? Bundler.frozen_bundle? : nil,
+    "Bundler.settings[:frozen]" => defined?(Bundler) ? Bundler.settings[:frozen] : nil,
     "RUBY_PLATFORM" => RUBY_PLATFORM,
     "RUBY_DESCRIPTION" => RUBY_DESCRIPTION,
     "RubyVM::YJIT.enabled?" => defined?(RubyVM::YJIT) ? RubyVM::YJIT.enabled? : nil,

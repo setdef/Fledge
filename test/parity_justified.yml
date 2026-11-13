@@ -101,6 +101,22 @@
   platforms:
   checks:
   - bundle
+- fact: Bundler.frozen_bundle?
+  reference:
+  - "\\Anull\\z"
+  app:
+  - "\\Atrue\\z"
+  platforms:
+  checks:
+  - bundle
+- fact: Bundler.settings[:frozen]
+  reference:
+  - "\\Anull\\z"
+  app:
+  - "\\Atrue\\z"
+  platforms:
+  checks:
+  - bundle
 - fact: "$VERBOSE"
   reference:
   - "\\Anull\\z"

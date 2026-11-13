@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Desktop Runtimes
 
-This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, the build-only companion, the platform names, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 085 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phone-runtimes.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
+This document says what a desktop runtime holds and how `rake runtime` (`tasks/runtime_builder.rb`) builds one: the layout on each platform, where each input comes from and how it is pinned, what is kept and what is pruned, Fledge's RubyGems defaults, the `tools/` folder, what compiling a gem takes from a runtime, the platform names, and the release assets. ADR 034 decides that Fledge's CI prebuilds the runtimes, ADR 035 where their Ruby comes from, ADR 017 the musl build, ADR 085 what a runtime keeps, ADR 042 the two LGPL libraries, and ADR 038 the Windows layout. The license audit every runtime passes is `doc/contributors/design/license-audit.md`; the phones' runtimes are `doc/contributors/design/phone-runtimes.md`. For app developers, `doc/runtimes.md` says which runtime an app gets.
 
 ## What a runtime is
 
@@ -19,8 +19,7 @@ The build runs in this order (`RuntimeBuilder#call`):
 1. the platform's recipe builds the folder (`tasks/runtime_builder/`);
 2. `LicenseAudit::SourceBundle#copy_into` writes `notices/sources/`;
 3. `RuntimeBuilder#license` audits the folder and writes `notices/NOTICES.txt` and `notices/sbom.spdx.json`, or raises and archives nothing;
-4. the folder is archived, and the SBOM, NOTICES, and source bundle are written beside it;
-5. the build-only companion is archived.
+4. the folder is archived, and the SBOM, NOTICES, and source bundle are written beside it.
 
 A recipe builds only on the computers it names (`Recipe#hosts`): each Unix runtime on its own platform, since its launcher links that platform's libruby; the Windows runtimes on any computer llvm-mingw is pinned for.
 
@@ -191,15 +190,10 @@ The parity check allows the defaults' trace in `$LOADED_FEATURES` (`Parity::JUST
 | Windows | `tools/nsis/` | Runs `Bin/makensis.exe` to compile an installer. It is the part of NSIS's release that compiles one: `COPYING`, makensis and its `zlib1.dll`, the solid LZMA and zlib stubs and the uninstaller's icon, the System and nsDialogs plug-ins, the script headers, and Modern UI 2 (`RuntimeBuilder::Windows::NSIS`). |
 | Windows | `tools/rcedit.exe` | Writes an app's version information and icon into its program. It is Electron's release of `rcedit-x64.exe`. `llvm-rc` and `llvm-windres` compile resources but cannot put them into a program already linked. |
 | Windows | `tools/llvm-readobj.exe` | Reads what an app's compiled gems import and delay-load (ADR 013). It is the one file of LLVM's own Windows release, statically linked, which imports only Windows' DLLs; the build unpacks it with `zstd --long=31` and checks the file's own SHA-256. |
-## The build-only companion
 
-Each desktop runtime build writes a companion, `fledge-runtime-VERSION-PLATFORM-dev.tar.gz`, with the runtime's own top folder, so it unpacks over the runtime (`RuntimeBuilder::DevCompanion`). It holds the library a gem's extension builds link against, and `DEV-NOTICES.txt`:
+## Compiling a gem against a runtime
 
-- on macOS and Linux, the static libruby (`lib/libruby*-static.a`). A static Ruby's extensions link no libruby (mkmf leaves `LIBRUBYARG` empty unless Ruby is shared, `mkmf.rb`, lines 2790 and 2804 to 2806, at Ruby 4.1.0-preview1), but mkmf links the test programs of `have_func` and the rest against `LIBRUBYARG_STATIC`, so an `extconf.rb` that checks for a function (nokogiri's) fails without it;
-- on Windows, the import library of Ruby's DLL (`ruby/lib/*.dll.a`);
-- `DEV-NOTICES.txt`, which says what the archive is, then Ruby's license, and beside a static libruby Rust's too, since YJIT compiles in Rust's standard library.
-
-**The companion is redundant, and its removal is pending.** Every desktop runtime now keeps the library the companion holds, so the runtime alone serves `fledge build` and an app's own `mkmf`. The companion still ships until a change removes it. It holds only that library, which `runtime/licenses.yml` already owns as Ruby's, and never rv-ruby's `lib/libcrypt.a`, which is libxcrypt. `Fledge::Runtimes#dev_archive` finds it as it finds a runtime, checked against the SHA-256 the gem pins (ADR 014), and `fledge build` still fetches it, only when it compiles a gem (ADR 006). Nothing in it is copied into an app. Phone runtimes have no companion: their libraries and headers are in the runtime itself.
+A desktop runtime alone serves `fledge build` when it compiles a gem's extension (`Fledge::NativeBuild`; `doc/contributors/design/gems.md`, "Compiling a gem"): it holds Ruby's headers and the library mkmf links against, the static libruby on macOS and Linux and the import library of Ruby's DLL on Windows (ADR 085). Releases through 0.12.0 also published a build-only companion, `fledge-runtime-VERSION-PLATFORM-dev.tar.gz`, which held that library before the runtime kept it; no later Fledge builds, publishes, or downloads one. Phone runtimes never had one.
 
 ## Platform names and asset names
 
@@ -217,13 +211,12 @@ The assets:
 | Its SBOM | `fledge-runtime-VERSION-PLATFORM.spdx.json` | every one |
 | Its NOTICES | `fledge-runtime-VERSION-PLATFORM-NOTICES.txt` | every one |
 | Its sources | `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz` (`LicenseAudit::Notices.source_bundle`) | each platform that ships a component whose source Fledge publishes: glibc and musl Linux, and Windows |
-| The build-only companion | `fledge-runtime-VERSION-PLATFORM-dev.tar.gz` (`Fledge::Runtimes.dev_file_name`) | every desktop runtime |
 
 `PLATFORM` is the RubyGems name, or `ios` and `android` for the phones. The SBOM and NOTICES assets are copies of the files inside the runtime, which CI compares. The source bundle keeps its `lgpl-sources` name though it holds NSIS's source, under the CPL, too. `SHA256SUMS` covers them all (`doc/contributors/design/releases.md`).
 
 ## Where fledge build finds a runtime
 
-`Fledge::Runtimes` (`lib/fledge/runtimes.rb`) looks for a runtime, and its companion, in this order:
+`Fledge::Runtimes` (`lib/fledge/runtimes.rb`) looks for a runtime in this order:
 
 1. the folder `FLEDGE_RUNTIME_DIR` names, which a contributor points at `tmp/runtime` after `rake runtime`. A runtime there is used as it is, unchecked against the pins, since it was built from this checkout; when the variable is set and the file is missing, the build fails rather than download;
 2. the cache, `$XDG_CACHE_HOME/fledge/runtimes` or `~/.cache/fledge/runtimes`, when its SHA-256 matches the gem's pin;
@@ -231,7 +224,7 @@ The assets:
 
 ## Download retries
 
-`fledge build` downloads runtimes, companions, and gems through `Fledge::Download.save`. A download that fails with `Download::Unavailable` (408, 429, or a 5xx) or `Download::Unreachable` (a connection refused, reset, timed out, unresolvable, broken off, or stalled) is tried again after 2, 4, and 8 seconds (`Download::WAITS`), four tries in all, and the last failure is raised when they run out. Each try starts again from the first byte into the same `.part` file and is checked against the pin; nothing reaches the destination unless it matches. A 401 or 403, a 404 or 410, any other 4xx, and a SHA-256 mismatch would answer the same a moment later, so each fails at once. Before each wait, `Fledge::Runtimes` and `Fledge::GemFetcher` say on their log why and how long: `could not download URL: 503 Service Unavailable; trying again in 2 seconds (2 of 4)`.
+`fledge build` downloads runtimes and gems through `Fledge::Download.save`. A download that fails with `Download::Unavailable` (408, 429, or a 5xx) or `Download::Unreachable` (a connection refused, reset, timed out, unresolvable, broken off, or stalled) is tried again after 2, 4, and 8 seconds (`Download::WAITS`), four tries in all, and the last failure is raised when they run out. Each try starts again from the first byte into the same `.part` file and is checked against the pin; nothing reaches the destination unless it matches. A 401 or 403, a 404 or 410, any other 4xx, and a SHA-256 mismatch would answer the same a moment later, so each fails at once. Before each wait, `Fledge::Runtimes` and `Fledge::GemFetcher` say on their log why and how long: `could not download URL: 503 Service Unavailable; trying again in 2 seconds (2 of 4)`.
 
 A mirror (ADR 031) is retried the same way and then fails, still without trying the release.
 

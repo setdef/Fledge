@@ -25,7 +25,7 @@ The iOS runtime is built on a Mac (`arm64-darwin`), since only Xcode builds for 
 
 ## What a phone runtime holds
 
-Each runtime is a release asset of its own, `fledge-runtime-VERSION-ios.tar.gz` and `fledge-runtime-VERSION-android.tar.gz`, with its SBOM and NOTICES beside it as every runtime has (`doc/contributors/design/license-audit.md`). It has no build-only companion: its headers are in it.
+Each runtime is a release asset of its own, `fledge-runtime-VERSION-ios.tar.gz` and `fledge-runtime-VERSION-android.tar.gz`, with its SBOM and NOTICES beside it as every runtime has (`doc/contributors/design/license-audit.md`).
 
 **iOS** is `FledgeRuby.xcframework`, made by Apple's `xcodebuild -create-xcframework` from one static library per target, in the slices `ios-arm64` and `ios-arm64-simulator`. Each slice holds:
 

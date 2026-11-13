@@ -68,7 +68,6 @@ A GitHub Release holds, for each desktop platform:
 - `fledge-runtime-VERSION-PLATFORM.tar.gz`, the runtime;
 - `fledge-runtime-VERSION-PLATFORM.spdx.json`, its SPDX SBOM;
 - `fledge-runtime-VERSION-PLATFORM-NOTICES.txt`, its notices;
-- `fledge-runtime-VERSION-PLATFORM-dev.tar.gz`, its build-only companion;
 - `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz`, the sources its licenses ask for, on the platforms that ship such a component.
 
 A phone runtime has the first three. A `SHA256SUMS` over all of them is the tagged commit's `lib/fledge/SHA256SUMS`. `RuntimeBuilder.release_assets` (`tasks/runtime_builder.rb`) is the list, and `release.yml` refuses any other set.
@@ -77,7 +76,7 @@ A release is never deleted. Each runtime's NOTICES links its source bundle at th
 
 ## The pins
 
-`lib/fledge/SHA256SUMS` holds one line per release asset, sorted by name, in the form `sha256sum` writes and `sha256sum -c` reads: the hash in lowercase hex, two spaces, and the name. `Fledge::Runtimes` takes the SHA-256 of every runtime and companion it downloads from this file, and checks a runtime in the cache against it too, downloading it again when it does not match. A version whose file names no SHA-256 for a runtime is a commit between releases, and `fledge build` says it is not a released Fledge, naming `FLEDGE_RUNTIME_DIR`. Runtimes in `FLEDGE_RUNTIME_DIR` are a developer's own builds and are not checked.
+`lib/fledge/SHA256SUMS` holds one line per release asset, sorted by name, in the form `sha256sum` writes and `sha256sum -c` reads: the hash in lowercase hex, two spaces, and the name. `Fledge::Runtimes` takes the SHA-256 of every runtime it downloads from this file, and checks a runtime in the cache against it too, downloading it again when it does not match. A version whose file names no SHA-256 for a runtime is a commit between releases, and `fledge build` says it is not a released Fledge, naming `FLEDGE_RUNTIME_DIR`. Runtimes in `FLEDGE_RUNTIME_DIR` are a developer's own builds and are not checked.
 
 `rake runtime:pin` (`tasks/runtime_pins.rb`) writes the file. It downloads the runtime artifacts of the release commit's CI run with the GitHub CLI, refuses unless that run passed on every job and its artifacts are exactly `RuntimeBuilder.release_assets` for the version, and writes their SHA-256s.
 
@@ -125,7 +124,7 @@ Only its Publish job writes: it checks the assets against the pins once more and
 
 ## installed.yml
 
-After publishing, `release.yml` calls `.github/workflows/installed.yml`, which can also be run by hand on any published tag. It checks the published `SHA256SUMS` against the tag's `lib/fledge/SHA256SUMS` and every asset against it. On a fresh runner of each platform, it installs Fledge from the tag with Bundler, never from RubyGems.org, and with no `FLEDGE_RUNTIME_DIR` and an empty cache builds the examples with runtimes downloaded from the release, compiles `examples/native_app`'s gems with the companion, and delivers each app as CI does. It installs the windowed app's installer and runs the app, writes phones' projects from the tag and builds them with Xcode and Gradle, and builds the `.gem` from the tag and installs that file on each platform. A release is not verified until its jobs pass. `package-managers.yml` installs hello with the package managers' recipes from `doc/package_managers.md`.
+After publishing, `release.yml` calls `.github/workflows/installed.yml`, which can also be run by hand on any published tag. It checks the published `SHA256SUMS` against the tag's `lib/fledge/SHA256SUMS` and every asset against it. On a fresh runner of each platform, it installs Fledge from the tag with Bundler, never from RubyGems.org, and with no `FLEDGE_RUNTIME_DIR` and an empty cache builds the examples with runtimes downloaded from the release, compiles `examples/native_app`'s gems against the runtime alone, and delivers each app as CI does. It installs the windowed app's installer and runs the app, writes phones' projects from the tag and builds them with Xcode and Gradle, and builds the `.gem` from the tag and installs that file on each platform. A release is not verified until its jobs pass. `package-managers.yml` installs hello with the package managers' recipes from `doc/package_managers.md`.
 
 `installed.yml` is where a change in the world between the push and the tag shows, since the release runs no CI of its own (ADR 053).
 

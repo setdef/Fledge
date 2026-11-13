@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On iOS and Android, an app's `ENV` no longer holds `SSL_CERT_FILE`: as under rv-ruby's Ruby on a desktop, `require "openssl"` sets `PORTABLE_RUBY_SSL_CERT_FILE` to the runtime's CA certificates, or to the file `SSL_CERT_FILE` names, which OpenSSL then trusts, on Android too.
 - The Android project packs native libraries compressed (`useLegacyPackaging = true`), so the installer extracts them where Android lets the app run its ruby program; an installed app takes more space. Set it to `false` to keep them stored, without a ruby program.
 
+### Removed
+
+- Releases no longer publish `fledge-runtime-VERSION-PLATFORM-dev.tar.gz`, the build-only companion, nor pin it in `lib/fledge/SHA256SUMS`: each desktop runtime holds what it held.
+
 ### Fixed
 
 - In an app with a `Gemfile`, `defined?(Psych)` is false until something loads Psych, as under `bundle exec`: Bundler takes the app's settings from the environment as it sets the app up, instead of reading its `.bundle/config` with RubyGems' YAML serializer, which defined a hollow `Psych` module.

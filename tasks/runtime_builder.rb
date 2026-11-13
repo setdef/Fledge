@@ -108,7 +108,6 @@ class RuntimeBuilder
     license(stage, readers: recipe.readers)
     path = archive
     publish(stage)
-    write_dev(recipe.tree) unless mobile?
     path
   end
 
@@ -134,8 +133,7 @@ class RuntimeBuilder
     described = { runtime: archive, sbom: "#{base}.spdx.json", notices: "#{base}-NOTICES.txt" }
     return described if mobile?
 
-    described.merge(sources: LicenseAudit::Notices.source_bundle(version, platform.name),
-      dev: Fledge::Runtimes.dev_file_name(platform, version:))
+    described.merge(sources: LicenseAudit::Notices.source_bundle(version, platform.name))
   end
 
   # Every asset a release of +version+ publishes but SHA256SUMS, sorted:
@@ -168,15 +166,6 @@ class RuntimeBuilder
     File.write(File.join(stage, "notices", "sbom.spdx.json"), "#{JSON.pretty_generate(LicenseAudit::Spdx.new(report, version: Fledge::VERSION).to_h)}\n")
     puts "#{platform}: #{report.owners.size} files in #{report.present.size} components meet the license policy"
     report
-  end
-
-  # Writes the build-only companion (#assets, :dev) from the Ruby tree
-  # +tree+, with the runtime's top folder, so it unpacks over the runtime.
-  private def write_dev(tree)
-    dev = File.join(build_dir, "dev", top)
-    FileUtils.rm_rf(File.dirname(dev))
-    DevCompanion.copy(tree, dev, windows: platform.windows?)
-    ReleaseArchive.pack(dev, File.join(@work, assets.fetch(:dev)), top:)
   end
 
   # Writes the release assets beside the archive: copies of the SBOM and
@@ -303,7 +292,6 @@ class RuntimeBuilder
 end
 
 require_relative "runtime_builder/armor"
-require_relative "runtime_builder/dev_companion"
 require_relative "runtime_builder/gem_repack"
 require_relative "runtime_builder/pruning"
 require_relative "runtime_builder/certificates"

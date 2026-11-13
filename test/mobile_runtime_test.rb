@@ -84,9 +84,8 @@ class MobileRuntimeTest < Minitest::Test
     assert_equal RuntimeBuilder.new.sources.fetch("ruby").fetch("version"), pins.fetch("ruby").fetch("version")
   end
 
-  # A mobile runtime has no build-only companion, since its headers are
-  # in it, and no LGPL library, so its release carries the runtime, its
-  # SBOM, and its NOTICES.
+  # A mobile runtime ships no LGPL library, so its release carries the
+  # runtime, its SBOM, and its NOTICES.
   def test_a_release_publishes_each_mobile_runtime_with_its_sbom_and_notices
     assets = RuntimeBuilder.release_assets(version: "1.2.3")
 
@@ -94,7 +93,6 @@ class MobileRuntimeTest < Minitest::Test
       assert_includes assets, "fledge-runtime-1.2.3-#{name}.tar.gz"
       assert_includes assets, "fledge-runtime-1.2.3-#{name}.spdx.json"
       assert_includes assets, "fledge-runtime-1.2.3-#{name}-NOTICES.txt"
-      refute_includes assets, "fledge-runtime-1.2.3-#{name}-dev.tar.gz"
       refute_includes assets, "fledge-runtime-1.2.3-#{name}-lgpl-sources.tar.gz"
     end
     ios = { runtime: "fledge-runtime-1.2.3-ios.tar.gz", sbom: "fledge-runtime-1.2.3-ios.spdx.json", notices: "fledge-runtime-1.2.3-ios-NOTICES.txt" }

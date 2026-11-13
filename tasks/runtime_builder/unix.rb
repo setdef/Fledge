@@ -15,7 +15,7 @@ class RuntimeBuilder
   # libexec/cert.pem beside it.
   class Unix < Recipe
     def build(stage)
-      @prefix = @tree = unpack_ruby
+      @prefix = unpack_ruby
       copy_ruby(stage)
       compile(File.join(stage, "launcher"), launcher_sources, "$ORIGIN/lib")
       compile(File.join(stage, "bin", "ruby"), ruby_sources, "$ORIGIN/../lib")

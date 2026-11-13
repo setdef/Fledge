@@ -17,8 +17,6 @@
 #                                                       of what its licenses
 #                                                       ask the source of
 #                                                       (Linux, Windows)
-#   fledge-runtime-VERSION-PLATFORM-dev.tar.gz          its build-only
-#                                                       companion
 #
 # and a SHA256SUMS over all of them, which is the tagged commit's
 # lib/fledge/SHA256SUMS. fledge build at that version downloads its

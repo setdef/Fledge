@@ -97,31 +97,6 @@ module Fledge
       "fledge-runtime-#{version}-#{platform}#{EXTENSION}"
     end
 
-    # The file name of the runtime's build-only companion for +platform+
-    # at +version+ (default: this Fledge's version): the library a gem's
-    # extension links against (static libruby, or on Windows the import
-    # library of Ruby's DLL), which a runtime prunes because no running
-    # app reads it, and which compiling a gem's extension against the
-    # runtime's own Ruby needs beside the headers the runtime holds (ADR
-    # 006). Its top folder is
-    # the runtime's, so it unpacks over it. It never ships in an app.
-    #
-    # === Example
-    #
-    #--
-    # SPDX-SnippetBegin
-    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
-    # SPDX-License-Identifier: MIT-0
-    #++
-    #   Fledge::Runtimes.dev_file_name(Fledge::Platform.find("arm64-darwin"), version: "0.1.0")
-    #   # => "fledge-runtime-0.1.0-arm64-darwin-dev.tar.gz"
-    #--
-    # SPDX-SnippetEnd
-    #++
-    def self.dev_file_name(platform, version: VERSION)
-      "#{File.basename(file_name(platform, version:), EXTENSION)}-dev#{EXTENSION}"
-    end
-
     # Creates the finder.
     #
     # [env] The environment to read +FLEDGE_RUNTIME_DIR+,

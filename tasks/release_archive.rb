@@ -7,9 +7,9 @@
 
 require_relative "../lib/fledge/archive"
 
-# How the build tasks pack what a release publishes, a runtime or its
-# build-only companion: a .tar.gz, written by the computer's own tar,
-# that unpacks into one top folder.
+# How the build tasks pack a runtime, as a release publishes it: a
+# .tar.gz, written by the computer's own tar, that unpacks into one top
+# folder.
 module ReleaseArchive
   # Packs +folder+, whose name must be +top+, as the archive at +path+,
   # says how large it is, and returns +path+.

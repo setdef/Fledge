@@ -19,11 +19,6 @@ class RuntimesTest < Minitest::Test
       Fledge::Runtimes.file_name(Fledge::Platform.find("arm64-darwin"), version: "1.2.3")
   end
 
-  def test_the_build_only_companion_is_named_beside_the_runtime
-    assert_equal "fledge-runtime-1.2.3-arm64-darwin-dev.tar.gz",
-      Fledge::Runtimes.dev_file_name(Fledge::Platform.find("arm64-darwin"), version: "1.2.3")
-  end
-
   def test_the_runtime_directory_wins_and_is_the_only_place_looked
     Dir.mktmpdir do |dir|
       archive = FakeRuntime.write(dir, LINUX)

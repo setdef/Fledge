@@ -1012,8 +1012,8 @@ jobs:
   # one folder (ADR 024); and
   # examples/native_app, whose gems must be compiled (ADR 006): redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
-  # its git tag, each compiled against the runtime's own Ruby and its
-  # build-only companion; libusb, whose precompiled build ships on
+  # its git tag, each compiled against the runtime's own Ruby, with
+  # nothing but the runtime; libusb, whose precompiled build ships on
   # Windows and which compiles from source elsewhere, with the ffi it
   # needs compiled everywhere; and spreadsheet, a GPL gem, with the
   # bigdecimal it needs, the one the runtime's Ruby bundles.

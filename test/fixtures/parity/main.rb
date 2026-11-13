@@ -145,6 +145,114 @@ def main_bundle
   identifier.null? ? nil : message.call(identifier, selector.call("UTF8String")).to_s
 end
 
+# Whether this is Windows, where Fiddle asks Windows itself what Ruby
+# does not say: the process's program, its ANSI code page, and its
+# AppUserModelID, and how a DLL loads by a narrow path.
+def windows?
+  RUBY_PLATFORM.match?(/mingw|mswin/)
+end
+
+# A function of kernel32.dll, through Fiddle.
+def kernel32(name, arguments, result)
+  Fiddle::Function.new(Fiddle.dlopen("kernel32.dll")[name], arguments, result)
+end
+
+# The process's ANSI code page (GetACP), which its program's manifest
+# decides (ADR 070).
+def code_page
+  require "fiddle"
+  kernel32("GetACP", [], Fiddle::TYPE_INT).call
+end
+
+# Whether the DLL at +path+ loads as the ffi gem loads a gem's DLL, with
+# LoadLibraryExA, which reads the path in the ANSI code page
+# (ext/ffi_c/DynamicLibrary.c, lines 215 to 225, at ffi 1.17.4):
+# "loaded", or "no DLL".
+def narrow_load(path)
+  require "fiddle"
+  pointer = Fiddle::TYPE_VOIDP
+  # LOAD_WITH_ALTERED_SEARCH_PATH, as ffi passes for a full path.
+  kernel32("LoadLibraryExA", [pointer, pointer, Fiddle::TYPE_INT], pointer).call(path, nil, 8).null? ? "no DLL" : "loaded"
+end
+
+# code_page and narrow_load as code for a child Ruby, which prints what
+# they return.
+CHILD_CODE_PAGE = 'require "fiddle"; print Fiddle::Function.new(Fiddle.dlopen("kernel32.dll")["GetACP"], [], Fiddle::TYPE_INT).call'
+
+# The child finds the DLL in +folder+, whose name is ASCII, by itself:
+# Ruby reads -e code in the console's code page, so a name outside ASCII
+# written into the code would not survive under code page 437.
+def child_narrow_load(folder)
+  child_ruby(<<~RUBY)
+    require "fiddle"
+    load = Fiddle::Function.new(Fiddle.dlopen("kernel32.dll")["LoadLibraryExA"],
+      [Fiddle::TYPE_VOIDP, Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT], Fiddle::TYPE_VOIDP)
+    print load.call(Dir.glob(File.join(#{folder.inspect}, "*", "*.dll")).fetch(0), nil, 8).null? ? "no DLL" : "loaded"
+  RUBY
+end
+
+# A DLL of Ruby's, which RubyInstaller's tree and a runtime both hold.
+def rubys_dll
+  File.join(RbConfig::CONFIG["bindir"], "ruby_builtin_dlls", "libwinpthread-1.dll")
+end
+
+# The UTF-16 string of +length+ characters at +pointer+, as UTF-8.
+def wide_string(pointer, length)
+  pointer.to_s(length * 2).force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)
+end
+
+# The AppUserModelID Windows groups the process's windows under, which
+# the launcher sets from the app's identifier (ADR 064), or nil.
+def app_user_model_id
+  pointer = Fiddle::TYPE_VOIDP
+  out = Fiddle::Pointer.malloc(Fiddle::SIZEOF_VOIDP)
+  get = Fiddle::Function.new(Fiddle.dlopen("shell32.dll")["GetCurrentProcessExplicitAppUserModelID"], [pointer], Fiddle::TYPE_INT)
+  return unless get.call(out).zero?
+
+  wide_string(out.ptr, kernel32("lstrlenW", [pointer], Fiddle::TYPE_INT).call(out.ptr))
+end
+
+# What Windows says of this process, or nil off Windows and under
+# Bundler, which leaves Fiddle out, as main_bundle says: the program it
+# runs, its ANSI code page, its AppUserModelID, and whether a DLL of
+# Ruby's, under the app's folder, loads through a narrow path.
+def windows_process
+  return unless windows? && !defined?(Bundler)
+
+  require "fiddle"
+  path = Fiddle::Pointer.malloc(65_536)
+  length = kernel32("GetModuleFileNameW", [Fiddle::TYPE_VOIDP, Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT], Fiddle::TYPE_INT).call(nil, path, 32_768)
+  {
+    "program" => wide_string(path, length),
+    "code page" => code_page,
+    "AppUserModelID" => app_user_model_id,
+    "narrow DLL load" => narrow_load(rubys_dll),
+  }
+end
+
+# What a child Ruby started through RbConfig.ruby finds of its own
+# process, beside what this one finds, on Windows outside Bundler, or
+# nil: the ANSI code page, which a child takes from its own program's
+# manifest (ADR 070), and whether a DLL under a folder named outside
+# ASCII loads through a narrow path.
+def windows_child
+  return unless windows? && !defined?(Bundler)
+
+  require "fileutils"
+  require "tmpdir"
+  Dir.mktmpdir do |dir|
+    dll = File.join(dir, "Ünïcödé 日本", File.basename(rubys_dll))
+    FileUtils.mkdir_p(File.dirname(dll))
+    FileUtils.cp(rubys_dll, dll)
+    {
+      "code page" => code_page,
+      "child's code page is its parent's" => child_ruby(CHILD_CODE_PAGE) == code_page.to_s,
+      "narrow DLL load" => narrow_load(dll),
+      "child's narrow DLL load is its parent's" => child_narrow_load(dir) == narrow_load(dll),
+    }
+  end
+end
+
 # +value+ with every string as valid UTF-8, for JSON: a path read in a C
 # locale is US-ASCII with bytes outside it, which is itself what a
 # restart compares, in "encoding".
@@ -158,12 +266,18 @@ def utf8(value)
 end
 
 # What a restart keeps: the process, the program it runs, where the app
-# and Ruby are, the locale, the gems, and the environment.
+# and Ruby are, the locale, the gems, and the environment, and on
+# Windows what Windows says of the process. Windows has no exec that
+# keeps the process: Ruby's own starts the program, waits for it, and
+# exits with its status (win32/win32.c, child_result), so there a
+# restart is a new process, under ruby.exe as in an app, and its PID is
+# not asked.
 def restart_facts
   utf8(
-    "pid" => Process.pid,
+    "pid" => windows? ? nil : Process.pid,
     "program" => running_program,
     "main bundle" => main_bundle,
+    "Windows" => windows_process,
     "$0" => $0,
     "__FILE__" => __FILE__,
     "__dir__" => __dir__,
@@ -212,6 +326,8 @@ def facts
     "RUBY_PLATFORM" => RUBY_PLATFORM,
     "RUBY_DESCRIPTION" => RUBY_DESCRIPTION,
     "RubyVM::YJIT.enabled?" => defined?(RubyVM::YJIT) ? RubyVM::YJIT.enabled? : nil,
+    # Last but requireable, since it requires fiddle.
+    "Windows" => windows_child,
   }
 end
 

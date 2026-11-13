@@ -44,6 +44,8 @@ What you can see from Ruby:
 
 `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first started, with the same setup. On Windows, as under `ruby.exe`, the restarted app is a new process with a new PID, since Windows has no `exec` that keeps a process, and a windowed app that restarts through `RbConfig.ruby`, which is a console program, opens a console while it runs.
 
+A known defect on Windows: in an app with a `Gemfile`, when your users spell Bundler's `BUNDLE_GEMFILE` in another case, such as `bundle_gemfile`, `Bundler.original_env` holds it at the first start and loses it after a restart, where `bundle exec` keeps it. If this bites you, [open an issue](https://github.com/setdef/Fledge/issues).
+
 ## C headers
 
 The app carries Ruby's C headers, so `require "mkmf"` and `find_executable` work. Fledge leaves out the static and import libraries, so an app cannot compile an extension. On a phone, `mkmf` cannot load.

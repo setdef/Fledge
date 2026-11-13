@@ -214,6 +214,19 @@
   checks:
   - script
   - bundle
+- fact: Windows
+  reference:
+  - \A"code page"=\d+\z
+  - \A"narrow DLL load"="no DLL"\z
+  app:
+  - \A"code page"=65001\z
+  - \A"narrow DLL load"="loaded"\z
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - script
+  - bundle
 - fact: Encoding.default_external
   reference:
   - \A"US-ASCII"\z

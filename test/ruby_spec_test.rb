@@ -63,6 +63,48 @@ class RubySpecTest < Minitest::Test
     assert_includes RubySpec::Results.read("core", OUTPUT).failures.fetch(name), "LoadError: 126"
   end
 
+  # An error in a before :all hook, or in a describe's own body, has no
+  # example, so MSpec prints one line with ERROR at its end, then the
+  # message, as iOS's app printed for library/etc/getpwuid_spec.rb and
+  # struct_group_spec.rb in run 43313316095. Each is a failure, named
+  # by the spec file being loaded and the line of it nearest the error.
+  def test_an_error_outside_any_example_is_a_failure_named_by_its_spec_file
+    output = <<~OUT
+      1)
+      An exception occurred during: before :all ERROR
+      Errno::ENOENT: No such file or directory - id
+      /Users/a/RubySpec.app/fledge/app/spec/library/etc/getpwuid_spec.rb:17:in 'Kernel#`'
+      /Users/a/RubySpec.app/fledge/app/spec/library/etc/getpwuid_spec.rb:17:in 'block (3 levels) in <top (required)>'
+      /Users/a/RubySpec.app/fledge/app/spec/library/etc/getpwuid_spec.rb:14:in '<top (required)>'
+      /Users/a/RubySpec.app/fledge/app/main.rb:47:in '<main>'
+
+      2)
+      An exception occurred during: Etc::Group ERROR
+      Errno::ENOENT: No such file or directory - id
+      /work/spec/core/etc/fixtures/common.rb:3:in 'IO.popen'
+      /work/spec/library/etc/struct_group_spec.rb:6:in 'block (2 levels) in <top (required)>'
+      /work/spec/library/etc/struct_group_spec.rb:4:in '<top (required)>'
+      main.rb:47:in '<main>'
+
+      3)
+      An exception occurred during: after :all ERROR
+      RuntimeError: no backtrace
+
+      Finished in 1.0 seconds
+
+      3 files, 0 examples, 0 expectations, 0 failures, 3 errors, 0 tagged
+    OUT
+
+    assert_equal [
+      "library: An exception occurred during: before :all, at library/etc/getpwuid_spec.rb:17",
+      "library: An exception occurred during: Etc::Group, at library/etc/struct_group_spec.rb:6",
+      "An exception occurred during: after :all",
+    ], RubySpec::Results.read(nil, output).failures.keys
+    assert_equal "library: An exception occurred during: before :all, at library/etc/getpwuid_spec.rb:17",
+      RubySpec::Results.read("library", output).failures.keys.first
+    assert_includes RubySpec::Results.read(nil, output).failures.values.first, "Errno::ENOENT"
+  end
+
   def test_a_run_that_stopped_has_no_totals
     assert_nil RubySpec::Results.read("core", "ruby 4.0.9\n...\n[BUG] Segmentation fault\n").totals
   end
@@ -206,6 +248,15 @@ class RubySpecTest < Minitest::Test
     end
     assert_includes RubySpec::Phone.arguments("ios"), "^command_line"
     refute_includes RubySpec::Phone.arguments("android"), "^command_line"
+  end
+
+  # Each of these starts id before any example, which iOS lets no app
+  # do; run 43313316095 showed their errors once the reader read them.
+  def test_ios_leaves_out_the_etc_files_that_start_id_before_any_example
+    files = %w[getpwuid_spec.rb struct_group_spec.rb struct_passwd_spec.rb].map { |file| "^library/etc/#{file}" }
+
+    assert_empty files - RubySpec::Phone.arguments("ios")
+    assert_empty files & RubySpec::Phone.arguments("android")
   end
 
   # The pins are commits of ruby/spec and MSpec, each downloaded from

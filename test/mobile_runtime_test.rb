@@ -125,6 +125,31 @@ class MobileRuntimeTest < Minitest::Test
     assert_raises(RuntimeError) { RuntimeBuilder::RubySource.process_c_ids("#include \"internal.h\"\n") }
   end
 
+  # A phone's Ruby lists the gems rv-ruby's desktop Ruby does, which
+  # leaves out win32-registry, a gem only Windows can load: pruned as a
+  # gem no standard Ruby installs, it goes with its specification.
+  def test_a_phones_ruby_leaves_out_the_windows_only_bundled_gem
+    Dir.mktmpdir do |ruby|
+      gems = File.join(ruby, "gems", "4.1.0+5")
+      FileUtils.mkdir_p([File.join(gems, "specifications"), File.join(gems, "gems", "win32-registry-0.1.2")])
+      %w[win32-registry-0.1.2 csv-3.3.5].each do |full|
+        name, version = full.split(/-(?=\d)/)
+        File.write(File.join(gems, "specifications", "#{full}.gemspec"), Gem::Specification.new(name, version).to_ruby)
+      end
+
+      RuntimeBuilder::Pruning.prune(ruby, %w[csv win32-registry] - RuntimeBuilder::Mobile::WINDOWS_GEMS)
+
+      assert_equal ["csv-3.3.5.gemspec"], Dir.children(File.join(gems, "specifications"))
+      refute_path_exists File.join(gems, "gems", "win32-registry-0.1.2")
+    end
+  end
+
+  # configure is told iOS lacks only what its SDK forbids or lacks;
+  # backtrace is in the SDK, so a [BUG] report lists the C frames.
+  def test_ios_ruby_keeps_backtrace_for_its_crash_reports
+    assert_equal %w[system syscall __syscall getentropy dup3 pipe2], RuntimeBuilder::IOS::MISSING
+  end
+
   def test_platform_finds_desktop_and_mobile_runtimes_by_name
     assert_equal Fledge::Platform.find("x86_64-linux"), RuntimeBuilder.platform("x86_64-linux")
     assert_equal "android", RuntimeBuilder.platform("android").name

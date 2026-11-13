@@ -65,11 +65,5 @@ class Parity
         "system log, where a developer watches the app run. Ruby writes through to a terminal but buffers a pipe " \
         "until the program ends, so the runtime puts $stdout in sync mode, which writes each line when it is " \
         "printed, as under ruby main.rb in a terminal, and as Briefcase's iOS host unbuffers Python's streams."),
-    Justification.new(fact: "gems", app: [/\A"win32-registry /], platforms: MOBILE,
-      reason: "Ruby's own install puts every bundled gem it can in a Ruby it builds from source, as the phones' " \
-        "runtimes are, win32-registry among them, which only Windows can use; rv-ruby's builds, which the " \
-        "desktop's ruby main.rb runs, leave it out."),
-    Justification.new(fact: "requireable", app: [/\A"win32-registry"=/], platforms: MOBILE,
-      reason: "As for win32-registry's gem: it calls Windows' kernel32.dll through fiddle, so it loads nowhere else."),
   ].freeze
 end

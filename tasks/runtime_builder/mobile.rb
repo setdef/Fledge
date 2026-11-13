@@ -110,6 +110,16 @@ class RuntimeBuilder
       source
     end
 
+    # The bundled gems a phone's Ruby leaves out, as it leaves out the
+    # win32 and win32ole extensions: win32-registry, which calls
+    # Windows' kernel32.dll and advapi32.dll through fiddle and loads
+    # nowhere else (lib/win32/registry.rb, lines 166 and 231 at 0.1.2).
+    # Ruby's own install puts it in a Ruby built from source, as a
+    # phone's is, and rv-ruby's builds, which the desktop's ruby main.rb
+    # runs, leave it out, so a phone's Ruby lists the gems a desktop's
+    # does.
+    WINDOWS_GEMS = %w[win32-registry].freeze
+
     # The bundled gems whose extensions this platform leaves out: none
     # but those a subclass names.
     private def omitted_gems
@@ -199,7 +209,7 @@ class RuntimeBuilder
       ruby = File.join(root, "lib", "ruby")
       gems = File.join(ruby, "gems", RuntimeBuilder.ruby_abi(ruby))
       BundledExtensions.check_installed(gems, @kept, platform: target.ruby_platform, api: @extension_api.to_s)
-      Pruning.prune(ruby, @builder.bundled_gems)
+      Pruning.prune(ruby, @builder.bundled_gems - WINDOWS_GEMS)
       @builder.install_rubygems_defaults(ruby)
     end
 

@@ -249,7 +249,7 @@ class RuntimeBuilderTest < Minitest::Test
   end
 
   # The build-only companion holds what compiling an extension against
-  # the runtime's Ruby needs and the runtime prunes (ADR 006): the
+  # the runtime's Ruby needs and the runtime prunes (ADR 091): the
   # library to link against, the import library of Ruby's DLL on Windows
   # and static libruby elsewhere, with their licenses beside it. Ruby's
   # headers are in the runtime itself (ADR 085). Nothing else of Ruby's

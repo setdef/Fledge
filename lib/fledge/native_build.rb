@@ -25,7 +25,7 @@ module Fledge
   # developer's: its headers, its RbConfig, its ABI. And a compiler builds
   # for the computer it runs on, so Fledge compiles a gem only for the
   # platform it runs on, as <tt>gem install</tt> does, and cross-compiles
-  # no desktop gem (ADR 006).
+  # no desktop gem (ADR 091).
   #
   # This class unpacks the runtime and its build-only companion
   # (Fledge::Runtimes#dev_archive: the library to link against) into the

@@ -434,7 +434,7 @@ What this does to "build from one machine" (ADR 001)
     - So a Mac builds every target. Linux and Windows build every target
       but iOS.
   - App with native gems: each mobile target needs that target's cross
-    toolchain (Xcode or the NDK) at build time. ADR 006's "compile on
+    toolchain (Xcode or the NDK) at build time. the former ADR 006, now ADR 091's "compile on
     the platform" becomes "cross-compile from a Mac or a Linux machine".
     That is a larger project than everything else here.
 
@@ -697,7 +697,7 @@ The rule that bites on mobile is LGPL in frameworks.
     meets the letter of the rule, and arguably not its purpose.
   - Android's APKs are a little more open: they can be repackaged and
     re-signed.
-  - This matters to Lota (OpenAL Soft) and to any LGPL gem (ADR 006,
+  - This matters to Lota (OpenAL Soft) and to any LGPL gem (the former ADR 006, now ADR 091,
     section 10), not to Fledge's runtime.
   - Whether an LGPL framework in an App Store app meets decision 8 is
     the maintainer's call: licensing is on the list AGENTS.md reserves

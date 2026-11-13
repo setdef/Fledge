@@ -104,7 +104,7 @@ class PlatformTest < Minitest::Test
 
   # Compiling a gem needs the operating system's name for the libraries
   # it provides, and on macOS the oldest version the runtime runs on,
-  # which a compiled extension may not raise (ADR 006;
+  # which a compiled extension may not raise (ADR 091;
   # doc/contributors/design/releases.md, "Platform floors").
   def test_each_platform_names_its_os_and_its_oldest_macos_or_glibc
     {

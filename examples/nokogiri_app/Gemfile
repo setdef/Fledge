@@ -8,7 +8,7 @@
 source "https://rubygems.org"
 
 # nokogiri compiled from source, as a large C gem that vendors and
-# builds its own libraries is (ADR 006): on a Mac it uses macOS's own
+# builds its own libraries is (ADR 091): on a Mac it uses macOS's own
 # iconv, and on Windows it builds GNU libiconv and links it in, which
 # ships like anything else an app's gems hold (ADR 007). Its precompiled
 # builds ship too; this example is for compiling. .bundle/config's

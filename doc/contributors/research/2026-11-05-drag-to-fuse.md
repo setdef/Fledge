@@ -66,7 +66,7 @@ So a newcomer on Windows fuses with a command line or a one-line batch file, and
 
 - A built app is the launcher, `fledge.cfg`, `app/` (the project as copied), the runtime's tree, and `notices/` (ADR 029, section 2). The launcher reads `fledge.cfg` beside itself (`runtime/launcher/config.c` L6-53): `entry`, `gemfile`, `identifier`, `system_libraries`. `fledge.cfg` is not frozen and no one but Fledge may read or write it (ADR 029, section 3).
 - macOS identity is `Info.plist`, written with `plutil`, and an ad hoc seal with `codesign`, both in `/usr/bin` (`lib/fledge/mac_bundle.rb` L136-236; ADR 010, section 3). Windows identity is rcedit, from the Windows runtime's `tools/`, "which no app holds" (`lib/fledge/windows_resources.rb`; ADR 010, section 5). Archives are the system's own tar, `System32\tar.exe` on Windows (ADR 010, section 2).
-- `fledge build` needs: Ruby 4.0 to run Fledge, a runtime (download or `FLEDGE_RUNTIME_DIR`), Bundler and the network for the lockfile's gems, and a compiler for a gem with no build for the platform (ADR 005, ADR 006, ADR 019 section 2). None of that is on a newcomer's computer.
+- `fledge build` needs: Ruby 4.0 to run Fledge, a runtime (download or `FLEDGE_RUNTIME_DIR`), Bundler and the network for the lockfile's gems, and a compiler for a gem with no build for the platform (ADR 005, the former ADR 006, now ADR 091, ADR 019 section 2). None of that is on a newcomer's computer.
 - One framework's earlier plan, Lota's `lota fuse` (Lota ADR 002 section 5, `~/Developer/rove_2d/doc/contributors/adr/002.md` L51-62), writes a Gemfile that names Fledge by git tag, so it "needs the network and Git", and runs `fledge build`. It is a developer's command line.
 
 ## 6. The spike

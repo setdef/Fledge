@@ -269,7 +269,7 @@ class RuntimeBuilder
     # 7-Zip where it is installed (Ubuntu's runners), and libarchive's
     # bsdtar otherwise (macOS's own tar).
     private def extract_7z(archive, into)
-      if (seven_zip = @builder.which("7z", "7zz"))
+      if (seven_zip = @builder.which("7zz", "7z"))
         @builder.run(seven_zip, "x", "-y", "-bd", "-o#{into}", archive, out: File::NULL)
       elsif (bsdtar = @builder.which("bsdtar"))
         @builder.run(bsdtar, "-xf", archive, "-C", into)
@@ -279,12 +279,20 @@ class RuntimeBuilder
     end
 
     # Unpacks the one +member+ of the Zstandard-compressed tarball
-    # +archive+ into +into+: 7-Zip decompresses it onto tar's input, as
-    # it reads RubyInstaller's archive, so the build needs no zstd
-    # program, which Linux releases of zstd do not ship.
+    # +archive+ into +into+, with zstd where the computer has it, as
+    # GitHub's runners do, or else with 7-Zip's own 7zz, which mise.toml
+    # pins, since Linux releases of zstd ship no program. The 7z of
+    # p7zip, which Ubuntu's runners also carry, is 16.02 and reads no
+    # Zstandard, so it is never used here.
     private def extract_tar_zst(archive, into, member)
-      seven_zip = @builder.which("7z", "7zz") or raise "unpacking #{archive} needs 7z on PATH"
-      statuses = Open3.pipeline([seven_zip, "x", "-so", "-bd", archive], ["tar", "-xf", "-", "-C", into, member])
+      decompress = if (zstd = @builder.which("zstd"))
+        [zstd, "-dc", archive]
+      elsif (seven_zip = @builder.which("7zz"))
+        [seven_zip, "x", "-so", "-bd", archive]
+      else
+        raise "unpacking #{archive} needs zstd or 7-Zip's 7zz on PATH"
+      end
+      statuses = Open3.pipeline(decompress, ["tar", "-xf", "-", "-C", into, member])
       raise "could not unpack #{member} from #{archive}" unless statuses.all?(&:success?)
     end
 

@@ -315,7 +315,7 @@ Write-Host 'ok: the app wrote nothing into its own folder'
 # as under ruby main.rb. With one, the app's ENV is bundle exec's, with
 # Bundler's GEM_HOME over the person's, and a Ruby started inside
 # Bundler.with_original_env or with_unbundled_env, as a Bundler app
-# starts a person's own tools, sees theirs (ADR 045).
+# starts a person's own tools, sees theirs (ADR 086).
 $personGems = Join-Path $work 'person gems'
 New-Item -ItemType Directory -Force $personGems | Out-Null
 $person = $clean.Clone()

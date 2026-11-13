@@ -168,7 +168,7 @@ class RuntimeBuilder
     # Builds Ruby, with the libraries it links, for +target+, and
     # returns the folder it installed into: its prefix, lib/ruby and
     # include/ among it, with Fledge's RubyGems defaults, pruned as a
-    # desktop runtime prunes Ruby (ADR 039).
+    # desktop runtime prunes Ruby (ADR 085).
     #
     # Ruby is configured in its own source folder, as rv-ruby configures
     # the Ruby a desktop runtime is (Abstract/rv-ruby.rb, lines 157 to

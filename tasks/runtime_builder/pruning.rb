@@ -9,7 +9,7 @@ require "fileutils"
 require "rubygems"
 
 class RuntimeBuilder
-  # What a runtime leaves out of the Ruby it is made from (ADR 039): what
+  # What a runtime leaves out of the Ruby it is made from (ADR 085): what
   # no running Ruby code reads, and what a standard Ruby does not
   # install.
   module Pruning

@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The Launcher and bin/ruby
 
-This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 041 the locale; ADR 045 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 026 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
+This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 041 the locale; ADR 086 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 026 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
 
 ## Source files
 

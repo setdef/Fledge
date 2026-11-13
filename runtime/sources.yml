@@ -45,7 +45,7 @@
 # Windows builds; RubyInstaller all but syslog, which needs a Unix), and
 # prunes any other gem its Ruby adds (rv-ruby adds bootsnap and
 # msgpack), so that an app finds exactly what a standard Ruby 4.1 has
-# (ADR 039).
+# (ADR 085).
 ruby:
   version: 4.1.0-preview1
   release: "20261023"

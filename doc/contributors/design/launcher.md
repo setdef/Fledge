@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The Launcher and bin/ruby
 
-This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 087 the locale; ADR 086 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 089 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
+This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 087 the locale; ADR 086 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 026 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
 
 ## Source files
 
@@ -106,8 +106,7 @@ For an app whose `fledge.cfg` names a `gemfile`, `setup_bundler` runs while the 
 5. puts back `BUNDLE_GEMFILE` and `BUNDLE_LOCKFILE` from `bundled`;
 6. calls `Bundler::SharedHelpers.set_bundle_environment`, which composes `PATH`, `RUBYOPT`, and `RUBYLIB` over the person's values as `bundle exec` does, with `-r.../bundler/setup` before the person's `RUBYOPT`;
 7. puts back `GEM_HOME` and `GEM_PATH` from `bundled`, which name the runtime's gem folder;
-8. sets up `MANPATH` as Bundler does, when Bundler had changed it;
-9. on Windows, gives each set-aside variable the spelling the person gave its name, and makes `Bundler::ORIGINAL_ENV` from the composed `ENV`, as the program's Bundler under `bundle exec` does (see "Bundler's variables spelled otherwise").
+8. sets up `MANPATH` as Bundler does, when Bundler had changed it.
 
 So `ENV` is `bundle exec`'s, and `Bundler.original_env`, `with_original_env`, `unbundled_env`, and `with_unbundled_env` give the person's own environment. Nothing here changes which gems load: `Gem.paths` is fixed, Bundler's `Settings` read `ENV` once when created, and Bundler's memoized `bundle_path` names the runtime's gems. A failure exits 70, "could not set up this app's environment". Reimplementing Bundler's composition in C would mean guessing at Bundler's rules, and restoring the person's environment before Bundler loads would expose its setup to their values.
 
@@ -184,7 +183,7 @@ The ANSI code page is what every Windows function whose name ends in `A` reads a
 
 CI run 43278468138, on the `experiment/windows-acp` branch, printed each of these from both launchers and from the runtime's `ruby.exe` and `rubyw.exe` on x64 and ARM64 runners, under code pages 65001 and 437.
 
-A child process has its own code page, from its own program's manifest. RubyInstaller's `ruby.exe` declares none and keeps the system's, and a `ruby.exe.manifest` file beside it changes nothing, since `ruby.exe` embeds a manifest (for `longPathAware`) and Windows reads the embedded one (the same run). So the runtime's `ruby.exe` and `rubyw.exe`, which `RbConfig.ruby` names, are Fledge's, and embed the launcher's manifest (see "bin/ruby and restarts"): a Ruby the app starts has the app's code page. The parity check's `Windows` fact compares a child's with its parent's.
+A child process has its own code page: `bin\ruby.exe`, which `RbConfig.ruby` names, is RubyInstaller's, declares none, and keeps the system's. A `ruby.exe.manifest` file beside it changes nothing, since `ruby.exe` embeds a manifest (for `longPathAware`) and Windows reads the embedded one (the same run).
 
 ## Windows
 
@@ -225,7 +224,7 @@ A console program of a project with a windowed one lives in `Contents/MacOS` too
 
 On macOS and Linux the runtime's `bin/ruby` is `ruby_main.c`: Ruby's `main.c` built against the launcher's static libruby with the launcher's link line, so both carry the same Ruby. It differs from `main.c` in two calls: `fledge_relaunch` first, and `fledge_coerce_locale` in place of `setlocale`. It hides nothing and reads no `fledge.cfg` unless `fledge_relaunch` finds the app's program.
 
-`fledge_relaunch` (`relaunch.c`) hands the app's own program to the app's launcher (ADR 089) when all of these hold:
+`fledge_relaunch` (`relaunch.c`) hands the app's own program to the app's launcher (ADR 026) when all of these hold:
 
 1. `argv[1]` is not empty, does not begin with `-`, and names a regular file.
 2. `bin/ruby` finds its own real path (`fledge_executable_path`), and PREFIX, two folders up, holds a readable `fledge.cfg`.
@@ -240,28 +239,7 @@ Then it `execv`s the launcher with `argv[0]` the launcher's path and the argumen
 
 In an app of one program, whose `fledge.cfg` has no sections, the first executable file `bin/ruby` finds in the folder is taken as the launcher; `fledge build` puts no other there. A launcher found and not started exits 70 (see "Messages and exit statuses").
 
-On Windows the runtime's `ruby\bin\ruby.exe` and `rubyw.exe` are `ruby_main.c` too, in place of RubyInstaller's, compiled by `RuntimeBuilder::Windows#compile_ruby` with llvm-mingw, linked against Ruby's DLL through the tree's import library (`lib\libx64-ucrt-ruby410.dll.a`) as RubyInstaller links its own, `rubyw.exe` with `-mwindows`, and with the launcher's resources, so its manifest is `windows.manifest`. RubyInstaller's tree keeps its shape: `RbConfig.ruby`, `Gem.ruby`, the gems' `.bat` wrappers, and mkmf name `ruby.exe` by its place, and nothing else of the tree changes. `wmain`:
-
-1. `fledge_limit_dll_search` (`windows_relaunch.c`): `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)` and `AddDllDirectory` of `ruby_builtin_dlls` beside it, as the launcher does, so a Ruby the app starts loads DLLs from where the app's Ruby does. RubyInstaller's own `operating_system.rb`, which a runtime replaces, called `SetDefaultDllDirectories` for its `ruby.exe` (`ruby_installer/runtime/msys2_installation.rb`, `enable_dll_search_paths`).
-2. `setlocale(LC_CTYPE, "")` and `ruby_sysinit`, as `main.c`.
-3. `fledge_relaunch` (`windows_relaunch.c`), with the arguments `ruby_sysinit` read as Ruby reads them, then `ruby_start_main`.
-
-`fledge_relaunch` on Windows runs the app's launcher when all of these hold:
-
-1. `argv[1]` is not empty, does not begin with `-`, and names a regular file that is no link.
-2. The command line's first two arguments are written as Ruby's own `exec` writes them (`win32/win32.c`, `join_argv`): plain, with no quote, or in double quotes with no quote inside, and the script with none of `* ? [ {`, which Ruby would expand. Ruby splits a command line by its own rules (`w32_cmdvector`), with single quotes and file name patterns beyond Microsoft's; anything else stays plain Ruby, rather than be split differently.
-3. ROOT, three folders above `ruby.exe`, holds a readable `fledge.cfg`.
-4. A launcher is a file in ROOT whose name ends in `.exe`, that is no link, whose section of `fledge.cfg` (or the whole file without sections) names an `entry` that, under `ROOT\app`, is the same file as `argv[1]` by volume serial number and file index (`GetFileInformationByHandle`), and that holds `FLEDGE_LAUNCHER_MARK`, bytes `windows.c` keeps. The mark keeps an installer's `uninstall.exe`, which sits beside the launcher, from passing for it in an app of one program.
-
-Then it runs the launcher with `CreateProcessW`, its path quoted and the rest of its own command line after the script exactly as given, inheriting its handles and standard streams as Ruby's own `CreateChild` does, waits for it, and exits with its status. Windows has no `exec` that keeps the process: Ruby's `exec` there does the same, starting the program and waiting for it (`process.c`, line 1639, calls `rb_w32_uaspawn` with `P_OVERLAY`, and `win32/win32.c`'s `child_result`, lines 1188 to 1203, waits and exits with the child's status, at Ruby 0e25874222). While it waits it handles Ctrl-C and Ctrl-Break by doing nothing, as CPython's `py` launcher does (`PC/launcher.c`, `ctrl_c_handler`), so the launcher, which shares its console, decides what they do; a handler, unlike ignoring them, is not inherited. A launcher found and not started exits 70.
-
-So a restart through `RbConfig.ruby` boots as the app first booted, with its AppUserModelID and code page. What stays as under `ruby.exe` is the new PID, and, in a windowed app, the console `ruby.exe`, a console program, opens while the restarted app runs.
-
-### Bundler's variables spelled otherwise
-
-Windows' variable names ignore case, and a person may spell Bundler's otherwise, as `bundle_gemfile`, or as Windows itself spells `PATH`, `Path`. Ruby's `ENV` writes there keep a variable's existing name (`hash.c`, `ruby_setenv`, through `_wputenv_s`, at Ruby 0e25874222), and Bundler's `EnvironmentPreserver` looks its keys up in a Ruby Hash, by Bundler's spelling (`bundler/environment_preserver.rb`, `backup` and `restore`, lines 40 to 67, at Bundler 4.0.20). So stock `bundle exec` there, measured on Windows with the probe in a project of its own (machines run 20261113-030018-fb5b70, Bundler 4.1.0.beta3), keeps the person's spelling in `ENV`, records `BUNDLER_ORIG_BUNDLE_GEMFILE` and `BUNDLER_ORIG_PATH` as `BUNDLER_ENVIRONMENT_PRESERVER_INTENTIONALLY_NIL`, and gives the program's `Bundler.original_env` the values its `ENV` holds under the person's names: the Gemfile Bundler set, and the `Path` Bundler composed. A restart through `exec RbConfig.ruby, $0` finds the same.
-
-The launcher removes the person's variables before Ruby boots and writes `BUNDLE_GEMFILE` in Bundler's spelling (`setup_bundler`), so the composition's writes would keep Bundler's spelling, and a restart, inheriting `BUNDLE_GEMFILE` with `BUNDLER_ORIG_BUNDLE_GEMFILE` intentionally nil, would lose it from `Bundler.original_env`. On Windows the composition therefore ends by giving each variable it set aside its person's spelling back, and by making `Bundler::ORIGINAL_ENV` the `restore` of the `ENV` it composed, as the program's Bundler under `bundle exec` makes it from the `ENV` it starts with (`bundler.rb`, `ORIGINAL_ENV`). Elsewhere names are exact, `restore` of that `ENV` is what step 3 already gave, and the code does neither. The parity check's `:spelled` run compares this, and its restart, with `bundle exec` (`parity.md`, "The gem-shaped run").
+On Windows `RbConfig.ruby` is RubyInstaller's `ruby.exe`, and nothing hands a program back; an app restarts by running `NAME.exe`, which it finds with `GetModuleFileNameW(NULL, ...)`. Windows has no `exec` that keeps the process: Ruby's `exec` there starts the program and waits for it (`process.c`, line 1639, calls `rb_w32_uaspawn` with `P_OVERLAY`, and `win32/win32.c`'s `child_result`, lines 1184 to 1200, waits and exits with the child's status, at Ruby 4.1.0-preview1). So a restart through `RbConfig.ruby` there boots with the person's settings, and in a windowed app opens a console and loses the app's AppUserModelID.
 
 ## System libraries on Linux
 

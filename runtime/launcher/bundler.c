@@ -32,24 +32,6 @@
  * fixed before (pin_rubygems), and Bundler's settings were read then, so
  * nothing here changes which gems the app loads.
  *
- * On Windows, whose variable names ignore case, a person may spell one
- * of Bundler's otherwise, as bundle_gemfile, or as Windows spells PATH,
- * Path. Ruby's ENV writes there keep a variable's existing name
- * (hash.c, ruby_setenv, through _wputenv_s), so under bundle exec the
- * program's ENV keeps the person's spelling, while Bundler's
- * EnvironmentPreserver looks its keys up in a Hash, by Bundler's
- * spelling (environment_preserver.rb, backup and restore), records
- * BUNDLER_ORIG_BUNDLE_GEMFILE as intentionally nil, and gives the
- * program's Bundler.original_env the value its ENV holds under the
- * person's name. The launcher, which removed the person's variables
- * before Ruby booted, wrote BUNDLE_GEMFILE in Bundler's spelling, so the
- * writes above keep that one. So, on Windows, the code then gives each
- * variable it set aside its person's spelling back, and makes
- * Bundler.original_env from the ENV it composed, as the program's
- * Bundler under bundle exec makes it from the ENV it starts with
- * (bundler.rb, ORIGINAL_ENV). Elsewhere names are exact, and both are
- * what the code already has.
- *
  * The variables travel as hexadecimal inside the code itself, so the
  * launcher needs no Ruby function but rb_eval_string_protect, and the
  * code leaves no global, constant, or loaded feature behind.
@@ -77,14 +59,6 @@ static const char code_after_variables[] =
     "Bundler::SharedHelpers.set_bundle_environment\n"
     "ENV.update(bundled.slice(\"GEM_HOME\", \"GEM_PATH\"))\n"
     "Bundler.load.send(:setup_manpath) unless bundled[\"MANPATH\"] == booted[\"MANPATH\"]\n"
-    "if Gem.win_platform?\n"
-    "  set_aside.each_key do |name|\n"
-    "    spelled = ENV.keys.find { |key| key.casecmp?(name) }\n"
-    "    ENV[name] = ENV.delete(spelled) if spelled && spelled != name\n"
-    "  end\n"
-    "  Bundler::ORIGINAL_ENV.replace(Bundler::EnvironmentPreserver.new(ENV.to_hash, "
-    "Bundler::EnvironmentPreserver::BUNDLER_KEYS).restore)\n"
-    "end\n"
     "nil\n";
 
 /*

@@ -16,7 +16,7 @@ require "rbconfig"
 # Ruby's main.c is, RUBYOPT and all, unless its first argument is the
 # app's own program, which runs as the host runs it
 # (fledge_ruby_run_app), as the desktop's bin/ruby hands it to the
-# app's launcher (ADR 089).
+# app's launcher (ADR 026).
 class MobileRubyProgramTest < Minitest::Test
   MOBILE = File.expand_path("../../runtime/mobile", __dir__)
   LAUNCHER = File.expand_path("../../runtime/launcher", __dir__)

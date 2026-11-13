@@ -19,7 +19,7 @@ Six things should change before 1.0. They are cheap now and breaking later:
 3. **Stop pointing every `fledge.yml` at the schema on `trunk`.** The schema's `$id` and the modeline that the docs tell developers to copy name `trunk`, which will describe 2.0 while a developer still builds with 1.x.
 4. **Give a windowed program in `programs` the project's name by default.** Today it takes its file's name, so `gui/main.rb` becomes `main.app`, "main" in the Dock, and `main.exe`.
 5. **Say in the help that a bare word Fledge may read as a platform is read so.** `fledge build ios` reads `ios` as a phone, so a phone or platform added later (`visionos`, say) would turn `fledge build visionos`, which builds a folder today, into something else.
-6. **Correct what the README and `doc/licensing.md` say Fledge puts into an app.** They name two files of Fledge's AGPL code. Since the former ADR 026, now ADR 089, `bin/ruby` on macOS and Linux holds Fledge's code too, and `runtime/licenses.yml` says so in `embedded`, but its `ships` line, the README, and the page generated from that line do not.
+6. **Correct what the README and `doc/licensing.md` say Fledge puts into an app.** They name two files of Fledge's AGPL code. Since ADR 026, `bin/ruby` on macOS and Linux holds Fledge's code too, and `runtime/licenses.yml` says so in `embedded`, but its `ships` line, the README, and the page generated from that line do not.
 
 The three riskiest items are the Ruby version (section 4.1), the undeclared Ruby API and internal files (section 4.2), and the schema URL (section 4.3).
 
@@ -68,7 +68,7 @@ A bare `fledge`, an unknown option, an unknown command, a missing value, or two 
 
 ### 2.2 Exit statuses
 
-`fledge` exits 0, 1 for a failed build, 2 for a usage error (ADR 002, sections 1 and 2; `exe/fledge`, lines 293 to 303). A built app's launcher exits with the app's status, 66 (`EX_NOINPUT`) when its entry, its `fledge.cfg`, or its section of `fledge.cfg` is missing, and 70 (`EX_SOFTWARE`) for other damage (ADR 002, section 3; ADR 024, section 8). `bin/ruby` exits 70 when it finds the app's launcher and `execv` fails (the former ADR 026, now ADR 089, section 3). The phone runtimes return the same two from `fledge_ruby_run` and `fledge_ruby_run_app` (`FLEDGE_RUBY_NO_APP`, `FLEDGE_RUBY_SOFTWARE`, `runtime/mobile/fledge_ruby.h`, line 38).
+`fledge` exits 0, 1 for a failed build, 2 for a usage error (ADR 002, sections 1 and 2; `exe/fledge`, lines 293 to 303). A built app's launcher exits with the app's status, 66 (`EX_NOINPUT`) when its entry, its `fledge.cfg`, or its section of `fledge.cfg` is missing, and 70 (`EX_SOFTWARE`) for other damage (ADR 002, section 3; ADR 024, section 8). `bin/ruby` exits 70 when it finds the app's launcher and `execv` fails (ADR 026, section 3). The phone runtimes return the same two from `fledge_ruby_run` and `fledge_ruby_run_app` (`FLEDGE_RUBY_NO_APP`, `FLEDGE_RUBY_SOFTWARE`, `runtime/mobile/fledge_ruby.h`, line 38).
 
 **Freeze it?** Yes. One status for every failed build is coarse; a wrapper cannot tell a missing tool from a refused gem by status. Splitting 1 later would break scripts that test `$? == 1`, so freeze it as it is and let the message say what failed.
 
@@ -159,7 +159,7 @@ From the 0.2.1 `arm64-darwin` runtime's archive, `lib/fledge/assembly.rb`, `runt
 
 ### 2.8 The launcher, and how it differs from `ruby main.rb`
 
-The launcher hides the person's `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the rest from Ruby's boot, puts them back in `ENV` after, coerces a bare C locale to UTF-8, sets Bundler up as `bundle exec` would, and runs `app/ENTRY` by its real path (the former ADR 003, now ADR 081, ADR 005, the former ADR 026, now ADR 089). On macOS and Linux, `bin/ruby` hands `exec RbConfig.ruby, $0, *ARGV` back to the launcher; on Windows, restarting means running `NAME.exe` (the former ADR 026, now ADR 089, sections 3 and 4).
+The launcher hides the person's `RUBYOPT`, `RUBYLIB`, `GEM_HOME`, and the rest from Ruby's boot, puts them back in `ENV` after, coerces a bare C locale to UTF-8, sets Bundler up as `bundle exec` would, and runs `app/ENTRY` by its real path (the former ADR 003, now ADR 081, ADR 005, ADR 026). On macOS and Linux, `bin/ruby` hands `exec RbConfig.ruby, $0, *ARGV` back to the launcher; on Windows, restarting means running `NAME.exe` (ADR 026, sections 3 and 4).
 
 Every difference the parity check allows is in `Parity::JUSTIFIED` (`tasks/parity.rb`, lines 64 to 128) and `MOBILE_JUSTIFIED` (`tasks/parity/mobile.rb`, lines 24 to 62). On the desktop:
 
@@ -179,8 +179,8 @@ On a phone: a system environment with `SSL_CERT_FILE` added (and `HOME` on Andro
 **Surprise?** Three that a developer can meet without reading an ADR:
 
 - Item 1: a usage line built from `$0` prints `/path/to/MyCoolApp-x86_64-linux/app/exe/my_cool_app`, where a RubyGems binstub on a `PATH` prints its full path and `ruby main.rb` prints `main.rb`. `File.basename($0)` is the entry's file name, not the program's name (`my_cool_app`, not `MyCoolApp`). Document it beside the restart in the help.
-- On Windows, `exec RbConfig.ruby, $0` restarts the app as plain Ruby in a console, with the person's settings (the former ADR 026, now ADR 089, section 4). The help and the README say so. A later release that makes it behave as on macOS removes a difference, which is compatible.
-- A child Ruby running any other script (`system(RbConfig.ruby, "worker.rb")`) boots with the person's `RUBYOPT` and `RUBYLIB`, as `ruby worker.rb` would, while the app itself did not (the former ADR 026, now ADR 089, section 3). That is the right reference, but it is the one place where the app and its child see two different Rubies on one computer. Leave it, and keep it in the help.
+- On Windows, `exec RbConfig.ruby, $0` restarts the app as plain Ruby in a console, with the person's settings (ADR 026, section 4). The help and the README say so. A later release that makes it behave as on macOS removes a difference, which is compatible.
+- A child Ruby running any other script (`system(RbConfig.ruby, "worker.rb")`) boots with the person's `RUBYOPT` and `RUBYLIB`, as `ruby worker.rb` would, while the app itself did not (ADR 026, section 3). That is the right reference, but it is the one place where the app and its child see two different Rubies on one computer. Leave it, and keep it in the help.
 
 ### 2.9 Phone projects, the host key, and the embedding API
 
@@ -266,7 +266,7 @@ Every developer who follows the docs copies a modeline that names `trunk` into a
 3. **Point the schema at a release.** Make `$id` the tag's URL, `https://raw.githubusercontent.com/setdef/Fledge/vX.Y.Z/lib/fledge/config.schema.json`, set in each release commit, with a test in `test/config_schema_test.rb` that `$id` names `v#{Fledge::VERSION}`. Change the modeline in Config's RDoc and the README to "the URL of the tag in your Gemfile". Point every `examples/*/fledge.yml` and test fixture at the file by a relative path (`$schema=../../lib/fledge/config.schema.json`), which Red Hat's language server reads (`<schema-url-or-path>`, its README, lines 81 to 95, as ADR 023 cites), so `trunk`'s examples check against `trunk`'s schema. Amend ADR 023, section 3.
 4. **Name a windowed program after the project by default.** In `Fledge::Config::Program.from` (or where `App` builds its programs), a windowed program with no `name` takes the project's name (the `fledge.yml` `name`, else the gemspec's or folder's, camelized, as decision 5 asks), and a console program keeps its file's name. Update `programs[].name` in the schema and the help, ADR 024, section 1, and the CHANGELOG under "Changed". A project whose two programs would then share a name is refused by the rule that exists.
 5. **Reserve platform words in PATH.** In `exe/fledge`'s COMMANDS, replace "for a folder named ios or android, write ./ios" with "a PATH that is a bare word Fledge reads as a platform, today ios and android, is read as one in every later release that adds it; write ./NAME for a folder". A later phone or platform then breaks nobody who followed the help.
-6. **Count `bin/ruby` among Fledge's files.** Change the `fledge` component's `ships` line in `runtime/licenses.yml` to name `bin/ruby` on macOS and Linux, regenerate `doc/licensing.md` with `bundle exec rake "licensing[DIR]"`, and change the README's "Two files in each app are Fledge's" to three. the former ADR 026, now ADR 089, section 1, already says `bin/ruby` carries Fledge's AGPL code, and `licenses.yml`'s `embedded` already checks it; only the prose disagrees, and a developer reads the prose to learn what source to offer.
+6. **Count `bin/ruby` among Fledge's files.** Change the `fledge` component's `ships` line in `runtime/licenses.yml` to name `bin/ruby` on macOS and Linux, regenerate `doc/licensing.md` with `bundle exec rake "licensing[DIR]"`, and change the README's "Two files in each app are Fledge's" to three. ADR 026, section 1, already says `bin/ruby` carries Fledge's AGPL code, and `licenses.yml`'s `embedded` already checks it; only the prose disagrees, and a developer reads the prose to learn what source to offer.
 
 ### Could change after 1.0, compatibly
 

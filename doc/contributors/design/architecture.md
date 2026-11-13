@@ -63,6 +63,7 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [022](../adr/022.md) | Compile a phone's extensions with mkmf against the phone Ruby, link them in, and register them |
 | [024](../adr/024.md) | Ship a Project's Several Programs in One Folder, With One Runtime |
 | [025](../adr/025.md) | A phone project takes its host's files from the app's own project: `ios: host:` and `android: host:` |
+| [026](../adr/026.md) | A restart through `RbConfig.ruby` starts the app's launcher again |
 | [027](../adr/027.md) | Aim an `extconf.rb`'s CMake at the phone through `CMAKE_TOOLCHAIN_FILE` |
 | [028](../adr/028.md) | Version Fledge by SemVer, With a Major Whenever a Break Is Ready, After a Deprecation |
 | [029](../adr/029.md) | Fledge's Public Interface Is Its Command and the Files It Reads and Writes |
@@ -116,5 +117,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [086](../adr/086.md) | Run an App That Has a Gemfile Under the Real Bundler, as bundle exec Does |
 | [087](../adr/087.md) | Turn a bare C locale into a UTF-8 one in every Ruby of a runtime, where the app is started with no locale |
 | [088](../adr/088.md) | On a phone, a require of a linked extension's file by its path finds the extension |
-| [089](../adr/089.md) | A restart through `RbConfig.ruby` starts the app's launcher again |
 | [090](../adr/090.md) | Android's Ruby has YJIT and ZJIT, each off until the app enables it, as on a desktop |

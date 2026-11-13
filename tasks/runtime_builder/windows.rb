@@ -17,9 +17,7 @@ class RuntimeBuilder
   # defaults in place of RubyInstaller's, and the launcher cross-compiled
   # beside it with llvm-mingw. The launcher loads Ruby's DLL when it runs
   # (runtime/launcher/windows.c), so it needs Ruby's headers to build,
-  # and nothing to link. Ruby's own ruby.exe and rubyw.exe are Fledge's,
-  # compiled with the same llvm-mingw against the tree's DLL in place of
-  # RubyInstaller's (#compile_ruby), as bin/ruby is on macOS and Linux.
+  # and nothing to link.
   class Windows < Recipe
     # The triple llvm-mingw compiles each Windows target's launcher for.
     TARGETS = { "x64-mingw-ucrt" => "x86_64-w64-mingw32", "aarch64-mingw-ucrt" => "aarch64-w64-mingw32" }.freeze
@@ -48,7 +46,6 @@ class RuntimeBuilder
       FileUtils.chmod_R("u+w", ruby)
       Pruning.prune_windows(ruby, @builder.bundled_gems)
       add_missing_dlls(ruby)
-      compile_ruby(tree, File.join(ruby, "bin"))
       @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
       copy_nsis(File.join(stage, "tools", "nsis"))
       copy_rcedit(File.join(stage, "tools", "rcedit.exe"))
@@ -210,36 +207,6 @@ class RuntimeBuilder
       @builder.run(tool("clang"), "-O2", *flags, "-DFLEDGE_WINDOWED", *sources, resources, "-mwindows", "-s", "-o", windowed)
       check(output, CONSOLE, IMPORTS)
       check(windowed, GUI, Regexp.union(IMPORTS, WINDOWED_IMPORTS))
-    end
-
-    # Compiles Ruby's own programs, ruby.exe and its GUI twin rubyw.exe,
-    # into +bin+, in place of RubyInstaller's: Ruby's main.c
-    # (runtime/launcher/ruby_main.c) with Fledge's hand-off to the app's
-    # launcher (windows_relaunch.c, ADR 089), linked against Ruby's DLL
-    # through the tree's import library, as RubyInstaller links its own,
-    # with the launcher's manifest, so a Ruby the app starts has the
-    # app's code page (ADR 070). Each may import Ruby's DLL besides what
-    # the launcher may.
-    RUBY_SOURCES = %w[ruby_main.c windows_relaunch.c config.c].freeze
-
-    private def compile_ruby(tree, bin)
-      sources = RUBY_SOURCES.map { |file| File.join(LAUNCHER, file) }
-      flags = ["-std=gnu11", *WARNINGS, "-municode", *includes(tree)]
-      sources.each do |source|
-        report = File.join(@build_dir, "#{File.basename(source, '.c')}.plist")
-        @builder.run(tool("clang"), "--analyze", "-Xclang", "-analyzer-werror", *flags, source, "-o", report)
-      end
-      resources = File.join(@build_dir, "windows.res.o")
-      import = File.join(tree, "lib", "lib#{ruby_dll(tree)}.a")
-      raise "#{tree} has no import library for its Ruby DLL: #{import}" unless File.file?(import)
-
-      allowed = Regexp.union(IMPORTS, /\A#{Regexp.escape(ruby_dll(tree))}\z/i)
-      { "ruby.exe" => ["-mconsole", CONSOLE], "rubyw.exe" => ["-mwindows", GUI] }.each do |name, (subsystem_flag, subsystem)|
-        program = File.join(bin, name)
-        FileUtils.rm_f(program)
-        @builder.run(tool("clang"), "-O2", *flags, *sources, resources, import, subsystem_flag, "-s", "-o", program)
-        check(program, subsystem, allowed)
-      end
     end
 
     private def check(program, subsystem, allowed)

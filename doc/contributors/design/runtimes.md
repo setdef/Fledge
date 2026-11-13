@@ -29,7 +29,7 @@ A recipe builds only on the computers it names (`Recipe#hosts`): each Unix runti
 | Path | What it is |
 |---|---|
 | `launcher` | Fledge's launcher, `runtime/launcher/unix.c` and the rest, linked with the static libruby. `fledge build` renames it for the app. |
-| `bin/ruby` | Ruby's own `main.c` (`runtime/launcher/ruby_main.c`), linked with the same libruby and the same link line, so `RbConfig.ruby` and `Gem.ruby` run. Given the app's own program, it hands it back to the app's launcher (ADR 089; `doc/contributors/design/launcher.md`). |
+| `bin/ruby` | Ruby's own `main.c` (`runtime/launcher/ruby_main.c`), linked with the same libruby and the same link line, so `RbConfig.ruby` and `Gem.ruby` run. Given the app's own program, it hands it back to the app's launcher (ADR 026; `doc/contributors/design/launcher.md`). |
 | `bin/*` | The default and bundled gems' executables, as rv-ruby installs them. |
 | `include/ruby-X.Y.0/` | Ruby's C headers, which `require "mkmf"` reads at run time (ADR 085). |
 | `lib/libruby*-static.a` | Ruby's static library, which `mkmf` links the test program of every `have_func`, `have_library`, and `try_link` against ("What a runtime keeps"). |
@@ -55,7 +55,7 @@ Each program builds with warnings as errors (`RuntimeBuilder::WARNINGS`) and und
 |---|---|
 | `launcher.exe` | The console launcher (`runtime/launcher/windows.c`), which loads Ruby's DLL when it runs. |
 | `launcherw.exe` | The same launcher built as a GUI program, for windowed apps (ADR 037). |
-| `ruby\` | RubyInstaller's tree, its shape unchanged (ADR 038): `bin\` with Ruby's DLL (`x64-ucrt-ruby410.dll` or `aarch64-ucrt-ruby410.dll` for Ruby 4.1), `ruby.exe`, `rubyw.exe`, the gems' wrappers, and `ruby_builtin_dlls\`; `include\`; `lib\ruby\`. `ruby.exe` and `rubyw.exe` are Fledge's, Ruby's `main.c` built against that DLL in their place (`RuntimeBuilder::Windows#compile_ruby`; `launcher.md`, "bin/ruby and restarts"). Fledge adds two DLLs RubyInstaller leaves out (`windows-dlls` in `runtime/sources.yml`, `RuntimeBuilder::Windows#add_missing_dlls`): `libz-1.dll` in Ruby's architecture folder under `lib\ruby\`, named in `zlib.so`'s assembly manifest, and, on x64, `libgcc_s_seh-1.dll` in `ruby_builtin_dlls\`. |
+| `ruby\` | RubyInstaller's tree, its shape unchanged (ADR 038): `bin\` with Ruby's DLL (`x64-ucrt-ruby410.dll` or `aarch64-ucrt-ruby410.dll` for Ruby 4.1), `ruby.exe`, `rubyw.exe`, the gems' wrappers, and `ruby_builtin_dlls\`; `include\`; `lib\ruby\`. Fledge adds two DLLs RubyInstaller leaves out (`windows-dlls` in `runtime/sources.yml`, `RuntimeBuilder::Windows#add_missing_dlls`): `libz-1.dll` in Ruby's architecture folder under `lib\ruby\`, named in `zlib.so`'s assembly manifest, and, on x64, `libgcc_s_seh-1.dll` in `ruby_builtin_dlls\`. |
 | `tools\nsis\`, `tools\rcedit.exe`, `tools\llvm-readobj.exe` | What `fledge build` runs ("The tools folder"). |
 | `notices\` | `NOTICES.txt`, `sbom.spdx.json`, and `sources\`. |
 
@@ -140,7 +140,7 @@ Everything a standard Ruby of the pinned version installs that running Ruby code
 - the standard library;
 - every default gem, and every gem `runtime/sources.yml`'s `bundled_gems` lists that the Ruby installs (rv-ruby installs all but win32ole and win32-registry, which only Windows builds; RubyInstaller all but syslog, which needs a Unix);
 - each gem's executables, its `.gem` in the cache (`gem pristine` and `Gem::Specification#cache_file` read it), its build information, plugins, and C extensions, and the libraries those extensions carry;
-- Ruby's own programs: Fledge's `bin/ruby` on macOS and Linux, and on Windows Fledge's `ruby.exe` and `rubyw.exe` and RubyInstaller's command-line wrappers for the gems (`gem.cmd`, `bundle.bat`, and the rest);
+- Ruby's own programs: Fledge's `bin/ruby` on macOS and Linux, and RubyInstaller's `ruby.exe` and `rubyw.exe` and the gems' command-line wrappers (`gem.cmd`, `bundle.bat`, and the rest) on Windows;
 - the library `mkmf` links its checks against: on macOS and Linux the static libruby beside `lib/ruby`, and on Windows the import library of Ruby's DLL (`lib\*.dll.a`). `mkmf` links each check's program against `$(LIBRUBYARG)` (`mkmf.rb`, lines 541 to 553, at Ruby 4.1.0-preview1), which for a static Ruby names `-lruby.X.Y-static` in `$(libdir)`; without the file an app's own `have_func` raises "The compiler failed to generate an executable file". rv-ruby's `lib/libcrypt.a` stays out: it is libxcrypt, which is LGPL, and the linker finds the system's `-lcrypt`;
 - Ruby's C headers, `include/`, since `require "mkmf"` aborts without `ruby/ruby.h` ("mkmf.rb can't find header files for ruby", `mkmf.rb` line 253 at Ruby 4.1.0-preview1);
 - on Windows, every DLL, those Fledge adds among them, since an extension's manifest may name any of them, and RubyInstaller's own Ruby library in `site_ruby`.

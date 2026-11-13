@@ -132,11 +132,6 @@
 #error "build with -DFLEDGE_RUBY_DLL=L\"x64-ucrt-ruby410.dll\", the name of Ruby's DLL in ruby\\bin"
 #endif
 
-/* The bytes by which the runtime's ruby.exe knows this program for the
- * app's launcher (windows_relaunch.c), kept though nothing reads them
- * here. */
-__attribute__((used)) static const char launcher_mark[] = FLEDGE_LAUNCHER_MARK;
-
 /* The launcher's file name, for messages. Set once in wmain. */
 static const wchar_t *program_name = L"launcher";
 

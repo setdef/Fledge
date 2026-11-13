@@ -343,24 +343,6 @@ if ($gemPath.Code -ne 0 -or $gemPath.Out.Replace('/', '\').Contains($personGems)
 }
 Write-Host "ok: the app's own gems ignore the person's GEM_HOME"
 
-# A program restarts itself as Ruby programs do, with exec RbConfig.ruby,
-# $0, and the runtime's ruby.exe runs the app's own program through its
-# launcher (ADR 089), waiting for it as Ruby's own exec waits on Windows.
-# The probe restarts from this folder, whose name is not ASCII, in a
-# clean, a person's, and a hostile environment, and the restarted probe
-# must find nothing changed (doc/contributors/design/parity.md, "Restart
-# checks"): its program, code page, and AppUserModelID, a DLL loaded by a
-# narrow path, the gems, and ENV. A restart is a new process here, so its
-# PID is not compared.
-foreach ($pair in @(@('clean', $clean), @("person's", $person), @('hostile', $hostile))) {
-  $restart = Invoke-App $probeApp $pair[1] @('restart')
-  if ($restart.Code -ne 0 -or $restart.Err -ne '' -or $restart.Out -cnotmatch '\Arestarted as itself\r?\n\z') {
-    Write-Host "--- stdout`n$($restart.Out)--- stderr`n$($restart.Err)"
-    Fail "a restart through RbConfig.ruby in a $($pair[0]) environment: exit status $($restart.Code), output above"
-  }
-}
-Write-Host 'ok: a restart through RbConfig.ruby is the same app, in a clean, a person''s, and a hostile environment'
-
 # A broken app fails with a message that names the app, not Ruby, on
 # standard error, and EX_NOINPUT (66) when the program it runs, app\ENTRY,
 # is missing (ADR 002).

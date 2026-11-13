@@ -131,6 +131,10 @@ class Parity
       reason: "Bundler reads the app's .bundle/config, where fledge build records the app's bundle as frozen and " \
         "without the development and test groups, as bundle config set --local would (ADR 045). Reading a " \
         "configuration file loads RubyGems' YAML serializer."),
+    Justification.new(fact: "Object.constants", app: [/\A"Psych"\z/], checks: %i[bundle],
+      reason: "As for RubyGems' YAML serializer in $LOADED_FEATURES: where Psych is not loaded, the serializer defines a " \
+        "Psych module of its own, for its errors (rubygems/yaml_serializer.rb, lines 7 to 8, at Ruby 4.1.0-preview1), " \
+        "as it does under bundle exec in any project with a .bundle/config."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"(?:<prefix>/lib/ruby/#{ABI}|#{PERSON_GEMS}/gems/bundler-[^/"]+/lib)/bundler/feature_flag\.rb"\z}o],
       checks: %i[bundle],
       reason: "With no setting that says where the bundle's gems are, Bundler asks its feature flags whether to use " \
@@ -140,6 +144,8 @@ class Parity
         "A built app ships the gemspec evaluated, as Bundler caches a git gem's " \
         "(doc/contributors/design/gems.md, \"The app's .bundle/config and gemspecs\"), so that one that runs git needs no git; " \
         "the version file loads when the app requires it, as every other file of the app does."),
+    Justification.new(fact: "Object.constants", reference: [/\A"MyCoolApp"\z/], checks: %i[bundle],
+      reason: "As for the version file in $LOADED_FEATURES, which defines MyCoolApp."),
     Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, %r{\A"<home>/\.(?:gem|local/share/gem)/}],
       reason: "The app's gems are the runtime's alone (ADR 040): the person's GEM_HOME, GEM_PATH, and " \
         "Gem.user_dir never shadow them. Their ENV still reaches the app and its child processes."),
@@ -164,6 +170,9 @@ class Parity
         "RubyInstaller's runtime to look for MSYS2, and with it win32/dll_directory and the " \
         "encodings its messages use. Ruby loads an encoding when code first needs it, so an app " \
         "that uses one finds it either way."),
+    Justification.new(fact: "Object.constants", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt], reference: [/\A"(?:RubyInstaller|Win32)"\z/],
+      reason: "As for RubyInstaller's files in $LOADED_FEATURES, which define RubyInstaller, and Win32 in " \
+        "win32/dll_directory."),
     *LOCALE_FACTS.map do |fact|
       Justification.new(fact:, reference: [/\A"US-ASCII"\z/], app: [/\A"UTF-8"\z/], checks: %i[no_locale],
         reason: "With no locale at all (no LC_ALL, LC_CTYPE, or LANG, or LANG=C), as a desktop, a service manager, " \

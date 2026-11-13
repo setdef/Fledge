@@ -33,20 +33,20 @@ Evidence is Ruby 4.1.0-preview1's own library as mise installs it on this Mac (`
 | J7 | `$LOAD_PATH`; bundle | gems under the person's `GEM_HOME` against the runtime's gem folder | A | probe |
 | J8 | `$LOADED_FEATURES`; bundle | Bundler's files from the same two places | A | probe |
 | J9–J10 | `ENV`, child `ENV`; bundle | `BUNDLE_BIN_PATH`, `BUNDLER_SETUP`, `RUBYLIB`, `RUBYOPT` naming those places | A | probe |
-| J11–J13 | `$LOAD_PATH`, `gems`, `requireable`; bundle | rake, a development gem, missing from the app | **C** | developer |
+| J11–J13 | `$LOAD_PATH`, `gems`, `requireable`; bundle | rake, a development gem, missing from the app | closed: `feat(lib)!: ship the development and test groups, as bundle exec loads them` | developer |
 | J14–J15 | `ENV`, child `ENV`; bundle | `GEM_HOME` and `PATH` naming those places | A | probe |
 | J16 | `$VERBOSE` | `nil` (person's `RUBYOPT=-W0`) against `false` | B | developer |
-| J17 | `$LOADED_FEATURES`; bundle | `rubygems/yaml_serializer.rb` in the app | A | probe |
+| J17 | `$LOADED_FEATURES`; bundle | `rubygems/yaml_serializer.rb` in the app, and a hollow `Psych` in `Object.constants` | closed: `fix: set Bundler up from the environment, so nothing defines a hollow Psych` | probe |
 | J18 | `$LOADED_FEATURES`; bundle | `bundler/feature_flag.rb` under `bundle exec` | A | probe |
-| J19 | `$LOADED_FEATURES`; bundle | the project's `lib/my_cool_app/version.rb`, loaded by the gemspec under `bundle exec` | **C** | developer |
+| J19 | `$LOADED_FEATURES`; bundle | the project's `lib/my_cool_app/version.rb`, loaded by the gemspec under `bundle exec` | closed: `fix(lib): load what a gemspec requires before the program, as Bundler does` | developer |
 | J20 | `Gem.path` | the person's `GEM_HOME` and `Gem.user_dir` missing from the app | B | developer |
 | J21 | `Gem.dir` | the person's `GEM_HOME` against the runtime's gem folder | B | developer |
 | J22–J23 | `gems`, `requireable` | rv-ruby's bootsnap and msgpack missing from the app | A | developer, rarely |
 | J24 | `$LOADED_FEATURES`; Unix | Fledge's `rubygems/defaults/operating_system.rb` | B | probe |
-| J25 | `$LOADED_FEATURES`; Windows | RubyInstaller's `ruby_installer/*`, `win32/dll_directory.so`, and `enc/*` missing from the app | **C**, in part | developer |
+| J25 | `$LOADED_FEATURES`; Windows | RubyInstaller's `ruby_installer/*`, `win32/dll_directory.so`, and `enc/*` missing from the app | narrowed: `fix: define RubyInstaller in a Windows app, as ruby.exe does`; `ruby_installer/runtime/*`, `win32/dll_directory.so`, and `enc/*` remain, and `RubyInstaller` is defined | developer |
 | J26–J28 | the three encodings; no locale | `US-ASCII` against `UTF-8` | B | developer |
 
-Counts: 16 entries A, 7 B, 5 C (J11, J12, J13, J19, J25).
+Counts: 15 entries A, 7 B, 1 C in part (J25), 5 closed (J11, J12, J13, J17, J19). The static libruby that `mkmf` links against is kept in every desktop runtime (`fix: keep the library mkmf links against in every desktop runtime`).
 
 ### J1–J6: the program's path (A)
 
@@ -65,7 +65,9 @@ The app is the second line, run from wherever the person is. A relative path wou
 
 The reference installs the bundle into the person's `GEM_HOME`; the app installs it into Ruby's own gem folder, with `path.system` (`gems.md`, "Installing into the runtime's gem folder"). A developer who runs `bundle install` with no `GEM_HOME` installs into Ruby's own gem folder too, and then `bundle exec` gives the app's paths exactly: Bundler sets `GEM_HOME` to the bundle path and puts its bin folder on `PATH` either way. The difference is the reference's choice of install location, not Fledge's.
 
-### J11–J13: the development and test groups (C, developer)
+### J11–J13: the development and test groups (closed)
+
+Closed by `feat(lib)!: ship the development and test groups, as bundle exec loads them`: the app sets up the groups `bundle exec` sets up under the developer's own settings (`gems.md`, "Groups"). What follows is the finding that led to it.
 
 `gems.md`, "Groups": "with `development` and `test` always left out: a built app has no development gems, as Warbler's `bundle_without` has it." The reason is prior art (Warbler, Heroku's default `BUNDLE_WITHOUT`), and size. Neither is a rule of an operating system, and decision 20 says "Tiny filesize is not a priority; "my ruby code just works" _is_ a (high) priority."
 
@@ -86,11 +88,15 @@ The fix: stop forcing `development` and `test` into `without` in `Fledge::Bundle
 
 Design precedence 1 names it: "no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot". A person's `RUBYOPT=-rsomething` would load code into the app; `-W0` is the harmless stand-in the probe uses. `ruby main.rb` with no `RUBYOPT` gives `false`, as the app does. The maintainer agreed to restore the variables into `ENV` afterwards (decision 11, "I think yes?"), which ADR 040 does, so only the boot is shielded. Nothing to close without breaking precedence 1.
 
-### J17–J18: Bundler reads the app's `.bundle/config` (A)
+### J17–J18: Bundler reads the app's `.bundle/config` (J17 closed, J18 A)
+
+J17 is closed by `fix: set Bundler up from the environment, so nothing defines a hollow Psych`: the launcher hands Bundler the app's settings as `BUNDLE_` variables read from `.bundle/config` and deletes them after `bundler/setup`, and points `BUNDLE_APP_CONFIG` and `BUNDLE_USER_CONFIG` at a folder that holds nothing, so Bundler reads no settings file, loads no `rubygems/yaml_serializer`, and defines no hollow `Psych` (`launcher.md`, "The Bundler environment"). The text below says why the file stays in the app, and why J18 stands.
 
 `LIBDIR/bundler/settings.rb`, line 831, requires `rubygems/yaml_serializer` when Bundler reads a configuration file; line 338 to 341, `use_system_gems?`, asks `Bundler.feature_flag` only when no setting says where the gems are. The app has a `.bundle/config`, the reference has none. `bundle exec` in the built app's folder, or in any project where the developer ran `bundle config set --local`, loads the same files. The `.bundle/config` itself is forced: without `BUNDLE_FROZEN`, `Definition#write_lock` touches `Gemfile.lock` on every setup even when nothing changed (`LIBDIR/bundler/definition.rb`, lines 425 to 428, `FileUtils.touch` when not frozen; `runtime.rb` line 37 calls `lock`), which fails in a folder the person cannot write, such as `/Applications` for a standard user or `C:\Program Files`, where the NSIS installer puts the app. Moving the settings into `BUNDLE_*` variables would show in `ENV`, a worse difference.
 
-### J19: the gemspec's own requires (C, developer)
+### J19: the gemspec's own requires (closed)
+
+Closed by `fix(lib): load what a gemspec requires before the program, as Bundler does`: the shipped gemspec starts with a `require_relative` for each project file its evaluation loads (`gems.md`, "The app's .bundle/config and gemspecs"). What follows is the finding that led to it.
 
 Under `bundle exec`, Bundler evaluates the project's gemspec at every start, in `TOPLEVEL_BINDING` (`LIBDIR/bundler.rb`, lines 642 to 660). `bundle gem`'s template, and `examples/my_cool_app/my_cool_app.gemspec` line 8, begin with `require_relative "lib/my_cool_app/version"`, so `MyCoolApp::VERSION` is defined, and `version.rb` loaded, before the program's first line. The app ships the gemspec evaluated at build time (`gems.md`, "The app's .bundle/config and gemspecs"), so neither is true there.
 
@@ -110,7 +116,9 @@ rv-ruby installs both; no standard Ruby 4.1 does (`gems/bundled_gems` at the v4_
 
 The file is the means of J20, through the hook RubyGems documents for whoever packages Ruby (`rubygems.rb`, lines 1464 to 1476, cited in the file's header), which Debian's Ruby and RubyInstaller use too. A Debian `ruby main.rb` loads such a file. Patching `rubygems/defaults.rb` instead would hide the trace but change a file of Ruby's own. Only the probe sees it.
 
-### J25: RubyInstaller's start-up files on Windows (C, in part; developer)
+### J25: RubyInstaller's start-up files on Windows (C, in part; narrowed)
+
+Narrowed by `fix: define RubyInstaller in a Windows app, as ruby.exe does`: Fledge's `operating_system.rb` requires `ruby_installer/runtime` and calls nothing, so `RubyInstaller` is defined and mysql2 takes its `ruby.exe` branch. The files RubyInstaller's start-up loads beyond that stay missing. What follows is the finding that led to it.
 
 Replacing RubyInstaller's `operating_system.rb` is forced. At 92a692c (`resources/files/operating_system.rb`) it writes and deletes `Gem.default_dir/writable_p` on every start; when that fails, as in `C:\Program Files`, it sets `ENV['GEM_HOME'] ||= Gem.user_dir`, an `ENV` change of its own; it creates `%ProgramData%\gemrc` when missing; and it calls `RubyInstaller::Runtime.enable_dll_search_paths`, which adds every folder of `RUBY_DLL_PATH` and then calls `msys2_installation.enable_dll_search_paths` (`lib/ruby_installer/build/singleton.rb`), so a person's MSYS2 DLLs can load into the app. All of it is precedence 1 harm in an app. That part is B.
 
@@ -151,13 +159,13 @@ That is an ordinary line of app code failing for a person whose folder name is n
 |---|---|---|
 | Your program's path | A | J1–J6. |
 | Your users' Ruby settings | B | J16, and ADR 040's unprobed consequence: a person cannot turn on `RUBY_YJIT_ENABLE`, `RUBY_MN_THREADS`, or `RUBY_GC_*` for an app. Precedence 1 covers that too (a person's `RUBY_THREAD_VM_STACK_SIZE` could break the app); a developer can still call `RubyVM::YJIT.enable` from code. No parity fact measures any `RUBY_*` tunable. |
-| Your gems | B and **C** | `Gem.dir`, `Gem.path`, the frozen bundle, and the defaults file are B (J17–J18, J20–J21, J24). Leaving out `development` and `test` is C (J11–J13). `Bundler.frozen_bundle?`, `Bundler.settings[:frozen]`, and `Bundler.settings[:without]` differ too, and no parity fact reads them. |
+| Your gems | B | `Gem.dir`, `Gem.path`, the frozen bundle, and the defaults file are B (J17–J18, J20–J21, J24). J11–J13 and J17 are closed. `Bundler.frozen_bundle?`, `Bundler.settings[:frozen]`, and `Bundler.settings[:without]` differ too, and no parity fact reads them. |
 | The locale | B | J26–J28. |
 | Windows' ANSI code page | B | ffi 1.17.4's `ext/ffi_c/DynamicLibrary.c`, lines 215 to 225, calls `LoadLibraryExA`, confirmed; an app that cannot start in `C:\Users\José\` is precedence 1 harm, and precedence 1 wins over 2. But no entry in `Parity::JUSTIFIED` covers it, because the parity check runs only console programs, where nothing differs: the windowed difference (`Encoding.locale_charmap` `"CP65001"`) is documented and never checked. |
 | Restarts | **C** on Windows, A in part | Below. |
-| C headers | **C** | Below. |
+| C headers | closed | Below. |
 | On a phone | out of scope | The phone audit's. |
-| What a standard Ruby installs and the app does not | A and **C** | bootsnap and msgpack are A (J22–J23); RubyInstaller's start-up is C in part (J25). |
+| What a standard Ruby installs and the app does not | A and **C** | bootsnap and msgpack are A (J22–J23); RubyInstaller's start-up is C in part, narrowed (J25). |
 
 ### Restarts on Windows (C, developer)
 
@@ -167,7 +175,9 @@ A developer meets it with any self-restarting app (after an update, after a sett
 
 The fix: build a `ruby.exe` (and `rubyw.exe`) of Fledge's with llvm-mingw, which already builds the launchers, and put it in place of RubyInstaller's inside the same tree, so the tree's shape stays ADR 038's. It is Ruby's `main.c` against the DLL, as `bin/ruby` is on Unix, plus a Windows `relaunch`: when `argv[1]` names the app's entry by file identity (`GetFileInformationByHandle`, the volume serial and file index, as `relaunch.c` compares device and inode), `CreateProcessW` the app's launcher with the rest of the command line, wait, and exit with its status, which is what Ruby's own `exec` does there. It reads `fledge.cfg` with `config.c` and carries the `activeCodePage` manifest. About 150 to 250 lines of C, the build steps in `RuntimeBuilder::Windows`, the license audit's record of the replaced programs, a Windows restart check in Delivery, and ADR 026's and ADR 038's lines on Windows. It would also give every child Ruby the app starts the launcher's code page, closing the last paragraph of "Windows' ANSI code page".
 
-### C headers without libraries (C, developer, rarely)
+### C headers without libraries (closed)
+
+Closed by `fix: keep the library mkmf links against in every desktop runtime`: every desktop runtime keeps the static libruby, or the import library of Ruby's DLL (`runtimes.md`, "What a runtime keeps"). What follows is the finding that led to it.
 
 ADR 039 prunes "static and import libraries" as what "no running code reads". `runtimes.md`, "The build-only companion", says otherwise in its own words: "mkmf links the test programs of `have_func` and the rest against `LIBRUBYARG_STATIC`, so an `extconf.rb` that checks for a function (nokogiri's) fails without it" (`LIBDIR/mkmf.rb`, line 552, `link_config`'s `$(LIBRUBYARG)`, and lines 2790 to 2806). An app's own running code that calls `have_func` or `try_link`, on a computer with a compiler, reads them. It needs a compiler a person rarely has, so it is the least likely entry here to be met. The fix ships the companion's files in the runtime: no new code, the license audit's and SBOM's entries (Ruby's license, and Rust's beside a static libruby), and some megabytes on macOS and Linux; Windows' import library is small. Decision 20 says size does not count against "my ruby code just works". ADR 039's "Decision Outcome" line on pruning would change with it.
 
@@ -175,11 +185,11 @@ ADR 039 prunes "static and import libraries" as what "no running code reads". `r
 
 Ranked by how soon an app developer would meet each in a real app:
 
-1. **Development and test groups left out (J11–J13).** Any program that requires a development gem at run time (`debug`, `pry`, `dotenv`, rake as a library) fails in the app with a `LoadError` naming the gem, and works under `bundle exec`. About 5 lines in `Fledge::Bundle#read_groups`, plus tests and docs; the cost is bigger apps and builds refused for development gems with no build for the target.
-2. **`RubyInstaller` undefined on Windows (J25, in part).** A gem that tests `defined?(RubyInstaller)`, such as mysql2 0.5.6, takes its other branch and aborts. About 3 lines in `runtime/rubygems/operating_system.rb`, a new parity fact, and one pattern of J25 removed.
+1. **Development and test groups left out (J11–J13).** Closed. Any program that requires a development gem at run time (`debug`, `pry`, `dotenv`, rake as a library) fails in the app with a `LoadError` naming the gem, and works under `bundle exec`. About 5 lines in `Fledge::Bundle#read_groups`, plus tests and docs; the cost is bigger apps and builds refused for development gems with no build for the target.
+2. **`RubyInstaller` undefined on Windows (J25, in part).** Closed. A gem that tests `defined?(RubyInstaller)`, such as mysql2 0.5.6, takes its other branch and aborts. About 3 lines in `runtime/rubygems/operating_system.rb`, a new parity fact, and one pattern of J25 removed.
 3. **Restart through `RbConfig.ruby` on Windows.** A self-restarting app boots with the person's settings, without Bundler, and in the system's code page. About 150 to 250 lines of C for a Fledge `ruby.exe` and `rubyw.exe`, the build, a Delivery check, and ADR 026's and 038's Windows lines.
-4. **The gemspec's own requires (J19).** `MyCoolApp::VERSION` is defined before the program runs under `bundle exec`, and not in the app. About 15 to 25 lines in `fledge build`'s gemspec writer, and J19 removed.
-5. **Static and import libraries (C headers).** `have_func` and `try_link` fail in the app's own running code. No new code; more megabytes, and the license audit's entries.
+4. **The gemspec's own requires (J19).** Closed. `MyCoolApp::VERSION` is defined before the program runs under `bundle exec`, and not in the app. About 15 to 25 lines in `fledge build`'s gemspec writer, and J19 removed.
+5. **Static and import libraries (C headers).** Closed. `have_func` and `try_link` fail in the app's own running code. No new code; more megabytes, and the license audit's entries.
 
 ## Gaps the probe does not see
 

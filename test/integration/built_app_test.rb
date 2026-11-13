@@ -208,7 +208,7 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # An app with a Gemfile gets the ENV bundle exec gives (ADR 045):
+  # An app with a Gemfile gets the ENV bundle exec gives (ADR 086):
   # Bundler's settings over the person's, so a child Ruby runs in the
   # app's bundle with the person's RUBYOPT after Bundler's own, and
   # Bundler.with_original_env and with_unbundled_env, which a Bundler
@@ -384,7 +384,7 @@ class BuiltAppTest < Minitest::Test
   end
 
   # require "mkmf" loads in a built app, as under ruby, since the
-  # runtime keeps Ruby's headers (ADR 039), and some gems require it at
+  # runtime keeps Ruby's headers (ADR 085), and some gems require it at
   # run time for MakeMakefile#find_executable.
   def test_mkmf_loads_in_a_built_app_and_finds_an_executable
     Dir.mktmpdir do |dir|

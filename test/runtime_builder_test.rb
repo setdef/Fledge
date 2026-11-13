@@ -252,7 +252,7 @@ class RuntimeBuilderTest < Minitest::Test
   # the runtime's Ruby needs and the runtime prunes (ADR 006): the
   # library to link against, the import library of Ruby's DLL on Windows
   # and static libruby elsewhere, with their licenses beside it. Ruby's
-  # headers are in the runtime itself (ADR 039). Nothing else of Ruby's
+  # headers are in the runtime itself (ADR 085). Nothing else of Ruby's
   # tree, and never libxcrypt's static archive.
   def test_copy_dev_takes_the_library_to_link_against
     Dir.mktmpdir do |dir|

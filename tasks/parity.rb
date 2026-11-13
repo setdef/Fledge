@@ -18,7 +18,7 @@ require_relative "parity/justification"
 require_relative "parity/reports"
 require_relative "parity/mobile"
 
-# The parity check (ADR 081 and ADR 045): an app's Ruby code must see the
+# The parity check (ADR 081 and ADR 086): an app's Ruby code must see the
 # same Ruby under Fledge as it does run as its developer runs it.
 #
 # It builds the probe app in test/fixtures/parity with fledge build, from
@@ -66,7 +66,7 @@ class Parity
   APP_GEMS = %r{<prefix>/lib/ruby/gems/#{ABI}}o
 
   # The variables Bundler sets for the bundle it set up, whose values
-  # name where the gems are (ADR 045).
+  # name where the gems are (ADR 086).
   BUNDLE_LOCATIONS = /\A"(?<name>GEM_HOME|PATH)"=/
 
   # The variables bundle exec sets that name where its Bundler is, when

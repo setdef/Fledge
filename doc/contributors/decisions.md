@@ -68,7 +68,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 9. When using fledge, your ruby source code should be able to be identical to how it was without Fledge, so the things you had to `require` before you can still need the app dev to `require`, but the things you didn't have to `require` before the app dev still shouldn't have to require.
 
-*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 081 and ADR 039; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
+*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 081 and ADR 085; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
 
 > 10. All the ruby globals should be non-surprising to app devs, for the same motivation as #9.
 
@@ -112,7 +112,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 20. Tiny filesize is not a priority; "my ruby code just works" _is_ a (high) priority.
 
-*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* ADR 039; `RuntimeBuilder::Pruning.prune`.
+*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* ADR 085; `RuntimeBuilder::Pruning.prune`.
 
 > 21. I don't understand what I'd be deciding here. [re: Windows console code pages and Ctrl-C — agents own this]
 

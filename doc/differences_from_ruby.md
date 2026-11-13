@@ -44,6 +44,8 @@ What you can see from Ruby:
 
 `exec RbConfig.ruby, $0, *ARGV` restarts the app as it first started, with the same setup. On Windows, as under `ruby.exe`, the restarted app is a new process with a new PID, since Windows has no `exec` that keeps a process, and a windowed app that restarts through `RbConfig.ruby`, which is a console program, opens a console while it runs.
 
+A known defect on Windows: in an app with a `Gemfile`, when your users spell Bundler's `BUNDLE_GEMFILE` in another case, such as `bundle_gemfile`, `Bundler.original_env` holds it at the first start and loses it after a restart, where `bundle exec` keeps it. If this bites you, [open an issue](https://github.com/setdef/Fledge/issues).
+
 ## C headers
 
 The app carries Ruby's C headers, and the library a compiler links against Ruby (a static `libruby` on macOS and Linux, the import library of Ruby's DLL on Windows), so `require "mkmf"`, `find_executable`, `have_func`, and `have_library` work as under `ruby` on a computer with a compiler. They fail in a folder whose path has a space, as they fail under `ruby /path/to/main.rb` there: `mkmf` leaves the program's own folder unquoted in the commands it links with, and on Linux Ruby's own library folder too, so the linker takes the part after the space for a file (`ld: cannot find space/rv/rv-ruby@4.1.0-preview1/4.1.0-preview1/lib` for Ruby itself on Linux, `ld.exe: cannot find Apps/MkmfLinkApp-x64-mingw-ucrt/app` for an app on Windows). Under `ruby main.rb`, typed in the program's own folder, that folder is `.`, which has no space; an app names its program by its whole path, as "Your program's path" says. On a phone, `mkmf` loads too, since the app carries Ruby's headers, and nothing compiles, since a phone has no compiler.

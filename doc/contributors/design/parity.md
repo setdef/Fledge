@@ -32,7 +32,8 @@ It fails when any difference is unjustified. CI runs it in the Test jobs (`arm64
 - `ENV`, and the `ENV` a child Ruby started through `RbConfig.ruby` sees;
 - under Bundler, `Bundler.original_env`, `Bundler.unbundled_env`, the `ENV` a child Ruby sees inside `with_original_env` and `with_unbundled_env`, and whether Bundler takes the bundle as frozen, `Bundler.frozen_bundle?` and `Bundler.settings[:frozen]`;
 - the constants defined at the top level, `Object.constants`;
-- `RUBY_PLATFORM`, `RUBY_DESCRIPTION`, `RubyVM::YJIT.enabled?`, `RubyVM::ZJIT.enabled?`, and the `YJIT_SUPPORT` and `ZJIT_SUPPORT` that `RbConfig::CONFIG` records.
+- `RUBY_PLATFORM`, `RUBY_DESCRIPTION`, `RubyVM::YJIT.enabled?`, `RubyVM::ZJIT.enabled?`, and the `YJIT_SUPPORT` and `ZJIT_SUPPORT` that `RbConfig::CONFIG` records;
+- on Windows outside Bundler, which leaves Fiddle out, `Windows`: the process's ANSI code page (`GetACP`), whether a copy of one of Ruby's DLLs under a folder named `Ünïcödé 日本` loads through `LoadLibraryExA`, as ffi loads a gem's DLL, and whether a child Ruby started through `RbConfig.ruby` finds the same code page and the same load as its parent. The parent's code page and load differ from `ruby main.rb`'s by ADR 070; a child that differs from its parent is the gap ADR 070 left open, and fails.
 
 The report also carries the paths of the probe's folder, its project's root, Ruby's prefix, and the home folder, for normalizing. Its `fledge.yml` makes the probe's folder its own project root, inside Fledge's own gem, and gives it the identifier phones need.
 
@@ -103,12 +104,13 @@ The console probe, `test/fixtures/console/main.rb`, prints `café ✓` to its te
 
 ## Restart checks
 
-The probe's `restart` command runs `exec RbConfig.ruby, $0, "restarted", FACTS`, where FACTS is JSON of what a restart must keep: the PID; the program the process runs, by its real path (`/proc/self/exe`, or `ps` on macOS); on macOS outside Bundler, the main bundle's identifier (`NSBundle.mainBundle`, through Fiddle); `$0`, `__FILE__`, `__dir__`; the default external encoding and `__FILE__`'s; `RbConfig.ruby`; `Gem.path`; the loaded gems; `Bundler.original_env`; and `ENV`. The restarted probe prints `restarted as itself` when nothing changed, and otherwise a line for each fact that did.
+The probe's `restart` command runs `exec RbConfig.ruby, $0, "restarted", FACTS`, where FACTS is JSON of what a restart must keep: the PID, except on Windows; the program the process runs, by its real path (`/proc/self/exe`, or `ps` on macOS); on macOS outside Bundler, the main bundle's identifier (`NSBundle.mainBundle`, through Fiddle); on Windows outside Bundler, through Fiddle, the program (`GetModuleFileNameW`), the ANSI code page, the AppUserModelID, and whether one of Ruby's DLLs under the app's folder loads through `LoadLibraryExA`; `$0`, `__FILE__`, `__dir__`; the default external encoding and `__FILE__`'s; `RbConfig.ruby`; `Gem.path`; the loaded gems; `Bundler.original_env`; and `ENV`. The restarted probe prints `restarted as itself` when nothing changed, and otherwise a line for each fact that did. Windows has no `exec` that keeps the process: Ruby's own starts the program, waits, and exits with its status, under `ruby.exe` as in an app, so there the PID is not asked.
 
 - `.github/scripts/deliver.sh` restarts the probe, unpacked under a folder whose name is not ASCII, from `/`, with `env -i` and a `PATH` holding no Ruby, in a clean environment, a person's (`GEM_HOME`, `RUBYOPT=-W0`, `RUBYLIB`), and a hostile one (`RUBYLIB`, `RUBYOPT`, `RUBYSHELL`, `GEM_*`, `GEMRC`, `BUNDLE_*`, `BUNDLER_SETUP`, `RUBYGEMS_GEMDEPS`, `RUBY_YJIT_ENABLE`, `LD_LIBRARY_PATH`), on fresh macOS and Linux runners and in the Debian and Alpine containers, for the lone probe and for the gem-shaped one.
-- `test/integration/built_app_test.rb` restarts the probe as a lone script, as a gem-shaped program, and as a macOS `.app`, and checks that `bin/ruby` hands only the app's program to its launcher.
+- `.github/scripts/deliver.ps1` restarts the probe, unpacked under a folder whose name is not ASCII, in a clean, a person's, and a hostile environment, on fresh x64 and ARM64 Windows runners, for the lone probe and the gem-shaped one.
+- `test/integration/built_app_test.rb` restarts the probe as a lone script, as a gem-shaped program, and as a windowed app (a macOS `.app`, or on Windows the windowed launcher), and checks that `bin/ruby`, or `ruby.exe`, hands only the app's program to its launcher, that `ruby.exe` takes no program without the launcher's mark, such as an installer's `uninstall.exe`, for the launcher, and the status 70 of a launcher found and not started.
 
-Windows has no restart check through `RbConfig.ruby`, where a restart is a new, plain Ruby process (ADR 026). The parity check does not see restarts, because its child Rubies run `-e` code, which stays plain Ruby.
+The parity check does not see restarts, because its child Rubies run `-e` code, which stays plain Ruby.
 
 ## ruby/spec
 

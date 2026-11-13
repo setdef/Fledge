@@ -257,6 +257,16 @@ Then it runs the launcher with `CreateProcessW`, its path quoted and the rest of
 
 So a restart through `RbConfig.ruby` boots as the app first booted, with its AppUserModelID and code page. What stays as under `ruby.exe` is the new PID, and, in a windowed app, the console `ruby.exe`, a console program, opens while the restarted app runs.
 
+### A restart of an app with a Gemfile, with Bundler's variables spelled otherwise
+
+A known defect, on Windows only. Windows' variable names ignore case, and a person may spell Bundler's, `bundle_gemfile` or Windows' own `Path`, in another case than Bundler's `BUNDLE_GEMFILE` and `PATH`. Bundler's `EnvironmentPreserver` looks its keys up in a Ruby Hash, case-sensitively (`bundler/environment_preserver.rb`, `backup` and `restore`, lines 40 to 67, in RubyInstaller's head build of 2026-11-10). Stock `bundle exec` there, measured on Windows with the probe in a project of its own (machines run 20261113-030018-fb5b70, Bundler 4.1.0.beta3), keeps the person's spelling in `ENV`, since Bundler's writes keep a variable's existing name, records `BUNDLER_ORIG_BUNDLE_GEMFILE` and `BUNDLER_ORIG_PATH` as `BUNDLER_ENVIRONMENT_PRESERVER_INTENTIONALLY_NIL`, and gives `Bundler.original_env` the person's `bundle_gemfile` and the `Path` Bundler has already changed; a restart through `exec RbConfig.ruby, $0` keeps `bundle_gemfile` in `Bundler.original_env`, with the value `ENV` holds then. A Fledge app's first start gives `Bundler.original_env` the person's `bundle_gemfile`; its restart loses the entry (Delivery, CI run 43351719058), most likely because the launcher sets `BUNDLE_GEMFILE` in Bundler's spelling (`windows.c`, `setup_bundler`), so the restarted app inherits that name and Bundler's `restore` deletes it; the inherited spelling is not yet measured. Delivery's hostile restart (`.github/scripts/deliver.ps1`) expects exactly that loss until it is fixed.
+
+The fix, not yet made:
+
+1. When the launcher sets `BUNDLE_GEMFILE`, and when the composition writes Bundler's other variables, keep the name as the person spelled it, as Ruby's `ENV[]=` does on Windows.
+2. In the composition (`bundler.c`), on Windows, give `EnvironmentPreserver` the names as the person spelled them, so it records what stock `bundle exec` records, at the first start and the restart alike.
+3. Compare against `bundle exec` where Ruby is: a Windows variant of the parity check's gem-shaped run with the person's `bundle_gemfile` and `Path` so spelled, comparing `ENV`, `Bundler.original_env`, and the restart's report with `bundle exec`'s. Delivery, which has no Ruby, then expects what that variant establishes.
+
 ## System libraries on Linux
 
 When `fledge.cfg` has `system_libraries`, written from `fledge.yml`'s `linux: system_libraries` (ADR 030; `doc/contributors/design/gems.md` covers the list and its refusals), the Linux launcher checks them after reading `fledge.cfg` and before hiding anything or starting Ruby:

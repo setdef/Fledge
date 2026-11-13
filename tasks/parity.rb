@@ -138,6 +138,14 @@ class Parity
       reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems " \
         "(doc/contributors/design/runtimes.md, \"Fledge's RubyGems defaults\"); " \
         "rv-ruby ships no such file, nor does the Ruby a musl runtime is built from."),
+    Justification.new(fact: "Windows", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
+      reference: [/\A"code page"=\d+\z/, /\A"narrow DLL load"="no DLL"\z/],
+      app: [/\A"code page"=65001\z/, /\A"narrow DLL load"="loaded"\z/],
+      reason: "The app's program declares UTF-8 as its ANSI code page (ADR 070), where ruby.exe keeps the " \
+        "system's, so a gem that hands Ruby's UTF-8 paths to a Windows function that reads them in that code " \
+        "page, as ffi opens a DLL with LoadLibraryExA, finds the file under a folder named outside ASCII. The " \
+        "runtime's ruby.exe, which RbConfig.ruby names, declares it too, so a child Ruby has its parent's code " \
+        "page in the app as under ruby.exe."),
     *LOCALE_FACTS.map do |fact|
       Justification.new(fact:, reference: [/\A"US-ASCII"\z/], app: [/\A"UTF-8"\z/], checks: %i[no_locale],
         reason: "With no locale at all (no LC_ALL, LC_CTYPE, or LANG, or LANG=C), as a desktop, a service manager, " \

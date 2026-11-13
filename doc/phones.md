@@ -19,9 +19,10 @@ Fledge compiles a gem's C or C++ extension for the phone and links it into the a
 
 - Load the extension with `require "name/name"`, not `require_relative`.
 - When an `extconf.rb` runs CMake, Fledge passes a toolchain file for each target in `CMAKE_TOOLCHAIN_FILE`, so CMake builds the library for the phone.
-- Fledge refuses, and names the gem, a Rust extension, and an extension built by Rake, CMake, or configure with no `extconf.rb`.
+- The ffi gem works, with the libffi it bundles, and so does Ruby's `fiddle`. Each calls a C function by its name, such as one of the phone's C library or a system framework, and turns a Ruby block into a C callback.
+- Fledge refuses, and names the gem, a Rust extension, an extension built by CMake or configure with no `extconf.rb`, and a shared library a Rakefile builds for ffi to load.
 
-For each case, see [`examples/native_phone`](../examples/native_phone) and [`examples/cmake_phone`](../examples/cmake_phone).
+For each case, see [`examples/native_phone`](../examples/native_phone), [`examples/cmake_phone`](../examples/cmake_phone), [`examples/rake_phone`](../examples/rake_phone), and [`examples/ffi_phone`](../examples/ffi_phone).
 
 ## Frameworks that start the app themselves
 

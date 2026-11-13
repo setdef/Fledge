@@ -260,6 +260,77 @@ class MobileExtensionsTest < Minitest::Test
     assert_includes error.message, "sdkmanager"
   end
 
+  # A desktop's RubyGems copies an extconf.rb's extension into the gem's
+  # first require path, where Bundler's templates from 2.2.0 to 4.0.0
+  # have the gem's own Ruby require_relative it. A phone links it in,
+  # so the stub stands at that path and asks for the linked extension.
+  def test_a_stub_stands_where_a_desktop_has_the_extensions_file
+    _, package = native_gem(name: "adder", extensions: ["ext/adder/extconf.rb"],
+      files: { "lib/adder.rb" => "require_relative \"adder/adder\"\n", "ext/adder/extconf.rb" => "create_makefile(\"adder/adder\")\n" })
+    root = unpacked(package)
+
+    stub = Fledge::MobileExtensions::Stub.for(package, "adder/adder", root:, gem_dir: "lib/ruby/gems/4.1.0+5")
+
+    assert_equal "lib/ruby/gems/4.1.0+5/gems/adder-1.0.0/lib/adder/adder.rb", stub.path
+    assert_equal :file, stub.type
+    assert_equal Fledge::MobileExtensions::Stub.source("adder/adder"), stub.content
+  end
+
+  # Where the gem's Ruby file has the extension's name, as bigdecimal's
+  # lib/bigdecimal.rb has bigdecimal.so's, a require of the path finds
+  # that file on a desktop too, and the gem's own file stays.
+  def test_no_stub_replaces_a_ruby_file_of_the_extensions_name
+    _, package = native_gem(files: { "lib/native.rb" => "require \"native.so\"\n", "ext/native/extconf.rb" => "create_makefile(\"native\")\n" })
+
+    assert_nil Fledge::MobileExtensions::Stub.for(package, "native", root: unpacked(package), gem_dir: "lib/ruby/gems/4.1.0+5")
+  end
+
+  # RubyGems copies into the first of the gemspec's require paths
+  # (Gem::Ext::Builder#build_extension's lib_dir), and a path gem is in
+  # the app's folder, where Bundler loads it from.
+  def test_a_path_gems_stub_is_in_its_first_require_path_in_the_app
+    folder = File.join(@dir, "gems", "twice")
+    FileUtils.mkdir_p(File.join(folder, "src"))
+    File.write(File.join(folder, "twice.gemspec"), <<~RUBY)
+      Gem::Specification.new do |spec|
+        spec.name = "twice"
+        spec.version = "1.0.0"
+        spec.authors = ["Fledge"]
+        spec.summary = "A gem with two require paths"
+        spec.files = ["src/twice.rb", "ext/twice/extconf.rb"]
+        spec.require_paths = ["src", "lib"]
+        spec.extensions = ["ext/twice/extconf.rb"]
+      end
+    RUBY
+    gem = Fledge::PathGem.new(name: "twice", version: "1.0.0", folder:, app_path: "gems/twice", glob: "{,*,*/*}.gemspec", inside: true)
+
+    stub = Fledge::MobileExtensions::Stub.for(Fledge::PathPackage.new(gem), "twice/twice", root: folder, gem_dir: "lib/ruby/gems/4.1.0+5")
+
+    assert_equal "app/gems/twice/src/twice/twice.rb", stub.path
+  end
+
+  # The stub asks for the feature by its .so name, which Ruby looks up
+  # among the linked extensions however the phone names its own
+  # (DLEXT is bundle on iOS) and which no .rb answers, so it cannot
+  # require itself; a feature with a quote stays one Ruby string.
+  def test_the_stub_requires_the_linked_feature_by_its_so_name
+    assert_equal "require \"adder/adder.so\"\n", Fledge::MobileExtensions::Stub.source("adder/adder").lines.last
+    assert_equal "require \"a\\\"b.so\"\n", Fledge::MobileExtensions::Stub.source("a\"b").lines.last
+    assert_valid_ruby Fledge::MobileExtensions::Stub.source("a\"b")
+  end
+
+  def assert_valid_ruby(source)
+    assert RubyVM::InstructionSequence.compile(source), source
+  end
+
+  # The files of +package+'s .gem, unpacked as Fledge::MobileExtensions
+  # unpacks them to compile.
+  def unpacked(package)
+    root = File.join(@dir, "unpacked", package.spec.full_name)
+    Gem::Package.new(package.path).extract_files(root)
+    root
+  end
+
   def test_a_gem_without_extensions_asks_for_no_compiler
     gem, package = native_gem(extensions: [], files: { "lib/pure.rb" => "" })
 

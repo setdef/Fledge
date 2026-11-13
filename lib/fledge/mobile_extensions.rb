@@ -11,6 +11,7 @@ require "open3"
 require "shellwords"
 require_relative "archive"
 require_relative "command"
+require_relative "entry"
 require_relative "error"
 require_relative "gem_package"
 require_relative "git_package"
@@ -20,6 +21,7 @@ require_relative "mobile_extensions/cmake"
 require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
 require_relative "mobile_extensions/rake_build"
+require_relative "mobile_extensions/stub"
 
 module Fledge
   # Compiles an app's gems' C and C++ extensions for a phone (ADR 022).
@@ -36,7 +38,9 @@ module Fledge
   # the compiler of this computer's Xcode or Android NDK in place of the
   # one that file records, and then <tt>make static</tt>, which mkmf writes
   # a rule for, as Ruby's <tt>ext/extmk.rb</tt> does for the extensions it
-  # links in. mkmf renames each extension's <tt>Init_</tt> function so that
+  # links in. Where a desktop's RubyGems leaves each such extension's file
+  # in the gem, it writes a Ruby file that requires the linked one (Stub),
+  # so that a <tt>require_relative</tt> of the path finds it. mkmf renames each extension's <tt>Init_</tt> function so that
   # two extensions cannot clash, as extmk does (<tt>-DInit_cparse=Init_racc_cparse</tt>),
   # and the registration unit (.registration_source) names the new
   # ones. Fledge::MobileProject::IOS and Fledge::MobileProject::Android
@@ -60,10 +64,12 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   compiler = Fledge::MobileExtensions.new(platform:, packages: { gem => package }, build_args: {}, host:, runtimes:, work:, log: $stderr)
+  #   compiler = Fledge::MobileExtensions.new(platform:, packages: { gem => package }, build_args: {}, host:, runtimes:, work:,
+  #     log: $stderr, gem_dir: "lib/ruby/gems/4.1.0+5")
   #   built = compiler.call(runtime_tree)
   #   built.registrations # => [["adder/adder", "Init_fledge_0"]]
   #   built.targets.keys  # => ["ios-arm64", "ios-arm64-simulator"]
+  #   built.stubs.map(&:path) # => ["app/gems/adder/lib/adder/adder.rb"]
   #--
   # SPDX-SnippetEnd
   #++
@@ -225,8 +231,9 @@ module Fledge
 
     # What #call returns: the extensions to register, as pairs of the name
     # <tt>require</tt> asks for and the function that initializes it (the
-    # same for every target), and what each target compiled to.
-    class Built < Data.define(:registrations, :targets, :ndk)
+    # same for every target), what each target compiled to, and the files
+    # that stand where a desktop has an extension's file (Stub).
+    class Built < Data.define(:registrations, :targets, :ndk, :stubs)
       ##
       # :attr_reader: registrations
       # Pairs of the feature (<tt>"adder/adder"</tt>) and its renamed Init function.
@@ -238,6 +245,11 @@ module Fledge
       ##
       # :attr_reader: ndk
       # The NDK::NDK that compiled them, for Android; +nil+ for iOS.
+
+      ##
+      # :attr_reader: stubs
+      # The Entry of each file Stub writes, with paths relative to the
+      # app's Ruby root, as the gems' entries are.
     end
 
     # Why each of the gem's extensions cannot be compiled for +platform+
@@ -368,9 +380,12 @@ module Fledge
     #            whose Ruby runs mkmf.
     # [work] A folder of the build's own, which the caller removes.
     # [log] Where the compilers' output goes, such as <tt>$stderr</tt>.
+    # [gem_dir] The runtime's gem folder, relative to the app's Ruby root,
+    #           where the gems' entries install them (Built#stubs).
     # [env] The environment to start from (default: +ENV+).
-    def initialize(platform:, packages:, build_args:, host:, runtimes:, work:, log:, env: ENV)
+    def initialize(platform:, packages:, build_args:, host:, runtimes:, work:, log:, gem_dir:, env: ENV)
       @platform = platform
+      @gem_dir = gem_dir
       @packages = packages
       @build_args = build_args
       @host = host
@@ -380,6 +395,7 @@ module Fledge
       @env = env
       @ruby = nil # : String?
       @rake_build = nil # : RakeBuild?
+      @stubs = {} # : Hash[String, Entry]
     end
 
     # Compiles each gem with an extension, for every target of the phone,
@@ -404,6 +420,7 @@ module Fledge
       ndk = (@platform.name == "android") ? NDK.find(@env, host: @host) : nil
       targets = targets(tree, ndk)
       registrations = [] # : Array[[String, String]]
+      @stubs = {} # : Hash[String, Entry]
       builds = targets.to_h do |target|
         reports = [] # : Array[Report]
         wanted.each do |gem, package|
@@ -417,7 +434,7 @@ module Fledge
         registrations = found
         [target.name, Linking.target_build(target, reports)]
       end
-      Built.new(registrations:, targets: builds, ndk:)
+      Built.new(registrations:, targets: builds, ndk:, stubs: @stubs.values)
     end
 
     # Links the shared library an Android app loads, +into+ it, for the
@@ -549,7 +566,10 @@ module Fledge
         if self.class.rake?(extension)
           reports.concat(rake_build.call(target, gem, package.spec, root, extension, args, number))
         else
-          reports << extconf(target, gem, File.dirname(File.join(root, extension)), File.basename(extension), args, number)
+          report = extconf(target, gem, File.dirname(File.join(root, extension)), File.basename(extension), args, number)
+          stub = Stub.for(package, report.feature, root:, gem_dir: @gem_dir)
+          @stubs[stub.path] = stub if stub
+          reports << report
         end
       end
       reports

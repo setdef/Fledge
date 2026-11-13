@@ -17,11 +17,12 @@ A phone's Ruby has the standard library and gems of a desktop's, with one left o
 
 Fledge compiles a gem's C or C++ extension for the phone and links it into the app: with Xcode on iOS, and with the [Android NDK](https://developer.android.com/ndk) on Android. Set `ANDROID_NDK_ROOT`, or install the NDK in the SDK's `ndk/` folder.
 
-- Load the extension with `require "name/name"`, not `require_relative`.
+- Load the extension as on a desktop: `require "name/name"`, or `require_relative "name/name"` from the gem's own Ruby, as `bundle gem --ext` wrote it from Bundler 2.2.0 to 4.0.0. The extension is not a file on the phone, so where a desktop has its file, Fledge puts a Ruby file that requires it. A path that names the file's `.so` or `.bundle` still fails.
 - When an `extconf.rb` runs CMake, Fledge passes a toolchain file for each target in `CMAKE_TOOLCHAIN_FILE`, so CMake builds the library for the phone.
-- Fledge refuses, and names the gem, a Rust extension, and an extension built by Rake, CMake, or configure with no `extconf.rb`.
+- A gem whose gemspec names a Rakefile is built as RubyGems builds it, and the extensions its build makes with mkmf are linked in.
+- Fledge refuses, and names the gem, a Rust extension, and an extension built by CMake or configure with no `extconf.rb`.
 
-For each case, see [`examples/native_phone`](../examples/native_phone) and [`examples/cmake_phone`](../examples/cmake_phone).
+For each case, see [`examples/native_phone`](../examples/native_phone), [`examples/cmake_phone`](../examples/cmake_phone), and [`examples/rake_phone`](../examples/rake_phone).
 
 ## Frameworks that start the app themselves
 

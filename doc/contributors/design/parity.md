@@ -32,7 +32,7 @@ It fails when any difference is unjustified. CI runs it in the Test jobs (`arm64
 - `ENV`, and the `ENV` a child Ruby started through `RbConfig.ruby` sees;
 - under Bundler, `Bundler.original_env`, `Bundler.unbundled_env`, and the `ENV` a child Ruby sees inside `with_original_env` and `with_unbundled_env`;
 - the constants defined at the top level, `Object.constants`;
-- `RUBY_PLATFORM`, `RUBY_DESCRIPTION`, and `RubyVM::YJIT.enabled?`.
+- `RUBY_PLATFORM`, `RUBY_DESCRIPTION`, `RubyVM::YJIT.enabled?`, `RubyVM::ZJIT.enabled?`, and the `YJIT_SUPPORT` and `ZJIT_SUPPORT` that `RbConfig::CONFIG` records.
 
 The report also carries the paths of the probe's folder, its project's root, Ruby's prefix, and the home folder, for normalizing. Its `fledge.yml` makes the probe's folder its own project root, inside Fledge's own gem, and gives it the identifier phones need.
 

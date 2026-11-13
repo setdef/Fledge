@@ -5,11 +5,16 @@
 # with no administrator: builds examples/windowed_app with the runtime in
 # RUNTIMES (bundle exec rake runtime, or one CI built), once unsigned and
 # once signed with a test certificate made for this run in the current
-# user's store, whose subject is the example's msix_publisher; then
-# delivers both as CI's Delivery does (deliver-msix.ps1), trusting the
-# certificate in the current user's Trusted People store, where a
-# person without an administrator can put it; and removes the
-# certificate again.
+# user's store, whose subject is the example's msix_publisher; checks
+# what each package holds, and that Windows refuses both, the signed one
+# because its certificate is trusted nowhere (deliver-msix.ps1
+# -UntrustedOnly); and removes the certificate again.
+#
+# What it cannot prove: that Windows installs the signed package, and
+# that the app runs from it. Windows takes a sideloaded package only
+# when its certificate is trusted machine-wide, which needs an
+# administrator; the current user's TrustedPeople store is not enough
+# (0x800B0109). CI's Delivery proves the install, as administrator.
 #
 #   pwsh -NoProfile -File .github/scripts/check-msix.ps1 [-Runtimes tmp/runtime] [-Work tmp/msix-check]
 #
@@ -51,10 +56,10 @@ try {
   pwsh -NoProfile -File (Join-Path $PSScriptRoot 'deliver-msix.ps1') `
     -Package (Join-Path $Work "dist/Hello Window-$platform.msix") `
     -Signed (Join-Path $Work "signed/Hello Window-$platform.msix") `
-    -Certificate $certificate -Store Cert:\CurrentUser\TrustedPeople -Work $Work
-  if ($LASTEXITCODE -ne 0) { Fail 'Delivery of the MSIX packages failed' }
+    -Certificate $certificate -UntrustedOnly -Work $Work
+  if ($LASTEXITCODE -ne 0) { Fail 'the packages are not as they should be' }
 } finally {
   Remove-Item -LiteralPath "Cert:\CurrentUser\My\$($made.Thumbprint)" -ErrorAction SilentlyContinue
 }
 
-Write-Host 'Checked: the MSIX packages built, installed with a test certificate, ran, and were removed'
+Write-Host 'Checked: the MSIX packages built, hold what they should, and are refused where Windows should refuse them'

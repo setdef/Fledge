@@ -29,6 +29,14 @@ class RuntimeBuilder
     # library, which is also its dynamic linker.
     ALLOWED = /\A(?:libc\.musl-(?:x86_64|aarch64)\.so\.1|ld-musl-(?:x86_64|aarch64)\.so\.1)\z/
 
+    # The edits of Ruby's source a musl runtime takes (RubySource):
+    # thread_c, since musl's pthread_setname_np, as bionic's, reads the
+    # pthread_t of a thread that has ended, which join freed, and
+    # Thread#name= on such a thread crashed Ruby (ruby/spec's
+    # core/thread/to_s_spec.rb, line 18, a segmentation fault in stock
+    # Ruby and the app alike in run 43354884978, on both musl runtimes).
+    EDITS = %i[thread_c].freeze
+
     # The architecture of each musl target, as OpenSSL's Configure names
     # its Linux targets.
     ARCHES = { "x86_64-linux-musl" => "x86_64", "aarch64-linux-musl" => "aarch64" }.freeze
@@ -71,6 +79,7 @@ class RuntimeBuilder
       prefix = File.join(@build_dir, "prefix")
       FileUtils.rm_rf(prefix)
       source = unpack(pin("ruby"), "ruby")
+      RubySource.apply(source, EDITS)
       logged("ruby-configure", "./configure", *configure_options(prefix, deps), chdir: source)
       logged("ruby-make", "make", "-j#{Etc.nprocessors}", chdir: source)
       logged("ruby-install", "make", "install-nodoc", chdir: source)

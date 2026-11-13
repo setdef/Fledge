@@ -15,9 +15,11 @@
 #
 # With no command, it prints one line, "FLEDGE-PARITY " followed by a
 # JSON object of facts: the globals an app sees, what is loaded and
-# loadable, RubyGems' paths, the encodings, whether $stdout writes
-# through or buffers, the environment, what require "openssl" adds to
-# it, and what a child Ruby sees. Under Bundler (bundle exec, or a built app with a
+# loadable, the constants defined at the top level (RubyInstaller on
+# Windows, which gems test for, and those a gemspec's requires define),
+# RubyGems' paths, the encodings, whether $stdout writes through or
+# buffers, the environment, what require "openssl" adds to it, and what a
+# child Ruby sees. Under Bundler (bundle exec, or a built app with a
 # Gemfile) it also reports the environment Bundler recorded as the one it
 # started from, and what a child Ruby sees inside
 # Bundler.with_original_env and Bundler.with_unbundled_env, which is how
@@ -241,6 +243,7 @@ def facts
     "ARGV" => ARGV,
     "$LOAD_PATH" => $LOAD_PATH.map(&:to_s),
     "$LOADED_FEATURES" => $LOADED_FEATURES.sort,
+    "Object.constants" => Object.constants.map(&:to_s).sort,
     "RbConfig.ruby" => RbConfig.ruby,
     "RbConfig.ruby is a program" => File.file?(RbConfig.ruby) && File.executable?(RbConfig.ruby),
     "RbConfig.ruby runs" => child_ruby("print 6 * 7"),

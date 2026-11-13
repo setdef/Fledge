@@ -108,7 +108,7 @@ So the runtime's own Ruby writes the wrappers of every gem the app ships that ha
 
 A program finds a wrapper at `File.join(Gem.bindir, NAME)` (`NAME.bat` on Windows), or the executable by `Gem.bin_path`, which never needed the wrapper. The app's `PATH` does not include the runtime's `bin/`, so `system("name")` finds a gem's program only when the app or the person puts it there: Bundler's `PATH` entry in the app names `lib/ruby/gems/API/bin`, which does not exist, because a relocatable wrapper finds its Ruby beside itself and one there would not. Adding `Gem.bindir` to `PATH` would be a change to `ENV` that decision 9 asks to avoid; it waits until an app needs it, and would cost a line in `runtime/launcher/bundler.c` and a justified difference in `Parity::JUSTIFIED`.
 
-Writing executables unpacks the runtime and its build-only companion and runs the runtime's Ruby once, even when nothing is compiled.
+Writing executables unpacks the runtime and runs the runtime's Ruby once, even when nothing is compiled.
 
 ## Git gems
 
@@ -134,7 +134,7 @@ A gem whose chosen build has an extension still to compile (a `ruby`-platform ge
 
 The build's work folder is a temporary folder in `Dir.tmpdir`, which `fledge build` removes when it is done, named by each of its folders' long names (`Fledge::LongPath`). Windows writes `TMP` with the 8.3 short name of a user folder whose name is no 8.3 name (`C:\Users\RUNNER~1` for `runneradmin`), and `Dir.tmpdir`'s `File.expand_path` makes only the last folder's name long (`replace_to_long_name` in Ruby's `win32/file.c`, lines 145 to 150 and 563 to 567, at `0e25874222`). mini_portile2, which nokogiri's `extconf.rb` uses, unpacks a `.tar.xz` with `xzcat FILE | tar xf - -C DIR` through cmd.exe, each path escaped by `Shellwords` (`mini_portile.rb`, lines 561 to 570, at 2.8.9), and cmd.exe reads the escaped `\~` as part of a name, so `xzcat` finds no file, `tar` unpacks nothing and succeeds, and the build fails at its next step. Ruby has no call for Windows' `GetLongPathNameW`; `File.absolute_path` names the last folder of what it returns by its long name, so `LongPath` applies it one folder at a time from the root.
 
-`NativeBuild::RuntimeRuby` unpacks the target's runtime and its build-only companion, which unpacks over it, into the build's work folder. The companion carries the library extension builds link against: the static libruby on macOS and Linux, which mkmf links the test programs of `have_func` and the rest against (`mkmf.rb`, line 552, at Ruby 4.1.0-preview1; an extension of a static Ruby links no libruby itself, lines 2790 and 2804 to 2806), and the import library of Ruby's DLL on Windows. Its contents are in `doc/contributors/design/runtimes.md`. `Fledge::Runtimes#dev_archive` finds the companion as it finds the runtime, checked against the SHA-256 the gem pins (ADR 014), and nothing in it is copied into an app.
+`NativeBuild::RuntimeRuby` unpacks the target's runtime, and nothing else, into the build's work folder. The runtime holds what an extension build reads of Ruby (ADR 085): its headers, and the library extension builds link against, the static libruby on macOS and Linux, which mkmf links the test programs of `have_func` and the rest against (`mkmf.rb`, line 552, at Ruby 4.1.0-preview1; an extension of a static Ruby links no libruby itself, lines 2790 and 2804 to 2806), and the import library of Ruby's DLL on Windows.
 
 The runtime's own Ruby (`bin/ruby`, or `ruby\bin\ruby.exe`) runs `NativeBuild::SCRIPT` on a plan:
 

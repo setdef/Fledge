@@ -49,6 +49,7 @@ class RubySpec
           when :stopped then "#{status}: #{name} did not finish in #{where}"
           when :listing then "#{status}: #{name} in #{where} listed no examples, or not as many as its totals count"
           when :runs then "#{status}: runs in #{where} only: #{name}"
+          when :unused then "#{status}: a justification for #{where} explains no difference of this run: #{name}"
           else "#{status}: fails in #{where} only: #{name}"
           end,
         ]
@@ -148,22 +149,47 @@ class RubySpec
           Difference.new(name:, side:, kind: :fails, detail:, justification:)
         end
       end
-      stopped + failing + stock.zip(app).flat_map { |pair| Listing.compare(*pair, failing:, platform:) }
+      differences = stopped + failing + stock.zip(app).flat_map { |pair| Listing.compare(*pair, failing:, platform:) }
+      differences + Justification.unused(JUSTIFIED, differences, platform)
     end
   end
 
-  # An example that may fail, or with +outcome+ :runs run, on one +side+
-  # only (:stock or :app), on +platforms+ (every platform when nil), when
-  # its directory and description match +example+, and why that is
-  # right.
-  class Justification < Data.define(:example, :side, :platforms, :reason, :outcome)
-    def initialize(example:, side:, platforms:, reason:, outcome: :fails)
+  # Examples that may fail, or with +outcome+ :runs run, on one +side+
+  # only (:stock or :app), on +platforms+ (every platform when nil), and
+  # why that is right: each of +examples+ is an example's directory and
+  # description, or a Regexp for a family of them, as a directory's
+  # files that fail to load, and each must explain a difference in every
+  # run on its platforms (Justification.unused), so none outlives the
+  # differences it was written for or explains more than they.
+  class Justification < Data.define(:examples, :side, :platforms, :reason, :outcome)
+    def initialize(examples:, side:, platforms:, reason:, outcome: :fails)
       super
     end
 
+    def applies?(platform)
+      platforms.nil? || platforms.include?(platform)
+    end
+
     def explains?(name, side_differing, platform, outcome_differing = :fails)
-      side == side_differing && outcome == outcome_differing && (platforms.nil? || platforms.include?(platform)) &&
-        example.match?(name)
+      side == side_differing && outcome == outcome_differing && applies?(platform) &&
+        examples.any? { |example| Justification.names?(example, name) }
+    end
+
+    # Whether +example+, a name or a Regexp, names +name+.
+    def self.names?(example, name)
+      example.is_a?(Regexp) ? example.match?(name) : example == name
+    end
+
+    # A difference for each of the examples of each of +justifications+
+    # on +platform+ that explains none of +differences+.
+    def self.unused(justifications, differences, platform)
+      justifications.select { |justification| justification.applies?(platform) }.flat_map do |justification|
+        explained = differences.select { |difference| difference.justification.equal?(justification) }.map(&:name)
+        justification.examples.reject { |example| explained.any? { |name| names?(example, name) } }.map do |example|
+          Results::Difference.new(name: example.is_a?(Regexp) ? example.inspect : example, side: justification.side, kind: :unused,
+            detail: "", justification: nil)
+        end
+      end
     end
   end
 end

@@ -83,14 +83,21 @@ class RubySpec
 
   JUSTIFIED = [
     Justification.new(
-      example: /\Acore: (?:Dir\.chdir|File\.readlink|File\.realpath) accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters/,
+      examples: [
+        "core: Dir.chdir accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+        "core: Dir.chdir accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters when given a block",
+        "core: File.readlink accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+        "core: File.realpath accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+      ],
       side: :stock, platforms: %w[arm64-darwin],
       reason: "With no locale, stock Ruby takes the C locale and reads paths as US-ASCII, and these macOS-only " \
         "examples fail converting one; the built app's launcher takes a UTF-8 locale in place of a bare C one " \
         "(ADR 041; Parity::JUSTIFIED), so they pass there.",
     ),
     Justification.new(
-      example: /\Acore: Refinement#import_methods when methods are not defined in Ruby code raises ArgumentError when importing methods from C extension/,
+      examples: [
+        "core: Refinement#import_methods when methods are not defined in Ruby code raises ArgumentError when importing methods from C extension",
+      ],
       side: :stock, platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reason: "RubyInstaller's head build, which Windows' runtimes carry until Ruby 4.1.0 (ADR 066), ships a " \
         "zlib.so that imports libz-1.dll and not the DLL itself, which a developer's Ruby finds in MSYS2's " \
@@ -98,7 +105,7 @@ class RubySpec
         "require zlib, which this example does, and the runtime adds the DLL (ADR 038).",
     ),
     Justification.new(
-      example: %r{\Alibrary: loading library/zlib/},
+      examples: [%r{\Alibrary: loading library/zlib/\S+_spec\.rb\z}],
       side: :stock, platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reason: "As for Refinement#import_methods: every spec file of library/zlib requires zlib, which stock " \
         "RubyInstaller head cannot load without MSYS2's libz-1.dll, and the runtime ships.",
@@ -106,19 +113,35 @@ class RubySpec
     # The phones (RubySpec::Phone), against stock Ruby on the computer
     # that runs the simulator.
     Justification.new(
-      example: /\Alibrary: RbConfig::CONFIG \['archdir'\] returns the directory containing standard libraries C extensions\z/,
+      examples: [
+        "library: RbConfig::CONFIG ['archdir'] returns the directory containing standard libraries C extensions",
+      ],
       side: :app, platforms: PHONES,
       reason: "A phone runtime links every extension into the app, where Android and iOS load native code from, " \
         "so no archdir holds them (doc/contributors/design/phone-runtimes.md, \"What a phone runtime holds\").",
     ),
     Justification.new(
-      example: /\Acore: (?:File|File::Stat|FileTest)[.#](?:setuid|setgid|sticky)\? /,
+      examples: [
+        "core: File.setuid? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+        "core: File.setuid? returns true when the gid bit is set",
+        "core: File::Stat#setuid? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+        "core: FileTest.setuid? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+        "core: File.sticky? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+        "core: File.sticky? returns true if the file has sticky bit set",
+        "core: File::Stat#sticky? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+        "core: FileTest.sticky? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
+      ],
       side: :app, platforms: %w[arm64-ios-simulator],
       reason: "iOS's sandbox keeps an app from setting the set-user-ID, set-group-ID, and sticky bits on its files, " \
         "which these examples set with chmod and then read back.",
     ),
     Justification.new(
-      example: /\A(?:core: (?:File|File::Stat|FileTest)[.#]grpowned\? takes non primary groups into account|core: Process\.(?:egid|euid)= sets the effective (?:group|user) id to its own [gu]id if given the username)/,
+      examples: [
+        "core: File.grpowned? takes non primary groups into account",
+        "core: File::Stat#grpowned? takes non primary groups into account",
+        "core: FileTest.grpowned? takes non primary groups into account",
+        "core: Process.euid= sets the effective user id to its own uid if given the username corresponding to its own uid",
+      ],
       side: :app, platforms: %w[arm64-ios-simulator],
       reason: "An iOS app's C library finds no user for the app's own user ID: Etc.getpwuid(Process.uid) raises " \
         "\"can't find user\", and Process.groups raises EINVAL, since Darwin's getgroups, which Ruby is built to " \
@@ -126,28 +149,40 @@ class RubySpec
         "at Libc-1752.120.2). These examples ask for the process's groups or its user's name.",
     ),
     Justification.new(
-      example: /\Alibrary: Etc\.getlogin returns the name associated with the current login activity\z/,
+      examples: [
+        "library: Etc.getlogin returns the name associated with the current login activity",
+      ],
       side: :app, platforms: %w[arm64-ios-simulator],
       reason: "The example's one expectation for a login name compares it with what logname or id -un prints, and an " \
         "iOS app can start neither, so MSpec finds no expectation in it (doc/contributors/design/phone-projects.md, " \
         "\"Parity on a phone\").",
     ),
     Justification.new(
-      example: /\Alibrary: RbConfig::CONFIG \['(?:AR|STRIP)'\] exists and can be executed\z/,
+      examples: [
+        "library: RbConfig::CONFIG ['AR'] exists and can be executed",
+        "library: RbConfig::CONFIG ['STRIP'] exists and can be executed",
+      ],
       side: :app, platforms: ANDROID,
       reason: "RbConfig names the NDK's archiver and strip the runtime was built with, on the computer that built " \
         "it; a phone has no toolchain, and an app needs one only to compile, which Fledge does on the developer's " \
         "computer (doc/contributors/design/phone-projects.md, \"Gems with extensions\").",
     ),
     Justification.new(
-      example: /\Acore: Process\.maxgroups sets the maximum number of gids allowed in the supplemental group access list\z/,
+      examples: [
+        "core: Process.maxgroups sets the maximum number of gids allowed in the supplemental group access list",
+      ],
       side: :app, platforms: ANDROID,
       reason: "The Android runtime's Ruby is configured without setgroups, which Android's seccomp filter for apps " \
         "forbids (RuntimeBuilder::Android::CONFIGURE), so Process.maxgroups= raises NotImplementedError, as Ruby " \
         "does wherever the call is missing.",
     ),
     Justification.new(
-      example: /\Acore: Process\.egid= (?:raises TypeError if not passed an Integer or String|raises Errno::ERPERM if run by a non superuser trying to set the (?:root group id|group id from group name)|sets the effective group id to its own gid if given the username corresponding to its own gid)\z/,
+      examples: [
+        "core: Process.egid= raises TypeError if not passed an Integer or String",
+        "core: Process.egid= raises Errno::ERPERM if run by a non superuser trying to set the root group id",
+        "core: Process.egid= raises Errno::ERPERM if run by a non superuser trying to set the group id from group name",
+        "core: Process.egid= sets the effective group id to its own gid if given the username corresponding to its own gid",
+      ],
       side: :app, platforms: ANDROID,
       reason: "Android's seccomp filter for apps stops a process that sets any of its group IDs, as setgid, setregid, " \
         "and setresgid do and bionic's setegid does through setresgid, so the Android runtime's Ruby is configured " \
@@ -155,19 +190,26 @@ class RubySpec
         "does wherever no call sets a group ID, where a desktop sets the group ID or refuses with EPERM.",
     ),
     Justification.new(
-      example: /\Acore: Dir\.scan handles character devices\z/,
+      examples: [
+        "core: Dir.scan handles character devices",
+      ],
       side: :app, platforms: ANDROID,
       reason: "The example lists /dev, which Android's SELinux policy forbids an app to read (EACCES).",
     ),
     Justification.new(
-      example: /\Alibrary: mkmf can be required with --enable-frozen-string-literal\z/,
+      examples: [
+        "library: mkmf can be required with --enable-frozen-string-literal",
+      ],
       side: :app, platforms: ANDROID,
       reason: "The example requires mkmf in the runtime's ruby program (ADR 082), and mkmf aborts where Ruby's C " \
         "headers are missing, which a phone's app does not carry: they are for the computer that builds the app " \
         "(doc/contributors/design/phone-runtimes.md, \"Ruby's C headers on a phone\").",
     ),
     Justification.new(
-      example: /\Acore: (?:Process\.spawn uses the passed env\['PATH'\] to search the executable|Kernel#system executes with `sh` if the command is executable but not binary and there is no shebang)\z/,
+      examples: [
+        "core: Process.spawn uses the passed env['PATH'] to search the executable",
+        "core: Kernel#system executes with `sh` if the command is executable but not binary and there is no shebang",
+      ],
       side: :app, platforms: ANDROID,
       reason: "Each example writes a script into a temporary folder and runs it, and Android lets an app run no file " \
         "it writes into its own folders: \"Untrusted apps that target Android 10 cannot invoke execve() directly on " \
@@ -179,7 +221,11 @@ class RubySpec
     # Examples that run on one side only (Listing.compare), beyond those
     # ruby/spec's platform guards leave out.
     Justification.new(
-      example: /\Acore: (?:Dir\.scan handles block devices|(?:File\.|File::Stat#)ftype returns 'blockSpecial' when the file is a block)\z/,
+      examples: [
+        "core: Dir.scan handles block devices",
+        "core: File.ftype returns 'blockSpecial' when the file is a block",
+        "core: File::Stat#ftype returns 'blockSpecial' when the file is a block",
+      ],
       side: :stock, platforms: %w[arm64-ios-simulator], outcome: :runs,
       reason: "MSpec's with_block_device runs these only where find /dev /devices -type b finds a block device " \
         "(mspec/guards/block_device.rb, lines 4 to 11 at MSpec 521207f), and iOS lets no app start find: Apple's SDK " \
@@ -187,14 +233,18 @@ class RubySpec
         "usr/include/_stdlib.h, lines 205 to 208).",
     ),
     Justification.new(
-      example: /\Acore: (?:Dir\.scan handles block devices|(?:File\.|File::Stat#)ftype returns 'blockSpecial' when the file is a block)\z/,
+      examples: [
+        "core: Dir.scan handles block devices",
+        "core: File.ftype returns 'blockSpecial' when the file is a block",
+        "core: File::Stat#ftype returns 'blockSpecial' when the file is a block",
+      ],
       side: :stock, platforms: ANDROID, outcome: :runs,
       reason: "MSpec's with_block_device runs these only where find /dev /devices -type b finds a block device " \
         "(mspec/guards/block_device.rb, lines 4 to 11 at MSpec 521207f), and Android's SELinux policy keeps an app " \
         "from reading /dev, as for Dir.scan's example of character devices, so the app finds none.",
     ),
     Justification.new(
-      example: %r{\Acore: Time\.utc handles real leap seconds in zone 'right/UTC'\z},
+      examples: ["core: Time.utc handles real leap seconds in zone 'right/UTC'"],
       side: :stock, platforms: ANDROID, outcome: :runs,
       reason: "ruby/spec runs it only where the zone right/UTC counts a leap second (core/time/utc_spec.rb, lines 88 " \
         "to 92), and Android's time zone data has no right/ zones: AOSP compiles it with zic from the zones and links " \
@@ -202,15 +252,21 @@ class RubySpec
         "and 178 at 0470df3d), so bionic finds no right/UTC and takes UTC, which has no leap seconds.",
     ),
     Justification.new(
-      example: /\Acommand_line: Processing RUBYOPT (?:prints the version number for '-v'|ignores whitespace around the option)\z/,
+      examples: [
+        "command_line: Processing RUBYOPT prints the version number for '-v'",
+        "command_line: Processing RUBYOPT ignores whitespace around the option",
+      ],
       side: :stock, platforms: ANDROID, outcome: :runs,
       reason: "ruby/spec runs these only where RbConfig::CONFIG['CROSS_COMPILING'] is not \"yes\" " \
         "(command_line/rubyopt_spec.rb, line 25), and the Android runtime's Ruby is compiled with the NDK on the " \
-        "computer that builds it, a cross build (doc/contributors/design/phone-runtimes.md, \"Building Ruby for a " \
-        "phone\").",
+        "computer that builds it, a cross build (doc/contributors/design/" \
+        "phone-runtimes.md, \"Building Ruby for a phone\").",
     ),
     Justification.new(
-      example: %r{\Acore: File\.expand_path when HOME is not set uses the user database when passed '~/?' if HOME is nil\z},
+      examples: [
+        "core: File.expand_path when HOME is not set uses the user database when passed '~' if HOME is nil",
+        "core: File.expand_path when HOME is not set uses the user database when passed '~/' if HOME is nil",
+      ],
       side: :app, platforms: ANDROID, outcome: :runs,
       reason: "ruby/spec runs these only where Etc.getlogin names a user with USER unset (core/file/expand_path_spec.rb, " \
         "lines 221 to 233). glibc's getlogin names the user logged in on the process's controlling terminal, and stock " \

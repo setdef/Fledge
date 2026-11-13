@@ -183,11 +183,11 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
   # Ruby, and nothing compared them. An example that runs on one side
   # only is a difference unless something explains it.
   def test_an_example_that_runs_on_one_side_only_is_a_difference
-    differences = RubySpec::Results.compare([listed("core", [GROUPS, EACH])], [listed("core", [EACH])], platform: "arm64-darwin")
+    differences = RubySpec::Results.compare([listed("core", [GROUPS, EACH])], [listed("core", [EACH])], platform: "x86_64-linux")
 
     assert_equal ["DIFFERENT: runs in stock Ruby only: core: Process.groups gets an Array of the gids"], differences.map { |d| d.to_s.lines.first.chomp }
-    assert_empty RubySpec::Results.compare([listed("core", [EACH, EACH])], [listed("core", [EACH, EACH])], platform: "arm64-darwin")
-    assert_equal 1, RubySpec::Results.compare([listed("core", [EACH, EACH])], [listed("core", [EACH])], platform: "arm64-darwin").size,
+    assert_empty RubySpec::Results.compare([listed("core", [EACH, EACH])], [listed("core", [EACH, EACH])], platform: "x86_64-linux")
+    assert_equal 1, RubySpec::Results.compare([listed("core", [EACH, EACH])], [listed("core", [EACH])], platform: "x86_64-linux").size,
       "an example that runs twice on one side and once on the other"
   end
 
@@ -199,11 +199,11 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
     android = listed(nil, [EACH], denied: { "core/process/groups_spec.rb:4" => "platform_is_not android" })
     lambda_guard = listed(nil, [EACH], denied: { "core/process/groups_spec.rb:4" => "guard" })
 
-    difference = RubySpec::Results.compare([stock], [android], platform: "x86_64-linux-android").then { |found| sole(found) }
+    difference = RubySpec::Results.compare([stock], [android], platform: "x86_64-linux-android").reject { |found| found.kind == :unused }.then { |found| sole(found) }
     assert_predicate difference, :justified?
     assert_equal "1 example under platform_is_not android at core/process/groups_spec.rb:4", difference.name
     assert_includes difference.to_s, "core: Process.groups gets an Array of the gids"
-    unjustified = RubySpec::Results.compare([stock], [lambda_guard], platform: "x86_64-linux-android").then { |found| sole(found) }
+    unjustified = RubySpec::Results.compare([stock], [lambda_guard], platform: "x86_64-linux-android").reject { |found| found.kind == :unused }.then { |found| sole(found) }
     refute_predicate unjustified, :justified?
     assert_includes unjustified.to_s, "left out by guard at core/process/groups_spec.rb:4 in the built app"
   end
@@ -213,7 +213,7 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
   def test_examples_an_error_on_one_side_kept_from_running_are_that_error
     hook = "An exception occurred during: before :all"
     detail = "Errno::ENOENT: id\n/w/spec/core/process/groups_spec.rb:9:in 'b'\n/w/spec/core/process/groups_spec.rb:1:in '<top (required)>'"
-    differences = RubySpec::Results.compare([listed(nil, [GROUPS])], [listed(nil, [], failures: { hook => detail })], platform: "arm64-darwin")
+    differences = RubySpec::Results.compare([listed(nil, [GROUPS])], [listed(nil, [], failures: { hook => detail })], platform: "x86_64-linux")
 
     assert_equal ["fails in the built app only: core: An exception occurred during: before :all, at core/process/groups_spec.rb:9"],
       differences.map { |d| d.to_s.lines.first.chomp.delete_prefix("DIFFERENT: ") }
@@ -271,6 +271,24 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
     refute_predicate RubySpec::Results.compare(runs.fetch(:app), runs.fetch(:stock), platform: "arm64-darwin").first, :justified?,
       "the same failure in the app only is not justified"
     refute_predicate RubySpec::Results.compare(runs.fetch(:stock), runs.fetch(:app), platform: "x64-mingw-ucrt").first, :justified?
+  end
+
+  # A justification names the examples it explains, each of which must
+  # differ in every run of its platforms: iOS's Process.egid= stopped
+  # failing and its pattern still passed every run, and the setuid
+  # pattern explained any failure of six predicates.
+  def test_a_justification_must_explain_each_example_it_names_in_every_run_of_its_platforms
+    chdir = "Dir.chdir accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters"
+    runs = results(stock: [chdir], app: [])
+
+    unused = RubySpec::Results.compare(runs.fetch(:stock), runs.fetch(:app), platform: "arm64-darwin").reject(&:justified?)
+    assert_equal [
+      "DIFFERENT: a justification for stock Ruby explains no difference of this run: core: Dir.chdir #{chdir.delete_prefix('Dir.chdir ')} when given a block",
+      "DIFFERENT: a justification for stock Ruby explains no difference of this run: core: File.readlink #{chdir.delete_prefix('Dir.chdir ')}",
+      "DIFFERENT: a justification for stock Ruby explains no difference of this run: core: File.realpath #{chdir.delete_prefix('Dir.chdir ')}",
+    ], unused.map(&:to_s)
+    setgid = results(stock: [], app: ["File.setgid? returns true when the gid bit is set"])
+    refute_predicate RubySpec::Results.compare(setgid.fetch(:stock), setgid.fetch(:app), platform: "arm64-ios-simulator").first, :justified?
   end
 
   def test_a_run_that_did_not_finish_is_a_difference

@@ -20,7 +20,7 @@ The latest release is [`v0.11.0`](https://github.com/setdef/Fledge/releases/tag/
 
 Plan 001 (the walking skeleton) and Plan 002 (toward 1.0) are done. What each Plan 002 story delivered, with its ADR and first release:
 
-- **Ship the executable you already run** and **Vendor an app's gems** (ADR 005 and ADR 086, `v0.0.1.pre.2` and `pre.3`): a gem-shaped program runs as `bundle exec` would run it, with the gems its Gemfile.lock locks.
+- **Ship the executable you already run** and **Vendor an app's gems** (ADR 005 and ADR 095, `v0.0.1.pre.2` and `pre.3`): a gem-shaped program runs as `bundle exec` would run it, with the gems its Gemfile.lock locks.
 - **Copyleft-free runtimes** and **Tell app developers what they owe, from CI** (ADR 004, `pre.1`): every runtime passes a license audit; each carries NOTICES and an SPDX SBOM; it carries its LGPL libraries' sources in `notices/sources/`, and the release publishes them beside it too; `doc/licensing.md` is generated from the runtimes. An app's own gems are the developer's business (ADR 007).
 - **Pin runtimes by hash** (ADR 014, `pre.12`): the gem carries `lib/fledge/SHA256SUMS` and checks every runtime against it.
 - **Native gems from source** (ADR 091, `pre.4`): gems with extensions compile on the platform they are for; git gems ship where Bundler keeps them.

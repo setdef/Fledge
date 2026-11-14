@@ -208,7 +208,7 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # An app with a Gemfile gets the ENV bundle exec gives (ADR 086):
+  # An app with a Gemfile gets the ENV bundle exec gives (ADR 095):
   # Bundler's settings over the person's, so a child Ruby runs in the
   # app's bundle with the person's RUBYOPT after Bundler's own, and
   # Bundler.with_original_env and with_unbundled_env, which a Bundler

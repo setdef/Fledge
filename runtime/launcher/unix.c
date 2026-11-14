@@ -57,7 +57,7 @@
  *      (find_app_folder).
  *   5. Once Ruby has booted and before ENTRY runs, it fixes RubyGems'
  *      paths, and for an app with a Gemfile has Bundler set up the app's
- *      gems, as bundle exec would (setup_bundler, ADR 086).
+ *      gems, as bundle exec would (setup_bundler, ADR 095).
  *   6. Then it puts the variables of step 2 back, so ENV and the app's
  *      child processes see what they would see without Fledge: as they
  *      were (restore_environment), or for an app with a Gemfile beneath
@@ -221,7 +221,7 @@ restore_environment(void)
  * Gemfile, once Bundler has set up its gems, beneath Bundler's own
  * settings, as bundle exec would have composed them over the person's
  * environment, and records the person's environment as the one Bundler
- * started from (bundler.c; ADR 086).
+ * started from (bundler.c; ADR 095).
  */
 static void
 bundle_environment(void)
@@ -276,7 +276,7 @@ static char app_folder[PATH_MAX];
 /*
  * Has Bundler set up the gems of the app's Gemfile, which fledge build
  * installed into the runtime's gem folder, as bundle exec would before
- * running ENTRY (ADR 086). The person's own Bundler settings are still
+ * running ENTRY (ADR 095). The person's own Bundler settings are still
  * set aside: BUNDLE_GEMFILE names the app's Gemfile, and
  * BUNDLE_USER_CONFIG names the app's own .bundle/config, which fledge
  * build wrote, in place of ~/.bundle/config, so nothing of the person's

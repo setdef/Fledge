@@ -283,7 +283,7 @@ echo "ok: the app unpacked into a folder named bin refuses to run there, and say
 # as under ruby main.rb. With one, the app's ENV is bundle exec's, with
 # Bundler's GEM_HOME over the person's, and a Ruby started inside
 # Bundler.with_original_env or with_unbundled_env, as a Bundler app
-# starts a person's own tools, sees theirs (ADR 086).
+# starts a person's own tools, sees theirs (ADR 095).
 person_gems="$work/person gems"
 mkdir -p "$person_gems"
 # person_sees COMMAND NAME: what the probe's COMMAND says a child Ruby

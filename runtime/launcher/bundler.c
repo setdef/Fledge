@@ -5,7 +5,7 @@
 
 /*
  * The Bundler that sets up an app with a Gemfile (ADR 063), and the
- * environment the app runs in, on every operating system (ADR 086;
+ * environment the app runs in, on every operating system (ADR 095;
  * doc/contributors/design/launcher.md, "The Bundler environment").
  *
  * Under bundle exec, a program's ENV is the person's, with Bundler's

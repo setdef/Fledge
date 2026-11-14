@@ -178,13 +178,17 @@ module Fledge
     # an extension with C++ sources, and one whose <tt>extconf.rb</tt>
     # names a desktop's C++ runtime (<tt>-lc++</tt>, <tt>-lstdc++</tt>),
     # which the NDK would link as <tt>libc++_shared.so</tt>, a library the
-    # package does not carry (Linking.cxx_runtime?).
+    # package does not carry (Linking.cxx_runtime?). Its run path is only
+    # what +FLEDGE_DLDFLAGS+ names: mkmf would add each folder it links
+    # from (<tt>RPATHFLAG</tt>, which mkmf reads as it loads, line 2981),
+    # the folders of this computer, which name nothing on the phone.
     SHIM = TOOLS + <<~'RUBY'
       require "json"
       shared = ENV.key?("FLEDGE_SHARED")
       if shared && ENV.key?("FLEDGE_LDSHAREDXX")
         [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].each { |config| config["LDSHAREDXX"] = ENV.fetch("FLEDGE_LDSHAREDXX").dup }
       end
+      [RbConfig::CONFIG, RbConfig::MAKEFILE_CONFIG].each { |config| config["RPATHFLAG"] = "" } if shared
       require "mkmf"
       if shared
         $LIBRUBYARG = ENV.fetch("FLEDGE_LIBRUBYARG").dup

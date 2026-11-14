@@ -62,7 +62,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [022](../adr/022.md) | Compile a phone's extensions with mkmf against the phone Ruby, link them in, and register them |
 | [024](../adr/024.md) | Ship a Project's Several Programs in One Folder, With One Runtime |
 | [025](../adr/025.md) | A phone project takes its host's files from the app's own project: `ios: host:` and `android: host:` |
-| [026](../adr/026.md) | A restart through `RbConfig.ruby` starts the app's launcher again |
 | [027](../adr/027.md) | Aim an `extconf.rb`'s CMake at the phone through `CMAKE_TOOLCHAIN_FILE` |
 | [028](../adr/028.md) | Version Fledge by SemVer, With a Major Whenever a Break Is Ready, After a Deprecation |
 | [029](../adr/029.md) | Fledge's Public Interface Is Its Command and the Files It Reads and Writes |
@@ -118,3 +117,4 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [092](../adr/092.md) | FLEDGE_RUNTIME_MIRROR Replaces the Release's Host, Checked Against the Pins, With No Fallback |
 | [093](../adr/093.md) | Prebuild Each Platform's Runtime in Fledge's CI, and Publish It with the Release |
 | [095](../adr/095.md) | Run an App That Has a Gemfile Under the Real Bundler, as bundle exec Does |
+| [096](../adr/096.md) | A restart through `RbConfig.ruby` starts the app's launcher again |

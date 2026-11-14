@@ -33,7 +33,7 @@ class LicensingPageTest < Minitest::Test
   end
 
   # A macOS or Linux runtime: its launcher, and its bin/ruby, which is
-  # Ruby's main.c with Fledge's code compiled in (ADR 026), so the same
+  # Ruby's main.c with Fledge's code compiled in (ADR 096), so the same
   # binary with the string runtime/licenses.yml looks for.
   def unix(binary)
     {
@@ -111,7 +111,7 @@ class LicensingPageTest < Minitest::Test
   end
 
   # bin/ruby on macOS and Linux, and ruby.exe and rubyw.exe on Windows,
-  # carry Fledge's own code (ADR 026), so the page counts them among
+  # carry Fledge's own code (ADR 096), so the page counts them among
   # Fledge's files, whose MIT notice goes with them, and the desktop rows
   # say so.
   def test_it_counts_bin_ruby_among_fledges_own_files

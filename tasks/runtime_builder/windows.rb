@@ -215,7 +215,7 @@ class RuntimeBuilder
     # Compiles Ruby's own programs, ruby.exe and its GUI twin rubyw.exe,
     # into +bin+, in place of RubyInstaller's: Ruby's main.c
     # (runtime/launcher/ruby_main.c) with Fledge's hand-off to the app's
-    # launcher (windows_relaunch.c, ADR 026), linked against Ruby's DLL
+    # launcher (windows_relaunch.c, ADR 096), linked against Ruby's DLL
     # through the tree's import library, as RubyInstaller links its own,
     # with the launcher's manifest, so a Ruby the app starts has the
     # app's code page (ADR 070). Each may import Ruby's DLL besides what

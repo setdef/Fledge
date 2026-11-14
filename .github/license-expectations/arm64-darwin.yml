@@ -13,6 +13,6 @@
 - "copyleft-text: lib/ruby/gems/4.1.0+5/gems/nkf-0.3.0/ext/java/"
 - "copyleft-text: lib/ruby/gems/4.1.0+5/cache/nkf-0.3.0.gem!ext/java/"
 # rv-ruby's own bin/ruby is Ruby's main.c alone; a runtime's carries
-# Fledge's code beside it (runtime/launcher/ruby_main.c, ADR 026), which
+# Fledge's code beside it (runtime/launcher/ruby_main.c, ADR 096), which
 # the audit looks for by a string of relaunch.c's.
 - "stale: bin/ruby: should hold Fledge launcher and RubyGems defaults"

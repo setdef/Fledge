@@ -58,7 +58,7 @@
  * desktop's bin/ruby is (runtime/launcher/ruby_main.c): Ruby's main.c,
  * with the launcher's locale, and with the app's own program handed to
  * the app's way of starting, as fledge_relaunch hands it to the launcher
- * (ADR 026), here fledge_ruby_run_app in the program's own process. It
+ * (ADR 096), here fledge_ruby_run_app in the program's own process. It
  * takes Ruby's arguments as they come, RUBYOPT included, as ruby does,
  * and leaves $stdout as Ruby sets it: a Ruby the app starts writes to
  * the standard output the app gives it, by default the app's own, the

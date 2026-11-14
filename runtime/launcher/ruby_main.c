@@ -32,7 +32,7 @@
  * It differs from main.c in two calls. First, when its first argument is
  * the program a launcher of this app runs, as in a restart with exec
  * RbConfig.ruby, $0, *ARGV, it runs that launcher in its place
- * (fledge_relaunch, ADR 026), so the restarted app boots as
+ * (fledge_relaunch, ADR 096), so the restarted app boots as
  * it booted the first time. Second, where main.c sets LC_CTYPE from
  * the environment, it calls the launcher's fledge_coerce_locale, which
  * does the same and then turns a bare C or POSIX locale into a UTF-8
@@ -55,7 +55,7 @@
  * Ruby does; and once ruby_sysinit has read the command line as Ruby
  * reads it, fledge_relaunch, which, when the first argument is the app's
  * own program, runs the app's launcher in a process of its own and waits
- * for it, as Ruby's own exec does on Windows (ADR 026). Its setlocale is
+ * for it, as Ruby's own exec does on Windows (ADR 096). Its setlocale is
  * main.c's: Windows takes the C runtime's code page from the manifest.
  *
  * Its license is Ruby's, like the rest of what it is made of; the

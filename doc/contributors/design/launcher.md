@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The Launcher and bin/ruby
 
-This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 087 the locale; ADR 095 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 026 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
+This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 087 the locale; ADR 095 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 096 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
 
 ## Source files
 
@@ -226,7 +226,7 @@ A console program of a project with a windowed one lives in `Contents/MacOS` too
 
 On macOS and Linux the runtime's `bin/ruby` is `ruby_main.c`: Ruby's `main.c` built against the launcher's static libruby with the launcher's link line, so both carry the same Ruby. It differs from `main.c` in two calls: `fledge_relaunch` first, and `fledge_coerce_locale` in place of `setlocale`. It hides nothing and reads no `fledge.cfg` unless `fledge_relaunch` finds the app's program.
 
-`fledge_relaunch` (`relaunch.c`) hands the app's own program to the app's launcher (ADR 026) when all of these hold:
+`fledge_relaunch` (`relaunch.c`) hands the app's own program to the app's launcher (ADR 096) when all of these hold:
 
 1. `argv[1]` is not empty, does not begin with `-`, and names a regular file.
 2. `bin/ruby` finds its own real path (`fledge_executable_path`), and PREFIX, two folders up, holds a readable `fledge.cfg`.

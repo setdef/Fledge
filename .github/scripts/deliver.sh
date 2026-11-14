@@ -314,7 +314,7 @@ echo "ok: the app's own gems ignore the person's GEM_HOME"
 
 # A program restarts itself as Ruby programs do, with exec RbConfig.ruby,
 # $0, *ARGV, and the runtime's bin/ruby hands the app's own program back
-# to its launcher (ADR 026). The probe restarts from this folder, whose
+# to its launcher (ADR 096). The probe restarts from this folder, whose
 # name is not ASCII, with no locale, in a clean environment, the
 # person's, and the hostile one, and prints what changed across the
 # restart: nothing, not even the process.

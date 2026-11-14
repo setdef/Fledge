@@ -47,7 +47,7 @@
 #                           exec RbConfig.ruby, $0, and prints what the
 #                           restarted probe found different from the
 #                           first start, a line each, or "restarted as
-#                           itself" (ADR 026)
+#                           itself" (ADR 096)
 #
 # It uses nothing but Ruby's standard library, so it runs under any Ruby
 # 4.0.

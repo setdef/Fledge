@@ -76,7 +76,7 @@ A GitHub Release holds, for each desktop platform:
 
 A phone runtime has the first three. A `SHA256SUMS` over all of them is the tagged commit's `lib/fledge/SHA256SUMS`. `RuntimeBuilder.release_assets` (`tasks/runtime_builder.rb`) is the list, and `release.yml` refuses any other set.
 
-A release is never deleted. Each runtime's NOTICES links its source bundle at the release, after the copy in the app's own `notices/sources/` (ADR 043), and the schema's address names the release's tag (`doc/contributors/design/public-interface.md`, "The fledge.yml schema").
+A release is never deleted. Each runtime's NOTICES links its source bundle at the release, after the copy in the app's own `notices/sources/` (`doc/contributors/design/license-audit.md`, "notices/sources/ and the source bundles"), and the schema's address names the release's tag (`doc/contributors/design/public-interface.md`, "The fledge.yml schema").
 
 ## The pins
 

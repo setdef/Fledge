@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The Launcher and bin/ruby
 
-This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 081 that it adds nothing between Ruby and the program; and ADR 038 the Windows layout. Each section below says why the part it describes is as it is. Why there are console and windowed launchers, and several programs in one folder, is in `doc/contributors/design/desktop-apps.md`, "Windows" and "Several programs". Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
+This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; and ADR 081 that it adds nothing between Ruby and the program. Each section below says why the part it describes is as it is. Why there are console and windowed launchers, and several programs in one folder, is in `doc/contributors/design/desktop-apps.md`, "Windows" and "Several programs". Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
 
 ## Source files
 
@@ -208,6 +208,8 @@ CI run 43278468138, on the `experiment/windows-acp` branch, printed each of thes
 A child process has its own code page, from its own program's manifest. RubyInstaller's `ruby.exe` declares none and keeps the system's, and a `ruby.exe.manifest` file beside it changes nothing, since `ruby.exe` embeds a manifest (for `longPathAware`) and Windows reads the embedded one (the same run). So the runtime's `ruby.exe` and `rubyw.exe`, which `RbConfig.ruby` names, are Fledge's, and embed the launcher's manifest (see "bin/ruby and restarts"): a Ruby the app starts has the app's code page. The parity check's `Windows` fact compares a child's with its parent's.
 
 ## Windows
+
+The launcher loads Ruby's DLL when it runs, rather than importing it. Windows resolves a program's imports before any of its code runs, searching the program's folder, System32, and `PATH`, never a folder below it, so a launcher at the top of the app that imported `ruby\bin`'s DLL failed to start, with `0xC0000135` (`doc/contributors/research/2026-11-10-findings-from-the-adrs.md`, "The Windows launcher spike: importing Ruby's DLL, and the layouts tried"). Loaded by its absolute path, with the search for DLLs loaded by name kept to System32 and the folders a DLL names for itself, no other Ruby's DLL, from `PATH` or the current folder, loads in its place. Why Ruby's tree sits below the launcher, whole, is `doc/contributors/design/runtimes.md`, "Layout on Windows". The cost is that the launcher calls Ruby through function pointers typed by Ruby's headers and is built against the DLL's name, so a missing or damaged DLL is a damaged app, which exits 70.
 
 `wmain` in `windows.c`, linked with `-municode` as `ruby.exe` is:
 

@@ -68,7 +68,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 9. When using fledge, your ruby source code should be able to be identical to how it was without Fledge, so the things you had to `require` before you can still need the app dev to `require`, but the things you didn't have to `require` before the app dev still shouldn't have to require.
 
-*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 081 and ADR 085; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
+*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 081; `doc/contributors/design/runtimes.md`, "What a runtime keeps"; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
 
 > 10. All the ruby globals should be non-surprising to app devs, for the same motivation as #9.
 
@@ -112,7 +112,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 20. Tiny filesize is not a priority; "my ruby code just works" _is_ a (high) priority.
 
-*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* ADR 085; `RuntimeBuilder::Pruning.prune`.
+*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* `doc/contributors/design/runtimes.md`, "What a runtime keeps" and "What a runtime prunes, and why nothing reads it"; `RuntimeBuilder::Pruning.prune`.
 
 > 21. I don't understand what I'd be deciding here. [re: Windows console code pages and Ctrl-C — agents own this]
 
@@ -124,7 +124,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 23. Would this require app devs to have a bunch of `if`s or polymorphic objects used throughout their app to handle the difference? [re: Windows ruby\ vs Unix lib/ layout — answer is no; agents own this]
 
-*Governs:* the internal layout of a runtime is the agents' to decide, as long as app code needs no per-OS branches for it. *Applied in:* ADR 038.
+*Governs:* the internal layout of a runtime is the agents' to decide, as long as app code needs no per-OS branches for it. *Applied in:* `doc/contributors/design/runtimes.md`, "Layout on Windows".
 
 > 24. See #8 [re: GMP being LGPL]
 

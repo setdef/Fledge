@@ -41,7 +41,7 @@ Delivery, which has no Ruby to compare with, asks the probe one thing at a time:
 
 ## The references
 
-The reference is the Ruby the runtime was made from, unpacked as it ships: rv-ruby's release on macOS and glibc Linux, and RubyInstaller's on Windows, fetched by the pins in `runtime/sources.yml` and checked against their SHA-256. On musl Linux, whose Ruby the runtime build compiles from source (ADR 017), the reference is the runtime's own `bin/ruby`, with Fledge's `rubygems/defaults/operating_system.rb` removed, since that file is Fledge's and not Ruby's.
+The reference is the Ruby the runtime was made from, unpacked as it ships: rv-ruby's release on macOS and glibc Linux, and RubyInstaller's on Windows, fetched by the pins in `runtime/sources.yml` and checked against their SHA-256. On musl Linux, whose Ruby the runtime build compiles from source (`doc/contributors/design/runtimes.md`, "musl Linux's Ruby, built in Alpine"), the reference is the runtime's own `bin/ruby`, with Fledge's `rubygems/defaults/operating_system.rb` removed, since that file is Fledge's and not Ruby's.
 
 The reference runs `ruby main.rb` from a copy of the probe's folder; the app runs its launcher from `ROOT/app`. Both get the arguments `one`, `two words`, and `ünïcödé`.
 

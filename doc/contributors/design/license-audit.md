@@ -6,7 +6,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The License Audit
 
-This document says how Fledge checks that what it copies into apps meets the license policy, and what it writes from that check: the policy's categories and how an SPDX expression is judged, what the audit reads and with which tools, the checks and their violations, `NOTICES.txt` and the SBOM, `notices/sources/` and the source bundles, CI's proofs, the phones, and the generated licensing page. ADR 004 decides that every runtime passes this audit before it is archived; ADR 042 the two LGPL libraries; ADR 043 the sources each runtime carries. Why the installers carry NSIS's and AppImage's own releases is in `doc/contributors/design/desktop-apps.md`, "The NSIS setup program" and "The AppImage". The policy covers Fledge's runtimes only: an app's own gems are its developer's (`doc/contributors/design/gems.md`, "Checks that are not about licenses"), and `fledge build` judges no gem by its license. For app developers, `doc/licensing.md` is the page this audit generates.
+This document says how Fledge checks that what it copies into apps meets the license policy, and what it writes from that check: the policy's categories and how an SPDX expression is judged, what the audit reads and with which tools, the checks and their violations, `NOTICES.txt` and the SBOM, `notices/sources/` and the source bundles, CI's proofs, the phones, and the generated licensing page. The rule it checks is the maintainer's: an app's developer owes nothing beyond notices for what Fledge copies in, and an LGPL library ships only with the library's own source on offer, never the app's (`decisions.md`, 2026-10-26, decisions 8 and 24, and the replies after them). Why the installers carry NSIS's and AppImage's own releases is in `doc/contributors/design/desktop-apps.md`, "The NSIS setup program" and "The AppImage". The policy covers Fledge's runtimes only: an app's own gems are its developer's (`doc/contributors/design/gems.md`, "Checks that are not about licenses"), and `fledge build` judges no gem by its license. For app developers, `doc/licensing.md` is the page this audit generates.
+
+## Why the build runs the audit
+
+Asked about a page that lists what ships on each platform, the maintainer answered "Better to automate this as part of the DevOps pipeline, yes?" (`decisions.md`, 2026-10-26, later). So the audit runs inside the runtime build, in `RuntimeBuilder#license`, after the recipe builds the folder and before anything is archived, and a runtime that breaks the policy is never produced: no CI artifact, test, Delivery, or release can hold one. The notices, the SBOM, and the licensing page come from what the audit found in the tree. Notices kept by hand, a `notices/README.txt` and folders of license texts with each source's notice in `runtime/sources.yml`, record only what someone meant to ship. An audit as a CI job beside the build could be skipped, or fall out of step with it. The model is cargo-deny's `licenses` check, which fails a Rust build on any dependency whose license is not allowed.
+
+No maintained tool judges a whole runtime tree this way, so the audit's rules are Fledge's own code, in `tasks/license_audit/`. The map must be kept exact, every file with an owner and every compiled component with an evidence string, so a routine pin update costs a map edit ("When a pin moves").
 
 ## The policy and its categories
 
@@ -37,7 +43,7 @@ Fledge's own files in a runtime (the launcher, `bin/ruby`'s Fledge code, the Rub
 
 An LGPL component may ship in one of two ways (`LicenseAudit::Policy#check_shared_library`, `tasks/license_audit/policy.rb`):
 
-1. **As its own shared library:** kind `shared_library`, with a source pin, every file it owns an ELF, Mach-O, or PE file, and its code compiled into no other file. libxcrypt and GNU MP ship so (ADR 042).
+1. **As its own shared library:** kind `shared_library`, with a source pin, every file it owns an ELF, Mach-O, or PE file, and its code compiled into no other file. libxcrypt and GNU MP ship so: libxcrypt as `lib/libcrypt.so.2` on glibc Linux (`doc/contributors/design/runtimes.md`, "libxcrypt on glibc Linux"), and GNU MP as RubyInstaller's `libgmp-10.dll`, unchanged, on Windows. Shipped so, the LGPL asks for a notice, the library's source, the means to replace it, and app terms that permit reverse engineering to debug such a replacement (LGPL-2.1, section 6; LGPL-3.0, section 4), and never for the app's source, which is what the maintainer's replies ask: "Source offer for... the app? Or the LGPL'ed library? Former won't be liked, latter is fine and normal." (`decisions.md`, 2026-10-26, later). A Windows Ruby without GNU MP would mean forking RubyInstaller's packaging onto MSYS2's rolling toolchain, so GNU MP stays, and a developer whose own policy forbids LGPL-3.0 has it to raise.
 2. **Linked into another component** (it appears among that component's `embedded` files), when the LGPL component's source is published and every file it is linked into is owned by a component that is not `first_party` and whose own source Fledge publishes too. libfuse, linked into AppImage's runtime, ships so: publishing the runtime's complete source with libfuse's is what LGPL-2.1, section 6(a), asks of a work linked with the library, and it asks nothing of the app inside the AppImage, which only runs as a child of it. The maintainer accepted it on 2026-10-28 (`decisions.md`), over a runtime Fledge built without libfuse (`doc/contributors/design/desktop-apps.md`, "The AppImage").
 
 Fledge's launcher, the program an app's developer ships as their own, may never hold LGPL code, so the second way is closed to every `first_party` component. A copyleft library's byte signature anywhere else fails as `static-copyleft`.
@@ -123,7 +129,7 @@ Each check reports a violation with a rule, a path, and a message (`LicenseAudit
 - its license texts;
 - `BUILD.txt`, which says how the runtime's copy was built from that source and how to build a replacement.
 
-It writes these folders twice (ADR 043):
+It writes these folders twice:
 
 - into the runtime's `notices/sources/` (`#copy_into`), before the audit, so the audit, the SBOM, and NOTICES see them, and every app, which copies `notices/` whole, carries them;
 - into the release asset `fledge-runtime-VERSION-PLATFORM-lgpl-sources.tar.gz` (`#write`), with a `README.txt` beside the folders.
@@ -139,7 +145,9 @@ What each platform carries, from `runtime/licenses.yml`:
 | Windows, x64 and ARM64 | GNU MP (MSYS2's source package), NSIS |
 | macOS, iOS, Android | none, and no `notices/sources/` |
 
-A Linux or Windows console app carries the installer tools' sources too, though it never holds the tools: `notices/` is one folder for every app.
+The sources travel inside the runtime because the LGPL binds whoever conveys the library, and that is the app's developer, who conveys it inside the app. With the only copy on a host, their compliance would depend on that host keeping its terms and staying up, and on Fledge never deleting a release; inside the app, it depends on no host. LGPL-2.1, section 6(a), names this way: "Accompany the work with the complete corresponding machine-readable source code for the Library". GPL-3.0, section 6, which LGPL-3.0 uses for GNU MP, likewise lets source go with the object code on the same medium (6(a)) or "in the same way through the same place" (6(d)). The release's bundle alone, and upstream's own archives named by their pinned SHA-256, were weighed: each leaves a host as the only place the source can be had.
+
+The cost is size, about that of the source bundle on each Linux and Windows runtime (`doc/contributors/research/2026-11-10-findings-from-the-adrs.md`, "Sources inside the runtime: sizes"); "Tiny filesize is not a priority" (`decisions.md`, 2026-10-26, decision 20). A Linux or Windows console app carries the installer tools' sources too, though it never holds the tools: `notices/` is one folder for every app.
 
 `BUILD.txt` for GNU MP names MSYS2's source package, which holds GMP's release, MSYS2's patches, and the PKGBUILD, and says how to build a replacement for the platform's triple. The Windows "Runtime" job checks that MSYS2's binary package holds RubyInstaller's DLL byte for byte, which is what makes that source package its exact source. Releases are never deleted, since every NOTICES links its bundle there (AGENTS.md, Releasing).
 

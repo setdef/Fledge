@@ -176,7 +176,7 @@ $ open "/tmp/Hello Window-arm64-darwin.dmg"
 
 ### 6. Optional: does YJIT need its entitlement under a Developer ID?
 
-Fledge grants every Mac app `com.apple.security.cs.allow-unsigned-executable-memory`, which Apple names for memory YJIT makes, though CI's self-signed builds showed YJIT working without it (`doc/contributors/design/signing.md`, "Signing on macOS"). This step answers whether a Developer ID needs it. Entitlements belong to the program a process runs, the bundle's own (Apple's "Hardened Runtime" page), so it signs a copy of the bundle again without them; never ship that copy.
+Fledge grants every Mac app `com.apple.security.cs.allow-unsigned-executable-memory`, which Apple names for memory YJIT makes (`doc/contributors/design/signing.md`, "Signing on macOS"). No run on record shows YJIT working without it. This step answers whether a Developer ID needs it. Entitlements belong to the program a process runs, the bundle's own (Apple's "Hardened Runtime" page), so it signs a copy of the bundle again without them; never ship that copy.
 
 ```console
 $ cp -R "dist/Hello Window-arm64-darwin" /tmp/no-entitlements

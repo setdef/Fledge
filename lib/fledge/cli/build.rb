@@ -83,7 +83,7 @@ module Fledge
       #        Gem::Platform.local).
       # [ruby] The version of the Ruby running the build (default:
       #        +RUBY_VERSION+), whose minor version the runtime's Ruby
-      #        must have (ADR 055).
+      #        must have.
       def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION)
         @out = out
         @err = err
@@ -199,7 +199,8 @@ module Fledge
       # version of the Ruby running the build. Fledge has no default Ruby:
       # an app runs on the Ruby its developer runs it with, as Briefcase
       # and PyInstaller package the Python that runs them, at the patch
-      # level of Fledge's runtime (ADR 055). Raises
+      # level of Fledge's runtime (doc/contributors/design/releases.md, "Ruby minors and
+      # runtimes"). Raises
       # Fledge::Error otherwise.
       private def same_ruby(contents, platform)
         return contents if minor(contents.ruby_version) == minor(@ruby)

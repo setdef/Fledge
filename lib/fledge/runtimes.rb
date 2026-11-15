@@ -38,8 +38,9 @@ module Fledge
   # rather than sending it to a host its owner chose to avoid.
   #
   # Either way, a runtime from the cache or a download must have the
-  # SHA-256 this gem pins for it in +PINS+, which the release workflow
-  # wrote from the very runtimes it then published (ADR 014). The
+  # SHA-256 this gem pins for it in +PINS+, which <tt>rake runtime:pin</tt>
+  # wrote from the very runtimes the release then published
+  # (doc/contributors/design/releases.md, "The pins"). The
   # release's own +SHA256SUMS+ catches a damaged download, but a release
   # whose assets and sums were both replaced would pass it; the pins were
   # fixed when this gem was, so it does not, and neither does a mirror
@@ -74,8 +75,8 @@ module Fledge
     EXTENSION = Archive::TAR_GZ
 
     # The SHA-256 of every asset of this version's release, as
-    # +sha256sum+ writes them, committed before the release was tagged
-    # (ADR 014). The release's +SHA256SUMS+ is this file.
+    # +sha256sum+ writes them, committed before the release was tagged.
+    # The release's +SHA256SUMS+ is this file.
     PINS = File.join(File.dirname(__FILE__), "SHA256SUMS")
 
     # The file name of the runtime archive for +platform+ at +version+
@@ -221,7 +222,9 @@ module Fledge
 
     # Downloads +name+ from the mirror, where this version's release
     # keeps it under the mirror's base: MIRROR/vVERSION/NAME. A mirror
-    # that fails is not passed over for the release (ADR 092).
+    # that fails is not passed over for the release
+    # (doc/contributors/design/runtimes.md, "Where fledge build finds a
+    # runtime").
     private def from_mirror(mirror, name, destination, sha256)
       base = "#{mirror}/v#{VERSION}"
       @log&.puts "Downloading #{name} from #{base}"

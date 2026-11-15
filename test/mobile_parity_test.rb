@@ -103,9 +103,36 @@ class MobileParityTest < Minitest::Test
   # The reference runs as a person runs ruby main.rb: in a UTF-8 locale,
   # with a home folder of its own and nothing of the runner's Ruby.
   def test_the_reference_runs_with_a_persons_plain_environment
-    env = MobileParity.reference_environment("/work", { "PATH" => "/bin", "RUBYOPT" => "-W0", "GEM_HOME" => "/g", "CI" => "true" })
+    env = MobileParity.reference_environment("/work", "C.UTF-8", { "PATH" => "/bin", "RUBYOPT" => "-W0", "GEM_HOME" => "/g", "CI" => "true" })
 
-    assert_equal({ "PATH" => "/bin", "HOME" => "/work/home", "LANG" => "en_US.UTF-8" }, env)
+    assert_equal({ "PATH" => "/bin", "HOME" => "/work/home", "LANG" => "C.UTF-8" }, env)
+  end
+
+  # Each charmap is what Ruby's Encoding.locale_charmap is under that
+  # LANG: glibc reads a locale it lacks as C, ANSI_X3.4-1968, and macOS
+  # reads it as US-ASCII.
+  GLIBC_WITH_EN_US = { "en_US.UTF-8" => "UTF-8", "C.UTF-8" => "UTF-8", "C.utf8" => "UTF-8", "UTF-8" => "ANSI_X3.4-1968" }.freeze
+  STOCK_UBUNTU = GLIBC_WITH_EN_US.merge("en_US.UTF-8" => "ANSI_X3.4-1968").freeze
+  MACOS = { "en_US.UTF-8" => "UTF-8", "C.UTF-8" => "UTF-8", "C.utf8" => "US-ASCII", "UTF-8" => "UTF-8" }.freeze
+
+  # The reference keeps en_US.UTF-8 where the computer has it, and on a
+  # stock Ubuntu, which has only C and C.UTF-8, takes C.UTF-8 rather than
+  # running in the C locale, whose ASCII the check would blame on the
+  # phone.
+  def test_the_reference_takes_the_first_utf8_locale_the_computer_has
+    assert_equal "en_US.UTF-8", MobileParity.reference_locale("ruby", &GLIBC_WITH_EN_US.method(:fetch))
+    assert_equal "en_US.UTF-8", MobileParity.reference_locale("ruby", &MACOS.method(:fetch))
+    assert_equal "C.UTF-8", MobileParity.reference_locale("ruby", &STOCK_UBUNTU.method(:fetch))
+    assert_equal "C.utf8", MobileParity.reference_locale("ruby") { |name| (name == "C.utf8") ? "utf-8" : "US-ASCII" }
+  end
+
+  # With no UTF-8 locale at all, the check stops and says what is
+  # missing, rather than report the C locale as the phone's difference.
+  def test_the_reference_stops_on_a_computer_with_no_utf8_locale
+    error = assert_raises(RuntimeError) { MobileParity.reference_locale("/r/ruby") { "ANSI_X3.4-1968" } }
+
+    assert_includes error.message, "no UTF-8 locale"
+    assert_includes error.message, "LANG=en_US.UTF-8, C.UTF-8, C.utf8, UTF-8"
   end
 
   # A phone starts an app with an environment of its own, so the check

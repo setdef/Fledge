@@ -360,15 +360,16 @@ class RubySpec
 
     # Runs ruby main.rb from the project's copy for stock Ruby, with the
     # Ruby the desktop runtime of this computer is made from, as the
-    # desktop's comparison runs it, in its clean environment with a UTF-8
-    # locale, as a phone's app has, and keeps its standard output and its
+    # desktop's comparison runs it, in its clean environment with the
+    # UTF-8 locale this computer has (MobileParity.reference_locale), as
+    # a phone's app has, and keeps its standard output and its
     # standard error apart in the output folder.
     private def run_stock
       parity = File.join(@work, "parity")
       FileUtils.mkdir_p(parity)
       ruby = Parity.new(platform:, work: parity, runtimes: @runtimes, out: @log).unpack_reference
       project = File.join(@work, "reference", "ruby_spec")
-      env = environment("stock").merge("LANG" => "en_US.UTF-8", "RUBY_SPEC_LISTING" => File.join(@out, "stock-listing.txt"))
+      env = environment("stock").merge("LANG" => MobileParity.reference_locale(ruby), "RUBY_SPEC_LISTING" => File.join(@out, "stock-listing.txt"))
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       pid = Process.spawn(env, ruby, "main.rb", chdir: project, unsetenv_others: true, out: stock_path, err: stock_error_path, in: File::NULL)
       Process.wait(pid)

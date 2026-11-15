@@ -204,13 +204,37 @@ class MobileParity
     end
   end
 
+  # The names of a UTF-8 locale the reference Ruby tries, in order:
+  # en_US.UTF-8, which macOS, most Linux desktops, and CI's runners
+  # have, then those Fledge's runtime tries (runtime/launcher/locale.c),
+  # of which a stock Ubuntu or a container that generated no locale has
+  # C.UTF-8 alone. Ruby sets only LC_CTYPE from the environment (main.c,
+  # line 58, at Ruby 4.1.0-preview1), so the name changes nothing the
+  # reference shows but the character set, which is UTF-8 under each.
+  REFERENCE_LOCALES = %w[en_US.UTF-8 C.UTF-8 C.utf8 UTF-8].freeze
+
+  # The first of REFERENCE_LOCALES this computer has, asked of +ruby+,
+  # the reference Ruby: the first under which its
+  # Encoding.locale_charmap is UTF-8, as the block, if given, reports
+  # it for a LANG. With none, stock Ruby would read every path and
+  # argument as US-ASCII, and the check would report that as the
+  # phone's difference, so it stops and says so.
+  def self.reference_locale(ruby, &charmap)
+    charmap ||= lambda do |name|
+      IO.popen({ "LANG" => name }, [ruby, "--disable-gems", "-e", "print Encoding.locale_charmap"], unsetenv_others: true, &:read)
+    end
+    REFERENCE_LOCALES.find { |name| charmap.call(name).casecmp?("UTF-8") } or
+      raise "this computer has no UTF-8 locale: #{ruby} reads text as UTF-8 under none of LANG=#{REFERENCE_LOCALES.join(', ')}. " \
+        "Generate one, such as C.UTF-8, for the reference Ruby to run in as a person's Ruby does"
+  end
+
   # The environment the reference Ruby runs main.rb in: a person's,
-  # with a UTF-8 locale, a home folder of its own in +work+, and the
-  # caller's PATH, but nothing of the caller's own Ruby, and none of
-  # the runner's other settings, which the phone's app does not see
-  # either.
-  def self.reference_environment(work, env = ENV.to_h)
-    { "PATH" => env.fetch("PATH"), "HOME" => File.join(work, "home"), "LANG" => "en_US.UTF-8" }
+  # with the UTF-8 locale +locale+, a home folder of its own in +work+,
+  # and the caller's PATH, but nothing of the caller's own Ruby, and
+  # none of the runner's other settings, which the phone's app does not
+  # see either.
+  def self.reference_environment(work, locale, env = ENV.to_h)
+    { "PATH" => env.fetch("PATH"), "HOME" => File.join(work, "home"), "LANG" => locale }
   end
 
   # The differences between the phone's +report+ and the +reference+
@@ -289,7 +313,7 @@ class MobileParity
       app = File.join(@work, "reference-app")
       FileUtils.rm_rf(app)
       FileUtils.cp_r(Parity::PROBE, app)
-      out, err, status = Open3.capture3(MobileParity.reference_environment(@work), ruby, "main.rb", chdir: app, unsetenv_others: true)
+      out, err, status = Open3.capture3(MobileParity.reference_environment(@work, MobileParity.reference_locale(ruby)), ruby, "main.rb", chdir: app, unsetenv_others: true)
       raise "ruby main.rb failed (#{status}):\n#{out}\n#{err}" unless status.success?
 
       Parity::Reports.report(out)

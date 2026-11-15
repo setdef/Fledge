@@ -48,7 +48,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 4. What is the GNU standard? What is the Unix standard? What would Windows users expect? [re: -V and bare-fledge behavior]
 
-*Governs:* the maintainer asked that agents follow the standards rather than ask (see decision 16). *Applied in:* ADR 002 (`-h`, `-?`, `--help`, `-v`, `--version`; exit status 2 for usage errors).
+*Governs:* the maintainer asked that agents follow the standards rather than ask (see decision 16). *Applied in:* `doc/contributors/design/public-interface.md`, "The command's conventions" (`-h`, `-?`, `--help`, `-v`, `--version`; exit status 2 for usage errors).
 
 > 5. You invented the help header, so that's a problem you created. My instinct is to use the app's primary class/module's name, like MyCoolApp. [re: NAME in dist/NAME-PLATFORM — depends on #2, still open]
 
@@ -76,7 +76,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 11. I don't understand what I'd be deciding here. [re: restoring the person's own RUBY*/GEM*/BUNDLE* env for child processes — orchestrator is explaining; still open]
 
-*Governs:* nothing yet. *Applied in:* `questions.md`, entry C, which tracks the follow-up. The launcher now restores the person's environment after Ruby boots, as the orchestrating agent directed (ADR 040).
+*Governs:* nothing yet. *Applied in:* `questions.md`, entry C, which tracks the follow-up. The launcher now restores the person's environment after Ruby boots, as the orchestrating agent directed (`doc/contributors/design/launcher.md`, "Hiding and restoring the person's Ruby settings").
 
 > 12. Many CI platforms only run on musl for Linux, so I'd like to support it eventually, but it's not a blocker to continuing to iterate. It may be a blocker to 1.0 though.
 
@@ -84,7 +84,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 13. Again, you invented the help header. Recall the difference between what _I've said_ vs. what's on disk. You need _me_ to second-guess _me_, but you don't need _me_ to second-guess _yourself_.
 
-*Governs:* the `fledge build` surface is the agents' to decide. *Applied in:* AGENTS.md, Questions; ADR 002.
+*Governs:* the `fledge build` surface is the agents' to decide. *Applied in:* AGENTS.md, Questions; `doc/contributors/design/public-interface.md`, "The command's conventions".
 
 > 14. You wrote the ADRs. Recall the difference between what _I've said_ vs. what's on disk. me/me vs. me/yourself
 
@@ -96,7 +96,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 16. Why is this something I should decide? Isn't this something where there's prior art or an industry standard we can/should follow?
 
-*Governs:* behavior with prior art or a standard is the agents' to decide, citing it. *Applied in:* AGENTS.md, Questions; ADR 002 (launcher errors follow `ruby:` messages and sysexits.h).
+*Governs:* behavior with prior art or a standard is the agents' to decide, citing it. *Applied in:* AGENTS.md, Questions; `doc/contributors/design/public-interface.md`, "The command's conventions"; `doc/contributors/design/launcher.md`, "Messages and exit statuses" (launcher errors follow `ruby:` messages and sysexits.h).
 
 > 17. Ideally, fledge developers should have the option to make it so Windows/macOS don't block the use of the app. But not every app dev will have the done the required ceremony with Microsoft and/or Apple.
 
@@ -116,7 +116,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 21. I don't understand what I'd be deciding here. [re: Windows console code pages and Ctrl-C — agents own this]
 
-*Governs:* console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 081 (the launcher matches `ruby.exe`, but for the ANSI code page, ADR 070); the parity check's `chcp 437` run; Plan 002, "Ctrl-C and the console."
+*Governs:* console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 081 (the launcher matches `ruby.exe`, but for the ANSI code page: `doc/contributors/design/launcher.md`, "The locale"); the parity check's `chcp 437` run; Plan 002, "Ctrl-C and the console."
 
 > 22. I'd like to support Windows on ARM (and Linux on ARM) eventually, but it's not a blocker to continuing to iterate. It may be a blocker to 1.0 though.
 
@@ -144,13 +144,13 @@ Replies to the orchestrating agent's answers in chat, quoted from the maintainer
 
 [re: the CLI conventions: `-h`, `-?`, and `--help`, and `-v` and `--version`, print to standard output and exit 0; a usage error prints a short usage to standard error and exits 2.]
 
-*Governs:* the CLI conventions. *Applied in:* ADR 002.
+*Governs:* the CLI conventions. *Applied in:* `doc/contributors/design/public-interface.md`, "The command's conventions".
 
 > 11. I think yes?
 
 [re: whether to restore the person's own `RUBYOPT`, `GEM_*`, `BUNDLE_*`, and the rest into `ENV` after Ruby has booted, so the app's `ENV` and its child processes look as they would without Fledge, while the app's own boot stays protected. The orchestrator recommended restoring.]
 
-*Governs:* the environment an app and its child processes see. *Applied in:* ADR 040; `runtime/launcher/unix.c` and `windows.c`; the parity check and Delivery.
+*Governs:* the environment an app and its child processes see. *Applied in:* `doc/contributors/design/launcher.md`, "Hiding and restoring the person's Ruby settings"; `runtime/launcher/unix.c` and `windows.c`; the parity check and Delivery.
 
 > 8 and 24. Remember that LGPL and GPL/AGPL's main differentiator is dynamic linking. Relevant here or not?
 
@@ -268,7 +268,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: Design precedence 2, in the discussion of whether a restart through `RbConfig.ruby` in a built app differs from `ruby main.rb`.]
 
-*Governs:* the purpose of Design precedence 2 and of the parity check: a difference between a Fledge app and the same program run without Fledge is a bug unless it is justified and documented. *Applied in:* AGENTS.md, Design precedence 2; ADR 096.
+*Governs:* the purpose of Design precedence 2 and of the parity check: a difference between a Fledge app and the same program run without Fledge is a bug unless it is justified and documented. *Applied in:* AGENTS.md, Design precedence 2; `doc/contributors/design/launcher.md`, "bin/ruby and restarts".
 
 ## 2026-11-03
 
@@ -284,7 +284,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the orchestrator's argument for keeping the launcher's turning a bare C locale into a UTF-8 one, a deviation from plain Ruby that Design precedence 1 justifies.]
 
-*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; ADR 087; `Parity::JUSTIFIED`.
+*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; `doc/contributors/design/launcher.md`, "The locale"; `Parity::JUSTIFIED`.
 
 > A minor release can make additional rubies available, but can only change the defaults' patch versions--unless we abandon the concept of default entirely, and require app devs to specify a version (maybe better?); then it's limited to e.g. generated config files, which can change in a minor version because they don't get re-generated on upgrade.
 >

@@ -32,7 +32,7 @@ The tag is how a build's output stays out of later builds, wherever they write. 
 
 ## The build's command line
 
-The options, their forms, and the exit statuses are `exe/fledge`'s help header, which `fledge --help` prints, and ADR 002. `--out=DIR` and `--out DIR` both work, and `--` ends the options (GNU Coding Standards, 4.8; POSIX Utility Syntax Guideline 10). `--out` may not be the project's root. `-t` and `--target` are a usage error that says a build is for this computer (ADR 010). Where runtimes come from (`FLEDGE_RUNTIME_DIR`, `FLEDGE_RUNTIME_MIRROR`, the cache) is in `doc/contributors/design/runtimes.md`.
+The options, their forms, and the exit statuses are `exe/fledge`'s help header, which `fledge --help` prints, and `doc/contributors/design/public-interface.md`, "The command's conventions". `--out=DIR` and `--out DIR` both work, and `--` ends the options (GNU Coding Standards, 4.8; POSIX Utility Syntax Guideline 10). `--out` may not be the project's root. `-t` and `--target` are a usage error that says a build is for this computer (ADR 010). Where runtimes come from (`FLEDGE_RUNTIME_DIR`, `FLEDGE_RUNTIME_MIRROR`, the cache) is in `doc/contributors/design/runtimes.md`.
 
 ## The folder and the archive
 

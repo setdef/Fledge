@@ -10,7 +10,7 @@ Not filed. For the maintainer to file, if he chooses, at https://bugs.ruby-lang.
 
 Ruby's contributing guide (`doc/contributing/reporting_issues.md` at ruby/ruby master 88ea6fd282) asks a reporter to search for an existing ticket first, to show the bug on master, to give `ruby -v`, and to keep any reproduction small; it says nothing about AI-assisted reports either way. The reproduction below ran on 4.1.0-preview1, not on a build of master; the lines it names are the same at master 88ea6fd282 (2026-11-14), but shifted, as given. Before filing: search the tracker for "US-ASCII", "invalid byte sequence", "LOADED_FEATURES", and "filesystem encoding", since someone may have reported it after 2026-11-14 (on that day no issue subject matched this case; the related tickets are at the end); file it before or with the feature proposal beside it ([ruby-c-locale-utf8.md](ruby-c-locale-utf8.md)), which names it; and read the description start to finish as your own words, since you are the one filing it.
 
-Found when Fledge, which runs Ruby with no locale, measured what stock Ruby does there (`doc/contributors/research/2026-11-13-c-locale.md`). Fledge sidesteps it by giving Ruby a UTF-8 locale (ADR 087), and keeps doing so if this is fixed: the fix makes these strings BINARY, not UTF-8.
+Found when Fledge, which runs Ruby with no locale, measured what stock Ruby does there (`doc/contributors/research/2026-11-13-c-locale.md`). Fledge sidesteps it by giving Ruby a UTF-8 locale (`doc/contributors/design/launcher.md`, "The locale"), and keeps doing so if this is fixed: the fix makes these strings BINARY, not UTF-8.
 
 - **Tracker:** Bug
 - **Subject:** Under the C locale, `__dir__`, `$0`, `-I` entries, and boot features are US-ASCII strings with invalid bytes

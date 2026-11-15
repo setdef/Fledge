@@ -7,7 +7,7 @@
 
 # What Ships Inside an App Built with Fledge, and What Its Licenses Ask of You
 
-This page lists, for Fledge 0.12.0, every third-party component of the runtime that `fledge build` copies into an app on each platform, the license it is under, and what that license asks of you when you give the app to other people. Your app's own gems are yours, not Fledge's, and [their section](#your-apps-own-gems) says what Fledge does with them. Fledge's CI writes it from the same license audit that every runtime must pass before it is published (ADR 004), so it lists what the runtimes hold, not what someone remembered.
+This page lists, for Fledge 0.12.0, every third-party component of the runtime that `fledge build` copies into an app on each platform, the license it is under, and what that license asks of you when you give the app to other people. Your app's own gems are yours, not Fledge's, and [their section](#your-apps-own-gems) says what Fledge does with them. Fledge's CI writes it from the same license audit that every runtime must pass before it is published, so it lists what the runtimes hold, not what someone remembered.
 
 It states facts and cites the sections of each license they come from. It is not legal advice, and it makes no claim about what any license requires of you in your situation: ask your own lawyer.
 

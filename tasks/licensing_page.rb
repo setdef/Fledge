@@ -15,7 +15,8 @@ require_relative "../lib/fledge/version"
 
 # Writes doc/licensing.md, the page that tells developers who build apps
 # with Fledge what ships inside each app and what each license asks of
-# them, from the license audit of each platform's runtime (ADR 004).
+# them, from the license audit of each platform's runtime
+# (doc/contributors/design/license-audit.md, "The licensing page").
 #
 # The maintainer asked for this page to come from the pipeline, never by
 # hand (decisions.md, replies of 2026-10-26), so it holds only what the
@@ -121,7 +122,7 @@ class LicensingPage
 
       # What Ships Inside an App Built with Fledge, and What Its Licenses Ask of You
 
-      This page lists, for Fledge #{@version}, every third-party component of the runtime that `fledge build` copies into an app on each platform, the license it is under, and what that license asks of you when you give the app to other people. Your app's own gems are yours, not Fledge's, and [their section](#your-apps-own-gems) says what Fledge does with them. Fledge's CI writes it from the same license audit that every runtime must pass before it is published (ADR 004), so it lists what the runtimes hold, not what someone remembered.
+      This page lists, for Fledge #{@version}, every third-party component of the runtime that `fledge build` copies into an app on each platform, the license it is under, and what that license asks of you when you give the app to other people. Your app's own gems are yours, not Fledge's, and [their section](#your-apps-own-gems) says what Fledge does with them. Fledge's CI writes it from the same license audit that every runtime must pass before it is published, so it lists what the runtimes hold, not what someone remembered.
 
       It states facts and cites the sections of each license they come from. It is not legal advice, and it makes no claim about what any license requires of you in your situation: ask your own lawyer.
 
@@ -147,8 +148,9 @@ class LicensingPage
   end
 
   # Fledge's files in a desktop app, as a sentence: the launcher it owns,
-  # each file its code is compiled into beside Ruby's (bin/ruby, ADR
-  # 026), and its other files.
+  # each file its code is compiled into beside Ruby's (bin/ruby;
+  # doc/contributors/design/launcher.md, "bin/ruby and restarts"), and
+  # its other files.
   private def own_files(ours)
     launcher, *rest = ours.files
     parts = ["`#{launcher}`, the program your app's users run, renamed for your app"]

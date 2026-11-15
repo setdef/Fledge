@@ -215,7 +215,7 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   assembly.launch_config.lines.first
-    #   # => "# Written by fledge build 0.5.0 for x86_64-linux: what this app's program runs (ADR 005).\n"
+    #   # => "# Written by fledge build 0.5.0 for x86_64-linux: what this app's program runs.\n"
     #   assembly.launch_config.lines.drop(1)
     #   # => ["entry = exe/my_cool_app\n", "gemfile = Gemfile\n"]
     #--
@@ -272,7 +272,7 @@ module Fledge
     def self.launch_config(app, system_libraries: [], built: nil, bundler: nil)
       by = built ? "fledge build #{built}" : "fledge build"
       programs = app.programs
-      return "# Written by #{by}: what this app's program runs (ADR 005).\n#{single_config(app, system_libraries, bundler)}" if programs.size == 1
+      return "# Written by #{by}: what this app's program runs.\n#{single_config(app, system_libraries, bundler)}" if programs.size == 1
 
       lines = bundle_config(app, bundler)
       lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
@@ -283,7 +283,7 @@ module Fledge
         lines << "identifier = #{identifier}" if identifier
         lines << ""
       end
-      "# Written by #{by}: what this app's programs run (ADR 024).\n#{lines.join("\n").chomp}\n"
+      "# Written by #{by}: what this app's programs run.\n#{lines.join("\n").chomp}\n"
     end
 
     private_class_method def self.single_config(app, system_libraries, bundler) # :nodoc:

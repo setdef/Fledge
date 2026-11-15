@@ -86,7 +86,7 @@ class MobileBuildTest < Minitest::Test
 
     assert_equal [0, "dist/Bob's & Co-android\n", ""], [status, out, err]
     project = File.join(@dir, "dist", "Bob's & Co-android")
-    assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = main.rb\nidentifier = com.example.BobsApp\n",
+    assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\nidentifier = com.example.BobsApp\n",
       File.read(File.join(project, "fledge/fledge.cfg"))
     assert_equal "puts 'hi'\n", File.read(File.join(project, "fledge/app/main.rb"))
     assert_equal "# stdlib\n", File.read(File.join(project, "fledge/lib/ruby/stdlib.rb")), "the runtime's Ruby is the asset's"
@@ -231,7 +231,7 @@ class MobileBuildTest < Minitest::Test
     assert_path_exists File.join(gems, "gems/dual-2.0.0/lib/dual.rb"), "a gem with a build for Linux ships its ruby one"
     refute_path_exists File.join(gems, "gems/dual-2.0.0-x86_64-linux-gnu")
     assert_equal "#{Fledge::Bundle::SETTINGS}BUNDLE_WITHOUT: \"\"\nBUNDLE_WITH: \"\"\nBUNDLE_FORCE_RUBY_PLATFORM: \"true\"\n", read("dist/MyApp-android/fledge/app/.bundle/config")
-    assert_equal "# Written by fledge build: what this app's program runs (ADR 005).\nentry = exe/my_app\ngemfile = Gemfile\n" \
+    assert_equal "# Written by fledge build: what this app's program runs.\nentry = exe/my_app\ngemfile = Gemfile\n" \
       "identifier = com.example.MyApp\n", read("dist/MyApp-android/fledge/fledge.cfg")
   end
 

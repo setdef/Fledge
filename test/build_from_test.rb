@@ -55,7 +55,7 @@ class BuildFromTest < Minitest::Test
       files(folder).reject { |path| path.start_with?("app/") || path == "Game" }.sort
     assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Game"))
     assert File.executable?(File.join(folder, "Game")) unless Gem.win_platform? # Windows knows a program by its extension
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
       "entry = main.rb\ngemfile = Gemfile\n", File.read(File.join(folder, "fledge.cfg"))
     assert_path_exists File.join(@dir, "dist", "Game-x86_64-linux.tar.gz.sha256")
   end
@@ -70,7 +70,7 @@ class BuildFromTest < Minitest::Test
     _, err, status = build("--from", from, "game")
 
     assert_equal [0, ""], [status, err]
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
       "entry = main.rb\ngemfile = Gemfile\nsystem_libraries = libz.so.1\n", File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
   end
 
@@ -84,7 +84,7 @@ class BuildFromTest < Minitest::Test
     _, err, status = build("--from", from, "game")
 
     assert_equal [0, ""], [status, err]
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
       "entry = main.rb\ngemfile = Gemfile\nbundler = 4.0.19\n", File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
   end
 
@@ -105,7 +105,7 @@ class BuildFromTest < Minitest::Test
     refute_path_exists File.join(folder, "com.example.Player.desktop")
     refute_path_exists File.join(folder, "share")
     assert_includes File.read(File.join(folder, "com.example.Game.desktop")), "Name=Game\n"
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs (ADR 005).\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
       "entry = main.rb\ngemfile = Gemfile\nidentifier = com.example.Game\n", File.read(File.join(folder, "fledge.cfg"))
   end
 
@@ -272,7 +272,7 @@ class BuildFromTest < Minitest::Test
     FileUtils.mkdir_p(File.join(from, "app"))
     File.write(File.join(from, "Player.exe"), "MZ")
     File.write(File.join(from, "fledge.cfg"),
-      "# Written by fledge build #{Fledge::VERSION} for x64-mingw-ucrt: what this app's program runs (ADR 005).\nentry = main.rb\n")
+      "# Written by fledge build #{Fledge::VERSION} for x64-mingw-ucrt: what this app's program runs.\nentry = main.rb\n")
     game
     cache = File.join(@dir, "cache")
 

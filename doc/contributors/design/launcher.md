@@ -121,10 +121,10 @@ The app's `.bundle/config`, the evaluated gemspecs, and Fledge's `force_activate
 **Format.** UTF-8 text, shorter than 65,536 bytes, with no NUL. Each line is `key = value`; spaces and tabs around key and value, and a trailing carriage return, are trimmed. Blank lines and lines beginning with `#` say nothing. A line `[NAME]` heads a section. The first line is a comment:
 
 ```
-# Written by fledge build VERSION for PLATFORM: what this app's program runs (ADR 005).
+# Written by fledge build VERSION for PLATFORM: what this app's program runs.
 ```
 
-ending `what this app's programs run (ADR 024).` for an app of several programs. A phone project's `fledge.cfg` (`Fledge::MobileProject`) names no version or platform: `# Written by fledge build: ...`. `fledge build --from` reads VERSION and PLATFORM from it (`Fledge::BuiltApp::HEADER`). Every app carries these words, so the ADR numbers in them do not change.
+ending `what this app's programs run.` for an app of several programs. A phone project's `fledge.cfg` (`Fledge::MobileProject`) names no version or platform: `# Written by fledge build: ...`. `fledge build --from` reads VERSION and PLATFORM from it (`Fledge::BuiltApp::HEADER`); nothing reads the words after the colon.
 
 **Keys.**
 

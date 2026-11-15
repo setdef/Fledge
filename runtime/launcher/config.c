@@ -13,7 +13,7 @@
  * Python's interpreter reads the pyvenv.cfg beside it (PEP 405), the
  * launcher reads a small text file of "key = value" lines beside itself:
  *
- *   # Written by fledge build: what this app's program runs (ADR 005).
+ *   # Written by fledge build: what this app's program runs.
  *   entry = exe/my_cool_app
  *   gemfile = Gemfile
  *   bundler = 4.0.19
@@ -41,7 +41,7 @@
  * Its Gemfile stays at the top, and each program has a section, headed
  * by its name, as an INI file heads one:
  *
- *   # Written by fledge build: what this app's programs run (ADR 024).
+ *   # Written by fledge build: what this app's programs run.
  *   gemfile = Gemfile
  *
  *   [MyGame]

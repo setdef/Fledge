@@ -28,7 +28,7 @@ require_relative "ruby_spec/listing"
 # no Ruby on it, an empty home folder, and no locale, as a desktop starts
 # an app. A person's hostile Ruby settings are not part of it: they reach
 # the child Rubies the specs start through RbConfig.ruby, as they would
-# under ruby main.rb (ADR 040), and stock Ruby would read
+# under ruby main.rb, and stock Ruby would read
 # them at its own boot, where the launcher hides them.
 #
 # Each run's output is kept in the output folder, with a summary that

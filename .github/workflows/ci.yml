@@ -1007,7 +1007,7 @@ jobs:
   # with_unbundled_env give a child; examples/my_cool_app, whose gems come
   # from RubyGems.org, each checked against its Gemfile.lock's checksum,
   # precompiled for the platform; test/fixtures/bundled_with,
-  # whose Gemfile.lock names a Bundler no runtime ships (ADR 063);
+  # whose Gemfile.lock names a Bundler no runtime ships;
   # examples/windowed_app, a
   # windowed app with its installer;
   # examples/programs, a windowed and a console program of one project in
@@ -1596,7 +1596,7 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
 
-      # ADR 063: an app whose Gemfile.lock names a Bundler the runtime's
+      # An app whose Gemfile.lock names a Bundler the runtime's
       # Ruby does not ship runs with it, as bundle exec did where it was
       # built.
       - name: Run bundled_with as someone with no Ruby would
@@ -1972,7 +1972,8 @@ jobs:
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-$env:PLATFORM.zip" -Platform $env:PLATFORM
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/my_cool_app.expected" -Raw).TrimEnd()
 
-      # ADR 063, as on macOS and Linux.
+      # The app whose Gemfile.lock names another Bundler, as on macOS
+      # and Linux.
       - name: Run BundledWith.exe as someone with no Ruby would
         if: matrix.platform == 'x64-mingw-ucrt'
         shell: pwsh

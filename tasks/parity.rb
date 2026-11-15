@@ -19,7 +19,7 @@ require_relative "parity/reports"
 require_relative "parity/mobile"
 require_relative "parity/windowed"
 
-# The parity check (ADR 081 and ADR 095): an app's Ruby code must see the
+# The parity check (ADR 081): an app's Ruby code must see the
 # same Ruby under Fledge as it does run as its developer runs it.
 #
 # It builds the probe app in test/fixtures/parity with fledge build, from
@@ -32,7 +32,7 @@ require_relative "parity/windowed"
 # exe/my_cool_app on the same Ruby, with the bundle installed there as
 # its developer would install it (bundle install, into GEM_HOME); and
 # again for test/fixtures/bundled_with, whose Gemfile.lock names a
-# Bundler no runtime's Ruby ships, which bundle exec runs (ADR 063). Each
+# Bundler no runtime's Ruby ships, which bundle exec runs. Each
 # pair gets the same arguments and the same environment: the caller's,
 # without the caller's own Ruby settings, plus a GEM_HOME, a RUBYOPT, and
 # two markers that stand for a person's. It normalizes paths (the app's
@@ -44,7 +44,7 @@ require_relative "parity/windowed"
 # under code page 437, as a console in the United States starts. On
 # macOS and Linux it runs it again with no locale at all, as a desktop
 # starts an app, and under LC_ALL=C and LC_CTYPE=C, which a person sets
-# on purpose (ADR 087). Then it builds the probe as a windowed app and
+# on purpose. Then it builds the probe as a windowed app and
 # starts it, and ruby main.rb, as each desktop starts an app: through
 # Launch Services on macOS, ShellExecuteEx on Windows, and GLib's gio
 # launch of a desktop entry on Linux (Parity::Windowed).
@@ -70,7 +70,7 @@ class Parity
   APP_GEMS = %r{<prefix>/lib/ruby/gems/#{ABI}}o
 
   # The variables Bundler sets for the bundle it set up, whose values
-  # name where the gems are (ADR 095).
+  # name where the gems are.
   BUNDLE_LOCATIONS = /\A"(?<name>GEM_HOME|PATH)"=/
 
   # PATH, as Windows itself spells it.
@@ -80,7 +80,7 @@ class Parity
   # that is a gem bundle install installed for the person, or fledge
   # build for the app: its bundle program, its bundler/setup, and its lib
   # folder (Bundler::SharedHelpers#set_bundle_variables, #set_rubyopt, and
-  # #set_rubylib, at Bundler 4.0.20; ADR 063).
+  # #set_rubylib, at Bundler 4.0.20).
   BUNDLER_VARIABLES = /\A"(?<name>BUNDLE_BIN_PATH|BUNDLER_SETUP|RUBYLIB|RUBYOPT)"="(?<before>[^"]*)/
 
   # The facts a C locale decides: the character set Ruby reads text,

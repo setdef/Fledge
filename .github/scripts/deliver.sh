@@ -276,14 +276,14 @@ fi
 rm -rf "$work/flat"
 echo "ok: the app unpacked into a folder named bin refuses to run there, and says why"
 
-# The person's own Ruby settings are hidden from the app's boot only
-# (ADR 040): the app's gems stay the runtime's, and what the app starts
+# The person's own Ruby settings are hidden from the app's boot only:
+# the app's gems stay the runtime's, and what the app starts
 # sees the person's GEM_HOME and RUBYOPT. Without a Gemfile, that is any
 # Ruby the app starts through RbConfig.ruby, the runtime's own bin/ruby,
 # as under ruby main.rb. With one, the app's ENV is bundle exec's, with
 # Bundler's GEM_HOME over the person's, and a Ruby started inside
 # Bundler.with_original_env or with_unbundled_env, as a Bundler app
-# starts a person's own tools, sees theirs (ADR 095).
+# starts a person's own tools, sees theirs.
 person_gems="$work/person gems"
 mkdir -p "$person_gems"
 # person_sees COMMAND NAME: what the probe's COMMAND says a child Ruby
@@ -314,7 +314,7 @@ echo "ok: the app's own gems ignore the person's GEM_HOME"
 
 # A program restarts itself as Ruby programs do, with exec RbConfig.ruby,
 # $0, *ARGV, and the runtime's bin/ruby hands the app's own program back
-# to its launcher (ADR 096). The probe restarts from this folder, whose
+# to its launcher. The probe restarts from this folder, whose
 # name is not ASCII, with no locale, in a clean environment, the
 # person's, and the hostile one, and prints what changed across the
 # restart: nothing, not even the process.

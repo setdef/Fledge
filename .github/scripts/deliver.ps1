@@ -308,14 +308,14 @@ Check 'DLLs planted on PATH and in the current folder' 0 $app $planted @() $evil
 if ((Get-Snapshot $place) -ne $before) { Fail "running the app changed the files in $place" }
 Write-Host 'ok: the app wrote nothing into its own folder'
 
-# The person's own Ruby settings are hidden from the app's boot only
-# (ADR 040): the app's gems stay the runtime's, and what the app starts
+# The person's own Ruby settings are hidden from the app's boot only:
+# the app's gems stay the runtime's, and what the app starts
 # sees the person's GEM_HOME and RUBYOPT. Without a Gemfile, that is any
 # Ruby the app starts through RbConfig.ruby, the runtime's own ruby.exe,
 # as under ruby main.rb. With one, the app's ENV is bundle exec's, with
 # Bundler's GEM_HOME over the person's, and a Ruby started inside
 # Bundler.with_original_env or with_unbundled_env, as a Bundler app
-# starts a person's own tools, sees theirs (ADR 095).
+# starts a person's own tools, sees theirs.
 $personGems = Join-Path $work 'person gems'
 New-Item -ItemType Directory -Force $personGems | Out-Null
 $person = $clean.Clone()
@@ -345,7 +345,7 @@ Write-Host "ok: the app's own gems ignore the person's GEM_HOME"
 
 # A program restarts itself as Ruby programs do, with exec RbConfig.ruby,
 # $0, and the runtime's ruby.exe runs the app's own program through its
-# launcher (ADR 096), waiting for it as Ruby's own exec waits on Windows.
+# launcher, waiting for it as Ruby's own exec waits on Windows.
 # The probe restarts from this folder, whose name is not ASCII, in a
 # clean, a person's, and a hostile environment, and the restarted probe
 # must find nothing changed (doc/contributors/design/parity.md, "Restart
@@ -363,7 +363,7 @@ Write-Host 'ok: a restart through RbConfig.ruby is the same app, in a clean, a p
 
 # A broken app fails with a message that names the app, not Ruby, on
 # standard error, and EX_NOINPUT (66) when the program it runs, app\ENTRY,
-# is missing (ADR 002).
+# is missing.
 $program = Join-Path $root ('app\' + $entry.Replace('/', '\'))
 Move-Item -LiteralPath $program -Destination "$program.away"
 $broken = Invoke-App $app $clean

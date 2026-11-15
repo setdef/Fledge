@@ -8,12 +8,12 @@
 source "https://rubygems.org"
 
 # A C extension published only as source, which fledge build compiles
-# against the runtime's Ruby on the platform it builds for (ADR 091).
+# against the runtime's Ruby on the platform it builds for.
 gem "redcarpet", "~> 3.6"
 
 # A gem published precompiled for some platforms and as source, so that
 # fledge build ships its precompiled build where one fits and compiles it
-# where none does (ADR 091). libusb's Windows builds carry a libusb DLL
+# where none does. libusb's Windows builds carry a libusb DLL
 # that ffi loads, so they fit any Ruby, Ruby 4.1 among them; its source
 # build's extconf.rb compiles the libusb it carries with mini_portile2,
 # which every other platform does. The project's .bundle/config asks for
@@ -32,8 +32,8 @@ gem "redcarpet", "~> 3.6"
 gem "libusb", "~> 0.8"
 
 # Pure Ruby, under the GPL. Which licenses an app's gems are under is its
-# developer's to decide, not Fledge's, so it ships like any other gem
-# (ADR 007). It needs bigdecimal, a C extension, which Ruby 4.1 bundles at
+# developer's to decide, not Fledge's, so it ships like any other gem.
+# It needs bigdecimal, a C extension, which Ruby 4.1 bundles at
 # the version Gemfile.lock locks, so the app takes the runtime's own.
 gem "spreadsheet", "1.3.5"
 

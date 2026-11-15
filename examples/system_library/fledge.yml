@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# An app whose gem loads a library from the Linux distribution (ADR 030),
+# An app whose gem loads a library from the Linux distribution,
 # as a webview's wrapper loads WebKitGTK and GTK: png_version, a path gem
 # whose C extension links libpng, which Debian and Ubuntu install with a
 # desktop and leave out of a bare system. Listing libpng16.so.16 under

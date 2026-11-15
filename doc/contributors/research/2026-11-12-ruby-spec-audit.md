@@ -126,7 +126,7 @@ By how much each hides, then by cost.
 3. **D-X1, musl's thread name.** Apply the `thread_c` edit to the musl runtimes, as Android has it, until Ruby 4.1.0 brings ruby/ruby 6fdd452087. Cheap; it is a crash any musl app can meet. To confirm the crash on 4.1.0-preview1 first, from the orchestrator (Docker on the Linux machine):
 
    ```
-   ~/bin/machines run linux -- bash -c 'set -e; d=$(mktemp -d); cd "$d"; curl -fsSLO https://github.com/setdef/Fledge/releases/download/v0.12.0/fledge-runtime-0.12.0-x86_64-linux-musl.tar.gz; mkdir r; tar -xzf fledge-runtime-0.12.0-x86_64-linux-musl.tar.gz -C r; docker run --rm -v "$d/r:/r" alpine:3.24 sh -c "R=\$(find /r -path \"*/bin/ruby\" | head -n1); \$R -e \"t = Thread.new { 1 }.join; t.name = %q(x); puts t\"; echo exit=\$?"'
+   bash -c 'set -e; d=$(mktemp -d); cd "$d"; curl -fsSLO https://github.com/setdef/Fledge/releases/download/v0.12.0/fledge-runtime-0.12.0-x86_64-linux-musl.tar.gz; mkdir r; tar -xzf fledge-runtime-0.12.0-x86_64-linux-musl.tar.gz -C r; docker run --rm -v "$d/r:/r" alpine:3.24 sh -c "R=\$(find /r -path \"*/bin/ruby\" | head -n1); \$R -e \"t = Thread.new { 1 }.join; t.name = %q(x); puts t\"; echo exit=\$?"'
    ```
 
    A segmentation fault, exit 139, confirms it; the thread's description, exit 0, makes the exclusion stale.

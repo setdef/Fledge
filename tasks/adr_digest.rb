@@ -9,7 +9,7 @@
 # option it chose, so the whole log can be read the way a review board
 # reads it: does each problem, with its drivers, lead to that choice?
 #
-# The ADRs are MADR (the +adr+ skill; AGENTS.md): numbered options under
+# The ADRs are MADR (AGENTS.md): numbered options under
 # "Considered Options", and "Chosen: option N" opening the outcome. A few
 # options carry the lettered name the maintainer gave them, as ADR 005's
 # "(b)" does, and the outcome names that letter instead.

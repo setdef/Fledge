@@ -45,7 +45,7 @@ Where to look:
 
 - Proceed through the plan of record without checking in with the maintainer. Decide what is the agents' to decide (Questions, below), record it, and go on to the next story. Come back only when truly blocked.
 - No change leaves a design document false, or a fact an ADR cites as proof (a test, an example, a path): correct it in the same change. Code that falls short of an ADR on purpose, for now, is a defect: its design document says so, and the fix is the code's.
-- Work on `trunk` as the maintainer's `trunk-based-development` skill describes (decisions, 2026-11-12). The fast check before a push is the unit tests, the lint on what changed, and the one check of the behavior the commit changes; CI runs the gate after it.
+- Work trunk-based, as trunkbaseddevelopment.com describes (decisions, 2026-11-12): small commits pushed straight to `trunk`, never push-and-poll, a red `trunk` reverted at once. The fast check before a push is the unit tests, the lint on what changed, and the one check of the behavior the commit changes; CI runs the gate after it.
 - Leave existing `spike/*`, `wip/*`, and `experiment/*` branches alone, and do not delete branches.
 - `doc/contributors/decisions.md` holds only the maintainer's meaningful decisions, the ones that shape what Fledge is or does. Corrections, wording changes, and asides go into the document they touch.
 
@@ -56,7 +56,7 @@ Where to look:
 - RDoc (never YARD) in `.rb` files only. Wrap SPDX headers in `#--` / `#++`, and wrap examples in `MIT-0` SPDX snippets.
 - The help `fledge --help` prints is the comment header in `exe/fledge`, between the `####` and `###` lines. Change the CLI and that header together.
 - `lib/fledge/config.schema.json` describes `fledge.yml`. Change `Fledge::Config` and the schema together; a test fails when they disagree.
-- ADRs follow the maintainer's `adr` skill. Detailed design lives in `doc/contributors/design/`, and plans in `doc/contributors/plan/`.
+- An ADR records one architecturally significant decision, between real options, in about a page, in MADR's form. Detailed design lives in `doc/contributors/design/`, and plans in `doc/contributors/plan/`.
 - Before you edit `README.md` or `README.rdoc`, read both in full, start to finish, not a section found by `grep`. They are one story told twice: the README for people who read it on GitHub, the RDoc for the gem's description. An edit changes what the whole page says, so rewrite the paragraphs it touches until the page reads as one piece, and keep the two files true to each other and to the code. Appending a sentence or a section that the rest of the page does not know about is how those files grew unreadable; do not do it.
 
 ## Commands
@@ -77,7 +77,7 @@ Where to look:
 The maintainer uses three words for how code comes to exist (decisions, 2026-11-02, later again). *Written* means the maintainer typed it by hand, with nothing generated. *Wrought* means an AI agent generated it while the maintainer iterated with it, and the maintainer reviewed every change before committing it, so the maintainer takes responsibility for every diff. *Requested* means an agent built it with little or no review from the maintainer, in the style of a "dark factory."
 
 - **In Fledge, everything is requested:** ADRs, plans, this file, the README, `lib/`, `sig/`, `exe/`, `tasks/`, `test/`, the launcher's C, the workflows. Nothing here is written or wrought. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass.
-- **The maintainer's words** are in `doc/contributors/decisions.md`, quoted verbatim with the date. That file is the only record of what the maintainer said. Everything else here, ADRs, design documents, plans, and this file included, was written by agents, and agents change it, as long as it stays true to `decisions.md`: design documents, plans, and this file freely, and an accepted ADR only as the `adr` skill says.
+- **The maintainer's words** are in `doc/contributors/decisions.md`, quoted verbatim with the date. That file is the only record of what the maintainer said. Everything else here, ADRs, design documents, plans, and this file included, was written by agents, and agents change it, as long as it stays true to `decisions.md`: design documents, plans, and this file freely, and an accepted ADR only by writing a new one.
 - **Generated code** is marked as generated in its header and is never edited by hand; change the generator instead.
 
 Every commit carries a `Provenance: requested` trailer.
@@ -89,7 +89,7 @@ Every commit carries a `Provenance: requested` trailer.
 1. An apparent conflict with, or ambiguity in, `doc/contributors/decisions.md`.
 2. Direction only the maintainer can give: product scope (what Fledge is for, and what it is not), licensing and commercial terms, money, and external accounts (Apple, Microsoft, certificate authorities, package registries, a second host for release files). An agent never opens an account, even a free one: when one is wanted, ask the maintainer, with suggestions (decisions, 2026-11-02 and 2026-11-04).
 
-Everything agents invented is the agents' to decide: design-document, ADR, and plan content, CLI details, `fledge.yml` keys, the help header, error messages, internal layouts, and names inside the runtime. Decide it by prior art and industry standards (Design precedence, above). Record the rationale and citations in the design document that specifies it, and write an ADR only when the `adr` skill calls for one. Change a design document freely when a better reason arrives. Never ask the maintainer to second-guess an agent's invention; ask only where the maintainer's words leave something open.
+Everything agents invented is the agents' to decide: design-document, ADR, and plan content, CLI details, `fledge.yml` keys, the help header, error messages, internal layouts, and names inside the runtime. Decide it by prior art and industry standards (Design precedence, above). Record the rationale and citations in the design document that specifies it, and write an ADR only for a choice that is architecturally significant, between real options, and one decision. Change a design document freely when a better reason arrives. Never ask the maintainer to second-guess an agent's invention; ask only where the maintainer's words leave something open.
 
 A question names its context, the default the work proceeds on, and how to reverse that default. Write it so the maintainer can answer it from the question alone: say what is being asked in plain words, quote the maintainer's own earlier words where they bear on it, and never send the reader to an ADR, a plan, or another file to understand it. Do not wait for an answer: build on the default. When the maintainer answers, add the answer verbatim to `decisions.md` if it is a decision, apply it, and remove the question.
 

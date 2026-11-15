@@ -80,6 +80,7 @@ Do all three within 14 days, while CI keeps the runtimes. Never delete a release
 - **Mobile jobs that time out**: the iOS Simulator and Android emulators sometimes boot slowly. Read the log; if the app never started, re-run the job, and if it did start, it is a real failure.
 - **`apk` says `unable to select packages` and `breaks: world[NAME=VERSION]`** in a musl job: not a flake. Alpine keeps only the newest build of each package in a branch, so when it publishes a new one, the pin in `.github/scripts/alpine-packages.sh` stops resolving. A re-run fails the same way. Find the version Alpine now has (`apk policy NAME` in the pinned image), move the pin, and run each role of the script in that image before pushing.
 - **mise's Ruby download timing out after 20 seconds**: a flake of the download; re-run the failed jobs.
+- **A Mobile apps job whose Gradle build fails with `Received status code 429 from server: Too Many Requests`**: the Maven repository refused the runner's downloads, before any app ran. Re-run the failed job.
 - **Anything else**: root-cause it before re-running (AGENTS.md, How to work). A failure that passes on a re-run is still worth a sentence in this list once you know why.
 
 ## Spikes and their branches

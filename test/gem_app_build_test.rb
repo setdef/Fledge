@@ -135,7 +135,7 @@ class GemAppBuildTest < Minitest::Test
   end
 
   # A gem may need a library the project lists as the Linux
-  # distribution's (ADR 030), and the app's program is told to look for
+  # distribution's, and the app's program is told to look for
   # it; a library listed that no gem needs from the system fails the
   # build, as a gem that needs one unlisted does.
   def test_a_library_listed_as_the_distributions_lets_a_gem_ship_on_linux
@@ -161,7 +161,7 @@ class GemAppBuildTest < Minitest::Test
 
   # The gems an app depends on, and their licenses, are its developer's
   # choice and responsibility, not Fledge's (the maintainer's words of
-  # 2026-10-28; ADR 007). So every one of these ships: a GPL gem, an
+  # 2026-10-28). So every one of these ships: a GPL gem, an
   # AGPL native gem shaped like Tokra, a gem that declares no license, a
   # precompiled LGPL gem whose source the lockfile does not pin, an MPL
   # gem, one that names a license SPDX does not know, and a native gem

@@ -152,7 +152,7 @@ class LicensingPageTest < Minitest::Test
   end
 
   # An app's own gems are the developer's choice and responsibility
-  # (2026-10-28; ADR 007): the page says Fledge takes no position on
+  # (decisions of 2026-10-28): the page says Fledge takes no position on
   # them, judges no gem by its license, and writes no notices of its own
   # for them.
   def test_it_says_an_apps_own_gems_are_the_developers_to_comply_with

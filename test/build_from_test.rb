@@ -61,7 +61,7 @@ class BuildFromTest < Minitest::Test
   end
 
   # The new app's gems are the old one's, and so are the libraries they
-  # load from a Linux distribution, which its launcher looks for (ADR 030).
+  # load from a Linux distribution, which its launcher looks for.
   def test_the_system_libraries_the_gems_load_come_along
     from = built_player
     File.write(File.join(from, "fledge.cfg"), "system_libraries = libz.so.1\n", mode: "a")

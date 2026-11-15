@@ -9,7 +9,7 @@ require_relative "test_helper"
 require_relative "support/binaries"
 
 # Whether a gem's compiled files would load on the computer an app goes
-# to (Fledge::Linkage; ADR 046, and ADR 007): files LLVM's linker made
+# to (Fledge::Linkage): files LLVM's linker made
 # (test/support/binaries.rb), read with the tools here.
 # test/integration/linkage_mach_o_test.rb has Xcode's clang link the
 # Mach-O files dyld's run paths are judged by.
@@ -41,7 +41,7 @@ class LinkageTest < Minitest::Test
   end
 
   # A library the project lists as its gems' to load from the Linux
-  # distribution (ADR 030) may be needed, on glibc's Linux and musl's,
+  # distribution may be needed, on glibc's Linux and musl's,
   # and every other still keeps a gem from shipping.
   def test_a_library_the_project_lists_as_the_distributions_may_be_needed
     files = {
@@ -146,7 +146,7 @@ class LinkageTest < Minitest::Test
   # What a library compiled in is, or what license it is under, is not
   # a question of whether the app loads: a file with GNU libiconv's code
   # in it, as nokogiri's precompiled macOS and Windows builds have, loads
-  # like any other (ADR 007).
+  # like any other.
   def test_code_compiled_in_is_not_judged
     iconv = "UCS-4-INTERNAL MULELAO-1 GNU MP: Cannot allocate memory yescrypt-ROMhash"
 

@@ -683,7 +683,7 @@ class BuiltAppTest < Minitest::Test
     File.read(File.expand_path("../../runtime/launcher/launcher.h", __dir__))[/#define FLEDGE_LAUNCHER_MARK "([^"]+)"/, 1]
   end
 
-  # ADR 030: on Linux, a library the app's gems load from the
+  # On Linux, a library the app's gems load from the
   # distribution that this computer lacks stops the app before Ruby
   # starts, with EX_OSFILE and the library's name, never a LoadError
   # that names a gem; one it has changes nothing.

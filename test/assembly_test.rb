@@ -178,7 +178,7 @@ class AssemblyTest < Minitest::Test
     end
   end
 
-  # The libraries fledge.yml lists as the Linux distribution's (ADR 030)
+  # The libraries fledge.yml lists as the Linux distribution's
   # reach a Linux launcher, which says which one a computer lacks before
   # Ruby starts, once for all the programs; other systems' launchers are
   # not told.

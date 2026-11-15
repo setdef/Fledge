@@ -9,7 +9,7 @@ require_relative "../test_helper"
 require_relative "../support/deb"
 require "open3"
 
-# The dependencies of a .deb Fledge::Deb writes (ADR 030), as
+# The dependencies of a .deb Fledge::Deb writes, as
 # dpkg-shlibdeps finds them for a gem's extension this computer's cc
 # compiles. test/deb_test.rb covers the rest of the package.
 class DebDependenciesTest < Minitest::Test
@@ -33,7 +33,7 @@ class DebDependenciesTest < Minitest::Test
     path
   end
 
-  # ADR 030: a library fledge.yml lists as the distribution's becomes a
+  # A library fledge.yml lists as the distribution's becomes a
   # dependency on the package that provides it, as dpkg-shlibdeps finds
   # it for the files that need it, beside glibc's, which stays the
   # runtime's. With nothing listed, glibc's stays the only one, whatever

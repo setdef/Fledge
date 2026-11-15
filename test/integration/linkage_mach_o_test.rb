@@ -10,7 +10,7 @@ require "open3"
 
 # Whether a gem's Mach-O files would load on the Mac an app goes to,
 # as dyld searches the run paths of each file on the way to a library
-# (Fledge::Linkage; ADR 046): files Xcode's clang links here, as a gem's
+# (Fledge::Linkage): files Xcode's clang links here, as a gem's
 # own build would, read with the tools here. test/linkage_test.rb covers
 # the rest with files LLVM's linker made.
 class LinkageMachOTest < Minitest::Test

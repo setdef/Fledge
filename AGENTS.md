@@ -45,7 +45,7 @@ Where to look:
 
 - Proceed through the plan of record without checking in with the maintainer. Decide what is the agents' to decide (Questions, below), record it, and go on to the next story. Come back only when truly blocked.
 - No change leaves a design document false, or a fact an ADR cites as proof (a test, an example, a path): correct it in the same change. Code that falls short of an ADR on purpose, for now, is a defect: its design document says so, and the fix is the code's.
-- Work trunk-based, as trunkbaseddevelopment.com describes (decisions, 2026-11-12): small commits pushed straight to `trunk`, never push-and-poll, a red `trunk` reverted at once. The fast check before a push is the unit tests, the lint on what changed, and the one check of the behavior the commit changes; CI runs the gate after it.
+- Work trunk-based, as trunkbaseddevelopment.com describes (decisions, 2026-11-12): small commits pushed straight to `trunk`, never push-and-poll, a red `trunk` reverted at once. A commit passes `ruby bin/check` before its push, and CI runs the gate after it.
 - Leave existing `spike/*`, `wip/*`, and `experiment/*` branches alone, and do not delete branches.
 - `doc/contributors/decisions.md` holds only the maintainer's meaningful decisions, the ones that shape what Fledge is or does. Corrections, wording changes, and asides go into the document they touch.
 
@@ -65,7 +65,8 @@ Where to look:
 - `bundle exec rake test` runs the unit tests, every test file under `test/` but those in `test/integration/`, in seconds on any computer: run it on the computer you work on, as often as you like. `bundle exec rake test:integration` runs the integration tests, and `bundle exec rake test:all` both, as the gate and CI do. `TEST=test/foo_test.rb` runs one file or glob of either tier (names separated by commas; `N=/pattern/` picks tests by name).
 - A unit test takes milliseconds: it builds no runtime and reads none that `rake runtime` built, builds no app that it then runs, compiles nothing, starts no Ruby or script, runs no signing or disk image tool, and reaches no network; a wait in the code under test is passed in short. A test that needs any of these goes in `test/integration/`. CONTRIBUTING.md, "The tests", draws the line.
 - An agent's shell runs no hook of `mise activate`, so its `ruby` may not be the one `mise.toml` pins, and Bundler then stops with a stack trace: start every command with `mise x --` (`mise x -- bundle exec rake test`), as CONTRIBUTING.md says.
-- `bundle exec rake` is the gate: RuboCop and REUSE fixes, tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck, RBS checks (no `untyped`, `rbs validate`, signature parity), Steep, and the package check. It must pass with zero errors and zero warnings. Run `bundle exec rake rubocop:autocorrect_all` first to save time.
+- `ruby bin/check` is the fast check. Run beside it the one test of the behavior the change alters (`TEST=`).
+- `bundle exec rake` is the gate, which CI runs: RuboCop and REUSE fixes, tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck, RBS checks (no `untyped`, `rbs validate`, signature parity), Steep, and the package check. It must pass with zero errors and zero warnings.
 - RubyCritic reports a score and a rating for each file and fails nothing. Read its report after a change: no file in `lib/` may be rated F, and when one falls toward it, find the responsibility it took on and give that a class of its own.
 - Approved exceptions live in `rbs_exceptions.rb`; adding one needs a justification that it is impossible otherwise.
 - Rake tasks use `git ls-files`: stage new or deleted files before they count.

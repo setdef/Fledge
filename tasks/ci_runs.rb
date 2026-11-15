@@ -14,11 +14,11 @@ require "uri"
 #
 # A release tags a commit only once CI has passed on it (AGENTS.md,
 # Releasing), and publishes the runtimes CI built from that commit's
-# parent (doc/contributors/design/releases.md, "A pin commit's short CI"). Running all of CI
-# again on the tag proves nothing
-# the push already proved, takes half an hour, and draws every flaky
-# mirror and runner a second time; 0.2.0 was never published because
-# that second run failed on a download unrelated to its runtimes.
+# parent. Running all of CI again on the tag proves nothing the push
+# already proved, takes half an hour, and draws every flaky mirror and
+# runner a second time; 0.2.0 was never published because that second
+# run failed on a download unrelated to its runtimes
+# (doc/contributors/design/releases.md, "A pin commit's short CI").
 #
 # This class looks the push's run up instead. A run counts when it has
 # finished and the latest attempt of every one of its jobs passed, or,
@@ -50,8 +50,9 @@ class CIRuns
 
   # Why a pushed commit can have no run, and how to give it one. A run
   # of ci.yml on trunk covers every commit pushed since the run before it
-  # started, and only its head has a run of its own (doc/contributors/design/releases.md,
-  # "Runs, batches, and the release commit").
+  # started, and only its head has a run of its own
+  # (doc/contributors/design/releases.md, "Runs, batches, and the release
+  # commit").
   NO_RUN = "a commit pushed with others after it, or whose waiting run a newer push replaced, " \
     "has none of its own; push it alone, as the head of its push, and wait for CI to pass"
 

@@ -27,13 +27,13 @@
 # as 1.0.0-beta.1) is marked a prerelease; an ordinary MAJOR.MINOR.PATCH
 # version, such as 0.1.0, is not.
 #
-# A release takes two commits (doc/contributors/design/releases.md, "The pins"), as
-# Homebrew's bottles do: the
-# release commit, whose CI run on trunk builds the runtimes, and on it a
-# commit that changes only lib/fledge/SHA256SUMS, written from those
-# runtimes by rake runtime:pin, which is the one tagged. Runtime builds
-# are not reproducible, so this publishes the runtimes the release
-# commit's CI run built, and only when every one matches its pin.
+# A release takes two commits, as Homebrew's bottles do: the release
+# commit, whose CI run on trunk builds the runtimes, and on it a commit
+# that changes only lib/fledge/SHA256SUMS, written from those runtimes
+# by rake runtime:pin, which is the one tagged. Runtime builds are not
+# reproducible, so this publishes the runtimes the release commit's CI
+# run built, and only when every one matches its pin
+# (doc/contributors/design/releases.md, "The pins").
 #
 # It does not run CI again. CI ran on both commits when they were pushed
 # to trunk, and this looks those runs up (tasks/ci_runs.rb) and refuses

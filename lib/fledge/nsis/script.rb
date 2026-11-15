@@ -110,7 +110,7 @@ module Fledge
       # The app's program, as the installed folder holds it.
       # NSIS 3.08's !uninstfinalize and !finalize: makensis runs the
       # signing command on the uninstaller it writes into the installer,
-      # and then on the installer, failing unless it exits 0 (ADR 016). The
+      # and then on the installer, failing unless it exits 0. The
       # command goes in the first of NSIS's three quote characters it
       # does not hold, since NSIS has no escape for a quote of the same
       # kind inside a string (doc/contributors/design/signing.md,

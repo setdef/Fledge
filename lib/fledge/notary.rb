@@ -22,8 +22,7 @@ module Fledge
   # ticket for it. A ticket stapled to the disk image or the bundle lets
   # Gatekeeper find it with no network. Signing with
   # <tt>fledge build --sign</tt> (Fledge::MacSigning) makes what the notary
-  # service asks for; this class sends it and staples what comes back
-  # (ADR 033).
+  # service asks for; this class sends it and staples what comes back.
   #
   # It runs <tt>xcrun notarytool submit FILE --keychain-profile PROFILE
   # --wait --output-format json</tt>, as Apple's "Customizing the

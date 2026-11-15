@@ -14,10 +14,10 @@ module Fledge
       # What <tt>fledge build</tt>'s arguments ask for, read as GNU's
       # conventions read options: the <tt>--out</tt> folder, the phone to
       # build a project for, if any, the identity <tt>--sign</tt> signs a
-      # desktop app with (ADR 016), or the developer's own command
+      # desktop app with, or the developer's own command
       # <tt>--sign-command</tt> signs a Windows app with, the keychain
       # profile <tt>--notarize</tt> has Apple notarize a signed macOS app
-      # with (ADR 033), the app <tt>--from</tt> builds from (ADR 032), and
+      # with, the app <tt>--from</tt> builds from (ADR 032), and
       # the one PATH, with <tt>--</tt> ending the options. A desktop build
       # is for the computer it runs on (ADR 010); a phone's, which no phone
       # builds, is named first, as Briefcase's <tt>briefcase create

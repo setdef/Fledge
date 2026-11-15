@@ -51,8 +51,8 @@ module Fledge
   # build adds (the app's gems), and places the launcher last, once
   # everything it must describe or seal is there, and signs what it signs;
   # then it writes the installers, has Apple notarize a macOS app when
-  # the build notarizes (Fledge::Notary, ADR 033), so that the archive
-  # carries the ticket stapled to its bundle, and packs the
+  # the build notarizes (Fledge::Notary), so that the archive carries
+  # the ticket stapled to its bundle, and packs the
   # folder with tar, which keeps the permissions and symlinks the runtime
   # was built with, as the platform names its archive
   # (Fledge::Platform#archive_extension). Each platform is built on its
@@ -414,8 +414,10 @@ module Fledge
     end
 
     # Makes a copy of +runtime+'s launcher each of the app's programs,
-    # last of all, and signs what the build signs (ADR 016): the bundle,
-    # which seals the rest, or the app's folder.
+    # last of all, and signs what the build signs: the bundle, which
+    # seals the rest, or the app's folder
+    # (doc/contributors/design/signing.md, "Where signing comes in the
+    # build").
     #
     # A bundle's program is the windowed one (App#main); a console program
     # beside it lives in the bundle's +MacOS+ folder, as a bundle's helper
@@ -438,10 +440,10 @@ module Fledge
       end
     end
 
-    # Has Apple notarize the signed app, when the build notarizes
-    # (ADR 033): after its disk image is written and signed, which is
-    # what is sent when there is one, and before the archive, which then
-    # carries the bundle with its ticket stapled.
+    # Has Apple notarize the signed app, when the build notarizes: after
+    # its disk image is written and signed, which is what is sent when
+    # there is one, and before the archive, which then carries the
+    # bundle with its ticket stapled.
     private def notarize(bundle)
       image = @installers.find { |path| path.end_with?(Installers::SUFFIX.fetch("dmg")) }
       mac_signing&.notary&.notarize(folder, bundle: bundle&.path, image:)

@@ -32,8 +32,7 @@ module Fledge
   # (doc/contributors/design/signing.md, "Timestamps").
   #
   # A signer given a Fledge::Notary (<tt>fledge build --notarize</tt>)
-  # carries it to the build, which has Apple notarize what was signed
-  # (ADR 033).
+  # carries it to the build, which has Apple notarize what was signed.
   #
   # Use it through Fledge::Signing, which <tt>fledge build --sign</tt> calls.
   #
@@ -54,7 +53,8 @@ module Fledge
   class MacSigning
     # The entitlements every Mach-O file is signed with, Briefcase's
     # defaults: executable memory made without MAP_JIT, which YJIT makes,
-    # and libraries the app did not sign (ADR 050).
+    # and libraries the app did not sign
+    # (doc/contributors/design/signing.md, "Signing on macOS").
     ENTITLEMENTS = File.join(File.dirname(__FILE__), "templates", "macos", "entitlements.plist")
 
     # Where codesign comes from.

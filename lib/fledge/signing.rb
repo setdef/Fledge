@@ -26,8 +26,8 @@ module Fledge
   # the signer for the system the build is for: Fledge::MacSigning, with
   # Apple's codesign, which may carry a Fledge::Notary for
   # <tt>--notarize</tt>, or Fledge::WindowsSigning, with Microsoft's
-  # signtool (ADR 016); or the command <tt>--sign-command</tt> names into a
-  # Fledge::SignCommand (ADR 051). Each signs every compiled file of its
+  # signtool; or the command <tt>--sign-command</tt> names into a
+  # Fledge::SignCommand. Each signs every compiled file of its
   # system's own format, which Signing.code_files finds.
   #
   # Use it to get the signer Fledge::Assembly hands each step that signs.

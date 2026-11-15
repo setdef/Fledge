@@ -175,8 +175,8 @@ class LicensingPage
   end
 
   # What the page says of an app's own gems: that they, and their
-  # licenses, are the developer's (the maintainer's words of 2026-10-28;
-  # ADR 007), and where their own notices are in the app.
+  # licenses, are the developer's (the maintainer's words of 2026-10-28),
+  # and where their own notices are in the app.
   private def app_gems
     <<~GEMS
       ## Your app's own gems

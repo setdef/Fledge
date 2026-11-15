@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of an app whose gem loads a library from the Linux
-# distribution (ADR 030) on Debian and Ubuntu: examples/system_library,
+# distribution on Debian and Ubuntu: examples/system_library,
 # whose png_version gem links libpng16.so.16, on a computer that has never
 # seen Ruby and has no libpng until apt brings it.
 #

@@ -244,7 +244,7 @@ rcedit:
 
 # Windows: llvm-readobj, LLVM's reader of compiled files, which fledge
 # build runs on Windows to read the DLLs an app's compiled gems import
-# and delay-load (ADR 013), since Windows has no such tool of its own.
+# and delay-load, since Windows has no such tool of its own.
 # It is one file (path) of LLVM's own release for Windows, statically
 # linked with zlib 1.3.2 and Zstandard 1.5.7, as LLVM's
 # llvm/utils/release/build_llvm_release.bat at llvmorg-23.1.4 builds it,

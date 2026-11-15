@@ -1012,7 +1012,7 @@ jobs:
   # windowed app (ADR 037, ADR 008) with its installer (ADR 009);
   # examples/programs, a windowed and a console program of one project in
   # one folder (ADR 024); and
-  # examples/native_app, whose gems must be compiled (ADR 091): redcarpet,
+  # examples/native_app, whose gems must be compiled: redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
   # its git tag, each compiled against the runtime's own Ruby, with
   # nothing but the runtime; libusb, whose precompiled build ships on
@@ -1132,7 +1132,7 @@ jobs:
             ruby -I lib exe/fledge build -o dist "$app"
           done
 
-      # ADR 030: examples/system_library, whose png_version gem links the
+      # examples/system_library, whose png_version gem links the
       # distribution's libpng, which fledge.yml lists under linux:
       # system_libraries. Its headers come from libpng-dev at the version
       # of the libpng the runner's image has; dpkg-dev, whose
@@ -1270,7 +1270,7 @@ jobs:
       # nokogiri and the Rust gems for that Ruby took most of nine
       # minutes of the longest chain in CI. They only make the .expected
       # files; fledge build compiled each app's gems afresh above, for the
-      # runtime's Ruby, which is the check (ADR 091). The key names the
+      # runtime's Ruby, which is the check. The key names the
       # Ruby, the Rust, and each lockfile and Bundler setting, and only an
       # exact match restores.
       - name: Read the runner's Ruby
@@ -1816,7 +1816,7 @@ jobs:
   # Ubuntu 24.04's, which is the oldest there is, and by Debian 13's; the
   # app runs from /usr/lib, as root and as an ordinary user; and removing
   # the package leaves nothing of it (.github/scripts/deliver-deb.sh).
-  # First, examples/system_library (ADR 030) runs from its archive and
+  # First, examples/system_library runs from its archive and
   # its AppImage without libpng, which its gem links, and says so; then
   # apt installs its .deb, which depends on libpng's package, and it runs
   # (.github/scripts/deliver-system-library.sh).
@@ -1845,7 +1845,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      # ADR 030, before apt brings anything else: the app whose gem links
+      # Before apt brings anything else, the app whose gem links
       # libpng names it, and exits with 72, from its archive and its
       # AppImage, until apt installs its .deb, which brings libpng.
       - name: Run System Library without libpng, then install its .deb with apt

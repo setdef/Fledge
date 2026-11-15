@@ -117,8 +117,8 @@ class RuntimeBuilder
     end
 
     # llvm-readobj, which fledge build runs on Windows to read what an
-    # app's compiled gems import (ADR 013): the one file of LLVM's own
-    # release, which 7-Zip unpacks from its long-window archive, pinned by
+    # app's compiled gems import: the one file of LLVM's own release,
+    # which zstd or 7-Zip unpacks from its long-window archive, pinned by
     # its archive's SHA-256 and its own.
     private def copy_readobj(to)
       pin = @builder.sources.fetch("llvm-readobj")

@@ -17,7 +17,7 @@ require "json_schemer"
 class ConfigSchemaTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   PATH = File.join(ROOT, "lib", "fledge", "config.schema.json")
-  # The schema at this release's tag (ADR 054), which a developer's
+  # The schema at this release's tag, which a developer's
   # editor keeps reading after trunk moves on to the next major.
   URL = "https://raw.githubusercontent.com/setdef/Fledge/v#{Fledge::VERSION}/lib/fledge/config.schema.json".freeze
 

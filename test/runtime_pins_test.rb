@@ -9,8 +9,8 @@ require_relative "test_helper"
 require_relative "../tasks/runtime_pins"
 require "digest"
 
-# How a release's runtimes come to be pinned in the gem before its tag
-# (ADR 014): rake runtime:pin writes lib/fledge/SHA256SUMS from the
+# How a release's runtimes come to be pinned in the gem before its tag:
+# rake runtime:pin writes lib/fledge/SHA256SUMS from the
 # runtimes one CI run built, which release.yml then publishes.
 class RuntimePinsTest < Minitest::Test
   def test_pins_every_release_asset_by_sha256_in_sha256sums_form

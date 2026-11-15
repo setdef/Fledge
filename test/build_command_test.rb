@@ -31,7 +31,7 @@ class BuildCommandTest < Minitest::Test
     [out.string, err.string, status]
   end
 
-  # ADR 055: an app runs on the Ruby minor version that runs fledge
+  # An app runs on the Ruby minor version that runs fledge
   # build, as Briefcase and PyInstaller package the Python that runs
   # them. The fake runtimes are Ruby 4.1.0.
   def test_a_build_on_another_ruby_minor_than_the_runtimes_fails
@@ -45,7 +45,7 @@ class BuildCommandTest < Minitest::Test
   end
 
   # The runtime carries the newest patch of its Ruby minor, which is
-  # Fledge's to move (ADR 055).
+  # Fledge's to move.
   def test_a_build_on_another_patch_of_the_runtimes_ruby_builds
     out, err, status = build("hello", ruby: "4.1.1")
 

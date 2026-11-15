@@ -11,7 +11,7 @@ require_relative "../tasks/ci_runs"
 require "json"
 
 # How release.yml, and rake runtime:pin, learn that a commit passed CI
-# on trunk without running CI again (ADR 053): GitHub's REST API, served
+# on trunk without running CI again: GitHub's REST API, served
 # here by a loopback server that answers as GitHub's does, read through
 # Net::HTTP itself.
 class CIRunsTest < Minitest::Test
@@ -24,8 +24,8 @@ class CIRunsTest < Minitest::Test
     end
   end
 
-  # A pin-only commit's CI skips the jobs a pin cannot change (ADR 053;
-  # doc/contributors/design/releases.md, "A pin commit's short CI"), so
+  # A pin-only commit's CI skips the jobs a pin cannot change
+  # (doc/contributors/design/releases.md, "A pin commit's short CI"), so
   # a skipped job counts unless every job has to have run.
   def test_skipped_jobs_count_only_when_every_job_need_not_have_run
     with_api(runs: [a_run(7)], jobs: { 7 => [a_job("Gate"), a_job("Build (arm64-darwin)", "skipped")] }) do |_, runs|
@@ -53,7 +53,7 @@ class CIRunsTest < Minitest::Test
     end
   end
 
-  # A commit inside a batch has no run of its own (ADR 071), so the
+  # A commit inside a batch has no run of its own, so the
   # message says how a commit gets one.
   def test_refuses_a_commit_with_no_run_on_a_push_to_the_branch
     with_api(runs: [], jobs: {}) do |_, runs|

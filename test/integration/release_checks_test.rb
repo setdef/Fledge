@@ -10,8 +10,8 @@ require_relative "../../tasks/runtime_pins"
 require "open3"
 require "yaml"
 
-# The two checks that let a pin commit run a short CI (ADR 053;
-# doc/contributors/design/releases.md, "A pin commit's short CI"), run
+# The two checks that let a pin commit run a short CI
+# (doc/contributors/design/releases.md, "A pin commit's short CI"), run
 # as CI runs them: .github/scripts/pins-only.sh, which says whether a
 # commit is a pin commit, in real git repositories, and
 # .github/scripts/check-pins.sh, which checks runtimes against the pins

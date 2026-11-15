@@ -35,7 +35,7 @@ module Fledge
   # tar, copies the project's template (<tt>lib/fledge/templates/</tt>),
   # has Fledge::MobileExtensions compile the app's gems' extensions
   # against it when the app has any, and puts a Ruby file where a
-  # desktop has each linked one's file (MobileExtensions::Stub), fills in the app's identity where the
+  # desktop has each one's file (MobileExtensions::Stub), fills in the app's identity where the
   # template marks it (<tt>@@NAME@@</tt>), and writes ROOT, with the
   # runtime's notices, so the app carries them. When <tt>fledge.yml</tt>
   # names a host for the system (Config::Phone), it copies that folder's

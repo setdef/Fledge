@@ -26,7 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- On Android, a gem's C or C++ extension that an `extconf.rb` builds ships as a native library of the app's own, `libfledgeext.FEATURE.so`, which Ruby loads from where a desktop has its file, as a desktop's Ruby does, so `$LOADED_FEATURES` names that path; it had been linked into `libfledgeext.so`. Such an extension needs the Gradle project's `useLegacyPackaging = true`, which `fledge build android` writes.
 - **Breaking:** an app with a `Gemfile` ships the `development` and `test` groups, as `bundle exec` loads them, so a program that requires a development gem finds it; it raised `LoadError` naming the gem. Fledge itself, in your `development` group, ships too. Leave a group out with Bundler's own setting, `bundle config set --local without GROUP` or `BUNDLE_WITHOUT`, which the app's `.bundle/config` keeps. A gem of a shipped group with no build for the platform fails the build, as `bundle install` there would.
 - `fledge build` compiles a gem's extension against the runtime alone, and no longer downloads the runtime's build-only companion, `fledge-runtime-VERSION-PLATFORM-dev.tar.gz`; `FLEDGE_RUNTIME_DIR` needs only the runtimes.
 - In an app with a `Gemfile`, `Bundler.frozen_bundle?` and `Bundler.settings[:frozen]` are nil, as under `bundle exec`; they were true. Bundler still sets up the app's gems frozen, and a `Bundler.reset!` reads the app's frozen `.bundle/config` again.

@@ -434,37 +434,6 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "arm64-v8a" => true, "x86_64" => true }, machines)
   end
 
-  # fledge build android ships a C and C++ extension as a file: each
-  # ABI's shared object is a native library of the package, which the
-  # installer extracts, and fledge.links names the path in the app's
-  # Ruby where a desktop has the file, which the runtime links to it as
-  # the app starts. Nothing is linked into libfledgeext.so, which the
-  # project then neither has nor loads, and no Ruby file stands at the
-  # extension's path.
-  def test_fledge_build_android_ships_an_extension_as_a_native_library_linked_from_its_path
-    runtimes = real_runtimes("android")
-    ndk = android_ndk
-
-    project = build_example("android", "native_phone", runtimes, "NativePhone-android")
-
-    readelf = File.join(ndk.bin, "llvm-readelf")
-    machines = { "arm64-v8a" => "AArch64", "x86_64" => "Advanced Micro Devices X86-64" }.to_h do |abi, machine|
-      folder = File.join(project, "src", "main", "jniLibs", abi)
-      refute_path_exists File.join(folder, "libfledgeext.so")
-      library = File.join(folder, "libfledgeext.adder.adder.so")
-      dynamic = Open3.capture2(readelf, "-h", "-d", "--dyn-syms", library).first
-      assert_match(/ Init_adder$/, dynamic, "#{abi}: the extension keeps its Init function")
-      [abi, dynamic[/Machine:\s+(.+)$/, 1] == machine]
-    end
-    assert_equal({ "arm64-v8a" => true, "x86_64" => true }, machines)
-    assert_equal "arm64-v8a\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n" \
-      "x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n",
-      File.read(File.join(project, "fledge", "fledge.links"))
-    refute_path_exists File.join(project, "fledge", "app", "gems", "adder", "lib", "adder", "adder.rb")
-    activity = File.read(File.join(project, "src", "main", "java", "org", "setdef", "fledge", "host", "MainActivity.java"))
-    refute_includes activity, "fledgeext"
-  end
-
   # Writes examples/+name+'s project for +phone+ with fledge build, from
   # the runtimes in +runtimes+, and returns the project's folder, named
   # +project+.

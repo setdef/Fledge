@@ -23,8 +23,8 @@ require_relative "mobile_extensions/targets"
 module Fledge
   # Compiles an app's gems' C, C++, and Rust extensions for a phone (ADR 022).
   #
-  # iOS's Ruby loads no extension from a file (ADR 079), so each one
-  # is compiled to a static archive, linked into the app, and
+  # A phone's Ruby loads no extension from a file (ADR 079), so
+  # each one is compiled to a static archive, linked into the app, and
   # registered under the name <tt>require</tt> asks for, which Ruby's own
   # <tt>extinit.c</tt> does for the extensions of its standard library.
   # Ruby's own tool for compiling an extension is mkmf, which an
@@ -50,12 +50,6 @@ module Fledge
   # of each extension an <tt>extconf.rb</tt> builds, in the gem's own
   # require path, it writes a Ruby file that requires the linked one
   # (Stub), so that a <tt>require_relative</tt> of the path finds it.
-  #
-  # Android lets an app load a library its installer extracted, and its
-  # Ruby has dln, so with +files+ a C or C++ extension an
-  # <tt>extconf.rb</tt> builds for Android is the shared object mkmf
-  # makes on a desktop instead (Library), which the app's Ruby loads from
-  # the paths where a desktop has its file.
   #
   # It compiles for every target of the phone, one after the other: the
   # device and the Simulator slices for iOS, which Xcode builds on a Mac;

@@ -119,7 +119,7 @@ fiddle is on both phones. xord/cruby leaves it out of its iOS Ruby "to pass the 
 
 ## The embedding API
 
-`runtime/mobile/fledge_ruby.h` is the embedding API, in C, compiled into both runtimes with `fledge_ruby.c`, `output.c`, `apple.c` or `android.c` with `library_links.c`, and the launcher's `locale.c`, `config.c`, and `bundler.c`. Its header comments are the reference for each function.
+`runtime/mobile/fledge_ruby.h` is the embedding API, in C, compiled into both runtimes with `fledge_ruby.c`, `output.c`, `apple.c` or `android.c`, and the launcher's `locale.c`, `config.c`, and `bundler.c`. Its header comments are the reference for each function.
 
 | Function | What it does |
 |---|---|
@@ -132,7 +132,7 @@ fiddle is on both phones. xord/cruby leaves it out of its iOS Ruby "to pass the 
 
 `fledge_ruby_run_app` reads `root/fledge.cfg` with the launcher's reader and runs `root/app/ENTRY`. For an app with a Gemfile it sets `BUNDLE_GEMFILE` to the app's Gemfile, whose `.bundle/config` Bundler then reads as the app's settings, and requires `bundler/setup` from Ruby's own library, or from the gem of the Bundler `fledge.cfg` names, as the desktop launcher does (`doc/contributors/design/launcher.md`, "The Bundler environment"), which sets `ENV` as `bundle exec` would (`Bundler::Runtime#setup`, `set_bundle_environment`). It returns 66 (`FLEDGE_RUBY_NO_APP`) when `fledge.cfg` or the program is missing, and 70 when the configuration is damaged or Bundler cannot set up the gems.
 
-On Android, `fledge_ruby_run` first makes `root/bin/ruby` a link to the runtime's ruby program (see "The ruby program on Android"), and each path `root/fledge.links` lists a link to the app's native library it names (`fledge_link_libraries`, `library_links.c`; `doc/contributors/design/phone-projects.md`, "Linking extensions on Android").
+On Android, `fledge_ruby_run` first makes `root/bin/ruby` a link to the runtime's ruby program (see "The ruby program on Android").
 
 Unlike the desktop launcher, neither function sets anything of the environment aside: iOS and Android start an app with an environment of their own, which no person sets. Ruby needs a deep stack: Fledge's hosts run it on a thread with 64 MB.
 

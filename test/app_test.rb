@@ -178,8 +178,8 @@ class AppTest < Minitest::Test
   end
 
   # A folder a build went to holds a cache directory tag, and stays out
-  # of every later build, wherever that one goes (ADR 005;
-  # doc/contributors/design/desktop-apps.md, "The project and its
+  # of every later build, wherever that one goes
+  # (doc/contributors/design/desktop-apps.md, "The project and its
   # name").
   def test_entries_leave_out_each_folder_a_cache_directory_tag_marks
     write("app/main.rb")
@@ -195,7 +195,7 @@ class AppTest < Minitest::Test
     assert_equal %w[dist dist/index.html main.rb notes notes/CACHEDIR.TAG tmp], paths
   end
 
-  # A project of several programs (ADR 024): a console one and a
+  # A project of several programs: a console one and a
   # windowed one, each with its own entry and identity, and the project's
   # version and publisher.
   def write_programs

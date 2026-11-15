@@ -3,6 +3,6 @@
 # SPDX-License-Identifier: MIT
 
 # The console probe is a lone main.rb inside Fledge's own gem; this file
-# makes its folder the project's root (ADR 005), so it ships alone, as
+# makes its folder the project's root, so it ships alone, as
 # Console.
 kind: console

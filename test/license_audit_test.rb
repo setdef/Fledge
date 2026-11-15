@@ -136,8 +136,8 @@ class LicenseAuditTest < Minitest::Test
     "musl libc, licensed under the terms of mimalloc: GCC: (Alpine 14.2.0) 14.2.0 fuse: unsupported protocol version: "
 
   # libfuse may be linked into AppImage's runtime, which is not Fledge's
-  # own, because Fledge publishes the runtime's source and libfuse's
-  # (ADR 049); the audit finds every library it says is linked in.
+  # own, because Fledge publishes the runtime's source and libfuse's;
+  # the audit finds every library it says is linked in.
   def test_libfuse_linked_into_the_appimage_runtime_whose_source_is_published_passes
     write("tools/appimage-runtime", Binaries.elf(payload: APPIMAGE_RUNTIME))
 

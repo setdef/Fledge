@@ -7,7 +7,7 @@
 
 require "stringio"
 
-# What the tests of fledge build --from APP (ADR 032) share:
+# What the tests of fledge build --from APP share:
 # test/build_from_test.rb's, with fake runtimes alone, and
 # test/integration/build_from_tools_test.rb's, with the tools of the
 # platform the app is for. Each test has a folder of its own, with a fake

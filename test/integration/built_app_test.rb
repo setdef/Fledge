@@ -286,7 +286,7 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # ADR 032: an app built with fledge build --from takes the runtime and
+  # An app built with fledge build --from takes the runtime and
   # the gems of an app already built, and runs a project of its own,
   # which requires a gem the old app's Gemfile takes from a folder in its
   # project, written to a folder whose name is not ASCII, and run there
@@ -705,7 +705,7 @@ class BuiltAppTest < Minitest::Test
     File.write(config, original) if config && original
   end
 
-  # The gem-shaped app (ADR 005): exe/my_cool_app, with i18n and the
+  # The gem-shaped app: exe/my_cool_app, with i18n and the
   # runtime's own build of sqlite3 set up by Bundler as bundle exec would.
   def test_the_gem_shaped_app_runs_with_its_gems_and_its_status
     Dir.mktmpdir do |dir|
@@ -794,7 +794,7 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # examples/windowed_app, built as a windowed app (ADR 037): on macOS
+  # examples/windowed_app, built as a windowed app: on macOS
   # an .app bundle that Apple's codesign verifies, strictly and deeply,
   # and whose Info.plist plutil reads; on Windows a GUI program; on
   # Linux a folder with a desktop entry. Run by its program, it writes
@@ -853,7 +853,7 @@ class BuiltAppTest < Minitest::Test
     assert_equal [File.join(resources, "app"), resources], [report["__dir__"], report.dig("paths", "prefix")]
   end
 
-  # examples/programs (ADR 024): a console program and a windowed one,
+  # examples/programs: a console program and a windowed one,
   # built into one folder, each run by its own name, open one save, and
   # say they run one project on one Ruby. A copy renamed by hand finds no
   # program of its name in fledge.cfg, and exits with EX_NOINPUT.
@@ -1047,15 +1047,15 @@ class BuiltAppTest < Minitest::Test
     out
   end
 
-  # examples/windowed_app's installer (ADR 009), built beside its archive
+  # examples/windowed_app's installer, built beside its archive
   # from this computer's runtime: on macOS a disk image that hdiutil
   # verifies and attaches, whose bundle codesign verifies, strictly and
   # deeply, inside it, and runs from it; on Linux an AppImage that runs,
   # extracting itself where there is no FUSE, and that --appimage-extract
   # unpacks into an AppDir; on Windows a setup program, which Delivery
   # installs (.github/scripts/deliver-installer.ps1), compiled by the
-  # Windows runtime's own NSIS. On Linux a .deb follows the AppImage
-  # (ADR 021), and dpkg-deb reads it back. On Linux the build needs
+  # Windows runtime's own NSIS. On Linux a .deb follows the AppImage,
+  # and dpkg-deb reads it back. On Linux the build needs
   # mksquashfs and dpkg-deb.
   def test_the_windowed_apps_installer_holds_the_app_and_runs_it
     Dir.mktmpdir do |dir|

@@ -236,7 +236,7 @@ class BuildCommandTest < Minitest::Test
       "fledge-runtime-#{Fledge::VERSION}-aarch64-linux.tar.gz\n", err
   end
 
-  # A windowed app's installer (ADR 009) is printed after its archive.
+  # A windowed app's installer is printed after its archive.
   def test_a_windowed_apps_installer_follows_its_archive
     skip "an AppImage is built on Linux, with mksquashfs" unless RUBY_PLATFORM.include?("linux") && system("mksquashfs", "-version", out: File::NULL)
     linux = Fledge::Platform.find("x86_64-linux")

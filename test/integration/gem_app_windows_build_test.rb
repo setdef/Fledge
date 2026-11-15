@@ -8,7 +8,7 @@
 require_relative "../test_helper"
 require_relative "../support/gem_app_build"
 
-# fledge build for a gem-shaped app (ADR 005) for Windows, on Windows,
+# fledge build for a gem-shaped app for Windows, on Windows,
 # where the build edits the launchers with rcedit, so the fake runtime
 # carries the real Windows runtime's (FakeRuntime.windows).
 class GemAppWindowsBuildTest < Minitest::Test

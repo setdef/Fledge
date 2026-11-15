@@ -9,7 +9,7 @@ require_relative "../test_helper"
 require_relative "../support/build_from"
 require "open3"
 
-# fledge build --from APP (ADR 032), through real streams, with the tools
+# fledge build --from APP, through real streams, with the tools
 # of the platform the app is for: on a Mac, plutil and codesign, which
 # write and seal the new bundle; on Windows, the real Windows runtime's
 # launchers and rcedit. test/build_from_test.rb covers the rest with

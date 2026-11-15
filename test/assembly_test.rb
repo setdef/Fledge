@@ -268,7 +268,7 @@ class AssemblyTest < Minitest::Test
     end
   end
 
-  # A windowed app gets its platform's installer by default (ADR 009),
+  # A windowed app gets its platform's installer by default,
   # written beside its archive from its folder and the runtime's tools
   # folder, which neither the folder nor the archive holds.
   def test_a_windowed_linux_app_gets_an_appimage_from_the_runtimes_tools_folder

@@ -8,7 +8,7 @@
 require_relative "test_helper"
 require_relative "support/build_from"
 
-# fledge build --from APP (ADR 032), through real streams: an app built
+# fledge build --from APP, through real streams: an app built
 # by fledge build from a fake runtime, with gems from folders inside and
 # outside its project, and a second project built from it.
 # test/integration/build_from_tools_test.rb covers what the tools of a
@@ -230,7 +230,7 @@ class BuildFromTest < Minitest::Test
     end
   end
 
-  # build_tools (ADR 032): the app carries the runtime's tools, and
+  # build_tools: the app carries the runtime's tools, and
   # --from takes them from it when no runtime is at hand. The new app
   # keeps them only when its own fledge.yml asks for them too; an app
   # that does not ask carries none.

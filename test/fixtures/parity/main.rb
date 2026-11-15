@@ -315,7 +315,7 @@ def wide_string(pointer, length)
 end
 
 # The AppUserModelID Windows groups the process's windows under, which
-# the launcher sets from the app's identifier (ADR 064), or nil.
+# the launcher sets from the app's identifier, or nil.
 def app_user_model_id
   pointer = Fiddle::TYPE_VOIDP
   out = Fiddle::Pointer.malloc(Fiddle::SIZEOF_VOIDP)

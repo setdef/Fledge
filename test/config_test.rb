@@ -60,7 +60,7 @@ class ConfigTest < Minitest::Test
     assert_equal ["Keeps notes", "https://example.com/notes"], [program.description, program.homepage]
   end
 
-  # A windowed app lists the installers it wants (ADR 009), once each, or
+  # A windowed app lists the installers it wants, once each, or
   # none; without the key it gets every one.
   def test_reads_the_installers_a_windowed_app_wants
     assert_equal %w[dmg appimage deb], load("kind: windowed\ninstallers: [dmg, appimage, dmg, deb]\n").installers
@@ -143,7 +143,7 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  # ADR 024: programs lists each program's path, name, kind, identifier,
+  # programs lists each program's path, name, kind, identifier,
   # and icon, in order; a name defaults to the path's file name without
   # its extension.
   def test_reads_a_projects_programs
@@ -299,7 +299,7 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  # The files and folders a windowed app opens (ADR 052): a viewer of
+  # The files and folders a windowed app opens: a viewer of
   # each unless it says editor, each list once each, and the list kept
   # for each program, where the windowed one declares it.
   def test_reads_the_files_and_folders_a_windowed_app_opens
@@ -357,7 +357,7 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  # build_tools (ADR 032): whether the app carries what fledge build
+  # build_tools: whether the app carries what fledge build
   # --from needs, for any kind of app.
   def test_reads_whether_the_app_carries_its_build_tools
     assert_equal [true, false, nil], ["build_tools: true\n", "build_tools: false\n", "build_tools:\n"].map { |yaml| load(yaml).build_tools }

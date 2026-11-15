@@ -84,7 +84,7 @@ class DesktopEntryTest < Minitest::Test
     end
   end
 
-  # The files and folders the app opens (ADR 052), as a desktop knows
+  # The files and folders the app opens, as a desktop knows
   # them: by MIME type, inode/directory for folders, once each; and %F,
   # so a file manager passes their paths as arguments. An entry with
   # only extensions names no MIME type, and adds nothing.

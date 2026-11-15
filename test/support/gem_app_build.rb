@@ -9,7 +9,7 @@ require_relative "gems"
 require_relative "loopback_server"
 require "stringio"
 
-# fledge build for a gem-shaped app (ADR 005), through real streams: real
+# fledge build for a gem-shaped app, through real streams: real
 # .gem files, built by RubyGems, served by a real HTTP server at the
 # lockfile's remote, into fake runtimes. test/gem_app_build_test.rb
 # builds for Linux, and test/integration/gem_app_windows_build_test.rb

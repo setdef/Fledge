@@ -96,7 +96,7 @@ module AssemblyHelpers
     skip "an AppImage is built on Linux, with mksquashfs" unless RUBY_PLATFORM.include?("linux") && system("mksquashfs", "-version", out: File::NULL)
   end
 
-  # A project of several programs (ADR 024): a windowed one, with an
+  # A project of several programs: a windowed one, with an
   # icon, and two console ones, sharing one project.
   module Programs
     def self.write(dir, installers: "[]")

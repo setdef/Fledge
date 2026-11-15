@@ -8,8 +8,8 @@
 require_relative "test_helper"
 require_relative "support/deb"
 
-# Fledge::Deb, which has dpkg-deb build a .deb of the built app's folder
-# (ADR 021), read back with dpkg-deb itself (test/support/deb.rb).
+# Fledge::Deb, which has dpkg-deb build a .deb of the built app's folder,
+# read back with dpkg-deb itself (test/support/deb.rb).
 # test/integration/deb_dependencies_test.rb covers what a gem's compiled
 # extension makes it depend on. CI's Delivery installs one with apt in
 # Debian and Ubuntu containers, runs the app, and removes it

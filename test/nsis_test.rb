@@ -174,7 +174,7 @@ class NsisTest < Minitest::Test
     assert_includes text, "Name \"Say $\\\"$$1$\\\"\"\n"
   end
 
-  # What the app opens (ADR 052): a folder, an archive by two extensions
+  # What the app opens: a folder, an archive by two extensions
   # (one twice, in another case), and text by its MIME type alone, which
   # Windows does not register.
   def file_associations
@@ -238,7 +238,7 @@ class NsisTest < Minitest::Test
 
   # A ProgID must outlast the app's next version: neither the order of
   # the entries, nor an entry's name, nor its other extensions may
-  # change it (ADR 052), since the uninstaller knows only today's.
+  # change it, since the uninstaller knows only today's.
   def test_a_prog_id_survives_a_reorder_a_rename_and_an_extensions_neighbors
     ids = prog_ids(file_associations: [entry("A", "aaa"), entry("B", "bbb")])
 

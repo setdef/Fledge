@@ -33,7 +33,7 @@ class RuntimesTest < Minitest::Test
 
   # fledge build --from downloads nothing: it takes a runtime only when
   # this computer has it, from FLEDGE_RUNTIME_DIR, or from the cache when
-  # it matches its pin (ADR 032).
+  # it matches its pin.
   def test_a_runtime_at_hand_is_one_this_computer_has_and_nothing_is_downloaded
     Dir.mktmpdir do |home|
       archive = FakeRuntime.write(home, LINUX)

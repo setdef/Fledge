@@ -18,7 +18,7 @@ class MakensisTest < Minitest::Test
       homepage: nil, file_associations:)
   end
 
-  # What the app opens (ADR 052): a folder, an archive by two extensions
+  # What the app opens: a folder, an archive by two extensions
   # (one twice, in another case), and text by its MIME type alone, which
   # Windows does not register.
   def file_associations

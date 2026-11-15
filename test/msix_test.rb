@@ -87,7 +87,7 @@ class MsixTest < Minitest::Test
     assert_equal "My App", first(manifest, "/m:Package/m:Applications/m:Application/uap:VisualElements").attributes["Description"]
   end
 
-  # ADR 052: each extension the app opens is offered in its "Open with",
+  # Each extension the app opens is offered in its "Open with",
   # by a file type association named in lower case; folders and MIME
   # types alone have no place in a package.
   def test_the_extensions_it_opens_are_file_type_associations

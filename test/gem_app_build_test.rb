@@ -9,7 +9,7 @@ require_relative "test_helper"
 require_relative "support/binaries"
 require_relative "support/gem_app_build"
 
-# fledge build for a gem-shaped app (ADR 005), through real streams: real
+# fledge build for a gem-shaped app, through real streams: real
 # .gem files, built by RubyGems, served by a real HTTP server at the
 # lockfile's remote, into fake runtimes.
 class GemAppBuildTest < Minitest::Test

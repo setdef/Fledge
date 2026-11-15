@@ -6,9 +6,11 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Signing and Notarizing a Desktop App
 
-This document says how `fledge build` signs a macOS or Windows app and has Apple notarize a macOS one: what each tool is given, in which order, how a tool is found, when a command runs again, and how CI proves it without the maintainer's accounts. It is for Fledge's contributors; an app's developer reads `doc/desktop_apps.md`, "Sign your app". Why things are so is in ADR 016 (`--sign` and each system's signer), ADR 050 (the hardened runtime and its entitlements), ADR 051 (`--sign-command`), and ADR 033 (`--notarize`). The unsigned ad hoc signature every macOS bundle gets is in `doc/contributors/design/desktop-apps.md`, "Identity on each system".
+This document says how `fledge build` signs a macOS or Windows app and has Apple notarize a macOS one: what each tool is given, in which order, how a tool is found, when a command runs again, and how CI proves it without the maintainer's accounts. It is for Fledge's contributors; an app's developer reads `doc/desktop_apps.md`, "Sign your app". Each section gives the reasons for its choices and the options weighed against them. The unsigned ad hoc signature every macOS bundle gets is in `doc/contributors/design/desktop-apps.md`, "Identity on each system".
 
 ## Where signing comes in the build
+
+Signing is the developer's option, and an unsigned build keeps working, as the maintainer's decision 17 asks (`doc/contributors/decisions.md`, 2026-10-26). `fledge build --sign IDENTITY` takes one value that each system's own signer takes as it is, as Briefcase's `--identity` does: on macOS a code signing identity in the developer's keychain, by name or SHA-1 hash, as `codesign --sign` takes it; on Windows the SHA-1 thumbprint of a code signing certificate in the certificate store, as `signtool sign /sha1` takes it, hardware tokens included. Fledge reads no certificate, key, or password, and keeps none. Signing settings in the app's configuration, as Tauri's `signingIdentity` and `certificateThumbprint` are, were weighed and not taken: `fledge.yml` is committed and built by other people, and an identity has no place there. The cost is that the identity lives in one computer's keychain or store, so a CI that signs imports it there first; a certificate kept in a cloud or a hardware service signs through "The signing command".
 
 A signature seals what it covers, so signing comes after Fledge has written everything into the app, and before the installers and the archive, which carry the signed files (`Fledge::Assembly`):
 
@@ -29,7 +31,7 @@ A Linux build with `--sign` or `--sign-command` fails, since a Linux app carries
 codesign --force --sign IDENTITY --options runtime --timestamp --entitlements lib/fledge/templates/macos/entitlements.plist FILE...
 ```
 
-The ad hoc identity, `-`, gets the same options but `--timestamp`, which needs a certificate to stamp. The entitlements are ADR 050's two. The order is inside out, as Apple asks of nested code:
+The ad hoc identity, `-`, gets the same options but `--timestamp`, which needs a certificate to stamp. The order is inside out, as Apple asks of nested code:
 
 1. Every Mach-O program and library of a console app's folder, or of a windowed app's `Contents/Resources`: the launcher, `bin/ruby`, Ruby's extensions, and the app's gems' compiled files. A file is code when its first bytes say Mach-O (`Fledge::Binary.format_of`); symbolic links are skipped, and so are object files (`MH_OBJECT`, a thin Mach-O whose file type is 1), which a gem's build can leave beside its extension and which nothing runs or loads. They go to codesign 100 at a time.
 2. A windowed app's console programs in `Contents/MacOS` (ADR 024), in one run.
@@ -37,6 +39,8 @@ The ad hoc identity, `-`, gets the same options but `--timestamp`, which needs a
 4. The disk image, after `hdiutil` writes it: `codesign --force --sign IDENTITY --timestamp FILE.dmg`, with no hardened runtime or entitlements, as notarization asks of an image it staples a ticket to.
 
 Every command has `--force`, so a run again replaces whatever a failed run signed.
+
+**The hardened runtime and its entitlements.** Apple notarizes only code signed with the hardened runtime, which forbids, unless an entitlement grants it, memory that is writable and then executable, and loading a library another team signed. Ruby needs both at times, so the code carries Briefcase's two entitlements, which it grants every macOS app (`src/briefcase/platforms/macOS/__init__.py`, lines 463 to 467, beeware/briefcase at 0bdaaf5). `com.apple.security.cs.allow-unsigned-executable-memory` is the one Apple names for writable and executable memory made "without using the MAP_JIT flag", as YJIT makes its code: it reserves the region with `mmap(PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS)` and makes it executable with `mprotect(PROT_READ | PROT_EXEC)` (`jit.c`, `rb_jit_reserve_addr_space` and `rb_jit_mark_executable`, at Ruby 4.1.0-preview1). `com.apple.security.cs.disable-library-validation` lets a gem load a library from outside the app, through FFI or as a plug-in. `allow-jit`, which Tebako's signing specification gives YJIT, covers only memory made with `MAP_JIT`, which Ruby's source never uses. Signing with no entitlement was weighed too, but Apple documents this one for YJIT's kind of memory; whether YJIT under a Developer ID's hardened runtime runs without it is the optional step of `doc/contributors/signing-test.md`. The ad hoc identity gets the hardened runtime too, where Briefcase signs it without, so that `--sign -` on any Mac proves what a Developer ID gets. The cost is that both entitlements loosen the hardened runtime for every app, whether or not it needs them, and an app that needs others, such as the camera's, has no way to add them yet.
 
 ## Signing on Windows
 
@@ -77,7 +81,9 @@ The failure cannot be provoked on demand, so `test/integration/mac_signing_test.
 
 ## The signing command
 
-`--sign-command COMMAND`, or `FLEDGE_SIGN_COMMAND` in a Windows build whose command line gives neither `--sign` nor `--sign-command` (an empty or blank value counts as none), signs a Windows app through the developer's own command (ADR 051; `Fledge::SignCommand`). A build for another system ignores the variable. An empty command is refused.
+`--sign-command COMMAND`, or `FLEDGE_SIGN_COMMAND` in a Windows build whose command line gives neither `--sign` nor `--sign-command` (an empty or blank value counts as none), signs a Windows app through the developer's own command (`Fledge::SignCommand`). The variable is a default that the option overrides, as an environment variable is, so a CI secret can hold the whole command; a build for another system ignores it. An empty command is refused.
+
+`--sign` reaches only a certificate in Windows' store. One kept in a cloud or a hardware service signs only through that service's own tool: Microsoft's Artifact Signing through signtool's `/dlib` plug-in and the account's metadata file, DigiCert KeyLocker through `smctl`, SSL.com eSigner through CodeSignTool. One command reaches every one of them with no code in Fledge for any, as electron-builder's `win.sign` hook "replaces electron-builder's built-in `signtool` / `osslsigncode` invocation" to "integrate an external or cloud signing service" (`packages/app-builder-lib/src/options/winOptions.ts`, lines 219 to 237, at 04585d6). An option for each service would be code and a test for each, and no agent holds an account to run one. Tauri's `signCommand`, a string split on spaces and run with no shell, was weighed and not taken: makensis always runs its finalize commands through `cmd.exe`, so the programs and the setup program would see the command differently. The cost is speed, since the command runs once per file where `--sign` gives signtool 50; a developer's script can batch on its own.
 
 - **The files.** COMMAND runs once for each file `--sign` would sign (`WindowsSigning.files`: the programs, Ruby's DLLs, and its extensions), in the order of their paths, and then makensis runs it on the uninstaller and the setup program, and Fledge on the MSIX package.
 - **The path.** Fledge replaces each `%1`, bare or in double quotes, with the file's absolute path, with Windows' backslashes, in double quotes, since an app's name may hold spaces. A command with no `%1` gets the path at its end, so a `.cmd` file of the developer's own is a whole command. makensis gets the command with `"%1"` in the same places, and fills it in itself.
@@ -92,7 +98,9 @@ signtool.exe sign /fd SHA256 /tr "http://timestamp.acs.microsoft.com" /td SHA256
 
 ## Notarization
 
-`--notarize PROFILE` (ADR 033) needs `--sign IDENTITY`, a usage error without it, as with `--sign-command` or a phone. For Windows, and with the ad hoc identity `-`, which Apple does not notarize, the build fails. `Fledge::Notary` is the Gateway to notarytool and stapler, which come with Xcode and its Command Line Tools; Assembly calls it after the installers are written and before the archive is packed.
+`--notarize PROFILE` needs `--sign IDENTITY`, a usage error without it, as with `--sign-command` or a phone. For Windows, and with the ad hoc identity `-`, which Apple does not notarize, the build fails. `Fledge::Notary` is the Gateway to notarytool and stapler, which come with Xcode and its Command Line Tools; Assembly calls it after the installers are written and before the archive is packed.
+
+PROFILE names a keychain profile the developer made once with `xcrun notarytool store-credentials`, which Apple offers "to avoid including your password as cleartext in a script" ("Customizing the notarization workflow"). It holds an App Store Connect API key as well as an Apple ID and an app-specific password (TN3147), and Fledge passes notarytool `--keychain-profile PROFILE` and nothing else that authenticates, so no secret passes through Fledge or sits on a command line. Credentials from the environment passed to notarytool as arguments, as Tauri's `APPLE_ID` and `APPLE_PASSWORD` and @electron/notarize's options are, were weighed and not taken for that reason. Notarizing whenever a real identity signs, as Briefcase does, was not taken either: notarizing needs the network and minutes of waiting, which every signed build would then pay. For the same reason no environment variable stands for the option.
 
 **What is sent.** Apple notarizes "the top-level file that you specify, as well as each nested file", and says to notarize only the outermost container:
 

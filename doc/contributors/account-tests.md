@@ -12,7 +12,7 @@ This is your working checklist: every test that only your Apple, Microsoft, Goog
 
 1. Pick a test. Its **Needs** line says what to have first, and **Steps** says where the instructions are. Where a walk-through already exists (`doc/contributors/signing-test.md`), this page links to its section and does not repeat it.
 2. Run it. Compare what you see with **Passing**. When it differs, keep the output: it is the finding. Send agents that output, and never a key, password, or token (the walk-through's outputs hold none).
-3. Tell an agent the result, or edit **Status** yourself. An agent then records it where the finding belongs (ADR 033, Plan 003, the README's line on what is untested) and updates this page in the same commit.
+3. Tell an agent the result, or edit **Status** yourself. An agent then records it where the finding belongs (`doc/contributors/design/signing.md`, Plan 003, the README's line on what is untested) and updates this page in the same commit.
 
 **You decide which of these block 1.0.0.** Every entry says "not decided", because you have said you may choose later (decisions, 2026-11-08), and until you do, no entry is a requirement. To decide, change an entry's "Blocks 1.0.0?" to yes or no; agents then change the "1.0" story in Plan 003 and `doc/contributors/releasing-1.0.md` to match, and answer question C in `questions.md`.
 
@@ -65,7 +65,7 @@ All of these use the Developer ID Application certificate and notarization profi
 - **Proves:** whether `com.apple.security.cs.allow-unsigned-executable-memory` can be dropped. CI's self-signed builds ran YJIT without it.
 - **Needs:** as MAC-1.
 - **Steps:** `signing-test.md`, Part 1, step 6.
-- **Passing:** there is no pass or fail. `"yjit":true` with no entitlements means a later change may drop it; `"yjit":false` or a crash means it stays. An agent records either answer in ADR 050.
+- **Passing:** there is no pass or fail. `"yjit":true` with no entitlements means a later change may drop it; `"yjit":false` or a crash means it stays. An agent records either answer in `doc/contributors/design/signing.md`, "Signing on macOS".
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
 

@@ -176,7 +176,7 @@ $ open "/tmp/Hello Window-arm64-darwin.dmg"
 
 ### 6. Optional: does YJIT need its entitlement under a Developer ID?
 
-Fledge grants every Mac app `com.apple.security.cs.allow-unsigned-executable-memory`, which Apple names for memory YJIT makes, though CI's self-signed builds showed YJIT working without it (ADR 050). This step answers whether a Developer ID needs it. Entitlements belong to the program a process runs, the bundle's own (Apple's "Hardened Runtime" page), so it signs a copy of the bundle again without them; never ship that copy.
+Fledge grants every Mac app `com.apple.security.cs.allow-unsigned-executable-memory`, which Apple names for memory YJIT makes, though CI's self-signed builds showed YJIT working without it (`doc/contributors/design/signing.md`, "Signing on macOS"). This step answers whether a Developer ID needs it. Entitlements belong to the program a process runs, the bundle's own (Apple's "Hardened Runtime" page), so it signs a copy of the bundle again without them; never ship that copy.
 
 ```console
 $ cp -R "dist/Hello Window-arm64-darwin" /tmp/no-entitlements
@@ -186,7 +186,7 @@ $ "/tmp/no-entitlements/Hello Window.app/Contents/MacOS/Hello Window" /tmp/repor
 $ grep -o '"yjit":[a-z]*' /tmp/report.json
 ```
 
-The third command should print the program's path and no entitlements. The fourth should print `exit 0`. The last prints `"yjit":true` when YJIT wrote machine code without the entitlement, and `"yjit":false` (or the fourth crashes) when it needs it. Either answer goes in ADR 050.
+The third command should print the program's path and no entitlements. The fourth should print `exit 0`. The last prints `"yjit":true` when YJIT wrote machine code without the entitlement, and `"yjit":false` (or the fourth crashes) when it needs it. Either answer goes in `doc/contributors/design/signing.md`, "Signing on macOS".
 
 ## Part 2: Windows
 
@@ -278,4 +278,4 @@ Set-Content -Path "$env:TEMP\Hello Window-x64-mingw-ucrt-setup.exe" -Stream Zone
 
 ## What to send back
 
-For each part, say which way you signed, and paste what the build printed, the `spctl` or `signtool verify` lines, and what the downloaded copy showed when you opened it. No output on this page holds a secret. An agent then records it in ADR 033 or ADR 051, in Plan 003's story "Notarization and real trust chains", and in the README's line on what is untested.
+For each part, say which way you signed, and paste what the build printed, the `spctl` or `signtool verify` lines, and what the downloaded copy showed when you opened it. No output on this page holds a secret. An agent then records it in `doc/contributors/design/signing.md`, in Plan 003's story "Notarization and real trust chains", and in the README's line on what is untested.

@@ -297,6 +297,25 @@
   checks:
   - script
   - bundle
+- fact: Encoding.find('locale')
+  reference:
+  - \A"[\w-]+"\z
+  app:
+  - \A"UTF-8"\z
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - windowed
+- fact: "$LOADED_FEATURES"
+  reference:
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/[\w-]+/enc/\w+\.so"\z
+  app: []
+  platforms:
+  - x64-mingw-ucrt
+  - aarch64-mingw-ucrt
+  checks:
+  - windowed
 - fact: Encoding.default_external
   reference:
   - \A"US-ASCII"\z

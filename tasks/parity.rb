@@ -17,6 +17,7 @@ require_relative "parity/difference"
 require_relative "parity/justification"
 require_relative "parity/reports"
 require_relative "parity/mobile"
+require_relative "parity/windowed"
 
 # The parity check (ADR 081 and ADR 095): an app's Ruby code must see the
 # same Ruby under Fledge as it does run as its developer runs it.
@@ -43,7 +44,10 @@ require_relative "parity/mobile"
 # under code page 437, as a console in the United States starts. On
 # macOS and Linux it runs it again with no locale at all, as a desktop
 # starts an app, and under LC_ALL=C and LC_CTYPE=C, which a person sets
-# on purpose (ADR 087).
+# on purpose (ADR 087). Then it builds the probe as a windowed app and
+# starts it, and ruby main.rb, as each desktop starts an app: through
+# Launch Services on macOS, ShellExecuteEx on Windows, and GLib's gio
+# launch of a desktop entry on Linux (Parity::Windowed).
 #
 # Run it as rake parity, after rake runtime or with FLEDGE_RUNTIME_DIR set.
 class Parity
@@ -176,6 +180,19 @@ class Parity
         "page, as ffi opens a DLL with LoadLibraryExA, finds the file under a folder named outside ASCII. The " \
         "runtime's ruby.exe, which RbConfig.ruby names, declares it too, so a child Ruby has its parent's code " \
         "page in the app as under ruby.exe."),
+    Justification.new(fact: "Encoding.find('locale')", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt], checks: %i[windowed],
+      reference: [/\A"[\w-]+"\z/], app: [/\A"UTF-8"\z/],
+      reason: "The launcher's manifest makes UTF-8 the process's ANSI code page (activeCodePage), so that a gem's " \
+        "narrow Windows calls, such as ffi's LoadLibraryExA, read Ruby's UTF-8 paths under a folder named outside " \
+        "ASCII (doc/contributors/design/launcher.md, \"The locale\"). With no console, as a windowed app starts, Ruby " \
+        "takes its locale from the ANSI code page (localeinit.c, GetConsoleCP, then GetACP), and a process has one " \
+        "ANSI code page, so it cannot have both; RubyInstaller's rubyw.exe keeps the system's, such as Windows-1252. " \
+        "The runtime's rubyw.exe declares UTF-8 too (launcher.md, \"bin/ruby and restarts\"). With a console both " \
+        "take the console's code page."),
+    Justification.new(fact: "$LOADED_FEATURES", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt], checks: %i[windowed],
+      reference: [%r{\A"<prefix>/lib/ruby/#{ABI}/[\w-]+/enc/\w+\.so"\z}o],
+      reason: "As for Encoding.find('locale'): Ruby loads the extension of the locale's encoding as it boots, such " \
+        "as enc/windows_1252.so, and UTF-8, the app's, is built into Ruby."),
     *LOCALE_FACTS.map do |fact|
       Justification.new(fact:, reference: [/\A"US-ASCII"\z/], app: [/\A"UTF-8"\z/], checks: %i[no_locale],
         reason: "With no locale at all (no LC_ALL, LC_CTYPE, or LANG, or LANG=C), as a desktop, a service manager, " \
@@ -217,6 +234,7 @@ class Parity
       results << check(" under LC_ALL=C", nil, locale: { "LC_ALL" => "C" })
       results << check(" under LC_CTYPE=C", nil, locale: { "LC_CTYPE" => "C" })
     end
+    results << (WITHOUT_WINDOWED.include?(platform.name) ? skip_windowed : check_windowed)
     results << (WITHOUT_GEM_APP.include?(platform.name) ? skip_bundle : check_bundle)
     results << check_bundle(BUNDLED_WITH_APP, "bundled_with", "BundledWith", " of an app whose lockfile names another Bundler")
     results.all?
@@ -228,6 +246,19 @@ class Parity
   # not knowing aarch64-w64-windows-gnu (doc/contributors/design/parity.md,
   # "The gem-shaped run").
   WITHOUT_GEM_APP = %w[aarch64-mingw-ucrt].freeze
+
+  # Platforms the windowed check is off on, for now, as a defect: in a
+  # macOS bundle $LOAD_PATH names Ruby's library through
+  # Contents/MacOS/lib, where RbConfig and every file Ruby loads name
+  # Contents/Resources (doc/contributors/design/parity.md, "The windowed
+  # check"). The fix of the launcher turns it back on.
+  WITHOUT_WINDOWED = %w[arm64-darwin].freeze
+
+  private def skip_windowed
+    @out.puts "Parity on #{platform} of a windowed app, started as the desktop starts one: not checked, as a " \
+      "bundle's $LOAD_PATH is a known defect there (doc/contributors/design/parity.md, \"The windowed check\")"
+    true
+  end
 
   private def skip_bundle
     @out.puts "Parity of a gem-shaped app with bundle exec on #{platform}: not checked, as sqlite3 cannot be " \
@@ -311,6 +342,18 @@ class Parity
     differences = Reports.compare(Reports.normalize(reference, work: @work), Reports.normalize(app, work: @work), platform: platform.name,
       check:)
     report(label, env, differences)
+    differences.all?(&:justified?)
+  end
+
+  # The windowed check (Parity::Windowed): the probe as a windowed app
+  # against ruby main.rb, each started as the desktop starts an app, in
+  # the caller's environment as for the script check.
+  private def check_windowed
+    env = environment
+    reference, app = Windowed.new(self, ruby: @ruby, script: File.join(@reference_app, "main.rb"), work: @work).reports(env)
+    differences = Reports.compare(Reports.normalize(reference, work: @work), Reports.normalize(app, work: @work), platform: platform.name,
+      check: :windowed)
+    report(" of a windowed app, started as the desktop starts one", env, differences)
     differences.all?(&:justified?)
   end
 

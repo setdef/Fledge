@@ -164,7 +164,7 @@ void fledge_relaunch(int argc, char **argv);
  * tells the app's launcher from another program beside it, such as an
  * installer's uninstall.exe (windows_relaunch.c).
  */
-#define FLEDGE_LAUNCHER_MARK "Fledge launcher: runs the program fledge.cfg names (ADR 005)"
+#define FLEDGE_LAUNCHER_MARK "Fledge launcher: runs the program fledge.cfg names"
 
 /*
  * In a Windows runtime's ruby.exe and rubyw.exe: keeps every DLL loaded

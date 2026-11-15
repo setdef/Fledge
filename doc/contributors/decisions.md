@@ -337,7 +337,7 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 [re: question D in `questions.md`, whether a repack may make one system's app on another system when it compiles nothing.]
 
-*Governs:* making an app for another system from an already built app is allowed when it adds little code and complexity and little room for bugs, and above all when it needs no cross-compiling; the earlier rule that each system's app is built on that system (decisions, 2026-10-28) was about code that writes formats and compiles, and is not extended to a step that only copies. *Applied in:* ADR 032.
+*Governs:* making an app for another system from an already built app is allowed when it adds little code and complexity and little room for bugs, and above all when it needs no cross-compiling; the earlier rule that each system's app is built on that system (decisions, 2026-10-28) was about code that writes formats and compiles, and is not extended to a step that only copies. *Applied in:* `doc/contributors/design/desktop-apps.md`, "Building from a built app".
 
 > I've decided to pay Apple, Microsoft, Google, whoever I need.
 

@@ -120,7 +120,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 
 #### WIN-6: The Microsoft Store takes an MSIX package and signs it
 
-- **Proves:** the Store's certification accepts an MSIX package Fledge builds (`installers: [msix]`, ADR 075), with the `runFullTrust` capability a desktop app declares, and signs it itself, so a developer needs no certificate of their own.
+- **Proves:** the Store's certification accepts an MSIX package Fledge builds (`installers: [msix]`; `doc/contributors/design/desktop-apps.md`, "The MSIX package"), with the `runFullTrust` capability a desktop app declares, and signs it itself, so a developer needs no certificate of their own.
 - **Needs:** a Partner Center account, with an app name reserved, whose Publisher goes in `fledge.yml` as `windows: msix_publisher`.
 - **Steps:** build `examples/windowed_app` with its `msix_publisher` set to the reservation's Publisher and no `--sign`, and submit the `.msix` in Partner Center (`doc/desktop_apps.md`, "The Microsoft Store").
 - **Passing:** the Store certifies the submission, approves `runFullTrust`, and installing the app from the Store runs it.
@@ -224,8 +224,8 @@ The Mac App Store needs a sandboxed mode and a `.pkg`, which Fledge does not bui
 
 These need no account, but they need a person at a real desktop. Agents do not do them, and they are not blocked on anything you buy. They are not on the list above, so none of them has a "Blocks 1.0.0?" line; decide for each whether it matters.
 
-- **A drop on an app's icon in the Finder or the Dock.** Launch Services' offer and `open -a` are proved (ADR 052; `doc/contributors/design/desktop-apps.md`, "Files an app opens"), but not a real drop, nor a GUI library's drop event in a Fledge app. Agents do no SDL work, so the SDL3 app this test wants is yours to supply, or you can waive the test.
-- **A Linux file manager's double-click.** The desktop entry's `MimeType=` and `Exec=... %F` are checked from the files; a real double-click in a file manager is not (ADR 052).
+- **A drop on an app's icon in the Finder or the Dock.** Launch Services' offer and `open -a` are proved (`doc/contributors/design/desktop-apps.md`, "Files an app opens"), but not a real drop, nor a GUI library's drop event in a Fledge app. Agents do no SDL work, so the SDL3 app this test wants is yours to supply, or you can waive the test.
+- **A Linux file manager's double-click.** The desktop entry's `MimeType=` and `Exec=... %F` are checked from the files; a real double-click in a file manager is not.
 - **The Windows 10 floor on a real machine.** The README says Windows 10 and 11 on x64; the repository records no run of a built app on a real Windows 10 computer, only on GitHub's runners. Build or copy an app there and open it.
 
 ## Not in this list: already proven

@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The Launcher and bin/ruby
 
-This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 087 the locale; ADR 095 Bundler; ADR 024 the sections of `fledge.cfg`; and ADR 096 the restart. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
+This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 087 the locale; ADR 095 Bundler; and ADR 096 the restart. Why there are console and windowed launchers, and several programs in one folder, is in `doc/contributors/design/desktop-apps.md`, "Windows" and "Several programs". Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
 
 ## Source files
 
@@ -210,7 +210,7 @@ Files of the app are opened with `\\?\` paths where they may pass `MAX_PATH`.
 
 **The AppUserModelID.** When `fledge.cfg` names an `identifier`, console or windowed, the launcher loads `shell32.dll` from System32 and calls `SetCurrentProcessExplicitAppUserModelID` with it before any window opens, so the taskbar groups the app's windows under it and Windows attributes its notifications to it. Failing changes how Windows groups and names the app, never whether it runs, so failure is ignored. Windows shows the app's toasts only when a Start menu shortcut carries the same `System.AppUserModel.ID`, which the NSIS installer writes (`doc/contributors/design/desktop-apps.md`).
 
-**The two builds.** `windows.c` built with `-DFLEDGE_WINDOWED` and linked with `-mwindows` is `launcherw.exe`, which shows failures in a message box (ADR 037). The console launcher may import only KERNEL32 and the universal C runtime's `api-ms-win-crt-*` DLLs; the windowed one adds USER32.
+**The two builds.** `windows.c` built with `-DFLEDGE_WINDOWED` and linked with `-mwindows` is `launcherw.exe`, which shows failures in a message box (`doc/contributors/design/desktop-apps.md`, "Windows"). The console launcher may import only KERNEL32 and the universal C runtime's `api-ms-win-crt-*` DLLs; the windowed one adds USER32.
 
 ## The app folder in a macOS bundle
 

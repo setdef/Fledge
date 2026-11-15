@@ -58,12 +58,12 @@ Nothing configures signing. `xcodebuild` builds for the Simulator, and for a dev
 
 ## Identity on a phone
 
-The app's identity is `fledge.yml`'s (ADR 008), where each system shows it:
+The app's identity is `fledge.yml`'s (`doc/contributors/design/desktop-apps.md`, "Identity on each system"), where each system shows it:
 
 - **identifier:** the bundle identifier on iOS and the `applicationId` on Android. A phone's app has to have one, so a phone's build without it fails, suggesting one. Android takes only parts that begin with a letter and hold letters, digits, and underscores (`MobileProject::Android::APPLICATION_ID`), so an identifier with a hyphen, or a part that begins with a digit, fails for Android with one it would take.
 - **name:** `PRODUCT_NAME` and `CFBundleDisplayName` on iOS, and the label on Android.
 - **version:** `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, its first three numbers (`Fledge::MacBundle.bundle_version`), on iOS. On Android, `versionName` as it is, and `versionCode` made of its first three numbers, three digits each (1.2.3 is 1002003), as Briefcase pads a version's parts, so each later version has a greater code; 0.0.0 gets 1, Android's lowest, and a version whose code would pass Play's 2,100,000,000 is refused (`MobileProject::Android.version_code`). An app with no `version` is 0.0.0 (see "Export compliance and the build number").
-- **icon:** the files `fledge.yml`'s `icon` names, as the desktop's are named: `ICON-1024.png` for iOS, the one size an asset catalog's app icon needs, from which Xcode makes the rest, in `Host/Assets.xcassets`; and `ICON-48.png`, `-72`, `-96`, `-144`, and `-192` for Android, each density's launcher icon in `mipmap-mdpi` to `mipmap-xxxhdpi`. Fledge copies them and reads no image (ADR 048). Without an icon, each system shows its own, and the iOS project drops its asset catalog.
+- **icon:** the files `fledge.yml`'s `icon` names, as the desktop's are named: `ICON-1024.png` for iOS, the one size an asset catalog's app icon needs, from which Xcode makes the rest, in `Host/Assets.xcassets`; and `ICON-48.png`, `-72`, `-96`, `-144`, and `-192` for Android, each density's launcher icon in `mipmap-mdpi` to `mipmap-xxxhdpi`. Fledge copies them and reads no image (`doc/contributors/design/desktop-apps.md`, "Icons"). Without an icon, each system shows its own, and the iOS project drops its asset catalog.
 
 ## Gems on a phone
 

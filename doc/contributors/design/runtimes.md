@@ -53,7 +53,7 @@ Each program builds with warnings as errors (`RuntimeBuilder::WARNINGS`) and und
 | Path | What it is |
 |---|---|
 | `launcher.exe` | The console launcher (`runtime/launcher/windows.c`), which loads Ruby's DLL when it runs. |
-| `launcherw.exe` | The same launcher built as a GUI program, for windowed apps (ADR 037). |
+| `launcherw.exe` | The same launcher built as a GUI program, for windowed apps (`doc/contributors/design/desktop-apps.md`, "Windows"). |
 | `ruby\` | RubyInstaller's tree, its shape unchanged (ADR 038): `bin\` with Ruby's DLL (`x64-ucrt-ruby410.dll` or `aarch64-ucrt-ruby410.dll` for Ruby 4.1), `ruby.exe`, `rubyw.exe`, the gems' wrappers, and `ruby_builtin_dlls\`; `include\`; `lib\ruby\`. `ruby.exe` and `rubyw.exe` are Fledge's, Ruby's `main.c` built against that DLL in their place (`RuntimeBuilder::Windows#compile_ruby`; `launcher.md`, "bin/ruby and restarts"). Fledge adds two DLLs RubyInstaller leaves out (`windows-dlls` in `runtime/sources.yml`, `RuntimeBuilder::Windows#add_missing_dlls`): `libz-1.dll` in Ruby's architecture folder under `lib\ruby\`, named in `zlib.so`'s assembly manifest, and, on x64, `libgcc_s_seh-1.dll` in `ruby_builtin_dlls\`. |
 | `tools\nsis\`, `tools\rcedit.exe`, `tools\llvm-readobj.exe` | What `fledge build` runs ("The tools folder"). |
 | `notices\` | `NOTICES.txt`, `sbom.spdx.json`, and `sources\`. |
@@ -186,11 +186,11 @@ On macOS and Linux, whose Rubies ship no such file, the parity check allows the 
 
 ## The tools folder
 
-`tools/` holds what `fledge build` runs or copies (ADR 009, ADR 010). An app holds none of it, unless its `fledge.yml` sets `build_tools` (`doc/contributors/design/desktop-apps.md`). Each file is pinned by SHA-256 in `runtime/sources.yml` and owned by a component of the license audit, which checks `rcedit.exe`'s and `llvm-readobj.exe`'s SHA-256 again in the runtime.
+`tools/` holds what `fledge build` runs or copies (ADR 010). An app holds none of it, unless its `fledge.yml` sets `build_tools` (`doc/contributors/design/desktop-apps.md`). Each file is pinned by SHA-256 in `runtime/sources.yml` and owned by a component of the license audit, which checks `rcedit.exe`'s and `llvm-readobj.exe`'s SHA-256 again in the runtime.
 
 | Platform | File | What `fledge build` does with it |
 |---|---|---|
-| Linux, glibc and musl | `tools/appimage-runtime` | Writes it at the front of an AppImage. It is AppImage's released type 2 runtime for the architecture, static against musl, with libfuse linked in (ADR 049). |
+| Linux, glibc and musl | `tools/appimage-runtime` | Writes it at the front of an AppImage. It is AppImage's released type 2 runtime for the architecture, static against musl, with libfuse linked in (`doc/contributors/design/desktop-apps.md`, "The AppImage"). |
 | Windows | `tools/nsis/` | Runs `Bin/makensis.exe` to compile an installer. It is the part of NSIS's release that compiles one: `COPYING`, makensis and its `zlib1.dll`, the solid LZMA and zlib stubs and the uninstaller's icon, the System and nsDialogs plug-ins, the script headers, and Modern UI 2 (`RuntimeBuilder::Windows::NSIS`). |
 | Windows | `tools/rcedit.exe` | Writes an app's version information and icon into its program. It is Electron's release of `rcedit-x64.exe`. `llvm-rc` and `llvm-windres` compile resources but cannot put them into a program already linked. |
 | Windows | `tools/llvm-readobj.exe` | Reads what an app's compiled gems import and delay-load (`doc/contributors/design/license-audit.md`, "Which tools read compiled files"). It is the one file of LLVM's own Windows release, statically linked, which imports only Windows' DLLs; the build unpacks it with `zstd --long=31` and checks the file's own SHA-256. |

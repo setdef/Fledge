@@ -12,8 +12,8 @@ This document names the parts of Fledge and how they fit, points to the design d
 
 Fledge copies a program its developer already runs, with its project and the gems its `Gemfile.lock` locks, into a relocatable CRuby runtime for the platform it runs on, beside a small C launcher, and archives the result.
 
-- **The command line.** `exe/fledge` is the command; its comment header is the help `fledge --help` prints. `Fledge::CLI` runs it and `Fledge::CLI::Build` runs `fledge build`, through streams a test can replace (ADR 002). `Fledge::Config` reads the optional `fledge.yml` (ADR 044), which `lib/fledge/config.schema.json` describes (`doc/contributors/design/public-interface.md`, "The fledge.yml schema").
-- **Assembly.** For a desktop build, `fledge build` finds the project's root and program (`Fledge::App`; ADR 005), reads the lockfile with Bundler and picks each gem's build for the platform (`Fledge::Bundle`), fetches, installs, and when needed compiles the gems into the runtime's gem folder, downloads the runtime and checks it against the pins the gem carries (`Fledge::Runtimes`), copies the project into `app/`, writes `fledge.cfg`, gives the app its identity (ADR 008), signs it on request (`doc/contributors/design/signing.md`), archives it with the computer's own tar (ADR 047), and writes its installers (ADR 009). `doc/contributors/design/desktop-apps.md` and `doc/contributors/design/gems.md` describe this.
+- **The command line.** `exe/fledge` is the command; its comment header is the help `fledge --help` prints. `Fledge::CLI` runs it and `Fledge::CLI::Build` runs `fledge build`, through streams a test can replace (ADR 002). `Fledge::Config` reads the optional `fledge.yml`, which `lib/fledge/config.schema.json` describes (`doc/contributors/design/public-interface.md`, "The fledge.yml schema").
+- **Assembly.** For a desktop build, `fledge build` finds the project's root and program (`Fledge::App`), reads the lockfile with Bundler and picks each gem's build for the platform (`Fledge::Bundle`), fetches, installs, and when needed compiles the gems into the runtime's gem folder, downloads the runtime and checks it against the pins the gem carries (`Fledge::Runtimes`), copies the project into `app/`, writes `fledge.cfg`, gives the app its identity, signs it on request (`doc/contributors/design/signing.md`), archives it with the computer's own tar, and writes its installers. `doc/contributors/design/desktop-apps.md` and `doc/contributors/design/gems.md` describe this.
 - **Desktop runtimes.** A runtime is a relocatable CRuby, whole (ADR 085), with the launcher, Fledge's RubyGems defaults, the tools installers need, and the notices its licenses ask for. `tasks/runtime_builder/` builds one per platform from the inputs `runtime/sources.yml` pins (ADR 035, ADR 017), and the license audit (`tasks/license_audit/`, `runtime/licenses.yml`) passes each before it is archived (ADR 004). `doc/contributors/design/runtimes.md` and `doc/contributors/design/license-audit.md` describe them.
 - **The launcher.** `runtime/launcher/` is the C program at the top of every desktop app, and `bin/ruby` beside it. It embeds CRuby (ADR 001), runs the program as `ruby` would (ADR 081), hides the person's Ruby settings from Ruby's boot (ADR 040), and sets up Bundler as `bundle exec` would (ADR 095), with the Bundler the lockfile names (ADR 063). `doc/contributors/design/launcher.md` describes it.
 - **Phone runtimes.** On iOS, iPadOS, and Android, Ruby is a static library Fledge builds from source (ADR 079), with an embedding API in C, `runtime/mobile/`, that does the launcher's work (ADR 061). `fledge build ios` and `fledge build android` write a project the developer builds, signs, and submits with Xcode or Gradle (ADR 012). `doc/contributors/design/phone-runtimes.md` and `doc/contributors/design/phone-projects.md` describe them.
@@ -48,42 +48,28 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [001](../adr/001.md) | Ship an app as a small C launcher that embeds CRuby |
 | [002](../adr/002.md) | `fledge` and an app's launcher follow GNU's and sysexits' conventions |
 | [004](../adr/004.md) | Every Runtime Passes a License Audit Before It Is Archived, and the Audit Writes Its Notices |
-| [005](../adr/005.md) | Ship the Program the Developer Already Runs, With Its Project |
-| [008](../adr/008.md) | An App Shows the Identity Its fledge.yml Gives It, With One Name Everywhere |
-| [009](../adr/009.md) | A Windowed App Gets Its Platform's Installers Unless fledge.yml Says Otherwise, and a Console App Gets None |
 | [010](../adr/010.md) | Build Each Platform's App on That Platform, With Its Own Tools |
 | [012](../adr/012.md) | For a phone, `fledge build` writes a project the developer builds, signs, and submits |
 | [017](../adr/017.md) | Build musl Linux's Ruby from Source in Alpine |
-| [021](../adr/021.md) | Offer a .deb, Opt-In, Built by dpkg-deb |
 | [022](../adr/022.md) | Compile a phone's extensions with mkmf against the phone Ruby, link them in, and register them |
-| [024](../adr/024.md) | Ship a Project's Several Programs in One Folder, With One Runtime |
 | [025](../adr/025.md) | A phone project takes its host's files from the app's own project: `ios: host:` and `android: host:` |
 | [027](../adr/027.md) | Aim an `extconf.rb`'s CMake at the phone through `CMAKE_TOOLCHAIN_FILE` |
-| [032](../adr/032.md) | Build a New App From an App Already Built, With --from |
 | [035](../adr/035.md) | Take CRuby from rv-ruby on macOS and glibc Linux, and from RubyInstaller on Windows, x64 and ARM64 |
-| [037](../adr/037.md) | Two kinds of app, console and windowed, each with a launcher built for its kind |
 | [038](../adr/038.md) | On Windows, keep RubyInstaller's tree whole and load Ruby's DLL at run time |
 | [040](../adr/040.md) | Hide the person's Ruby settings from Ruby's boot, and restore them before the program runs |
 | [042](../adr/042.md) | Ship libxcrypt and GNU MP as Shared Libraries a Person Can Replace |
 | [043](../adr/043.md) | Each Runtime Carries the Sources Its Licenses Ask For, in notices/sources/ |
-| [044](../adr/044.md) | Configure an App With an Optional fledge.yml |
-| [047](../adr/047.md) | Pack and Unpack Archives With the Computer's Own tar |
-| [048](../adr/048.md) | Take Each System's Icon Files From the Developer |
-| [049](../adr/049.md) | Installers Use NSIS's and AppImage's Own Releases, With the Sources Their Licenses Ask For |
-| [052](../adr/052.md) | An App Declares the Files It Opens, and Is Offered for Them but Never Made Their Default |
 | [057](../adr/057.md) | Name phone targets so that no desktop gem fits them |
 | [058](../adr/058.md) | On a phone, bundled gems with extensions stay gems |
 | [061](../adr/061.md) | The phone runtime does the launcher's work, in C: `fledge_ruby_run_app` |
 | [062](../adr/062.md) | Leave export compliance to the developer |
 | [063](../adr/063.md) | Run the Bundler the Lockfile Names, as bundle exec Does |
-| [064](../adr/064.md) | A Windowed App's Identifier Is the Developer's, and No Default Makes One Up |
 | [067](../adr/067.md) | On a phone, a bundled gem's extension keeps every symbol but its Init function to itself |
 | [068](../adr/068.md) | On a phone, a bundled gem's linked extension is found only while its gem is active |
 | [070](../adr/070.md) | A Windows App Declares UTF-8 as Its ANSI Code Page |
 | [072](../adr/072.md) | On a phone, a gem's Rakefile runs as RubyGems runs it, and the extensions it builds with mkmf are linked in |
 | [073](../adr/073.md) | On a phone, a gem's Rust extension is built by its own extconf.rb, as a static library, and linked in |
 | [074](../adr/074.md) | fiddle and the ffi gem work on both phones |
-| [075](../adr/075.md) | A windowed Windows app can ship as an MSIX package, built with the Windows SDK's MakeAppx |
 | [078](../adr/078.md) | A phone app's standard streams reach the system log as they are printed, with nothing an app can read changed |
 | [079](../adr/079.md) | On a phone, Ruby is a static library Fledge builds from source |
 | [080](../adr/080.md) | On a phone, a Ruby file stands where a desktop has an extension's file, and requires the linked extension |

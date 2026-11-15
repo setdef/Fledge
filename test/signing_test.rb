@@ -100,6 +100,14 @@ class SigningTest < Minitest::Test
       entitlements.scan(%r{<key>([^<]+)</key>}).flatten
   end
 
+  # codesign embeds the entitlements file as it is, comment and all, in
+  # the signature of every Mach-O file it signs, so the comment says why
+  # in its own words and names no decision record, which a later change
+  # may delete.
+  def test_the_entitlements_every_signature_carries_cite_no_adr
+    refute_match(/\bADRs?\b/, File.read(Fledge::MacSigning::ENTITLEMENTS))
+  end
+
   # An ad hoc signature has no certificate for a timestamp to stamp.
   def test_the_ad_hoc_identity_takes_no_timestamp
     refute_includes Fledge::MacSigning.new("-").code_options, "--timestamp"

@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Android project packs native libraries compressed (`useLegacyPackaging = true`), so the installer extracts them where Android lets the app run its ruby program; an installed app takes more space. Set it to `false` to keep them stored, without a ruby program.
 - The iOS and Android runtimes leave out the win32-registry gem, which only Windows can load, as the macOS and Linux runtimes' Ruby does.
 - The comment that begins every `fledge.cfg` names no ADR: `# Written by fledge build VERSION for PLATFORM: what this app's program runs.`
+- The comment in the entitlements a signed macOS app's code carries names no ADR; the entitlements are the same.
 
 ### Removed
 

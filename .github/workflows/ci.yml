@@ -25,7 +25,7 @@
 # Windows runners test it, build apps with it, and deliver them. Each
 # platform's apps are built on that platform, as developers build them.
 #
-# A windowed app gets an installer too (ADR 009): a disk image for macOS,
+# A windowed app gets an installer too: a disk image for macOS,
 # an NSIS setup program for Windows, and an AppImage for Linux (and a
 # .deb and an MSIX package, which windowed_app asks for), each written
 # on its own platform's runner; and Delivery installs each on a fresh
@@ -827,7 +827,7 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test:all
 
-      # ADR 081 and ADR 005: the probe app, built from this runtime,
+      # ADR 081: the probe app, built from this runtime,
       # against rv-ruby's own ruby running the same main.rb, then the probe
       # as examples/my_cool_app's program, built with its gems, against
       # bundle exec on that Ruby. The report lands in the job summary; an
@@ -976,7 +976,7 @@ jobs:
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test:all
 
-      # ADR 081 and ADR 005: the probe app, built from this runtime,
+      # ADR 081: the probe app, built from this runtime,
       # against RubyInstaller's own ruby.exe running the same main.rb, then
       # both again under code page 437, then the probe as
       # examples/my_cool_app's program against bundle exec. The report
@@ -1006,12 +1006,12 @@ jobs:
   # which Delivery asks what Bundler.with_original_env and
   # with_unbundled_env give a child; examples/my_cool_app, whose gems come
   # from RubyGems.org, each checked against its Gemfile.lock's checksum,
-  # precompiled for the platform (ADR 005); test/fixtures/bundled_with,
+  # precompiled for the platform; test/fixtures/bundled_with,
   # whose Gemfile.lock names a Bundler no runtime ships (ADR 063);
   # examples/windowed_app, a
-  # windowed app (ADR 037, ADR 008) with its installer (ADR 009);
+  # windowed app with its installer;
   # examples/programs, a windowed and a console program of one project in
-  # one folder (ADR 024); and
+  # one folder; and
   # examples/native_app, whose gems must be compiled: redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
   # its git tag, each compiled against the runtime's own Ruby, with
@@ -1302,8 +1302,8 @@ jobs:
             (cd "examples/$example" && bundle exec ruby main.rb) | tee "dist/$example.expected"
           done
 
-      # The builder app Delivery runs fledge build --from inside (ADR 032;
-      # doc/contributors/design/desktop-apps.md, "Building from a built
+      # The builder app Delivery runs fledge build --from inside
+      # (doc/contributors/design/desktop-apps.md, "Building from a built
       # app"), on one platform of each operating system.
       - name: Build the app that builds apps, with build_tools and Fledge as a gem
         if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x86_64-linux' || matrix.platform == 'x64-mingw-ucrt'
@@ -1655,19 +1655,19 @@ jobs:
             ruby-platform: aarch64-linux
     steps: *delivery-steps
 
-  # Delivery of the windowed app (ADR 037, ADR 008), on a fresh runner of each
+  # Delivery of the windowed app, on a fresh runner of each
   # platform: on macOS its .app bundle must pass codesign --verify --strict
   # --deep, plutil must read its identity, and it must run through open -W,
   # as Finder starts it, and through its own program; on Linux
   # desktop-file-validate must accept its desktop entry, and its icons and
   # program must be there and run (.github/scripts/deliver-windowed.sh).
-  # Then its installer (ADR 009): on macOS the disk image, attached,
+  # Then its installer: on macOS the disk image, attached,
   # verified, and dragged to an Applications folder, with the app run from
   # both (deliver-dmg.sh); on Linux the AppImage, mounted with FUSE, and
   # extracted with APPIMAGE_EXTRACT_AND_RUN=1, where there is none, run
   # each way and in a hostile environment, and unpacked by
-  # --appimage-extract (deliver-appimage.sh). And examples/programs (ADR
-  # 024): a windowed and a console program from one folder, with one
+  # --appimage-extract (deliver-appimage.sh). And examples/programs:
+  # a windowed and a console program from one folder, with one
   # project and one Ruby, sharing one save (deliver-programs.sh).
   delivery-windowed-arm64-darwin:
     name: Delivery of a windowed app (${{ matrix.platform }})
@@ -1810,7 +1810,7 @@ jobs:
             platform: aarch64-linux
     steps: *delivery-debian-steps
 
-  # Delivery of the windowed app's .deb (ADR 021), in a fresh Debian and a
+  # Delivery of the windowed app's .deb, in a fresh Debian and a
   # fresh Ubuntu container of each architecture, with no Ruby installed:
   # apt installs it as a person would, its dependency on glibc 2.39 met by
   # Ubuntu 24.04's, which is the oldest there is, and by Debian 13's; the
@@ -1994,7 +1994,7 @@ jobs:
           -Archive "$env:RUNNER_TEMP/delivered/Console-$env:PLATFORM.zip"
           -Windowed "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
 
-      # The windowed app (ADR 037, ADR 008): a GUI program with its version
+      # The windowed app: a GUI program with its version
       # information and icon, started as Explorer starts it, with no
       # console and its identifier as its AppUserModelID
       # (.github/scripts/deliver-windowed.ps1).
@@ -2002,14 +2002,14 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
 
-      # examples/programs (ADR 024): a GUI and a console program from one
+      # examples/programs: a GUI and a console program from one
       # folder, with one project and one Ruby, sharing one save
       # (.github/scripts/deliver-programs.ps1).
       - name: Run Shared Save.exe and shared-save.exe from one folder, with one save
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-programs.ps1 -Archive "$env:RUNNER_TEMP/delivered/Shared Save-$env:PLATFORM.zip"
 
-      # The NSIS installer (ADR 009): installed silently for this person,
+      # The NSIS installer: installed silently for this person,
       # its Start menu shortcut's AppUserModelID read back and matched to
       # the app's own, the app started from it, installed again over
       # itself, and uninstalled (.github/scripts/deliver-installer.ps1).
@@ -2081,7 +2081,7 @@ jobs:
       PLATFORM: ${{ matrix.platform }}
     steps: *delivery-windows-steps
 
-  # Delivery of fledge build --from (ADR 032): a console app built with
+  # Delivery of fledge build --from: a console app built with
   # build_tools and Fledge as a gem, unpacked in a folder named outside
   # ASCII on a fresh runner with no Ruby and no runtime, runs its own
   # fledge build --from on a windowed project with file_associations and
@@ -2116,7 +2116,7 @@ jobs:
           path: ${{ runner.temp }}/delivered
 
       # What an AppImage needs that no app may carry: squashfs-tools is
-      # GPL-2.0 (ADR 032; doc/contributors/design/desktop-apps.md,
+      # GPL-2.0 (doc/contributors/design/desktop-apps.md,
       # "Building from a built app"). Pinned to Ubuntu 24.04's build.
       - name: Install mksquashfs
         if: runner.os == 'Linux'

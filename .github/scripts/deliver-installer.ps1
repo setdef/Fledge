@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a windowed app's NSIS installer (ADR 009) on Windows: the
+# Delivery of a windowed app's NSIS installer on Windows: the
 # setup program fledge build wrote for examples/windowed_app, run as a
 # person runs it, with nothing of Fledge or Ruby on this computer.
 #
@@ -255,7 +255,7 @@ function CheckInstalled {
 Install
 CheckInstalled
 
-# What the app opens (fledge.yml's file_associations; ADR 052;
+# What the app opens (fledge.yml's file_associations;
 # doc/contributors/design/desktop-apps.md, "Files an app opens"),
 # read back from the registry and through the shell's own API, and then
 # opened as the shell opens them, in a folder whose name has a space and

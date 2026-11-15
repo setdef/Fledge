@@ -11,8 +11,8 @@ class LicenseAudit
   # file-level one only for unmodified files, and an LGPL one either as
   # its own shared library with a source pin, or linked into another
   # component that is not Fledge's own and whose source Fledge publishes
-  # beside the LGPL library's (the AppImage runtime and its libfuse, ADR
-  # 049), so whoever receives an app can rebuild that component with
+  # beside the LGPL library's (the AppImage runtime and its
+  # libfuse), so whoever receives an app can rebuild that component with
   # another copy of the library (LGPL-2.1, section 6(a)). An LGPL library
   # is never allowed linked into the program an app's developer ships as
   # their own, the launcher. A license that asks only that a binary say

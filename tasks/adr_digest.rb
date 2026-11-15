@@ -11,8 +11,8 @@
 #
 # The ADRs are MADR (AGENTS.md): numbered options under
 # "Considered Options", and "Chosen: option N" opening the outcome. A few
-# options carry the lettered name the maintainer gave them, as ADR 005's
-# "(b)" does, and the outcome names that letter instead.
+# options carry the lettered name the maintainer gave them, such as
+# "(b)", and the outcome names that letter instead.
 #
 #   bundle exec rake adr:digest
 class AdrDigest

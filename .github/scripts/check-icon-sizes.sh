@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # A Linux build takes the icon sizes a project has (Plan 003, "A Linux
-# build takes the icon sizes a developer has"; ADR 048;
+# build takes the icon sizes a developer has";
 # doc/contributors/design/desktop-apps.md, "Icons"):
 # examples/windowed_app with only its 32-, 128-, and 256-pixel PNGs, as
 # other bundlers' icon tools make a set, builds, names the three sizes it

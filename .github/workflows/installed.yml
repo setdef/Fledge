@@ -11,7 +11,7 @@
 # each app it builds is delivered as CI delivers every push's
 # (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the
 # runtime's own tools, is installed and its app run, as CI installs every
-# push's (ADR 009 and ADR 010). Another job writes phones' projects from
+# push's (ADR 010). Another job writes phones' projects from
 # the tag and builds them with Xcode and Gradle (ADR 012), and another
 # downloads every asset of the release and checks it against SHA256SUMS,
 # which must be the tag's lib/fledge/SHA256SUMS, the pins the gem ships.
@@ -257,7 +257,7 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/dist/NativeApp-${{ matrix.platform }}.tar.gz" \
             "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/native_app.expected")"
 
-      # The windowed app (ADR 037, ADR 008), as ci.yml delivers it.
+      # The windowed app, as ci.yml delivers it.
       - name: Install desktop-file-validate
         if: runner.os == 'Linux'
         run: |

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a windowed app's .deb (ADR 021) on Debian and Ubuntu: the
+# Delivery of a windowed app's .deb on Debian and Ubuntu: the
 # .deb fledge build wrote for examples/windowed_app, installed with apt as
 # root on a computer that has never seen Ruby, run, and removed.
 #

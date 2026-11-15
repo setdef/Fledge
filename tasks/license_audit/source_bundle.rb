@@ -16,8 +16,8 @@ require_relative "../download_cache"
 
 class LicenseAudit
   # The complete corresponding source of a platform's LGPL libraries, of
-  # the program an LGPL library is linked into (the AppImage runtime, ADR
-  # 049), and of a component whose license asks that its source be
+  # the program an LGPL library is linked into (the AppImage runtime),
+  # and of a component whose license asks that its source be
   # available (NSIS), in the runtime's own notices/sources/, which every
   # app copies, and as one .tar.gz that each release publishes beside
   # that platform's runtime. The runtime's NOTICES names both.

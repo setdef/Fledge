@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of one project's several programs (ADR 024) on Windows:
+# Delivery of one project's several programs on Windows:
 # unpacks what fledge build wrote for examples/programs, checks that the
 # folder holds one copy of the project and one Ruby, and runs both
 # programs from it, with no Ruby anywhere they can reach.

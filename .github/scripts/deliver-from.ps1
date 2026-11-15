@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# The Windows half of deliver-from.sh (ADR 032): on a runner that never
+# The Windows half of deliver-from.sh: on a runner that never
 # ran fledge build, with no Ruby on PATH, no Fledge runtime anywhere, and
 # a hostile Ruby environment, unpacks the builder app, built with
 # build_tools: true and Fledge as a gem, with Expand-Archive into a folder

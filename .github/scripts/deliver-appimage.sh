@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a windowed app's AppImage (ADR 009) on Linux: the
+# Delivery of a windowed app's AppImage on Linux: the
 # .AppImage fledge build wrote for examples/windowed_app, downloaded,
 # made executable, and run as a person runs one, with no Ruby within its
 # reach.

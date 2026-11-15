@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a windowed app (ADR 037, ADR 008) on Windows: unpacks what
+# Delivery of a windowed app on Windows: unpacks what
 # fledge build wrote for examples/windowed_app, checks the identity
 # Windows reads from the program with Windows' own means, and starts it
 # as Explorer would, with no Ruby anywhere it can reach.

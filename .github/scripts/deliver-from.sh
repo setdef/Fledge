@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of fledge build --from (ADR 032), on a runner that never ran
+# Delivery of fledge build --from, on a runner that never ran
 # fledge build, with no Ruby and no Fledge runtime anywhere: unpacks the
 # builder app, built with build_tools: true and Fledge as a gem, into a
 # folder whose name has spaces and characters outside ASCII, has it run

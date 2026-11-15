@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a windowed app's disk image (ADR 009) on macOS: the .dmg
+# Delivery of a windowed app's disk image on macOS: the .dmg
 # fledge build wrote for examples/windowed_app, opened and installed as
 # a person does, with nothing of Fledge or Ruby within the app's reach.
 #

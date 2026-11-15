@@ -5,7 +5,7 @@
 # has never installed Ruby would, and fails unless it behaves. It is
 # deliver.sh's counterpart, with the same checks where Windows has them,
 # and more where Windows has more ways in. CI delivers examples/hello and
-# examples/my_cool_app (ADR 005).
+# examples/my_cool_app.
 #
 #   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Probe PROBE_ARCHIVE -Platform PLATFORM -Expected LINE
 #
@@ -122,7 +122,7 @@ if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing a
 if ((Get-Subsystem $app) -ne 'console') { Fail "$app is not a console program (Windows runs it as $(Get-Subsystem $app))" }
 Write-Host "Unpacked to $root"
 
-# A console app carries version information too (ADR 008): Task Manager
+# A console app carries version information too: Task Manager
 # and Explorer name it by its FileDescription and ProductName, which
 # default to the app's name.
 $info = (Get-Item -LiteralPath $app).VersionInfo

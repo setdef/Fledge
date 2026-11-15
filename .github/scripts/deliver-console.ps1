@@ -29,7 +29,7 @@
 #              does the same to a program on a pseudoconsole, as Windows
 #              Terminal does when a tab closes.
 #
-# And a windowed app (ADR 037) started from a console, as a person types
+# And a windowed app started from a console, as a person types
 # its name into one: like rubyw.exe, it gets no console, and the console
 # does not wait for it.
 #

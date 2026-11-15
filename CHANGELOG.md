@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- In a windowed macOS app, `$LOAD_PATH` names Ruby's standard library in `Contents/Resources`, as `RbConfig` and `$LOADED_FEATURES` do; it named it through `Contents/MacOS/lib`, so `$LOAD_PATH.include?(RbConfig::CONFIG["rubylibdir"])` was false where it is true under `ruby`.
 - A download of a runtime or a gem that slows below 10 kB a second for 30 seconds is given up and tried again, as one that breaks off is; it could hang the build for as long as the server trickled. A download still going after 15 seconds says how far it got every 15 seconds.
 - Builds running at once that need one runtime or gem download it once: the others wait for it, saying so, where they could write over each other's download and fail. The cache keeps an empty `.lock` file beside each file it downloads.
 - On Android, closing a descriptor two `Dir`s hold, as `Dir.for_fd` on another `Dir`'s descriptor does, raises `Errno::EBADF` as on Linux, where bionic's fdsan ended the app. Fledge's Ruby has fdsan warn once in logcat, the level of Android 10, for the whole process, unless the app set a lower one.

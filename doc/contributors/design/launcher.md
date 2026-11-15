@@ -38,7 +38,7 @@ On macOS and Linux, `main` in `unix.c` follows Ruby's `main.c` (lines 37 to 63) 
 5. `scrub_environment`: set aside and remove the person's Ruby settings.
 6. `fledge_coerce_locale` (see "The locale").
 7. `ruby_sysinit`, then `build_ruby_arguments` (see "Ruby's arguments").
-8. `ruby_start_main(run_ruby, ...)`. `run_ruby` runs `RUBY_INIT_STACK`, `ruby_init`, and `ruby_options`. When the node is executable, it runs `pin_rubygems`; for an app with a Gemfile, `setup_bundler`, `pin_rubygems` again, and `bundle_environment`. Then `restore_environment`, and `ruby_run_node`.
+8. `ruby_start_main(run_ruby, ...)`. `run_ruby` runs `RUBY_INIT_STACK`, `ruby_init`, and `ruby_options`. When the node is executable, it runs, on macOS, `name_load_path_by_real_paths` (see "The app folder in a macOS bundle"), then `pin_rubygems`; for an app with a Gemfile, `setup_bundler`, `pin_rubygems` again, and `bundle_environment`. Then `restore_environment`, and `ruby_run_node`.
 
 The Windows sequence is in "Windows".
 
@@ -216,9 +216,13 @@ Files of the app are opened with `\\?\` paths where they may pass `MAX_PATH`.
 
 In a windowed macOS app the launcher is `NAME.app/Contents/MacOS/NAME`, beside links to `../Resources/app`, `bin`, `fledge.cfg`, `lib`, and `libexec` (`Fledge::MacBundle::LINKED`), and Ruby's prefix is `Contents/Resources`. Ruby resolves links in the main script's path for `__dir__` and keeps the path it was given for `$0` and `__FILE__` (`ruby.c`, lines 2688 to 2698). Run through the link, `$0` would name `Contents/MacOS/app/main.rb` and `__dir__` `Contents/Resources/app`, and `File.dirname(__FILE__) == __dir__` would be false.
 
-So `find_app_folder` names `ROOT/app` by `realpath` once, and the launcher runs ENTRY there and sets up Bundler with the Gemfile and `.bundle/config` there. In a bundle, `$0`, `__FILE__`, `__dir__`, `RbConfig::CONFIG["prefix"]`, `RbConfig.ruby`, and `BUNDLE_GEMFILE` all name `Contents/Resources`. Everywhere else ROOT is already real and `app` a real folder, so nothing changes. When `app` is missing the path stays `ROOT/app`, for the message.
+So `find_app_folder` names `ROOT/app` by `realpath` once, and the launcher runs ENTRY there and sets up Bundler with the Gemfile and `.bundle/config` there. When `app` is missing the path stays `ROOT/app`, for the message.
 
-Two ways were not taken. Resolving the whole entry path would also resolve a link inside the project, such as `bin/tool` pointing at `../exe/tool`, and make `$0` the link's target where `ruby bin/tool` keeps `bin/tool`. Moving the app into `Contents/MacOS` would put files that are not code where Apple's tools expect only code.
+`$LOAD_PATH` has the same trouble. Ruby takes its prefix from the launcher's real path, `Contents/MacOS` (`ruby.c`, lines 640 to 767), so its own entries would name `Contents/MacOS/lib/ruby/...` through the link, while `require` loads each file by the real path of its folder (`load.c`, line 99), so `__FILE__`, `$LOADED_FEATURES`, and `rbconfig.rb`'s `TOPDIR` name `Contents/Resources`, and `$LOAD_PATH.include?(RbConfig::CONFIG["rubylibdir"])`, true under `ruby`, would be false. So on macOS, once `ruby_options` returns, `name_load_path_by_real_paths` replaces each entry that holds Ruby's mark, `@gem_prelude_index`, with its real path, the real path of the nearest existing folder above it for an entry that does not exist, such as `site_ruby`, and gives the new entry the mark, which RubyGems reads to put a gem's paths before Ruby's own (`rubygems.rb`, `load_path_insert_index`), as `ruby.c` does when it replaces an entry itself (lines 2553 to 2568). Ruby has loaded only its own files by then, by their real paths, so nothing loads twice.
+
+In a bundle, then, `$0`, `__FILE__`, `__dir__`, `$LOAD_PATH`, `$LOADED_FEATURES`, `RbConfig::CONFIG["prefix"]`, `RbConfig.ruby`, and `BUNDLE_GEMFILE` all name `Contents/Resources`. Everywhere else ROOT is already real and `app` and `lib` real folders, so nothing changes; the windowed parity check, which starts a bundle through Launch Services, compares `$LOAD_PATH` with `ruby main.rb`'s.
+
+Three ways were not taken. Resolving the whole entry path would also resolve a link inside the project, such as `bin/tool` pointing at `../exe/tool`, and make `$0` the link's target where `ruby bin/tool` keeps `bin/tool`. Moving the app into `Contents/MacOS` would put files that are not code where Apple's tools expect only code, and moving Ruby's `lib` there, to make `Contents/MacOS` the prefix, would do the same with the standard library's Ruby files. A bundle's executable cannot be a link to a launcher in `Contents/Resources`, since `codesign` seals the main executable as a file.
 
 A console program of a project with a windowed one lives in `Contents/MacOS` too, linked from the app's folder; `darwin.c`'s `realpath` resolves that link to the bundle.
 

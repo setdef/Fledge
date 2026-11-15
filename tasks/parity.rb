@@ -234,7 +234,7 @@ class Parity
       results << check(" under LC_ALL=C", nil, locale: { "LC_ALL" => "C" })
       results << check(" under LC_CTYPE=C", nil, locale: { "LC_CTYPE" => "C" })
     end
-    results << (WITHOUT_WINDOWED.include?(platform.name) ? skip_windowed : check_windowed)
+    results << check_windowed
     results << (WITHOUT_GEM_APP.include?(platform.name) ? skip_bundle : check_bundle)
     results << check_bundle(BUNDLED_WITH_APP, "bundled_with", "BundledWith", " of an app whose lockfile names another Bundler")
     results.all?
@@ -246,19 +246,6 @@ class Parity
   # not knowing aarch64-w64-windows-gnu (doc/contributors/design/parity.md,
   # "The gem-shaped run").
   WITHOUT_GEM_APP = %w[aarch64-mingw-ucrt].freeze
-
-  # Platforms the windowed check is off on, for now, as a defect: in a
-  # macOS bundle $LOAD_PATH names Ruby's library through
-  # Contents/MacOS/lib, where RbConfig and every file Ruby loads name
-  # Contents/Resources (doc/contributors/design/parity.md, "The windowed
-  # check"). The fix of the launcher turns it back on.
-  WITHOUT_WINDOWED = %w[arm64-darwin].freeze
-
-  private def skip_windowed
-    @out.puts "Parity on #{platform} of a windowed app, started as the desktop starts one: not checked, as a " \
-      "bundle's $LOAD_PATH is a known defect there (doc/contributors/design/parity.md, \"The windowed check\")"
-    true
-  end
 
   private def skip_bundle
     @out.puts "Parity of a gem-shaped app with bundle exec on #{platform}: not checked, as sqlite3 cannot be " \

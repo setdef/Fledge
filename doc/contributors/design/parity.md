@@ -65,7 +65,6 @@ A windowed app is started by the desktop, with the desktop's environment, locale
 
 On Windows, Ruby's locale differs: with no console it is the ANSI code page, which the launcher's manifest makes UTF-8 (`doc/contributors/design/launcher.md`, "The locale"), where RubyInstaller's `rubyw.exe` keeps the system's, such as Windows-1252, whose encoding's extension, such as `enc/windows_1252.so`, it then loads, where UTF-8 is built into Ruby. `Parity::JUSTIFIED` allows both for the windowed check on Windows alone; the code page itself, in the `Windows` fact, differs in every check. CI's Linux Test jobs install gio from the runner's own GLib, and the musl Parity jobs Alpine's (`.github/scripts/alpine-packages.sh parity`). On a Linux computer without gio the check stops and says which package to install.
 
-**A defect: the check is off on macOS** (`Parity::WITHOUT_WINDOWED`). In a bundle, Ruby builds `$LOAD_PATH` from the real path of the launcher, `Contents/MacOS/NAME`, so its entries read `Contents/MacOS/lib/ruby/...` through the link to `Contents/Resources/lib` (`ruby.c`, lines 640 to 743), while `require` loads each file by its real path (`load.c`, line 99), so `__FILE__`, `$LOADED_FEATURES`, and `RbConfig` name `Contents/Resources`; under `ruby main.rb` they name one folder. The change to the launcher that fixes it turns the check on there.
 
 ## Comparing two reports
 

@@ -55,9 +55,11 @@
  *      false until the app enables it, as under ruby. ROOT/app is named
  *      by its real path, which in a macOS .app is Contents/Resources/app
  *      (find_app_folder).
- *   5. Once Ruby has booted and before ENTRY runs, it fixes RubyGems'
- *      paths, and for an app with a Gemfile has Bundler set up the app's
- *      gems, as bundle exec would (setup_bundler, ADR 095).
+ *   5. Once Ruby has booted and before ENTRY runs, it names Ruby's own
+ *      $LOAD_PATH by real paths on macOS (name_load_path_by_real_paths),
+ *      fixes RubyGems' paths, and for an app with a Gemfile has Bundler
+ *      set up the app's gems, as bundle exec would (setup_bundler, ADR
+ *      095).
  *   6. Then it puts the variables of step 2 back, so ENV and the app's
  *      child processes see what they would see without Fledge: as they
  *      were (restore_environment), or for an app with a Gemfile beneath
@@ -267,6 +269,43 @@ pin_rubygems(void)
     if (state != 0) fail("could not start RubyGems");
 }
 
+#ifdef __APPLE__
+/*
+ * Names each of Ruby's own entries of $LOAD_PATH by its real path. In a
+ * macOS .app this program is Contents/MacOS/NAME, and lib beside it a
+ * link to Contents/Resources/lib (Fledge::MacBundle). ruby_init_loadpath
+ * takes the prefix from this program's real path (ruby.c lines 640 to
+ * 767 at Ruby 4.1.0-preview1), so it names the standard library through
+ * the link, while require loads each file by the real path of its
+ * folder (load.c line 99), so __FILE__, $LOADED_FEATURES, and RbConfig
+ * name Contents/Resources: under ruby main.rb they all name one folder.
+ * Each entry keeps Ruby's mark, @gem_prelude_index, which RubyGems reads
+ * to put a gem's paths before Ruby's own, as ruby.c keeps it when it
+ * replaces an entry itself (lines 2553 to 2568). An entry that does not
+ * exist, such as a site_ruby folder, takes the real path of the nearest
+ * folder above it that does. Outside a bundle ROOT is real and lib a
+ * real folder, so nothing changes (doc/contributors/design/launcher.md,
+ * "The app folder in a macOS bundle").
+ */
+static void
+name_load_path_by_real_paths(void)
+{
+    int state = 0;
+
+    rb_eval_string_protect("$LOAD_PATH.map! do |path|\n"
+                           "  next path unless path.instance_variable_defined?(:@gem_prelude_index)\n"
+                           "  found = path\n"
+                           "  found = File.dirname(found) until File.exist?(found) || File.dirname(found) == found\n"
+                           "  real = (File.realpath(found) + path[found.size..]).force_encoding(path.encoding)\n"
+                           "  next path if real == path\n"
+                           "  real.instance_variable_set(:@gem_prelude_index, real)\n"
+                           "  real.freeze\n"
+                           "end",
+                           &state);
+    if (state != 0) fail("could not start this app");
+}
+#endif
+
 /* The folder this program lives in, what its fledge.cfg says, and the
  * app folder beside it, ROOT/app, as it really is (find_app_folder). */
 static char root[PATH_MAX];
@@ -437,7 +476,8 @@ static int ruby_argc;
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
  *   43) at Ruby v4.1.0-preview1 (2d08b5f42f), as Lota's launcher spike
- *   first did (setdef/lota, ADR 002), with pin_rubygems, setup_bundler,
+ *   first did (setdef/lota, ADR 002), with name_load_path_by_real_paths
+ *   on macOS, pin_rubygems, setup_bundler,
  *   bundle_environment, and restore_environment between ruby_options and
  *   ruby_run_node.
  */
@@ -448,6 +488,9 @@ run_ruby(int argc, char **argv)
     ruby_init();
     void *node = ruby_options(argc, argv);
     if (ruby_executable_node(node, NULL)) {
+#ifdef __APPLE__
+        name_load_path_by_real_paths();
+#endif
         pin_rubygems();
         if (app_config.gemfile != NULL) {
             setup_bundler();

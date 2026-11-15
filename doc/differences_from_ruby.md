@@ -36,7 +36,7 @@ Without it, a gem that hands Ruby's UTF-8 paths to such a function fails once yo
 
 What you can see from Ruby:
 
-- In a windowed app, `Encoding.locale_charmap` is `"CP65001"` and `Encoding.find("locale")` is UTF-8, where `rubyw.exe` gives the system's code page, such as `"CP1252"` and Windows-1252. A console app takes them from the console's code page, as `ruby.exe` does, and the console's code page stays as it was.
+- In a windowed app, `Encoding.locale_charmap` is `"CP65001"` and `Encoding.find("locale")` is UTF-8, where `rubyw.exe` gives the system's code page, such as `"CP1252"` and Windows-1252. So `$LOADED_FEATURES` lacks that code page's encoding, such as `enc/windows_1252.so`, which `rubyw.exe` loads as it boots; UTF-8 is built into Ruby. A console app takes them from the console's code page, as `ruby.exe` does, and the console's code page stays as it was.
 - With `TZ` set to a zone whose name is not ASCII, `Time#zone` is a UTF-8 string, not Windows-1252.
 - A C extension's `fopen` and the C runtime's other narrow functions read UTF-8, because the C runtime's locale is UTF-8 too.
 

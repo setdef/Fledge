@@ -23,8 +23,10 @@ import org.setdef.fledge.FledgeRuby;
 public class MainActivity extends Activity {
     private static boolean started;
 
-    // Loads the library that holds the app's gems' extensions, when it has
-    // any (ADR 022); its constructor registers them with Ruby.
+    // Nothing to load: FledgeRuby loads Ruby's library, and the runtime
+    // loads the app's gems' extensions before Ruby boots. A host that
+    // replaces this file may still load "fledgeruby" and "fledgeext" by
+    // name, as SDL's SDLActivity loads its list.
     @@LOAD_EXTENSIONS@@
 
     @Override

@@ -7,6 +7,7 @@
 
 require "find"
 require_relative "test_helper"
+require_relative "support/fake_extensions"
 require_relative "../lib/fledge/mobile_project"
 
 # doc/contributors/design/public-interface.md, "Frozen for 1.x", and
@@ -125,25 +126,6 @@ class MobileTemplateContractTest < Minitest::Test
     refute_path_exists File.join(android_project(nil), "src", "main", "jniLibs")
   end
 
-  # The app's gems' extensions as Fledge::MobileExtensions gives them to
-  # the project, with a linker that writes the library it is asked for,
-  # since only the NDK links a real one (test/integration/mobile_extensions_build_test.rb).
-  class Extensions
-    def initialize(built)
-      @built = built
-    end
-
-    def call(_tree)
-      @built
-    end
-
-    def shared_library(_built, _build, registration:, into:)
-      FileUtils.mkdir_p(File.dirname(into))
-      File.write(into, File.read(registration))
-      into
-    end
-  end
-
   # Writes the Android project of a script app whose gems' extensions
   # came to +extensions+ (the features registered, and those built as
   # files) for both ABIs, or that has none, and returns its folder.
@@ -152,7 +134,7 @@ class MobileTemplateContractTest < Minitest::Test
     @dirs = [*@dirs, dir]
     app = Fledge::App.at(FakeApp.write(dir).tap { |root| File.write(File.join(root, "fledge.yml"), "identifier: com.example.Hello\n") })
     runtime = FakeRuntime.write_mobile(dir, Fledge::MobilePlatform.find("android"))
-    compiler = extensions && Extensions.new(built(dir, **extensions))
+    compiler = extensions && FakeExtensions.new(built(dir, **extensions))
     Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(dir, "dist"), extensions: compiler).call
   end
 

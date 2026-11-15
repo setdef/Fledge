@@ -184,7 +184,7 @@ module Fledge
       # <tt>-lNAME</tt> found as <tt>libNAME.so</tt> in a <tt>-L</tt> folder,
       # such as SDL3's <tt>libSDL3.so</tt>. An Android app loads native
       # code only from the libraries its package holds, so these go into
-      # it beside <tt>libfledgeext.so</tt>; a name found in no such folder
+      # it beside the extension's library; a name found in no such folder
       # is the system's, as <tt>-llog</tt> is.
       #
       # === Example
@@ -210,8 +210,8 @@ module Fledge
 
       # Copies the shared libraries +flags+ link (Linking.shared_libraries)
       # into the folder +into+, an ABI's <tt>jniLibs</tt>, where the
-      # Android Gradle plugin packs them as it packs
-      # <tt>libfledgeext.so</tt>, and returns their copies' paths.
+      # Android Gradle plugin packs them as it packs the extension's
+      # library, and returns their copies' paths.
       #
       # === Example
       #

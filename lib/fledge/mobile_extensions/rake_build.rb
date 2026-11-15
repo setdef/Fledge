@@ -32,7 +32,8 @@ module Fledge
     # names each extension by its folder's place in the gem's require
     # paths. A Rakefile that builds nothing gives no extension. Any other
     # shared library the build leaves, such as one for Ruby's ffi, is
-    # refused by name, since a phone app opens no library at run time.
+    # refused by name, since Fledge ships no other library such a build
+    # leaves.
     #
     # Use it from Fledge::MobileExtensions, once for each target and each
     # extension Rake builds.
@@ -179,8 +180,8 @@ module Fledge
         return if paths.empty?
 
         raise Error, "#{gem}'s #{File.basename(extension)} linked #{File.basename(paths.first)} for #{target.name}, a shared library " \
-          "that is not an extension mkmf built, as a library for Ruby's ffi is not. A phone app opens no library at " \
-          "run time, so Fledge links in the extensions a Rakefile builds with mkmf, and nothing else. Leave the gem " \
+          "that is not an extension mkmf built, as a library for Ruby's ffi is not. Fledge links in the extensions a " \
+          "Rakefile builds with mkmf, and ships no other library such a build makes. Leave the gem " \
           "out of the app's phone build (gem \"#{gem.name}\", platforms: [...] in the Gemfile)."
       end
 

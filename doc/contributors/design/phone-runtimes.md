@@ -149,7 +149,7 @@ The lookup reaches app gems' extensions and bundled gems' alike, and needs no ne
 
 ## The embedding API
 
-`runtime/mobile/fledge_ruby.h` is the embedding API, in C, compiled into both runtimes with `fledge_ruby.c`, `output.c`, `apple.c` or `android.c`, and the launcher's `locale.c`, `config.c`, and `bundler.c`. Its header comments are the reference for each function.
+`runtime/mobile/fledge_ruby.h` is the embedding API, in C, compiled into both runtimes with `fledge_ruby.c`, `output.c`, `apple.c` or `android.c` with `library_links.c`, and the launcher's `locale.c`, `config.c`, and `bundler.c`. Its header comments are the reference for each function.
 
 | Function | What it does |
 |---|---|
@@ -164,7 +164,7 @@ The lookup reaches app gems' extensions and bundled gems' alike, and needs no ne
 
 So the launcher's work is written once, in C, beside the code the desktop launcher runs: `runtime/launcher/config.c` is compiled into both phone runtimes, so a change to how the launcher reads `fledge.cfg` reaches the phones with it, and a host is two calls, forward the output and run the app, wherever its framework runs the main function (`doc/contributors/design/phone-projects.md`, "A host that owns the main loop"). Each host could instead read the program and the Gemfile from its `Info.plist` or manifest and call Bundler itself, which would put the work in two hosts, in Objective-C and Java, and in every framework's host. A boot script that set up Bundler and `load`ed the program would make `$0` and every backtrace name a file the app never had, unlike `bundle exec ruby main.rb` (decision 10). The embedding API is part of the runtime, so a change to it changes every phone runtime, and its functions are only ever added. The `mobile-apps-ios` and `mobile-apps-android` jobs run `examples/hello`, `examples/mobile_app`, whose gems Bundler sets up, `test/fixtures/mobile_hello`, and the parity probe through `fledge_ruby_run_app`, and `test/integration/mobile_output_test.rb` compiles `fledge_ruby.c` with the launcher's `config.c` and runs it against the Ruby that runs the tests.
 
-On Android, `fledge_ruby_run` first opens `libfledgeext.so`, when the app has one, from beside `libfledgeruby.so` (`fledge_ruby_load_extensions`), before Ruby has started, so that its constructor's `fledge_ruby_add_extension` calls count, whether or not the host loaded it (`doc/contributors/design/phone-projects.md`, "Linking extensions on Android"); then it makes `root/bin/ruby` a link to the runtime's ruby program (see "The ruby program on Android").
+On Android, `fledge_ruby_run` first opens `libfledgeext.so`, when the app has one, from beside `libfledgeruby.so` (`fledge_ruby_load_extensions`), before Ruby has started, so that its constructor's `fledge_ruby_add_extension` calls count, whether or not the host loaded it; then it makes `root/bin/ruby` a link to the runtime's ruby program (see "The ruby program on Android"), and each path `root/fledge.links` lists a link to the app's native library it names (`fledge_link_libraries`, `library_links.c`; `doc/contributors/design/phone-projects.md`, "Linking extensions on Android").
 
 Unlike the desktop launcher, neither function sets anything of the environment aside: iOS and Android start an app with an environment of their own, which no person sets. Ruby needs a deep stack: Fledge's hosts run it on a thread with 64 MB.
 

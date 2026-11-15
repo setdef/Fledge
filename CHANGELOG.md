@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - On Android, the runtime loads `libfledgeext.so`, the library of the app's gems' extensions, itself before Ruby boots, so a framework's own host need not name it; a host that does keeps working unchanged.
 
+### Changed
+
+- On Android, a gem's C or C++ extension that an `extconf.rb` builds ships as a native library of the app's own, `libfledgeext.FEATURE.so`, which Ruby loads from where a desktop has its file, as a desktop's Ruby does, so `$LOADED_FEATURES` names that path; it had been linked into `libfledgeext.so`. Such an extension needs the Gradle project's `useLegacyPackaging = true`, which `fledge build android` writes. `libfledgeext.so` is still in every app with a compiled extension, for a host that names it, holding whatever is still linked in, and Fledge's own `MainActivity` no longer loads it.
+
 ### Fixed
 
 - When a lockfile has no checksum for the Bundler it names, `fledge build` says to run `gem install bundler -v VERSION`, then `bundle lock --add-checksums`; the `bundle install` it advised wrote no checksum when the lockfile's Bundler is the one that came with Ruby.

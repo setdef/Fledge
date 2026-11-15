@@ -7,7 +7,7 @@
 
 # A path gem with a C and C++ extension (ADR 022). Bundler compiles none
 # of a path gem's extensions; fledge build ios and fledge build android
-# compile this one for each phone's targets and link it into the app.
+# compile this one for each of the phone's targets.
 source "https://rubygems.org"
 
 gem "adder", path: "gems/adder"

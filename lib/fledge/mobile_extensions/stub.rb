@@ -22,7 +22,7 @@ module Fledge
     # <tt>lib/adder/adder.bundle</tt>. Bundler's own templates wrote that
     # <tt>require_relative</tt> for a new gem's extension from 2.2.0
     # through 4.0.0 (<tt>lib/bundler/templates/newgem/lib/newgem.rb.tt</tt>,
-    # line 5). A phone's extension is linked in and registered by its
+    # line 5). An extension linked into a phone app is registered by its
     # feature (ADR 022), and Ruby looks one up only by the name a require
     # was given (<tt>search_required</tt>, <tt>load.c</tt> lines 1199 to
     # 1218), but for the phones' edit to that lookup, which turns a path

@@ -225,7 +225,7 @@ module Fledge
 
         MobileExtensions.new(platform: phone, packages:, build_args: gems.extension_build_args, host:, runtimes:,
           work: File.join(work, "mobile-extensions"), log: @err, gem_dir: contents.gem_dir, env: @env,
-          dependencies: gems.extension_dependencies)
+          dependencies: gems.extension_dependencies, files: phone.name == "android")
       end
 
       # The app's gems, for an app with a Gemfile: Fledge keeps the gems it

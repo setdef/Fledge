@@ -10,3 +10,9 @@
 # identifier is what iOS and Android know it by (ADR 012).
 name: CmakePhone
 identifier: com.setdef.fledge.CmakePhone
+
+# On Android, a host of its own, as a framework that owns startup
+# ships one, which loads the native libraries a host may name in a
+# fixed list (host/android).
+android:
+  host: host/android

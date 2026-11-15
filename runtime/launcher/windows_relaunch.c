@@ -31,7 +31,7 @@
  * A launcher of this app is a file in ROOT, three folders above this
  * program, whose name ends in .exe, that is no link, that holds
  * FLEDGE_LAUNCHER_MARK (windows.c), and whose section of ROOT\fledge.cfg,
- * the one with its own name less .exe (ADR 024), or the whole file when
+ * the one with its own name less .exe, or the whole file when
  * it has no sections, names an entry that is the script. The mark keeps
  * an installer's uninstall.exe, which sits beside the launcher
  * (Fledge::NSIS::UNINSTALLER), from passing for it in an app of one

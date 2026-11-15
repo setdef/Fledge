@@ -384,7 +384,7 @@ read_config(const char *root, char *text, size_t size, struct fledge_config *con
     }
     text[length] = '\0';
     /* fledge build gives a phone one program, so a file of several
-     * programs' sections (ADR 024) is one this app was not built with. */
+     * programs' sections is one this app was not built with. */
     int parsed = fledge_parse_config(text, NULL, fledge_same_ascii_name, config, &problem);
     if (parsed == FLEDGE_CONFIG_NO_PROGRAM) problem = "has several programs' sections, and a phone's app runs one";
     if (parsed != 0) {

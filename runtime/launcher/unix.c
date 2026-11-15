@@ -35,7 +35,7 @@
  *      per operating system), and reads fledge.cfg there, which names the
  *      program in app/ to run, ENTRY, and the app's Gemfile, if it has one.
  *      In an app of several programs, each a copy of this launcher, it
- *      reads the section of fledge.cfg named as its own file is (ADR 024).
+ *      reads the section of fledge.cfg named as its own file is.
  *      On Linux, it then has the loader look for each library the app's
  *      gems load from the distribution, which fledge.cfg lists, and
  *      names the first one this computer lacks instead of starting Ruby

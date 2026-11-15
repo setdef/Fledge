@@ -5,7 +5,7 @@
 
 /*
  * Reads fledge.cfg, the file fledge build writes beside the launcher to
- * say what the app runs (ADR 005), on every operating system
+ * say what the app runs, on every operating system
  * (doc/contributors/design/launcher.md, "fledge.cfg").
  *
  * The launcher is the same program for every app, and on macOS it is
@@ -25,7 +25,7 @@
  * version of the Bundler that sets it up when that is not the runtime's
  * own (ADR 063), whose gem fledge build installed: letters, digits, and
  * dots, as a gem's version is written. identifier is the app's reverse-DNS
- * name, which the Windows launcher makes its AppUserModelID (ADR 064):
+ * name, which the Windows launcher makes its AppUserModelID:
  * letters, digits, hyphens, and dots, at most FLEDGE_IDENTIFIER_MAX
  * characters. system_libraries, on Linux, names the libraries the app's
  * gems load from the distribution, between spaces, which the launcher
@@ -36,7 +36,7 @@
  * damaged, and it is refused, as is a path that leaves the app folder
  * and an identifier with any other character.
  *
- * An app of several programs (ADR 024) is several copies of the
+ * An app of several programs is several copies of the
  * launcher, each renamed to its program's name, sharing one fledge.cfg.
  * Its Gemfile stays at the top, and each program has a section, headed
  * by its name, as an INI file heads one:

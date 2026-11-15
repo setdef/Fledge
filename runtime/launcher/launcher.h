@@ -96,7 +96,7 @@ struct fledge_config {
 
 /*
  * What fledge_parse_config returns when fledge.cfg holds a section for
- * each of several programs, and none for this one (ADR 024).
+ * each of several programs, and none for this one.
  */
 enum { FLEDGE_CONFIG_NO_PROGRAM = 1 };
 

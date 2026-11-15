@@ -26,7 +26,7 @@
  * folder whose fledge.cfg is this runtime's: the runtime's own folder,
  * or, in a macOS .app, Contents/MacOS, which links fledge.cfg from
  * Contents/Resources (Fledge::MacBundle). Its section of fledge.cfg, the one with its own
- * file name (ADR 024), or the whole file when it has no sections, must
+ * file name, or the whole file when it has no sections, must
  * name the script as its entry. Files are compared as the operating
  * system sees them, by device and inode, so a relative path, a symlink,
  * or the link through Contents/MacOS/app all name the same entry.

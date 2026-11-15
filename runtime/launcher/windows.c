@@ -61,7 +61,7 @@
  *      one, which becomes the process's AppUserModelID
  *      (set_app_user_model_id). In an app of several programs, each a
  *      copy of this launcher, it reads the section of fledge.cfg named as
- *      its own file is, less .exe (ADR 024).
+ *      its own file is, less .exe.
  *   3. Sets aside every environment variable scrub.c names, removing it
  *      from both copies of the environment Ruby reads (see
  *      scrub_environment). The runtime's own lib\ruby\4.1.0+5\rubygems\
@@ -100,7 +100,7 @@
  *
  * Built with -DFLEDGE_WINDOWED and linked with -mwindows, it is a
  * GUI-subsystem program, for windowed apps, which a runtime ships as
- * launcherw.exe beside launcher.exe (ADR 037): Windows opens no console
+ * launcherw.exe beside launcher.exe: Windows opens no console
  * for it, and its own failures appear in a message box unless whoever
  * started it captured standard error.
  */
@@ -611,7 +611,7 @@ windows_path(const char *path)
 
 /*
  * The launcher's file name less its .exe, which names its section of a
- * fledge.cfg of several programs (ADR 024), kept for the life of the
+ * fledge.cfg of several programs, kept for the life of the
  * process, as the launcher's other names are.
  */
 static wchar_t *stem;
@@ -700,8 +700,8 @@ read_config(void)
  * Makes the app's identifier, when fledge.cfg names one, the process's
  * AppUserModelID, before any window opens: the taskbar groups the app's
  * windows under it, and Windows attributes the app's notifications to
- * it, rather than to an identity it derives from the program's path
- * (ADR 064). SetCurrentProcessExplicitAppUserModelID lives in shell32.dll
+ * it, rather than to an identity it derives from the program's path.
+ * SetCurrentProcessExplicitAppUserModelID lives in shell32.dll
  * (shobjidl_core.h), which only such an app loads, from System32, when
  * it starts. A Start menu shortcut with the same System.AppUserModel.ID,
  * which an installer writes, is what lets Windows show the app's toasts;

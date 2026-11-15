@@ -109,13 +109,13 @@ class Parity
       app: [%r{\A"#{APP_GEMS}/gems/(?<file>bundler-.*)\z}],
       checks: %i[bundle],
       reason: "bundle exec runs the Bundler the lockfile names, which bundle install put in the person's GEM_HOME; " \
-        "fledge build put the same Bundler in the runtime's gem folder, and the app runs it (ADR 063). The same files " \
+        "fledge build put the same Bundler in the runtime's gem folder, and the app runs it. The same files " \
         "load, in the same order, from each."),
     *["ENV", "child ENV"].map do |fact|
       Justification.new(fact:, reference: [%r{#{BUNDLER_VARIABLES}#{PERSON_GEMS}/gems/(?<after>bundler-.*)\z}],
         app: [%r{#{BUNDLER_VARIABLES}#{APP_GEMS}/gems/(?<after>bundler-.*)\z}], checks: %i[bundle],
         reason: "bundle exec names the Bundler it runs in BUNDLE_BIN_PATH, BUNDLER_SETUP, RUBYLIB, and RUBYOPT: the " \
-          "lockfile's, in the person's GEM_HOME on their computer and in the runtime's gem folder in the app (ADR 063). " \
+          "lockfile's, in the person's GEM_HOME on their computer and in the runtime's gem folder in the app. " \
           "The rest of each value is the same in both.")
     end,
     *["ENV", "child ENV"].map do |fact|
@@ -152,14 +152,14 @@ class Parity
           "before a restart or after it (doc/contributors/design/launcher.md, \"Bundler's variables spelled otherwise\").")
     end,
     Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
-      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1; ADR 040), " \
+      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1), " \
         "so it cannot change how the app runs; it still reaches the app's ENV and every program the app starts."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"(?:<prefix>/lib/ruby/#{ABI}|#{PERSON_GEMS}/gems/bundler-[^/"]+/lib)/bundler/feature_flag\.rb"\z}o],
       checks: %i[bundle],
       reason: "With no setting that says where the bundle's gems are, Bundler asks its feature flags whether to use " \
         "Ruby's own gem folder; the app's settings say so (path.system, as Warbler's does), so it never asks."),
     Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, %r{\A"<home>/\.(?:gem|local/share/gem)/}],
-      reason: "The app's gems are the runtime's alone (ADR 040): the person's GEM_HOME, GEM_PATH, and " \
+      reason: "The app's gems are the runtime's alone: the person's GEM_HOME, GEM_PATH, and " \
         "Gem.user_dir never shadow them. Their ENV still reaches the app and its child processes."),
     Justification.new(fact: "Gem.dir", reference: [%r{\A"<work>/person-gems"\z}], app: [%r{\A"<prefix>/lib/ruby/gems/#{ABI}"\z}o],
       reason: "As for Gem.path: RubyGems installs into the runtime's gem folder, never the person's GEM_HOME."),
@@ -175,7 +175,7 @@ class Parity
     Justification.new(fact: "Windows", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reference: [/\A"code page"=\d+\z/, /\A"narrow DLL load"="no DLL"\z/],
       app: [/\A"code page"=65001\z/, /\A"narrow DLL load"="loaded"\z/],
-      reason: "The app's program declares UTF-8 as its ANSI code page (ADR 070), where ruby.exe keeps the " \
+      reason: "The app's program declares UTF-8 as its ANSI code page, where ruby.exe keeps the " \
         "system's, so a gem that hands Ruby's UTF-8 paths to a Windows function that reads them in that code " \
         "page, as ffi opens a DLL with LoadLibraryExA, finds the file under a folder named outside ASCII. The " \
         "runtime's ruby.exe, which RbConfig.ruby names, declares it too, so a child Ruby has its parent's code " \
@@ -200,7 +200,7 @@ class Parity
           "runtime's bin/ruby take a UTF-8 locale instead, as Python does under PEP 538. launchd gives a " \
           "double-clicked app no locale at all, and Ruby still boots in the C locale, but it gives a folder " \
           "named outside ASCII in the app's path, or the person's home, three encodings, so Bundler's setup " \
-          "and the app's own code fail for a person who never meets Ruby (Design precedence 1; ADR 087, and " \
+          "and the app's own code fail for a person who never meets Ruby (Design precedence 1; " \
           "doc/contributors/research/2026-11-13-c-locale.md, Verdict). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
           "nothing is exported: ENV and every program the app starts see the person's own locale.")
     end,

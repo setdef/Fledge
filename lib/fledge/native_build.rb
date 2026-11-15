@@ -28,7 +28,7 @@ module Fledge
   # no desktop gem.
   #
   # This class unpacks the runtime, which holds Ruby's headers and the
-  # library mkmf links against (ADR 085), into the build's work folder,
+  # library mkmf links against, into the build's work folder,
   # and runs the runtime's own Ruby, with none of the developer's Ruby settings, to install each
   # gem as RubyGems installs one (Gem::Installer, with the options
   # <tt>bundle config build.NAME</tt> gives) into a gem folder of its own,

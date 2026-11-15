@@ -16,8 +16,7 @@ module Fledge
     # The runtime's own Ruby, unpacked into the build's work folder, which
     # runs SCRIPT with none of the developer's Ruby settings and its own
     # gem folder. The runtime alone has what compiling a gem's extension
-    # needs of Ruby: its headers and the library mkmf links against
-    # (ADR 085).
+    # needs of Ruby: its headers and the library mkmf links against.
     class RuntimeRuby # :nodoc:
       # The Ruby of +platform+'s runtime, which +runtimes+ finds, unpacked
       # under +work+ when it first runs, its output going to +log+, in an

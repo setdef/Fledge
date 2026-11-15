@@ -24,7 +24,7 @@ module Fledge
   # against it, as SPDX 2.3, annex D, reads one: +OR+ takes the least
   # restrictive alternative, +AND+ the most restrictive part, and +WITH+
   # an allowed exception makes the license it follows notice-only. The
-  # license audit judges every runtime with it (ADR 004).
+  # license audit judges every runtime with it.
   #
   # Use it to ask whether a license may ship.
   #

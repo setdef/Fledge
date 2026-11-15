@@ -35,7 +35,7 @@ module Fledge
   # (ar) is code that links nothing, since what matters about it is that
   # its code would be copied into whatever links it; no tool is asked.
   #
-  # Use it to audit a runtime (ADR 004), to check that an app's native
+  # Use it to audit a runtime, to check that an app's native
   # gems will load (Fledge::Linkage), and to check a compiled gem against
   # its platform's oldest system (Fledge::NativeBuild).
   #

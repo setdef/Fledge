@@ -55,7 +55,7 @@ module Fledge
     # libraries it provides, which an app need not ship. On musl Linux,
     # those PEP 656 lets a musllinux_1_2 wheel assume, auditwheel 6.8.2's
     # <tt>musllinux-policy.json</tt>: musl's C library, by its own name
-    # and Alpine's, and zlib (ADR 017). On Linux, the
+    # and Alpine's, and zlib. On Linux, the
     # libraries PEP 600 lets a manylinux_2_39 wheel assume of every
     # distribution with glibc 2.39, Fledge's floor (decision 7):
     # auditwheel 6.4.2's <tt>manylinux-policy.json</tt>,

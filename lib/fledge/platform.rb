@@ -199,7 +199,7 @@ module Fledge
     end
 
     # Whether the platform is Linux with musl's C library in place of
-    # glibc's, as Alpine is (ADR 017).
+    # glibc's, as Alpine is.
     #
     # === Example
     #

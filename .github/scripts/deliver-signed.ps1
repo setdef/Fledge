@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a signed Windows build (ADR 016): examples/hello and
+# Delivery of a signed Windows build: examples/hello and
 # examples/windowed_app, built with fledge build --sign and CI's test
 # certificate (make-test-identity.ps1), checked on a fresh Windows with
 # Microsoft's own signtool.
@@ -19,7 +19,7 @@
 # uninstall it; and the signed program must still run. Nothing here may
 # need Ruby.
 #
-# The same apps signed through fledge build --sign-command (ADR 051) are
+# The same apps signed through fledge build --sign-command are
 # checked the same way after the first run has trusted the certificate,
 # with -Trusted, which skips the refusal the first run proved.
 

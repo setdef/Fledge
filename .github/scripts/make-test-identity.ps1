@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Makes a code signing certificate for CI on Windows (ADR 016): a
+# Makes a code signing certificate for CI on Windows: a
 # self-signed one, made fresh, in the current user's store, where
 # signtool /sha1 finds it, and trusted in the computer's root store, so
 # signtool can verify what it signs. No CI runner has a certificate a

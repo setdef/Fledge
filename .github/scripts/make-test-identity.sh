@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Makes a code signing identity for CI on macOS (ADR 016): a self-signed
+# Makes a code signing identity for CI on macOS: a self-signed
 # certificate, made fresh, with its key, in a temporary keychain that
 # codesign searches, and trusted for code signing in the runner's system
 # keychain, as a Developer ID is trusted on every Mac. No CI runner has

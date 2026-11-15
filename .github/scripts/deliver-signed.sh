@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a signed macOS build (ADR 016): examples/hello and
+# Delivery of a signed macOS build: examples/hello and
 # examples/windowed_app, built with fledge build --sign and CI's test
 # identity (make-test-identity.sh), checked on a fresh Mac with Apple's
 # own codesign, and run.

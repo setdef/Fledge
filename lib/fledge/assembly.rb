@@ -233,7 +233,7 @@ module Fledge
     # which platform, such as <tt>0.5.0 for x86_64-linux</tt>. Given
     # +bundler+, a version, it names the Bundler the app's gems are set up
     # with, which the build installed in the runtime's gem folder, in place
-    # of the runtime's own (ADR 063). Raises
+    # of the runtime's own. Raises
     # Fledge::Error for a program or Gemfile whose name the file cannot
     # hold.
     #

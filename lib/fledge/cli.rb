@@ -16,7 +16,7 @@ module Fledge
   # message and an exit status, never a backtrace. GNU's and the BSDs'
   # conventions tell the two kinds of mistake apart: a usage error
   # prints a short usage to standard error and exits with status 2, and a
-  # failed operation exits with status 1 (ADR 002). Spread across an
+  # failed operation exits with status 1. Spread across an
   # executable, that logic is hard to test and easy to let drift from
   # the help text.
   #

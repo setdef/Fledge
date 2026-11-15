@@ -7,85 +7,20 @@
 
 require_relative "test_helper"
 require_relative "support/binaries"
-require_relative "support/gems"
-require_relative "support/loopback_server"
-require "stringio"
+require_relative "support/gem_app_build"
 
 # fledge build for a gem-shaped app (ADR 005), through real streams: real
 # .gem files, built by RubyGems, served by a real HTTP server at the
 # lockfile's remote, into fake runtimes.
 class GemAppBuildTest < Minitest::Test
-  def setup
-    @dir = Dir.mktmpdir
-    FileUtils.mkdir_p(File.join(@dir, ".git"))
-    @runtimes = File.join(@dir, "runtimes")
-    FileUtils.mkdir_p(@runtimes)
-    Fledge::Platform.names.each { |name| FakeRuntime.write(@runtimes, Fledge::Platform.find(name)) }
-    @gems = File.join(@dir, "gems")
-    FileUtils.mkdir_p(@gems)
-    @routes = {}
-    @server = LoopbackServer.new(@routes)
-  end
-
-  def teardown
-    @server.stop
-    FileUtils.rm_rf(@dir)
-  end
-
-  def serve(*gems)
-    gems.each { |gem| @routes["/gems/#{gem.file_name}"] = [200, {}, File.binread(gem.path)] }
-  end
-
-  def project(dependencies:, locked:, **)
-    serve(*locked)
-    FakeProject.write(@dir, dependencies:, locked:, remote: @server.url("/"), **)
-  end
-
-  def build(*argv, host: "x86_64-linux")
-    out = StringIO.new
-    err = StringIO.new
-    env = { "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache") }
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host)).call(argv) }
-    [out.string, err.string, status]
-  end
+  include GemAppBuild
 
   def test_the_locked_gems_ship_for_each_platform_beside_the_runtimes_own
-    bar = FakeGem.build(@gems, "bar", "2.0.0")
-    foo = FakeGem.build(@gems, "foo", "1.0.0", dependencies: { "bar" => ">= 0" }, plugin: true)
-    linux = FakeGem.build(@gems, "native", "1.0.0", platform: "x86_64-linux-gnu", licenses: ["BSD-3-Clause"])
-    windows = FakeGem.build(@gems, "native", "1.0.0", platform: "x64-mingw-ucrt", licenses: ["BSD-3-Clause"])
-    csv = FakeGem.build(@gems, "csv", "3.3.5", licenses: %w[Ruby BSD-2-Clause])
-    root = project(dependencies: { "foo" => "~> 1.0", "native" => ">= 0", "csv" => ">= 0" },
-      locked: [bar, foo, linux, windows, csv], locked_dependencies: { foo.lock_name => ["bar (>= 0)"] })
+    root, linux, = locked_gems_project
 
     out, err, status = build(File.join(root, "exe/my_app"))
     assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    folders = { "dist/MyApp-x86_64-linux" => ["lib/ruby/gems/4.1.0+5", linux] }
-    if FakeRuntime.windows
-      out, windows_err, status = build(File.join(root, "exe/my_app"), host: "x64-mingw-ucrt")
-      assert_equal [0, "dist/MyApp-x64-mingw-ucrt.zip\n"], [status, out], windows_err
-      folders["dist/MyApp-x64-mingw-ucrt"] = ["ruby/lib/ruby/gems/4.1.0+5", windows]
-    end
-
-    folders.each do |folder, (gem_dir, native)|
-      gems = File.join(@dir, folder, gem_dir)
-      assert_equal "# foo\n", File.read(File.join(gems, "gems/foo-1.0.0/lib/foo.rb"))
-      assert_path_exists File.join(gems, "gems/bar-2.0.0/lib/bar.rb")
-      assert_path_exists File.join(gems, "gems/native-1.0.0-#{native.platform}/lib/native.rb")
-      assert_equal File.binread(native.path), File.binread(File.join(gems, "cache/native-1.0.0-#{native.platform}.gem"))
-      spec = Gem::Specification.load(File.join(gems, "specifications/foo-1.0.0.gemspec"))
-      assert_equal ["foo", "1.0.0", ["bar"]], [spec.name, spec.version.to_s, spec.dependencies.map(&:name)]
-      assert_equal "require_relative '../gems/foo-1.0.0/lib/rubygems_plugin.rb'\n", File.read(File.join(gems, "plugins/foo_plugin.rb"))
-      refute_path_exists File.join(gems, "gems/csv-3.3.5"), "the runtime's own csv 3.3.5 stays the runtime's"
-
-      assert_equal "foo is MIT\n", File.read(File.join(gems, "gems/foo-1.0.0/LICENSE.txt")), "a gem's own notices ship in its folder"
-      refute_path_exists File.join(@dir, folder, "notices/GEMS.txt"), "Fledge writes no notices of its own for the app's gems"
-
-      assert_equal "#{Fledge::Bundle::SETTINGS}BUNDLE_WITHOUT: \"\"\nBUNDLE_WITH: \"\"\n", File.read(File.join(@dir, folder, "app/.bundle/config"))
-      gemspec = File.read(File.join(@dir, folder, "app/my_app.gemspec"))
-      refute_includes gemspec, "git ls-files", "the gemspec ships evaluated, so it needs no git"
-      assert_includes gemspec, "s.name = \"my_app\""
-    end
+    assert_the_locked_gems_ship("dist/MyApp-x86_64-linux", "lib/ruby/gems/4.1.0+5", linux)
     assert_equal 1, err.scan("Downloading native-1.0.0-x86_64-linux-gnu.gem from #{@server.url('/')}").size
     assert_equal 1, @server.requests.count("/gems/foo-1.0.0.gem"), "a gem downloaded once is taken from the cache"
   end

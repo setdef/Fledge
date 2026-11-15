@@ -15,8 +15,8 @@ require "tmpdir"
 
 # Builds runtime archives shaped like the ones rake runtime writes, small
 # enough for a unit test: a launcher that is a shell script (on Windows,
-# the real Windows runtime's launchers and rcedit when they are at hand,
-# FakeRuntime.windows), a library file, Ruby's rbconfig.rb and a default
+# the real Windows runtime's launchers and rcedit when they are at hand
+# in an integration test, FakeRuntime.windows), a library file, Ruby's rbconfig.rb and a default
 # gem's specification where a real runtime keeps them, and, except on
 # Windows, whose runtimes hold none, a symlink, under one top folder.
 module FakeRuntime
@@ -122,10 +122,19 @@ module FakeRuntime
     windows || [Fledge::Entry.file("launcher.exe", WINDOWS_CONSOLE, mode: 0o755), Fledge::Entry.file("launcherw.exe", WINDOWS_GUI, mode: 0o755)]
   end
 
+  class << self
+    # Whether the running test is an integration test, which may read a
+    # runtime a build left behind (CONTRIBUTING.md, "The tests"); a unit
+    # test never does, so its verdict does not depend on what the
+    # checkout holds. Tier sets it before each test.
+    attr_accessor :real
+  end
+
   # The launchers and rcedit of the real Windows runtime, in
-  # FLEDGE_RUNTIME_DIR or tmp/runtime, on Windows, where they run; or nil.
+  # FLEDGE_RUNTIME_DIR or tmp/runtime, on Windows, where they run, for an
+  # integration test (FakeRuntime.real); or nil.
   def self.windows
-    return nil unless Gem.win_platform?
+    return nil unless Gem.win_platform? && real
     return @windows if defined?(@windows)
 
     runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../tmp/runtime", __dir__))
@@ -179,10 +188,12 @@ module TestReaders
     RUBY_PLATFORM.include?("darwin") ? "darwin" : "linux"
   end
 
-  # The readers, all of them.
+  # The readers, all of them: with the real Windows runtime's
+  # llvm-readobj only in an integration test (FakeRuntime.real).
   def self.all
-    @all ||= begin
-      local = Fledge::Binary::Readers.local(os, readobj:)
+    @all ||= {}
+    @all[FakeRuntime.real] ||= begin
+      local = Fledge::Binary::Readers.local(os, readobj: (readobj if FakeRuntime.real))
       llvm = ENV.fetch("FLEDGE_LLVM", "")
       llvm.empty? ? local : local.merge(Fledge::Binary::Readers.llvm(llvm))
     end
@@ -225,3 +236,18 @@ module FakeApp
     root
   end
 end
+
+# Each test's tier is its file's folder (tasks/test_tiers.rb), and only
+# an integration test may read a runtime a build left behind
+# (FakeRuntime.real), so a unit test gives the same verdict whatever
+# tmp/runtime holds.
+module Tier
+  INTEGRATION = File.join(__dir__, "integration", "")
+
+  def before_setup
+    file = self.class.instance_method(name).source_location.first
+    FakeRuntime.real = File.expand_path(file).start_with?(INTEGRATION)
+    super
+  end
+end
+Minitest::Test.prepend(Tier)

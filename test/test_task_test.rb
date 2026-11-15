@@ -57,6 +57,13 @@ class TestTaskTest < Minitest::Test
     end
   end
 
+  # A unit test reads no runtime a build left behind, so its verdict does
+  # not depend on what tmp/runtime holds (test/integration/tier_test.rb).
+  def test_a_unit_test_may_not_read_a_runtime_a_build_left_behind
+    refute FakeRuntime.real
+    assert_nil FakeRuntime.windows
+  end
+
   def test_each_task_runs_its_tier
     assert_equal TestTiers.files(:unit, ROOT), files("test")
     assert_equal TestTiers.files(:integration, ROOT), files("test:integration")

@@ -27,7 +27,6 @@ if command -v mise >/dev/null 2>&1; then
     mise x -- bundle config set --local path "$BUNDLE_PATH"
   fi
   mise x -- bundle install
-  mise x -- pre-commit install
   mise x -- bundle exec rake rdoc
 else
   echo "mise isn't installed. Please install it to continue." >&2

@@ -43,5 +43,4 @@ if ($workspaceBundle) {
   Invoke-Checked mise @("x", "--", "bundle", "config", "set", "--local", "path", $env:BUNDLE_PATH)
 }
 Invoke-Checked mise @("x", "--", "bundle", "install")
-Invoke-Checked mise @("x", "--", "pre-commit", "install")
 Invoke-Checked mise @("x", "--", "bundle", "exec", "rake", "rdoc")

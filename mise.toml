@@ -30,7 +30,6 @@ ruby.compile = false
 # the Windows runtimes' own Ruby instead.
 ruby = { version = "4.1.0-preview1", os = ["linux", "macos"] }
 python = "3.12"
-pre-commit = "latest"
 uv = "0.13.4"
 # The REUSE tool checks licensing (rake reuse:lint). charset-normalizer, pure
 # Python, detects file encodings without libmagic, which python-magic needs.

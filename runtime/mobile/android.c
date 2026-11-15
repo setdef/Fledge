@@ -37,7 +37,9 @@
  * app's Ruby boots, and fledge_ruby_program_main is its main function.
  * With it, each link ROOT/fledge.links lists, from where the app's Ruby
  * looks for a file to a native library of the app's
- * (fledge_link_libraries, library_links.c).
+ * (fledge_link_libraries, library_links.c). And before Ruby boots, the
+ * library of the app's linked extensions, libfledgeext.so
+ * (fledge_ruby_load_extensions).
  */
 
 #include "fledge_ruby.h"
@@ -56,12 +58,10 @@
 #include <unistd.h>
 
 /*
- * The runtime's ruby program, and the library of an app's gems'
- * extensions, as the package installer extracts them beside
- * libfledgeruby.so.
+ * The runtime's ruby program, as the package installer extracts it
+ * beside libfledgeruby.so.
  */
 #define FLEDGE_RUBY_PROGRAM "libfledgerubyexe.so"
-#define FLEDGE_EXTENSIONS "libfledgeext.so"
 
 /* The ABI this library was compiled for, as Android names the folder of its native libraries. */
 #if defined(__aarch64__)
@@ -295,27 +295,33 @@ program_root(char *root)
 }
 
 /*
- * The runtime's ruby program: finds its root, loads the library of the
- * app's gems' extensions when the app has one, as the host does after
- * libfledgeruby.so, so that its constructor registers them
- * (doc/contributors/design/phone-projects.md, "Registering extensions"),
- * and runs fledge_ruby_main.
+ * Opens libfledgeext.so from beside libfledgeruby.so, or by its name
+ * where the native libraries stay inside the APK, before Ruby boots in
+ * the app or in the runtime's ruby program, so that its constructor
+ * registers the extensions linked into it whether or not the app's host
+ * loads it (doc/contributors/design/phone-projects.md, "Linking
+ * extensions on Android").
+ */
+int
+fledge_ruby_load_extensions(const char *caller)
+{
+    char folder[PATH_MAX];
+
+    if (library_folder(folder) != 0) folder[0] = '\0';
+    return fledge_load_extensions(folder, caller);
+}
+
+/*
+ * The runtime's ruby program: finds its root and runs fledge_ruby_main,
+ * which opens the app's extensions' library as fledge_ruby_run does.
  */
 int
 fledge_ruby_program_main(int argc, char **argv)
 {
     char root[PATH_MAX];
-    char folder[PATH_MAX];
-    char extensions[PATH_MAX];
 
     if (program_root(root) != 0) {
         fputs("ruby: this program runs as ROOT/bin/ruby, the RbConfig.ruby of an app's Ruby\n", stderr);
-        return FLEDGE_RUBY_SOFTWARE;
-    }
-    if (library_folder(folder) == 0 &&
-        snprintf(extensions, sizeof extensions, "%s/" FLEDGE_EXTENSIONS, folder) < (int)sizeof extensions &&
-        access(extensions, F_OK) == 0 && dlopen(extensions, RTLD_NOW) == NULL) {
-        fprintf(stderr, "ruby: could not load the app's extensions: %s\n", dlerror());
         return FLEDGE_RUBY_SOFTWARE;
     }
     return fledge_ruby_main(root, argc, argv);

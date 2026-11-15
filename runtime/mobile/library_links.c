@@ -13,10 +13,17 @@
  * ROOT/bin/ruby, takes its place. ROOT/fledge.links, which fledge build
  * writes, lists them, a line each: the ABI, the library's file name, and
  * the path under ROOT, separated by tabs.
+ *
+ * And the library of the extensions linked into the app,
+ * libfledgeext.so, which the runtime opens itself before Ruby boots
+ * (fledge_load_extensions), so that its constructor registers them
+ * whether or not the app's host loads it by name: a host that does
+ * loads the same file, which the linker opens once.
  */
 
 #include "mobile.h"
 
+#include <dlfcn.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -25,6 +32,7 @@
 #include <unistd.h>
 
 #define FLEDGE_LINKS "fledge.links"
+#define FLEDGE_EXTENSIONS "libfledgeext.so"
 
 /* Nonzero when the length bytes at name are a file's name: not empty, ".", or "..". */
 static int
@@ -129,4 +137,33 @@ fledge_link_libraries(const char *root, const char *folder, const char *abi)
     }
     fclose(file);
     return failures;
+}
+
+/*
+ * Bionic opens a file it has opened already, under another name or
+ * path, as the library it has, comparing device, inode, and offset
+ * (find_loaded_library_by_inode, linker/linker.cpp at
+ * android-16.0.0_r2), so a host's System.loadLibrary("fledgeext"),
+ * before or after, opens the same one, and its constructor runs once.
+ * Where folder is empty the native libraries are inside the APK, and
+ * the linker finds the library by its name there, as System.loadLibrary
+ * does; an app with no compiled extension has none, which is not a
+ * failure, so nothing is said.
+ */
+int
+fledge_load_extensions(const char *folder, const char *caller)
+{
+    char path[PATH_MAX];
+
+    if (folder[0] == '\0') {
+        (void)dlopen(FLEDGE_EXTENSIONS, RTLD_NOW);
+        return 0;
+    }
+    if (snprintf(path, sizeof path, "%s/" FLEDGE_EXTENSIONS, folder) >= (int)sizeof path) {
+        fprintf(stderr, "%s: the path to the app's extensions is too long\n", caller);
+        return -1;
+    }
+    if (access(path, F_OK) != 0 || dlopen(path, RTLD_NOW) != NULL) return 0;
+    fprintf(stderr, "%s: could not load the app's extensions: %s\n", caller, dlerror());
+    return -1;
 }

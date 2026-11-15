@@ -291,7 +291,9 @@ soften_fdsan(void)
 }
 
 /*
- * Readies this process for Ruby with its prefix at root: where the
+ * Readies this process for Ruby with its prefix at root: the library of
+ * the app's linked extensions, where the system keeps one apart
+ * (fledge_ruby_load_extensions), where the
  * runtime's CA certificates are, for android.c, the locale, and the path
  * Ruby derives its prefix from. Returns 0, or prints why it could not,
  * after caller's name, and returns FLEDGE_RUBY_SOFTWARE.
@@ -306,6 +308,8 @@ prepare(const char *root, const char *caller)
         fprintf(stderr, "%s: Ruby has already run in this process, and runs only once\n", caller);
         return FLEDGE_RUBY_SOFTWARE;
     }
+    /* Before started, so that the library's constructor may still add the extensions linked into it. */
+    if (fledge_ruby_load_extensions(caller) != 0) return FLEDGE_RUBY_SOFTWARE;
     started = 1;
     if (join(libruby, root, "/lib/libruby") != 0 || join(certificates, root, "/libexec/cert.pem") != 0) {
         fprintf(stderr, "%s: the path to Ruby is too long\n", caller);

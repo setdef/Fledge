@@ -26,15 +26,25 @@ class MobileRubyProgramTest < Minitest::Test
   # and ARGV0 ARGS. This computer's Ruby reads no
   # ruby_embed_libruby_path, which only the mobile runtimes' Ruby has,
   # and may keep ruby_init_ext to itself, so the program defines both,
-  # the second weakly; it links no program, as android.c would.
+  # the second weakly; it links no program, as android.c would. In
+  # place of opening libfledgeext.so, whose constructor adds the app's
+  # linked extensions, it adds one itself, and fails when that is
+  # refused, as it is once Ruby has started.
   HOST = <<~C
     #include "fledge_ruby.h"
     #include "mobile.h"
     #include <stddef.h>
+    #include <stdio.h>
 
     const char *ruby_embed_libruby_path;
     __attribute__((weak)) void ruby_init_ext(const char *name, void (*init)(void)) { (void)name; (void)init; }
     void fledge_ruby_link_program(const char *root) { (void)root; }
+    static void Init_probe(void) {}
+    int fledge_ruby_load_extensions(const char *caller) {
+        if (fledge_ruby_add_extension("probe/probe", Init_probe) == 0) return 0;
+        fprintf(stderr, "%s: the extensions' library opened after Ruby started\\n", caller);
+        return -1;
+    }
     int fledge_log_echoes(void) { return 0; }
     int fledge_log_open(const char *tag) { (void)tag; return 0; }
     void fledge_log_write(int error, const char *text, size_t length) { (void)error; (void)text; (void)length; }
@@ -90,6 +100,15 @@ class MobileRubyProgramTest < Minitest::Test
 
     assert_equal ' ["app/main.rb", [], "no rubyopt", true, false, false]', run_program("root/app/main.rb", chdir: @dir)
     assert_equal ' ["app/main.rb", [], "no rubyopt", true, false, false]', run_program("link.rb", chdir: @dir)
+  end
+
+  # The runtime opens the app's extensions' library before Ruby starts,
+  # in the program as in the app, so the extensions its constructor adds
+  # are registered.
+  def test_the_extensions_library_opens_while_extensions_may_still_be_added
+    _, err, status = Open3.capture3(@host, @root, "ruby", "-e", "print 1")
+
+    assert_equal [true, ""], [status.success?, err]
   end
 
   def test_another_script_runs_as_plain_ruby

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- On Android, the runtime loads `libfledgeext.so`, the library of the app's gems' extensions, itself before Ruby boots, so a framework's own host need not name it; a host that does keeps working unchanged.
+
 ### Fixed
 
 - When a lockfile has no checksum for the Bundler it names, `fledge build` says to run `gem install bundler -v VERSION`, then `bundle lock --add-checksums`; the `bundle install` it advised wrote no checksum when the lockfile's Bundler is the one that came with Ruby.

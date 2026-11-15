@@ -106,8 +106,10 @@ class MobileLibraryLinksTest < Minitest::Test
   private def compile
     File.write(File.join(@dir, "main.c"), HOST)
     program = File.join(@dir, "host")
+    # library_links.c opens libfledgeext.so too, and a glibc before 2.34 keeps dlopen in libdl.
+    dl = RUBY_PLATFORM.include?("linux") ? ["-ldl"] : []
     _, err, status = Open3.capture3(@compiler, "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-I", MOBILE, File.join(@dir, "main.c"),
-      File.join(MOBILE, "library_links.c"), "-o", program)
+      File.join(MOBILE, "library_links.c"), "-o", program, *dl)
     assert status.success?, err
     program
   end

@@ -76,6 +76,25 @@ void fledge_ruby_link_program(const char *root);
 int fledge_link_libraries(const char *root, const char *folder, const char *abi);
 
 /*
+ * Opens libfledgeext.so, the library of the extensions linked into an
+ * Android app, from folder, the app's native library folder, so that
+ * its constructor registers them with fledge_ruby_add_extension, or by
+ * its name when folder is empty, as it is when the native libraries
+ * stay inside the APK (library_links.c). Returns 0 when it is open, or
+ * when folder holds none, as an app with no compiled extension's does;
+ * -1 when it cannot be opened, said on standard error after caller.
+ */
+int fledge_load_extensions(const char *folder, const char *caller);
+
+/*
+ * Opens the app's extensions' library before Ruby boots, where the
+ * system keeps one beside the runtime's (android.c, fledge_load_extensions),
+ * so that a host need not; iOS links the extensions into the app, and
+ * apple.c opens nothing. Returns 0, or -1 after saying why after caller.
+ */
+int fledge_ruby_load_extensions(const char *caller);
+
+/*
  * The main function of the runtime's ruby program, with Ruby's prefix
  * at root (fledge_ruby.c): Ruby's main.c, with the locale and
  * the certificates as fledge_ruby_run has them, and the extensions an

@@ -32,6 +32,14 @@ fledge_ruby_link_program(const char *root)
     (void)root;
 }
 
+/* iOS links the app's extensions into its executable, so there is no library to open. */
+int
+fledge_ruby_load_extensions(const char *caller)
+{
+    (void)caller;
+    return 0;
+}
+
 int
 fledge_log_echoes(void)
 {

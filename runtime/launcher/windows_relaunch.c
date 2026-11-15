@@ -6,8 +6,8 @@
 /*
  * What a Windows runtime's ruby.exe and rubyw.exe add to Ruby's main.c
  * (ruby_main.c): the DLLs the app's Ruby may load, and handing an app's
- * own program back to the app's launcher (ADR 096;
- * doc/contributors/design/launcher.md, "bin/ruby and restarts"), as
+ * own program back to the app's launcher
+ * (doc/contributors/design/launcher.md, "bin/ruby and restarts"), as
  * relaunch.c does for bin/ruby on macOS and Linux.
  *
  * A Ruby program restarts itself with exec RbConfig.ruby, $0, *ARGV. In a
@@ -16,7 +16,7 @@
  * it as plain Ruby, with the person's RUBYOPT, RUBYLIB, and GEM_HOME,
  * which the launcher put back before the app ran, without Bundler set up
  * as the launcher sets it up, and under the system's ANSI code page,
- * where the launcher's manifest declares UTF-8 (ADR 070). So, once
+ * where the launcher's manifest declares UTF-8. So, once
  * ruby_sysinit has read the command line as Ruby reads it, ruby.exe asks
  * what bin/ruby asks: is its first argument the program a launcher of
  * this app runs? If so, it runs that launcher with the rest of its own

@@ -4,9 +4,9 @@
  */
 
 /*
- * The Bundler that sets up an app with a Gemfile (ADR 063), and the
- * environment the app runs in, on every operating system (ADR 095;
- * doc/contributors/design/launcher.md, "The Bundler environment").
+ * The Bundler that sets up an app with a Gemfile, and the environment
+ * the app runs in, on every operating system
+ * (doc/contributors/design/launcher.md, "The Bundler environment").
  *
  * Under bundle exec, a program's ENV is the person's, with Bundler's
  * own settings over it: BUNDLE_GEMFILE, GEM_HOME, PATH with the bundle's
@@ -106,7 +106,7 @@ static const char code_after_variables[] =
  * (shared_helpers.rb, set_rubylib and set_rubyopt). fledge build
  * installs that Bundler in the runtime's gem folder, where RubyGems'
  * paths, which pin_rubygems fixed, find it as Gem.dir, and fledge.cfg
- * names its version (ADR 063). The runtime's own Bundler is in Ruby's
+ * names its version. The runtime's own Bundler is in Ruby's
  * library, where RUBYLIB adds nothing. Either is required by its path:
  * by name, RubyGems would activate the bundler gem first, loading what
  * bundle exec does not. bundler/setup prints its own message and exits

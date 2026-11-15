@@ -33,7 +33,7 @@
 
 /*
  * The exit statuses of a launcher that cannot start its app, from
- * sysexits(3) (ADR 002): EX_NOINPUT when the program the app runs, or the
+ * sysexits(3): EX_NOINPUT when the program the app runs, or the
  * fledge.cfg that names it, is missing, EX_OSFILE when a library the app's
  * gems load from the Linux distribution is not on the computer,
  * and EX_SOFTWARE when anything else about the app or its runtime is
@@ -64,7 +64,7 @@ char *fledge_bundle_environment_code(const char *variables, size_t length);
  * setup is 1, by their paths, as bundle exec's RUBYOPT requires
  * bundler/setup (bundler.c): the runtime's own Bundler when version is
  * NULL, and otherwise the Bundler of that version that fledge build
- * installed in the runtime's gem folder (ADR 063). Returns 0, or -1 when
+ * installed in the runtime's gem folder. Returns 0, or -1 when
  * the code does not fit.
  */
 int fledge_bundler_code(char *code, size_t size, const char *version, int setup);

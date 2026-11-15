@@ -49,7 +49,7 @@
  * Bundler takes its settings from the app's .bundle/config beside it,
  * through the environment (the launcher's bundler.c), and
  * bundler/setup, from Ruby's own library or from the gem of the Bundler
- * fledge.cfg names (the launcher's bundler.c; ADR 063), sets ENV as
+ * fledge.cfg names (the launcher's bundler.c), sets ENV as
  * bundle exec would (Bundler::Runtime#setup, set_bundle_environment, at
  * Bundler 4.0.20).
  *
@@ -57,8 +57,8 @@
  * program, which RbConfig.ruby names in an app (ADR 083). It is what the
  * desktop's bin/ruby is (runtime/launcher/ruby_main.c): Ruby's main.c,
  * with the launcher's locale, and with the app's own program handed to
- * the app's way of starting, as fledge_relaunch hands it to the launcher
- * (ADR 096), here fledge_ruby_run_app in the program's own process. It
+ * the app's way of starting, as fledge_relaunch hands it to the launcher,
+ * here fledge_ruby_run_app in the program's own process. It
  * takes Ruby's arguments as they come, RUBYOPT included, as ruby does,
  * and leaves $stdout as Ruby sets it: a Ruby the app starts writes to
  * the standard output the app gives it, by default the app's own, the
@@ -111,7 +111,7 @@ static const char *found_certificates;
 static const char *bundle_gemfile;
 
 /* The version of the Bundler fledge.cfg names, for fledge_ruby_run_app,
- * or NULL for the runtime's own (ADR 063). */
+ * or NULL for the runtime's own. */
 static const char *bundle_bundler;
 
 const char *

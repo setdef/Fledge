@@ -19,7 +19,7 @@
 # included. Here the app's gems come from the runtime and nowhere else.
 #
 # The launcher hides GEM_HOME and GEM_PATH from Ruby's boot, and has
-# RubyGems settle its paths before it puts them back (ADR 040), so this
+# RubyGems settle its paths before it puts them back, so this
 # default is the whole path for the app, while the app's own child
 # processes still see the person's variables. It works the same way on
 # Windows, where a Fledge runtime ships this file too.

@@ -32,7 +32,7 @@
  * It differs from main.c in two calls. First, when its first argument is
  * the program a launcher of this app runs, as in a restart with exec
  * RbConfig.ruby, $0, *ARGV, it runs that launcher in its place
- * (fledge_relaunch, ADR 096), so the restarted app boots as
+ * (fledge_relaunch), so the restarted app boots as
  * it booted the first time. Second, where main.c sets LC_CTYPE from
  * the environment, it calls the launcher's fledge_coerce_locale, which
  * does the same and then turns a bare C or POSIX locale into a UTF-8
@@ -42,20 +42,20 @@
  * person has, which for an app a desktop started is C; with main.c's
  * setlocale they would read the app's folder, whose name need not be
  * ASCII, as US-ASCII, and Bundler would fail to set up the app's gems
- * (ADR 087).
+ * (doc/contributors/design/launcher.md, "The locale").
  *
  * On Windows it is ruby.exe, and, built as a GUI program, rubyw.exe, in
  * place of RubyInstaller's in ROOT\ruby\bin, linked against Ruby's DLL
  * beside them as RubyInstaller's are. RbConfig.ruby, Gem.ruby, the gems'
  * .bat wrappers, and mkmf all name ruby.exe there, so nothing but the
  * program changes. Its manifest is the launcher's (windows.manifest), so
- * a Ruby the app starts has the app's ANSI code page, UTF-8 (ADR 070).
+ * a Ruby the app starts has the app's ANSI code page, UTF-8.
  * There it differs from main.c in two other calls: first of all,
  * fledge_limit_dll_search, so it loads DLLs from where the launcher's
  * Ruby does; and once ruby_sysinit has read the command line as Ruby
  * reads it, fledge_relaunch, which, when the first argument is the app's
  * own program, runs the app's launcher in a process of its own and waits
- * for it, as Ruby's own exec does on Windows (ADR 096). Its setlocale is
+ * for it, as Ruby's own exec does on Windows. Its setlocale is
  * main.c's: Windows takes the C runtime's code page from the manifest.
  *
  * Its license is Ruby's, like the rest of what it is made of; the

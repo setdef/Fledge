@@ -7,7 +7,7 @@
  * Which environment variables the launcher hides from Ruby's boot, on
  * every operating system. It removes them before Ruby starts and puts
  * them back, with their values, before the app's main.rb runs (unix.c
- * and windows.c, restore_environment; ADR 040).
+ * and windows.c, restore_environment).
  *
  * A person who runs an app never asked for Ruby, so nothing of a Ruby
  * they happen to have may change how the app starts (AGENTS.md, Design

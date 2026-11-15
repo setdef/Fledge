@@ -112,7 +112,7 @@ static const char *program_name = "launcher";
 /*
  * Prints "NAME: message" to standard error and exits with status, as
  * Ruby's own "ruby: message" does. A person who runs an app never asked
- * for Ruby, so messages name the app, not Ruby (ADR 002).
+ * for Ruby, so messages name the app, not Ruby.
  */
 static void fail_with(int status, const char *format, ...) __attribute__((format(printf, 2, 3), noreturn));
 
@@ -223,7 +223,7 @@ restore_environment(void)
  * Gemfile, once Bundler has set up its gems, beneath Bundler's own
  * settings, as bundle exec would have composed them over the person's
  * environment, and records the person's environment as the one Bundler
- * started from (bundler.c; ADR 095).
+ * started from (bundler.c).
  */
 static void
 bundle_environment(void)
@@ -315,7 +315,7 @@ static char app_folder[PATH_MAX];
 /*
  * Has Bundler set up the gems of the app's Gemfile, which fledge build
  * installed into the runtime's gem folder, as bundle exec would before
- * running ENTRY (ADR 095). The person's own Bundler settings are still
+ * running ENTRY. The person's own Bundler settings are still
  * set aside: BUNDLE_GEMFILE names the app's Gemfile, and
  * BUNDLE_USER_CONFIG names the app's own .bundle/config, which fledge
  * build wrote, in place of ~/.bundle/config, so nothing of the person's

@@ -74,7 +74,7 @@
  *      require_relative.
  *   5. Once Ruby has booted and before ENTRY runs, fixes RubyGems'
  *      paths, and for an app with a Gemfile has Bundler set up the app's
- *      gems, as bundle exec would (setup_bundler, ADR 095).
+ *      gems, as bundle exec would (setup_bundler).
  *   6. Then puts the variables of step 3 back, so ENV and the app's
  *      child processes see what they would see without Fledge: as they
  *      were (restore_environment), or for an app with a Gemfile beneath
@@ -190,7 +190,7 @@ show(const wchar_t *message)
 /*
  * Shows "NAME: message" and exits with status, as Ruby's own
  * "ruby: message" does. A person who runs an app never asked for Ruby, so
- * messages name the app, not Ruby (ADR 002).
+ * messages name the app, not Ruby.
  */
 static void fail_with(int status, const wchar_t *format, ...) __attribute__((noreturn));
 
@@ -730,7 +730,7 @@ set_app_user_model_id(void)
 /*
  * Has Bundler set up the gems of the app's Gemfile, which fledge build
  * installed into the runtime's gem folder, as bundle exec would before
- * running ENTRY (ADR 095), as unix.c does. BUNDLE_GEMFILE names the app's
+ * running ENTRY, as unix.c does. BUNDLE_GEMFILE names the app's
  * Gemfile, and BUNDLE_USER_CONFIG names the app's own .bundle\config,
  * which fledge build wrote, in place of %USERPROFILE%\.bundle\config, so
  * nothing of the person's changes which gems load; Bundler gets its
@@ -771,7 +771,7 @@ setup_bundler(void)
  * Puts back every variable scrub_environment set aside for an app with a
  * Gemfile, once Bundler has set up its gems, beneath Bundler's own
  * settings, as bundle exec would have composed them, as unix.c does
- * (bundler.c; ADR 095). Ruby's ENV on Windows is UTF-8
+ * (bundler.c). Ruby's ENV on Windows is UTF-8
  * (hash.c, env_encoding), so the variables go to Ruby as UTF-8, in the
  * case the person gave their names.
  */

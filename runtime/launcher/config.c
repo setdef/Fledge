@@ -23,7 +23,7 @@
  * the launcher has Bundler set up first; both are relative to the app's
  * app folder, with / between folders. bundler, beside gemfile, is the
  * version of the Bundler that sets it up when that is not the runtime's
- * own (ADR 063), whose gem fledge build installed: letters, digits, and
+ * own, whose gem fledge build installed: letters, digits, and
  * dots, as a gem's version is written. identifier is the app's reverse-DNS
  * name, which the Windows launcher makes its AppUserModelID:
  * letters, digits, hyphens, and dots, at most FLEDGE_IDENTIFIER_MAX

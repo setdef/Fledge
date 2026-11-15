@@ -80,8 +80,7 @@ int fledge_link_libraries(const char *root, const char *folder, const char *abi)
  * the certificates as fledge_ruby_run has them, and the extensions an
  * app links registered; and, when its first argument is the program
  * root/fledge.cfg names, fledge_ruby_run_app with the arguments after
- * it, as the desktop's bin/ruby hands an app's program to its launcher
- * (ADR 096).
+ * it, as the desktop's bin/ruby hands an app's program to its launcher.
  */
 int fledge_ruby_main(const char *root, int argc, char **argv);
 

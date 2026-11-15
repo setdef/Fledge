@@ -8,7 +8,7 @@
 require_relative "test_helper"
 
 # Fledge::SignCommand, a Windows app signed by its developer's own
-# command (fledge build --sign-command, ADR 051): the command line it
+# command (fledge build --sign-command): the command line it
 # builds. test/integration/sign_command_signer_test.rb runs the stand-in
 # signer of test/support/stand_in_signer.rb on an app's files, and
 # test/integration/windows_signed_build_test.rb through a whole build on

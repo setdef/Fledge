@@ -9,7 +9,7 @@ require_relative "test_helper"
 require "open3"
 require "stringio"
 
-# Fledge::Signing (ADR 016): which files each system's signer signs, and
+# Fledge::Signing: which files each system's signer signs, and
 # how. test/integration/built_app_test.rb signs whole apps with the identity
 # FLEDGE_TEST_SIGN_IDENTITY names: "-", ad hoc, on any Mac, and in CI a
 # self-signed certificate it makes on macOS and Windows; Delivery verifies
@@ -36,7 +36,7 @@ class SigningTest < Minitest::Test
     assert_instance_of Fledge::MacSigning, Fledge::Signing.for(MAC, "Developer ID Application: Example (ABCDE12345)")
   end
 
-  # ADR 033: --notarize gives the Mac's signer a notary for the keychain
+  # --notarize gives the Mac's signer a notary for the keychain
   # profile it names, which a signer without it lacks.
   def test_a_mac_signer_carries_the_notary_notarize_names
     log = StringIO.new
@@ -89,7 +89,7 @@ class SigningTest < Minitest::Test
   # Notarization asks for the hardened runtime, a secure timestamp, and
   # every Mach-O file signed; YJIT asks for executable memory made
   # without MAP_JIT, and Briefcase lets every app load libraries it did
-  # not sign (ADR 016).
+  # not sign (doc/contributors/design/signing.md, "Signing on macOS").
   def test_a_mac_signs_code_with_the_hardened_runtime_a_timestamp_and_its_entitlements
     signing = Fledge::MacSigning.new("Example")
 

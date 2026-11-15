@@ -96,7 +96,7 @@ class BuildCommandTest < Minitest::Test
     assert_equal "elsewhere/Hello-x86_64-linux.tar.gz\n", out
   end
 
-  # ADR 016: --sign names the identity a desktop build signs with.
+  # --sign names the identity a desktop build signs with.
   def test_sign_takes_an_identity_in_either_form
     assert_equal "Developer ID Application: Example", Fledge::CLI::Build::Options.parse(["--sign", "Developer ID Application: Example", "hello"]).sign
     assert_equal "-", Fledge::CLI::Build::Options.parse(%w[--sign=- hello]).sign
@@ -111,7 +111,7 @@ class BuildCommandTest < Minitest::Test
     assert_includes err, "fledge build: --sign signs apps for macOS and Windows"
   end
 
-  # ADR 051: --sign-command names the developer's own signing command,
+  # --sign-command names the developer's own signing command,
   # and --notarize the keychain profile notarytool reads; neither is in
   # fledge.yml, which other people build too.
   def test_sign_command_and_notarize_take_their_values_in_either_form

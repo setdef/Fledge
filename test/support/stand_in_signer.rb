@@ -9,7 +9,7 @@ require "fileutils"
 require "tmpdir"
 
 # A stand-in for a developer's signing command (fledge build
-# --sign-command, ADR 051), at the seam Fledge::SignCommand crosses: a
+# --sign-command), at the seam Fledge::SignCommand crosses: a
 # script that records each path it is given, one per line, in SIGNED,
 # and appends MARKER to the file, as a signer adds its signature to the
 # end of a PE file, so that a test reads back which files were signed,

@@ -138,7 +138,7 @@ class NsisTest < Minitest::Test
 
   # A dollar sign doubled and a double quote as $\", so NSIS reads the
   # name as it is.
-  # ADR 016: a signed build's installer has makensis sign the uninstaller
+  # A signed build's installer has makensis sign the uninstaller
   # it writes into it, and then itself, with the signing command, and
   # fail unless it exits 0; an unsigned build's has neither.
   def test_a_signed_installer_and_its_uninstaller_are_signed_as_makensis_writes_them
@@ -152,7 +152,7 @@ class NsisTest < Minitest::Test
     end
   end
 
-  # ADR 051: a developer's own command goes to makensis in the first of
+  # A developer's own command goes to makensis in the first of
   # NSIS's quote characters it does not hold, since NSIS has no escape
   # for a quote inside a string of the same kind.
   def test_a_signing_command_is_quoted_with_a_character_it_does_not_hold

@@ -8,7 +8,7 @@
 require_relative "../test_helper"
 require_relative "../support/stand_in_notary"
 
-# Fledge::Notary, Fledge's gateway to Apple's notary service (ADR 033):
+# Fledge::Notary, Fledge's gateway to Apple's notary service:
 # what it asks notarytool and stapler, in which order, and what it says
 # when Apple does not accept an app. No CI runner and no agent has an
 # Apple Developer account, so the service is the stand-in xcrun of

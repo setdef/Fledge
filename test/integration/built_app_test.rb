@@ -887,7 +887,7 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # ADR 016: --sign signs every compiled file of an app with the identity
+  # --sign signs every compiled file of an app with the identity
   # FLEDGE_TEST_SIGN_IDENTITY names: "-", ad hoc, on any Mac, and in CI a
   # self-signed certificate it makes. On macOS every Mach-O program and library of a console
   # app's folder and of a bundle carries the hardened runtime, a
@@ -956,7 +956,7 @@ class BuiltAppTest < Minitest::Test
     assert_predicate status, :success?, verified
   end
 
-  # ADR 033: --notarize, against the stand-in notary service of
+  # --notarize, against the stand-in notary service of
   # test/support/stand_in_notary.rb, through fledge build as a developer
   # runs it, with the identity FLEDGE_TEST_SIGN_IDENTITY names (CI's
   # self-signed one; Apple notarizes no ad hoc signature, so "-" skips).
@@ -1003,8 +1003,8 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # The contract test of --notarize (ADR 033), which only the maintainer
-  # runs: Apple's real notary service, with a Developer ID Application
+  # The contract test of --notarize, which only the maintainer runs:
+  # Apple's real notary service, with a Developer ID Application
   # identity in FLEDGE_TEST_SIGN_IDENTITY and the keychain profile
   # FLEDGE_TEST_NOTARY_PROFILE names (doc/contributors/signing-test.md).
   # Gatekeeper must accept the disk image and the bundle as notarized,

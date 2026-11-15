@@ -11,7 +11,7 @@ require "digest"
 require "open3"
 
 # A whole Windows build signed by its developer's own command (fledge
-# build --sign-command, ADR 051), on Windows, with the Windows runtime,
+# build --sign-command), on Windows, with the Windows runtime,
 # through fledge build as a developer runs it, in a process of its own.
 # The command is the stand-in of test/support/stand_in_signer.rb.
 # test/sign_command_test.rb covers Fledge::SignCommand itself.

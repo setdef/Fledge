@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-15
+
 ### Added
 
 - `fledge build ios` and `fledge build android` take a gem whose gemspec names a Rakefile or an `mkrf_conf` script in `extensions`, running it as RubyGems does, with the phone's `rbconfig.rb`, for each of the phone's targets; such a gem had been refused. The extensions such a build makes with mkmf, as digest-crc's Rakefile does, are linked into the app, and `require` finds each by its path in the gem's require paths. A build that leaves any other shared library, such as one for ffi, fails naming the gem and the library.
@@ -432,7 +434,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/setdef/Fledge/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/setdef/Fledge/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/setdef/Fledge/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/setdef/Fledge/compare/v0.9.0...v0.10.0

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Prints true when the commit checked out is a pin commit (ADR 014): it
+# Prints true when the commit checked out is a pin commit: it
 # has one parent, and lib/fledge/SHA256SUMS is the only file it changes
 # from it. Prints false for anything else, a merge, a first commit, or a
 # clone too shallow to hold the parent (actions/checkout needs

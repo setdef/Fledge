@@ -4,7 +4,7 @@
 
 # Prints the Ruby a job's ruby/setup-ruby installs: mise.toml's pin, the
 # Ruby every other job and every contributor runs, since fledge build
-# takes the runtime of the Ruby that runs it (ADR 055).
+# takes the runtime of the Ruby that runs it.
 #
 #   ruby-pin.sh
 #

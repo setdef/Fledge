@@ -6,7 +6,7 @@
 # installs Fledge from its git tag with Bundler, as the README says, never
 # from RubyGems.org; fledge build, with no FLEDGE_RUNTIME_DIR and an empty
 # cache, downloads that version's runtime from the GitHub Release and
-# checks it against the SHA-256 the gem pins (ADR 014), and compiles
+# checks it against the SHA-256 the gem pins, and compiles
 # examples/native_app's gems from source against that runtime alone; and
 # each app it builds is delivered as CI delivers every push's
 # (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the

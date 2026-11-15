@@ -11,7 +11,7 @@
 # x86_64-linux and arm64-darwin and in phone apps, in the iOS Simulator
 # and on Android emulators (tasks/ruby_spec/phone.rb), and for all seven
 # desktop platforms too on a release commit ("chore: release X.Y.Z"),
-# whose run a release publishes from (ADR 053). Every night, and when
+# whose run a release publishes from. Every night, and when
 # run by hand, it runs all of them on the runtimes of trunk's newest run
 # of ci.yml that passed. A desktop run costs about 3 to 4 minutes on
 # Linux and macOS and 12 to 16 on Windows (experiment/ruby-spec, run

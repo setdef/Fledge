@@ -27,7 +27,8 @@
 # as 1.0.0-beta.1) is marked a prerelease; an ordinary MAJOR.MINOR.PATCH
 # version, such as 0.1.0, is not.
 #
-# A release takes two commits (ADR 014), as Homebrew's bottles do: the
+# A release takes two commits (doc/contributors/design/releases.md, "The pins"), as
+# Homebrew's bottles do: the
 # release commit, whose CI run on trunk builds the runtimes, and on it a
 # commit that changes only lib/fledge/SHA256SUMS, written from those
 # runtimes by rake runtime:pin, which is the one tagged. Runtime builds
@@ -172,7 +173,7 @@ jobs:
       # runtimes the tag pins: the newest such run, as rake runtime:pin
       # and the pin commit's Changes job take it. With the short CI that
       # skipped the rest of the pin commit's jobs, this is what makes the
-      # tagged commit green on every job (ADR 053).
+      # tagged commit green on every job.
       - name: Find the CI run whose runtimes the tag pins
         env:
           GH_TOKEN: ${{ github.token }}

@@ -18,7 +18,7 @@ task :runtime, [:platform] do |_task, arguments|
 end
 
 namespace :runtime do
-  # The first step of a release (ADR 014; AGENTS.md, Releasing): with the
+  # The first step of a release (AGENTS.md, Releasing): with the
   # release commit pushed and its CI green, this downloads the runtimes
   # that CI run built (by default HEAD's newest push run of ci.yml on
   # trunk in which every job passed, the run release.yml publishes from,

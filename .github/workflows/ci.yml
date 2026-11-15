@@ -55,7 +55,7 @@
 #
 # release.yml, on a v* tag, publishes the runtimes this workflow built
 # from the release commit, once it has passed on trunk on the release
-# commit and on the pin commit tagged (ADR 053). It looks those runs up
+# commit and on the pin commit tagged. It looks those runs up
 # and does not run this again. Nothing here, or ever, publishes to
 # RubyGems.org (doc/contributors/design/releases.md, "Where releases
 # are").
@@ -72,7 +72,8 @@ permissions:
   contents: read
 
 # A push to a branch cancels that branch's run in progress. A push to
-# trunk never does (ADR 071): GitHub keeps one run going and one waiting
+# trunk never does (doc/contributors/design/releases.md, "Runs, batches, and the release commit"):
+# GitHub keeps one run going and one waiting
 # in a group, and a newer push replaces only the waiting one, so every
 # run that starts finishes, and covers every commit pushed since the
 # run before it started. A red run blames that batch, and a commit
@@ -182,8 +183,8 @@ jobs:
             exit 1
           fi
 
-  # A pin commit (ADR 053; doc/contributors/design/releases.md, "A pin
-  # commit's short CI") changes only lib/fledge/SHA256SUMS
+  # A pin commit (doc/contributors/design/releases.md, "A pin commit's
+  # short CI") changes only lib/fledge/SHA256SUMS
   # from a parent whose run built and delivered every runtime it pins.
   # No runtime, app, or check below reads that file, so a pushed pin
   # commit runs the gate, which does, and this job, and every other job

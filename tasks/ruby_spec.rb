@@ -120,7 +120,7 @@ class RubySpec
         "core: Refinement#import_methods when methods are not defined in Ruby code raises ArgumentError when importing methods from C extension",
       ],
       side: :stock, platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
-      reason: "RubyInstaller's head build, which Windows' runtimes carry until Ruby 4.1.0 (ADR 066), ships a " \
+      reason: "RubyInstaller's head build, which Windows' runtimes carry until Ruby 4.1.0, ships a " \
         "zlib.so that imports libz-1.dll and not the DLL itself, which a developer's Ruby finds in MSYS2's " \
         "ucrt64\\bin through ridk; the comparison's clean environment has no MSYS2, so stock Ruby cannot " \
         "require zlib, which this example does, and the runtime adds the DLL (ADR 038).",

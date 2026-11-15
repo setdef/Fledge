@@ -7,7 +7,7 @@
 # SHA-256 differs fails the build. Change a pin on purpose, and run
 # Delivery (ci.yml) before trusting it.
 
-# Ruby 4.1.0-preview1 for each target (ADR 035, ADR 056;
+# Ruby 4.1.0-preview1 for each target (ADR 035;
 # doc/contributors/design/runtimes.md, "Sources and pins"), but Windows,
 # whose Ruby is a snapshot of Ruby's master of a month later, below.
 #

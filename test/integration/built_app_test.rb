@@ -398,7 +398,7 @@ class BuiltAppTest < Minitest::Test
   end
 
   # require "mkmf" loads in a built app, as under ruby, since the
-  # runtime keeps Ruby's headers (ADR 085), and some gems require it at
+  # runtime keeps Ruby's headers, and some gems require it at
   # run time for MakeMakefile#find_executable.
   def test_mkmf_loads_in_a_built_app_and_finds_an_executable
     Dir.mktmpdir do |dir|

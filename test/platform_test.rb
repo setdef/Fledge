@@ -41,7 +41,7 @@ class PlatformTest < Minitest::Test
   end
 
   # A Ruby built against musl, as on Alpine, reports linux-musl, which
-  # RubyGems and precompiled gems call it too (ADR 017).
+  # RubyGems and precompiled gems call it too.
   def test_local_maps_musl_linux
     assert_equal "x86_64-linux-musl", Fledge::Platform.local(Gem::Platform.new("x86_64-linux-musl")).name
     assert_equal "aarch64-linux-musl", Fledge::Platform.local(Gem::Platform.new("aarch64-linux-musl")).name
@@ -132,7 +132,7 @@ class PlatformTest < Minitest::Test
   end
 
   # musl Linux is Linux, with musl's C library in place of glibc's: no
-  # glibc floor, and its own libraries (ADR 017).
+  # glibc floor, and its own libraries.
   def test_musl_linux_is_linux_with_musls_c_library
     assert_predicate Fledge::Platform.find("x86_64-linux-musl"), :musl?
     assert_predicate Fledge::Platform.find("aarch64-linux-musl"), :musl?

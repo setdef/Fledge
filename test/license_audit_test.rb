@@ -417,7 +417,7 @@ class LicenseAuditTest < Minitest::Test
 
   # The app carries the source of each component whose license asks for
   # it, in notices/sources/, which it copies from the runtime, so the
-  # source offer does not depend on any host (ADR 043). The audit
+  # source offer does not depend on any host. The audit
   # accounts for every file there as that component's source, the SBOM
   # lists them, and NOTICES.txt says where they are.
   def test_the_runtime_carries_the_sources_in_its_notices_and_the_audit_accounts_for_them

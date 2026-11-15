@@ -59,7 +59,7 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
-  # musl Linux builds its Ruby from source (ADR 017), from pins of its
+  # musl Linux builds its Ruby from source, from pins of its
   # own: Ruby's release, and what its extensions link statically.
   def test_musl_pins_the_sources_its_ruby_builds_from
     pins = builder("x86_64-linux").sources.fetch("musl-ruby")

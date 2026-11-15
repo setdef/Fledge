@@ -10,7 +10,7 @@ This is the maintainer's checklist for the one `gem push`. Fledge is a single pu
 
 ## Who does what
 
-Agents prepare 1.0.0: the release commit, the pin commit, the tag, and the GitHub Release, exactly as for any release (ADR 014; `doc/contributors/design/releases.md`, "How a release is made"). They never run `gem push` or `gem signin`, and they never touch RubyGems.org (AGENTS.md, Releasing). They do not change `allowed_push_host` before the 1.0.0 release commit, which is the commit that changes it.
+Agents prepare 1.0.0: the release commit, the pin commit, the tag, and the GitHub Release, exactly as for any release (`doc/contributors/design/releases.md`, "How a release is made"). They never run `gem push` or `gem signin`, and they never touch RubyGems.org (AGENTS.md, Releasing). They do not change `allowed_push_host` before the 1.0.0 release commit, which is the commit that changes it.
 
 You run everything from "Build the gem from the tag" on.
 
@@ -51,7 +51,7 @@ gem build fledge.gemspec
 
 1. **Version and host**: `gem specification fledge-1.0.0.gem version` prints `1.0.0`, and `gem specification fledge-1.0.0.gem metadata` prints an `allowed_push_host` of `https://rubygems.org` and `rubygems_mfa_required: 'true'`. If the host is still `https://fledge.invalid`, stop: the release commit missed item 1.
 2. **Contents**: `gem contents` reads installed gems only, so list the file: `tar -xOf fledge-1.0.0.gem data.tar.gz | tar -tzf -`. It lists `exe/fledge`, `lib/`, `sig/`, `README.rdoc`, `CHANGELOG.md`, `LICENSE`, and `LICENSES/`, and none of `test/`, `tasks/`, `doc/`, `examples/`, or `.github/` (`rake package:check` fails when the gem packs one).
-3. **The pins**: `lib/fledge/SHA256SUMS` is in that list, and it is the release's file byte for byte. Unpack with `gem unpack fledge-1.0.0.gem`, download the release's with `gh release download v1.0.0 --pattern SHA256SUMS --dir /tmp/release-pins`, and `diff fledge-1.0.0/lib/fledge/SHA256SUMS /tmp/release-pins/SHA256SUMS` prints nothing. A gem without it cannot check a single runtime (ADR 014; `doc/contributors/design/releases.md`, "The pins").
+3. **The pins**: `lib/fledge/SHA256SUMS` is in that list, and it is the release's file byte for byte. Unpack with `gem unpack fledge-1.0.0.gem`, download the release's with `gh release download v1.0.0 --pattern SHA256SUMS --dir /tmp/release-pins`, and `diff fledge-1.0.0/lib/fledge/SHA256SUMS /tmp/release-pins/SHA256SUMS` prints nothing. A gem without it cannot check a single runtime (`doc/contributors/design/releases.md`, "The pins").
 4. **It runs**: in an empty `GEM_HOME`, `gem install --local --no-document --install-dir /tmp/fledge-home fledge-1.0.0.gem`, then `GEM_HOME=/tmp/fledge-home ruby /tmp/fledge-home/bin/fledge --version` prints `fledge 1.0.0`. This is `rake package:check`'s test; run it again on the file you are about to push.
 
 ## Push

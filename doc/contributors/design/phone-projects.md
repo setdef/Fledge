@@ -19,7 +19,7 @@ This document says what `fledge build ios` and `fledge build android` write, how
 `fledge build ios` and `fledge build android` write `OUT/NAME-ios/` or `OUT/NAME-android/`, named as a desktop's folder is, replacing an earlier one, and print its path. `Fledge::MobileProject` (`lib/fledge/mobile_project.rb`) does what both share:
 
 1. checks the app has an identifier, and that a host folder `fledge.yml` names is a folder in the project;
-2. unpacks the phone's runtime, found and checked against the pins as every runtime is (`Fledge::Runtimes`; ADR 014);
+2. unpacks the phone's runtime, found and checked against the pins as every runtime is (`Fledge::Runtimes`);
 3. copies the system's template from `lib/fledge/templates/`;
 4. compiles the gems' extensions, when the app has any, and places the runtime and the extensions as the system needs;
 5. writes the folder `fledge/`: `fledge.cfg`, the project in `app/` (but the output folder and any host folder), the app's gems in Ruby's gem folder, and the runtime's `notices/`, refusing a file that would replace one of the runtime's Ruby;

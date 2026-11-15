@@ -9,7 +9,7 @@ require_relative "../test_helper"
 require "open3"
 require "rbconfig"
 
-# How the launcher learns which Bundler an app runs (ADR 063): fledge.cfg's
+# How the launcher learns which Bundler an app runs: fledge.cfg's
 # bundler key, read by runtime/launcher/config.c, and the Ruby that
 # runtime/launcher/bundler.c writes to load that Bundler and have it set
 # up the app's gems, compiled with this computer's C compiler and run by

@@ -190,7 +190,7 @@ class BuiltAppTest < Minitest::Test
   end
 
   # The launcher hides the person's Ruby settings from Ruby's boot, then
-  # puts them back (ADR 040): the app's own gems stay the runtime's, and
+  # puts them back: the app's own gems stay the runtime's, and
   # a Ruby the app starts sees the person's settings, as under ruby
   # main.rb.
   def test_the_persons_ruby_settings_reach_child_processes_but_not_the_apps_gems
@@ -208,14 +208,14 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # An app with a Gemfile gets the ENV bundle exec gives (ADR 095):
+  # An app with a Gemfile gets the ENV bundle exec gives:
   # Bundler's settings over the person's, so a child Ruby runs in the
   # app's bundle with the person's RUBYOPT after Bundler's own, and
   # Bundler.with_original_env and with_unbundled_env, which a Bundler
   # app uses to start a person's own tools, give the person's
   # environment back. The app's own gems stay the runtime's. The
   # environment names no locale, so the child's is C, which bin/ruby
-  # makes a UTF-8 one as the launcher does (ADR 087): in a C locale,
+  # makes a UTF-8 one as the launcher does: in a C locale,
   # Bundler 4.0.20 cannot set up a bundle in a folder whose name is not
   # ASCII, and the app is unpacked in one.
   def test_a_bundler_apps_children_see_the_persons_ruby_settings_as_under_bundle_exec
@@ -257,7 +257,7 @@ class BuiltAppTest < Minitest::Test
 
   # The launcher and bin/ruby keep a character set the person chose, C
   # included, as ruby does, and turn only a C locale that comes from
-  # LANG or from no variable at all into a UTF-8 one (ADR 087; PEP 538
+  # LANG or from no variable at all into a UTF-8 one (PEP 538
   # never coerces under LC_ALL). The probe and the script run from a
   # folder whose name is ASCII, where ruby itself runs in a C locale.
   def test_an_explicit_c_locale_is_kept_and_only_a_bare_one_becomes_utf8
@@ -508,7 +508,7 @@ class BuiltAppTest < Minitest::Test
 
   # A program restarts itself as Ruby programs do, with exec
   # RbConfig.ruby, $0, *ARGV, and the runtime's bin/ruby hands the app's
-  # own program back to its launcher (ADR 096). So the restart is the
+  # own program back to its launcher. So the restart is the
   # same process running the same program, in the same locale, with the
   # same gems and environment: with no locale, from a folder whose name
   # is not ASCII, in the person's environment and in a hostile one, with
@@ -584,8 +584,8 @@ class BuiltAppTest < Minitest::Test
   end
 
   # bin/ruby hands only its first argument to the launcher, and only
-  # when it is an app's program (ADR 096;
-  # doc/contributors/design/launcher.md, "bin/ruby and restarts"): with
+  # when it is an app's program
+  # (doc/contributors/design/launcher.md, "bin/ruby and restarts"): with
   # an option before the program, it is plain Ruby, whose RubyGems reads
   # the person's GEM_HOME, as ruby -W1 main.rb would.
   def test_bin_ruby_runs_an_apps_program_through_its_launcher_unless_an_option_comes_first
@@ -613,8 +613,8 @@ class BuiltAppTest < Minitest::Test
     File.rename("#{main}.away", main) if main && File.exist?("#{main}.away")
   end
 
-  # A missing fledge.cfg is EX_NOINPUT, as a missing entry is (ADR 002;
-  # doc/contributors/design/public-interface.md, "Frozen for 1.x").
+  # A missing fledge.cfg is EX_NOINPUT, as a missing entry is
+  # (doc/contributors/design/public-interface.md, "Frozen for 1.x").
   def test_a_missing_fledge_cfg_exits_with_ex_noinput
     config = File.join(File.realpath(File.dirname(app)), "fledge.cfg")
     File.rename(config, "#{config}.away")
@@ -627,7 +627,7 @@ class BuiltAppTest < Minitest::Test
     File.rename("#{config}.away", config) if config && File.exist?("#{config}.away")
   end
 
-  # bin/ruby hands an app's own script to the app's launcher (ADR 096),
+  # bin/ruby hands an app's own script to the app's launcher,
   # and exits with EX_SOFTWARE when it finds the launcher and the system
   # will not run it. The launcher here is executable, so bin/ruby finds
   # it, and is no program, so execv fails. On Windows a launcher is a
@@ -753,7 +753,7 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # ADR 063: an app whose Gemfile.lock names a Bundler the runtime's Ruby
+  # An app whose Gemfile.lock names a Bundler the runtime's Ruby
   # does not ship runs with that Bundler, as bundle exec does, and tells a
   # Ruby it starts so, whatever BUNDLER_VERSION the person has.
   def test_an_app_runs_the_bundler_its_lockfile_names

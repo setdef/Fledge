@@ -8,7 +8,7 @@
 
 # Prints the Bundler that set up this program's gems, and the one
 # BUNDLER_VERSION names for a Ruby it starts: under bundle exec, the
-# Bundler that wrote Gemfile.lock, and so in the built app (ADR 063). Pass
+# Bundler that wrote Gemfile.lock, and so in the built app. Pass
 # a number to exit with it, as examples/hello does, for Delivery.
 require "concurrent"
 

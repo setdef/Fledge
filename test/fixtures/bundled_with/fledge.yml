@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # An app whose Gemfile.lock names a Bundler other than the runtime's
-# (ADR 063). Its Gemfile makes this folder its project's root; this file
-# gives it its name.
+# (doc/contributors/design/gems.md, "The lockfile's Bundler"). Its
+# Gemfile makes this folder its project's root; this file gives it its
+# name.
 name: BundledWith

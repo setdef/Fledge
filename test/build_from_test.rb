@@ -75,7 +75,7 @@ class BuildFromTest < Minitest::Test
   end
 
   # The new app runs the old one's lockfile, and so the Bundler it names,
-  # which the old app's gem folder holds (ADR 063).
+  # which the old app's gem folder holds.
   def test_the_bundler_the_lockfile_names_comes_along
     from = built_player
     File.write(File.join(from, "fledge.cfg"), "bundler = 4.0.19\n", mode: "a")

@@ -164,7 +164,7 @@ class AssemblyTest < Minitest::Test
     end
   end
 
-  # The Bundler the app runs in place of the runtime's own (ADR 063)
+  # The Bundler the app runs in place of the runtime's own
   # follows its Gemfile, for the launcher; an app without one runs no
   # Bundler, so names none.
   def test_fledge_cfg_names_the_bundler_beside_the_gemfile

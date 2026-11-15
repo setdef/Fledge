@@ -51,7 +51,7 @@
 #                           exec RbConfig.ruby, $0, and prints what the
 #                           restarted probe found different from the
 #                           first start, a line each, or "restarted as
-#                           itself" (ADR 096)
+#                           itself"
 #
 # It uses nothing but Ruby's standard library, so it runs under any Ruby
 # 4.0.
@@ -271,7 +271,7 @@ def kernel32(name, arguments, result)
 end
 
 # The process's ANSI code page (GetACP), which its program's manifest
-# decides (ADR 070).
+# decides (doc/contributors/design/launcher.md, "The locale").
 def code_page
   require "fiddle"
   kernel32("GetACP", [], Fiddle::TYPE_INT).call
@@ -346,7 +346,7 @@ end
 # What a child Ruby started through RbConfig.ruby finds of its own
 # process, beside what this one finds, on Windows outside Bundler, or
 # nil: the ANSI code page, which a child takes from its own program's
-# manifest (ADR 070), and whether a DLL under a folder named outside
+# manifest, and whether a DLL under a folder named outside
 # ASCII loads through a narrow path.
 def windows_child
   return unless windows? && !defined?(Bundler)

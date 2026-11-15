@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Fledge's Architecture
 
-This document names the parts of Fledge and how they fit, points to the design document for each, and indexes every Architecture Decision Record. A contributor who knows nothing of Fledge starts here, then reads `doc/contributors/handoff.md` for where things stand. ADR 001 decides the shape of a built app, ADR 010 that each platform's app is built on that platform, and ADR 093 that runtimes are prebuilt in Fledge's CI; the rest are indexed below.
+This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads `doc/contributors/handoff.md` for where things stand. ADR 001 decides the shape of a built app, ADR 010 that each platform's app is built on that platform, and ADR 093 that runtimes are prebuilt in Fledge's CI; the rest are indexed below.
 
 ## The parts
 
@@ -39,7 +39,7 @@ Fledge copies a program its developer already runs, with its project and the gem
 
 ## Architecture Decision Records
 
-Each ADR in `doc/contributors/adr/` records one decision: its context, the options weighed, the choice, and what it costs. Numbers are never reused, so the list has gaps.
+An ADR in `doc/contributors/adr/` records one decision that changed what Fledge is, and would cost much to undo: its context, the options weighed, the choice, and what it costs. Such decisions are rare. Every other choice, with its reasons, the options weighed, and its prior art, is recorded in the design document for its subject. Numbers are never reused, so the list has gaps.
 
 Dated records, such as finished plans and research notes, cite ADRs by number and section as they stood on their dates; git keeps those versions.
 

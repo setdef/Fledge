@@ -19,7 +19,7 @@ Where to look:
 - `doc/contributors/handoff.md`: where things stand, how to check them, how to release. A session with no memory of earlier ones starts here.
 - `doc/contributors/decisions.md`: the maintainer's words. The only authority.
 - `doc/contributors/plan/003.md`: the plan of record, after `001.md` and `002.md`, both done.
-- `doc/contributors/adr/`: why each part is the way it is. `doc/contributors/design/architecture.md` is the overview, with the index of ADRs and the design documents that say how each part works.
+- `doc/contributors/design/`: how each part works, and why. `architecture.md` there is the overview, and indexes the few ADRs in `doc/contributors/adr/`.
 - `doc/contributors/questions.md`: what only the maintainer can answer.
 
 ## Design precedence
@@ -27,15 +27,15 @@ Where to look:
 1. **A person who double-clicks or runs the app never meets Ruby.** No install step, no Ruby on `PATH`, no error that names a gem, no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot, and the app's gems are the runtime's). When anything below conflicts with this, this wins.
 2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`.** Same requires, same globals, same `ENV`, same standard library, bundled gems, and locked gems (decisions 9, 10, and 20; ADR 081, ADR 085, and ADR 095). The parity check proves it on every platform; a difference is a bug unless `Parity::JUSTIFIED` says why it is right. The reason is that Fledge must never surprise an app developer with how Ruby, its globals, built-ins, and standard library behave compared with not using Fledge (decisions, 2026-11-02).
 3. **Ruby the language and its conventions.** RubyGems platform names for targets, CRuby's own `main.c` for how the launcher starts the interpreter, Ruby's layout for the standard library. Read the source at the pinned Ruby version; do not guess.
-4. **Prior art and standards.** GNU's and POSIX's command-line conventions, sysexits.h, LÖVE's fused games, the Tauri bundler, PyInstaller and Briefcase, and python-build-standalone. When Fledge needs a behavior these already settled, match them and cite them where the behavior is recorded: in the design document that specifies it, or in an ADR when choosing between them was the decision.
+4. **Prior art and standards.** GNU's and POSIX's command-line conventions, sysexits.h, LÖVE's fused games, the Tauri bundler, PyInstaller and Briefcase, and python-build-standalone. When Fledge needs a behavior these already settled, match them and cite them in the design document that specifies the behavior.
 5. **Ruby culture.** Idioms yield to 1 through 4.
 
 ## How to work
 
-- Research before designing: read the relevant design document, for how a part works, and its ADRs, for why, and the prior art's source or documentation first. Never guess at a reference's contents; cite the file and lines you relied on.
+- Research before designing: read the design document for the part, and the prior art's source or documentation first. Never guess at a reference's contents; cite the file and lines you relied on.
 - Root-cause every fix. If you cannot explain why a change fixed the symptom, it is not a fix.
 - Write tests first. A test must fail if the code it covers is deleted or mutated, and must exercise real collaborators, not stubs that hide missing behavior. Test the CLI through real streams (injected `StringIO`) and as a subprocess. The acceptance test for a build is a built app run on a fresh machine with no Ruby.
-- Code is a liability (decisions, 2026-10-28). Never write a file format, archive, image codec, signer, or other tool that a maintained, pinnable tool or gem already provides; use the tool, built or run on the platform it belongs to. Write code only for what no such tool does, and say which tools were considered and why none fit: in an ADR when choosing between tools was the decision, and otherwise in the design document that specifies the part.
+- Code is a liability (decisions, 2026-10-28). Never write a file format, archive, image codec, signer, or other tool that a maintained, pinnable tool or gem already provides; use the tool, built or run on the platform it belongs to. Write code only for what no such tool does, and say in the part's design document which tools were considered and why none fit.
 - Build each target on its own operating system, with that system's tools, as Tauri, Electron's tooling, and Briefcase do; Fledge does not build one platform's app on another (decisions, 2026-10-28).
 - Pin every external input (Ruby builds, actions, tools, gems) by version and, where it is downloaded, by SHA-256. Updates arrive on purpose.
 - Add no requirement the maintainer did not ask for without weighing what it costs, and say what it costs when you propose one.
@@ -78,7 +78,7 @@ Where to look:
 The maintainer uses three words for how code comes to exist (decisions, 2026-11-02, later again). *Written* means the maintainer typed it by hand, with nothing generated. *Wrought* means an AI agent generated it while the maintainer iterated with it, and the maintainer reviewed every change before committing it, so the maintainer takes responsibility for every diff. *Requested* means an agent built it with little or no review from the maintainer, in the style of a "dark factory."
 
 - **In Fledge, everything is requested:** ADRs, plans, this file, the README, `lib/`, `sig/`, `exe/`, `tasks/`, `test/`, the launcher's C, the workflows. Nothing here is written or wrought. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass.
-- **The maintainer's words** are in `doc/contributors/decisions.md`, quoted verbatim with the date. That file is the only record of what the maintainer said. Everything else here, ADRs, design documents, plans, and this file included, was written by agents, and agents change it, as long as it stays true to `decisions.md`: design documents, plans, and this file freely, and an accepted ADR only by writing a new one.
+- **The maintainer's words** are in `doc/contributors/decisions.md`, quoted verbatim with the date. That file is the only record of what the maintainer said. Everything else here, ADRs, design documents, plans, and this file included, was written by agents, and agents change it, as long as it stays true to `decisions.md`; an accepted ADR is never rewritten, only replaced by a new one or deleted once it no longer passes.
 - **Generated code** is marked as generated in its header and is never edited by hand; change the generator instead.
 
 Every commit carries a `Provenance: requested` trailer.

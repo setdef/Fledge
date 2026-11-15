@@ -30,7 +30,7 @@ class LicenseAudit
   # app's: nothing of the app or of Fledge's launcher goes in. The source
   # travels with the app, so that whoever conveys the app conveys the
   # source with it (LGPL-2.1, section 6(a)) whatever becomes of the
-  # release's host (ADR 043).
+  # release's host.
   class SourceBundle
     # Where in a runtime, and so in an app, the sources are.
     FOLDER = "notices/sources"

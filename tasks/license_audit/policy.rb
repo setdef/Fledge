@@ -7,7 +7,7 @@
 
 class LicenseAudit
   # Judges each component a tree ships by Fledge's license policy
-  # (Fledge::LicensePolicy, ADR 004): a notice-only license anywhere, a
+  # (Fledge::LicensePolicy): a notice-only license anywhere, a
   # file-level one only for unmodified files, and an LGPL one either as
   # its own shared library with a source pin, or linked into another
   # component that is not Fledge's own and whose source Fledge publishes

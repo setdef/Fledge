@@ -416,7 +416,7 @@ class Parity
   # Unpacks the Ruby the runtime came from into the work folder, which
   # must exist, as it ships, and returns its ruby program: rv-ruby's or
   # RubyInstaller's release, or for musl Linux, whose Ruby the runtime
-  # build compiles from source (ADR 017), the runtime itself, whose
+  # build compiles from source, the runtime itself, whose
   # bin/ruby is Ruby's own main.c linked against the same libruby. The
   # ruby/spec comparison runs its stock Ruby with it.
   def unpack_reference

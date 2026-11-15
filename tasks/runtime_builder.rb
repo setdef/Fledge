@@ -36,7 +36,7 @@ require_relative "../lib/fledge/version"
 #
 # Before it archives a runtime, the builder audits it (LicenseAudit,
 # against runtime/licenses.yml) and refuses to archive one that breaks
-# Fledge's license policy (ADR 004). The audit's findings become the
+# Fledge's license policy. The audit's findings become the
 # runtime's notices/NOTICES.txt and notices/sbom.spdx.json, and, beside
 # the archive, the release assets that go with it: the SBOM, the
 # NOTICES, and the source of the runtime's LGPL libraries.
@@ -48,7 +48,7 @@ require_relative "../lib/fledge/version"
 # share Unix, and Windows. The layout is the one the Unix and Windows
 # launcher spikes settled (Plan 001).
 #
-# What a runtime leaves out follows one rule (ADR 085): an app's Ruby
+# What a runtime leaves out follows one rule: an app's Ruby
 # code must run as it does under a standard Ruby 4.1, so a runtime
 # keeps everything such a Ruby installs that running Ruby code can
 # reach (every default and bundled gem, its executables, the gem cache,

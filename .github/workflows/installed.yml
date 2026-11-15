@@ -218,7 +218,7 @@ jobs:
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" "$RUNNER_TEMP/build.err"
           ls -l "$XDG_CACHE_HOME/fledge/runtimes" "$RUNNER_TEMP/dist"
 
-      # Compiling a gem needs nothing but the runtime (ADR 085), which the
+      # Compiling a gem needs nothing but the runtime, which the
       # step before downloaded into the same cache, so this step downloads
       # nothing of Fledge's.
       - name: Build native_app from source with the release's runtime alone
@@ -317,7 +317,7 @@ jobs:
           -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/native_app.expected" -Raw).TrimEnd()
 
-  # musl Linux from the tag (ADR 017): in Alpine with Ruby, as a developer
+  # musl Linux from the tag: in Alpine with Ruby, as a developer
   # on Alpine installs Fledge, with Bundler, from the tag, fledge build
   # downloads the musl runtime from the release, checked against the
   # gem's pins, and builds hello and my_cool_app; then a bare Alpine with

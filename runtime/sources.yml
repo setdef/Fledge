@@ -45,7 +45,7 @@
 # Windows builds; RubyInstaller all but syslog, which needs a Unix), and
 # prunes any other gem its Ruby adds (rv-ruby adds bootsnap and
 # msgpack), so that an app finds exactly what a standard Ruby 4.1 has
-# (ADR 085).
+# (doc/contributors/design/runtimes.md, "What a runtime keeps").
 ruby:
   version: 4.1.0-preview1
   release: "20261023"
@@ -118,8 +118,8 @@ llvm-mingw:
 # a shared library from the same release rv-ruby used (its formula
 # rv-portable-libxcrypt.rb at the commit that built release 20261023) and
 # the launcher loads it from the runtime's lib/ folder, where whoever
-# receives an app can replace it (ADR 042;
-# doc/contributors/design/runtimes.md, "libxcrypt on glibc Linux").
+# receives an app can replace it
+# (doc/contributors/design/runtimes.md, "libxcrypt on glibc Linux").
 libxcrypt:
   version: 4.5.2
   url: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
@@ -284,7 +284,7 @@ appimage-runtime:
       url: https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-aarch64
       sha256: 00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444
     # The same static runtimes, which need no C library of the
-    # computer's, for musl Linux (ADR 017).
+    # computer's, for musl Linux.
     x86_64-linux-musl:
       url: https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
       sha256: 2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d
@@ -428,4 +428,5 @@ musl-ruby:
 
 # What each runtime ships, under which license, and with which notice,
 # is runtime/licenses.yml's: the license audit derives it from each built
-# runtime and writes its notices/NOTICES.txt and SBOM (ADR 004).
+# runtime and writes its notices/NOTICES.txt and SBOM
+# (doc/contributors/design/license-audit.md).

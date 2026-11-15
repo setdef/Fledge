@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Publishes a Fledge release when a vX.Y.Z tag is pushed
-# (doc/contributors/design/releases.md, "Where releases are"; ADR 004;
+# (doc/contributors/design/releases.md, "Where releases are";
 # AGENTS.md, Releasing). Only when CI passed on a
 # push to trunk on every job, the license audit and Delivery included,
 # for the tagged commit's parent, and for the tagged commit the short CI

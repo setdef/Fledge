@@ -131,7 +131,7 @@ foreach ($pair in @(@('FileDescription', $appName), @('ProductName', $appName), 
 }
 Write-Host "ok: $appName.exe names itself $appName, version $($info.ProductVersion)"
 
-# The app carries the notices the license audit wrote (ADR 004): every
+# The app carries the notices the license audit wrote: every
 # component and license text, GMP's replaceability and source among them,
 # and the SBOM.
 $notices = Join-Path $root 'notices\NOTICES.txt'
@@ -144,10 +144,10 @@ foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_d
 Write-Host "ok: the app carries its notices and SBOM"
 
 # The source of each component whose license asks for it travels in the
-# app, in notices\sources\ID\ (ADR 043;
-# doc/contributors/design/license-audit.md, "notices/sources/ and the
-# source bundles"): the archive whose
-# SHA-256 its BUILD.txt names, and NOTICES.txt names the folder.
+# app, in notices\sources\ID\
+# (doc/contributors/design/license-audit.md, "notices/sources/ and the
+# source bundles"): the archive whose SHA-256 its BUILD.txt names, and
+# NOTICES.txt names the folder.
 foreach ($id in @('gmp', 'nsis')) {
   $folder = Join-Path $root "notices\sources\$id"
   $build = Join-Path $folder 'BUILD.txt'

@@ -42,7 +42,7 @@
 # and the parity probe (tasks/mobile_parity.rb).
 #
 # Every runtime build runs the license audit and refuses to archive a
-# runtime that breaks Fledge's license policy (ADR 004). The Licenses
+# runtime that breaks Fledge's license policy. The Licenses
 # jobs check what it wrote and that it still fails on GPL code; the
 # upstream jobs show it catching what rv-ruby and RubyInstaller ship and
 # runtimes remove; the licensing page job keeps doc/licensing.md true to
@@ -103,7 +103,7 @@ env:
   RUST_TOOLCHAIN: "1.99.1"
   # Install exactly what Gemfile.lock locks, or fail.
   BUNDLE_FROZEN: "true"
-  # musl Linux (ADR 017): the Alpine a developer with Ruby builds apps
+  # musl Linux: the Alpine a developer with Ruby builds apps
   # on, and the bare Alpine Delivery runs them on, pinned by digest.
   ALPINE_RUBY: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
   ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
@@ -255,7 +255,7 @@ jobs:
   # warnings as errors and the compiler's static analyzer, the pinned
   # Ruby's standard library pruned beside it (rv-ruby's, or for Windows
   # RubyInstaller's, checked against its PGP signature), and the license
-  # audit (ADR 004), which fails the build of a runtime that breaks
+  # audit, which fails the build of a runtime that breaks
   # Fledge's license policy and writes its NOTICES and SBOM. Beside each
   # archive go the release assets that describe it: the SBOM, the
   # NOTICES, and the source of its LGPL libraries.
@@ -362,7 +362,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # The musl Linux runtimes (ADR 017): CRuby built from its pinned source
+  # The musl Linux runtimes: CRuby built from its pinned source
   # in Alpine, on a runner of each architecture, as rv-ruby builds its
   # own musl Rubies, with docker run rather than a job container, since
   # GitHub's JavaScript actions cannot run in an Alpine container on an
@@ -844,7 +844,7 @@ jobs:
       - name: Interrupt ruby main.rb in a terminal
         run: .github/scripts/deliver-console.sh --reference "$(command -v ruby)" test/fixtures/console/main.rb
 
-  # ADR 081 on musl Linux (ADR 017): the probe app, built from this
+  # ADR 081 on musl Linux: the probe app, built from this
   # runtime in Alpine, against the Ruby the runtime build compiled, as
   # ruby main.rb, then as my_cool_app's program against bundle exec.
   parity-musl:
@@ -1393,7 +1393,7 @@ jobs:
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2
     steps: *build-steps
 
-  # musl Linux's apps (ADR 017), built in Alpine with Ruby, as a developer
+  # musl Linux's apps, built in Alpine with Ruby, as a developer
   # on Alpine builds them: hello, the parity and console probes, the
   # probe as a gem-shaped app's program, my_cool_app, whose sqlite3 is
   # precompiled for musl, windowed_app, with its AppImage, and programs.
@@ -1877,7 +1877,7 @@ jobs:
             platform: aarch64-linux
     steps: *delivery-deb-steps
 
-  # Delivery on musl Linux (ADR 017): each app in a bare Alpine container,
+  # Delivery on musl Linux: each app in a bare Alpine container,
   # with no Ruby at all, as deliver.sh --no-ruby-installed checks: hello
   # and my_cool_app, the console probe interrupted in a terminal, and the
   # windowed app, its desktop entry, and its AppImage, which has no FUSE

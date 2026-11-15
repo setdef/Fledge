@@ -32,7 +32,8 @@
 # source (never the app's) in each runtime's notices/sources/, so in
 # every app, and published beside each runtime.
 # RuntimeBuilder runs the audit on every runtime it builds and
-# refuses to archive one that fails (ADR 004).
+# refuses to archive one that fails
+# (doc/contributors/design/license-audit.md).
 #
 # Patterns are File.fnmatch globs relative to the tree (** crosses
 # folders, {a,b} alternates). {prefix} is where Ruby's own tree starts
@@ -49,7 +50,7 @@ system_libraries:
   linux:
     - /\A(?:libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|libgcc_s\.so\.1|ld-linux[-\w.]*\.so\.\d)\z/
   # musl Linux's C library, by its own name and Alpine's, and its
-  # dynamic linker (ADR 017).
+  # dynamic linker.
   linux-musl:
     - /\A(?:libc\.so|libc\.musl-(?:x86_64|aarch64)\.so\.1|ld-musl-(?:x86_64|aarch64)\.so\.1)\z/
   darwin:
@@ -216,7 +217,7 @@ components:
       - files: [launcher, bin/ruby]
         evidence: "GCC: ("
 
-  # The musl runtimes build their Ruby from source in Alpine (ADR 017),
+  # The musl runtimes build their Ruby from source in Alpine,
   # with Alpine's Rust and GCC, whose versions ci.yml pins.
   - id: rust-std
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
@@ -886,7 +887,7 @@ components:
 
   # The source of each component above whose license asks for it, which
   # each runtime carries in notices/sources/ and so every app that copies
-  # its notices/ (ADR 043): the pinned archive exactly as
+  # its notices/: the pinned archive exactly as
   # downloaded, its license texts, and BUILD.txt
   # (LicenseAudit::SourceBundle). Its license is the component's own.
   - id: libxcrypt-source

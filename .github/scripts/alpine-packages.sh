@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # Installs, in an Alpine 3.24 container, the packages each musl Linux job
-# needs (ADR 017), pinned by version as the Ubuntu jobs pin theirs:
+# needs, pinned by version as the Ubuntu jobs pin theirs:
 #
 #   alpine-packages.sh build    what builds a musl runtime: a C toolchain,
 #                               Rust for YJIT, Perl for OpenSSL's build,

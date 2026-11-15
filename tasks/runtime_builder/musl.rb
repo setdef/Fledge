@@ -16,7 +16,7 @@ class RuntimeBuilder
   # and python-build-standalone build Python, because rv-ruby's musl
   # builds link the standard library's extensions into their own
   # bin/ruby, where a launcher linked against their libruby cannot reach
-  # them (Plan 001, spike 1; ADR 017). It is configured as rv-ruby's
+  # them (Plan 001, spike 1). It is configured as rv-ruby's
   # glibc builds are, a static libruby that finds its library from the
   # program that holds it, with YJIT, but with each extension a shared
   # object, as on glibc, and OpenSSL, libyaml, libffi, and zlib built

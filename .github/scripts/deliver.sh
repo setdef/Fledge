@@ -76,18 +76,18 @@ set -- "$root"/lib/ruby/[0-9]*.*
 [ $# -eq 1 ] && [ -d "$1" ] || fail "$root/lib/ruby holds no one folder named for a Ruby version: $*"
 abi=$(basename "$1")
 
-# The app carries the notices the license audit wrote (ADR 004): every
+# The app carries the notices the license audit wrote: every
 # component and license text, and the SBOM; on Linux with glibc,
 # libxcrypt's replaceability and where its source is. musl Linux's apps
-# ship no libxcrypt: musl's own crypt(3) serves (ADR 017).
+# ship no libxcrypt: musl's own crypt(3) serves.
 [ -s "$root/notices/sbom.spdx.json" ] || fail "the app has no notices/sbom.spdx.json"
 grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the app has no notices/NOTICES.txt from the license audit"
 
 # The source of each component whose license asks for it travels in the
-# app, in notices/sources/ID/ (ADR 043;
-# doc/contributors/design/license-audit.md, "notices/sources/ and the
-# source bundles"): the archive whose
-# SHA-256 its BUILD.txt names, and NOTICES.txt names the folder.
+# app, in notices/sources/ID/
+# (doc/contributors/design/license-audit.md, "notices/sources/ and the
+# source bundles"): the archive whose SHA-256 its BUILD.txt names, and
+# NOTICES.txt names the folder.
 sources_hold() {
   for id in "$@"; do
     source_dir="$root/notices/sources/$id"
@@ -367,7 +367,7 @@ echo "ok: an app without app/$entry says so and exits 66"
 case "$(uname -s)" in
   Linux)
     # On musl Linux, the launcher and bin/ruby need musl's C library and
-    # nothing else, which ldd lists as the dynamic linker (ADR 017).
+    # nothing else, which ldd lists as the dynamic linker.
     if [ ! -e "$root/lib/libcrypt.so.2" ]; then
       for program in "$app" "$root/bin/ruby"; do
         others=$(ldd "$program" | grep -v -e 'ld-musl-' -e 'libc\.musl-' || true)

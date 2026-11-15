@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Every text file is checked out with the LF the repository holds, on
+# Windows too, whatever core.autocrlf says, so the lint and the tests
+# read the same bytes on every system (.rubocop.yml, Layout/EndOfLine).
+* text=auto eol=lf
+
+# Kept byte for byte, with the CRLF they hold: the Windows batch file
+# Gradle generates, and NSIS's license as NSIS ships it.
+/lib/fledge/templates/android/gradlew.bat -text
+/runtime/notices/nsis/COPYING -text

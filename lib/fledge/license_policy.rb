@@ -18,7 +18,7 @@ module Fledge
   # source Fledge publishes; and the GPL and the AGPL do not ship at all.
   # The rule is for what Fledge puts in an app, not for the app's own
   # gems, whose licenses are the developer's choice and responsibility
-  # (2026-10-28; ADR 007).
+  # (decisions of 2026-10-28).
   #
   # This module holds that policy and judges an SPDX license expression
   # against it, as SPDX 2.3, annex D, reads one: +OR+ takes the least

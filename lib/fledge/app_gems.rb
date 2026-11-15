@@ -26,7 +26,7 @@ module Fledge
   # An app's gems are its developer's choice, and so are their licenses:
   # Fledge ships whatever the app's Gemfile.lock locks, under whatever
   # license, and takes no position on it (the maintainer's words of
-  # 2026-10-28 in <tt>doc/contributors/decisions.md</tt>; ADR 007). What
+  # 2026-10-28 in <tt>doc/contributors/decisions.md</tt>). What
   # it does check is whether each gem will run where the app goes, since
   # a person who runs the app must never meet an error that names a gem.
   #
@@ -207,7 +207,7 @@ module Fledge
     # What keeps each gem from running on a desktop +platform+'s runtime:
     # the Ruby it asks for, and what its compiled files need; and on
     # Linux, each library <tt>fledge.yml</tt> lists as the distribution's
-    # that none of them needs (Config::Linux; ADR 030).
+    # that none of them needs (Config::Linux).
     private def desktop_problems(packages, platform, runtime)
       readers(platform, runtime) do |readers|
         linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, system: @app.config.system_libraries(platform.os), readers:)
@@ -220,7 +220,7 @@ module Fledge
 
     # Yields the tools that read +platform+'s compiled files
     # (Fledge::Binary::Readers): on Windows, which has none of its own,
-    # the llvm-readobj the runtime carries (ADR 013).
+    # the llvm-readobj the runtime carries.
     private def readers(platform, runtime)
       return yield Binary::Readers.local(platform.os) unless platform.windows?
 

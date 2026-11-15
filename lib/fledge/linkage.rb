@@ -26,7 +26,7 @@ module Fledge
   # nor Fledge's runtime, nor the gem itself provides.
   # What the operating system provides is SYSTEM_LIBRARIES, and on Linux
   # also what the project lists as its gems' to load from the
-  # distribution (Config::Linux; ADR 030), which a desktop library's
+  # distribution (Config::Linux), which a desktop library's
   # wrapper needs. On macOS a
   # library the gem carries must also be where its name leads: a file that
   # names <tt>@rpath/libfoo.dylib</tt> or
@@ -34,7 +34,7 @@ module Fledge
   # would find it there (Fledge::Linkage::Dyld), so a run path into
   # Homebrew's folder does not count, however the copy is named. It judges
   # nothing else: what a gem compiles in, and under what license, is the
-  # app's developer's to decide (decisions of 2026-10-28; ADR 007).
+  # app's developer's to decide (decisions of 2026-10-28).
   #
   # Use it for each gem an app ships, through Fledge::AppGems.
   #

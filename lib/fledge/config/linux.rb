@@ -10,7 +10,7 @@ require_relative "../error"
 module Fledge
   class Config
     # What a project's <tt>fledge.yml</tt> says under +linux+: the
-    # libraries its gems load from the Linux distribution (ADR 030).
+    # libraries its gems load from the Linux distribution.
     #
     # A gem's compiled files may need only the libraries every Linux
     # distribution has, Fledge's runtime ships, or the gem carries

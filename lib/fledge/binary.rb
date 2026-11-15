@@ -21,7 +21,7 @@ module Fledge
   # <tt>doc/contributors/decisions.md</tt>). The oldest macOS or glibc a
   # file names decides the oldest system it loads on.
   #
-  # Fledge reads none of these formats itself (ADR 013). An objdump reads
+  # Fledge reads none of these formats itself. An objdump reads
   # ELF and Mach-O (<tt>objdump -p</tt>: an ELF file's dynamic section and
   # version references, a Mach-O file's load commands), GNU's on Linux and
   # LLVM's, which Xcode's command line tools install as objdump, on a Mac;

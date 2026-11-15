@@ -32,7 +32,7 @@ module Fledge
   # can it know which libraries a project's gems may load from a Linux
   # distribution, such as a webview's WebKitGTK: list them under +linux+
   # (Config::Linux), and the build accepts them, and a <tt>.deb</tt>
-  # depends on them (ADR 030). Nor can it know the package identity of
+  # depends on them. Nor can it know the package identity of
   # a Windows app's MSIX package, which Partner Center gives an app for
   # the Microsoft Store: name it under +windows+ (Config::Windows). Nor
   # can it know which files and folders a
@@ -162,7 +162,7 @@ module Fledge
     ##
     # :attr_reader: linux
     # The libraries the project's gems load from the Linux distribution
-    # (Config::Linux), or +nil+ for none (ADR 030).
+    # (Config::Linux), or +nil+ for none.
 
     ##
     # :attr_reader: macos

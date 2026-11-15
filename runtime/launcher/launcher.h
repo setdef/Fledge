@@ -35,7 +35,7 @@
  * The exit statuses of a launcher that cannot start its app, from
  * sysexits(3) (ADR 002): EX_NOINPUT when the program the app runs, or the
  * fledge.cfg that names it, is missing, EX_OSFILE when a library the app's
- * gems load from the Linux distribution is not on the computer (ADR 030),
+ * gems load from the Linux distribution is not on the computer,
  * and EX_SOFTWARE when anything else about the app or its runtime is
  * broken. An app's own failures exit with
  * the app's status instead, as under ruby.

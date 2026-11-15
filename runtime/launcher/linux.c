@@ -16,7 +16,7 @@
  *
  * It also answers one question only Linux asks: whether this computer
  * has the libraries the app's gems load from the distribution, which
- * fledge.cfg lists (ADR 030). A gem's extension that needs one that is
+ * fledge.cfg lists. A gem's extension that needs one that is
  * missing fails when Ruby requires it, with a LoadError that names the
  * gem, so the launcher asks the loader first and names the library
  * instead. It asks in a child process, which dlopen(3)s each library and

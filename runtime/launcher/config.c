@@ -29,7 +29,7 @@
  * letters, digits, hyphens, and dots, at most FLEDGE_IDENTIFIER_MAX
  * characters. system_libraries, on Linux, names the libraries the app's
  * gems load from the distribution, between spaces, which the launcher
- * looks for before Ruby starts (ADR 030): letters, digits, and . _ + -,
+ * looks for before Ruby starts: letters, digits, and . _ + -,
  * with no folder. Blank lines and lines that begin
  * with # say nothing. fledge build and the launcher come from the same
  * Fledge, so a key this launcher does not know means the file is

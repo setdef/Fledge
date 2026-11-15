@@ -39,7 +39,7 @@
  *      On Linux, it then has the loader look for each library the app's
  *      gems load from the distribution, which fledge.cfg lists, and
  *      names the first one this computer lacks instead of starting Ruby
- *      (find_system_libraries, linux.c; ADR 030).
+ *      (find_system_libraries, linux.c).
  *   2. It sets aside every environment variable through which a Ruby
  *      that happens to be installed on the computer could change how
  *      Ruby boots: RUBYOPT, RUBYLIB, GEM_HOME, BUNDLE_GEMFILE, and the
@@ -424,7 +424,7 @@ read_config(void)
 #ifdef __linux__
 /*
  * On Linux, refuses to start an app whose gems load a library from the
- * distribution (fledge.cfg's system_libraries, ADR 030) that this
+ * distribution (fledge.cfg's system_libraries) that this
  * computer's loader cannot load, naming the library, with EX_OSFILE: a
  * gem's extension would otherwise fail when Ruby required it, with a
  * LoadError that names the gem (linux.c).

@@ -70,7 +70,7 @@ The Windows launcher needs only Ruby's headers to build, never a library to link
 - **Pinned, not MSYS2's.** MSYS2's gcc on a Windows runner rolls and cannot be pinned.
 - **One toolchain, two targets.** The triple is `x86_64-w64-mingw32` for `x64-mingw-ucrt` and `aarch64-w64-mingw32` for `aarch64-mingw-ucrt` (`RuntimeBuilder::Windows::TARGETS`).
 - **Resources.** llvm-mingw's `windres` compiles `runtime/launcher/windows.rc`, which embeds the manifest (`windows.manifest`), into each launcher.
-- **The audit's readers.** The Windows recipe's license audit reads the runtime with the same llvm-mingw's `llvm-objdump` and `llvm-readobj` (ADR 013).
+- **The audit's readers.** The Windows recipe's license audit reads the runtime with the same llvm-mingw's `llvm-objdump` and `llvm-readobj` (`doc/contributors/design/license-audit.md`, "Which tools read compiled files").
 
 ## Sources and pins
 
@@ -186,14 +186,14 @@ On macOS and Linux, whose Rubies ship no such file, the parity check allows the 
 
 ## The tools folder
 
-`tools/` holds what `fledge build` runs or copies (ADR 009, ADR 010, ADR 013). An app holds none of it, unless its `fledge.yml` sets `build_tools` (`doc/contributors/design/desktop-apps.md`). Each file is pinned by SHA-256 in `runtime/sources.yml` and owned by a component of the license audit, which checks `rcedit.exe`'s and `llvm-readobj.exe`'s SHA-256 again in the runtime.
+`tools/` holds what `fledge build` runs or copies (ADR 009, ADR 010). An app holds none of it, unless its `fledge.yml` sets `build_tools` (`doc/contributors/design/desktop-apps.md`). Each file is pinned by SHA-256 in `runtime/sources.yml` and owned by a component of the license audit, which checks `rcedit.exe`'s and `llvm-readobj.exe`'s SHA-256 again in the runtime.
 
 | Platform | File | What `fledge build` does with it |
 |---|---|---|
 | Linux, glibc and musl | `tools/appimage-runtime` | Writes it at the front of an AppImage. It is AppImage's released type 2 runtime for the architecture, static against musl, with libfuse linked in (ADR 049). |
 | Windows | `tools/nsis/` | Runs `Bin/makensis.exe` to compile an installer. It is the part of NSIS's release that compiles one: `COPYING`, makensis and its `zlib1.dll`, the solid LZMA and zlib stubs and the uninstaller's icon, the System and nsDialogs plug-ins, the script headers, and Modern UI 2 (`RuntimeBuilder::Windows::NSIS`). |
 | Windows | `tools/rcedit.exe` | Writes an app's version information and icon into its program. It is Electron's release of `rcedit-x64.exe`. `llvm-rc` and `llvm-windres` compile resources but cannot put them into a program already linked. |
-| Windows | `tools/llvm-readobj.exe` | Reads what an app's compiled gems import and delay-load (ADR 013). It is the one file of LLVM's own Windows release, statically linked, which imports only Windows' DLLs; the build unpacks it with `zstd --long=31` and checks the file's own SHA-256. |
+| Windows | `tools/llvm-readobj.exe` | Reads what an app's compiled gems import and delay-load (`doc/contributors/design/license-audit.md`, "Which tools read compiled files"). It is the one file of LLVM's own Windows release, statically linked, which imports only Windows' DLLs; the build unpacks it with `zstd --long=31` and checks the file's own SHA-256. |
 
 ## Compiling a gem against a runtime
 

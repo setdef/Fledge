@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The Launcher and bin/ruby
 
-This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 087 the locale; ADR 095 Bundler; ADR 024 the sections of `fledge.cfg`; ADR 096 the restart; and ADR 030 the Linux system-library check. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
+This document describes the program at the top of every desktop app, the launcher, and the runtime's `bin/ruby` on macOS and Linux: how each starts, what each reads, what it changes in the environment and in what order, what it prints, and how it exits. ADR 001 decides that an app is a launcher that embeds CRuby; ADR 002 its messages and statuses; ADR 081 that it adds nothing between Ruby and the program; ADR 037 the console and windowed launchers; ADR 038 the Windows layout; ADR 040 the hiding and restoring of the person's Ruby settings; ADR 087 the locale; ADR 095 Bundler; ADR 024 the sections of `fledge.cfg`; and ADR 096 the restart. Line numbers below are at Ruby 4.1.0-preview1, as the launcher's comments cite them, except where a sentence says otherwise.
 
 ## Source files
 
@@ -272,7 +272,7 @@ The launcher removes the person's variables before Ruby boots and writes `BUNDLE
 
 ## System libraries on Linux
 
-When `fledge.cfg` has `system_libraries`, written from `fledge.yml`'s `linux: system_libraries` (ADR 030; `doc/contributors/design/gems.md` covers the list and its refusals), the Linux launcher checks them after reading `fledge.cfg` and before hiding anything or starting Ruby:
+When `fledge.cfg` has `system_libraries`, written from `fledge.yml`'s `linux: system_libraries` (`doc/contributors/design/gems.md`, "Libraries from the Linux distribution", covers the list, its refusals, and why it names sonames), the Linux launcher checks them after reading `fledge.cfg` and before hiding anything or starting Ruby:
 
 1. It makes a pipe and forks. The child `dlopen`s each name in order with `RTLD_LAZY | RTLD_LOCAL`; at the first that fails it writes the name, a newline, and `dlerror`'s reason to the pipe, and exits 1; otherwise it exits 0.
 2. The parent reads the pipe and waits. At a failure with a name it exits 72 with the message above.

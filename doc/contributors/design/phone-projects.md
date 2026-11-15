@@ -67,7 +67,7 @@ The app's identity is `fledge.yml`'s (ADR 008), where each system shows it:
 
 ## Gems on a phone
 
-No gem publishes a build for a phone, so a phone's app ships each gem's `ruby` build, with Bundler's own `force_ruby_platform` in the app's `.bundle/config` (ADR 057; `Fledge::MobilePlatform#force_ruby_platform?`). A gem that also publishes builds for desktops ships its `ruby` build, and an iOS Ruby, which reports `arm64-darwin`, never resolves a macOS gem. Since the app's Bundler runs with it, the lockfile must lock `ruby`, and a build that finds it unlocked says so, naming `bundle lock --add-platform ruby`. A gem the lockfile locks no `ruby` build of fails as a desktop build fails for a gem with no build for it. A gem with a C or C++ extension is compiled and linked in (see "Gems with extensions"). Gems' licenses stay the developer's business (ADR 007).
+No gem publishes a build for a phone, so a phone's app ships each gem's `ruby` build, with Bundler's own `force_ruby_platform` in the app's `.bundle/config` (ADR 057; `Fledge::MobilePlatform#force_ruby_platform?`). A gem that also publishes builds for desktops ships its `ruby` build, and an iOS Ruby, which reports `arm64-darwin`, never resolves a macOS gem. Since the app's Bundler runs with it, the lockfile must lock `ruby`, and a build that finds it unlocked says so, naming `bundle lock --add-platform ruby`. A gem the lockfile locks no `ruby` build of fails as a desktop build fails for a gem with no build for it. A gem with a C or C++ extension is compiled and linked in (see "Gems with extensions"). Gems' licenses stay the developer's business (`doc/contributors/design/gems.md`, "Checks that are not about licenses").
 
 ## The host app
 

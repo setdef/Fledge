@@ -46,23 +46,6 @@ class ParityProbeTest < Minitest::Test
     end
   end
 
-  # A windowed app has no terminal, so the windowed check
-  # (Parity::Windowed) asks the probe for its report in a file: the
-  # report it would print, and nothing on its standard output.
-  def test_the_probe_writes_its_report_to_the_file_it_is_given
-    Dir.mktmpdir do |folder|
-      path = File.join(folder, "report")
-      out, err, status = probe("report", path)
-
-      assert_predicate status, :success?, err
-      assert_empty out.delete("\n"), "only the newline that learns whether $stdout writes through"
-      facts = Parity::Reports.report(File.read(path))
-      assert_equal ["report", path], facts.fetch("ARGV")
-      assert_equal "42", facts.fetch("RbConfig.ruby runs")
-      assert_equal [path], Dir.children(folder).map { |name| File.join(folder, name) }, "the partial file is moved into place"
-    end
-  end
-
   # rv-ruby's openssl.rb names the CA certificates it carries in ENV as
   # openssl loads, and so do the phones' (RuntimeBuilder::Certificates),
   # so the probe reports what require "openssl" adds to ENV, here from

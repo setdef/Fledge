@@ -14,7 +14,7 @@ This document describes how Fledge proves that a built app's Ruby code sees what
 
 1. builds the probe, `test/fixtures/parity`, with `fledge build` (`Parity#build_app`), as the app `Parity`;
 2. unpacks the reference Ruby (`Parity#unpack_reference`, see "The references");
-3. runs the script check, then its variants (see "The environments"), then the windowed check (see "The windowed check");
+3. runs the script check, then its variants (see "The environments");
 4. runs the gem-shaped check (see "The gem-shaped run");
 5. prints each check's differences, and appends them to the job summary in CI.
 
@@ -55,16 +55,6 @@ The script check runs once as is, and then:
 - on macOS and Linux, with no `LANG` or `LC_*` at all, as a desktop starts an app (the `no_locale` check);
 - and under `LC_ALL=C` and under `LC_CTYPE=C`, which a person sets on purpose, where nothing may differ.
 
-## The windowed check
-
-A windowed app is started by the desktop, with the desktop's environment, locale, working folder, and standard streams, not a terminal's. `Parity::Windowed` (`tasks/parity/windowed.rb`) builds the probe as a windowed app, `ParityWindow`, with no installers, and starts it and `ruby main.rb` as each desktop starts an app, both with the script check's environment and the arguments `report FILE`, since a windowed app has no terminal: the probe writes its report to FILE whole, then moves it into place.
-
-- macOS: `open -n -W`, through Launch Services, as Finder starts an app; the reference is an `.app` with the built app's `Info.plist`, whose executable, compiled with cc, execs the reference Ruby with `main.rb`'s path (a shell script would add `PWD`, `SHLVL`, and `_`).
-- Windows: `ShellExecuteExW`, as Explorer starts a program a person double-clicks, from the program's folder, with no console and no standard handles; `tasks/parity/shell_execute.rb` calls it, in the environment the program is to have, since `ShellExecuteExW` gives a program its caller's, and waits for the program. The reference is the reference Ruby's `rubyw.exe`, RubyInstaller's own.
-- Linux: GLib's `gio launch` of the app's own desktop entry, with the program's full path in `Exec`, from the home folder; the reference's entry is the same with Ruby and `main.rb`'s path in `Exec`. gio gives each start its own `GIO_LAUNCHED_DESKTOP_FILE_PID`, which both reports record as one value (`Parity::Windowed::PER_START`).
-
-On Windows, Ruby's locale differs: with no console it is the ANSI code page, which the launcher's manifest makes UTF-8 (ADR 070), where RubyInstaller's `rubyw.exe` keeps the system's, such as Windows-1252. `Parity::JUSTIFIED` allows that for the windowed check on Windows alone; the code page itself, in the `Windows` fact, differs in every check. CI's Linux Test jobs install gio from the runner's own GLib, and the musl Parity jobs Alpine's (`.github/scripts/alpine-packages.sh parity`). On a Linux computer without gio the check stops and says which package to install.
-
 ## Comparing two reports
 
 `Parity::Reports.normalize` replaces each path with a token, longest first, in each spelling (as given, with `/` for `\`, and real): `<app>` for the probe's folder, `<project>` for its project's root when that is another folder, `<prefix>` for Ruby's prefix, `<home>`, and `<work>` for the check's work folder.
@@ -78,7 +68,7 @@ On Windows, Ruby's locale differs: with no console it is the ANSI code page, whi
 - `fact`, the fact's name in the report;
 - `reference` and `app`, patterns: an element only in the reference run is explained when it matches one of `reference`, and one only in the app when it matches one of `app`;
 - `platforms`, when given, the platforms it applies to;
-- `checks`, `:script` (against `ruby main.rb`), `:bundle` (against `bundle exec`), `:no_locale` (the script check with no locale), `:spelled` (the gem-shaped check with Bundler's variables spelled otherwise, see "The gem-shaped run"), or `:windowed` (the windowed check); the `no_locale` check also allows what `:script` allows, the `spelled` check what `:bundle` allows, and the `windowed` check what `:script` and `:no_locale` allow;
+- `checks`, `:script` (against `ruby main.rb`), `:bundle` (against `bundle exec`), or `:no_locale` (the script check with no locale); the `no_locale` check also allows what `:script` allows;
 - `reason`, printed beside each difference it explains.
 
 Read the list there rather than here. `test/parity_justified.yml` records what each entry allows, without its reason, and `test/parity_justified_test.rb` fails when an entry allows something the file does not list, so a new difference from `ruby main.rb` is always a deliberate change to both. After 1.0 the list may only shrink (`doc/contributors/design/public-interface.md`). A reason's words may change freely.

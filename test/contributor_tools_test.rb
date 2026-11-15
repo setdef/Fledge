@@ -69,6 +69,46 @@ class ContributorToolsTest < Minitest::Test
     downloads.each { |line| assert_match(/checksum = "sha256:\h{64}"/, line) }
   end
 
+  # bindgen, which rb-sys runs for a Rust gem such as native_app's
+  # ferro-idna, needs libclang, and a stock Linux computer has none. mise
+  # installs LLVM's there, from PyPI's libclang wheels, each by its
+  # SHA-256.
+  def test_mise_installs_libclang_for_bindgen_on_linux
+    wheels = mise_toml.lines.grep(%r{\Aplatforms\.\S+ = \{ url = "[^"]*/libclang-18\.1\.1-[^"]*\.whl"})
+
+    assert_equal %w[linux-arm64 linux-x64], wheels.map { |l| l[/platforms\.(\S+)/, 1] }.sort
+    wheels.each { |line| assert_match(/checksum = "sha256:\h{64}", format = "zip" \}/, line) }
+    assert_includes mise_toml, %([tools."http:libclang"]\nversion = "18.1.1"\nos = ["linux"]\n)
+  end
+
+  # LIBCLANG_PATH names the wheel's folder only where the wheel is
+  # installed, through a file mise reads only there; elsewhere neither it
+  # nor LIBRARY_PATH is set at all, since an empty one would hide the
+  # computer's own libclang, or put the current folder in GCC's search for
+  # libraries.
+  def test_libclang_path_names_the_wheel_only_where_it_is_installed
+    wheel = %({% if tools["http:libclang"] is defined %})
+
+    assert_includes mise_toml, %(FLEDGE_LIBCLANG = { value = '#{wheel}{{ tools["http:libclang"].path }}/libclang-18.1.1.data/platlib/clang/native{% endif %}', tools = true }\n)
+    assert_includes mise_toml, %({ path = '.config/mise/#{wheel}libclang{% else %}none{% endif %}.env', tools = true, expand = true },\n)
+    assert_match(/^LIBCLANG_PATH=\$\{FLEDGE_LIBCLANG\}$/, File.read(File.join(ROOT, ".config", "mise", "libclang.env")))
+    refute_path_exists File.join(ROOT, ".config", "mise", "none.env")
+    refute_match(/^(LIBCLANG_PATH|LIBRARY_PATH) =/, mise_toml)
+  end
+
+  # The wheel has no compiler headers of its own, so the C compiler's are
+  # searched after every other where it is installed, and a missing
+  # compiler leaves the variable as it was rather than failing every mise
+  # command.
+  def test_bindgen_gets_the_c_compilers_headers_where_the_wheel_is_installed
+    lines = mise_toml.lines.grep(/\ABINDGEN_EXTRA_CLANG_ARGS = /)
+    line = lines.first
+
+    assert_equal 1, lines.size
+    assert_includes line, %({% if tools["http:libclang"] is defined %}{% set include = exec(command="cc -print-file-name=include 2>/dev/null || true") %}{% if include %}-idirafter {{ include }} {% endif %}{% endif %})
+    assert_includes line, %({{ get_env(name="BINDGEN_EXTRA_CLANG_ARGS", default="") }}', tools = true }\n)
+  end
+
   def android_toml = File.read(File.join(ROOT, "mise.android.toml"))
 
   # The Android tools mise installs with MISE_ENV=android, from Google's

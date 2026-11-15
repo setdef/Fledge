@@ -26,6 +26,8 @@ mise puts that Ruby first on `PATH` only in a shell it has activated (`eval "$(m
 
 `bundle exec rake runtime` builds this computer's runtime, which the gate otherwise skips the checks of. On Linux it needs a C compiler, binutils, make, perl, and xz from your system, and patchelf 0.18.0, which mise installs from `mise.toml`, pinned by SHA-256.
 
+Building `examples/native_app` compiles its gems, and ferro-idna among them is a Rust gem, whose build runs bindgen, which loads libclang to read Ruby's headers. On macOS and Linux mise installs the Rust it needs. A Mac has libclang with Xcode's command-line tools; on Linux mise installs LLVM's libclang 18.1.1, from PyPI's `libclang` wheel (a 25 MB download), pinned by SHA-256, names its folder in `LIBCLANG_PATH`, and gives bindgen your C compiler's headers, which the wheel lacks. On Windows mise installs neither, and CI's runners supply both. mise sets these only under `mise x --` or in a shell it has activated.
+
 Run `bundle exec rake rubocop:autocorrect_all`, then `bundle exec rake`. The second command is the gate: it runs every test, and must pass with zero errors and zero warnings. `bin/ci` runs the whole gate from a checkout in one command: `bin/setup`, then `bundle exec rake`, and then it fails if a check's autocorrect changed a file, so what was checked is what you commit.
 
 ### Android on Linux

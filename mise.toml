@@ -159,6 +159,33 @@ os = ["windows"]
 platforms.windows-x64 = { url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-x64.zip", checksum = "sha256:ce7484804c0f0ad4dda10c958e71acdaf7eebfb22505c1b480f89e0e9f1da94d" }
 platforms.windows-arm64 = { url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-arm64.zip", checksum = "sha256:2157fb002178e606c2a5532c56647118d90d029742f04d4900a71e3b478c2363" }
 
+# On Linux, libclang, which bindgen loads to read Ruby's headers when
+# rb-sys builds a Rust gem (examples/native_app's ferro-idna). GitHub's
+# runners have one, a stock Linux computer does not. The libclang 18.1.1
+# wheel of PyPI's libclang package (LLVM's own build, which clang's
+# Python bindings load), by the SHA-256 PyPI records for each file. A
+# wheel is a zip, which mise unpacks as it is, so the library is in
+# libclang-18.1.1.data/platlib/clang/native, which the end of this file
+# names. It runs at build time only, and no runtime or app carries it.
+# Windows has none: there CI installs the Rust that builds such a gem
+# itself, and mise installs no Rust to use it with.
+[tools."http:libclang"]
+version = "18.1.1"
+os = ["linux"]
+platforms.linux-x64 = { url = "https://files.pythonhosted.org/packages/1d/fc/716c1e62e512ef1c160e7984a73a5fc7df45166f2ff3f254e71c58076f7c/libclang-18.1.1-py2.py3-none-manylinux2010_x86_64.whl", checksum = "sha256:c533091d8a3bbf7460a00cb6c1a71da93bffe148f172c7d03b1c31fbf8aa2a0b", format = "zip" }
+platforms.linux-arm64 = { url = "https://files.pythonhosted.org/packages/3c/3d/f0ac1150280d8d20d059608cf2d5ff61b7c3b7f7bcf9c0f425ab92df769a/libclang-18.1.1-py2.py3-none-manylinux2014_aarch64.whl", checksum = "sha256:54dda940a4a0491a9d1532bf071ea3ef26e6dbaf03b5000ed94dd7174e8f9592", format = "zip" }
+
+[env]
+# Where the libclang wheel is installed, bindgen loads it: LIBCLANG_PATH,
+# which .config/mise/libclang.env sets from FLEDGE_LIBCLANG, names its
+# folder, and clang-sys then searches that folder alone. Where it is
+# not, as on a Mac or in CI's jobs that install only some tools, mise
+# reads no such file and FLEDGE_LIBCLANG is empty, and clang-sys finds
+# the computer's own libclang as before. An empty LIBCLANG_PATH would
+# hide that one, and an empty LIBRARY_PATH, which clang-sys searches
+# too, puts the current folder first in GCC's search for libraries, so
+# neither is set at all there.
+FLEDGE_LIBCLANG = { value = '{% if tools["http:libclang"] is defined %}{{ tools["http:libclang"].path }}/libclang-18.1.1.data/platlib/clang/native{% endif %}', tools = true }
 # On Windows, the rest of what `ridk enable` sets, so a shell has what a
 # RubyInstaller user's has: RI_DEVKIT here, the variables that depend on
 # the architecture in .config/mise/windows-ARCH.env (no file exists for
@@ -167,8 +194,17 @@ platforms.windows-arm64 = { url = "https://github.com/PowerShell/PowerShell/rele
 # too, RubyInstaller adds itself whenever it installs a gem, as Fledge's
 # builds do (Fledge::NativeBuild). Elsewhere mise sets the three
 # variables below empty, and only RubyInstaller reads them.
-[env]
-_.file = { path = ".config/mise/{{ os() }}-{{ arch() }}.env", tools = true }
+_.file = [
+  { path = ".config/mise/{{ os() }}-{{ arch() }}.env", tools = true },
+  { path = '.config/mise/{% if tools["http:libclang"] is defined %}libclang{% else %}none{% endif %}.env', tools = true, expand = true },
+]
 MSYS2_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }
 RI_DEVKIT = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }
 RUBY_DLL_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2-zlib"].path }}/{{ arch(x64="ucrt64", arm64="clangarm64") }}/bin{% if arch() == "x64" %};{{ tools["http:msys2-libgcc"].path }}/ucrt64/bin{% endif %}{% endif %}', tools = true }
+# The wheel carries libclang without clang's own headers (stddef.h,
+# stdbool.h), which bindgen's parse of Ruby's headers needs, so where it
+# is installed the C compiler's folder of the same headers is searched
+# after every other, ahead of whatever the environment already gives.
+# Elsewhere the variable stays as the environment has it, and an empty
+# one adds nothing.
+BINDGEN_EXTRA_CLANG_ARGS = { value = '{% if tools["http:libclang"] is defined %}{% set include = exec(command="cc -print-file-name=include 2>/dev/null || true") %}{% if include %}-idirafter {{ include }} {% endif %}{% endif %}{{ get_env(name="BINDGEN_EXTRA_CLANG_ARGS", default="") }}', tools = true }

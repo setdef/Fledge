@@ -10,7 +10,7 @@ require_relative "../error"
 module Fledge
   class Config
     # One of the programs a project's <tt>fledge.yml</tt> names under
-    # +programs+ (ADR 024).
+    # +programs+.
     #
     # A project can have several ways in that share one codebase: a
     # command-line game, a terminal UI, and a GUI that all open the same
@@ -20,7 +20,7 @@ module Fledge
     #
     # This class reads one entry of the list: its +path+, which it needs,
     # and its +name+, +kind+, +identifier+, and +icon+, which mean for the
-    # program what they mean for an app (ADR 008). It refuses a key it
+    # program what they mean for an app. It refuses a key it
     # does not know, and a path that leaves the project.
     #
     # Use it through Fledge::Config#programs.

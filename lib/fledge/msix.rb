@@ -39,7 +39,7 @@ module Fledge
   # numbers and a 0, the fourth part the Store keeps for itself. Its
   # logos are the developer's own PNGs (Icon::MSIX), and each extension
   # the app opens is a file type association, which lists the app in
-  # the extension's "Open with" and never makes it the default (ADR 052).
+  # the extension's "Open with" and never makes it the default.
   # MakeAppx packs the folder through a mapping file, with that manifest,
   # the logos, and the app's <tt>fledge.cfg</tt> with no identifier: in a
   # package the app is known by the package's own AppUserModelID, which

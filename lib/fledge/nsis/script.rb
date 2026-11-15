@@ -236,7 +236,7 @@ module Fledge
       end
 
       # The registry entries of the files and folders the app opens
-      # (Config::FileAssociation; ADR 052), under
+      # (Config::FileAssociation), under
       # <tt>HKCU\Software\Classes</tt>, which needs no administrator. For
       # files, a ProgID of the app's for each extension (#prog_id), named
       # for the documents, with the app's icon and the command

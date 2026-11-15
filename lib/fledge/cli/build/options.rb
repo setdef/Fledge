@@ -17,7 +17,7 @@ module Fledge
       # desktop app with, or the developer's own command
       # <tt>--sign-command</tt> signs a Windows app with, the keychain
       # profile <tt>--notarize</tt> has Apple notarize a signed macOS app
-      # with, the app <tt>--from</tt> builds from (ADR 032), and
+      # with, the app <tt>--from</tt> builds from, and
       # the one PATH, with <tt>--</tt> ending the options. A desktop build
       # is for the computer it runs on (ADR 010); a phone's, which no phone
       # builds, is named first, as Briefcase's <tt>briefcase create

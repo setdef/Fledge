@@ -17,11 +17,11 @@ module Fledge
   # Which installers <tt>fledge build</tt> writes for an app, and where.
   #
   # Tauri's bundler builds, by default, every installer the platform it
-  # builds for has (<tt>bundle.targets: "all"</tt>), and so does Fledge
-  # (ADR 009): a windowed app gets, beside each archive, a disk image for
+  # builds for has (<tt>bundle.targets: "all"</tt>), and so does Fledge:
+  # a windowed app gets, beside each archive, a disk image for
   # macOS, an NSIS setup program for Windows, and an AppImage for Linux,
   # and a <tt>.deb</tt> for Debian and Ubuntu when <tt>fledge.yml</tt> asks
-  # for one, since not every Linux computer has dpkg-deb (ADR 021), and
+  # for one, since not every Linux computer has dpkg-deb, and
   # an MSIX package for Windows, which the Microsoft Store takes, when it
   # asks for that, since it needs the Windows SDK's MakeAppx and a
   # publisher only the developer can name, unless <tt>fledge.yml</tt>

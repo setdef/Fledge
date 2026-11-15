@@ -11,8 +11,8 @@ module Fledge
   class Assembly
     # The tools an app carries, when its <tt>fledge.yml</tt> sets
     # +build_tools+, so that it can run <tt>fledge build --from</tt> on
-    # itself where no runtime is at hand (ADR 032;
-    # doc/contributors/design/desktop-apps.md, "Building from a built
+    # itself where no runtime is at hand
+    # (doc/contributors/design/desktop-apps.md, "Building from a built
     # app").
     #
     # <tt>fledge build --from</tt> runs nothing a system lacks on macOS,

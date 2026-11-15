@@ -19,11 +19,11 @@ module Fledge
   # runtime) followed by a SquashFS file system that holds the app; run,
   # the runtime mounts the file system with FUSE and runs its +AppRun+,
   # and where there is no FUSE, <tt>APPIMAGE_EXTRACT_AND_RUN=1</tt> has it
-  # extract the app and run that instead (ADR 009). Tauri's bundler and
+  # extract the app and run that instead. Tauri's bundler and
   # Briefcase make one with appimagetool, which runs mksquashfs.
   #
-  # This module makes one as appimagetool does (ADR 049;
-  # doc/contributors/design/desktop-apps.md, "The AppImage"): it copies
+  # This module makes one as appimagetool does
+  # (doc/contributors/design/desktop-apps.md, "The AppImage"): it copies
   # the built app's folder, which already has the desktop entry at its
   # top (doc/contributors/design/desktop-apps.md, "Identity on each
   # system"), into an AppDir, adds +AppRun+, a symbolic link

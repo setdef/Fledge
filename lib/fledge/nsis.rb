@@ -45,8 +45,7 @@ module Fledge
   # default and Tauri's; NSIS's LZMA module is under the Common Public
   # License, whose request that a binary say where its source is
   # available Fledge meets by publishing NSIS's source beside each Windows
-  # runtime and naming it in the app's notices, which the installer holds
-  # (ADR 049).
+  # runtime and naming it in the app's notices, which the installer holds.
   #
   # Use it through Fledge::Installers, once the app's folder is built.
   #

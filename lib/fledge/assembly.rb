@@ -29,9 +29,9 @@ module Fledge
   # it embeds. A built app is that runtime with the launcher renamed to
   # the app's name, the app's project copied into its +app+ folder, and a
   # CONFIG beside the launcher that tells it which program in +app+ to run
-  # and, for a project with a Gemfile, which Gemfile to set up (ADR 005).
-  # The app's identity goes in as each operating system reads it (ADR
-  # 008): on Windows, into the program's own resources
+  # and, for a project with a Gemfile, which Gemfile to set up.
+  # The app's identity goes in as each operating system reads it: on
+  # Windows, into the program's own resources
   # (Fledge::WindowsResources); for a windowed app on macOS, as an
   # <tt>.app</tt> bundle that holds all of it (Fledge::MacBundle); for a
   # windowed app on Linux, as a desktop entry and icons beside the program
@@ -43,8 +43,8 @@ module Fledge
   # runtime keeps in its +tools+ folder, which no app holds unless its
   # <tt>fledge.yml</tt> sets +build_tools+ (Assembly::BuildTools): then
   # the app carries them, after its code is signed, as the runtime has
-  # them, for <tt>fledge build --from</tt> (ADR 032;
-  # doc/contributors/design/desktop-apps.md, "Building from a built app").
+  # them, for <tt>fledge build --from</tt>
+  # (doc/contributors/design/desktop-apps.md, "Building from a built app").
   #
   # This class unpacks the runtime with tar (Fledge::Archive), moves it
   # into the folder, adds CONFIG, the app's project, and the files the
@@ -205,7 +205,7 @@ module Fledge
     # it runs when that is not the runtime's own, and its identifier when
     # it has one, which the Windows launcher makes its AppUserModelID. Its first line, a comment the launcher skips, names
     # the Fledge release and the platform the app was built with, which
-    # <tt>fledge build --from</tt> reads (Fledge::BuiltApp; ADR 032).
+    # <tt>fledge build --from</tt> reads (Fledge::BuiltApp).
     #
     # === Example
     #
@@ -250,7 +250,7 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     #
-    # An app of several programs (ADR 024) keeps its Gemfile at the top
+    # An app of several programs keeps its Gemfile at the top
     # and gives each program a section headed by the program's name, which
     # the launcher matches with its own file name:
     #
@@ -421,7 +421,7 @@ module Fledge
     #
     # A bundle's program is the windowed one (App#main); a console program
     # beside it lives in the bundle's +MacOS+ folder, as a bundle's helper
-    # tools do, linked from the app's folder (ADR 024).
+    # tools do, linked from the app's folder.
     private def finish(bundle, runtime, tools)
       unless bundle
         @app.programs.each { |program| place_launcher(runtime, program, tools) }

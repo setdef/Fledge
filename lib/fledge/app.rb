@@ -34,7 +34,7 @@ module Fledge
   # as Bundler names a gem's module (<tt>my_cool_app</tt> is
   # +MyCoolApp+), unless <tt>fledge.yml</tt> names it (decision 5).
   # Everything in the root ships but NEVER_SHIPPED and the build's own
-  # output (ADR 005).
+  # output.
   #
   # Use it to name what <tt>fledge build</tt> copies into a runtime.
   #
@@ -78,7 +78,7 @@ module Fledge
     ##
     # :attr_reader: programs
     # The App::Program list the app ships, in the folder they share: one,
-    # or each of those <tt>fledge.yml</tt> lists (ADR 024).
+    # or each of those <tt>fledge.yml</tt> lists.
 
     # What never ships, relative to the root: version control history,
     # Bundler's own settings for the developer's computer (.bundle), and
@@ -133,8 +133,8 @@ module Fledge
       new(root:, name:, gemfile:, config:, programs: [program])
     end
 
-    # The app of a project whose <tt>fledge.yml</tt> lists its programs
-    # (ADR 024): every one, for a folder, named as the project is, or the
+    # The app of a project whose <tt>fledge.yml</tt> lists its programs:
+    # every one, for a folder, named as the project is, or the
     # one whose file +full+ is, named as it is.
     private_class_method def self.listed(path, full, root, config, gemspec, gemfile) # :nodoc:
       listed = config.programs.to_a
@@ -299,7 +299,7 @@ module Fledge
     end
 
     # The program installers and phones show: the windowed one, or else
-    # the first (ADR 024).
+    # the first.
     #
     # === Example
     #

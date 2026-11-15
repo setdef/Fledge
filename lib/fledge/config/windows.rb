@@ -20,8 +20,8 @@ module Fledge
     # the name and publisher Partner Center reserved for the app, on its
     # Product identity page, which the Store then signs for
     # (Fledge::Msix). No default could be either: a made-up publisher
-    # follows the package family for good, as a made-up identifier would
-    # (ADR 064). So an app whose +installers+ ask for +msix+ gives
+    # follows the package family for good, as a made-up identifier would.
+    # So an app whose +installers+ ask for +msix+ gives
     # +msix_publisher+, as electron-builder's <tt>msix.publisher</tt>
     # and <tt>msix.identityName</tt> are given, and +msix_name+ when the
     # package's name is not its identifier.

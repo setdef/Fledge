@@ -119,8 +119,8 @@ module Fledge
     end
 
     # Where the bundle's programs go: <tt>Contents/MacOS</tt>, which holds
-    # its own program and any console program that shares its runtime
-    # (ADR 024), as a bundle's helper tools do.
+    # its own program and any console program that shares its runtime,
+    # as a bundle's helper tools do.
     #
     # === Example
     #
@@ -179,7 +179,7 @@ module Fledge
     end
 
     # The entry of CFBundleDocumentTypes that declares +association+, a
-    # Config::FileAssociation (ADR 052): its name and role,
+    # Config::FileAssociation: its name and role,
     # ranked +Alternate+, so that macOS offers the app for these files
     # and never makes it their default unless the person does; its
     # extensions and MIME types as electron-builder writes them

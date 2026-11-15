@@ -13,7 +13,7 @@ module Fledge
   #
   # Every app Fledge builds for macOS already runs: Apple Silicon runs
   # only signed code, so the launcher arrives signed, and a windowed
-  # app's bundle is signed ad hoc (ADR 008). But Gatekeeper trusts only a
+  # app's bundle is signed ad hoc. But Gatekeeper trusts only a
   # Developer ID signature that Apple has notarized, and notarization
   # takes only code signed with the hardened runtime and a secure
   # timestamp, every Mach-O file of it, not just the program.
@@ -127,7 +127,7 @@ module Fledge
     # Signs the bundle at +path+ in place of the ad hoc signature Fledge
     # gives every bundle: its resources' Mach-O files and its +helpers+
     # (the console programs in <tt>Contents/MacOS</tt> beside its own
-    # program, ADR 024) first, inside out as Apple asks of nested code,
+    # program) first, inside out as Apple asks of nested code,
     # then the bundle itself, as +identifier+, which seals them.
     def sign_bundle(path, identifier:, helpers: [])
       sign_folder(File.join(path, "Contents", "Resources"))

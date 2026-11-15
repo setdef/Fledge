@@ -115,8 +115,8 @@ module Fledge
         phone = MobilePlatform.find(options.phone.to_s)
         signing = phone ? nil : signing(options, host)
         if from then build_from(from.adopt(app), from, host, options.out, signing)
-        # A phone's app runs one program: App#main (ADR 024;
-        # doc/contributors/design/desktop-apps.md, "Several programs").
+        # A phone's app runs one program: App#main
+        # (doc/contributors/design/desktop-apps.md, "Several programs").
         elsif phone then build_project(app.with(programs: [app.main]), phone, host, options.out)
         else build(app, host, options.out, signing)
         end
@@ -151,7 +151,7 @@ module Fledge
         end
       end
 
-      # Builds +app+ from the built app +from+ (ADR 032): with its runtime
+      # Builds +app+ from the built app +from+: with its runtime
       # and gems, downloading, installing, and compiling nothing.
       private def build_from(app, from, platform, out, signing)
         written(Assembly.new(app:, platform:, runtime: from.path, out: out_dir(app, out), files: from.files, signing:, from:, bundler: from.bundler,

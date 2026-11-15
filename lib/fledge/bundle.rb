@@ -24,7 +24,7 @@ module Fledge
   # Bundler puts the project's own <tt>lib</tt> and every gem its
   # Gemfile.lock locks on the load path. A built app does the same, with
   # Bundler, so the app's code stays as it is (decision 9 in
-  # <tt>doc/contributors/decisions.md</tt>; ADR 005). For that, each
+  # <tt>doc/contributors/decisions.md</tt>). For that, each
   # target's runtime needs the very gems Bundler would choose on that
   # target, which a Gemfile.lock records for every platform it lists, as
   # <tt>bundle lock --add-platform</tt> and <tt>bundle cache

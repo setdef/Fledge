@@ -10,8 +10,8 @@ module Fledge
     # One program of an app: what the person runs, and what it runs.
     #
     # An app ships one program, or, when its <tt>fledge.yml</tt> lists
-    # +programs+, several that share its runtime, project, and gems (ADR
-    # 024). Each is a copy of the runtime's launcher with a name of its
+    # +programs+, several that share its runtime, project, and gems.
+    # Each is a copy of the runtime's launcher with a name of its
     # own, an entry point in the project, and an identity: a console
     # program in a terminal, or the one windowed program with its own
     # identifier and icon.

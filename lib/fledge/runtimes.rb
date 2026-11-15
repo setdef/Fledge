@@ -142,7 +142,7 @@ module Fledge
     # has it, in FLEDGE_RUNTIME_DIR or, matching its pin, in the cache, or
     # +nil+. Downloads nothing: <tt>fledge build --from</tt> needs nothing
     # but the app it builds from, and takes from a runtime at hand only
-    # what no app holds yet (ADR 032).
+    # what no app holds yet.
     #
     # === Example
     #

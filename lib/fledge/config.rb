@@ -15,8 +15,8 @@ module Fledge
   #
   # Fledge takes almost everything from the project as it already is: the
   # program from the path you build, the gems from the Gemfile.lock, and
-  # the app's name, version, and publisher from the gemspec or the folder
-  # (ADR 005 and ADR 008). What it cannot know is how the app presents
+  # the app's name, version, and publisher from the gemspec or the folder.
+  # What it cannot know is how the app presents
   # itself to the person who runs it: whether it opens windows or runs in
   # a terminal, the identifier the operating system knows it by, its
   # icon, and its copyright (decision 18). A project that needs none of
@@ -24,7 +24,7 @@ module Fledge
   # together: list them under +programs+ (Config::Program), each with its
   # own path, name, kind, identifier, and icon, and they ship as one
   # folder that shares one runtime, one copy of the project, and one set
-  # of gems (ADR 024). Nor can it know the files a phone's project needs
+  # of gems. Nor can it know the files a phone's project needs
   # that no gem supplies, such as SDL3's host for a game whose SDL owns
   # the main loop: name a folder of them under +ios+ or +android+
   # (Config::Phone), and <tt>fledge build ios</tt> or <tt>fledge build
@@ -37,10 +37,10 @@ module Fledge
   # the Microsoft Store: name it under +windows+ (Config::Windows). Nor
   # can it know which files and folders a
   # windowed app opens: list them under +file_associations+
-  # (Config::FileAssociation), and each system offers the app for them
-  # (ADR 052). Nor can it know whether the app builds others from itself
+  # (Config::FileAssociation), and each system offers the app for them.
+  # Nor can it know whether the app builds others from itself
   # where nothing else is installed: set +build_tools+, and it carries
-  # the tools <tt>fledge build --from</tt> needs (ADR 032).
+  # the tools <tt>fledge build --from</tt> needs.
   #
   # This class reads <tt>fledge.yml</tt> from the project's root, a YAML
   # mapping as RuboCop's and Kamal's configuration are, checks each value,
@@ -142,12 +142,12 @@ module Fledge
     ##
     # :attr_reader: installers
     # The installers to build, from INSTALLERS, or +nil+ for every one a
-    # windowed app's targets have (ADR 009).
+    # windowed app's targets have.
 
     ##
     # :attr_reader: programs
     # The project's programs (Config::Program), when it ships several
-    # from one folder, or +nil+ for the one program you build (ADR 024).
+    # from one folder, or +nil+ for the one program you build.
 
     ##
     # :attr_reader: ios
@@ -177,13 +177,13 @@ module Fledge
     ##
     # :attr_reader: file_associations
     # The files and folders a windowed app opens
-    # (Config::FileAssociation), or +nil+ for none (ADR 052).
+    # (Config::FileAssociation), or +nil+ for none.
 
     ##
     # :attr_reader: build_tools
     # Whether the app carries the tools <tt>fledge build --from</tt> runs
     # that a system lacks, so that it can build an app from itself with
-    # no runtime at hand (ADR 032); +nil+ for no.
+    # no runtime at hand; +nil+ for no.
 
     # The file's name, in the project's root.
     FILE = "fledge.yml"
@@ -209,12 +209,12 @@ module Fledge
 
     # The installers a windowed app gets when <tt>fledge.yml</tt> lists
     # none of its own: every one but +deb+, which needs dpkg-deb, a tool
-    # not every Linux computer has, so a developer asks for it (ADR 021),
+    # not every Linux computer has, so a developer asks for it,
     # and +msix+, which needs the Windows SDK's MakeAppx and a publisher
     # only the developer can name (Config::Windows).
     DEFAULT_INSTALLERS = %w[dmg nsis appimage].freeze
 
-    # The kinds of app (ADR 037): one that runs in a terminal,
+    # The kinds of app: one that runs in a terminal,
     # and one that opens its own windows and shows none.
     KINDS = %w[console windowed].freeze
 
@@ -349,7 +349,7 @@ module Fledge
       linux&.system_libraries || []
     end
 
-    # The programs under +programs+ (ADR 024): a list of at least one,
+    # The programs under +programs+: a list of at least one,
     # with names and identifiers no two share, at most one windowed, and
     # no kind, identifier, or icon beside them, which belong to each
     # program.
@@ -415,8 +415,7 @@ module Fledge
     end
 
     # The installers to build: a list of INSTALLERS, which may be empty,
-    # and only for a windowed app, since a console app gets none (ADR
-    # 009).
+    # and only for a windowed app, since a console app gets none.
     private_class_method def self.installers(data, path) # :nodoc:
       value = data["installers"]
       return nil if value.nil?
@@ -441,7 +440,7 @@ module Fledge
 
     # The files and folders the app opens (Config::FileAssociation), only
     # for a windowed app, since only a windowed app has a bundle, a desktop
-    # entry, or a setup program to declare them in (ADR 052).
+    # entry, or a setup program to declare them in.
     private_class_method def self.file_associations(data, path) # :nodoc:
       list = FileAssociation.list(data, path)
       if list && !list.empty? && !windowed?(data)

@@ -19,7 +19,7 @@ require "paint"
 
 # The program is a Ruby of its own, in this app's bundle. A person's own
 # Ruby settings (RUBYOPT after Bundler's, RUBYLIB, BUNDLE_APP_CONFIG, and
-# the rest) reach it, as under bundle exec (ADR 005), so Delivery's
+# the rest) reach it, as under bundle exec, so Delivery's
 # hostile ones, which name files that fail, are left out, keeping
 # Bundler's -r...bundler/setup and the app's Gemfile.
 program = File.join(Gem.bindir, Gem.win_platform? ? "shared-cli.bat" : "shared-cli")

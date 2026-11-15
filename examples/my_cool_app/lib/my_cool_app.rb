@@ -9,7 +9,7 @@ require "i18n"
 require "sqlite3"
 require_relative "my_cool_app/version"
 
-# The gem-shaped app Fledge's CI ships to every platform (ADR 005): its
+# The gem-shaped app Fledge's CI ships to every platform: its
 # gemspec names an executable, exe/my_cool_app, and two gems. i18n is
 # pure Ruby and needs concurrent-ruby; sqlite3 is a C extension, which
 # each platform's app carries precompiled for that platform.

@@ -8,7 +8,7 @@
 require_relative "lib/my_cool_app/version"
 
 # A gem-shaped app, laid out as bundle gem lays one out, which Fledge
-# ships as it is (ADR 005). Its files come from git, as bundle gem's
+# ships as it is. Its files come from git, as bundle gem's
 # template takes them; fledge build evaluates this file once, where git
 # is, and ships the result, so the built app needs no git.
 Gem::Specification.new do |spec|

@@ -15,7 +15,7 @@ require "rbconfig"
 # lines, one for each time a program opened it, saying which program it
 # was, where its project is, and where its Ruby's library is. Built by
 # Fledge, both programs must say the same project and the same Ruby, from
-# the one folder they ship in (ADR 024).
+# the one folder they ship in.
 module SharedSave
   # What +program+ writes in the save: its name, and the real paths of
   # this project and of Ruby's standard library.

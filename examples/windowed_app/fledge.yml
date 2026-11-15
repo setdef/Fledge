@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# A windowed app (ADR 037, ADR 008), with everything an app says about
+# A windowed app, with everything an app says about
 # itself to the operating system and the person who runs it: the name in a Dock,
 # taskbar, or menu, which may have spaces; the identifier macOS and
 # Windows know it by, a reverse-DNS name of a domain its developer
@@ -19,7 +19,7 @@
 # certificate CI signs with (.github/scripts/make-test-identity.ps1),
 # and for the Microsoft Store would be Partner Center's. Like hello, it
 # sits inside Fledge's own gem, and this file makes its folder a
-# project's root (ADR 005).
+# project's root.
 name: Hello Window
 kind: windowed
 identifier: com.setdef.fledge.HelloWindow
@@ -43,7 +43,7 @@ macos:
 windows:
   msix_publisher: CN=Fledge Test Signing
 
-# The files and folders it opens (ADR 052): every folder, which
+# The files and folders it opens: every folder, which
 # it writes its report into, and its own reports, which it writes over.
 # macOS offers it for them, Windows' setup program adds it to their "Open
 # with" and to every folder's menu, its MSIX package to the reports'

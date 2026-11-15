@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# One project, two programs (ADR 024): a windowed one, Shared Save, and
+# One project, two programs: a windowed one, Shared Save, and
 # a console one, shared-save, that open the same save, as a game's GUI
 # and command line might, so a player can quit one and go on in the
 # other. They ship in one folder, Shared Save-PLATFORM, with one runtime,
@@ -11,7 +11,7 @@
 # its own path and kind, and the windowed one its identifier. The
 # windowed one takes the project's name, and the console one its file's.
 # Like hello, it sits inside Fledge's own gem, and this file makes its
-# folder a project's root (ADR 005).
+# folder a project's root.
 name: Shared Save
 version: "1.0.0"
 publisher: setdef

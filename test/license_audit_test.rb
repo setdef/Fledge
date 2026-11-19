@@ -447,6 +447,36 @@ class LicenseAuditTest < Minitest::Test
     refute_includes published, "source code, as"
   end
 
+  DESCRIPTION = "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)\n"
+
+  # RUBY_DESCRIPTION holds Ruby's words, copied out of its program, and
+  # no app holds it, so it is Ruby's file, not Fledge's: the notices an
+  # app carries name only the files of Fledge's that the app holds, the
+  # program its user runs first, and doc/licensing.md's sentence on
+  # Fledge's own files, made from the same files, stays true.
+  def test_the_rubys_description_is_rubys_and_not_among_fledges_own_files
+    write("RUBY_DESCRIPTION", DESCRIPTION)
+    audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
+    report = audit_run.call
+    ours = LicenseAudit::Notices.new(report, version: "0.0.0", map: audit_run.map).text[/^FLEDGE'S OWN FILES.*?(?=^Their source)/m].to_s
+
+    assert_empty report.violations.map(&:to_s)
+    assert_equal "ruby", report.owners.fetch("RUBY_DESCRIPTION").id
+    assert_equal %w[launcher lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb], ours.scan(/^  (\S+)$/).flatten
+  end
+
+  # Every platform's runtime holds the file, and on each it is Ruby's.
+  def test_every_platforms_ruby_owns_its_description
+    Dir.mktmpdir do |tree|
+      File.write(File.join(tree, "RUBY_DESCRIPTION"), DESCRIPTION)
+      [*Fledge::Platform.names, *Fledge::MobilePlatform.names].each do |platform|
+        report = LicenseAudit.new(platform:, tree:, fledge_version: "0.0.0").call
+
+        assert_equal ["ruby", false], report.owners.fetch("RUBY_DESCRIPTION").then { |owner| [owner.id, owner.first_party] }, platform
+      end
+    end
+  end
+
   # The notices folder is audited too, but for the two files the audit
   # itself writes there: anything else in it belongs to a component.
   def test_a_file_in_the_notices_folder_that_no_component_owns_fails

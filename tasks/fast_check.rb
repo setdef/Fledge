@@ -10,7 +10,7 @@ require "open3"
 # What the fast check before a push (bin/check, rake check;
 # CONTRIBUTING.md, "Before a push") reads from git: the commits about to
 # be pushed, which of them git parses no Provenance trailer in, and the
-# files they and the working tree change, which are the ones it lints.
+# files they and the working tree change, which decide what it lints.
 # The commits are those since the base: the commit named, or else where
 # HEAD left its upstream, or else origin/trunk; with none of these known,
 # the last commit alone.
@@ -23,8 +23,13 @@ class FastCheck
   TRAILER = "Provenance"
   # Its value.
   PROVENANCE = "requested"
-  # The files Steep checks.
-  TYPED = %r{\A(?:lib/|sig/|Steepfile\z)}
+  # The files Steep and the RBS checks read.
+  TYPED = %r{\A(?:lib/|sig/|Steepfile\z|rbs_exceptions\.rb\z)}
+  # The files RDoc's coverage counts (Rakefile, RDoc::Task).
+  DOCUMENTED = %r{\A(?:(?:lib|examples)/.*\.rb|README\.rdoc)\z}
+  # The files that change what RuboCop asks of every file: its
+  # configuration, and the lockfile that pins it and its plugins.
+  RESTYLING = /\A(?:\.rubocop.*\.yml|Gemfile\.lock)\z/
   # The refs tried, in order, for a base no one names.
   BASES = %w[@{upstream} origin/trunk].freeze
 
@@ -73,14 +78,23 @@ class FastCheck
     @changed ||= git("diff", "--name-only", "--no-renames", "--diff-filter=d", "-z", since).split("\0").sort
   end
 
-  # Whether a changed file is one Steep checks.
-  def typed?
-    changed.any? { |path| path.match?(TYPED) }
+  # Whether a changed file is one Steep or the RBS checks read.
+  def typed? = touches?(TYPED)
+
+  # Whether a changed file is one RDoc's coverage counts.
+  def documented? = touches?(DOCUMENTED)
+
+  # Whether a change can change what RuboCop finds in files it does not
+  # touch, so that RuboCop inspects every file.
+  def restyled? = touches?(RESTYLING)
+
+  # The changed files among +targets+, the files a lint reads.
+  def among(targets)
+    changed & targets
   end
 
-  # The changed files among +targets+, the files RuboCop inspects.
-  def ruby(targets)
-    changed & targets
+  private def touches?(pattern)
+    changed.any? { |path| path.match?(pattern) }
   end
 
   # What the working tree is compared with: the base, or else the last

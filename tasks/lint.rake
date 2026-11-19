@@ -8,6 +8,7 @@
 require "rubocop/rake_task"
 require "rubycritic/rake_task"
 require "inch/rake"
+require_relative "lint_files"
 
 RuboCop::RakeTask.new
 
@@ -134,8 +135,7 @@ namespace :lint do
   # fails here instead.
   desc "Check the GitHub Actions workflows with actionlint, and their scripts with shellcheck"
   task :workflows do
-    shellcheck = ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).map { |dir| File.join(dir, "shellcheck") }
-      .find { |path| File.executable?(path) }
+    shellcheck = LintFiles.which("shellcheck")
     abort "❌ lint:workflows needs shellcheck on PATH; mise install puts it there" unless shellcheck
 
     sh "actionlint", "-shellcheck=#{shellcheck}"
@@ -143,9 +143,7 @@ namespace :lint do
 
   desc "Check the shell scripts git tracks with shellcheck"
   task :shell do
-    scripts = `git ls-files -z bin .github/scripts`.split("\0").select do |path|
-      File.read(path, 64).start_with?("#!/usr/bin/env bash", "#!/bin/sh")
-    end
+    scripts = LintFiles.shell(Dir.pwd)
     sh "shellcheck", *scripts unless scripts.empty?
   end
 
@@ -155,7 +153,7 @@ namespace :lint do
   # needs nothing, so it runs in the gate.
   desc "Check the launcher's and the mobile embedding API's C formatting with clang-format"
   task :c do
-    sources = `git ls-files -z runtime/launcher runtime/mobile`.split("\0").grep(/\.[ch]\z/)
+    sources = LintFiles.c(Dir.pwd)
     sh "clang-format", "--dry-run", "--Werror", *sources unless sources.empty?
   end
 

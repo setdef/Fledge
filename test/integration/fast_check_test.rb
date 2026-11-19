@@ -7,6 +7,7 @@
 
 require_relative "../test_helper"
 require_relative "../../tasks/fast_check"
+require_relative "../../tasks/lint_files"
 require "open3"
 
 # What the fast check before a push (bin/check, tasks/fast_check.rb)
@@ -85,7 +86,37 @@ class FastCheckTest < Minitest::Test
 
     assert_equal %w[README.md lib/new.rb sig/old.rbs], check.changed
     assert_predicate check, :typed?
-    assert_equal %w[lib/new.rb], check.ruby(%w[lib/new.rb Rakefile gone.rb])
+    assert_predicate check, :documented?
+    refute_predicate check, :restyled?
+    assert_equal %w[lib/new.rb], check.among(%w[lib/new.rb Rakefile gone.rb])
+  end
+
+  # The shell scripts, workflows, and C the gate lints (LintFiles) that
+  # a change touches are the ones the fast check lints. A comment in
+  # bin/setup that shellcheck reads as a directive once reached trunk,
+  # because the fast check ran no shellcheck.
+  def test_the_changed_files_among_those_the_gate_lints_are_linted
+    scripts = {
+      "bin/setup" => "#!/usr/bin/env bash\n",
+      "bin/check" => "#!/usr/bin/env ruby\n",
+      ".github/scripts/pin.sh" => "#!/bin/sh\n",
+      "bin/quiet" => "#!/bin/sh\n",
+      ".github/workflows/ci.yml" => "on: push\n",
+      ".github/workflows/fast.yml" => "on: push\n",
+      "runtime/launcher/unix.c" => "int x;\n",
+      "runtime/launcher/windows.c" => "int y;\n",
+      "runtime/mobile/mobile.h" => "\n",
+    }
+    write(scripts.merge("Gemfile.lock" => "GEM\n"))
+    git("update-ref", "refs/remotes/origin/trunk", commit("chore: add tools\n\nProvenance: requested\n#{FOOTER}\n"))
+    changed = scripts.except("bin/quiet", ".github/workflows/ci.yml", "runtime/launcher/windows.c")
+    write(changed.transform_values { |text| "#{text}# shellcheck, and the rest.\n" }.merge("Gemfile.lock" => "GEM\n  specs:\n"))
+    check = FastCheck.new(root: @root)
+
+    assert_equal [%w[.github/scripts/pin.sh bin/setup], %w[.github/workflows/fast.yml], %w[runtime/launcher/unix.c runtime/mobile/mobile.h]],
+      [check.among(LintFiles.shell(@root)), check.among(LintFiles.workflows(@root)), check.among(LintFiles.c(@root))]
+    assert_predicate check, :restyled?
+    refute_predicate check, :documented?
   end
 
   def test_a_base_it_is_given_comes_before_origin_trunk
@@ -101,5 +132,6 @@ class FastCheckTest < Minitest::Test
 
     assert_equal [nil, [last], [], %w[README.md]], [check.base, check.commits, check.unmarked, check.changed]
     refute_predicate check, :typed?
+    refute_predicate check, :documented?
   end
 end

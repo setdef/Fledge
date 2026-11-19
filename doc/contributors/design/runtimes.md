@@ -202,7 +202,7 @@ On macOS and Linux, whose Rubies ship no such file, the parity check allows the 
 |---|---|---|
 | Linux, glibc and musl | `tools/appimage-runtime` | Writes it at the front of an AppImage. It is AppImage's released type 2 runtime for the architecture, static against musl, with libfuse linked in (`doc/contributors/design/desktop-apps.md`, "The AppImage"). |
 | Windows | `tools/nsis/` | Runs `Bin/makensis.exe` to compile an installer. It is the part of NSIS's release that compiles one: `COPYING`, makensis and its `zlib1.dll`, the solid LZMA and zlib stubs and the uninstaller's icon, the System and nsDialogs plug-ins, the script headers, and Modern UI 2 (`RuntimeBuilder::Windows::NSIS`). |
-| Windows | `tools/rcedit.exe` | Writes an app's version information and icon into its program. It is Electron's release of `rcedit-x64.exe`. `llvm-rc` and `llvm-windres` compile resources but cannot put them into a program already linked. |
+| Windows | `tools/rcedit.exe` | Writes an app's version information and icon into its program. It is Electron's release of `rcedit-x64.exe`, which writes them with Windows' own `UpdateResource`. `llvm-rc` and `llvm-windres` compile resources but cannot put them into a program already linked, and Tauri's way, compiling them in when the program is linked, does not fit a launcher linked once, in Fledge's CI, for every app. |
 | Windows | `tools/llvm-readobj.exe` | Reads what an app's compiled gems import and delay-load (`doc/contributors/design/license-audit.md`, "Which tools read compiled files"). It is the one file of LLVM's own Windows release, statically linked, which imports only Windows' DLLs; the build unpacks it with `zstd --long=31` and checks the file's own SHA-256. |
 
 ## Compiling a gem against a runtime

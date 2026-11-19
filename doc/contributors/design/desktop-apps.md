@@ -106,7 +106,7 @@ The runtime and the app live in `Contents/Resources`, and symbolic links in `Con
 | `NSHumanReadableCopyright` | the copyright, when there is one |
 | `CFBundleDocumentTypes` | the files the app opens (see "Files an app opens") |
 
-Fledge writes these as JSON and converts them with `plutil -convert xml1`. Unsigned, the bundle is signed ad hoc with `codesign --force --sign - --identifier IDENTIFIER NAME.app`, which seals `Info.plist` and every resource and signs the launcher for them: Apple Silicon runs only signed code, and `codesign --verify --strict --deep` calls a bundle broken unless its program's signature seals the rest. With `--sign`, the bundle is signed as `doc/contributors/design/signing.md` says.
+Fledge writes these as JSON and converts them with `plutil -convert xml1`. plutil, codesign, ditto, and hdiutil, the tools that make a bundle and its disk image, ship with macOS in `/usr/bin`. Unsigned, the bundle is signed ad hoc with `codesign --force --sign - --identifier IDENTIFIER NAME.app`, which seals `Info.plist` and every resource and signs the launcher for them: Apple Silicon runs only signed code, and `codesign --verify --strict --deep` calls a bundle broken unless its program's signature seals the rest. With `--sign`, the bundle is signed as `doc/contributors/design/signing.md` says.
 
 ### Windows
 

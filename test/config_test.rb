@@ -230,10 +230,11 @@ class ConfigTest < Minitest::Test
     assert_equal ["dmg"], load(yaml).installers
   end
 
-  # ADR 025: ios and android each name the folder of the project's own
-  # host files, which fledge build ios or fledge build android copies
-  # over the project it writes. The folder is checked when that phone's
-  # project is built, so a desktop build never needs it.
+  # doc/contributors/design/phone-projects.md, "Host files": ios and
+  # android each name the folder of the project's own host files, which
+  # fledge build ios or fledge build android copies over the project it
+  # writes. The folder is checked when that phone's project is built, so
+  # a desktop build never needs it.
   def test_reads_each_phones_host
     config = load("ios:\n  host: host/ios\nandroid:\n  host: host/android\n")
 

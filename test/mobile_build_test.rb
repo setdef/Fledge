@@ -282,10 +282,10 @@ class MobileBuildTest < Minitest::Test
     end
   end
 
-  # ADR 025: the files in android's host replace Fledge's at the same
-  # paths, or join them, before Fledge fills its marks, and the build
-  # says which of Fledge's it replaced. ios's host is not android's to
-  # check.
+  # doc/contributors/design/phone-projects.md, "Host files": the files in
+  # android's host replace Fledge's at the same paths, or join them,
+  # before Fledge fills its marks, and the build says which of Fledge's
+  # it replaced. ios's host is not android's to check.
   def test_an_android_hosts_files_replace_fledges_and_join_them
     root = script_app("identifier: com.example.Hello\nandroid:\n  host: host/android\nios:\n  host: missing\n")
     activity = "src/main/java/org/setdef/fledge/host/MainActivity.java"

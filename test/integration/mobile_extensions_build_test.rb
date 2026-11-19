@@ -251,7 +251,8 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   # examples/cmake_phone's extconf.rb runs CMake, which builds its C++
-  # library from CMAKE_TOOLCHAIN_FILE for each slice (ADR 027): the
+  # library from CMAKE_TOOLCHAIN_FILE for each slice (doc/contributors/design/phone-projects.md,
+  # "CMake toolchain files"): the
   # device's objects are for iOS and the Simulator's for the Simulator,
   # as each slice's extension is.
   def test_a_cmake_library_an_extconf_builds_is_built_for_each_ios_slice

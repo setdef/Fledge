@@ -369,8 +369,8 @@ module Fledge
          */
 
         /*
-         * Written by fledge build (ADR 022): registers the extensions of this
-         * app's gems, which are linked into it, so that require finds them.
+         * Written by fledge build: registers the extensions of this app's
+         * gems, which are linked into it, so that require finds them.
          * Ruby registers them once it has booted, before the program runs.
          */
         #include <fledge_ruby.h>
@@ -586,7 +586,7 @@ module Fledge
     # This computer's runtime's Ruby, which runs mkmf.
     private def ruby
       @ruby ||= begin
-        raise Error, "a Windows computer's runtime can't compile extensions for #{@platform}" if @host.windows?
+        raise Error, "Fledge compiles no extension for #{@platform} on Windows" if @host.windows?
 
         host = File.join(@work, "host")
         FileUtils.rm_rf(host)

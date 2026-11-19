@@ -289,27 +289,39 @@ class MobileParity
 
     # Starts +app+ after clearing logcat, and returns what it logged
     # (Logged) up to its status and after, until the log settles, then
-    # stops it, since Ruby boots once per process. It fails, reporting
-    # both streams, when the app has not finished in +timeout+ seconds,
-    # or when its process has ended without the host's status, as when
-    # Android stopped it. The process is the one ActivityManager says it
-    # started, by its ID, since an app that sets $0 changes the command
-    # line pidof looks for its identifier in.
-    def launch(app, timeout: TIMEOUT)
+    # stops it, since Ruby boots once per process, looking every
+    # +interval+ seconds. It fails, reporting both streams, when the app
+    # has not finished in +timeout+ seconds, or when its process has
+    # ended without the host's status, as when Android stopped it. The
+    # process is the one ActivityManager says it started, by its ID,
+    # since an app that sets $0 changes the command line pidof looks for
+    # its identifier in. It is looked for again at each look until it is
+    # found, and only a process found can have ended: logd takes in a
+    # line a moment after it is logged, and am start -W can return
+    # before ActivityManager has started the process, so the first look
+    # can find neither the line nor a process pidof knows by name.
+    def launch(app, timeout: TIMEOUT, interval: 2)
       adb("logcat", "-c")
       adb("shell", "am", "start", "-W", "-n", "#{app.identifier}/#{ACTIVITY}")
-      pid = Android.started(app, adb("logcat", "-d", "-v", "threadtime")).first || pidof(app)
+      pid = nil
       deadline = Time.now + timeout
       until MobileParity.status(logged(app).entries)
-        ended = !running?(pid) && !MobileParity.status(logged(app).entries)
+        pid ||= process(app)
+        ended = pid && !running?(pid) && !MobileParity.status(logged(app).entries)
         if ended || Time.now > deadline
           why = ended ? "ended without a status" : "did not finish in #{timeout} seconds"
           raise "#{app.name} #{why}:\n#{logged(app).entries.last(40).join("\n")}\n#{diagnosis(app, pid)}"
         end
 
-        sleep 2
+        sleep interval
       end
-      MobileParity.settled { logged(app) }.tap { adb("shell", "am", "force-stop", app.identifier) }
+      MobileParity.settled(interval:) { logged(app) }.tap { adb("shell", "am", "force-stop", app.identifier) }
+    end
+
+    # The ID of +app+'s process, by the line ActivityManager logged when
+    # it started it, or by pidof, or nil while neither knows it.
+    private def process(app)
+      Android.started(app, adb("logcat", "-d", "-v", "threadtime")).first || pidof(app)
     end
 
     # What the emulator says of +app+, for one that never finished:
@@ -319,10 +331,10 @@ class MobileParity
     # ActivityManager gave them, and those of Android's crash reporters,
     # where Android writes why an app did not start or died.
     private def diagnosis(app, pid)
-      everything = Open3.capture2e("adb", "logcat", "-d", "-v", "threadtime").first
+      everything = whole_log
       File.write(File.join(@work, "logcat-#{app.identifier}.txt"), everything)
       [
-        "The app's process: #{running?(pid) ? pid : 'not running'}",
+        "The app's process: #{if pid.nil? then 'never found' elsif running?(pid) then pid else "#{pid}, not running" end}",
         "What logcat says of it:",
         *MobileParity::Android.about(app, everything).last(150),
       ].join("\n")
@@ -350,6 +362,13 @@ class MobileParity
     private def logged(app)
       log = adb("logcat", "-d", "-v", "tag", "-s", "#{app.identifier}:V")
       Logged.new(entries: Android.messages(log, app.identifier), output: Android.messages(log, app.identifier, standard_error: false))
+    end
+
+    # Everything logcat holds, in its threadtime format, or what adb
+    # printed when it could not read it, for a diagnosis that must not
+    # fail on its own.
+    private def whole_log
+      Open3.capture2e("adb", "logcat", "-d", "-v", "threadtime").first
     end
 
     # Whether the process +pid+ still runs, by its folder in /proc.

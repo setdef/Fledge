@@ -262,6 +262,78 @@ class MobileParityTest < Minitest::Test
     assert_empty MobileParity::Android.started(app, "11-01 05:26:40.300   745  1024 D WifiScoreCard: txRate: 1\n")
   end
 
+  # An emulator, as MobileParity::Android#launch sees it through adb,
+  # that moves on a step each time the app's log is read: the app's
+  # process appears, to logcat and to pidof, from step +started+, ends
+  # at step +ends+, and logs the host's status from step +finishes+,
+  # each nil for never.
+  class Emulator < MobileParity::Android
+    PID = "4242"
+
+    def initialize(app, work:, started: 0, ends: nil, finishes: nil)
+      super(work:, out: StringIO.new)
+      @app = app
+      @started = started
+      @ends = ends
+      @finishes = finishes
+      @step = 0
+    end
+
+    private def adb(*arguments)
+      case arguments
+      in ["logcat", "-d", "-v", "threadtime"] then whole_log
+      in ["logcat", "-d", "-v", "tag", "-s", _] then tagged.tap { @step += 1 }
+      else ""
+      end
+    end
+
+    private def whole_log
+      return "" unless started?
+
+      "11-19 06:00:00.100   748   781 I ActivityManager: Start proc #{PID}:#{@app.identifier}/u0a213 for next-top-activity " \
+        "{#{@app.identifier}/#{ACTIVITY}}\n"
+    end
+
+    private def tagged
+      lines = ["I/#{@app.identifier}: running"]
+      lines << "I/#{@app.identifier}: #{@app.name} exited with status 0" if @finishes && @step >= @finishes
+      "#{lines.join("\n")}\n"
+    end
+
+    private def pidof(_app) = (PID if running?(PID))
+
+    private def running?(pid) = pid == PID && started? && !(@ends && @step >= @ends)
+
+    private def started? = !@started.nil? && @step >= @started
+  end
+
+  # Logcat holds a line a moment after it is logged, and am start -W can
+  # return before ActivityManager has started the process, so a launch
+  # that finds no process at first looks again while it waits; on
+  # 2026-11-16 the ruby/spec job took a process it had not yet seen for
+  # one that had ended.
+  def test_a_launch_waits_for_a_process_it_has_not_yet_seen
+    app = MobileParity::APPS.fetch(1)
+    Dir.mktmpdir do |work|
+      logged = Emulator.new(app, work:, started: 1, finishes: 3).launch(app, timeout: 60, interval: 0)
+
+      assert_equal 0, MobileParity.status(logged.entries)
+    end
+  end
+
+  # A process that was seen and is gone without the host's status has
+  # ended, as when Android stopped it; one never seen has not finished.
+  def test_a_launch_fails_for_a_process_that_ended_and_one_never_seen
+    app = MobileParity::APPS.fetch(1)
+    Dir.mktmpdir do |work|
+      ended = assert_raises(RuntimeError) { Emulator.new(app, work:, ends: 2).launch(app, timeout: 60, interval: 0) }
+      unseen = assert_raises(RuntimeError) { Emulator.new(app, work:, started: nil).launch(app, timeout: 0, interval: 0) }
+
+      assert_match(/\AMobile App ended without a status:/, ended.message)
+      assert_match(/\AMobile App did not finish in 0 seconds:/, unseen.message)
+    end
+  end
+
   # The embedding API logs standard error as errors on iOS, and standard
   # output and the host's lines as default messages, so a reader that
   # wants one stream in its own order can leave the other out; lines of

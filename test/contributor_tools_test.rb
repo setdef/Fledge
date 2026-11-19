@@ -150,6 +150,20 @@ class ContributorToolsTest < Minitest::Test
   end
 
   # CI's Windows jobs read the pin from mise.toml with this script.
+  # mise.toml's min_version names the oldest mise that reads it, the one
+  # whose mise install and mise exec trust it on a computer that has
+  # never run mise in this folder. Every mise CI pins satisfies it, or
+  # CI would refuse the file a contributor is told to use.
+  def test_every_mise_ci_pins_is_at_least_the_one_mise_toml_asks_for
+    minimum = mise_toml[/^min_version = "([\d.]+)"$/, 1]
+    refute_nil minimum, "mise.toml names no min_version"
+    pins = Dir[File.join(ROOT, ".github", "workflows", "*.yml")].flat_map do |workflow|
+      File.read(workflow).scan(%r{jdx/mise-action@.*\n(?:(?!\s*- ).*\n){0,6}?\s+version: ([\d.]+)$}).flatten
+    end
+    refute_empty pins
+    pins.each { |pin| assert_operator Gem::Version.new(pin), :>=, Gem::Version.new(minimum) }
+  end
+
   def test_ruby_pin_reads_the_pin_and_takes_head_on_windows_for_a_preview
     script = File.join(ROOT, ".github", "scripts", "ruby-pin.sh")
     { "Linux" => ruby_pins.fetch("version"), "Windows" => "head" }.each do |os, expected|

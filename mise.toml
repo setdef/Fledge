@@ -1,6 +1,17 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
+# The mise CI runs, the oldest known to read this file. Since 2026.8.9,
+# mise install and mise exec trust the config they load, as mise trust
+# would, because running them is already a decision to run the project
+# (mise's CHANGELOG, "implicitly trust config for execution commands",
+# jdx/mise#12107; https://mise.jdx.dev/security.html, "Implicit
+# trust"), so bin/setup and mise x -- ruby bin/check run on a computer
+# that has never trusted this folder, with no prompt. An older mise
+# stops here and says to upgrade, where it would otherwise stop at
+# trust, or at a key it does not know.
+min_version = "2026.10.11"
+
 # mise finds a precompiled Ruby among jdx/ruby's releases, but not among
 # the ones GitHub marks as prereleases, as jdx/ruby marks 4.1.0-preview1.
 # precompiled_url names jdx/ruby's own asset for each version and

@@ -35,7 +35,10 @@ if ($env:CI -and -not $env:BUNDLE_PATH) {
   $workspaceBundle = $true
 }
 
-# Ruby, the REUSE tool, actionlint, and shellcheck, pinned in mise.toml
+# Every tool mise.toml pins: Ruby, the REUSE tool, actionlint,
+# shellcheck, and the rest. mise install trusts mise.toml itself, as
+# mise trust would (mise.toml, min_version, says why), so no mise trust
+# comes first; it installs only what is missing.
 Invoke-Checked mise @("install")
 # Later commands, such as bundle exec rake, find the workspace's gems
 # through .bundle/config, which git ignores.

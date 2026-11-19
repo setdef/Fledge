@@ -5,11 +5,18 @@
 # SPDX-License-Identifier: MIT
 
 # The fast check before a push, as one command from a checkout on every
-# system: ruby bin/check [BASE]. It is a Ruby script, as a Rails app's
-# bin/ scripts are, so that it starts the same from PowerShell, cmd, or
-# a Unix shell (where bin/check also runs it), and as the one command of
-# an automated run. It sets the checkout up (bin/setup, or bin/setup.ps1
-# on Windows), then runs rake check (tasks/check.rake) with the Ruby and
+# system, on a computer that has only git and mise:
+#
+#   mise x -- ruby bin/check [BASE]
+#
+# It is a Ruby script, as a Rails app's bin/ scripts are, so that it
+# starts the same from PowerShell, cmd, or a Unix shell, and as the one
+# command of an automated run. mise x puts first on PATH the Ruby
+# mise.toml pins, installing first whatever tool is missing
+# (https://mise.jdx.dev/cli/exec.html), so the command finds that Ruby
+# with no shell mise has activated, and before anything is installed.
+# The script sets the checkout up (bin/setup, or bin/setup.ps1 on
+# Windows), then runs rake check (tasks/check.rake) with the Ruby and
 # tools mise.toml pins, of the commits since BASE, which defaults to the
 # upstream, or else origin/trunk.
 Dir.chdir(File.expand_path("..", __dir__))

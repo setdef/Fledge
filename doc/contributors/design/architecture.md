@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Fledge's Architecture
 
-This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads `doc/contributors/handoff.md` for where things stand. ADR 001 decides the shape of a built app, ADR 010 that each platform's app is built on that platform, and ADR 093 that runtimes are prebuilt in Fledge's CI; the rest are indexed below.
+This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads `doc/contributors/handoff.md` for where things stand. Eight ADRs hold the decisions that shape the rest: ADR 001 the shape of a desktop app, ADR 010 that each platform's app is built on that platform, ADR 093 that desktop runtimes are prebuilt in Fledge's CI, ADR 035 where their Ruby comes from, ADR 081 how the app's program runs, and ADRs 079, 012, and 022 a phone's Ruby, project, and extensions. Every other choice is in the design document for its subject.
 
 ## The parts
 
@@ -39,7 +39,7 @@ Fledge copies a program its developer already runs, with its project and the gem
 
 ## Architecture Decision Records
 
-An ADR in `doc/contributors/adr/` records one decision that changed what Fledge is, and would cost much to undo: its context, the options weighed, the choice, and what it costs. Such decisions are rare. Every other choice, with its reasons, the options weighed, and its prior art, is recorded in the design document for its subject. Numbers are never reused, so the list has gaps.
+An ADR in `doc/contributors/adr/` records one decision that changed what Fledge is, and would cost much to undo: its context, the options weighed, the choice, and what it costs. Such decisions are rare: Fledge has the eight below. Every other choice, with its reasons, the options weighed, and its prior art, is recorded in the design document for its subject. Numbers are never reused, so the list has gaps.
 
 Dated records, such as finished plans and research notes, cite ADRs by number and section as they stood on their dates; git keeps those versions. Everything else cites only an ADR that `doc/contributors/adr/` holds, and `test/adr_citations_test.rb` fails on any other, so deleting an ADR moves each of its citations to the design-document section that took its reasons.
 

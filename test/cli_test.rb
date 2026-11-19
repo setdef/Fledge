@@ -166,6 +166,16 @@ class CLITest < Minitest::Test
       "Build each platform's app on that platform.\n#{USAGE}", err
   end
 
+  # Its short form, -t, is the same usage error, by the name it was given.
+  def test_a_short_target_is_the_same_usage_error
+    out, err, status = fledge("build", "-t", "x86_64-linux", "examples/hello")
+
+    assert_equal 2, status
+    assert_empty out
+    assert_equal "fledge build: -t is gone: a build is for this computer. " \
+      "Build each platform's app on that platform.\n#{USAGE}", err
+  end
+
   def test_a_build_that_fails_exits_with_status_one_and_no_usage
     Dir.mktmpdir do |dir|
       out, err, status = fledge("build", dir)

@@ -38,7 +38,7 @@ class Parity
           "app, which its host logs (MobileParity::Environment): a phone starts an app with an environment of its " \
           "own, and no person's shell. Android gives an app no HOME, so FledgeRuby sets it to the app's files " \
           "folder, as iOS gives every app one, so that Dir.home is a folder the app may write, as every desktop's " \
-          "is; a Ruby the app starts, the Android runtime's ruby program (ADR 082), inherits it.")
+          "is; a Ruby the app starts, the Android runtime's ruby program, inherits it.")
     end,
     Justification.new(fact: "child ENV", reference: [/\A"[^"]+"=/], app: [ERRNO_SPAWN], platforms: IOS,
       reason: "An app on iOS starts no programs, since iOS lets no app run one, so the iOS runtime has no Ruby " \
@@ -51,8 +51,8 @@ class Parity
       reason: "As for child ENV."),
     Justification.new(fact: "RUBY_PLATFORM", reference: [/\A"#{DESKTOP_ARCH}"\z/o], app: [/\A"#{MOBILE_ARCH}"\z/o], platforms: MOBILE,
       reason: "Ruby names the platform it was built for: rv-ruby's for macOS 14 (darwin23) or glibc Linux, a " \
-        "phone's for iOS, which Ruby calls arm64-darwin, or Android, which it calls ARCH-linux-android. Fledge's " \
-        "target names for them are ADR 057's."),
+        "phone's for iOS, which Ruby calls arm64-darwin, or Android, which it calls ARCH-linux-android. Fledge " \
+        "names its targets for them in doc/contributors/design/phone-runtimes.md, \"Targets\"."),
     Justification.new(fact: "RUBY_DESCRIPTION", reference: [/\A(?<version>"[^"]*) \[#{DESKTOP_ARCH}\]"\z/o],
       app: [/\A(?<version>"[^"]*) \[#{MOBILE_ARCH}\]"\z/o],
       platforms: MOBILE, reason: "As for RUBY_PLATFORM, which it ends with; the version, date, and revision are the same."),
@@ -62,7 +62,7 @@ class Parity
         "same places and order."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/#{ABI}/#{DESKTOP_ARCH}/(?:enc/)?(?<feature>[^"]+)\.(?:bundle|so)"\z}o],
       app: [%r{\A"(?<feature>[a-z0-9_/]+)\.so"\z}], platforms: MOBILE,
-      reason: "A phone's Ruby links every extension in, by Fledge's choice (ADRs 022, 058, and 079), not because a " \
+      reason: "A phone's Ruby links every extension in, by Fledge's choice (ADRs 022 and 079), not because a " \
         "phone forbids loading them as files: iOS loads a dynamic library from a framework in the app, and Android " \
         "loads one from the app's own files (doc/contributors/research/2026-11-13-phone-extensions-as-files.md). " \
         "It records each as the feature it registers (json/ext/parser.so, encdb.so, with no enc/), where a desktop " \

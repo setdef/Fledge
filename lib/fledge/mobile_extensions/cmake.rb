@@ -43,9 +43,9 @@ module Fledge
     module CMake
       # What begins every toolchain file Fledge writes.
       HEADER = <<~CMAKE
-        # Written by fledge build (ADR 027) for one target of a phone: CMake
-        # reads it from CMAKE_TOOLCHAIN_FILE when an extconf.rb configures a
-        # new build folder.
+        # Written by fledge build for one target of a phone: CMake reads it
+        # from CMAKE_TOOLCHAIN_FILE when an extconf.rb configures a new
+        # build folder.
       CMAKE
 
       # The toolchain file for the iOS slice whose clang target is

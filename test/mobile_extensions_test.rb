@@ -286,7 +286,9 @@ class MobileExtensionsTest < Minitest::Test
   end
 
   # CMake reads a toolchain file from CMAKE_TOOLCHAIN_FILE in the
-  # environment when a build folder is new (ADR 027): for an iOS slice,
+  # environment when a build folder is new
+  # (doc/contributors/design/phone-projects.md, "CMake toolchain
+  # files"): for an iOS slice,
   # CMake's own iOS support, aimed at the slice's SDK, processor, and
   # deployment target with Xcode's compilers.
   def test_an_ios_slice_toolchain_file_aims_cmake_at_the_slice
@@ -317,6 +319,20 @@ class MobileExtensionsTest < Minitest::Test
     assert_includes text, "set(ANDROID_ABI x86_64)"
     assert_includes text, "set(ANDROID_PLATFORM android-26)"
     assert_includes text, 'include("/sdk/ndk/30/build/cmake/android.toolchain.cmake")'
+  end
+
+  # A toolchain file says what wrote it and why CMake reads it, and
+  # cites no record of Fledge's own, which its reader does not have.
+  def test_a_toolchain_file_says_what_wrote_it_and_cites_no_record
+    files = [
+      Fledge::MobileExtensions::CMake.ios(triple: "arm64-apple-ios15.0", sysroot: "/s", cc: "cc", cxx: "c++"),
+      Fledge::MobileExtensions::CMake.android(ndk: "/sdk/ndk/30", abi: "x86_64", compiler: "x86_64-linux-android26-clang"),
+    ]
+
+    files.each do |text|
+      assert_match(/\A# Written by fledge build for one target of a phone/, text)
+      refute_match(/ADR/, text)
+    end
   end
 
   def test_a_path_in_a_toolchain_file_stays_one_cmake_string

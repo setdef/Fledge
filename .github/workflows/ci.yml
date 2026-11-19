@@ -638,8 +638,43 @@ jobs:
           jar=$(ruby .github/scripts/fetch_pin.rb mobile bundletool)
           echo "BUNDLETOOL=$jar" >> "$GITHUB_ENV"
 
+      # Gradle's dependency cache, the files and metadata Gradle downloaded
+      # for the Android Gradle plugin and what it builds with, restored so
+      # that Gradle asks Maven Central nothing it has already answered.
+      # Maven Central refuses some of GitHub's runners' shared addresses,
+      # with a 429, or with a 404 for files it has, which Gradle reports
+      # as "Could not find" (doc/contributors/design/phone-projects.md,
+      # "Gradle's downloads in CI"). The key is everything that decides
+      # what Gradle resolves: the template's Gradle files, the plugin's
+      # version, and the runner's system; the cache is the folder
+      # Gradle's guide says may be copied, without its lock files.
+      - name: Key Gradle's dependency cache
+        id: gradle-key
+        run: echo "agp=$(ruby -I lib -r fledge -e 'print Fledge::MobileProject::Android::AGP')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: gradle-cache
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            !~/.gradle/caches/modules-2/*.lock
+            !~/.gradle/caches/modules-2/gc.properties
+          key: gradle-modules-${{ runner.os }}-agp-${{ steps.gradle-key.outputs.agp }}-${{ hashFiles('lib/fledge/templates/android/*.gradle', 'lib/fledge/templates/android/gradle.properties', 'lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties') }}
+
       - name: Build the apps with fledge build android and Gradle, as APKs and bundles, and check each for 16 KB pages, API 36, and Play's size limit
         run: ruby tasks/mobile_parity.rb android-build "$RUNNER_TEMP/runtimes"
+
+      # Saved once Gradle has built every app, whatever the emulators do
+      # after, and only when nothing was restored; the other target's job
+      # may save the same key first.
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.gradle-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            !~/.gradle/caches/modules-2/*.lock
+            !~/.gradle/caches/modules-2/gc.properties
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
 
       - name: Enable KVM
         run: |
@@ -666,7 +701,9 @@ jobs:
         if: failure()
         with:
           name: mobile-apps-android-${{ matrix.target }}
-          path: tmp/mobile-parity/android/logcat-*.txt
+          path: |
+            tmp/mobile-parity/android/logcat-*.txt
+            tmp/mobile-parity/android/gradle-*.log
           retention-days: 14
 
   # An Android app's project is built on macOS and Windows too, as Google

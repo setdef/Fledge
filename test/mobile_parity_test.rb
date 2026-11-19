@@ -228,6 +228,40 @@ class MobileParityTest < Minitest::Test
     assert_raises(RuntimeError) { MobileParity::Android.download_size("nothing") }
   end
 
+  # A Gradle build that failed is reported by what Gradle's --info log
+  # says of each repository's answers, a 404 as "Resource missing" and
+  # any other refusal with its status, then by Gradle's own failure, so
+  # that a "Could not find" shows which answer it stood for.
+  def test_a_failed_gradle_build_is_reported_by_its_repositories_answers_and_its_failure
+    log = <<~LOG
+      Initialized native services in: /home/runner/.gradle/native
+      Resource missing. [HTTP GET: https://dl.google.com/dl/android/maven2/com/google/guava/guava/33.4.0-jre/guava-33.4.0-jre.pom]
+      Resource missing. [HTTP GET: https://repo.maven.apache.org/maven2/com/google/guava/guava/33.4.0-jre/guava-33.4.0-jre.pom]
+      Failed to get resource: GET. [HTTP 429: https://repo.maven.apache.org/maven2/org/ow2/asm/asm/9.9/asm-9.9.pom)]
+      Resolve mutations for :app:compileJava (Thread[included builds,5,main]) started.
+
+      FAILURE: Build failed with an exception.
+
+      * What went wrong:
+         > Could not find com.google.guava:guava:33.4.0-jre.
+
+      BUILD FAILED in 9s
+      Watched directory hierarchies: []
+    LOG
+
+    assert_equal <<~REPORT.chomp, MobileParity::Android.gradle_failure(log)
+      Resource missing. [HTTP GET: https://dl.google.com/dl/android/maven2/com/google/guava/guava/33.4.0-jre/guava-33.4.0-jre.pom]
+      Resource missing. [HTTP GET: https://repo.maven.apache.org/maven2/com/google/guava/guava/33.4.0-jre/guava-33.4.0-jre.pom]
+      Failed to get resource: GET. [HTTP 429: https://repo.maven.apache.org/maven2/org/ow2/asm/asm/9.9/asm-9.9.pom)]
+      FAILURE: Build failed with an exception.
+
+      * What went wrong:
+         > Could not find com.google.guava:guava:33.4.0-jre.
+
+      BUILD FAILED in 9s
+    REPORT
+  end
+
   # An app that never finished is diagnosed from logcat's lines about it:
   # those naming it, those of its process, by the ID ActivityManager
   # started it with, and the crash reporters', not the system's chatter.

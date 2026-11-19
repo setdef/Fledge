@@ -48,14 +48,20 @@ class MobileParity
 
     # Writes each app's project from the runtimes in +runtimes+, builds
     # each with Gradle, checks each APK and each release bundle, and keeps
-    # each debug APK, and each release bundle's APK set, in APKS.
+    # each debug APK, and each release bundle's APK set, in APKS. Gradle
+    # logs at --info into +work+, a log for each app that CI keeps when
+    # the job fails, since only that level shows what each repository
+    # answered (#gradle_failure).
     def self.build(runtimes:, work: File.join(ROOT, "tmp", "mobile-parity", "android"), out: $stdout)
       FileUtils.rm_rf(work)
       FileUtils.mkdir_p(APKS)
       MobileParity.projects("android", runtimes:, out: File.join(work, "projects")).each do |app, project|
         gradlew = File.join(project, Gem.win_platform? ? "gradlew.bat" : "gradlew")
-        system(gradlew, "--no-daemon", "--quiet", "--project-dir", project, "assembleDebug", "assembleRelease", "bundleDebug", "bundleRelease",
-          exception: true)
+        log = File.join(work, "gradle-#{app.identifier}.log")
+        succeeded = system(gradlew, "--no-daemon", "--info", "--project-dir", project, "assembleDebug", "assembleRelease", "bundleDebug",
+          "bundleRelease", out: log, err: %i[child out])
+        raise "Gradle did not build #{app.name} (#{log}):\n#{gradle_failure(File.read(log))}" unless succeeded
+
         debug, release, bundle = built(app, project)
         [debug, release].each { |apk| check(apk, out) }
         FileUtils.cp(debug, File.join(APKS, "#{app.identifier}.apk"))
@@ -74,6 +80,21 @@ class MobileParity
         Dir.glob(File.join(outputs, pattern)).first or raise "Gradle built no #{pattern} of #{app.name}"
       end
       found.first(3)
+    end
+
+    # What Gradle's --info +log+ says of a build that failed: each answer
+    # a repository gave that was not the file, as Gradle 9.8.2 logs it
+    # (ApacheCommonsHttpClient#processResponse, "Resource missing" for a
+    # 404, which alone Gradle reports as "Could not find", and "Failed to
+    # get resource" with any other status), then Gradle's own account of
+    # the failure, from "FAILURE:" to "BUILD FAILED".
+    def self.gradle_failure(log)
+      lines = log.lines(chomp: true)
+      answers = lines.grep(/\A(?:Resource missing\.|Failed to get resource:) /)
+      from = lines.index { |line| line.start_with?("FAILURE: ") }
+      to = lines.rindex { |line| line.start_with?("BUILD FAILED") }
+      failure = (from && to) ? lines[from..to] : lines.last(40)
+      [*answers, *failure].join("\n")
     end
 
     # What bundletool dump config prints for a bundle whose APKs store

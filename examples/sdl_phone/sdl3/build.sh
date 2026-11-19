@@ -23,7 +23,8 @@
 # host/android/src/main/java/org/libsdl/app, where SDL's own
 # android-project holds them (docs/README-android.md, line 124), so that
 # fledge build android copies them into the project with the host's
-# MainActivity (ADR 025). Git ignores them there.
+# MainActivity (doc/contributors/design/phone-projects.md, "A host that owns
+# the main loop"). Git ignores them there.
 #
 # Point the gem at OUT with Bundler: bundle config build.sdl_demo
 # --with-sdl3-builds=OUT, or BUNDLE_BUILD__SDL_DEMO in the environment.

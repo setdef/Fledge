@@ -6,7 +6,8 @@
   Written by fledge build (ADR 012). The name, identifier, and version
   are the target's build settings, which fledge.yml gave.
 
-  sdl_phone's copy (ADR 025), which fledge.yml's ios host lays over
+  sdl_phone's copy (doc/contributors/design/phone-projects.md, "Host files"),
+  which fledge.yml's ios host lays over
   Fledge's: the scene's delegate is SDL's SDLUIKitSceneDelegate, which
   SDL_RunApp in Host/main.m expects, in place of Fledge's SceneDelegate.
 -->

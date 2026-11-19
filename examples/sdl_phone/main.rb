@@ -5,7 +5,9 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# The app ADR 025's spike ships to iOS, iPadOS, and Android: Ruby drives
+# The app that shows a framework's host at work
+# (doc/contributors/design/phone-projects.md, "A host that owns the main
+# loop"), on iOS, iPadOS, and Android: Ruby drives
 # a frame loop that SDL3 runs, from a gem's C extension. Each frame, Ruby
 # picks the background's color, which cycles, and the place of a white
 # square, which follows the last touch. It prints the thread it runs on,

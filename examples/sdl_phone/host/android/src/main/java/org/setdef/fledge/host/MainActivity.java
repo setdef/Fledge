@@ -8,10 +8,12 @@ import org.libsdl.app.SDLActivity;
 import org.setdef.fledge.FledgeRuby;
 
 /**
- * The app's screen when SDL3 owns it (ADR 025), in place of the
- * MainActivity fledge build writes, under the same name, so the manifest
- * stays as it is. SDL's Java side needs an Activity, which makes the
- * surface SDL draws on and passes it touches, and it starts the game's
+ * The app's screen when SDL3 owns it
+ * (doc/contributors/design/phone-projects.md, "A host that owns the
+ * main loop"), in place of the MainActivity fledge build writes, under
+ * the same name, so the manifest stays as it is. SDL's Java side needs
+ * an Activity, which makes the surface SDL draws on and passes it
+ * touches, and it starts the game's
  * main function on a thread it names SDLThread (SDLActivity.java at
  * release-3.4.18, lines 254 to 262 and 2169 to 2190). This class loads
  * libSDL3.so first, whose JNI_OnLoad registers SDL's Java methods, then

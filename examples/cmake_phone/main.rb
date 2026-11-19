@@ -5,7 +5,9 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# The app ADR 027's proof ships to iOS, iPadOS, and Android: a gem whose
+# The app that shows a phone's CMake toolchain files at work
+# (doc/contributors/design/phone-projects.md, "CMake toolchain files"), on
+# iOS, iPadOS, and Android: a gem whose
 # extconf.rb builds a C++ library with CMake, linked into the app with
 # the C extension over it. The library says which system CMake
 # configured it for and which processor its compiler aimed at, so the

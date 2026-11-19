@@ -4,13 +4,15 @@
  */
 
 /*
- * A game's smallest loop on SDL3, driven from Ruby (ADR 025): SdlDemo.run
- * opens a full-screen window, and on every frame hands the block the
- * frame's number, the window's size in pixels, and the touches SDL saw
- * since the last frame, then draws what the block answers: a background
- * color and a white square at a point. SdlDemo.stack says how deep the
- * calling thread's stack is and whether it is the process's main thread,
- * which is where SDL's video must run on iOS.
+ * A game's smallest loop on SDL3, driven from Ruby
+ * (doc/contributors/design/phone-projects.md, "A host that owns the
+ * main loop"): SdlDemo.run opens a full-screen window, and on every
+ * frame hands the block the frame's number, the window's size in
+ * pixels, and the touches SDL saw since the last frame, then draws what
+ * the block answers: a background color and a white square at a point.
+ * SdlDemo.stack says how deep the calling thread's stack is and whether
+ * it is the process's main thread, which is where SDL's video must run
+ * on iOS.
  */
 #include <ruby.h>
 #include <SDL3/SDL.h>
@@ -145,8 +147,11 @@ version(VALUE self)
 
 /*
  * SdlDemo.claim_main_thread: tells SDL that the calling thread is its
- * main thread, as SDL_RunApp would (SDL_SetMainReady). ADR 025 tried it
- * on Ruby's own thread, under a host that runs UIKit on another.
+ * main thread, as SDL_RunApp would (SDL_SetMainReady). On iOS, Ruby on
+ * a thread of its own under a host that runs UIKit on another crashes
+ * on a UIKit threading violation with it, so this example's host runs
+ * Ruby on the main thread (doc/contributors/design/phone-projects.md, "A host
+ * that owns the main loop").
  */
 static VALUE
 claim_main_thread(VALUE self)

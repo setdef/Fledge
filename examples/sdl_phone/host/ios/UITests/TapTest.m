@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT-0
 //
-// The touch the Mobile apps job gives the game (ADR 025): XCTest, Apple's
+// The touch the Mobile apps job gives the game: XCTest, Apple's
 // own UI testing, launches the app, waits while it draws, and taps the
 // screen a third of the way across and down, where the game's white
 // square should move to; the job reads the touch from the app's log.

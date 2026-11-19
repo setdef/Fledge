@@ -16,7 +16,8 @@
 # the same way, and Host/fledge_extensions.c registers them. No signing is configured: choose your team under Signing &
 # Capabilities to run it on a device.
 #
-# sdl_phone's copy (ADR 025), which fledge.yml's ios host lays over
+# sdl_phone's copy (doc/contributors/design/phone-projects.md, "Host files"),
+# which fledge.yml's ios host lays over
 # Fledge's, and in which fledge build fills the same marks. Ruby runs on
 # the main thread, inside SDL_RunApp, so the project asks the linker for
 # a 64 MB main thread stack, the stack Fledge's host gives Ruby's own

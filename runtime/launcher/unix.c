@@ -58,8 +58,8 @@
  *   5. Once Ruby has booted and before ENTRY runs, it names Ruby's own
  *      $LOAD_PATH by real paths on macOS (name_load_path_by_real_paths),
  *      fixes RubyGems' paths, and for an app with a Gemfile has Bundler
- *      set up the app's gems, as bundle exec would (setup_bundler, ADR
- *      095).
+ *      set up the app's gems, as bundle exec would (setup_bundler;
+ *      doc/contributors/design/launcher.md, "The Bundler environment").
  *   6. Then it puts the variables of step 2 back, so ENV and the app's
  *      child processes see what they would see without Fledge: as they
  *      were (restore_environment), or for an app with a Gemfile beneath

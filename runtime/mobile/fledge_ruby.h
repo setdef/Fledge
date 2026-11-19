@@ -31,8 +31,9 @@ extern "C" {
 
 /*
  * The statuses fledge_ruby_run and fledge_ruby_run_app return when they
- * cannot start Ruby, from sysexits(3), as Fledge's launcher exits (ADR
- * 002): EX_NOINPUT for an app whose fledge.cfg or program is missing,
+ * cannot start Ruby, from sysexits(3), as Fledge's launcher exits
+ * (doc/contributors/design/launcher.md, "Messages and exit statuses"):
+ * EX_NOINPUT for an app whose fledge.cfg or program is missing,
  * and EX_SOFTWARE for anything else.
  */
 enum { FLEDGE_RUBY_NO_APP = 66, FLEDGE_RUBY_SOFTWARE = 70 };

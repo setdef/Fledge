@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-19
+
 ### Added
 
 - On Android, the runtime loads `libfledgeext.so`, the library of the app's gems' extensions, itself before Ruby boots, so a framework's own host need not name it; a host that does keeps working unchanged.
@@ -448,7 +450,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/setdef/Fledge/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/setdef/Fledge/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/setdef/Fledge/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/setdef/Fledge/compare/v0.10.0...v0.11.0

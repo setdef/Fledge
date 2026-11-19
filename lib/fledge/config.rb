@@ -62,7 +62,7 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   # yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.13.0/lib/fledge/config.schema.json
+  #   # yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.14.0/lib/fledge/config.schema.json
   #--
   # SPDX-SnippetEnd
   #++

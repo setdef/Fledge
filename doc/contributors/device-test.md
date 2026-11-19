@@ -54,7 +54,7 @@ bundle exec fledge build android -o "$PLAYTEST" examples/sdl_phone
 (cd "$PLAYTEST/SdlPhone-android" && ./gradlew assembleDebug)
 ```
 
-Each `fledge build` prints one line on standard output, the project it wrote: `$PLAYTEST/SdlPhone-ios` and `$PLAYTEST/SdlPhone-android`. On standard error it says `host/ios replaces Fledge's Host/Info.plist, Host/main.m, project.yml` and `host/android replaces Fledge's src/main/java/org/setdef/fledge/host/MainActivity.java`. Those lines are expected: SDL owns the app's startup, and the example's host files say so (ADR 025; `doc/contributors/design/phone-projects.md`, "Host files"). Gradle writes `$PLAYTEST/SdlPhone-android/build/outputs/apk/debug/SdlPhone-debug.apk`.
+Each `fledge build` prints one line on standard output, the project it wrote: `$PLAYTEST/SdlPhone-ios` and `$PLAYTEST/SdlPhone-android`. On standard error it says `host/ios replaces Fledge's Host/Info.plist, Host/main.m, project.yml` and `host/android replaces Fledge's src/main/java/org/setdef/fledge/host/MainActivity.java`. Those lines are expected: SDL owns the app's startup, and the example's host files say so (`doc/contributors/design/phone-projects.md`, "Host files"). Gradle writes `$PLAYTEST/SdlPhone-android/build/outputs/apk/debug/SdlPhone-debug.apk`.
 
 A rebuild starts again at `fledge build`, which writes each project afresh. Anything you change inside `$PLAYTEST/SdlPhone-ios` or `SdlPhone-android`, the signing team included, lasts until then.
 

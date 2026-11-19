@@ -49,14 +49,7 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [010](../adr/010.md) | Build Each Platform's App on That Platform, With Its Own Tools |
 | [012](../adr/012.md) | For a phone, `fledge build` writes a project the developer builds, signs, and submits |
 | [022](../adr/022.md) | Compile a phone's extensions with mkmf against the phone Ruby, link them in, and register them |
-| [025](../adr/025.md) | A phone project takes its host's files from the app's own project: `ios: host:` and `android: host:` |
-| [027](../adr/027.md) | Aim an `extconf.rb`'s CMake at the phone through `CMAKE_TOOLCHAIN_FILE` |
 | [035](../adr/035.md) | Take CRuby from rv-ruby on macOS and glibc Linux, and from RubyInstaller on Windows, x64 and ARM64 |
-| [062](../adr/062.md) | Leave export compliance to the developer |
-| [072](../adr/072.md) | On a phone, a gem's Rakefile runs as RubyGems runs it, and the extensions it builds with mkmf are linked in |
-| [073](../adr/073.md) | On a phone, a gem's Rust extension is built by its own extconf.rb, as a static library, and linked in |
-| [074](../adr/074.md) | fiddle and the ffi gem work on both phones |
 | [079](../adr/079.md) | On a phone, Ruby is a static library Fledge builds from source |
-| [080](../adr/080.md) | On a phone, a Ruby file stands where a desktop has an extension's file, and requires the linked extension |
 | [081](../adr/081.md) | An app's program runs as `ruby PROGRAM` runs it, with nothing of Fledge's between |
 | [093](../adr/093.md) | Prebuild Each Platform's Runtime in Fledge's CI, and Publish It with the Release |

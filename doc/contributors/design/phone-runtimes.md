@@ -45,6 +45,8 @@ The two slices' Rubies differ only in the compiler their `rbconfig.rb` records. 
 
 Neither runtime has the gems' executables, and the iOS runtime has no Ruby program, since iOS lets no app run one. The Android runtime's ruby program is a native library by name, which the app's installer extracts, and `ROOT/bin/ruby` is a link to it that the embedding API makes as the app starts (see "The ruby program on Android").
 
+fiddle is in both runtimes, as in a desktop's, so `require "fiddle"` works on a phone as under `ruby main.rb` (decisions 9 and 20), and the mobile parity check compares it. xord/cruby leaves it out of its iOS Ruby "to pass the App Store review" (`Rakefile`, line 577 at 11d62c4), and the maintainer asked that a reason to leave it out be cited, not assumed (decisions, 2026-11-12). No source forbids it (`doc/contributors/research/2026-11-12-ffi-and-fiddle-on-phones.md`, with each source and when it was read): App Review Guidelines 2.5.1 and 2.5.2 govern which functions an app calls and whether it downloads code, and name no FFI; `dlopen` and `dlsym` are public in the iPhoneOS SDK; CPython's iOS build compiles `ctypes` against libffi (v3.13.0, `iOS/README.rst`, lines 179 to 188), and BeeWare's iOS Python and Pythonista ship it; and on Apple's arm64, libffi makes closures from a pre-signed page remapped with `vm_remap` (`closures.c`, lines 161 to 245), so no page is both writable and executable. Each runtime keeps fiddle's libffi to itself, Android's `libfledgeruby.so` with `--exclude-libs` and iOS's in fiddle's own object (see "Building Ruby for a phone"), so an app whose gem links a libffi of its own, as the ffi gem does, finds no second definition of any (`doc/contributors/design/phone-projects.md`, "Gems with extensions").
+
 ## Ruby's C headers on a phone
 
 Both phone runtimes ship Ruby's C headers, for the computer that builds the app: each iOS slice in `Headers/`, and the Android runtime in `include/` (both ABIs' `include/ruby-VERSION/` merged, with each ABI's configuration folder, and `fledge_ruby.h`). mkmf compiles a gem's extension against them (see `doc/contributors/design/phone-projects.md`, "Gems with extensions"), and native code that links the runtime includes them.
@@ -121,7 +123,7 @@ When the gem's Ruby requires its extension, `load.c`'s `search_required` finds n
 
 Folding the gems into the standard library, as xord/cruby does, loads them, but they are no longer gems: `Gem.loaded_specs["bigdecimal"]` is nil, and an app that locks bigdecimal in its Gemfile sees a difference from `ruby main.rb`. Copying their sources keeps Ruby's own build and installer, steered by a copy, a configure option, and a mark. The cost is that each new Ruby means checking that the gems' sources still fit among Ruby's own and that the marks are where RubyGems looks, which step 5 does; the mobile parity check compares every gem the probe reports on a phone with `ruby main.rb`.
 
-fiddle is on both phones. xord/cruby leaves it out of its iOS Ruby "to pass the App Store review", but none of Apple's guidelines forbids it, CPython's and BeeWare's iOS builds ship Python's `ctypes`, and libffi makes fiddle's callbacks on iOS without writable code (`doc/contributors/research/2026-11-12-ffi-and-fiddle-on-phones.md`). win32ole and win32 are Windows' alone. Every other bundled and default gem is as a desktop runtime has it.
+fiddle is on both phones (see "What a phone runtime holds"). win32ole and win32 are Windows' alone. Every other bundled and default gem is as a desktop runtime has it.
 
 ### Each extension's symbols
 

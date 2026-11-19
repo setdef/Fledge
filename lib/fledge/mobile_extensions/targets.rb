@@ -74,8 +74,16 @@ module Fledge
       # path of its own folder, so that the ruby program, which runs
       # outside the app's library namespace, finds a library it carries
       # beside it. The quotes and the doubled dollar sign reach the
-      # linker through make and the shell as <tt>$ORIGIN</tt>.
-      DLDFLAGS = "-Wl,-z,max-page-size=16384 -Wl,-rpath,'$$ORIGIN'"
+      # linker through make and the shell as <tt>$ORIGIN</tt>. And the
+      # symbols of the NDK's C++ runtime and unwinder, which a C++
+      # extension links in statically and a desktop's never holds, kept
+      # to the extension (<tt>--exclude-libs</tt>), as the NDK asks of a
+      # shared library that links libc++ statically, so that a library
+      # the extension loads is not bound to its copy of them; every
+      # other symbol is exported as a desktop's mkmf exports it
+      # (doc/contributors/design/phone-projects.md, "Each extension
+      # file's symbols").
+      DLDFLAGS = "-Wl,-z,max-page-size=16384 -Wl,-rpath,'$$ORIGIN' -Wl,--exclude-libs,libc++_static.a:libc++abi.a:libunwind.a"
 
       # Creates the finder, which writes its toolchain files and unpacks
       # the AAR in +work+, a folder of the build's own.

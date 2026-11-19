@@ -216,6 +216,16 @@ class MobileExtensionsTest < Minitest::Test
     assert build.cxx
   end
 
+  # An Android extension built as a file keeps the NDK's static C++
+  # runtime and unwinder to itself, and exports the rest of what it
+  # links, its own static libraries too, as a desktop's mkmf leaves them.
+  def test_an_android_extension_file_keeps_only_the_cpp_runtime_to_itself
+    flags = Fledge::MobileExtensions::Targets::DLDFLAGS.split
+
+    assert_includes flags, "-Wl,--exclude-libs,libc++_static.a:libc++abi.a:libunwind.a"
+    assert_equal 1, flags.grep(/exclude-libs/).size
+  end
+
   # Android loads native code only from the libraries its package holds,
   # so a shared library an extension links from its own folders, such as
   # libSDL3.so, goes into the package beside libfledgeext.so; the NDK's

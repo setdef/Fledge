@@ -88,9 +88,10 @@ class ConfigTest < Minitest::Test
     assert_nil load("kind: windowed\n").windows
   end
 
-  # Fledge takes no position on an app's gems' licenses (2026-10-28; ADR
-  # 007), so the keys that corrected a gem's license or said what its
-  # compiled code holds are gone, and fail like any other unknown key.
+  # Fledge takes no position on an app's gems' licenses (2026-10-28;
+  # doc/contributors/design/gems.md, "Checks that are not about
+  # licenses"), so the keys that corrected a gem's license or said what
+  # its compiled code holds are gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
     known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, windows, file_associations, and build_tools."
     {
@@ -263,8 +264,10 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  # The libraries a project's gems load from the Linux distribution (ADR
-  # 030), by the names their compiled files give them, once each.
+  # The libraries a project's gems load from the Linux distribution
+  # (doc/contributors/design/gems.md, "Libraries from the Linux
+  # distribution"), by the names their compiled files give them, once
+  # each.
   def test_reads_the_system_libraries_a_projects_gems_load_on_linux
     config = load("linux:\n  system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
 

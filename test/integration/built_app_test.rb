@@ -237,8 +237,8 @@ class BuiltAppTest < Minitest::Test
   end
 
   # The runtime's own bin/ruby, the Ruby an app restarts or a gem's
-  # executable runs on, chooses its locale as the launcher does (ADR
-  # 041, after PEP 538): with no locale in the environment, which is C,
+  # executable runs on, chooses its locale as the launcher does (after
+  # PEP 538): with no locale in the environment, which is C,
   # it reads a folder whose name is not ASCII as UTF-8. Windows has no C
   # locale to turn: its ruby.exe reads paths as UTF-8 whatever the code
   # page (doc/contributors/design/launcher.md, "The locale").

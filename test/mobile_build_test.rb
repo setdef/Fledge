@@ -42,8 +42,9 @@ class MobileBuildTest < Minitest::Test
     [out.string, err.string, status]
   end
 
-  # A phone's Ruby is the minor version that runs fledge build too (ADR
-  # 055); the fake runtimes are Ruby 4.1.0.
+  # A phone's Ruby is the minor version that runs fledge build too
+  # (doc/contributors/design/releases.md, "Ruby minors and runtimes");
+  # the fake runtimes are Ruby 4.1.0.
   def test_a_phone_project_on_another_ruby_minor_than_the_runtimes_fails
     script_app("identifier: com.example.Hello\n")
     out, err, status = build("android", "hello", ruby: "4.2.0")

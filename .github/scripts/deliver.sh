@@ -345,8 +345,8 @@ restarts "a restart in a hostile environment is the same app" HOME="$dot_gem_hom
   RUBYGEMS_GEMDEPS=- RUBY_YJIT_ENABLE=0 LD_LIBRARY_PATH="$evil/lib"
 
 # A broken app names itself, not Ruby, on standard error, and exits with
-# EX_NOINPUT (66) when the program it runs, app/ENTRY, is missing (ADR
-# 002).
+# EX_NOINPUT (66) when the program it runs, app/ENTRY, is missing
+# (doc/contributors/design/launcher.md, "Messages and exit statuses").
 program="$root/app/$entry"
 mv "$program" "$program.away"
 set +e

@@ -4,7 +4,7 @@
 # ruby/spec on stock Ruby and in a built app, on the same runner, from
 # the same runtime (tasks/ruby_spec.rb): every example that fails on one
 # side only fails the job unless RubySpec::JUSTIFIED explains it (ADR
-# 003; doc/contributors/design/parity.md, "ruby/spec"; AGENTS.md, Design
+# 081; doc/contributors/design/parity.md, "ruby/spec"; AGENTS.md, Design
 # precedence 2).
 #
 # ci.yml calls this on every push, once its runtimes are built, for

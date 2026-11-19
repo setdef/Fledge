@@ -11,11 +11,10 @@
 # coverage, REUSE, actionlint, clang-format) read the same files on
 # every OS, so one run answers for all three.
 #
-# A pushed pin commit, which changes only lib/fledge/SHA256SUMS (ADR
-# 053; doc/contributors/design/releases.md, "A pin commit's short CI"),
-# runs only the gate and a check that its pins match
-# the runtimes of its parent's run; every other job is skipped (the
-# Changes job). Every other commit runs everything below.
+# A pushed pin commit, which changes only lib/fledge/SHA256SUMS
+# (doc/contributors/design/releases.md, "A pin commit's short CI"),
+# runs only the gate and a check that its pins match the runtimes of
+# its parent's run; every other job is skipped (the Changes job). Every other commit runs everything below.
 #
 # The macOS and Linux runtimes build on each platform's own runner
 # (macos-15 is Apple Silicon, ubuntu-24.04-arm is aarch64), because their
@@ -575,8 +574,9 @@ jobs:
   # size limit (doc/contributors/design/phone-projects.md, "The Android App Bundle
   # check"), and each app run from its debug APK
   # and again from its bundle's APKs, as Play installs them. No GitHub-hosted
-  # runner boots an arm64-v8a emulator with hardware acceleration (ADR
-  # 011), so the arm64-v8a library is built and checked but run on no
+  # runner boots an arm64-v8a emulator with hardware acceleration
+  # (doc/contributors/design/public-interface.md, "Phones"), so the
+  # arm64-v8a library is built and checked but run on no
   # emulator here. examples/rust_phone's Rust is compiled with mise.toml's
   # Rust and its Android targets, and bindgen reads the phone's headers
   # with the runner's libclang.
@@ -1027,8 +1027,9 @@ jobs:
   # with a submodule, and an optional group. The Mac and Windows build
   # examples/nokogiri_app too, nokogiri from
   # source: with macOS's own iconv on the Mac, and with GNU libiconv
-  # linked in on Windows, which ships as any gem's compiled code does (ADR
-  # 007). Each records what bundle exec prints, which the built app must
+  # linked in on Windows, which ships as any gem's compiled code does
+  # (doc/contributors/design/gems.md, "Checks that are not about
+  # licenses"). Each records what bundle exec prints, which the built app must
   # print too.
   #
   # Each platform's build is a job of its own, and so is each platform's

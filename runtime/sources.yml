@@ -386,8 +386,9 @@ mobile:
     url: https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
     sha256: a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
 
-# The musl Linux runtimes (x86_64-linux-musl, aarch64-linux-musl; ADR
-# 017): CRuby built from its release tarball on a computer of each, in
+# The musl Linux runtimes (x86_64-linux-musl, aarch64-linux-musl;
+# doc/contributors/design/runtimes.md, "musl Linux's Ruby, built in
+# Alpine"): CRuby built from its release tarball on a computer of each, in
 # Alpine, because rv-ruby's musl builds link the standard library's
 # extensions into their own bin/ruby, where Fledge's launcher cannot
 # reach them. Configured as rv-ruby's glibc builds are (a static libruby,

@@ -20,8 +20,9 @@
 #   - every text file whose words name a copyleft license is one a person
 #     has reviewed (reviewed);
 #   - and every component's license meets the policy, which
-#     lib/fledge/license_policy.rb holds (Fledge::LicensePolicy; ADR
-#     004).
+#     lib/fledge/license_policy.rb holds (Fledge::LicensePolicy;
+#     doc/contributors/design/license-audit.md, "The policy and its
+#     categories").
 #
 # The maintainer's rule (decisions 8 and 24, and the replies of
 # 2026-10-26 in doc/contributors/decisions.md; AGENTS.md, Licensing): an

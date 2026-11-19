@@ -8,6 +8,7 @@
 require "fileutils"
 require_relative "../archive"
 require_relative "../error"
+require_relative "../runtime_contents"
 
 module Fledge
   class Assembly
@@ -57,8 +58,9 @@ module Fledge
       end
 
       # Moves everything the app holds of the runtime, which is all of it
-      # but its launchers and tools folder, into +folder+, once
-      # nothing of the app's could collide with it.
+      # but its launchers, its tools folder, and the description of its
+      # Ruby that fledge build reads (RuntimeContents::DESCRIPTION), into
+      # +folder+, once nothing of the app's could collide with it.
       def move_into(folder)
         FileUtils.mkdir_p(folder)
         held.each { |name| FileUtils.mv(File.join(@top, name), File.join(folder, name)) }
@@ -66,7 +68,7 @@ module Fledge
 
       private def held
         launchers = [LAUNCHER, WINDOWED_LAUNCHER].map { |name| @platform.executable(name) }
-        names = Dir.children(@top).sort - launchers - [TOOLS]
+        names = Dir.children(@top).sort - launchers - [TOOLS, RuntimeContents::DESCRIPTION]
         names.each { |name| check(name) }
       end
 

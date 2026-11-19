@@ -64,6 +64,20 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # The runtime's RUBY_DESCRIPTION is for fledge build to read
+  # (Fledge::RuntimeContents), and no app holds it.
+  def test_the_runtimes_ruby_description_stays_out_of_the_app
+    unix!
+    Dir.mktmpdir do |dir|
+      description = Fledge::Entry.file(Fledge::RuntimeContents::DESCRIPTION, "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)\n")
+
+      archive = assemble(dir, FakeApp.write(dir), runtime: FakeRuntime.write(dir, LINUX, extra: [description]))
+
+      assert_equal %w[Hello app fledge.cfg lib], Dir.children(File.join(dir, "dist", "Hello-x86_64-linux")).sort
+      refute_includes tree(unpacked(dir, archive)), "Hello-x86_64-linux/RUBY_DESCRIPTION"
+    end
+  end
+
   # The launcher reads fledge.cfg, beside it, to learn what to run
   # (runtime/launcher/config.c).
   def test_fledge_cfg_names_the_entry_point_and_a_gemfile

@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `fledge build` judges a Gemfile's `ruby` and each gem's `required_ruby_version` by the runtime's Ruby as RubyGems and Bundler see it, `4.1.0.preview1`, and `4.1.0.dev` on Windows, where it saw `4.1.0`: a Gemfile that asks for `4.1.0-preview1` builds everywhere but Windows, and one that asks for `4.1.0`, whose app would not start, is refused. Each runtime holds its Ruby's description in `RUBY_DESCRIPTION`, which no app carries.
 - When a lockfile has no checksum for the Bundler it names, `fledge build` says to run `gem install bundler -v VERSION`, then `bundle lock --add-checksums`; the `bundle install` it advised wrote no checksum when the lockfile's Bundler is the one that came with Ruby.
 
 ## [0.13.0] - 2026-11-15

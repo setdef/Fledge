@@ -17,9 +17,10 @@ Every runtime is a `.tar.gz` with one top folder, named as the asset is without 
 The build runs in this order (`RuntimeBuilder#call`):
 
 1. the platform's recipe builds the folder (`tasks/runtime_builder/`);
-2. `LicenseAudit::SourceBundle#copy_into` writes `notices/sources/`;
-3. `RuntimeBuilder#license` audits the folder and writes `notices/NOTICES.txt` and `notices/sbom.spdx.json`, or raises and archives nothing;
-4. the folder is archived, and the SBOM, NOTICES, and source bundle are written beside it.
+2. `RuntimeBuilder::RubyDescription.write` copies the description of the folder's Ruby into `RUBY_DESCRIPTION` ("The Ruby's description");
+3. `LicenseAudit::SourceBundle#copy_into` writes `notices/sources/`;
+4. `RuntimeBuilder#license` audits the folder and writes `notices/NOTICES.txt` and `notices/sbom.spdx.json`, or raises and archives nothing;
+5. the folder is archived, and the SBOM, NOTICES, and source bundle are written beside it.
 
 A recipe builds only on the computers it names (`Recipe#hosts`): each Unix runtime on its own platform, since its launcher links that platform's libruby; the Windows runtimes on any computer llvm-mingw is pinned for.
 
@@ -36,6 +37,7 @@ A recipe builds only on the computers it names (`Recipe#hosts`): each Unix runti
 | `lib/libcrypt.so.2` | libxcrypt, glibc Linux only ("libxcrypt on glibc Linux"). |
 | `libexec/cert.pem` | Mozilla's CA bundle, which Ruby's `openssl.rb` points OpenSSL at unless `SSL_CERT_FILE` names others. |
 | `tools/appimage-runtime` | Linux only, glibc and musl ("The tools folder"). |
+| `RUBY_DESCRIPTION` | The description Ruby compiled into `bin/ruby`, which `fledge build` reads and no app holds ("The Ruby's description"). |
 | `notices/` | `NOTICES.txt`, `sbom.spdx.json`, and, on Linux, `sources/`. |
 
 `X.Y.0` is the pinned Ruby's ABI folder.
@@ -56,6 +58,7 @@ Each program builds with warnings as errors (`RuntimeBuilder::WARNINGS`) and und
 | `launcherw.exe` | The same launcher built as a GUI program, for windowed apps (`doc/contributors/design/desktop-apps.md`, "Windows"). |
 | `ruby\` | RubyInstaller's tree, its shape unchanged: `bin\` with Ruby's DLL (`x64-ucrt-ruby410.dll` or `aarch64-ucrt-ruby410.dll` for Ruby 4.1), `ruby.exe`, `rubyw.exe`, the gems' wrappers, and `ruby_builtin_dlls\`; `include\`; `lib\ruby\`. `ruby.exe` and `rubyw.exe` are Fledge's, Ruby's `main.c` built against that DLL in their place (`RuntimeBuilder::Windows#compile_ruby`; `launcher.md`, "bin/ruby and restarts"). Fledge adds two DLLs RubyInstaller leaves out (`windows-dlls` in `runtime/sources.yml`, `RuntimeBuilder::Windows#add_missing_dlls`): `libz-1.dll` in Ruby's architecture folder under `lib\ruby\`, named in `zlib.so`'s assembly manifest, and, on x64, `libgcc_s_seh-1.dll` in `ruby_builtin_dlls\`. |
 | `tools\nsis\`, `tools\rcedit.exe`, `tools\llvm-readobj.exe` | What `fledge build` runs ("The tools folder"). |
+| `RUBY_DESCRIPTION` | The description Ruby compiled into its DLL, which `fledge build` reads and no app holds ("The Ruby's description"). |
 | `notices\` | `NOTICES.txt`, `sbom.spdx.json`, and `sources\`. |
 
 The launchers may import only `KERNEL32.dll` and the universal C runtime's `api-ms-win-crt-*.dll`, and the windowed one `USER32.dll` for its message box. The build reads each one's PE Subsystem and imports with llvm-mingw's `llvm-readobj` and fails otherwise.
@@ -86,7 +89,7 @@ The Ruby versions pinned today: on macOS and Linux, `ruby`, `mobile.ruby`, and `
 
 ## Windows' Ruby until Ruby 4.1.0
 
-The Ruby versions pinned today are not one release everywhere. While that release is a preview, which RubyInstaller does not build, the Windows pins name RubyInstaller's head build of Ruby's main branch taken on the day the release appeared, or the nearest day with one: today the build of 2026-11-10, ruby 4.1.0dev at 0e25874222, beside 4.1.0-preview1 at 2d08b5f42f everywhere else, since no head build exists from preview1's day. Its library folders may carry another ABI version (`4.1.0+6` beside the preview's `4.1.0+5`); nothing in Fledge keeps that name, which `RuntimeBuilder.ruby_abi` and `LicenseAudit#abi` read from each tree. Each move to a later preview, a release candidate, or 4.1.0 moves every platform in one Fledge release, takes that day's head build, and says in `runtime/sources.yml` and the CHANGELOG which revision Windows runs against the release's own; at 4.1.0, RubyInstaller's numbered build replaces head.
+The Ruby versions pinned today are not one release everywhere. While that release is a preview, which RubyInstaller does not build, the Windows pins name RubyInstaller's head build of Ruby's main branch taken on the day the release appeared, or the nearest day with one: today the build of 2026-11-10, ruby 4.1.0dev at 0e25874222, beside 4.1.0-preview1 at 2d08b5f42f everywhere else, since no head build exists from preview1's day. Its library folders may carry another ABI version (`4.1.0+6` beside the preview's `4.1.0+5`); nothing in Fledge keeps that name, which `RuntimeBuilder.ruby_abi` and `LicenseAudit#abi` read from each tree. RubyGems and Bundler call it Ruby 4.1.0.dev, where the others are 4.1.0.preview1 (`Gem.ruby_version`), so a Gemfile that asks for `ruby "4.1.0-preview1"` builds and starts everywhere but Windows, under `bundle exec` as in an app (`doc/contributors/design/gems.md`, "The runtime's Ruby version"). Each move to a later preview, a release candidate, or 4.1.0 moves every platform in one Fledge release, takes that day's head build, and says in `runtime/sources.yml` and the CHANGELOG which revision Windows runs against the release's own; at 4.1.0, RubyInstaller's numbered build replaces head.
 
 Building every platform from one commit of Ruby's main branch would have Fledge build Ruby for macOS and glibc Linux too, two more builds to keep, which ADR 035 defers until a maintained build fails. A Fledge release on every night's head build would turn trunk red whenever Ruby's main branch broke, and move every app's Ruby each day. So until 4.1.0 Windows runs another revision than the other platforms, with other default and bundled gem versions, another ABI version in its folders, and C API changes the preview lacks, and code that runs on one may not run on the other. The parity check compares each Windows app with the very head build its runtime came from, so that gap is not a parity difference.
 
@@ -193,6 +196,14 @@ Every runtime ships `runtime/rubygems/operating_system.rb` as `lib/ruby/X.Y.0/ru
 RubyInstaller's own `operating_system.rb` is for a developer's Ruby: it writes and deletes a file in the runtime's gem folder on every start, creates `%ProgramData%\gemrc`, searches for MSYS2 and adds its DLL folder, and leaves `Gem.user_dir` first in `Gem.path`. A runtime needs none of it: RubyInstaller's DLLs load through their manifests without its runtime, and compiling a gem enables MSYS2 through RubyInstaller's Ruby library, which the runtime keeps (`doc/contributors/design/gems.md`). Fledge's file on Windows loads what RubyInstaller's start-up loads and calls none of it. It requires `ruby_installer/runtime`, so `RubyInstaller` is defined, as under `ruby.exe`, and a gem that tests `defined?(RubyInstaller)`, such as mysql2, takes the branch it takes there. Then it loads the autoloads RubyInstaller's `enable_dll_search_paths` loads, `Msys2Installation` (which includes `Colors`) and `DllDirectory` (which requires `win32/dll_directory` and so defines `Win32`), whose files only define classes and modules when loaded, and converts Ruby's archdir to UTF-16LE, as that call's first `DllDirectory.new` does for `AddDllDirectory`, which loads only the encoding and its converters. So the app starts with the same `$LOADED_FEATURES` and constants as `ruby.exe`.
 
 On macOS and Linux, whose Rubies ship no such file, the parity check allows the defaults' trace in `$LOADED_FEATURES` (`Parity::JUSTIFIED`).
+
+## The Ruby's description
+
+Every runtime, a phone's too, holds `RUBY_DESCRIPTION` at its top: one line, the `RUBY_DESCRIPTION` of the Ruby it carries as far as the platform's name, `ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)` for the preview and `ruby 4.1.0dev (2026-11-10 master 0e25874222)` for Windows' head build. `fledge build` reads the Ruby's version from it as RubyGems reports it (`doc/contributors/design/gems.md`, "The runtime's Ruby version"); no app holds it (`Assembly::RuntimeFolder`).
+
+Ruby records the name of a preview or a development build only in that string. `version.h` defines `RUBY_PATCHLEVEL_STR` as `"dev"`, or as the name a release tarball's `tool/make-snapshot` writes into it (`preview1`), and `version.c` compiles `"ruby "`, `RUBY_VERSION`, `RUBY_PATCHLEVEL_STR`, the date and revision, and the platform into `ruby_description` (`version.h`, lines 57 to 66, and `version.c`, lines 88 to 91, at 2d08b5f42f; `tool/make-snapshot`, lines 272 to 279 and 362). `rbconfig.rb` keeps only `PATCHLEVEL` of `-1`, and Ruby's installed headers no name. So `RuntimeBuilder::RubyDescription` reads the string out of the program or library it was compiled into, in each layout: `bin/ruby` on macOS and Linux, Ruby's DLL in `ruby/bin/` on Windows, each slice's `libfledgeruby.a` on iOS, and each ABI's `libfledgeruby.so` in the AAR on Android, which it reads with `unzip`, as the license audit does. Every one in a runtime must give the same description, less the platform, which differs between slices and ABIs, and a runtime with none or two is not built.
+
+`fledge build` could read the string out of the same files itself, and did not, because Android's library is deflated inside the AAR, a zip, and a computer that builds an Android project may have no tool that reads one: GNU tar, Linux's, reads no zip, and Fledge would have had to read one itself, which AGENTS.md rules out where a tool does it. The file costs one more entry in each runtime, which the license audit counts as Fledge's. A runtime of Fledge 0.13.0 or before has no such file, and `fledge build` then reads its Ruby as rbconfig's `MAJOR.MINOR.TEENY` alone, as it did; the reading of that case can go once `lib/fledge/SHA256SUMS` pins runtimes that hold it.
 
 ## The tools folder
 

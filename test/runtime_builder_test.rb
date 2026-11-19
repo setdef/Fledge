@@ -700,4 +700,64 @@ class RuntimeBuilderTest < Minitest::Test
     assert_equal "x64-mingw-ucrt runtimes build on x86_64-linux, aarch64-linux, arm64-darwin only; " \
       "this is x64-mingw-ucrt", error.message
   end
+
+  # A Ruby names a preview or a development build only in the
+  # RUBY_DESCRIPTION it compiles into its program or library (version.h
+  # and version.c), so the build reads it there, in every runtime's
+  # layout, as far as the platform's name, which differs between an iOS
+  # runtime's slices and an Android runtime's ABIs, and writes it into
+  # the runtime for fledge build (Fledge::RuntimeContents).
+  def test_the_runtimes_ruby_description_is_read_from_its_ruby_and_written_beside_it
+    preview = "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)"
+    library = -> (description) { "\x7FELF\0#{description}\0ruby: %s\0".b }
+    stages = {
+      preview => { "bin/ruby" => library.call("#{preview} [x86_64-linux]"), "lib/ruby/4.1.0+5/set.rb" => "" },
+      "ruby 4.1.0dev (2026-11-10 master 0e25874222)" => {
+        "ruby/bin/x64-ucrt-ruby410.dll" => library.call("ruby 4.1.0dev (2026-11-10 master 0e25874222) [x64-mingw-ucrt]\0ruby 4.1.0dev (2026-11-10 masterster 0e25874222)"),
+        "ruby/bin/ruby.exe" => "MZ",
+      },
+      "#{preview} (iOS)" => %w[ios-arm64 ios-arm64-simulator].to_h { |slice| ["FledgeRuby.xcframework/#{slice}/libfledgeruby.a", library.call("#{preview} [arm64-darwin]")] },
+    }
+    stages.each do |expected, files|
+      Dir.mktmpdir do |stage|
+        files.each { |path, bytes| FileUtils.mkdir_p(File.dirname(File.join(stage, path))) && File.binwrite(File.join(stage, path), bytes) }
+
+        RuntimeBuilder::RubyDescription.write(stage)
+
+        assert_equal "#{expected.delete_suffix(' (iOS)')}\n", File.read(File.join(stage, Fledge::RuntimeContents::DESCRIPTION))
+      end
+    end
+  end
+
+  def test_an_android_runtimes_ruby_description_is_read_from_the_libraries_in_its_aar
+    preview = "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)"
+    Dir.mktmpdir do |stage|
+      aar = File.join(stage, "aar")
+      { "arm64-v8a" => "aarch64-linux-android", "x86_64" => "x86_64-linux-android" }.each do |abi, platform|
+        FileUtils.mkdir_p(File.join(aar, "jni", abi))
+        File.binwrite(File.join(aar, "jni", abi, "libfledgeruby.so"), "\x7FELF\0#{preview} [#{platform}]\0".b)
+      end
+      system("zip", "-q", "-r", File.join(stage, "FledgeRuby.aar"), "jni", chdir: aar, exception: true)
+      FileUtils.rm_rf(aar)
+
+      assert_equal preview, RuntimeBuilder::RubyDescription.read(stage)
+    end
+  end
+
+  # A runtime whose Ruby names no version, or two, is not built.
+  def test_a_runtime_whose_ruby_names_no_one_description_is_refused
+    Dir.mktmpdir do |stage|
+      FileUtils.mkdir_p(File.join(stage, "bin"))
+      File.binwrite(File.join(stage, "bin", "ruby"), "\x7FELF\0".b)
+      error = assert_raises(RuntimeError) { RuntimeBuilder::RubyDescription.read(stage) }
+      assert_equal "#{stage} holds no Ruby whose RUBY_DESCRIPTION names it", error.message
+
+      FileUtils.mkdir_p(File.join(stage, "FledgeRuby.xcframework", "ios-arm64"))
+      File.binwrite(File.join(stage, "bin", "ruby"), "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f) [arm64-darwin]\0")
+      File.binwrite(File.join(stage, "FledgeRuby.xcframework", "ios-arm64", "libfledgeruby.a"), "ruby 4.1.0 (2026-12-25 revision 0123456789) [arm64-darwin]\0")
+      error = assert_raises(RuntimeError) { RuntimeBuilder::RubyDescription.read(stage) }
+      assert_equal "#{stage} holds Rubies that describe themselves differently: ruby 4.1.0 (2026-12-25 revision 0123456789); " \
+        "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)", error.message
+    end
+  end
 end

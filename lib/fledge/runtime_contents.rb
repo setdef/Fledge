@@ -25,8 +25,10 @@ module Fledge
   #
   # This class reads a runtime archive once and keeps the gem folder, by
   # the path of its <tt>specifications</tt> folder, the full name of every
-  # gem specification in it, the Ruby version its <tt>rbconfig.rb</tt>
-  # records, as RbConfig's MAJOR, MINOR, and TEENY, and the file name of
+  # gem specification in it, the Ruby version RubyGems and Bundler compare
+  # gems and Gemfiles with (Gem.ruby_version), from RbConfig's MAJOR,
+  # MINOR, TEENY, and PATCHLEVEL and the runtime's DESCRIPTION file, the
+  # file name of
   # every shared library it holds, and the architecture its rbconfig.rb
   # records, which is the platform RubyGems and Bundler see when the app
   # runs (Gem::Platform.local), whatever computer it runs on.
@@ -42,7 +44,7 @@ module Fledge
   #++
   #   contents = Fledge::RuntimeContents.read("fledge-runtime-0.0.1-x64-mingw-ucrt.tar.gz")
   #   contents.gem_dir                    # => "ruby/lib/ruby/gems/4.1.0+5"
-  #   contents.ruby_version               # => "4.1.0"
+  #   contents.ruby_version               # => "4.1.0.dev"
   #   contents.gems.include?("csv-3.3.5") # => true
   #   contents.arch                       # => "x64-mingw-ucrt"
   #--
@@ -60,7 +62,9 @@ module Fledge
 
     ##
     # :attr_reader: ruby_version
-    # The runtime's Ruby version, such as <tt>4.1.0</tt>.
+    # The runtime's Ruby version as its RubyGems reports it
+    # (Gem.ruby_version), such as <tt>4.1.0</tt>, <tt>4.1.0.preview1</tt>
+    # for a preview, or <tt>4.1.0.dev</tt> for a build of Ruby's master.
 
     ##
     # :attr_reader: arch
@@ -114,8 +118,17 @@ module Fledge
     SPECIFICATION = %r{\A(?<gem_dir>(?:[^/]+/)*lib/ruby/gems/[^/]+)/specifications/(?:default/)?(?<full_name>[^/]+)\.gemspec\z}
     # rbconfig.rb's path in a runtime, in Ruby's architecture folder.
     RBCONFIG = %r{\A(?:[^/]+/)*lib/ruby/\d[^/]*/[^/]+/rbconfig\.rb\z}
-    # The lines of rbconfig.rb that hold Ruby's version, a part each.
-    VERSION_PARTS = /^\s*CONFIG\["(MAJOR|MINOR|TEENY)"\] = "(\d+)"/
+    # The lines of rbconfig.rb that hold Ruby's version, a part each, and
+    # its patch level, -1 for a preview or a development build.
+    VERSION_PARTS = /^\s*CONFIG\["(MAJOR|MINOR|TEENY|PATCHLEVEL)"\] = "(-?\d+)"/
+    # The file at a runtime's top that holds its Ruby's RUBY_DESCRIPTION,
+    # as far as the platform's name, such as <tt>ruby 4.1.0preview1
+    # (2026-10-11 master 2d08b5f42f)</tt>, which the runtime's build reads
+    # out of Ruby's own program or library. Ruby compiles the name of a
+    # preview or a development build into that string alone (+version.h+
+    # and +version.c+), and RubyGems reads it from there
+    # (Gem.ruby_version).
+    DESCRIPTION = "RUBY_DESCRIPTION"
     # The line of rbconfig.rb that holds Ruby's architecture.
     ARCH = /^\s*CONFIG\["arch"\] = "([^"]+)"/
     # A RubyGems plugin loader in a gem folder.
@@ -154,8 +167,10 @@ module Fledge
       plugins = [] # : Array[String]
       inside_all = [] # : Array[String]
       rbconfig = nil # : String?
+      description = nil # : String?
       Archive.names(path).each do |name|
         inside = name.split("/", 2).last.to_s
+        description = name if inside == DESCRIPTION
         next unless inside.start_with?(under)
 
         inside = inside.delete_prefix(under)
@@ -171,7 +186,7 @@ module Fledge
       end
       if rbconfig
         content = Archive.read(path, rbconfig)
-        version = ruby_version_in(content)
+        version = ruby_version_in(content, description && Archive.read(path, description).force_encoding(Encoding::UTF_8))
         arch = content[ARCH, 1]
       end
       raise Error, "#{path} is not a Fledge runtime: its rbconfig.rb names no arch" if version && arch.nil?
@@ -205,10 +220,30 @@ module Fledge
       target
     end
 
-    # The version rbconfig.rb's MAJOR, MINOR, and TEENY make.
-    private_class_method def self.ruby_version_in(rbconfig) # :nodoc:
+    # The version of the Ruby whose rbconfig.rb is +rbconfig+ and whose
+    # RUBY_DESCRIPTION is +description+, as RubyGems reports it: MAJOR,
+    # MINOR, and TEENY, and, when PATCHLEVEL is -1, the name the
+    # description gives after them. A runtime built before it recorded
+    # its description has none, and reads as MAJOR, MINOR, and TEENY.
+    private_class_method def self.ruby_version_in(rbconfig, description) # :nodoc:
       parts = rbconfig.scan(VERSION_PARTS).to_h
-      %w[MAJOR MINOR TEENY].map { |part| parts[part] or return nil }.join(".")
+      version = %w[MAJOR MINOR TEENY].map { |part| parts[part] or return nil }.join(".")
+      return version unless parts["PATCHLEVEL"] == "-1" && description
+
+      #--
+      # SPDX-SnippetBegin
+      # SPDX-License-Identifier: Ruby OR MIT
+      # SPDX-SnippetCopyrightText: Chad Fowler, Rich Kilmer, Jim Weirich and others
+      # SPDX-SnippetComment: Gem.ruby_version, adapted from RubyGems'
+      #   lib/rubygems.rb at Ruby v4.1.0-preview1 (2d08b5f42f), lines 965
+      #   to 979, with rbconfig.rb's version and patch level in place of
+      #   RUBY_VERSION and RUBY_PATCHLEVEL, for CRuby, whose engine is ruby.
+      #++
+      name = description[/\Aruby #{Regexp.quote(version)}([^ ]+) /, 1]
+      name ? "#{version}.#{name}" : version
+      #--
+      # SPDX-SnippetEnd
+      #++
     end
 
     private_class_method def self.build(path, gem_dirs, gems, version) # :nodoc:

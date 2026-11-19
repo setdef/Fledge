@@ -766,6 +766,29 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # A Gemfile may ask for the Ruby the app runs on by its .ruby-version,
+  # which names a preview as 4.1.0-preview1. Bundler compares it with
+  # Gem.ruby_version, 4.1.0.preview1 on a preview and 4.1.0.dev on a
+  # build of Ruby's master, so fledge build must read the runtime's Ruby
+  # as that version, and the app's own Bundler then starts the app
+  # (doc/contributors/design/gems.md, "The runtime's Ruby version"). A
+  # runtime read as plain 4.1.0 would build an app its Bundler refuses.
+  def test_an_app_whose_gemfile_names_the_runtimes_ruby_by_its_ruby_version_file_starts
+    version = Fledge::RuntimeContents.read(File.join(@runtimes, Fledge::Runtimes.file_name(@platform))).ruby_version
+    Dir.mktmpdir do |dir|
+      project = File.join(dir, "named_ruby")
+      FileUtils.mkdir_p(project)
+      File.write(File.join(project, ".ruby-version"), "#{version.sub(/\A(\d+\.\d+\.\d+)\./, '\1-')}\n")
+      File.write(File.join(project, "Gemfile"), "ruby file: \".ruby-version\"\n")
+      File.write(File.join(project, "Gemfile.lock"), "GEM\n  specs:\n\nPLATFORMS\n  ruby\n\nDEPENDENCIES\n\nRUBY VERSION\n  ruby #{version}\n")
+      File.write(File.join(project, "main.rb"), "puts Gem.ruby_version\n")
+
+      out, err, status = run_app({ "HOME" => dir }, build_and_unpack(dir, project))
+
+      assert_equal ["#{version}\n", "", 0], [out, err, status.exitstatus]
+    end
+  end
+
   def test_a_gem_shaped_app_without_its_program_exits_with_ex_noinput
     program = File.join(File.realpath(File.dirname(my_cool_app)), "app", "exe", "my_cool_app")
     File.rename(program, "#{program}.away")

@@ -9,6 +9,7 @@ module Fledge
     LIBRARY: Regexp
     ARCH: Regexp
     PLUGIN: Regexp
+    DESCRIPTION: String
 
     attr_reader gem_dir: String
     attr_reader gems: Array[String]
@@ -27,7 +28,7 @@ module Fledge
 
     def tool: (String name, into: String) -> String?
 
-    private def self.ruby_version_in: (String rbconfig) -> String?
+    private def self.ruby_version_in: (String rbconfig, String? description) -> String?
 
     private def self.build: (String path, Array[String] gem_dirs, Array[String] gems, String? version) -> RuntimeContents
   end

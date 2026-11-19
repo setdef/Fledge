@@ -104,6 +104,7 @@ class RuntimeBuilder
     FileUtils.rm_f(assets.values.map { |name| File.join(@work, name) })
     FileUtils.mkdir_p(stage)
     recipe.build(stage)
+    RubyDescription.write(stage)
     LicenseAudit::SourceBundle.new(platform: platform.name, version: Fledge::VERSION, downloads: @downloads).copy_into(stage)
     license(stage, readers: recipe.readers)
     path = archive
@@ -294,6 +295,7 @@ end
 require_relative "runtime_builder/armor"
 require_relative "runtime_builder/gem_repack"
 require_relative "runtime_builder/pruning"
+require_relative "runtime_builder/ruby_description"
 require_relative "runtime_builder/certificates"
 require_relative "runtime_builder/recipe"
 require_relative "runtime_builder/unix"

@@ -274,7 +274,7 @@ module Fledge
     #++
     def gems_for(platform, ruby_version:, arch:, &required_ruby)
       target = Gem::Platform.new(platform.force_ruby_platform? ? Gem::Platform::RUBY : arch)
-      check_ruby(ruby_version)
+      check_ruby(ruby_version, platform)
       check_locked(platform, target)
       runs = -> (spec) { runs?(spec, platform, Gem::Version.new(ruby_version), required_ruby) }
       # Bundler's settings (a mirror, a login) are read from the project's
@@ -358,11 +358,15 @@ module Fledge
       !gem.is_a?(LockedGem) || required_ruby.call(gem).satisfied_by?(version)
     end
 
-    private def check_ruby(ruby_version)
+    # Refuses a Gemfile whose +ruby+ the runtime's Ruby, +ruby_version+ as
+    # RubyGems reports it (Fledge::RuntimeContents#ruby_version), does not
+    # satisfy, as the app's Bundler would refuse it at every start
+    # (Bundler::Definition#validate_ruby!).
+    private def check_ruby(ruby_version, platform)
       wanted = @definition.ruby_version or return
       return unless wanted.diff(Bundler::RubyVersion.new([ruby_version], nil, "ruby", ruby_version))
 
-      raise Error, "#{@app.gemfile} asks for Ruby #{wanted.versions.join(', ')}, and Fledge's runtimes are Ruby #{ruby_version}."
+      raise Error, "#{@app.gemfile} asks for Ruby #{wanted.versions.join(', ')}, and Fledge's runtime for #{platform} is Ruby #{ruby_version}."
     end
 
     #--

@@ -237,7 +237,25 @@ class BundleTest < Minitest::Test
     bundle = Fledge::Bundle.new(Fledge::App.at(root))
 
     error = assert_raises(Fledge::Error) { names(bundle, LINUX) }
-    assert_equal "Gemfile asks for Ruby ~> 3.3.0, and Fledge's runtimes are Ruby 4.0.9.", error.message
+    assert_equal "Gemfile asks for Ruby ~> 3.3.0, and Fledge's runtime for x86_64-linux is Ruby 4.0.9.", error.message
+  end
+
+  # A .ruby-version names a preview 4.1.0-preview1, which Bundler reads
+  # as 4.1.0.preview1 (Bundler::RubyVersion#normalize_version) and
+  # compares with Gem.ruby_version: 4.1.0.preview1 on the preview,
+  # 4.1.0.dev on a build of Ruby's master (Fledge::RuntimeContents#ruby_version).
+  def test_a_gemfile_naming_a_preview_by_its_ruby_version_file_fits_that_preview_alone
+    root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "ruby file: \".ruby-version\"\n")
+    File.write(File.join(root, ".ruby-version"), "4.1.0-preview1\n")
+    lock = File.join(root, "Gemfile.lock")
+    File.write(lock, File.read(lock).sub("BUNDLED WITH", "RUBY VERSION\n  ruby 4.1.0.preview1\n\nBUNDLED WITH"))
+    bundle = Fledge::Bundle.new(Fledge::App.at(root))
+    gems = -> (platform, version) { bundle.gems_for(platform, ruby_version: version, arch: FakeRuntime::ARCH.fetch(platform.name)) }
+
+    assert_empty gems.call(LINUX, "4.1.0.preview1")
+    error = assert_raises(Fledge::Error) { gems.call(WINDOWS, "4.1.0.dev") }
+    assert_equal "Gemfile asks for Ruby 4.1.0.preview1, and Fledge's runtime for x64-mingw-ucrt is Ruby 4.1.0.dev.", error.message
+    assert_raises(Fledge::Error) { gems.call(LINUX, "4.1.0") }
   end
 
   def test_a_lockfile_the_gemfile_has_moved_past_is_refused_in_bundlers_words

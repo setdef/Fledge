@@ -75,4 +75,32 @@ class RuntimeContentsTest < Minitest::Test
       assert_match(/holds no one gem folder/, error.message, "two slices are two Rubies")
     end
   end
+
+  # RubyGems and Bundler compare a gem's required_ruby_version and a
+  # Gemfile's ruby with Gem.ruby_version, which for a preview or a
+  # development build of Ruby (PATCHLEVEL -1) adds the name
+  # RUBY_DESCRIPTION gives it after RUBY_VERSION. rbconfig.rb records no
+  # such name, so the runtime's RUBY_DESCRIPTION file, written when the
+  # runtime is built, gives it, beside the Ruby of an iOS slice too.
+  def test_a_preview_or_development_rubys_version_is_the_one_rubygems_reports
+    Dir.mktmpdir do |dir|
+      read = lambda do |patchlevel, description, under: ""|
+        rbconfig = "CONFIG[\"MAJOR\"] = \"4\"\nCONFIG[\"MINOR\"] = \"1\"\nCONFIG[\"TEENY\"] = \"0\"\n" \
+          "CONFIG[\"PATCHLEVEL\"] = \"#{patchlevel}\"\nCONFIG[\"arch\"] = \"x86_64-linux\"\n"
+        entries = [
+          Fledge::Entry.file("#{under}lib/ruby/gems/4.1.0+5/specifications/a-1.gemspec", ""),
+          Fledge::Entry.file("#{under}lib/ruby/4.1.0+5/x86_64-linux/rbconfig.rb", rbconfig),
+          *(description ? [Fledge::Entry.file("RUBY_DESCRIPTION", "#{description}\n")] : []),
+        ]
+        path = File.join(dir, "runtime-#{entries.hash}.tar.gz")
+        Fledge::RuntimeContents.read(FakeRuntime.pack(path, "top", entries), under:).ruby_version
+      end
+
+      assert_equal "4.1.0.preview1", read.call("-1", "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)")
+      assert_equal "4.1.0.dev", read.call("-1", "ruby 4.1.0dev (2026-11-10 master 0e25874222)")
+      assert_equal "4.1.0.preview1", read.call("-1", "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)", under: "FledgeRuby.xcframework/ios-arm64/")
+      assert_equal "4.1.0", read.call("0", "ruby 4.1.0p0 (2026-12-25 revision 0123456789)"), "a release's version is RUBY_VERSION"
+      assert_equal "4.1.0", read.call("-1", nil), "a runtime that records no description"
+    end
+  end
 end

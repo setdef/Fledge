@@ -45,7 +45,7 @@ module Fledge
 
     private def runs?: (Bundler::LazySpecification spec, target platform, Gem::Version version, (^(LockedGem gem) -> Gem::Requirement)? required_ruby) -> bool
 
-    private def check_ruby: (String ruby_version) -> void
+    private def check_ruby: (String ruby_version, target platform) -> void
 
     private def check_locked: (target platform, Gem::Platform target) -> void
 

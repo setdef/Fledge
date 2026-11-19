@@ -41,7 +41,8 @@ module Fledge
   # ones. Fledge::MobileProject::IOS and Fledge::MobileProject::Android
   # link the archives into the app as each system needs. An
   # <tt>extconf.rb</tt> that runs CMake first finds the target's CMake
-  # toolchain file in <tt>CMAKE_TOOLCHAIN_FILE</tt> (CMake, ADR 027). An
+  # toolchain file in <tt>CMAKE_TOOLCHAIN_FILE</tt> (CMake;
+  # doc/contributors/design/phone-projects.md, "CMake toolchain files"). An
   # <tt>extconf.rb</tt> that writes rb-sys's Makefile instead has Cargo
   # build a static library for the target (Rust), which keeps the
   # <tt>Init_</tt> function rb-sys names after the extension. Each

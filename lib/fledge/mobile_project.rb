@@ -198,7 +198,8 @@ module Fledge
 
     # The folder of the project's own files for this system's project,
     # relative to the project's root, which <tt>fledge.yml</tt> names
-    # under +ios+ or +android+ (ADR 025), or +nil+ for none. Raises
+    # under +ios+ or +android+ (doc/contributors/design/phone-projects.md,
+    # "Host files"), or +nil+ for none. Raises
     # Fledge::Error when it is not a folder, or leads out of the project
     # through a link.
     private def host_folder
@@ -212,11 +213,11 @@ module Fledge
     end
 
     # Copies the files in the project's folder +host+ over +project+,
-    # Generation Gap's hand-written half laid over the generated one (ADR
-    # 025): each replaces Fledge's file at its path, or joins the
-    # project, before Fledge fills its marks, so a host's copy of one of
-    # #template_files keeps them. Says which of Fledge's files it
-    # replaced.
+    # Generation Gap's hand-written half laid over the generated one
+    # (doc/contributors/design/phone-projects.md, "Host files"): each
+    # replaces Fledge's file at its path, or joins the project, before
+    # Fledge fills its marks, so a host's copy of one of #template_files
+    # keeps them. Says which of Fledge's files it replaced.
     private def place_host(host, project)
       from = File.join(@app.root, host)
       files = Dir.glob("**/*", File::FNM_DOTMATCH, base: from).select { |path| File.file?(File.join(from, path)) }.sort

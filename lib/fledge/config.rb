@@ -28,7 +28,8 @@ module Fledge
   # that no gem supplies, such as SDL3's host for a game whose SDL owns
   # the main loop: name a folder of them under +ios+ or +android+
   # (Config::Phone), and <tt>fledge build ios</tt> or <tt>fledge build
-  # android</tt> copies them over the project it writes (ADR 025). Nor
+  # android</tt> copies them over the project it writes
+  # (doc/contributors/design/phone-projects.md, "Host files"). Nor
   # can it know which libraries a project's gems may load from a Linux
   # distribution, such as a webview's WebKitGTK: list them under +linux+
   # (Config::Linux), and the build accepts them, and a <tt>.deb</tt>
@@ -152,12 +153,12 @@ module Fledge
     ##
     # :attr_reader: ios
     # What <tt>fledge build ios</tt> lays over the project it writes
-    # (Config::Phone), or +nil+ for nothing (ADR 025).
+    # (Config::Phone), or +nil+ for nothing.
 
     ##
     # :attr_reader: android
     # What <tt>fledge build android</tt> lays over the project it writes
-    # (Config::Phone), or +nil+ for nothing (ADR 025).
+    # (Config::Phone), or +nil+ for nothing.
 
     ##
     # :attr_reader: linux

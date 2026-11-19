@@ -178,7 +178,9 @@ module Fledge
       # the runtime's <tt>libfledgeruby.so</tt>, in <tt>src/main/jniLibs/</tt>,
       # where Gradle's plugin packs it into the APK aligned for 16 KB pages,
       # and which the host loads next to Ruby's, with the shared libraries
-      # the extensions link from their own folders (ADR 025). The registration unit is
+      # the extensions link from their own folders
+      # (doc/contributors/design/phone-projects.md, "Linking extensions on
+      # Android"). The registration unit is
       # kept in <tt>extensions/</tt> for whoever reads the project.
       private def place_extensions(project)
         built = @built or return

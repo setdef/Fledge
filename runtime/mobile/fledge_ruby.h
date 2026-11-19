@@ -76,7 +76,8 @@ int fledge_ruby_run_app(const char *root, int argc, char *const *argv);
  * into this process, so that require "feature" runs init instead of
  * looking for a file: iOS's Ruby loads none, and on Android an
  * extension linked in has none, where one an extconf.rb builds in C or
- * C++ is a file Ruby loads, which needs no call (ADR 022).
+ * C++ is a file Ruby loads, which needs no call
+ * (doc/contributors/design/phone-projects.md, "Registering extensions").
  * feature is the name the extension's extconf.rb gives create_makefile,
  * such as "greeter/greeter", with no ".so". Call it before fledge_ruby_run
  * or fledge_ruby_run_app, from a constructor or the host's startup: Ruby

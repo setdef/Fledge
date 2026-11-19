@@ -21,7 +21,8 @@ require_relative "mobile_extensions/stub"
 require_relative "mobile_extensions/targets"
 
 module Fledge
-  # Compiles an app's gems' C, C++, and Rust extensions for a phone (ADR 022).
+  # Compiles an app's gems' C, C++, and Rust extensions for a phone
+  # (doc/contributors/design/phone-projects.md, "Gems with extensions").
   #
   # iOS's Ruby loads no extension from a file (ADR 079), so each one
   # is compiled to a static archive, linked into the app, and
@@ -338,9 +339,11 @@ module Fledge
       []
     end
 
-    # The C source of the registration unit (ADR 022): for each of
-    # +registrations+, the pairs #call returns, it declares the extension's
-    # Init function and registers it by the name <tt>require</tt> asks for
+    # The C source of the registration unit
+    # (doc/contributors/design/phone-projects.md, "Registering
+    # extensions"): for each of +registrations+, the pairs #call returns,
+    # it declares the extension's Init function and registers it by the
+    # name <tt>require</tt> asks for
     # (<tt>fledge_ruby_add_extension</tt>), from a constructor, so that the
     # unit needs no call from the host app, whatever host it is.
     #

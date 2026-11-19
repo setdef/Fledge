@@ -61,8 +61,10 @@ module Fledge
       # Ruby, in ROOT.
       AAR = "FledgeRuby.aar"
 
-      # The name of the library that holds the app's gems' extensions and
-      # their registration, <tt>libfledgeext.so</tt> (ADR 022).
+      # The name of the library that holds the app's gems' extensions
+      # that are linked in and their registration, <tt>libfledgeext.so</tt>
+      # (doc/contributors/design/phone-projects.md, "Linking extensions
+      # on Android").
       EXTENSIONS = "fledgeext"
 
       # The file in the Ruby root that names, for each ABI, an extension

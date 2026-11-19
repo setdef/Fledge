@@ -26,8 +26,10 @@ module Fledge
     # <tt>rbconfig.rb</tt> (TOOLS, through <tt>RUBYOPT</tt>), as crossenv
     # and cibuildwheel give a Python build the target's sysconfig. Each
     # <tt>create_makefile</tt> the build calls is mkmf's, aimed at the
-    # phone as an <tt>extconf.rb</tt> is (ADR 022), with its Init function
-    # renamed and a line in a report (HOOK). Once the build is done, it
+    # phone as an <tt>extconf.rb</tt> is
+    # (doc/contributors/design/phone-projects.md, "Gems with
+    # extensions"), with its Init function renamed and a line in a
+    # report (HOOK). Once the build is done, it
     # runs mkmf's <tt>make static</tt> in each folder the report names, and
     # names each extension by its folder's place in the gem's require
     # paths. A Rakefile that builds nothing gives no extension. Any other

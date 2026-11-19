@@ -214,9 +214,10 @@ module Fledge
         version.split(".").first(2).join(".")
       end
 
-      # The compiler of the app's gems' extensions for +phone+ (ADR 022),
-      # against the runtime whose RuntimeContents are +contents+, or +nil+
-      # for an app with none.
+      # The compiler of the app's gems' extensions for +phone+
+      # (doc/contributors/design/phone-projects.md, "Gems with
+      # extensions"), against the runtime whose RuntimeContents are
+      # +contents+, or +nil+ for an app with none.
       private def extensions(gems, phone, host, runtimes, work, contents)
         return nil unless gems
 

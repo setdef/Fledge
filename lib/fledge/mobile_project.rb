@@ -109,7 +109,9 @@ module Fledge
     #         holds.
     # [extensions] The Fledge::MobileExtensions that compiles the gems'
     #              extensions against the runtime, which the project links
-    #              into the app, or +nil+ for an app with none (ADR 022).
+    #              into the app or carries as files, or +nil+ for an app
+    #              with none (doc/contributors/design/phone-projects.md,
+    #              "Gems with extensions").
     # [bundler] The version of the Bundler the app runs with in place of
     #           the runtime's own, which +files+ install
     #           (Fledge::AppGems#bundler), or +nil+ for the runtime's.

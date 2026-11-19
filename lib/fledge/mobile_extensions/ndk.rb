@@ -10,7 +10,8 @@ require_relative "../error"
 module Fledge
   class MobileExtensions
     # The Android NDK on this computer, whose clang compiles an app's
-    # extensions for Android (ADR 022): the one the developer installed
+    # extensions for Android (doc/contributors/design/phone-projects.md,
+    # "Gems with extensions"): the one the developer installed
     # for Android Studio or Gradle, found where Gradle's Android plugin and
     # Google's tools look for it, since Fledge downloads no toolchain onto
     # a developer's computer. Its tools are the very ones Fledge's runtime

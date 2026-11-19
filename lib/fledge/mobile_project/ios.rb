@@ -112,10 +112,12 @@ module Fledge
 ].uniq
       end
 
-      # Links the extensions into the app (ADR 022): one static library
-      # for each slice, made by Apple's libtool from the archives mkmf made,
-      # packed by <tt>xcodebuild -create-xcframework</tt> as the
-      # runtime's is, which the project links; and the registration unit
+      # Links the extensions into the app
+      # (doc/contributors/design/phone-projects.md, "Linking extensions on
+      # iOS"): one static library for each slice, made by Apple's libtool
+      # from the archives mkmf made, packed by
+      # <tt>xcodebuild -create-xcframework</tt> as the runtime's is, which
+      # the project links; and the registration unit
       # in <tt>Host/</tt>, which Xcode compiles with the host app, so its
       # constructor registers each extension when the app starts.
       private def place_extensions(project)

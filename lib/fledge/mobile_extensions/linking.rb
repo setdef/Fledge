@@ -11,8 +11,8 @@ require "shellwords"
 
 module Fledge
   class MobileExtensions
-    # What each target of a phone links of its extensions (ADR 022;
-    # doc/contributors/design/phone-projects.md, "Linking extensions
+    # What each target of a phone links of its extensions
+    # (doc/contributors/design/phone-projects.md, "Linking extensions
     # on iOS" and "Linking extensions on Android").
     #
     # An extconf.rb names what its extension links in mkmf's

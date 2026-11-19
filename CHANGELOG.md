@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- When a lockfile has no checksum for the Bundler it names, `fledge build` says to run `gem install bundler -v VERSION`, then `bundle lock --add-checksums`; the `bundle install` it advised wrote no checksum when the lockfile's Bundler is the one that came with Ruby.
+
 ## [0.13.0] - 2026-11-15
 
 ### Added

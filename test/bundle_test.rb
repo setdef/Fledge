@@ -490,13 +490,18 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
     assert_nil development.bundler_for("4.0.20", ruby_version: "4.0.9")
   end
 
+  # Bundler writes its own entry in CHECKSUMS only from its .gem file in
+  # the gem cache (Bundler::LockfileGenerator#bundler_checksum), which a
+  # Ruby's own Bundler, a default gem, does not have; and bundle install
+  # installs nothing when the Ruby's own Bundler is the lockfile's. gem
+  # install puts the .gem there.
   def test_a_lockfile_without_its_bundlers_checksum_is_refused
     bundle = bundle(dependencies: {}, locked: [], bundled_with: "4.0.19")
 
     error = assert_raises(Fledge::Error) { bundle.bundler_for("4.0.20", ruby_version: "4.0.9") }
     assert_equal "Gemfile.lock has no checksum for bundler (4.0.19), the Bundler bundle exec runs the app with, and Fledge " \
-      "checks every gem it ships. Run bundle install, which installs Bundler 4.0.19, then bundle lock --add-checksums, " \
-      "then build again.", error.message
+      "checks every gem it ships. Bundler writes its own checksum only when it was installed as a gem, and a Ruby's own " \
+      "Bundler was not. Run gem install bundler -v 4.0.19, then bundle lock --add-checksums, then build again.", error.message
   end
 
   # bundle install falls back to the Bundler that runs it when RubyGems.org

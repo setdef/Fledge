@@ -25,7 +25,18 @@ For iPhone, iPad, and Android, lock `ruby` as a platform too (`bundle lock --add
 
 ## The Bundler that wrote your lockfile
 
-`bundle exec` runs the Bundler your `Gemfile.lock` names under `BUNDLED WITH`, and so does your app: Fledge ships that Bundler beside Ruby's own, and checks it against its entry in `CHECKSUMS`, as it checks every gem. Bundler 2.6 and newer write that entry. If your lockfile has none, run `bundle install`, which installs that Bundler, then `bundle lock --add-checksums`.
+`bundle exec` runs the Bundler your `Gemfile.lock` names under `BUNDLED WITH`, and so does your app: Fledge ships that Bundler beside Ruby's own, and checks it against its entry in `CHECKSUMS`, as it checks every gem. Bundler writes that entry only when it was installed as a gem, so a lockfile written by the Bundler that came with your Ruby has none. If yours has none, install the Bundler it names under `BUNDLED WITH` as a gem, then add the checksums:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```console
+$ gem install bundler -v 4.1.0.beta2
+$ bundle lock --add-checksums
+```
+<!-- SPDX-SnippetEnd -->
 
 ## Gems with compiled extensions
 

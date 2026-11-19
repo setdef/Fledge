@@ -147,7 +147,7 @@ A framework that ships to an iPhone, an iPad, or an Android device through Fledg
 - On Android, every native method its Java or Kotlin declares, in a shared library of its own that its `extconf.rb` links and its host loads by name, as SDL keeps its in `libSDL3.so`: Android's runtime finds no function of a gem's extension.
 - Its host files, when its framework owns startup, in the `host:` folder: on iOS any of `Host/main.m`, `Host/Info.plist`, `Host/PrivacyInfo.xcprivacy`, the asset catalog, and `project.yml`; on Android `MainActivity.java` at its package's path, the manifest, the Gradle files, `strings.xml`, and any Java sources of its own.
 
-Fledge refuses, naming the gem, an extension that the gemspec says CMake, configure, or Cargo builds with no `extconf.rb`, and a Rakefile's build that leaves a shared library mkmf did not build.
+Fledge refuses, naming the gem, an extension that the gemspec says CMake, configure, or Cargo builds with no `extconf.rb`, and a Rakefile's build that leaves a shared library mkmf did not build; and on Windows, an Android build of a gem with an extension.
 
 **Known limits:**
 

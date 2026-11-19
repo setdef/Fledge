@@ -414,13 +414,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > Right, Tauri 2 does phones so it must be possible. If that's the case, we should do it.
 
-[re: the orchestrating agent's account that `fledge build` refuses a gem whose extension is written in Rust (rb-sys) for iOS and Android, because nobody has made it work there yet (ADR 022: "rb-sys was not tried"), not because it cannot work.]
+[re: the orchestrating agent's account that `fledge build` refuses a gem whose extension is written in Rust (rb-sys) for iOS and Android, because nobody has made it work there yet (the record of the phones' extensions then said "rb-sys was not tried"; how they build now is `doc/contributors/design/phone-projects.md`, "Gems with extensions"), not because it cannot work.]
 
 *Governs:* gems whose extensions are written in Rust build for iOS and Android, as they do for the desktops. *Applied in:* the work to add it.
 
 > Python and other languages that have Fledge-like tools must solve this somehow; so can we.
 
-[re: the orchestrating agent's account that on a phone `fledge build` compiles a gem's extension only through its `extconf.rb`, so a gem whose gemspec names a Rakefile, CMake, or `configure` directly is refused (ADR 022).]
+[re: the orchestrating agent's account that on a phone `fledge build` compiles a gem's extension only through its `extconf.rb`, so a gem whose gemspec names a Rakefile, CMake, or `configure` directly is refused (what is refused now is `doc/contributors/design/phone-projects.md`, "Refusals").]
 
 *Governs:* gems whose extensions build without an `extconf.rb` build for iOS and Android too, as the prior art of other languages' tools does it. *Applied in:* the work to add it.
 

@@ -17,18 +17,24 @@ module Fledge
       @work: String
       @environment: Hash[String, String?]
       @run: _Run
+      @load_path: Array[String]
+      @built_for: BuiltFor
 
-      def initialize: (ruby: String, work: String, environment: Hash[String, String?], run: _Run) -> void
+      def initialize: (ruby: String, work: String, environment: Hash[String, String?], run: _Run, load_path: Array[String], built_for: BuiltFor) -> void
 
-      def call: (Target target, locked_gem gem, Gem::Specification spec, String root, String extension, Array[String] args, Integer first) -> Array[Report]
+      def call: (Target target, locked_gem gem, Gem::Specification spec, String root, String extension, Array[String] args, Integer first) -> Array[Report | FfiLibrary]
 
       private def environment: (Target target, String folder, String report, Integer first) -> Hash[String, String?]
 
       private def refuse: (locked_gem gem, String extension, Target target, Array[String] paths) -> void
 
+      private def ffi_library: (locked_gem gem, String extension, Target target, String file, String path, held: bool) -> FfiLibrary?
+
+      private def advice: (locked_gem gem, Target target) -> String
+
       private def describe: (Hash[String, String] entry, Hash[String, String?] env, Array[String] places, locked_gem gem, Target target, String what) -> Report
 
-      private def shared_libraries: (String folder) -> Array[String]
+      private def shared_libraries: (String folder) -> Hash[String, String]
 
       private def write: (String folder, String name, String text) -> String
     end

@@ -221,6 +221,13 @@ module Fledge
       # <tt>jniLibs/</tt>, stripped, with the shared libraries it links,
       # and writes <tt>fledge.links</tt>.
       private def place_libraries(project, built)
+        library = built.targets.values.flat_map(&:ffi_libraries).first
+        if library
+          raise Error, "#{library.gem}'s Rakefile built #{library.file}, a library for Ruby's ffi to load, and Fledge does not yet " \
+            "put such a library in an Android app. Leave the gem out of the app's android build " \
+            "(gem \"#{library.gem}\", platforms: [...] in the Gemfile)."
+        end
+
         lines = built.targets.values.flat_map do |build|
           abi = build.target.abi.to_s
           folder = File.join(project, "src", "main", "jniLibs", abi)

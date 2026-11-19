@@ -154,7 +154,8 @@ module Fledge
       # named, which are that target's alone (an iOS slice's libSDL3.a), as
       # its archives; and the rest of the flags, which every target may
       # share, once each; with the extensions built as files, +libraries+,
-      # which link nothing into the app.
+      # and the libraries for Ruby's ffi a Rakefile built, +ffi_libraries+
+      # (default: none), which link nothing into the app.
       #
       # === Example
       #
@@ -169,7 +170,7 @@ module Fledge
       #--
       # SPDX-SnippetEnd
       #++
-      def self.target_build(target, reports, libraries:)
+      def self.target_build(target, reports, libraries:, ffi_libraries: [])
         archives = [] # : Array[String]
         flags = [] # : Array[String]
         reports.each do |report|
@@ -177,7 +178,7 @@ module Fledge
           archives.push(report.archive, *statics)
           flags.concat(rest)
         end
-        TargetBuild.new(target:, archives: archives.uniq, flags: flags.uniq, cxx: reports.any?(&:cxx), libraries:)
+        TargetBuild.new(target:, archives: archives.uniq, flags: flags.uniq, cxx: reports.any?(&:cxx), libraries:, ffi_libraries:)
       end
 
       # The shared libraries +flags+ link from the folders they name, each

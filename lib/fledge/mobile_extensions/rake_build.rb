@@ -5,8 +5,10 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "digest"
 require "fileutils"
 require "json"
+require_relative "ffi_library"
 
 module Fledge
   class MobileExtensions
@@ -32,10 +34,21 @@ module Fledge
     # report (HOOK). Once the build is done, it
     # runs mkmf's <tt>make static</tt> in each folder the report names, and
     # names each extension by its folder's place in the gem's require
-    # paths. A Rakefile that builds nothing gives no extension. Any other
-    # shared library the build leaves, such as one for Ruby's ffi, is
-    # refused by name, since Fledge ships no other library such a build
-    # leaves.
+    # paths. A Rakefile that builds nothing gives no extension. The gems
+    # the gem depends on are on the load path of every Ruby the build
+    # starts, compiled for this computer where they have an extension
+    # (HostGems), as ffi-compiler needs ffi.
+    #
+    # Any other shared library the build writes or changes in the gem,
+    # such as one ffi-compiler links for Ruby's ffi to open, is an
+    # FfiLibrary, once BuiltFor finds it built for the target; one built
+    # for anything else is refused by name. The libraries are compared by
+    # their bytes before and after the build, since a package may hold a
+    # library at the very path the build writes, as llhttp-ffi 0.5.1's
+    # holds one its author built on a Mac. A library the package holds
+    # that the build leaves as it was is the gem's own file, but one built
+    # for the desktop that the phone is to Ruby's ffi is refused, since
+    # the gem would ask <tt>dlopen</tt> for it on the phone.
     #
     # Use it from Fledge::MobileExtensions, once for each target and each
     # extension Rake builds.
@@ -47,7 +60,8 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   build = Fledge::MobileExtensions::RakeBuild.new(ruby:, work:, environment: {}, run: method(:run))
+    #   build = Fledge::MobileExtensions::RakeBuild.new(ruby:, work:, environment: {}, run: method(:run), load_path: [],
+    #     built_for: Fledge::MobileExtensions::BuiltFor.new(ndk: nil))
     #   build.call(target, gem, spec, root, "ext/digest/Rakefile", [], 0).first.feature
     #   # => "digest/crc12_3gpp/crc12_3gpp_ext"
     #--
@@ -103,9 +117,9 @@ module Fledge
         end
       RUBY
 
-      # The names of shared libraries: what a build for a phone must not
-      # leave behind, but for the extensions mkmf built, since a phone app
-      # loads none from a file.
+      # The names of shared libraries: the extensions mkmf built, which
+      # are linked into the app instead, and any other a build leaves,
+      # which is a library for Ruby's ffi (FfiLibrary) or refused.
       SHARED = /\.(?:so|bundle|dylib)(?:\.\d+)*\z/
 
       # The debug symbols Apple's linker writes beside a shared library
@@ -122,19 +136,27 @@ module Fledge
       # [run] What runs a command: called with the environment, the
       #       command, <tt>what:</tt>, and <tt>chdir:</tt>, it raises
       #       Fledge::Error when the command fails.
-      def initialize(ruby:, work:, environment:, run:)
+      # [load_path] The folders of the code of the gems the gem depends
+      #             on, for this computer (HostGems#load_path).
+      # [built_for] The BuiltFor that reads what each library left is
+      #             built for.
+      def initialize(ruby:, work:, environment:, run:, load_path:, built_for:)
         @ruby = ruby
         @work = work
         @environment = environment
         @run = run
+        @load_path = load_path
+        @built_for = built_for
       end
 
       # Runs the Rakefile +extension+, a path in +spec+'s gem, unpacked at
       # +root+, for +target+ with the gem's build options +args+, and
       # returns a Report for each extension it built with mkmf, its Init
-      # function named <tt>Init_fledge_FIRST_NAME</tt>. Raises
-      # Fledge::Error when the build fails, or leaves a shared library
-      # that is not one of those extensions.
+      # function named <tt>Init_fledge_FIRST_NAME</tt>, and an FfiLibrary,
+      # with no links yet, for each other shared library it wrote or
+      # changed in the gem. Raises Fledge::Error when the build fails, or
+      # leaves a shared library in DEST, one not built for +target+, or
+      # one of the package's built for the desktop the phone is to ffi.
       #
       # === Example
       #
@@ -161,30 +183,62 @@ module Fledge
         lines = File.file?(report) ? File.readlines(report) : [] # : Array[String]
         built = lines.map { |line| JSON.parse(line) } # : Array[Hash[String, String]]
         made = built.map { |entry| File.join(entry.fetch("dir"), entry.fetch("library")) }
-        refuse(gem, extension, target, shared_libraries(root) - before - made + shared_libraries(dest))
+        refuse(gem, extension, target, shared_libraries(dest).keys)
+        libraries = shared_libraries(root).except(*made).filter_map do |path, digest|
+          ffi_library(gem, extension, target, path.delete_prefix("#{File.realpath(root)}/"), path, held: before[path] == digest)
+        end
         places = spec.require_paths.reject { |path| File.absolute_path?(path) }.map { |path| File.join(root, path) }
           .select { |path| File.directory?(path) }.map { |path| File.realpath(path) }
-        built.map { |entry| describe(entry, env, places, gem, target, what) }
+        [*built.map { |entry| describe(entry, env, places, gem, target, what) }, *libraries]
       end
 
       # The environment of the build for +target+: the phone's
-      # rbconfig.rb, the tools in it, and the hook, for every Ruby it
-      # starts, and this computer's Ruby for <tt>RbConfig.ruby</tt>.
+      # rbconfig.rb, the gem's dependencies, the tools in it, and the
+      # hook, for every Ruby it starts, and this computer's Ruby for
+      # <tt>RbConfig.ruby</tt>.
       private def environment(target, folder, report, first)
+        includes = [target.arch_dir, *@load_path].map { |path| "-I#{path}" }.join(" ")
         @environment.merge(target.environment).merge(
           "FLEDGE_INIT_PREFIX" => "Init_fledge_#{first}_", "FLEDGE_REPORT" => report, "FLEDGE_RUBY" => @ruby, "RUBY" => @ruby,
-          "RUBYOPT" => "-I#{target.arch_dir} -r#{write(folder, 'phone.rb', TOOLS + HOOK)}"
+          "RUBYOPT" => "#{includes} -r#{write(folder, 'phone.rb', TOOLS + HOOK)}"
         )
       end
 
-      # Refuses the shared libraries in +paths+, naming the first.
+      # Refuses the shared libraries in +paths+, which the build installed
+      # into DEST, naming the first.
       private def refuse(gem, extension, target, paths)
         return if paths.empty?
 
-        raise Error, "#{gem}'s #{File.basename(extension)} linked #{File.basename(paths.first)} for #{target.name}, a shared library " \
-          "that is not an extension mkmf built, as a library for Ruby's ffi is not. Fledge links in the extensions a " \
-          "Rakefile builds with mkmf, and ships no other library such a build makes. Leave the gem " \
-          "out of the app's phone build (gem \"#{gem.name}\", platforms: [...] in the Gemfile)."
+        raise Error, "#{gem}'s #{File.basename(extension)} installed #{File.basename(paths.first)} for #{target.name}, a shared library " \
+          "that is not an extension mkmf built. Fledge links in the extensions a Rakefile builds with mkmf, and ships the " \
+          "other libraries it builds where it leaves them in the gem, not what it installs. #{advice(gem, target)}"
+      end
+
+      # The FfiLibrary for the shared library at +path+, +file+ in the gem,
+      # which the build wrote or changed, or +nil+ for one the package
+      # held (+held+) that the build left as it was. Raises Fledge::Error
+      # for a library built for another system than +target+, or one the
+      # package held built for the desktop the phone is to Ruby's ffi.
+      private def ffi_library(gem, extension, target, file, path, held:)
+        system = @built_for.call(target, path)
+        wanted = @built_for.wanted(target)
+        if held
+          return nil unless @built_for.desktop?(target, system)
+
+          raise Error, "#{gem}'s #{File.basename(extension)} left #{file} built for #{system}, not #{wanted} (#{target.name}): the " \
+            "gem's package holds it, and its build did not replace it, so the gem would load a library for another system. " \
+            "Fledge ships only libraries built for the phone. #{advice(gem, target)}"
+        end
+        return FfiLibrary.new(gem: gem.name, file:, path:, links: []) if system == wanted
+
+        raise Error, "#{gem}'s #{File.basename(extension)} built #{file} for #{system}, not #{wanted} (#{target.name}). Fledge ships " \
+          "a library a Rakefile builds when it is built for the phone, with the compiler Fledge gives the build in CC. " \
+          "#{advice(gem, target)}"
+      end
+
+      # What to do about +gem+ for the phone of +target+.
+      private def advice(gem, target)
+        "Leave the gem out of the app's #{target.abi ? 'android' : 'ios'} build (gem \"#{gem.name}\", platforms: [...] in the Gemfile)."
       end
 
       # The Report for one extension the build made with mkmf: its static
@@ -207,9 +261,11 @@ module Fledge
         )
       end
 
+      # The shared libraries in +folder+, by their real paths, each with
+      # the SHA-256 of its bytes.
       private def shared_libraries(folder)
         Dir.glob("**/*", base: folder).grep(SHARED).grep_v(DEBUG).map { |path| File.join(folder, path) }
-          .select { |path| File.file?(path) }.map { |path| File.realpath(path) }
+          .select { |path| File.file?(path) }.to_h { |path| [File.realpath(path), Digest::SHA256.file(path).hexdigest] }
       end
 
       private def write(folder, name, text)

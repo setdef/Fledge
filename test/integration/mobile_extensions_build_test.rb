@@ -332,22 +332,127 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   # A Rakefile that links a library for Ruby's ffi, as ffi-compiler's
-  # tasks do with RbConfig's compiler, makes no extension of Ruby's,
-  # which is all a phone app links in: the build says so, naming the gem
-  # and the library.
-  def test_a_library_for_ffi_a_rakefile_links_is_refused_by_name
+  # tasks do with the compiler in CC, makes no extension of Ruby's: the
+  # build finds the library it wrote in the gem, built for each slice,
+  # and the path in the app where the gem looks for it. The iOS project
+  # then refuses it (test/mobile_build_test.rb).
+  def test_a_library_for_ffi_a_rakefile_links_is_found_for_each_ios_slice
     runtimes = real_runtimes("ios")
-    gem = rake_gem("thing", <<~'RAKEFILE', "thing.c" => "int thing(void) { return 1; }\n")
-      task :default do
-        sh "#{RbConfig::CONFIG['CC']} -c thing.c -o thing.o"
-        sh "#{RbConfig::CONFIG['CC']} -shared -o libthing.so thing.o"
-      end
-    RAKEFILE
+    gem = rake_gem("thing", THING_RAKEFILE, files: { "thing.c" => "int thing(void) { return 1; }\n" })
+
+    built = compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) })
+
+    platforms = built.targets.transform_values do |target|
+      library = target.ffi_libraries.fetch(0)
+      assert_equal ["thing", "ext/libthing.so", ["app/vendor/cache/thing/ext/libthing.so"]], [library.gem, library.file, library.links]
+      Open3.capture2("xcrun", "vtool", "-show-build", library.path).first[/platform (\S+)/, 1]
+    end
+    assert_equal({ "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }, platforms)
+  end
+
+  # A package may hold a library at the path its Rakefile writes, as
+  # llhttp-ffi 0.5.1's holds one its author built on a Mac. Ruby's ffi
+  # takes iOS for darwin, so a gem would ask dlopen for that library on
+  # an iPhone: a build that leaves it as it was is refused, naming it.
+  def test_a_macos_library_a_package_holds_and_its_rakefile_leaves_is_refused_for_ios
+    runtimes = real_runtimes("ios")
+    gem = rake_gem("thing", "task :default\n",
+      files: { "thing.c" => "int thing(void) { return 1; }\n", "aarch64-darwin/libthing.bundle" => "" })
+    folder = File.join(@dir, "gems", "thing", "ext")
+    system("xcrun", "clang", "-bundle", "-o", File.join(folder, "aarch64-darwin", "libthing.bundle"), File.join(folder, "thing.c"),
+      exception: true)
 
     error = assert_raises(Fledge::Error) { compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) }) }
 
-    assert_includes error.message, "thing 1.0.0's Rakefile linked libthing.so for ios-arm64, a shared library that is not an extension mkmf built"
+    assert_includes error.message, "thing 1.0.0's Rakefile left ext/aarch64-darwin/libthing.bundle built for macOS, not iOS " \
+      "(ios-arm64): the gem's package holds it, and its build did not replace it"
   end
+
+  # On Android the library is an ELF shared object for each ABI, which
+  # the NDK's clang, linking it directly with no flag of Fledge's,
+  # aligns for 16 KB pages, as Google Play requires.
+  def test_a_library_for_ffi_a_rakefile_links_is_found_for_each_android_abi_aligned_for_16_kb_pages
+    runtimes = real_runtimes("android")
+    ndk = android_ndk
+    gem = rake_gem("thing", THING_RAKEFILE, files: { "thing.c" => "int thing(void) { return 1; }\n" })
+
+    built = compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true)
+
+    readelf = File.join(ndk.bin, "llvm-readelf")
+    machines = built.targets.to_h do |name, target|
+      library = target.ffi_libraries.fetch(0)
+      assert_equal ["ext/libthing.so", ["app/vendor/cache/thing/ext/libthing.so"]], [library.file, library.links]
+      read = Open3.capture2(readelf, "-h", "-lW", library.path).first
+      alignments = read.lines.grep(/\A\s*LOAD\s/).map { |line| Integer(line.split.last) }
+      assert_operator alignments.min, :>=, 16_384, "#{name}: aligned for 16 KB pages"
+      [name, read[/Machine:\s+(.+)$/, 1]]
+    end
+    assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)
+  end
+
+  # A Rakefile that compiles with this computer's own compiler, not the
+  # phone's in CC, builds a library no phone loads: refused by name.
+  def test_a_library_a_rakefile_builds_for_this_computer_is_refused_for_android
+    runtimes = real_runtimes("android")
+    android_ndk
+    gem = rake_gem("thing", <<~RAKEFILE, files: { "thing.c" => "int thing(void) { return 1; }\n" })
+      task :default do
+        sh "cc -shared -fPIC -o libthing.so thing.c"
+      end
+    RAKEFILE
+
+    error = assert_raises(Fledge::Error) { compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true) }
+
+    assert_match(%r{thing 1\.0\.0's Rakefile built ext/libthing\.so for (?:Linux \S+|no Android system), not Android arm64-v8a \(aarch64-linux-android\)\.},
+      error.message)
+  end
+
+  # Ruby's ffi takes Android for linux, so a library for a desktop's
+  # Linux that a package holds, left as it was, is refused too.
+  def test_a_linux_library_a_package_holds_and_its_rakefile_leaves_is_refused_for_android
+    runtimes = real_runtimes("android")
+    android_ndk
+    skip "a library for a desktop's Linux is compiled on Linux" unless Fledge::Platform.local.os == "linux"
+    gem = rake_gem("thing", "task :default\n",
+      files: { "thing.c" => "int thing(void) { return 1; }\n", "x86_64-linux/libthing.so" => "" })
+    folder = File.join(@dir, "gems", "thing", "ext")
+    system("cc", "-shared", "-fPIC", "-o", File.join(folder, "x86_64-linux", "libthing.so"), File.join(folder, "thing.c"), exception: true)
+
+    error = assert_raises(Fledge::Error) { compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true) }
+
+    assert_match(%r{thing 1\.0\.0's Rakefile left ext/x86_64-linux/libthing\.so built for Linux \S+, not Android arm64-v8a}, error.message)
+  end
+
+  # A Rakefile requires the gems its gem depends on, as ffi-compiler's
+  # require ffi, whose extension must be this computer's to load: the
+  # build has each on its load path, compiled for this computer. This
+  # one names its library by what the adder gem's C extension adds.
+  def test_a_rakefile_requires_a_gem_its_gem_depends_on_compiled_for_this_computer
+    runtimes = real_runtimes("android")
+    android_ndk
+    adder = File.expand_path("../../examples/native_phone/gems/adder", __dir__)
+    gem = rake_gem("thing", <<~'RAKEFILE', files: { "thing.c" => "int thing(void) { return 1; }\n" }, dependencies: ["adder"])
+      require "adder"
+      task :default do
+        sh "#{RbConfig::CONFIG['CC']} -shared -o lib#{Adder.add(2, 3)}.so thing.c"
+      end
+    RAKEFILE
+
+    built = compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true,
+      dependencies: { path_gem(adder) => Fledge::PathPackage.new(path_gem(adder)) })
+
+    assert_equal({ "aarch64-linux-android" => ["ext/lib5.so"], "x86_64-linux-android" => ["ext/lib5.so"] },
+      built.targets.transform_values { |target| target.ffi_libraries.map(&:file) })
+  end
+
+  # A Rakefile that links a library with the compiler in CC, as
+  # ffi-compiler's tasks do.
+  THING_RAKEFILE = <<~'RAKEFILE'
+    task :default do
+      sh "#{RbConfig::CONFIG['CC']} -c thing.c -o thing.o"
+      sh "#{RbConfig::CONFIG['CC']} -shared -o libthing.so thing.o"
+    end
+  RAKEFILE
 
   # A Rakefile that builds nothing, as the mkrf_conf scripts that install
   # a gem's dependencies leave behind, makes no extension to link.
@@ -525,12 +630,15 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   # A path gem +name+ whose gemspec names ext/Rakefile, with +rakefile+
-  # and +files+ in ext/.
-  def rake_gem(name, rakefile, files = {})
+  # and +files+ in ext/, which depends on the gems +dependencies+ names.
+  def rake_gem(name, rakefile, files: {}, dependencies: [])
     folder = File.join(@dir, "gems", name)
     FileUtils.mkdir_p(File.join(folder, "ext"))
     File.write(File.join(folder, "ext", "Rakefile"), rakefile)
-    files.each { |file, text| File.write(File.join(folder, "ext", file), text) }
+    files.each do |file, text|
+      FileUtils.mkdir_p(File.dirname(File.join(folder, "ext", file)))
+      File.write(File.join(folder, "ext", file), text)
+    end
     File.write(File.join(folder, "#{name}.gemspec"), <<~RUBY)
       Gem::Specification.new do |spec|
         spec.name = #{name.inspect}
@@ -539,6 +647,7 @@ class MobileExtensionsBuildTest < Minitest::Test
         spec.summary = "A Rakefile's extension"
         spec.files = #{(['ext/Rakefile'] + files.keys.map { |file| "ext/#{file}" }).inspect}
         spec.extensions = ["ext/Rakefile"]
+        #{dependencies.map { |dependency| "spec.add_dependency #{dependency.inspect}" }.join("\n")}
       end
     RUBY
     Fledge::PathGem.new(name:, version: "1.0.0", folder:, app_path: "vendor/cache/#{name}", glob: "{,*,*/*}.gemspec", inside: true)
@@ -595,7 +704,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     built.targets.transform_values(&:flags)
   end
 
-  def compile(runtimes_dir, phone, packages, build_args: {}, files: false)
+  def compile(runtimes_dir, phone, packages, build_args: {}, files: false, dependencies: {})
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes_dir)
     runtimes = Fledge::Runtimes.new(env:)
     tree = File.join(@dir, "tree")
@@ -604,7 +713,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     yield root if block_given?
     log = StringIO.new
     Fledge::MobileExtensions.new(platform: phone, packages:, build_args:, host: Fledge::Platform.local, runtimes:,
-      work: File.join(@dir, "work"), log:, gem_dir: "lib/ruby/gems/4.1.0+5", env:, files:).call(root)
+      work: File.join(@dir, "work"), log:, gem_dir: "lib/ruby/gems/4.1.0+5", env:, files:, dependencies:).call(root)
   rescue Fledge::Error => e
     raise Fledge::Error, "#{e.message}\n#{log&.string}"
   end

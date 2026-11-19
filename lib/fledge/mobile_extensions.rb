@@ -10,7 +10,10 @@ require_relative "archive"
 require_relative "entry"
 require_relative "error"
 require_relative "mobile_extensions/android_library"
+require_relative "mobile_extensions/built_for"
 require_relative "mobile_extensions/extconf_build"
+require_relative "mobile_extensions/ffi_library"
+require_relative "mobile_extensions/host_gems"
 require_relative "mobile_extensions/library"
 require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
@@ -227,9 +230,10 @@ module Fledge
 
     # What the extensions of one target came to: the archives mkmf made,
     # the flags that link them (libraries, frameworks, and paths their
-    # extconf.rb added), and whether any is C++, whose runtime the link
-    # must bring.
-    class TargetBuild < Data.define(:target, :archives, :flags, :cxx, :libraries)
+    # extconf.rb added), whether any is C++, whose runtime the link
+    # must bring, the extensions built as files, and the libraries for
+    # Ruby's ffi that Rakefiles built.
+    class TargetBuild < Data.define(:target, :archives, :flags, :cxx, :libraries, :ffi_libraries)
       ##
       # :attr_reader: target
       # The Target compiled for.
@@ -250,6 +254,11 @@ module Fledge
       ##
       # :attr_reader: cxx
       # Whether any extension has C++ sources.
+
+      ##
+      # :attr_reader: ffi_libraries
+      # The FfiLibrary of each shared library a Rakefile built that is no
+      # extension of Ruby's.
     end
 
     # What one extension's build came to: the feature it registers under,
@@ -445,7 +454,9 @@ module Fledge
       @runtimes = runtimes
       @work = work
       @env = env
+      @log = log
       @runner = Runner.new(log:, env:)
+      @ndk = nil # : NDK?
       @ruby = nil # : String?
       @rake_build = nil # : RakeBuild?
       @extconf_build = nil # : ExtconfBuild?
@@ -471,15 +482,16 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def call(tree)
-      ndk = (@platform.name == "android") ? NDK.find(@env, host: @host) : nil
+      ndk = @ndk = (@platform.name == "android") ? NDK.find(@env, host: @host) : nil
       registrations = [] # : Array[[String, String]]
       @stubs = {} # : Hash[String, Entry]
       builds = Targets.new(work: @work).call(tree, ndk).to_h do |target|
         built = compile_target(target)
         libraries = built.grep(Library) # : Array[Library]
         reports = built.grep(Report) # : Array[Report]
+        ffi_libraries = built.grep(FfiLibrary) # : Array[FfiLibrary]
         registrations = same_registrations(registrations, reports)
-        [target.name, Linking.target_build(target, reports, libraries:)]
+        [target.name, Linking.target_build(target, reports, libraries:, ffi_libraries:)]
       end
       same_files(builds.values)
       refuse_clash(registrations)
@@ -495,11 +507,14 @@ module Fledge
 
     # Compiles every gem's extensions for +target+, and returns a Report
     # for each, their Init functions numbered from 0, or a Library for
-    # each built as a file.
+    # each built as a file, and an FfiLibrary for each library for
+    # Ruby's ffi a Rakefile built.
     private def compile_target(target)
-      reports = [] # : Array[Report | Library]
+      reports = [] # : Array[Report | Library | FfiLibrary]
       @packages.each do |gem, package|
-        reports.concat(compile(target, gem, package, @build_args.fetch(gem.name, []), reports.size)) if package.extensions?
+        next unless package.extensions?
+
+        reports.concat(compile(target, gem, package, @build_args.fetch(gem.name, []), reports.grep_v(FfiLibrary).size))
       end
       reports
     end
@@ -531,17 +546,28 @@ module Fledge
 
     # Compiles +package+'s extensions for +target+, in a folder of their
     # own, and returns a report for each: the archive, its flags, the
-    # feature, and its Init function, numbered from +first+.
+    # feature, and its Init function, numbered from +first+; and each
+    # library for Ruby's ffi a Rakefile built, with the paths where a
+    # desktop has it.
     private def compile(target, gem, package, args, first)
       root = Sources.unpack(package, File.join(@work, target.name, package.spec.full_name))
-      reports = [] # : Array[Report | Library]
+      reports = [] # : Array[Report | Library | FfiLibrary]
       package.spec.extensions.each do |extension|
-        number = first + reports.size
-        next reports.concat(rake_build.call(target, gem, package.spec, root, extension, args, number)) if self.class.rake?(extension)
+        number = first + reports.grep_v(FfiLibrary).size
+        next reports.concat(rake(target, gem, package, root, extension, args, number)) if self.class.rake?(extension)
 
         reports << extconf(target, gem, package, root, extension, args, number)
       end
       reports
+    end
+
+    # What the Rakefile at +extension+, a path in +package+'s gem
+    # unpacked at +root+, built (RakeBuild), with the paths where a
+    # desktop has each library for Ruby's ffi.
+    private def rake(target, gem, package, root, extension, args, number)
+      rake_build.call(target, gem, package.spec, root, extension, args, number).map do |built|
+        built.is_a?(FfiLibrary) ? built.with(links: FfiLibrary.links(package, built.file, gem_dir: @gem_dir)) : built
+      end
     end
 
     # Compiles the extension the <tt>extconf.rb</tt> at +extension+, a
@@ -569,9 +595,16 @@ module Fledge
       @extconf_build ||= ExtconfBuild.new(ruby:, work: @work, load_path:, environment: @runner.clean_env, run: @runner)
     end
 
-    # The builder of extensions a Rakefile builds (RakeBuild).
+    # The builder of extensions a Rakefile builds (RakeBuild), with the
+    # gems the Rakefiles' gems depend on, compiled for this computer, on
+    # its load path (HostGems).
     private def rake_build
-      @rake_build ||= RakeBuild.new(ruby:, work: @work, environment: @runner.clean_env, run: @runner)
+      @rake_build ||= begin
+        specs = @packages.values.map(&:spec).select { |spec| spec.extensions.any? { |path| self.class.rake?(path) } }
+        build = NativeBuild.new(platform: @host, runtimes: @runtimes, work: File.join(@work, "host-gems"), log: @log, env: @env)
+        gems = HostGems.new(specs:, dependencies: @dependencies, build:, work: File.join(@work, "host-gems", "gems"))
+        RakeBuild.new(ruby:, work: @work, environment: @runner.clean_env, run: @runner, load_path: gems.load_path, built_for: BuiltFor.new(ndk: @ndk))
+      end
     end
 
     # The folders of the code of the gems the compiled gems depend on,

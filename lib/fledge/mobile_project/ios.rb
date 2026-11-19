@@ -120,8 +120,15 @@ module Fledge
       # the project links; and the registration unit
       # in <tt>Host/</tt>, which Xcode compiles with the host app, so its
       # constructor registers each extension when the app starts.
+      #
+      # It refuses a library for Ruby's ffi that a gem's Rakefile built
+      # (MobileExtensions::FfiLibrary), naming the gem: iOS takes a
+      # third-party dynamic library only in a framework of its own
+      # (doc/contributors/research/2026-11-19-ffi-libraries-on-phones.md,
+      # section 2), which Fledge does not yet make.
       private def place_extensions(project)
         built = @built or return
+        refuse_ffi_libraries(built)
         Dir.mktmpdir("fledge-extensions") do |work|
           libraries = built.targets.flat_map do |name, build|
             library = File.join(work, name, "libFledgeExtensions.a")
@@ -132,6 +139,14 @@ module Fledge
           Command.run("xcodebuild", "-create-xcframework", *libraries, "-output", File.join(project, EXTENSIONS), install: Fledge::MobileExtensions::INSTALL_XCODE)
         end
         File.write(File.join(project, "Host", "fledge_extensions.c"), MobileExtensions.registration_source(built.registrations))
+      end
+
+      private def refuse_ffi_libraries(built)
+        library = built.targets.values.flat_map(&:ffi_libraries).first or return
+
+        raise Error, "#{library.gem}'s Rakefile built #{library.file}, a library for Ruby's ffi to load, and Fledge does not yet " \
+          "put such a library in an iOS app, where it must be a framework of its own. Leave the gem out of the app's ios " \
+          "build (gem \"#{library.gem}\", platforms: [...] in the Gemfile)."
       end
 
       private def place_runtime(tree, project)

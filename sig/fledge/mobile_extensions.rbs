@@ -14,9 +14,10 @@ module Fledge
       attr_reader flags: Array[String]
       attr_reader cxx: bool
       attr_reader libraries: Array[Library]
+      attr_reader ffi_libraries: Array[FfiLibrary]
 
-      def self.new: (target: Target, archives: Array[String], flags: Array[String], cxx: bool, libraries: Array[Library]) -> instance
-                  | (Target target, Array[String] archives, Array[String] flags, bool cxx, Array[Library] libraries) -> instance
+      def self.new: (target: Target, archives: Array[String], flags: Array[String], cxx: bool, libraries: Array[Library], ffi_libraries: Array[FfiLibrary]) -> instance
+                  | (Target target, Array[String] archives, Array[String] flags, bool cxx, Array[Library] libraries, Array[FfiLibrary] ffi_libraries) -> instance
     end
 
     class Report < Data
@@ -48,6 +49,8 @@ module Fledge
     @runtimes: Runtimes
     @work: String
     @runner: Runner
+    @log: CLI::_Output
+    @ndk: NDK?
     @env: Runtimes::_Env
     @gem_dir: String
     @ruby: String?
@@ -71,7 +74,7 @@ module Fledge
 
     def shared_library: (Built built, TargetBuild build, registration: String, into: String) -> String
 
-    private def compile_target: (Target target) -> Array[Report | Library]
+    private def compile_target: (Target target) -> Array[Report | Library | FfiLibrary]
 
     private def same_registrations: (Array[[String, String]] registrations, Array[Report] reports) -> Array[[String, String]]
 
@@ -79,7 +82,9 @@ module Fledge
 
     private def refuse_clash: (Array[[String, String]] registrations) -> void
 
-    private def compile: (Target target, locked_gem gem, package package, Array[String] args, Integer first) -> Array[Report | Library]
+    private def compile: (Target target, locked_gem gem, package package, Array[String] args, Integer first) -> Array[Report | Library | FfiLibrary]
+
+    private def rake: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> Array[Report | FfiLibrary]
 
     private def extconf: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> (Report | Library)
 

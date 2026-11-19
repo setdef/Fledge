@@ -22,6 +22,8 @@ module Fledge
 
       private def place_extensions: (String project) -> void
 
+      private def refuse_ffi_libraries: (MobileExtensions::Built built) -> void
+
       private def place_runtime: (String tree, String project) -> void
 
       private def ruby_root: (String project) -> String

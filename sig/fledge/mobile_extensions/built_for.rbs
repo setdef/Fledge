@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    class BuiltFor
+      APPLE: Hash[String, String]
+      MACHINES: Hash[String, String]
+
+      @ndk: NDK?
+
+      def initialize: (ndk: NDK?) -> void
+
+      def call: (Target target, String path) -> String
+
+      def wanted: (Target target) -> String
+
+      def desktop?: (Target target, String system) -> bool
+
+      private def apple: (String path) -> String
+
+      private def elf: (String path) -> String
+
+      private def capture: (*String command, install: String) -> [String, Process::Status]
+    end
+  end
+end

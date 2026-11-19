@@ -147,7 +147,7 @@ class MobileTemplateContractTest < Minitest::Test
         File.write(path, "ELF #{feature}")
         Fledge::MobileExtensions::Library.new(feature:, path:, flags: [], links: ["app/gems/#{feature}.so"])
       end
-      [name, Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: files)]
+      [name, Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: files, ffi_libraries: [])]
     end
     Fledge::MobileExtensions::Built.new(registrations:, targets:, ndk: nil, stubs: [])
   end

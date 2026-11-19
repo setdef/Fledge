@@ -376,6 +376,48 @@ class MobileBuildTest < Minitest::Test
       error.message
   end
 
+  # A library a gem's Rakefile builds for Ruby's ffi to open needs a
+  # framework of its own on iOS, which Fledge does not yet make, so the
+  # iOS project refuses it, naming the gem, before it links anything.
+  def test_an_ios_project_refuses_a_library_for_ffi_that_a_rakefile_built
+    error = assert_raises(Fledge::Error) do
+      phone_project_with_ffi_library("ios", "ios-arm64", nil, "ext/aarch64-darwin/libllhttp-ext.bundle")
+    end
+
+    assert_equal "llhttp-ffi's Rakefile built ext/aarch64-darwin/libllhttp-ext.bundle, a library for Ruby's ffi to load, and " \
+      "Fledge does not yet put such a library in an iOS app, where it must be a framework of its own. Leave the gem out of " \
+      "the app's ios build (gem \"llhttp-ffi\", platforms: [...] in the Gemfile).", error.message
+    refute_path_exists File.join(@dir, "dist/Hello-ios")
+  end
+
+  # The same library on Android is not yet carried into the app either.
+  def test_an_android_project_refuses_a_library_for_ffi_that_a_rakefile_built
+    error = assert_raises(Fledge::Error) do
+      phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/x86_64-linux/libllhttp-ext.so")
+    end
+
+    assert_equal "llhttp-ffi's Rakefile built ext/x86_64-linux/libllhttp-ext.so, a library for Ruby's ffi to load, and " \
+      "Fledge does not yet put such a library in an Android app. Leave the gem out of the app's android build " \
+      "(gem \"llhttp-ffi\", platforms: [...] in the Gemfile).", error.message
+  end
+
+  # Writes +phone+'s project for a script app whose one gem's Rakefile
+  # built a library for ffi, +file+ in llhttp-ffi 0.5.1, for the target
+  # +name+ (+abi+ on Android), and returns its folder.
+  private def phone_project_with_ffi_library(phone, name, abi, file)
+    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
+    shared = File.join(@dir, File.basename(file))
+    File.write(shared, "ELF llhttp")
+    target = Fledge::MobileExtensions::Target.new(name:, root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi:)
+    library = Fledge::MobileExtensions::FfiLibrary.new(gem: "llhttp-ffi", file:, path: shared,
+      links: ["lib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/#{file}"])
+    build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [], ffi_libraries: [library])
+    built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [])
+    runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(phone)))
+    project = (phone == "ios") ? Fledge::MobileProject::IOS : Fledge::MobileProject::Android
+    project.new(app:, runtime:, out: File.join(@dir, "dist"), extensions: FakeExtensions.new(built)).call
+  end
+
   # Writes an Android project for a script app whose one extension,
   # +feature+, was built as a file for x86_64, and returns its folder.
   private def android_project_with_library(feature)
@@ -384,7 +426,7 @@ class MobileBuildTest < Minitest::Test
     File.write(shared, "ELF adder")
     target = Fledge::MobileExtensions::Target.new(name: "x86_64-linux-android", root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi: "x86_64")
     library = Fledge::MobileExtensions::Library.new(feature:, path: shared, flags: [], links: ["app/gems/adder/lib/#{feature}.so"])
-    build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [library])
+    build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [library], ffi_libraries: [])
     built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [])
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
     Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(@dir, "dist"), extensions: FakeExtensions.new(built)).call

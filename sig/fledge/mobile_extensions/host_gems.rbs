@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    class HostGems
+      @specs: Array[Gem::Specification]
+      @dependencies: Hash[locked_gem, package]
+      @build: NativeBuild
+      @work: String
+      @load_path: Array[String]?
+
+      def initialize: (specs: Array[Gem::Specification], dependencies: Hash[locked_gem, package], build: NativeBuild, work: String) -> void
+
+      def load_path: () -> Array[String]
+
+      private def needed: () -> Hash[locked_gem, package]
+
+      private def write: (package package) -> Array[String]
+    end
+  end
+end

@@ -74,16 +74,20 @@ int fledge_ruby_run_app(const char *root, int argc, char *const *argv);
 /*
  * Tells Ruby that the extension whose Init function is init is linked
  * into this process, so that require "feature" runs init instead of
- * looking for a file, which a phone's Ruby never loads (ADR 022).
+ * looking for a file: iOS's Ruby loads none, and on Android an
+ * extension linked in has none, where one an extconf.rb builds in C or
+ * C++ is a file Ruby loads, which needs no call (ADR 022).
  * feature is the name the extension's extconf.rb gives create_makefile,
  * such as "greeter/greeter", with no ".so". Call it before fledge_ruby_run
  * or fledge_ruby_run_app, from a constructor or the host's startup: Ruby
  * registers every extension added by then once it has booted, before the
  * program runs, and an extension added after Ruby has started is never
- * registered. The library fledge build writes for an app's gems
- * (fledge_extensions.c) calls it for each of them. Returns 0, or -1 with
- * errno set: EINVAL for a missing or empty name or function, EALREADY
- * once Ruby has started, ENOMEM.
+ * registered. The registration fledge build writes for an app's gems
+ * (fledge_extensions.c) calls it for each one linked in, from the
+ * constructor of libfledgeext.so on Android, which the runtime opens
+ * itself before Ruby boots. Returns 0, or -1 with errno set: EINVAL
+ * for a missing or empty name or function, EALREADY once Ruby has
+ * started, ENOMEM.
  */
 int fledge_ruby_add_extension(const char *feature, void (*init)(void));
 

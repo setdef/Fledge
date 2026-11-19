@@ -23,9 +23,10 @@ Fledge compiles a gem's C, C++, or Rust extension for the phone: with Xcode on i
 - When an `extconf.rb` runs CMake, Fledge passes a toolchain file for each target in `CMAKE_TOOLCHAIN_FILE`, so CMake builds the library for the phone.
 - A Rust extension built with [rb-sys](https://github.com/oxidize-rb/rb-sys) needs Rust and Cargo, with Rust's standard library for each of the phone's targets: `rustup target add aarch64-apple-ios aarch64-apple-ios-sim` for iOS, and `rustup target add aarch64-linux-android x86_64-linux-android` for Android. Cargo builds it as a static library for each target. An app has been tested with one Rust extension; two can't share a name.
 - The ffi gem works, with the libffi it bundles, and so does Ruby's `fiddle`. Each calls a C function by its name, such as one of the phone's C library or a system framework, and turns a Ruby block into a C callback.
-- Fledge refuses, and names the gem, an extension built by CMake, configure, or Cargo with no `extconf.rb` or Rakefile, and a shared library a Rakefile builds for ffi to load.
+- On Android, a gem whose Rakefile builds a library for ffi to open, as llhttp-ffi's and scrypt's do with ffi-compiler, works unchanged. Fledge runs the Rakefile with the gems it requires, compiled for your computer where they have an extension, puts the library in the app as one of its native libraries, and links it, as the app starts, from where the gem looks for it. Keep `useLegacyPackaging = true` for these too.
+- Fledge refuses, and names the gem, an extension built by CMake, configure, or Cargo with no `extconf.rb` or Rakefile; a library a Rakefile builds for another system than the phone, or one the gem's package holds for a desktop; and, on iOS, a library a Rakefile builds for ffi to open, which iOS takes only in a framework of its own, which Fledge does not yet make.
 
-For each case, see [`examples/native_phone`](../examples/native_phone), [`examples/cmake_phone`](../examples/cmake_phone), [`examples/rake_phone`](../examples/rake_phone), [`examples/rust_phone`](../examples/rust_phone), and [`examples/ffi_phone`](../examples/ffi_phone).
+For each case, see [`examples/native_phone`](../examples/native_phone), [`examples/cmake_phone`](../examples/cmake_phone), [`examples/rake_phone`](../examples/rake_phone), [`examples/rust_phone`](../examples/rust_phone), [`examples/ffi_phone`](../examples/ffi_phone), and, on Android, [`examples/ffi_library_phone`](../examples/ffi_library_phone).
 
 ## Frameworks that start the app themselves
 

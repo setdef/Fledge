@@ -81,6 +81,18 @@ class MobileParityTest < Minitest::Test
     end
   end
 
+  # An app runs on the phones it names: the libraries for ffi that
+  # ffi_library_phone's gems build reach an Android app, and Fledge does
+  # not yet put them in an iOS one, so iOS's check builds it not at all.
+  def test_each_phone_builds_and_runs_the_apps_that_name_it
+    ios = MobileParity.apps("ios").map(&:name)
+    android = MobileParity.apps("android").map(&:name)
+
+    assert_includes android, "FfiLibraryPhone"
+    refute_includes ios, "FfiLibraryPhone"
+    assert_equal android - ["FfiLibraryPhone"], ios
+  end
+
   # Fledge's own manifest gives the reasons the check expects, and a
   # manifest that names a category with another reason fails it.
   def test_the_privacy_manifest_check_compares_reasons

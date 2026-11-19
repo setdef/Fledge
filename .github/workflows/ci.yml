@@ -581,7 +581,10 @@ jobs:
   # arm64-v8a library is built and checked but run on no
   # emulator here. examples/rust_phone's Rust is compiled with mise.toml's
   # Rust and its Android targets, and bindgen reads the phone's headers
-  # with the runner's libclang.
+  # with the runner's libclang. examples/ffi_library_phone runs here
+  # alone, not in the Simulator: its gems' Rakefiles build libraries for
+  # ffi, which the app carries as native libraries of its own, with
+  # ffi-compiler's ffi compiled by the runner's C compiler.
   mobile-apps-android:
     name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
     needs: [runtime, runtime-mobile]

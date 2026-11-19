@@ -390,28 +390,49 @@ class MobileBuildTest < Minitest::Test
     refute_path_exists File.join(@dir, "dist/Hello-ios")
   end
 
-  # The same library on Android is not yet carried into the app either.
-  def test_an_android_project_refuses_a_library_for_ffi_that_a_rakefile_built
+  # On Android the same library goes to each ABI's jniLibs as
+  # libfledgeffi.GEM.PATH.so, named for its gem and its path in the gem,
+  # and fledge.links names the path where the gem asks ffi for it.
+  def test_an_android_library_for_ffi_that_a_rakefile_built_is_a_native_library_named_for_its_gem_and_path
+    project = phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/x86_64-linux/libllhttp-ext.so")
+
+    name = "libfledgeffi.llhttp-ffi.ext.x86_64-linux.libllhttp-ext.so"
+    assert_equal "ELF llhttp", File.read(File.join(project, "src/main/jniLibs/x86_64", name))
+    assert_equal "x86_64\t#{name}\tlib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/ext/x86_64-linux/libllhttp-ext.so\n",
+      File.read(File.join(project, "fledge/fledge.links"))
+  end
+
+  # A library whose path ends in a version, as librdkafka.so.1 would,
+  # still ends in .so, which the package installer extracts.
+  def test_an_android_library_for_ffi_whose_name_ends_in_a_version_ends_in_so
+    project = phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/librdkafka.so.1")
+
+    assert_path_exists File.join(project, "src/main/jniLibs/x86_64/libfledgeffi.llhttp-ffi.ext.librdkafka.so.1.so")
+  end
+
+  # Two libraries whose names come out alike in one ABI's folder would
+  # overwrite each other: refused, naming both.
+  def test_an_android_library_for_ffi_named_as_another_is_refused
     error = assert_raises(Fledge::Error) do
-      phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/x86_64-linux/libllhttp-ext.so")
+      phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/a.b/lib.so", "ext/a/b.lib.so")
     end
 
-    assert_equal "llhttp-ffi's Rakefile built ext/x86_64-linux/libllhttp-ext.so, a library for Ruby's ffi to load, and " \
-      "Fledge does not yet put such a library in an Android app. Leave the gem out of the app's android build " \
-      "(gem \"llhttp-ffi\", platforms: [...] in the Gemfile).", error.message
+    assert_equal "llhttp-ffi's ext/a.b/lib.so and llhttp-ffi's ext/a/b.lib.so would both be libfledgeffi.llhttp-ffi.ext.a.b.lib.so " \
+      "in the Android app's x86_64 libraries", error.message
   end
 
   # Writes +phone+'s project for a script app whose one gem's Rakefile
-  # built a library for ffi, +file+ in llhttp-ffi 0.5.1, for the target
-  # +name+ (+abi+ on Android), and returns its folder.
-  private def phone_project_with_ffi_library(phone, name, abi, file)
+  # built a library for ffi, each of +files+ in llhttp-ffi 0.5.1, for the
+  # target +name+ (+abi+ on Android), and returns its folder.
+  private def phone_project_with_ffi_library(phone, name, abi, *files)
     app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
-    shared = File.join(@dir, File.basename(file))
+    shared = File.join(@dir, "llhttp.so")
     File.write(shared, "ELF llhttp")
     target = Fledge::MobileExtensions::Target.new(name:, root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi:)
-    library = Fledge::MobileExtensions::FfiLibrary.new(gem: "llhttp-ffi", file:, path: shared,
-      links: ["lib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/#{file}"])
-    build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [], ffi_libraries: [library])
+    libraries = files.map do |file|
+      Fledge::MobileExtensions::FfiLibrary.new(gem: "llhttp-ffi", file:, path: shared, links: ["lib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/#{file}"])
+    end
+    build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [], ffi_libraries: libraries)
     built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [])
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(phone)))
     project = (phone == "ios") ? Fledge::MobileProject::IOS : Fledge::MobileProject::Android

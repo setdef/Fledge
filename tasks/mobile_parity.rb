@@ -35,7 +35,10 @@ require_relative "parity"
 # the phone's targets (doc/contributors/design/phone-projects.md, "Gems
 # with extensions"); examples/ffi_phone, whose ffi gem from
 # rubygems.org builds the libffi it bundles and calls C by name, with a
-# Ruby block as a callback; a script that requires json and csv, a bundled
+# Ruby block as a callback; examples/ffi_library_phone, on Android alone,
+# whose gems from rubygems.org, llhttp-ffi and scrypt, each build a
+# library for ffi to open from a Rakefile, which the app carries as a
+# native library of its own; a script that requires json and csv, a bundled
 # gem, parses with prism, a bundled gem whose extension compiles its own
 # libprism (doc/contributors/design/phone-runtimes.md, "Bundled gems' extensions"), and
 # reaches rubygems.org over HTTPS
@@ -56,9 +59,14 @@ class MobileParity
   ROOT = Parity::ROOT
 
   # An app the check builds and runs: its project, the name and
-  # identifier its fledge.yml gives it, and the line it must print, or
-  # nil for the parity probe, whose report is compared instead.
-  App = Data.define(:path, :name, :identifier, :prints)
+  # identifier its fledge.yml gives it, the line it must print, or nil
+  # for the parity probe, whose report is compared instead, and the
+  # phones it runs on (default: both).
+  class App < Data.define(:path, :name, :identifier, :prints, :phones)
+    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android])
+      super
+    end
+  end
 
   # What test/fixtures/mobile_hello prints, when the runtime keeps csv a
   # gem, keeps prism a gem whose extension parses, and can reach a server
@@ -84,6 +92,9 @@ class MobileParity
       prints: /\ARustPhone totals 10 in Rust built for (?:ios on aarch64, on arm64-darwin|android on x86_64, on x86_64-linux-android)\z/),
     App.new(path: "examples/ffi_phone", name: "FfiPhone", identifier: "com.setdef.fledge.FfiPhone",
       prints: /\AFfiPhone: ffi 1\.17\.4 finds strlen of hello 5 and sorts \[1, 2, 3\] with a Ruby block, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
+    App.new(path: "examples/ffi_library_phone", name: "FfiLibraryPhone", identifier: "com.setdef.fledge.FfiLibraryPhone",
+      prints: %r{\AFfiLibraryPhone: llhttp-ffi 0\.5\.1 parses GET /hello, and scrypt 3\.1\.0's key matches RFC 7914, on (?:aarch64|x86_64)-linux-android\z},
+      phones: %w[android]),
     App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
   ].freeze
@@ -102,11 +113,16 @@ class MobileParity
   class Logged < Data.define(:entries, :output)
   end
 
+  # The apps of APPS that run on +phone+.
+  def self.apps(phone)
+    APPS.select { |app| app.phones.include?(phone) }
+  end
+
   # Writes each app's project for +phone+ into +out+ with fledge build,
   # as a developer would, taking the runtime from +runtimes+, and
   # returns each app's project folder: what fledge build prints on
   # standard output, as what it downloads goes to standard error.
-  def self.projects(phone, runtimes:, out:, apps: APPS, env: {})
+  def self.projects(phone, runtimes:, out:, apps: self.apps(phone), env: {})
     fledge = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), File.join(ROOT, "exe", "fledge")]
     apps.to_h do |app|
       printed, logged, status = Open3.capture3(env.merge("FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes)), *fledge, "build", phone,

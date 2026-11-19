@@ -576,6 +576,63 @@ class MobileExtensionsBuildTest < Minitest::Test
     refute_includes activity, "loadLibrary"
   end
 
+  # examples/ffi_library_phone's gems, llhttp-ffi and scrypt from
+  # rubygems.org, each build a library for ffi from a Rakefile, with
+  # ffi-compiler and ffi compiled for this computer: each library is a
+  # native library of the app's own in each ABI, built for that ABI,
+  # stripped, and aligned for 16 KB pages, linked from the path in the
+  # gem where ffi-compiler's loader looks for it.
+  def test_fledge_build_android_ships_the_libraries_for_ffi_that_rakefiles_build
+    runtimes = real_runtimes("android")
+    ndk = android_ndk
+
+    project = build_example("android", "ffi_library_phone", runtimes, "FfiLibraryPhone-android")
+
+    readelf = File.join(ndk.bin, "llvm-readelf")
+    names = %w[libfledgeffi.llhttp-ffi.ext.ARCH-linux.libllhttp-ext.so libfledgeffi.scrypt.ext.scrypt.ARCH-linux.libscrypt_ext.so]
+    machines = { "arm64-v8a" => "aarch64", "x86_64" => "x86_64" }.to_h do |abi, arch|
+      read = names.map do |name|
+        library = File.join(project, "src", "main", "jniLibs", abi, name.sub("ARCH", arch))
+        elf = Open3.capture2(readelf, "-h", "-lW", "-S", library).first
+        alignments = elf.lines.grep(/\A\s*LOAD\s/).map { |line| Integer(line.split.last) }
+        assert_operator alignments.min, :>=, 16_384, "#{abi}: #{name} aligned for 16 KB pages"
+        refute_match(/\.symtab/, elf, "#{abi}: #{name} stripped")
+        elf[/Machine:\s+(.+)$/, 1]
+      end
+      [abi, read.uniq]
+    end
+    assert_equal({ "arm64-v8a" => ["AArch64"], "x86_64" => ["Advanced Micro Devices X86-64"] }, machines)
+    # The ffi gem's own extension is a file too, with lines of its own.
+    links = File.readlines(File.join(project, "fledge", "fledge.links")).map { |line| line.chomp.split("\t") }
+      .select { |_, name, _| name.start_with?("libfledgeffi.") }
+    gems = %r{\Alib/ruby/gems/[^/]+/gems/}
+    assert_equal [
+      ["arm64-v8a", "libfledgeffi.llhttp-ffi.ext.aarch64-linux.libllhttp-ext.so", "llhttp-ffi-0.5.1/ext/aarch64-linux/libllhttp-ext.so"],
+      ["arm64-v8a", "libfledgeffi.scrypt.ext.scrypt.aarch64-linux.libscrypt_ext.so", "scrypt-3.1.0/ext/scrypt/aarch64-linux/libscrypt_ext.so"],
+      ["x86_64", "libfledgeffi.llhttp-ffi.ext.x86_64-linux.libllhttp-ext.so", "llhttp-ffi-0.5.1/ext/x86_64-linux/libllhttp-ext.so"],
+      ["x86_64", "libfledgeffi.scrypt.ext.scrypt.x86_64-linux.libscrypt_ext.so", "scrypt-3.1.0/ext/scrypt/x86_64-linux/libscrypt_ext.so"],
+    ], links.map { |abi, name, path| [abi, name, path.sub(gems, "")] }
+    assert(links.all? { |_, _, path| path.match?(gems) }, links.inspect)
+  end
+
+  # Fledge does not yet put a library for ffi in an iOS app, where it
+  # must be a framework of its own, so fledge build ios refuses
+  # examples/ffi_library_phone, naming the first gem whose Rakefile built
+  # one, and writes no project.
+  def test_fledge_build_ios_refuses_a_library_for_ffi_that_a_rakefile_builds
+    runtimes = real_runtimes("ios")
+    out = StringIO.new
+    err = StringIO.new
+    env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache"))
+    status = Fledge::CLI::Build.new(out:, err:, env:)
+      .call(["ios", "-o", File.join(@dir, "dist"), File.expand_path("../../examples/ffi_library_phone", __dir__)])
+
+    refute_equal 0, status
+    assert_includes err.string, "fledge build: llhttp-ffi's Rakefile built ext/aarch64-darwin/libllhttp-ext.bundle, a library for " \
+      "Ruby's ffi to load, and Fledge does not yet put such a library in an iOS app, where it must be a framework of its own."
+    refute_path_exists File.join(@dir, "dist", "FfiLibraryPhone-ios")
+  end
+
   # Writes examples/+name+'s project for +phone+ with fledge build, from
   # the runtimes in +runtimes+, and returns the project's folder, named
   # +project+.

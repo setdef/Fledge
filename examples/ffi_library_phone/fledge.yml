@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+
+# ffi_library_phone is a lone script with two gems from rubygems.org whose
+# Rakefiles build a library for Ruby's ffi to open. It sits inside
+# Fledge's own gem, so without this file fledge build would take
+# Fledge's Gemfile for its own. The identifier is what Android knows it
+# by (ADR 012).
+name: FfiLibraryPhone
+identifier: com.setdef.fledge.FfiLibraryPhone

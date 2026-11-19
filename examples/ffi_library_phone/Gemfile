@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# llhttp-ffi and scrypt, whose gemspecs name a Rakefile in which
+# ffi-compiler links a shared library of C for Ruby's ffi to open by its
+# path, not an extension of Ruby's. fledge build android runs each
+# Rakefile for each of the phone's ABIs, with ffi-compiler and ffi on its
+# load path, and carries each library into the app as a native library
+# of its own, linked from that path as the app starts.
+source "https://rubygems.org"
+
+gem "llhttp-ffi", "0.5.1"
+gem "scrypt", "3.1.0"

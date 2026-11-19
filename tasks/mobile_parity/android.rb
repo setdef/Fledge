@@ -260,7 +260,7 @@ class MobileParity
     def call
       adb("logcat", "-G", "16M")
       parity = MobileParity.new(target:, work: @work, out: @out)
-      APPS.flat_map do |app|
+      MobileParity.apps("android").flat_map do |app|
         adb("install", "-r", File.join(APKS, "#{app.identifier}.apk"))
         from_apk = parity.check(app, launch(app), "#{device}, from its debug APK")
         # The bundle's APKs are signed with another key than the debug

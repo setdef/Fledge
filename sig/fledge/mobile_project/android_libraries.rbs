@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileProject
+    class AndroidLibraries
+      LINKS: String
+      EXTENSION: String
+      FFI: String
+      SAFE: Regexp
+
+      @built: MobileExtensions::Built
+
+      def initialize: (MobileExtensions::Built built) -> void
+
+      def call: (String project, ruby_root: String) -> void
+
+      private def extensions: (MobileExtensions::TargetBuild build, String folder, String abi) -> Array[String]
+
+      private def ffi_libraries: (MobileExtensions::TargetBuild build, String folder, String abi) -> Array[String]
+
+      private def extension_name: (String feature) -> String
+
+      private def ffi_name: (MobileExtensions::FfiLibrary library) -> String
+
+      private def place: (String path, String folder, String name) -> void
+    end
+  end
+end

@@ -18,8 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- On Android, a gem's C or C++ extension that an `extconf.rb` builds ships as a native library of the app's own, `libfledgeext.FEATURE.so`, which Ruby loads from where a desktop has its file, as a desktop's Ruby does, so `$LOADED_FEATURES` names that path; it had been linked into `libfledgeext.so`.
-- The comments in an iOS project's `project.yml` and in the extensions' registration unit, which `fledge build` writes, no longer cite ADR 022.Such an extension needs the Gradle project's `useLegacyPackaging = true`, which `fledge build android` writes. `libfledgeext.so` is still in every app with a compiled extension, for a host that names it, holding whatever is still linked in, and Fledge's own `MainActivity` no longer loads it.
+- On Android, a gem's C or C++ extension that an `extconf.rb` builds ships as a native library of the app's own, `libfledgeext.FEATURE.so`, which Ruby loads from where a desktop has its file, as a desktop's Ruby does, so `$LOADED_FEATURES` names that path; it had been linked into `libfledgeext.so`. Such an extension needs the Gradle project's `useLegacyPackaging = true`, which `fledge build android` writes. `libfledgeext.so` is still in every app with a compiled extension, for a host that names it, holding whatever is still linked in, and Fledge's own `MainActivity` no longer loads it.
+- The comments in an iOS project's `project.yml` and in the extensions' registration unit, which `fledge build` writes, no longer cite the deleted record of how a phone's extensions are compiled.
 
 ### Fixed
 

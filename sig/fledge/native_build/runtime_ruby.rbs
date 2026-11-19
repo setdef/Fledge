@@ -19,7 +19,7 @@ module Fledge
 
       def home: () -> String
 
-      private def child_env: () -> Hash[String, String?]
+      def env: () -> Hash[String, String?]
     end
   end
 end

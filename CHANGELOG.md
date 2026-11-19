@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A desktop app ships each shared library a gem's build wrote outside the gem's require paths, at its path, as a gem whose Rakefile builds a library for ffi leaves it (scrypt, llhttp-ffi, and rdkafka from source); the app had raised `LoadError` for it.
+- A desktop build finds the runtime's own gems after the lockfile's, as `gem install` does, so a gem built by a Rakefile builds with the runtime's rake when the lockfile locks no other.
+
 ## [0.14.0] - 2026-11-19
 
 ### Added

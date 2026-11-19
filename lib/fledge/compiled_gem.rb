@@ -22,7 +22,9 @@ module Fledge
   #
   # This class is a gem's package (Fledge::GemPackage, or a git gem's
   # Fledge::GitPackage) and what Fledge::NativeBuild compiled for it: the
-  # files the build wrote into the gem's require paths, its extensions
+  # files the build wrote into the gem's require paths and the shared
+  # libraries it wrote anywhere else in the gem's folder
+  # (NativeBuild::BuiltFiles), its extensions
   # folder (without the build's logs, which hold the build machine's
   # paths), its build information, and the options it was built with. It
   # ships all of them where RubyGems, or for a git gem Bundler, put them,
@@ -51,16 +53,17 @@ module Fledge
     # The options its extension was built with, as extconf.rb got them.
     attr_reader :build_args
 
-    # The Entry of each file the build wrote into the gem's require paths,
-    # with paths relative to the gem's folder.
+    # The Entry of each file the build wrote that ships
+    # (NativeBuild::BuiltFiles), with paths relative to the gem's folder.
     attr_reader :built
 
     # Creates the compiled gem.
     #
     # [package] The Fledge::GemPackage, Fledge::GitPackage, or
     #          Fledge::PathPackage compiled.
-    # [built] The Entry of each file the build wrote into the gem's
-    #         require paths, with paths relative to the gem's folder.
+    # [built] The Entry of each file the build wrote that ships
+    #         (NativeBuild::BuiltFiles), with paths relative to the gem's
+    #         folder.
     # [extensions] The Entry of each file in its extensions folder, with
     #              paths relative to that folder.
     # [extension_dir] Its extensions folder, relative to the gem folder.

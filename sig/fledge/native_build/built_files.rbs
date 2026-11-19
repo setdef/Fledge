@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class NativeBuild
+    module BuiltFiles
+      LIBRARY: Regexp
+
+      DEBUG: Regexp
+
+      def self.of: (GemPackage | GitPackage | PathPackage package, String gem_dir) -> Array[Entry]
+
+      private def self.walk: (String gem_dir, String folder) -> Array[Entry]
+
+      private def self.libraries: (String gem_dir, Array[String] folders) -> Array[Entry]
+
+      private def self.library: (String full, String path) -> Entry?
+    end
+  end
+end

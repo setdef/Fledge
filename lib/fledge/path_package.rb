@@ -21,9 +21,10 @@ module Fledge
   # (Bundler::Source::Path#cache) and as a git gem's are
   # (doc/contributors/design/gems.md, "Path gems"). A gem with an extension is compiled by Fledge::NativeBuild in a
   # copy made of the files its gemspec lists, as <tt>gem build</tt> and
-  # <tt>gem install</tt> would build it, and what the build wrote into the
-  # gem's require paths ships over the developer's own (usually compiled
-  # for their Ruby, in the same place, by rake-compiler), inside the
+  # <tt>gem install</tt> would build it, and what the build wrote that
+  # ships (Fledge::NativeBuild::BuiltFiles) goes over the developer's own
+  # (usually compiled for their Ruby, in the same place, by
+  # rake-compiler), inside the
   # project as a replacement for the file the project holds, and outside
   # in the copy.
   #

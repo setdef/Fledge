@@ -44,7 +44,7 @@ module Fledge
         File.write(script, source)
         File.write(plan, JSON.generate({ "home" => home, "jobs" => jobs, "result" => result }))
         @log.puts message
-        status = Open3.popen2e(child_env, ruby, script, plan) do |_, output, thread|
+        status = Open3.popen2e(env, ruby, script, plan) do |_, output, thread|
           output.each_line { |line| @log.puts line }
           thread.value
         end
@@ -70,13 +70,19 @@ module Fledge
       end
 
       # The environment the runtime's Ruby and the compiler run in: the
-      # caller's, without the developer's Ruby settings, with RubyGems
-      # pointed at the build's gem folder, and on macOS the runtime's oldest
-      # macOS as the deployment target, which clang and rustc both read.
-      private def child_env
+      # caller's, without the developer's Ruby settings; with RubyGems
+      # installing into the build's gem folder and finding gems there and
+      # then in the runtime's own, as <tt>gem install</tt> on the runtime's
+      # Ruby finds them, since RubyGems follows a GEM_PATH that ends in the
+      # path separator with its default path
+      # (Gem::PathSupport#split_gem_path, at RubyGems 4.1.0.beta2), so
+      # that Gem::Ext::RakeBuilder finds the rake the runtime bundles; and
+      # on macOS the runtime's oldest macOS as the deployment target, which
+      # clang and rustc both read.
+      def env
         env = @env.to_h.keys.grep(SCRUBBED).to_h { |name| [name, nil] } # : Hash[String, String?]
         env["GEM_HOME"] = home
-        env["GEM_PATH"] = home
+        env["GEM_PATH"] = "#{home}#{File::PATH_SEPARATOR}"
         minimum = @platform.macos_minimum
         env["MACOSX_DEPLOYMENT_TARGET"] = minimum if minimum
         env

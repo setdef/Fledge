@@ -49,6 +49,49 @@ class NativeBuildTest < Minitest::Test
     "LICENSE" => "greeter is MIT\n",
   }.freeze
 
+  # A gem whose build leaves its compiled file beside its sources in
+  # ext/greet, outside its require paths, and whose Ruby loads it by that
+  # path: the shape of a gem whose Rakefile builds a library for ffi with
+  # ffi-compiler, which leaves it in ext/ARCH-OS for ffi_lib to open by
+  # its path (scrypt 3.1.0, llhttp-ffi 0.5.1), or whose Rakefile leaves
+  # it in ext/ (rdkafka 0.31.0). Here the file is a C extension mkmf
+  # builds, which Ruby's require opens as ffi_lib would open a library.
+  GREET = {
+    "ext/greet/extconf.rb" => "require \"mkmf\"\ncreate_makefile(\"greet\")\n",
+    "ext/greet/greet.c" => <<~C,
+      #include <ruby.h>
+
+      static VALUE greet(VALUE self) { return rb_str_new_cstr("hello from ext"); }
+
+      void Init_greet(void) { rb_define_singleton_method(rb_define_module("Greet"), "greet", greet, 0); }
+    C
+    "lib/greet.rb" => "require_relative \"../ext/greet/greet\"\n",
+    "LICENSE" => "greet is MIT\n",
+  }.freeze
+
+  # The Rakefile that builds it, as ffi-compiler's CompileTask does:
+  # in its own folder, ignoring the RUBYARCHDIR RubyGems passes.
+  GREET_RAKEFILE = <<~RUBY
+    library = "greet/greet.\#{RbConfig::CONFIG['DLEXT']}"
+    file "greet/Makefile" => "greet/extconf.rb" do
+      Dir.chdir("greet") { ruby "extconf.rb" }
+    end
+    file library => "greet/Makefile" do
+      Dir.chdir("greet") { sh "make" }
+    end
+    task default: library
+  RUBY
+
+  # The extconf.rb that builds it while it configures, and writes a
+  # Makefile that installs nothing, as libusb 0.8.0's writes its own.
+  GREET_EXTCONF = <<~RUBY
+    Dir.chdir("greet") do
+      system(RbConfig.ruby, "extconf.rb", exception: true)
+      system("make", exception: true)
+    end
+    File.write("Makefile", "all:\\nclean:\\ninstall:\\n")
+  RUBY
+
   def setup
     @platform = Fledge::Platform.local
     @runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
@@ -158,6 +201,31 @@ class NativeBuildTest < Minitest::Test
     out, ran, = run_app
     assert_predicate ran, :success?, out
     assert_equal "hello\n", out
+  end
+
+  def test_a_library_a_rakefile_builds_outside_its_require_paths_ships_where_its_ruby_loads_it
+    assert_ships_greet("ext/Rakefile" => GREET_RAKEFILE)
+  end
+
+  def test_a_library_an_extconf_builds_outside_its_require_paths_ships_where_its_ruby_loads_it
+    assert_ships_greet("ext/extconf.rb" => GREET_EXTCONF)
+  end
+
+  # Builds an app whose gem greet is built by +build+ (its one extension,
+  # by path, and the file's contents), and runs it.
+  def assert_ships_greet(build)
+    greet = FakeGem.build(@dir, "greet", "1.0.0", files: GREET.merge(build), extensions: build.keys)
+    @routes["/gems/#{greet.file_name}"] = [200, {}, File.binread(greet.path)]
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: { "greet" => ">= 0" }, locked: [greet], remote: @server.url("/"))
+    File.write(File.join(root, "exe", "my_app"), "require \"greet\"\nputs Greet.greet\n")
+
+    status, err = build(root)
+
+    assert_equal 0, status, err
+    out, ran, folder = run_app
+    assert_equal ["hello from ext\n", true], [out, ran.success?]
+    shipped = Dir.children(File.join(gem_dir(folder), "gems", "greet-1.0.0", "ext", "greet")).sort
+    assert_equal ["extconf.rb", "greet.#{RbConfig::CONFIG['DLEXT']}", "greet.c"].sort, shipped, "the build's own leftovers stay behind"
   end
 
   def with_tmpdir(folder)

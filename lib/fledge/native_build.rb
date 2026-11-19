@@ -12,6 +12,7 @@ require_relative "error"
 require_relative "git_package"
 require_relative "path_package"
 require_relative "archive"
+require_relative "native_build/built_files"
 require_relative "native_build/floors"
 require_relative "native_build/runtime_ruby"
 
@@ -294,29 +295,13 @@ module Fledge
     private def compiled_gem(gem, package, args, result)
       gem_dir = result.fetch("gem_dir").to_s
       extension_dir = result.fetch("extension_dir").to_s
-      built = new_files(package, gem_dir)
+      built = BuiltFiles.of(package, gem_dir)
       extensions = files_in(extension_dir).reject { |entry| LOGS.include?(entry.path) }
       build_info = File.join(home, "build_info", "#{package.spec.full_name}.info")
       CompiledGem.new(
         package:, built:, extensions:, extension_dir: relative_to_home(extension_dir), build_args: args,
         build_info: File.file?(build_info) ? File.read(build_info) : nil, problems: Floors.problems(gem, built + extensions, platform),
       )
-    end
-
-    # The files the build wrote into the gem's require paths, which is
-    # where RubyGems puts what an extension installs, beside the gem's own,
-    # with paths relative to the gem's folder: those the package does not
-    # have, and those whose bytes differ from the package's (a path gem's
-    # own copy of what the build wrote there, compiled by its developer for
-    # their Ruby).
-    private def new_files(package, gem_dir)
-      own = package.contents
-      package.spec.require_paths.flat_map do |folder|
-        files_in(File.join(gem_dir, folder)).filter_map do |entry|
-          path = "#{folder}/#{entry.path}"
-          entry.with(path:) unless entry.type == :directory || own[path] == entry.content.to_s
-        end
-      end
     end
 
     # The entries under +folder+, with paths relative to it.

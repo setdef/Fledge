@@ -9,8 +9,9 @@ require_relative "../test_helper"
 require "open3"
 require "stringio"
 
-# Native gems on phones (ADR 022), compiled for real: a gem's extension
-# for every target of a phone, with the real mobile runtimes and tools
+# Native gems on phones (doc/contributors/design/phone-projects.md,
+# "Gems with extensions"), compiled for real: a gem's extension for
+# every target of a phone, with the real mobile runtimes and tools
 # where this computer has them. test/mobile_extensions_test.rb covers
 # which extensions Fledge compiles and how it writes what links them.
 class MobileExtensionsBuildTest < Minitest::Test

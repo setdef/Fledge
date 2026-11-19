@@ -8,8 +8,9 @@
 require_relative "test_helper"
 require_relative "support/gems"
 
-# Native gems on phones (ADR 022): which extensions Fledge compiles, how
-# the registration unit and the link flags are written, and where an
+# Native gems on phones (doc/contributors/design/phone-projects.md,
+# "Gems with extensions"): which extensions Fledge compiles, how the
+# registration unit and the link flags are written, and where an
 # Android NDK is found. test/integration/mobile_extensions_build_test.rb
 # compiles a real gem for every target of a phone, with the real mobile
 # runtimes and tools where this computer has them.

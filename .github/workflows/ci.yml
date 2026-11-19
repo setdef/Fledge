@@ -494,8 +494,9 @@ jobs:
   # examples/cmake_phone, and examples/rust_phone, whose gems' extensions
   # are compiled for the phone, the second's C++ library by CMake from
   # its extconf.rb, with the runner's CMake, and the third's Rust by
-  # Cargo, with mise.toml's Rust and its phone targets (ADR 022;
-  # doc/contributors/design/phone-projects.md, "CMake toolchain files");
+  # Cargo, with mise.toml's Rust and its phone targets
+  # (doc/contributors/design/phone-projects.md, "Gems with extensions"
+  # and "CMake toolchain files");
   # examples/rake_phone, whose digest-crc builds its extensions from a
   # Rakefile (doc/contributors/design/phone-projects.md, "Rakefiles");
   # examples/ffi_phone,
@@ -545,7 +546,8 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       # The runtime of this Mac, whose Ruby runs mkmf to compile a gem's
-      # extension for the phone (ADR 022).
+      # extension for the phone (doc/contributors/design/phone-projects.md,
+      # "Gems with extensions").
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: runtime-arm64-darwin
@@ -619,8 +621,10 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       # fledge build android compiles a gem's extension with the NDK on the
-      # computer (ADR 022), as a developer's own: the very NDK the runtime
-      # is built with, pinned by SHA-256.
+      # computer, as a developer's own
+      # (doc/contributors/design/phone-projects.md, "Gems with
+      # extensions"): the very NDK the runtime is built with, pinned by
+      # SHA-256.
       - name: Install the pinned NDK
         run: |
           archive=$(ruby .github/scripts/fetch_pin.rb mobile ndk hosts x86_64-linux)

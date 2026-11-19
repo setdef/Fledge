@@ -21,8 +21,10 @@ require_relative "parity"
 #
 # The apps (APPS) are examples/hello; examples/mobile_app, whose pure-Ruby
 # gems Bundler sets up; examples/native_phone, whose gem has a C and C++
-# extension compiled for the phone (ADR 022), linked into the app on
-# iOS and a file Ruby loads on Android; examples/cmake_phone, whose gem's
+# extension compiled for the phone
+# (doc/contributors/design/phone-projects.md, "Gems with extensions"),
+# linked into the app on iOS and a file Ruby loads on Android;
+# examples/cmake_phone, whose gem's
 # extconf.rb builds a C++ library with CMake for each of the phone's
 # targets (doc/contributors/design/phone-projects.md, "CMake toolchain
 # files"), and whose Android host loads the native libraries a host may
@@ -30,7 +32,8 @@ require_relative "parity"
 # whose gem from rubygems.org, digest-crc, builds its C extensions from a
 # Rakefile, with mkmf, and prints whether they ran; examples/rust_phone,
 # whose gem's Rust extension (rb-sys and magnus) Cargo builds for each of
-# the phone's targets (ADR 022); examples/ffi_phone, whose ffi gem from
+# the phone's targets (doc/contributors/design/phone-projects.md, "Gems
+# with extensions"); examples/ffi_phone, whose ffi gem from
 # rubygems.org builds the libffi it bundles and calls C by name, with a
 # Ruby block as a callback; a script that requires json and csv, a bundled
 # gem, parses with prism, a bundled gem whose extension compiles its own

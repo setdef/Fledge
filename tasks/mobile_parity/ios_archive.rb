@@ -142,8 +142,10 @@ class MobileParity
 
     # The files under +root+, relative to it, that are Mach-O files, but
     # for the file +except+: libraries and programs an app of Fledge's
-    # carries none of (its extensions link into the executable, ADR 022),
-    # and that App Store Connect would want signed and in a framework.
+    # carries none of (its extensions link into the executable:
+    # doc/contributors/design/phone-projects.md, "Linking extensions on
+    # iOS"), and that App Store Connect would want signed and in a
+    # framework.
     def self.mach_o_files(root, except:)
       Dir.glob("**/*", File::FNM_DOTMATCH, base: root).select do |relative|
         path = File.join(root, relative)

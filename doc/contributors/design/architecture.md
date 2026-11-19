@@ -41,7 +41,7 @@ Fledge copies a program its developer already runs, with its project and the gem
 
 An ADR in `doc/contributors/adr/` records one decision that changed what Fledge is, and would cost much to undo: its context, the options weighed, the choice, and what it costs. Such decisions are rare. Every other choice, with its reasons, the options weighed, and its prior art, is recorded in the design document for its subject. Numbers are never reused, so the list has gaps.
 
-Dated records, such as finished plans and research notes, cite ADRs by number and section as they stood on their dates; git keeps those versions.
+Dated records, such as finished plans and research notes, cite ADRs by number and section as they stood on their dates; git keeps those versions. Everything else cites only an ADR that `doc/contributors/adr/` holds, and `test/adr_citations_test.rb` fails on any other, so deleting an ADR moves each of its citations to the design-document section that took its reasons.
 
 | ADR | Title |
 |---|---|

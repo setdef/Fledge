@@ -25,7 +25,7 @@ As it stands, a push is refused twice over. `fledge.gemspec` sets `spec.metadata
 5. **Statements that the gem is never published**: `AGENTS.md` (Releasing, "The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses"), `doc/contributors/design/releases.md` ("Where releases are"), and the handoff are true before this commit and false after it. Correct each to say what the code then does, and leave the rule that agents never push there.
 6. **`CHANGELOG.md`**: under `## [1.0.0]`, one line saying that Fledge is also on RubyGems.org, and installs with `gem "fledge", "~> 1.0"`.
 
-Then run `ruby bin/check` and push `trunk`, wait for CI to pass on every job, pin the runtimes, tag the pin commit, and let `release.yml` publish the GitHub Release, all as handoff.md describes. The tagged commit is the pin commit, which changes only `lib/fledge/SHA256SUMS`, so it carries the six changes above from its parent.
+Then run `mise x -- ruby bin/check` and push `trunk`, wait for CI to pass on every job, pin the runtimes, tag the pin commit, and let `release.yml` publish the GitHub Release, all as handoff.md describes. The tagged commit is the pin commit, which changes only `lib/fledge/SHA256SUMS`, so it carries the six changes above from its parent.
 
 ## Before you push
 

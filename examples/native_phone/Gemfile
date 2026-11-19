@@ -5,9 +5,10 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# A path gem with a C and C++ extension (ADR 022). Bundler compiles none
-# of a path gem's extensions; fledge build ios and fledge build android
-# compile this one for each of the phone's targets.
+# A path gem with a C and C++ extension. Bundler compiles none of a path
+# gem's extensions; fledge build ios and fledge build android compile
+# this one for each of the phone's targets
+# (doc/contributors/design/phone-projects.md, "Gems with extensions").
 source "https://rubygems.org"
 
 gem "adder", path: "gems/adder"

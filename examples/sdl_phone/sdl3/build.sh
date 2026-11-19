@@ -14,7 +14,9 @@
 # It writes OUT/TARGET/include and OUT/TARGET/lib for each target, the
 # names the gem's extconf.rb looks for: ios-arm64 and
 # ios-arm64-simulator, static libraries, which link into the app's
-# executable as Fledge links extensions on iOS (ADR 022); and arm64-v8a
+# executable as Fledge links extensions on iOS
+# (doc/contributors/design/phone-projects.md, "Linking extensions on
+# iOS"); and arm64-v8a
 # and x86_64, shared libraries, since SDL's Java side loads libSDL3.so
 # by name (SDLActivity.getLibraries) and SDL registers its Java methods
 # from that library's JNI_OnLoad (src/core/android/SDL_android.c, lines

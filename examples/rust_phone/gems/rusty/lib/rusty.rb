@@ -7,5 +7,6 @@
 
 # On a phone the extension is a static library linked into the app and
 # registered under the name extconf.rb gave create_rust_makefile, so this
-# require finds it without a file (ADR 022).
+# require finds it without a file
+# (doc/contributors/design/phone-projects.md, "Registering extensions").
 require "rusty/rusty"

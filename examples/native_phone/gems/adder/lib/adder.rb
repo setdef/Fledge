@@ -9,7 +9,8 @@
 # the extension by its path beside this file, where a desktop's RubyGems
 # copies the file it compiles. On Android the extension is a file there
 # too, which Ruby loads. On iOS it is linked into the app and registered
-# under the name extconf.rb gave create_makefile (ADR 022), and fledge
-# build puts a Ruby file at that path that requires it by that name, so
-# this finds it there too.
+# under the name extconf.rb gave create_makefile, and fledge build puts
+# a Ruby file at that path that requires it by that name, so this finds
+# it there too (doc/contributors/design/phone-projects.md, "Registering
+# extensions").
 require_relative "adder/adder"

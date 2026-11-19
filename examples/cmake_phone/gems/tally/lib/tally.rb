@@ -7,6 +7,7 @@
 
 # On iOS the extension is linked into the app and registered under the
 # name extconf.rb gave create_makefile, so this require finds it without
-# a file (ADR 022). On Android it is a file, as on a desktop, which Ruby
+# a file (doc/contributors/design/phone-projects.md, "Registering
+# extensions"). On Android it is a file, as on a desktop, which Ruby
 # loads from where a desktop has it.
 require "tally/tally"

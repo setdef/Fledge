@@ -6,14 +6,16 @@
 #++
 
 class Parity
-  # The mobile targets (ADR 057), on which the mobile parity
-  # check (tasks/mobile_parity.rb) runs the probe.
+  # The mobile targets (doc/contributors/design/phone-runtimes.md,
+  # "Targets"), on which the mobile parity check (tasks/mobile_parity.rb)
+  # runs the probe.
   MOBILE = RuntimeBuilder::Mobile::PLATFORMS.values.flat_map(&:targets).map(&:name).freeze
 
   # The iOS targets, whose sandbox lets an app start no program.
   IOS = RuntimeBuilder::Mobile::PLATFORMS.fetch("ios").targets.map(&:name).freeze
 
-  # The Android targets, whose runtime has a ruby program (ADR 082).
+  # The Android targets, whose runtime has a ruby program (doc/contributors/design/phone-runtimes.md,
+  # "The ruby program on Android").
   ANDROID = RuntimeBuilder::Mobile::PLATFORMS.fetch("android").targets.map(&:name).freeze
 
   # The folders of a Ruby's platform-specific files, named for its

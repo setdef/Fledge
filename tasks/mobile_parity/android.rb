@@ -80,7 +80,8 @@ class MobileParity
     # their native libraries, which the package installer then does not
     # extract: the plugin asks for it when useLegacyPackaging is false.
     # The template compresses them, so that Android extracts the ruby
-    # program where an app may run it (ADR 082).
+    # program where an app may run it (doc/contributors/design/phone-projects.md,
+    # "The Gradle project").
     UNCOMPRESSED_NATIVE_LIBRARIES = /"uncompressNativeLibraries":\s*\{[^}]*"enabled":\s*true/
 
     # Checks the release bundle +aab+ as Play would take it, in +work+:
@@ -150,7 +151,7 @@ class MobileParity
     # compressed, which FledgeRuby unpacks straight from the APK and so
     # must be stored, and a native library stored, which the package
     # installer then does not extract where an app may run the ruby
-    # program (ADR 082).
+    # program.
     def self.packed_wrongly(aligned)
       aligned.lines.filter_map do |line|
         name, compressed = line.match(/\A\s*\d+ (\S+) \(OK( - compressed)?\)\s*\z/)&.captures

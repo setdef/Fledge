@@ -30,7 +30,8 @@ class RuntimeBuilder
   # Android (Android).
   class Mobile < Recipe
     # One slice of a mobile runtime: the target name Fledge gives it
-    # (ADR 057), what Ruby calls its platform there, its
+    # (doc/contributors/design/phone-runtimes.md, "Targets"), what Ruby calls its
+    # platform there, its
     # compiler's target triple, OpenSSL's name for it, and for iOS the
     # SDK and XCFramework slice, or for Android the ABI.
     class Target < Data.define(:name, :ruby_platform, :triple, :openssl, :sdk, :slice, :abi)
@@ -73,7 +74,8 @@ class RuntimeBuilder
       ]),
     }.freeze
 
-    # Where the embedding API's C lives (ADR 061).
+    # Where the embedding API's C lives (doc/contributors/design/phone-runtimes.md,
+    # "The embedding API").
     MOBILE = File.join(ROOT, "runtime", "mobile")
 
     # Static libruby, as Ruby's build names it: libruby-static.a, or on

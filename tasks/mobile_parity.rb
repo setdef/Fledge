@@ -31,7 +31,8 @@ require_relative "parity"
 # rubygems.org builds the libffi it bundles and calls C by name, with a
 # Ruby block as a callback; a script that requires json and csv, a bundled
 # gem, parses with prism, a bundled gem whose extension compiles its own
-# libprism (ADR 067), and reaches rubygems.org over HTTPS
+# libprism (doc/contributors/design/phone-runtimes.md, "Bundled gems' extensions"), and
+# reaches rubygems.org over HTTPS
 # (test/fixtures/mobile_hello);
 # and the parity probe (test/fixtures/parity), whose report is compared
 # with the same main.rb under the desktop Ruby of the computer that runs

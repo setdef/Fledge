@@ -12,7 +12,8 @@ require_relative "../../tasks/runtime_builder"
 
 # A phone's runtime links every bundled gem's extension into one library
 # beside libruby, and prism's extension compiles its own libprism, which
-# libruby holds too, from other sources (ADR 067). Each gem's extension
+# libruby holds too, from other sources (doc/contributors/design/phone-runtimes.md,
+# "Bundled gems' extensions"). Each gem's extension
 # keeps every symbol but its Init function to itself: here a fake prism,
 # built by this computer's mkmf and compiler with the depend file
 # BundledExtensions writes and this system's tools for the recipe the

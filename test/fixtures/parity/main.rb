@@ -124,7 +124,8 @@ end
 # Whether the require loaded it, and whether racc is then active, or the
 # class of what it raised. A phone links the extension in, where no
 # file of racc's would be found but for the one fledge's runtime puts in
-# racc's extension folder (ADR 068).
+# racc's extension folder (doc/contributors/design/phone-runtimes.md,
+# "Bundled gems' extensions").
 def extension_before_its_gem
   [require("racc/cparse"), Gem.loaded_specs.key?("racc")]
 rescue LoadError => e

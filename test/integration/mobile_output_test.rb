@@ -10,7 +10,8 @@ require "open3"
 require "rbconfig"
 
 # The mobile embedding API's forwarding of standard output and standard
-# error to the system's log (runtime/mobile/output.c; ADR 078), compiled
+# error to the system's log (runtime/mobile/output.c; doc/contributors/design/phone-runtimes.md,
+# "Output to the system log"), compiled
 # with this computer's C compiler beside a log that writes each entry to
 # a file, as os_log and logcat would keep it, and run: what a program
 # prints must reach the log line by line, standard error's marked as
@@ -112,7 +113,7 @@ class MobileOutputTest < Minitest::Test
   # With OS_ACTIVITY_DT_MODE in the environment, which Xcode and other
   # developer tools set to have the unified log copy each entry to
   # standard error, and which macOS and the iOS Simulator honor whatever
-  # its value, even NO (ADR 078), forwarding standard error to os_log
+  # its value, even NO, forwarding standard error to os_log
   # would send each entry back into the pipe it came from until the pipe
   # filled and the program blocked. The streams are left as they are
   # instead: each line reaches the tool once, and the program ends.

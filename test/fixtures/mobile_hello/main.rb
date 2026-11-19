@@ -8,7 +8,8 @@
 # What the mobile runtimes promise an app, in one line (ADR 079): json, a
 # default gem, and csv, a bundled gem that RubyGems activates as a gem;
 # prism, a bundled gem whose extension compiles its own libprism beside
-# the one libruby holds (ADR 067), parsing with its extension; and HTTPS
+# the one libruby holds (doc/contributors/design/phone-runtimes.md,
+# "Bundled gems' extensions"), parsing with its extension; and HTTPS
 # to rubygems.org, which needs the CA certificates the runtime carries;
 # and YJIT, where the runtime has it (Android's, as a desktop's; iOS
 # lets an app write no code it then runs), enabled as Rails enables it,

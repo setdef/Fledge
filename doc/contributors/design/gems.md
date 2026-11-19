@@ -47,7 +47,7 @@ The lockfile does not record `required_ruby_version`, so Fledge reads it from th
 
 A gem the lockfile does not lock, or locks no build of for the target, fails, saying to run `bundle lock` or `bundle lock --add-platform`.
 
-On a phone (`Fledge::MobilePlatform`), the target is `ruby`: the lockfile must lock `ruby`, and every gem is its `ruby` build, as the app's Bundler runs with `force_ruby_platform` (ADR 057).
+On a phone (`Fledge::MobilePlatform`), the target is `ruby`: the lockfile must lock `ruby`, and every gem is its `ruby` build, as the app's Bundler runs with `force_ruby_platform` (`doc/contributors/design/phone-runtimes.md`, "Targets").
 
 ## The lockfile's Bundler
 

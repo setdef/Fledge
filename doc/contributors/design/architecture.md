@@ -16,7 +16,7 @@ Fledge copies a program its developer already runs, with its project and the gem
 - **Assembly.** For a desktop build, `fledge build` finds the project's root and program (`Fledge::App`), reads the lockfile with Bundler and picks each gem's build for the platform (`Fledge::Bundle`), fetches, installs, and when needed compiles the gems into the runtime's gem folder, downloads the runtime and checks it against the pins the gem carries (`Fledge::Runtimes`), copies the project into `app/`, writes `fledge.cfg`, gives the app its identity, signs it on request (`doc/contributors/design/signing.md`), archives it with the computer's own tar, and writes its installers. `doc/contributors/design/desktop-apps.md` and `doc/contributors/design/gems.md` describe this.
 - **Desktop runtimes.** A runtime is a relocatable CRuby, whole, with the launcher, Fledge's RubyGems defaults, the tools installers need, and the notices its licenses ask for. `tasks/runtime_builder/` builds one per platform from the inputs `runtime/sources.yml` pins (ADR 035), and the license audit (`tasks/license_audit/`, `runtime/licenses.yml`) passes each before it is archived. `doc/contributors/design/runtimes.md` and `doc/contributors/design/license-audit.md` describe them.
 - **The launcher.** `runtime/launcher/` is the C program at the top of every desktop app, and `bin/ruby` beside it. It embeds CRuby (ADR 001), runs the program as `ruby` would (ADR 081), hides the person's Ruby settings from Ruby's boot, and sets up Bundler as `bundle exec` would, with the Bundler the lockfile names. `doc/contributors/design/launcher.md` describes it.
-- **Phone runtimes.** On iOS, iPadOS, and Android, Ruby is a static library Fledge builds from source (ADR 079), with an embedding API in C, `runtime/mobile/`, that does the launcher's work (ADR 061). `fledge build ios` and `fledge build android` write a project the developer builds, signs, and submits with Xcode or Gradle (ADR 012). `doc/contributors/design/phone-runtimes.md` and `doc/contributors/design/phone-projects.md` describe them.
+- **Phone runtimes.** On iOS, iPadOS, and Android, Ruby is a static library Fledge builds from source (ADR 079), with an embedding API in C, `runtime/mobile/`, that does the launcher's work (`doc/contributors/design/phone-runtimes.md`, "The embedding API"). `fledge build ios` and `fledge build android` write a project the developer builds, signs, and submits with Xcode or Gradle (ADR 012). `doc/contributors/design/phone-runtimes.md` and `doc/contributors/design/phone-projects.md` describe them.
 - **Proof.** The parity check, the ruby/spec comparison, and Delivery prove a built app runs as Ruby runs it, on a fresh computer with no Ruby (ADR 081). `doc/contributors/design/parity.md` describes them.
 - **CI and releases.** `.github/workflows/fast.yml` runs the lint and the unit tests on Linux, macOS, and Windows on every push, in minutes, and `.github/workflows/ci.yml`, which a push to trunk never cancels, runs the gate, builds every runtime, runs the tests, the parity check, and ruby/spec, builds the example apps on each platform, delivers them on fresh runners and containers, and audits licenses. A tag runs `release.yml`, which publishes the runtimes its commit's CI built and tested, then `installed.yml`, which installs Fledge from the tag and delivers apps with the published runtimes, and `package-managers.yml`. `doc/contributors/design/releases.md` describes versions and releases, and `doc/contributors/design/public-interface.md` what a release promises.
 
@@ -52,21 +52,11 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [025](../adr/025.md) | A phone project takes its host's files from the app's own project: `ios: host:` and `android: host:` |
 | [027](../adr/027.md) | Aim an `extconf.rb`'s CMake at the phone through `CMAKE_TOOLCHAIN_FILE` |
 | [035](../adr/035.md) | Take CRuby from rv-ruby on macOS and glibc Linux, and from RubyInstaller on Windows, x64 and ARM64 |
-| [057](../adr/057.md) | Name phone targets so that no desktop gem fits them |
-| [058](../adr/058.md) | On a phone, bundled gems with extensions stay gems |
-| [061](../adr/061.md) | The phone runtime does the launcher's work, in C: `fledge_ruby_run_app` |
 | [062](../adr/062.md) | Leave export compliance to the developer |
-| [067](../adr/067.md) | On a phone, a bundled gem's extension keeps every symbol but its Init function to itself |
-| [068](../adr/068.md) | On a phone, a bundled gem's linked extension is found only while its gem is active |
 | [072](../adr/072.md) | On a phone, a gem's Rakefile runs as RubyGems runs it, and the extensions it builds with mkmf are linked in |
 | [073](../adr/073.md) | On a phone, a gem's Rust extension is built by its own extconf.rb, as a static library, and linked in |
 | [074](../adr/074.md) | fiddle and the ffi gem work on both phones |
-| [078](../adr/078.md) | A phone app's standard streams reach the system log as they are printed, with nothing an app can read changed |
 | [079](../adr/079.md) | On a phone, Ruby is a static library Fledge builds from source |
 | [080](../adr/080.md) | On a phone, a Ruby file stands where a desktop has an extension's file, and requires the linked extension |
 | [081](../adr/081.md) | An app's program runs as `ruby PROGRAM` runs it, with nothing of Fledge's between |
-| [082](../adr/082.md) | On Android, the runtime carries a ruby program the installer extracts with the app's native libraries |
-| [083](../adr/083.md) | On Android, RbConfig.ruby names the ruby program through a link at the path stock Ruby derives |
-| [088](../adr/088.md) | On a phone, a require of a linked extension's file by its path finds the extension |
-| [090](../adr/090.md) | Android's Ruby has YJIT and ZJIT, each off until the app enables it, as on a desktop |
 | [093](../adr/093.md) | Prebuild Each Platform's Runtime in Fledge's CI, and Publish It with the Release |

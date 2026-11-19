@@ -23,7 +23,8 @@ require_relative "parity"
 # gems Bundler sets up; examples/native_phone, whose gem has a C and C++
 # extension compiled for the phone and linked into the app (ADR 022);
 # examples/cmake_phone, whose gem's extconf.rb builds a C++ library with
-# CMake for each of the phone's targets (ADR 027); examples/rake_phone,
+# CMake for each of the phone's targets (doc/contributors/design/phone-projects.md,
+# "CMake toolchain files"); examples/rake_phone,
 # whose gem from rubygems.org, digest-crc, builds its C extensions from a
 # Rakefile, with mkmf, and prints whether they ran; examples/rust_phone,
 # whose gem's Rust extension (rb-sys and magnus) Cargo builds for each of

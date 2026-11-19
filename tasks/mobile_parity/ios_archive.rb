@@ -101,7 +101,8 @@ class MobileParity
 
     # What +info+ says of export compliance: ITSAppUsesNonExemptEncryption
     # is the developer's declaration to the U.S. export rules, so Fledge
-    # writes none (ADR 062) and the check reports it.
+    # writes none and the check reports it (doc/contributors/design/phone-projects.md,
+    # "Export compliance and the build number").
     def self.encryption(info)
       info.key?("ITSAppUsesNonExemptEncryption") ? "declared #{info['ITSAppUsesNonExemptEncryption']}" : "not declared"
     end

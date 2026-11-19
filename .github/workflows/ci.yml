@@ -495,9 +495,11 @@ jobs:
   # examples/cmake_phone, and examples/rust_phone, whose gems' extensions
   # are compiled for the phone, the second's C++ library by CMake from
   # its extconf.rb, with the runner's CMake, and the third's Rust by
-  # Cargo, with mise.toml's Rust and its phone targets (ADR 022, ADR
-  # 027); examples/rake_phone, whose digest-crc builds its extensions
-  # from a Rakefile (ADR 072); examples/ffi_phone,
+  # Cargo, with mise.toml's Rust and its phone targets (ADR 022;
+  # doc/contributors/design/phone-projects.md, "CMake toolchain files");
+  # examples/rake_phone, whose digest-crc builds its extensions from a
+  # Rakefile (doc/contributors/design/phone-projects.md, "Rakefiles");
+  # examples/ffi_phone,
   # whose ffi gem builds its own libffi and calls C with a Ruby block as
   # a callback; a script that requires json and csv,
   # a bundled gem, and reaches rubygems.org over HTTPS; and the parity

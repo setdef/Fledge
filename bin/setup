@@ -19,10 +19,10 @@ if [[ -n "${CI:-}" && -z "${BUNDLE_PATH:-}" ]]; then
 fi
 
 if command -v mise >/dev/null 2>&1; then
-  # Every tool mise.toml pins: Ruby, the REUSE tool, actionlint,
-  # shellcheck, and the rest. mise install trusts mise.toml itself, as
-  # mise trust would (mise.toml, min_version, says why), so no mise
-  # trust comes first; it installs only what is missing.
+  # Every tool mise.toml pins: Ruby, the REUSE tool, actionlint, and
+  # the rest, shellcheck among them. mise install trusts mise.toml
+  # itself, as mise trust would (mise.toml, min_version, says why), so
+  # no mise trust comes first; it installs only what is missing.
   mise install
   # Later commands, such as bundle exec rake, find the workspace's gems
   # through .bundle/config, which git ignores.

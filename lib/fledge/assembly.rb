@@ -228,7 +228,7 @@ module Fledge
 
     # The contents of CONFIG for +app+ (#launch_config), which the
     # launcher reads, and on a phone the embedding API's
-    # <tt>fledge_ruby_run_app</tt> (ADR 061), whose first line says it was
+    # <tt>fledge_ruby_run_app</tt>, whose first line says it was
     # written by fledge build, and, given +built+, which release and for
     # which platform, such as <tt>0.5.0 for x86_64-linux</tt>. Given
     # +bundler+, a version, it names the Bundler the app's gems are set up

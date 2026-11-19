@@ -60,7 +60,8 @@ const char *fledge_ruby_certificates(void);
 /*
  * Makes root/bin/ruby, where RbConfig.ruby looks, a link to the
  * runtime's ruby program, where the system lets an app run one, before
- * Ruby boots in the app (android.c, ADR 082). iOS lets no app run a
+ * Ruby boots in the app (android.c; doc/contributors/design/phone-runtimes.md,
+ * "The ruby program on Android"). iOS lets no app run a
  * program, so apple.c does nothing.
  */
 void fledge_ruby_link_program(const char *root);
@@ -76,7 +77,7 @@ int fledge_link_libraries(const char *root, const char *folder, const char *abi)
 
 /*
  * The main function of the runtime's ruby program, with Ruby's prefix
- * at root (fledge_ruby.c, ADR 082): Ruby's main.c, with the locale and
+ * at root (fledge_ruby.c): Ruby's main.c, with the locale and
  * the certificates as fledge_ruby_run has them, and the extensions an
  * app links registered; and, when its first argument is the program
  * root/fledge.cfg names, fledge_ruby_run_app with the arguments after

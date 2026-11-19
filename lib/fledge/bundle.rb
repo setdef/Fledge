@@ -86,7 +86,7 @@ module Fledge
     # current machine's platform and install only <tt>ruby</tt> platform
     # gems" (<tt>lib/bundler/man/bundle-config.1.ronn</tt>, at Bundler
     # 4.0.20), so that an iOS Ruby, which reports <tt>arm64-darwin</tt>,
-    # never resolves a macOS gem (ADR 057).
+    # never resolves a macOS gem (doc/contributors/design/phone-runtimes.md, "Targets").
     FORCE_RUBY_PLATFORM = "BUNDLE_FORCE_RUBY_PLATFORM: \"true\"\n"
 
     # Where Bundler finds a path gem's gemspecs (Bundler::Source::Path,
@@ -246,8 +246,8 @@ module Fledge
     # Gem::Platform#===): <tt>arm64-darwin</tt> and
     # <tt>arm64-darwin-23</tt> fit rv-ruby's <tt>arm64-darwin23</tt>, and
     # <tt>arm64-darwin-24</tt> does not. A Fledge::MobilePlatform's app
-    # runs Bundler with <tt>force_ruby_platform</tt> (ADR 057),
-    # as which the lockfile must lock +ruby+, and each gem is its +ruby+
+    # runs Bundler with <tt>force_ruby_platform</tt>, as which the lockfile
+    # must lock +ruby+, and each gem is its +ruby+
     # build. A gem from a gem server whose best build for +platform+ has a
     # +required_ruby_version+ that excludes +ruby_version+ gives way to
     # its source build, as the built app's Bundler would choose it

@@ -22,7 +22,8 @@ module Fledge
   # phone runtime holds"), named for the system, and no gem publishes a
   # build for any of them, so each of an app's gems is its +ruby+ build,
   # which Bundler picks, as it would on any computer it resolved no
-  # build for, with <tt>force_ruby_platform</tt> (ADR 057).
+  # build for, with <tt>force_ruby_platform</tt> (doc/contributors/design/phone-runtimes.md,
+  # "Targets").
   #
   # This class names the two, says on which computers each is built, and
   # answers what Fledge::Bundle and Fledge::AppGems ask of a target.

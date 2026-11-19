@@ -34,7 +34,7 @@
  *     (fledge_ruby_certificates).
  *   - Nothing is set aside from the environment: iOS and Android start
  *     an app with their own environment, which no person sets, so there
- *     is no RUBYOPT or GEM_HOME of a person's own to hide (ADR 061),
+ *     is no RUBYOPT or GEM_HOME of a person's own to hide,
  *     and so nothing to pin RubyGems' paths against or to
  *     put back once Bundler is set up.
  *   - On Android, bionic's fdsan warns once in logcat where it would
@@ -54,7 +54,8 @@
  * Bundler 4.0.20).
  *
  * fledge_ruby_main is the main function of the Android runtime's ruby
- * program, which RbConfig.ruby names in an app (ADR 083). It is what the
+ * program, which RbConfig.ruby names in an app (doc/contributors/design/phone-runtimes.md,
+ * "The ruby program on Android"). It is what the
  * desktop's bin/ruby is (runtime/launcher/ruby_main.c): Ruby's main.c,
  * with the launcher's locale, and with the app's own program handed to
  * the app's way of starting, as fledge_relaunch hands it to the launcher,

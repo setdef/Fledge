@@ -27,8 +27,8 @@ module Fledge
   # the path of its <tt>specifications</tt> folder, the full name of every
   # gem specification in it, the Ruby version RubyGems and Bundler compare
   # gems and Gemfiles with (Gem.ruby_version), from RbConfig's MAJOR,
-  # MINOR, TEENY, and PATCHLEVEL and the runtime's DESCRIPTION file, the
-  # file name of
+  # MINOR, TEENY, and PATCHLEVEL and the runtime's DESCRIPTION file, and
+  # that patch level, the file name of
   # every shared library it holds, and the architecture its rbconfig.rb
   # records, which is the platform RubyGems and Bundler see when the app
   # runs (Gem::Platform.local), whatever computer it runs on.
@@ -45,12 +45,13 @@ module Fledge
   #   contents = Fledge::RuntimeContents.read("fledge-runtime-0.0.1-x64-mingw-ucrt.tar.gz")
   #   contents.gem_dir                    # => "ruby/lib/ruby/gems/4.1.0+5"
   #   contents.ruby_version               # => "4.1.0.dev"
+  #   contents.patchlevel                 # => "-1"
   #   contents.gems.include?("csv-3.3.5") # => true
   #   contents.arch                       # => "x64-mingw-ucrt"
   #--
   # SPDX-SnippetEnd
   #++
-  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :libraries, :arch, :path, :plugins, :binaries)
+  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :patchlevel, :libraries, :arch, :path, :plugins, :binaries)
     ##
     # :attr_reader: gem_dir
     # Ruby's gem folder, relative to the runtime's top folder.
@@ -65,6 +66,13 @@ module Fledge
     # The runtime's Ruby version as its RubyGems reports it
     # (Gem.ruby_version), such as <tt>4.1.0</tt>, <tt>4.1.0.preview1</tt>
     # for a preview, or <tt>4.1.0.dev</tt> for a build of Ruby's master.
+
+    ##
+    # :attr_reader: patchlevel
+    # The runtime's Ruby's patch level, RbConfig's PATCHLEVEL, which is
+    # its RUBY_PATCHLEVEL: <tt>-1</tt> for a preview or a build of Ruby's
+    # master, and <tt>0</tt> or more for a release. Bundler before 4.1
+    # compares a Gemfile's patch level with it (Bundler::RubyVersion.system).
 
     ##
     # :attr_reader: arch
@@ -163,6 +171,7 @@ module Fledge
       gems = [] # : Array[String]
       version = nil # : String?
       arch = nil # : String?
+      patchlevel = ""
       libraries = [] # : Array[String]
       plugins = [] # : Array[String]
       inside_all = [] # : Array[String]
@@ -188,13 +197,14 @@ module Fledge
         content = Archive.read(path, rbconfig)
         version = ruby_version_in(content, description && Archive.read(path, description).force_encoding(Encoding::UTF_8))
         arch = content[ARCH, 1]
+        patchlevel = content.scan(VERSION_PARTS).to_h["PATCHLEVEL"].to_s
       end
       raise Error, "#{path} is not a Fledge runtime: its rbconfig.rb names no arch" if version && arch.nil?
 
       contents = build(path, gem_dirs.uniq, gems, version)
       prefix = "#{contents.bin_dir}/"
       binaries = inside_all.select { |inside| inside.start_with?(prefix) && !inside.end_with?("/") }
-      contents.with(libraries: libraries.uniq.sort.freeze, arch: arch.to_s, plugins: plugins.sort.freeze, binaries: binaries.sort.freeze)
+      contents.with(patchlevel:, libraries: libraries.uniq.sort.freeze, arch: arch.to_s, plugins: plugins.sort.freeze, binaries: binaries.sort.freeze)
     end
 
     # The tool +name+ the runtime keeps in its <tt>tools</tt> folder
@@ -250,7 +260,7 @@ module Fledge
       raise Error, "#{path} is not a Fledge runtime: it holds no one gem folder (#{gem_dirs.join(', ')})" unless gem_dirs.size == 1
       raise Error, "#{path} is not a Fledge runtime: it holds no rbconfig.rb" unless version
 
-      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, libraries: [], arch: "", path:, plugins: [], binaries: [])
+      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, patchlevel: "", libraries: [], arch: "", path:, plugins: [], binaries: [])
     end
   end
 end

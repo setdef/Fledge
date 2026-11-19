@@ -126,10 +126,12 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def for(platform, runtime:)
-      locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, arch: runtime.arch) { |gem| required_ruby(gem) }
-        .reject { |gem| !gem.is_a?(PathGem) && runtime.gems.include?(gem.full_name) }
-      bundler = locked_bundler(runtime)
+      running = runtime.gems.filter_map { |name| name[/\Abundler-(\d[^-]*)\z/, 1] }.first.to_s
+      bundler = locked_bundler(runtime, running)
       @bundler = bundler&.version
+      locked = @bundle.gems_for(platform, ruby_version: runtime.ruby_version, patchlevel: runtime.patchlevel, bundler: @bundler || running,
+        arch: runtime.arch) { |gem| required_ruby(gem) }
+        .reject { |gem| !gem.is_a?(PathGem) && runtime.gems.include?(gem.full_name) }
       locked << bundler if bundler
       packages = locked.to_h { |gem| [gem, package_for(gem)] } # : Hash[locked_gem, package]
       stubs = [] # : Array[Entry]
@@ -167,11 +169,11 @@ module Fledge
     #++
     attr_reader :bundler
 
-    # The Bundler the lockfile names in place of +runtime+'s own, as a
-    # Fledge::LockedGem, or +nil+ for the runtime's, or for a runtime
-    # with no Bundler at all.
-    private def locked_bundler(runtime)
-      running = runtime.gems.filter_map { |name| name[/\Abundler-(\d[^-]*)\z/, 1] }.first or return nil
+    # The Bundler the lockfile names in place of +runtime+'s own, version
+    # +running+, as a Fledge::LockedGem, or +nil+ for the runtime's, or
+    # for a runtime with no Bundler at all (+running+ empty).
+    private def locked_bundler(runtime, running)
+      return nil if running.empty?
 
       @bundle.bundler_for(running, ruby_version: runtime.ruby_version) { |gem| required_ruby(gem) }
     end

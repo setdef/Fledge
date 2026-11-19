@@ -55,7 +55,8 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   bundle = Fledge::Bundle.new(Fledge::App.at("examples/my_cool_app"))
-  #   bundle.gems_for(Fledge::Platform.find("x64-mingw-ucrt"), ruby_version: "4.1.0", arch: "x64-mingw-ucrt").map(&:to_s)
+  #   bundle.gems_for(Fledge::Platform.find("x64-mingw-ucrt"), ruby_version: "4.1.0.dev", patchlevel: "-1",
+  #     bundler: "4.1.0.beta3", arch: "x64-mingw-ucrt").map(&:to_s)
   #   # => ["concurrent-ruby 1.3.8", "i18n 1.15.2", "sqlite3 2.10.2 (x64-mingw-ucrt)"]
   #--
   # SPDX-SnippetEnd
@@ -92,6 +93,18 @@ module Fledge
     # Where Bundler finds a path gem's gemspecs (Bundler::Source::Path,
     # DEFAULT_GLOB).
     GEMSPECS = "{,*,*/*}.gemspec"
+
+    # The Bundlers that compare a Gemfile's patch level with the running
+    # Ruby's: every one before 4.1 (Bundler::RubyVersion#diff,
+    # <tt>bundler/ruby_version.rb</tt>, lines 99 and 100, at Bundler
+    # 4.0.22), and none from 4.1.0.beta1 on (lines 91 to 100 there).
+    PATCHLEVEL_BUNDLERS = Gem::Requirement.new("< 4.1.0.a")
+
+    # What #check_ruby adds when such a Bundler refuses the patch level -1
+    # it gave a Gemfile whose first version is a prerelease
+    # (Bundler::RubyVersion#initialize).
+    PRERELEASE_FIRST = " Bundler before 4.1 asks for patch level -1 when the first version a Gemfile's ruby names is a prerelease; " \
+      "name a release first, as in ruby \"< 4.2\", \">= 4.1.0.a\"."
 
     # Reads +app+'s Gemfile and lockfile. Raises Fledge::Error when there
     # is no lockfile, when Bundler cannot read either, or when the
@@ -239,7 +252,11 @@ module Fledge
     # the groups Bundler's +without+ setting leaves out, and gems the
     # Gemfile limits to other platforms.
     # +ruby_version+ is the runtime's Ruby, for a dependency limited to
-    # some Ruby versions, and +arch+ its architecture (RbConfig's), whose
+    # some Ruby versions, +patchlevel+ its RbConfig's PATCHLEVEL, and
+    # +bundler+ the version of the Bundler the app runs
+    # (Fledge::AppGems#bundler, or the runtime's own), which judge the
+    # Gemfile's +ruby+ as the app's Bundler will at its start; +arch+ is
+    # the runtime's architecture (RbConfig's), whose
     # RubyGems platform is the one the built app's Bundler runs as, so a
     # lockfile platform and a gem's build fit +platform+ exactly when they
     # would fit there (Bundler::Definition#current_platform_locked? and
@@ -267,14 +284,15 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   bundle.gems_for(Fledge::Platform.find("x86_64-linux"), ruby_version: "4.1.0", arch: "x86_64-linux").last.platform
+    #   bundle.gems_for(Fledge::Platform.find("x86_64-linux"), ruby_version: "4.1.0.preview1", patchlevel: "-1",
+    #     bundler: "4.1.0.beta2", arch: "x86_64-linux").last.platform
     #   # => "x86_64-linux-gnu"
     #--
     # SPDX-SnippetEnd
     #++
-    def gems_for(platform, ruby_version:, arch:, &required_ruby)
+    def gems_for(platform, ruby_version:, patchlevel:, bundler:, arch:, &required_ruby)
       target = Gem::Platform.new(platform.force_ruby_platform? ? Gem::Platform::RUBY : arch)
-      check_ruby(ruby_version, platform)
+      check_ruby(ruby_version, patchlevel, bundler, platform)
       check_locked(platform, target)
       runs = -> (spec) { runs?(spec, platform, Gem::Version.new(ruby_version), required_ruby) }
       # Bundler's settings (a mirror, a login) are read from the project's
@@ -359,15 +377,43 @@ module Fledge
     end
 
     # Refuses a Gemfile whose +ruby+ the runtime's Ruby, +ruby_version+ as
-    # RubyGems reports it (Fledge::RuntimeContents#ruby_version), does not
-    # satisfy, as the app's Bundler would refuse it at every start
-    # (Bundler::Definition#validate_ruby!).
-    private def check_ruby(ruby_version, platform)
+    # RubyGems reports it (Fledge::RuntimeContents#ruby_version) at
+    # +patchlevel+, does not satisfy, as the app's Bundler, version
+    # +bundler+, would refuse it at every start
+    # (Bundler::Definition#validate_ruby!). The Bundler that runs
+    # <tt>fledge build</tt> answers for the version; the patch level is
+    # judged as +bundler+ judges it (#patchlevel_refused?).
+    private def check_ruby(ruby_version, patchlevel, bundler, platform)
       wanted = @definition.ruby_version or return
-      return unless wanted.diff(Bundler::RubyVersion.new([ruby_version], nil, "ruby", ruby_version))
+      problem = wanted.diff(Bundler::RubyVersion.new([ruby_version], patchlevel, "ruby", ruby_version))&.first
+      wants = "#{@app.gemfile} asks for Ruby #{wanted.versions.join(', ')}"
+      raise Error, "#{wants}, and Fledge's runtime for #{platform} is Ruby #{ruby_version}." unless [nil, :patchlevel].include?(problem)
+      return unless patchlevel_refused?(wanted.patchlevel, patchlevel, bundler)
 
-      raise Error, "#{@app.gemfile} asks for Ruby #{wanted.versions.join(', ')}, and Fledge's runtime for #{platform} is Ruby #{ruby_version}."
+      advice = (wanted.patchlevel == "-1") ? PRERELEASE_FIRST : ""
+      raise Error, "#{wants} at patch level #{wanted.patchlevel}, and Fledge's runtime for #{platform} is Ruby #{ruby_version} " \
+        "at patch level #{patchlevel}, which the app's Bundler, #{bundler}, refuses.#{advice}"
     end
+
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-License-Identifier: MIT
+    # SPDX-SnippetCopyrightText: 2010-2019 André Arko, 2009 Engine Yard
+    # SPDX-SnippetComment: Bundler::RubyVersion#diff's patch level clause
+    #   and #matches?, adapted from bundler/ruby_version.rb at Bundler
+    #   4.0.22 (lines 99 to 100 and 126 to 133), with the runtime's patch
+    #   level as the running Ruby's, for the Bundler +bundler+.
+    #++
+    private def patchlevel_refused?(wanted, patchlevel, bundler)
+      return false unless wanted && PATCHLEVEL_BUNDLERS.satisfied_by?(Gem::Version.new(bundler))
+      return true unless wanted.is_a?(String)
+      return wanted != patchlevel if wanted == "-1" || patchlevel == "-1"
+
+      !Gem::Requirement.create(wanted).satisfied_by?(Gem::Version.create(patchlevel))
+    end
+    #--
+    # SPDX-SnippetEnd
+    #++
 
     #--
     # SPDX-SnippetBegin

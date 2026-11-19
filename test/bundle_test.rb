@@ -36,7 +36,7 @@ class BundleTest < Minitest::Test
     Fledge::Bundle.new(Fledge::App.at(root))
   end
 
-  def gems(bundle, platform) = bundle.gems_for(platform, ruby_version: "4.0.9", arch: FakeRuntime::ARCH.fetch(platform.name))
+  def gems(bundle, platform) = bundle.gems_for(platform, ruby_version: "4.0.9", patchlevel: "9", bundler: "4.0.20", arch: FakeRuntime::ARCH.fetch(platform.name))
 
   def names(bundle, platform) = gems(bundle, platform).map(&:to_s)
 
@@ -91,7 +91,7 @@ class BundleTest < Minitest::Test
       locked_dependencies: { source.lock_name => ["helper (>= 0)"] })
     requirement = -> (gem) { Gem::Package.new(built.fetch(gem.full_name)).spec.required_ruby_version }
 
-    picked = -> (ruby_version) { bundle.gems_for(LINUX, ruby_version:, arch: "x86_64-linux", &requirement).map(&:to_s) }
+    picked = -> (ruby_version) { bundle.gems_for(LINUX, ruby_version:, patchlevel: "9", bundler: "4.0.20", arch: "x86_64-linux", &requirement).map(&:to_s) }
 
     assert_equal ["helper 1.0.0", "lite 1.0.0"], picked.call("4.0.9")
     assert_equal ["lite 1.0.0 (x86_64-linux-gnu)"], picked.call("3.4.9")
@@ -250,12 +250,46 @@ class BundleTest < Minitest::Test
     lock = File.join(root, "Gemfile.lock")
     File.write(lock, File.read(lock).sub("BUNDLED WITH", "RUBY VERSION\n  ruby 4.1.0.preview1\n\nBUNDLED WITH"))
     bundle = Fledge::Bundle.new(Fledge::App.at(root))
-    gems = -> (platform, version) { bundle.gems_for(platform, ruby_version: version, arch: FakeRuntime::ARCH.fetch(platform.name)) }
+    gems = lambda do |platform, version|
+      bundle.gems_for(platform, ruby_version: version, patchlevel: "-1", bundler: "4.0.22", arch: FakeRuntime::ARCH.fetch(platform.name))
+    end
 
     assert_empty gems.call(LINUX, "4.1.0.preview1")
     error = assert_raises(Fledge::Error) { gems.call(WINDOWS, "4.1.0.dev") }
     assert_equal "Gemfile asks for Ruby 4.1.0.preview1, and Fledge's runtime for x64-mingw-ucrt is Ruby 4.1.0.dev.", error.message
     assert_raises(Fledge::Error) { gems.call(LINUX, "4.1.0") }
+  end
+
+  # Bundler gives a Gemfile's ruby patch level -1 when the first version
+  # it names is a prerelease, and the running Ruby its RUBY_PATCHLEVEL
+  # (Bundler::RubyVersion#initialize and .system); Bundler before 4.1
+  # refuses a patch level that differs, and 4.1 compares none
+  # (RubyVersion#diff). So the same Gemfile starts on a preview, whose
+  # patch level is -1, under either, and on a release, whose patch level
+  # is 0, only under 4.1, whichever Bundler runs fledge build. The
+  # lockfile's RUBY VERSION carries the Gemfile's patch level, which the
+  # Bundler of these tests, before 4.1, would otherwise unlock.
+  def test_a_gemfiles_patch_level_is_judged_as_the_apps_bundler_judges_it
+    gems = lambda do |ruby, version, patchlevel, bundler, locked: patchlevel|
+      root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "ruby #{ruby}\n")
+      lock = File.join(root, "Gemfile.lock")
+      File.write(lock, File.read(lock).sub("BUNDLED WITH", "RUBY VERSION\n  ruby #{version}p#{locked}\n\nBUNDLED WITH"))
+      Fledge::Bundle.new(Fledge::App.at(root)).gems_for(LINUX, ruby_version: version, patchlevel:, bundler:, arch: "x86_64-linux")
+    end
+    prerelease_first = "\">= 4.1.0.a\", \"< 4.2\""
+
+    assert_empty gems.call(prerelease_first, "4.1.0.preview1", "-1", "4.0.22")
+    assert_empty gems.call(prerelease_first, "4.1.0", "-1", "4.0.22"), "a runtime that records no description, as Bundler 4.0 on it"
+    assert_empty gems.call(prerelease_first, "4.1.0", "0", "4.1.0.beta3", locked: "-1")
+    assert_empty gems.call("\"< 4.2\", \">= 4.1.0.a\"", "4.1.0", "0", "4.0.22")
+    assert_empty gems.call("\"4.1.0\", patchlevel: \"0\"", "4.1.0", "0", "4.0.22")
+    error = assert_raises(Fledge::Error) { gems.call(prerelease_first, "4.1.0", "0", "4.0.22", locked: "-1") }
+    assert_equal "Gemfile asks for Ruby >= 4.1.0.a, < 4.2 at patch level -1, and Fledge's runtime for x86_64-linux is " \
+      "Ruby 4.1.0 at patch level 0, which the app's Bundler, 4.0.22, refuses. Bundler before 4.1 asks for patch level -1 " \
+      "when the first version a Gemfile's ruby names is a prerelease; name a release first, as in ruby \"< 4.2\", \">= 4.1.0.a\".",
+      error.message
+    assert_raises(Fledge::Error) { gems.call("\"4.1.0\", patchlevel: \"5\"", "4.1.0", "0", "4.0.22", locked: "5") }
+    assert_empty gems.call("\"4.1.0\", patchlevel: \"5\"", "4.1.0", "0", "4.1.0.beta3", locked: "5")
   end
 
   def test_a_lockfile_the_gemfile_has_moved_past_is_refused_in_bundlers_words

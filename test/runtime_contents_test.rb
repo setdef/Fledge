@@ -93,14 +93,17 @@ class RuntimeContentsTest < Minitest::Test
           *(description ? [Fledge::Entry.file("RUBY_DESCRIPTION", "#{description}\n")] : []),
         ]
         path = File.join(dir, "runtime-#{entries.hash}.tar.gz")
-        Fledge::RuntimeContents.read(FakeRuntime.pack(path, "top", entries), under:).ruby_version
+        Fledge::RuntimeContents.read(FakeRuntime.pack(path, "top", entries), under:)
       end
 
-      assert_equal "4.1.0.preview1", read.call("-1", "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)")
-      assert_equal "4.1.0.dev", read.call("-1", "ruby 4.1.0dev (2026-11-10 master 0e25874222)")
-      assert_equal "4.1.0.preview1", read.call("-1", "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)", under: "FledgeRuby.xcframework/ios-arm64/")
-      assert_equal "4.1.0", read.call("0", "ruby 4.1.0p0 (2026-12-25 revision 0123456789)"), "a release's version is RUBY_VERSION"
-      assert_equal "4.1.0", read.call("-1", nil), "a runtime that records no description"
+      assert_equal "4.1.0.preview1", read.call("-1", "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)").ruby_version
+      assert_equal "4.1.0.dev", read.call("-1", "ruby 4.1.0dev (2026-11-10 master 0e25874222)").ruby_version
+      assert_equal "4.1.0.preview1",
+        read.call("-1", "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)", under: "FledgeRuby.xcframework/ios-arm64/").ruby_version
+      release = read.call("0", "ruby 4.1.0p0 (2026-12-25 revision 0123456789)")
+      assert_equal "4.1.0", release.ruby_version, "a release's version is RUBY_VERSION"
+      assert_equal "4.1.0", read.call("-1", nil).ruby_version, "a runtime that records no description"
+      assert_equal ["0", "-1"], [release.patchlevel, read.call("-1", nil).patchlevel], "RUBY_PATCHLEVEL, which Bundler compares too"
     end
   end
 end

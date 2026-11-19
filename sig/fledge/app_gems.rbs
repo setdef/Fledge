@@ -23,7 +23,7 @@ module Fledge
 
     attr_reader bundler: String?
 
-    private def locked_bundler: (RuntimeContents runtime) -> LockedGem?
+    private def locked_bundler: (RuntimeContents runtime, String running) -> LockedGem?
 
     def extension_packages: () -> Hash[locked_gem, package]
 

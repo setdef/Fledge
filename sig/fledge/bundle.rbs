@@ -5,6 +5,8 @@ module Fledge
   class Bundle
     SETTINGS: String
     GEMSPECS: String
+    PATCHLEVEL_BUNDLERS: Gem::Requirement
+    PRERELEASE_FIRST: String
     GEMSPEC_LOADS: String
     FORCE_RUBY_PLATFORM: String
 
@@ -37,7 +39,7 @@ module Fledge
 
     private def checksums: (String text) -> Hash[String, String]
 
-    def gems_for: (target platform, ruby_version: String, arch: String) ?{ (LockedGem gem) -> Gem::Requirement } -> Array[locked_gem]
+    def gems_for: (target platform, ruby_version: String, patchlevel: String, bundler: String, arch: String) ?{ (LockedGem gem) -> Gem::Requirement } -> Array[locked_gem]
 
     def bundler_for: (String running, ruby_version: String) ?{ (LockedGem gem) -> Gem::Requirement } -> LockedGem?
 
@@ -45,7 +47,9 @@ module Fledge
 
     private def runs?: (Bundler::LazySpecification spec, target platform, Gem::Version version, (^(LockedGem gem) -> Gem::Requirement)? required_ruby) -> bool
 
-    private def check_ruby: (String ruby_version, target platform) -> void
+    private def check_ruby: (String ruby_version, String patchlevel, String bundler, target platform) -> void
+
+    private def patchlevel_refused?: (Object? wanted, String patchlevel, String bundler) -> bool
 
     private def check_locked: (target platform, Gem::Platform target) -> void
 

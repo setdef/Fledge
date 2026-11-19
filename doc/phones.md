@@ -29,7 +29,7 @@ For each case, see [`examples/native_phone`](../examples/native_phone), [`exampl
 
 ## Frameworks that start the app themselves
 
-Some frameworks, such as SDL3, need their startup files on each phone. Name a folder of them under `ios: host:` and `android: host:` in `fledge.yml`, and `fledge build` copies them over the project it writes. [`examples/sdl_phone`](../examples/sdl_phone) is a game loop that uses this.
+Some frameworks, such as SDL3, need their startup files on each phone. Name a folder of them under `ios: host:` and `android: host:` in `fledge.yml`, and `fledge build` copies them over the project it writes. [`examples/sdl_phone`](../examples/sdl_phone) is a game loop that uses this. On Android, Fledge loads the app's extensions itself before Ruby starts, so a host need load no library of the app's; one that loads its libraries by name in a fixed list, as SDL's does, may name `fledgeruby` and, in an app with a compiled extension, `fledgeext`, and no other library Fledge puts in the app. [`examples/cmake_phone`](../examples/cmake_phone) has such a host.
 
 ## The privacy manifest
 
@@ -130,7 +130,7 @@ What follows holds on a OnePlus Nord with Android 14 (API 34).
 
 - **No terminal.** An app's standard output goes to the system log. Fledge has `$stdout` write each line as it prints, as Ruby writes to a terminal, where a desktop program writing to a pipe buffers; `$stdout.sync` and `$stdout.tty?` stay false, as under `ruby main.rb` with its output to a pipe. Standard input is at its end, and the working directory is `/`.
 - **Stopped in the background.** The system may stop an app that is not in front without running `at_exit`. Save what matters as you go.
-- **Native code in the app.** A phone's Ruby links each extension in, and holds no `archdir` of them; `RbConfig::CONFIG["archdir"]` names a folder with no extensions in it.
+- **Native code in the app.** A phone's Ruby links its own extensions in, and holds no `archdir` of them; `RbConfig::CONFIG["archdir"]` names a folder with no extensions in it. A gem's extension is required as on a desktop (see "Gems with extensions").
 
 ## What has run where
 

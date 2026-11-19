@@ -12,7 +12,7 @@ project(tally LANGUAGES CXX)
 add_library(tally STATIC tally.cc)
 target_compile_features(tally PRIVATE cxx_std_17)
 # The library is linked into a Ruby extension, a shared library on a
-# desktop, so it is position-independent everywhere.
+# desktop and on Android, so it is position-independent everywhere.
 set_target_properties(tally PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_definitions(tally PRIVATE
   TALLY_CMAKE_VERSION="${CMAKE_VERSION}"

@@ -8,8 +8,10 @@
 # The app that shows a phone's CMake toolchain files at work
 # (doc/contributors/design/phone-projects.md, "CMake toolchain files"), on
 # iOS, iPadOS, and Android: a gem whose
-# extconf.rb builds a C++ library with CMake, linked into the app with
-# the C extension over it. The library says which system CMake
+# extconf.rb builds a C++ library with CMake, linked into the C
+# extension over it. On Android the app has a host of its own, which
+# loads the native libraries a host may name, as a framework's does
+# (host/android). The library says which system CMake
 # configured it for and which processor its compiler aimed at, so the
 # line the Mobile apps jobs read from the system log shows that CMake
 # cross-compiled it for the phone.

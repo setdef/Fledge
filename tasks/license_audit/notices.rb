@@ -26,6 +26,10 @@ class LicenseAudit
     RELEASES = "https://github.com/setdef/Fledge/releases/download"
     LICENSE_FILE = /\A(?:LICEN[CS]E|COPYING|BSDL|MIT-LICENSE|PSFL|LEGAL|license_of_)/i
     RUBY_LICENSES = ["Ruby", "Ruby OR BSD-2-Clause", "BSD-2-Clause OR Ruby"].freeze
+    # The component of runtime/licenses.yml whose files are Fledge's
+    # RubyGems defaults, and on a desktop, where it lists the launcher
+    # among its binaries, the launcher too; a phone runtime has none.
+    LAUNCHER = "fledge"
 
     def initialize(report, version:, map:)
       @report = report
@@ -129,8 +133,7 @@ class LicenseAudit
         "",
         <<~OURS,
           These files are Fledge's own work, copyright 2026 setdef, under the
-          MIT License (its text is below, as fledge/LICENSE). The program the
-          app's user runs is the first, renamed for the app:
+          MIT License (its text is below, as fledge/LICENSE). #{started(ours)}
 
           #{files}
 
@@ -141,6 +144,18 @@ class LicenseAudit
 
         OURS
       ]
+    end
+
+    # Which of Fledge's files +ours+ starts the app: on a desktop the
+    # launcher, the first, which fledge build renames for the app, and
+    # which LAUNCHER lists among its binaries there; on a phone, which
+    # has no launcher, the embedding API, through which the app's host
+    # starts Ruby.
+    private def started(ours)
+      launcher = ours.any? { |component| component.id == LAUNCHER && !component.binaries.empty? }
+      return "The program the\napp's user runs is the first, renamed for the app:" if launcher
+
+      "The app's host,\nwhich its developer builds, starts Ruby through them:"
     end
 
     private def lgpl(present)

@@ -380,6 +380,27 @@ class LicenseAuditTest < Minitest::Test
     end
   end
 
+  # A desktop runtime's first file of Fledge's is its launcher, which
+  # fledge build renames for the app; a phone runtime has none, and the
+  # app's host, which its developer builds, starts Ruby through Fledge's
+  # embedding API.
+  def test_only_a_desktops_notices_name_the_program_the_apps_user_runs
+    audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
+    linux = LicenseAudit::Notices.new(audit_run.call, version: "0.0.0", map: audit_run.map).text
+    Dir.mktmpdir do |tree|
+      FileUtils.mkdir_p([File.join(tree, "include"), File.join(tree, "lib/ruby/4.1.0+5/rubygems/defaults")])
+      File.write(File.join(tree, "include/fledge_ruby.h"), "int fledge_ruby_run_app(void);\n")
+      File.write(File.join(tree, "lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb"), "# Fledge's RubyGems defaults for a built app.\n")
+      phone = LicenseAudit.new(platform: "android", tree:, fledge_version: "0.0.0")
+      android = LicenseAudit::Notices.new(phone.call, version: "0.0.0", map: phone.map).text
+
+      assert_includes linux, "The program the\napp's user runs is the first, renamed for the app:\n\n  launcher\n"
+      assert_includes android,
+        "as fledge/LICENSE). The app's host,\nwhich its developer builds, starts Ruby through them:\n\n  include/fledge_ruby.h\n"
+      refute_includes android, "user runs"
+    end
+  end
+
   # Each Linux runtime's bundle holds libxcrypt's source, and, since
   # libfuse is linked into AppImage's runtime, the runtime's own source
   # and libfuse's (LGPL-2.1, section 6(a)), each with its license and how

@@ -88,6 +88,26 @@ class DownloadCache
     end
   end
 
+  # Removes from the folder everything but the folders named for a
+  # SHA-256 in +pinned+, so a set CI restored from an earlier run drops
+  # the files of pins changed since, rather than growing with each. A
+  # file removed that a build still wanted is only downloaded again.
+  def prune(pinned)
+    keep = pinned.to_set(&:downcase)
+    Dir.children(@folder).each { |name| FileUtils.rm_rf(File.join(@folder, name)) unless keep.include?(name) } if Dir.exist?(@folder)
+    nil
+  end
+
+  # The SHA-256 of the list of files the folder holds, each as
+  # <tt>SHA256/NAME</tt>, sorted, without the lock files and partial
+  # downloads Fledge::Download.save leaves; +nil+ when it holds none.
+  # Each file's bytes are its SHA-256's, so the list is everything the
+  # folder holds, and CI keys a saved set by it.
+  def digest
+    files = Dir.glob("*/*", base: @folder).reject { |name| name.end_with?(".lock", ".part") }.sort
+    Digest::SHA256.hexdigest(files.map { |name| "#{name}\n" }.join) unless files.empty?
+  end
+
   # Writes +lines+ to standard output and flushes it, so a build log
   # shows each download as it starts and moves. Through a pipe, Ruby
   # holds standard output back until its buffer fills, and a build killed

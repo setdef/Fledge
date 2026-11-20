@@ -65,6 +65,79 @@ class DownloadCacheTest < Minitest::Test
     server&.stop
   end
 
+  # Writes +body+ as +name+ in the folder of its SHA-256 under +dir+, as
+  # #fetch keeps a download, and returns that SHA-256.
+  def keep(dir, name, body)
+    sha = Digest::SHA256.hexdigest(body)
+    FileUtils.mkdir_p(File.join(dir, sha))
+    File.write(File.join(dir, sha, name), body)
+    sha
+  end
+
+  # CI restores a set an earlier run saved; what no pin names any more
+  # goes before the set is saved again, so it does not grow with every
+  # pin that ever changed.
+  def test_prune_removes_what_no_pin_names_and_keeps_the_rest
+    Dir.mktmpdir do |dir|
+      kept = keep(dir, "ruby.tar.gz", "ruby")
+      gone = keep(dir, "old-ruby.tar.gz", "old ruby")
+      File.write(File.join(dir, "stray.txt"), "stray")
+
+      DownloadCache.new(dir).prune([kept.upcase, "f" * 64])
+
+      assert_equal ["#{kept}/ruby.tar.gz"], saved(dir)
+      refute_path_exists File.join(dir, gone)
+    end
+  end
+
+  def test_prune_of_a_folder_that_is_not_there_does_nothing
+    Dir.mktmpdir do |dir|
+      DownloadCache.new(File.join(dir, "none")).prune(["f" * 64])
+
+      refute_path_exists File.join(dir, "none")
+    end
+  end
+
+  # CI keys the saved set by what it holds, so two runs that hold the
+  # same files share one entry, and any other file makes another.
+  def test_the_digest_names_exactly_the_files_kept
+    Dir.mktmpdir do |one|
+      Dir.mktmpdir do |two|
+        keep(one, "a.tar.gz", "a")
+        keep(one, "b.tar.gz", "b")
+        keep(two, "b.tar.gz", "b")
+        keep(two, "a.tar.gz", "a")
+        File.write(File.join(two, Digest::SHA256.hexdigest("a"), "a.tar.gz.lock"), "")
+        File.write(File.join(two, Digest::SHA256.hexdigest("b"), "b.tar.gz.part"), "half")
+
+        assert_equal DownloadCache.new(one).digest, DownloadCache.new(two).digest
+        assert_match(/\A\h{64}\z/, DownloadCache.new(one).digest)
+
+        keep(two, "c.tar.gz", "c")
+
+        refute_equal DownloadCache.new(one).digest, DownloadCache.new(two).digest
+      end
+    end
+  end
+
+  def test_the_digest_changes_with_a_files_name_under_the_same_sha256
+    Dir.mktmpdir do |one|
+      Dir.mktmpdir do |two|
+        keep(one, "a.tar.gz", "a")
+        keep(two, "a.tgz", "a")
+
+        refute_equal DownloadCache.new(one).digest, DownloadCache.new(two).digest
+      end
+    end
+  end
+
+  def test_an_empty_or_missing_folder_has_no_digest
+    Dir.mktmpdir do |dir|
+      assert_nil DownloadCache.new(dir).digest
+      assert_nil DownloadCache.new(File.join(dir, "none")).digest
+    end
+  end
+
   # The build tasks' downloads are kept where fledge build keeps its
   # runtimes and gems, so every build on a computer shares them.
   def test_the_cache_is_beside_fledge_builds_own_in_the_users_cache_folder

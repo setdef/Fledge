@@ -329,14 +329,16 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.4.app
           xcodebuild -version
 
-      # rv-ruby, RubyInstaller, llvm-mingw, and libxcrypt downloads, keyed
-      # by the file that pins their SHA-256s, so a changed pin downloads
-      # afresh. The builder checks every cached file's SHA-256 again
-      # before using it.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # rv-ruby, RubyInstaller, llvm-mingw, and libxcrypt downloads: the
+      # newest set saved for this platform, which the builder takes a
+      # file from only when its SHA-256 is the pin's, downloading the
+      # rest (doc/contributors/design/runtimes.md, "Pinned downloads in
+      # CI"). The job's last steps save what it holds.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: downloads
         with:
           path: ~/.cache/fledge/downloads
-          key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
+          key: runtime-downloads-${{ matrix.platform }}-files-
 
       # The archive's timestamps are the commit's, so two builds of one
       # commit differ only where the compiler's output does.
@@ -371,6 +373,18 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      # The downloads less any pin changed since, saved under the digest
+      # of the files they are, unless that is the set restored.
+      - name: Key the downloads by the files they hold
+        id: downloads-key
+        run: ruby .github/scripts/download_cache_key.rb
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        with:
+          path: ~/.cache/fledge/downloads
+          key: runtime-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
+
   # The musl Linux runtimes: CRuby built from its pinned source
   # in Alpine, on a runner of each architecture, as rv-ruby builds its
   # own musl Rubies, with docker run rather than a job container, since
@@ -395,19 +409,29 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # As the other runtimes' downloads are, with the runner's download
+      # folder mounted in the container as its own, since a build in the
+      # container would otherwise keep them under the container's home,
+      # which nothing saves.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: downloads
         with:
           path: ~/.cache/fledge/downloads
-          key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
+          key: runtime-downloads-${{ matrix.platform }}-files-
 
-      - name: Build the runtime in Alpine
+      # The downloads are keyed, as the other runtimes' are, in the
+      # container, which has the Ruby the script needs.
+      - name: Build the runtime in Alpine, and key the downloads by the files they hold
+        id: downloads-key
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
           export SOURCE_DATE_EPOCH
-          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e SOURCE_DATE_EPOCH -e PLATFORM "$ALPINE_RUBY" \
-            sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
+          mkdir -p "$HOME/.cache/fledge/downloads"
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$HOME/.cache/fledge/downloads:/cache/fledge/downloads" -v "$GITHUB_OUTPUT:/output" -w /fledge \
+            -e SOURCE_DATE_EPOCH -e PLATFORM -e XDG_CACHE_HOME=/cache -e GITHUB_ACTIONS -e GITHUB_OUTPUT=/output "$ALPINE_RUBY" \
+            sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM" && ruby .github/scripts/download_cache_key.rb'
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -415,6 +439,12 @@ jobs:
           path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
           if-no-files-found: error
           retention-days: 14
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        with:
+          path: ~/.cache/fledge/downloads
+          key: runtime-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -470,10 +500,12 @@ jobs:
         if: matrix.platform == 'android'
         run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # The pinned downloads, as the other runtimes keep theirs.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: downloads
         with:
           path: ~/.cache/fledge/downloads
-          key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
+          key: runtime-downloads-${{ matrix.platform }}-files-
 
       # Gradle's dependency cache for the AAR's own project, which the
       # Android Gradle plugin packs, keyed on what decides its set: that
@@ -515,6 +547,16 @@ jobs:
           path: tmp/runtime/fledge-runtime-*-${{ matrix.platform }}*
           if-no-files-found: error
           retention-days: 14
+
+      - name: Key the downloads by the files they hold
+        id: downloads-key
+        run: ruby .github/scripts/download_cache_key.rb
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        with:
+          path: ~/.cache/fledge/downloads
+          key: runtime-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -568,10 +610,13 @@ jobs:
           xcrun simctl list runtimes
           cmake --version
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # The pinned downloads, as the runtime jobs keep theirs
+      # (doc/contributors/design/runtimes.md, "Pinned downloads in CI").
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: downloads
         with:
           path: ~/.cache/fledge/downloads
-          key: mobile-parity-downloads-ios-${{ hashFiles('runtime/sources.yml') }}
+          key: mobile-parity-downloads-ios-files-
 
       # XcodeGen writes each app's Xcode project in fledge build ios, as a
       # developer installs it; pinned by SHA-256.
@@ -596,6 +641,16 @@ jobs:
 
       - name: Build the apps with fledge build ios, and run them in the iOS Simulator
         run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP/runtimes"
+
+      - name: Key the downloads by the files they hold
+        id: downloads-key
+        run: ruby .github/scripts/download_cache_key.rb
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('mobile-parity-downloads-ios-files-{0}', steps.downloads-key.outputs.files)
+        with:
+          path: ~/.cache/fledge/downloads
+          key: mobile-parity-downloads-ios-files-${{ steps.downloads-key.outputs.files }}
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -2414,10 +2469,14 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # The pinned downloads, as the runtime jobs keep theirs
+      # (doc/contributors/design/runtimes.md, "Pinned downloads in CI"),
+      # saved once the job has downloaded the last of them.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: downloads
         with:
           path: ~/.cache/fledge/downloads
-          key: upstream-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
+          key: upstream-downloads-${{ matrix.platform }}-files-
 
       # LLVM's llvm-objdump and llvm-readobj, which read every platform's
       # compiled files on one Linux runner (Fledge::Binary::Readers.llvm):
@@ -2443,6 +2502,16 @@ jobs:
           version=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("ruby", "version")')
           tree=$(find "$RUNNER_TEMP/upstream" -mindepth 1 -maxdepth 3 -type d \( -name "$version" -o -name 'rubyinstaller-*' \) | head -n 1)
           echo "TREE=$tree" >> "$GITHUB_ENV"
+
+      - name: Key the downloads by the files they hold
+        id: downloads-key
+        run: ruby .github/scripts/download_cache_key.rb
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('upstream-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        with:
+          path: ~/.cache/fledge/downloads
+          key: upstream-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
 
       - name: Audit the whole tree
         run: >-

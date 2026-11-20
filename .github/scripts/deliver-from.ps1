@@ -18,6 +18,9 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Expand-Archive draws a progress bar for each file it unpacks, which cost
+# 51 seconds for 3,077 files against 15 without it, in a job nobody watches.
+$ProgressPreference = 'SilentlyContinue'
 $badAppStatus = [int] $env:FROM_REFUSES_A_BAD_APP_WITH
 $work = Join-Path $env:RUNNER_TEMP 'from proof'
 $place = Join-Path $work 'Mein Ort\Prüfung 日本'

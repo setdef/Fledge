@@ -24,6 +24,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Expand-Archive draws a progress bar for each file it unpacks, which cost
+# 51 seconds for 3,077 files against 15 without it, in a job nobody watches.
+$ProgressPreference = 'SilentlyContinue'
 
 function Fail([string] $message) {
   Write-Host "::error::replace-gmp: $message"

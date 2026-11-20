@@ -120,6 +120,41 @@ module Fledge
         end
       RUBY
 
+      # What the build's compilers are on iOS: the slice's clang or
+      # clang++, run with <tt>-dynamiclib</tt> wherever the build asks for
+      # <tt>-bundle</tt>, as ffi-compiler does on every Apple system
+      # (<tt>lib/ffi-compiler/compile_task.rb</tt>, line 115 at 1.4.3), so
+      # that a library the build links for Ruby's ffi is a dynamic library,
+      # the only kind of binary an iOS framework holds
+      # (doc/contributors/design/phone-projects.md, "Libraries for ffi on
+      # iOS"). A command that links, one with none of <tt>-c</tt>,
+      # <tt>-S</tt>, <tt>-E</tt>, <tt>-M</tt>, or <tt>-MM</tt>, also gets
+      # <tt>-Wl,-headerpad_max_install_names</tt>, so that the library's
+      # header has room for the install name its framework gives it:
+      # without it <tt>install_name_tool</tt> refused llhttp-ffi's, since
+      # "larger updated load commands do not fit (the program must be
+      # relinked, and you may need to use -headerpad or
+      # -headerpad_max_install_names)". Every other argument passes as it
+      # is.
+      DYLIB = <<~SH
+        #!/bin/sh
+        # Written by fledge build: runs the compiler named first, with
+        # -dynamiclib in place of each -bundle, and, when it links, room in
+        # the header for the install name the library's framework gives it.
+        link=yes
+        for argument
+        do
+          shift
+          case $argument in
+            -bundle) set -- "$@" -dynamiclib ;;
+            -c|-S|-E|-M|-MM) link=no; set -- "$@" "$argument" ;;
+            *) set -- "$@" "$argument" ;;
+          esac
+        done
+        if [ "$link" = yes ]; then set -- "$@" -Wl,-headerpad_max_install_names; fi
+        exec "$@"
+      SH
+
       # The names of shared libraries: the extensions mkmf built, which
       # are linked into the app instead, and any other a build leaves,
       # which is a library for Ruby's ffi (FfiLibrary) or refused.
@@ -199,13 +234,29 @@ module Fledge
       # The environment of the build for +target+: the phone's
       # rbconfig.rb, the gem's dependencies, the tools in it, and the
       # hook, for every Ruby it starts, and this computer's Ruby for
-      # <tt>RbConfig.ruby</tt>.
+      # <tt>RbConfig.ruby</tt>; on iOS, its compilers run through DYLIB,
+      # under the environment's names and rbconfig.rb's.
       private def environment(target, folder, report, first)
         includes = [target.arch_dir, *@load_path].map { |path| "-I#{path}" }.join(" ")
-        @environment.merge(target.environment).merge(
+        @environment.merge(target.environment, compilers(target, folder)).merge(
           "FLEDGE_INIT_PREFIX" => "Init_fledge_#{first}_", "FLEDGE_REPORT" => report, "FLEDGE_RUBY" => @ruby, "RUBY" => @ruby,
           "RUBYOPT" => "#{includes} -r#{write(folder, 'phone.rb', TOOLS + HOOK)}"
         )
+      end
+
+      # The iOS slice +target+'s compilers, each run through DYLIB, written
+      # into +folder+; nothing for an Android ABI, whose shared links
+      # ffi-compiler already makes with <tt>-shared</tt>.
+      private def compilers(target, folder)
+        tools = {} # : Hash[String, String]
+        return tools if target.abi
+
+        dylib = write(folder, "dylib.sh", DYLIB)
+        %w[CC CXX].each do |name|
+          compiler = target.environment["FLEDGE_#{name}"] or next
+          tools[name] = tools["FLEDGE_#{name}"] = "/bin/sh #{dylib} #{compiler}"
+        end
+        tools
       end
 
       # Refuses the shared libraries in +paths+, which the build installed

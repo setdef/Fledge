@@ -13,7 +13,10 @@
 # library, and then the folder fledge/: the app's program, its gems, and
 # fledge.cfg. When the app's gems have extensions, they are compiled for
 # both slices into FledgeExtensions.xcframework, linked the same way, and
-# Host/fledge_extensions.c registers them. No signing is configured:
+# Host/fledge_extensions.c registers them. Each library a gem's build
+# made for Ruby's ffi is Frameworks/NAME.xcframework, embedded and not
+# linked, which a link at the gem's path in fledge/ leads to in the
+# app. No signing is configured:
 # choose your team under Signing & Capabilities to run it on a device.
 name: @@NAME@@
 options:

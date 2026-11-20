@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# The app that proves, on Android, gems whose Rakefiles build a library
+# The app that proves, on iOS and Android, gems whose Rakefiles build a library
 # of C for Ruby's ffi to open by its path: llhttp-ffi parses an HTTP
 # request in nodejs's llhttp, and scrypt derives a key in Colin
 # Percival's scrypt, each through the library its Rakefile built. The

@@ -140,12 +140,44 @@ class MobileParity
       false
     end
 
+    # What a framework's Info.plist, +info+, must hold for its binary
+    # +name+: the keys of Fledge's own (MobileProject::IOSLibraries.info),
+    # with FMWK, a framework's package type (CFBundlePackageType,
+    # developer.apple.com), the device's platform and iOS 15, as the
+    # app's, and versions of one to three integers.
+    def self.framework_info_problems(info, name)
+      expected = {
+"CFBundleExecutable" => name,
+"CFBundlePackageType" => "FMWK",
+"MinimumOSVersion" => "15.0",
+"CFBundleSupportedPlatforms" => ["iPhoneOS"],
+"CFBundleInfoDictionaryVersion" => "6.0",
+}
+      problems = expected.filter_map { |key, value| "Info.plist's #{key} is #{info[key].inspect}, not #{value.inspect}" unless info[key] == value }
+      problems << "Info.plist has no CFBundleIdentifier" unless info["CFBundleIdentifier"].is_a?(String) && !info["CFBundleIdentifier"].empty?
+      problems + %w[CFBundleShortVersionString CFBundleVersion].filter_map do |key|
+        "Info.plist's #{key} is #{info[key].inspect}, not one to three integers" unless info[key].to_s.match?(VERSION)
+      end
+    end
+
+    # The links under +root+, relative to it, that lead to no file inside
+    # it.
+    def self.links_out(root)
+      inside = File.join(File.realpath(root), "")
+      Dir.glob("**/*", File::FNM_DOTMATCH, base: root).select do |relative|
+        path = File.join(root, relative)
+        next false unless File.symlink?(path)
+
+        !File.exist?(path) || !File.realpath(path).start_with?(inside)
+      end.sort
+    end
+
     # The files under +root+, relative to it, that are Mach-O files, but
-    # for the file +except+: libraries and programs an app of Fledge's
-    # carries none of (its extensions link into the executable:
-    # doc/contributors/design/phone-projects.md, "Linking extensions on
-    # iOS"), and that App Store Connect would want signed and in a
-    # framework.
+    # for the file +except+ and links: an app of Fledge's carries none but
+    # its executable and its frameworks' binaries (its extensions link
+    # into the executable: doc/contributors/design/phone-projects.md,
+    # "Linking extensions on iOS"), and App Store Connect would want any
+    # other signed and in a framework.
     def self.mach_o_files(root, except:)
       Dir.glob("**/*", File::FNM_DOTMATCH, base: root).select do |relative|
         path = File.join(root, relative)
@@ -247,7 +279,9 @@ class MobileParity
     # Apple's own libraries and frameworks, which are on every device,
     # in otool's list, so nothing is missing or loaded from a folder of
     # the app.
-    private def executable_problems(executable)
+    # A framework's binary is checked the same way, +own+ its install
+    # name, which otool lists first.
+    private def executable_problems(executable, own: nil)
       problems = []
       archs = capture("xcrun", "lipo", "-archs", executable).split
       problems << "the executable's architectures are #{archs}, not [\"arm64\"]" unless archs == ["arm64"]
@@ -256,21 +290,59 @@ class MobileParity
       problems << "the executable's minos is not 15.0:\n#{build}" unless build.match?(/^\s*minos 15\.0$/)
       problems << "the executable holds bitcode (an __LLVM segment)" if capture("xcrun", "otool", "-l", executable).include?("segname __LLVM")
       libraries = capture("xcrun", "otool", "-L", executable).lines.drop(1).map { |line| line.split.first }
-      others = libraries.reject { |library| library.start_with?("/usr/lib/", "/System/Library/") }
+      others = libraries.reject { |library| library.start_with?("/usr/lib/", "/System/Library/") || library == own }
       problems << "the executable loads #{others.join(', ')}, which no device has" unless others.empty?
       problems
     end
 
-    # Nothing in the bundle but the executable is Mach-O, and the bundle
-    # has no folder of frameworks, extensions, or watch apps (nothing of
-    # Fledge's is embedded), and nothing is signed.
+    # Nothing in the bundle but the executable and the binaries of the
+    # frameworks the project embeds is Mach-O, the bundle has no folder
+    # of extensions or watch apps, and nothing is signed. The frameworks
+    # are the libraries for Ruby's ffi a gem's build made, each of which
+    # iOS takes only in a framework of its own in the app's Frameworks
+    # folder ("Placing content in a bundle", developer.apple.com): the
+    # Frameworks folder holds exactly those the project's
+    # <tt>Frameworks/</tt> folder has an XCFramework of, each as
+    # FRAMEWORK_KEYS and #framework_problems check it. Every link in the
+    # bundle leads to a file inside it, as Apple's way of serving code
+    # that loads a library by its path makes one ("Embedding nonstandard
+    # code structures in a bundle", developer.apple.com, "Use symlinks
+    # for gnarly edge cases").
     private def bundle_content_problems(bundle)
-      problems = %w[Frameworks PlugIns Watch SC_Info embedded.mobileprovision _CodeSignature].filter_map do |name|
+      problems = %w[PlugIns Watch SC_Info embedded.mobileprovision _CodeSignature].filter_map do |name|
         "the app has #{name}, which Fledge's project does not embed or sign" if File.exist?(File.join(bundle, name))
       end
-      found = IOSArchive.mach_o_files(bundle, except: @app.name)
-      problems << "the app holds Mach-O files besides its executable: #{found.join(', ')}" unless found.empty?
+      names = Dir.glob("*.xcframework", base: File.join(@project, "Frameworks")).map { |name| File.basename(name, ".xcframework") }.sort
+      embedded = Dir.exist?(File.join(bundle, "Frameworks")) ? Dir.children(File.join(bundle, "Frameworks")).sort : []
+      problems << "the app's Frameworks holds #{embedded}, not the project's #{names.map { |name| "#{name}.framework" }}" unless
+        embedded == names.map { |name| "#{name}.framework" }
+      binaries = names.map { |name| "Frameworks/#{name}.framework/#{name}" }
+      found = IOSArchive.mach_o_files(bundle, except: @app.name) - binaries
+      problems << "the app holds Mach-O files besides its executable and its frameworks': #{found.join(', ')}" unless found.empty?
+      problems.concat(binaries.flat_map { |binary| framework_problems(bundle, binary) }) if embedded == names.map { |name| "#{name}.framework" }
+      problems.concat(IOSArchive.links_out(bundle).map { |link| "the app's link #{link} does not lead to a file in the app" })
       problems
+    end
+
+    # What the framework whose binary is at +binary+ in +bundle+ must be:
+    # its Info.plist as IOSArchive.framework_info_problems checks it, and
+    # its binary a dynamic library (a bundle, which ffi-compiler links on
+    # Apple systems, goes in no framework: Apple's table puts a
+    # framework's dynamic library in Frameworks and a plug-in elsewhere,
+    # and PEP 730 says one "must be compiled as dynamic libraries, not
+    # shared objects or binary bundles") for iOS devices, as the
+    # executable is, unsigned, which loads nothing but Apple's own
+    # libraries.
+    private def framework_problems(bundle, binary)
+      folder = File.join(bundle, File.dirname(binary))
+      name = File.basename(binary)
+      path = File.join(bundle, binary)
+      info = File.file?(File.join(folder, "Info.plist")) ? IOSArchive.read_plist(File.join(folder, "Info.plist")) : {}
+      problems = IOSArchive.framework_info_problems(info, name).map { |problem| "#{name}.framework: #{problem}" }
+      kind = capture("xcrun", "otool", "-hv", path).lines.last.split[4]
+      problems << "#{binary} is a #{kind}, not a dynamic library (DYLIB)" unless kind == "DYLIB"
+      problems << "#{name}.framework is signed, which Fledge's project leaves to Xcode" if File.exist?(File.join(folder, "_CodeSignature"))
+      problems.concat(executable_problems(path, own: "@rpath/#{name}.framework/#{name}").map { |problem| problem.sub("the executable", binary) })
     end
 
     # The privacy manifest is in the app, a valid property list (plutil

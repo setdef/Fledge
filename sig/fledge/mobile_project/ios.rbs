@@ -10,7 +10,11 @@ module Fledge
       EXTENSIONS: String
       INSTALL: String
 
+      @libraries: IOSLibraries?
+
       def self.ruby_under: () -> String
+
+      def self.mach_o?: (String path) -> bool
 
       private def system: () -> String
 
@@ -22,7 +26,11 @@ module Fledge
 
       private def place_extensions: (String project) -> void
 
-      private def refuse_ffi_libraries: (MobileExtensions::Built built) -> void
+      private def libraries: () -> IOSLibraries
+
+      private def place_links: (String root) -> void
+
+      private def dependencies: () -> String
 
       private def place_runtime: (String tree, String project) -> void
 

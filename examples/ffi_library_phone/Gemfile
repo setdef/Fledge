@@ -7,10 +7,12 @@
 
 # llhttp-ffi and scrypt, whose gemspecs name a Rakefile in which
 # ffi-compiler links a shared library of C for Ruby's ffi to open by its
-# path, not an extension of Ruby's. fledge build android runs each
-# Rakefile for each of the phone's ABIs, with ffi-compiler and ffi on its
-# load path, and carries each library into the app as a native library
-# of its own, linked from that path as the app starts.
+# path, not an extension of Ruby's. fledge build ios and fledge build
+# android run each Rakefile for each of the phone's targets, with
+# ffi-compiler and ffi on its load path, and carry each library into the
+# app: on iOS as a framework of its own, with a link at that path, and
+# on Android as a native library of its own, linked from that path as
+# the app starts.
 source "https://rubygems.org"
 
 gem "llhttp-ffi", "0.5.1"

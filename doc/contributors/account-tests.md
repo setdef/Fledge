@@ -156,6 +156,15 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
 
+#### IOS-4: App Store Connect takes an app that embeds a library for ffi as a framework
+
+- **Proves:** App Store Connect's validation accepts the frameworks Fledge makes of the libraries a gem's Rakefile builds for Ruby's ffi, a dynamic library each, embedded and not linked, with a symbolic link at the gem's path inside the app that leads to it (`doc/contributors/design/phone-projects.md`, "Libraries for ffi on iOS"). CI runs such an app in the Simulator and checks its unsigned archive with Apple's tools; nothing on Apple's servers has seen one.
+- **Needs:** IOS-1's account and app record (any identifier you own will do: the example's is `com.setdef.fledge.FfiLibraryPhone`), Xcode, and XcodeGen.
+- **Steps:** in a checkout of Fledge at the release, `fledge build ios -o dist examples/ffi_library_phone` (add `version: 1.0.0` and your identifier to its `fledge.yml` first), open `dist/FfiLibraryPhone-ios/FfiLibraryPhone.xcodeproj`, choose your team under Signing & Capabilities, then Product > Archive, and in the Organizer Validate App, then Distribute App to App Store Connect.
+- **Passing:** Validate App and the upload report no error, and the build appears under TestFlight. Installed from TestFlight, the app logs `FfiLibraryPhone: llhttp-ffi 0.5.1 parses GET /hello, and scrypt 3.1.0's key matches RFC 7914, on arm64-darwin` (Console.app, filtered by the app's identifier). An error that names a framework, its binary, or the link (ITMS-90171, say, or "invalid bundle structure") is the finding: keep its whole text.
+- **Status:** not run.
+- **Blocks 1.0.0?** not decided.
+
 ### On Android, with a Google Play Console account
 
 #### AND-1: Google Play takes a Fledge app bundle
@@ -222,10 +231,11 @@ The Mac App Store needs a sandboxed mode and a `.pkg`, which Fledge does not bui
 
 ## Not account-blocked, needs a person
 
-These need no account, but they need a person at a real desktop. Agents do not do them, and they are not blocked on anything you buy. They are not on the list above, so none of them has a "Blocks 1.0.0?" line; decide for each whether it matters.
+These need no account, but they need a person at a real desktop or device. Agents do not do them, and they are not blocked on anything you buy. They are not on the list above, so none of them has a "Blocks 1.0.0?" line; decide for each whether it matters.
 
 - **A drop on an app's icon in the Finder or the Dock.** Launch Services' offer and `open -a` are proved (`doc/contributors/design/desktop-apps.md`, "Files an app opens"), but not a real drop, nor a GUI library's drop event in a Fledge app. Agents do no SDL work, so the SDL3 app this test wants is yours to supply, or you can waive the test.
 - **A Linux file manager's double-click.** The desktop entry's `MimeType=` and `Exec=... %F` are checked from the files; a real double-click in a file manager is not.
+- **A library for ffi in a framework, on an iPhone or iPad.** The Simulator signs nothing, so a device's code signing and library validation of the frameworks Fledge makes of the libraries a gem's Rakefile builds for ffi are untested (`doc/contributors/design/phone-projects.md`, "Libraries for ffi on iOS"). With your free Personal Team, as your devices already run Fledge apps: `fledge build ios -o dist examples/ffi_library_phone`, open `dist/FfiLibraryPhone-ios/FfiLibraryPhone.xcodeproj`, choose your team under Signing & Capabilities (change the bundle identifier if Xcode asks), and Run on the device. Passing: Xcode's console shows `FfiLibraryPhone: llhttp-ffi 0.5.1 parses GET /hello, and scrypt 3.1.0's key matches RFC 7914, on arm64-darwin` and `FfiLibraryPhone exited with status 0`. A dyld error naming a framework is the finding.
 - **The Windows 10 floor on a real machine.** The README says Windows 10 and 11 on x64; the repository records no run of a built app on a real Windows 10 computer, only on GitHub's runners. Build or copy an app there and open it.
 
 ## Not in this list: already proven

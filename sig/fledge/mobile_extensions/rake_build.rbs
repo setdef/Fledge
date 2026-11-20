@@ -12,6 +12,7 @@ module Fledge
       SHARED: Regexp
       DEBUG: Regexp
       HOOK: String
+      DYLIB: String
 
       @ruby: String
       @work: String
@@ -25,6 +26,8 @@ module Fledge
       def call: (Target target, locked_gem gem, Gem::Specification spec, String root, String extension, Array[String] args, Integer first) -> Array[Report | FfiLibrary]
 
       private def environment: (Target target, String folder, String report, Integer first) -> Hash[String, String?]
+
+      private def compilers: (Target target, String folder) -> Hash[String, String]
 
       private def refuse: (locked_gem gem, String extension, Target target, Array[String] paths) -> void
 

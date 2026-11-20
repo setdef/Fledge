@@ -376,23 +376,11 @@ class MobileBuildTest < Minitest::Test
       error.message
   end
 
-  # A library a gem's Rakefile builds for Ruby's ffi to open needs a
-  # framework of its own on iOS, which Fledge does not yet make, so the
-  # iOS project refuses it, naming the gem, before it links anything.
-  def test_an_ios_project_refuses_a_library_for_ffi_that_a_rakefile_built
-    error = assert_raises(Fledge::Error) do
-      phone_project_with_ffi_library("ios", "ios-arm64", nil, "ext/aarch64-darwin/libllhttp-ext.bundle")
-    end
-
-    assert_equal "llhttp-ffi's Rakefile built ext/aarch64-darwin/libllhttp-ext.bundle, a library for Ruby's ffi to load, and " \
-      "Fledge does not yet put such a library in an iOS app, where it must be a framework of its own. Leave the gem out of " \
-      "the app's ios build (gem \"llhttp-ffi\", platforms: [...] in the Gemfile).", error.message
-    refute_path_exists File.join(@dir, "dist/Hello-ios")
-  end
-
-  # On Android the same library goes to each ABI's jniLibs as
-  # libfledgeffi.GEM.PATH.so, named for its gem and its path in the gem,
-  # and fledge.links names the path where the gem asks ffi for it.
+  # A library a gem's Rakefile builds for Ruby's ffi goes to each ABI's
+  # jniLibs as libfledgeffi.GEM.PATH.so, named for its gem and its path
+  # in the gem, and fledge.links names the path where the gem asks ffi
+  # for it. (On iOS it is a framework, which Xcode's tools make:
+  # test/ios_libraries_test.rb and the integration tests.)
   def test_an_android_library_for_ffi_that_a_rakefile_built_is_a_native_library_named_for_its_gem_and_path
     project = phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/x86_64-linux/libllhttp-ext.so")
 

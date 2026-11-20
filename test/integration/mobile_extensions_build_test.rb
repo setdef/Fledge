@@ -6,6 +6,7 @@
 #++
 
 require_relative "../test_helper"
+require "json"
 require "open3"
 require "stringio"
 require_relative "../support/android"
@@ -337,8 +338,8 @@ class MobileExtensionsBuildTest < Minitest::Test
   # A Rakefile that links a library for Ruby's ffi, as ffi-compiler's
   # tasks do with the compiler in CC, makes no extension of Ruby's: the
   # build finds the library it wrote in the gem, built for each slice,
-  # and the path in the app where the gem looks for it. The iOS project
-  # then refuses it (test/mobile_build_test.rb).
+  # and the path in the app where the gem looks for it, which the iOS
+  # project makes a framework of its own (test/ios_libraries_test.rb).
   def test_a_library_for_ffi_a_rakefile_links_is_found_for_each_ios_slice
     runtimes = real_runtimes("ios")
     gem = rake_gem("thing", THING_RAKEFILE, files: { "thing.c" => "int thing(void) { return 1; }\n" })
@@ -351,6 +352,36 @@ class MobileExtensionsBuildTest < Minitest::Test
       Open3.capture2("xcrun", "vtool", "-show-build", library.path).first[/platform (\S+)/, 1]
     end
     assert_equal({ "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }, platforms)
+  end
+
+  # ffi-compiler links with -bundle on every Apple system, through the
+  # compiler in CC, and a Rakefile may link through rbconfig.rb's: on iOS
+  # each comes out a dynamic library, the only binary a framework holds,
+  # for the slice it was built for.
+  def test_a_bundle_a_rakefile_links_for_ios_is_a_dynamic_library
+    runtimes = real_runtimes("ios")
+    rakefile = <<~'RAKEFILE'
+      task :default do
+        sh "#{ENV['CC']} -c thing.c -o thing.o"
+        sh "#{ENV['CC']} -bundle -o libthing.bundle thing.o"
+        sh "#{RbConfig::CONFIG['CC']} -bundle -o libother.bundle thing.o"
+      end
+    RAKEFILE
+    gem = rake_gem("thing", rakefile, files: { "thing.c" => "int thing(void) { return 1; }\n" })
+
+    built = compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) })
+
+    kinds = built.targets.transform_values do |target|
+      target.ffi_libraries.sort_by(&:file).map do |library|
+        header = Open3.capture2("xcrun", "otool", "-hv", library.path).first.lines.last.split
+        platform = Open3.capture2("xcrun", "vtool", "-show-build", library.path).first[/platform (\S+)/, 1]
+        [library.file, header[4], platform]
+      end
+    end
+    assert_equal({
+      "ios-arm64" => [["ext/libother.bundle", "DYLIB", "IOS"], ["ext/libthing.bundle", "DYLIB", "IOS"]],
+      "ios-arm64-simulator" => [["ext/libother.bundle", "DYLIB", "IOSSIMULATOR"], ["ext/libthing.bundle", "DYLIB", "IOSSIMULATOR"]],
+    }, kinds)
   end
 
   # A package may hold a library at the path its Rakefile writes, as
@@ -680,22 +711,44 @@ class MobileExtensionsBuildTest < Minitest::Test
     refute_path_exists File.join(project, "fledge", "notices", "libc++_shared.txt")
   end
 
-  # Fledge does not yet put a library for ffi in an iOS app, where it
-  # must be a framework of its own, so fledge build ios refuses
-  # examples/ffi_library_phone, naming the first gem whose Rakefile built
-  # one, and writes no project.
-  def test_fledge_build_ios_refuses_a_library_for_ffi_that_a_rakefile_builds
+  # On iOS, examples/ffi_library_phone's two libraries, llhttp-ffi's and
+  # scrypt's, are each a framework of its own, a dynamic library for
+  # each slice whose install name is the framework's, which the project
+  # embeds and does not link, and a link at the path where ffi-compiler's
+  # loader looks for it leads to the framework in the built app. The
+  # library and the object files llhttp-ffi's package holds, which its
+  # author built on a Mac, are not in the app.
+  def test_fledge_build_ios_embeds_each_library_for_ffi_that_a_rakefile_builds_as_a_framework
     runtimes = real_runtimes("ios")
-    out = StringIO.new
-    err = StringIO.new
-    env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache"))
-    status = Fledge::CLI::Build.new(out:, err:, env:)
-      .call(["ios", "-o", File.join(@dir, "dist"), File.expand_path("../../examples/ffi_library_phone", __dir__)])
 
-    refute_equal 0, status
-    assert_includes err.string, "fledge build: llhttp-ffi's Rakefile built ext/aarch64-darwin/libllhttp-ext.bundle, a library for " \
-      "Ruby's ffi to load, and Fledge does not yet put such a library in an iOS app, where it must be a framework of its own."
-    refute_path_exists File.join(@dir, "dist", "FfiLibraryPhone-ios")
+    project = build_example("ios", "ffi_library_phone", runtimes, "FfiLibraryPhone-ios")
+
+    names = %w[fledgeffi.llhttp-ffi.ext.aarch64-darwin.libllhttp-ext.bundle fledgeffi.scrypt.ext.scrypt.aarch64-darwin.libscrypt-ext.bundle]
+    names.each do |name|
+      read = { "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }.map do |slice, platform|
+        binary = File.join(project, "Frameworks", "#{name}.xcframework", slice, "#{name}.framework", name)
+        kind = Open3.capture2("xcrun", "otool", "-hv", binary).first.lines.last.split[4]
+        built = Open3.capture2("xcrun", "vtool", "-show-build", binary).first[/platform (\S+)/, 1]
+        id = Open3.capture2("xcrun", "otool", "-D", binary).first.lines.last.strip
+        info = JSON.parse(Open3.capture2("plutil", "-convert", "json", "-o", "-", File.join(File.dirname(binary), "Info.plist")).first)
+        [kind, built == platform, id, info.values_at("CFBundleExecutable", "CFBundlePackageType")]
+      end
+      assert_equal [["DYLIB", true, "@rpath/#{name}.framework/#{name}", [name, "FMWK"]]] * 2, read, name
+    end
+    root = File.join(project, "fledge")
+    installed = Dir.glob(File.join(root, "lib", "ruby", "gems", "*", "gems")).first.to_s
+    {
+      "llhttp-ffi-0.5.1/ext/aarch64-darwin/libllhttp-ext.bundle" => names[0],
+      "scrypt-3.1.0/ext/scrypt/aarch64-darwin/libscrypt_ext.bundle" => names[1],
+    }.each do |path, name|
+      at = File.join(installed, path)
+      assert_equal "/App.app/Frameworks/#{name}.framework/#{name}",
+        File.expand_path(File.readlink(at), File.dirname(at).sub(root, "/App.app/fledge")), path
+    end
+    refute_path_exists File.join(installed, "llhttp-ffi-0.5.1", "ext", "aarch64-darwin", "llhttp", "api.o")
+    assert_empty(Dir.glob("**/*", base: root).select { |path| Fledge::MobileProject::IOS.mach_o?(File.join(root, path)) })
+    spec = File.read(File.join(project, "project.yml"))
+    names.each { |name| assert_includes spec, "- framework: Frameworks/#{name}.xcframework\n        embed: true\n        link: false" }
   end
 
   # Writes examples/+name+'s project for +phone+ with fledge build, from

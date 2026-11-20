@@ -35,10 +35,10 @@ require_relative "parity"
 # the phone's targets (doc/contributors/design/phone-projects.md, "Gems
 # with extensions"); examples/ffi_phone, whose ffi gem from
 # rubygems.org builds the libffi it bundles and calls C by name, with a
-# Ruby block as a callback; examples/ffi_library_phone, on Android alone,
-# whose gems from rubygems.org, llhttp-ffi and scrypt, each build a
-# library for ffi to open from a Rakefile, which the app carries as a
-# native library of its own; a script that requires json and csv, a bundled
+# Ruby block as a callback; examples/ffi_library_phone, whose gems from
+# rubygems.org, llhttp-ffi and scrypt, each build a library for ffi to
+# open from a Rakefile, which the app carries as a framework of its own
+# on iOS and a native library of its own on Android; a script that requires json and csv, a bundled
 # gem, parses with prism, a bundled gem whose extension compiles its own
 # libprism (doc/contributors/design/phone-runtimes.md, "Bundled gems' extensions"), and
 # reaches rubygems.org over HTTPS
@@ -93,8 +93,7 @@ class MobileParity
     App.new(path: "examples/ffi_phone", name: "FfiPhone", identifier: "com.setdef.fledge.FfiPhone",
       prints: /\AFfiPhone: ffi 1\.17\.4 finds strlen of hello 5 and sorts \[1, 2, 3\] with a Ruby block, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "examples/ffi_library_phone", name: "FfiLibraryPhone", identifier: "com.setdef.fledge.FfiLibraryPhone",
-      prints: %r{\AFfiLibraryPhone: llhttp-ffi 0\.5\.1 parses GET /hello, and scrypt 3\.1\.0's key matches RFC 7914, on (?:aarch64|x86_64)-linux-android\z},
-      phones: %w[android]),
+      prints: %r{\AFfiLibraryPhone: llhttp-ffi 0\.5\.1 parses GET /hello, and scrypt 3\.1\.0's key matches RFC 7914, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z}),
     App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
   ].freeze

@@ -9,7 +9,9 @@ require "fileutils"
 require "json"
 require_relative "../command"
 require_relative "../icon"
+require_relative "../binary"
 require_relative "../mac_bundle"
+require_relative "ios_libraries"
 
 module Fledge
   class MobileProject
@@ -76,6 +78,32 @@ module Fledge
         "#{FRAMEWORK}/#{SLICE}/"
       end
 
+      # Whether +path+ is a Mach-O file, not a link: one of Binary's
+      # Mach-O magic numbers, and for a universal file's, which a Java
+      # class file shares, a count of architectures below 45: a class
+      # file has its minor and major versions there, and no major version
+      # is below 45 (The Java Virtual Machine Specification, section 4.1).
+      #
+      # === Example
+      #
+      #--
+      # SPDX-SnippetBegin
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+      # SPDX-License-Identifier: MIT-0
+      #++
+      #   Fledge::MobileProject::IOS.mach_o?("ext/aarch64-darwin/llhttp/api.o") # => true
+      #--
+      # SPDX-SnippetEnd
+      #++
+      def self.mach_o?(path)
+        return false unless File.file?(path) && !File.symlink?(path)
+
+        head = File.binread(path, 8).to_s
+        return false unless Binary.format_of(head) == :macho
+
+        !head.start_with?("\xCA\xFE\xBA\xBE".b) || head.byteslice(4, 4).to_s.unpack1("N").to_i.between?(1, 44)
+      end
+
       private def system
         "ios"
       end
@@ -97,7 +125,20 @@ module Fledge
 "APP_ICON" => icon,
 "LDFLAGS" => ["$(inherited)", *extension_flags].join(" "),
 }.transform_values { |value| JSON.generate(value) }
-        strings.merge("EXTENSIONS" => @built ? "- framework: #{EXTENSIONS}\n        embed: false" : "")
+        strings.merge("EXTENSIONS" => dependencies)
+      end
+
+      # The block of <tt>project.yml</tt>'s dependencies for the app's
+      # extensions: FledgeExtensions.xcframework, linked, and each
+      # library for Ruby's ffi, embedded and not linked, since Ruby's ffi
+      # opens it by its path, as on a desktop, where no program links it.
+      private def dependencies
+        return "" unless @built
+
+        frameworks = libraries.frameworks.keys.map do |name|
+          "\n      - framework: #{IOSLibraries::FOLDER}/#{name}.xcframework\n        embed: true\n        link: false"
+        end
+        "- framework: #{EXTENSIONS}\n        embed: false#{frameworks.join}"
       end
 
       # The linker flags the extensions' extconf.rb files asked for, and
@@ -119,34 +160,46 @@ module Fledge
       # <tt>xcodebuild -create-xcframework</tt> as the runtime's is, which
       # the project links; and the registration unit
       # in <tt>Host/</tt>, which Xcode compiles with the host app, so its
-      # constructor registers each extension when the app starts.
-      #
-      # It refuses a library for Ruby's ffi that a gem's Rakefile built
-      # (MobileExtensions::FfiLibrary), naming the gem: iOS takes a
-      # third-party dynamic library only in a framework of its own
-      # (doc/contributors/research/2026-11-19-ffi-libraries-on-phones.md,
-      # section 2), which Fledge does not yet make.
+      # constructor registers each extension when the app starts. Each
+      # library for Ruby's ffi that a gem's Rakefile built is a framework
+      # of its own (IOSLibraries).
       private def place_extensions(project)
         built = @built or return
-        refuse_ffi_libraries(built)
+        libraries.call(project)
         Dir.mktmpdir("fledge-extensions") do |work|
-          libraries = built.targets.flat_map do |name, build|
+          slices = built.targets.flat_map do |name, build|
             library = File.join(work, name, "libFledgeExtensions.a")
             FileUtils.mkdir_p(File.dirname(library))
             Command.run("xcrun", "libtool", "-static", "-no_warning_for_no_symbols", "-o", library, *build.archives, install: Fledge::MobileExtensions::INSTALL_XCODE)
             ["-library", library]
           end
-          Command.run("xcodebuild", "-create-xcframework", *libraries, "-output", File.join(project, EXTENSIONS), install: Fledge::MobileExtensions::INSTALL_XCODE)
+          Command.run("xcodebuild", "-create-xcframework", *slices, "-output", File.join(project, EXTENSIONS), install: Fledge::MobileExtensions::INSTALL_XCODE)
         end
         File.write(File.join(project, "Host", "fledge_extensions.c"), MobileExtensions.registration_source(built.registrations))
       end
 
-      private def refuse_ffi_libraries(built)
-        library = built.targets.values.flat_map(&:ffi_libraries).first or return
+      # The frameworks of the libraries for Ruby's ffi that the app's
+      # gems built.
+      private def libraries
+        built = @built or raise Error, "the app has no extensions"
+        @libraries ||= IOSLibraries.new(built, identifier:, version: MacBundle.bundle_version(@app.identity.version))
+      end
 
-        raise Error, "#{library.gem}'s Rakefile built #{library.file}, a library for Ruby's ffi to load, and Fledge does not yet " \
-          "put such a library in an iOS app, where it must be a framework of its own. Leave the gem out of the app's ios " \
-          "build (gem \"#{library.gem}\", platforms: [...] in the Gemfile)."
+      # Puts a link at each path where a gem looks for a library for
+      # Ruby's ffi, to its framework in the app (IOSLibraries#link), and
+      # leaves out of +root+ every other Mach-O file the app's gems hold,
+      # saying which: iOS lets an app carry compiled code only as its
+      # executable and in its frameworks ("Placing content in a bundle",
+      # developer.apple.com), and a gem's package may hold what its
+      # author built on a Mac, as llhttp-ffi 0.5.1's holds the library
+      # and the object files its Rakefile made there.
+      private def place_links(root)
+        libraries.link(root)
+        found = Dir.glob("**/*", File::FNM_DOTMATCH, base: root).sort.select { |path| IOS.mach_o?(File.join(root, path)) }
+        return if found.empty?
+
+        found.each { |path| File.delete(File.join(root, path)) }
+        @log&.puts "Left out of the iOS app, which carries compiled code only in its executable and its frameworks: #{found.join(', ')}"
       end
 
       private def place_runtime(tree, project)

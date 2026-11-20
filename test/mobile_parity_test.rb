@@ -81,16 +81,14 @@ class MobileParityTest < Minitest::Test
     end
   end
 
-  # An app runs on the phones it names: the libraries for ffi that
-  # ffi_library_phone's gems build reach an Android app, and Fledge does
-  # not yet put them in an iOS one, so iOS's check builds it not at all.
-  def test_each_phone_builds_and_runs_the_apps_that_name_it
+  # An app runs on the phones it names, and every app names both: the
+  # libraries for ffi that ffi_library_phone's gems build reach an iOS
+  # app as they reach an Android one.
+  def test_each_phone_builds_and_runs_every_app
     ios = MobileParity.apps("ios").map(&:name)
-    android = MobileParity.apps("android").map(&:name)
 
-    assert_includes android, "FfiLibraryPhone"
-    refute_includes ios, "FfiLibraryPhone"
-    assert_equal android - ["FfiLibraryPhone"], ios
+    assert_includes ios, "FfiLibraryPhone"
+    assert_equal MobileParity.apps("android").map(&:name), ios
   end
 
   # Fledge's own manifest gives the reasons the check expects, and a

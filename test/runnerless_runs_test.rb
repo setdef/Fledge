@@ -337,9 +337,6 @@ class RunnerlessRunsTest < Minitest::Test
     end
   end
 
-  # Serves the recorded answers of case +name+, changed only as the
-  # keywords say: the run's +attempt+ and +conclusion+, the runs
-  # +waiting+ in its group, a job's +annotations+, and fields of a +job+.
   # GitHub matches workflow_run's workflows by name, so a renamed
   # workflow would quietly lose its healing; and only trunk's runs are
   # run again, since on a branch a run queued again cancels the newer
@@ -354,6 +351,10 @@ class RunnerlessRunsTest < Minitest::Test
     assert_equal ["completed"], trigger.fetch("types")
   end
 
+  # Serves the recorded answers of case +name+, changed only as the
+  # keywords say: the run's +attempt+ and +conclusion+, other fields of
+  # the +run+, the runs +waiting+ on its branch, a job's +annotations+,
+  # and fields of a +job+.
   private def with_case(name, attempt: nil, conclusion: nil, run: {}, waiting: [], dry_run: false, annotations: {}, job: {})
     recorded = JSON.parse(File.read(File.join(FIXTURES, "#{name}.json")))
     recorded["annotations"] = recorded.fetch("annotations").merge(annotations)

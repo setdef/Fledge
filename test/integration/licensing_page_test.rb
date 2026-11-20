@@ -78,7 +78,11 @@ class LicensingPageTest < Minitest::Test
       runtime(directory, "ios", slices.merge("FledgeRuby.xcframework/Info.plist" => "<plist/>\n"))
       runtime(directory, "android", "include/fledge_ruby.h" => "int fledge_ruby_run_app(void);\n", "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
         "lib/ruby/4.0.0/rubygems/defaults/operating_system.rb" => defaults, "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n")
-      LicensingPage.new(directory, version: "9.8.7").text
+      findings = LicensingPage.audit(directory, version: "9.8.7")
+      text = LicensingPage.new(findings, version: "9.8.7").text
+      recorded = LicensingPage.parse(LicensingPage.new(findings).audited)
+      assert_equal text, LicensingPage.new(recorded, version: "9.8.7").text, "the page from the recorded findings is the page from the runtimes"
+      text
     end
   end
 
@@ -185,7 +189,7 @@ class LicensingPageTest < Minitest::Test
         "stray.txt" => "hello\n"
       ))
 
-      error = assert_raises(RuntimeError) { LicensingPage.new(directory).audit("arm64-darwin") }
+      error = assert_raises(RuntimeError) { LicensingPage.audit(directory, platforms: ["arm64-darwin"]) }
       assert_includes error.message, "unaccounted: stray.txt"
     end
   end

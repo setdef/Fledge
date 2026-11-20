@@ -31,11 +31,31 @@ class LicenseAudit
     # gem's files where RubyGems keeps them, in each of the runtime's Ruby
     # trees that holds it (LicenseAudit#prefixes).
     def gem_components
-      root = "#{@audit.prefix}lib/ruby/gems/#{@audit.abi}"
-      Dir.glob(File.join(@audit.tree, root, "specifications", "{,default/}*.gemspec")).map do |path|
-        spec = Gem::Specification.load(path) or raise "#{path}: not a gem specification"
-        component(spec, root, path)
-      end.uniq(&:id)
+      specifications.map { |path, spec| component(spec, gem_root, path) }.uniq(&:id)
+    end
+
+    # The license each gem's specification in the tree declares, as an
+    # SPDX expression (Fledge::LicensePolicy.gem_license), by the gem's
+    # name, before runtime/licenses.yml corrects any: what the tree says,
+    # whatever the map says of it. Raises when two gems of one name are
+    # in the tree.
+    def declared_licenses
+      specifications.map(&:last).uniq(&:full_name).each_with_object({}) do |spec, licenses|
+        raise "#{@audit.tree} holds more than one #{spec.name} gem" if licenses.key?(spec.name)
+
+        licenses[spec.name] = Fledge::LicensePolicy.gem_license(spec.licenses)
+      end
+    end
+
+    private def gem_root
+      "#{@audit.prefix}lib/ruby/gems/#{@audit.abi}"
+    end
+
+    # Each gem specification in the tree, with its path.
+    private def specifications
+      Dir.glob(File.join(@audit.tree, gem_root, "specifications", "{,default/}*.gemspec")).map do |path|
+        [path, Gem::Specification.load(path) || raise("#{path}: not a gem specification")]
+      end
     end
 
     # The component of the gem +spec+, whose files are under the pattern

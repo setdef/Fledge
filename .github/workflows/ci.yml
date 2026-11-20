@@ -2564,9 +2564,12 @@ jobs:
           --expect ".github/license-expectations/${{ matrix.platform }}.yml"
 
   # doc/licensing.md, the page that tells app developers what ships and
-  # what it asks of them, is generated from the audit of every
-  # platform's runtime (tasks/licensing_page.rb); it fails here when it
-  # no longer matches them.
+  # what it asks of them, is generated from the repository and
+  # runtime/audited.yml, which records what the page reads of every
+  # platform's runtime (tasks/licensing_page.rb). A unit test checks the
+  # page against that record before a push; this job checks the record
+  # and the page against the runtimes CI built, fails when either no
+  # longer matches them, and uploads the files it expected.
   licensing-page:
     name: Licensing page is current
     needs: [runtime, runtime-musl, runtime-mobile]
@@ -2606,7 +2609,9 @@ jobs:
         if: failure()
         with:
           name: licensing-page
-          path: ${{ runner.temp }}/runtimes/licensing.md
+          path: |
+            ${{ runner.temp }}/runtimes/licensing.md
+            ${{ runner.temp }}/runtimes/audited.yml
           retention-days: 14
 
   # Whoever receives a Linux app may replace lib/libcrypt.so.2 (LGPL-2.1,

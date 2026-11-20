@@ -5,12 +5,14 @@
 # SPDX-License-Identifier: MIT
 #++
 
-# doc/licensing.md comes from the license audit of all four runtimes,
-# which only CI builds together, so this stays out of the gate; CI's
-# "Licensing page is current" job runs the check, and uploads the page it
-# expected when the check fails.
-desc "Write doc/licensing.md from every platform's runtime archive in DIR"
+# doc/licensing.md comes from the license audit of every platform's
+# runtime, which only CI builds together. runtime/audited.yml records
+# what the page reads of those runtimes, so without DIR this writes the
+# page in a moment from that record and the repository, which a unit test
+# checks before every push. With DIR it audits the runtimes there and
+# writes both files, as CI's "Licensing page is current" job checks they
+# match, uploading the files it expected when they do not.
+desc "Write doc/licensing.md (and runtime/audited.yml, from every platform's runtime archive in DIR, if given)"
 task :licensing, [:dir] do |_task, arguments|
-  dir = arguments[:dir] or abort "usage: rake \"licensing[DIR]\", DIR holding fledge-runtime-*-PLATFORM.tar.gz for every platform"
-  ruby "tasks/licensing_page.rb", dir
+  ruby "tasks/licensing_page.rb", *arguments[:dir]
 end

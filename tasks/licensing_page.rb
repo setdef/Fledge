@@ -20,13 +20,22 @@ require_relative "../lib/fledge/version"
 #
 # The maintainer asked for this page to come from the pipeline, never by
 # hand (decisions.md, replies of 2026-10-26), so it holds only what the
-# audit finds in the runtimes, and prose that names license sections.
-# CI builds the runtimes, the four desktops' and the two phones', runs this
-# with --check, and fails when the page in the repository differs from what
-# the runtimes say.
+# audit finds in the runtimes, what runtime/licenses.yml records of each
+# component, and prose that names license sections. Most of a change to
+# the page comes from the repository: Fledge's version, the map's names,
+# versions, licenses, and words for how each component ships, and this
+# file's prose. Only the rest comes from a runtime, and
+# runtime/audited.yml records it, as Findings: which of the map's
+# components a runtime lacks, the few files the page names, and the
+# runtime's gems. So the page is written from runtime/audited.yml and the
+# repository, in milliseconds, with no runtime, and a unit test fails
+# before a push when it is stale; CI audits the runtimes it builds, the
+# four desktops' and the two phones', and fails when either file differs
+# from what they say.
 #
-#   ruby tasks/licensing_page.rb RUNTIMES_DIR          # write doc/licensing.md
-#   ruby tasks/licensing_page.rb --check RUNTIMES_DIR  # exit 1 if it is stale
+#   ruby tasks/licensing_page.rb                       # both files, from runtime/audited.yml
+#   ruby tasks/licensing_page.rb RUNTIMES_DIR          # both files, from the runtimes
+#   ruby tasks/licensing_page.rb --check RUNTIMES_DIR  # exit 1 if either differs from the runtimes
 #
 # RUNTIMES_DIR holds one fledge-runtime-VERSION-PLATFORM.tar.gz for each
 # platform; their contents, not their version, decide the page (a
@@ -34,6 +43,7 @@ require_relative "../lib/fledge/version"
 # Fledge::VERSION.
 class LicensingPage
   PAGE = File.join(LicenseAudit::ROOT, "doc", "licensing.md")
+  AUDITED = File.join(LicenseAudit::ROOT, "runtime", "audited.yml")
   RELEASES = "https://github.com/setdef/Fledge/releases"
 
   # What a person sees for each platform.
@@ -52,26 +62,147 @@ class LicensingPage
   # The platforms the page lists: every desktop's, then each phone's.
   PLATFORMS = [*Fledge::Platform.names, *Fledge::MobilePlatform.names].freeze
 
+  # The platform whose runtime's files of Fledge's the page names, for
+  # every desktop.
+  OWN_FILES = "x86_64-linux"
+
   # The Ruby every runtime is made from, for the page's prose.
   RUBY_VERSION_SHIPPED = YAML.safe_load_file(LicenseAudit::SOURCES).fetch("ruby").fetch("version")
 
-  # What the page needs of a platform's Report, read before its tree is
-  # deleted: its components but gems, its gems' names by license, and
-  # its LGPL libraries, and whether the runtime carries their source in
-  # notices/sources/.
+  # What the page reads of one platform's runtime that only the runtime
+  # can say, as runtime/audited.yml records it: the tree's {prefix} and
+  # {abi} (LicenseAudit#prefix, LicenseAudit#abi); the ids of the
+  # components runtime/licenses.yml maps for the platform that the
+  # runtime does not hold (+absent+); the files the page names, by
+  # component id, of each component LicensingPage.files? says (+files+,
+  # the files it owns; +embedded+, the files it is compiled into); and the
+  # license each gem's specification declares, by the gem's name (+gems+).
+  class Findings < Data.define(:prefix, :abi, :absent, :files, :embedded, :gems)
+    # The findings of +report+, the audit +audit+ made of +platform+'s
+    # tree.
+    def self.of(platform, audit, report)
+      present = report.present.map(&:id)
+      held, lacked = report.components.reject(&:gem_dir).partition { |component| present.include?(component.id) }
+      named = held.select { |component| LicensingPage.files?(platform, component) }
+      own = held.select { |component| LicensingPage.embedded?(platform, component) }
+      new(prefix: audit.prefix, abi: audit.abi, absent: lacked.map(&:id), files: named.to_h { |component| [component.id, report.owned(component)] },
+        embedded: own.to_h { |component| [component.id, report.embedded_in(component)] },
+        gems: LicenseAudit::Inventory.new(audit).declared_licenses.sort.to_h)
+    end
+
+    # The findings runtime/audited.yml records as +entry+.
+    def self.from_h(entry)
+      new(prefix: entry.fetch("prefix"), abi: entry.fetch("abi"), absent: entry.fetch("absent"), files: entry.fetch("files"),
+        embedded: entry.fetch("embedded"), gems: entry.fetch("gems"))
+    end
+
+    # These findings without what +components+, the map's components for
+    # +platform+, no longer asks of them: an absent id the map no longer
+    # lists, and the files of a component the page no longer names. An
+    # audit under that map would find the same, so this needs no runtime.
+    def within(platform, components)
+      listed = components.to_h { |component| [component.id, component] }
+      with(absent: absent.select { |id| listed.key?(id) },
+        files: files.select { |id, _files| listed.key?(id) && LicensingPage.files?(platform, listed.fetch(id)) },
+        embedded: embedded.select { |id, _files| listed.key?(id) && LicensingPage.embedded?(platform, listed.fetch(id)) })
+    end
+
+    # The findings as runtime/audited.yml records them.
+    def to_h
+      { "prefix" => prefix, "abi" => abi, "absent" => absent, "files" => files, "embedded" => embedded, "gems" => gems }
+    end
+  end
+
+  # What the page needs of a platform: its components but gems, its
+  # gems' names by license, and its LGPL libraries, and whether the
+  # runtime carries their source in notices/sources/.
   class Summary < Data.define(:components, :gems, :lgpl, :sources); end
 
   # A component, as the page shows it.
   class Row < Data.define(:name, :version, :license, :ships, :files, :embedded, :first_party); end
 
-  def initialize(runtimes, version: Fledge::VERSION)
-    @runtimes = runtimes
-    @version = version
+  # Whether the page names the files +component+ owns on +platform+: an
+  # LGPL library's, whose obligations name them, and Fledge's own, on
+  # the platform the page names them from (OWN_FILES).
+  def self.files?(platform, component)
+    lgpl?(component) || embedded?(platform, component)
   end
 
-  # The page, from the audit of each platform's runtime.
+  # Whether the page names the files +component+ is compiled into on
+  # +platform+: Fledge's own, on OWN_FILES, where bin/ruby holds them.
+  def self.embedded?(platform, component)
+    component.first_party && platform == OWN_FILES
+  end
+
+  # Whether +component+ is an LGPL library, whose obligations the page
+  # states, and not its published source.
+  def self.lgpl?(component)
+    component.kind != "source" && component.license.include?("LGPL")
+  end
+
+  # The findings of each platform's runtime archive in +runtimes+, by
+  # platform, of every platform or those of +platforms+. Raises when a
+  # runtime breaks the license policy.
+  def self.audit(runtimes, version: Fledge::VERSION, platforms: PLATFORMS)
+    platforms.to_h do |platform|
+      archives = Dir.glob(File.join(runtimes, "fledge-runtime-*-#{platform}.tar.gz"))
+      raise "#{runtimes} holds no single runtime for #{platform}: #{archives}" unless archives.size == 1
+
+      Dir.mktmpdir("licensing-#{platform}") do |directory|
+        Fledge::Archive.unpack(archives.first.to_s, into: directory)
+        tree = Dir.glob(File.join(directory, "fledge-runtime-*")).first or raise "#{archives.first} holds no runtime folder"
+        audit = LicenseAudit.new(platform:, tree:, fledge_version: version)
+        report = audit.call
+        raise "the #{platform} runtime breaks the license policy: #{report.violations.first}" unless report.violations.empty?
+
+        [platform, Findings.of(platform, audit, report)]
+      end
+    end
+  end
+
+  # The findings runtime/audited.yml (or +path+) records, by platform.
+  def self.load(path = AUDITED)
+    parse(File.read(path))
+  end
+
+  # The findings +text+, as runtime/audited.yml holds them, records.
+  def self.parse(text)
+    YAML.safe_load(text).transform_values { |entry| Findings.from_h(entry) }
+  end
+
+  # The two files the page's generator writes, by path, from +findings+:
+  # runtime/audited.yml and doc/licensing.md.
+  def self.files(findings, version: Fledge::VERSION)
+    page = new(findings, version:)
+    { AUDITED => page.audited, PAGE => page.text }
+  end
+
+  def initialize(findings, version: Fledge::VERSION, map: LicenseAudit::MAP)
+    @version = version
+    @map = YAML.safe_load_file(map)
+    @findings = findings.to_h do |platform, found|
+      [platform, found.within(platform, components(platform, found))]
+    end
+  end
+
+  # runtime/audited.yml: the findings, without what the map no longer
+  # asks of them (Findings#within).
+  def audited
+    <<~HEADER + YAML.dump(@findings.transform_values(&:to_h))
+      # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+      # SPDX-License-Identifier: MIT
+      #
+      # Generated by tasks/licensing_page.rb from the license audit of each
+      # runtime. Do not edit; CI fails when it is stale. What doc/licensing.md
+      # reads of each platform's runtime that only the runtime can say
+      # (LicensingPage::Findings): the map's components the runtime lacks,
+      # the files the page names, and the license each gem declares.
+    HEADER
+  end
+
+  # The page, from the findings of each platform's runtime.
   def text
-    reports = PLATFORMS.to_h { |platform| [platform, audit(platform)] }
+    reports = PLATFORMS.to_h { |platform| [platform, summary(platform)] }
     [
       header,
       everywhere(reports),
@@ -83,32 +214,39 @@ class LicensingPage
 ].join("\n")
   end
 
-  # Audits the runtime archive for +platform+ in the runtimes folder.
-  def audit(platform)
-    archives = Dir.glob(File.join(@runtimes, "fledge-runtime-*-#{platform}.tar.gz"))
-    raise "#{@runtimes} holds no single runtime for #{platform}: #{archives}" unless archives.size == 1
-
-    Dir.mktmpdir("licensing-#{platform}") do |directory|
-      Fledge::Archive.unpack(archives.first.to_s, into: directory)
-      tree = Dir.glob(File.join(directory, "fledge-runtime-*")).first or raise "#{archives.first} holds no runtime folder"
-      report = LicenseAudit.new(platform:, tree:, fledge_version: @version).call
-      raise "the #{platform} runtime breaks the license policy: #{report.violations.first}" unless report.violations.empty?
-
-      summarize(report)
+  # The map's components for +platform+, their words expanded with what
+  # +found+ says of the tree.
+  private def components(platform, found)
+    facts = @map.fetch("platforms").fetch(platform)
+    expand = -> (text) { LicenseAudit.expand(text, facts, prefix: -> { found.prefix }, abi: -> { found.abi }, fledge_version: @version) }
+    @map.fetch("components").filter_map do |entry|
+      LicenseAudit::Component.from_map(entry, expand) if entry.fetch("platforms").include?(platform)
     end
   end
 
-  private def summarize(report)
-    present = report.present
-    components = present.reject(&:gem_dir).sort_by { |component| [component.first_party ? 0 : 1, component.name.downcase] }
+  private def summary(platform)
+    found = @findings.fetch(platform) { raise stale("records no runtime for #{platform}") }
+    components = components(platform, found).reject { |component| found.absent.include?(component.id) }
+    components = components.sort_by { |component| [component.first_party ? 0 : 1, component.name.downcase] }
     row = lambda do |component|
-      Row.new(name: component.name, version: component.version, license: component.license, ships: component.ships,
-        files: report.owned(component), embedded: report.embedded_in(component), first_party: component.first_party)
+      files = LicensingPage.files?(platform, component) ? found.files.fetch(component.id) { raise stale("names no files of #{component.id} on #{platform}") } : []
+      embedded = LicensingPage.embedded?(platform, component) ? found.embedded.fetch(component.id) { raise stale("names nothing #{component.id} is compiled into on #{platform}") } : []
+      Row.new(name: component.name, version: component.version, license: component.license, ships: component.ships, files:, embedded:,
+        first_party: component.first_party)
     end
-    gems = present.select(&:gem_dir).group_by(&:license).transform_values { |list| list.map { |gem| gem.name[/\A\S+/] }.sort }
+    corrections = @map.fetch("gems", {})
+    gems = found.gems.group_by { |name, declared| corrections.fetch(name, {}).fetch("license", declared) }
     sources, libraries = components.partition { |component| component.kind == "source" }
-    lgpl = libraries.select { |component| component.license.include?("LGPL") }.map(&row)
-    Summary.new(components: components.map(&row), gems: gems.sort.to_h, lgpl:, sources: !sources.empty?)
+    Summary.new(components: components.map(&row), gems: gems.transform_values { |list| list.map(&:first).sort }.sort.to_h,
+      lgpl: libraries.select { |component| LicensingPage.lgpl?(component) }.map(&row), sources: !sources.empty?)
+  end
+
+  # Why the findings cannot write the page: they come from runtimes
+  # built before this change, which only runtimes built with it can
+  # correct.
+  private def stale(what)
+    "runtime/audited.yml #{what}, which only a runtime built with this change can say: " \
+      "build every platform's runtime and run bundle exec rake \"licensing[DIR]\" (doc/contributors/design/license-audit.md, \"The licensing page\")"
   end
 
   private def header
@@ -278,19 +416,22 @@ end
 
 if $PROGRAM_NAME == __FILE__
   check = ARGV.delete("--check")
-  runtimes = ARGV.first or abort "usage: licensing_page.rb [--check] RUNTIMES_DIR"
-  text = LicensingPage.new(runtimes).text
+  runtimes = ARGV.first
+  abort "usage: licensing_page.rb [[--check] RUNTIMES_DIR]" if check && !runtimes
+  findings = runtimes ? LicensingPage.audit(runtimes) : LicensingPage.load
+  expected = LicensingPage.files(findings)
   if check
-    current = File.exist?(LicensingPage::PAGE) ? File.read(LicensingPage::PAGE) : ""
-    if current == text
-      puts "doc/licensing.md matches the runtimes"
+    stale = expected.reject { |path, text| File.exist?(path) && File.read(path) == text }
+    if stale.empty?
+      puts "doc/licensing.md and runtime/audited.yml match the runtimes"
     else
-      File.write(File.join(runtimes, "licensing.md"), text)
-      abort "doc/licensing.md is stale: run ruby tasks/licensing_page.rb on these runtimes and commit it " \
-        "(the expected page is #{File.join(runtimes, 'licensing.md')})"
+      stale.each { |path, text| File.write(File.join(runtimes, File.basename(path)), text) }
+      names = stale.keys.map { |path| path.delete_prefix("#{LicenseAudit::ROOT}/") }
+      abort "#{names.join(' and ')} differ from these runtimes: run bundle exec rake \"licensing[DIR]\" on them and commit both files " \
+        "(the expected files are in #{runtimes})"
     end
   else
-    File.write(LicensingPage::PAGE, text)
-    puts "Wrote #{LicensingPage::PAGE}"
+    expected.each { |path, text| File.write(path, text) }
+    puts "Wrote #{expected.keys.join(' and ')}"
   end
 end

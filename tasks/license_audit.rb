@@ -174,16 +174,20 @@ class LicenseAudit
   end
 
   def expand(pattern)
-    tokens = {
-      "prefix" => prefix,
-      "arch" => @facts.fetch("arch"),
-      "gem_arch" => @facts.fetch("gem_arch"),
-      "so" => @facts.fetch("so"),
-      "fledge_version" => @fledge_version,
-    }
+    LicenseAudit.expand(pattern, @facts, prefix: -> { prefix }, abi: -> { abi }, fledge_version: @fledge_version)
+  end
+
+  # +pattern+ with each token runtime/licenses.yml's patterns may hold
+  # replaced: {arch}, {gem_arch}, and {so} from +facts+, the platform's
+  # entry in the map's platforms; {prefix} and {abi}, which a tree
+  # decides, from +prefix+ and +abi+, each called only when the pattern
+  # holds it; and {fledge_version}. A pattern that ends in /** matches
+  # the files under that folder.
+  def self.expand(pattern, facts, prefix:, abi:, fledge_version:)
+    tokens = { "prefix" => prefix, "abi" => abi, "fledge_version" => -> { fledge_version } }
     expanded = pattern.gsub(/\{(prefix|arch|gem_arch|so|fledge_version|abi)\}/) do
       name = Regexp.last_match(1).to_s
-      (name == "abi") ? abi : tokens.fetch(name)
+      tokens.key?(name) ? tokens.fetch(name).call : facts.fetch(name)
     end
     expanded.end_with?("/**") ? "#{expanded}/*" : expanded
   end

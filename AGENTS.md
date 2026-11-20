@@ -107,7 +107,7 @@ Fledge is MIT, copyright setdef (decisions, 2026-11-07); released tags through `
 - **These are bugs to remove:** GPL or AGPL third-party code in a runtime, and LGPL code linked into Fledge's launcher or into any binary whose source Fledge does not publish.
 - **This policy applies to Fledge's runtimes only.** The gems an app depends on are the app developer's choice and responsibility, licenses and all (decisions, 2026-10-28). `fledge build` never refuses, warns about, or annotates a gem for its license, for what its binaries compile in, or for declaring no license. It refuses a gem only when it would not run where the app goes: no build for the target, a checksum or pin that does not match, a Ruby it does not support, or a library its compiled files need that nothing provides.
 - **Before a component lands in `runtime/sources.yml`,** check its license and record the component, its license, and its notice in `runtime/licenses.yml`. Every runtime build runs the license audit against that file and refuses to archive a runtime with anything it does not account for.
-- **`doc/licensing.md` is generated** from the runtimes. When CI says it is stale, regenerate it with `bundle exec rake "licensing[DIR]"`, and change its generator, `tasks/licensing_page.rb`, never the page.
+- **`doc/licensing.md` is generated**, from the repository and `runtime/audited.yml`, which records what it reads of the runtimes. When a unit test says it is stale, regenerate it with `bundle exec rake licensing`; when CI says the runtimes changed, with `bundle exec rake "licensing[DIR]"` on them. Change its generator, `tasks/licensing_page.rb`, never the page or the record.
 
 ## Committing
 

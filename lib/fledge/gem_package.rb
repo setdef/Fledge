@@ -192,6 +192,24 @@ module Fledge
       ]
     end
 
+    # What the linkage check reads: every file in the gem (#contents),
+    # since a <tt>.gem</tt> holds only the files its gemspec lists.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   package.gem_files == package.contents # => true
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def gem_files
+      contents
+    end
+
     # Every file in the gem, by its path in the gem, and its bytes.
     #
     # === Example

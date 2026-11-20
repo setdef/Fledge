@@ -8,6 +8,7 @@
 require "rubygems"
 require_relative "entry"
 require_relative "error"
+require_relative "gem_files"
 require_relative "gem_package"
 
 module Fledge
@@ -210,6 +211,24 @@ module Fledge
         Entry.walk(base, skip: git_files).select { |entry| entry.type == :file }
           .to_h { |entry| [entry.path, entry.content.to_s] }
       end
+    end
+
+    # What the linkage check reads of #contents: the files the gemspec
+    # lists and those under the gem's require paths (Fledge::GemFiles).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   package.gem_files.keys.grep(%r{\Atest/}) # => []
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def gem_files
+      GemFiles.of(spec, contents)
     end
 
     # Git's own files in the checkout: its <tt>.git</tt> folder, and the

@@ -9,6 +9,7 @@ require "fileutils"
 require "rubygems"
 require_relative "entry"
 require_relative "error"
+require_relative "gem_files"
 require_relative "gem_package"
 
 module Fledge
@@ -173,6 +174,26 @@ module Fledge
     #++
     def installed_path(_gem_dir)
       "app/#{@gem.app_path}"
+    end
+
+    # What the linkage check reads of the gem's folder: #contents, the
+    # files under its require paths, and the files its gemspec lists
+    # (Fledge::GemFiles).
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   package.gem_files.keys # => ["lib/greeter.rb", "vendor/libgreeter.so"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def gem_files
+      listed = spec.files.reject { |path| File.absolute_path?(path) }.select { |path| File.file?(File.join(checkout, path)) }
+      GemFiles.of(spec, listed.to_h { |path| [path, File.binread(File.join(checkout, path))] }.merge(contents))
     end
 
     # The entries that install the gem in the runtime's gem folder +gem_dir+:

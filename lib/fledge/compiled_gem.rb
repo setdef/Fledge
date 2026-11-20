@@ -167,7 +167,32 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def contents
-      files = package.contents.merge(@built.to_h { |entry| [entry.path, entry.content.to_s] })
+      with_built(package.contents)
+    end
+
+    # What the linkage check reads: the package's own (its #gem_files),
+    # with what the build wrote and the extensions folder, as #contents
+    # has them.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   compiled.gem_files.keys.grep(/\.bundle\z/) # => ["lib/redcarpet.bundle"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def gem_files
+      with_built(package.gem_files)
+    end
+
+    # +files+, with what the build wrote, and each file of the extensions
+    # folder whose bytes are not already among them.
+    private def with_built(files)
+      files = files.merge(@built.to_h { |entry| [entry.path, entry.content.to_s] })
       copies = files.values
       @extensions.each_with_object(files) do |entry, all|
         all["#{@extension_dir}/#{entry.path}"] = entry.content.to_s if entry.type == :file && !copies.include?(entry.content)

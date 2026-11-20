@@ -214,7 +214,7 @@ module Fledge
       readers(platform, runtime) do |readers|
         linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, system: @app.config.system_libraries(platform.os), readers:)
         found = packages.flat_map do |gem, package|
-          [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.contents)]
+          [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.gem_files)]
         end
         [*found, *linkage.unused]
       end

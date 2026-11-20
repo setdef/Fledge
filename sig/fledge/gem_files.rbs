@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  module GemFiles
+    def self.of: (Gem::Specification spec, Hash[String, String] files) -> Hash[String, String]
+  end
+end

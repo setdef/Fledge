@@ -10,7 +10,8 @@ require "open3"
 
 # Real git repositories holding gems, as Ferro's holds its gems under
 # gems/*/, for the tests of git gems. Each gemspec lists its
-# files with git ls-files, as most do, so a checkout without git would
+# files with git ls-files, less test/ and spec/, as most do and as
+# Bundler's gem template does, so a checkout without git would
 # break it.
 module FakeRepo
   # Writes a repository at +directory+/+name+ holding each of +gems+
@@ -43,6 +44,7 @@ module FakeRepo
         spec.summary = "A git gem for Fledge's tests"
         spec.licenses = #{licenses.inspect}
         spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) { |ls| ls.readlines("\\x0", chomp: true) }
+          .reject { |path| path.start_with?("test/", "spec/") }
         spec.extensions = #{extensions.inspect}
         spec.bindir = "exe"
         spec.executables = #{executables.inspect}

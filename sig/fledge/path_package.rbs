@@ -21,6 +21,8 @@ module Fledge
 
     def contents: () -> Hash[String, String]
 
+    def gem_files: () -> Hash[String, String]
+
     def installed_path: (String gem_dir) -> String
 
     def entries: (String gem_dir) -> Array[Entry]

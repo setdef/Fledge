@@ -22,6 +22,8 @@ module Fledge
 
     def contents: () -> Hash[String, String]
 
+    def gem_files: () -> Hash[String, String]
+
 
     private def specification: () -> String
 

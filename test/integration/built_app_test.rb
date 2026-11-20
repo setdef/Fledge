@@ -1250,7 +1250,16 @@ class BuiltAppTest < Minitest::Test
   end
 
   # Windows' own Expand-Archive for a .zip, as a person on Windows has
-  # it, and the system's tar for a .tar.gz.
+  # it, so a reader other than the bsdtar that wrote the .zip proves it
+  # opens; and the system's tar for a .tar.gz. Expand-Archive in
+  # Windows PowerShell 5.1 (Microsoft.PowerShell.Archive 1.0.1.0)
+  # draws a progress bar for each of a runtime's 3,077 files, which
+  # takes most of its time though no one sees it: 51 seconds an app
+  # with the bar and 15 without it on a Windows computer (2026-11-20),
+  # and on CI's x64 runner, where fledge build takes about 9 seconds,
+  # about 52 to build and unpack one app.
+  # Silencing the bar changes only what is drawn, not how the files are
+  # read or written.
   def unpack(archive, place)
     command = if @platform.windows?
       [
@@ -1258,7 +1267,8 @@ class BuiltAppTest < Minitest::Test
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath $env:ARCHIVE -DestinationPath $env:PLACE",
+        "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'; " \
+          "Expand-Archive -LiteralPath $env:ARCHIVE -DestinationPath $env:PLACE",
 ]
     else
       ["tar", "-xzf", archive, "-C", place]

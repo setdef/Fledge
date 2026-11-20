@@ -4,6 +4,8 @@
 module Fledge
   class MobileExtensions
     class HostGems
+      BUILD_ARGS: Hash[String, Array[String]]
+
       @specs: Array[Gem::Specification]
       @dependencies: Hash[locked_gem, package]
       @build: NativeBuild

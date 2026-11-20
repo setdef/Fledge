@@ -43,6 +43,16 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     class HostGems
+      # The build options of the gems compiled here, by name. ffi compiles
+      # with the libffi it bundles, as ffi's own gems for each desktop are
+      # built (its <tt>ext/ffi_c/extconf.rb</tt>, line 46, at 1.17.4, takes
+      # no system libffi under rake-compiler-dock), so that its extension
+      # does not depend on which libffi this computer offers: on GitHub's
+      # macos-26 runner, whose pkg-config answers for libffi, the system's
+      # header and library disagreed, and the ffi compiled against them
+      # did not load.
+      BUILD_ARGS = { "ffi" => ["--disable-system-libffi"] }.freeze
+
       # Creates the finder.
       #
       # [specs] The Gem::Specification of each gem whose Rakefile the
@@ -65,7 +75,7 @@ module Fledge
       # extension, written into the work folder once. Raises Fledge::Error
       # when one does not compile.
       def load_path
-        @load_path ||= @build.call(needed, build_args: {}).values.flat_map { |package| write(package) }
+        @load_path ||= @build.call(needed, build_args: BUILD_ARGS).values.flat_map { |package| write(package) }
       end
 
       # The packages among the dependencies that the gems of the

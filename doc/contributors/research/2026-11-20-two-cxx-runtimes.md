@@ -6,11 +6,11 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 > Findings of 2026-11-20 on whether an Android app with two copies of the C++ runtime behaves as a desktop does. Requested: written by an agent and not reviewed line by line. It changes no code and no ADR.
 >
-> What became of it: the same script, with each crossing's start written to the log by `/system/bin/log` and the head of the whole log printed, settled it the same day (run 20261120-081923-53066f): crossing 0, the string, passed, and crossing 1 ended the app with "libc++abi: terminating due to uncaught exception of type St13runtime_error: boom", from `__cxa_throw` in `libc++_shared.so`, called by `thrower_raise` in `libthrower.so`, under the extension file. So the exception was the cause, as read below. Since then every C++ extension file and `libfledgeext.so` link `libc++_shared.so`, which the app carries stripped, and the gem answers each crossing on the emulator as on the desktop (`doc/contributors/design/phone-projects.md`, "One C++ runtime in an app"; `test/integration/mobile_extension_symbols_test.rb` runs the crossings on CI's emulators).
+> What became of it: the same script, with each crossing's start written to the log by `/system/bin/log` and the head of the whole log printed, settled it the same day: crossing 0, the string, passed, and crossing 1 ended the app with "libc++abi: terminating due to uncaught exception of type St13runtime_error: boom", from `__cxa_throw` in `libc++_shared.so`, called by `thrower_raise` in `libthrower.so`, under the extension file. So the exception was the cause, as read below. Since then every C++ extension file and `libfledgeext.so` link `libc++_shared.so`, which the app carries stripped, and the gem answers each crossing on the emulator as on the desktop (`doc/contributors/design/phone-projects.md`, "One C++ runtime in an app"; `test/integration/mobile_extension_symbols_test.rb` runs the crossings on CI's emulators).
 
 # Two C++ Runtimes in an Android App
 
-An Android extension file and `libfledgeext.so` link the NDK's static C++ runtime and keep its symbols to themselves; a C++ library a gem's own build links takes the NDK's `libc++_shared.so`, which the app then carries (`doc/contributors/design/phone-projects.md`, "The C++ runtime rule" and "The NDK's shared C++ runtime"). An extension file that links such a library puts two copies of the runtime in one process, which the NDK warns against: "Exceptions raised in libfoo.so going uncaught in libbar.so, causing your app to crash" (developer.android.com/ndk/guides/cpp-support, "Static runtimes", last updated 2026-11-06). These runs looked for that in a Fledge app. Each ran on the pc-wsl build machine at `trunk` 5485ee81 with the Android runtimes of run 20261119-073545-894a80, on an x86_64 emulator of API 36, through `machines run`.
+An Android extension file and `libfledgeext.so` link the NDK's static C++ runtime and keep its symbols to themselves; a C++ library a gem's own build links takes the NDK's `libc++_shared.so`, which the app then carries (`doc/contributors/design/phone-projects.md`, "The C++ runtime rule" and "The NDK's shared C++ runtime"). An extension file that links such a library puts two copies of the runtime in one process, which the NDK warns against: "Exceptions raised in libfoo.so going uncaught in libbar.so, causing your app to crash" (developer.android.com/ndk/guides/cpp-support, "Static runtimes", last updated 2026-11-06). These runs looked for that in a Fledge app. Each ran on a Linux computer at `trunk` 5485ee81, with the Android runtime built at db1aefc2, on an x86_64 emulator of API 36.
 
 ## The gem
 
@@ -18,8 +18,8 @@ A path gem, `thrower`, whose `extconf.rb` first links `libthrower.so` from `ext/
 
 ## What the runs showed
 
-- **A first version proved nothing.** Its library's source sat in the extension's own folder, so mkmf compiled it into the extension too (`ORIG_SRCS = library.cc thrower.cc`), and the extension called its own copies. The app and a desktop agreed in every case (runs 20261120-075242-495e23 and 20261120-075713-a4a281), and nothing crossed. That build showed the extension file holding the static runtime with its state, `__cxa_get_globals`, `__cxa_begin_catch`, `__gxx_personality_v0`, the terminate handler, `std::locale`, `operator new` and `delete`, and the `std::exception` type_info, all local symbols, none in its dynamic table (run 20261120-080322-5be085).
-- **With the library apart, the desktop answers every case as one runtime does,** and the phone's app dies. On Linux: `greet=hello phone`, `caught=boom`, `same_type=true same_type_address=true`, `current_in_catch=true`, `terminate_seen=true`, `locale_number=1,5`, `deleted=7`. On the emulator, with all seven functions undefined in the extension file and defined in `libthrower.so` for both ABIs, the process ended "due to signal 6 (Aborted)", after the app wrote a memory map to the log, as Ruby's crash report ends with, and no line the program printed reached the log, though it prints and flushes a line before each crossing (runs 20261120-080809-b5db39 and 20261120-081210-6bd9f6).
+- **A first version proved nothing.** Its library's source sat in the extension's own folder, so mkmf compiled it into the extension too (`ORIG_SRCS = library.cc thrower.cc`), and the extension called its own copies. The app and a desktop agreed in every case, and nothing crossed. That build showed the extension file holding the static runtime with its state, `__cxa_get_globals`, `__cxa_begin_catch`, `__gxx_personality_v0`, the terminate handler, `std::locale`, `operator new` and `delete`, and the `std::exception` type_info, all local symbols, none in its dynamic table.
+- **With the library apart, the desktop answers every case as one runtime does,** and the phone's app dies. On Linux: `greet=hello phone`, `caught=boom`, `same_type=true same_type_address=true`, `current_in_catch=true`, `terminate_seen=true`, `locale_number=1,5`, `deleted=7`. On the emulator, with all seven functions undefined in the extension file and defined in `libthrower.so` for both ABIs, the process ended "due to signal 6 (Aborted)", after the app wrote a memory map to the log, as Ruby's crash report ends with, and no line the program printed reached the log, though it prints and flushes a line before each crossing.
 - **Which crossing aborts is not established.** The runs kept only the crash report's last lines, the memory map, and not its head, which names the signal's cause and the C backtrace. The same files had loaded and run in the first version, whose extension also needed `libthrower.so`, so a library not found is unlikely, though the second version's library is a different build. The NDK's words and the static runtime's local type_info point at the second crossing, the exception, which the extension's own personality routine would not match to its local `std::exception` and so leave to `std::terminate`; that is a reading, not an observation.
 - **Gradle packs `libc++_shared.so` as Fledge copies it, unstripped,** in debug and release alike: 9,091,400 bytes for x86_64 and 9,485,032 for arm64-v8a, stored compressed as 2,713,929 and 2,733,832 in the debug APK and 2,411,821 and 2,416,192 in the release one. Stripped with the NDK's `llvm-strip --strip-unneeded` they are 1,390,752 and 1,423,696 bytes.
 
@@ -29,7 +29,7 @@ The same run with the whole logcat kept as an artifact, or `adb logcat -d` print
 
 ## The script
 
-`machines run linux --require kvm=true --require machine=pc-wsl --env MISE_ENV=android --script crossing_proof2.sh -- RUNTIMES_RUN_ID`, from a checkout of Fledge:
+Run from a checkout of Fledge on Linux, with the Android SDK and NDK `bin/android-sdk` installs, an emulator `bin/android-emulator` can start, and the Android and x86_64-linux runtimes in `tmp/runtime` (`bundle exec rake runtime`), as `WORK=$(mktemp -d) bash crossing_proof2.sh`:
 
 ```sh
 #!/usr/bin/env bash
@@ -43,14 +43,13 @@ The same run with the whole logcat kept as an artifact, or `adb logcat -d` print
 # what the NDK's libc++ says of type_info comparison, which C++ symbols
 # the extension file exports, and the C++ runtime's size stripped and
 # in the APK.
-# Usage: cases_proof.sh RUNTIMES_RUN_ID
+# Usage: WORK=FOLDER crossing_proof2.sh, with the runtimes in tmp/runtime
 set -euo pipefail
-run_id=${1:?runtimes run id}
+: "${WORK:?a scratch folder}"
 bin/setup
 mise exec -- bin/android-sdk
-machines fetch "$run_id"
 ndk_bin=$(mise exec -- ruby -Ilib -rfledge -e 'puts Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local).bin')
-app="$MACHINES_TMP/thrower_app"
+app="$WORK/thrower_app"
 gem="$app/thrower"
 mkdir -p "$gem/ext/thrower/library" "$gem/lib"
 cat > "$gem/ext/thrower/extconf.rb" <<'RUBY'
@@ -133,7 +132,7 @@ end
 RUBY
 printf 'name: ThrowerPhone\nidentifier: com.setdef.fledge.ThrowerPhone\n' > "$app/fledge.yml"
 
-desk="$MACHINES_TMP/desktop"
+desk="$WORK/desktop"
 mkdir -p "$desk"
 echo "== desktop:"
 if mise exec -- ruby -C "$desk" "$gem/ext/thrower/extconf.rb" >/dev/null && make -C "$desk" >/dev/null; then
@@ -144,8 +143,8 @@ else
 fi
 
 BUNDLE_GEMFILE="$app/Gemfile" mise exec -- bundle lock --add-platform ruby --add-checksums >/dev/null
-mise exec -- env FLEDGE_RUNTIME_DIR="$PWD/tmp/runtime" ruby -Ilib exe/fledge build android -o "$MACHINES_TMP/out" "$app"
-project="$MACHINES_TMP/out/ThrowerPhone-android"
+mise exec -- env FLEDGE_RUNTIME_DIR="$PWD/tmp/runtime" ruby -Ilib exe/fledge build android -o "$WORK/out" "$app"
+project="$WORK/out/ThrowerPhone-android"
 jni="$project/src/main/jniLibs"
 for abi in x86_64 arm64-v8a; do
   ext="$jni/$abi/libfledgeext.thrower.thrower.so"
@@ -160,9 +159,9 @@ for abi in x86_64 arm64-v8a; do
   fi
 done
 for abi in x86_64 arm64-v8a; do
-  cp "$jni/$abi/libc++_shared.so" "$MACHINES_TMP/stripped.so"
-  "$ndk_bin/llvm-strip" --strip-unneeded "$MACHINES_TMP/stripped.so"
-  echo "== $abi libc++_shared.so: $(wc -c < "$jni/$abi/libc++_shared.so") bytes as carried, $(wc -c < "$MACHINES_TMP/stripped.so") stripped, $(gzip -9c "$MACHINES_TMP/stripped.so" | wc -c) stripped and gzipped"
+  cp "$jni/$abi/libc++_shared.so" "$WORK/stripped.so"
+  "$ndk_bin/llvm-strip" --strip-unneeded "$WORK/stripped.so"
+  echo "== $abi libc++_shared.so: $(wc -c < "$jni/$abi/libc++_shared.so") bytes as carried, $(wc -c < "$WORK/stripped.so") stripped, $(gzip -9c "$WORK/stripped.so" | wc -c) stripped and gzipped"
 done
 mise exec -- "$project/gradlew" --no-daemon -q --project-dir "$project" assembleDebug assembleRelease
 for built in "$project"/build/outputs/apk/debug/*.apk "$project"/build/outputs/apk/release/*.apk; do
@@ -170,16 +169,16 @@ for built in "$project"/build/outputs/apk/debug/*.apk "$project"/build/outputs/a
   unzip -v "$built" | awk '$NF ~ /libc\+\+_shared/ {print $1, $3, $NF}'
 done
 apk=$(ls "$project"/build/outputs/apk/debug/*-debug.apk)
-cat > "$MACHINES_TMP/launch.rb" <<'RUBY'
+cat > "$WORK/launch.rb" <<'RUBY'
 require File.join(Dir.pwd, "tasks", "mobile_parity")
 app = MobileParity::App.new(path: ARGV[1], name: "ThrowerPhone", identifier: "com.setdef.fledge.ThrowerPhone", prints: /Thrower/, phones: ["android"])
 system("adb", "install", "-r", ARGV[0], exception: true)
 begin
-  logged = MobileParity::Android.new(work: ENV.fetch("MACHINES_TMP")).launch(app, timeout: 120)
+  logged = MobileParity::Android.new(work: ENV.fetch("WORK")).launch(app, timeout: 120)
   puts "== the app logged:", logged.entries
 rescue => e
   puts "== the app did not finish; the error's last 60 lines:", e.message.lines.last(60)
-  log = File.join(ENV.fetch("MACHINES_TMP"), "logcat-com.setdef.fledge.ThrowerPhone.txt")
+  log = File.join(ENV.fetch("WORK"), "logcat-com.setdef.fledge.ThrowerPhone.txt")
   if File.exist?(log)
     puts "== logcat, crash reporters and the app's own lines:", File.readlines(log).grep(/ (DEBUG|libc|AndroidRuntime|linker|ruby|fledge|Fledge)\b|Thrower|terminat|abort|signal|dlopen|#\d\d pc/).last(60)
   else
@@ -187,5 +186,5 @@ rescue => e
   end
 end
 RUBY
-mise exec -- bin/android-emulator google_apis -- mise exec -- ruby "$MACHINES_TMP/launch.rb" "$apk" "$app"
+mise exec -- bin/android-emulator google_apis -- mise exec -- ruby "$WORK/launch.rb" "$apk" "$app"
 ```

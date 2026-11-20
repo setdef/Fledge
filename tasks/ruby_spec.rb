@@ -83,7 +83,7 @@ class RubySpec
   # Ruby against an Android emulator, has right/UTC, the zone with leap
   # seconds. Ubuntu ships the right/ zones in tzdata-legacy, apart from
   # tzdata: CI's ubuntu-24.04 runner has them, and an Ubuntu 26.04
-  # laptop without that package does not (run 20261113-053941-620957).
+  # laptop without that package does not.
   RIGHT_UTC = File.exist?("/usr/share/zoneinfo/right/UTC")
 
   # Whether this process, and so stock Ruby, has no login UID, which
@@ -94,7 +94,7 @@ class RubySpec
   # getlogin_r.c, lines 36 to 62 and 108 to 115 at glibc-2.42), which
   # stock Ruby's run, its standard input /dev/null, has none of. CI's
   # runner, a service, has none; a run under a login session, as on a
-  # laptop's job agent with login UID 1002 (run 20261113-053941-620957),
+  # laptop's job agent with login UID 1002,
   # has one, and getlogin names its user there.
   NO_LOGIN_UID = begin
     File.read("/proc/self/loginuid").strip == "4294967295"

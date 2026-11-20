@@ -91,9 +91,8 @@ module Fledge
       # extconf.rb gave mkmf, names the C++ runtime (CXX_RUNTIMES), as a C
       # extension over a C++ library does. Such an extension links as one
       # with C++ sources does: with <tt>-lc++</tt> on iOS, and on Android
-      # with the NDK's C++ runtime linked in statically, since the
-      # <tt>libc++_shared.so</tt> that <tt>-lc++</tt> names there is a
-      # library the package does not carry.
+      # with the NDK's clang++, over its shared C++ runtime,
+      # <tt>libc++_shared.so</tt>, which the app then carries.
       #
       # === Example
       #

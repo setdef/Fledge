@@ -25,12 +25,13 @@ module Fledge
     #
     # This class copies each into its ABI's folder of
     # <tt>src/main/jniLibs/</tt>, stripped, with the shared libraries it
-    # links, under a name of Fledge's own, adds the NDK's shared C++
-    # runtime where one of them names it, and writes
+    # links, under a name of Fledge's own, and writes
     # <tt>fledge.links</tt> in the Ruby root: a line for each ABI, name,
     # and path where a desktop has the file, which the runtime links to
     # the extracted library as the app starts
-    # (<tt>runtime/mobile/library_links.c</tt>).
+    # (<tt>runtime/mobile/library_links.c</tt>). Once
+    # <tt>libfledgeext.so</tt> is linked too, it adds the NDK's shared
+    # C++ runtime where one of them names it (#carry_cxx_runtime).
     #
     # Use it from MobileProject::Android, once the extensions are built.
     #
@@ -122,16 +123,29 @@ module Fledge
       # SPDX-SnippetEnd
       #++
       def call(project, ruby_root:)
-        carried = [] # : Array[String]
         lines = @built.targets.values.flat_map do |build|
           abi = build.target.abi.to_s
           folder = File.join(project, "src", "main", "jniLibs", abi)
           FileUtils.mkdir_p(folder)
-          lines = extensions(build, folder, abi) + ffi_libraries(build, folder, abi)
-          carried << abi if carry_cxx_runtime(build, folder)
-          lines
+          extensions(build, folder, abi) + ffi_libraries(build, folder, abi)
         end
         File.write(File.join(ruby_root, LINKS), lines.join) unless lines.empty?
+      end
+
+      # Copies the NDK's shared C++ runtime (CXX_RUNTIME) for each ABI
+      # into +project+'s <tt>jniLibs/ABI/</tt>, stripped, where a library
+      # there names it, as every C++ extension and a library a gem's own
+      # build links with the NDK's clang++ do, and writes its notice
+      # (CXX_RUNTIME_NOTICE) in +ruby_root+ when it copied one, so that
+      # Android finds it among the app's native libraries, as the Android
+      # Gradle plugin packs it for a CMake build that asks for
+      # <tt>c++_shared</tt>. Run it once every library is in place,
+      # <tt>libfledgeext.so</tt> too.
+      def carry_cxx_runtime(project, ruby_root:)
+        carried = @built.targets.values.filter_map do |build|
+          abi = build.target.abi.to_s
+          abi if carry_cxx_runtime_for(build, File.join(project, "src", "main", "jniLibs", abi))
+        end
         write_cxx_runtime_notice(ruby_root, carried) unless carried.empty?
       end
 
@@ -192,20 +206,16 @@ module Fledge
       end
 
       # Copies the NDK's shared C++ runtime for +build+'s ABI into
-      # +folder+ when a library there names it, as one a gem's own build
-      # linked with the NDK's clang++ does (CXX_RUNTIME), so that Android
-      # finds it among the app's native libraries, as the Android Gradle
-      # plugin packs it for a CMake build that asks for
-      # <tt>c++_shared</tt>.
-      # Returns whether it copied it.
-      private def carry_cxx_runtime(build, folder)
+      # +folder+, stripped as every library placed there is, when a
+      # library there names it. Returns whether it copied it.
+      private def carry_cxx_runtime_for(build, folder)
         ndk = @built.ndk or return false
         readelf = File.join(ndk.bin, "llvm-readelf")
         needed = Dir.glob(File.join(folder, "*.so")).any? do |library|
           Command.run(readelf, "--needed-libs", library, install: "Install the Android NDK again: #{ndk.root} has no llvm-readelf.")
             .split.include?(CXX_RUNTIME)
         end
-        FileUtils.cp(File.join(ndk.bin, "..", "sysroot", "usr", "lib", build.target.name, CXX_RUNTIME), folder) if needed
+        place(File.join(ndk.bin, "..", "sysroot", "usr", "lib", build.target.name, CXX_RUNTIME), folder, CXX_RUNTIME) if needed
         needed
       end
 

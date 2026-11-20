@@ -153,9 +153,10 @@ class MobileExtensionsBuildTest < Minitest::Test
   # Built as files, an Android extension is what a desktop's mkmf makes:
   # a shared object that keeps its own Init function, which Ruby's dln
   # looks up, and needs the runtime's libfledgeruby.so, which the app
-  # has already loaded, for Ruby's C API. It carries the C++ runtime it
-  # needs, since the package has no libc++_shared.so; finds a library it
-  # links beside itself; and aligns its LOAD segments for 16 KB pages.
+  # has already loaded, for Ruby's C API. Having C++, it needs the
+  # NDK's shared C++ runtime, which the app carries, as every C++
+  # library of the app does; finds a library it links beside itself;
+  # and aligns its LOAD segments for 16 KB pages.
   # It registers nothing and needs no Ruby file at its path: a link is
   # made there, where a desktop's RubyGems leaves its file.
   def test_an_android_extension_built_as_a_file_is_a_shared_object_with_its_own_init_function
@@ -175,7 +176,7 @@ class MobileExtensionsBuildTest < Minitest::Test
       dynamic = Open3.capture2(readelf, "-d", "--dyn-syms", "-lW", library.path).first
       assert_match(/\d+ FUNC\s+GLOBAL\s+DEFAULT\s+\d+ Init_adder$/, dynamic, "#{name}: dln finds the extension's own Init function")
       assert_includes dynamic, "Shared library: [libfledgeruby.so]", "#{name}: Ruby is the runtime's"
-      refute_includes dynamic, "libc++_shared.so", "#{name}: the C++ runtime is linked in statically"
+      assert_includes dynamic, "Shared library: [libc++_shared.so]", "#{name}: the shared C++ runtime"
       assert_match(/\(RUNPATH\)\s+Library runpath: \[\$ORIGIN\]/, dynamic, "#{name}: what it links is found beside it")
       alignments = dynamic.lines.grep(/\A\s*LOAD\s/).map { |line| Integer(line.split.last) }
       assert_operator alignments.min, :>=, 16_384, "#{name}: aligned for 16 KB pages"
@@ -185,9 +186,9 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   # A C extension over a C++ library names a desktop's C++ runtime
-  # (-lstdc++), which the NDK links as libc++_shared.so; built as a file,
-  # it links the C++ runtime in instead, as libfledgeext.so does.
-  def test_an_android_c_extension_over_a_cpp_library_built_as_a_file_carries_its_cpp_runtime
+  # (-lstdc++); built as a file, it links the NDK's shared C++ runtime in
+  # its place, as a C++ extension and libfledgeext.so do.
+  def test_an_android_c_extension_over_a_cpp_library_built_as_a_file_links_the_shared_cpp_runtime
     runtimes = real_runtimes("android")
     android_missing("examples/cmake_phone needs CMake on the PATH") unless cmake?
     ndk = android_ndk
@@ -197,8 +198,8 @@ class MobileExtensionsBuildTest < Minitest::Test
     readelf = File.join(ndk.bin, "llvm-readelf")
     built.targets.each do |name, target|
       dynamic = Open3.capture2(readelf, "-d", "--dyn-syms", target.libraries.fetch(0).path).first
-      refute_includes dynamic, "libc++_shared.so", "#{name}: the C++ runtime is linked in statically"
-      refute_match(/UND\s+(?:_ZNSt|_Znwm|_ZdlPv|__gxx_personality)/, dynamic, "#{name}: the C++ runtime is linked in")
+      assert_includes dynamic, "Shared library: [libc++_shared.so]", "#{name}: the shared C++ runtime"
+      assert_match(/UND\s+(?:_ZNSt|_Znwm|_ZdlPv|__gxx_personality)/, dynamic, "#{name}: the C++ runtime is not linked in")
       refute_match(/UND\s+tally_/, dynamic, "#{name}: the library's code is linked in")
     end
   end
@@ -281,8 +282,9 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   # The same for each Android ABI with the NDK, where this computer has
-  # one: libfledgeext.so holds the library's code, and needs no C++
-  # runtime the package does not carry.
+  # one: libfledgeext.so holds the library's code, over the NDK's shared
+  # C++ runtime, which the app then carries, stripped, once for each
+  # ABI, with its notice, though no other library of the app needs it.
   def test_a_cmake_library_an_extconf_builds_is_linked_for_each_android_abi
     runtimes = real_runtimes("android")
     android_missing("examples/cmake_phone needs CMake on the PATH") unless cmake?
@@ -293,17 +295,26 @@ class MobileExtensionsBuildTest < Minitest::Test
     compiler = Fledge::MobileExtensions.new(platform: android, packages: {}, build_args: {}, host: Fledge::Platform.local,
       runtimes: Fledge::Runtimes.new(env: ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes)), work: File.join(@dir, "work"), log: StringIO.new,
       gem_dir: "lib/ruby/gems/4.1.0+5")
+    project = File.join(@dir, "project")
+    FileUtils.mkdir_p(ruby_root = File.join(project, "fledge"))
+    readelf = File.join(ndk.bin, "llvm-readelf")
     machines = built.targets.to_h do |name, build|
-      library = compiler.shared_library(built, build, registration:, into: File.join(@dir, name, "libfledgeext.so"))
-      readelf = File.join(ndk.bin, "llvm-readelf")
+      into = File.join(project, "src", "main", "jniLibs", build.target.abi, "libfledgeext.so")
+      library = compiler.shared_library(built, build, registration:, into:)
       dynamic = Open3.capture2(readelf, "-d", "--dyn-syms", library).first
       refute_match(/UND\s+tally_/, dynamic, "#{name}: the library's code is linked in")
-      refute_includes dynamic, "libc++_shared.so", "#{name}: the C++ runtime is linked in statically"
-      refute_match(/UND\s+(?:_ZNSt|_Znwm|_ZdlPv|__gxx_personality)/, dynamic, "#{name}: the C++ runtime is linked in")
+      assert_includes dynamic, "Shared library: [libc++_shared.so]", "#{name}: the shared C++ runtime"
+      assert_match(/UND\s+(?:_ZNSt|_Znwm|_ZdlPv|__gxx_personality)/, dynamic, "#{name}: the C++ runtime is not linked in")
       assert_match(/\(RUNPATH\)\s+Library runpath: \[\$ORIGIN\]/, dynamic, "#{name}: the ruby program finds what it needs beside it")
       [name, Open3.capture2(readelf, "-h", library).first[/Machine:\s+(.+)$/, 1]]
     end
     assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)
+    Fledge::MobileProject::AndroidLibraries.new(built).carry_cxx_runtime(project, ruby_root:)
+    built.targets.each_value do |build|
+      assert_equal ["libc++_shared.so", "libfledgeext.so"], Dir.children(File.join(project, "src", "main", "jniLibs", build.target.abi)).sort
+      assert_carries_stripped_cxx_runtime(ndk, project, build)
+    end
+    assert_path_exists File.join(ruby_root, "notices", "libc++_shared.txt")
   end
 
   # A Rakefile shaped like digest-crc's runs an extconf.rb and make in
@@ -443,6 +454,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     FileUtils.mkdir_p(ruby_root = File.join(project, "fledge"))
     libraries = Fledge::MobileProject::AndroidLibraries.new(built)
     libraries.call(project, ruby_root:)
+    libraries.carry_cxx_runtime(project, ruby_root:)
 
     readelf = File.join(ndk.bin, "llvm-readelf")
     built.targets.each_value do |build|
@@ -450,10 +462,7 @@ class MobileExtensionsBuildTest < Minitest::Test
       assert_includes Open3.capture2(readelf, "--needed-libs", library).first, "libc++_shared.so", "#{build.target.name}: the shared C++ runtime"
       exported = Open3.capture2(readelf, "--dyn-syms", "-W", library).first.lines.reject { |line| line.include?(" UND ") }
       assert_empty exported.grep(/ (?:_ZNSt|_ZSt|__cxa_|__gxx_)/), "#{build.target.name}: exports no C++ runtime"
-      runtime = File.join(ndk.bin, "..", "sysroot", "usr", "lib", build.target.name, "libc++_shared.so")
-      carried = File.join(project, "src", "main", "jniLibs", build.target.abi, "libc++_shared.so")
-      assert_path_exists carried, "#{build.target.name}: libc++_shared.so in jniLibs"
-      assert_equal File.binread(runtime), File.binread(carried), "#{build.target.name}: the NDK's own, for its ABI"
+      assert_carries_stripped_cxx_runtime(ndk, project, build)
     end
     # Its license goes with it: the NDK's notice for the toolchain it
     # came from, after a header that names the files it covers.
@@ -821,6 +830,20 @@ class MobileExtensionsBuildTest < Minitest::Test
     rescue Fledge::Error => e
       missing(name, e.message)
     end
+  end
+
+  # Asserts that +project+'s jniLibs folder for +build+'s ABI holds the
+  # NDK's own libc++_shared.so for that ABI, stripped as llvm-strip
+  # --strip-unneeded strips it, as every other library placed there is.
+  def assert_carries_stripped_cxx_runtime(ndk, project, build)
+    runtime = File.join(ndk.bin, "..", "sysroot", "usr", "lib", build.target.name, "libc++_shared.so")
+    carried = File.join(project, "src", "main", "jniLibs", build.target.abi, "libc++_shared.so")
+    assert_path_exists carried, "#{build.target.name}: libc++_shared.so in jniLibs"
+    stripped = File.join(@dir, "stripped-#{build.target.abi}.so")
+    FileUtils.cp(runtime, stripped)
+    assert system(File.join(ndk.bin, "llvm-strip"), "--strip-unneeded", stripped), "llvm-strip strips #{runtime}"
+    assert_operator File.size(stripped), :<, File.size(runtime), "#{build.target.name}: the NDK's runtime has what stripping leaves out"
+    assert_equal File.binread(stripped), File.binread(carried), "#{build.target.name}: the NDK's own, for its ABI, stripped"
   end
 
   def tally_gem

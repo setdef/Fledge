@@ -36,22 +36,22 @@ module Fledge
       # Links the library +into+, for the target of +build+: the
       # registration unit's C file +registration+ and the extensions'
       # archives, against the runtime's <tt>libfledgeruby.so</tt>, aligned
-      # for 16 KB pages as the runtime's own library is, with the NDK's C++
-      # runtime linked statically (a shared one would be a library the
-      # package does not carry) when an extension has C++, and with its
-      # run path <tt>$ORIGIN</tt>, so that the runtime's ruby program,
-      # which loads it outside the app's own library namespace, finds the
-      # shared libraries it needs beside it (doc/contributors/design/phone-runtimes.md,
+      # for 16 KB pages as the runtime's own library is, over the NDK's
+      # shared C++ runtime, <tt>libc++_shared.so</tt>, when an extension
+      # has C++, which the app then carries, so that every C++ library of
+      # the app shares one C++ runtime, and with its run path
+      # <tt>$ORIGIN</tt>, so that the runtime's ruby program, which loads
+      # it outside the app's own library namespace, finds the shared
+      # libraries it needs beside it (doc/contributors/design/phone-runtimes.md,
       # "The ruby program on Android"). Returns +into+.
       def call(built, build, registration:, into:)
         ndk = built.ndk or raise Error, "only an Android app links a shared library"
         target = build.target
         cc = target.environment.fetch("FLEDGE_CC")
         cc = "#{cc}++" if build.cxx
-        stl = build.cxx ? ["-static-libstdc++"] : [] # : Array[String]
         FileUtils.mkdir_p(File.dirname(into))
         env = @runner.clean_env
-        @runner.call(env, cc, "-shared", "-fPIC", "-O2", "-I", File.join(target.root, "include"), "-o", into, *stl, "-x", "c", registration, "-x", "none",
+        @runner.call(env, cc, "-shared", "-fPIC", "-O2", "-I", File.join(target.root, "include"), "-o", into, "-x", "c", registration, "-x", "none",
           *build.archives, "-L#{target.libdir}", "-lfledgeruby", *build.flags, "-llog", "-lm", "-Wl,-z,max-page-size=16384",
           "-Wl,--exclude-libs,ALL", "-Wl,-rpath,$ORIGIN", what: "linking the app's extensions for #{target.name} with #{File.basename(ndk.root)}")
         @runner.call(env, File.join(ndk.bin, "llvm-strip"), "--strip-unneeded", into, what: "stripping #{File.basename(into)} for #{target.name}")

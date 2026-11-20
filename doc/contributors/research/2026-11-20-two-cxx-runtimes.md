@@ -5,6 +5,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
 > Findings of 2026-11-20 on whether an Android app with two copies of the C++ runtime behaves as a desktop does. Requested: written by an agent and not reviewed line by line. It changes no code and no ADR.
+>
+> What became of it: the same script, with each crossing's start written to the log by `/system/bin/log` and the head of the whole log printed, settled it the same day (run 20261120-081923-53066f): crossing 0, the string, passed, and crossing 1 ended the app with "libc++abi: terminating due to uncaught exception of type St13runtime_error: boom", from `__cxa_throw` in `libc++_shared.so`, called by `thrower_raise` in `libthrower.so`, under the extension file. So the exception was the cause, as read below. Since then every C++ extension file and `libfledgeext.so` link `libc++_shared.so`, which the app carries stripped, and the gem answers each crossing on the emulator as on the desktop (`doc/contributors/design/phone-projects.md`, "One C++ runtime in an app"; `test/integration/mobile_extension_symbols_test.rb` runs the crossings on CI's emulators).
 
 # Two C++ Runtimes in an Android App
 

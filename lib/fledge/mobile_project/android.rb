@@ -198,7 +198,10 @@ module Fledge
       # library a Rakefile built for Ruby's ffi
       # (MobileExtensions::FfiLibrary) each go to <tt>jniLibs/</tt> on
       # their own, linked from where a desktop has the file as the app
-      # starts (AndroidLibraries).
+      # starts (AndroidLibraries). Once all of them and
+      # <tt>libfledgeext.so</tt> are in place, the NDK's shared C++
+      # runtime goes beside them where one of them needs it, as every one
+      # with C++ does (AndroidLibraries#carry_cxx_runtime).
       private def place_extensions(project)
         built = @built or return
         compiler = @extensions or return
@@ -216,6 +219,7 @@ module Fledge
             @judged << [abi, File.basename(path), "the app", "lib/#{abi}/#{File.basename(path)}"]
           end
         end
+        libraries.carry_cxx_runtime(project, ruby_root: ruby_root(project))
       end
 
       private def ruby_root(project)

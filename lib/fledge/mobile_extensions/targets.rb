@@ -75,8 +75,10 @@ module Fledge
       # outside the app's library namespace, finds a library it carries
       # beside it. The quotes and the doubled dollar sign reach the
       # linker through make and the shell as <tt>$ORIGIN</tt>. And the
-      # symbols of the NDK's C++ runtime and unwinder, which a C++
-      # extension links in statically and a desktop's never holds, kept
+      # symbols of the NDK's static unwinder, where an extension links
+      # it, and of a static C++ runtime, which a C++
+      # extension links only where its own <tt>extconf.rb</tt> asks for
+      # one (it links the NDK's shared runtime, FLEDGE_LDSHAREDXX), kept
       # to the extension (<tt>--exclude-libs</tt>), as the NDK asks of a
       # shared library that links libc++ statically, so that a library
       # the extension loads is not bound to its copy of them; every
@@ -141,7 +143,7 @@ module Fledge
           "FLEDGE_RANLIB" => File.join(ndk.bin, "llvm-ranlib"),
           "FLEDGE_LIBRUBYARG" => "-L#{libdir} -lfledgeruby",
           "FLEDGE_DLDFLAGS" => DLDFLAGS,
-          "FLEDGE_LDSHAREDXX" => "$(CXX) -shared -static-libstdc++",
+          "FLEDGE_LDSHAREDXX" => "$(CXX) -shared",
           "CMAKE_TOOLCHAIN_FILE" => toolchain_file(arch, CMake.android(ndk: ndk.root, abi:, compiler:)),
           **Rust.android(arch, bin: ndk.bin, cc:, resource: resource_dir(cc, ndk)),
         }

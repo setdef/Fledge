@@ -25,7 +25,8 @@ class MobileExtensionSymbolsTest < Minitest::Test
   include AndroidRequired
 
   # The program: HOST LIBRARY FUNCTION ... opens each LIBRARY in turn as
-  # dln.c does, and prints FUNCTION and what it returns, a line each.
+  # dln.c does, and prints FUNCTION and what it returns, a line each,
+  # flushed, so that what it printed before a function aborts is kept.
   HOST = <<~C
     #include <dlfcn.h>
     #include <stdio.h>
@@ -37,6 +38,7 @@ class MobileExtensionSymbolsTest < Minitest::Test
             long (*function)(void) = (long (*)(void))dlsym(library, argv[i + 1]);
             if (function == NULL) { fprintf(stderr, "%s\\n", dlerror()); return 1; }
             printf("%s %ld\\n", argv[i + 1], function());
+            fflush(stdout);
         }
         return 0;
     }
@@ -53,11 +55,9 @@ class MobileExtensionSymbolsTest < Minitest::Test
     \tmkdir -p $(@D) && $$CC -fPIC -c $(srcdir)/twin/lib.c -o $(@D)/lib.o && $${AR:-ar} rcs $@ $(@D)/lib.o
   MAKE
 
-  # The dynamic symbols of the NDK's C++ runtime and unwinder, by name:
-  # std:: (libc++'s std::__ndk1:: and libc++abi's std::), operator new
-  # and delete, the Itanium ABI's __cxa_ functions, the personality
-  # routine, and _Unwind_.
-  CXX_RUNTIME = /\s(?:_ZNK?St|_ZT[ISTV]N?St|_ZSt|_Zn[wa]|_Zd[la]|__cxa_|__gxx_|__dynamic_cast|_Unwind_)/
+  # The names of the NDK's unwinder, whose static libunwind.a an
+  # extension may link, whether or not libc++_shared.so exports them.
+  UNWINDER = /\A_Unwind_/
 
   def setup
     @dir = Fledge::LongPath.of(Dir.mktmpdir)
@@ -124,22 +124,57 @@ class MobileExtensionSymbolsTest < Minitest::Test
     on_the_device(printed, "twin_dep_own 3\ntwin_dep_through_lib 3\n")
   end
 
-  # A C++ extension links the NDK's C++ runtime in statically (phone-projects.md,
-  # "The C++ runtime rule"), which a desktop's extension never holds, and
-  # keeps every symbol of it to itself, as the NDK asks of a shared
-  # library that does ("Advice for Middleware Vendors", STL), so that a
-  # library it links, here one over libc++_shared.so, is not bound to
-  # the extension's copy of the C++ runtime for the parts it exports.
-  def test_a_cpp_extension_keeps_its_cpp_runtime_from_a_library_it_links
+  # A C++ extension links the NDK's shared C++ runtime, libc++_shared.so
+  # (phone-projects.md, "The C++ runtime rule"), so that it and a C++
+  # library it links, here one a gem's own build links over that
+  # runtime too, share one C++ runtime, as a desktop's extension and
+  # library share the system's: a string, an exception, type
+  # information, the current exception, the terminate handler, and an
+  # allocation all cross between them. With a static runtime of its own
+  # the extension printed twin_cxx_shares_cout 0, and an app whose
+  # extension called such a library this way aborted where a desktop
+  # answered each crossing
+  # (doc/contributors/research/2026-11-20-two-cxx-runtimes.md). The
+  # extension exports nothing of the C++ runtime, holding none of it.
+  def test_a_cpp_extension_shares_the_cpp_runtime_of_a_library_it_links
     gem = extconf_gem("twin_cxx", <<~RUBY, "twin_cxx.cpp" => <<~CXX, "lib.mk" => <<~MAKE, "twin/dep.cpp" => <<~DEP)
       require "mkmf"
       create_makefile("twin_cxx/twin_cxx")
       File.open("Makefile", "a") { |makefile| makefile.puts "include $(srcdir)/lib.mk" }
     RUBY
+      #include <cstring>
+      #include <exception>
       #include <iostream>
+      #include <stdexcept>
+      #include <string>
+      #include <typeinfo>
       #include <ruby.h>
       extern "C" const void *twin_cxx_lib_cout(void);
+      std::string twin_cxx_lib_greet(const std::string &name);
+      void twin_cxx_lib_raise(void);
+      const std::type_info &twin_cxx_lib_kind(void);
+      bool twin_cxx_lib_has_current(void);
+      void twin_cxx_lib_set_terminate(void);
+      int *twin_cxx_lib_new(void);
       extern "C" long twin_cxx_shares_cout(void) { std::cout.flush(); return twin_cxx_lib_cout() == static_cast<const void *>(&std::cout); }
+      extern "C" long twin_cxx_greets(void) { return twin_cxx_lib_greet("phone") == "hello phone"; }
+      extern "C" long twin_cxx_catches(void) {
+        try { twin_cxx_lib_raise(); } catch (const std::exception &error) { return std::strcmp(error.what(), "boom") == 0; }
+        return 0;
+      }
+      extern "C" long twin_cxx_same_type(void) {
+        return twin_cxx_lib_kind() == typeid(std::runtime_error) && &twin_cxx_lib_kind() == &typeid(std::runtime_error);
+      }
+      extern "C" long twin_cxx_current(void) {
+        try { twin_cxx_lib_raise(); } catch (...) { return twin_cxx_lib_has_current(); }
+        return 0;
+      }
+      extern "C" long twin_cxx_terminate(void) {
+        std::terminate_handler before = std::get_terminate();
+        twin_cxx_lib_set_terminate();
+        return std::get_terminate() != before;
+      }
+      extern "C" long twin_cxx_deletes(void) { int *seven = twin_cxx_lib_new(); long value = *seven; delete seven; return value; }
       extern "C" void Init_twin_cxx(void) { rb_define_module("TwinCxx"); }
     CXX
       LIBDEP = $(shell pwd)/libdep/libtwin_cxx_lib.so
@@ -148,24 +183,38 @@ class MobileExtensionSymbolsTest < Minitest::Test
       $(LIBDEP):
       \tmkdir -p $(@D) && $$CXX -shared -fPIC $(srcdir)/twin/dep.cpp -o $@ && cp "$$($$CXX -print-file-name=libc++_shared.so)" $(@D)/
     MAKE
+      #include <cstdlib>
+      #include <exception>
       #include <iostream>
+      #include <stdexcept>
+      #include <string>
+      #include <typeinfo>
       extern "C" const void *twin_cxx_lib_cout(void) { return &std::cout; }
+      std::string twin_cxx_lib_greet(const std::string &name) { return "hello " + name; }
+      void twin_cxx_lib_raise(void) { throw std::runtime_error("boom"); }
+      const std::type_info &twin_cxx_lib_kind(void) { return typeid(std::runtime_error); }
+      bool twin_cxx_lib_has_current(void) { return static_cast<bool>(std::current_exception()); }
+      static void twin_cxx_lib_terminate(void) { std::abort(); }
+      void twin_cxx_lib_set_terminate(void) { std::set_terminate(twin_cxx_lib_terminate); }
+      int *twin_cxx_lib_new(void) { return new int(7); }
     DEP
 
     built = compile(gem)
 
-    printed = on_device(built, %w[twin_cxx/twin_cxx twin_cxx_shares_cout])
+    crossings = %w[shares_cout greets catches same_type current terminate deletes]
+    printed = on_device(built, crossings.flat_map { |crossing| ["twin_cxx/twin_cxx", "twin_cxx_#{crossing}"] })
     built.targets.each_value do |target|
       library = target.libraries.fetch(0)
+      assert_includes needed(target, library.path), "libc++_shared.so", "#{target.target.name}: the extension links the shared C++ runtime"
       symbols = dynamic_symbols(target, library.path)
-      exported = symbols.lines.grep(/\s(?:GLOBAL|WEAK)\s+DEFAULT\s+\d+\s/)
-      runtime = exported.grep(CXX_RUNTIME)
-      assert_equal [], runtime.map { |line| line.split.last }.first(5),
+      exported = defined(symbols)
+      runtime = runtime_names(target, exported)
+      assert_equal [], runtime.first(5),
         "#{target.target.name}: #{runtime.size} of the #{exported.size} symbols #{File.basename(library.path)} " \
           "(#{File.size(library.path)} bytes) exports are the C++ runtime's; on the device: #{printed.inspect}"
       assert_match(/ Init_twin_cxx$/, symbols, "#{target.target.name}: dln finds the Init function")
     end
-    on_the_device(printed, "twin_cxx_shares_cout 0\n")
+    on_the_device(printed, crossings.map { |crossing| "twin_cxx_#{crossing} #{(crossing == 'deletes') ? 7 : 1}\n" }.join)
   end
 
   # A path gem +name+ whose extension calls fledge_twin, from a static
@@ -189,6 +238,36 @@ class MobileExtensionSymbolsTest < Minitest::Test
     read, status = Open3.capture2(readelf, "--dyn-syms", "-W", path)
     assert_predicate status, :success?, "llvm-readelf reads #{path}"
     read
+  end
+
+  # The names +symbols+, what llvm-readelf --dyn-syms printed, defines
+  # and exports.
+  private def defined(symbols)
+    symbols.lines.grep(/\s(?:GLOBAL|WEAK)\s+DEFAULT\s+\d+\s/).map { |line| line.split.last }
+  end
+
+  # The names of +exported+, what an extension file exports, that are
+  # the C++ runtime's: those the NDK's libc++_shared.so for +target+
+  # defines, and the unwinder's
+  # (UNWINDER). An extension file that held a copy of the runtime and
+  # exported it would define these. What else it exports of std:: is
+  # its own: a template instance its code made from libc++'s headers,
+  # as a desktop's extension makes and exports one, such as the
+  # basic_string constructor from a const char * that arm64's
+  # extension here keeps out of line and x86_64's inlines.
+  private def runtime_names(target, exported)
+    ndk_lib = File.join(File.dirname(target.target.environment.fetch("FLEDGE_CC")), "..", "sysroot", "usr", "lib", target.target.name)
+    shared = defined(dynamic_symbols(target, File.join(ndk_lib, "libc++_shared.so")))
+    assert_includes shared, "__cxa_begin_catch", "#{target.target.name}: libc++_shared.so defines the C++ runtime"
+    exported.select { |name| shared.include?(name) || name.match?(UNWINDER) }
+  end
+
+  # The libraries +path+ names as needed, by the NDK's llvm-readelf.
+  private def needed(target, path)
+    readelf = File.join(File.dirname(target.target.environment.fetch("FLEDGE_CC")), "llvm-readelf")
+    read, status = Open3.capture2(readelf, "--needed-libs", path)
+    assert_predicate status, :success?, "llvm-readelf reads #{path}"
+    read.split
   end
 
   # What HOST prints on the attached device for +arguments+, pairs of an

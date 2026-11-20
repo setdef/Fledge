@@ -188,8 +188,8 @@ module Fledge
     # added to its link and +FLEDGE_LDSHAREDXX+, when set, linking C++:
     # an extension with C++ sources, and one whose <tt>extconf.rb</tt>
     # names a desktop's C++ runtime (<tt>-lc++</tt>, <tt>-lstdc++</tt>),
-    # which the NDK would link as <tt>libc++_shared.so</tt>, a library the
-    # package does not carry (Linking.cxx_runtime?). Its run path is only
+    # whose name it takes out, since the phone's C++ link chooses the
+    # phone's C++ runtime itself (Linking.cxx_runtime?). Its run path is only
     # what +FLEDGE_DLDFLAGS+ names: mkmf would add each folder it links
     # from (<tt>RPATHFLAG</tt>, which mkmf reads as it loads, line 2981),
     # the folders of this computer, which name nothing on the phone.

@@ -22,6 +22,8 @@ module Fledge
 
       def call: (String project, ruby_root: String) -> void
 
+      def carry_cxx_runtime: (String project, ruby_root: String) -> void
+
       private def extensions: (MobileExtensions::TargetBuild build, String folder, String abi) -> Array[String]
 
       private def ffi_libraries: (MobileExtensions::TargetBuild build, String folder, String abi) -> Array[String]
@@ -30,7 +32,7 @@ module Fledge
 
       private def ffi_name: (MobileExtensions::FfiLibrary library) -> String
 
-      private def carry_cxx_runtime: (MobileExtensions::TargetBuild build, String folder) -> bool
+      private def carry_cxx_runtime_for: (MobileExtensions::TargetBuild build, String folder) -> bool
 
       private def write_cxx_runtime_notice: (String ruby_root, Array[String] abis) -> void
 

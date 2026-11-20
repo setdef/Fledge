@@ -449,3 +449,15 @@ The orchestrating agent received these words first-hand from the maintainer and 
 [re: the orchestrating agent's sub-agents each working on a branch for hours, landed later by the orchestrator, with conflicts between them; and the agent's question whether sub-agents should push `trunk` themselves, since AGENTS.md said a parallel sub-agent does not.]
 
 *Governs:* every agent works trunk-based as trunkbaseddevelopment.com describes: small green commits pushed straight to `trunk` within minutes of being proven, no long-lived or sideways branches, no push to find out whether CI passes, and a red `trunk` reverted at once. *Applied in:* AGENTS.md, Working as an agent.
+
+## 2026-11-19
+
+The orchestrating agent received these words first-hand from the maintainer.
+
+> Does WIP get us to 0.X.0, where X is the Release Candidate for 1.0.0?
+
+[re: the work then in flight, all of it on CI's reliability. The orchestrating agent answered that it did not: a candidate also needed what the maintainer's accounts do not block (libraries for Ruby's ffi on iOS, the smaller known defects, CI running the Android integration tests), and any fix his testing called for would make a later 0.x release the candidate.]
+
+> My goal by 7:59am is to get Fledge to that release candidate release. My testing happens _on_ the release candidate, which, if it all passes, will be simply made into 1.0.0.
+
+*Governs:* one 0.x release is the release candidate for 1.0.0, and has everything 1.0.0 will; the maintainer's testing is done on that release; and if all of it passes, 1.0.0 is made from it, with no feature or fix added between the two. The hour is that night's goal and governs nothing after it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `doc/contributors/handoff.md`, "What is left before 1.0"; `questions.md`, question C.

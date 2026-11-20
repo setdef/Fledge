@@ -291,6 +291,23 @@ jobs:
       # one Gradle released (runtime/sources.yml pins its SHA-256 too).
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
+      # Gradle's dependency cache that ci.yml's Mobile apps (Android
+      # emulator) jobs save, under the same key, for the same template:
+      # they build every variant, so it holds what a debug APK needs
+      # (doc/contributors/design/phone-projects.md, "Gradle's downloads in
+      # CI"). Only restored, so this job's smaller set never takes the key.
+      - name: Key Gradle's dependency cache
+        id: gradle-key
+        run: echo "agp=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "agp")')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            !~/.gradle/caches/modules-2/*.lock
+            !~/.gradle/caches/modules-2/gc.properties
+          key: gradle-modules-${{ runner.os }}-agp-${{ steps.gradle-key.outputs.agp }}-${{ hashFiles('lib/fledge/templates/android/*.gradle', 'lib/fledge/templates/android/gradle.properties', 'lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties') }}
+
       - name: Run stock Ruby, and build the app with fledge build android and Gradle
         env:
           RUBY_SPEC_OUT: ${{ runner.temp }}/ruby-spec

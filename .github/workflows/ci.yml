@@ -465,8 +465,37 @@ jobs:
           path: ~/.cache/fledge/downloads
           key: runtime-downloads-${{ matrix.platform }}-${{ hashFiles('runtime/sources.yml') }}
 
+      # Gradle's dependency cache for the AAR's own project, which the
+      # Android Gradle plugin packs, keyed on what decides its set: that
+      # project's Gradle files and the pinned Gradle and plugin
+      # (doc/contributors/design/phone-projects.md, "Gradle's downloads
+      # in CI").
+      - name: Key Gradle's dependency cache
+        if: matrix.platform == 'android'
+        id: gradle-key
+        run: ruby -ryaml -e 'm = YAML.safe_load_file("runtime/sources.yml").fetch("mobile"); print "pins=agp-#{m.fetch("agp")}-gradle-#{m.dig("gradle", "version")}"' >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: matrix.platform == 'android'
+        id: gradle-cache
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            !~/.gradle/caches/modules-2/*.lock
+            !~/.gradle/caches/modules-2/gc.properties
+          key: gradle-modules-${{ runner.os }}-runtime-${{ steps.gradle-key.outputs.pins }}-${{ hashFiles('runtime/mobile/android/*.gradle', 'runtime/mobile/android/gradle.properties') }}
+
       - name: Build the runtime
         run: ruby tasks/runtime_builder.rb "${{ matrix.platform }}"
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: matrix.platform == 'android' && steps.gradle-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            !~/.gradle/caches/modules-2/*.lock
+            !~/.gradle/caches/modules-2/gc.properties
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -650,10 +679,13 @@ jobs:
       # "Gradle's downloads in CI"). The key is everything that decides
       # what Gradle resolves: the template's Gradle files, the plugin's
       # version, and the runner's system; the cache is the folder
-      # Gradle's guide says may be copied, without its lock files.
+      # Gradle's guide says may be copied, without its lock files. These
+      # jobs build every variant, so theirs is the set the other jobs
+      # that build the template restore (mobile-apps-android-hosts saves
+      # its own system's; ruby-spec.yml and installed.yml only restore).
       - name: Key Gradle's dependency cache
         id: gradle-key
-        run: echo "agp=$(ruby -I lib -r fledge -e 'print Fledge::MobileProject::Android::AGP')" >> "$GITHUB_OUTPUT"
+        run: echo "agp=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "agp")')" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: gradle-cache
@@ -786,6 +818,23 @@ jobs:
           jar=$(ruby .github/scripts/fetch_pin.rb mobile bundletool)
           echo "BUNDLETOOL=$jar" >> "$GITHUB_ENV"
 
+      # Gradle's dependency cache for this system, keyed as the emulator
+      # jobs key theirs (doc/contributors/design/phone-projects.md,
+      # "Gradle's downloads in CI"): the plugin fetches aapt2 for the
+      # system it runs on, so each system has a set of its own.
+      - name: Key Gradle's dependency cache
+        id: gradle-key
+        run: echo "agp=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "agp")')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: gradle-cache
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            !~/.gradle/caches/modules-2/*.lock
+            !~/.gradle/caches/modules-2/gc.properties
+          key: gradle-modules-${{ runner.os }}-agp-${{ steps.gradle-key.outputs.agp }}-${{ hashFiles('lib/fledge/templates/android/*.gradle', 'lib/fledge/templates/android/gradle.properties', 'lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties') }}
+
       - name: Build it with its Gradle wrapper and check the APK and the bundle
         run: |
           cd "dist/Mobile App-android"
@@ -793,6 +842,15 @@ jobs:
           cd ../..
           ruby tasks/mobile_parity.rb android-check "dist/Mobile App-android/build/outputs/apk/debug/Mobile App-debug.apk"
           ruby tasks/mobile_parity.rb android-bundle "dist/Mobile App-android/build/outputs/bundle/release/Mobile App-release.aab"
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.gradle-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            !~/.gradle/caches/modules-2/*.lock
+            !~/.gradle/caches/modules-2/gc.properties
+          key: ${{ steps.gradle-cache.outputs.cache-primary-key }}
 
   # Every test, both tiers, on each platform, with that platform's
   # runtime, so test/integration/built_app_test.rb builds and runs a

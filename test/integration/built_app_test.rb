@@ -537,6 +537,31 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # A project whose Gemfile takes Fledge from git in its development
+  # group, as the README's line does, here from this checkout's commit,
+  # builds, and its app runs with Fledge's whole checkout in it, as
+  # bundle exec has it: the program requires fledge, which Bundler sets
+  # up in the development group. On macOS the build signs every Mach-O
+  # file the app carries.
+  def test_an_app_whose_gemfile_carries_fledge_as_the_readme_says_builds_and_runs
+    root = File.expand_path("../..", __dir__)
+    revision = IO.popen(["git", "-C", root, "rev-parse", "HEAD"], &:read).strip
+    Dir.mktmpdir do |dir|
+      project = bundled_gem_project(dir, "greeter", "require \"fledge\"\nputs \"fledge \#{Fledge::VERSION}\"\n")
+      File.write(File.join(project, "Gemfile"),
+        "source \"https://rubygems.org\"\n\ngem \"fledge\", git: #{root.inspect}, ref: #{revision.inspect}, group: :development\n")
+      platforms = %w[aarch64-linux aarch64-linux-musl aarch64-mingw-ucrt arm64-darwin ruby x64-mingw-ucrt x86_64-linux x86_64-linux-musl]
+      File.write(File.join(project, "Gemfile.lock"), "GIT\n  remote: #{root}\n  revision: #{revision}\n  ref: #{revision}\n  specs:\n" \
+        "    fledge (#{Fledge::VERSION})\n\nGEM\n  remote: https://rubygems.org/\n  specs:\n\n" \
+        "PLATFORMS\n#{platforms.map { |platform| "  #{platform}\n" }.join}\nDEPENDENCIES\n  fledge!\n\n" \
+        "CHECKSUMS\n  fledge (#{Fledge::VERSION})\n\nBUNDLED WITH\n  #{FakeProject.runtime_bundler}\n")
+
+      out, err, status = run_app({ "HOME" => dir }, build_and_unpack(dir, project))
+
+      assert_equal ["fledge #{Fledge::VERSION}\n", "", 0], [out, err, status.exitstatus]
+    end
+  end
+
   # A project in +dir+ named +name+ whose main.rb is +program+, with a
   # Gemfile and lockfile of +gems+ (name to version and SHA-256) from
   # RubyGems.org when +gems+ is given, and none otherwise.

@@ -506,6 +506,57 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # fiddle, a bundled gem since Ruby 4.0 (gems/bundled_gems at
+  # v4_1_0_preview1), loads in an app as it loads under ruby main.rb and
+  # bundle exec: with no Gemfile, from the runtime's gems; with a Gemfile
+  # that leaves it out, not at all, with Ruby's own warning that it is no
+  # longer a default gem and a LoadError the program may rescue, as
+  # bundle exec gives; and with fiddle in the Gemfile, from the runtime's
+  # gems again, at the version it carries, which the build does not
+  # fetch. The lockfile takes that version and its checksum from the
+  # .gem the runtime keeps in its cache.
+  def test_a_bundled_gem_loads_as_under_bundle_exec_with_and_without_a_gemfile
+    Dir.mktmpdir do |dir|
+      program = "begin\n  require \"fiddle\"\n  puts \"fiddle \#{Fiddle::VERSION}\"\nrescue LoadError => e\n  puts \"\#{e.class}: \#{e.message}\"\nend\n"
+      plain = bundled_gem_project(dir, "plain", program)
+      app = build_and_unpack(dir, plain)
+      gem = Dir.glob(File.join(File.dirname(app), "**", "cache", "fiddle-*.gem")).first
+      refute_nil gem, "the runtime keeps no fiddle .gem in its cache"
+      version = File.basename(gem, ".gem").delete_prefix("fiddle-")
+      out, err, status = run_app({ "HOME" => dir }, app)
+      assert_equal ["fiddle #{version}\n", "", 0], [out, err, status.exitstatus], "no Gemfile"
+
+      without = bundled_gem_project(dir, "without", program, gems: {})
+      out, err, status = run_app({ "HOME" => dir }, build_and_unpack(dir, without))
+      assert_equal ["LoadError: cannot load such file -- fiddle\n", 0], [out, status.exitstatus], "a Gemfile without fiddle: #{err}"
+      assert_includes err, "fiddle used to be loaded from the standard library, but is not part of the default gems since Ruby 4.0.0."
+
+      with = bundled_gem_project(dir, "with", program, gems: { "fiddle" => [version, Digest::SHA256.file(gem).hexdigest] })
+      out, err, status = run_app({ "HOME" => dir }, build_and_unpack(dir, with))
+      assert_equal ["fiddle #{version}\n", "", 0], [out, err, status.exitstatus], "a Gemfile with fiddle"
+    end
+  end
+
+  # A project in +dir+ named +name+ whose main.rb is +program+, with a
+  # Gemfile and lockfile of +gems+ (name to version and SHA-256) from
+  # RubyGems.org when +gems+ is given, and none otherwise.
+  def bundled_gem_project(dir, name, program, gems: nil)
+    project = File.join(dir, name)
+    FileUtils.mkdir_p(File.join(project, ".git"))
+    File.write(File.join(project, "main.rb"), program)
+    return project unless gems
+
+    platforms = %w[aarch64-linux aarch64-linux-musl aarch64-mingw-ucrt arm64-darwin ruby x64-mingw-ucrt x86_64-linux x86_64-linux-musl]
+    File.write(File.join(project, "Gemfile"), "source \"https://rubygems.org\"\n\n#{gems.keys.map { |gem| "gem \"#{gem}\"\n" }.join}")
+    File.write(File.join(project, "Gemfile.lock"), "GEM\n  remote: https://rubygems.org/\n  specs:\n" \
+      "#{gems.map { |gem, (version, _)| "    #{gem} (#{version})\n" }.join}\n" \
+      "PLATFORMS\n#{platforms.map { |platform| "  #{platform}\n" }.join}\n" \
+      "DEPENDENCIES\n#{gems.keys.map { |gem| "  #{gem}\n" }.join}\n" \
+      "CHECKSUMS\n#{gems.map { |gem, (version, sha256)| "  #{gem} (#{version}) sha256=#{sha256}\n" }.join}\n" \
+      "BUNDLED WITH\n  #{FakeProject.runtime_bundler}\n")
+    project
+  end
+
   # A program restarts itself as Ruby programs do, with exec
   # RbConfig.ruby, $0, *ARGV, and the runtime's bin/ruby hands the app's
   # own program back to its launcher. So the restart is the

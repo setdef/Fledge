@@ -223,9 +223,9 @@ class RunnerlessRunsTest < Minitest::Test
   # workflow would quietly lose its healing; and only trunk's runs are
   # run again, since on a branch a run queued again cancels the newer
   # run in progress there.
-  def test_the_workflow_follows_ci_fast_and_ruby_spec_on_trunk_only
+  def test_the_workflow_follows_ci_the_fast_tier_and_ruby_spec_on_trunk_only
     root = File.expand_path("..", __dir__)
-    names = %w[ci.yml fast.yml ruby-spec.yml].map { |file| YAML.load_file(File.join(root, ".github/workflows", file), aliases: true).fetch("name") }
+    names = %w[ci.yml fast.yml fast-macos.yml ruby-spec.yml].map { |file| YAML.load_file(File.join(root, ".github/workflows", file), aliases: true).fetch("name") }
     trigger = YAML.load_file(File.join(root, ".github/workflows/runnerless.yml")).fetch(true).fetch("workflow_run")
 
     assert_equal names, trigger.fetch("workflows")

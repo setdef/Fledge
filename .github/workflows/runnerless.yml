@@ -12,7 +12,8 @@
 # and a run a newer push replaced stay exactly as they are.
 #
 # Only trunk's runs: on any other branch a run queued again would cancel
-# the newer run in progress there (concurrency in ci.yml and fast.yml).
+# the newer run in progress there (concurrency in ci.yml, fast.yml, and
+# fast-macos.yml).
 # A run is run again at most twice (RunnerlessRuns::ATTEMPTS).
 #
 # Run it by hand (workflow_dispatch) with a run and an attempt to see
@@ -23,7 +24,7 @@ name: Runnerless jobs
 
 on:
   workflow_run:
-    workflows: [CI, Fast, ruby/spec]
+    workflows: [CI, Fast, "Fast (macOS)", ruby/spec]
     types: [completed]
     branches: [trunk]
   workflow_dispatch:

@@ -24,7 +24,7 @@ require_relative "github_api"
 # failed, or was cancelled for another reason, so a real failure stays
 # exactly as red as it is (doc/contributors/design/releases.md, "A job
 # no runner took"). .github/workflows/runnerless.yml calls it when a
-# run of CI, Fast, or ruby/spec on trunk ends red.
+# run of CI, Fast, Fast (macOS), or ruby/spec on trunk ends red.
 #
 #   ruby tasks/runnerless_runs.rb RUN ATTEMPT [--dry-run]
 #

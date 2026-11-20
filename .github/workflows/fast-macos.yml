@@ -1,0 +1,94 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# The fast tier's macOS leg: the unit tests (bundle exec rake test,
+# CONTRIBUTING.md, "The tests") on a Mac, on every push and pull
+# request, beside fast.yml's lint and its unit tests on Linux and
+# Windows (doc/contributors/design/releases.md, "Runs, batches, and the
+# release commit").
+#
+# It is a workflow of its own for the reason fast.yml is: GitHub ends a
+# run, and gh run list reports its conclusion, only when its slowest
+# job ends, and a macOS job waits for a runner far longer than a Linux
+# or Windows one does. As a job of fast.yml it held every push's verdict
+# for its wait, over the 155 pushes to trunk from 2026-11-12 to
+# 2026-11-19 a median of 22 minutes and at worst two and a half hours,
+# to run for under a minute. Here its wait delays only its own verdict, on the unit tests
+# that only a Mac runs (plutil, a Mac app's bundle), while fast.yml's
+# comes in minutes.
+#
+# Any current macOS on Apple silicon will do for the unit tests, so the
+# job runs on macos-26, the label whose runners came sooner: in the same
+# full runs, a job on macos-26 waited about half as long as one created
+# at the same instant on macos-15. macos-15 stays for the jobs whose
+# label is part of what they prove, such as ci.yml's Runtime job, whose
+# pinned Xcode 16.4 only macos-15 has.
+
+name: Fast (macOS)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+# As in fast.yml: on trunk every push has a group of its own, named for
+# its commit, so no push cancels or replaces another's run; on a branch
+# a push cancels the run before it.
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{
+    github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    && github.sha || 'branch' }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # As in ci.yml: a missing precompiled Ruby fails instead of compiling.
+  MISE_RUBY_COMPILE: "false"
+  # Install exactly what Gemfile.lock locks, or fail.
+  BUNDLE_FROZEN: "true"
+
+jobs:
+  unit:
+    name: Unit tests (macos-26)
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      # The bundle's compiled extensions target the macOS they were built
+      # on, so the cache's key names the runner's image (ImageOS, as
+      # mise-action keys its own cache) and a bundle built here is never
+      # restored on ci.yml's macos-15 runners.
+      - name: Place Bundler outside the checkout
+        id: paths
+        run: |
+          echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
+          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:?the runner sets no ImageOS}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/fledge/bundle
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.image }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
+
+      - name: Install the bundle
+        run: bundle install
+
+      - name: Run the unit tests
+        env:
+          A: --verbose
+        run: bundle exec rake test

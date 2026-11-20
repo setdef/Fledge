@@ -12,13 +12,18 @@ require "yaml"
 # batches, and the release commit"): a push to trunk never
 # cancels a run in progress there, a release or pin commit's run waits
 # behind no other run and no push replaces it, and the fast tier runs
-# on every push to trunk and judges each alone.
+# on every push to trunk and judges each alone, its macOS leg in a
+# workflow of its own.
 class WorkflowConcurrencyTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
 
   # Only a branch other than trunk cancels the run in progress; GitHub
   # names trunk as the repository's default branch.
   BRANCHES_ONLY = "${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}"
+
+  # The fast tier's workflows: the lint and the Linux and Windows unit
+  # tests, and the macOS unit tests.
+  FAST_TIER = %w[fast.yml fast-macos.yml].freeze
 
   def test_ci_cancels_runs_in_progress_on_branches_only
     assert_equal BRANCHES_ONLY, workflow("ci.yml").dig("concurrency", "cancel-in-progress")
@@ -38,23 +43,32 @@ class WorkflowConcurrencyTest < Minitest::Test
   end
 
   def test_fast_tier_cancels_on_branches_only_and_gives_each_trunk_push_a_group
-    concurrency = workflow("fast.yml").fetch("concurrency")
+    FAST_TIER.each do |name|
+      concurrency = workflow(name).fetch("concurrency")
 
-    assert_equal BRANCHES_ONLY, concurrency.fetch("cancel-in-progress")
-    assert_includes concurrency.fetch("group"), "github.sha"
+      assert_equal BRANCHES_ONLY, concurrency.fetch("cancel-in-progress"), name
+      assert_includes concurrency.fetch("group"), "github.sha", name
+      assert_equal [{ "branches" => ["**"] }, nil], workflow(name).fetch(true).values_at("push", "pull_request"), name
+    end
   end
 
-  def test_fast_tier_runs_the_unit_tests_on_linux_macos_and_windows_and_the_lint
-    jobs = workflow("fast.yml").fetch("jobs")
-    runners = jobs.values.flat_map { |job| job.dig("strategy", "matrix", "os") || [job.fetch("runs-on")] }
-    commands = jobs.values.flat_map { |job| job.fetch("steps").filter_map { |step| step["run"] } }
+  # The macOS leg is a workflow of its own, so its wait for a macOS
+  # runner never holds the verdict of the lint and the Linux and Windows
+  # unit tests.
+  def test_fast_tier_runs_the_lint_and_the_unit_tests_on_linux_and_windows_and_macos_alone
+    assert_equal %w[ubuntu-24.04 windows-latest], runners("fast.yml").uniq.sort
+    assert_includes commands("fast.yml"), "bundle exec rake lint steep"
+    assert_equal 2, commands("fast.yml").count("bundle exec rake test")
+    assert_equal %w[macos-26], runners("fast-macos.yml")
+    assert_equal ["bundle exec rake test"], commands("fast-macos.yml").grep(/\Abundle exec rake/)
+  end
 
-    assert_includes runners, "ubuntu-24.04"
-    assert_includes runners, "macos-15"
-    assert_includes runners, "windows-latest"
-    assert_includes commands, "bundle exec rake lint steep"
-    assert_equal 2, commands.count("bundle exec rake test")
-    assert_equal [{ "branches" => ["**"] }, nil], workflow("fast.yml").fetch(true).values_at("push", "pull_request")
+  private def runners(name)
+    workflow(name).fetch("jobs").values.flat_map { |job| job.dig("strategy", "matrix", "os") || [job.fetch("runs-on")] }
+  end
+
+  private def commands(name)
+    workflow(name).fetch("jobs").values.flat_map { |job| job.fetch("steps").filter_map { |step| step["run"] } }
   end
 
   private def workflow(name)

@@ -14,10 +14,13 @@
 #
 # The lint runs once, on Linux: RuboCop, RubyCritic, RDoc coverage,
 # REUSE, the RBS checks, actionlint and shellcheck, clang-format, and
-# Steep read the same files on every OS. The unit tests run on Linux,
-# macOS, and Windows, each with the Ruby and the bundle cache ci.yml's
-# test jobs use there. Nothing here builds a runtime, so the integration
-# tier, the gate in full, and the pin commit's check stay in ci.yml.
+# Steep read the same files on every OS. The unit tests run on Linux
+# and Windows, each with the Ruby and the bundle cache ci.yml's test
+# jobs use there, and on macOS in fast-macos.yml, a workflow of its own
+# for the same reason this one is: a macOS job waits for a runner far
+# longer than these do, and as a job here it held every push's verdict
+# for that wait. Nothing here builds a runtime, so the integration tier,
+# the gate in full, and the pin commit's check stay in ci.yml.
 
 name: Fast
 
@@ -88,13 +91,9 @@ jobs:
         run: bundle exec rake lint steep
 
   unit:
-    name: Unit tests (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Unit tests (ubuntu-24.04)
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -105,16 +104,19 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
+      # The key ci.yml's test jobs use, the runner's image (ImageOS) in it
+      # as in fast-macos.yml's, so each restores what the other saved.
       - name: Place Bundler outside the checkout
         id: paths
         run: |
           echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
           echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:?the runner sets no ImageOS}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/fledge/bundle
-          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.image }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
 
       - name: Install the bundle
         run: bundle install

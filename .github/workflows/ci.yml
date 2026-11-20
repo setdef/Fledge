@@ -79,7 +79,8 @@ permissions:
 # release X.Y.Z") and a pin commit ("chore: pin ...") get a group of
 # their own, named for the commit, so their runs start at once and no
 # push replaces them (doc/contributors/design/releases.md, "Runs,
-# batches, and the release commit"). fast.yml judges every push alone.
+# batches, and the release commit"). fast.yml and fast-macos.yml judge
+# every push alone.
 concurrency:
   group: >-
     ${{ github.workflow }}-${{ github.ref }}${{
@@ -886,16 +887,21 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
+      # The bundle's compiled extensions target the macOS they were built
+      # on, so the key names the runner's image (ImageOS, as mise-action
+      # keys its own cache), and a bundle fast-macos.yml built on macos-26
+      # is never restored here on macos-15.
       - name: Place Bundler outside the checkout
         id: paths
         run: |
           echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
           echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:?the runner sets no ImageOS}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/fledge/bundle
-          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.image }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
 
       - name: Install the bundle
         run: bundle install

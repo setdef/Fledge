@@ -8,13 +8,20 @@
 require_relative "../test_helper"
 require "open3"
 require "stringio"
+require_relative "../support/android"
 
 # Native gems on phones (doc/contributors/design/phone-projects.md,
 # "Gems with extensions"), compiled for real: a gem's extension for
 # every target of a phone, with the real mobile runtimes and tools
 # where this computer has them. test/mobile_extensions_test.rb covers
 # which extensions Fledge compiles and how it writes what links them.
+# The Android tests skip without the Android runtime, the NDK, CMake, or
+# Rust's Android targets, and fail instead where FLEDGE_REQUIRE_ANDROID
+# is set, as in CI's Mobile apps (Android emulator) job, which has them
+# all (AndroidRequired).
 class MobileExtensionsBuildTest < Minitest::Test
+  include AndroidRequired
+
   # The folder by its long names, as Dir.glob names what it finds in it
   # (Fledge::LongPath), where Windows' TMP names it by an 8.3 name.
   def setup
@@ -181,7 +188,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   # it links the C++ runtime in instead, as libfledgeext.so does.
   def test_an_android_c_extension_over_a_cpp_library_built_as_a_file_carries_its_cpp_runtime
     runtimes = real_runtimes("android")
-    skip "examples/cmake_phone needs CMake on the PATH" unless cmake?
+    android_missing("examples/cmake_phone needs CMake on the PATH") unless cmake?
     ndk = android_ndk
 
     built = compile(runtimes, android, { tally_gem => Fledge::PathPackage.new(tally_gem) }, files: true)
@@ -277,12 +284,8 @@ class MobileExtensionsBuildTest < Minitest::Test
   # runtime the package does not carry.
   def test_a_cmake_library_an_extconf_builds_is_linked_for_each_android_abi
     runtimes = real_runtimes("android")
-    skip "examples/cmake_phone needs CMake on the PATH" unless cmake?
-    ndk = begin
-      Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local)
-    rescue Fledge::Error => e
-      skip e.message
-    end
+    android_missing("examples/cmake_phone needs CMake on the PATH") unless cmake?
+    ndk = android_ndk
     built = compile(runtimes, android, { tally_gem => Fledge::PathPackage.new(tally_gem) })
     registration = File.join(@dir, "registration.c")
     File.write(registration, Fledge::MobileExtensions.registration_source(built.registrations))
@@ -558,7 +561,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   # Ruby file at that path that requires it (Stub).
   def test_fledge_build_ios_links_a_rust_extension_built_for_each_slice
     runtimes = real_runtimes("ios")
-    rust_targets(%w[aarch64-apple-ios aarch64-apple-ios-sim])
+    rust_targets("ios", %w[aarch64-apple-ios aarch64-apple-ios-sim])
     project = build_example("ios", "rust_phone", runtimes, "RustPhone-ios")
 
     stub = File.join(project, "fledge", "app", "gems", "rusty", "lib", "rusty", "rusty.rb")
@@ -582,12 +585,8 @@ class MobileExtensionsBuildTest < Minitest::Test
   # ABI's processor.
   def test_fledge_build_android_links_a_rust_extension_built_for_each_abi
     runtimes = real_runtimes("android")
-    ndk = begin
-      Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local)
-    rescue Fledge::Error => e
-      skip e.message
-    end
-    rust_targets(%w[aarch64-linux-android x86_64-linux-android])
+    ndk = android_ndk
+    rust_targets("android", %w[aarch64-linux-android x86_64-linux-android])
     project = build_example("android", "rust_phone", runtimes, "RustPhone-android")
 
     stub = File.join(project, "fledge", "app", "gems", "rusty", "lib", "rusty", "rusty.rb")
@@ -713,12 +712,13 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   # Skips unless this computer's Rust has the standard library of each
-  # of +targets+, as rustup target add installs it.
-  def rust_targets(targets)
+  # of +targets+, the Rust targets of the phone +name+, as rustup target
+  # add installs it.
+  def rust_targets(name, targets)
     targets.each do |target|
       Fledge::MobileExtensions::Rust.check(target, gem: "examples/rust_phone's rusty", env: ENV.to_h)
     rescue Fledge::Error => e
-      skip e.message
+      missing(name, e.message)
     end
   end
 
@@ -776,11 +776,18 @@ class MobileExtensionsBuildTest < Minitest::Test
     Fledge::PathGem.new(name:, version: "1.0.0", folder:, app_path: "vendor/cache/#{name}", glob: "{,*,*/*}.gemspec", inside: true)
   end
 
-  # The NDK where this computer has one; the test skips without it.
+  # The NDK where this computer has one; the test skips without it
+  # (AndroidRequired).
   def android_ndk
     Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local)
   rescue Fledge::Error => e
-    skip e.message
+    android_missing(e.message)
+  end
+
+  # Skips for want of what a test of the phone +name+ needs, or, for
+  # Android, fails where FLEDGE_REQUIRE_ANDROID asks (AndroidRequired).
+  def missing(name, message)
+    (name == "android") ? android_missing(message) : skip(message)
   end
 
   def cmake?
@@ -791,7 +798,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     skip "Xcode builds the iOS slices on a Mac only" unless Fledge::Platform.local.name == "arm64-darwin" || name != "ios"
     dir = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
     phone = File.join(dir, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(name)))
-    skip "no #{File.basename(phone)} in #{dir}; run bundle exec rake runtime[#{name}]" unless File.file?(phone)
+    missing(name, "no #{File.basename(phone)} in #{dir}; run bundle exec rake runtime[#{name}]") unless File.file?(phone)
     dir
   end
 

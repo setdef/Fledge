@@ -9,11 +9,16 @@ require_relative "../test_helper"
 require_relative "../../tasks/runtime_builder"
 require "rubygems/package"
 require "zlib"
+require_relative "../support/android"
 
 # The default gems of the phone runtimes rake runtime[ios] and
 # runtime[android] built (ADR 079), read from the archives they wrote;
 # test/mobile_runtime_test.rb checks the parts that need no runtime.
+# Without the Android runtime, the Android test fails instead of
+# skipping where FLEDGE_REQUIRE_ANDROID is set (AndroidRequired).
 class MobileDefaultGemsTest < Minitest::Test
+  include AndroidRequired
+
   def mobile(name)
     RuntimeBuilder.platform(name)
   end
@@ -55,7 +60,10 @@ class MobileDefaultGemsTest < Minitest::Test
   def default_specifications(name)
     dir = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
     archive = File.join(dir, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(name)))
-    skip "no #{File.basename(archive)} in #{dir}; run bundle exec rake runtime[#{name}]" unless File.file?(archive)
+    unless File.file?(archive)
+      message = "no #{File.basename(archive)} in #{dir}; run bundle exec rake runtime[#{name}]"
+      (name == "android") ? android_missing(message) : skip(message)
+    end
 
     slices = Hash.new { |hash, key| hash[key] = {} }
     Dir.mktmpdir do |work|

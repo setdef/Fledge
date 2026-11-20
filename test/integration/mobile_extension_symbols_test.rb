@@ -8,6 +8,7 @@
 require_relative "../test_helper"
 require "open3"
 require "stringio"
+require_relative "../support/android"
 
 # Which definition each Android extension built as a file calls, when
 # two libraries define one name (doc/contributors/design/phone-projects.md,
@@ -16,8 +17,13 @@ require "stringio"
 # them, and, where an emulator or device is attached (ANDROID_SERIAL),
 # opened there in order as Ruby's dln.c opens an extension, with
 # RTLD_LAZY | RTLD_GLOBAL (line 376 at Ruby 4.1.0-preview1), by a
-# program that prints what each one's function returns.
+# program that prints what each one's function returns. Without the
+# runtime, the NDK, or a device they skip, and fail instead where
+# FLEDGE_REQUIRE_ANDROID is set, as in CI's Mobile apps (Android
+# emulator) job (AndroidRequired).
 class MobileExtensionSymbolsTest < Minitest::Test
+  include AndroidRequired
+
   # The program: HOST LIBRARY FUNCTION ... opens each LIBRARY in turn as
   # dln.c does, and prints FUNCTION and what it returns, a line each.
   HOST = <<~C
@@ -215,7 +221,7 @@ class MobileExtensionSymbolsTest < Minitest::Test
 
   # Checks that the device printed +expected+, or skips with no device.
   private def on_the_device(printed, expected)
-    skip "no Android device or emulator: set ANDROID_SERIAL, as bin/android-emulator does" unless printed
+    android_missing "no Android device or emulator: set ANDROID_SERIAL, as bin/android-emulator does" unless printed
 
     assert_equal expected, printed
   end
@@ -270,13 +276,13 @@ class MobileExtensionSymbolsTest < Minitest::Test
   private def ndk_check
     Fledge::MobileExtensions::NDK.find(ENV, host: Fledge::Platform.local)
   rescue Fledge::Error => e
-    skip e.message
+    android_missing(e.message)
   end
 
   private def real_runtimes
     dir = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
     phone = File.join(dir, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
-    skip "no #{File.basename(phone)} in #{dir}; run bundle exec rake runtime[android]" unless File.file?(phone)
+    android_missing "no #{File.basename(phone)} in #{dir}; run bundle exec rake runtime[android]" unless File.file?(phone)
     dir
   end
 end

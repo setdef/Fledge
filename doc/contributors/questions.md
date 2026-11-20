@@ -33,3 +33,21 @@ So agents are finishing everything for 1.0.0 that your accounts do not block. Wh
 **Default.** Agents finish everything for 1.0.0 that your accounts do not block, tag no `v1.0.0` until you say your testing is done, and name no account-blocked test as a requirement until you do. The signing chain, App Review, stores, package managers, and self-updating are named in the README as not yet proven or not offered.
 
 **To reverse.** Name the tests that must pass before 1.0.0, such as App Review, a notarized app that opens on a fresh Mac, or a setup program signed through a real chain. Agents then change the "1.0" story in Plan 003 and the checklist in `doc/contributors/releasing-1.0.md` to say that the release waits for them.
+
+## F. Where may Fledge keep a pinned copy of what Gradle downloads, so that CI never asks Maven Central? (open, no deadline)
+
+Nothing waits on this. It decides whether one kind of red CI run can be ruled out, or only made rare.
+
+**What happens.** An Android app is built by Gradle, which downloads the Android Gradle plugin and everything it needs, a few hundred files and about 240 MB, from Maven Central and Google's Maven repository. Maven Central limits how much it serves to addresses that download a great deal, and GitHub's hosted runners share addresses. From 13 to 19 November 2026, nine full CI runs on `trunk` went red because Central answered a runner with "429 Too Many Requests", or with "not found" for files it holds; no commit was at fault in any of them, and one of them was a release's run.
+
+**What agents did.** Every CI job that runs Gradle now keeps those downloads in GitHub's Actions cache, and when the exact set is missing it starts from the nearest earlier one, so Gradle asks Central only for what changed. That leaves two cases that still ask Central for everything, and go red if it refuses the runner: the first run after the plugin's version is moved, and a job whose set has left the cache. GitHub removes a cache entry that no run has used for seven days, and evicts the least recently used entries once a repository's caches pass 10 GB. The repository's caches were at 10.5 GB on 2026-11-20, and should be near 7 GB after that night's changes.
+
+**What would close it.** A copy of each set that nothing evicts, pinned by SHA-256 like every other download Fledge's CI makes, which Gradle reads as a read-only cache of dependencies (its `GRADLE_RO_DEP_CACHE`). An agent cannot choose where that copy lives:
+
+- *As a file on a GitHub Release of Fledge,* beside the runtimes, or on a release of its own that no app developer is sent to. It is the same host and account Fledge uses now, and costs nothing. But Fledge would then be publishing other projects' files itself: the Android Gradle plugin and its dependencies, most under Apache-2.0, each with its own notice. Your rule is that every line Fledge publishes is clearly Fledge's or clearly attributed, and whether Fledge should republish a build tool's files at all, for its own CI's sake, is yours to say.
+- *As more Actions cache storage,* which GitHub sells above the 10 GB a repository gets. On 2026-11-04 you said: "I've decided to pay Apple, Microsoft, Google, whoever I need." This would be paying GitHub, and it only makes eviction rarer; an unused entry still goes after seven days.
+- *On another host.* On 2026-11-04 you said: "Absolutely not. If you want a second host, you come to me asking (optionally with suggestions)." No agent is asking for one here; it is listed so the choice is whole.
+
+**Default.** Nothing more is stored anywhere. CI keeps the cache as it is, a run that Central refuses in one of the two remaining cases is run again, and the design document for phone projects says so.
+
+**To reverse.** Say "publish the set on a release" (and whether beside the runtimes or apart from them), or "pay for more cache". Agents then build that, with the notices the files need, and remove this question.

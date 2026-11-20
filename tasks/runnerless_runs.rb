@@ -23,8 +23,9 @@ require_relative "github_api"
 # does. It never does so for a run in which any job ran a step and
 # failed, or was cancelled for another reason, so a real failure stays
 # exactly as red as it is (doc/contributors/design/releases.md, "A job
-# no runner took"). .github/workflows/runnerless.yml calls it when a
-# run of CI, Fast, Fast (macOS), or ruby/spec on trunk ends red.
+# no runner took"), nor for any run but trunk's own, whoever asks.
+# .github/workflows/runnerless.yml calls it when a run of CI, Fast,
+# Fast (macOS), or ruby/spec on trunk ends red.
 #
 #   ruby tasks/runnerless_runs.rb RUN ATTEMPT [--dry-run]
 #
@@ -34,6 +35,11 @@ require_relative "github_api"
 class RunnerlessRuns
   # What to do with a run, and why: +action+ is :rerun or :leave.
   class Verdict < Data.define(:action, :reason); end
+
+  # The only branch whose runs are run again. On any other, a run queued
+  # again would cancel the newer run in progress there, and so would a
+  # pull request's run, whose head branch may be a fork's trunk.
+  BRANCH = "trunk"
 
   # Items asked for on each page of the API's answers.
   PER_PAGE = GitHubAPI::PER_PAGE
@@ -67,6 +73,9 @@ class RunnerlessRuns
   end
 
   private def judge(run, attempt)
+    branch, event = run.values_at("head_branch", "event")
+    return leave("it is a #{event} run of #{branch}, not one of #{BRANCH}'s own") unless branch == BRANCH && event != "pull_request"
+
     latest = run.fetch("run_attempt")
     return leave("it is on attempt #{latest} now, not #{attempt}") unless latest == attempt
     return leave("it has had #{attempt} attempts, as many as this runs") if attempt >= ATTEMPTS

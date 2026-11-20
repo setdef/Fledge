@@ -11,14 +11,15 @@
 # job, so a job that ran a step and failed, a run a person cancelled,
 # and a run a newer push replaced stay exactly as they are.
 #
-# Only trunk's runs: on any other branch a run queued again would cancel
-# the newer run in progress there (concurrency in ci.yml, fast.yml, and
-# fast-macos.yml).
-# A run is run again at most twice (RunnerlessRuns::ATTEMPTS).
+# Only trunk's own runs, not a pull request's: on any other branch a run
+# queued again would cancel the newer run in progress there (concurrency
+# in ci.yml, fast.yml, and fast-macos.yml). The trigger below sends no
+# other, and tasks/runnerless_runs.rb leaves any other it is given by
+# hand. A run is run again at most twice (RunnerlessRuns::ATTEMPTS).
 #
 # Run it by hand (workflow_dispatch) with a run and an attempt to see
 # what it would do: by default a dry run, which reads and changes
-# nothing.
+# nothing. With dry-run off it does what the trigger would have done.
 
 name: Runnerless jobs
 

@@ -179,6 +179,22 @@ class RunnerlessRunsTest < Minitest::Test
     end
   end
 
+  # The workflow is started for trunk's own runs only, but a person can
+  # start it by hand with any run, and the run is judged the same way:
+  # here run 44536045262, as if it had been on a branch, and as if a
+  # pull request from a branch named trunk had started it. A rerun on a
+  # branch would cancel the newer run in progress there.
+  def test_leaves_a_run_that_is_not_one_of_trunks_own
+    [{ "head_branch" => "spike/macos" }, { "event" => "pull_request" }].each do |change|
+      with_case("44536045262-1", run: change) do |server, runs|
+        verdict = runs.call(44_536_045_262, 1)
+        assert_equal :leave, verdict.action, change
+        assert_includes verdict.reason, "trunk's own"
+        assert_empty posts(server)
+      end
+    end
+  end
+
   def test_leaves_a_run_that_was_run_again_since
     with_case("44536045262-1", attempt: 2) do |server, runs|
       verdict = runs.call(44_536_045_262, 1)
@@ -247,10 +263,10 @@ class RunnerlessRunsTest < Minitest::Test
     assert_equal ["completed"], trigger.fetch("types")
   end
 
-  private def with_case(name, attempt: nil, conclusion: nil, waiting: [], dry_run: false, annotations: {}, job: {})
+  private def with_case(name, attempt: nil, conclusion: nil, run: {}, waiting: [], dry_run: false, annotations: {}, job: {})
     recorded = JSON.parse(File.read(File.join(FIXTURES, "#{name}.json")))
     recorded["annotations"] = recorded.fetch("annotations").merge(annotations)
-    run = recorded.fetch("run")
+    run = recorded.fetch("run").merge(run)
     run = run.merge("run_attempt" => attempt) if attempt
     run = run.merge("conclusion" => conclusion) if conclusion
     id = run.fetch("id")

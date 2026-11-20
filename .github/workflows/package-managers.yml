@@ -52,13 +52,18 @@ jobs:
           - { os: windows-latest, platform: x64-mingw-ucrt }
           - { os: windows-11-arm, platform: aarch64-mingw-ucrt }
     steps:
+      # Every mise*.toml, though only mise.toml's Ruby is installed:
+      # mise-action's cache key hashes each mise config file it finds, so
+      # with all of them a leg restores the entry a ci.yml job that
+      # installs the same tools on the same runner image saved, rather
+      # than keeping a copy of its own.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ inputs.tag }}
           sparse-checkout: |
             examples/hello
-            mise.toml
+            mise*.toml
           sparse-checkout-cone-mode: false
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3

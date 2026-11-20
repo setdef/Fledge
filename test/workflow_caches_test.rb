@@ -85,6 +85,23 @@ class WorkflowCachesTest < Minitest::Test
     end
   end
 
+  # mise-action's key hashes every mise config file the checkout holds,
+  # so a sparse checkout that takes only mise.toml keys the same tools
+  # apart from ci.yml's, and keeps a second copy of them.
+  def test_a_sparse_checkout_that_takes_mise_config_takes_all_of_it
+    checkouts = workflows.flat_map do |name, workflow|
+      workflow.fetch("jobs").flat_map do |id, job|
+        job.fetch("steps", []).filter_map do |step|
+          paths = step.dig("with", "sparse-checkout").to_s.split("\n").map(&:strip)
+          ["#{name} #{id}", paths] if paths.any? { |path| path.start_with?("mise") }
+        end
+      end
+    end
+
+    assert_operator checkouts.size, :>=, 4
+    checkouts.each { |where, paths| assert_includes paths, "mise*.toml", "#{where} checks out mise.toml without the rest of mise's config" }
+  end
+
   private def workflows
     Dir[File.join(ROOT, ".github", "workflows", "*.yml")].to_h { |path| [File.basename(path), YAML.load_file(path, aliases: true)] }
   end

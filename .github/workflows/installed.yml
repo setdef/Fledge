@@ -110,7 +110,12 @@ jobs:
     steps:
       # Only what a developer would have of Fledge's repository: hello,
       # my_cool_app, native_app, windowed_app, and the parity probe to
-      # build, at the tag. Fledge itself comes from Bundler.
+      # build, at the tag. Fledge itself comes from Bundler. Every
+      # mise*.toml comes too, though only mise.toml's Ruby is installed:
+      # mise-action's cache key hashes each mise config file it finds, so
+      # with all of them a leg restores the entry a ci.yml job that
+      # installs the same tools on the same runner image saved, rather
+      # than keeping a copy of its own.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -121,7 +126,7 @@ jobs:
             examples/native_app
             examples/windowed_app
             test/fixtures/parity
-            mise.toml
+            mise*.toml
           sparse-checkout-cone-mode: false
 
       # The scripts that check the result come from this workflow's own
@@ -410,6 +415,7 @@ jobs:
           - os: ubuntu-24.04
             phone: android
     steps:
+      # Every mise*.toml, so mise-action's key is ci.yml's (installed, above).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -417,7 +423,7 @@ jobs:
           sparse-checkout: |
             examples/hello
             examples/mobile_app
-            mise.toml
+            mise*.toml
             runtime/sources.yml
             lib/fledge/templates/android/*.gradle
             lib/fledge/templates/android/gradle.properties
@@ -576,6 +582,7 @@ jobs:
             platform: aarch64-mingw-ucrt
             ruby-platform: aarch64-mingw-ucrt
     steps:
+      # Every mise*.toml, so mise-action's key is ci.yml's (installed, above).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -584,7 +591,7 @@ jobs:
             examples/hello
             examples/windowed_app
             test/fixtures/parity
-            mise.toml
+            mise*.toml
             runtime/sources.yml
           sparse-checkout-cone-mode: false
 

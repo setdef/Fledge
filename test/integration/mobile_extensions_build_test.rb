@@ -441,7 +441,8 @@ class MobileExtensionsBuildTest < Minitest::Test
     built = compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true)
     project = File.join(@dir, "project")
     FileUtils.mkdir_p(ruby_root = File.join(project, "fledge"))
-    Fledge::MobileProject::AndroidLibraries.new(built).call(project, ruby_root:)
+    libraries = Fledge::MobileProject::AndroidLibraries.new(built)
+    libraries.call(project, ruby_root:)
 
     readelf = File.join(ndk.bin, "llvm-readelf")
     built.targets.each_value do |build|
@@ -461,6 +462,53 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_includes notice, "#{File.basename(ndk.root)}, since a\nlibrary of the app's gems links it."
     assert notice.end_with?(File.read(File.join(ndk.bin, "..", "NOTICE"))), "the NDK's toolchain NOTICE, whole"
     assert_includes notice, "The libc++ library is dual licensed"
+    linkage = Fledge::MobileProject::AndroidLinkage.new(readers: Fledge::Binary::Readers.llvm(ndk.bin))
+    assert_empty linkage.problems(project, libraries.judged), "the shared C++ runtime the app carries counts"
+  end
+
+  # A library a gem's Rakefile links against one this computer has and
+  # the app does not carry builds, and would fail when Ruby opens it on
+  # the phone: the build reads what each library in the app needs, with
+  # the NDK's own tools, and names it.
+  def test_an_android_library_that_needs_one_the_app_does_not_carry_is_named
+    runtimes = real_runtimes("android")
+    ndk = android_ndk
+    gem = rake_gem("thing", <<~'RAKEFILE', files: { "thing.c" => "int thing(void) { return 1; }\n" })
+      require "tmpdir"
+      task :default do
+        elsewhere = Dir.mktmpdir
+        sh "#{ENV.fetch('CC')} -shared -fPIC -o #{elsewhere}/libnowhere.so -x c /dev/null"
+        sh "#{ENV.fetch('CC')} -shared -fPIC -o libthing.so thing.c -L#{elsewhere} -Wl,--no-as-needed -lnowhere"
+      end
+    RAKEFILE
+
+    built = compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true)
+    project = File.join(@dir, "project")
+    FileUtils.mkdir_p(ruby_root = File.join(project, "fledge"))
+    libraries = Fledge::MobileProject::AndroidLibraries.new(built)
+    libraries.call(project, ruby_root:)
+    linkage = Fledge::MobileProject::AndroidLinkage.new(readers: Fledge::Binary::Readers.llvm(ndk.bin))
+
+    assert_equal [
+"thing's ext/libthing.so needs libnowhere.so, which neither Android, nor Fledge's runtime, nor the app's own native " \
+  "libraries provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it " \
+  "statically.",
+], linkage.problems(project, libraries.judged)
+  end
+
+  # What Android offers every app is the NDK's public libraries at the
+  # runtime's API level, 26, whose stubs the NDK holds for each ABI, but
+  # the system's own libc++.so, which no app may link
+  # (Fledge::Linkage::SYSTEM_LIBRARIES).
+  def test_the_libraries_android_offers_every_app_are_the_ndks_stubs_for_api_26
+    ndk = android_ndk
+    pattern = Fledge::Linkage::SYSTEM_LIBRARIES.fetch("android").first
+    %w[aarch64-linux-android x86_64-linux-android].each do |triple|
+      stubs = Dir.children(File.join(ndk.bin, "..", "sysroot", "usr", "lib", triple, "26")).grep(/\.so\z/).sort - ["libc++.so"]
+      assert_equal stubs, stubs.grep(pattern), triple
+      refute_match pattern, "libc++.so", triple
+      assert_equal stubs.size, pattern.source.count("|") + 1, "#{triple}: one name in the pattern for each stub"
+    end
   end
 
   # A Rakefile that compiles with this computer's own compiler, not the

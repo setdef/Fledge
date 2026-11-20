@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - On iOS, a library a gem's Rakefile builds for ffi to open, as llhttp-ffi's and scrypt's do, or that the gem's package holds built for the phone, is a framework of its own, `Frameworks/fledgeffi.GEM.PATH.framework`, which the app embeds, with a link from where the gem looks for it; `fledge build ios` had refused such a gem. Other compiled files a gem's package holds are left out of an iOS app, naming each.
 - On Android, a library a gem's Rakefile builds for ffi to open, as llhttp-ffi's and scrypt's do, or that the gem's package holds built for the phone, is a native library of the app's own, `libfledgeffi.GEM.PATH.so`, linked as the app starts from where the gem looks for it. One that links the NDK's shared C++ runtime, as a C++ library ffi-compiler builds does, brings `libc++_shared.so` with it, and its license in the app's `notices/libc++_shared.txt`.
+- `fledge build android` refuses an app whose extension files or libraries for ffi need a library that neither Android offers every app (the NDK's public libraries for API 26), nor Fledge's runtime, nor the app carries, naming the gem, the file, and the library, as a desktop build does.
 
 ### Fixed
 

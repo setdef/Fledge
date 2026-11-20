@@ -134,6 +134,27 @@ class LinkageTest < Minitest::Test
     assert_empty windows
   end
 
+  # An Android app's native library may need the NDK's public libraries
+  # for the API level the runtime is built for, Fledge's
+  # libfledgeruby.so, and the libraries the app carries beside it; a
+  # library of a desktop's Linux, such as glibc's libc.so.6, or one
+  # nothing carries, keeps it from shipping, and Android has no
+  # distribution to list one from.
+  def test_an_android_library_may_need_only_what_android_offers_every_app_and_the_app_carries
+    assert_empty problems("android", {
+      "ext/x86_64-linux/libheld.so" => Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so]),
+      "ext/x86_64-linux/libown.so" => Binaries.elf(needed: %w[libc.so]),
+    })
+    android = problems("android", {
+      "ext/x86_64-linux/libheld.so" => Binaries.elf(needed: %w[libc.so.6 libcrypt.so.2 libxml2.so.2 libown.so]),
+    }, provided: %w[libfledgeruby.so libcrypt.so.2 libown.so])
+    assert_equal %w[libc.so.6 libxml2.so.2].map { |library|
+      "linked 1.0.0's ext/x86_64-linux/libheld.so needs #{library}, which neither Android, nor Fledge's runtime, nor the app's " \
+        "own native libraries provide, so the app could not load it on a phone. Build the gem so that it carries the library, " \
+        "or links it statically."
+    }, android
+  end
+
   def test_a_file_for_another_ruby_is_never_loaded_and_never_judged
     assert_empty problems("windows", { "lib/ext/3.4/ext.so" => Binaries.pe(needed: %w[x64-ucrt-ruby340.dll libother.dll]) },
       provided: ["x64-ucrt-ruby400.dll"])

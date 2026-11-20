@@ -35,6 +35,8 @@ module Fledge
       private def place_icons: (String project) -> void
 
       private def finish: (String project) -> void
+
+      private def readers: () -> Binary::Readers
     end
   end
 end

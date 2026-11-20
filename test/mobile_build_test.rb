@@ -7,6 +7,7 @@
 
 require_relative "test_helper"
 require_relative "support/gems"
+require_relative "support/binaries"
 require_relative "support/fake_extensions"
 require_relative "support/loopback_server"
 require "stringio"
@@ -409,13 +410,42 @@ class MobileBuildTest < Minitest::Test
       "in the Android app's x86_64 libraries", error.message
   end
 
+  # An Android library that needs a library Android offers no app, such
+  # as glibc's libc.so.6 a desktop's build linked, or one nothing in the
+  # app carries, would fail when Ruby opens it on the phone: the build
+  # refuses it, naming the gem and each library, as a desktop's build
+  # refuses a gem's file (Fledge::Linkage). One that needs only Android's
+  # public libraries builds.
+  def test_an_android_library_that_needs_what_no_phone_has_keeps_the_app_from_shipping
+    TestReaders.need(self, :elf)
+    error = assert_raises(Fledge::Error) do
+      phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/x86_64-linux/libllhttp-ext.so",
+        content: Binaries.elf(needed: %w[libc.so.6 libxml2.so.2]))
+    end
+
+    assert_equal [
+      "Hello can't ship for android:",
+      *%w[libc.so.6 libxml2.so.2].map { |library|
+        "  llhttp-ffi's ext/x86_64-linux/libllhttp-ext.so needs #{library}, which neither Android, nor Fledge's runtime, nor the " \
+          "app's own native libraries provide, so the app could not load it on a phone. Build the gem so that it carries the " \
+          "library, or links it statically."
+      },
+    ], error.message.lines.map(&:chomp)
+    refute_path_exists File.join(@dir, "dist", "Hello-android")
+
+    project = phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/x86_64-linux/libllhttp-ext.so",
+      content: Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so]))
+    assert_path_exists File.join(project, "src/main/jniLibs/x86_64/libfledgeffi.llhttp-ffi.ext.x86_64-linux.libllhttp-ext.so")
+  end
+
   # Writes +phone+'s project for a script app whose one gem's Rakefile
-  # built a library for ffi, each of +files+ in llhttp-ffi 0.5.1, for the
-  # target +name+ (+abi+ on Android), and returns its folder.
-  private def phone_project_with_ffi_library(phone, name, abi, *files)
+  # built a library for ffi, each of +files+ in llhttp-ffi 0.5.1, holding
+  # +content+, for the target +name+ (+abi+ on Android), and returns its
+  # folder.
+  private def phone_project_with_ffi_library(phone, name, abi, *files, content: "ELF llhttp")
     app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
     shared = File.join(@dir, "llhttp.so")
-    File.write(shared, "ELF llhttp")
+    File.binwrite(shared, content)
     target = Fledge::MobileExtensions::Target.new(name:, root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi:)
     libraries = files.map do |file|
       Fledge::MobileExtensions::FfiLibrary.new(gem: "llhttp-ffi", file:, path: shared, links: ["lib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/#{file}"])
@@ -434,7 +464,7 @@ class MobileBuildTest < Minitest::Test
     shared = File.join(@dir, "adder.so")
     File.write(shared, "ELF adder")
     target = Fledge::MobileExtensions::Target.new(name: "x86_64-linux-android", root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi: "x86_64")
-    library = Fledge::MobileExtensions::Library.new(feature:, path: shared, flags: [], links: ["app/gems/adder/lib/#{feature}.so"])
+    library = Fledge::MobileExtensions::Library.new(gem: "adder", feature:, path: shared, flags: [], links: ["app/gems/adder/lib/#{feature}.so"])
     build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [library], ffi_libraries: [])
     built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [])
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))

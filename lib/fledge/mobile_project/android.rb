@@ -8,6 +8,8 @@
 require "fileutils"
 require_relative "../error"
 require_relative "android_libraries"
+require_relative "android_linkage"
+require_relative "../platform"
 require_relative "../icon"
 require_relative "../mac_bundle"
 
@@ -200,14 +202,19 @@ module Fledge
       private def place_extensions(project)
         built = @built or return
         compiler = @extensions or return
-        AndroidLibraries.new(built).call(project, ruby_root: ruby_root(project))
+        libraries = AndroidLibraries.new(built)
+        libraries.call(project, ruby_root: ruby_root(project))
+        @judged = libraries.judged
         source = File.join(project, "extensions", "fledge_extensions.c")
         FileUtils.mkdir_p(File.dirname(source))
         File.write(source, MobileExtensions.registration_source(built.registrations))
         built.targets.each_value do |build|
           into = File.join(project, "src", "main", "jniLibs", build.target.abi.to_s, "lib#{EXTENSIONS}.so")
           compiler.shared_library(built, build, registration: source, into:)
-          MobileExtensions::Linking.carry_shared_libraries(build.flags, into: File.dirname(into))
+          abi = build.target.abi.to_s
+          [into, *MobileExtensions::Linking.carry_shared_libraries(build.flags, into: File.dirname(into))].each do |path|
+            @judged << [abi, File.basename(path), "the app", "lib/#{abi}/#{File.basename(path)}"]
+          end
         end
       end
 
@@ -225,9 +232,22 @@ module Fledge
         end
       end
 
-      # Nothing: the project is Gradle's to build.
-      private def finish(_project)
-        nil
+      # Refuses the project when a native library Fledge put in it needs
+      # one that neither Android, nor the runtime, nor the app carries
+      # (AndroidLinkage), read once the host's files are in place, since
+      # a host may carry a library too. The rest is Gradle's to build.
+      private def finish(project)
+        judged = @judged or return
+
+        found = AndroidLinkage.new(readers:).problems(project, judged)
+        raise Error, "#{@app.name} can't ship for android:\n#{found.map { |problem| "  #{problem}" }.join("\n")}" unless found.empty?
+      end
+
+      # The tools that read the app's libraries: the NDK's, or, for a
+      # build with no NDK, as in a test, this computer's own.
+      private def readers
+        ndk = @built&.ndk
+        ndk ? Binary::Readers.llvm(ndk.bin) : Binary::Readers.local(Platform.local.os)
       end
     end
   end

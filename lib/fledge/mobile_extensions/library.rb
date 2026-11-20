@@ -11,8 +11,9 @@ require_relative "../path_package"
 module Fledge
   class MobileExtensions
     # An extension built for an Android target as the shared object
-    # mkmf makes on a desktop, which Ruby loads from a file: its feature,
-    # its file, the linker flags its extconf.rb asked for, and the paths,
+    # mkmf makes on a desktop, which Ruby loads from a file: its gem's
+    # name, its feature, its file, the linker flags its extconf.rb asked
+    # for, and the paths,
     # relative to the app's Ruby root, where a desktop's RubyGems leaves
     # its file, at which the app links to it (.links).
     #
@@ -28,7 +29,11 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    class Library < Data.define(:feature, :path, :flags, :links)
+    class Library < Data.define(:gem, :feature, :path, :flags, :links)
+      ##
+      # :attr_reader: gem
+      # The name of the gem whose extension it is.
+
       ##
       # :attr_reader: feature
       # The name <tt>require</tt> asks for, such as <tt>"adder/adder"</tt>.

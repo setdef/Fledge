@@ -145,7 +145,7 @@ class MobileTemplateContractTest < Minitest::Test
         path = File.join(dir, abi, "#{feature}.so")
         FileUtils.mkdir_p(File.dirname(path))
         File.write(path, "ELF #{feature}")
-        Fledge::MobileExtensions::Library.new(feature:, path:, flags: [], links: ["app/gems/#{feature}.so"])
+        Fledge::MobileExtensions::Library.new(gem: "adder", feature:, path:, flags: [], links: ["app/gems/#{feature}.so"])
       end
       [name, Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: files, ffi_libraries: [])]
     end

@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileProject
+    class AndroidLinkage
+      RUNTIME: Array[String]
+
+      @readers: Binary::Readers
+
+      def initialize: (readers: Binary::Readers) -> void
+
+      def problems: (String project, Array[[String, String, String, String]] judged) -> Array[String]
+    end
+  end
+end

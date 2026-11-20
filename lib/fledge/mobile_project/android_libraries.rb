@@ -95,7 +95,13 @@ module Fledge
       #         carries.
       def initialize(built)
         @built = built
+        @judged = [] # : Array[[String, String, String, String]]
       end
+
+      # Each library #call placed, for MobileProject::AndroidLinkage: its
+      # ABI, its name in <tt>jniLibs/ABI/</tt>, its gem's name, and its
+      # path in the gem, or its own name for one an extension links.
+      attr_reader :judged
 
       # Copies each library into +project+'s <tt>jniLibs/</tt> and writes
       # LINKS in +ruby_root+, when there is any. Raises Fledge::Error for a
@@ -135,7 +141,10 @@ module Fledge
         build.libraries.flat_map do |library|
           name = extension_name(library.feature)
           place(library.path, folder, name)
-          MobileExtensions::Linking.carry_shared_libraries(library.flags, into: folder)
+          @judged << [abi, name, library.gem, "#{library.feature}.so"]
+          MobileExtensions::Linking.carry_shared_libraries(library.flags, into: folder).each do |copy|
+            @judged << [abi, File.basename(copy), library.gem, File.basename(copy)]
+          end
           library.links.map { |link| "#{abi}\t#{name}\t#{link}\n" }
         end
       end
@@ -154,6 +163,7 @@ module Fledge
 
           named[name] = library
           place(library.path, folder, name)
+          @judged << [abi, name, library.gem, library.file]
           library.links.map { |link| "#{abi}\t#{name}\t#{link}\n" }
         end
       end

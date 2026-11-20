@@ -105,7 +105,9 @@ module Fledge
         raise Error, "#{gem}'s extension made no #{File.basename(archive)} for #{target.name}" unless File.file?(archive)
 
         libs = "#{report.fetch('libs')} #{Linking.local_libs(env, folder)}"
-        return Library.new(feature: report.fetch("feature"), path: archive, flags: Linking.link_flags(libs, dir: folder), links: []) if shared
+        if shared
+          return Library.new(gem: gem.name, feature: report.fetch("feature"), path: archive, flags: Linking.link_flags(libs, dir: folder), links: [])
+        end
 
         Report.new(
           feature: report.fetch("feature"), init:, archive:, flags: Linking.link_flags(libs, dir: folder),

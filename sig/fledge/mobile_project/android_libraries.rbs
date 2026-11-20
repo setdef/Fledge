@@ -14,6 +14,9 @@ module Fledge
       SAFE: Regexp
 
       @built: MobileExtensions::Built
+      @judged: Array[[String, String, String, String]]
+
+      attr_reader judged: Array[[String, String, String, String]]
 
       def initialize: (MobileExtensions::Built built) -> void
 

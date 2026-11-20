@@ -73,13 +73,23 @@ module Fledge
     # delvewheel 1.13.2, which repairs Python's Windows wheels as
     # auditwheel repairs Linux's, lists them (<tt>ignore_names_x64</tt>
     # and <tt>ignore_names_arm64</tt> in its <tt>delvewheel/_dll_list.py</tt>,
-    # lines 1338 to 2761 and 2767 to 5535).
+    # lines 1338 to 2761 and 2767 to 5535). On Android, the NDK's public
+    # libraries for API 26, the oldest the runtime runs on, as the NDK
+    # r30 holds their stubs in <tt>sysroot/usr/lib/TRIPLE/26/</tt>, where
+    # bionic's <tt>android-changes-for-ndk-developers.md</tt> ("Private
+    # API") says the complete list of public libraries is, since from API
+    # 24 Android's linker loads an app no other library of the system's;
+    # but <tt>libc++.so</tt>, the system's own C++ runtime, which no app
+    # may link, where an app carries the NDK's <tt>libc++_shared.so</tt>.
     SYSTEM_LIBRARIES = {
       "linux" => [
         /\A(?:libGL\.so\.1|libICE\.so\.6|libSM\.so\.6|libX11\.so\.6|libXext\.so\.6|libXrender\.so\.1|libanl\.so\.1|libatomic\.so\.1|libc\.so\.6|libdl\.so\.2|libexpat\.so\.1|libgcc_s\.so\.1|libglib-2\.0\.so\.0|libgobject-2\.0\.so\.0|libgthread-2\.0\.so\.0|libm\.so\.6|libnsl\.so\.1|libpthread\.so\.0|libresolv\.so\.2|librt\.so\.1|libstdc\+\+\.so\.6|libutil\.so\.1|libz\.so\.1)\z/,
         /\Ald-linux[-\w.]*\.so\.\d\z/,
       ],
       "linux-musl" => [/\A(?:libc\.so|libc\.musl-(?:x86_64|aarch64)\.so\.1|libz\.so\.1)\z/, /\Ald-musl-(?:x86_64|aarch64)\.so\.1\z/],
+      "android" => [
+        /\A(?:libEGL|libGLESv1_CM|libGLESv2|libGLESv3|libOpenMAXAL|libOpenSLES|libaaudio|libandroid|libc|libcamera2ndk|libdl|libjnigraphics|liblog|libm|libmediandk|libnativewindow|libstdc\+\+|libsync|libvulkan|libz)\.so\z/,
+      ],
       "darwin" => [%r{\A/usr/lib/[^/]+\.dylib\z}, %r{\A/System/Library/Frameworks/}],
       "windows" => [
         /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i,
@@ -92,7 +102,7 @@ module Fledge
     RUBY_DLL = /\A[\w-]*-ruby\d+\.dll\z/i
 
     # The format each operating system's loader loads.
-    FORMATS = { "linux" => :elf, "linux-musl" => :elf, "darwin" => :macho, "windows" => :pe }.freeze
+    FORMATS = { "linux" => :elf, "linux-musl" => :elf, "android" => :elf, "darwin" => :macho, "windows" => :pe }.freeze
 
     # Creates the check.
     #
@@ -188,6 +198,11 @@ module Fledge
       if @declared.include?(library)
         @needed |= [library]
         return
+      end
+
+      if @os == "android"
+        return "#{label}'s #{path} needs #{library}, which neither Android, nor Fledge's runtime, nor the app's own native libraries " \
+          "provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically."
       end
 
       problem = "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \

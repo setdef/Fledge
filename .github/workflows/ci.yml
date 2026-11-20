@@ -2088,14 +2088,16 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      # apt's package lists, once for the job: every apt-get install
-      # after this one reads them. In amd64 Ubuntu they come from the
-      # Azure mirror the runners themselves use, with the image's own
-      # hosts as a second attempt, each under a time limit, so a host that
-      # stops answering fails the step saying so inside the job's limit
+      # apt's package lists, once for the job, and every package the
+      # steps after this one install: the validator, and what each .deb
+      # depends on (test/workflow_apt_test.rb). In amd64 Ubuntu they come
+      # from the Azure mirror the runners themselves use, with the
+      # image's own hosts as a second attempt, each under a time limit,
+      # so a host that stops answering fails the step saying so inside
+      # the job's limit, and no later step fetches anything
       # (.github/scripts/apt-update.sh says why).
-      - name: Fetch apt's package lists
-        run: .github/scripts/apt-update.sh
+      - name: Fetch apt's package lists and the packages the job installs
+        run: .github/scripts/apt-update.sh desktop-file-utils ./delivered/*.deb
 
       # Before apt brings anything else, the app whose gem links
       # libpng names it, and exits with 72, from its archive and its

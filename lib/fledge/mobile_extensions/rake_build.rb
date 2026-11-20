@@ -46,9 +46,12 @@ module Fledge
     # their bytes before and after the build, since a package may hold a
     # library at the very path the build writes, as llhttp-ffi 0.5.1's
     # holds one its author built on a Mac. A library the package holds
-    # that the build leaves as it was is the gem's own file, but one built
-    # for the desktop that the phone is to Ruby's ffi is refused, since
-    # the gem would ask <tt>dlopen</tt> for it on the phone.
+    # that the build leaves as it was is an FfiLibrary too when it is
+    # built for the target, since the gem opens it on the phone as a
+    # desktop's gem opens the one its package holds for that desktop; one
+    # built for the desktop that the phone is to Ruby's ffi is refused,
+    # since the gem would ask <tt>dlopen</tt> for it on the phone; and
+    # any other stays the gem's own file.
     #
     # Use it from Fledge::MobileExtensions, once for each target and each
     # extension Rake builds.
@@ -154,7 +157,8 @@ module Fledge
       # returns a Report for each extension it built with mkmf, its Init
       # function named <tt>Init_fledge_FIRST_NAME</tt>, and an FfiLibrary,
       # with no links yet, for each other shared library it wrote or
-      # changed in the gem. Raises Fledge::Error when the build fails, or
+      # changed in the gem, and each the package held built for
+      # +target+. Raises Fledge::Error when the build fails, or
       # leaves a shared library in DEST, one not built for +target+, or
       # one of the package's built for the desktop the phone is to ffi.
       #
@@ -215,13 +219,16 @@ module Fledge
       end
 
       # The FfiLibrary for the shared library at +path+, +file+ in the gem,
-      # which the build wrote or changed, or +nil+ for one the package
-      # held (+held+) that the build left as it was. Raises Fledge::Error
-      # for a library built for another system than +target+, or one the
-      # package held built for the desktop the phone is to Ruby's ffi.
+      # which the build wrote or changed, or which the package held
+      # (+held+) built for +target+; or +nil+ for one the package held
+      # built for another phone's or ABI's system, which stays one of the
+      # gem's files. Raises Fledge::Error for a library the build made
+      # for another system than +target+, or one the package held built
+      # for the desktop the phone is to Ruby's ffi.
       private def ffi_library(gem, extension, target, file, path, held:)
         system = @built_for.call(target, path)
         wanted = @built_for.wanted(target)
+        return FfiLibrary.new(gem: gem.name, file:, path:, links: []) if system == wanted
         if held
           return nil unless @built_for.desktop?(target, system)
 
@@ -229,7 +236,6 @@ module Fledge
             "gem's package holds it, and its build did not replace it, so the gem would load a library for another system. " \
             "Fledge ships only libraries built for the phone. #{advice(gem, target)}"
         end
-        return FfiLibrary.new(gem: gem.name, file:, path:, links: []) if system == wanted
 
         raise Error, "#{gem}'s #{File.basename(extension)} built #{file} for #{system}, not #{wanted} (#{target.name}). Fledge ships " \
           "a library a Rakefile builds when it is built for the phone, with the compiler Fledge gives the build in CC. " \

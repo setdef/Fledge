@@ -423,6 +423,29 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_match(%r{thing 1\.0\.0's Rakefile left ext/x86_64-linux/libthing\.so built for Linux \S+, not Android arm64-v8a}, error.message)
   end
 
+  # A package may hold its library for ffi already built for each of
+  # the phone's ABIs, which its Rakefile leaves as it was: each target
+  # takes its own ABI's, read with the NDK's llvm-readelf, and carries
+  # it as it carries one the Rakefile built.
+  def test_the_libraries_a_package_holds_for_each_android_abi_are_libraries_for_ffi
+    runtimes = real_runtimes("android")
+    ndk = android_ndk
+    gem = rake_gem("thing", "task :default\n",
+      files: { "thing.c" => "int thing(void) { return 1; }\n", "aarch64-linux/libthing.so" => "", "x86_64-linux/libthing.so" => "" })
+    folder = File.join(@dir, "gems", "thing", "ext")
+    %w[aarch64 x86_64].each do |arch|
+      system(File.join(ndk.bin, "#{arch}-linux-android26-clang"), "-shared", "-fPIC", "-o", File.join(folder, "#{arch}-linux", "libthing.so"),
+        File.join(folder, "thing.c"), exception: true)
+    end
+
+    built = compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true)
+
+    found = built.targets.transform_values { |target| target.ffi_libraries.map { |library| [library.file, library.links] } }
+    assert_equal(%w[aarch64 x86_64].to_h do |arch|
+      ["#{arch}-linux-android", [["ext/#{arch}-linux/libthing.so", ["app/vendor/cache/thing/ext/#{arch}-linux/libthing.so"]]]]
+    end, found)
+  end
+
   # A Rakefile requires the gems its gem depends on, as ffi-compiler's
   # require ffi, whose extension must be this computer's to load: the
   # build has each on its load path, compiled for this computer. This

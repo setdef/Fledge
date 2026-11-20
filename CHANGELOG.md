@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- On Android, a library a gem's Rakefile builds for ffi to open, as llhttp-ffi's and scrypt's do, is a native library of the app's own, `libfledgeffi.GEM.PATH.so`, linked as the app starts from where the gem looks for it.
+- On Android, a library a gem's Rakefile builds for ffi to open, as llhttp-ffi's and scrypt's do, or that the gem's package holds built for the phone, is a native library of the app's own, `libfledgeffi.GEM.PATH.so`, linked as the app starts from where the gem looks for it.
 
 ### Fixed
 

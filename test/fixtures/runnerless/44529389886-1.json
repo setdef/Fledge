@@ -1,0 +1,11 @@
+{
+  "source": "GitHub's REST API for run 44529389886, attempt 1, recorded 2026-11-20",
+  "attempt": 1,
+  "run": {"id":44529389886,"name":"CI","workflow_id":396724957,"head_branch":"trunk","event":"push","status":"completed","conclusion":"cancelled","run_attempt":1},
+  "jobs": [
+
+  ],
+  "annotations": {
+
+  }
+}

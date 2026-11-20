@@ -232,3 +232,10 @@ SPDX-License-Identifier = "MIT"
 path = ['examples/windowed_app/LICENSE.txt', 'examples/windowed_app/CHANGES.txt']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
+
+# GitHub's REST API's answers for real runs of this repository, which
+# test/runnerless_runs_test.rb serves; JSON has no place for a header.
+[[annotations]]
+path = 'test/fixtures/runnerless/*.json'
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
+SPDX-License-Identifier = "CC0-1.0"

@@ -9,8 +9,10 @@ require "socket"
 
 # A real HTTP server on the loopback interface, serving a fixed table of
 # routes, so Fledge::Download is tested through Net::HTTP itself.
+# +requests+ lists the path of each request it got, and +calls+ its
+# method and path ("POST /path").
 class LoopbackServer
-  attr_reader :requests, :authorizations
+  attr_reader :requests, :calls, :authorizations
 
   # +routes+ is the table of paths (as a Hash, or written inline), each to
   # [status, headers, body], or to something whose call returns one, for a
@@ -29,6 +31,7 @@ class LoopbackServer
     @authorizations = []
     @server = TCPServer.new("127.0.0.1", 0)
     @requests = []
+    @calls = []
     @clients = []
     @thread = Thread.new { loop { serve_on_its_own(@server.accept) } }
   end
@@ -52,7 +55,9 @@ class LoopbackServer
   end
 
   private def serve(client)
-    path = client.gets.to_s.split[1].to_s
+    verb, path = client.gets.to_s.split
+    path = path.to_s
+    @calls << "#{verb} #{path}"
     @requests << path
     authorization = nil
     while (line = client.gets.to_s.chomp) && !line.empty?

@@ -1,0 +1,93 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Runs again the failed jobs of a run on trunk that is red only because
+# GitHub never gave a job a runner (doc/contributors/design/releases.md,
+# "A job no runner took"). Such a job waits, is cancelled with no
+# runner, no steps, and the annotation "The job was not acquired by
+# Runner of type hosted even after multiple attempts", and the jobs that
+# need it are skipped. tasks/runnerless_runs.rb decides from GitHub's
+# API, and asks for nothing unless every red job of the run is such a
+# job, so a job that ran a step and failed, a run a person cancelled,
+# and a run a newer push replaced stay exactly as they are.
+#
+# Only trunk's runs: on any other branch a run queued again would cancel
+# the newer run in progress there (concurrency in ci.yml and fast.yml).
+# A run is run again at most twice (RunnerlessRuns::ATTEMPTS).
+#
+# Run it by hand (workflow_dispatch) with a run and an attempt to see
+# what it would do: by default a dry run, which reads and changes
+# nothing.
+
+name: Runnerless jobs
+
+on:
+  workflow_run:
+    workflows: [CI, Fast, ruby/spec]
+    types: [completed]
+    branches: [trunk]
+  workflow_dispatch:
+    inputs:
+      run:
+        description: The run's ID
+        required: true
+        type: string
+      attempt:
+        description: The run's attempt
+        required: true
+        type: string
+      dry-run:
+        description: Say what it would do, and run nothing again
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: runnerless-${{ github.event.workflow_run.id || inputs.run }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  MISE_RUBY_COMPILE: "false"
+
+jobs:
+  rerun:
+    name: Run again the jobs no runner took
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event.workflow_run.conclusion == 'failure'
+      && github.event.workflow_run.event != 'pull_request')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Reading the run's jobs and running its failed ones again.
+      actions: write
+      # Reading each red job's annotations.
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Run the failed jobs again if no runner took them
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.event.workflow_run.id || inputs.run }}
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt || inputs.attempt }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+        run: |
+          if [ "$DRY_RUN" = true ]; then
+            ruby tasks/runnerless_runs.rb "$RUN" "$ATTEMPT" --dry-run
+          else
+            ruby tasks/runnerless_runs.rb "$RUN" "$ATTEMPT"
+          fi

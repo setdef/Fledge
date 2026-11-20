@@ -73,14 +73,18 @@ jobs:
         id: paths
         run: |
           echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
-          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_REVISION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:?the runner sets no ImageOS}" >> "$GITHUB_OUTPUT"
 
-      # The key ci.yml's gate and test jobs use, so each restores what
-      # the other saved.
+      # The key every job on ubuntu-24.04 keeps its installed gems under,
+      # the runner's image (ImageOS) in it: the unit job below, and
+      # ci.yml's Test (x86_64-linux) and Android emulator jobs. ci.yml's
+      # gate runs on ubuntu-latest, which GitHub moves between images,
+      # and shares the key only while that label names this image.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/fledge/bundle
-          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.image }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
 
       - name: Install the bundle
         run: bundle install
@@ -104,13 +108,14 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
-      # The key ci.yml's test jobs use, the runner's image (ImageOS) in it
-      # as in fast-macos.yml's, so each restores what the other saved.
+      # The key the lint job above and ci.yml's Test (x86_64-linux) use,
+      # the runner's image (ImageOS) in it as in fast-macos.yml's, so each
+      # restores what the others saved.
       - name: Place Bundler outside the checkout
         id: paths
         run: |
           echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
-          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_REVISION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
           echo "image=${ImageOS:?the runner sets no ImageOS}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -154,12 +159,13 @@ jobs:
         id: paths
         run: |
           echo "BUNDLE_PATH=$RUNNER_TEMP/bundle" >> "$GITHUB_ENV"
-          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_REVISION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:?the runner sets no ImageOS}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/bundle
-          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock', 'mise.toml') }}
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.image }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock', 'mise.toml') }}
 
       - name: Install the bundle
         run: bundle install

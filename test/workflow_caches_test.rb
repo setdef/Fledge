@@ -9,24 +9,69 @@ require_relative "test_helper"
 require "yaml"
 
 # What CI's caches are keyed by, and what each falls back to. A
-# bundle's compiled extensions target the macOS they were compiled on,
-# and the fast tier's macOS leg runs on macos-26 while ci.yml's Test
-# (arm64-darwin) runs on macos-15 (doc/contributors/design/releases.md,
-# "Which macOS each job runs on"), so a key without the runner's image
-# would hand macos-15 a bundle built for macOS 26. A set of pinned
-# downloads is keyed by the files it holds, and a Gradle set falls back
-# no further than the plugin's pin.
+# bundle's compiled extensions target the Ruby, the system, and the
+# runner image they were compiled on, so its key names all three, and a
+# bundle compiled on one image (ubuntu-latest's, macos-26's) is never
+# restored on another (doc/contributors/design/releases.md, "Installed
+# gems in CI"). A set of pinned downloads is keyed by the files it
+# holds, and a Gradle set falls back no further than the plugin's pin.
 class WorkflowCachesTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
 
-  # The step output every bundle cache's key names: the runner's ImageOS.
+  # The step output every installed-gems key names: the runner's ImageOS.
   IMAGE = "${{ steps.paths.outputs.image }}"
 
-  def test_a_bundle_cache_a_mac_restores_names_the_runners_image
-    keys = Dir[File.join(ROOT, ".github", "workflows", "*.yml")].flat_map { |path| mac_bundle_keys(path) }
+  # What decides an installed bundle, each of which its cache's key
+  # names: the system and its processor, the runner's image, the Ruby
+  # (its version, its revision, which tells one preview from the next,
+  # and its platform), and the lockfile.
+  BUNDLE = ["${{ runner.os }}", "${{ runner.arch }}", IMAGE, "${{ steps.paths.outputs.ruby }}", "hashFiles('Gemfile.lock'"].freeze
 
-    assert_operator keys.size, :>=, 2
-    keys.each { |where, key| assert_includes key, IMAGE, "#{where}'s bundle cache is keyed without the runner's image" }
+  def test_an_installed_gems_key_names_everything_the_bundle_was_compiled_for
+    caches = gems_caches
+
+    assert_operator caches.size, :>=, 8
+    caches.each do |where, job, step|
+      key = step.dig("with", "key")
+      BUNDLE.each { |part| assert_includes key, part, "#{where}'s installed gems are keyed without #{part}" }
+      paths = job.fetch("steps").find { |each| each["id"] == "paths" }.fetch("run")
+
+      assert_includes paths, "image=${ImageOS:?", where
+      assert_includes paths, "RUBY_REVISION", "#{where} keys its gems by a Ruby that names no revision"
+    end
+  end
+
+  # On Windows mise.toml pins the RubyInstaller build and the MSYS2 that
+  # compiles the bundle's extensions, which RUBY_VERSION does not name.
+  def test_installed_gems_on_windows_are_keyed_by_the_tools_mise_pins
+    windows = gems_caches.select { |_, job| runners(job).all? { |label| label.start_with?("windows-") } }
+
+    assert_operator windows.size, :>=, 2
+    windows.each { |where, _, step| assert_includes step.dig("with", "key"), "'mise.toml'", where }
+  end
+
+  def test_jobs_on_different_runners_share_installed_gems_only_by_a_key_that_names_the_image
+    gems_caches.group_by { |_, _, step| step.dig("with", "key") }.each do |key, caches|
+      next if caches.map { |_, job| runners(job).sort }.uniq.size == 1
+
+      assert_includes key, IMAGE, "#{caches.map(&:first).join(', ')} share installed gems across runners"
+    end
+  end
+
+  # A job that only restores the bundle restores what a job on its own
+  # runner saves under the same key.
+  def test_a_job_that_only_restores_installed_gems_restores_a_key_saved_on_its_runner
+    caches = gems_caches
+    restorers = caches.select { |_, _, step| step["uses"].start_with?("actions/cache/restore@") }
+
+    assert_operator restorers.size, :>=, 1
+    restorers.each do |where, job, step|
+      saved = caches.any? do |_, saver, save|
+        save["uses"].start_with?("actions/cache@") && save.dig("with", "key") == step.dig("with", "key") && (runners(job) - runners(saver)).empty?
+      end
+
+      assert saved, "#{where} restores installed gems that no job on its runner saves"
+    end
   end
 
   # The digest of the files a job's download folder holds, which every
@@ -116,20 +161,20 @@ class WorkflowCachesTest < Minitest::Test
     end
   end
 
-  private def mac_bundle_keys(path)
-    workflow = YAML.load_file(path, aliases: true)
-    workflow.fetch("jobs").filter_map do |id, job|
-      next unless runners(job).any? { |label| label.start_with?("macos-") }
-
-      job.fetch("steps", []).filter_map do |step|
-        key = step.dig("with", "key").to_s
-        ["#{File.basename(path)} #{id}", key] if step["uses"].to_s.start_with?("actions/cache@") && key.start_with?("gems-")
+  # Every step that restores or saves installed gems, with its job.
+  private def gems_caches
+    workflows.flat_map do |name, workflow|
+      workflow.fetch("jobs").flat_map do |id, job|
+        steps = job.fetch("steps", []).select { |step| step["uses"].to_s.start_with?("actions/cache") && step.dig("with", "key").to_s.start_with?("gems-") }
+        steps.map { |step| ["#{name} #{id}", job, step] }
       end
-    end.flatten(1)
+    end
   end
 
+  # The labels a job runs on, its matrix's included.
   private def runners(job)
     matrix = job.dig("strategy", "matrix") || {}
-    Array(job["runs-on"]) + Array(matrix["os"]) + Array(matrix["include"]).filter_map { |entry| entry["os"] }
+    labels = Array(job["runs-on"]) + Array(matrix["os"]) + Array(matrix["include"]).filter_map { |entry| entry["os"] }
+    labels.grep_v(/\$\{\{/)
   end
 end

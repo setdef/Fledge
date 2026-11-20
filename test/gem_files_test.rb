@@ -31,11 +31,13 @@ class GemFilesTest < Minitest::Test
     FileUtils.rm_rf(@dir)
   end
 
-  # Writes the gem alpha into +folder+, its gemspec listing +files+.
+  # Writes the gem alpha into +folder+, its gemspec listing +files+. Each
+  # file is written byte for byte, as a package reads it: written as
+  # text, a line's end would become two bytes on Windows.
   def write(folder, files:, require_paths: ["lib"])
     FILES.each do |path, content|
       FileUtils.mkdir_p(File.dirname(File.join(folder, path)))
-      File.write(File.join(folder, path), content)
+      File.binwrite(File.join(folder, path), content)
     end
     File.write(File.join(folder, "alpha.gemspec"), "Gem::Specification.new do |spec|\n  spec.name = \"alpha\"\n  spec.version = \"1.0\"\n" \
       "  spec.summary = \"alpha\"\n  spec.authors = [\"Fledge\"]\n  spec.files = #{files.inspect}\n" \

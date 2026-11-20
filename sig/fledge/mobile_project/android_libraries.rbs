@@ -7,6 +7,10 @@ module Fledge
       LINKS: String
       EXTENSION: String
       FFI: String
+      CXX_RUNTIME: String
+      CXX_RUNTIME_NOTICE: String
+      CXX_RUNTIME_LICENSE: String
+      CXX_RUNTIME_TEXT: String
       SAFE: Regexp
 
       @built: MobileExtensions::Built
@@ -22,6 +26,10 @@ module Fledge
       private def extension_name: (String feature) -> String
 
       private def ffi_name: (MobileExtensions::FfiLibrary library) -> String
+
+      private def carry_cxx_runtime: (MobileExtensions::TargetBuild build, String folder) -> bool
+
+      private def write_cxx_runtime_notice: (String ruby_root, Array[String] abis) -> void
 
       private def place: (String path, String folder, String name) -> void
     end

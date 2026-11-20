@@ -390,6 +390,45 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)
   end
 
+  # A library for ffi in C++, linked as ffi-compiler links one, with the
+  # CXX it is given and no flag of Fledge's: the NDK's clang++ links the
+  # shared C++ runtime, so the library holds none of its own to export,
+  # and the app carries the NDK's libc++_shared.so for each ABI beside
+  # it, as Gradle's plugin packs it for a CMake build with c++_shared.
+  def test_a_cpp_library_for_ffi_carries_the_ndks_shared_cpp_runtime_into_android
+    runtimes = real_runtimes("android")
+    ndk = android_ndk
+    gem = rake_gem("thing", <<~'RAKEFILE', files: { "thing.cpp" => %(#include <string>\nextern "C" int thing(void) { return std::to_string(42).size(); }\n) })
+      task :default do
+        sh "#{ENV.fetch('CXX')} -shared -fPIC -o libthing.so thing.cpp"
+      end
+    RAKEFILE
+
+    built = compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true)
+    project = File.join(@dir, "project")
+    FileUtils.mkdir_p(ruby_root = File.join(project, "fledge"))
+    Fledge::MobileProject::AndroidLibraries.new(built).call(project, ruby_root:)
+
+    readelf = File.join(ndk.bin, "llvm-readelf")
+    built.targets.each_value do |build|
+      library = build.ffi_libraries.fetch(0).path
+      assert_includes Open3.capture2(readelf, "--needed-libs", library).first, "libc++_shared.so", "#{build.target.name}: the shared C++ runtime"
+      exported = Open3.capture2(readelf, "--dyn-syms", "-W", library).first.lines.reject { |line| line.include?(" UND ") }
+      assert_empty exported.grep(/ (?:_ZNSt|_ZSt|__cxa_|__gxx_)/), "#{build.target.name}: exports no C++ runtime"
+      runtime = File.join(ndk.bin, "..", "sysroot", "usr", "lib", build.target.name, "libc++_shared.so")
+      carried = File.join(project, "src", "main", "jniLibs", build.target.abi, "libc++_shared.so")
+      assert_path_exists carried, "#{build.target.name}: libc++_shared.so in jniLibs"
+      assert_equal File.binread(runtime), File.binread(carried), "#{build.target.name}: the NDK's own, for its ABI"
+    end
+    # Its license goes with it: the NDK's notice for the toolchain it
+    # came from, after a header that names the files it covers.
+    notice = File.read(File.join(ruby_root, "notices", "libc++_shared.txt"))
+    assert_includes notice, "lib/arm64-v8a/libc++_shared.so and lib/x86_64/libc++_shared.so, among the app's native libraries"
+    assert_includes notice, "#{File.basename(ndk.root)}, since a\nlibrary of the app's gems links it."
+    assert notice.end_with?(File.read(File.join(ndk.bin, "..", "NOTICE"))), "the NDK's toolchain NOTICE, whole"
+    assert_includes notice, "The libc++ library is dual licensed"
+  end
+
   # A Rakefile that compiles with this computer's own compiler, not the
   # phone's in CC, builds a library no phone loads: refused by name.
   def test_a_library_a_rakefile_builds_for_this_computer_is_refused_for_android
@@ -636,6 +675,10 @@ class MobileExtensionsBuildTest < Minitest::Test
       ["x86_64", "libfledgeffi.scrypt.ext.scrypt.x86_64-linux.libscrypt_ext.so", "scrypt-3.1.0/ext/scrypt/x86_64-linux/libscrypt_ext.so"],
     ], links.map { |abi, name, path| [abi, name, path.sub(gems, "")] }
     assert(links.all? { |_, _, path| path.match?(gems) }, links.inspect)
+    # Their libraries are C, so the app carries no C++ runtime and no
+    # notice of one.
+    assert_empty Dir.glob(File.join(project, "src", "main", "jniLibs", "*", "libc++_shared.so"))
+    refute_path_exists File.join(project, "fledge", "notices", "libc++_shared.txt")
   end
 
   # Fledge does not yet put a library for ffi in an iOS app, where it

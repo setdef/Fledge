@@ -5,6 +5,9 @@ run into an app that people without Ruby can download and run. Your users
 unpack one file and run it. They install nothing, and never learn what Ruby
 is.
 
+Fledge runs on Ruby 4.1, with Bundler: on its preview, 4.1.0-preview1,
+until Ruby 4.1.0 is released. Add it to your project's +Gemfile+:
+
   gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.14.0", group: :development
 
 === A First App
@@ -21,6 +24,15 @@ Fledge in it:
 The archive is 29 MB. Anyone with an Apple silicon Mac on macOS 14 or newer
 can run it, with no Ruby on their computer.
 
+That archive holds Fledge too, about 3 MB of it, as it holds your other
+development gems: Bundler installs a gem from git as its whole repository.
+Bundler's +without+ setting cannot leave Fledge out, because
+<tt>without development</tt> leaves it out of your own bundle as well. To
+build apps without it, put the line above in a +Gemfile+ of its own, in a
+folder outside your project, run <tt>bundle install</tt> there, and from
+there build your project by its path:
+<tt>bundle exec fledge build ~/code/greeter</tt>.
+
 
 ---
 
@@ -30,36 +42,50 @@ Fledge copies your program, your project, and the gems your
 +Gemfile.lock+ locks into a Ruby that runs from any folder, and adds a
 launcher that starts your program as <tt>bundle exec</tt> would. Your code
 runs as it does under <tt>ruby main.rb</tt>, whether or not your users
-installed a Ruby.
-
-Your app carries the gems of every group <tt>bundle exec</tt> loads,
-+development+ and +test+ included, unless Bundler's +without+ names the
-group. With the +Gemfile+ line above, that includes Fledge: Bundler
-installs a gem from git as its whole repository, and Fledge's adds about
-3 MB to the archive. To build apps without it, put that line in a
-+Gemfile+ of its own, in a folder outside your project, run
-<tt>bundle install</tt> there, and from there build your project by its
-path, as in <tt>bundle exec fledge build ~/code/greeter</tt>.
+installed a Ruby, with a few
+{differences}[https://github.com/setdef/Fledge/blob/trunk/doc/differences_from_ruby.md]
+your code can see, each with its reason. The app carries the gems of every
+group <tt>bundle exec</tt> loads, +development+ and +test+ included, less
+the groups Bundler's +without+ setting names.
 
 [Terminal apps]
   A <tt>.tar.gz</tt> on macOS and Linux, a <tt>.zip</tt> on Windows, with a
   SHA-256 beside each for Scoop, Homebrew, winget, Chocolatey, and the
   AUR.
 [Windowed apps]
-  A <tt>.app</tt> and a <tt>.dmg</tt> on macOS; a setup program on Windows,
-  and an MSIX package for the Microsoft Store if you ask; and an AppImage
-  on Linux, and a <tt>.deb</tt> if you ask. Each carries your name, icon,
+  A <tt>.app</tt> and a <tt>.dmg</tt> on macOS; a <tt>.zip</tt> and a setup
+  program on Windows, and an MSIX package for the Microsoft Store if you
+  ask; and a <tt>.tar.gz</tt> with a desktop entry and an AppImage on
+  Linux, and a <tt>.deb</tt> if you ask. Each carries your name, icon,
   version, and the files your app opens.
 [Phones]
-  An Xcode or Gradle project for iPhone, iPad, and Android, with your C
-  and C++ gems compiled in.
+  An Xcode or Gradle project for iPhone, iPad, and Android, with your
+  gems' C, C++, and Rust extensions compiled for the phone, and the +ffi+
+  gem and Ruby's +fiddle+ working there.
+[Signing]
+  <tt>--sign</tt> signs every program, library, bundle, and installer
+  with your macOS identity or your Windows certificate, and
+  <tt>--notarize</tt> has Apple notarize a Mac app.
 [Frameworks]
   <tt>fledge build --from</tt> makes a new app from one Fledge already
   built, with no Bundler, network, or compiler on the computer.
 
-Fledge builds for macOS on Apple silicon, Linux (glibc and musl, x86-64 and
-ARM64), and Windows (x64 and ARM64). Build each platform's app on a computer
-of that platform, such as a CI runner of each.
+Fledge builds for macOS 14 and newer on Apple silicon; Linux with glibc
+2.39 or musl 1.2 and newer, on x86-64 and ARM64; Windows 10 and 11 on x64,
+and Windows 11 on ARM64; iOS 15 and newer; and Android 8.0 and newer. Build
+each platform's app on a computer of that platform, such as a CI runner of
+each. On every change, CI runs each desktop app on a clean computer with
+no Ruby (macOS 15, Windows Server 2025, Windows 11 on ARM64, Ubuntu 24.04,
+Debian 13, and Alpine 3.24), and each phone app in the iOS 26 Simulator
+and on Android 16 emulators. No CI job runs an app on macOS 14, Windows
+10, iOS 15, or Android 8.0: Fledge builds each app for them, but no run
+there proves it.
+
+Fledge is 0.x, so any new version can break your build: read the changelog
+before you update. CI signs apps only with a self-signed certificate, so
+signing with a certificate from Apple or a certificate authority, and
+notarizing with Apple, are untested. No Fledge app has been through a
+store's review.
 
 
 ---

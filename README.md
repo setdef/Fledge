@@ -50,7 +50,7 @@ The archive is 29 MB, and 89 MB unpacked. Anyone with an Apple silicon Mac on ma
 | Runs in a terminal (the default) | a `.tar.gz` | a `.zip` | a `.tar.gz` |
 | Opens its own windows | a `.app` bundle, and a `.dmg` | a `.zip`, a setup program that needs no administrator, and an `.msix` for the Microsoft Store if you ask for one | a `.tar.gz` with a desktop entry, an AppImage, and a `.deb` if you ask for one |
 
-For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you build and submit as you would any other phone app.
+For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you build and submit as you would any other phone app. Fledge compiles your gems' C, C++, and Rust extensions for the phone, and the `ffi` gem and Ruby's `fiddle` work there, as do gems whose Rakefile builds a library for `ffi` to open.
 
 ## Compatibility
 
@@ -58,21 +58,22 @@ For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you
 | --- | --- | --- |
 | `arm64-darwin` | macOS 14 or newer, on Apple silicon | a Mac with Apple silicon |
 | `x86_64-linux`, `aarch64-linux` | Linux with glibc 2.39 or newer (Ubuntu 24.04, Debian 13) | Linux with glibc, on that processor |
-| `x86_64-linux-musl`, `aarch64-linux-musl` | Linux with musl, such as Alpine | Linux with musl, on that processor |
+| `x86_64-linux-musl`, `aarch64-linux-musl` | Linux with musl 1.2 or newer, such as Alpine | Linux with musl, on that processor |
 | `x64-mingw-ucrt` | Windows 10 and 11 on x64 | Windows on x64 |
 | `aarch64-mingw-ucrt` | Windows 11 on ARM64 | Windows on ARM64 |
 | iOS | iPhone and iPad, iOS 15 or newer | a Mac with Xcode |
 | Android | Android 8.0 (API 26) or newer | a Mac, x86-64 Linux, or Windows |
 
 - Fledge builds for the computer it runs on. To ship to three systems, build on three computers, such as a CI runner of each. There is no runtime for Intel Macs or 32-bit systems.
-- Fledge runs on Ruby 4.1, with Bundler: on its preview, 4.1.0-preview1, until Ruby 4.1.0 is released. Your app gets the Ruby you run Fledge with, at the version on the Ruby badge above, and on Windows, until 4.1.0, RubyInstaller's build of Ruby's development branch nearest it. See [Runtimes and Ruby versions](doc/runtimes.md).
+- Your app gets the Ruby you run Fledge with, at the version on the Ruby badge above. On Windows, [RubyInstaller](https://rubyinstaller.org/) builds no Ruby preview, so until Ruby 4.1.0 is released a Windows app gets RubyInstaller's build of Ruby's development branch instead, a Ruby 4.1 newer than the preview: test your app on Windows too. See [Runtimes and Ruby versions](doc/runtimes.md).
 - Your code runs as it does under `ruby main.rb`. Fledge's CI compares the two on every platform. Your code can see [a few differences](doc/differences_from_ruby.md), each with its reason.
-- On every change, CI builds each desktop app and runs it on a clean computer that has no Ruby. CI runs phone apps in the iOS Simulator and Android emulators, and a game has run on a real iPad and iPhone. See [What has run where](doc/phones.md#what-has-run-where).
+- On every change, CI builds each desktop app and runs it on a clean computer that has no Ruby: macOS 15, Windows Server 2025, Windows 11 on ARM64, Ubuntu 24.04, Debian 13, and Alpine 3.24. CI runs phone apps in the iOS 26 Simulator and on Android 16 emulators, and a game has run on a real iPad and iPhone. See [What has run where](doc/phones.md#what-has-run-where).
+- No CI job runs an app on the oldest versions the table names, macOS 14, Windows 10, iOS 15, and Android 8.0. Fledge builds each app for them, but no run there proves it.
 - CI signs apps with a self-signed certificate only, and notarizes them against a stand-in for Apple's service. Signing with a certificate from Apple or a certificate authority, and notarizing with Apple, are untested.
 
 ## Installation
 
-Add Fledge to your `Gemfile`, in the `development` group:
+Fledge runs on Ruby 4.1, with Bundler: on its preview, 4.1.0-preview1, until Ruby 4.1.0 is released. Add Fledge to your project's `Gemfile`, in the `development` group:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -86,7 +87,7 @@ gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.14.0", group: :d
 
 Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.14.0`. Fledge installs from a git tag. You'll find the latest on the [releases page](https://github.com/setdef/Fledge/releases).
 
-Your app carries the gems of every group `bundle exec` loads, `development` included (see [Lock your gems](#lock-your-gems)), so each app you build from this `Gemfile` carries Fledge too. Bundler installs a gem from git as its whole repository, and Fledge's, with its tests and documents, adds about 3 MB to the archive your users download, and 8 MB once it is unpacked. To build apps without it, put the same line in a `Gemfile` of its own, in a folder outside your project, run `bundle install` there, and build your project from that folder:
+Each app you build from this `Gemfile` carries Fledge too, as it carries your other development gems. Bundler installs a gem from git as its whole repository, so Fledge, with its tests and documents, adds about 3 MB to the archive your users download, and 8 MB once it is unpacked. Bundler's `without` setting cannot leave it out, because `without development` leaves Fledge out of your own bundle as well. To build apps without Fledge in them, put the same line in a `Gemfile` of its own, in a folder outside your project, run `bundle install` there, and build your project by its path from that folder:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -111,7 +112,7 @@ Fledge names the app after your gemspec, or else after your folder: `greeter` be
 
 ### Lock your gems
 
-Fledge ships the gems your `Gemfile.lock` locks in every group that `bundle exec` loads, `development` and `test` included, so a program that requires a development gem, such as `debug` or `dotenv`, finds it in the app. Each of those gems adds its size to every app. To leave a group out, set it in Bundler's `without`, as for any deployment: `bundle config set --local without test`. Bundler then leaves that group out of your own bundle as well, so `without development` would leave you no Fledge to run; [Installation](#installation) says how to keep Fledge out. Lock each platform you build on, and every gem's checksum:
+Fledge ships the gems your `Gemfile.lock` locks in every group that `bundle exec` loads, `development` and `test` included, so a program that requires a development gem, such as `debug` or `dotenv`, finds it in the app. Each of those gems adds its size to every app. To leave a group out of your apps, name it in Bundler's `without` setting, as for any deployment: `bundle config set --local without test`. Lock each platform you build on, and every gem's checksum:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -170,7 +171,7 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. Fledge is 0.x, 
 | `bundle exec fledge --help` | The manual: every option, every `fledge.yml` key, every file Fledge writes, and the exit statuses |
 | [Gems in a Fledge app](doc/gems.md) | Locking, compiled gems, gems that link a Linux library, and gems from `vendor/cache` |
 | [Desktop apps](doc/desktop_apps.md) | Names, icons, installers, file associations, several programs in one app, signing, and publishing to a store |
-| [iPhone, iPad, and Android](doc/phones.md) | Phone projects, gems with C extensions on phones, and what has run on devices |
+| [iPhone, iPad, and Android](doc/phones.md) | Phone projects, gems with C, C++, and Rust extensions or libraries for `ffi`, what a phone forbids, and what has run on devices |
 | [Publishing with a package manager](doc/package_managers.md) | A Scoop manifest, a Homebrew formula, winget's files, a Chocolatey package, and a `PKGBUILD` for a console app |
 | [Building from an app already built](doc/building_from_an_app.md) | `fledge build --from` and `build_tools`, for frameworks |
 | [Runtimes and Ruby versions](doc/runtimes.md) | Which Ruby your app gets, where Fledge downloads it from, mirrors, building offline, updating, and what stays the same from 1.0 |

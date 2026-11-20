@@ -23,8 +23,18 @@
 # package-managers.yml installs hello with Scoop, Homebrew, winget,
 # Chocolatey, and pacman, from the recipes in the guide.
 #
-# release.yml calls this after it publishes a release; run it by hand
-# (workflow_dispatch) to check any published tag again.
+# release.yml calls this after it publishes a release, with the tag
+# alone; run it by hand (workflow_dispatch) to check any published tag
+# again. Run by hand with a commit too, a commit on trunk whose
+# Fledge::VERSION is the tag's, it installs that commit in place of the
+# tag, with the README's line naming the commit's ref where it names the
+# tag, and builds with the tag's runtimes, which the commit pins; the
+# sums job checks the release against the commit's pins, and the
+# package managers' job, which installs only the tag, is skipped. So
+# these steps run on every platform, with the Fledge a release would
+# tag, before the release commit is made (doc/contributors/design/
+# releases.md, "installed.yml"). The tag's call never has a commit:
+# workflow_call declares none (test/workflow_installed_test.rb).
 
 name: Installed from a tag
 
@@ -40,6 +50,11 @@ on:
       tag:
         description: The release tag to install, such as v0.1.0
         required: true
+        type: string
+      commit:
+        description: A commit on trunk to install in place of the tag, by its full SHA, whose Fledge::VERSION is the tag's
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -58,6 +73,7 @@ jobs:
   # (doc/package_managers.md).
   package-managers:
     name: Package managers
+    if: ${{ !inputs.commit }}
     uses: ./.github/workflows/package-managers.yml
     with:
       tag: ${{ inputs.tag }}
@@ -71,13 +87,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
         run: |
           mkdir -p "$RUNNER_TEMP/release"
           cd "$RUNNER_TEMP/release"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY"
           ls -l
           sha256sum --strict -c SHA256SUMS
-          gh api -H "Accept: application/vnd.github.raw" "repos/$GITHUB_REPOSITORY/contents/lib/fledge/SHA256SUMS?ref=$TAG" |
+          gh api -H "Accept: application/vnd.github.raw" "repos/$GITHUB_REPOSITORY/contents/lib/fledge/SHA256SUMS?ref=${COMMIT:-$TAG}" |
             diff - SHA256SUMS
           for asset in *; do
             [ "$asset" = SHA256SUMS ] || grep -q "  $asset\$" SHA256SUMS || { echo "::error::$asset is not in SHA256SUMS"; exit 1; }
@@ -122,7 +139,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
             examples/my_cool_app
@@ -195,6 +212,7 @@ jobs:
       - name: Install Fledge from the tag with Bundler, in hello's Gemfile and in a folder of its own
         env:
           TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
         run: |
           mkdir -p "$RUNNER_TEMP/project"
           for folder in "$GITHUB_WORKSPACE/examples/hello" "$RUNNER_TEMP/project"; do
@@ -202,6 +220,7 @@ jobs:
           source "https://rubygems.org"
           gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
           GEMFILE
+            [ -z "$COMMIT" ] || { sed "s|tag: \"$TAG\"|ref: \"$COMMIT\"|" "$folder/Gemfile" > "$folder/Gemfile.commit" && mv "$folder/Gemfile.commit" "$folder/Gemfile"; }
             cd "$folder"
             bundle install
             version=$(bundle exec fledge --version | tr -d '\r')
@@ -370,7 +389,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
             examples/my_cool_app
@@ -387,6 +406,7 @@ jobs:
       - name: Install Fledge from the tag in Alpine, and build hello, the parity probe, and my_cool_app
         env:
           TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
         run: |
           cat > "$RUNNER_TEMP/install.sh" <<'SH'
           set -eu
@@ -397,6 +417,7 @@ jobs:
           source "https://rubygems.org"
           gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
           GEMFILE
+            [ -z "$COMMIT" ] || { sed "s|tag: \"$TAG\"|ref: \"$COMMIT\"|" "$folder/Gemfile" > "$folder/Gemfile.commit" && mv "$folder/Gemfile.commit" "$folder/Gemfile"; }
             cd "$folder"
             bundle install
             version=$(bundle exec fledge --version)
@@ -417,7 +438,7 @@ jobs:
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" /tmp/build.err
           cd /work/examples/my_cool_app && bundle install && bundle exec ruby exe/my_cool_app > /work/dist/my_cool_app.expected
           SH
-          docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$GITHUB_WORKSPACE/checks:/checks" -v "$RUNNER_TEMP:/scripts" -e TAG \
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$GITHUB_WORKSPACE/checks:/checks" -v "$RUNNER_TEMP:/scripts" -e TAG -e COMMIT \
             "$ALPINE_RUBY" sh /scripts/install.sh
 
       - name: Run hello and my_cool_app on Alpine with no Ruby installed
@@ -454,7 +475,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
             examples/mobile_app
@@ -493,6 +514,7 @@ jobs:
       - name: Install Fledge from the tag with Bundler, in hello's Gemfile and in a folder of its own
         env:
           TAG: ${{ inputs.tag }}
+          COMMIT: ${{ inputs.commit }}
         run: |
           mkdir -p "$RUNNER_TEMP/project"
           for folder in "$GITHUB_WORKSPACE/examples/hello" "$RUNNER_TEMP/project"; do
@@ -500,6 +522,7 @@ jobs:
           source "https://rubygems.org"
           gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
           GEMFILE
+            [ -z "$COMMIT" ] || { sed "s|tag: \"$TAG\"|ref: \"$COMMIT\"|" "$folder/Gemfile" > "$folder/Gemfile.commit" && mv "$folder/Gemfile.commit" "$folder/Gemfile"; }
             cd "$folder"
             bundle install
             version=$(bundle exec fledge --version | tr -d '\r')
@@ -588,7 +611,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.commit || inputs.tag }}
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
@@ -636,7 +659,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
             examples/windowed_app
@@ -826,7 +849,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
             examples/windowed_app

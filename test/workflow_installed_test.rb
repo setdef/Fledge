@@ -45,6 +45,57 @@ class WorkflowInstalledTest < Minitest::Test
     end
   end
 
+  # Run by hand with a commit, the workflow installs that commit in place
+  # of the tag, so a release's steps can run before its tag exists
+  # (doc/contributors/design/releases.md, "installed.yml"). release.yml
+  # must never reach that: it calls with the tag alone, and workflow_call
+  # declares no commit, so there inputs.commit is empty.
+  def test_release_yml_calls_it_with_the_tag_alone
+    triggers = workflow.fetch(true) # Psych reads YAML 1.1's on as true
+    release = YAML.safe_load_file(File.join(ROOT, ".github", "workflows", "release.yml"))
+
+    assert_equal %w[tag], triggers.dig("workflow_call", "inputs").keys
+    assert_equal %w[tag], release.dig("jobs", "installed", "with").keys
+    assert_equal "./.github/workflows/installed.yml", release.dig("jobs", "installed", "uses")
+    assert_includes triggers.dig("workflow_dispatch", "inputs").keys, "commit"
+    refute triggers.dig("workflow_dispatch", "inputs", "commit", "required"), "a dispatch needs no commit"
+  end
+
+  # With inputs.commit empty, each form it takes is what the workflow was
+  # without it: a checkout of the tag, an empty COMMIT, a job that runs.
+  def test_a_commit_changes_nothing_when_none_is_given
+    text = File.read(File.join(ROOT, ".github", "workflows", "installed.yml"))
+    forms = text.scan(/\$\{\{([^}]*inputs\.commit[^}]*)\}\}/).flatten.map(&:strip).uniq
+
+    refute_empty forms
+    assert_empty forms - ["inputs.commit || inputs.tag", "inputs.commit", "!inputs.commit"], "a form of inputs.commit the tag's run may not reduce to its old self"
+    workflow.fetch("jobs").each do |name, job|
+      (job["steps"] || []).each do |step|
+        ref = step.dig("with", "ref")
+        assert_includes [nil, "${{ inputs.commit || inputs.tag }}"], ref, "#{name} checks out #{ref}" if step["uses"].to_s.start_with?("actions/checkout@")
+        commit = step.dig("env", "COMMIT")
+        assert_includes [nil, "${{ inputs.commit }}"], commit, "#{name}'s COMMIT is #{commit}"
+        step["run"].to_s.lines.grep(/COMMIT/).each do |line|
+          assert_match(/\A\s*(\[ -z "\$COMMIT" \] \|\| |.*\$\{COMMIT:-\$TAG\}|.*-e COMMIT\b)/, line, "#{name} uses COMMIT unguarded")
+        end
+      end
+    end
+  end
+
+  def test_given_a_commit_each_job_installs_it_in_place_of_the_tag
+    JOBS.each do |job|
+      step = steps(job).find { |run| run.include?('gem "fledge"') }
+
+      assert_includes step, %(GEMFILE\n  [ -z "$COMMIT" ] || { sed "s|tag: \\"$TAG\\"|ref: \\"$COMMIT\\"|" "$folder/Gemfile" > "$folder/Gemfile.commit" && ) +
+        %(mv "$folder/Gemfile.commit" "$folder/Gemfile"; }\n), "#{job} installs no commit"
+    end
+    assert_equal "${{ !inputs.commit }}", workflow.dig("jobs", "package-managers", "if"), "the recipes' job, which installs the tag, runs with a commit"
+  end
+
+  private def workflow
+    YAML.safe_load_file(File.join(ROOT, ".github", "workflows", "installed.yml"))
+  end
+
   private def readme_md_line
     section = File.read(File.join(ROOT, "README.md"))[/^## Installation\n.*?(?=^## )/m]
     lines = section.scan(/^gem "fledge".*$/)

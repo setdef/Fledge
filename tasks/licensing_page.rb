@@ -29,9 +29,9 @@ require_relative "../lib/fledge/version"
 # components a runtime lacks, the few files the page names, and the
 # runtime's gems. So the page is written from runtime/audited.yml and the
 # repository, in milliseconds, with no runtime, and a unit test fails
-# before a push when it is stale; CI audits the runtimes it builds, the
-# four desktops' and the two phones', and fails when either file differs
-# from what they say.
+# before a push when it is stale; CI audits the nine runtimes it builds,
+# the seven desktops' and the two phones', and fails when either file
+# differs from what they say.
 #
 #   ruby tasks/licensing_page.rb                       # both files, from runtime/audited.yml
 #   ruby tasks/licensing_page.rb RUNTIMES_DIR          # both files, from the runtimes

@@ -86,12 +86,13 @@ class RunnerlessRuns
   end
 
   # A job GitHub cancelled before any runner took it: no runner, no
-  # steps, and GitHub's annotation saying so.
+  # steps, and GitHub's annotation saying so. An annotation's message may
+  # be null in GitHub's schema, and then says nothing.
   private def runnerless?(job)
     return false unless job["conclusion"] == "cancelled" && job.fetch("steps").empty? && job["runner_name"].to_s.empty?
 
     annotations = @github.get("check-runs/#{job.fetch('id')}/annotations", per_page: PER_PAGE, page: 1)
-    annotations.any? { |annotation| annotation["message"].start_with?(NOT_ACQUIRED) }
+    annotations.any? { |annotation| annotation["message"].to_s.start_with?(NOT_ACQUIRED) }
   end
 
   private def names(jobs)

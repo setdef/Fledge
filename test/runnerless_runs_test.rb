@@ -139,6 +139,20 @@ class RunnerlessRunsTest < Minitest::Test
     end
   end
 
+  # GitHub's schema lets an annotation's message be null. Such an
+  # annotation says nothing, so it neither hides GitHub's own annotation
+  # beside it nor stands in for it: here run 44536045262's job carries
+  # one before its recorded annotations, and then only that one.
+  def test_an_annotation_with_no_message_says_nothing
+    recorded = JSON.parse(File.read(File.join(FIXTURES, "44536045262-1.json"))).fetch("annotations").fetch("135615174861")
+    silent = { "annotation_level" => "failure", "message" => nil }
+    { [silent, *recorded] => :rerun, [silent] => :leave }.each do |annotations, action|
+      with_case("44536045262-1", annotations: { "135615174861" => annotations }) do |_server, runs|
+        assert_equal action, runs.call(44_536_045_262, 1).action
+      end
+    end
+  end
+
   # Should GitHub ever give its annotation to a job that a runner took,
   # the job is still not run again: here run 44536045262's job, with the
   # annotation, carries in turn the runner, a step, and the conclusion of

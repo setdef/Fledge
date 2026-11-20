@@ -7,8 +7,6 @@
 
 require_relative "../test_helper"
 require_relative "../../tasks/runtime_builder"
-require "rubygems/package"
-require "zlib"
 require_relative "../support/android"
 
 # The default gems of the phone runtimes rake runtime[ios] and
@@ -34,16 +32,19 @@ class MobileDefaultGemsTest < Minitest::Test
   # These read the runtimes rake runtime[ios] and runtime[android] write,
   # and skip without them.
   def test_an_ios_runtimes_default_gems_list_their_files_as_a_desktops_do
-    assert_default_gems_list_their_files_as_a_desktops_do("ios")
+    assert_default_gems_list_their_files_as_a_desktops_do("ios", rubies: mobile("ios").targets.size)
   end
 
+  # An Android runtime holds one lib/ruby, which both ABIs share
+  # (doc/contributors/design/phone-runtimes.md, "What a phone runtime
+  # holds"), where an iOS one holds a Ruby for each slice.
   def test_an_android_runtimes_default_gems_list_their_files_as_a_desktops_do
-    assert_default_gems_list_their_files_as_a_desktops_do("android")
+    assert_default_gems_list_their_files_as_a_desktops_do("android", rubies: 1)
   end
 
-  def assert_default_gems_list_their_files_as_a_desktops_do(name)
+  def assert_default_gems_list_their_files_as_a_desktops_do(name, rubies:)
     slices = default_specifications(name)
-    assert_equal mobile(name).targets.size, slices.size, slices.keys.inspect
+    assert_equal rubies, slices.size, slices.keys.inspect
     slices.each do |slice, specs|
       nonblock = specs.fetch("io-nonblock").files
       assert_includes nonblock, "ext/io/nonblock/extconf.rb", slice
@@ -65,18 +66,16 @@ class MobileDefaultGemsTest < Minitest::Test
       (name == "android") ? android_missing(message) : skip(message)
     end
 
+    # Read with the computer's tar, as Fledge reads a runtime
+    # (Fledge::Archive): GNU tar writes a name longer than 100 bytes as a
+    # ././@LongLink entry, which Gem::Package::TarReader does not read.
+    specifications = Fledge::Archive.names(archive).grep(%r{/lib/ruby/gems/[^/]+/specifications/default/[^/]+\.gemspec\z})
     slices = Hash.new { |hash, key| hash[key] = {} }
     Dir.mktmpdir do |work|
-      Zlib::GzipReader.open(archive) do |gzip|
-        Gem::Package::TarReader.new(gzip).each.with_index do |entry, index|
-          slice, file = entry.full_name.match(%r{\A(.*)/lib/ruby/gems/[^/]+/specifications/default/([^/]+\.gemspec)\z})&.captures
-          next unless file
-
-          path = File.join(work, "#{index}-#{file}")
-          File.binwrite(path, entry.read)
-          spec = Gem::Specification.load(path) or flunk "#{entry.full_name} is no gemspec"
-          slices[slice][spec.name] = spec
-        end
+      Fledge::Archive.unpack(archive, into: work, only: specifications)
+      specifications.each do |inside|
+        spec = Gem::Specification.load(File.join(work, inside)) or flunk "#{inside} is no gemspec"
+        slices[inside[%r{\A(.*)/lib/ruby/gems/}, 1]][spec.name] = spec
       end
     end
     slices

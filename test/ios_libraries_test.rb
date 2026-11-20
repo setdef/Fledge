@@ -34,12 +34,13 @@ class IOSLibrariesTest < Minitest::Test
 
   # The link is relative, so it reaches the framework from wherever the
   # bundle is: up out of fledge/ and each folder of the path, then into
-  # Frameworks/.
+  # Frameworks/. Both paths are expanded, since on Windows an expanded
+  # path begins with the drive's letter.
   def test_a_link_leads_from_its_path_in_the_ruby_root_to_the_frameworks_binary
     target = Fledge::MobileProject::IOSLibraries.target("lib/ruby/gems/4.1.0+5/gems/thing-1.0.0/ext/libthing.bundle", "fledgeffi.thing")
 
     assert_equal "../../../../../../../../Frameworks/fledgeffi.thing.framework/fledgeffi.thing", target
-    assert_equal "/App.app/Frameworks/fledgeffi.thing.framework/fledgeffi.thing",
+    assert_equal File.expand_path("/App.app/Frameworks/fledgeffi.thing.framework/fledgeffi.thing"),
       File.expand_path(target, "/App.app/fledge/lib/ruby/gems/4.1.0+5/gems/thing-1.0.0/ext")
   end
 

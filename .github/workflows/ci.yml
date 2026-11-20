@@ -24,6 +24,14 @@
 # Windows runners test it, build apps with it, and deliver them. Each
 # platform's apps are built on that platform, as developers build them.
 #
+# Each macOS job names the label whose Xcode or macOS is part of what it
+# proves, never macos-latest, which moves (doc/contributors/design/
+# releases.md, "Which macOS each job runs on"): macos-15 for the Xcode
+# 16.4 the arm64-darwin runtime is built with, and, as the oldest macOS
+# GitHub has, the nearest to the macOS 14 floor, for every job that
+# builds a Mac's apps or runs them; macos-26 for the Xcode 26.5 the
+# iOS jobs build with.
+#
 # A windowed app gets an installer too: a disk image for macOS,
 # an NSIS setup program for Windows, and an AppImage for Linux (and a
 # .deb and an MSIX package, which windowed_app asks for), each written
@@ -269,6 +277,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15 for Xcode 16.4 (the Select the pinned Xcode step).
           - os: macos-15
             platform: arm64-darwin
           - os: ubuntu-24.04
@@ -757,6 +766,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (the header).
           - os: macos-15
             host: arm64-darwin
           - os: windows-latest
@@ -869,6 +879,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (the header).
           - os: macos-15
             platform: arm64-darwin
           - os: ubuntu-24.04
@@ -1156,6 +1167,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (the header).
           - os: macos-15
             platform: arm64-darwin
             rust: ""
@@ -1569,6 +1581,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (the header).
           - os: macos-15
             platform: arm64-darwin
     steps: &delivery-native-steps
@@ -1682,6 +1695,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (the header).
           - os: macos-15
             platform: arm64-darwin
             ruby-platform: arm64-darwin23
@@ -1789,6 +1803,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (the header).
           - os: macos-15
             platform: arm64-darwin
     steps: &delivery-windowed-steps
@@ -2211,6 +2226,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (the header).
           - os: macos-15
             platform: arm64-darwin
     steps: &delivery-from-steps

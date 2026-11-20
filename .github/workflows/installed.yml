@@ -88,6 +88,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (doc/contributors/design/
+          # releases.md, "Which macOS each job runs on").
           - os: macos-15
             platform: arm64-darwin
             ruby-platform: arm64-darwin23
@@ -402,6 +404,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-26 for Xcode 26.5, as ci.yml's iOS jobs.
           - os: macos-26
             phone: ios
           - os: ubuntu-24.04
@@ -552,6 +555,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (doc/contributors/design/
+          # releases.md, "Which macOS each job runs on").
           - os: macos-15
             platform: arm64-darwin
             ruby-platform: arm64-darwin23

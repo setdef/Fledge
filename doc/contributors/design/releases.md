@@ -57,6 +57,8 @@ Raising a floor is a major, always, even when a store's rule forces it. A store'
 
 The Windows 10 floor is unproven. GitHub's hosted runners cannot run Windows 10, so no CI job runs a Fledge app there, and the floor stands on the first report from a Windows 10 computer.
 
+So is the macOS 14 floor, by running: GitHub retired its macOS 14 runners on 2026-11-02, and no workflow of Fledge's ever named one. It stands on the build: the launcher and `bin/ruby` are built with `-mmacosx-version-min` at the floor (`doc/contributors/design/runtimes.md`), and what Fledge compiles for an app is aimed at it with `MACOSX_DEPLOYMENT_TARGET` (`doc/contributors/design/gems.md`, "The toolchain and the oldest systems"). CI runs apps on macOS 15, the oldest macOS it has ("Which macOS each job runs on").
+
 The same rule holds where `fledge build` runs: a release that stops building on an operating system version the last release built on is a major.
 
 ## Support follows live Rubies
@@ -133,6 +135,31 @@ The workflow's own `GITHUB_TOKEN` is enough, with `actions: write` and `checks: 
 Other ways were weighed. GitHub has no setting that retries a job no runner took, and no `retry` key for a job ([Workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)). k1LoW/rerun-action (`action.yml` at 85ba44f8) runs every failed job again when a pattern shows in their logs: a job no runner took has no log, and the action would run a real failure again beside it. A step at the end of each workflow that starts a rerun workflow with `workflow_dispatch` would be one more job in every workflow, and GitHub reruns only a run that has ended, which the run's own last job cannot wait for. Runners of Fledge's own, or GitHub's larger runners, would need hardware or billing the project does not have. Projects that met the same failure settled on the same shape: a `workflow_run` workflow that reads the annotations and runs failed jobs again only when every red job carries GitHub's "not acquired" annotation, capped at a few attempts: cesiumlang/zfls (`.github/workflows/rerun-unacquired.yml` at 0c3fee9b), link-foundation/csharp-ai-driven-development-pipeline-template (`scripts/runner-acquisition.mjs` at 88bb7183, which also finds that a job with no runner and no steps is not enough evidence, since a job its concurrency cancelled looks the same but for its annotation), and pyreon/pyreon (`.github/workflows/required-check-autoheal.yml` at 01cec18c, which also leaves a run that a newer one superseded).
 
 A `workflow_run` workflow runs only from the default branch, so `runnerless.yml` cannot be tried on a branch before it is on `trunk`. What can be shown beforehand is shown: `test/runnerless_runs_test.rb` serves GitHub's recorded answers for real runs, some to run again and some to leave, and `ruby tasks/runnerless_runs.rb RUN ATTEMPT --dry-run` asks GitHub's real API and runs nothing again, as running the workflow by hand does with its default `dry-run`.
+
+## Which macOS each job runs on
+
+GitHub's standard runners on Apple silicon have the labels `macos-15`, `macos-26`, `macos-latest`, and `xcode-27` ([GitHub-hosted runners reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), "Standard GitHub-hosted runners for public repositories"). The runner images' README (`README.md` at actions/runner-images fbb26cb0) says what each is: `macos-latest` is the macOS 26 image, as `macos-26` is, until a "-latest migration" that "happens over 1-2 months" moves it; `xcode-27` is a preview; and "All macOS 14 images retired from GitHub Actions on November 2, 2026." Each image carries the Xcodes of one major version per macOS ("only one major version of Xcode will be supported per macOS version"): `macos-15` has Xcode 16.0 to 16.4, its default, and 26.0.1 to 26.3; `macos-26` has 26.0.1 to 26.6 and no Xcode 16 (`images/macos/macos-15-arm64-Readme.md` and `macos-26-arm64-Readme.md`, "Xcode", at the same commit). So Fledge's workflows name a macOS version, never `macos-latest`, which would move a job to another macOS and another Xcode with no commit, and they use no preview image.
+
+A job runs on the label whose macOS or Xcode is part of what it proves:
+
+- **`macos-15`, for its Xcode.** Runtime (arm64-darwin) builds the launcher and `bin/ruby` with Xcode 16.4, pinned by version since Apple publishes no download to pin, whose macOS 15.5 SDK built the runtimes before the pin (`ci.yml`, the Runtime job). Only `macos-15` has it.
+- **`macos-15`, for its macOS.** macOS 15 is the oldest macOS GitHub's runners have, the nearest to the macOS 14 floor ("Platform floors"), and a release that stops building on an operating system version, or raises a floor, is a major. So the jobs that build apps with `fledge build` on a Mac, or run what it built, run there: Test (arm64-darwin), whose integration tests build and run apps, Build (arm64-darwin), the four Delivery jobs of arm64-darwin, ruby/spec (arm64-darwin), Mobile apps (Android project on arm64-darwin), which runs `fledge build android` and Gradle on a Mac, and `installed.yml`'s and `package-managers.yml`'s arm64-darwin jobs, which do the same from a release.
+- **`macos-26`, for its Xcode.** The iOS runtime, the iOS Simulator's apps, ruby/spec in the iOS Simulator, and `installed.yml`'s iOS project build with Xcode 26.5, the one whose iOS 26.5 Simulator runtime the image installs (`ci.yml`, the comment on runtime-mobile). `macos-15`'s newest Xcode is 26.3.
+- **`macos-26`, because any Mac will do.** The fast tier's macOS unit tests (`fast-macos.yml`, "Runs, batches, and the release commit") prove nothing about one macOS, and `macos-26`'s runners come sooner.
+
+The two labels' waits, per job, from this repository's jobs that started, on their first attempt, not counting jobs cancelled before they started, in minutes (median and 90th percentile):
+
+| Day | `macos-15` | `macos-26` | `ubuntu-24.04` | `windows-latest` |
+| --- | --- | --- | --- | --- |
+| 2026-11-12 | 21.2, 78.5 (115 jobs) | 8.9, 24.7 (57) | 0.1, 4.0 | 0.1, 0.9 |
+| 2026-11-13 | 24.4, 55.9 (307) | 9.3, 33.7 (102) | 0.1, 8.6 | 0.0, 3.7 |
+| 2026-11-14 | 3.1, 15.0 (75) | 1.3, 13.7 (22) | 0.1, 3.1 | 0.1, 1.6 |
+| 2026-11-15 | 4.3, 24.0 (123) | 0.6, 9.1 (27) | 0.5, 10.3 | 0.1, 4.4 |
+| 2026-11-19 | 29.0, 48.8 (99) | 5.8, 34.6 (23) | 0.5, 7.1 | 0.1, 2.0 |
+
+The two columns hold different jobs, so the like-with-like comparison is the pair that every full run creates at the same instant, Runtime (arm64-darwin) on `macos-15` and Runtime (ios) on `macos-26`: over 79 such pairs, a mean of 19.4 minutes against 11.4, and the `macos-15` job waited longer by more than a minute in 42 of them, the `macos-26` job in 13. GitHub annotates the jobs that waited longest on either label: "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+
+What staying costs: the desktop arm64-darwin chain, from its runtime to its Delivery, waits for `macos-15`'s runners, which on busy days are the slowest to come, and that is most of the macOS wait of a full run. Moving Test, Build, and Delivery to `macos-26` would shorten it, and would leave no job that builds or runs a Fledge app on macOS 15, whose apps Fledge promises to build and run. When GitHub retires `macos-15`, Runtime (arm64-darwin) loses its Xcode, and the runtime's Xcode pin and these jobs move together, to the oldest macOS GitHub has left.
 
 ## A pin commit's short CI
 

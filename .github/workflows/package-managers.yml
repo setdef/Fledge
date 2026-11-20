@@ -44,6 +44,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15, the oldest macOS GitHub has (doc/contributors/design/
+          # releases.md, "Which macOS each job runs on").
           - { os: macos-15, platform: arm64-darwin }
           - { os: ubuntu-24.04, platform: x86_64-linux }
           - { os: ubuntu-24.04-arm, platform: aarch64-linux }
@@ -114,6 +116,7 @@ jobs:
           # windows-11-arm runners have no winget.
           - { manager: winget, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
           - { manager: chocolatey, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
+          # macos-15, as the build job's.
           - { manager: homebrew, os: macos-15, platform: arm64-darwin, ruby-platform: arm64-darwin23 }
           - { manager: homebrew, os: ubuntu-24.04, platform: x86_64-linux, ruby-platform: x86_64-linux }
           - { manager: homebrew, os: ubuntu-24.04-arm, platform: aarch64-linux, ruby-platform: aarch64-linux }

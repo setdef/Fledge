@@ -22,7 +22,8 @@
 # full runs, a job on macos-26 waited about half as long as one created
 # at the same instant on macos-15. macos-15 stays for the jobs whose
 # label is part of what they prove, such as ci.yml's Runtime job, whose
-# pinned Xcode 16.4 only macos-15 has.
+# pinned Xcode 16.4 only macos-15 has (doc/contributors/design/
+# releases.md, "Which macOS each job runs on").
 
 name: Fast (macOS)
 

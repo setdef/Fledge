@@ -77,6 +77,8 @@ jobs:
             [ -n "$run" ] || { echo "::error::trunk has no run of ci.yml that passed and still holds its runtimes"; exit 1; }
             echo "Runtimes of $GITHUB_SERVER_URL/$REPOSITORY/actions/runs/$run"
           fi
+          # macos-15, the oldest macOS GitHub has, runs a Mac's built app
+          # (doc/contributors/design/releases.md, "Which macOS each job runs on").
           two='{"os":"ubuntu-24.04","platform":"x86_64-linux"},{"os":"macos-15","platform":"arm64-darwin"}'
           rest='{"os":"ubuntu-24.04-arm","platform":"aarch64-linux"},{"os":"windows-latest","platform":"x64-mingw-ucrt",'
           rest+='"mise":"http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2"},'

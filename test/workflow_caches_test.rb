@@ -11,9 +11,9 @@ require "yaml"
 # What CI's bundle caches are keyed by. A bundle's compiled extensions
 # target the macOS they were compiled on, and the fast tier's macOS leg
 # runs on macos-26 while ci.yml's Test (arm64-darwin) runs on macos-15
-# (doc/contributors/design/releases.md, "Runs, batches, and the release
-# commit"), so a key without the runner's image would hand macos-15 a
-# bundle built for macOS 26.
+# (doc/contributors/design/releases.md, "Which macOS each job runs on"),
+# so a key without the runner's image would hand macos-15 a bundle built
+# for macOS 26.
 class WorkflowCachesTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
 

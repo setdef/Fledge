@@ -41,6 +41,10 @@ class RunnerlessRuns
   # pull request's run, whose head branch may be a fork's trunk.
   BRANCH = "trunk"
 
+  # How the message of a commit starts whose push gets a concurrency
+  # group of its own in ci.yml: a release commit's and a pin commit's.
+  OWN_GROUP = ["chore: release ", "chore: pin "].freeze
+
   # Items asked for on each page of the API's answers.
   PER_PAGE = GitHubAPI::PER_PAGE
 
@@ -87,11 +91,46 @@ class RunnerlessRuns
     real = red.reject { |job| runnerless?(job) }
     return leave("#{names(real)} ran or was cancelled for another reason") unless real.empty?
 
-    waiting = @github.all("actions/workflows/#{run.fetch('workflow_id')}/runs", "workflow_runs", branch: run.fetch("head_branch"), status: "pending")
-    newer = waiting.map { |other| other.fetch("id") }.select { |other| other > run.fetch("id") }
+    mine = group(run)
+    return leave("its workflow, #{run.fetch('path')}, has a concurrency group this does not know") if mine == :unknown
+
+    newer = mine.nil? ? [] : waiting_behind(run, mine)
     return leave("run #{newer.join(', ')} waits in its concurrency group, which a rerun would replace") unless newer.empty?
 
     Verdict.new(action: :rerun, reason: "#{names(red)} never got a runner")
+  end
+
+  # The IDs of the newer runs waiting in +run+'s concurrency group,
+  # +mine+. GitHub keeps one run waiting in a group, so a rerun would
+  # replace any of them; a run waiting in another group it cannot touch.
+  private def waiting_behind(run, mine)
+    waiting = @github.all("actions/workflows/#{run.fetch('workflow_id')}/runs", "workflow_runs", branch: run.fetch("head_branch"), status: "pending")
+    waiting.select { |other| other.fetch("id") > run.fetch("id") && group(other) == mine }.map { |other| other.fetch("id") }
+  end
+
+  # The concurrency group a run of trunk is in, as its workflow's
+  # concurrency block names it, from what GitHub's API says of the run:
+  # +nil+ for none, and :unknown for a workflow this does not follow.
+  # The API names no run's group, so this reads it from the run's event,
+  # commit, and message, as the block does. In ci.yml, a push whose
+  # message starts as a release or pin commit's has a group named for
+  # its commit, and every other run shares trunk's; in fast.yml and
+  # fast-macos.yml every run of trunk has its commit's own; ruby-spec.yml
+  # has none. A pull request's run, whose head branch can be a fork's
+  # trunk, has its pull request's ref in its group, and shares none with
+  # a run of trunk. Groups are compared only between runs of one workflow
+  # and branch, so the workflow's name and the ref are left out.
+  private def group(run)
+    return "a pull request's" if run["event"] == "pull_request"
+
+    case run.fetch("path")
+    when ".github/workflows/ci.yml"
+      own = run["event"] == "push" && run.dig("head_commit", "message").to_s.start_with?(*OWN_GROUP)
+      own ? run.fetch("head_sha") : BRANCH
+    when ".github/workflows/fast.yml", ".github/workflows/fast-macos.yml" then run.fetch("head_sha")
+    when ".github/workflows/ruby-spec.yml" then nil
+    else :unknown
+    end
   end
 
   # A job GitHub cancelled before any runner took it: no runner, no

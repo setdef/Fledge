@@ -219,22 +219,113 @@ class RunnerlessRunsTest < Minitest::Test
   # Trunk's runs of CI share a concurrency group, in which GitHub keeps
   # one run going and one waiting, and a run queued again takes the
   # waiting one's place. A newer push's waiting run covers this run's
-  # commits, so it is not replaced.
-  def test_leaves_a_run_whose_rerun_would_replace_a_newer_run_waiting
-    waiting = [{ id: 44_536_045_263, status: "pending" }]
-    with_case("44536045262-1", waiting:) do |server, runs|
+  # commits, so it is not replaced: here release run 44513751573 as if
+  # its commit's message were an ordinary one, which puts it in trunk's
+  # group, or as if a person had started it, whose run has no pushed
+  # commit for the group to read; and beside it a newer run waiting in
+  # trunk's group (PENDING).
+  def test_leaves_a_run_whose_rerun_would_replace_a_newer_run_waiting_in_its_group
+    [{ "head_commit" => { "message" => "docs: say what 0.14.0 left open" } }, { "event" => "workflow_dispatch" }].each do |change|
+      with_case("44513751573-1", run: change, waiting: [pending]) do |server, runs|
+        verdict = runs.call(44_513_751_573, 1)
+        assert_equal :leave, verdict.action, change
+        assert_includes verdict.reason, pending.fetch("id").to_s
+        assert_empty posts(server)
+      end
+    end
+  end
+
+  # A release commit's run and a pin commit's each have a concurrency
+  # group of their own, named for the commit (ci.yml, "Runs, batches, and
+  # the release commit" in releases.md), so their rerun replaces nothing
+  # waiting in trunk's: here release run 44513751573 as recorded, and as
+  # if it were a pin commit's, beside a newer run waiting in trunk's
+  # group (PENDING).
+  def test_a_release_or_pin_commits_run_is_not_held_back_by_trunks_group
+    [{}, { "head_commit" => { "message" => "chore: pin 0.14.0's runtimes" } }].each do |change|
+      with_case("44513751573-1", run: change, waiting: [pending]) do |server, runs|
+        assert_equal :rerun, runs.call(44_513_751_573, 1).action, change
+        assert_equal 1, posts(server).size
+      end
+    end
+  end
+
+  # On trunk, every run of the fast tier has a group of its own commit,
+  # so only a run of the same commit shares it: here run 44513751573 and
+  # PENDING, both as if they were runs of fast.yml
+  # and fast-macos.yml, and then as if both were of one commit.
+  def test_a_fast_run_is_held_back_only_by_a_run_of_its_own_commit
+    %w[fast.yml fast-macos.yml].each do |file|
+      path = ".github/workflows/#{file}"
+      same = pending.merge("path" => path, "head_sha" => recorded_run("44513751573-1").fetch("head_sha"))
+      { pending.merge("path" => path) => :rerun, same => :leave }.each do |waiting, action|
+        with_case("44513751573-1", run: { "path" => path }, waiting: [waiting]) do |_server, runs|
+          assert_equal action, runs.call(44_513_751_573, 1).action, "#{file}, #{waiting.fetch('head_sha')}"
+        end
+      end
+    end
+  end
+
+  # A pull request's run is in its pull request's group, even when its
+  # head branch is a fork's trunk: here release run 44513751573 as if its
+  # message were an ordinary one, beside PENDING as if a pull request had
+  # started it.
+  def test_a_pull_requests_run_waiting_does_not_hold_a_run_back
+    ordinary = { "head_commit" => { "message" => "docs: say what 0.14.0 left open" } }
+    with_case("44513751573-1", run: ordinary, waiting: [pending.merge("event" => "pull_request")]) do |server, runs|
+      assert_equal :rerun, runs.call(44_513_751_573, 1).action
+      assert_equal 1, posts(server).size
+    end
+  end
+
+  # Run 44536045262 beside run 44527956502 of trunk's group, recorded,
+  # as if it were waiting: an older run waiting is no newer push.
+  def test_an_older_run_waiting_does_not_hold_a_run_back
+    older = recorded_run("44527956502-1").merge("status" => "pending")
+    with_case("44536045262-1", waiting: [older]) do |server, runs|
+      assert_equal :rerun, runs.call(44_536_045_262, 1).action
+      assert_equal 1, posts(server).size
+    end
+  end
+
+  # ruby/spec's workflow has no concurrency group, so nothing waits in
+  # one for its rerun to replace, and nothing is asked about it.
+  def test_a_run_with_no_concurrency_group_asks_for_no_waiting_run
+    with_case("44093239386-1") do |server, runs|
+      assert_equal :rerun, runs.call(44_093_239_386, 1).action
+      assert_empty(server.requests.grep(/status=pending/))
+    end
+  end
+
+  # A workflow this does not know the group of may share one with
+  # anything, so its run is left: here run 44536045262, as if it were a
+  # run of a workflow added later.
+  def test_leaves_a_run_whose_concurrency_group_it_does_not_know
+    with_case("44536045262-1", run: { "path" => ".github/workflows/nightly.yml" }) do |server, runs|
       verdict = runs.call(44_536_045_262, 1)
       assert_equal :leave, verdict.action
-      assert_includes verdict.reason, "44536045263"
+      assert_includes verdict.reason, "nightly.yml"
       assert_empty posts(server)
     end
   end
 
-  def test_an_older_run_waiting_does_not_hold_a_run_back
-    with_case("44536045262-1", waiting: [{ id: 44_536_045_000, status: "pending" }]) do |server, runs|
-      assert_equal :rerun, runs.call(44_536_045_262, 1).action
-      assert_equal 1, posts(server).size
+  # RunnerlessRuns reads each run's concurrency group from what the API
+  # says of it, since the API names none, so it holds a copy of each
+  # followed workflow's concurrency block. A change to a block fails here
+  # until RunnerlessRuns#group reads the new one.
+  def test_it_knows_the_concurrency_group_of_every_workflow_it_follows
+    trunk_group = "${{ github.workflow }}-${{ github.ref }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.sha || 'branch' }}"
+    groups = {
+      "ci.yml" => "${{ github.workflow }}-${{ github.ref }}${{ (startsWith(github.event.head_commit.message, 'chore: release ') || startsWith(github.event.head_commit.message, 'chore: pin ')) && format('-{0}', github.sha) || '' }}",
+      "fast.yml" => trunk_group,
+      "fast-macos.yml" => trunk_group,
+      "ruby-spec.yml" => nil,
+    }
+    groups.each do |file, group|
+      concurrency = YAML.load_file(File.join(File.expand_path("..", __dir__), ".github/workflows", file), aliases: true)["concurrency"]
+      group ? assert_equal(group, concurrency.fetch("group"), file) : assert_nil(concurrency, file)
     end
+    assert_equal ["chore: release ", "chore: pin "], RunnerlessRuns::OWN_GROUP
   end
 
   # With dry_run, it says what it would do and asks GitHub for nothing
@@ -286,6 +377,19 @@ class RunnerlessRunsTest < Minitest::Test
     yield server, RunnerlessRuns.new(repository: "setdef/Fledge", token: "secret", api: server.url(""), pause: 0, dry_run:)
   ensure
     server&.stop
+  end
+
+  private def recorded_run(name)
+    JSON.parse(File.read(File.join(FIXTURES, "#{name}.json"))).fetch("run")
+  end
+
+  # A newer run of CI waiting in trunk's concurrency group beside release
+  # run 44513751573 (PENDING below). No run waited beside it when its
+  # first attempt ended, as GitHub's API lists trunk's runs of that day,
+  # so this is recorded run 44527956502 of trunk's group, pushed after
+  # it, with only its status and conclusion changed to a waiting run's.
+  private def pending
+    JSON.parse(File.read(File.join(FIXTURES, "pending-beside-44513751573-1.json"))).fetch("run")
   end
 
   private def posts(server)

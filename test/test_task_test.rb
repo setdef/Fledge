@@ -70,6 +70,19 @@ class TestTaskTest < Minitest::Test
     assert_equal TestTiers.files(:all, ROOT).sort, files("test:all")
   end
 
+  # rake test:all, which the gate and CI run, loads both tiers into one
+  # process, where two files that open one class share its methods: a
+  # helper of one then answers the other's tests, and each tier passes
+  # alone.
+  def test_no_two_test_files_define_one_test_class
+    defined = Dir.glob("test/**/*_test.rb", base: ROOT).sort.flat_map do |file|
+      File.read(File.join(ROOT, file)).scan(/^class (\S+) < Minitest::Test/).map { |name,| [name, file] }
+    end
+    twice = defined.group_by(&:first).transform_values { |pairs| pairs.map(&:last) }.select { |_, files| files.size > 1 }
+
+    assert_empty twice
+  end
+
   def test_test_names_the_files_to_run_whatever_their_tier
     named = %w[test/cli_test.rb test/integration/exe_test.rb test/version_test.rb]
 

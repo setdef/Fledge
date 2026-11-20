@@ -14,7 +14,7 @@ require_relative "../../tasks/licensing_page"
 # license audit checks against the real runtime/licenses.yml. CI runs
 # the page against the nine real runtimes and fails when doc/licensing.md
 # differs.
-class LicensingPageTest < Minitest::Test
+class LicensingPageFromRuntimesTest < Minitest::Test
   RUST = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
 
   def runtime(directory, platform, files)

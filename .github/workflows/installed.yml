@@ -491,6 +491,8 @@ jobs:
       # only restored (doc/contributors/design/phone-projects.md,
       # "Gradle's downloads in CI"). The template's Gradle files come
       # from the tag's checkout, which the gem installed above holds too.
+      # When the cache lacks that key, the newest set for the same system
+      # and plugin is restored instead.
       - name: Key Gradle's dependency cache
         if: matrix.phone == 'android'
         id: gradle-key
@@ -504,6 +506,7 @@ jobs:
             !~/.gradle/caches/modules-2/*.lock
             !~/.gradle/caches/modules-2/gc.properties
           key: gradle-modules-${{ runner.os }}-agp-${{ steps.gradle-key.outputs.agp }}-${{ hashFiles('lib/fledge/templates/android/*.gradle', 'lib/fledge/templates/android/gradle.properties', 'lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-modules-${{ runner.os }}-agp-${{ steps.gradle-key.outputs.agp }}-
 
       - name: Build each Gradle project with its wrapper
         if: matrix.phone == 'android'

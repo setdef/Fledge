@@ -298,6 +298,8 @@ jobs:
       # they build every variant, so it holds what a debug APK needs
       # (doc/contributors/design/phone-projects.md, "Gradle's downloads in
       # CI"). Only restored, so this job's smaller set never takes the key.
+      # Before those jobs have saved the key, the newest set for the same
+      # system and plugin is restored instead.
       - name: Key Gradle's dependency cache
         id: gradle-key
         run: echo "agp=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "agp")')" >> "$GITHUB_OUTPUT"
@@ -309,6 +311,7 @@ jobs:
             !~/.gradle/caches/modules-2/*.lock
             !~/.gradle/caches/modules-2/gc.properties
           key: gradle-modules-${{ runner.os }}-agp-${{ steps.gradle-key.outputs.agp }}-${{ hashFiles('lib/fledge/templates/android/*.gradle', 'lib/fledge/templates/android/gradle.properties', 'lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-modules-${{ runner.os }}-agp-${{ steps.gradle-key.outputs.agp }}-
 
       - name: Run stock Ruby, and build the app with fledge build android and Gradle
         env:

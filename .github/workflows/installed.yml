@@ -2,9 +2,12 @@
 # SPDX-License-Identifier: MIT
 
 # The shipped path, end to end (Plan 001's walking skeleton in
-# production): on a fresh runner of each platform, a developer's project
-# installs Fledge from its git tag with Bundler, as the README says, never
-# from RubyGems.org; fledge build, with no FLEDGE_RUNTIME_DIR and an empty
+# production): on a fresh runner of each platform, Fledge is installed
+# from its git tag with Bundler, never from RubyGems.org, both ways
+# README.md's Installation gives, with its line: in hello's own Gemfile,
+# which builds hello in its folder, and in a Gemfile of Fledge's own,
+# which builds the other apps by their paths
+# (test/workflow_installed_test.rb); fledge build, with no FLEDGE_RUNTIME_DIR and an empty
 # cache, downloads that version's runtime from the GitHub Release and
 # checks it against the SHA-256 the gem pins, and compiles
 # examples/native_app's gems from source against that runtime alone; and
@@ -185,18 +188,25 @@ jobs:
           } >> "$GITHUB_ENV"
       # SPDX-SnippetEnd
 
-      - name: Install Fledge from the tag with Bundler
+      # Both ways README.md's Installation gives, each with the README's
+      # line (test/workflow_installed_test.rb holds the two to it): in
+      # hello's own Gemfile, and in a Gemfile of Fledge's own, outside any
+      # project, which builds the other apps by their paths.
+      - name: Install Fledge from the tag with Bundler, in hello's Gemfile and in a folder of its own
         env:
           TAG: ${{ inputs.tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/project"
-          cat > "$RUNNER_TEMP/project/Gemfile" <<GEMFILE
+          for folder in "$GITHUB_WORKSPACE/examples/hello" "$RUNNER_TEMP/project"; do
+            cat > "$folder/Gemfile" <<GEMFILE
           source "https://rubygems.org"
-          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG"
+          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
           GEMFILE
-          cd "$RUNNER_TEMP/project"
-          bundle install
-          bundle exec fledge --version
+            cd "$folder"
+            bundle install
+            version=$(bundle exec fledge --version | tr -d '\r')
+            [ "$version" = "fledge ${TAG#v}" ] || { echo "::error::bundle exec fledge --version printed '$version' in $folder, not 'fledge ${TAG#v}'"; exit 1; }
+          done
 
       # mksquashfs, which writes windowed_app's AppImage (ADR 010), as a
       # Linux developer installs it, pinned to Ubuntu 24.04's build.
@@ -208,17 +218,29 @@ jobs:
 
       # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
       # from the release, checked against the gem's pins.
+      # hello in its own folder, whose Gemfile has Fledge; the others by
+      # their paths from Fledge's own folder.
       - name: Build hello, my_cool_app, windowed_app, and the parity probe with runtimes from the release
         env:
           TAG: ${{ inputs.tag }}
         run: |
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
+          cd "$GITHUB_WORKSPACE/examples/hello"
+          bundle exec fledge build -o "$RUNNER_TEMP/dist" 2>> "$RUNNER_TEMP/build.err" || {
+            cat "$RUNNER_TEMP/build.err"
+            echo "::error::fledge build refused examples/hello, whose Gemfile takes Fledge from $TAG as README.md's Installation says"
+            exit 1
+          }
           cd "$RUNNER_TEMP/project"
-          apps="examples/hello test/fixtures/parity examples/my_cool_app examples/windowed_app"
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps="examples/hello test/fixtures/parity examples/windowed_app"
+          apps="test/fixtures/parity examples/my_cool_app examples/windowed_app"
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps="test/fixtures/parity examples/windowed_app"
           for app in $apps; do
-            bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
+            bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err" || {
+              cat "$RUNNER_TEMP/build.err"
+              echo "::error::fledge build, run from a Gemfile of Fledge's own, refused $app"
+              exit 1
+            }
           done
           cat "$RUNNER_TEMP/build.err"
           grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/build.err"
@@ -370,13 +392,26 @@ jobs:
           set -eu
           /checks/.github/scripts/alpine-packages.sh apps
           mkdir -p /project
-          printf 'source "https://rubygems.org"\ngem "fledge", git: "https://github.com/setdef/Fledge", tag: "%s"\n' "$TAG" > /project/Gemfile
-          cd /project
-          bundle install
-          bundle exec fledge --version
+          for folder in /work/examples/hello /project; do
+            cat > "$folder/Gemfile" <<GEMFILE
+          source "https://rubygems.org"
+          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
+          GEMFILE
+            cd "$folder"
+            bundle install
+            version=$(bundle exec fledge --version)
+            [ "$version" = "fledge ${TAG#v}" ] || { echo "bundle exec fledge --version printed '$version' in $folder, not 'fledge ${TAG#v}'"; exit 1; }
+          done
           export XDG_CACHE_HOME=/tmp/cache
-          for app in examples/hello test/fixtures/parity examples/my_cool_app; do
-            bundle exec fledge build -o /work/dist "/work/$app" 2>> /tmp/build.err
+          cd /work/examples/hello
+          bundle exec fledge build -o /work/dist 2>> /tmp/build.err || {
+            cat /tmp/build.err
+            echo "fledge build refused examples/hello, whose Gemfile takes Fledge from $TAG as README.md's Installation says"
+            exit 1
+          }
+          cd /project
+          for app in test/fixtures/parity examples/my_cool_app; do
+            bundle exec fledge build -o /work/dist "/work/$app" 2>> /tmp/build.err || { cat /tmp/build.err; echo "fledge build, run from a Gemfile of Fledge's own, refused $app"; exit 1; }
           done
           cat /tmp/build.err
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" /tmp/build.err
@@ -451,18 +486,25 @@ jobs:
         if: matrix.phone == 'android'
         run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
 
-      - name: Install Fledge from the tag with Bundler
+      # Both ways README.md's Installation gives, each with the README's
+      # line (test/workflow_installed_test.rb holds the two to it): in
+      # hello's own Gemfile, and in a Gemfile of Fledge's own, outside any
+      # project, which builds the other apps by their paths.
+      - name: Install Fledge from the tag with Bundler, in hello's Gemfile and in a folder of its own
         env:
           TAG: ${{ inputs.tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/project"
-          cat > "$RUNNER_TEMP/project/Gemfile" <<GEMFILE
+          for folder in "$GITHUB_WORKSPACE/examples/hello" "$RUNNER_TEMP/project"; do
+            cat > "$folder/Gemfile" <<GEMFILE
           source "https://rubygems.org"
-          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG"
+          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
           GEMFILE
-          cd "$RUNNER_TEMP/project"
-          bundle install
-          bundle exec fledge --version
+            cd "$folder"
+            bundle install
+            version=$(bundle exec fledge --version | tr -d '\r')
+            [ "$version" = "fledge ${TAG#v}" ] || { echo "::error::bundle exec fledge --version printed '$version' in $folder, not 'fledge ${TAG#v}'"; exit 1; }
+          done
 
       # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
       # from the release, checked against the gem's pins.
@@ -473,10 +515,18 @@ jobs:
         run: |
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
+          cd "$GITHUB_WORKSPACE/examples/hello"
+          bundle exec fledge build "$PHONE" -o "$RUNNER_TEMP/dist" 2>> "$RUNNER_TEMP/build.err" || {
+            cat "$RUNNER_TEMP/build.err"
+            echo "::error::fledge build $PHONE refused examples/hello, whose Gemfile takes Fledge from $TAG as README.md's Installation says"
+            exit 1
+          }
           cd "$RUNNER_TEMP/project"
-          for app in examples/hello examples/mobile_app; do
-            bundle exec fledge build "$PHONE" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
-          done
+          bundle exec fledge build "$PHONE" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/mobile_app" 2>> "$RUNNER_TEMP/build.err" || {
+            cat "$RUNNER_TEMP/build.err"
+            echo "::error::fledge build $PHONE, run from a Gemfile of Fledge's own, refused examples/mobile_app"
+            exit 1
+          }
           cat "$RUNNER_TEMP/build.err"
           grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/build.err" | grep -F -- "-$PHONE.tar.gz"
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" "$RUNNER_TEMP/build.err"

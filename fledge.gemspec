@@ -5,11 +5,13 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "lib/fledge/version"
-
 Gem::Specification.new do |spec|
   spec.name = "fledge"
-  spec.version = Fledge::VERSION
+  # Read, not required: fledge build evaluates the gemspec of whatever
+  # fledge a project locks in its own process, and requiring this
+  # checkout's version.rb there would redefine the running Fledge's
+  # VERSION, which names the runtimes it fetches.
+  spec.version = File.read(File.expand_path("lib/fledge/version.rb", __dir__))[/^\s*VERSION = "([^"]+)"/, 1]
   spec.authors = ["Kerrick Long"]
   spec.email = ["kerrick@setdef.com"]
 

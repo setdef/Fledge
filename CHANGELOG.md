@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fledge build` judges the patch level of a Gemfile's `ruby` as the Bundler the app runs does, whichever Bundler runs `fledge build`: Bundler before 4.1 refuses a Gemfile whose first version is a prerelease, such as `ruby ">= 4.1.0.a", "< 4.2"`, on a released Ruby, and Bundler 4.1 compares no patch level; such a range had been refused on a runtime that records no `RUBY_DESCRIPTION`, where the app's Bundler accepts it.
 - On iOS and Android, a gem's Rakefile can require the gems its gem depends on, each with an extension compiled for the computer that runs `fledge build`, as ffi-compiler requires ffi. A library for ffi such a build leaves is checked to be built for the phone, and one the gem's package holds for macOS or a desktop's Linux, which the build left as it was, is refused.
 - On Android, an extension file that links the C++ runtime statically no longer exports it, so a shared library the extension links keeps its own C++ runtime.
+- Fledge's gemspec reads its version without defining `Fledge::VERSION`, so `fledge build` of a project that locks another fledge from git or a folder keeps its own version, which names the runtimes it fetches, and warns of no constant defined twice.
 
 ## [0.14.0] - 2026-11-19
 

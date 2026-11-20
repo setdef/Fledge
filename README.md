@@ -41,7 +41,7 @@ Hello, Ruby!
 ```
 <!-- SPDX-SnippetEnd -->
 
-The archive is 22 MB, and 74 MB unpacked. Anyone with an Apple silicon Mac on macOS 14 or newer can run `Greeter`, with no Ruby on their computer.
+The archive is 29 MB, and 89 MB unpacked. Anyone with an Apple silicon Mac on macOS 14 or newer can run `Greeter`, with no Ruby on their computer.
 
 ### What Fledge builds
 
@@ -86,6 +86,21 @@ gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.14.0", group: :d
 
 Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.14.0`. Fledge installs from a git tag. You'll find the latest on the [releases page](https://github.com/setdef/Fledge/releases).
 
+Your app carries the gems of every group `bundle exec` loads, `development` included (see [Lock your gems](#lock-your-gems)), so each app you build from this `Gemfile` carries Fledge too. Bundler installs a gem from git as its whole repository, and Fledge's, with its tests and documents, adds about 3 MB to the archive your users download, and 8 MB once it is unpacked. To build apps without it, put the same line in a `Gemfile` of its own, in a folder outside your project, run `bundle install` there, and build your project from that folder:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```console
+$ cd ~/fledge
+$ bundle exec fledge build ~/code/greeter
+```
+<!-- SPDX-SnippetEnd -->
+
+Fledge writes the app to `dist` in the folder you run it from, here `~/fledge/dist`, unless you pass `--out`.
+
 ## Usage
 
 ### Build
@@ -96,7 +111,7 @@ Fledge names the app after your gemspec, or else after your folder: `greeter` be
 
 ### Lock your gems
 
-Fledge ships the gems your `Gemfile.lock` locks in every group that `bundle exec` loads, `development` and `test` included, so a program that requires a development gem, such as `debug` or `dotenv`, finds it in the app, and Fledge itself goes in too. To leave a group out, set it in Bundler's `without`, as for any deployment: `bundle config set --local without test`. Lock each platform you build on, and every gem's checksum:
+Fledge ships the gems your `Gemfile.lock` locks in every group that `bundle exec` loads, `development` and `test` included, so a program that requires a development gem, such as `debug` or `dotenv`, finds it in the app. Each of those gems adds its size to every app. To leave a group out, set it in Bundler's `without`, as for any deployment: `bundle config set --local without test`. Bundler then leaves that group out of your own bundle as well, so `without development` would leave you no Fledge to run; [Installation](#installation) says how to keep Fledge out. Lock each platform you build on, and every gem's checksum:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -176,7 +191,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Fledge is copyright 2026, setdef. The code is [MIT](LICENSE), and the documentation is [CC-BY-SA-4.0](LICENSES/CC-BY-SA-4.0.txt). Code snippets and examples are [MIT-0](LICENSES/MIT-0.txt): copy and use them without attribution. See each file's SPDX comment for specifics.
 
-**Your app stays yours.** Fledge asks nothing of your app's code. Each app carries a `notices/` folder, whose `NOTICES.txt` holds Fledge's MIT notice, for the launcher and the few other files of Fledge's in the app, and the notices of the runtime's third-party components. Keep that folder with the app. For Fledge, and for most of the runtime, that is all you owe. On Linux and Windows, a few libraries are under the LGPL, which asks a little more, and each app carries their source in `notices/sources/`. [What ships in your app](doc/licensing.md) lists every component and what its license asks of you. It is not legal advice.
+**Your app stays yours.** Fledge asks nothing of your app's code. Each app carries a `notices/` folder, whose `NOTICES.txt` holds Fledge's MIT notice, for the launcher and Fledge's other files in the app, and the notices of the runtime's third-party components. Keep that folder with the app. For Fledge, and for most of the runtime, that is all you owe. On Linux and Windows, a few libraries are under the LGPL, which asks a little more, and each app carries their source in `notices/sources/`. [What ships in your app](doc/licensing.md) lists every component and what its license asks of you. It is not legal advice.
 
 Some parts of this program are copied from other sources under appropriate reuse licenses, and the copyright belongs to their respective owners. See the [REUSE Specification – Version 3.3](https://reuse.software/spec-3.3/) for details.
 

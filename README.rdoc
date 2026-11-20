@@ -18,7 +18,7 @@ Fledge in it:
   $ /tmp/Greeter-arm64-darwin/Greeter
   Hello, Ruby!
 
-The archive is 22 MB. Anyone with an Apple silicon Mac on macOS 14 or newer
+The archive is 29 MB. Anyone with an Apple silicon Mac on macOS 14 or newer
 can run it, with no Ruby on their computer.
 
 
@@ -31,6 +31,15 @@ Fledge copies your program, your project, and the gems your
 launcher that starts your program as <tt>bundle exec</tt> would. Your code
 runs as it does under <tt>ruby main.rb</tt>, whether or not your users
 installed a Ruby.
+
+Your app carries the gems of every group <tt>bundle exec</tt> loads,
++development+ and +test+ included, unless Bundler's +without+ names the
+group. With the +Gemfile+ line above, that includes Fledge: Bundler
+installs a gem from git as its whole repository, and Fledge's adds about
+3 MB to the archive. To build apps without it, put that line in a
++Gemfile+ of its own, in a folder outside your project, run
+<tt>bundle install</tt> there, and from there build your project by its
+path, as in <tt>bundle exec fledge build ~/code/greeter</tt>.
 
 [Terminal apps]
   A <tt>.tar.gz</tt> on macOS and Linux, a <tt>.zip</tt> on Windows, with a

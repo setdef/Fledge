@@ -27,7 +27,7 @@ The new app runs `my_game`'s program with `Player`'s `Gemfile`, `Gemfile.lock`, 
 
 ## Ship an app that builds apps
 
-A framework can publish an app for its users to build from. Put Fledge in the framework's `Gemfile` as an ordinary gem, outside the `development` group, and the app carries Fledge and runs `fledge build --from` on itself.
+A framework can publish an app for its users to build from. Put Fledge in the framework's `Gemfile` as an ordinary gem, outside the `development` group, so that no `without development` setting leaves it out, and the app carries Fledge and runs `fledge build --from` on itself.
 
 Some systems lack tools that `--from` needs. On Windows it needs a fresh program, [rcedit](https://github.com/electron/rcedit), and [NSIS](https://nsis.sourceforge.io/), and on Linux an AppImage needs AppImage's runtime. Set `build_tools: true` in the framework's `fledge.yml`, and its app carries them in its `tools` folder. Without them, Fledge takes them from the release's runtime in `FLEDGE_RUNTIME_DIR` or Fledge's cache (see [Runtimes](runtimes.md)), and never downloads them. An app built `--from` carries them only if you set `build_tools` in its `fledge.yml` too.
 

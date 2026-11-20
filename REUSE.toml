@@ -218,10 +218,10 @@ SPDX-FileCopyrightText = "The LLVM Project contributors"
 SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception"
 
 # The compiled files the tests read, which test/fixtures/binaries/build.rb
-# makes with LLVM's compiler and linker, and which have no place for a
-# header.
+# makes with LLVM's compiler and linker, kept as base64 text that the
+# tests decode, which has no place for a header.
 [[annotations]]
-path = ["test/fixtures/binaries/*.so", "test/fixtures/binaries/*.bundle", "test/fixtures/binaries/*.dll", "test/fixtures/binaries/*.exe"]
+path = "test/fixtures/binaries/*.base64"
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT"
 

@@ -15,6 +15,17 @@ require "digest"
 # license audit looks for, follows the file's last byte, where every
 # format's tools ignore it, as they ignore an installer's data appended
 # to a program.
+#
+# Each file is kept as base64 text, NAME.base64 (RFC 2045's encoding,
+# Ruby's pack("m")), and decoded here, so that no checkout of Fledge
+# holds a compiled file. An app whose Gemfile takes Fledge from git, as
+# the README says, carries the checkout, and in it these files would be
+# programs and libraries that need libraries on purpose: a macOS app
+# signs every Mach-O file it carries, and App Store Connect refuses an
+# iOS app that holds a Mach-O file outside a bundle's executable
+# (ITMS-90171). Each file's provenance is build.rb, run with the
+# llvm-mingw that runtime/sources.yml pins, and its licence is REUSE.toml's
+# for test/fixtures/binaries.
 module Binaries
   # Where the files are.
   DIR = File.expand_path("../fixtures/binaries", __dir__)
@@ -124,11 +135,16 @@ needed: [
     "#{spec.fetch(:format)}-#{Digest::SHA256.hexdigest(spec.sort.to_h.inspect)[0, 12]}.#{extension}"
   end
 
+  # Where +spec+'s file is kept, as base64 text.
+  def self.path(spec)
+    File.join(DIR, "#{name(spec)}.base64")
+  end
+
   # The bytes of +spec+'s file, then +payload+.
   def self.file(spec, payload)
-    path = File.join(DIR, name(spec))
+    path = path(spec)
     raise "no #{name(spec)} for #{normalize(spec)}: add it to Binaries::CATALOG and run test/fixtures/binaries/build.rb" unless File.file?(path)
 
-    File.binread(path) + payload.b
+    File.read(path).unpack1("m") + payload.b
   end
 end

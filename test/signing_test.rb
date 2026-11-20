@@ -6,6 +6,7 @@
 #++
 
 require_relative "test_helper"
+require_relative "support/binaries"
 require "open3"
 require "stringio"
 
@@ -16,7 +17,6 @@ require "stringio"
 # the result with codesign and signtool on fresh runners
 # (.github/scripts/deliver-signed.sh and deliver-signed.ps1).
 class SigningTest < Minitest::Test
-  BINARIES = File.expand_path("fixtures/binaries", __dir__)
   MAC = Fledge::Platform.find("arm64-darwin")
   WINDOWS = Fledge::Platform.find("x64-mingw-ucrt")
   THUMBPRINT = "0123456789ABCDEF0123456789ABCDEF01234567"
@@ -58,12 +58,10 @@ class SigningTest < Minitest::Test
   # a file signed where it is.
   def test_code_files_are_found_by_their_first_bytes
     Dir.mktmpdir do |dir|
-      macho = Dir.glob("macho-*", base: BINARIES).first
-      pe = Dir.glob("pe-*", base: BINARIES).first
       FileUtils.mkdir_p(File.join(dir, "lib/ruby"))
-      FileUtils.cp(File.join(BINARIES, macho), File.join(dir, "lib/ruby/ext.bundle"))
-      FileUtils.cp(File.join(BINARIES, macho), File.join(dir, "Program"))
-      FileUtils.cp(File.join(BINARIES, pe), File.join(dir, "lib/ruby/ext.so"))
+      File.binwrite(File.join(dir, "lib/ruby/ext.bundle"), Binaries.macho(minos: "15.0"))
+      File.binwrite(File.join(dir, "Program"), Binaries.macho(minos: "15.0"))
+      File.binwrite(File.join(dir, "lib/ruby/ext.so"), Binaries.pe(needed: %w[x64-ucrt-ruby340.dll libother.dll]))
       File.write(File.join(dir, "main.rb"), "puts 1\n")
       File.symlink("Program", File.join(dir, "link"))
 

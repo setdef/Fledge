@@ -19,7 +19,9 @@
 #
 # LLVM_BIN, or FLEDGE_LLVM, is the bin folder of the llvm-mingw that
 # runtime/sources.yml pins, which has clang, lld, and llvm-dlltool. The
-# files are checked in; run this only to add one to the catalog.
+# files are checked in as base64 text, NAME.base64, which
+# test/support/binaries.rb decodes (it says why); run this only to add
+# one to the catalog.
 require "fileutils"
 require "open3"
 require "tmpdir"
@@ -34,11 +36,12 @@ class FixtureBuilder
 
   def build(spec)
     spec = Binaries.normalize(spec)
-    output = File.join(Binaries::DIR, Binaries.name(spec))
-    dir = File.join(@work, File.basename(output))
+    dir = File.join(@work, Binaries.name(spec))
     FileUtils.mkdir_p(dir)
+    output = File.join(dir, Binaries.name(spec))
     __send__(spec.fetch(:format), spec, dir, output)
-    puts "#{File.basename(output)}: #{spec}"
+    File.write(Binaries.path(spec), [File.binread(output)].pack("m"))
+    puts "#{File.basename(Binaries.path(spec))}: #{spec}"
   end
 
   private def run(*command)

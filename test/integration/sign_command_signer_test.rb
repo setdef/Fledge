@@ -6,6 +6,7 @@
 #++
 
 require_relative "../test_helper"
+require_relative "../support/binaries"
 require_relative "../support/stand_in_signer"
 
 # Fledge::SignCommand running a signing command on an app's files: the
@@ -13,8 +14,6 @@ require_relative "../support/stand_in_signer"
 # and a shell script elsewhere, which records each path and marks each
 # file. No agent has a certificate in a cloud signing service.
 class SignCommandSignerTest < Minitest::Test
-  BINARIES = File.expand_path("../fixtures/binaries", __dir__)
-
   # Once for each PE file, in the order of their paths, and for nothing
   # else: not a text file, nor a Mach-O file with a Windows name.
   def test_each_pe_file_is_signed_once_in_order
@@ -57,9 +56,9 @@ class SignCommandSignerTest < Minitest::Test
   private def app(dir)
     folder = File.join(dir, "Hello-x64-mingw-ucrt")
     FileUtils.mkdir_p(File.join(folder, "lib", "ruby"))
-    pe = File.join(BINARIES, Dir.glob("pe-*", base: BINARIES).min.to_s)
-    %w[Hello.exe lib/ruby.dll lib/ruby/ext.so].each { |path| FileUtils.cp(pe, File.join(folder, path)) }
-    FileUtils.cp(File.join(BINARIES, Dir.glob("macho-*", base: BINARIES).min.to_s), File.join(folder, "lib", "fake.dll"))
+    pe = Binaries.pe(needed: %w[x64-ucrt-ruby340.dll libother.dll])
+    %w[Hello.exe lib/ruby.dll lib/ruby/ext.so].each { |path| File.binwrite(File.join(folder, path), pe) }
+    File.binwrite(File.join(folder, "lib", "fake.dll"), Binaries.macho(minos: "15.0"))
     File.write(File.join(folder, "lib", "README.txt"), "not code\n")
     folder
   end

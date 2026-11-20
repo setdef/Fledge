@@ -6,6 +6,7 @@
 #++
 
 require_relative "../test_helper"
+require_relative "../support/binaries"
 
 # Signing with a timestamp when Apple's timestamp server does not answer
 # (doc/contributors/design/signing.md, "Timestamps"). CI's signed build
@@ -18,8 +19,6 @@ require_relative "../test_helper"
 # runs the real codesign, which signs ad hoc, and the real
 # Fledge::Command runs both.
 class MacSigningTest < Minitest::Test
-  BINARIES = File.expand_path("../fixtures/binaries", __dir__)
-
   # A codesign that counts its runs in COUNT, fails with FAILURE for the
   # first FAILS of them, as codesign does, naming the file, and otherwise
   # is /usr/bin/codesign.
@@ -100,7 +99,7 @@ class MacSigningTest < Minitest::Test
   end
 
   private def macho(dir)
-    File.join(dir, "program").tap { |path| FileUtils.cp(File.join(BINARIES, Dir.glob("macho-*", base: BINARIES).min), path) }
+    File.join(dir, "program").tap { |path| File.binwrite(path, Binaries.macho(minos: "15.0")) }
   end
 
   private def with_codesign(fails:, failure:)

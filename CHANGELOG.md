@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Android, an extension file that links the C++ runtime statically no longer exports it, so a shared library the extension links keeps its own C++ runtime.
 - `fledge build` judges the compiled files a git or path gem holds as a gem, those its gemspec lists and those under its require paths, and no longer refuses a gem for a test's fixture elsewhere in its folder, which still ships. With Fledge itself in the Gemfile from git, as the README says, a desktop build had been refused for Fledge's own test fixtures. A path gem's listed files outside its require paths are now judged too.
 - A phone app's `notices/NOTICES.txt` no longer calls the first of Fledge's files the program the app's user runs: it says the app's host starts Ruby through them.
+- An app with Fledge itself in its Gemfile from git carries no compiled file of Fledge's: its test fixtures, Mach-O, ELF, and PE files that App Store Connect would refuse in an iOS app, are kept as text.
 - Fledge's gemspec reads its version without defining `Fledge::VERSION`, so `fledge build` of a project that locks another fledge from git or a folder keeps its own version, which names the runtimes it fetches, and warns of no constant defined twice.
 
 ## [0.14.0] - 2026-11-19

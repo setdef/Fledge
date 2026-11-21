@@ -35,7 +35,9 @@ else
 fi
 
 status=0
-ruby tasks/ruby_master_status.rb "$body" "$REVISION" "$DATE" "$RUN" "${failed[@]}" >/dev/null || status=$?
+# macOS's bash 3.2, which runs this script's test there, takes an empty
+# array's "${failed[@]}" for an unset variable under set -u.
+ruby tasks/ruby_master_status.rb "$body" "$REVISION" "$DATE" "$RUN" ${failed[@]+"${failed[@]}"} >/dev/null || status=$?
 [ "$status" -eq 0 ] || [ "$status" -eq 3 ] || exit "$status"
 
 if [ -n "$number" ]; then
@@ -45,6 +47,6 @@ else
 fi
 cat "$body" >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
 if [ "$status" -eq 3 ]; then
-  echo "::error::A job failed on Ruby's master that had not been failing: ${failed[*]}"
+  echo "::error::A job failed on Ruby's master that had not been failing: ${failed[*]-}"
   exit 1
 fi

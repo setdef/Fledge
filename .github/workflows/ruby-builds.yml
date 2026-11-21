@@ -1,0 +1,116 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Builds Fledge's own Ruby for glibc Linux, tasks/ruby_archive.rb's
+# archive, on a runner of each architecture, in the Ubuntu 22.04 image
+# and with the packages and driver Ruby .github/scripts/ruby-archive.sh
+# pins, and can publish both archives on a pre-release of this
+# repository for a runtime's pin to name
+# (doc/contributors/design/runtimes.md, "Fledge's own Ruby builds").
+# The build runs the archive's own checks: its glibc floor, YJIT and
+# ZJIT, the libraries bin/ruby links, and no build folder left in
+# rbconfig.rb, pkg-config, or the headers. Each archive is kept as the
+# run's artifact, and its SHA-256 printed.
+#
+# It runs on each push to trunk that changes the recipe or its pins, so
+# a change that breaks the build, or a package pin Ubuntu has moved
+# past, shows within the day; and by hand. Every run is a dry run, which
+# builds both archives and prints the pre-release's name and notes,
+# unless it was run by hand with dry-run off: publishing is a choice,
+# made when a pin is to move, never a side effect of a push.
+
+name: Ruby builds
+
+on:
+  push:
+    branches: [trunk]
+    paths:
+      - .github/scripts/ruby-archive.sh
+      - .github/scripts/ruby-archive-publish.sh
+      - .github/workflows/ruby-builds.yml
+      - runtime/sources.yml
+      - tasks/ruby_archive.rb
+      - tasks/runtime_builder.rb
+      - tasks/runtime_builder/linux.rb
+      - tasks/runtime_builder/ruby_build.rb
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Build and check both archives, but publish nothing
+        type: boolean
+        default: true
+
+permissions: {}
+
+# A push waits for the run before it, and a newer push takes the place
+# of one that waits; a publish is never cancelled halfway.
+concurrency:
+  group: ruby-builds
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # docker run, not a job container, as CI's musl runtimes are built,
+      # so the same script runs here and on a contributor's computer.
+      - name: Build and check the archive in Ubuntu 22.04
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: .github/scripts/ruby-archive.sh "$PLATFORM"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ruby-archive-${{ matrix.platform }}
+          path: tmp/ruby-archive/ruby-*-${{ matrix.platform }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: logs-ruby-archive-${{ matrix.platform }}
+          path: tmp/ruby-archive/${{ matrix.platform }}/logs
+          retention-days: 14
+
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ruby-archive-*
+          path: archives
+          merge-multiple: true
+
+      - name: Publish both archives on a pre-release, or print what it would be
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run) && '1' || '' }}
+          FLEDGE_COMMIT: ${{ github.sha }}
+          FLEDGE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: .github/scripts/ruby-archive-publish.sh archives

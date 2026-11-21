@@ -19,7 +19,6 @@ require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
 require_relative "mobile_extensions/rake_build"
 require_relative "mobile_extensions/runner"
-require_relative "mobile_extensions/separation"
 require_relative "mobile_extensions/sources"
 require_relative "mobile_extensions/stub"
 require_relative "mobile_extensions/targets"
@@ -463,8 +462,6 @@ module Fledge
       @extconf_build = nil # : ExtconfBuild?
       @load_path = nil # : Array[String]?
       @stubs = {} # : Hash[String, Entry]
-      @gems = {} # : Hash[String, String]
-      @separation = nil # : Separation?
     end
 
     # Compiles each gem with an extension, for every target of the phone,
@@ -488,12 +485,10 @@ module Fledge
       ndk = @ndk = (@platform.name == "android") ? NDK.find(@env, host: @host) : nil
       registrations = [] # : Array[[String, String]]
       @stubs = {} # : Hash[String, Entry]
-      @gems = {} # : Hash[String, String]
       builds = Targets.new(work: @work).call(tree, ndk).to_h do |target|
         built = compile_target(target)
         libraries = built.grep(Library) # : Array[Library]
-        linked = built.grep(Report) # : Array[Report]
-        reports = separation.call(target, linked, gems: @gems)
+        reports = built.grep(Report) # : Array[Report]
         ffi_libraries = built.grep(FfiLibrary) # : Array[FfiLibrary]
         registrations = same_registrations(registrations, reports)
         [target.name, Linking.target_build(target, reports, libraries:, ffi_libraries:)]
@@ -519,10 +514,7 @@ module Fledge
       @packages.each do |gem, package|
         next unless package.extensions?
 
-        built = compile(target, gem, package, @build_args.fetch(gem.name, []), reports.grep_v(FfiLibrary).size)
-        linked = built.grep(Report) # : Array[Report]
-        linked.each { |report| @gems[report.feature] = gem.name }
-        reports.concat(built)
+        reports.concat(compile(target, gem, package, @build_args.fetch(gem.name, []), reports.grep_v(FfiLibrary).size))
       end
       reports
     end
@@ -595,11 +587,6 @@ module Fledge
       stub = Stub.for(package, report.feature, root:, gem_dir: @gem_dir)
       @stubs[stub.path] = stub if stub
       report
-    end
-
-    # What keeps each linked extension's names its own (Separation).
-    private def separation
-      @separation ||= Separation.new(runner: @runner, work: @work)
     end
 
     # The builder of extensions an <tt>extconf.rb</tt> builds

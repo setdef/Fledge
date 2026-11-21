@@ -59,8 +59,6 @@ module Fledge
     @dependencies: Hash[locked_gem, package]
     @load_path: Array[String]?
     @stubs: Hash[String, Entry]
-    @gems: Hash[String, String]
-    @separation: Separation?
 
     def self.problems: (locked_gem gem, package package, MobilePlatform platform, Platform host) -> Array[String]
 
@@ -89,8 +87,6 @@ module Fledge
     private def rake: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> Array[Report | FfiLibrary]
 
     private def extconf: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> (Report | Library)
-
-    private def separation: () -> Separation
 
     private def extconf_build: () -> ExtconfBuild
 

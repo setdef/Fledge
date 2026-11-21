@@ -81,6 +81,22 @@ class MobileParityTest < Minitest::Test
     end
   end
 
+  # Each app's line matches what it printed on an arm64-v8a phone as
+  # well as on CI's x86_64 emulators: these are the lines a OnePlus Nord
+  # N30 5G with Android 14 printed on 2026-11-21.
+  def test_each_apps_line_matches_what_it_printed_on_an_arm64_android_phone
+    printed = {
+      "CmakePhone" => "CmakePhone totals 10 in C++ that CMake 3.31.6 built for Android on arm64, on aarch64-linux-android",
+      "RustPhone" => "RustPhone totals 10 in Rust built for android on aarch64, on aarch64-linux-android",
+      "NativePhone" => "NativePhone adds 5 and totals 10 with a C extension (C and C++) on aarch64-linux-android",
+    }
+    printed.each do |name, line|
+      app = MobileParity::APPS.find { |candidate| candidate.name == name }
+      assert_match app.prints, line, name
+      assert_match app.prints, line.sub("arm64, on aarch64", "x86_64, on x86_64").sub("aarch64, on aarch64", "x86_64, on x86_64"), name
+    end
+  end
+
   # An app runs on the phones it names, and every app names both: the
   # libraries for ffi that ffi_library_phone's gems build reach an iOS
   # app as they reach an Android one.

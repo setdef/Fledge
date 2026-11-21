@@ -130,7 +130,7 @@ The screen fills with a color that cycles through the rainbow once every four se
 
 ### What the phone takes
 
-The Nord N30 5G is an arm64-v8a phone on Android 13 (API 33). The APK's lowest Android is API 26 and it holds both `lib/arm64-v8a/` and `lib/x86_64/`, so Android installs the arm64-v8a libraries. Android 13 uses 4 KB pages: 16 KB pages begin with Android 15 (developer.android.com/guide/practices/page-sizes, fetched 2026-11-04: "Beginning with Android 15, AOSP supports devices that are configured to use a page size of 16 KB"). The APK is aligned for 16 KB anyway, as Google Play will refuse updates that are not from 2027-02-01, and a 16 KB alignment loads on a 4 KB phone. The debug APK is signed with the SDK's debug key (APK Signature Scheme v2), which `adb install` takes with no account and no Play Console.
+The Nord N30 5G (model CPH2513) is an arm64-v8a phone. It was planned as Android 13; the maintainer's reports Android 14 (API 34), build `CPH2513_14.0.0.3220(EX01)` (`getprop`, 2026-11-21). The APK's lowest Android is API 26 and it holds both `lib/arm64-v8a/` and `lib/x86_64/`, so Android installs the arm64-v8a libraries. Android 13 uses 4 KB pages: 16 KB pages begin with Android 15 (developer.android.com/guide/practices/page-sizes, fetched 2026-11-04: "Beginning with Android 15, AOSP supports devices that are configured to use a page size of 16 KB"). The APK is aligned for 16 KB anyway, as Google Play will refuse updates that are not from 2027-02-01, and a 16 KB alignment loads on a 4 KB phone. The debug APK is signed with the SDK's debug key (APK Signature Scheme v2), which `adb install` takes with no account and no Play Console.
 
 ### Steps
 
@@ -145,7 +145,7 @@ The Nord N30 5G is an arm64-v8a phone on Android 13 (API 33). The APK's lowest A
    adb shell getconf PAGE_SIZE
    ```
 
-   Expect a Nord N30 5G model name, `13`, a list that starts with `arm64-v8a`, and `4096`.
+   Expect a Nord N30 5G model name (`CPH2513`), its Android version (`14` on the maintainer's), a list that starts with `arm64-v8a`, and `4096`.
 4. **Install and start.**
 
    ```sh
@@ -237,9 +237,39 @@ On this Mac (macOS 27.0.1, Xcode 27.2, XcodeGen 2.46.0, CMake 4.3.2, the pinned 
 - That the iPad's sandbox, which forbids `fork` and `exec` and keeps the bundle read-only, leaves Ruby's boot, Bundler's setup, and the program alone. The Simulator allows both (`doc/contributors/research/2026-10-27-mobile-spike.md`).
 - Whether Xcode's Run sets `OS_ACTIVITY_DT_MODE` for an app on a device, and so whether Ruby's lines reach Xcode's console from the log or, with runtimes that have the fix, from the app's streams; with 0.4.0's runtimes, whether a developer who presses Run meets the console loop (I4b).
 - That a Personal Team's profile installs and launches this app, and how long it lasts; only Apple's servers and the iPad sign off on it. The profiles seen so far last a year, which Apple's page does not say of a free team.
-- That the arm64-v8a build runs at all. No free runner boots an arm64-v8a emulator (`doc/contributors/design/public-interface.md`, "Phones"), so `libfledgeruby.so`, `libfledgeext.so`, and `libSDL3.so` for arm64-v8a have been linked and checked, never loaded.
-- That ART on Android 13 grants the 64 MB thread, which emulators of API 36 did.
+- That the arm64-v8a build runs at all. No free runner boots an arm64-v8a emulator (`doc/contributors/design/public-interface.md`, "Phones"), so `libfledgeruby.so`, `libfledgeext.so`, and `libSDL3.so` for arm64-v8a had been linked and checked, never loaded, when this page was written. They have loaded since (section 8).
+- That ART on the phone grants the 64 MB thread, which emulators of API 36 did. The Nord, which reports Android 14 (API 34), not the Android 13 planned, granted it (section 8).
 - That SDL draws through the iPad's Metal and the phone's Adreno GPU, and takes their touches.
 - How fast it starts. The Android app unpacks `fledge.zip` (28 MB) on its first launch; the emulators said nothing of a real phone's storage.
 
 When all of section 5 passes, the Fledge side of the story is proven, and what remains is Lota's game in place of `sdl_demo`, through the same steps.
+
+## 8. Every phone example on the maintainer's phones
+
+Every recorded device run before this one used Fledge v0.10.0 on Ruby 4.0.9. Since then Ruby 4.1 came, Android's C and C++ extensions became files Ruby loads (0.14.0), an Android app came to share one C++ runtime with a library CMake builds, ffi came to load libraries of its own on both phones (0.15.0), and Rust and Rakefile extensions came to build (0.13.0). CI runs none of that on arm64, nor on a signed iOS build. So an agent ran every phone example on the maintainer's own phones, attached to his Mac by USB, the same night.
+
+### On the OnePlus Nord N30 5G, 2026-11-21
+
+The phone, as it reports itself: model `CPH2513`, Android 14 (API 34), build `CPH2513_14.0.0.3220(EX01)`, ABIs `arm64-v8a,armeabi-v7a,armeabi`, 4096-byte pages, 7385 MB of memory.
+
+The APKs were built on a Linux computer from `trunk` at `88205410`, with both runtimes built afresh from that tree (`fledge-runtime-0.16.0-android.tar.gz`, SHA-256 `814ed9aea96bb79612b4d469fc8091d4d6134790bf5a3a289c51ca86e04f2288`), by `ruby tasks/mobile_parity.rb android-build`, the step CI runs, which writes each project with `fledge build android` and builds it with its own Gradle wrapper. `examples/sdl_phone` was built as section 2 builds it. Each debug APK was installed with `adb install`, started, and judged by the check's own code, `MobileParity::Android#launch` and `MobileParity#check`, with `ANDROID_SERIAL` naming the phone; each launch's whole logcat was kept; each app was uninstalled after. Nothing was installed from a release bundle's APKs, which CI also does on emulators.
+
+| App | What it printed | Verdict |
+|---|---|---|
+| `examples/hello` | `Hello from Ruby 4.1.0 on aarch64-linux-android` | passed |
+| `examples/mobile_app` | `MobileApp 1.2.3 says hello through i18n 1.15.2 and concurrent-ruby 1.3.8, set up by Bundler` | passed |
+| `examples/native_phone` | `NativePhone adds 5 and totals 10 with a C extension (C and C++) on aarch64-linux-android` | passed |
+| `examples/cmake_phone` | `CmakePhone totals 10 in C++ that CMake 3.31.6 built for Android on arm64, on aarch64-linux-android` | exit 0; see below |
+| `examples/rake_phone` | `RakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0.7.0's Rakefile, on aarch64-linux-android` | passed |
+| `examples/rust_phone` | `RustPhone totals 10 in Rust built for android on aarch64, on aarch64-linux-android` | exit 0; see below |
+| `examples/ffi_phone` | `FfiPhone: ffi 1.17.4 finds strlen of hello 5 and sorts [1, 2, 3] with a Ruby block, on aarch64-linux-android` | passed |
+| `examples/ffi_library_phone` | `FfiLibraryPhone: llhttp-ffi 0.5.1 parses GET /hello, and scrypt 3.1.0's key matches RFC 7914, on aarch64-linux-android` | passed |
+| `test/fixtures/mobile_hello` | `Hello from Ruby 4.1.0 on aarch64-linux-android: ["csv","3.3.6"], prism 1.9.0 parses 1 + 2 as +, over HTTPS: 200, YJIT on: fib(20) is 6765 in 688 bytes of machine code` | passed |
+| the parity probe | 13 differences from `ruby main.rb` under rv-ruby's Ruby 4.1.0-preview1 for arm64-darwin, every one justified, none unjustified | passed |
+| `examples/sdl_phone` | `SdlDemo runs Ruby on a thread of its own with a stack of 66583 KB, on aarch64-linux-android with SDL 3.4.18`, `SdlDemo recurses 3970 levels deep`, then `SdlDemo drew 3599 frames in all, with no touch` | exited 0 |
+
+Every app exited with status 0. CmakePhone's and RustPhone's lines failed the check only because its patterns then named x86_64 alone for Android, the one ABI CI's emulators run; they now accept arm64 too, with these two lines as their unit test (`test/mobile_parity_test.rb`).
+
+The C++ crossing check of `test/integration/mobile_extension_symbols_test.rb` ran on the phone too. Its four tests were built on the Linux computer, as on CI, with the device step saving the arm64-v8a folder it would push; that folder was then pushed to `/data/local/tmp` on the phone, which needs no root, and run with the test's own `adb shell` line. Each printed what the test expects: `twin_a_value 1` and `twin_b_value 2`; `twin_dep_own 3` and `twin_dep_through_lib 3`; and each of the seven crossings for both `twin_cxx` and `cmake_cxx`, `deletes` 7 and the rest 1.
+
+What this shows on a real arm64 phone: Ruby 4.1's `libfledgeruby.so` and the ruby program load; extension files, C, C++, CMake's, Rust's, and a Rakefile's, load as Ruby loads them; one C++ runtime is shared across an extension and the libraries it links; ffi opens libffi and a gem's own libraries; YJIT writes machine code and runs it; the runtime's CA certificates reach a server over HTTPS; ART grants the 64 MB thread, and Ruby recurses as deep as on emulators. What it does not show: an install from a release bundle's APKs, a touch in `sdl_phone` (it ran untouched for its minute), 16 KB pages (this phone has 4 KB), or Google Play.

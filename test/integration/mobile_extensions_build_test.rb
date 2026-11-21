@@ -724,7 +724,8 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "arm64-v8a" => true, "x86_64" => true }, machines)
     assert_equal "arm64-v8a\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n" \
       "x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n",
-      File.read(File.join(project, "fledge", "fledge.links"))
+      File.readlines(File.join(project, "fledge", "fledge.links")).grep(/\tlibfledgeext\./).join,
+      "the extension's links, beside those of the gems' commands"
     refute_path_exists File.join(project, "fledge", "app", "gems", "adder", "lib", "adder", "adder.rb")
     activity = File.read(File.join(project, "src", "main", "java", "org", "setdef", "fledge", "host", "MainActivity.java"))
     refute_includes activity, "loadLibrary"

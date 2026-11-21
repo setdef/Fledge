@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fledge --help` says what a phone build does with a gem's extension since 0.13.0 and 0.14.0: Rust and Rakefile extensions build, and on Android an `extconf.rb` extension is a native library that needs `useLegacyPackaging = true`. It had said they were refused, and linked in.
 - A desktop app's `PATH` starts with its Ruby's bin folder, as a developer's shell has the Ruby they run, so `system("rake")`, backquotes, `ruby -S`, and `system("ruby", ...)` find the app's own Ruby and its gems' commands, the lockfile's version inside the bundle, as under `bundle exec`, where before they found nothing or the person's own Ruby; `Bundler.original_env` and `with_unbundled_env` keep that folder first too, as under `bundle exec` they keep the developer's Ruby.
+- An Android app runs `ruby` and its gems' commands by name, as a desktop app does: its `PATH` starts with its Ruby's bin folder, and each gem's command there, the runtime's and the lockfile's, is a link to the app's `ruby` program, which runs RubyGems' wrapper for it, and which Ruby reads in that path's place for `ruby -S`, `load`, and `ruby PATH`, where before they found nothing.
 
 ## [0.16.0] - 2026-11-20
 

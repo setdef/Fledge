@@ -54,6 +54,7 @@ module Fledge
     private def place_extensions: (String project) -> void
 
     private def place_links: (String root) -> void
+    private def place_commands: (String root) -> void
 
     private def ruby_root: (String project) -> String
 

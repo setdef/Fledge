@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+#++
+
+source "https://rubygems.org"
+
+gem "thor", "1.5.0"

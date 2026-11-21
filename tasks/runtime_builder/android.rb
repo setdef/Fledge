@@ -106,7 +106,7 @@ class RuntimeBuilder
     end
 
     private def edits
-      %i[psych_extconf configure ruby_c process_c process_c_umask process_c_ids file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
+      %i[psych_extconf configure ruby_c ruby_c_source prism_compile_c process_c process_c_umask process_c_ids file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
     end
 
     private def host_triple(target)
@@ -253,6 +253,7 @@ class RuntimeBuilder
         File.join(MOBILE, "output.c"),
         File.join(MOBILE, "android.c"),
         File.join(MOBILE, "library_links.c"),
+        File.join(MOBILE, "commands.c"),
         File.join(Recipe::LAUNCHER, "locale.c"),
         File.join(Recipe::LAUNCHER, "config.c"),
         File.join(Recipe::LAUNCHER, "bundler.c"),
@@ -277,16 +278,21 @@ class RuntimeBuilder
       raise "#{library} has a LOAD segment aligned to less than #{PAGE} bytes: #{alignments}" if alignments.empty? || alignments.min < PAGE
     end
 
-    # Both ABIs' lib/ruby and include/ in one tree: Ruby keeps each
-    # ABI's files in a folder named for its platform, and every other
-    # file must be the same for both.
+    # Both ABIs' lib/ruby, include/, and bin/ in one tree: Ruby keeps
+    # each ABI's files in a folder named for its platform, and every
+    # other file must be the same for both. bin/ holds the wrappers
+    # RubyGems wrote for the gems' commands, as a desktop runtime's does,
+    # without the ruby program make install put there: the runtime's is
+    # PROGRAM, in the AAR, and an app's Ruby links bin/ruby to it
+    # (doc/contributors/design/phone-runtimes.md, "Gem commands on
+    # Android").
     private def merge_trees(stage)
       @roots.each_value do |root|
-        %w[lib/ruby include].each do |folder|
+        %w[lib/ruby include bin].each do |folder|
           Dir.glob("**/*", base: File.join(root, folder)).each do |path|
             from = File.join(root, folder, path)
             to = File.join(stage, folder, path)
-            next if File.directory?(from)
+            next if File.directory?(from) || (folder == "bin" && path == "ruby")
 
             if File.exist?(to)
               raise "#{folder}/#{path} differs between the Android targets" unless FileUtils.identical?(from, to)

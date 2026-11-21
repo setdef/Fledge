@@ -471,3 +471,9 @@ The orchestrating agent received these words first-hand from the maintainer.
 [re: the orchestrating agent's report that Fledge's README named Windows 10 as the oldest Windows its apps run on, with no run there on record. The maintainer had said he ran a game on it; the game's own records showed that run, of 2026-11-05, to have been on Windows 11.]
 
 *Governs:* Fledge does not name Windows 10 as a system its apps run on: Microsoft's support for it ended on 2025-10-14, before Fledge's first release. The oldest Windows Fledge names is Windows 11. *Applied in:* `README.md`; `README.rdoc`; `doc/contributors/design/releases.md`, "Platform floors"; `doc/contributors/account-tests.md`.
+
+> How can you possibly think we can ship 1.0.0 with **known** bugs?
+
+[re: the orchestrating agent's statement that the release it was about to call the candidate for 1.0.0 left known defects unfixed, of which it named three: two gems whose extensions define one global name clash on a phone; a library for ffi that a gem's package holds built for iOS had never been tried; and CI ran none of the iOS integration tests.]
+
+*Governs:* the candidate for 1.0.0 is a release with no bug the project knows of. A known defect is fixed, or shown not to be one, before a release is called the candidate; it is not listed beside it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `doc/contributors/handoff.md`, "Where to start next".

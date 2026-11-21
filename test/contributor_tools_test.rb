@@ -149,6 +149,21 @@ class ContributorToolsTest < Minitest::Test
     assert_includes line, %(targets = "#{Fledge::MobileExtensions::Rust::TRIPLES.values.join(',')}")
   end
 
+  # XcodeGen writes the Xcode project fledge build ios makes, which the
+  # iOS integration tests build. On a Mac, Apple silicon or Intel, mise
+  # installs the release CI installs, by runtime/sources.yml's URL and
+  # SHA-256, and puts the bin/ folder of its archive on PATH.
+  def test_mise_installs_on_macos_the_xcodegen_ci_installs
+    pin = sources.dig("mobile", "xcodegen")
+
+    assert_includes mise_toml, %([tools."http:xcodegen"]\nversion = "#{pin.fetch('version')}"\nos = ["macos"]\n)
+    %w[macos-arm64 macos-x64].each do |platform|
+      line = %(platforms.#{platform} = { url = "#{pin.fetch('url')}", checksum = "sha256:#{pin.fetch('sha256')}", bin_path = "xcodegen/bin" }\n)
+
+      assert_includes mise_toml, line
+    end
+  end
+
   # CI's Windows jobs read the pin from mise.toml with this script.
   # mise.toml's min_version names the oldest mise that reads it, the one
   # whose mise install and mise exec trust it on a computer that has

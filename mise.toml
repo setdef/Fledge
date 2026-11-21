@@ -169,6 +169,21 @@ os = ["windows"]
 platforms.windows-x64 = { url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-x64.zip", checksum = "sha256:ce7484804c0f0ad4dda10c958e71acdaf7eebfb22505c1b480f89e0e9f1da94d" }
 platforms.windows-arm64 = { url = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.9/PowerShell-7.6.9-win-arm64.zip", checksum = "sha256:2157fb002178e606c2a5532c56647118d90d029742f04d4900a71e3b478c2363" }
 
+# On macOS, XcodeGen, which writes the Xcode project of fledge build ios
+# (Fledge::MobileProject::IOS) and so runs in the iOS integration tests
+# and test/mobile_build_test.rb. A developer installs it themselves, and
+# so does CI, from runtime/sources.yml's mobile pin; this is the same
+# release, by the same URL and SHA-256, which
+# test/contributor_tools_test.rb keeps equal to that pin. Its one zip
+# holds a universal binary for Apple silicon and Intel, in xcodegen/bin
+# beside the share/ folder it reads its presets from. It runs on a
+# contributor's computer only, and no runtime or app carries it.
+[tools."http:xcodegen"]
+version = "2.46.0"
+os = ["macos"]
+platforms.macos-arm64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip", checksum = "sha256:4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806", bin_path = "xcodegen/bin" }
+platforms.macos-x64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip", checksum = "sha256:4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806", bin_path = "xcodegen/bin" }
+
 # On Linux, libclang, which bindgen loads to read Ruby's headers when
 # rb-sys builds a Rust gem (examples/native_app's ferro-idna). GitHub's
 # runners have one, a stock Linux computer does not. The libclang 18.1.1

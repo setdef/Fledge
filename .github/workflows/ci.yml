@@ -591,10 +591,19 @@ jobs:
   # Rakefile (doc/contributors/design/phone-projects.md, "Rakefiles");
   # examples/ffi_phone,
   # whose ffi gem builds its own libffi and calls C with a Ruby block as
-  # a callback; a script that requires json and csv,
+  # a callback; examples/ffi_library_phone, whose gems' Rakefiles build
+  # libraries for ffi, each embedded as a framework of its own
+  # (doc/contributors/design/phone-projects.md, "Libraries for ffi on
+  # iOS"); a script that requires json and csv,
   # a bundled gem, and reaches rubygems.org over HTTPS; and the parity
   # probe, against ruby main.rb on this Mac's desktop Ruby, with every
-  # difference justified for a phone (tasks/mobile_parity.rb).
+  # difference justified for a phone (tasks/mobile_parity.rb). The iOS
+  # integration tests run here too, after the apps, the one job with the
+  # iOS runtime, the pinned Xcode, XcodeGen, CMake, and Rust's iOS
+  # targets: test/integration/mobile_extensions_build_test.rb's iOS tests
+  # and the iOS runtime's in test/integration/mobile_default_gems_test.rb.
+  # FLEDGE_REQUIRE_IOS fails a test that would skip for want of any of
+  # these, so a green job means every one of them ran.
   mobile-apps-ios:
     name: Mobile apps (iOS Simulator, iPhone and iPad)
     needs: [runtime, runtime-mobile]
@@ -659,6 +668,34 @@ jobs:
           path: ~/.cache/fledge/downloads
           key: mobile-parity-downloads-ios-files-${{ steps.downloads-key.outputs.files }}
 
+      # The tests' own gems, from the cache fast-macos.yml's Unit tests
+      # save under the same key, of the same Ruby on the same image,
+      # macos-26. This job only restores it.
+      - name: Place Bundler outside the checkout
+        id: paths
+        run: |
+          echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
+          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_REVISION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:?the runner sets no ImageOS}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/fledge/bundle
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.image }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
+
+      - name: Install the bundle
+        run: bundle install
+
+      # Their Android tests skip here, with no Android runtime or NDK, and
+      # run in the Android emulator job with 4 KB pages.
+      - name: Run the iOS integration tests
+        timeout-minutes: 15
+        env:
+          A: --verbose
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_REQUIRE_IOS: "1"
+        run: bundle exec rake test:integration TEST=test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
@@ -684,10 +721,10 @@ jobs:
   # arm64-v8a library is built and checked but run on no
   # emulator here. examples/rust_phone's Rust is compiled with mise.toml's
   # Rust and its Android targets, and bindgen reads the phone's headers
-  # with the runner's libclang. examples/ffi_library_phone runs here
-  # alone, not in the Simulator: its gems' Rakefiles build libraries for
-  # ffi, which the app carries as native libraries of its own, with
-  # ffi-compiler's ffi compiled by the runner's C compiler. The Android
+  # with the runner's libclang. examples/ffi_library_phone's gems'
+  # Rakefiles build libraries for ffi, which the app carries as native
+  # libraries of its own, with ffi-compiler's ffi compiled by the
+  # runner's C compiler. The Android
   # integration tests run here too, the one job with the Android runtime,
   # the NDK, CMake, Rust's Android targets, and an emulator: those that
   # need no device once, before the emulator starts, and

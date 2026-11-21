@@ -10,6 +10,7 @@ require "json"
 require "open3"
 require "stringio"
 require_relative "../support/android"
+require_relative "../support/ios"
 
 # Native gems on phones (doc/contributors/design/phone-projects.md,
 # "Gems with extensions"), compiled for real: a gem's extension for
@@ -19,9 +20,13 @@ require_relative "../support/android"
 # The Android tests skip without the Android runtime, the NDK, CMake, or
 # Rust's Android targets, and fail instead where FLEDGE_REQUIRE_ANDROID
 # is set, as in CI's Mobile apps (Android emulator) job, which has them
-# all (AndroidRequired).
+# all (AndroidRequired). The iOS tests skip off a Mac, or without the
+# iOS runtime, CMake, or Rust's iOS targets, and fail instead where
+# FLEDGE_REQUIRE_IOS is set, as in CI's Mobile apps (iOS Simulator) job,
+# which has them all (IOSRequired).
 class MobileExtensionsBuildTest < Minitest::Test
   include AndroidRequired
+  include IOSRequired
 
   # The folder by its long names, as Dir.glob names what it finds in it
   # (Fledge::LongPath), where Windows' TMP names it by an 8.3 name.
@@ -42,8 +47,8 @@ class MobileExtensionsBuildTest < Minitest::Test
   # is set, since that asks for this computer's own runtime, the one CI's
   # Test jobs download. Those jobs run on macos-15, which has neither the
   # Xcode runtime/sources.yml pins nor XcodeGen. The Mobile apps (iOS
-  # Simulator) job has both, and builds examples/native_phone with fledge
-  # build ios, compiles it with Xcode for both slices, and runs it.
+  # Simulator) job has both, and the iOS runtime, and runs these tests
+  # with FLEDGE_REQUIRE_IOS set.
   def test_a_c_extension_is_compiled_for_the_device_and_the_simulator
     runtimes = real_runtimes("ios")
     greeter = File.expand_path("../../examples/native_phone/gems/adder", __dir__)
@@ -267,7 +272,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   # as each slice's extension is.
   def test_a_cmake_library_an_extconf_builds_is_built_for_each_ios_slice
     runtimes = real_runtimes("ios")
-    skip "examples/cmake_phone needs CMake on the PATH" unless cmake?
+    ios_missing("examples/cmake_phone needs CMake on the PATH") unless cmake?
     built = compile(runtimes, ios, { tally_gem => Fledge::PathPackage.new(tally_gem) })
 
     assert_equal [["tally/tally", "Init_fledge_0"]], built.registrations
@@ -908,10 +913,11 @@ class MobileExtensionsBuildTest < Minitest::Test
     android_missing(e.message)
   end
 
-  # Skips for want of what a test of the phone +name+ needs, or, for
-  # Android, fails where FLEDGE_REQUIRE_ANDROID asks (AndroidRequired).
+  # Skips for want of what a test of the phone +name+ needs, or fails
+  # where FLEDGE_REQUIRE_ANDROID or FLEDGE_REQUIRE_IOS asks
+  # (AndroidRequired, IOSRequired).
   def missing(name, message)
-    (name == "android") ? android_missing(message) : skip(message)
+    (name == "android") ? android_missing(message) : ios_missing(message)
   end
 
   def cmake?
@@ -919,7 +925,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   def real_runtimes(name)
-    skip "Xcode builds the iOS slices on a Mac only" unless Fledge::Platform.local.name == "arm64-darwin" || name != "ios"
+    missing(name, "Xcode builds the iOS slices on a Mac only") unless Fledge::Platform.local.name == "arm64-darwin" || name != "ios"
     dir = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
     phone = File.join(dir, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(name)))
     missing(name, "no #{File.basename(phone)} in #{dir}; run bundle exec rake runtime[#{name}]") unless File.file?(phone)

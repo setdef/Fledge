@@ -8,14 +8,17 @@
 require_relative "../test_helper"
 require_relative "../../tasks/runtime_builder"
 require_relative "../support/android"
+require_relative "../support/ios"
 
 # The default gems of the phone runtimes rake runtime[ios] and
 # runtime[android] built (ADR 079), read from the archives they wrote;
 # test/mobile_runtime_test.rb checks the parts that need no runtime.
-# Without the Android runtime, the Android test fails instead of
-# skipping where FLEDGE_REQUIRE_ANDROID is set (AndroidRequired).
+# Without a phone's runtime, its test fails instead of skipping where
+# FLEDGE_REQUIRE_ANDROID or FLEDGE_REQUIRE_IOS is set (AndroidRequired,
+# IOSRequired).
 class MobileDefaultGemsTest < Minitest::Test
   include AndroidRequired
+  include IOSRequired
 
   def mobile(name)
     RuntimeBuilder.platform(name)
@@ -63,7 +66,7 @@ class MobileDefaultGemsTest < Minitest::Test
     archive = File.join(dir, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(name)))
     unless File.file?(archive)
       message = "no #{File.basename(archive)} in #{dir}; run bundle exec rake runtime[#{name}]"
-      (name == "android") ? android_missing(message) : skip(message)
+      (name == "android") ? android_missing(message) : ios_missing(message)
     end
 
     # Read with the computer's tar, as Fledge reads a runtime

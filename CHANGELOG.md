@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- A desktop app is smaller, by about 70 MB unpacked on glibc Linux, 145 MB on musl Linux, and 2 MB on macOS: the static libruby that `mkmf` links its checks against comes without its debug information, which nothing reads.
+
 ## [0.15.0] - 2026-11-20
 
 ### Added

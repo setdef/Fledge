@@ -432,8 +432,9 @@ class RuntimeBuilderTest < Minitest::Test
 
   # mkmf links the test program of every have_func and have_library
   # against the static libruby in $(libdir), so a runtime keeps it beside
-  # lib/ruby; rv-ruby's other static library, libxcrypt's, and its
-  # pkg-config files stay out.
+  # lib/ruby, stripped of the debug sections a link never reads;
+  # rv-ruby's other static library, libxcrypt's, and its pkg-config
+  # files stay out.
   def test_a_unix_runtime_keeps_the_static_libruby_mkmf_links_against
     Dir.mktmpdir do |dir|
       prefix = File.join(dir, "prefix")
@@ -448,7 +449,8 @@ class RuntimeBuilderTest < Minitest::Test
         libexec/cert.pem
       ])
       FileUtils.mkdir_p(File.join(prefix, "lib/ruby/gems/4.1.0+5/specifications"))
-      recipe = RuntimeBuilder::Linux.new(builder: builder("x86_64-linux"), build_dir: dir)
+      commands = Recording.new(platform: Fledge::Platform.find("x86_64-linux"))
+      recipe = RuntimeBuilder::Linux.new(builder: commands, build_dir: dir)
       recipe.instance_variable_set(:@prefix, prefix)
       stage = File.join(dir, "stage")
 
@@ -456,6 +458,19 @@ class RuntimeBuilderTest < Minitest::Test
 
       assert_equal %w[lib/libruby.4.1-static.a], kept(File.join(stage)).grep(/\.a\z/)
       refute_path_exists File.join(stage, "lib/pkgconfig")
+      assert_equal [["strip", "-S", File.join(stage, "lib/libruby.4.1-static.a")]], commands.ran
+    end
+  end
+
+  # A builder that keeps the commands a recipe runs instead of running
+  # them, and is otherwise the real one.
+  class Recording < RuntimeBuilder
+    def ran
+      @ran ||= []
+    end
+
+    def run(*command, **)
+      ran << command
     end
   end
 

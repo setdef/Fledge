@@ -61,21 +61,13 @@ class RuntimeBuilder
     # Copies rv-ruby's bin/ (whose ruby compile then replaces with one
     # built from the same libruby as the launcher; the rest are the gems'
     # executables), lib/ruby, Ruby's headers (include/, which require
-    # "mkmf" looks for; Pruning.prune), the static libruby, and the CA
-    # bundle. mkmf links the test program of every have_func,
-    # have_library, and try_link against $(LIBRUBYARG), which for a static
-    # Ruby is LIBRUBYARG_STATIC, -lruby.4.1-static from $(libdir)
-    # (mkmf.rb, link_config, lines 541 to 553, at Ruby 4.1.0-preview1), so
-    # without it an app's own running mkmf raises "The compiler failed to
-    # generate an executable file". No other static library comes along:
-    # rv-ruby's lib/libcrypt.a is libxcrypt, which is LGPL, and the linker
-    # finds the system's -lcrypt instead.
+    # "mkmf" looks for; Pruning.prune), the static libruby
+    # (#copy_static_libruby), and the CA bundle.
     private def copy_ruby(stage)
       FileUtils.mkdir_p(File.join(stage, "lib"))
       FileUtils.cp_r(File.join(@prefix, "bin"), File.join(stage, "bin"))
       FileUtils.rm_f(File.join(stage, "bin", "ruby"))
       FileUtils.cp_r(File.join(@prefix, "lib", "ruby"), File.join(stage, "lib", "ruby"))
-      FileUtils.cp(Dir.glob(File.join(@prefix, "lib", "libruby*-static.a")), File.join(stage, "lib"))
       FileUtils.cp_r(File.join(@prefix, "include"), File.join(stage, "include"))
       FileUtils.chmod_R("u+w", [File.join(stage, "lib"), File.join(stage, "bin"), File.join(stage, "include")])
       removed = Pruning.prune(File.join(stage, "lib", "ruby"), @builder.bundled_gems)
@@ -83,6 +75,36 @@ class RuntimeBuilder
       @builder.install_rubygems_defaults(File.join(stage, "lib", "ruby"))
       FileUtils.mkdir_p(File.join(stage, "libexec"))
       FileUtils.cp(File.join(@prefix, "libexec", "cert.pem"), File.join(stage, "libexec", "cert.pem"))
+      copy_static_libruby(stage)
+    end
+
+    # Copies the static libruby into the runtime's lib/, stripped of its
+    # debug information. mkmf links the test program of every have_func,
+    # have_library, and try_link against $(LIBRUBYARG), which for a static
+    # Ruby is LIBRUBYARG_STATIC, -lruby.4.1-static from $(libdir)
+    # (mkmf.rb, link_config, lines 541 to 553, at Ruby 4.1.0-preview1), so
+    # without it an app's own running mkmf raises "The compiler failed to
+    # generate an executable file". No other static library comes along:
+    # rv-ruby's lib/libcrypt.a is libxcrypt, which is LGPL, and the linker
+    # finds the system's -lcrypt instead.
+    #
+    # A link reads the archive's code, data, symbols, and relocations,
+    # never its debug information, and the launcher and bin/ruby link the
+    # prefix's own copy and are stripped themselves, so strip -S, which
+    # GNU's strip and Apple's both take for "debug information only",
+    # leaves out what nothing reads: most of the file on Linux, where
+    # Ruby's C is compiled with DWARF (90 MB to 19 MB for rv-ruby's x86_64
+    # build, 165 MB to 20 MB for Fledge's musl one, at Ruby
+    # 4.1.0-preview1), and on macOS the debug map of the Rust in YJIT and
+    # ZJIT, which names object files only rv-ruby's build machine had
+    # (13.3 MB to 11.5 MB).
+    private def copy_static_libruby(stage)
+      Dir.glob(File.join(@prefix, "lib", "libruby*-static.a")).each do |library|
+        copy = File.join(stage, "lib", File.basename(library))
+        FileUtils.cp(library, copy)
+        FileUtils.chmod("u+w", copy)
+        @builder.run("strip", "-S", copy)
+      end
     end
   end
 end

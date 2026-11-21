@@ -265,9 +265,9 @@ class Parity
     reference = Parity.gem_probe(File.join(@work, "reference-#{program}-app"), source:, program:)
     bundle = File.join(File.dirname(@ruby), "bundle")
     install = [@ruby, bundle, "install", "--quiet"]
-    system(env.merge("BUNDLE_FROZEN" => "true"), *install, chdir: reference, unsetenv_others: true, exception: true)
+    system(developer(env).merge("BUNDLE_FROZEN" => "true"), *install, chdir: reference, unsetenv_others: true, exception: true)
     launcher = build_app(File.join(project, "exe", program), name)
-    expected = run([@ruby, bundle, "exec", @ruby, "exe/#{program}", *ARGUMENTS], reference, env)
+    expected = run([@ruby, bundle, "exec", @ruby, "exe/#{program}", *ARGUMENTS], reference, developer(env))
     actual = run([launcher, *ARGUMENTS], File.join(File.dirname(launcher), "app"), env)
     differences = Reports.compare(Reports.normalize(expected, work: @work), Reports.normalize(actual, work: @work),
       platform: platform.name, check: :bundle)
@@ -290,14 +290,14 @@ class Parity
     path = env.keys.find { |name| name.casecmp?("PATH") }
     env = env.except(path).merge("Path" => env.fetch(path), "bundle_gemfile" => File.join(reference, "Gemfile"))
     app = File.join(File.dirname(launcher), "app")
-    expected = run([*stock, *ARGUMENTS], reference, env)
+    expected = run([*stock, *ARGUMENTS], reference, developer(env))
     actual = run([launcher, *ARGUMENTS], app, env)
     differences = Reports.compare(Reports.normalize(expected, work: @work), Reports.normalize(actual, work: @work),
       platform: platform.name, check: :spelled)
     label = " of a gem-shaped app with bundle exec, with bundle_gemfile and Path so spelled"
     report(label, env, differences)
-    restarts = [[[*stock, "restart"], reference], [[launcher, "restart"], app]].map do |command, chdir|
-      Open3.capture3(env, *command, chdir:, unsetenv_others: true).then { |out, err, status| [out, err, status.exitstatus] }
+    restarts = [[[*stock, "restart"], reference, developer(env)], [[launcher, "restart"], app, env]].map do |command, chdir, given|
+      Open3.capture3(given, *command, chdir:, unsetenv_others: true).then { |out, err, status| [out, err, status.exitstatus] }
     end
     @out.puts "Restart#{label}: bundle exec's #{restarts[0].inspect}, the app's #{restarts[1].inspect}"
     differences.all?(&:justified?) && restarts[0] == ["restarted as itself\n", "", 0] && restarts[1] == restarts[0]
@@ -324,7 +324,7 @@ class Parity
   private def check(label, code_page, locale: nil, check: :script)
     env = environment(locale)
     reference, app = with_code_page(code_page) do
-      [run([@ruby, "main.rb", *ARGUMENTS], @reference_app, env), run([@launcher, *ARGUMENTS], File.join(File.dirname(@launcher), "app"), env)]
+      [run([@ruby, "main.rb", *ARGUMENTS], @reference_app, developer(env)), run([@launcher, *ARGUMENTS], File.join(File.dirname(@launcher), "app"), env)]
     end
     differences = Reports.compare(Reports.normalize(reference, work: @work), Reports.normalize(app, work: @work), platform: platform.name,
       check:)
@@ -390,6 +390,18 @@ class Parity
     person_gems = File.join(@work, "person-gems")
     FileUtils.mkdir_p([home, person_gems])
     clean.merge("HOME" => home, PERSON[0] => person_gems, PERSON[1] => "-W0", PERSON[2] => "1", PERSON[3] => "1")
+  end
+
+  # +env+ as a developer's shell hands it to the Ruby they run: with that
+  # Ruby's bin folder first on PATH, where the shell found ruby and
+  # bundle, as a version manager or RubyInstaller's installer puts it, and
+  # where gem install writes the gems' commands. A command bundle install
+  # writes runs the ruby PATH finds (Gem::Installer#bash_prolog_script and
+  # #windows_stub_script), so without it the reference's would run
+  # whatever Ruby the caller has.
+  def developer(env)
+    name = env.keys.find { |key| key.casecmp?("PATH") } || "PATH"
+    env.merge(name => [File.dirname(@ruby), env[name]].compact.join(File::PATH_SEPARATOR))
   end
 
   private def run(command, chdir, env)

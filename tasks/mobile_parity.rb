@@ -265,9 +265,17 @@ class MobileParity
   # (Environment), in place of the reference's.
   def self.differences(reference, report, environment, platform:, work:)
     given = Parity::Reports.normalize({ "paths" => report.fetch("paths"), "ENV" => environment }, work:).fetch("ENV")
-    expected = Parity::Reports.normalize(reference, work:).merge("ENV" => given, "child ENV" => given)
-    Parity::Reports.compare(expected, Parity::Reports.normalize(report, work:), platform:)
+    expected = Parity::Reports.normalize(reference, work:).merge("ENV" => given, "child ENV" => given).except(*NOT_YET)
+    Parity::Reports.compare(expected, Parity::Reports.normalize(report, work:).except(*NOT_YET), platform:)
   end
+
+  # Facts of the probe's that no phone yet compares. "gem commands" runs
+  # ruby and a gem's command by name, which an Android app cannot yet do,
+  # though it starts RbConfig.ruby, and iOS lets no app do at all; the
+  # phones compare it once the Android runtime can
+  # (doc/contributors/handoff.md, "Where to start next";
+  # doc/contributors/design/parity.md, "The probe").
+  NOT_YET = ["gem commands"].freeze
 
   def initialize(target:, work: File.join(ROOT, "tmp", "mobile-parity"), out: $stdout)
     @target = target

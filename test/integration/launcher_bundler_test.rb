@@ -19,7 +19,8 @@ class LauncherBundlerTest < Minitest::Test
 
   # Prints what fledge.cfg, given as argv[1], names as the Bundler, or why
   # it is refused; or with argv[1] "code", the Ruby that requires Bundler
-  # argv[2] (or the runtime's, for "-") and the Ruby that sets it up.
+  # argv[2] (or the runtime's, for "-") and the Ruby that sets it up; or
+  # with argv[1] "path", the Ruby that puts Ruby's bin folder on PATH.
   DRIVER = <<~C
     #include "launcher.h"
 
@@ -28,6 +29,10 @@ class LauncherBundlerTest < Minitest::Test
 
     int main(int argc, char **argv) {
         (void)argc;
+        if (strcmp(argv[1], "path") == 0) {
+            printf("%s", fledge_ruby_on_path_code);
+            return 0;
+        }
         if (strcmp(argv[1], "code") == 0) {
             char require[FLEDGE_BUNDLER_CODE_MAX];
             char setup[FLEDGE_BUNDLER_CODE_MAX];
@@ -71,6 +76,28 @@ class LauncherBundlerTest < Minitest::Test
   def driver(*)
     out, status = Open3.capture2(@driver, *)
     [out, status.exitstatus]
+  end
+
+  # The bin folder of the Ruby that runs the code goes first on PATH, as
+  # a developer's shell has it, once: a Ruby the app restarts, whose PATH
+  # has it first already, keeps PATH as it is. The rest of the person's
+  # PATH stays as they had it, duplicates and all.
+  def test_the_ruby_on_path_code_puts_rubys_bin_folder_first_once
+    code, status = driver("path")
+    assert_equal 0, status
+    bin = RbConfig::CONFIG.fetch("bindir")
+    separator = File::PATH_SEPARATOR
+    path_after = lambda do |env|
+      out, err, ran = Open3.capture3(env, RbConfig.ruby, "-e", "#{code}\nprint ENV.fetch('PATH')", unsetenv_others: true)
+      assert ran.success?, err
+      out
+    end
+    person = ["/opt/person/bin", "/usr/bin", "/opt/person/bin"].join(separator)
+
+    first = path_after.call("PATH" => person)
+    assert_equal [bin, person].join(separator), first
+    assert_equal first, path_after.call("PATH" => first)
+    assert_equal bin, path_after.call({})
   end
 
   def test_fledge_cfg_names_the_bundler_beside_the_gemfile

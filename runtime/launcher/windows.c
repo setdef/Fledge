@@ -79,7 +79,10 @@
  *      child processes see what they would see without Fledge: as they
  *      were (restore_environment), or for an app with a Gemfile beneath
  *      Bundler's own settings, as bundle exec composes them
- *      (bundle_environment, bundler.c).
+ *      (bundle_environment, bundler.c). PATH stays the person's, with
+ *      the bin folder of the app's Ruby put before it in step 5, before
+ *      Bundler loads, as a developer's shell has the Ruby they run
+ *      (put_ruby_on_path).
  *
  * It exits with the app's exit status, or, when it cannot start the app,
  * with a status from sysexits(3) (launcher.h), as unix.c does.
@@ -818,6 +821,21 @@ bundle_environment(void)
 }
 
 /*
+ * Puts the bin folder of the app's Ruby first on PATH, before Bundler
+ * loads, as unix.c does (bundler.c, fledge_ruby_on_path_code).
+ * Ruby's ENV writes keep the name a variable already has (hash.c,
+ * ruby_setenv), so a PATH Windows spells Path stays Path.
+ */
+static void
+put_ruby_on_path(void)
+{
+    int state = 0;
+
+    ruby_api.eval_string_protect(fledge_ruby_on_path_code, &state);
+    if (state != 0) fail(L"could not set up this app's environment");
+}
+
+/*
  * As rb_main in Ruby's main.c, with the launcher's arguments: the
  * address of a variable in this frame tells Ruby where the stack it
  * scans for references begins (RUBY_INIT_STACK), so this frame must be
@@ -829,8 +847,8 @@ bundle_environment(void)
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
  *   43) at Ruby v4.1.0-preview1 (2d08b5f42f), with RUBY_INIT_STACK
  *   spelled out through a function pointer, and pin_rubygems,
- *   setup_bundler, bundle_environment, and restore_environment between
- *   ruby_options and ruby_run_node.
+ *   put_ruby_on_path, setup_bundler, bundle_environment, and
+ *   restore_environment between ruby_options and ruby_run_node.
  */
 static int __attribute__((noinline))
 run_ruby(int argc, char **argv)
@@ -842,6 +860,7 @@ run_ruby(int argc, char **argv)
     void *node = ruby_api.options(argc, argv);
     if (ruby_api.executable_node(node, NULL)) {
         pin_rubygems();
+        put_ruby_on_path();
         if (gemfile != NULL) {
             setup_bundler();
             pin_rubygems();

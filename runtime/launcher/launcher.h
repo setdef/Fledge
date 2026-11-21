@@ -59,6 +59,13 @@ int fledge_is_scrubbed(const char *name, int ignore_case);
 char *fledge_bundle_environment_code(const char *variables, size_t length);
 
 /*
+ * The Ruby code that puts the bin folder of the app's Ruby first on
+ * PATH, as a developer's shell has it for ruby main.rb or bundle exec
+ * (bundler.c), for every app, before Bundler loads.
+ */
+extern const char fledge_ruby_on_path_code[];
+
+/*
  * Writes into code, which holds size bytes, the Ruby that requires
  * Bundler, when setup is 0, or that has it set up the app's gems, when
  * setup is 1, by their paths, as bundle exec's RUBYOPT requires

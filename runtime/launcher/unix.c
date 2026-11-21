@@ -64,7 +64,10 @@
  *      child processes see what they would see without Fledge: as they
  *      were (restore_environment), or for an app with a Gemfile beneath
  *      Bundler's own settings, as bundle exec composes them
- *      (bundle_environment, bundler.c).
+ *      (bundle_environment, bundler.c). PATH stays the person's, with
+ *      the bin folder of the app's Ruby put before it in step 5, before
+ *      Bundler loads, as a developer's shell has the Ruby they run
+ *      (put_ruby_on_path).
  *
  * It exits with the app's exit status, or, when it cannot start the app,
  * with a status from sysexits(3) (launcher.h).
@@ -250,6 +253,22 @@ bundle_environment(void)
     free(code);
     if (state != 0) fail("could not set up this app's environment");
     forget_set_aside();
+}
+
+/*
+ * Puts the bin folder of the app's Ruby first on PATH, as a developer's
+ * shell has it for ruby main.rb or bundle exec, so the app's
+ * system("rake") and system("ruby") find the app's own (bundler.c,
+ * fledge_ruby_on_path_code). It runs before Bundler loads, so the PATH
+ * Bundler records as the one it started from has it too.
+ */
+static void
+put_ruby_on_path(void)
+{
+    int state = 0;
+
+    rb_eval_string_protect(fledge_ruby_on_path_code, &state);
+    if (state != 0) fail("could not set up this app's environment");
 }
 
 /*
@@ -477,7 +496,7 @@ static int ruby_argc;
  * SPDX-SnippetComment: rb_main, adapted from Ruby's main.c (lines 37 to
  *   43) at Ruby v4.1.0-preview1 (2d08b5f42f), as Lota's launcher spike
  *   first did (setdef/lota, ADR 002), with name_load_path_by_real_paths
- *   on macOS, pin_rubygems, setup_bundler,
+ *   on macOS, pin_rubygems, put_ruby_on_path, setup_bundler,
  *   bundle_environment, and restore_environment between ruby_options and
  *   ruby_run_node.
  */
@@ -492,6 +511,7 @@ run_ruby(int argc, char **argv)
         name_load_path_by_real_paths();
 #endif
         pin_rubygems();
+        put_ruby_on_path();
         if (app_config.gemfile != NULL) {
             setup_bundler();
             pin_rubygems();

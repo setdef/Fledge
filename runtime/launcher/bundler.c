@@ -32,6 +32,15 @@
  * fixed before (pin_rubygems), and Bundler's settings were read then, so
  * nothing here changes which gems the app loads.
  *
+ * Bundler composes PATH over the PATH it recorded, which finds the
+ * app's Ruby first, as a developer's shell finds theirs: the launcher
+ * put Ruby's bin folder there before Bundler loaded
+ * (fledge_ruby_on_path_code, below). So the bundle's commands, and the
+ * ruby they run, are the app's, and Bundler.original_env, and every
+ * program the app starts inside Bundler.with_original_env or
+ * with_unbundled_env, finds the app's Ruby first too, as under bundle
+ * exec they find the developer's.
+ *
  * On Windows, whose variable names ignore case, a person may spell one
  * of Bundler's otherwise, as bundle_gemfile, or as Windows spells PATH,
  * Path. Ruby's ENV writes there keep a variable's existing name
@@ -70,6 +79,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/*
+ * The app's Ruby first on PATH (doc/contributors/design/launcher.md,
+ * "The app's Ruby on PATH"). A developer runs ruby main.rb, or bundle
+ * exec, from a shell whose PATH found that ruby, in its bin folder,
+ * beside the commands gem install writes for its gems; bundle exec puts
+ * the bundle's bin folder before it (shared_helpers.rb, set_path, at
+ * Bundler 4.0.20). So under either, system("rake") runs the Ruby's own
+ * rake, or the bundle's, and a gem's command that finds no ruby beside
+ * it runs the ruby PATH finds (rubygems/installer.rb,
+ * bash_prolog_script and windows_stub_script, at Ruby 4.1.0-preview1).
+ * The person who runs an app has no Ruby on PATH, or one of their own,
+ * which would then run in the app's place. So the code puts Ruby's bin
+ * folder, which holds Ruby and the gems' commands, first on PATH, unless
+ * it is first already, as in a Ruby the app restarts. The launcher runs
+ * it for every app before Bundler loads, so the PATH Bundler records as
+ * the one it started from has it too.
+ */
+const char fledge_ruby_on_path_code[] =
+    "paths = ENV.fetch(\"PATH\", \"\").split(File::PATH_SEPARATOR)\n"
+    "unless paths.first == RbConfig::CONFIG[\"bindir\"]\n"
+    "  ENV[\"PATH\"] = [RbConfig::CONFIG[\"bindir\"], *paths].join(File::PATH_SEPARATOR)\n"
+    "end\n"
+    "nil\n";
 
 static const char code_before_variables[] = "set_aside = [\"";
 static const char code_after_variables[] =

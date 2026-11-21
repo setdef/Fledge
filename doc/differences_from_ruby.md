@@ -22,6 +22,10 @@ On Windows, where variable names ignore case, a user may spell Bundler's `BUNDLE
 
 RubyGems still activates a bundled gem your lockfile does not lock, such as `irb`, when your code requires it, as under `bundle exec`. So on macOS and Linux, `binding.irb` works in an app with a `Gemfile`. On Windows it fails in the app and under `bundle exec` alike, because `irb` there needs `fiddle`, and Bundler leaves `fiddle` out of a bundle that does not lock it.
 
+## Your gems' commands
+
+`ENV["PATH"]` starts with the app's Ruby's bin folder, which holds its `ruby` and your gems' commands, as your shell's `PATH` starts with the Ruby you run. So `system("rake")`, backquotes, `Open3`, `ruby -S rake`, and `system("ruby", "worker.rb")` find the app's own, never a Ruby your users happen to have; in an app with a `Gemfile` they run the version your lockfile locks, as under `bundle exec`. `Bundler.original_env`, `with_original_env`, and `with_unbundled_env` give your users' own `PATH` with the same folder first, as under `bundle exec` they give yours with your Ruby in it. On a phone, an app cannot yet run a gem's command by its name ([What a phone forbids](phones.md#what-a-phone-forbids)).
+
 ## The locale
 
 On macOS and Linux, a double-click starts a program with no locale variable set, or with `LANG` set to `C` or `POSIX`. Then the launcher, and the Ruby that `RbConfig.ruby` names, use UTF-8, where `ruby` would stay in C. `Encoding.default_external`, `Encoding.find("locale")`, and `Encoding.find("filesystem")` are UTF-8, not US-ASCII. Without this, Bundler, and any code that matches or joins the app's paths, would fail when the app sits in a folder whose name is not ASCII.

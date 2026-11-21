@@ -59,12 +59,13 @@ class Parity
     end
 
     # The reports of ruby main.rb and of the windowed app, each started as
-    # the desktop starts one, with +env+, each with PER_START's values
-    # made one.
+    # the desktop starts one, with +env+, ruby main.rb's as its developer
+    # has it (Parity#developer), each with PER_START's values made one.
     def reports(env)
       FileUtils.mkdir_p(@work)
       @program = @parity.build_app(project, NAME)
-      [start(reference(env), env), start(app(env), env)]
+      developer = @parity.developer(env)
+      [start(reference(developer), developer), start(app(env), env)]
     end
 
     # +report+ with the value of each of PER_START's variables in ENV and a

@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Windows 11 is the oldest Windows Fledge names for its apps, on x64 as on ARM64, where the README named Windows 10, which Microsoft stopped supporting on 2025-10-14. Nothing in an app changes.
 
+### Fixed
+
+- A desktop app's `PATH` starts with its Ruby's bin folder, as a developer's shell has the Ruby they run, so `system("rake")`, backquotes, `ruby -S`, and `system("ruby", ...)` find the app's own Ruby and its gems' commands, the lockfile's version inside the bundle, as under `bundle exec`, where before they found nothing or the person's own Ruby; `Bundler.original_env` and `with_unbundled_env` keep that folder first too, as under `bundle exec` they keep the developer's Ruby.
+
 ## [0.16.0] - 2026-11-20
 
 ### Added

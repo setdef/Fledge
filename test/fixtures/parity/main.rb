@@ -195,6 +195,56 @@ def main_bundle
   identifier.null? ? nil : message.call(identifier, selector.call("UTF8String")).to_s
 end
 
+# What rake prints to say who ran it: the Ruby, and the version of rake
+# that Ruby loaded.
+RAKE_SAYS = "print RbConfig.ruby, 32.chr, Rake::VERSION"
+
+# What the block's command printed, and whether it succeeded, or what
+# went wrong when it could not start, as on a phone, or RubyGems found no
+# such command.
+def says
+  output, success = yield
+  [output, success]
+rescue SystemCallError, Gem::Exception => e
+  "#{e.class}: #{e.message}"
+end
+
+# What +command+ prints, and whether it succeeded.
+def popen_says(*command)
+  says { [IO.popen(command, err: File::NULL, &:read), $?.success?] }
+end
+
+# What system prints for +command+, and what it returned: nil when the
+# command could not start.
+def system_says(*command)
+  reader, writer = IO.pipe
+  ran = system(*command, out: writer, err: File::NULL)
+  writer.close
+  [reader.read, ran]
+ensure
+  [reader, writer].each { |io| io&.close unless io&.closed? }
+end
+
+# A gem's command run as programs run one (doc/contributors/design/gems.md,
+# "Gem executables"): by its name, which PATH finds, through system,
+# backquotes, Open3, and a child Ruby; through ruby -S, which searches
+# PATH itself; and by the file Gem.bin_path names. Each says which Ruby
+# ran it and which rake that Ruby loaded. And ruby by its name, which a
+# gem's command runs when no ruby is beside it. Under bundle exec PATH
+# finds the bundle's commands, and the Ruby they run is the program's own.
+def gem_commands
+  require "open3"
+  {
+    "system" => system_says("rake", "--execute", RAKE_SAYS),
+    "backquotes" => says { [`rake --execute "#{RAKE_SAYS}" 2>#{File::NULL}`, $?.success?] },
+    "Open3" => says { Open3.capture2("rake", "--execute", RAKE_SAYS, err: File::NULL).then { |out, status| [out, status.success?] } },
+    "a child Ruby" => child_ruby("print IO.popen(['rake', '--execute', #{RAKE_SAYS.inspect}], err: File::NULL, &:read)"),
+    "ruby -S" => popen_says(RbConfig.ruby, "-S", "rake", "--execute", RAKE_SAYS),
+    "Gem.bin_path" => says { [IO.popen([RbConfig.ruby, Gem.bin_path("rake", "rake"), "--execute", RAKE_SAYS], err: File::NULL, &:read), $?.success?] },
+    "ruby" => popen_says("ruby", "-e", "print RbConfig.ruby"),
+  }
+end
+
 # Collects what Ruby warns, in place of $stderr.
 class Warnings
   attr_reader :text
@@ -468,6 +518,9 @@ def parity_line
   require "openssl"
   report["ENV from require 'openssl'"] = ENV.to_h.reject { |name, value| before[name] == value }
   report["$stdout writes through"] = stdout_writes_through
+  # After the facts, since requiring open3 changes $LOADED_FEATURES, and
+  # before requireable, which activates every gem.
+  report["gem commands"] = gem_commands
   # Last, since requiring changes $LOADED_FEATURES.
   report["requireable"] = Gem::Specification.to_h { |spec| [spec.name, requireable(spec)] }.sort.to_h
   # Last of all, since it changes $0.

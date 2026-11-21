@@ -36,6 +36,8 @@ module Fledge
 
       private def finish: (String project) -> void
 
+      private def packaging_problem: (String project) -> String?
+
       private def readers: () -> Binary::Readers
     end
   end

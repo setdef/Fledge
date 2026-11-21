@@ -368,6 +368,40 @@ class MobileBuildTest < Minitest::Test
     refute_includes File.read(File.join(project, "src/main/java/org/setdef/fledge/host/MainActivity.java")), "loadLibrary"
   end
 
+  # An extension built as a file loads only from the native libraries
+  # the package installer extracts, which a build.gradle that sets
+  # useLegacyPackaging = false, as Fledge's template did before 0.13.0,
+  # keeps it from extracting: a host's copy that says so is refused,
+  # naming the file, the extension, and the line to set; one that says
+  # true, in any of Groovy's ways, builds; and one that says nothing,
+  # which may set it elsewhere, builds with a line that says what to add.
+  # (A host's build.gradle with false and no such extension builds:
+  # test_an_android_hosts_files_replace_fledges_and_join_them.)
+  def test_an_android_host_that_keeps_native_libraries_stored_cannot_ship_an_extension_built_as_a_file
+    gradle = "android {\n    packaging {\n        jniLibs {\n            useLegacyPackaging = false\n        }\n    }\n}\n"
+    error = assert_raises(Fledge::Error) { android_project_with_library("adder/adder", host: { "build.gradle" => gradle }) }
+
+    assert_equal "Hello can't ship for android:\n  host/android/build.gradle sets useLegacyPackaging = false, so the package " \
+      "installer extracts none of the app's native libraries, and adder's extension adder/adder, which Ruby loads from among " \
+      "them, would not load on a phone. Set useLegacyPackaging = true in its packaging { jniLibs { } } block, as Fledge's own " \
+      "build.gradle does.", error.message
+    refute_path_exists File.join(@dir, "dist", "Hello-android")
+
+    log = StringIO.new
+    kept = "android {\n    packagingOptions.jniLibs.useLegacyPackaging true\n}\n/* Fledge's template said\n   useLegacyPackaging = false until 0.13.0 */\n"
+    assert_path_exists android_project_with_library("adder/adder", host: { "build.gradle" => kept }, log:)
+    assert_equal "host/android replaces Fledge's build.gradle\n", log.string
+
+    log = StringIO.new
+    assert_path_exists android_project_with_library("adder/adder", host: { "build.gradle" => "android {\n}\n" }, log:)
+    assert_equal [
+      "host/android replaces Fledge's build.gradle",
+      "host/android/build.gradle sets no useLegacyPackaging, and Android's default keeps the native libraries stored, so " \
+        "unless your project sets it to true elsewhere, adder's extension adder/adder will not load on a phone. Add " \
+        "useLegacyPackaging = true in a packaging { jniLibs { } } block, as Fledge's own build.gradle has it.",
+    ], log.string.lines.map(&:chomp)
+  end
+
   # The package installer extracts only a library whose name has the
   # characters isFilenameSafe takes (AOSP's ApkParsing.cpp).
   def test_an_android_extension_whose_feature_android_cannot_install_is_refused
@@ -458,9 +492,15 @@ class MobileBuildTest < Minitest::Test
   end
 
   # Writes an Android project for a script app whose one extension,
-  # +feature+, was built as a file for x86_64, and returns its folder.
-  private def android_project_with_library(feature)
-    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
+  # +feature+, was built as a file for x86_64, with +host+'s files, by
+  # path, in its host/android, when it has any, saying to +log+ what it
+  # says, and returns its folder.
+  private def android_project_with_library(feature, host: {}, log: nil)
+    config = "identifier: com.example.Hello\n"
+    config += "android:\n  host: host/android\n" unless host.empty?
+    root = script_app(config)
+    host_files(root, "host/android", host)
+    app = Fledge::App.at(root)
     shared = File.join(@dir, "adder.so")
     File.write(shared, "ELF adder")
     target = Fledge::MobileExtensions::Target.new(name: "x86_64-linux-android", root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi: "x86_64")
@@ -468,7 +508,7 @@ class MobileBuildTest < Minitest::Test
     build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [library], ffi_libraries: [])
     built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [])
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
-    Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(@dir, "dist"), extensions: FakeExtensions.new(built)).call
+    Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(@dir, "dist"), extensions: FakeExtensions.new(built), log:).call
   end
 
   private def xcodegen?

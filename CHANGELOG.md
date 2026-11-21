@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge build android` refuses an app with a C or C++ extension built as a file when the project's `build.gradle`, such as a host's copy made before 0.13.0, sets `useLegacyPackaging = false`, and warns when it sets none: the app built, and raised `LoadError` at the extension's `require`; a host's copy needs `useLegacyPackaging = true`, as the template has had since 0.13.0.
+
 ### Changed
 
 - A desktop app is smaller, by about 70 MB unpacked on glibc Linux, 145 MB on musl Linux, and 2 MB on macOS: the static libruby that `mkmf` links its checks against comes without its debug information, which nothing reads.

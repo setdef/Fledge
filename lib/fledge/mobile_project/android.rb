@@ -9,6 +9,7 @@ require "fileutils"
 require_relative "../error"
 require_relative "android_libraries"
 require_relative "android_linkage"
+require_relative "android_packaging"
 require_relative "../platform"
 require_relative "../icon"
 require_relative "../mac_bundle"
@@ -238,13 +239,31 @@ module Fledge
 
       # Refuses the project when a native library Fledge put in it needs
       # one that neither Android, nor the runtime, nor the app carries
-      # (AndroidLinkage), read once the host's files are in place, since
-      # a host may carry a library too. The rest is Gradle's to build.
+      # (AndroidLinkage), or when its <tt>build.gradle</tt> keeps the
+      # extensions built as files from being extracted (AndroidPackaging),
+      # read once the host's files are in place, since a host may carry a
+      # library, or its own <tt>build.gradle</tt>, too. The rest is
+      # Gradle's to build.
       private def finish(project)
         judged = @judged or return
 
-        found = AndroidLinkage.new(readers:).problems(project, judged)
+        found = [*packaging_problem(project), *AndroidLinkage.new(readers:).problems(project, judged)]
         raise Error, "#{@app.name} can't ship for android:\n#{found.map { |problem| "  #{problem}" }.join("\n")}" unless found.empty?
+      end
+
+      # The refusal AndroidPackaging gives the project's
+      # <tt>build.gradle</tt>, named as the host's file where the host
+      # replaced Fledge's, after saying its warning, if any.
+      private def packaging_problem(project)
+        libraries = (@built&.targets || {}).values.flat_map(&:libraries)
+        extensions = libraries.map { |library| [library.gem, library.feature] } # : Array[[String, String]]
+        packaging = AndroidPackaging.new(extensions.uniq)
+        text = File.read(File.join(project, "build.gradle"))
+        host = @app.config.android&.host
+        shown = (host && File.file?(File.join(@app.root, host, "build.gradle"))) ? "#{host}/build.gradle" : "build.gradle"
+        warning = packaging.warning(text, shown:)
+        @log&.puts warning if warning
+        packaging.refusal(text, shown:)
       end
 
       # The tools that read the app's libraries: the NDK's, or, for a

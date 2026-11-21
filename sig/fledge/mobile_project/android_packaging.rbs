@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileProject
+    class AndroidPackaging
+      SETTING: Regexp
+
+      COMMENTS: Regexp
+
+      FIX: String
+
+      @extensions: Array[[String, String]]
+
+      def initialize: (Array[[String, String]] extensions) -> void
+
+      def refusal: (String text, shown: String) -> String?
+
+      def warning: (String text, shown: String) -> String?
+
+      private def setting: (String text) -> String?
+
+      private def named: () -> String
+    end
+  end
+end

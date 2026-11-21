@@ -59,7 +59,7 @@ class LicenseAudit
   # The largest file whose words the audit reads.
   TEXT_LIMIT = 4_000_000
 
-  attr_reader :platform, :tree, :map
+  attr_reader :platform, :tree, :map, :sources
 
   def initialize(platform:, tree:, map: MAP, sources: SOURCES, fledge_version: nil, readers: LicenseAudit.readers)
     @platform = platform
@@ -175,6 +175,21 @@ class LicenseAudit
 
   def expand(pattern)
     LicenseAudit.expand(pattern, @facts, prefix: -> { prefix }, abi: -> { abi }, fledge_version: @fledge_version)
+  end
+
+  # The entries of +map+'s components that describe +platform+'s
+  # runtime, given +sources+, the pins of runtime/sources.yml: those whose
+  # platforms name it and whose ruby_build, if any, is the build of Ruby
+  # the platform's Ruby pin names (upstream, unless the pin says build:
+  # fledge). So a runtime made from rv-ruby's Ruby must hold what that
+  # build compiled in, and one made from Fledge's own build must hold
+  # what Fledge's compiled in, each by its own evidence, and a pin that
+  # moves from one to the other moves the audit with it.
+  def self.entries(map, sources, platform)
+    build = sources.dig("ruby", "platforms", platform, "build") || "upstream"
+    map.fetch("components").select do |entry|
+      entry.fetch("platforms").include?(platform) && entry.fetch("ruby_build", build) == build
+    end
   end
 
   # +pattern+ with each token runtime/licenses.yml's patterns may hold

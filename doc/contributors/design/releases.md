@@ -40,6 +40,21 @@ The runtimes' asset names without a Ruby version mean the runtime of the Ruby mi
 
 Before 1.0, a release may carry a preview of a Ruby minor, and any 0.x release may move it to a later preview or to the minor's final release; Windows runs RubyInstaller's head build of the day the preview appeared until RubyInstaller builds the release. 1.0 carries Ruby 4.1, which only a major drops, and waits for Ruby 4.1.0, by the maintainer's choice once Fledge's and Lota's agents agreed (decisions.md, 2026-11-09). Fledge's agents agreed because a 1.0 on Ruby 4.0 would have kept 4.0's runtimes through all of 1.x. So 1.0's date depends on Ruby's, which Fledge does not control.
 
+### The day Ruby 4.1.0 appears
+
+Whether 1.0.0 ships on that day with RubyInstaller's head build of that day on Windows, or waits for RubyInstaller's own 4.1.0 build, is the maintainer's to decide, and nothing in Fledge assumes either. The evidence, from each project's release page, timed from Ruby's own tarball on `cache.ruby-lang.org` (its `Last-Modified`):
+
+| Source | Ruby 4.0.0 (tarball 2025-12-25 04:08 UTC) | Ruby 4.1.0-preview1 (tarball 2026-10-12 09:07 UTC) |
+|---|---|---|
+| ruby/setup-ruby's builds (ruby/ruby-builder) | 3 hours | 1 hour |
+| rv-ruby | 20 hours (release 20251225) | 11 days (release 20261022) |
+| RubyInstaller | 2 days 9 hours (RubyInstaller-4.0.0-1) | none: it builds no preview |
+| jdx/ruby | not datable: every release was republished on 2026-10-02 | 10 days |
+
+- **On the day, with that day's head build.** `.github/workflows/keep-rubyinstaller-head.yml` keeps the head build of the day the tarball appears ("Keeping RubyInstaller's head build" in `runtimes.md`), a build of Ruby's master, not of the tag: Windows runs master of that day while every other platform runs 4.1.0, as Windows has run master beside each preview. Ruby moves master to the next minor near a release, so that build may already call itself 4.2.0dev, whose ABI and `RUBY_VERSION` are not 4.1's; it is usable only if it still says 4.1.0, which nothing in Fledge has checked on a past release day. A patch release then moves Windows to RubyInstaller-4.1.0-1. macOS and glibc Linux need not wait on rv-ruby either if their runtimes take Fledge's own build of the tag ("Fledge's own Ruby builds" in `runtimes.md`). The cost: 1.0.0's Windows runtimes are not 4.1.0, and its `RUBY_DESCRIPTION` there says `4.1.0dev`, so `Gem.ruby_version` is 4.1.0.dev on Windows and a Gemfile's `ruby "4.1.0"` fails there until the patch.
+- **Either way, Windows' Ruby is configured unlike the others.** Ruby 4.1 adds `rb_len_t`, the type of String, Array, and MatchData lengths in the C API, "`long`, except on 64-bit mswin, where they are 64 bits" (`NEWS.md`, "Type for lengths and indices", Feature #22400, at ruby/ruby 72d4cf2e9a). RubyInstaller's head package, which is MinGW and not mswin, sets `CPPFLAGS+=" -DSIZEOF_RB_LEN_T=8"` (`mingw-w64-ruby-head/PKGBUILD`, line 62, at oneclick/rubyinstaller2-packages 3dd5c657), so there `rb_len_t` is 64 bits where `long` is 32. So one Ruby commit on every runtime is not one build configuration. Whether the kept head build of 2026-11-10 already has the flag (its `RbConfig::CONFIG["CPPFLAGS"]` would show it), whether RubyInstaller-4.1.0-1 will keep it, and whether rb-sys's bindgen, which another project's agent reports binds `rb_len_t` as `c_long` under `gem install`, gets the size wrong there, are all unchecked.
+- **Waiting for RubyInstaller-4.1.0-1.** By 4.0.0's evidence, two to three days after the tarball, and longer if RubyInstaller's build falls on a holiday, as 4.0.0's did. Every platform then runs 4.1.0 in 1.0.0. The cost is the wait, and that the day itself is not 1.0's.
+
 ## Platform floors
 
 A floor is the oldest operating system version a platform's apps run on. Fledge's are:

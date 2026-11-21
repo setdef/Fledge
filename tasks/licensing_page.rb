@@ -177,9 +177,10 @@ class LicensingPage
     { AUDITED => page.audited, PAGE => page.text }
   end
 
-  def initialize(findings, version: Fledge::VERSION, map: LicenseAudit::MAP)
+  def initialize(findings, version: Fledge::VERSION, map: LicenseAudit::MAP, sources: LicenseAudit::SOURCES)
     @version = version
     @map = YAML.safe_load_file(map)
+    @sources = YAML.safe_load_file(sources)
     @findings = findings.to_h do |platform, found|
       [platform, found.within(platform, components(platform, found))]
     end
@@ -214,14 +215,13 @@ class LicensingPage
 ].join("\n")
   end
 
-  # The map's components for +platform+, their words expanded with what
+  # The map's components for +platform+ and the build of Ruby its pin
+  # names (LicenseAudit.entries), their words expanded with what
   # +found+ says of the tree.
   private def components(platform, found)
     facts = @map.fetch("platforms").fetch(platform)
     expand = -> (text) { LicenseAudit.expand(text, facts, prefix: -> { found.prefix }, abi: -> { found.abi }, fledge_version: @version) }
-    @map.fetch("components").filter_map do |entry|
-      LicenseAudit::Component.from_map(entry, expand) if entry.fetch("platforms").include?(platform)
-    end
+    LicenseAudit.entries(@map, @sources, platform).map { |entry| LicenseAudit::Component.from_map(entry, expand) }
   end
 
   private def summary(platform)

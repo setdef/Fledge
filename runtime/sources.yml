@@ -14,7 +14,10 @@
 # macOS and Linux: rv-ruby's relocatable CRuby builds, release 20261023,
 # one asset per target. Each carries a static libruby the launcher links,
 # and the standard library the runtime ships. The SHA-256s are those
-# GitHub records for each asset.
+# GitHub records for each asset. A pin of Fledge's own build of Ruby
+# (ruby-build, below) in their place says build: fledge, so that the
+# license audit asks for what that build holds (runtime/licenses.yml,
+# ruby_build).
 #
 # Windows: RubyInstaller publishes no build of a Ruby preview, so the
 # Windows runtimes take its rolling build of Ruby's master,
@@ -426,6 +429,45 @@ musl-ruby:
     version: cacert-2026-03-19
     url: https://curl.se/ca/cacert-2026-03-19.pem
     sha256: b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171
+
+# The relocatable CRuby Fledge builds for glibc Linux and macOS
+# (tasks/ruby_archive.rb; doc/contributors/design/runtimes.md, "Fledge's
+# own Ruby builds"), in rv-ruby's archives' shape, for a runtime's ruby
+# pin to name in place of rv-ruby's and for a developer to install as
+# their Ruby. No runtime builds from these pins: ruby names the source
+# it builds from, with musl-ruby's OpenSSL, libyaml, libffi, zlib, and
+# CA certificates, and rust the Rust compiler and standard library that
+# compile YJIT and ZJIT, the release the mise.toml Rust names, from
+# static.rust-lang.org, whose SHA-256s are those its .sha256 files give.
+ruby-build:
+  ruby:
+    version: 4.1.0-preview1
+    url: https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview1.tar.gz
+    sha256: fb530bb88e90de3ae91c1310a27ae090e6bd989b8726de50ef12a890a85b88ef
+  rust:
+    version: 1.99.1
+    platforms:
+      x86_64-linux:
+        rustc:
+          url: https://static.rust-lang.org/dist/rustc-1.99.1-x86_64-unknown-linux-gnu.tar.xz
+          sha256: 2ff05ff9c08a90861e7f6e4065b40a8b87463b4576186fd613871c3e37f2091f
+        rust-std:
+          url: https://static.rust-lang.org/dist/rust-std-1.99.1-x86_64-unknown-linux-gnu.tar.xz
+          sha256: 109b074225bf5b9ea3820890876bfdf4ed161adbfaf94b2b4b5984c85ee5d958
+      aarch64-linux:
+        rustc:
+          url: https://static.rust-lang.org/dist/rustc-1.99.1-aarch64-unknown-linux-gnu.tar.xz
+          sha256: acdcdfe09ae1f103aa9a2b7f88903a9588bc2e99288af10e6fbf5514e2e49f25
+        rust-std:
+          url: https://static.rust-lang.org/dist/rust-std-1.99.1-aarch64-unknown-linux-gnu.tar.xz
+          sha256: e25668477083d6a9ddb87b9beb9c00742225f38233ccb4bfba3afa7a07427f52
+      arm64-darwin:
+        rustc:
+          url: https://static.rust-lang.org/dist/rustc-1.99.1-aarch64-apple-darwin.tar.xz
+          sha256: 23948a0a9c162fd2952defb3fb0462c44e8fcfd1a4ab8a274a1e1bdb2cf810a3
+        rust-std:
+          url: https://static.rust-lang.org/dist/rust-std-1.99.1-aarch64-apple-darwin.tar.xz
+          sha256: fe79d6ab5a0321de26463999d8c112b8ad3eafbcbcf822d66a2300b45dde1031
 
 # What each runtime ships, under which license, and with which notice,
 # is runtime/licenses.yml's: the license audit derives it from each built

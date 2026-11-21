@@ -120,6 +120,11 @@ signatures:
 #   first_party: Fledge's own work, which NOTICES.txt and doc/licensing.md
 #              name as Fledge's, and into which no LGPL library may be
 #              linked
+#   ruby_build: which build of Ruby the entry describes: upstream (the
+#              one rv-ruby or RubyInstaller publishes) or fledge (Fledge's
+#              own, tasks/ruby_archive.rb), as the platform's Ruby pin in
+#              runtime/sources.yml says by its build key; an entry
+#              without it describes either
 components:
   - id: fledge
     name: Fledge launcher and RubyGems defaults
@@ -203,9 +208,26 @@ components:
     notice: rust
     ships: compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    ruby_build: upstream
     embedded:
       - files: [launcher, "{prefix}bin/ruby", "{prefix}lib/libruby*-static.a"]
         evidence: /rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/
+
+  # Fledge's own build of Ruby compiles YJIT and ZJIT with the Rust
+  # runtime/sources.yml pins under ruby-build, whose commit names it.
+  - id: rust-std
+    name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
+    version: 1.99.1
+    license: MIT OR Apache-2.0
+    kind: program
+    download: https://github.com/rust-lang/rust/tree/1.99.1
+    notice: rust
+    ships: compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: fledge
+    embedded:
+      - files: [launcher, "{prefix}bin/ruby", "{prefix}lib/libruby*-static.a"]
+        evidence: /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/
 
   - id: gcc-runtime
     name: GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc)
@@ -291,6 +313,7 @@ components:
     notice: openssl
     ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    ruby_build: upstream
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.2 "
@@ -304,6 +327,21 @@ components:
     notice: openssl
     ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}"
     platforms: [x86_64-linux-musl, aarch64-linux-musl]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
+        evidence: "OpenSSL 3.6.5 "
+
+  # Fledge's own build of Ruby takes its OpenSSL from musl-ruby's pin.
+  - id: openssl
+    name: OpenSSL, compiled into Ruby's openssl extension
+    version: 3.6.5
+    license: Apache-2.0
+    kind: program
+    download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
+    notice: openssl
+    ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}"
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: fledge
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.5 "

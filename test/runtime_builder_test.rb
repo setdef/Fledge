@@ -127,9 +127,7 @@ class RuntimeBuilderTest < Minitest::Test
   def test_libxcrypt_builds_with_rv_rubys_options_and_warnings_left_as_warnings
     Dir.mktmpdir do |dir|
       commands = Pinned.new(builder("x86_64-linux").sources)
-      recipe = RuntimeBuilder::Linux.new(builder: commands, build_dir: dir)
-
-      recipe.__send__(:build_libxcrypt)
+      RuntimeBuilder::Linux.build_libxcrypt(commands, dir)
 
       configure = commands.ran.find { |command| command.first == "./configure" }
       expected = %w[

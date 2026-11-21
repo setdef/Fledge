@@ -41,8 +41,9 @@ class RubySnapshot < Data.define(:date, :url, :sha256)
   INDEX = "#{BASE}snapshot-master.json".freeze
 
   # The keys of runtime/sources.yml whose Ruby Fledge builds from its
-  # tarball: the phones' and musl's.
-  FROM_SOURCE = %w[mobile musl-ruby].freeze
+  # tarball: the phones', musl's, and the Rubies Fledge publishes for
+  # glibc Linux and macOS (ruby-build).
+  FROM_SOURCE = %w[mobile musl-ruby ruby-build].freeze
 
   # The snapshot the index +json+ describes: its date, and its gzip
   # tarball's URL and SHA-256.

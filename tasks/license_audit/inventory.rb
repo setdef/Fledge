@@ -18,11 +18,10 @@ class LicenseAudit
       @audit = audit
     end
 
-    # The components runtime/licenses.yml maps for the audit's platform.
+    # The components runtime/licenses.yml maps for the audit's platform
+    # and the build of Ruby its pin names (LicenseAudit.entries).
     def map_components
-      @audit.map.fetch("components").filter_map do |entry|
-        next unless entry.fetch("platforms").include?(@audit.platform)
-
+      LicenseAudit.entries(@audit.map, @audit.sources, @audit.platform).map do |entry|
         Component.from_map(entry, @audit.method(:expand))
       end
     end

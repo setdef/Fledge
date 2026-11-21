@@ -204,6 +204,28 @@ class LicenseAuditTest < Minitest::Test
     assert_includes rules(audit), ["stale", "#{ARCH}/openssl.so"]
   end
 
+  # A runtime made from Fledge's own build of Ruby holds that build's Rust
+  # and OpenSSL, not rv-ruby's. The platform's Ruby pin says which build
+  # it is, so today's pins still ask for rv-ruby's, and Fledge's passes
+  # only under a pin that names it.
+  def test_the_build_of_ruby_a_pin_names_decides_what_the_runtime_must_hold
+    write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2],
+      payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/ GCC: (Ubuntu 13.3.0)"))
+    write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.5 "))
+    stale = [["stale", "launcher"], ["stale", "#{ARCH}/openssl.so"]]
+
+    assert_equal stale, rules(audit) & stale
+    Dir.mktmpdir("sources") do |dir|
+      sources = YAML.safe_load_file(LicenseAudit::SOURCES)
+      sources.dig("ruby", "platforms", "x86_64-linux")["build"] = "fledge"
+      File.write(File.join(dir, "sources.yml"), YAML.dump(sources))
+      report = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, sources: File.join(dir, "sources.yml"),
+        fledge_version: "0.0.0").call
+
+      assert_empty report.violations
+    end
+  end
+
   # rv-ruby's bin/ holds the gems' executables beside ruby; each belongs
   # to its gem, so its license is the gem's.
   def test_a_gems_executable_belongs_to_the_gem

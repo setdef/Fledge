@@ -45,9 +45,7 @@ class LicenseAudit
 
     # The components that ship on the platform with a source pin.
     def components
-      @map.fetch("components").select do |entry|
-        entry["source"] && entry.fetch("kind") != "source" && entry.fetch("platforms").include?(@platform)
-      end
+      LicenseAudit.entries(@map, @sources, @platform).select { |entry| entry["source"] && entry.fetch("kind") != "source" }
     end
 
     # Writes each component's folder into the runtime folder +runtime+,

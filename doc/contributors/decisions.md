@@ -477,3 +477,13 @@ The orchestrating agent received these words first-hand from the maintainer.
 [re: the orchestrating agent's statement that the release it was about to call the candidate for 1.0.0 left known defects unfixed, of which it named three: two gems whose extensions define one global name clash on a phone; a library for ffi that a gem's package holds built for iOS had never been tried; and CI ran none of the iOS integration tests.]
 
 *Governs:* the candidate for 1.0.0 is a release with no bug the project knows of. A known defect is fixed, or shown not to be one, before a release is called the candidate; it is not listed beside it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `doc/contributors/handoff.md`, "Where to start next".
+
+> we've gotta figure out how to start testing not just Windows on much more recent rubies.
+
+[re: Fledge's runtimes then carrying Ruby 4.1.0-preview1, of 2026-10-11, on every system but Windows, whose Ruby was a build of Ruby's main branch of 2026-11-10, while Fledge 1.0.0 waits for Ruby 4.1.0. These words end a longer sentence; its beginning is left out.]
+
+> And hey, Fledge needs to support Lota and Tokra in _their_ goals to test with Fledge's releases and shipping sample apps on more recent rubies too, right?
+
+[re: the orchestrating agent's plan, made in answer to the words above, for a nightly run that tests Fledge against Ruby's main branch while Fledge's releases stayed on the preview. The agent answered yes, and took the question as direction.]
+
+*Governs:* Fledge is tested against a recent Ruby on every platform, not only on Windows; and before 1.0 a release may carry a recent snapshot of Ruby's main branch on every platform, built by Fledge where no project publishes one that can move, so that the frameworks built on Fledge can test with its releases and ship their sample apps on it. *Applied in:* `.github/workflows/ruby-master.yml`; `doc/contributors/design/runtimes.md`, "Testing against Ruby's master" and "Fledge's own Ruby builds".

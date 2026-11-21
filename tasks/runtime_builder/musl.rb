@@ -5,9 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require "etc"
 require "fileutils"
-require "rbconfig"
 require_relative "unix"
 
 class RuntimeBuilder
@@ -60,104 +58,17 @@ class RuntimeBuilder
     end
 
     # Builds Ruby, and the libraries its extensions link statically, from
-    # their pinned sources, installs it into a prefix of its own, with
-    # Mozilla's CA certificates as libexec/cert.pem where rv-ruby keeps
-    # them, found as rv-ruby's Ruby finds them (Certificates), and
-    # returns the prefix, which the Unix recipe copies a runtime from as
-    # it copies rv-ruby's.
-    #
-    # Ruby is built in its source folder, as rv-ruby builds it
-    # (Abstract/rv-ruby.rb, lines 157 to 174, at spinel-coop/rv-ruby
-    # f57186e): tool/rbinstall.rb writes each default gem's specification
-    # from its gemspec in the folder make runs in, and built beside its
-    # source, io-nonblock's specification keeps RubyGems from activating
-    # the gem for require "io/nonblock" (Mobile#build_target).
+    # their musl-ruby pins (RubyBuild), and returns the prefix, which the
+    # Unix recipe copies a runtime from as it copies rv-ruby's.
     private def unpack_ruby
-      deps = File.join(@build_dir, "deps")
-      %w[zlib libyaml libffi].each { |name| build_autotools(name, deps) }
-      build_openssl(deps)
-      prefix = File.join(@build_dir, "prefix")
-      FileUtils.rm_rf(prefix)
-      source = unpack(pin("ruby"), "ruby")
-      RubySource.apply(source, EDITS)
-      logged("ruby-configure", "./configure", *configure_options(prefix, deps), chdir: source)
-      logged("ruby-make", "make", "-j#{Etc.nprocessors}", chdir: source)
-      logged("ruby-install", "make", "install-nodoc", chdir: source)
-      ca = pin("ca-certificates")
-      FileUtils.mkdir_p(File.join(prefix, "libexec"))
-      FileUtils.cp(@builder.fetch(ca.fetch("url"), ca.fetch("sha256")), File.join(prefix, "libexec", "cert.pem"))
-      Certificates.point_openssl_rb(File.join(prefix, "lib", "ruby"))
-      prefix
-    end
-
-    # With Mobile::NO_GIT, the build takes the bundled gems the pinned
-    # tarball carries in gems/, and downloads none.
-    private def configure_options(prefix, deps)
-      [
-        Mobile::NO_GIT,
-        "--prefix=#{prefix}",
-        "--enable-load-relative",
-        "--disable-shared",
-        "--enable-yjit",
-        "--disable-install-doc",
-        "--disable-install-rdoc",
-        "--with-baseruby=#{RbConfig.ruby}",
-        "--with-openssl-dir=#{deps}",
-        "--with-libyaml-dir=#{deps}",
-        "--with-libffi-dir=#{deps}",
-        "--with-zlib-dir=#{deps}",
-        "--without-gmp",
-        "--with-out-ext=win32,win32ole",
-        "LDFLAGS=-static-libgcc",
-      ]
+      RubyBuild.new(builder: @builder, build_dir: @build_dir, pins: @builder.sources.fetch("musl-ruby"), edits: EDITS,
+        openssl_target: "linux-#{ARCHES.fetch(@builder.platform.name)}").call
     end
 
     # The libraries libruby-static.a needs, as its own Ruby links them
     # (RbConfig's LIBS), which on musl are all in its C library.
     private def libruby_libraries
       %w[-lm -lpthread]
-    end
-
-    private def build_autotools(name, prefix)
-      source = unpack(pin(name), name)
-      options = (name == "zlib") ? ["--static"] : ["--disable-shared", "--enable-static", "--with-pic"]
-      options += %w[--disable-docs --disable-multi-os-directory] if name == "libffi"
-      logged("#{name}-configure", "./configure", "--prefix=#{prefix}", "--libdir=#{File.join(prefix, 'lib')}", *options,
-        chdir: source, env: { "CFLAGS" => "-O2 -fPIC" })
-      logged("#{name}-make", "make", "-j#{Etc.nprocessors}", chdir: source)
-      logged("#{name}-install", "make", "install", chdir: source)
-    end
-
-    private def build_openssl(prefix)
-      source = unpack(pin("openssl"), "openssl")
-      Certificates.rename_variable(source)
-      target = "linux-#{ARCHES.fetch(@builder.platform.name)}"
-      logged("openssl-configure", "./Configure", target, "no-shared", "no-tests", "no-apps", "no-docs", "no-module", "-fPIC",
-        "--prefix=#{prefix}", "--libdir=lib", "--openssldir=/etc/ssl", chdir: source)
-      logged("openssl-make", "make", "-j#{Etc.nprocessors}", "build_libs", chdir: source)
-      logged("openssl-install", "make", "install_dev", chdir: source)
-    end
-
-    private def pin(name)
-      @builder.sources.fetch("musl-ruby").fetch(name)
-    end
-
-    private def unpack(pin, name)
-      tarball = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
-      folder = File.join(@build_dir, "sources", name)
-      FileUtils.rm_rf(folder)
-      FileUtils.mkdir_p(folder)
-      @builder.run("tar", "-xzf", tarball, "-C", folder, "--strip-components=1")
-      folder
-    end
-
-    private def logged(name, *command, chdir:, env: {})
-      path = File.join(@build_dir, "logs", "#{name}.log")
-      FileUtils.mkdir_p(File.dirname(path))
-      @builder.run(env, *command, chdir:, out: path, err: [:child, :out])
-    rescue RuntimeError
-      warn File.readlines(path).last(150).join
-      raise
     end
 
     private def copy_appimage_runtime(to)

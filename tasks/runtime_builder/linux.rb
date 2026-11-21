@@ -43,7 +43,7 @@ class RuntimeBuilder
     # finds the runtime's libcrypt through the RPATH +rpath+: $ORIGIN/lib
     # for the launcher at the runtime's top, $ORIGIN/../lib for bin/ruby.
     def compile(output, sources, rpath)
-      xcrypt = (@xcrypt ||= build_libxcrypt)
+      xcrypt = (@xcrypt ||= Linux.build_libxcrypt(@builder, @build_dir))
       cc = ENV.fetch("CC", "cc")
       analyze_with_gcc(cc, sources)
       static = File.join(@prefix, "lib", "libruby-static.a")
@@ -80,16 +80,19 @@ class RuntimeBuilder
       FileUtils.chmod(0o755, to)
     end
 
-    private def build_libxcrypt
-      pin = @builder.sources.fetch("libxcrypt")
-      tarball = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
-      source = File.join(@build_dir, "libxcrypt")
-      prefix = File.join(@build_dir, "libxcrypt-prefix")
+    # Builds libxcrypt from its pin, shared, with LIBXCRYPT_CONFIGURE,
+    # into a prefix in +build_dir+, and returns the prefix. RubyArchive
+    # builds the same library for the Ruby it publishes.
+    def self.build_libxcrypt(builder, build_dir)
+      pin = builder.sources.fetch("libxcrypt")
+      tarball = builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
+      source = File.join(build_dir, "libxcrypt")
+      prefix = File.join(build_dir, "libxcrypt-prefix")
       FileUtils.mkdir_p(source)
-      @builder.run("tar", "-xJf", tarball, "-C", source, "--strip-components=1")
-      @builder.run("./configure", "--prefix=#{prefix}", *LIBXCRYPT_CONFIGURE, chdir: source)
-      @builder.run("make", "-j#{Etc.nprocessors}", chdir: source)
-      @builder.run("make", "install", chdir: source)
+      builder.run("tar", "-xJf", tarball, "-C", source, "--strip-components=1")
+      builder.run("./configure", "--prefix=#{prefix}", *LIBXCRYPT_CONFIGURE, chdir: source)
+      builder.run("make", "-j#{Etc.nprocessors}", chdir: source)
+      builder.run("make", "install", chdir: source)
       prefix
     end
 

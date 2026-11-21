@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-20
+
 ### Added
 
 - `fledge build android` refuses an app with a C or C++ extension built as a file when the project's `build.gradle`, such as a host's copy made before 0.13.0, sets `useLegacyPackaging = false`, and warns when it sets none: the app built, and raised `LoadError` at the extension's `require`; a host's copy needs `useLegacyPackaging = true`, as the template has had since 0.13.0.
@@ -479,7 +481,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/setdef/Fledge/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/setdef/Fledge/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/setdef/Fledge/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/setdef/Fledge/compare/v0.12.0...v0.13.0

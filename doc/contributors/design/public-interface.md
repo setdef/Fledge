@@ -153,5 +153,5 @@ Fledge refuses, naming the gem, an extension that the gemspec says CMake, config
 
 **Known limits:**
 
-- CI runs the apps in the iOS Simulator and on x86_64 Android emulators. It builds and checks the iOS device slice and the arm64-v8a library, but runs neither: no free GitHub-hosted runner boots an arm64-v8a emulator. Games built with `fledge build` have run on a physical iPad Pro, iPhone 13 mini, and OnePlus Nord N30 5G (arm64-v8a).
-- An SDL host on iOS runs Ruby on the main thread and asks for a 64 MB main-thread stack in the project's linker flags. Apple documents 1 MB for a device's main thread. An iPhone 13 mini granted the 64 MB; an iPad's grant is not measured, so a deep recursion in Ruby could still fail there.
+- CI runs the apps in the iOS Simulator and on x86_64 Android emulators. It builds and checks the iOS device slice and the arm64-v8a library, but runs neither: no free GitHub-hosted runner boots an arm64-v8a emulator. Games built with `fledge build` have run on a physical iPad Pro, iPhone 12 mini, and OnePlus Nord N30 5G (arm64-v8a), and every phone example has run on that Nord (`doc/contributors/device-test.md`, section 8).
+- An SDL host on iOS runs Ruby on the main thread and asks for a 64 MB main-thread stack in the project's linker flags. Apple documents 1 MB for a device's main thread. An iPhone 12 mini granted the 64 MB; an iPad's grant is not measured, so a deep recursion in Ruby could still fail there.

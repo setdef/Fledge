@@ -85,7 +85,7 @@ class MobileParity
     App.new(path: "examples/native_phone", name: "NativePhone", identifier: "com.setdef.fledge.NativePhone",
       prints: /\ANativePhone adds 5 and totals 10 with a C extension \(C and C\+\+\) on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "examples/cmake_phone", name: "CmakePhone", identifier: "com.setdef.fledge.CmakePhone",
-      prints: /\ACmakePhone totals 10 in C\+\+ that CMake \d+\.\d+\.\d+ built for (?:iOS Simulator on arm64, on arm64-darwin|Android on (?:arm64, on aarch64|x86_64, on x86_64)-linux-android)\z/),
+      prints: /\ACmakePhone totals 10 in C\+\+ that CMake \d+\.\d+\.\d+ built for (?:iOS(?: Simulator)? on arm64, on arm64-darwin|Android on (?:arm64, on aarch64|x86_64, on x86_64)-linux-android)\z/),
     App.new(path: "examples/rake_phone", name: "RakePhone", identifier: "com.setdef.fledge.RakePhone",
       prints: /\ARakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0\.7\.0's Rakefile, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "examples/rust_phone", name: "RustPhone", identifier: "com.setdef.fledge.RustPhone",

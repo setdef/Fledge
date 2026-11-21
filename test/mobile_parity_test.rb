@@ -97,6 +97,19 @@ class MobileParityTest < Minitest::Test
     end
   end
 
+  # CmakePhone's line matches what it printed on an iPhone as well as in
+  # CI's Simulator: CMake's toolchain names the SDK it builds for, and
+  # this is the line an iPhone 12 mini with iOS 27.0 printed on
+  # 2026-11-21.
+  def test_cmake_phones_line_matches_what_it_printed_on_an_iphone
+    app = MobileParity::APPS.find { |candidate| candidate.name == "CmakePhone" }
+    line = "CmakePhone totals 10 in C++ that CMake 4.3.2 built for iOS on arm64, on arm64-darwin"
+
+    assert_match app.prints, line
+    assert_match app.prints, line.sub("for iOS on", "for iOS Simulator on")
+    refute_match app.prints, line.sub("for iOS on", "for watchOS on")
+  end
+
   # An app runs on the phones it names, and every app names both: the
   # libraries for ffi that ffi_library_phone's gems build reach an iOS
   # app as they reach an Android one.

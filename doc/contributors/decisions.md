@@ -461,3 +461,13 @@ The orchestrating agent received these words first-hand from the maintainer.
 > My goal by 7:59am is to get Fledge to that release candidate release. My testing happens _on_ the release candidate, which, if it all passes, will be simply made into 1.0.0.
 
 *Governs:* one 0.x release is the release candidate for 1.0.0, and has everything 1.0.0 will; the maintainer's testing is done on that release; and if all of it passes, 1.0.0 is made from it, with no feature or fix added between the two. The hour is that night's goal and governs nothing after it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `doc/contributors/handoff.md`, "What is left before 1.0"; `questions.md`, question C.
+
+## 2026-11-21
+
+The orchestrating agent received these words first-hand from the maintainer.
+
+> Wait did you say windows TEN? Lol https://support.microsoft.com/en-us/windows/deployment/updates-lifecycle/windows-10-support-has-ended-on-october-14-2025
+
+[re: the orchestrating agent's report that Fledge's README named Windows 10 as the oldest Windows its apps run on, with no run there on record. The maintainer had said he ran a game on it; the game's own records showed that run, of 2026-11-05, to have been on Windows 11.]
+
+*Governs:* Fledge does not name Windows 10 as a system its apps run on: Microsoft's support for it ended on 2025-10-14, before Fledge's first release. The oldest Windows Fledge names is Windows 11. *Applied in:* `README.md`; `README.rdoc`; `doc/contributors/design/releases.md`, "Platform floors"; `doc/contributors/account-tests.md`.

@@ -59,7 +59,7 @@ For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you
 | `arm64-darwin` | macOS 14 or newer, on Apple silicon | a Mac with Apple silicon |
 | `x86_64-linux`, `aarch64-linux` | Linux with glibc 2.39 or newer (Ubuntu 24.04, Debian 13) | Linux with glibc, on that processor |
 | `x86_64-linux-musl`, `aarch64-linux-musl` | Linux with musl 1.2 or newer, such as Alpine | Linux with musl, on that processor |
-| `x64-mingw-ucrt` | Windows 10 and 11 on x64 | Windows on x64 |
+| `x64-mingw-ucrt` | Windows 11 on x64 | Windows on x64 |
 | `aarch64-mingw-ucrt` | Windows 11 on ARM64 | Windows on ARM64 |
 | iOS | iPhone and iPad, iOS 15 or newer | a Mac with Xcode |
 | Android | Android 8.0 (API 26) or newer | a Mac, x86-64 Linux, or Windows |
@@ -67,8 +67,8 @@ For iPhone, iPad, and Android, Fledge writes an Xcode or Gradle project that you
 - Fledge builds for the computer it runs on. To ship to three systems, build on three computers, such as a CI runner of each. There is no runtime for Intel Macs or 32-bit systems.
 - Your app gets the Ruby you run Fledge with, at the version on the Ruby badge above. On Windows, [RubyInstaller](https://rubyinstaller.org/) builds no Ruby preview, so until Ruby 4.1.0 is released a Windows app gets RubyInstaller's build of Ruby's development branch instead, a Ruby 4.1 newer than the preview: test your app on Windows too. See [Runtimes and Ruby versions](doc/runtimes.md).
 - Your code runs as it does under `ruby main.rb`. Fledge's CI compares the two on every platform. Your code can see [a few differences](doc/differences_from_ruby.md), each with its reason.
-- On every change, CI builds each desktop app and runs it on a clean computer that has no Ruby: macOS 15, Windows Server 2025, Windows 11 on ARM64, Ubuntu 24.04, Debian 13, and Alpine 3.24. CI runs phone apps in the iOS 26 Simulator and on Android 16 emulators, and a game has run on a real iPad and iPhone. See [What has run where](doc/phones.md#what-has-run-where).
-- No CI job runs an app on the oldest versions the table names, macOS 14, Windows 10, iOS 15, and Android 8.0. Fledge builds each app for them, but no run there proves it.
+- On every change, CI builds each desktop app and runs it on a clean computer that has no Ruby: macOS 15, Windows Server 2025, Windows 11 on ARM64, Ubuntu 24.04, Debian 13, and Alpine 3.24. CI runs phone apps in the iOS 26 Simulator and on Android 16 emulators, and a game has run on a real Windows 11 computer, iPad, and iPhone. See [What has run where](doc/phones.md#what-has-run-where).
+- No CI job runs an app on the oldest versions the table names, macOS 14, iOS 15, and Android 8.0. Fledge builds each app for them, but no run there proves it.
 - CI signs apps with a self-signed certificate only, and notarizes them against a stand-in for Apple's service. Signing with a certificate from Apple or a certificate authority, and notarizing with Apple, are untested.
 
 ## Installation

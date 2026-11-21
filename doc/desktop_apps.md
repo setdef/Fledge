@@ -215,7 +215,7 @@ The Store takes a Windows app in two ways: as an MSIX package, which it signs fo
 
 Your app runs with full trust, as it does outside a package. The package declares `runFullTrust`, a [restricted capability](https://learn.microsoft.com/windows/apps/package-and-deploy/app-capability-declarations), so Partner Center asks you why the app needs it. Write that it is a desktop program that runs Ruby, as it runs outside a package.
 
-The package installs on Windows 10 version 1809 and newer. Its version is your `version`'s first three numbers and a 0, because the Store keeps the fourth number for itself. The Store also refuses a version whose first number is 0, so ship `1.0.0` or later.
+The package names Windows 10 version 1809 as the oldest Windows it installs on, though Windows 11 is the oldest Fledge's apps are tested on. Its version is your `version`'s first three numbers and a 0, because the Store keeps the fourth number for itself. The Store also refuses a version whose first number is 0, so ship `1.0.0` or later.
 
 To try the package on your own computer before you submit it, sign it with a test certificate whose subject is your `msix_publisher`, trust that certificate in the computer's Trusted People store, and install the package with `Add-AppxPackage`, as Microsoft's [signing guide](https://learn.microsoft.com/windows/msix/package/create-certificate-package-signing) says. `fledge build --sign THUMBPRINT` signs the package as it signs the setup program. Fledge's CI installs a package signed that way, runs the app from it, and removes it.
 

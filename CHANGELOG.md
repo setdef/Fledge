@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Windows 11 is the oldest Windows Fledge names for its apps, on x64 as on ARM64, where the README named Windows 10, which Microsoft stopped supporting on 2025-10-14. Nothing in an app changes.
+
 ## [0.16.0] - 2026-11-20
 
 ### Added

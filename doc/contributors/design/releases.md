@@ -45,7 +45,7 @@ Before 1.0, a release may carry a preview of a Ruby minor, and any 0.x release m
 A floor is the oldest operating system version a platform's apps run on. Fledge's are:
 
 - macOS 14, on Apple silicon (`Fledge::Platform::MACOS_MINIMUM`);
-- Windows 10 on x64, and Windows 11 on ARM64;
+- Windows 11, on x64 and on ARM64;
 - iOS 15 (`lib/fledge/templates/ios/project.yml`);
 - Android 8.0, API 26 (`minSdk` in `lib/fledge/templates/android/build.gradle`);
 - glibc 2.39 on `x86_64-linux` and `aarch64-linux` (`Fledge::Platform::GLIBC_MINIMUM`), which the maintainer accepted: "2.39 is fine, and even newer may be fine if there becomes good reason to raise the floor" (decisions.md, 2026-10-26, decision 7);
@@ -55,7 +55,7 @@ Linux has no single operating system version, so its floors are the C library's,
 
 Raising a floor is a major, always, even when a store's rule forces it. A store's yearly rule that drops no version is not a floor: Google Play's target API level and the Xcode version App Store uploads need live in the phone templates, which any release may change, with a CHANGELOG entry. Android's `minSdk` and iOS's deployment target are floors.
 
-The Windows 10 floor is unproven. GitHub's hosted runners cannot run Windows 10, so no CI job runs a Fledge app there, and the floor stands on the first report from a Windows 10 computer.
+Windows 11 is the floor because Microsoft's support for Windows 10 ended on 2025-10-14 (support.microsoft.com, "Windows 10 support has ended on October 14, 2025"), before Fledge's first release, and the maintainer would not have Fledge name it (decisions.md, 2026-11-21). Nothing in an app refuses Windows 10: the launcher's manifest names the `supportedOS` that Windows 10 and 11 share, and an MSIX package's `MinVersion` is Windows 10 1809, as electron-builder's is (`doc/contributors/design/desktop-apps.md`, "The MSIX package"). But no run there is recorded, and none is promised. Windows 11 is proven on x64 by CI's Delivery on Windows Server 2025, which is build 26100 as Windows 11 24H2 is, and by a game on a real computer: the maintainer installed, played, reinstalled, and uninstalled Dot Popper 0.8.1, built with Fledge v0.5.0, on a Windows 11 PC on 2026-11-05 (setdef/dot_popper, `doc/playtests/2026-11-05-windows.md`). On ARM64 it is proven by CI's Delivery on `windows-11-arm`.
 
 So is the macOS 14 floor, by running: GitHub retired its macOS 14 runners on 2026-11-02, and no workflow of Fledge's ever named one. It stands on the build: the launcher and `bin/ruby` are built with `-mmacosx-version-min` at the floor (`doc/contributors/design/runtimes.md`), and what Fledge compiles for an app is aimed at it with `MACOSX_DEPLOYMENT_TARGET` (`doc/contributors/design/gems.md`, "The toolchain and the oldest systems"). CI runs apps on macOS 15, the oldest macOS it has ("Which macOS each job runs on").
 

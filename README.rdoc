@@ -71,15 +71,13 @@ the groups Bundler's +without+ setting names.
   built, with no Bundler, network, or compiler on the computer.
 
 Fledge builds for macOS 14 and newer on Apple silicon; Linux with glibc
-2.39 or musl 1.2 and newer, on x86-64 and ARM64; Windows 10 and 11 on x64,
-and Windows 11 on ARM64; iOS 15 and newer; and Android 8.0 and newer. Build
-each platform's app on a computer of that platform, such as a CI runner of
-each. On every change, CI runs each desktop app on a clean computer with
+2.39 or musl 1.2 and newer, on x86-64 and ARM64; Windows 11 on x64 and
+ARM64; iOS 15 and newer; and Android 8.0 and newer. Build each platform's
+app on a computer of that platform, such as a CI runner of each. On every change, CI runs each desktop app on a clean computer with
 no Ruby (macOS 15, Windows Server 2025, Windows 11 on ARM64, Ubuntu 24.04,
 Debian 13, and Alpine 3.24), and each phone app in the iOS 26 Simulator
-and on Android 16 emulators. No CI job runs an app on macOS 14, Windows
-10, iOS 15, or Android 8.0: Fledge builds each app for them, but no run
-there proves it.
+and on Android 16 emulators. No CI job runs an app on macOS 14, iOS 15, or
+Android 8.0: Fledge builds each app for them, but no run there proves it.
 
 Fledge is 0.x, so any new version can break your build: read the changelog
 before you update. CI signs apps only with a self-signed certificate, so

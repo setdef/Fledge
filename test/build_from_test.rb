@@ -89,13 +89,16 @@ class BuildFromTest < Minitest::Test
   end
 
   # Nothing of the old app's identity comes along: a windowed app's
-  # desktop entry and icons are the new app's alone.
+  # desktop entry, icons, and the file types it defines are the new app's
+  # alone.
   def test_the_new_app_has_its_own_identity_and_none_of_the_old_ones
-    FakeRuntime.icons(player("kind: windowed\nidentifier: com.example.Player\ninstallers: []\nicon: art\n"), "art")
+    FakeRuntime.icons(player("kind: windowed\nidentifier: com.example.Player\ninstallers: []\nicon: art\nfile_associations:\n" \
+      "  - name: Player save\n    extensions: [psave]\n    mime_types: [application/x-player-save]\n    defines_type: true\n"), "art")
     _, err, status = build("-o", "players", "player")
     assert_equal [0, ""], [status, err]
     from = File.join(@dir, "players", "Player-x86_64-linux")
     assert_path_exists File.join(from, "share/icons/hicolor/512x512/apps/com.example.Player.png")
+    assert_path_exists File.join(from, "share/mime/packages/com.example.Player.xml")
     game("kind: windowed\nidentifier: com.example.Game\ninstallers: []\n")
 
     _, err, status = build("--from", from, "game")

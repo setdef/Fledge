@@ -18,14 +18,17 @@ module Fledge
       attr_reader mime_types: Array[String]
       attr_reader content_types: Array[String]
       attr_reader folders: bool
+      attr_reader defines_type: bool
 
-      def self.new: (name: String, role: String, extensions: Array[String], mime_types: Array[String], content_types: Array[String], folders: bool) -> instance
+      def self.new: (name: String, role: String, extensions: Array[String], mime_types: Array[String], content_types: Array[String], folders: bool, defines_type: bool) -> instance
 
       def self.list: (Hash[Object, Object] data, String file) -> Array[FileAssociation]?
 
       private def self.from: (Object item, Integer number, String file) -> FileAssociation
 
       private def self.role: (Hash[Object, Object] item, String where) -> String
+
+      private def self.defines_type: (Hash[Object, Object] item, Hash[String, Array[String]] lists, String where) -> bool
 
       private def self.folders: (Hash[Object, Object] item, Hash[String, Array[String]] lists, String where) -> bool
 

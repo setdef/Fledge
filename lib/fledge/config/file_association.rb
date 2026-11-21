@@ -27,7 +27,11 @@ module Fledge
     # Windows and macOS know a file; +mime_types+, as a Linux desktop
     # knows one; +content_types+, Apple's uniform type identifiers, such
     # as <tt>public.png</tt>; or <tt>folders: true</tt>, for folders, in
-    # an entry of its own.
+    # an entry of its own. An entry for a file type of the app's own,
+    # which no other program defines, says <tt>defines_type: true</tt>,
+    # with the type's one MIME type and its extensions: a Linux desktop
+    # finds a file's MIME type from its name only in a type's definition,
+    # and the app then carries one (Fledge::DesktopEntry).
     #
     # Use it through Fledge::Config#file_associations.
     #
@@ -45,14 +49,20 @@ module Fledge
     #   #     - name: Project archive
     #   #       extensions: [zip]
     #   #       mime_types: [application/zip]
-    #   folder, archive = Fledge::Config.load("path/to/project").file_associations
-    #   folder.folders     # => true
-    #   archive.extensions # => ["zip"]
-    #   archive.role       # => "viewer"
+    #   #     - name: Lota game
+    #   #       extensions: [lota]
+    #   #       mime_types: [application/x-lota-game]
+    #   #       defines_type: true
+    #   folder, archive, game = Fledge::Config.load("path/to/project").file_associations
+    #   folder.folders       # => true
+    #   archive.extensions   # => ["zip"]
+    #   archive.role         # => "viewer"
+    #   archive.defines_type # => false
+    #   game.defines_type    # => true
     #--
     # SPDX-SnippetEnd
     #++
-    class FileAssociation < Data.define(:name, :role, :extensions, :mime_types, :content_types, :folders)
+    class FileAssociation < Data.define(:name, :role, :extensions, :mime_types, :content_types, :folders, :defines_type)
       ##
       # :attr_reader: name
       # What a person calls these documents, such as <tt>"Project
@@ -80,11 +90,16 @@ module Fledge
       # :attr_reader: folders
       # Whether the entry is for folders, and not files.
 
+      ##
+      # :attr_reader: defines_type
+      # Whether the files are of a type the app defines, which no other
+      # program does: its one MIME type, given its extensions.
+
       # The keys an entry may hold.
-      KEYS = %w[name role extensions mime_types content_types folders].freeze
+      KEYS = %w[name role extensions mime_types content_types folders defines_type].freeze
 
       # KEYS, as a sentence lists them.
-      KNOWN = "name, role, extensions, mime_types, content_types, and folders"
+      KNOWN = "name, role, extensions, mime_types, content_types, folders, and defines_type"
 
       # What the app does with these documents, as macOS's
       # CFBundleTypeRole names it: +viewer+, the default, or +editor+.
@@ -147,7 +162,7 @@ module Fledge
 
         lists = LISTS.to_h { |key, (rule, example)| [key, list_at(item, key, rule, "#{where}: #{key} must be a list such as #{example}")] }
         new(name:, role: role(item, where), extensions: lists.fetch("extensions"), mime_types: lists.fetch("mime_types"),
-          content_types: lists.fetch("content_types"), folders: folders(item, lists, where))
+          content_types: lists.fetch("content_types"), folders: folders(item, lists, where), defines_type: defines_type(item, lists, where))
       end
 
       # The +role+ at +item+, one of ROLES, or +viewer+.
@@ -158,6 +173,18 @@ module Fledge
         return known if known
 
         raise Error, "#{where}: role must be viewer or editor, not #{value}"
+      end
+
+      # Whether +item+ defines its type: +true+ only in an entry with
+      # extensions and one MIME type, which together are a definition.
+      private_class_method def self.defines_type(item, lists, where) # :nodoc:
+        value = item.fetch("defines_type", nil)
+        raise Error, "#{where}: defines_type must be true or false" unless [true, false, nil].include?(value)
+        return false unless value
+        return true if lists.fetch("extensions").any? && lists.fetch("mime_types").size == 1
+
+        raise Error, "#{where} defines a type, so give it the extensions its files end in and its one MIME type, " \
+          "such as extensions: [game] and mime_types: [application/x-game]"
       end
 
       # Whether +item+ is for folders: +true+ only in an entry that names

@@ -55,3 +55,4 @@ file_associations:
     role: editor
     extensions: [hellowindow]
     mime_types: [application/x-hellowindow]
+    defines_type: true

@@ -333,7 +333,14 @@
 #                          portable folder registers nothing; the
 #                          desktop entry
 #                          lists the MIME types, inode/directory for
-#                          folders, and takes their paths (%F). A file
+#                          folders, and takes their paths (%F). An
+#                          entry for a file type of the app's own, which
+#                          no other program defines, says defines_type:
+#                          true, with the type's one MIME type and its
+#                          extensions: a Linux desktop knows such a file
+#                          by its name only once the type is defined,
+#                          which the app's share/mime/packages does and
+#                          its .deb installs. A file
 #                          or folder dropped on a Windows program, or
 #                          opened with a Linux one, arrives in ARGV; on
 #                          macOS it arrives as an Apple event, which only

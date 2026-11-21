@@ -115,6 +115,20 @@ class DebTest < Minitest::Test
     end
   end
 
+  # A file type the app defines goes where shared-mime-info's trigger
+  # finds it, so that dpkg compiles it into the database at install.
+  def test_a_file_type_the_app_defines_is_installed_where_shared_mime_info_finds_it
+    need_dpkg_deb
+    game = Fledge::Config::FileAssociation.new(name: "Game", role: "viewer", extensions: ["game"], mime_types: ["application/x-game"],
+      content_types: [], folders: false, defines_type: true)
+    Dir.mktmpdir do |dir|
+      listed = contents(build(dir, identity: identity(file_associations: [game])))
+
+      assert_match %r{^-rw-r--r-- root/root .* \./usr/share/mime/packages/com\.example\.MyApp\.xml$}, listed
+      refute_match %r{ \./usr/lib/com\.example\.myapp/share}, listed
+    end
+  end
+
   def test_the_desktop_entry_runs_the_program_by_its_installed_path
     need_dpkg_deb
     Dir.mktmpdir do |dir|

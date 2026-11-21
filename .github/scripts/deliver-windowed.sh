@@ -157,6 +157,10 @@ case "$(uname -s)" in
       file "$icon" | grep -q "PNG image data, $size x $size" || fail "$icon is not a $size-pixel PNG: $(file "$icon")"
     done
     echo "ok: the hicolor theme's folders hold the icon at every size"
+    types="$root/share/mime/packages/$identifier.xml"
+    grep -qF '<mime-type type="application/x-hellowindow">' "$types" || fail "$types does not define application/x-hellowindow"
+    grep -qF '<glob pattern="*.hellowindow"/>' "$types" || fail "$types does not give the type *.hellowindow"
+    echo "ok: share/mime/packages defines the reports' type, application/x-hellowindow"
     grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the app has no notices"
     run_report "its program" 4 "$program"
     ;;

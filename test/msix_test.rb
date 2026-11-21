@@ -92,10 +92,10 @@ class MsixTest < Minitest::Test
   # types alone have no place in a package.
   def test_the_extensions_it_opens_are_file_type_associations
     associations = [
-      Fledge::Config::FileAssociation.new(name: "My Report", role: "editor", extensions: %w[myreport MyRep], mime_types: [], content_types: [], folders: false),
-      Fledge::Config::FileAssociation.new(name: "Folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true),
-      Fledge::Config::FileAssociation.new(name: "my report!", role: "viewer", extensions: ["old"], mime_types: [], content_types: [], folders: false),
-      Fledge::Config::FileAssociation.new(name: "Text", role: "viewer", extensions: [], mime_types: ["text/plain"], content_types: [], folders: false),
+      Fledge::Config::FileAssociation.new(name: "My Report", role: "editor", extensions: %w[myreport MyRep], mime_types: [], content_types: [], folders: false, defines_type: false),
+      Fledge::Config::FileAssociation.new(name: "Folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true, defines_type: false),
+      Fledge::Config::FileAssociation.new(name: "my report!", role: "viewer", extensions: ["old"], mime_types: [], content_types: [], folders: false, defines_type: false),
+      Fledge::Config::FileAssociation.new(name: "Text", role: "viewer", extensions: [], mime_types: ["text/plain"], content_types: [], folders: false, defines_type: false),
     ]
     document = manifest(identity: identity(file_associations: associations))
     found = REXML::XPath.match(document, "//uap:FileTypeAssociation", "uap" => Fledge::Msix::NAMESPACES.fetch("xmlns:uap")).map do |element|

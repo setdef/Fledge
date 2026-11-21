@@ -309,7 +309,7 @@ module Fledge
 
         FileUtils.copy_entry(File.join(@contents, name), File.join(folder, name), true)
       end
-      @identifiers.each { |identifier| remove_icons(folder, identifier) }
+      @identifiers.each { |identifier| remove_desktop_files(folder, identifier) }
     end
 
     # The names in the app's folder that a new app keeps: not its tools
@@ -321,12 +321,15 @@ module Fledge
       Dir.children(@contents).sort - ["app", Assembly::CONFIG, Assembly::TOOLS] - programs - identity
     end
 
-    # Removes a Linux app's icons, named by its +identifier+, from +folder+
-    # and the folders they leave empty.
-    private def remove_icons(folder, identifier)
-      Dir.glob("share/icons/hicolor/*/apps/#{identifier}.png", base: folder).each do |icon|
-        File.delete(File.join(folder, icon))
-        parent = File.dirname(icon)
+    # Removes a Linux app's icons and the definitions of the file types it
+    # defines, each named by its +identifier+, from +folder+ and the
+    # folders they leave empty.
+    private def remove_desktop_files(folder, identifier)
+      files = Dir.glob("share/icons/hicolor/*/apps/#{identifier}.png", base: folder)
+      files += Dir.glob("share/mime/packages/#{identifier}.xml", base: folder)
+      files.each do |file|
+        File.delete(File.join(folder, file))
+        parent = File.dirname(file)
         while parent != "." && Dir.empty?(File.join(folder, parent))
           Dir.rmdir(File.join(folder, parent))
           parent = File.dirname(parent)

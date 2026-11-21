@@ -921,6 +921,8 @@ class BuiltAppTest < Minitest::Test
         desktop = File.read(File.join(folder, "com.setdef.fledge.HelloWindow.desktop"))
         assert_includes desktop, "Exec=\"Hello Window\" %F\n"
         assert_includes desktop, "MimeType=inode/directory;application/x-hellowindow;\n"
+        types = File.read(File.join(folder, "share/mime/packages/com.setdef.fledge.HelloWindow.xml"))
+        assert_includes types, %(<mime-type type="application/x-hellowindow">\n    <comment>Hello Window report</comment>\n    <glob pattern="*.hellowindow"/>\n)
       end
 
       report = File.join(dir, "report.json")

@@ -42,7 +42,7 @@ module Fledge
 
     private def held: () -> Array[String]
 
-    private def remove_icons: (String folder, String identifier) -> void
+    private def remove_desktop_files: (String folder, String identifier) -> void
 
     private def launcher_copy: (String work) -> String
 

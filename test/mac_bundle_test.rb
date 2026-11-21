@@ -29,10 +29,10 @@ class MacBundleTest < Minitest::Test
   # writes them, and content types are LSItemContentTypes.
   def test_declares_each_document_type_ranked_alternate
     types = info([
-      ASSOCIATION.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true),
+      ASSOCIATION.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true, defines_type: false),
       ASSOCIATION.new(name: "Project archive", role: "editor", extensions: ["zip"], mime_types: ["application/zip"], content_types: [],
-        folders: false),
-      ASSOCIATION.new(name: "Picture", role: "viewer", extensions: [], mime_types: [], content_types: ["public.png"], folders: false),
+        folders: false, defines_type: false),
+      ASSOCIATION.new(name: "Picture", role: "viewer", extensions: [], mime_types: [], content_types: ["public.png"], folders: false, defines_type: false),
     ]).fetch("CFBundleDocumentTypes")
 
     folder = { "CFBundleTypeName" => "Project folder", "CFBundleTypeRole" => "Viewer", "LSHandlerRank" => "Alternate" }
@@ -53,7 +53,7 @@ class MacBundleTest < Minitest::Test
     Dir.mktmpdir do |dir|
       json = File.join(dir, "Info.plist.json")
       plist = File.join(dir, "Info.plist")
-      folder = ASSOCIATION.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true)
+      folder = ASSOCIATION.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true, defines_type: false)
       File.write(json, JSON.generate(info([folder])))
       _, status = Open3.capture2e("plutil", "-convert", "xml1", "-o", plist, json)
       assert_predicate status, :success?

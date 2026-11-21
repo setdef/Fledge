@@ -91,17 +91,18 @@ class DesktopEntryTest < Minitest::Test
   def test_lists_the_mime_types_the_app_opens_and_takes_their_paths
     association = Fledge::Config::FileAssociation
     file_associations = [
-      association.new(name: "Folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true),
+      association.new(name: "Folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true, defines_type: false),
       association.new(name: "Zip", role: "editor", extensions: ["zip"], mime_types: ["application/zip", "application/x-zip"],
-        content_types: [], folders: false),
-      association.new(name: "Also zip", role: "viewer", extensions: [], mime_types: ["application/zip"], content_types: [], folders: false),
+        content_types: [], folders: false, defines_type: false),
+      association.new(name: "Also zip", role: "viewer", extensions: [], mime_types: ["application/zip"], content_types: [], folders: false, defines_type: false),
     ]
     text = Fledge::DesktopEntry.new(identity(file_associations:)).text
 
     assert_includes text, "\nExec=\"Hello Window\" %F\n"
     assert_includes text, "\nMimeType=inode/directory;application/zip;application/x-zip;\n"
-    only_extensions = [association.new(name: "Text", role: "viewer", extensions: ["txt"], mime_types: [], content_types: [], folders: false)]
+    only_extensions = [association.new(name: "Text", role: "viewer", extensions: ["txt"], mime_types: [], content_types: [], folders: false, defines_type: false)]
     assert_equal Fledge::DesktopEntry.new(identity).text, Fledge::DesktopEntry.new(identity(file_associations: only_extensions)).text
+    assert_equal ["com.example.HelloWindow.desktop"], Fledge::DesktopEntry.new(identity(file_associations:)).entries.map(&:path)
     skip "desktop-file-validate is not installed" unless system("command -v desktop-file-validate > /dev/null 2>&1")
 
     Dir.mktmpdir do |dir|
@@ -110,5 +111,43 @@ class DesktopEntryTest < Minitest::Test
       out, status = Open3.capture2e("desktop-file-validate", path)
       assert_predicate status, :success?, out
     end
+  end
+
+  # A file type the app defines, which no other program does: a desktop
+  # finds a file's MIME type from its name through shared-mime-info's
+  # database, so a desktop entry's MimeType alone matches no file of a
+  # type the database lacks. The app's own package of the database
+  # gives each such type its name and its extensions' globs, lowercased
+  # once each, since the database matches globs whatever their case.
+  # A type the app only opens gets no definition: a comment of the
+  # app's would rename it on the whole computer.
+  def test_defines_the_types_the_app_defines_for_shared_mime_info
+    association = Fledge::Config::FileAssociation
+    file_associations = [
+      association.new(name: "Zip", role: "viewer", extensions: ["zip"], mime_types: ["application/zip"], content_types: [], folders: false,
+        defines_type: false),
+      association.new(name: "Hello & <Window> report", role: "editor", extensions: %w[hellowindow HelloWindow hwr],
+        mime_types: ["application/x-hellowindow"], content_types: [], folders: false, defines_type: true),
+      association.new(name: "Sketch", role: "viewer", extensions: ["sketch"], mime_types: ["application/vnd.example.sketch+json"],
+        content_types: [], folders: false, defines_type: true),
+    ]
+    entries = Fledge::DesktopEntry.new(identity(file_associations:)).entries
+
+    assert_equal ["com.example.HelloWindow.desktop", "share/mime/packages/com.example.HelloWindow.xml"], entries.map(&:path)
+    assert_includes entries.first.content, "\nMimeType=application/zip;application/x-hellowindow;application/vnd.example.sketch+json;\n"
+    assert_equal <<~XML, entries.last.content
+      <?xml version="1.0" encoding="UTF-8"?>
+      <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+        <mime-type type="application/x-hellowindow">
+          <comment>Hello &amp; &lt;Window&gt; report</comment>
+          <glob pattern="*.hellowindow"/>
+          <glob pattern="*.hwr"/>
+        </mime-type>
+        <mime-type type="application/vnd.example.sketch+json">
+          <comment>Sketch</comment>
+          <glob pattern="*.sketch"/>
+        </mime-type>
+      </mime-info>
+    XML
   end
 end

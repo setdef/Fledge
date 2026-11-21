@@ -2098,7 +2098,8 @@ jobs:
   # fresh Ubuntu container of each architecture, with no Ruby installed:
   # apt installs it as a person would, its dependency on glibc 2.39 met by
   # Ubuntu 24.04's, which is the oldest there is, and by Debian 13's; the
-  # app runs from /usr/lib, as root and as an ordinary user; and removing
+  # MIME database knows the file type the app defines by its extension;
+  # the app runs from /usr/lib, as root and as an ordinary user; and removing
   # the package leaves nothing of it (.github/scripts/deliver-deb.sh).
   # First, examples/system_library runs from its archive and
   # its AppImage without libpng, which its gem links, and says so; then
@@ -2138,7 +2139,7 @@ jobs:
       # the job's limit, and no later step fetches anything
       # (.github/scripts/apt-update.sh says why).
       - name: Fetch apt's package lists and the packages the job installs
-        run: .github/scripts/apt-update.sh desktop-file-utils ./delivered/*.deb
+        run: .github/scripts/apt-update.sh desktop-file-utils shared-mime-info ./delivered/*.deb
 
       # Before apt brings anything else, the app whose gem links
       # libpng names it, and exits with 72, from its archive and its
@@ -2146,9 +2147,12 @@ jobs:
       - name: Run System Library without libpng, then install its .deb with apt
         run: .github/scripts/deliver-system-library.sh delivered
 
-      # freedesktop.org's validator, which a desktop has.
-      - name: Install desktop-file-validate
-        run: apt-get install -y -qq desktop-file-utils
+      # freedesktop.org's validator, and the MIME database a desktop
+      # finds a file's type in, which a desktop has: the .deb's
+      # definition of its type goes into the database by
+      # shared-mime-info's trigger, so it is installed first.
+      - name: Install desktop-file-validate and shared-mime-info
+        run: apt-get install -y -qq desktop-file-utils shared-mime-info
 
       - name: Install Hello Window from its .deb with apt, run it, and remove it
         run: .github/scripts/deliver-deb.sh "delivered/Hello Window-${{ matrix.platform }}.deb"

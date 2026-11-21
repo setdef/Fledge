@@ -92,12 +92,16 @@ file_associations:
     role: editor                    # viewer, the default, or editor
     extensions: [zip]
     mime_types: [application/zip]
+  - name: Lota game
+    extensions: [lota]
+    mime_types: [application/x-lota-game]
+    defines_type: true              # a type no other program defines
 ```
 <!-- SPDX-SnippetEnd -->
 
-- **macOS** lists the app under "Open With" for them, and never makes it their default unless your users do. Add `content_types` for macOS's types, such as `public.zip-archive`, where you know them.
+- **macOS** lists the app under "Open With" for them, and never makes it their default unless your users do. Add `content_types` for macOS's types, such as `public.zip-archive`, where you know them. For an extension no type claims, macOS makes up a type of its own and still offers the app, so `defines_type` changes nothing there.
 - **Windows:** the setup program adds the app to each extension's "Open with" list and to every folder's menu, and its uninstaller removes them. An MSIX package adds the app to each extension's "Open with" list only: a package cannot add a plain command to the folders' menu. Windows registers nothing for an app your users unpack from the `.zip`.
-- **Linux** desktops know a file by its MIME type, so list `mime_types` for Linux.
+- **Linux** desktops know a file by its MIME type, so list `mime_types` for Linux. A desktop finds a file's MIME type from its name, in a database each program adds its file types to, so it knows a `.zip` file, and the app is offered for it, but knows nothing of a type only your app has, such as a game's own format. Say `defines_type: true` for such a type, with its one MIME type and its extensions, and the app carries the type's definition in `share/mime/packages`, named for its identifier, with the entry's `name` as what a person sees the type called. The `.deb` installs it, and the system adds it to the database as the package installs, and takes it out when the package is removed. An AppImage and the `.tar.gz` install nothing: until someone installs the app by hand, copying `share` into `~/.local/share` and then running `update-mime-database ~/.local/share/mime`, such a file has no type of the app's, and the app is not offered for it. Leave `defines_type` out for a type other programs know: a definition of your app's would rename that type for every program on the computer.
 
 On Windows and Linux, your program receives the path of a file or folder opened with it, or dropped on it, in `ARGV`. On macOS, the system sends the path as an Apple event instead, and your GUI library's event loop receives it, as SDL3 does with `SDL_EVENT_DROP_FILE`. `ARGV` stays empty there, as it does under `ruby main.rb`.
 

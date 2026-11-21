@@ -7,9 +7,10 @@
 
 require_relative "entry"
 require_relative "icon"
+require_relative "shared_mime_info"
 
 module Fledge
-  # A windowed app on Linux: its desktop entry and icons.
+  # A windowed app on Linux: its desktop entry, icons, and file types.
   #
   # Linux desktops (GNOME, KDE, and the rest) show an app's name and icon
   # in their menus, docks, and window switchers from a desktop entry, a
@@ -30,8 +31,9 @@ module Fledge
   # <tt>share/icons/hicolor/SIZExSIZE/apps/ID.png</tt>, the layout of
   # <tt>$XDG_DATA_HOME</tt>, so installing the app is copying +share+
   # into <tt>~/.local/share</tt> and the desktop entry into its
-  # +applications+ with the program's full path. Fledge installs nothing;
-  # an AppImage is a later story (Plan 002, "Windowed apps").
+  # +applications+ with the program's full path; a <tt>.deb</tt>
+  # (Fledge::Deb) installs them so. The file types the app defines go
+  # beside the icons, in <tt>share/mime</tt> (Fledge::SharedMimeInfo).
   #
   # Use it through Fledge::Assembly.
   #
@@ -56,7 +58,8 @@ module Fledge
       @identity = identity
     end
 
-    # The desktop entry and icons, with paths in the built app's folder.
+    # The desktop entry, icons, and the definitions of the file types the
+    # app defines, with paths in the built app's folder.
     #
     # === Example
     #
@@ -74,7 +77,7 @@ module Fledge
       icon = @identity.icon
       pngs = icon ? icon.linux : {} # : Hash[Integer, String]
       icons = pngs.map { |size, png| Entry.file("share/icons/hicolor/#{size}x#{size}/apps/#{id}.png", File.binread(png)) }
-      [Entry.file("#{id}.desktop", text), *icons]
+      [Entry.file("#{id}.desktop", text), *icons, *SharedMimeInfo.new(@identity).entries]
     end
 
     # The desktop entry's text, whose +Exec+ runs +program+: the program's

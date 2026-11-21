@@ -13,11 +13,14 @@
 # resolving its dependency on a new enough glibc; the desktop entry
 # desktop-file-validate accepts, and the icons, must be where desktops
 # look, and update-desktop-database must list the app for the MIME type
-# it opens; the program must run from /usr/lib/PACKAGE, as the desktop entry's
+# it opens; shared-mime-info's database, which knows no *.hellowindow
+# file before, must know one as application/x-hellowindow, the type the
+# app defines, once dpkg's trigger compiles the app's definition, so that
+# a desktop finds the app for such a file by its name; the program must run from /usr/lib/PACKAGE, as the desktop entry's
 # Exec has it, as root and as an ordinary user, with a PATH that holds no
 # Ruby and in a hostile Ruby environment, and write its report and exit
 # with the status it is given; and removing the package must leave
-# nothing of it behind.
+# nothing of it behind, the type's definition included.
 #
 # This is POSIX sh on purpose: nothing here may need Ruby.
 
@@ -57,6 +60,18 @@ expect Description "$(dpkg-deb --field "$deb" Description)" "Says hello from a w
 if dpkg -s "$package" >/dev/null 2>&1; then
   fail "$package is installed before the test begins"
 fi
+# The database a desktop finds a file's MIME type in, by the file's name,
+# which update-mime-database compiles from /usr/share/mime/packages:
+# shared-mime-info's dpkg trigger runs it when a package adds a file
+# there or removes one. Before the app is installed, no definition names
+# the extension the app's own files have.
+globs=/usr/share/mime/globs2
+command -v update-mime-database >/dev/null 2>&1 || fail "this computer has no update-mime-database, from shared-mime-info"
+[ -f "$globs" ] || fail "there is no $globs, which shared-mime-info compiles"
+if grep -qF ':*.hellowindow' "$globs"; then
+  fail "$globs names *.hellowindow before the package is installed"
+fi
+echo "ok: before the package, the MIME database knows no *.hellowindow file"
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$deb" >/dev/null || fail "apt could not install $deb"
 dpkg -s "$package" | grep -qx "Status: install ok installed" || fail "dpkg does not say $package is installed"
 echo "ok: apt installed $package"
@@ -84,6 +99,12 @@ if command -v update-desktop-database >/dev/null 2>&1; then
   grep -q "^application/x-hellowindow=.*$identifier.desktop" /usr/share/applications/mimeinfo.cache || fail "mimeinfo.cache does not name $identifier.desktop for application/x-hellowindow"
   echo "ok: update-desktop-database lists the app for application/x-hellowindow"
 fi
+mime="/usr/share/mime/packages/$identifier.xml"
+[ -f "$mime" ] || fail "there is no $mime, the app's definition of its file type"
+grep -qx '[0-9]*:application/x-hellowindow:\*\.hellowindow' "$globs" || fail "$globs does not give *.hellowindow the type application/x-hellowindow"
+grep -qF '<comment>Hello Window report</comment>' /usr/share/mime/application/x-hellowindow.xml ||
+  fail "the MIME database does not call application/x-hellowindow Hello Window report"
+echo "ok: the MIME database knows a *.hellowindow file as application/x-hellowindow, a Hello Window report"
 expect Icon "$(sed -n 's/^Icon=//p' "$desktop")" "$identifier"
 expect Terminal "$(sed -n 's/^Terminal=//p' "$desktop")" false
 doc="/usr/share/doc/$package"
@@ -157,9 +178,12 @@ DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq "$package" >/dev/null || fa
 if dpkg -s "$package" 2>/dev/null | grep -qx "Status: install ok installed"; then
   fail "dpkg still says $package is installed"
 fi
-for left in "$lib" "$desktop" "$doc" $icons; do
+for left in "$lib" "$desktop" "$doc" "$mime" /usr/share/mime/application/x-hellowindow.xml $icons; do
   [ ! -e "$left" ] || fail "removing the package left $left behind"
 done
+if grep -qF ':*.hellowindow' "$globs"; then
+  fail "$globs still names *.hellowindow once the package is removed"
+fi
 [ -z "$(dpkg --audit)" ] || fail "dpkg --audit has something to say: $(dpkg --audit)"
 echo "ok: removing the package left nothing of it behind"
 

@@ -180,9 +180,9 @@ class NsisTest < Minitest::Test
   def file_associations
     association = Fledge::Config::FileAssociation
     [
-      association.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true),
-      association.new(name: "Project archive", role: "editor", extensions: %w[zip ZIP fz], mime_types: [], content_types: [], folders: false),
-      association.new(name: "Text", role: "viewer", extensions: [], mime_types: ["text/plain"], content_types: [], folders: false),
+      association.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true, defines_type: false),
+      association.new(name: "Project archive", role: "editor", extensions: %w[zip ZIP fz], mime_types: [], content_types: [], folders: false, defines_type: false),
+      association.new(name: "Text", role: "viewer", extensions: [], mime_types: ["text/plain"], content_types: [], folders: false, defines_type: false),
     ]
   end
 
@@ -233,7 +233,7 @@ class NsisTest < Minitest::Test
   end
 
   def entry(name, *extensions)
-    Fledge::Config::FileAssociation.new(name:, role: "viewer", extensions:, mime_types: [], content_types: [], folders: false)
+    Fledge::Config::FileAssociation.new(name:, role: "viewer", extensions:, mime_types: [], content_types: [], folders: false, defines_type: false)
   end
 
   # A ProgID must outlast the app's next version: neither the order of

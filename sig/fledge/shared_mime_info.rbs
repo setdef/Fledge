@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class SharedMimeInfo
+    NAMESPACE: String
+
+    @identity: Identity
+
+    def initialize: (Identity identity) -> void
+
+    def entries: () -> Array[Entry]
+
+    private def text: (Array[Config::FileAssociation] types) -> String
+
+    def self.escape: (String text) -> String
+  end
+end

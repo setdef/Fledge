@@ -195,7 +195,7 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   folder = Fledge::Config::FileAssociation.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [],
-    #     content_types: [], folders: true)
+    #     content_types: [], folders: true, defines_type: false)
     #   Fledge::MacBundle.document_type(folder)
     #   # => {"CFBundleTypeName"=>"Project folder", "CFBundleTypeRole"=>"Viewer", "LSHandlerRank"=>"Alternate",
     #   #     "LSItemContentTypes"=>["public.folder"]}

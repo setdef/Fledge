@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `defines_type: true` in a `file_associations` entry, for a file type of the app's own, such as a game's `*.lota`, with its one MIME type and its extensions: a windowed Linux app carries the type's definition in `share/mime/packages`, which its `.deb` installs, so that a desktop knows such a file by its name and offers the app for it. Before, a desktop knew no such file, and the app's `MimeType` matched nothing.
+
 ### Changed
 
 - Windows 11 is the oldest Windows Fledge names for its apps, on x64 as on ARM64, where the README named Windows 10, which Microsoft stopped supporting on 2025-10-14. Nothing in an app changes.

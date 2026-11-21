@@ -318,13 +318,19 @@ class ConfigTest < Minitest::Test
           extensions: [zip, ZIP, zip]
           mime_types: [application/zip]
           content_types: [public.zip-archive]
+        - name: Lota game
+          extensions: [lota]
+          mime_types: [application/x-lota-game]
+          defines_type: true
     YAML
 
     association = Fledge::Config::FileAssociation
     assert_equal [
-      association.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true),
+      association.new(name: "Project folder", role: "viewer", extensions: [], mime_types: [], content_types: [], folders: true, defines_type: false),
       association.new(name: "Project archive", role: "editor", extensions: %w[zip ZIP], mime_types: ["application/zip"],
-        content_types: ["public.zip-archive"], folders: false),
+        content_types: ["public.zip-archive"], folders: false, defines_type: false),
+      association.new(name: "Lota game", role: "viewer", extensions: ["lota"], mime_types: ["application/x-lota-game"],
+        content_types: [], folders: false, defines_type: true),
     ], config.file_associations
     assert_equal config.file_associations, config.for_program(Fledge::Config::Program.from({ "path" => "a" }, 1, "fledge.yml")).file_associations
     assert_equal [], load("file_associations: []\n").file_associations
@@ -339,7 +345,7 @@ class ConfigTest < Minitest::Test
       "file_associations:\n  - name: Text\n    extensions: [txt]\n" =>
         /: only a windowed app opens files and folders a person gives it; leave out file_associations, or make the app windowed\z/,
       "#{windowed}  name: Text\n" => /: file_associations must be a list of what the app opens, each a mapping such as - name: Project folder\z/,
-      "#{windowed}  - Text\n" => /: file_associations' entry 1 must be a mapping of name, role, extensions, mime_types, content_types, and folders/,
+      "#{windowed}  - Text\n" => /: file_associations' entry 1 must be a mapping of name, role, extensions, mime_types, content_types, folders, and defines_type/,
       "#{windowed}  - name: Text\n    extension: [txt]\n" => /: file_associations' entry 1 has 'extension', which Fledge does not know\. It knows name, role/,
       "#{windowed}  - extensions: [txt]\n" => /: file_associations' entry 1 needs a name, the kind of document a person sees, such as name: Project archive\z/,
       "#{windowed}  - name: \" \"\n    extensions: [txt]\n" => /: file_associations' entry 1 needs a name/,
@@ -354,6 +360,14 @@ class ConfigTest < Minitest::Test
       "#{windowed}  - name: Text\n    folders: false\n    extensions: []\n" => /: file_associations' entry 1 names nothing to open/,
       "#{windowed}  - name: Text\n    extensions: [txt]\n  - name: Both\n    folders: true\n    extensions: [txt]\n" =>
         /: file_associations' entry 2 is for folders and files; give the files an entry of their own\z/,
+      "#{windowed}  - name: Game\n    extensions: [game]\n    mime_types: [application/x-game]\n    defines_type: yes please\n" =>
+        /: file_associations' entry 1: defines_type must be true or false\z/,
+      "#{windowed}  - name: Game\n    mime_types: [application/x-game]\n    defines_type: true\n" =>
+        %r{: file_associations' entry 1 defines a type, so give it the extensions its files end in and its one MIME type, such as extensions: \[game\] and mime_types: \[application/x-game\]\z},
+      "#{windowed}  - name: Game\n    extensions: [game]\n    defines_type: true\n" => /: file_associations' entry 1 defines a type, so give it/,
+      "#{windowed}  - name: Game\n    extensions: [game]\n    mime_types: [application/x-game, application/x-game2]\n    defines_type: true\n" =>
+        /: file_associations' entry 1 defines a type, so give it/,
+      "#{windowed}  - name: Folder\n    folders: true\n    defines_type: true\n" => /: file_associations' entry 1 defines a type, so give it/,
     }.each do |yaml, message|
       error = assert_raises(Fledge::Error, yaml) { load(yaml) }
       assert_match message, error.message, yaml

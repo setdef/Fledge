@@ -8,7 +8,7 @@ is.
 Fledge runs on Ruby 4.1, with Bundler: on its preview, 4.1.0-preview1,
 until Ruby 4.1.0 is released. Add it to your project's +Gemfile+:
 
-  gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.14.0", group: :development
+  gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.15.0", group: :development
 
 === A First App
 

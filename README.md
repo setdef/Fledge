@@ -33,7 +33,7 @@ This folder, `greeter`, holds a one-line `main.rb` that prints `Hello, Ruby!`, a
 -->
 ```console
 $ bundle exec fledge build
-Downloading fledge-runtime-0.14.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.14.0
+Downloading fledge-runtime-0.15.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.15.0
 dist/Greeter-arm64-darwin.tar.gz
 $ tar -xzf dist/Greeter-arm64-darwin.tar.gz -C /tmp
 $ /tmp/Greeter-arm64-darwin/Greeter
@@ -81,11 +81,11 @@ Fledge runs on Ruby 4.1, with Bundler: on its preview, 4.1.0-preview1, until Rub
   SPDX-License-Identifier: MIT-0
 -->
 ```ruby
-gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.14.0", group: :development
+gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.15.0", group: :development
 ```
 <!-- SPDX-SnippetEnd -->
 
-Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.14.0`. Fledge installs from a git tag. You'll find the latest on the [releases page](https://github.com/setdef/Fledge/releases).
+Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.15.0`. Fledge installs from a git tag. You'll find the latest on the [releases page](https://github.com/setdef/Fledge/releases).
 
 Each app you build from this `Gemfile` carries Fledge too, as it carries your other development gems. Bundler installs a gem from git as its whole repository, so Fledge, with its tests and documents, adds about 3 MB to the archive your users download, and 8 MB once it is unpacked. Bundler's `without` setting cannot leave it out, because `without development` leaves Fledge out of your own bundle as well. To build apps without Fledge in them, put the same line in a `Gemfile` of its own, in a folder outside your project, run `bundle install` there, and build your project by its path from that folder:
 
@@ -137,7 +137,7 @@ Fledge compiles a gem that ships as source on your computer, so install a compil
   SPDX-License-Identifier: MIT-0
 -->
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.14.0/lib/fledge/config.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.15.0/lib/fledge/config.schema.json
 name: My Cool App
 kind: windowed
 identifier: com.example.MyCoolApp

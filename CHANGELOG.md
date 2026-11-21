@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-20
+
 ### Added
 
 - On iOS, a library a gem's Rakefile builds for ffi to open, as llhttp-ffi's and scrypt's do, or that the gem's package holds built for the phone, is a framework of its own, `Frameworks/fledgeffi.GEM.PATH.framework`, which the app embeds, with a link from where the gem looks for it; `fledge build ios` had refused such a gem. Other compiled files a gem's package holds are left out of an iOS app, naming each.
@@ -469,7 +471,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/setdef/Fledge/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/setdef/Fledge/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/setdef/Fledge/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/setdef/Fledge/compare/v0.11.0...v0.12.0

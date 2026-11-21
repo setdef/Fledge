@@ -151,8 +151,26 @@ class WorkflowCachesTest < Minitest::Test
     Dir[File.join(ROOT, ".github", "workflows", "*.yml")].to_h { |path| [File.basename(path), YAML.load_file(path, aliases: true)] }
   end
 
+  # The nightly run against Ruby's master restores trunk's downloads and
+  # saves none: its snapshot is a new file every night, so every set it
+  # saved would be a new entry of the whole set (doc/contributors/design/
+  # runtimes.md, "Testing against Ruby's master").
+  RESTORE_ONLY = "ruby-master.yml"
+
+  def test_the_run_against_rubys_master_restores_trunks_downloads_and_saves_none
+    steps = YAML.load_file(File.join(ROOT, ".github", "workflows", RESTORE_ONLY), aliases: true).fetch("jobs").values.flat_map do |job|
+      job.fetch("steps", []).select { |step| step.dig("with", "path") == "~/.cache/fledge/downloads" }
+    end
+
+    refute_empty steps
+    steps.each do |step|
+      assert step["uses"].start_with?("actions/cache/restore@"), "#{RESTORE_ONLY} saves its downloads"
+      assert_match(/\Aruntime-downloads-.*-files-\z/, step.dig("with", "key"))
+    end
+  end
+
   private def download_cache_jobs
-    workflows.flat_map do |name, workflow|
+    workflows.except(RESTORE_ONLY).flat_map do |name, workflow|
       workflow.fetch("jobs").filter_map do |id, job|
         steps = job.fetch("steps", []).select { |step| step.dig("with", "path") == "~/.cache/fledge/downloads" }
         refute steps.any? { |step| step["uses"].start_with?("actions/cache@") }, "#{name} #{id} keeps its downloads with actions/cache, whose post step saves under the restore key"

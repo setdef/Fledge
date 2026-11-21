@@ -1,0 +1,261 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Fledge against Ruby's master, every night (doc/contributors/design/
+# runtimes.md, "Testing against Ruby's master"). Fledge's releases pin
+# one Ruby; this builds the runtimes Fledge builds Ruby for itself, musl
+# Linux and the phones, from the day's snapshot of Ruby's master, with
+# the scripted edits and the license audit, so a change in Ruby that
+# breaks them shows within a day, not on the day of the next Ruby
+# release. It changes no pin on trunk: tasks/ruby_snapshot.rb rewrites
+# runtime/sources.yml and runtime/licenses.yml in this run's checkout
+# only, once, and every job takes that one copy, so all of them test the
+# same Ruby commit.
+#
+# It reports to one issue, "Ruby's master: nightly status", whose body
+# says the newest master Fledge passed on and what has failed since,
+# with the range of Ruby's commits (tasks/ruby_master_status.rb). Each
+# build records its result rather than failing its job, and the run
+# fails only on a night that is news: a job fails that had not been
+# failing. So a master that stays broken for a week sends one failure
+# email, not seven.
+
+name: Ruby's master
+
+on:
+  # After cache.ruby-lang.org writes the day's snapshot, about 18:35 UTC.
+  schedule:
+    - cron: "43 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ruby-master
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  MISE_RUBY_COMPILE: "false"
+  # ci.yml's, which test/workflow_ruby_master_test.rb keeps the same.
+  ALPINE_RUBY: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
+
+jobs:
+  # The day's snapshot, its revision, and the pins that name it, which
+  # every other job takes; the tarball is kept with the run, so a red
+  # night can be built again from the very bytes it tested.
+  snapshot:
+    name: Ruby's master of the day
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      date: ${{ steps.snapshot.outputs.date }}
+      revision: ${{ steps.snapshot.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Move the from-source Ruby pins to the snapshot
+        id: snapshot
+        run: |
+          ruby tasks/ruby_snapshot.rb
+          mkdir -p tmp/ruby-master
+          cp runtime/sources.yml runtime/licenses.yml tmp/ruby-master/
+          cp ~/.cache/fledge/downloads/*/snapshot-master.tar.gz tmp/ruby-master/
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ruby-master
+          path: tmp/ruby-master/
+          if-no-files-found: error
+          retention-days: 30
+
+  # As ci.yml's runtime-musl, from the snapshot's pins.
+  runtime-musl:
+    name: Runtime (${{ matrix.platform }})
+    needs: snapshot
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux-musl
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux-musl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ruby-master
+          path: tmp/ruby-master
+
+      # Trunk's downloads for the platform, restored and never saved: the
+      # snapshot is a new file every night, so a set saved with it would
+      # be a new entry of the whole set each night (doc/contributors/
+      # design/runtimes.md, "Pinned downloads in CI"). The build then
+      # downloads what the set lacks, the snapshot among it.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/fledge/downloads
+          key: runtime-downloads-${{ matrix.platform }}-files-
+
+      - name: Take the snapshot's pins
+        run: cp tmp/ruby-master/sources.yml tmp/ruby-master/licenses.yml runtime/
+
+      - name: Build the runtime in Alpine
+        id: build
+        continue-on-error: true
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p "$HOME/.cache/fledge/downloads"
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$HOME/.cache/fledge/downloads:/cache/fledge/downloads" -w /fledge \
+            -e PLATFORM -e XDG_CACHE_HOME=/cache "$ALPINE_RUBY" \
+            sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
+
+      - name: Record the result
+        if: always()
+        run: .github/scripts/ruby-master-result.sh "Runtime (${{ matrix.platform }})" "${{ steps.build.outcome }}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: result-${{ matrix.platform }}
+          path: tmp/ruby-master-result/
+          retention-days: 30
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.build.outcome == 'failure'
+        with:
+          name: logs-runtime-${{ matrix.platform }}
+          path: tmp/runtime/${{ matrix.platform }}/logs
+          retention-days: 30
+
+  # As ci.yml's runtime-mobile, from the snapshot's pins.
+  runtime-mobile:
+    name: Runtime (${{ matrix.platform }})
+    needs: snapshot
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            platform: ios
+            mise: ruby
+          - os: ubuntu-24.04
+            platform: android
+            mise: ruby rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ${{ matrix.mise }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ruby-master
+          path: tmp/ruby-master
+
+      # Trunk's downloads for the platform, restored and never saved: the
+      # snapshot is a new file every night, so a set saved with it would
+      # be a new entry of the whole set each night (doc/contributors/
+      # design/runtimes.md, "Pinned downloads in CI"). The build then
+      # downloads what the set lacks, the snapshot among it.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/fledge/downloads
+          key: runtime-downloads-${{ matrix.platform }}-files-
+
+      - name: Take the snapshot's pins
+        run: cp tmp/ruby-master/sources.yml tmp/ruby-master/licenses.yml runtime/
+
+      - name: Select the pinned Xcode
+        if: matrix.platform == 'ios'
+        run: |
+          xcode=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcode")')
+          sudo xcode-select -s "/Applications/Xcode_$xcode.app"
+          xcodebuild -version
+
+      - name: Use Java 21
+        if: matrix.platform == 'android'
+        run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+
+      - name: Build the runtime
+        id: build
+        continue-on-error: true
+        run: ruby tasks/runtime_builder.rb "${{ matrix.platform }}"
+
+      - name: Record the result
+        if: always()
+        run: .github/scripts/ruby-master-result.sh "Runtime (${{ matrix.platform }})" "${{ steps.build.outcome }}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: result-${{ matrix.platform }}
+          path: tmp/ruby-master-result/
+          retention-days: 30
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.build.outcome == 'failure'
+        with:
+          name: logs-runtime-${{ matrix.platform }}
+          path: tmp/runtime/${{ matrix.platform }}/logs
+          retention-days: 30
+
+  # Writes the night into the issue's body, and fails the run when it is
+  # news (tasks/ruby_master_status.rb). A job that recorded nothing, as
+  # one that was cancelled or timed out, counts as failed.
+  report:
+    name: Report to the status issue
+    needs: [snapshot, runtime-musl, runtime-mobile]
+    if: always() && needs.snapshot.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: result-*
+          path: tmp/results
+          merge-multiple: true
+
+      - name: Update the issue, and fail on news
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ needs.snapshot.outputs.revision }}
+          DATE: ${{ needs.snapshot.outputs.date }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: .github/scripts/ruby-master-report.sh "Runtime (x86_64-linux-musl)" "Runtime (aarch64-linux-musl)" "Runtime (ios)" "Runtime (android)"

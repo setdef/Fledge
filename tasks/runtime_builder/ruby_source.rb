@@ -14,7 +14,9 @@ class RuntimeBuilder
   # replaces lines of Ruby 4.1.0-preview1's files
   # that it names, and raises when they are not there, so that a new Ruby
   # whose files moved on fails the build at the edit to look at again,
-  # rather than building a Ruby that is quietly different.
+  # rather than building a Ruby that is quietly different. An edit that
+  # takes a fix from Ruby's master leaves a Ruby that already has it
+  # alone, so a snapshot of master builds too.
   module RubySource
     # The file each edit changes, relative to Ruby's source.
     FILES = {
@@ -180,8 +182,11 @@ class RuntimeBuilder
     # pthread_rwlock_destroy returns EBUSY for a lock that is held (lines
     # 255 to 262). Ruby's master resets the child's copy without
     # unlocking it (ruby/ruby e06b9da3f2, [Bug #22445], for macOS's
-    # EBUSY), which these two edits take.
+    # EBUSY), which these two edits take. A Ruby that has that commit
+    # (master's release_fork_lock_after_fork) is left as it is.
     def self.process_c(text)
+      return text if text.match?(FORK_RESET_UPSTREAM)
+
       replace(text, Regexp.new(Regexp.escape(FORK_UNLOCK)), FORK_RESET, "rb_fork_ruby releases the fork lock in the child but on FreeBSD")
     end
 
@@ -370,8 +375,11 @@ class RuntimeBuilder
     # __pthread_internal_find, lines 96 to 125 at 731631f), as
     # pthread_setname_np does (libc/bionic/pthread_setname_np.cpp, line
     # 98). Ruby's master names only a thread that has not ended
-    # (ruby/ruby 6fdd452087, [Bug #22471]), which this takes.
+    # (ruby/ruby 6fdd452087, [Bug #22471]), which this takes, and a Ruby
+    # that has that commit is left as it is.
     def self.thread_c(text)
+      return text if text.match?(/target_th->has_dedicated_nt &&\s+target_th->status != THREAD_KILLED\) \{/)
+
       replace(text, /^(    if \(threadptr_initialized\(target_th\) && target_th->has_dedicated_nt)\) \{\n/,
         "\\1 &&\n        target_th->status != THREAD_KILLED) {\n", "rb_thread_setname names the native thread")
     end
@@ -519,6 +527,10 @@ class RuntimeBuilder
           rb_thread_release_fork_lock();
       }
     C
+
+    # FORK_RESET as ruby/ruby e06b9da3f2 itself lays it out, in
+    # release_fork_lock_after_fork, whatever its indent.
+    FORK_RESET_UPSTREAM = /if \(pid == 0\) \{\s+rb_thread_reset_fork_lock\(\);\s+\}\s+else \{\s+rb_thread_release_fork_lock\(\);/
 
     RESET_FORK_LOCK = <<~C.gsub(/^/, " " * 4)
       // On macOS the child's copy still counts a thread waiting for this lock

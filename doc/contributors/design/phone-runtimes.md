@@ -79,7 +79,7 @@ Then each system packs what it built. iOS merges every archive Ruby's build made
 
 ## Scripted edits to Ruby's source
 
-`RuntimeBuilder::RubySource` (`tasks/runtime_builder/ruby_source.rb`) makes a few edits to Ruby's source before it builds. Each fails the build when the lines it replaces are gone, so a new Ruby shows which to look at again.
+`RuntimeBuilder::RubySource` (`tasks/runtime_builder/ruby_source.rb`) makes a few edits to Ruby's source before it builds. Each fails the build when the lines it replaces are gone, so a new Ruby shows which to look at again. The two that take a fix from Ruby's master, `process_c` and `thread_c`, first look for that fix as the commit wrote it, and leave a Ruby that has it as it is, so a snapshot of Ruby's master builds with the edits the pinned release needs; one that has neither the old lines nor the fix still fails.
 
 | Edit | System | What it does | From |
 |---|---|---|---|

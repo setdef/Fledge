@@ -132,6 +132,20 @@ class RubySourceTest < Minitest::Test
     end
   end
 
+  # An edit that takes a fix from Ruby's master leaves a Ruby that
+  # already has the fix as it is, so a snapshot of master builds with
+  # the edits the pinned release needs: Ruby's master of 2026-11-20
+  # (21ee43fb1e) has both fixes, in these lines.
+  def test_an_edit_that_takes_a_fix_from_master_leaves_a_ruby_that_has_it_alone
+    fork = "static void\nrelease_fork_lock_after_fork(rb_pid_t pid)\n{\n    if (pid == 0) {\n" \
+      "        rb_thread_reset_fork_lock();\n    }\n    else {\n        rb_thread_release_fork_lock();\n    }\n}\n"
+    thread = "    if (threadptr_initialized(target_th) && target_th->has_dedicated_nt &&\n" \
+      "        target_th->status != THREAD_KILLED) {\n        native_set_another_thread_name(target_th->nt->thread_id, name);\n"
+
+    assert_equal fork, Edits.process_c(fork)
+    assert_equal thread, Edits.thread_c(thread)
+  end
+
   # A linked extension of a bundled gem is found only once its gem is
   # active, as a desktop finds the gem's shared object only in its
   # folders: the gate goes into the lookup of linked extensions, with

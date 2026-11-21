@@ -19,10 +19,6 @@ require "yaml"
 # describes them, real .gem files served at the lockfile's remote, and,
 # for iOS, the real XcodeGen where this computer has it.
 class MobileBuildTest < Minitest::Test
-  # The lines of fledge.links that link the fake Android runtime's one
-  # gem's command, bin/rake, to the ruby program for each ABI.
-  RAKE_LINKS = "arm64-v8a\tlibfledgerubyexe.so\tbin/rake\nx86_64\tlibfledgerubyexe.so\tbin/rake\n"
-
   def setup
     @dir = Dir.mktmpdir
     FileUtils.mkdir_p(File.join(@dir, ".git"))
@@ -122,22 +118,6 @@ class MobileBuildTest < Minitest::Test
     leftover = Dir.glob("**/*", File::FNM_DOTMATCH, base: project).select { |path| File.file?(File.join(project, path)) }
       .grep_v(/\.(?:jar|aar|pem)\z/).select { |path| File.read(File.join(project, path)).match?(Fledge::MobileProject::TOKEN) }
     assert_empty leftover, "every mark in the template is filled"
-  end
-
-  # Android lets an app run only its native libraries, so a gem's
-  # command, bin/NAME, is a link to the runtime's ruby program, which
-  # fledge.links makes as the app starts, and RubyGems' wrapper is kept
-  # in libexec/commands, where the app's Ruby reads it in that link's
-  # place (doc/contributors/design/phone-runtimes.md, "Gem commands on
-  # Android").
-  def test_an_android_apps_gem_commands_are_links_to_its_ruby_program
-    root = script_app("identifier: com.example.hello\n")
-
-    assert_equal 0, build("android", root)[2]
-    project = File.join(@dir, "dist/Hello-android")
-    assert_equal "#!/bin/sh\n# rake's wrapper\n", File.read(File.join(project, "fledge/libexec/commands/rake"))
-    assert_equal RAKE_LINKS, File.read(File.join(project, "fledge/fledge.links"))
-    refute_path_exists File.join(project, "fledge/bin")
   end
 
   def test_an_app_without_an_icon_gets_the_systems_own
@@ -384,7 +364,7 @@ class MobileBuildTest < Minitest::Test
     library = File.join(project, "src/main/jniLibs/x86_64/libfledgeext.adder.adder.so")
     assert_equal "ELF adder", File.read(library)
     refute_includes File.read(File.join(project, "src/main/jniLibs/x86_64/libfledgeext.so")), "fledge_ruby_add_extension("
-    assert_equal "x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n#{RAKE_LINKS}", File.read(File.join(project, "fledge/fledge.links"))
+    assert_equal "x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n", File.read(File.join(project, "fledge/fledge.links"))
     refute_includes File.read(File.join(project, "src/main/java/org/setdef/fledge/host/MainActivity.java")), "loadLibrary"
   end
 
@@ -461,7 +441,7 @@ class MobileBuildTest < Minitest::Test
 
     name = "libfledgeffi.llhttp-ffi.ext.x86_64-linux.libllhttp-ext.so"
     assert_equal "ELF llhttp", File.read(File.join(project, "src/main/jniLibs/x86_64", name))
-    assert_equal "x86_64\t#{name}\tlib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/ext/x86_64-linux/libllhttp-ext.so\n#{RAKE_LINKS}",
+    assert_equal "x86_64\t#{name}\tlib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/ext/x86_64-linux/libllhttp-ext.so\n",
       File.read(File.join(project, "fledge/fledge.links"))
   end
 

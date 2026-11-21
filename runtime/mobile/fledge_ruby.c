@@ -146,33 +146,6 @@ setup_bundler(void)
     return -1;
 }
 
-/*
- * On Android, puts the bin folder of the app's Ruby, which holds ruby
- * and the gems' commands, first on PATH, unless it is first already, as
- * the desktop launcher's put_ruby_on_path does (the launcher's bundler.c,
- * fledge_ruby_on_path_code), before Bundler loads, so that
- * system("rake") and system("ruby") find the app's own, as a
- * developer's shell has the Ruby they run first
- * (doc/contributors/design/phone-runtimes.md, "Gem commands on
- * Android"). iOS lets no app run a program, so there it does nothing.
- * Returns 0, or prints why it could not and returns -1.
- */
-static int
-put_ruby_on_path(void)
-{
-#ifdef __ANDROID__
-    int state = 0;
-
-    rb_eval_string_protect(fledge_ruby_on_path_code, &state);
-    if (state == 0) return 0;
-    rb_set_errinfo(Qnil);
-    fputs("fledge_ruby_run: could not put the app's Ruby on PATH\n", stderr);
-    return -1;
-#else
-    return 0;
-#endif
-}
-
 int
 fledge_ruby_add_extension(const char *feature, void (*init)(void))
 {
@@ -258,10 +231,9 @@ write_lines_as_printed(void)
  * SPDX-License-Identifier: Ruby OR BSD-2-Clause
  * SPDX-SnippetCopyrightText: 1993-2007 Yukihiro Matsumoto
  * SPDX-SnippetComment: rb_main, from Ruby's main.c (lines 37 to 43) at
- *   Ruby v4.1.0-preview1 (2d08b5f42f), with put_ruby_on_path and
- *   setup_bundler between ruby_options and ruby_run_node, as in the
- *   desktop launcher's run_ruby, and standard output written through
- *   before either.
+ *   Ruby v4.1.0-preview1 (2d08b5f42f), with setup_bundler between
+ *   ruby_options and ruby_run_node, as in the desktop launcher's
+ *   run_ruby, and standard output written through before either.
  */
 static int
 run_ruby(int argc, char **argv)
@@ -271,8 +243,7 @@ run_ruby(int argc, char **argv)
     void *node = ruby_options(argc, argv);
     write_lines_as_printed();
     register_extensions();
-    if (ruby_executable_node(node, NULL) &&
-        (put_ruby_on_path() != 0 || (bundle_gemfile != NULL && setup_bundler() != 0))) {
+    if (bundle_gemfile != NULL && ruby_executable_node(node, NULL) && setup_bundler() != 0) {
         return ruby_cleanup(FLEDGE_RUBY_SOFTWARE);
     }
     return ruby_run_node(node);
@@ -345,7 +316,6 @@ prepare(const char *root, const char *caller)
         return FLEDGE_RUBY_SOFTWARE;
     }
     if (access(certificates, R_OK) == 0) found_certificates = certificates;
-    fledge_ruby_read_commands(root);
     soften_fdsan();
     fledge_coerce_locale();
     ruby_embed_libruby_path = libruby;

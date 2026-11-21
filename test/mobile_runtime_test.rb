@@ -106,33 +106,6 @@ class MobileRuntimeTest < Minitest::Test
   # CAP_SETGID or CAP_SETUID: Process.egid= with the current group ID
   # succeeds and with another raises EPERM, where the app would end or
   # NotImplementedError rise.
-  # The Android runtime keeps the wrappers RubyGems wrote for its gems'
-  # commands in bin/, as a desktop runtime does, where fledge build finds
-  # them (RuntimeContents#binaries), and leaves out the ruby program
-  # make install put beside them: the runtime's is libfledgerubyexe.so,
-  # and an app links bin/ruby to it as it starts.
-  def test_android_keeps_its_gems_commands_but_not_make_installs_ruby
-    Dir.mktmpdir do |dir|
-      roots = %w[aarch64 x86_64].to_h do |arch|
-        root = File.join(dir, arch)
-        FileUtils.mkdir_p([File.join(root, "bin"), File.join(root, "lib", "ruby", "4.1.0+5", "#{arch}-linux-android"), File.join(root, "include")])
-        File.write(File.join(root, "bin", "ruby"), "ELF #{arch}")
-        File.write(File.join(root, "bin", "rake"), "#!/bin/sh\n# rake's wrapper\n")
-        File.write(File.join(root, "lib", "ruby", "4.1.0+5", "#{arch}-linux-android", "rbconfig.rb"), arch)
-        [arch, root]
-      end
-      builder = RuntimeBuilder::Android.allocate
-      builder.instance_variable_set(:@roots, roots)
-      stage = File.join(dir, "stage")
-
-      builder.__send__(:merge_trees, stage)
-
-      assert_equal ["rake"], Dir.children(File.join(stage, "bin"))
-      assert_equal "#!/bin/sh\n# rake's wrapper\n", File.read(File.join(stage, "bin", "rake"))
-      assert_path_exists File.join(stage, "lib", "ruby", "4.1.0+5", "x86_64-linux-android", "rbconfig.rb")
-    end
-  end
-
   def test_android_ruby_answers_each_id_call_the_seccomp_filter_stops
     assert_empty RuntimeBuilder::Android::CONFIGURE.grep(/\Aac_cv_func_/)
     assert_includes RuntimeBuilder::Android.allocate.__send__(:edits), :process_c_ids

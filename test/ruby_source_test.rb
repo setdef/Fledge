@@ -69,48 +69,6 @@ class RubySourceTest < Minitest::Test
     assert_raises(RuntimeError) { Edits.ruby_c("#elif defined(HAVE_DLADDR)\n    Dl_info info;\n") }
   end
 
-  # On Android a gem's command in the app's bin folder is a link to the
-  # ruby program, since Android runs no script from an app's files, and
-  # RubyGems' wrapper is kept beside it. Prism reads every Ruby file,
-  # the main script, load, and require, through pm_load_file, so the
-  # edit lets the embedder name the file to read in place of the one
-  # asked for, which every message and __FILE__ still name.
-  def test_prism_lets_its_embedder_read_a_command_in_place_of_its_link
-    text = "VALUE\npm_load_file(pm_parse_result_t *result, VALUE filepath, bool load_error)\n{\n    pm_source_init_result_t init_result;\n" \
-      "    result->source = pm_source_mapped_new(RSTRING_PTR(filepath), O_RDONLY | O_NONBLOCK, &init_result);\n\n    int err;\n" \
-      "            .fd = rb_cloexec_open(RSTRING_PTR(filepath), args.open_mode, 0),\n"
-
-    edited = Edits.prism_compile_c(text)
-    assert_includes edited, "    pm_source_init_result_t init_result;\n    const char *source_path = RSTRING_PTR(filepath);\n#ifdef __ANDROID__\n" \
-      "    char embed_source[4096];\n" \
-      "    if (ruby_embed_source_path && ruby_embed_source_path(source_path, embed_source, sizeof embed_source)) source_path = embed_source;\n" \
-      "#endif\n    result->source = pm_source_mapped_new(source_path, O_RDONLY | O_NONBLOCK, &init_result);\n"
-    assert_includes edited, "            .fd = rb_cloexec_open(source_path, args.open_mode, 0),\n"
-    assert_match(/\A#ifdef __ANDROID__\n#include <stddef.h>\nint \(\*ruby_embed_source_path\)\(const char \*, char \*, size_t\);\n#endif\n/, edited)
-    # Elsewhere than Android it reads the path it is given, as before.
-    assert_equal text.gsub("RSTRING_PTR(filepath), ", "source_path, ").sub("init_result;\n", "init_result;\n    const char *source_path = RSTRING_PTR(filepath);\n"),
-      without_android(edited)
-    assert_raises(RuntimeError) { Edits.prism_compile_c("VALUE\npm_load_file(pm_parse_result_t *result, VALUE filepath)\n{\n") }
-  end
-
-  # And parse.y's reader, which --parser=parse.y and a script's DATA use.
-  def test_ruby_lets_its_embedder_read_a_command_in_place_of_its_link
-    text = "        int mode = MODE_TO_LOAD;\n#if defined DOSISH || defined __CYGWIN__\n"
-
-    edited = Edits.ruby_c_source(text)
-    assert_includes edited, "        int mode = MODE_TO_LOAD;\n#ifdef __ANDROID__\n        char embed_source[4096];\n" \
-      "        extern int (*ruby_embed_source_path)(const char *, char *, size_t);\n" \
-      "        if (ruby_embed_source_path && ruby_embed_source_path(fname, embed_source, sizeof embed_source)) fname = embed_source;\n#endif\n"
-    assert_equal text, without_android(edited), "elsewhere than Android ruby.c is as it was"
-    assert_raises(RuntimeError) { Edits.ruby_c_source("        int mode = O_RDONLY;\n") }
-  end
-
-  # +text+ as a compiler for a system other than Android reads it: without
-  # each <tt>#ifdef __ANDROID__</tt> block.
-  private def without_android(text)
-    text.gsub(/^#ifdef __ANDROID__\n.*?^#endif\n/m, "")
-  end
-
   # An Android app's Ruby is given an argv its host allocates, so the
   # title $0= writes over it never reaches /proc/PID/cmdline. The edit
   # points setproctitle at the process's own argument area, which

@@ -37,9 +37,8 @@
  * app's Ruby boots, and fledge_ruby_program_main is its main function.
  * With it, each link ROOT/fledge.links lists, from where the app's Ruby
  * looks for a file to a native library of the app's
- * (fledge_link_libraries, library_links.c), each gem's command among
- * them, which the program runs as its name says (commands.c). And before
- * Ruby boots, the library of the app's linked extensions, libfledgeext.so
+ * (fledge_link_libraries, library_links.c). And before Ruby boots, the
+ * library of the app's linked extensions, libfledgeext.so
  * (fledge_ruby_load_extensions).
  */
 
@@ -315,41 +314,15 @@ fledge_ruby_load_extensions(const char *caller)
 /*
  * The runtime's ruby program: finds its root and runs fledge_ruby_main,
  * which opens the app's extensions' library as fledge_ruby_run does.
- * Run as a gem's command, ROOT/bin/NAME, whose wrapper FLEDGE_COMMANDS holds,
- * it runs Ruby as that wrapper's shell prolog execs it on a desktop,
- * ruby -x ROOT/bin/NAME ARGS (Gem::Installer#bash_prolog_script,
- * rubygems/installer.rb, lines 1039 to 1054 at Ruby 4.1.0-preview1),
- * and Ruby reads the wrapper in its place (commands.c).
  */
 int
 fledge_ruby_program_main(int argc, char **argv)
 {
-    static char execute[] = "-x";
     char root[PATH_MAX];
-    char wrapper[PATH_MAX];
-    struct stat status;
 
     if (program_root(root) != 0) {
         fputs("ruby: this program runs as ROOT/bin/ruby, the RbConfig.ruby of an app's Ruby\n", stderr);
         return FLEDGE_RUBY_SOFTWARE;
     }
-    char *path = (char *)getauxval(AT_EXECFN);
-    const char *slash = strrchr(path, '/');
-    const char *name = slash != NULL ? slash + 1 : path;
-    if (argc < 1 || strcmp(name, "ruby") == 0 || name[0] == '.' ||
-        snprintf(wrapper, sizeof wrapper, "%s" FLEDGE_COMMANDS "/%s", root, name) >= (int)sizeof wrapper ||
-        stat(wrapper, &status) != 0 || !S_ISREG(status.st_mode)) {
-        return fledge_ruby_main(root, argc, argv);
-    }
-
-    char **command = calloc((size_t)argc + 3, sizeof *command);
-    if (command == NULL) {
-        fputs("ruby: out of memory\n", stderr);
-        return FLEDGE_RUBY_SOFTWARE;
-    }
-    command[0] = argv[0];
-    command[1] = execute;
-    command[2] = path;
-    for (int index = 1; index < argc; index++) command[index + 2] = argv[index];
-    return fledge_ruby_main(root, argc + 2, command);
+    return fledge_ruby_main(root, argc, argv);
 }

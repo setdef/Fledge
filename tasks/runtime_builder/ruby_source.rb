@@ -25,8 +25,6 @@ class RuntimeBuilder
       configure: "configure",
       configure_macos_minimum: "configure",
       ruby_c: "ruby.c",
-      ruby_c_source: "ruby.c",
-      prism_compile_c: "prism_compile.c",
       load_c: "load.c",
       file_c: "file.c",
       process_c: "process.c",
@@ -107,44 +105,6 @@ class RuntimeBuilder
           "    if (ruby_embed_libruby_path) return rb_str_new_cstr(ruby_embed_libruby_path);\n\n",
         "ruby.c finds libruby with dladdr")
       "#{edited}\nconst char *ruby_embed_libruby_path;\n"
-    end
-
-    # Where Prism reads a Ruby file, pm_load_file (prism_compile.c, lines
-    # 11034 to 11080 at 4.1.0-preview1), through which the main script
-    # (ruby.c, prism_script, line 2277), load and require (load.c, line
-    # 749), and RubyVM::InstructionSequence.compile_file (iseq.c, line
-    # 2044) read theirs: an embedder may name, in +ruby_embed_source_path+,
-    # a function that writes the path of the file to read in place of
-    # the one asked for into a buffer, and returns nonzero when it did.
-    # The path asked for stays the file's name, in __FILE__, $0,
-    # backtraces, and every message, and a path the function does not
-    # take, or with no function, is read as before. On Android a gem's
-    # command in the app's bin folder is a link to the ruby program,
-    # which Android lets an app run, and the runtime reads RubyGems'
-    # wrapper kept apart in its place (runtime/mobile/commands.c;
-    # doc/contributors/design/phone-runtimes.md, "Gem commands on
-    # Android"). The lines it adds are compiled for Android alone
-    # (<tt>__ANDROID__</tt>), so a Ruby built for another system with the
-    # edit is the Ruby it would be without. 4096 bytes is PATH_MAX on
-    # Linux and Android.
-    def self.prism_compile_c(text)
-      declared = "#ifdef __ANDROID__\n#include <stddef.h>\nint (*ruby_embed_source_path)(const char *, char *, size_t);\n#endif\n"
-      read = "    const char *source_path = RSTRING_PTR(filepath);\n#ifdef __ANDROID__\n    char embed_source[4096];\n" \
-        "    if (ruby_embed_source_path && ruby_embed_source_path(source_path, embed_source, sizeof embed_source)) source_path = embed_source;\n#endif\n"
-      edited = replace(text,
-        /^(pm_load_file\(pm_parse_result_t \*result, VALUE filepath, bool load_error\)\n\{\n    pm_source_init_result_t init_result;\n)    result->source = pm_source_mapped_new\(RSTRING_PTR\(filepath\), /,
-        "\\1#{read}    result->source = pm_source_mapped_new(source_path, ", "pm_load_file maps the file it is given")
-      "#{declared}#{replace(edited, /^(            \.fd = rb_cloexec_open\()RSTRING_PTR\(filepath\)(, args\.open_mode, 0\),)$/, '\1source_path\2', 'pm_load_file opens a pipe it is given')}"
-    end
-
-    # The same in parse.y's reader, open_load_file (ruby.c, lines 2914 to
-    # 2984 at 4.1.0-preview1), which <tt>--parser=parse.y</tt> reads
-    # every file with and Prism the main script's DATA (line 2298).
-    def self.ruby_c_source(text)
-      replace(text, /^(        int mode = MODE_TO_LOAD;\n)/,
-        "\\1#ifdef __ANDROID__\n        char embed_source[4096];\n        extern int (*ruby_embed_source_path)(const char *, char *, size_t);\n" \
-          "        if (ruby_embed_source_path && ruby_embed_source_path(fname, embed_source, sizeof embed_source)) fname = embed_source;\n#endif\n",
-        "open_load_file opens the file it is given")
     end
 
     # The gate before load.c's lookup of statically linked extensions

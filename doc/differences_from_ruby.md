@@ -24,7 +24,7 @@ RubyGems still activates a bundled gem your lockfile does not lock, such as `irb
 
 ## Your gems' commands
 
-`ENV["PATH"]` starts with the app's Ruby's bin folder, which holds its `ruby` and your gems' commands, as your shell's `PATH` starts with the Ruby you run. So `system("rake")`, backquotes, `Open3`, `ruby -S rake`, and `system("ruby", "worker.rb")` find the app's own, never a Ruby your users happen to have; in an app with a `Gemfile` they run the version your lockfile locks, as under `bundle exec`. `Bundler.original_env`, `with_original_env`, and `with_unbundled_env` give your users' own `PATH` with the same folder first, as under `bundle exec` they give yours with your Ruby in it. On iOS no app runs a program; on Android this works, but each command in that folder is a program, not RubyGems' script, though Ruby loads the script in its place ([What a phone forbids](phones.md#what-a-phone-forbids)).
+`ENV["PATH"]` starts with the app's Ruby's bin folder, which holds its `ruby` and your gems' commands, as your shell's `PATH` starts with the Ruby you run. So `system("rake")`, backquotes, `Open3`, `ruby -S rake`, and `system("ruby", "worker.rb")` find the app's own, never a Ruby your users happen to have; in an app with a `Gemfile` they run the version your lockfile locks, as under `bundle exec`. `Bundler.original_env`, `with_original_env`, and `with_unbundled_env` give your users' own `PATH` with the same folder first, as under `bundle exec` they give yours with your Ruby in it. On a phone, an app cannot yet run a gem's command by its name ([What a phone forbids](phones.md#what-a-phone-forbids)).
 
 ## The locale
 

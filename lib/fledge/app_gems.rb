@@ -136,9 +136,7 @@ module Fledge
       packages = locked.to_h { |gem| [gem, package_for(gem)] } # : Hash[locked_gem, package]
       stubs = [] # : Array[Entry]
       problems = case platform
-      when MobilePlatform
-        stubs = phone_executables(packages, runtime, platform)
-        mobile_problems(packages, platform, runtime)
+      when MobilePlatform then mobile_problems(packages, platform, runtime)
       else
         packages = compile(packages)
         stubs = executables(packages, runtime)
@@ -189,21 +187,6 @@ module Fledge
     private def executables(packages, runtime)
       @compiler.binstubs(packages).values.flatten.map { |entry| entry.with(path: "#{runtime.bin_dir}/#{entry.path}") }
         .reject { |entry| runtime.binaries.include?(entry.path) }
-    end
-
-    # The wrappers of the executables of the gems in +packages+ for an
-    # app on the phone +platform+: on Android, as #executables writes
-    # them, with this computer's runtime, which runs where a phone's
-    # Ruby cannot, at the same Ruby and so the same RubyGems, but without
-    # the Windows wrappers it writes on Windows. Android runs none of
-    # them as a script: the app's Ruby reads each where it reads
-    # <tt>bin/NAME</tt>, a link to its ruby program
-    # (doc/contributors/design/phone-runtimes.md, "Gem commands on
-    # Android"). iOS lets no app run a program, so there are none.
-    private def phone_executables(packages, runtime, platform)
-      return [] unless platform.name == "android"
-
-      executables(packages, runtime).reject { |entry| entry.path.end_with?(".bat") }
     end
 
     # The entries that install +gem+ (as +package+, compiled or not) in a

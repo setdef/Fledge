@@ -34,7 +34,6 @@ module Fledge
     def extension_build_args: () -> Hash[String, Array[String]]
 
     private def executables: (Hash[locked_gem, package] packages, RuntimeContents runtime) -> Array[Entry]
-    private def phone_executables: (Hash[locked_gem, package] packages, RuntimeContents runtime, MobilePlatform platform) -> Array[Entry]
 
     private def entries_for: (locked_gem gem, package package, String gem_dir) -> Array[Entry]
 

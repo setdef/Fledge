@@ -20,8 +20,9 @@ module Fledge
     # says <tt>false</tt>, and the app it builds installs, starts, and
     # raises +LoadError+ at the extension's +require+.
     #
-    # This class reads the file's last <tt>useLegacyPackaging</tt>, its
-    # comments left out, and names each such extension with what to set:
+    # This class reads the last <tt>useLegacyPackaging</tt> the file sets
+    # for native libraries, its comments and its setting for dex files
+    # left out, and names each such extension with what to set:
     # a refusal when the file sets +false+, and a warning when it sets
     # nothing, since a project may set it in another file
     # (doc/contributors/design/phone-projects.md, "Host files").
@@ -49,6 +50,11 @@ module Fledge
 
       # Groovy's comments, which may hold an old setting.
       COMMENTS = %r{/\*.*?\*/|//[^\n]*}m
+
+      # The setting of the same name for dex files, in a block or by its
+      # path, which says nothing of native libraries: the Android Gradle
+      # plugin's DexPackaging has a useLegacyPackaging of its own.
+      DEX = /\bdex\s*\{[^{}]*\}|\bdex\s*\.\s*useLegacyPackaging\b[^\n]*/
 
       # What to set, as Fledge's template sets it.
       FIX = "useLegacyPackaging = true in a packaging { jniLibs { } } block"
@@ -92,23 +98,25 @@ module Fledge
       # SPDX-License-Identifier: MIT-0
       #++
       #   packaging.warning("android {\n}\n", shown: "host/android/build.gradle")
-      #   # => "host/android/build.gradle sets no useLegacyPackaging, and Android's default ..."
+      #   # => "host/android/build.gradle sets no useLegacyPackaging for its native libraries, ..."
       #--
       # SPDX-SnippetEnd
       #++
       def warning(text, shown:)
         return if @extensions.empty? || setting(text)
 
-        "#{shown} sets no useLegacyPackaging, and Android's default keeps the native libraries stored, so unless your " \
-          "project sets it to true elsewhere, #{named} will not load on a phone. Add #{FIX}, as Fledge's own build.gradle has it."
+        "#{shown} sets no useLegacyPackaging for its native libraries, and Android's default keeps them stored, so unless " \
+          "your project sets it to true elsewhere, #{named} will not load on a phone. Add #{FIX}, as Fledge's own build.gradle " \
+          "has it."
       end
 
-      # The value +text+ sets last, outside its comments, or +nil+.
+      # The value +text+ sets last for native libraries, outside its
+      # comments, or +nil+.
       private def setting(text)
         return if @extensions.empty?
 
         found = nil # : String?
-        text.gsub(COMMENTS, "").scan(SETTING) { found = ::Regexp.last_match(1) }
+        text.gsub(COMMENTS, "").gsub(DEX, "").scan(SETTING) { found = ::Regexp.last_match(1) }
         found
       end
 

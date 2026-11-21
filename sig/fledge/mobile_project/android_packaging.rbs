@@ -8,6 +8,8 @@ module Fledge
 
       COMMENTS: Regexp
 
+      DEX: Regexp
+
       FIX: String
 
       @extensions: Array[[String, String]]

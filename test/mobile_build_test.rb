@@ -396,10 +396,30 @@ class MobileBuildTest < Minitest::Test
     assert_path_exists android_project_with_library("adder/adder", host: { "build.gradle" => "android {\n}\n" }, log:)
     assert_equal [
       "host/android replaces Fledge's build.gradle",
-      "host/android/build.gradle sets no useLegacyPackaging, and Android's default keeps the native libraries stored, so " \
-        "unless your project sets it to true elsewhere, adder's extension adder/adder will not load on a phone. Add " \
+      "host/android/build.gradle sets no useLegacyPackaging for its native libraries, and Android's default keeps them " \
+        "stored, so unless your project sets it to true elsewhere, adder's extension adder/adder will not load on a phone. Add " \
         "useLegacyPackaging = true in a packaging { jniLibs { } } block, as Fledge's own build.gradle has it.",
     ], log.string.lines.map(&:chomp)
+  end
+
+  # The Android Gradle plugin has a useLegacyPackaging for dex files
+  # too (DexPackaging), which says nothing of native libraries: a host
+  # that sets it after jniLibs', in a block or by its path, builds, and
+  # one that sets it alone has set none for its native libraries.
+  def test_an_android_hosts_packaging_of_dex_files_is_not_its_packaging_of_native_libraries
+    block = "android {\n    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n        }\n        " \
+      "dex {\n            useLegacyPackaging = false\n        }\n    }\n}\n"
+    path = "android {\n    packaging.jniLibs.useLegacyPackaging = true\n    packaging.dex.useLegacyPackaging = false\n}\n"
+    [block, path].each do |gradle|
+      log = StringIO.new
+      assert_path_exists android_project_with_library("adder/adder", host: { "build.gradle" => gradle }, log:)
+      assert_equal "host/android replaces Fledge's build.gradle\n", log.string
+    end
+
+    log = StringIO.new
+    alone = "android {\n    packaging {\n        dex {\n            useLegacyPackaging = false\n        }\n    }\n}\n"
+    assert_path_exists android_project_with_library("adder/adder", host: { "build.gradle" => alone }, log:)
+    assert_match(%r{\Ahost/android/build\.gradle sets no useLegacyPackaging for its native libraries, }, log.string.lines.last)
   end
 
   # The package installer extracts only a library whose name has the

@@ -4,6 +4,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 #++
+
 # Tests .github/scripts/ruby-archive-publish.sh, which ruby-builds.yml
 # runs to publish Fledge's own Ruby archives for glibc Linux on a
 # pre-release (doc/contributors/design/runtimes.md, "Fledge's own Ruby

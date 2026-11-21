@@ -5,7 +5,8 @@
 # runtimes.md, "Testing against Ruby's master"). Fledge's releases pin
 # one Ruby; this builds the runtimes Fledge builds Ruby for itself, musl
 # Linux and the phones, from the day's snapshot of Ruby's master, with
-# the scripted edits and the license audit, so a change in Ruby that
+# the scripted edits and the license audit, and checks each musl
+# runtime's parity with its own Ruby, so a change in Ruby that
 # breaks them shows within a day, not on the day of the next Ruby
 # release. It changes no pin on trunk: tasks/ruby_snapshot.rb rewrites
 # runtime/sources.yml and runtime/licenses.yml in this run's checkout
@@ -128,9 +129,22 @@ jobs:
             -e PLATFORM -e XDG_CACHE_HOME=/cache "$ALPINE_RUBY" \
             sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
 
-      - name: Record the result
+      # As ci.yml's parity-musl, on the runtime just built, whose
+      # reference is its own bin/ruby, master's (doc/contributors/design/
+      # parity.md).
+      - name: Check parity with ruby main.rb and bundle exec, in Alpine
+        id: parity
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/tmp/runtime "$ALPINE_RUBY"
+          sh -c '.github/scripts/alpine-packages.sh apps && .github/scripts/alpine-packages.sh parity && git config --global --add safe.directory /fledge && ruby tasks/parity.rb'
+
+      - name: Record the results
         if: always()
-        run: .github/scripts/ruby-master-result.sh "Runtime (${{ matrix.platform }})" "${{ steps.build.outcome }}"
+        run: |
+          .github/scripts/ruby-master-result.sh "Runtime (${{ matrix.platform }})" "${{ steps.build.outcome }}"
+          .github/scripts/ruby-master-result.sh "Parity (${{ matrix.platform }})" "${{ steps.parity.outcome }}"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -258,4 +272,7 @@ jobs:
           REVISION: ${{ needs.snapshot.outputs.revision }}
           DATE: ${{ needs.snapshot.outputs.date }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: .github/scripts/ruby-master-report.sh "Runtime (x86_64-linux-musl)" "Runtime (aarch64-linux-musl)" "Runtime (ios)" "Runtime (android)"
+        run: >-
+          .github/scripts/ruby-master-report.sh
+          "Runtime (x86_64-linux-musl)" "Parity (x86_64-linux-musl)" "Runtime (aarch64-linux-musl)" "Parity (aarch64-linux-musl)"
+          "Runtime (ios)" "Runtime (android)"

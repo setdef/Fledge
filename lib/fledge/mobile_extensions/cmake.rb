@@ -25,7 +25,8 @@ module Fledge
     # slice's SDK, processor, and deployment target, with the compilers
     # mkmf is given; for an Android ABI it includes the NDK's own
     # <tt>android.toolchain.cmake</tt>, given the ABI and API level, as
-    # Gradle does.
+    # Gradle does, and the shared C++ runtime the app's other C++
+    # libraries link.
     #
     # Use CMake.ios and CMake.android for the text, and write it once for
     # each target.
@@ -86,7 +87,11 @@ module Fledge
       # The toolchain file for the Android ABI +abi+ (<tt>x86_64</tt>),
       # from the NDK at +ndk+, for the API level in the name of the NDK's
       # +compiler+ the runtime was built with
-      # (<tt>x86_64-linux-android26-clang</tt>).
+      # (<tt>x86_64-linux-android26-clang</tt>). It links the NDK's shared
+      # C++ runtime, <tt>libc++_shared.so</tt>, which every other C++
+      # library of the app links, unless the gem's build names another in
+      # <tt>ANDROID_STL</tt>: the NDK's file alone would link each shared
+      # library with a static copy of its own.
       #
       # === Example
       #
@@ -105,6 +110,9 @@ module Fledge
         HEADER + <<~CMAKE
           set(ANDROID_ABI #{abi})
           set(ANDROID_PLATFORM android-#{api})
+          if(NOT DEFINED ANDROID_STL)
+            set(ANDROID_STL c++_shared)
+          endif()
           include(#{string(File.join(ndk, 'build', 'cmake', 'android.toolchain.cmake'))})
         CMAKE
       end

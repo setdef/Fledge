@@ -137,72 +137,21 @@ class MobileExtensionSymbolsTest < Minitest::Test
   # (doc/contributors/research/2026-11-20-two-cxx-runtimes.md). The
   # extension exports nothing of the C++ runtime, holding none of it.
   def test_a_cpp_extension_shares_the_cpp_runtime_of_a_library_it_links
-    gem = extconf_gem("twin_cxx", <<~RUBY, "twin_cxx.cpp" => <<~CXX, "lib.mk" => <<~MAKE, "twin/dep.cpp" => <<~DEP)
+    gem = extconf_gem("twin_cxx", <<~RUBY, "twin_cxx.cpp" => crossing_extension("twin_cxx"), "lib.mk" => <<~MAKE, "twin/dep.cpp" => crossing_library("twin_cxx"))
       require "mkmf"
       create_makefile("twin_cxx/twin_cxx")
       File.open("Makefile", "a") { |makefile| makefile.puts "include $(srcdir)/lib.mk" }
     RUBY
-      #include <cstring>
-      #include <exception>
-      #include <iostream>
-      #include <stdexcept>
-      #include <string>
-      #include <typeinfo>
-      #include <ruby.h>
-      extern "C" const void *twin_cxx_lib_cout(void);
-      std::string twin_cxx_lib_greet(const std::string &name);
-      void twin_cxx_lib_raise(void);
-      const std::type_info &twin_cxx_lib_kind(void);
-      bool twin_cxx_lib_has_current(void);
-      void twin_cxx_lib_set_terminate(void);
-      int *twin_cxx_lib_new(void);
-      extern "C" long twin_cxx_shares_cout(void) { std::cout.flush(); return twin_cxx_lib_cout() == static_cast<const void *>(&std::cout); }
-      extern "C" long twin_cxx_greets(void) { return twin_cxx_lib_greet("phone") == "hello phone"; }
-      extern "C" long twin_cxx_catches(void) {
-        try { twin_cxx_lib_raise(); } catch (const std::exception &error) { return std::strcmp(error.what(), "boom") == 0; }
-        return 0;
-      }
-      extern "C" long twin_cxx_same_type(void) {
-        return twin_cxx_lib_kind() == typeid(std::runtime_error) && &twin_cxx_lib_kind() == &typeid(std::runtime_error);
-      }
-      extern "C" long twin_cxx_current(void) {
-        try { twin_cxx_lib_raise(); } catch (...) { return twin_cxx_lib_has_current(); }
-        return 0;
-      }
-      extern "C" long twin_cxx_terminate(void) {
-        std::terminate_handler before = std::get_terminate();
-        twin_cxx_lib_set_terminate();
-        return std::get_terminate() != before;
-      }
-      extern "C" long twin_cxx_deletes(void) { int *seven = twin_cxx_lib_new(); long value = *seven; delete seven; return value; }
-      extern "C" void Init_twin_cxx(void) { rb_define_module("TwinCxx"); }
-    CXX
       LIBDEP = $(shell pwd)/libdep/libtwin_cxx_lib.so
       LOCAL_LIBS += -L$(shell pwd)/libdep -ltwin_cxx_lib
       $(OBJS): $(LIBDEP)
       $(LIBDEP):
       \tmkdir -p $(@D) && $$CXX -shared -fPIC $(srcdir)/twin/dep.cpp -o $@ && cp "$$($$CXX -print-file-name=libc++_shared.so)" $(@D)/
     MAKE
-      #include <cstdlib>
-      #include <exception>
-      #include <iostream>
-      #include <stdexcept>
-      #include <string>
-      #include <typeinfo>
-      extern "C" const void *twin_cxx_lib_cout(void) { return &std::cout; }
-      std::string twin_cxx_lib_greet(const std::string &name) { return "hello " + name; }
-      void twin_cxx_lib_raise(void) { throw std::runtime_error("boom"); }
-      const std::type_info &twin_cxx_lib_kind(void) { return typeid(std::runtime_error); }
-      bool twin_cxx_lib_has_current(void) { return static_cast<bool>(std::current_exception()); }
-      static void twin_cxx_lib_terminate(void) { std::abort(); }
-      void twin_cxx_lib_set_terminate(void) { std::set_terminate(twin_cxx_lib_terminate); }
-      int *twin_cxx_lib_new(void) { return new int(7); }
-    DEP
 
     built = compile(gem)
 
-    crossings = %w[shares_cout greets catches same_type current terminate deletes]
-    printed = on_device(built, crossings.flat_map { |crossing| ["twin_cxx/twin_cxx", "twin_cxx_#{crossing}"] })
+    printed = on_device(built, CROSSINGS.flat_map { |crossing| ["twin_cxx/twin_cxx", "twin_cxx_#{crossing}"] })
     built.targets.each_value do |target|
       library = target.libraries.fetch(0)
       assert_includes needed(target, library.path), "libc++_shared.so", "#{target.target.name}: the extension links the shared C++ runtime"
@@ -214,7 +163,126 @@ class MobileExtensionSymbolsTest < Minitest::Test
           "(#{File.size(library.path)} bytes) exports are the C++ runtime's; on the device: #{printed.inspect}"
       assert_match(/ Init_twin_cxx$/, symbols, "#{target.target.name}: dln finds the Init function")
     end
-    on_the_device(printed, crossings.map { |crossing| "twin_cxx_#{crossing} #{(crossing == 'deletes') ? 7 : 1}\n" }.join)
+    on_the_device(printed, crossed("twin_cxx"))
+  end
+
+  # The same crossings with a shared C++ library the extconf.rb builds
+  # with CMake, as a gem over a native engine may, from the toolchain
+  # file Fledge names in CMAKE_TOOLCHAIN_FILE, which includes the NDK's
+  # android.toolchain.cmake (phone-projects.md, "CMake toolchain
+  # files"). Given no ANDROID_STL, the NDK's file links a shared library
+  # with the static C++ runtime, where a desktop's CMake links the
+  # system's shared one, so the library held a copy of its own beside the
+  # extension's libc++_shared.so. Exported, that copy took the place of
+  # libc++_shared.so's for every library in the extension's group, and
+  # the crossings passed; hidden, as the NDK asks of a library that links
+  # the static runtime and as this one hides it (--exclude-libs), the
+  # copies stay two. The library links libc++_shared.so and holds none
+  # of the runtime, and every crossing behaves as on a desktop.
+  def test_a_cpp_extension_shares_the_cpp_runtime_of_a_shared_library_cmake_builds
+    android_missing("the gem's extconf.rb runs CMake, which is not on the PATH") unless cmake?
+    gem = extconf_gem("cmake_cxx", <<~RUBY, "cmake_cxx.cpp" => crossing_extension("cmake_cxx"), "lib/CMakeLists.txt" => <<~CMAKE, "lib/dep.cpp" => crossing_library("cmake_cxx"))
+      require "mkmf"
+      build = File.expand_path("cmake_cxx-build")
+      system("cmake", "-S", File.join(__dir__, "lib"), "-B", build, exception: true)
+      system("cmake", "--build", build, exception: true)
+      $LOCAL_LIBS << " -L\#{build} -lcmake_cxx_lib"
+      create_makefile("cmake_cxx/cmake_cxx")
+    RUBY
+      cmake_minimum_required(VERSION 3.21)
+      project(cmake_cxx_lib LANGUAGES CXX)
+      add_library(cmake_cxx_lib SHARED dep.cpp)
+      target_link_options(cmake_cxx_lib PRIVATE "-Wl,--exclude-libs,ALL")
+    CMAKE
+
+    built = compile(gem)
+
+    printed = on_device(built, CROSSINGS.flat_map { |crossing| ["cmake_cxx/cmake_cxx", "cmake_cxx_#{crossing}"] })
+    built.targets.each_value do |target|
+      extension = target.libraries.fetch(0).path
+      library = Dir.glob(File.join(File.dirname(extension), "**", "libcmake_cxx_lib.so")).fetch(0)
+      assert_match(/UND\s+\S*cmake_cxx_lib_greet/, dynamic_symbols(target, extension), "#{target.target.name}: the extension calls the library")
+      assert_equal [], defined(dynamic_symbols(target, extension)).grep(/cmake_cxx_lib_/),
+        "#{target.target.name}: the extension holds none of the library's functions"
+      assert_includes needed(target, library), "libc++_shared.so",
+        "#{target.target.name}: CMake links the library over the shared C++ runtime; on the device: #{printed.inspect}"
+      assert_equal [], defined_anywhere(target, library).grep(/\A__cxa_(?:throw|begin_catch)\z/),
+        "#{target.target.name}: the library holds no C++ runtime of its own"
+    end
+    on_the_device(printed, crossed("cmake_cxx"))
+  end
+
+  # What a C++ extension and a C++ library it calls cross between them:
+  # the cout object, a string, an exception, type information, the
+  # current exception, the terminate handler, and an allocation.
+  CROSSINGS = %w[shares_cout greets catches same_type current terminate deletes].freeze
+
+  # What the device prints for CROSSINGS in the extension +name+ when
+  # every crossing behaves as on a desktop.
+  private def crossed(name)
+    CROSSINGS.map { |crossing| "#{name}_#{crossing} #{(crossing == 'deletes') ? 7 : 1}\n" }.join
+  end
+
+  # The source of a C++ extension +name+, whose function for each of
+  # CROSSINGS crosses into crossing_library(+name+) and returns 1, or 7
+  # for the allocation, when the crossing behaves as on a desktop.
+  private def crossing_extension(name)
+    <<~CXX
+      #include <cstring>
+      #include <exception>
+      #include <iostream>
+      #include <stdexcept>
+      #include <string>
+      #include <typeinfo>
+      #include <ruby.h>
+      extern "C" const void *#{name}_lib_cout(void);
+      std::string #{name}_lib_greet(const std::string &name);
+      void #{name}_lib_raise(void);
+      const std::type_info &#{name}_lib_kind(void);
+      bool #{name}_lib_has_current(void);
+      void #{name}_lib_set_terminate(void);
+      int *#{name}_lib_new(void);
+      extern "C" long #{name}_shares_cout(void) { std::cout.flush(); return #{name}_lib_cout() == static_cast<const void *>(&std::cout); }
+      extern "C" long #{name}_greets(void) { return #{name}_lib_greet("phone") == "hello phone"; }
+      extern "C" long #{name}_catches(void) {
+        try { #{name}_lib_raise(); } catch (const std::exception &error) { return std::strcmp(error.what(), "boom") == 0; }
+        return 0;
+      }
+      extern "C" long #{name}_same_type(void) {
+        return #{name}_lib_kind() == typeid(std::runtime_error) && &#{name}_lib_kind() == &typeid(std::runtime_error);
+      }
+      extern "C" long #{name}_current(void) {
+        try { #{name}_lib_raise(); } catch (...) { return #{name}_lib_has_current(); }
+        return 0;
+      }
+      extern "C" long #{name}_terminate(void) {
+        std::terminate_handler before = std::get_terminate();
+        #{name}_lib_set_terminate();
+        return std::get_terminate() != before;
+      }
+      extern "C" long #{name}_deletes(void) { int *seven = #{name}_lib_new(); long value = *seven; delete seven; return value; }
+      extern "C" void Init_#{name}(void) { rb_define_module("Crossings"); }
+    CXX
+  end
+
+  # The source of the C++ library crossing_extension(+name+) calls.
+  private def crossing_library(name)
+    <<~CXX
+      #include <cstdlib>
+      #include <exception>
+      #include <iostream>
+      #include <stdexcept>
+      #include <string>
+      #include <typeinfo>
+      extern "C" const void *#{name}_lib_cout(void) { return &std::cout; }
+      std::string #{name}_lib_greet(const std::string &name) { return "hello " + name; }
+      void #{name}_lib_raise(void) { throw std::runtime_error("boom"); }
+      const std::type_info &#{name}_lib_kind(void) { return typeid(std::runtime_error); }
+      bool #{name}_lib_has_current(void) { return static_cast<bool>(std::current_exception()); }
+      static void #{name}_lib_terminate(void) { std::abort(); }
+      void #{name}_lib_set_terminate(void) { std::set_terminate(#{name}_lib_terminate); }
+      int *#{name}_lib_new(void) { return new int(7); }
+    CXX
   end
 
   # A path gem +name+ whose extension calls fledge_twin, from a static
@@ -256,10 +324,28 @@ class MobileExtensionSymbolsTest < Minitest::Test
   # basic_string constructor from a const char * that arm64's
   # extension here keeps out of line and x86_64's inlines.
   private def runtime_names(target, exported)
-    ndk_lib = File.join(File.dirname(target.target.environment.fetch("FLEDGE_CC")), "..", "sysroot", "usr", "lib", target.target.name)
-    shared = defined(dynamic_symbols(target, File.join(ndk_lib, "libc++_shared.so")))
+    shared = defined(dynamic_symbols(target, File.join(ndk_lib(target), "libc++_shared.so")))
     assert_includes shared, "__cxa_begin_catch", "#{target.target.name}: libc++_shared.so defines the C++ runtime"
     exported.select { |name| shared.include?(name) || name.match?(UNWINDER) }
+  end
+
+  # The names +path+ defines in any of its symbol tables, local ones
+  # included, by the NDK's llvm-readelf.
+  private def defined_anywhere(target, path)
+    readelf = File.join(File.dirname(target.target.environment.fetch("FLEDGE_CC")), "llvm-readelf")
+    read, status = Open3.capture2(readelf, "--syms", "-W", path)
+    assert_predicate status, :success?, "llvm-readelf reads #{path}"
+    read.lines.map(&:split).select { |fields| fields.size >= 8 && fields[6] != "UND" && fields[0].end_with?(":") }.map(&:last)
+  end
+
+  private def cmake?
+    system("cmake", "--version", out: File::NULL, err: File::NULL) || false
+  end
+
+  # The NDK's folder of libraries for +target+, where its
+  # libc++_shared.so is.
+  private def ndk_lib(target)
+    File.join(File.dirname(target.target.environment.fetch("FLEDGE_CC")), "..", "sysroot", "usr", "lib", target.target.name)
   end
 
   # The libraries +path+ names as needed, by the NDK's llvm-readelf.
@@ -291,6 +377,7 @@ class MobileExtensionSymbolsTest < Minitest::Test
       [library.feature, File.basename(library.path)]
     end
     FileUtils.cp(File.join(target.target.libdir, "libfledgeruby.so"), local)
+    FileUtils.cp(File.join(ndk_lib(target), "libc++_shared.so"), local)
     remote = "/data/local/tmp/fledge-symbols-#{Process.pid}"
     adb("shell", "rm -rf #{remote} && mkdir -p #{remote}")
     Dir.children(local).each { |file| adb("push", File.join(local, file), "#{remote}/#{file}") }

@@ -332,6 +332,16 @@ class MobileExtensionsTest < Minitest::Test
     assert_includes text, 'include("/sdk/ndk/30/build/cmake/android.toolchain.cmake")'
   end
 
+  # The shared C++ runtime, which every other C++ library of the app
+  # links, unless the gem's own build names another, and before the
+  # NDK's file, which would otherwise choose the static one.
+  def test_an_android_toolchain_file_takes_the_shared_cpp_runtime_unless_the_build_names_one
+    text = Fledge::MobileExtensions::CMake.android(ndk: "/sdk/ndk/30", abi: "x86_64", compiler: "x86_64-linux-android26-clang")
+
+    assert_includes text, "if(NOT DEFINED ANDROID_STL)\n  set(ANDROID_STL c++_shared)\nendif()\n"
+    assert_operator text.index("ANDROID_STL"), :<, text.index("include(")
+  end
+
   # A toolchain file says what wrote it and why CMake reads it, and
   # cites no record of Fledge's own, which its reader does not have.
   def test_a_toolchain_file_says_what_wrote_it_and_cites_no_record

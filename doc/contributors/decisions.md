@@ -561,3 +561,21 @@ The orchestrating agent received these words first-hand from the maintainer.
 > Whatever you can do to reduce wall clock time, reduce risk of red on trunk, reduce metered usage, hasten cycle time, increase confidence, and decrease actual-real-world-regression risk is great.
 
 [re: 2026-11-22. Of CI: the per-push check took 1 to 3 minutes and the full run about an hour, and a runtime change had passed the first and broken the second.]
+
+> All that potential software AND legal complexity was answered by just... not caching? Silly to even have suggested caching, then.
+
+[re: 2026-11-22. Asked whether Fledge may publish copies of the files Gradle downloads, so that CI never needs Maven Central, the orchestrating agent had recommended against it and for relying on Gradle's own retries. The orchestrating agent read this as no, and told him so; he did not object.]
+
+*Governs:* Fledge publishes no copies of the files Gradle downloads, and keeps no pinned sets of them; CI relies on Gradle's own retries. *Applied in:* `doc/contributors/design/phone-projects.md`, "Gradle's downloads in CI".
+
+> a hypothetical is not a meaningful question
+
+[re: 2026-11-22. Asked whether Fledge should build its own Ruby for mainstream Linux if no maintained project's Ruby ran on older Linux, he was told the question concerned a situation that does not exist.]
+
+*Governs:* agents do not put a hypothetical to the maintainer; a question is about something that exists or is about to. *Applied in:* AGENTS.md, Questions.
+
+> Whenever we're adding a platform, that should be the first thing we check before building our own.
+
+[re: 2026-11-22. On learning that rv-ruby publishes musl Linux builds while Fledge builds its own. "That" is whether a maintained project already publishes a portable Ruby for the platform.]
+
+*Governs:* a standing rule: when a platform is added, the first check is whether a maintained project already publishes a portable Ruby for it, before Fledge builds one. *Applied in:* AGENTS.md, How to work.

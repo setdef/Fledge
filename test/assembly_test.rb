@@ -86,12 +86,12 @@ class AssemblyTest < Minitest::Test
       FileUtils.mkdir_p(File.join(dir, ".git"))
       hello = FakeApp.write(dir)
       assemble(dir, hello)
-      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\nentry = main.rb\n",
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\nentry = main.rb\n",
         File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
 
       project = FakeProject.write(dir, name: "my_cool_app")
       assemble(dir, File.join(project, "exe/my_cool_app"))
-      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\n" \
         "entry = exe/my_cool_app\ngemfile = Gemfile\n", File.read(File.join(dir, "dist/MyCoolApp-x86_64-linux/fledge.cfg"))
     end
   end
@@ -147,6 +147,7 @@ class AssemblyTest < Minitest::Test
       assert_includes File.read(File.join(folder, "com.example.Game.desktop")), "Exec=\"Play Game\"\n"
       assert_equal <<~CFG, File.read(File.join(folder, "fledge.cfg"))
         # Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's programs run.
+        # Needs glibc 2.28 or newer, the newest any of its compiled files needs.
         [Play Game]
         entry = gui.rb
         identifier = com.example.Game
@@ -186,6 +187,8 @@ class AssemblyTest < Minitest::Test
       hello = FakeApp.write(dir)
       assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\n",
         Fledge::Assembly.launch_config(Fledge::App.at(hello), bundler: "4.0.19")
+      assert_equal "# Written by fledge build: what this app's program runs.\n# Needs glibc 2.34 or newer, the newest any of its compiled files needs.\n" \
+        "entry = main.rb\n", Fledge::Assembly.launch_config(Fledge::App.at(hello), glibc: "2.34")
       File.write(File.join(hello, "Gemfile"), "")
       assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\ngemfile = Gemfile\nbundler = 4.0.19\n",
         Fledge::Assembly.launch_config(Fledge::App.at(hello), bundler: "4.0.19")
@@ -202,7 +205,7 @@ class AssemblyTest < Minitest::Test
       hello = FakeApp.write(dir)
       File.write(File.join(hello, "fledge.yml"), "linux:\n  system_libraries: [libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
       assemble(dir, hello)
-      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\nentry = main.rb\n" \
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\nentry = main.rb\n" \
         "system_libraries = libgtk-3.so.0 libwebkit2gtk-4.1.so.0\n", File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
       assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\n",
         Fledge::Assembly.launch_config(Fledge::App.at(hello))
@@ -226,7 +229,7 @@ class AssemblyTest < Minitest::Test
       hello = FakeApp.write(dir)
       File.write(File.join(hello, "fledge.yml"), "linux:\n  system_libraries: [libgirepository-1.0.so.1]\n  system_typelibs: [Gtk-4.0, GdkPixbuf-2.0]\n")
       assemble(dir, hello)
-      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\nentry = main.rb\n" \
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\nentry = main.rb\n" \
         "system_libraries = libgirepository-1.0.so.1\nsystem_typelibs = Gtk-4.0 GdkPixbuf-2.0\n", File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
       assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\n",
         Fledge::Assembly.launch_config(Fledge::App.at(hello))
@@ -268,7 +271,7 @@ class AssemblyTest < Minitest::Test
 
       folder = File.join(dir, "dist", "game-cli-x86_64-linux")
       assert_equal %w[app fledge.cfg game-cli lib], Dir.children(folder).sort
-      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\nentry = bin/cli\n",
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\nentry = bin/cli\n",
         File.read(File.join(folder, "fledge.cfg"))
     end
   end

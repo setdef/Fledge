@@ -7,6 +7,8 @@
 
 require_relative "test_helper"
 require_relative "support/build_from"
+require_relative "support/binaries"
+require "open3"
 
 # fledge build --from APP, through real streams: an app built
 # by fledge build from a fake runtime, with gems from folders inside and
@@ -55,7 +57,7 @@ class BuildFromTest < Minitest::Test
       files(folder).reject { |path| path.start_with?("app/") || path == "Game" }.sort
     assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Game"))
     assert File.executable?(File.join(folder, "Game")) unless Gem.win_platform? # Windows knows a program by its extension
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\n" \
       "entry = main.rb\ngemfile = Gemfile\n", File.read(File.join(folder, "fledge.cfg"))
     assert_path_exists File.join(@dir, "dist", "Game-x86_64-linux.tar.gz.sha256")
   end
@@ -70,7 +72,7 @@ class BuildFromTest < Minitest::Test
     _, err, status = build("--from", from, "game")
 
     assert_equal [0, ""], [status, err]
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\n" \
       "entry = main.rb\ngemfile = Gemfile\nsystem_libraries = libz.so.1\n", File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
   end
 
@@ -85,9 +87,53 @@ class BuildFromTest < Minitest::Test
     _, err, status = build("--from", from, "game")
 
     assert_equal [0, ""], [status, err]
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\n" \
       "entry = main.rb\ngemfile = Gemfile\nsystem_typelibs = GdkPixbuf-2.0 Gio-2.0 Gtk-4.0\n",
       File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
+  end
+
+  # A compiled file needs the glibc it was compiled with, which may be
+  # newer than the runtime's floor, and the build that compiled it reads
+  # the app's files once and records the newest glibc any of them needs.
+  # --from runs where there may be no binutils, so it reads that record,
+  # not the files: the new app's .deb depends on the same glibc, built
+  # with a PATH that has dpkg-deb and no objdump.
+  def test_the_glibc_the_gems_need_comes_along_into_the_deb_with_no_objdump_at_hand
+    dpkg_deb = tool("dpkg-deb")
+    TestReaders.need(self, :elf)
+    player
+    File.binwrite(File.join(@dir, "player", "vendor", "greeter", "lib", "greeter.so"),
+      Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.34]))
+    _, err, status = build("-o", "players", "player")
+    assert_equal [0, ""], [status, err]
+    from = File.join(@dir, "players", "Player-x86_64-linux")
+    game("kind: windowed\ninstallers: [deb]\nidentifier: com.example.Game\n")
+    bin = File.join(@dir, "bin")
+    FileUtils.mkdir_p(bin)
+    [dpkg_deb, tool("tar"), tool("gzip")].each { |path| File.symlink(path, File.join(bin, File.basename(path))) }
+    assert(ENV.fetch("PATH").split(File::PATH_SEPARATOR).any? { |folder| File.executable?(File.join(folder, "objdump")) }, "the premise: objdump is at hand")
+    path = ENV.fetch("PATH")
+
+    begin
+      ENV["PATH"] = bin
+      _, err, status = build("--from", from, "game")
+    ensure
+      ENV["PATH"] = path
+    end
+
+    assert_equal [0, ""], [status, err]
+    out, = Open3.capture2e(dpkg_deb, "--field", File.join(@dir, "dist", "Game-x86_64-linux.deb"), "Depends")
+    assert_equal "libc6 (>= 2.34)\n", out
+  end
+
+  # The path of +name+ on PATH, which the test skips without, unless CI
+  # asks for dpkg-deb (FLEDGE_REQUIRE_DPKG_DEB).
+  private def tool(name)
+    found = ENV.fetch("PATH").split(File::PATH_SEPARATOR).map { |folder| File.join(folder, name) }.find { |path| File.executable?(path) }
+    return found if found
+
+    message = "no #{name} on PATH"
+    (name == "dpkg-deb" && ENV["FLEDGE_REQUIRE_DPKG_DEB"]) ? flunk(message) : skip(message)
   end
 
   # The new app's gems are the old one's, and so are the DLLs of
@@ -101,7 +147,7 @@ class BuildFromTest < Minitest::Test
     _, err, status = build("--from", from, "game")
 
     assert_equal [0, ""], [status, err]
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\n" \
       "entry = main.rb\ngemfile = Gemfile\nvisual_c_runtime = msvcp140.dll vcruntime140.dll\n",
       File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
   end
@@ -116,7 +162,7 @@ class BuildFromTest < Minitest::Test
     _, err, status = build("--from", from, "game")
 
     assert_equal [0, ""], [status, err]
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\n" \
       "entry = main.rb\ngemfile = Gemfile\nbundler = 4.0.19\n", File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
   end
 
@@ -140,7 +186,7 @@ class BuildFromTest < Minitest::Test
     refute_path_exists File.join(folder, "com.example.Player.desktop")
     refute_path_exists File.join(folder, "share")
     assert_includes File.read(File.join(folder, "com.example.Game.desktop")), "Name=Game\n"
-    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\n" \
       "entry = main.rb\ngemfile = Gemfile\nidentifier = com.example.Game\n", File.read(File.join(folder, "fledge.cfg"))
   end
 
@@ -242,6 +288,14 @@ class BuildFromTest < Minitest::Test
     assert_equal [
       1,
       "fledge build: --from #{from} was built by Fledge 0.4.0, and this is Fledge #{Fledge::VERSION}. " \
+        "Build from an app this Fledge built.\n",
+], [status, err]
+
+    File.write(config, text.sub(/^# Needs glibc .*\n/, ""))
+    _, err, status = build("--from", from, "game")
+    assert_equal [
+      1,
+      "fledge build: --from #{from} was built by an earlier Fledge, which did not record the glibc its compiled files need. " \
         "Build from an app this Fledge built.\n",
 ], [status, err]
 

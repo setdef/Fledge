@@ -10,13 +10,13 @@ module Fledge
 
     def self.file_name: (String format, String base) -> String
 
-    def self.write_all: (App app, Platform platform, folder: String, tools: String?, ?signing: Signing::signer?) -> Array[String]
+    def self.write_all: (App app, Platform platform, folder: String, tools: String?, ?signing: Signing::signer?, ?glibc: String?) -> Array[String]
 
-    def self.write: (String format, app: App, folder: String, platform: Platform, tools: String?, ?signing: Signing::signer?) -> String
+    def self.write: (String format, app: App, folder: String, platform: Platform, tools: String?, ?signing: Signing::signer?, ?glibc: String?) -> String
 
     private def self.windows_signer: (Signing::signer? signing) -> (WindowsSigning | SignCommand)?
 
-    private def self.deb: (App app, folder: String, platform: Platform, to: String) -> String
+    private def self.deb: (App app, folder: String, platform: Platform, to: String, glibc: String) -> String
 
     def self.license: (App app) -> String?
 

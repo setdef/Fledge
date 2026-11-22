@@ -44,8 +44,9 @@ module DebHelpers
 
   # The .deb of the app in #folder, with the compiled file at
   # +extension+ as a gem's <tt>lib/wrapper.so</tt>, and each of +files+,
-  # by its name, beside it.
-  def build(dir, identity: self.identity, platform: X86, system_libraries: [], system_typelibs: [], extension: nil, files: {})
+  # by its name, beside it, for an app that needs +glibc+, or else the
+  # glibc read from those files, as Fledge::Assembly reads it.
+  def build(dir, identity: self.identity, platform: X86, system_libraries: [], system_typelibs: [], extension: nil, files: {}, glibc: nil)
     folder = folder(dir, identity)
     gem = "lib/ruby/gems/4.0.0/gems/wrapper-1.0.0/lib"
     if extension
@@ -53,8 +54,11 @@ module DebHelpers
       FileUtils.mkdir_p(File.dirname(path))
       FileUtils.cp(extension, path)
     end
-    files.each { |name, content| Fledge::Entry.file("#{gem}/#{name}", content).write_into(folder) }
-    Fledge::Deb.write(identity:, folder:, platform:, to: File.join(dir, "My App-#{platform.name}.deb"), system_libraries:, system_typelibs:)
+    added = files.map { |name, content| Fledge::Entry.file("#{gem}/#{name}", content) }
+    added.each { |entry| entry.write_into(folder) }
+    added << Fledge::Entry.file("#{gem}/wrapper.so", File.binread(extension)) if extension
+    glibc ||= Fledge::NativeBuild::Floors.glibc(added, platform).to_s
+    Fledge::Deb.write(identity:, folder:, platform:, to: File.join(dir, "My App-#{platform.name}.deb"), glibc:, system_libraries:, system_typelibs:)
   end
 
   def field(deb, name)

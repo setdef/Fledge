@@ -17,7 +17,7 @@ dist/MyGame-arm64-darwin.tar.gz
 ```
 <!-- SPDX-SnippetEnd -->
 
-The new app runs `my_game`'s program with `Player`'s `Gemfile`, `Gemfile.lock`, and gems. Fledge gives it `my_game`'s name, identity, archive, and installers, as `fledge build` would, and keeps nothing of `Player`'s project or identity. On Linux, the typelibs `Player`'s gems load stay listed, and any your `fledge.yml` lists under `linux: system_typelibs` join them, since your program may load others through the same gems.
+The new app runs `my_game`'s program with `Player`'s `Gemfile`, `Gemfile.lock`, and gems. Fledge gives it `my_game`'s name, identity, archive, and installers, as `fledge build` would, and keeps nothing of `Player`'s project or identity. On Linux, the typelibs `Player`'s gems load stay listed, and any your `fledge.yml` lists under `linux: system_typelibs` join them, since your program may load others through the same gems. A `.deb` asks for the glibc that `Player`'s compiled gems need, which `fledge build` read from them and recorded in `Player`, so `--from` reads no compiled file for it and needs no binutils.
 
 ## What `--from` refuses
 

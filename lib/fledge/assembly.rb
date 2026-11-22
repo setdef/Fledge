@@ -14,6 +14,7 @@ require_relative "entry"
 require_relative "error"
 require_relative "installers"
 require_relative "mac_bundle"
+require_relative "native_build/floors"
 require_relative "platform"
 require_relative "signing"
 require_relative "version"
@@ -212,7 +213,10 @@ module Fledge
     # it runs when that is not the runtime's own, and its identifier when
     # it has one, which the Windows launcher makes its AppUserModelID. Its first line, a comment the launcher skips, names
     # the Fledge release and the platform the app was built with, which
-    # <tt>fledge build --from</tt> reads (Fledge::BuiltApp).
+    # <tt>fledge build --from</tt> reads (Fledge::BuiltApp); on glibc
+    # Linux a second comment names the glibc the app needs (#glibc),
+    # which <tt>--from</tt> reads too, so that it need not read the
+    # compiled files again with a tool its computer may lack.
     #
     # === Example
     #
@@ -231,7 +235,23 @@ module Fledge
     def launch_config
       Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os),
         system_typelibs: @app.config.system_typelibs(@platform.os), visual_c_runtime: @visual_c_runtime,
-        built: "#{VERSION} for #{@platform}", bundler: @bundler)
+        built: "#{VERSION} for #{@platform}", bundler: @bundler, glibc:)
+    end
+
+    # The glibc the app needs on glibc Linux, which its <tt>.deb</tt>
+    # depends on, or +nil+ on another platform: the newest that any of
+    # the files the build adds to the runtime needs, the project's and
+    # the gems', and at least the runtime's floor, to which the runtime's
+    # build holds its own files (NativeBuild::Floors.glibc). An app built
+    # from another (+from+) has that app's gems, whose glibc it recorded
+    # (BuiltApp#glibc), so only its new project's files are read: a
+    # project with no compiled file needs no tool that reads them.
+    private def glibc
+      return @glibc if defined?(@glibc)
+
+      from = @from
+      floor = from ? from.glibc : @platform.glibc_minimum
+      @glibc = NativeBuild::Floors.glibc([*app_entries, *(from ? [] : @files)], @platform, floor:)
     end
 
     # The contents of CONFIG for +app+ (#launch_config), which the
@@ -245,7 +265,11 @@ module Fledge
     # Microsoft's Visual C++ runtime the gems need and the app does not
     # carry, the Windows launcher looks for each in System32 before Ruby
     # starts, as the Linux launcher looks for +system_libraries+, and then
-    # has libgirepository load each of +system_typelibs+. Raises
+    # has libgirepository load each of +system_typelibs+. Given +glibc+,
+    # a version, its second line, a comment too, says the app needs that
+    # glibc or a newer one: the launcher refuses a key it does not know,
+    # and skips a comment, so an app's runtime need not know the line.
+    # Raises
     # Fledge::Error for a program or Gemfile whose name the file cannot
     # hold.
     #
@@ -281,11 +305,12 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.launch_config(app, system_libraries: [], system_typelibs: [], visual_c_runtime: [], built: nil, bundler: nil)
+    def self.launch_config(app, system_libraries: [], system_typelibs: [], visual_c_runtime: [], built: nil, bundler: nil, glibc: nil)
       by = built ? "fledge build #{built}" : "fledge build"
+      needs = glibc ? "# Needs glibc #{glibc} or newer, the newest any of its compiled files needs.\n" : ""
       programs = app.programs
       shared = library_config(system_libraries, system_typelibs, visual_c_runtime)
-      return "# Written by #{by}: what this app's program runs.\n#{single_config(app, shared, bundler)}" if programs.size == 1
+      return "# Written by #{by}: what this app's program runs.\n#{needs}#{single_config(app, shared, bundler)}" if programs.size == 1
 
       lines = [*bundle_config(app, bundler), *shared]
       lines << "" unless lines.empty?
@@ -295,7 +320,7 @@ module Fledge
         lines << "identifier = #{identifier}" if identifier
         lines << ""
       end
-      "# Written by #{by}: what this app's programs run.\n#{lines.join("\n").chomp}\n"
+      "# Written by #{by}: what this app's programs run.\n#{needs}#{lines.join("\n").chomp}\n"
     end
 
     private_class_method def self.single_config(app, shared, bundler) # :nodoc:
@@ -376,7 +401,7 @@ module Fledge
         tools = runtime.tools
         finish(bundle, runtime, tools)
         BuildTools.new(runtime, platform: @platform).copy_into(contents) if @app.config.build_tools
-        @installers = Installers.write_all(@app, @platform, folder:, tools:, signing: @signing)
+        @installers = Installers.write_all(@app, @platform, folder:, tools:, signing: @signing, glibc:)
         notarize(bundle)
         Archive.pack(folder, to: archive)
       end
@@ -500,7 +525,12 @@ module Fledge
 
     # The project's entries in +app+ under +contents+ (Assembly.app_entries).
     private def copy_app(contents)
-      Assembly.app_entries(@app, @app_files, skip: [@out]).each { |entry| add(contents, entry) }
+      app_entries.each { |entry| add(contents, entry) }
+    end
+
+    # The project's entries (Assembly.app_entries), read once.
+    private def app_entries
+      @app_entries ||= Assembly.app_entries(@app, @app_files, skip: [@out])
     end
   end
 end

@@ -25,6 +25,8 @@ module Fledge
     @installers: Array[String]
     @signing: Signing::signer?
     @from: BuiltApp?
+    @glibc: String?
+    @app_entries: Array[Entry]?
     @bundler: String?
     @visual_c_runtime: Array[String]
     @log: CLI::_Output?
@@ -39,7 +41,7 @@ module Fledge
 
     def launch_config: () -> String
 
-    def self.launch_config: (App app, ?system_libraries: Array[String], ?system_typelibs: Array[String], ?visual_c_runtime: Array[String], ?built: String?, ?bundler: String?) -> String
+    def self.launch_config: (App app, ?system_libraries: Array[String], ?system_typelibs: Array[String], ?visual_c_runtime: Array[String], ?built: String?, ?bundler: String?, ?glibc: String?) -> String
 
     private def self.single_config: (App app, Array[String] shared, String? bundler) -> String
 
@@ -77,5 +79,9 @@ module Fledge
     private def remove_output: () -> void
 
     private def copy_app: (String contents) -> void
+
+    private def app_entries: () -> Array[Entry]
+
+    private def glibc: () -> String?
   end
 end

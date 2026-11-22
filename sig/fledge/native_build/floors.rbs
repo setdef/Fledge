@@ -8,6 +8,8 @@ module Fledge
 
       def self.warnings: (locked_gem gem, Array[Entry] entries, Platform platform, ?readers: Binary::Readers) -> Array[String]
 
+      def self.glibc: (Array[Entry] entries, Platform platform, ?floor: String?, ?readers: Binary::Readers) -> String?
+
       private def self.needing: (Symbol format, Array[Entry] entries, Platform platform, Binary::Readers readers) { (Binary) -> String? } -> Array[[String, String]]
 
       private def self.newer?: (String found, String floor) -> bool

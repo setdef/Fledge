@@ -60,6 +60,21 @@ module Fledge
         end
       end
 
+      # The glibc an app for +platform+ needs whose own files, beside its
+      # runtime's, are +entries+: the newest any of their files for its
+      # processor needs, as auditwheel reads a wheel's
+      # (Binary#glibc_minimum), and at least +floor+, the runtime's
+      # (Platform#glibc_minimum), since the runtime's build holds its
+      # files to that. +nil+ for a platform without glibc. Only +entries+
+      # that are ELF files are read, so for an app with none this reads
+      # nothing and needs no tool.
+      def self.glibc(entries, platform, floor: platform.glibc_minimum, readers: Binary::Readers.local(platform.os))
+        return nil unless floor
+
+        needed = needing(:elf, entries, platform, readers, &:glibc_minimum).map(&:last)
+        [floor, *needed].max_by { |version| Gem::Version.new(version) }
+      end
+
       # Each of +entries+ of +format+ for the platform's processor, by
       # path, with the version of the system it needs that the block
       # reads from its Binary, when it names one.

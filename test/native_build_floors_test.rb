@@ -77,6 +77,35 @@ class NativeBuildFloorsTest < Minitest::Test
     assert_empty problems("arm64-darwin", { "lib/libfoo.x86_64.bundle" => Binaries.macho(cpu: "x86_64", minos: "15.0") })
   end
 
+  # The glibc the app needs is the newest any of its files for its
+  # processor needs, and never less than the runtime's floor: a file for
+  # another processor never loads in the app, so its glibc is not the
+  # app's. A platform without glibc needs none, and an app with no ELF
+  # file is read by no tool.
+  def test_the_apps_glibc_is_the_newest_its_files_for_its_processor_need
+    TestReaders.need(self, :elf)
+    files = {
+      "lib/newer.so" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.34]),
+      "lib/newest.so" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.2.5 GLIBC_2.41]),
+      "lib/other.so" => Binaries.elf(cpu: "aarch64", needed: %w[libc.so.6], versions: %w[GLIBC_2.17 GLIBC_2.41]),
+      "lib/plain.so" => Binaries.elf(needed: %w[libc.so.6]),
+      "main.rb" => "puts 1\n",
+    }
+    glibc = lambda do |chosen, platform = "x86_64-linux", **options|
+      entries = files.slice(*chosen).map { |path, content| Fledge::Entry.file(path, content) }
+      Fledge::NativeBuild::Floors.glibc(entries, Fledge::Platform.find(platform), readers: TestReaders.all, **options)
+    end
+
+    assert_equal "2.41", glibc.call(files.keys)
+    assert_equal "2.34", glibc.call(files.keys - ["lib/newest.so"])
+    assert_equal "2.28", glibc.call(%w[lib/plain.so lib/other.so])
+    assert_equal "2.41", glibc.call(%w[lib/other.so], "aarch64-linux")
+    assert_equal "2.39", glibc.call(%w[lib/newer.so], floor: "2.39")
+    assert_nil glibc.call(files.keys, "x86_64-linux-musl")
+    nothing = Fledge::Binary::Readers.new(commands: {}, install: "no tool")
+    assert_equal "2.28", Fledge::NativeBuild::Floors.glibc([Fledge::Entry.file("main.rb", "puts 1\n")], Fledge::Platform.find("x86_64-linux"), readers: nothing)
+  end
+
   def test_a_platform_without_that_floor_judges_no_file_by_it
     assert_empty problems("x86_64-linux", { "lib/redcarpet.bundle" => Binaries.macho(minos: "27.0") })
     assert_empty warnings("x64-mingw-ucrt", { "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.99]) })

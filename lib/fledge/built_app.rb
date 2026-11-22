@@ -69,6 +69,10 @@ module Fledge
     # release and the platform it names.
     HEADER = /\A# Written by fledge build (\S+) for (\S+):/
 
+    # The line of a <tt>fledge.cfg</tt> for glibc Linux that names the
+    # glibc the app needs (Assembly.launch_config).
+    GLIBC = /^# Needs glibc (\S+) or newer/
+
     # The lockfile Bundler keeps beside each name a Gemfile may have.
     LOCKFILES = { "Gemfile" => "Gemfile.lock", "gems.rb" => "gems.locked" }.freeze
 
@@ -130,6 +134,11 @@ module Fledge
       @system_libraries = config[/^system_libraries = (.+)$/, 1].to_s.split
       @system_typelibs = config[/^system_typelibs = (.+)$/, 1].to_s.split
       @visual_c_runtime = config[/^visual_c_runtime = (.+)$/, 1].to_s.split
+      @glibc = config[GLIBC, 1]
+      if platform.glibc_minimum && @glibc.nil?
+        raise Error, "--from #{given} was built by an earlier Fledge, which did not record the glibc its compiled files need. " \
+          "Build from an app this Fledge built."
+      end
       @identifiers = config.scan(/^identifier = (.+)$/).flatten
       @programs = config.scan(/^\[(.+)\]$/).flatten
       @programs = [bundle ? File.basename(bundle, ".app") : File.basename(contents).delete_suffix("-#{platform}")] if @programs.empty?
@@ -189,6 +198,29 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     attr_reader :visual_c_runtime
+
+    # The glibc the app needs, the newest any of its compiled files
+    # needs, which the build that compiled its gems read from them and
+    # recorded in its <tt>fledge.cfg</tt> (Assembly.launch_config), or
+    # +nil+ on a platform without glibc. A new app has the same gems, so
+    # it needs at least the same glibc, and <tt>--from</tt> takes it from
+    # the record, since its computer may have no tool that reads the
+    # files. An app whose <tt>fledge.cfg</tt> records none, which an
+    # earlier Fledge built, is refused (BuiltApp.at): the runtime's floor
+    # would say too little for a gem compiled on a newer Linux.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   from.glibc # => "2.34"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    attr_reader :glibc
 
     # +app+, the project to build, as an app built from this one: with
     # this app's Gemfile, and on Linux the system libraries its gems load

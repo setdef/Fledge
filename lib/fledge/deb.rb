@@ -56,7 +56,13 @@ module Fledge
 
     # Writes the <tt>.deb</tt> of the app whose Fledge::Identity is
     # +identity+ and whose built folder is +folder+, for +platform+, to
-    # +to+, and returns +to+. +system_libraries+ are the libraries the
+    # +to+, and returns +to+. +glibc+ is the glibc the app needs
+    # (NativeBuild::Floors.glibc), which the build read from its files
+    # and recorded, so that a <tt>.deb</tt> made where no tool reads
+    # them, by <tt>fledge build --from</tt>, says the same; the package
+    # depends on it, so apt refuses an older Debian or Ubuntu, saying
+    # why, rather than the app failing to load a file there.
+    # +system_libraries+ are the libraries the
     # app's gems load from the distribution (Config::Linux), whose
     # packages the <tt>.deb</tt> depends on, and +system_typelibs+ the
     # typelibs they load, whose packages it depends on too (#typelib_packages).
@@ -77,7 +83,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(identity:, folder:, platform:, to:, system_libraries: [], system_typelibs: [], license: nil, changelog: nil)
+    def self.write(identity:, folder:, platform:, to:, glibc:, system_libraries: [], system_typelibs: [], license: nil, changelog: nil)
       package = package_name(identity)
       Dir.mktmpdir("fledge-deb") do |work|
         root = File.join(work, "root")
@@ -85,9 +91,8 @@ module Fledge
         documents(root, package, license:, changelog:)
         control = File.join(root, "DEBIAN")
         FileUtils.mkdir_p(control, mode: 0o755)
-        binaries = compiled(root, platform.cpu)
-        libraries = dependencies(work, binaries, system_libraries)
-        depends = ["libc6 (>= #{glibc(binaries)})", *libraries, *typelib_packages(system_typelibs)]
+        libraries = dependencies(work, root, platform.cpu, system_libraries)
+        depends = ["libc6 (>= #{glibc})", *libraries, *typelib_packages(system_typelibs)]
         File.write(File.join(control, "control"), control_file(identity, package, ARCHITECTURES.fetch(platform.name), installed_size(root), depends))
         Command.run("dpkg-deb", "--build", "--root-owner-group", root, to, install: INSTALL)
       end
@@ -179,9 +184,9 @@ module Fledge
     # its homepage, when it has one (5.6.23); and its publisher, or its
     # name, for its maintainer, since <tt>fledge.yml</tt> has no
     # address. +Depends+ is +depends+:
-    # the glibc the app needs (#glibc), so apt refuses an older Debian or
-    # Ubuntu, saying why, and the packages of the libraries the gems load
-    # from the distribution.
+    # the glibc the app needs, so apt refuses an older Debian or Ubuntu,
+    # saying why, and the packages of the libraries the gems load from
+    # the distribution.
     private_class_method def self.control_file(identity, package, architecture, size, depends)
       homepage = identity.homepage
       fields = [
@@ -229,32 +234,24 @@ module Fledge
       Binary.read(files, readers: Binary::Readers.local("linux")).select { |_, binary| binary.for?(cpu) }
     end
 
-    # The glibc the app needs: the newest any of its +binaries+ needs,
-    # as auditwheel reads a wheel's (Binary#glibc_minimum), and at least
-    # the runtime's floor (Platform::GLIBC_MINIMUM). A gem compiled on
-    # the developer's computer needs that computer's glibc, which may be
-    # newer than the floor (NativeBuild::Floors.warnings). It is read
-    # from the files' glibc symbol versions, which glibc's dynamic loader
-    # checks, as the runtime's own build reads its files against the
-    # floor, so the package and the build say the same version.
-    private_class_method def self.glibc(binaries)
-      [Platform::GLIBC_MINIMUM, *binaries.values.filter_map(&:glibc_minimum)].max_by { |version| Gem::Version.new(version) }.to_s
-    end
-
     # The packages that provide +libraries+, as dpkg-shlibdeps finds
-    # them for those of +binaries+ (#compiled) that need one: each with
+    # them for the compiled files in the tree at +root+ for +cpu+'s
+    # processor (#compiled) that need one: each with
     # the oldest version whose symbols the files use, from the package's
     # own symbols or shlibs file (Debian Policy 8.6), and any other
     # package those files need, but not glibc's, which +Depends+ names
-    # already (#glibc). None when +libraries+ is empty. A file for
+    # already. None when +libraries+ is empty, and then no file is read,
+    # so a <tt>.deb</tt> whose gems load no library of the
+    # distribution's needs no objdump. A file for
     # another processor is not among them: for it dpkg-shlibdeps would
     # look for that processor's packages of the libraries.
     # dpkg-shlibdeps reads <tt>debian/control</tt> in the folder it runs
     # in, so +work+ gets an empty one; the tree's <tt>DEBIAN</tt> folder
     # tells it the files are a package's.
-    private_class_method def self.dependencies(work, binaries, libraries)
+    private_class_method def self.dependencies(work, root, cpu, libraries)
       return [] if libraries.empty?
 
+      binaries = compiled(root, cpu)
       needing = binaries.select { |_, binary| binary.needed.intersect?(libraries) }.keys
       return [] if needing.empty?
 

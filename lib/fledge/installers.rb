@@ -104,8 +104,8 @@ module Fledge
 
     # Writes every installer +app+ gets on +platform+ (Installers.formats)
     # from its built folder +folder+, and returns their paths.
-    def self.write_all(app, platform, folder:, tools:, signing: nil)
-      formats(app, platform).map { |format| write(format, app:, folder:, platform:, tools:, signing:) }
+    def self.write_all(app, platform, folder:, tools:, signing: nil, glibc: nil)
+      formats(app, platform).map { |format| write(format, app:, folder:, platform:, tools:, signing:, glibc:) }
     end
 
     # Writes +app+'s +format+ installer from its built folder +folder+,
@@ -115,6 +115,9 @@ module Fledge
     # [tools] The runtime's tools folder, or +nil+ when it has none.
     # [signing] The signer that signs the installer (Fledge::Signing.for),
     #           or +nil+.
+    # [glibc] The glibc the app needs (Assembly#glibc), which a
+    #         <tt>.deb</tt> depends on, or +nil+ for the platform's
+    #         floor.
     #
     # === Example
     #
@@ -128,13 +131,13 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(format, app:, folder:, platform:, tools:, signing: nil)
+    def self.write(format, app:, folder:, platform:, tools:, signing: nil, glibc: nil)
       to = file_name(format, folder)
       identity = app.identity
       case format
       when "dmg" then Dmg.write(File.join(folder, "#{identity.name}.app"), name: identity.name, to:, signing: (signing if signing.is_a?(MacSigning)))
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
-      when "deb" then deb(app, folder:, platform:, to:)
+      when "deb" then deb(app, folder:, platform:, to:, glibc: glibc || platform.glibc_minimum.to_s)
       when "msix" then Msix.new(identity:, windows: app.config.windows, folder:, platform:, to:, signing: windows_signer(signing)).write
       else Nsis.new(identity:, folder:, platform:, to:, signing: windows_signer(signing), license: license(app)).write(tools)
       end
@@ -147,9 +150,9 @@ module Fledge
     end
 
     # Writes +app+'s <tt>.deb</tt>, with its license text and changelog.
-    private_class_method def self.deb(app, folder:, platform:, to:)
+    private_class_method def self.deb(app, folder:, platform:, to:, glibc:)
       changelog = app.config.linux&.deb_changelog
-      Deb.write(identity: app.identity, folder:, platform:, to:, system_libraries: app.config.system_libraries(platform.os),
+      Deb.write(identity: app.identity, folder:, platform:, to:, glibc:, system_libraries: app.config.system_libraries(platform.os),
         system_typelibs: app.config.system_typelibs(platform.os), license: license(app), changelog: changelog && project_file(app, changelog, "linux: deb_changelog"))
     end
 

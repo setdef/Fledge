@@ -37,22 +37,18 @@ class DebTest < Minitest::Test
   end
 
   # A gem's compiled file needs the glibc it was compiled with, which may
-  # be newer than the runtime's floor: then the package depends on that
-  # one, so apt refuses an older system, saying why, rather than the app
-  # failing to load the file there. A file for another processor never
-  # loads in the app, so its glibc is not the app's.
-  def test_glibc_is_the_newest_any_of_the_apps_files_for_its_processor_needs
+  # be newer than the runtime's floor: the package depends on the glibc
+  # the build read from the app's files and recorded
+  # (NativeBuild::Floors.glibc), so apt refuses an older system, saying
+  # why, rather than the app failing to load the file there. The package
+  # reads no file for it, so a .deb made with no objdump at hand says
+  # the same.
+  def test_glibc_is_the_one_the_build_read_from_the_apps_files
     need_dpkg_deb
-    TestReaders.need(self, :elf)
     Dir.mktmpdir do |dir|
-      files = {
-        "newer.so" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.34]),
-        "newest.so" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.2.5 GLIBC_2.41]),
-        "other.so" => Binaries.elf(cpu: "aarch64", needed: %w[libc.so.6], versions: %w[GLIBC_2.17 GLIBC_2.41]),
-      }
+      deb = build(dir, glibc: "2.41", files: { "plain.so" => Binaries.elf(needed: %w[libc.so.6]) })
 
-      assert_equal "libc6 (>= 2.41)", field(build(File.join(dir, "x86").tap { |d| FileUtils.mkdir_p(d) }, files:), "Depends")
-      assert_equal "libc6 (>= 2.34)", field(build(File.join(dir, "older").tap { |d| FileUtils.mkdir_p(d) }, files: files.except("newest.so")), "Depends")
+      assert_equal "libc6 (>= 2.41)", field(deb, "Depends")
     end
   end
 
@@ -98,7 +94,7 @@ class DebTest < Minitest::Test
     Dir.mktmpdir do |dir|
       changelog = File.join(dir, "CHANGES.txt")
       File.write(changelog, "My App 1.2.3\n\n  * Says hello.\n")
-      deb = Fledge::Deb.write(identity:, folder: folder(dir, identity), platform: X86, to: File.join(dir, "My App.deb"),
+      deb = Fledge::Deb.write(identity:, folder: folder(dir, identity), platform: X86, to: File.join(dir, "My App.deb"), glibc: "2.28",
         license: "Copyright © 2026 Me\n", changelog:)
       listed = contents(deb)
       assert_match %r{^-rw-r--r-- root/root .* \./usr/share/doc/com\.example\.myapp/copyright$}, listed

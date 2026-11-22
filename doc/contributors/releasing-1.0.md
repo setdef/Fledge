@@ -86,4 +86,4 @@ gem build fledge.gemspec
 
 ## After 1.0.0
 
-Release branches, backports by `git cherry-pick -x`, `stable`, and `rake release` as the maintainer's command follow `doc/contributors/design/releases.md`, "From 1.0: release branches and a human publishing", once RatatuiRuby's `ratatui_ruby-devtools` is extracted for Fledge (decisions, 2026-11-07). Nothing there blocks 1.0.0, and this page is replaced when it lands.
+Release branches, backports by `git cherry-pick -x`, `stable`, and publishing by `release.yml`'s trusted job follow `doc/contributors/design/releases.md`, "From 1.0: release branches and a human publishing", once RatatuiRuby's `ratatui_ruby-devtools` is extracted for Fledge (decisions, 2026-11-07). Nothing there blocks 1.0.0, and this page is replaced when it lands.

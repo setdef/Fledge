@@ -7,6 +7,7 @@
 
 require "etc"
 require "fileutils"
+require_relative "../../lib/fledge/binary"
 require_relative "unix"
 
 class RuntimeBuilder
@@ -66,6 +67,21 @@ class RuntimeBuilder
         @builder.run("patchelf", "--remove-rpath", extension) unless @builder.capture("patchelf", "--print-rpath", extension).strip.empty?
       end
       copy_appimage_runtime(File.join(stage, "tools", "appimage-runtime"))
+      floor = @builder.platform.glibc_minimum.to_s
+      late = Linux.above_glibc_floor(stage, floor, readers: Fledge::Binary::Readers.local("linux"))
+      raise "these need a glibc newer than #{floor}, the floor of #{@builder.platform} apps: #{late.join(', ')}" unless late.empty?
+    end
+
+    # Each ELF file in +stage+ that needs a newer glibc than +floor+, as
+    # "PATH (VERSION)", PATH relative to +stage+: the newest GLIBC_
+    # symbol version it references, as Fledge::NativeBuild::Floors reads
+    # a compiled gem's.
+    def self.above_glibc_floor(stage, floor, readers:)
+      files = Dir.glob("**/*", base: stage).sort.map { |path| File.join(stage, path) }
+      Fledge::Binary.read(files, readers:).filter_map do |path, binary|
+        found = binary.glibc_minimum
+        "#{path.delete_prefix("#{stage}/")} (#{found})" if found && Gem::Version.new(found) > Gem::Version.new(floor)
+      end
     end
 
     # AppImage's type 2 runtime, the program at the front of every

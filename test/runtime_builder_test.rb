@@ -685,6 +685,31 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
+  # A glibc runtime's every ELF file is held to the platform's glibc
+  # floor, the programs the builder compiles as much as the Ruby's own
+  # extensions, so a build machine's newer glibc cannot raise it unseen.
+  def test_a_glibc_runtime_names_each_file_that_needs_a_newer_glibc_than_its_floor
+    TestReaders.need(self, :elf)
+    Dir.mktmpdir do |stage|
+      {
+        "launcher" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.34]),
+        "bin/ruby" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.2.5 GLIBC_2.34 GLIBC_2.17]),
+        "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6]),
+        "lib/ruby/4.1.0+5/x86_64-linux/socket.so" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.2.5 GLIBC_2.41]),
+        "lib/ruby/4.1.0+5/set.rb" => "class Set; end\n",
+        "tools/appimage-runtime" => Binaries.elf,
+      }.each do |path, bytes|
+        FileUtils.mkdir_p(File.dirname(File.join(stage, path)))
+        File.binwrite(File.join(stage, path), bytes)
+      end
+
+      assert_equal ["bin/ruby (2.34)", "launcher (2.34)", "lib/ruby/4.1.0+5/x86_64-linux/socket.so (2.41)"],
+        RuntimeBuilder::Linux.above_glibc_floor(stage, "2.17", readers: TestReaders.all)
+      assert_equal ["lib/ruby/4.1.0+5/x86_64-linux/socket.so (2.41)"],
+        RuntimeBuilder::Linux.above_glibc_floor(stage, "2.34", readers: TestReaders.all)
+    end
+  end
+
   # gcc's analyzer checks every musl launcher source, warnings as errors,
   # as it does on glibc Linux, before anything links.
   def test_a_musl_compile_analyzes_each_source_before_it_links

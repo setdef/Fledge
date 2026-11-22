@@ -253,17 +253,14 @@ module Fledge
 
       # The refusal AndroidPackaging gives the project's
       # <tt>build.gradle</tt>, named as the host's file where the host
-      # replaced Fledge's, after saying its warning, if any.
+      # replaced Fledge's.
       private def packaging_problem(project)
         libraries = (@built&.targets || {}).values.flat_map(&:libraries)
         extensions = libraries.map { |library| [library.gem, library.feature] } # : Array[[String, String]]
-        packaging = AndroidPackaging.new(extensions.uniq)
         text = File.read(File.join(project, "build.gradle"))
         host = @app.config.android&.host
         shown = (host && File.file?(File.join(@app.root, host, "build.gradle"))) ? "#{host}/build.gradle" : "build.gradle"
-        warning = packaging.warning(text, shown:)
-        @log&.puts warning if warning
-        packaging.refusal(text, shown:)
+        AndroidPackaging.new(extensions.uniq).refusal(text, shown:)
       end
 
       # The tools that read the app's libraries: the NDK's, or, for a

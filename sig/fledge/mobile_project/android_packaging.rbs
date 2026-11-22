@@ -18,8 +18,6 @@ module Fledge
 
       def refusal: (String text, shown: String) -> String?
 
-      def warning: (String text, shown: String) -> String?
-
       private def setting: (String text) -> String?
 
       private def named: () -> String

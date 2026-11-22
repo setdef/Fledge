@@ -401,6 +401,8 @@ class BuiltAppTest < Minitest::Test
   # An app whose name, and a file of whose project, Windows' ANSI code
   # page cannot write is archived under its own names, which
   # Expand-Archive unpacks as a person on Windows would, and runs. The
+  # project and the build's output, where the runtime is unpacked, are
+  # in a folder so named too, as a person's are whose account is. The
   # premise is the system's code page, as the registry keeps it, which
   # Windows' own tools run in: this test's own Ruby may declare UTF-8 as
   # its process's, as the runtime's does.
@@ -409,7 +411,8 @@ class BuiltAppTest < Minitest::Test
     name = "日本語ツール"
     skip "code page #{system_code_page} can write #{name}" if writable?(name, system_code_page)
 
-    Dir.mktmpdir do |dir|
+    Dir.mktmpdir do |tmp|
+      dir = File.join(tmp, "Jürgen 日本")
       project = File.join(dir, "nihongo")
       FileUtils.mkdir_p(File.join(project, "挨拶 ü"))
       FileUtils.cp(File.join(HELLO, "main.rb"), project)

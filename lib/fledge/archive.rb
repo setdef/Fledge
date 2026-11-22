@@ -67,6 +67,12 @@ module Fledge
     # ZIP, says which, under +folder+'s own name, and returns +to+.
     # Raises Fledge::Error when tar fails.
     #
+    # On Windows nothing Fledge builds is a TAR_GZ: an app there ships
+    # as a ZIP, and runtimes are built on Linux and macOS. Its tar.exe
+    # packs one there only for ArchiveTest, which unpacks it, so the
+    # folder's name, and +to+'s path when it is not beside the folder,
+    # must be in the ANSI code page, and so must every name inside.
+    #
     # === Example
     #
     #--

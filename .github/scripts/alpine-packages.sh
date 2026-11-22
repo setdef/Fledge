@@ -44,7 +44,7 @@ case "${1:?usage: alpine-packages.sh build|apps|deliver|parity}" in
     set -- util-linux-misc=2.42.3-r1 procps-ng=4.0.6-r0 desktop-file-utils=0.28-r0 file=5.47-r2
     ;;
   parity)
-    set -- glib=2.88.1-r1
+    set -- glib=2.88.4-r0
     ;;
   *)
     echo "alpine-packages.sh: unknown role $1" >&2

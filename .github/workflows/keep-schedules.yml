@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Enables every scheduled workflow of the repository again, this one
+# among them, each day (tasks/keep_schedules.rb). GitHub disables a
+# public repository's scheduled workflows after 60 days in which nothing
+# happened in it, and a disabled schedule fails no run, so the pin watch
+# would stop unseen in the quiet repository that is its happy path
+# (doc/contributors/design/runtimes.md, "A quiet repository").
+#
+# Enabling a workflow takes actions: write, the least the API allows
+# for it. A workflow a person disabled is left as it is. The run fails,
+# and GitHub tells the account that owns its schedule, only when GitHub's
+# API refuses. Run by hand, it reads each workflow's state and enables
+# none unless dry-run is false.
+
+name: Keep the schedules
+
+on:
+  schedule:
+    # Each day, at a minute when few other schedules start.
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Read each scheduled workflow's state and enable none
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-schedules
+  cancel-in-progress: false
+
+jobs:
+  keep:
+    name: Enable every scheduled workflow again
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/workflows
+            tasks/keep_schedules.rb
+            tasks/github_api.rb
+          sparse-checkout-cone-mode: false
+
+      # The runner's own Ruby, which every GitHub-hosted Ubuntu image
+      # has: the task needs only Ruby's standard library.
+      - name: Enable every scheduled workflow again
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ruby tasks/keep_schedules.rb ${{ inputs.dry-run && '--dry-run' || '' }}

@@ -68,6 +68,13 @@ class GitHubAPI
     nil
   end
 
+  # Puts to +path+ with no body, as enabling a workflow does, asked again
+  # after a pause while GitHub fails on its side.
+  def put(path)
+    ask(Net::HTTP::Put, path)
+    nil
+  end
+
   private def ask(verb, path, **query)
     uri = URI("#{@api}/repos/#{@repository}/#{path}#{"?#{URI.encode_www_form(query)}" unless query.empty?}")
     response = nil

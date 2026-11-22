@@ -256,3 +256,11 @@ SPDX-License-Identifier = "CC0-1.0"
 path = 'test/fixtures/pin_watch/*'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "CC0-1.0"
+
+# What GitHub's API answered for a workflow, which
+# test/keep_schedules_test.rb serves with each state GitHub gives; JSON
+# has no place for a header.
+[[annotations]]
+path = 'test/fixtures/keep_schedules/*.json'
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
+SPDX-License-Identifier = "CC0-1.0"

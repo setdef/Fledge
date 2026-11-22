@@ -33,6 +33,12 @@ class ParityTest < Minitest::Test
     refute normalized.key?("paths")
   end
 
+  def normalized(report)
+    facts = report.dup
+    facts["paths"] = facts["paths"].merge("user_dir" => facts.delete("user_dir")).compact
+    Parity::Reports.normalize(facts, work: "/tmp/work")
+  end
+
   def test_equal_reports_have_no_differences
     facts = { "ARGV" => ["one"], "ENV" => { "A" => "1" }, "$stdout.sync" => false }
 
@@ -45,6 +51,27 @@ class ParityTest < Minitest::Test
     assert_equal 1, differences.size
     assert_predicate differences.first, :justified?
     assert_includes differences.first.to_s, "why: ruby main.rb names the script as typed"
+  end
+
+  # RubyGems puts the person's gems in Gem.user_dir: under XDG_DATA_HOME
+  # when that is set (rubygems/defaults.rb, Gem.data_home), and so
+  # outside the home folder, wherever the person keeps it.
+  def test_the_persons_gem_folder_is_justified_wherever_rubygems_puts_it
+    ["/w/home/.gem/ruby/4.1.0", "/w/home/.local/share/gem/ruby/4.1.0", "/elsewhere/data/gem/ruby/4.1.0"].each do |user_dir|
+      reference = normalized(report(user_dir:, "Gem.path": [user_dir, "/w/ruby/lib/ruby/gems/4.1.0"]))
+      built = normalized(report("Gem.path": ["/w/ruby/lib/ruby/gems/4.1.0"]))
+      differences = Parity::Reports.compare(reference, built, platform: "x86_64-linux")
+
+      assert_equal 1, differences.size, user_dir
+      assert_predicate differences.first, :justified?, user_dir
+    end
+  end
+
+  def test_another_gem_folder_in_gem_path_is_not_justified
+    reference = normalized(report(user_dir: "/elsewhere/gem/ruby/4.1.0", "Gem.path": ["/elsewhere/other", "/w/ruby/lib/ruby/gems/4.1.0"]))
+    built = normalized(report("Gem.path": ["/w/ruby/lib/ruby/gems/4.1.0"]))
+
+    refute_predicate Parity::Reports.compare(reference, built, platform: "x86_64-linux").first, :justified?
   end
 
   def test_an_unlisted_difference_is_not_justified

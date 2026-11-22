@@ -36,7 +36,7 @@ It fails when any difference is unjustified. CI runs it in the Test jobs (`arm64
 - `RUBY_PLATFORM`, `RUBY_DESCRIPTION`, `RubyVM::YJIT.enabled?`, `RubyVM::ZJIT.enabled?`, and the `YJIT_SUPPORT` and `ZJIT_SUPPORT` that `RbConfig::CONFIG` records;
 - on Windows outside Bundler, which leaves Fiddle out, `Windows`: the process's ANSI code page (`GetACP`), whether a copy of one of Ruby's DLLs under a folder named `Ünïcödé 日本` loads through `LoadLibraryExA`, as ffi loads a gem's DLL, and whether a child Ruby started through `RbConfig.ruby` finds the same code page and the same load as its parent. The parent's code page and load differ from `ruby main.rb`'s, since the launcher's manifest declares UTF-8 (`launcher.md`, "The locale"); a child that differs from its parent fails, since the runtime's `ruby.exe` declares it too.
 
-The report also carries the paths of the probe's folder, its project's root, Ruby's prefix, and the home folder, for normalizing. Its `fledge.yml` makes the probe's folder its own project root, inside Fledge's own gem, and gives it the identifier phones need.
+The report also carries the paths of the probe's folder, its project's root, Ruby's prefix, the home folder, and RubyGems' `Gem.user_dir`, for normalizing. Its `fledge.yml` makes the probe's folder its own project root, inside Fledge's own gem, and gives it the identifier phones need.
 
 Delivery, which has no Ruby to compare with, asks the probe one thing at a time: `child-env NAME`, `original-child-env NAME`, `unbundled-child-env NAME`, `gem-path`, `irb`, and `restart` (see "Restart checks").
 
@@ -71,7 +71,7 @@ On Windows, Ruby's locale differs: with no console it is the ANSI code page, whi
 
 ## Comparing two reports
 
-`Parity::Reports.normalize` replaces each path with a token, longest first, in each spelling (as given, with `/` for `\`, and real): `<app>` for the probe's folder, `<project>` for its project's root when that is another folder, `<prefix>` for Ruby's prefix, `<home>`, and `<work>` for the check's work folder.
+`Parity::Reports.normalize` replaces each path with a token, longest first, in each spelling (as given, with `/` for `\`, and real): `<app>` for the probe's folder, `<project>` for its project's root when that is another folder, `<prefix>` for Ruby's prefix, `<home>`, `<user-gems>` for `Gem.user_dir`, and `<work>` for the check's work folder. `<user-gems>` is the person's own gem folder wherever RubyGems puts it: `~/.gem` when that exists, otherwise under `XDG_DATA_HOME`, which may be outside the home folder (`rubygems/defaults.rb`, `Gem.user_dir` and `Gem.data_home`, at Ruby 4.1.0-preview1). The `Gem.path` justification, that the app never sees the person's gems, names that token rather than a folder under `<home>`, so it holds whatever the caller sets `XDG_DATA_HOME` to.
 
 `Parity::Reports.compare` turns each fact into a list of strings: an Array's elements in order, a Hash's `KEY=VALUE` pairs sorted, or the one value of anything else. `ENV` is compared as a set, because its order is how the environment happened to be built, not something Ruby promises. A fact that differs is justified when every element found on one side only matches a justification that applies to that fact, platform, and check, and the elements both sides share come in the same order. Anything else is reported `DIFFERENT` and fails.
 

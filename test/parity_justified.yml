@@ -236,7 +236,7 @@
 - fact: Gem.path
   reference:
   - \A"<work>/person-gems"\z
-  - \A"<home>/\.(?:gem|local/share/gem)/
+  - \A"<user-gems>"\z
   app: []
   platforms:
   checks:

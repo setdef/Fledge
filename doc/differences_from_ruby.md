@@ -18,7 +18,7 @@ On Windows, where variable names ignore case, a user may spell Bundler's `BUNDLE
 
 ## Your gems
 
-`Gem.dir` and `Gem.path` name the gem folder inside the app, and never your users' `GEM_HOME` or `~/.gem`. The app sets up the groups `bundle exec` would, `development` and `test` among them, less those your Bundler `without` setting names. Bundler sets up the app's gems frozen, as the app's `.bundle/config` says, so it never writes `Gemfile.lock`, even in a read-only folder; your code then finds `Bundler.frozen_bundle?` as `bundle exec` gives it, unless it calls `Bundler.reset!`, which reads that file again. RubyGems loads a defaults file from Fledge at start.
+`Gem.dir` and `Gem.path` name the gem folder inside the app, and never your users' `GEM_HOME`, `~/.gem`, or the `gem` folder under their `XDG_DATA_HOME`. The app sets up the groups `bundle exec` would, `development` and `test` among them, less those your Bundler `without` setting names. Bundler sets up the app's gems frozen, as the app's `.bundle/config` says, so it never writes `Gemfile.lock`, even in a read-only folder; your code then finds `Bundler.frozen_bundle?` as `bundle exec` gives it, unless it calls `Bundler.reset!`, which reads that file again. RubyGems loads a defaults file from Fledge at start.
 
 RubyGems still activates a bundled gem your lockfile does not lock, such as `irb`, when your code requires it, as under `bundle exec`. So on macOS and Linux, `binding.irb` works in an app with a `Gemfile`. On Windows it fails in the app and under `bundle exec` alike, because `irb` there needs `fiddle`, and Bundler leaves `fiddle` out of a bundle that does not lock it.
 

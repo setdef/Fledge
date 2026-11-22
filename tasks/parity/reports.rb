@@ -22,12 +22,14 @@ class Parity
 
     # +report+ with every path it names relative to a placeholder: <app>
     # (the probe's own folder), <project> (its project's root, when that is
-    # another), <prefix>, <home>, and <work> (+work+), with backslashes as
-    # slashes.
+    # another), <prefix>, <home>, <user-gems> (RubyGems' Gem.user_dir, the
+    # person's own gems wherever XDG_DATA_HOME puts them), and <work>
+    # (+work+), with backslashes as slashes.
     def self.normalize(report, work:)
       paths = report.fetch("paths")
       tokens = { paths.fetch("project", paths.fetch("app")) => "<project>" }
       tokens[paths.fetch("app")] = "<app>"
+      tokens[paths.fetch("user_dir")] = "<user-gems>" if paths.key?("user_dir")
       tokens.merge!(paths.fetch("prefix") => "<prefix>", paths.fetch("home") => "<home>", work => "<work>")
       replacements = tokens.flat_map { |path, token| variants(path).map { |variant| [variant, token] } }.sort_by { |path, _| -path.size }
       rewrite(report.except("paths"), replacements)

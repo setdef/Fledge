@@ -456,7 +456,7 @@ end
 
 def facts
   {
-    "paths" => { "app" => __dir__, "project" => project_root, "prefix" => RbConfig::TOPDIR, "home" => Dir.home },
+    "paths" => { "app" => __dir__, "project" => project_root, "prefix" => RbConfig::TOPDIR, "home" => Dir.home, "user_dir" => Gem.user_dir },
     "$0" => $0,
     "__FILE__" => __FILE__,
     "__dir__" => __dir__,

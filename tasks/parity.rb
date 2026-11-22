@@ -158,9 +158,10 @@ class Parity
       checks: %i[bundle],
       reason: "With no setting that says where the bundle's gems are, Bundler asks its feature flags whether to use " \
         "Ruby's own gem folder; the app's settings say so (path.system, as Warbler's does), so it never asks."),
-    Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, %r{\A"<home>/\.(?:gem|local/share/gem)/}],
+    Justification.new(fact: "Gem.path", reference: [%r{\A"<work>/person-gems"\z}, /\A"<user-gems>"\z/],
       reason: "The app's gems are the runtime's alone: the person's GEM_HOME, GEM_PATH, and " \
-        "Gem.user_dir never shadow them. Their ENV still reaches the app and its child processes."),
+        "Gem.user_dir never shadow them, wherever RubyGems puts that (under the home folder, or under " \
+        "XDG_DATA_HOME, rubygems/defaults.rb's Gem.user_dir and Gem.data_home). Their ENV still reaches the app and its child processes."),
     Justification.new(fact: "Gem.dir", reference: [%r{\A"<work>/person-gems"\z}], app: [%r{\A"<prefix>/lib/ruby/gems/#{ABI}"\z}o],
       reason: "As for Gem.path: RubyGems installs into the runtime's gem folder, never the person's GEM_HOME."),
     Justification.new(fact: "gems", reference: [RV_RUBY_EXTRAS],

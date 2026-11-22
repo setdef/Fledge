@@ -325,10 +325,11 @@
 #                          have the Visual C++ Redistributable, and the
 #                          app started on one without it names the
 #                          Redistributable and exits with 72, before
-#                          Ruby starts; an MSIX package depends on
-#                          Microsoft's runtime package instead (default:
-#                          neither, and such a gem is refused). Other
-#                          builds ignore it.
+#                          Ruby starts; the setup program installs the
+#                          Redistributable where it is missing, and an
+#                          MSIX package depends on Microsoft's runtime
+#                          package instead (default: neither, and such
+#                          a gem is refused). Other builds ignore it.
 #                        file_associations: what a windowed app opens,
 #                          a list of mappings of name (what a person
 #                          calls the documents), role (viewer, the

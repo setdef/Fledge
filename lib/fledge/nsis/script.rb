@@ -32,8 +32,11 @@ module Fledge
 
       # The script that installs the app of +identity+ from +folder+ into
       # the setup program +to+, and uninstalls +files+ and +folders+,
-      # whose contents are +size+ bytes.
-      def initialize(identity:, folder:, to:, files:, folders:, size:, signing: nil)
+      # whose contents are +size+ bytes. When the app's gems need the
+      # Visual C++ runtime DLLs +visual_c_runtime+, which the app does not
+      # carry, it installs Microsoft's Redistributable from
+      # +redistributable+ first, if the computer lacks one of them.
+      def initialize(identity:, folder:, to:, files:, folders:, size:, signing: nil, visual_c_runtime: [], redistributable: "")
         @identity = identity
         @folder = folder
         @to = to
@@ -41,14 +44,111 @@ module Fledge
         @folders = folders
         @size = size
         @signing = signing
+        @visual_c_runtime = visual_c_runtime
+        @redistributable = redistributable
       end
 
       # The installer's NSIS script, with the app's icon at +icon+, or
       # NSIS's own for +nil+, and a license page that shows the file at
       # +license+, or none for +nil+.
       def text(icon:, license: nil)
-        lines = header(icon) + pages(license) + functions + install_section + uninstall_section
+        lines = header(icon) + pages(license) + functions + visual_c_section + install_section + uninstall_section
         "#{lines.join("\n")}\n"
+      end
+
+      # What runs before anything is installed, for an app built with
+      # <tt>windows: { visual_c_runtime: central }</tt>: when the native
+      # System32 lacks one of the DLLs its launcher looks for, it downloads
+      # Microsoft's Redistributable into the setup program's own temporary
+      # folder ($PLUGINSDIR), with URLDownloadToFileW through the System
+      # plug-in, runs it, which asks for an administrator itself, and looks
+      # again. If one is still missing, the person chooses to abort, to
+      # retry, or to install the app without it, whose launcher then names
+      # it; a silent install aborts (doc/contributors/design/desktop-apps.md,
+      # "The Visual C++ Redistributable"). Nothing for any other app.
+      private def visual_c_section
+        return [] if @visual_c_runtime.empty?
+
+        installer = "$PLUGINSDIR\\#{nsis(File.basename(@redistributable))}"
+        run = -> (mode) { "        ExecWait '\"#{installer}\" /install /#{mode} /norestart' $1" }
+        [
+          *missing_visual_c_macro,
+          "Section VisualCRuntime",
+          "  fledge_visual_c_runtime:",
+          "  !insertmacro FledgeMissingVisualCRuntime",
+          "  ${If} $0 != \"\"",
+          "    DetailPrint #{quote("Downloading Microsoft's Visual C++ Redistributable from #{@redistributable}")}",
+          "    InitPluginsDir",
+          "    Delete \"#{installer}\"",
+          "    System::Call 'urlmon::URLDownloadToFileW(p 0, w #{quote(@redistributable)}, w \"#{installer}\", i 0, p 0) i .r1'",
+          "    StrCpy $2 0",
+          "    ClearErrors",
+          "    FileOpen $3 \"#{installer}\" r",
+          "    ${IfNot} ${Errors}",
+          "      FileSeek $3 0 END $2",
+          "      FileClose $3",
+          "    ${EndIf}",
+          "    ${If} $1 <> 0",
+          "      DetailPrint \"The download failed (HRESULT $1)\"",
+          "    ${ElseIf} $2 = 0",
+          "      DetailPrint \"The download left no installer at #{installer}\"",
+          "    ${Else}",
+          "      DetailPrint \"Installing Microsoft's Visual C++ Redistributable\"",
+          "      ClearErrors",
+          "      ${If} ${Silent}",
+          run.call("quiet"),
+          "      ${Else}",
+          run.call("passive"),
+          "      ${EndIf}",
+          "      ${If} ${Errors}",
+          "        DetailPrint \"The Redistributable's installer could not be started\"",
+          "      ${Else}",
+          "        DetailPrint \"Microsoft's Visual C++ Redistributable exited with $1\"",
+          "      ${EndIf}",
+          "    ${EndIf}",
+          "    !insertmacro FledgeMissingVisualCRuntime",
+          "    ${If} $0 != \"\"",
+          "      MessageBox MB_ICONEXCLAMATION|MB_ABORTRETRYIGNORE #{redistributable_message} " \
+            "/SD IDABORT IDRETRY fledge_visual_c_runtime IDIGNORE fledge_visual_c_runtime_done",
+          "      Abort",
+          "    ${EndIf}",
+          "  ${EndIf}",
+          "  fledge_visual_c_runtime_done:",
+          "SectionEnd",
+          "",
+        ]
+      end
+
+      # Sets $0 to the first of the Visual C++ runtime's DLLs the native
+      # System32 lacks, or "" when it has them all: the files the launcher
+      # looks for, where it looks. The setup program is 32-bit, so
+      # Windows would show it SysWOW64 for System32; Sysnative is the
+      # native folder's name to a 32-bit program (Microsoft's "File System
+      # Redirector").
+      private def missing_visual_c_macro
+        [
+          "!macro FledgeMissingVisualCRuntime",
+          "  StrCpy $0 \"\"",
+          *@visual_c_runtime.flat_map do |name|
+            [
+              "  ${If} $0 == \"\"",
+              "  ${AndIfNot} ${FileExists} \"$WINDIR\\Sysnative\\#{nsis(name)}\"",
+              "    StrCpy $0 #{quote(name)}",
+              "  ${EndIf}",
+            ]
+          end,
+          "!macroend",
+          "",
+        ]
+      end
+
+      # What the person reads when the Redistributable is still missing,
+      # quoted as NSIS reads it, with the missing DLL's name from $0.
+      private def redistributable_message
+        name = nsis(@identity.name)
+        "\"#{name} needs Microsoft's Visual C++ Redistributable, which this computer does not have ($WINDIR\\System32 has no $0) " \
+          "and which could not be installed. Install it from #{@redistributable} and choose Retry, or choose Ignore to " \
+          "install #{name} without it, which then does not start until the Redistributable is installed.\""
       end
 
       # What runs before the installer's pages, and the function its last

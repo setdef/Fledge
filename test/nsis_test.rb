@@ -32,11 +32,99 @@ class NsisTest < Minitest::Test
 
   # The installer of the app in @folder, whose files and folders it reads
   # from there.
-  def setup_program(identity: self.identity)
-    Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe")
+  def setup_program(identity: self.identity, platform: Fledge::Platform.new("x64-mingw-ucrt"))
+    Fledge::Nsis.new(identity:, folder: @folder, platform:, to: "#{@folder}-setup.exe")
   end
 
   def script(**) = setup_program(**).script(icon: nil)
+
+  # An app built with windows: { visual_c_runtime: central }, whose
+  # fledge.cfg names the DLLs of Microsoft's Visual C++ runtime the
+  # launcher looks for in System32.
+  def assume_visual_c_runtime
+    File.binwrite(File.join(@folder, "fledge.cfg"), "entry = main.rb\nvisual_c_runtime = msvcp140.dll vcruntime140.dll\n")
+  end
+
+  # The lines of the section that sees to the Visual C++ runtime.
+  def visual_c_section(lines)
+    lines.drop_while { |line| line != "Section VisualCRuntime" }.take_while { |line| line != "SectionEnd" }
+  end
+
+  # An app that carries its Visual C++ runtime, or needs none, has a
+  # setup program that neither looks for it nor downloads anything.
+  def test_an_app_that_assumes_no_visual_c_runtime_downloads_nothing
+    refute_match(/VisualCRuntime|URLDownloadToFile|vc_redist/, script)
+  end
+
+  # With visual_c_runtime: central, the setup program looks, before it
+  # installs anything, for the very files the launcher looks for, in the
+  # native System32, which a 32-bit setup program reaches as Sysnative;
+  # when one is missing it downloads Microsoft's Redistributable from its
+  # permanent link into its own temporary folder, runs it, and looks
+  # again.
+  def test_a_central_app_installs_the_redistributable_its_dlls_are_missing_from
+    assume_visual_c_runtime
+    lines = script.lines.map(&:chomp)
+    section = visual_c_section(lines)
+
+    assert_operator lines.index("Section VisualCRuntime"), :<, lines.index("Section Install")
+    assert_equal ["\"$WINDIR\\Sysnative\\msvcp140.dll\"", "\"$WINDIR\\Sysnative\\vcruntime140.dll\""], lines.grep(/\$\{FileExists\}/).map { |line| line[/"[^"]+"/] }
+    assert_equal 2, section.count { |line| line.strip == "!insertmacro FledgeMissingVisualCRuntime" }, "it looks before and after"
+    assert_includes section, "    System::Call 'urlmon::URLDownloadToFileW(p 0, w \"https://aka.ms/vc14/vc_redist.x64.exe\", " \
+      "w \"$PLUGINSDIR\\vc_redist.x64.exe\", i 0, p 0) i .r1'"
+    assert_includes section, "        ExecWait '\"$PLUGINSDIR\\vc_redist.x64.exe\" /install /quiet /norestart' $1"
+    assert_includes section, "        ExecWait '\"$PLUGINSDIR\\vc_redist.x64.exe\" /install /passive /norestart' $1"
+    refute_match(/vc_redist|VisualCRuntime/, lines.drop_while { |line| line != "Section Uninstall" }.join("\n"), "the Redistributable is shared, so the uninstaller leaves it")
+  end
+
+  # The download's status is not trusted alone: an earlier attempt's file
+  # is deleted first, and the installer runs only when the download left
+  # a file with something in it; a failed download, a missing file, and
+  # an installer that could not start each say so in the details.
+  def test_a_central_app_runs_only_an_installer_the_download_left
+    assume_visual_c_runtime
+    section = visual_c_section(script.lines.map(&:chomp))
+    download = section.index { |line| line.include?("URLDownloadToFileW") }
+    run = section.index { |line| line.include?("ExecWait") }
+
+    assert_equal "    Delete \"$PLUGINSDIR\\vc_redist.x64.exe\"", section[download - 1]
+    assert_includes section[download..run], "      FileSeek $3 0 END $2"
+    assert_includes section[download..run], "    ${ElseIf} $2 = 0"
+    assert_includes section, "      DetailPrint \"The download failed (HRESULT $1)\""
+    assert_includes section, "      DetailPrint \"The download left no installer at $PLUGINSDIR\\vc_redist.x64.exe\""
+    assert_includes section[run..], "      ${If} ${Errors}"
+    assert_includes section, "        DetailPrint \"The Redistributable's installer could not be started\""
+    assert_equal "      ClearErrors", section[run - 2]
+  end
+
+  # When the Redistributable is still missing (no network, elevation
+  # declined, its installer failed), the person chooses: Abort, before
+  # anything is installed; Retry, after installing it from the link the
+  # message gives; or Ignore, and the app's launcher names it when the
+  # app starts. A silent install aborts.
+  def test_a_central_app_whose_redistributable_stays_missing_lets_the_person_choose
+    assume_visual_c_runtime
+    section = visual_c_section(script.lines.map(&:chomp))
+    message = section.grep(/MessageBox/).first.to_s
+
+    assert_match(/\A      MessageBox MB_ICONEXCLAMATION\|MB_ABORTRETRYIGNORE "/, message)
+    assert_includes message, "My App needs Microsoft's Visual C++ Redistributable"
+    assert_includes message, "$WINDIR\\System32 has no $0"
+    assert_includes message, "https://aka.ms/vc14/vc_redist.x64.exe"
+    assert_match(%r{" /SD IDABORT IDRETRY fledge_visual_c_runtime IDIGNORE fledge_visual_c_runtime_done\z}, message)
+    assert_equal "  fledge_visual_c_runtime:", section[1]
+    assert_includes section, "      Abort"
+  end
+
+  # An ARM64 app needs the ARM64 runtime, from Microsoft's ARM64 link, as
+  # its launcher's message names it.
+  def test_an_arm64_app_installs_the_arm64_redistributable
+    assume_visual_c_runtime
+    text = script(platform: Fledge::Platform.new("aarch64-mingw-ucrt"))
+
+    assert_includes text, "w \"https://aka.ms/vc14/vc_redist.arm64.exe\", w \"$PLUGINSDIR\\vc_redist.arm64.exe\""
+    refute_includes text, "vc_redist.x64"
+  end
 
   # makensis reads paths of the computer it runs on; on Windows, with
   # backslashes.
@@ -145,7 +233,7 @@ class NsisTest < Minitest::Test
     Dir.mktmpdir do |dir|
       File.write(File.join(dir, "signtool.exe"), "")
       signing = Fledge::WindowsSigning.new("0123456789ABCDEF0123456789ABCDEF01234567", env: { "PATH" => dir })
-      text = Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe", signing:).script(icon: nil)
+      text = Fledge::Nsis.new(identity:, folder: @folder, platform: Fledge::Platform.new("x64-mingw-ucrt"), to: "#{@folder}-setup.exe", signing:).script(icon: nil)
 
       assert_includes text, "\n!uninstfinalize '#{signing.command_line}' = 0\n!finalize '#{signing.command_line}' = 0\n"
       refute_includes script, "finalize"
@@ -160,11 +248,11 @@ class NsisTest < Minitest::Test
       "sign.cmd" => "'sign.cmd \"%1\"'",
       "pwsh -File 'C:\\sign.ps1' %1" => "`pwsh -File 'C:\\sign.ps1' \"%1\"`",
     }.each do |command, quoted|
-      text = Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe", signing: Fledge::SignCommand.new(command)).script(icon: nil)
+      text = Fledge::Nsis.new(identity:, folder: @folder, platform: Fledge::Platform.new("x64-mingw-ucrt"), to: "#{@folder}-setup.exe", signing: Fledge::SignCommand.new(command)).script(icon: nil)
 
       assert_includes text, "\n!uninstfinalize #{quoted} = 0\n!finalize #{quoted} = 0\n", command
     end
-    every = Fledge::Nsis.new(identity:, folder: @folder, to: "#{@folder}-setup.exe", signing: Fledge::SignCommand.new("a 'b' `c`"))
+    every = Fledge::Nsis.new(identity:, folder: @folder, platform: Fledge::Platform.new("x64-mingw-ucrt"), to: "#{@folder}-setup.exe", signing: Fledge::SignCommand.new("a 'b' `c`"))
     assert_match(/holds ', ", and ` all/, assert_raises(Fledge::Error) { every.script(icon: nil) }.message)
   end
 
@@ -277,7 +365,7 @@ class NsisTest < Minitest::Test
 
   def test_a_runtime_without_nsis_is_refused
     Dir.mktmpdir do |dir|
-      nsis = Fledge::Nsis.new(identity:, folder: dir, to: File.join(dir, "setup.exe"))
+      nsis = Fledge::Nsis.new(identity:, folder: dir, platform: Fledge::Platform.new("x64-mingw-ucrt"), to: File.join(dir, "setup.exe"))
 
       assert_match(%r{the runtime has no tools/nsis}, assert_raises(Fledge::Error) { nsis.write(nil) }.message)
       assert_match(%r{the runtime has no tools/nsis}, assert_raises(Fledge::Error) { nsis.write(dir) }.message)

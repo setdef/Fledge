@@ -7,16 +7,21 @@ module Fledge
     UNINSTALLER: String
     MAKENSIS: String
     BOM: String
+    CONFIG: String
+    REDISTRIBUTABLES: Hash[String, String]
 
     @identity: Identity
     @folder: String
     @to: String
     @signing: (WindowsSigning | SignCommand)?
     @license: String?
+    @redistributable: String
 
-    def initialize: (identity: Identity, folder: String, to: String, ?signing: (WindowsSigning | SignCommand)?, ?license: String?) -> void
+    def initialize: (identity: Identity, folder: String, platform: Platform, to: String, ?signing: (WindowsSigning | SignCommand)?, ?license: String?, ?redistributable: String?) -> void
 
     def script: (icon: String?, ?license: String?) -> String
+
+    private def visual_c_runtime: () -> Array[String]
 
     def self.license_text: (String text) -> String
 

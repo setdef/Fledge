@@ -77,21 +77,43 @@ module Fledge
     # editor may already begin with.
     BOM = [0xFEFF].pack("U").freeze
 
+    # The file in the app's folder that says what its program runs, and
+    # which Visual C++ runtime DLLs its launcher looks for.
+    CONFIG = "fledge.cfg"
+
+    # Where the setup program of an app built with <tt>windows: {
+    # visual_c_runtime: central }</tt> downloads Microsoft's Visual C++
+    # Redistributable from, for each Windows platform: Microsoft's
+    # permanent links to the latest supported one ("Latest supported
+    # Visual C++ Redistributable downloads"), the ones the launcher's
+    # message names.
+    REDISTRIBUTABLES = {
+      "x64-mingw-ucrt" => "https://aka.ms/vc14/vc_redist.x64.exe",
+      "aarch64-mingw-ucrt" => "https://aka.ms/vc14/vc_redist.arm64.exe",
+    }.freeze
+
     # Creates the installer of the app whose Fledge::Identity is +identity+.
     #
     # [folder] The built app's folder, which the installer copies.
+    # [platform] The Fledge::Platform the app is built for.
     # [to] The installer's path.
     # [signing] The Fledge::WindowsSigning or Fledge::SignCommand that
     #           makensis signs the installer and its uninstaller with, or
     #           +nil+.
     # [license] The app's license text, which a page shows before the
     #           install, or +nil+ for no such page.
-    def initialize(identity:, folder:, to:, signing: nil, license: nil)
+    # [redistributable] Where the setup program downloads the Visual C++
+    #                   Redistributable from, when the app's DLLs need
+    #                   it: +nil+ for the platform's in REDISTRIBUTABLES,
+    #                   which fledge build always gives; a test gives a
+    #                   server of its own.
+    def initialize(identity:, folder:, platform:, to:, signing: nil, license: nil, redistributable: nil)
       @identity = identity
       @folder = folder
       @to = to
       @signing = signing
       @license = license
+      @redistributable = redistributable || REDISTRIBUTABLES.fetch(platform.name) { raise Error, "an nsis installer is for Windows, and #{platform.name} is not" }
     end
 
     # +text+ as the license page reads a text file: with a UTF-8 byte
@@ -146,7 +168,21 @@ module Fledge
           size += File.size(full)
         end
       end
-      Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:, signing: @signing&.command_line).text(icon:, license:)
+      Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:, signing: @signing&.command_line,
+        visual_c_runtime:, redistributable: @redistributable).text(icon:, license:)
+    end
+
+    # The DLLs of Microsoft's Visual C++ runtime that the app's gems need
+    # and the app does not carry, which its fledge.cfg names for the
+    # launcher to look for in System32 (Assembly.launch_config): those of
+    # an app built with <tt>windows: { visual_c_runtime: central }</tt>,
+    # and none for any other. Reading them there keeps the setup program
+    # true to the folder it installs, one built with --from included.
+    private def visual_c_runtime
+      config = File.join(@folder, CONFIG)
+      return [] unless File.file?(config)
+
+      File.binread(config)[/^visual_c_runtime = (.+)$/, 1].to_s.split
     end
 
     # Compiles the installer with the NSIS in +tools+, the runtime's

@@ -136,7 +136,7 @@ module Fledge
       when "appimage" then AppImage.write(identity:, folder:, tools:, to:)
       when "deb" then deb(app, folder:, platform:, to:)
       when "msix" then Msix.new(identity:, windows: app.config.windows, folder:, platform:, to:, signing: windows_signer(signing)).write
-      else Nsis.new(identity:, folder:, to:, signing: windows_signer(signing), license: license(app)).write(tools)
+      else Nsis.new(identity:, folder:, platform:, to:, signing: windows_signer(signing), license: license(app)).write(tools)
       end
     end
 

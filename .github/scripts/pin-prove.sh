@@ -92,7 +92,26 @@ follow() {
   fi
   url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run"
   echo "Proving $2 in $url"
-  gh run watch "$run" --exit-status --interval 60 >tmp/pin-proof.txt 2>&1
+  # gh run watch can end before the run does, on an error of its own:
+  # in the first real proof of llvm-mingw alone it ended 2.5 minutes into
+  # a run in which no job had failed. So the verdict is the run's
+  # conclusion, read once the run is completed, and the job's timeout
+  # bounds the wait.
+  verdict=
+  until [ "${verdict%% *}" = completed ]; do
+    gh run watch "$run" --interval 60 >tmp/pin-proof.txt 2>&1 || tail -n 5 tmp/pin-proof.txt
+    verdict=$(gh run view "$run" --json status,conclusion --jq '.status + " " + .conclusion') || verdict=
+    [ "${verdict%% *}" = completed ] || sleep 60
+  done
+  if [ "$verdict" = "completed success" ]; then return 0; fi
+  # What the summary says of a red run: each job that failed, and its
+  # step, or that the run was cancelled, which judges nothing.
+  {
+    echo "CI ${verdict#completed }: $url"
+    gh run view "$run" --json jobs --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")
+      | "- \(.name): \([.steps[]? | select(.conclusion == "failure") | .name] | join(", "))"' || true
+  } | tee -a "$summary"
+  return 1
 }
 
 trap 'git push --quiet origin --delete "$branch" || true' EXIT

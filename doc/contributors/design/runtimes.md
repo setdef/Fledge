@@ -193,6 +193,8 @@ Why it is built so:
 
 `gh workflow run pin-watch.yml -f land=false` runs the watch, the move, and the proof, and leaves trunk alone. `PIN_PROVE_DRY_RUN=true .github/scripts/pin-prove.sh REPORT` makes the move's commit in the checkout and stops, pushing and starting nothing; with a name after REPORT, it moves that pin alone.
 
+The verdict is the conclusion of the run of `ci.yml`, which the script reads once the run is completed. When `gh run watch` ends early, the script watches again. In the first real run, the proof of llvm-mingw alone was called red 2.5 minutes into a run in which no job had failed. Its branch was then deleted, and the next pin's dispatch cancelled that run as the newer request for the branch's concurrency group, so llvm-mingw was never judged. A red run's summary lists each job that failed and the step in it, or says that the run was cancelled. That list is what a person reads first when the run calls them.
+
 What it does not do. A runner that never comes for a macOS job turns the proof red, as it turns any run red, and `runnerless.yml`, which heals only trunk's runs, does not run it again; the Alone job then proves each pin, and a second such loss calls a person.
 
 ### Held pins

@@ -30,7 +30,9 @@ module Fledge
   # <tt>--file-headers</tt>). Which tool reads which format on a computer
   # is Fledge::Binary::Readers. This class only picks out the files that
   # begin as compiled code does, by the bytes each format starts with, as
-  # file(1) does, hands them to the tool, and keeps what the tool printed.
+  # file(1) does, hands them to the tool, and keeps what the tool printed,
+  # with an ELF file's processor, which it reads from the file's header,
+  # as file(1) does too (#architectures).
   # A file the tool does not recognize holds no code. A static archive
   # (ar) is code that links nothing, since what matters about it is that
   # its code would be copied into whatever links it; no tool is asked.
@@ -56,7 +58,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Binary < Data.define(:format, :needed, :rpaths, :assemblies, :macos_minimum, :glibc_minimum, :subsystem, :soname)
+  class Binary < Data.define(:format, :needed, :rpaths, :assemblies, :macos_minimum, :glibc_minimum, :subsystem, :soname, :architectures)
     ##
     # :attr_reader: format
     # The file's format: <tt>:elf</tt>, <tt>:macho</tt>, <tt>:pe</tt>, or
@@ -101,6 +103,19 @@ module Fledge
     # file's DT_SONAME, or a Mach-O dylib's install name (LC_ID_DYLIB);
     # +nil+ for a file that gives none, and for PE, whose loader matches
     # a loaded DLL by its file name.
+
+    ##
+    # :attr_reader: architectures
+    # The processors the file holds code for, once each, by the names
+    # Fledge::Platform#cpu gives them (<tt>x86_64</tt>,
+    # <tt>aarch64</tt>), and <tt>i386</tt> or <tt>arm</tt>, or by the
+    # tool's own name for one Fledge does not name: one for most files,
+    # one for each slice of a universal Mach-O file, and none for a static
+    # archive. A file's code runs only in a process of one of them.
+
+    # ELF's e_machine values for the processors #architectures names (the
+    # gABI's EM_386, EM_ARM, EM_X86_64, and EM_AARCH64).
+    ELF_MACHINES = { 3 => "i386", 40 => "arm", 62 => "x86_64", 183 => "aarch64" }.freeze
 
     # The bytes each format's files begin with: ELF's, a static
     # archive's, a 64-bit and a 32-bit little-endian Mach-O file's and a
@@ -161,7 +176,7 @@ module Fledge
       end
       binaries = formats.select { |_, format| format == :archive }.transform_values { archive }
       formats.reject { |_, format| format == :archive }.keys.group_by { |path| formats.fetch(path) }.each do |format, found|
-        readers.read(format, found).each { |path, binary| binaries[path] = with_assemblies(path, binary) }
+        readers.read(format, found).each { |path, binary| binaries[path] = with_machine(path, with_assemblies(path, binary)) }
       end
       paths.filter_map { |path| (binary = binaries[path]) && [path, binary] }.to_h
     end
@@ -193,7 +208,24 @@ module Fledge
     end
 
     private_class_method def self.archive # :nodoc:
-      new(format: :archive, needed: [], rpaths: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil, soname: nil)
+      new(format: :archive, needed: [], rpaths: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil, soname: nil,
+        architectures: [])
+    end
+
+    # +binary+, with the processor the ELF file at +path+ is for, as its
+    # header's e_machine says (at byte 18, in the byte order byte 5
+    # gives, in the gABI's "ELF Header"), as file(1) reads it: GNU's
+    # objdump names a file's processor only among those it was built for,
+    # and calls an aarch64 file on an x86-64 computer "elf64-little", and
+    # readelf, which names every one, would be a second tool to run.
+    private_class_method def self.with_machine(path, binary) # :nodoc:
+      return binary unless binary.format == :elf
+
+      header = File.binread(path, 20).to_s
+      return binary if header.bytesize < 20
+
+      machine = header.byteslice(18, 2).to_s.unpack1((header.getbyte(5) == 2) ? "n" : "v")
+      binary.with(architectures: [ELF_MACHINES.fetch(machine) { "e_machine #{machine}" }])
     end
 
     # +binary+, with the assemblies the manifest in the PE file at +path+

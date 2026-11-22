@@ -13,6 +13,7 @@ module Fledge
     @system: Array[Regexp]
     @dlls: Set[String]
     @os: String
+    @cpu: String?
     @provided: Array[String]
     @declared: Array[String]
     @needed: Array[String]
@@ -20,7 +21,7 @@ module Fledge
     @visual_c_runtime: String?
     @visual_c: Array[String]
 
-    def initialize: (os: String, ?provided: Array[String], ?system: Array[String], ?readers: Binary::Readers, ?visual_c_runtime: String?) -> void
+    def initialize: (os: String, ?cpu: String?, ?provided: Array[String], ?system: Array[String], ?readers: Binary::Readers, ?visual_c_runtime: String?) -> void
 
     def visual_c_libraries: () -> Array[String]
 
@@ -29,6 +30,8 @@ module Fledge
     def unused: () -> Array[String]
 
     private def loaded_by_name?: (String library, Array[String] loaded) -> bool
+
+    private def native?: (Binary binary) -> bool
 
     private def system?: (String library) -> bool
 

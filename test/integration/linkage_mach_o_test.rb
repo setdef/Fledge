@@ -108,6 +108,27 @@ class LinkageMachOTest < Minitest::Test
     assert_empty problems("darwin", files)
   end
 
+  # A universal file holds code for several processors, and dyld loads
+  # its slice for the app's, so it is judged; Xcode's objdump, as otool,
+  # prints only the slice for the Mac's own processor, which is the
+  # app's. A file with only Intel code is never loaded by the runtime's
+  # arm64 Ruby, since Rosetta translates a whole process, not one
+  # library loaded into a native one, so it is not judged.
+  def test_a_universal_file_with_the_apps_processor_is_judged_and_an_intel_one_is_not
+    files = mach_o do |build|
+      build.dylib("vendor/libfoo.dylib", install_name: "@rpath/libfoo.dylib", archs: %w[x86_64 arm64])
+      build.bundle("lib/ext.bundle", links: ["vendor/libfoo.dylib"], rpaths: [], archs: %w[x86_64 arm64])
+      build.bundle("lib/intel.bundle", links: ["vendor/libfoo.dylib"], rpaths: [], archs: %w[x86_64])
+    end
+    universal = Fledge::Binary.parse(files, readers: TestReaders.all).fetch("lib/ext.bundle")
+    unshipped = files.except("vendor/libfoo.dylib")
+    judged = -> (cpu) { Fledge::Linkage.new(os: "darwin", cpu:, readers: TestReaders.all).problems("linked 1.0.0", unshipped) }
+
+    assert_equal [%w[aarch64], %w[/usr/lib/libSystem.B.dylib @rpath/libfoo.dylib]], [universal.architectures, universal.needed.sort]
+    assert_equal %w[lib/ext.bundle lib/intel.bundle], judged.call(nil).map { |problem| problem[%r{lib/\w+\.bundle}] }
+    assert_equal %w[lib/ext.bundle], judged.call("aarch64").map { |problem| problem[%r{lib/\w+\.bundle}] }
+  end
+
   # Builds Mach-O files with Xcode's clang, as a gem's own build would, by
   # their paths in the gem, and returns them with their bytes.
   def mach_o
@@ -127,27 +148,28 @@ class LinkageMachOTest < Minitest::Test
     end
 
     # A dynamic library at +path+, whose install name is +install_name+,
-    # that links the libraries at +links+.
-    def dylib(path, install_name:, links: [])
-      link(path, ["-dynamiclib", "-install_name", install_name], links, [])
+    # that links the libraries at +links+, with code for each of +archs+.
+    def dylib(path, install_name:, links: [], archs: ["arm64"])
+      link(path, ["-dynamiclib", "-install_name", install_name], links, [], archs)
     end
 
     # A Ruby-style bundle at +path+ that links +links+ and has the run
-    # paths +rpaths+, which install_name_tool adds as a gem's build would.
-    def bundle(path, links:, rpaths:)
-      link(path, ["-bundle"], links, rpaths)
+    # paths +rpaths+, which install_name_tool adds as a gem's build would,
+    # with code for each of +archs+.
+    def bundle(path, links:, rpaths:, archs: ["arm64"])
+      link(path, ["-bundle"], links, rpaths, archs)
     end
 
     def files
       @paths.to_h { |path| [path, File.binread(File.join(@dir, path))] }
     end
 
-    private def link(path, kind, links, rpaths)
+    private def link(path, kind, links, rpaths, archs)
       output = File.join(@dir, path)
       FileUtils.mkdir_p(File.dirname(output))
       source = "#{output}.c"
       File.write(source, "void fixture_#{@paths.size}(void) {}\n")
-      run("clang", "-arch", "arm64", "-mmacosx-version-min=14.0", "-headerpad_max_install_names", *kind, source, *links.map { |library| File.join(@dir, library) },
+      run("clang", *archs.flat_map { |arch| ["-arch", arch] }, "-mmacosx-version-min=14.0", "-headerpad_max_install_names", *kind, source, *links.map { |library| File.join(@dir, library) },
         "-o", output)
       File.delete(source)
       rpaths.each { |rpath| run("install_name_tool", "-add_rpath", rpath, output) }

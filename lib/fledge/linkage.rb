@@ -22,7 +22,8 @@ module Fledge
   #
   # This class reads each compiled file of a gem in the format of the
   # target's own loader, ELF, Mach-O, or PE, since a loader loads no other
-  # (Fledge::Binary, with the build computer's tools), and names every
+  # (Fledge::Binary, with the build computer's tools), and, of those for
+  # the app's processor, which alone its process loads, names every
   # library one of them needs that neither the target's operating system,
   # nor Fledge's runtime, nor the gem itself provides.
   # What the operating system provides is SYSTEM_LIBRARIES, and on Linux
@@ -127,6 +128,12 @@ module Fledge
     # Creates the check.
     #
     # [os] The operating system the app is for (Fledge::Platform#os).
+    # [cpu] The processor the app's Ruby runs on (Fledge::Platform#cpu),
+    #       whose process loads no code for another: a file whose
+    #       Binary#architectures do not include it is not judged, and
+    #       provides no library. +nil+ judges every file, as an Android
+    #       app's are, each placed in the folder of the ABI it is for,
+    #       where Android would load it.
     # [provided] The file names of the shared libraries the runtime
     #            ships, which a compiled file may need too.
     # [system] The file names of the libraries the project lists as its
@@ -140,8 +147,9 @@ module Fledge
     #                    +nil+ for not at all: with a way chosen, a DLL of
     #                    VISUAL_C_RUNTIME is no gem's problem, and
     #                    #visual_c_libraries names it.
-    def initialize(os:, provided: [], system: [], readers: Binary::Readers.local(os), visual_c_runtime: nil)
+    def initialize(os:, cpu: nil, provided: [], system: [], readers: Binary::Readers.local(os), visual_c_runtime: nil)
       @system = SYSTEM_LIBRARIES.fetch(os)
+      @cpu = cpu
       @dlls = SYSTEM_DLLS.fetch(os, Set.new)
       @os = os
       @provided = provided
@@ -168,7 +176,11 @@ module Fledge
     # A file that needs another Ruby's DLL is built for that Ruby, as a
     # gem precompiled for several Ruby versions ships one file for each
     # (<tt>lib/nokogiri/3.4/nokogiri.so</tt>), and the runtime's Ruby
-    # never loads it, so it is not judged.
+    # never loads it, so it is not judged. Nor is a file for another
+    # processor than the app's (+cpu+), as a gem for every platform
+    # carries one library for each and loads its own
+    # (<tt>lib/libraylib.aarch64.so</tt> beside
+    # <tt>lib/libraylib.x86_64.so</tt>).
     #
     # === Example
     #
@@ -185,7 +197,7 @@ module Fledge
     #++
     def problems(label, files)
       loadable = files.select { |_, content| Binary.format_of(content.byteslice(0, 8).to_s) == FORMATS.fetch(@os) }
-      binaries = Binary.parse(loadable, readers: @readers).sort.to_h
+      binaries = Binary.parse(loadable, readers: @readers).select { |_, binary| native?(binary) }.sort.to_h
       shipped = (binaries.keys.map { |path| File.basename(path) } + @provided).map(&:downcase)
       dyld = Dyld.new(binaries) if @os == "darwin"
       loaded = binaries.values.filter_map(&:soname)
@@ -244,6 +256,14 @@ module Fledge
       return false unless loaded.include?(library)
 
       @os == "linux" || (@os == "darwin" && library.start_with?("@rpath/"))
+    end
+
+    # Whether the app's process could load +binary+: when it holds code
+    # for the app's processor, among others in a universal Mach-O file,
+    # or when no processor was asked for, or none could be read, so that
+    # a file is never let off for what its reader did not say.
+    private def native?(binary)
+      @cpu.nil? || binary.architectures.empty? || binary.architectures.include?(@cpu)
     end
 
     # Whether the operating system provides +library+.

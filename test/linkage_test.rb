@@ -264,6 +264,51 @@ class LinkageTest < Minitest::Test
     assert_empty problems("linux", { "lib/ext.so" => Binaries.elf(needed: ["libc.so.6"], payload: iconv) })
   end
 
+  # A process loads only code for its own processor, so a gem's library
+  # for another, beside its own (raylib-bindings carries
+  # lib/libraylib.x86_64.so and lib/libraylib.aarch64.so, and its Ruby
+  # picks one), is never loaded and never judged: neither for what it
+  # needs, nor as the gem's copy of a library another file needs. The
+  # app's own processor's files are judged as ever, and a 32-bit file is
+  # another processor's, since a 64-bit process loads none.
+  def test_a_file_for_another_processor_is_never_loaded_and_never_judged
+    TestReaders.need(self, :elf)
+    files = {
+      "lib/libray.x86_64.so" => Binaries.elf(needed: %w[libc.so.6]),
+      "lib/libray.aarch64.so" => Binaries.elf(needed: %w[libc.so.6 libGLX.so.0], cpu: "aarch64"),
+      "lib/libray.i386.so" => Binaries.elf(needed: %w[libc.so.6 libGLX.so.0], cpu: "i386"),
+      "lib/libray.armhf.so" => Binaries.elf(needed: %w[libc.so.6 libGLX.so.0], cpu: "arm"),
+    }
+    judged = lambda do |cpu, gem|
+      Fledge::Linkage.new(os: "linux", cpu:, readers: TestReaders.all).problems("linked 1.0.0", gem).map { |problem| problem[/\S+\.so/] }
+    end
+
+    assert_equal %w[lib/libray.aarch64.so lib/libray.armhf.so lib/libray.i386.so], judged.call(nil, files)
+    assert_empty judged.call("x86_64", files)
+    assert_equal %w[lib/libray.aarch64.so], judged.call("aarch64", files)
+
+    carried = { "lib/ext.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2]), "lib/arm/libxml2.so.2" => files.fetch("lib/libray.aarch64.so") }
+    unprovided = lambda do |cpu|
+      Fledge::Linkage.new(os: "linux", cpu:, readers: TestReaders.all).problems("linked 1.0.0", carried).grep(/needs libxml2/).size
+    end
+    assert_equal [0, 1], [unprovided.call(nil), unprovided.call("x86_64")]
+  end
+
+  # The same holds of Mach-O and PE: an Intel bundle on an arm64 Mac,
+  # whose Ruby Rosetta does not translate, and an ARM64 DLL in an x64
+  # app, or an x64 one in an ARM64 app.
+  def test_a_mach_o_or_pe_file_for_another_processor_is_never_judged
+    TestReaders.need(self, :macho, :pe)
+    intel = Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib /usr/local/opt/libxml2/lib/libxml2.2.dylib], cpu: "x86_64")
+    arm = Binaries.pe(needed: %w[KERNEL32.dll libxml2-16.dll], cpu: "aarch64")
+    x64 = Binaries.pe(needed: %w[libgmp-10.dll KERNEL32.dll])
+    judged = -> (os, cpu, file) { Fledge::Linkage.new(os:, cpu:, readers: TestReaders.all).problems("linked 1.0.0", { "lib/ext" => file }).size }
+
+    assert_equal [1, 0, 1], [judged.call("darwin", nil, intel), judged.call("darwin", "aarch64", intel), judged.call("darwin", "x86_64", intel)]
+    assert_equal [0, 1], [judged.call("windows", "x86_64", arm), judged.call("windows-arm64", "aarch64", arm)]
+    assert_equal [1, 0], [judged.call("windows", "x86_64", x64), judged.call("windows-arm64", "aarch64", x64)]
+  end
+
   # A loader loads only its own system's format, so a Linux gem's copy of
   # a Windows DLL, say, is never loaded and never judged.
   def test_a_file_for_another_systems_loader_is_never_judged

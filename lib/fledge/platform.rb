@@ -180,6 +180,25 @@ module Fledge
       name.end_with?("-darwin") ? "darwin" : "linux"
     end
 
+    # The processor the platform's apps run on, as Fledge::Binary names
+    # the processor a compiled file is for: +x86_64+ or +aarch64+, which
+    # RubyGems calls +x64+ on Windows and +arm64+ on macOS.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Platform.find("arm64-darwin").cpu # => "aarch64"
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def cpu
+      name.start_with?("x86_64-", "x64-") ? "x86_64" : "aarch64"
+    end
+
     # The oldest macOS the platform's apps run on (MACOS_MINIMUM), or
     # +nil+ for a platform that is not macOS.
     #

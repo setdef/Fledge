@@ -13,19 +13,28 @@ module Fledge
     # elf64-x86-64", then for ELF a <tt>NEEDED</tt> line per library, a
     # <tt>SONAME</tt> line for a library that names itself, and, under
     # "Version References:", a line per symbol version, and for
-    # Mach-O each load command as <tt>otool -l</tt> prints it (LLVM's
-    # objdump is otool's own code, llvm-otool).
+    # Mach-O the header, with its processor, and each load command, as
+    # <tt>otool -h -l</tt> prints them (LLVM's objdump is otool's own
+    # code, llvm-otool), once for each slice of a universal file.
     module Objdump # :nodoc:
       # What to run the tool with before the files.
       ARGUMENTS = ["-p"].freeze
 
-      # A file's header line, and a universal Mach-O file's for each of
-      # its architectures.
-      HEADER = /\A(.+?)(?: \(architecture [^)]+\))?:\s+file format (.+?)\s*\z/
+      # A file's header line, "FILE: file format FORMAT", and a universal
+      # Mach-O file's, which Xcode's objdump prints with no format, as
+      # otool does: "FILE:" alone when the file has a slice for this
+      # computer's processor, the one slice it then prints, and otherwise
+      # "FILE (architecture ARCH):" before each slice.
+      HEADER = /\A(.+?)(?: \(architecture [^)]+\))?:(?:\s+file format .+?)?\s*\z/
 
       # The load commands that name a dylib the loader must find
       # (Apple's mach-o/loader.h).
       DYLIB_COMMANDS = %w[LC_LOAD_DYLIB LC_LOAD_WEAK_DYLIB LC_REEXPORT_DYLIB LC_LAZY_LOAD_DYLIB LC_LOAD_UPWARD_DYLIB].freeze
+
+      # By the cputype a Mach-O file's header gives, as otool prints it,
+      # the processor's name in Binary#architectures. An arm64e file's is
+      # ARM64 too, with a subtype of E.
+      MACHO_CPUS = { "X86_64" => "x86_64", "ARM64" => "aarch64", "I386" => "i386", "ARM" => "arm" }.freeze
 
       # The options Fledge::Binary::Readers runs the tool with.
       def self.arguments
@@ -52,17 +61,25 @@ module Fledge
         error.include?("'#{path}'") || error.include?("#{path}: ")
       end
 
-      # The Binary +section+ describes.
+      # The Binary +section+ describes: for a universal Mach-O file, the
+      # union of the slices the tool printed, each slice's load commands in
+      # turn. An ELF
+      # file's processor is not in what the tool prints (Binary.read).
       def self.binary(section)
-        format = section[/file format (\S+)/, 1].to_s
-        if format.start_with?("mach-o")
+        if section.match?(/^Mach header\s*$/)
           commands = section.split(/^Load command \d+\s*$/)
           Binary.new(format: :macho, needed: dylibs(commands), rpaths: rpaths(commands), assemblies: [], macos_minimum: macos(commands),
-            glibc_minimum: nil, subsystem: nil, soname: install_name(commands))
+            glibc_minimum: nil, subsystem: nil, soname: install_name(commands), architectures: cpus(section))
         else
           Binary.new(format: :elf, needed: section.scan(/^\s+NEEDED\s+(\S+)\s*$/).flatten.map(&:to_s).uniq, rpaths: [], assemblies: [],
-            macos_minimum: nil, glibc_minimum: glibc(section), subsystem: nil, soname: section[/^\s+SONAME\s+(\S+)\s*$/, 1])
+            macos_minimum: nil, glibc_minimum: glibc(section), subsystem: nil, soname: section[/^\s+SONAME\s+(\S+)\s*$/, 1], architectures: [])
         end
+      end
+
+      # The processors the Mach-O headers in +section+ name, one for each
+      # slice: "MH_MAGIC_64 ARM64 ALL ...".
+      def self.cpus(section)
+        section.scan(/^\s*MH_MAGIC(?:_64)?\s+(\S+)/).flatten.map { |cpu| MACHO_CPUS.fetch(cpu.to_s) { cpu.to_s.downcase } }.uniq
       end
 
       # The run paths the LC_RPATH load +commands+ name, in order.

@@ -29,6 +29,15 @@ require_relative "../../support/binaries"
 
 # Makes one catalog entry's file.
 class FixtureBuilder
+  # clang's target for an ELF file for each processor.
+  ELF_TARGETS = {
+    "x86_64" => "x86_64-linux-gnu", "aarch64" => "aarch64-linux-gnu", "i386" => "i386-linux-gnu", "arm" => "armv7a-linux-gnueabihf"
+  }.freeze
+
+  # llvm-dlltool's machine and lld-link's for a PE file for each
+  # processor.
+  PE_MACHINES = { "x86_64" => %w[i386:x86-64 x64], "aarch64" => %w[arm64 arm64] }.freeze
+
   def initialize(llvm, work)
     @llvm = llvm
     @work = work
@@ -71,25 +80,26 @@ class FixtureBuilder
     versions = spec.fetch(:versions)
     calls = needed.size + versions.size
     object = File.join(dir, "fixture.o")
-    run(tool("clang"), "--target=x86_64-linux-gnu", "-fPIC", "-c", source(dir, calls), "-o", object)
+    target = "--target=#{ELF_TARGETS.fetch(Binaries.cpu(spec))}"
+    run(tool("clang"), target, "-fPIC", "-c", source(dir, calls), "-o", object)
     stubs = needed.each_with_index.map do |library, index|
       exported = [symbol(index)]
       exported += versions.each_index.map { |offset| symbol(needed.size + offset) } if library == "libc.so.6"
-      elf_stub(dir, library, exported, (library == "libc.so.6") ? versions : [])
+      elf_stub(dir, library, exported, (library == "libc.so.6") ? versions : [], target)
     end
     soname = spec[:soname] ? ["-soname", spec.fetch(:soname)] : []
     run(tool("ld.lld"), "-shared", "--no-as-needed", "--hash-style=gnu", *soname, object, *stubs, "-o", output)
   end
 
   # A shared object named +library+ that defines +symbols+, the last of
-  # them each at one of +versions+.
-  private def elf_stub(dir, library, symbols, versions)
+  # them each at one of +versions+, compiled with clang's +target+.
+  private def elf_stub(dir, library, symbols, versions, target)
     stub = File.join(dir, "stub-#{library}")
     FileUtils.mkdir_p(stub)
     code = File.join(stub, "stub.c")
     File.write(code, symbols.map { |name| "void #{name}(void) {}\n" }.join)
     object = File.join(stub, "stub.o")
-    run(tool("clang"), "--target=x86_64-linux-gnu", "-fPIC", "-c", code, "-o", object)
+    run(tool("clang"), target, "-fPIC", "-c", code, "-o", object)
     arguments = ["-shared", "-soname", library, object, "-o", File.join(stub, library)]
     unless versions.empty?
       script = File.join(stub, "versions.map")
@@ -106,20 +116,21 @@ class FixtureBuilder
   private def macho(spec, dir, output)
     needed = spec.fetch(:needed)
     object = File.join(dir, "fixture.o")
-    target = (spec.fetch(:platform) == "ios") ? "arm64-apple-ios#{spec.fetch(:minos)}" : "arm64-apple-macos#{spec.fetch(:minos)}"
-    run(tool("clang"), "--target=#{target}", "-c", source(dir, needed.size), "-o", object)
-    stubs = needed.each_with_index.map { |library, index| tbd(dir, library, index, spec.fetch(:platform)) }
+    cpu = Binaries.cpu(spec)
+    run(tool("clang"), "--target=#{cpu}-apple-#{spec.fetch(:platform)}#{spec.fetch(:minos)}", "-c", source(dir, needed.size), "-o", object)
+    stubs = needed.each_with_index.map { |library, index| tbd(dir, library, index, "#{cpu}-#{spec.fetch(:platform)}") }
     kind = spec[:install_name] ? ["-dylib", "-install_name", spec.fetch(:install_name)] : ["-bundle"]
-    run(tool("lld"), "-flavor", "darwin", "-arch", "arm64", *kind, "-platform_version", spec.fetch(:platform), spec.fetch(:minos),
+    run(tool("lld"), "-flavor", "darwin", "-arch", cpu, *kind, "-platform_version", spec.fetch(:platform), spec.fetch(:minos),
       spec.fetch(:minos), object, *stubs, "-o", output)
   end
 
   # A text stub of the dylib whose install name is +library+, exporting
-  # the +index+th symbol, as Apple's SDKs describe their libraries.
-  private def tbd(dir, library, index, platform)
+  # the +index+th symbol for +target+ (such as arm64-macos), as Apple's
+  # SDKs describe their libraries.
+  private def tbd(dir, library, index, target)
     path = File.join(dir, "stub-#{index}.tbd")
-    File.write(path, "--- !tapi-tbd\ntbd-version: 4\ntargets: [ arm64-#{platform} ]\ninstall-name: '#{library}'\n" \
-      "exports:\n  - targets: [ arm64-#{platform} ]\n    symbols: [ _#{symbol(index)} ]\n...\n")
+    File.write(path, "--- !tapi-tbd\ntbd-version: 4\ntargets: [ #{target} ]\ninstall-name: '#{library}'\n" \
+      "exports:\n  - targets: [ #{target} ]\n    symbols: [ _#{symbol(index)} ]\n...\n")
     path
   end
 
@@ -130,15 +141,16 @@ class FixtureBuilder
     entry = spec.fetch(:program) ? "int fledge_entry(void) { return 0; }\n" : ""
     code = source(dir, libraries.size, "__declspec(dllimport) void %s(void);")
     File.write(code, File.read(code) + helper + entry)
-    run(tool("clang"), "--target=x86_64-pc-windows-msvc", "-c", code, "-o", object)
+    cpu = Binaries.cpu(spec)
+    run(tool("clang"), "--target=#{cpu}-pc-windows-msvc", "-c", code, "-o", object)
     imports = libraries.each_with_index.map do |library, index|
       definition = File.join(dir, "import-#{index}.def")
       File.write(definition, "LIBRARY #{library}\nEXPORTS\n#{symbol(index)}\n")
-      run(tool("llvm-dlltool"), "-m", "i386:x86-64", "-d", definition, "-l", File.join(dir, "import-#{index}.lib"))
+      run(tool("llvm-dlltool"), "-m", PE_MACHINES.fetch(cpu).first, "-d", definition, "-l", File.join(dir, "import-#{index}.lib"))
       File.join(dir, "import-#{index}.lib")
     end
     kind = spec.fetch(:program) ? ["/subsystem:#{spec.fetch(:program)}", "/entry:fledge_entry"] : ["/dll", "/noentry"]
-    run(tool("lld"), "-flavor", "link", *kind, "/machine:x64", "/nodefaultlib", "/Brepro", "/export:fledge_fixture", "/implib:#{File.join(dir, 'fixture.lib')}", object, *imports,
+    run(tool("lld"), "-flavor", "link", *kind, "/machine:#{PE_MACHINES.fetch(cpu).last}", "/nodefaultlib", "/Brepro", "/export:fledge_fixture", "/implib:#{File.join(dir, 'fixture.lib')}", object, *imports,
       *spec.fetch(:delayed).map { |library| "/delayload:#{library}" }, "/out:#{output}")
   end
 end

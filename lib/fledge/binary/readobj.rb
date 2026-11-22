@@ -8,8 +8,9 @@
 module Fledge
   class Binary
     # What LLVM's <tt>llvm-readobj --file-headers --coff-imports</tt>
-    # prints for a PE file: "File: FILE", then its headers, the Subsystem
-    # among them, then an <tt>Import</tt> block for each DLL the import
+    # prints for a PE file: "File: FILE", then its processor ("Arch:
+    # x86_64", "Arch: aarch64", from the header's Machine), then its
+    # headers, the Subsystem among them, then an <tt>Import</tt> block for each DLL the import
     # table names and a <tt>DelayImport</tt> block for each the delay
     # import table names, each beginning with the DLL's Name.
     module Readobj # :nodoc:
@@ -44,8 +45,8 @@ module Fledge
       def self.binary(section)
         subsystem = section[/^\s*Subsystem: \S+ \(0x(\h+)\)\s*$/, 1]
         Binary.new(format: :pe, needed: section.scan(/^(?:Import|DelayImport) \{\s*\n\s*Name: (.+?)\s*$/).flatten.map(&:to_s).uniq,
-          rpaths: [],
-          assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: subsystem&.to_i(16), soname: nil)
+          rpaths: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: subsystem&.to_i(16), soname: nil,
+          architectures: [section[/^Arch: (\S+)\s*$/, 1]].compact)
       end
     end
   end

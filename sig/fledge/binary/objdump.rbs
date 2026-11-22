@@ -7,6 +7,7 @@ module Fledge
       ARGUMENTS: Array[String]
       HEADER: Regexp
       DYLIB_COMMANDS: Array[String]
+      MACHO_CPUS: Hash[String, String]
 
       def self.arguments: () -> Array[String]
 
@@ -15,6 +16,8 @@ module Fledge
       def self.rejected?: (String error, String path) -> bool
 
       def self.binary: (String section) -> Binary
+
+      def self.cpus: (String section) -> Array[String]
 
       def self.dylibs: (Array[String] commands) -> Array[String]
 

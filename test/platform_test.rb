@@ -147,4 +147,9 @@ class PlatformTest < Minitest::Test
     assert_equal "windows-arm64", Fledge::Platform.find("aarch64-mingw-ucrt").libraries
     assert_equal "windows", Fledge::Platform.find("aarch64-mingw-ucrt").os
   end
+
+  # Each platform's processor, by one name whatever RubyGems calls it.
+  def test_each_platform_names_its_processor
+    assert_equal %w[aarch64 x86_64 aarch64 x86_64 aarch64 x86_64 aarch64], Fledge::Platform.names.map { |name| Fledge::Platform.find(name).cpu }
+  end
 end

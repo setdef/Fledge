@@ -24,6 +24,8 @@ module Fledge
 
     def os: () -> String
 
+    def cpu: () -> String
+
     def macos_minimum: () -> String?
 
     def musl?: () -> bool

@@ -14,9 +14,12 @@ module Fledge
     attr_reader glibc_minimum: String?
     attr_reader subsystem: Integer?
     attr_reader soname: String?
+    attr_reader architectures: Array[String]
+
+    ELF_MACHINES: Hash[Integer, String]
 
     def self.new: (format: Symbol, needed: Array[String], rpaths: Array[String], assemblies: Array[String], macos_minimum: String?, glibc_minimum: String?,
-      subsystem: Integer?, soname: String?) -> instance
+      subsystem: Integer?, soname: String?, architectures: Array[String]) -> instance
 
 
     def self.format_of: (String bytes) -> Symbol?
@@ -28,5 +31,7 @@ module Fledge
     private def self.archive: () -> Binary
 
     private def self.with_assemblies: (String path, Binary binary) -> Binary
+
+    private def self.with_machine: (String path, Binary binary) -> Binary
   end
 end

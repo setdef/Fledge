@@ -27,7 +27,10 @@ module Fledge
     # Fledge::Linkage, for Android, and names every library one of them
     # needs that neither Android (Linkage::SYSTEM_LIBRARIES), nor
     # Fledge's runtime (RUNTIME), nor the libraries in the same ABI's
-    # folder provide, the host's own among them.
+    # folder provide, the host's own among them. It judges each whatever
+    # processor it is for: Fledge put it in the folder of the ABI it is
+    # for, where Android's linker would load it, so a file for another
+    # processor there is not one to let off (Fledge::Linkage, +cpu+).
     #
     # Use it from MobileProject::Android, once the project holds every
     # file.

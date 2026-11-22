@@ -134,6 +134,26 @@ class GemAppBuildTest < Minitest::Test
     assert_empty Dir.glob(File.join(@dir, "dist", "*"))
   end
 
+  # A gem for every platform may carry a library for each processor and
+  # load the one for its own, as raylib-bindings does: each app's build
+  # judges its own processor's file, and ships the other unjudged, as
+  # bundle exec has it.
+  def test_a_library_for_another_processor_ships_unjudged
+    TestReaders.need(self, :elf)
+    foreign = Binaries.elf(needed: %w[libc.so.6 libGLX.so.0], cpu: "aarch64")
+    rayish = FakeGem.build(@gems, "rayish", "1.0.0",
+      files: { "lib/libray.x86_64.so" => Binaries.elf(needed: %w[libc.so.6]), "lib/libray.aarch64.so" => foreign })
+    root = project(dependencies: { "rayish" => ">= 0" }, locked: [rayish], platforms: %w[x86_64-linux aarch64-linux])
+
+    out, err, status = build(root)
+
+    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
+    assert_equal foreign, File.binread(File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5/gems/rayish-1.0.0/lib/libray.aarch64.so"))
+    _, err, status = build(root, host: "aarch64-linux")
+    assert_equal 1, status
+    assert_includes err, "rayish 1.0.0's lib/libray.aarch64.so needs libGLX.so.0"
+  end
+
   # A gem may need a library the project lists as the Linux
   # distribution's, and the app's program is told to look for
   # it; a library listed that no gem needs from the system fails the

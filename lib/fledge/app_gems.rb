@@ -271,7 +271,8 @@ module Fledge
     end
 
     # What keeps each gem from running on a desktop +platform+'s runtime:
-    # the Ruby it asks for, and what its compiled files need; on Linux,
+    # the Ruby it asks for, and what its compiled files for the
+    # platform's processor need (Linkage); on Linux,
     # each library <tt>fledge.yml</tt> lists as the distribution's that
     # none of them needs (Config::Linux); and on Windows, each DLL of the
     # Visual C++ runtime they need that the app is to carry and this
@@ -282,7 +283,7 @@ module Fledge
     private def desktop_problems(packages, platform, runtime)
       way = @app.config.windows&.visual_c_runtime if platform.windows?
       readers(platform, runtime) do |readers|
-        linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, system: @app.config.system_libraries(platform.os), readers:,
+        linkage = Linkage.new(os: platform.libraries, cpu: platform.cpu, provided: runtime.libraries, system: @app.config.system_libraries(platform.os), readers:,
           visual_c_runtime: way)
         found = packages.flat_map do |gem, package|
           [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.gem_files)]

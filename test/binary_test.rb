@@ -52,6 +52,32 @@ class BinaryTest < Minitest::Test
     assert_nil one(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib])).soname
   end
 
+  # The processor each file's code is for, by Fledge::Platform#cpu's
+  # names, whichever processor the computer reading it has: an ELF
+  # file's from its header, which GNU's objdump names only for its own
+  # computer's processors, and a Mach-O or PE file's as LLVM's tools
+  # name it.
+  def test_reads_the_processor_an_elf_or_mach_o_files_code_is_for
+    TestReaders.need(self, :elf, :macho)
+    found = {
+      Binaries.elf(needed: %w[libc.so.6]) => ["x86_64"],
+      Binaries.elf(needed: %w[libc.so.6 libGLX.so.0], cpu: "aarch64") => ["aarch64"],
+      Binaries.elf(needed: %w[libc.so.6 libGLX.so.0], cpu: "i386") => ["i386"],
+      Binaries.elf(needed: %w[libc.so.6 libGLX.so.0], cpu: "arm") => ["arm"],
+      Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib]) => ["aarch64"],
+      Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib /usr/local/opt/libxml2/lib/libxml2.2.dylib], cpu: "x86_64") => ["x86_64"],
+    }
+
+    assert_equal found.values, found.keys.map { |bytes| one(bytes).architectures }
+  end
+
+  def test_reads_the_processor_a_pe_files_code_is_for
+    TestReaders.need(self, :pe)
+
+    assert_equal [["x86_64"], ["aarch64"]],
+      [Binaries.pe(needed: %w[KERNEL32.dll]), Binaries.pe(needed: %w[KERNEL32.dll libxml2-16.dll], cpu: "aarch64")].map { |bytes| one(bytes).architectures }
+  end
+
   # A file built for iOS names no macOS to run on.
   def test_a_mach_o_file_for_another_platform_says_no_macos
     TestReaders.need(self, :macho)

@@ -31,7 +31,8 @@ module Binaries
   DIR = File.expand_path("../fixtures/binaries", __dir__)
 
   # Every file the tests use, as what build.rb makes it from: its format
-  # and the libraries it needs, and for ELF the glibc symbol versions it
+  # and the libraries it needs, the processor it is for when that is not
+  # its format's usual one (CPUS), and for ELF the glibc symbol versions it
   # needs and the SONAME it gives itself, if any, for Mach-O the platform
   # and oldest version it is built for and, for a dylib rather than a
   # bundle, its install name,
@@ -105,7 +106,17 @@ needed: [
     { format: "pe", needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll] },
     { format: "pe", needed: %w[MSVCP140.dll KERNEL32.dll] },
     { format: "pe", needed: %w[VCRUNTIME140.dll VCRUNTIME140_1.dll KERNEL32.dll api-ms-win-crt-runtime-l1-1-0.dll] },
+    { format: "elf", cpu: "aarch64", needed: %w[libc.so.6 libGLX.so.0] },
+    { format: "elf", cpu: "i386", needed: %w[libc.so.6 libGLX.so.0] },
+    { format: "elf", cpu: "arm", needed: %w[libc.so.6 libGLX.so.0] },
+    { format: "macho", cpu: "x86_64", needed: %w[/usr/lib/libSystem.B.dylib /usr/local/opt/libxml2/lib/libxml2.2.dylib] },
+    { format: "pe", cpu: "aarch64", needed: %w[KERNEL32.dll libxml2-16.dll] },
   ].freeze
+
+  # The processor each format's files are for unless a spec names
+  # another as its +cpu+: a default here rather than in DEFAULTS, which
+  # would rename every file made before specs had one.
+  CPUS = { "elf" => "x86_64", "macho" => "arm64", "pe" => "x86_64" }.freeze
 
   # The defaults of each format's spec.
   DEFAULTS = {
@@ -114,25 +125,33 @@ needed: [
     "pe" => { delayed: [], program: nil },
   }.freeze
 
-  # An x86-64 ELF shared object that needs +needed+, and from libc.so.6
-  # the symbol versions +versions+, such as "GLIBC_2.34", whose SONAME
-  # is +soname+ (none when +nil+), followed by +payload+.
-  def self.elf(needed: [], payload: "", versions: [], soname: nil)
-    file({ format: "elf", needed:, versions:, soname: }.compact, payload)
+  # An ELF shared object for +cpu+ (x86_64 unless given: aarch64, i386,
+  # arm) that needs +needed+, and from libc.so.6 the symbol versions
+  # +versions+, such as "GLIBC_2.34", whose SONAME is +soname+ (none
+  # when +nil+), followed by +payload+.
+  def self.elf(needed: [], payload: "", versions: [], soname: nil, cpu: nil)
+    file({ format: "elf", needed:, versions:, soname:, cpu: }.compact, payload)
   end
 
-  # An arm64 Mach-O bundle that loads +needed+, built for +platform+
-  # (macos or ios) +minos+ and later, followed by +payload+; with an
-  # +install_name+, a dylib that names itself so.
-  def self.macho(needed: [], payload: "", minos: "14.0", platform: "macos", install_name: nil)
-    file({ format: "macho", needed:, minos:, platform:, install_name: }.compact, payload)
+  # A Mach-O bundle for +cpu+ (arm64 unless given: x86_64) that loads
+  # +needed+, built for +platform+ (macos or ios) +minos+ and later,
+  # followed by +payload+; with an +install_name+, a dylib that names
+  # itself so.
+  def self.macho(needed: [], payload: "", minos: "14.0", platform: "macos", install_name: nil, cpu: nil)
+    file({ format: "macho", needed:, minos:, platform:, install_name:, cpu: }.compact, payload)
   end
 
-  # An x86-64 PE DLL, or a +program+ for the console or windows
-  # subsystem, that imports +needed+ and delay-loads +delayed+, followed
-  # by +payload+ (where a test can put an embedded manifest).
-  def self.pe(needed: [], payload: "", delayed: [], program: nil)
-    file({ format: "pe", needed:, delayed:, program: }, payload)
+  # A PE DLL for +cpu+ (x86_64 unless given: aarch64), or a +program+
+  # for the console or windows subsystem, that imports +needed+ and
+  # delay-loads +delayed+, followed by +payload+ (where a test can put an
+  # embedded manifest).
+  def self.pe(needed: [], payload: "", delayed: [], program: nil, cpu: nil)
+    file({ format: "pe", needed:, delayed:, program:, cpu: }.compact, payload)
+  end
+
+  # The processor +spec+'s file is for.
+  def self.cpu(spec)
+    spec.fetch(:cpu) { CPUS.fetch(spec.fetch(:format)) }
   end
 
   # +spec+ with its format's defaults.

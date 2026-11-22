@@ -86,6 +86,7 @@ class GemspecLoadsTest < Minitest::Test
   {
     "require_relative" => "require_relative \"lib/greeter/version\"\n",
     "load" => "load File.expand_path(\"lib/greeter/version.rb\", __dir__)\n",
+    "load by send, from the gemspec's folder" => "Kernel.send(:load, \"lib/greeter/version.rb\")\n",
     "gem_original_require" => "gem_original_require File.expand_path(\"lib/greeter/version\", __dir__)\n",
     "an alias of require_relative" => "module Kernel\n  alias_method :fetch_file, :require_relative\nend\nfetch_file \"lib/greeter/version\"\n",
     "RubyGems' plugin loader" => "Gem.load_plugin_files([File.expand_path(\"lib/greeter/version.rb\", __dir__)])\n",

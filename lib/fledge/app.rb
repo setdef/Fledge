@@ -203,12 +203,39 @@ module Fledge
       File.identical?(one, other)
     end
 
-    # The root's gemspec, when it has exactly one that loads.
+    # The root's gemspec, when it has exactly one that loads, evaluated as
+    # Bundler evaluates it under <tt>bundle exec</tt>: from its own
+    # folder (Bundler.load_gemspec), and after the root's Gemfile, whose
+    # code may define what the gemspec names, and whose +gemspec+ line
+    # evaluates it (Bundler::Dsl#gemspec). Raises Fledge::Error when
+    # Bundler cannot evaluate the Gemfile and gemspec, as
+    # <tt>bundle exec</tt> could not; with no Gemfile, a gemspec Bundler
+    # cannot evaluate is none, as RubyGems takes it. While the Gemfile is
+    # evaluated, BUNDLE_GEMFILE names it, as under <tt>bundle exec</tt>,
+    # so that its code finds the project as Bundler.root.
     private_class_method def self.gemspec_in(root) # :nodoc:
       paths = Dir.glob("*.gemspec", base: root)
       return nil unless paths.size == 1
 
-      Gem::Specification.load(File.join(root, paths.first.to_s))
+      require "bundler"
+      path = File.join(root, paths.first.to_s)
+      gemfile = %w[Gemfile gems.rb].map { |name| File.join(root, name) }.find { |file| File.file?(file) }
+      return Bundler.load_gemspec(path) unless gemfile
+
+      saved = ENV.fetch("BUNDLE_GEMFILE", nil)
+      begin
+        ENV["BUNDLE_GEMFILE"] = gemfile
+        Bundler.reset_settings_and_root!
+        Bundler::Dsl.new.eval_gemfile(gemfile)
+        Bundler.load_gemspec(path)
+      rescue Bundler::BundlerError => e
+        raise Error, "Bundler can't evaluate #{gemfile} and #{path}:\n#{e.message.rstrip}"
+      ensure
+        ENV["BUNDLE_GEMFILE"] = saved
+        Bundler.reset_settings_and_root!
+      end
+    rescue Bundler::BundlerError
+      nil
     end
 
     private_class_method def self.default_entry(path, folder, root, gemspec) # :nodoc:

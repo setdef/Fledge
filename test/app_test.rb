@@ -129,6 +129,33 @@ class AppTest < Minitest::Test
       "Build the program you run, exe/one or exe/two.", error.message
   end
 
+  # Bundler evaluates a gemspec after the Gemfile, which finds the
+  # project as Bundler.root, and from the gemspec's own folder, so one
+  # that names a constant the Gemfile's code defined, or
+  # loads a file by a path from that folder, works under bundle exec; its
+  # program and version are the app's.
+  def test_a_gemspec_is_read_as_bundler_reads_it
+    root = FakeProject.write(@dir, name: "after_gemfile")
+    write("after_gemfile/lib/after_gemfile/version.rb", "module AfterGemfileApp\n  VERSION = \"2.3.4\"\nend\n")
+    File.write(File.join(root, "Gemfile"),
+      "source \"https://rubygems.org/\"\n\nrequire Bundler.root.join(\"lib/after_gemfile/version\").to_s\ngemspec\n")
+    gemspec = File.join(root, "after_gemfile.gemspec")
+    File.write(gemspec, File.read(gemspec).sub('spec.version = "0.1.0"', "spec.version = AfterGemfileApp::VERSION"))
+
+    app = at(root)
+
+    assert_equal "exe/after_gemfile", app.entry
+    assert_equal "2.3.4", app.identity.version
+
+    root = FakeProject.write(@dir, name: "relative_load")
+    write("relative_load/lib/relative_load/version.rb", "module RelativeLoadApp\n  VERSION = \"3.4.5\"\nend\n")
+    gemspec = File.join(root, "relative_load.gemspec")
+    File.write(gemspec, "load \"lib/relative_load/version.rb\"\n" \
+      "#{File.read(gemspec).sub('spec.version = "0.1.0"', 'spec.version = RelativeLoadApp::VERSION')}")
+
+    assert_equal "3.4.5", at(root).identity.version
+  end
+
   def test_a_gemspec_without_a_gemfile_says_how_to_add_one
     root = FakeProject.write(@dir, name: "lonely")
     File.delete(File.join(root, "Gemfile"))

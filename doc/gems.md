@@ -51,6 +51,18 @@ Fledge ships precompiled gems as they are. It compiles gems that ship as source,
 
 If a gem would not load on another computer, `fledge build` stops and names the gem. [`examples/native_app`](../examples/native_app) compiles gems from source. For phones, see [iPhone, iPad, and Android](phones.md).
 
+## A gem that links a library of your computer
+
+A gem that compiles from source may link a library your computer has and the app's other computers may not. `fledge build` then refuses it, names the library, and leaves the fix to the gem's own build options, which Bundler passes on as `bundle config build.NAME OPTIONS` (in the project's `.bundle/config`, or `BUNDLE_BUILD__NAME`). Read the gem's README for the option that makes it build its own copy.
+
+ffi is the one most Linux apps meet, once the Ruby it builds for is newer than its precompiled gems (Ruby 4.1's preview, for one). Its `extconf.rb` links the libffi it finds first, and `fledge build` refuses: "ffi 1.17.4's lib/ffi_c.so needs libffi.so.8, which neither linux, nor Fledge's runtime, nor the gem itself provides". Ask ffi to build the libffi it carries, which then ships inside `ffi_c.so`:
+
+```sh
+bundle config set --local build.ffi --disable-system-libffi
+```
+
+That writes `BUNDLE_BUILD__FFI: "--disable-system-libffi"` to `.bundle/config`, as [`examples/native_app`](../examples/native_app) has it. Listing `libffi.so.8` under `linux: system_libraries`, as the next section shows, is right only when every computer the app goes to has libffi from its distribution. The option is the same on every system, because ffi's `extconf.rb` is: it tries the libffi it finds with `pkg-config` or in the compiler's and the macOS SDK's include folders, wherever it builds. Whether it finds one the app may not rely on depends on what the computer has, and `fledge build` judges it as it does on Linux, so on a Mac or a Windows computer the same refusal, if it comes, has the same cure.
+
 ## A gem that links a library from the Linux distribution
 
 On Linux, a gem's compiled files may link only the libraries every distribution has, the libraries the app carries, and the libraries the gem carries itself. A wrapper of a desktop library, such as a webview's WebKitGTK and GTK, links libraries that the desktop's distribution provides and no gem carries. `fledge build` refuses such a gem and names each library. If every computer your app goes to has them, list them in `fledge.yml` by those names:

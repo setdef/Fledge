@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A gem whose extension fails to compile shows its build output and a sentence naming the gem, with no Ruby backtrace of Fledge's compile script.
 
+### Fixed
+
+- An `extconf.rb` that uses RubyGems, as sassc's reads `Gem::Platform.local`, compiles for iOS and Android.
+- On iOS, a library for ffi that a gem's `extconf.rb` builds with no Init function, such as sassc's libsass, is embedded as a framework at the path the gem opens.
+
 ## [0.17.0] - 2026-11-22
 
 ### Added

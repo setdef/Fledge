@@ -195,7 +195,16 @@ module Fledge
     # what +FLEDGE_DLDFLAGS+ names: mkmf would add each folder it links
     # from (<tt>RPATHFLAG</tt>, which mkmf reads as it loads, line 2981),
     # the folders of this computer, which name nothing on the phone.
+    #
+    # RubyGems is loaded, once the phone's <tt>rbconfig.rb</tt> is, as on
+    # a desktop, where RubyGems runs an <tt>extconf.rb</tt> with
+    # <tt>Gem.ruby</tt> and RubyGems loaded
+    # (<tt>Gem::Ext::ExtConfBuilder.build</tt>,
+    # <tt>lib/rubygems/ext/ext_conf_builder.rb</tt>, line 26 at Ruby
+    # 4.1.0-preview1): sassc 2.4.0's reads <tt>Gem::Platform.local</tt>,
+    # which is then made from the phone's <tt>RbConfig::CONFIG["arch"]</tt>.
     SHIM = TOOLS + <<~'RUBY'
+      require "rubygems"
       require "json"
       shared = ENV.key?("FLEDGE_SHARED")
       if shared && ENV.key?("FLEDGE_LDSHAREDXX")
@@ -222,7 +231,7 @@ module Fledge
           reports = File.exist?(ENV.fetch("FLEDGE_REPORT")) ? JSON.parse(File.read(ENV.fetch("FLEDGE_REPORT"))) : []
           reports << {
             "feature" => target, "archive" => "#{File.basename(target)}.#{CONFIG[shared ? 'DLEXT' : 'LIBEXT']}",
-            "libs" => $libs, "dir" => Dir.pwd
+            "library" => "#{File.basename(target)}.#{CONFIG['DLEXT']}", "libs" => $libs, "dir" => Dir.pwd
           }
           File.write(ENV.fetch("FLEDGE_REPORT"), JSON.generate(reports))
           result
@@ -595,18 +604,42 @@ module Fledge
     # with Cargo when the gem depends on rb_sys, and keeps the Stub that
     # stands where a desktop has its file. Returns its Report; or, built
     # as a file (+files+, for Android, and not Rust), its Library, with
-    # the paths where a desktop has its file, and no Stub.
+    # the paths where a desktop has its file, and no Stub. On iOS, an
+    # archive with no Init function is a library for Ruby's ffi, as
+    # sassc's <tt>extconf.rb</tt> builds libsass, and its FfiLibrary is
+    # returned instead (#ffi_library).
     private def extconf(target, gem, package, root, extension, args, number)
       rust = package.spec.runtime_dependencies.any? { |dependency| dependency.name == "rb_sys" }
       shared = @files && !target.abi.nil? && !rust
-      report = extconf_build.call(target, gem, File.dirname(File.join(root, extension)), File.basename(extension), args, number, rust:, shared:)
+      folder = File.dirname(File.join(root, extension))
+      report = extconf_build.call(target, gem, folder, File.basename(extension), args, number, rust:, shared:)
       if report.is_a?(Library)
         return report.with(links: Library.links(package, report.feature, platform: target.name, gem_dir: @gem_dir))
       end
+      return ffi_library(package, extconf_build.ffi_library(target, gem, folder)) if !rust && target.abi.nil? && !init?(target, report)
 
       stub = Stub.for(package, report.feature, root:, gem_dir: @gem_dir)
       @stubs[stub.path] = stub if stub
       report
+    end
+
+    # Whether the archive of +report+, an extension compiled for
+    # +target+, defines its renamed Init function, which Ruby calls to
+    # load it: one with none is no extension of Ruby's.
+    private def init?(target, report)
+      Separation::Tools.for(target, @runner).names(report.archive).include?(report.init)
+    end
+
+    # +library+, a library for Ruby's ffi an <tt>extconf.rb</tt> built
+    # (ExtconfBuild#ffi_library), whose file is its feature's, at the path in
+    # +package+'s gem where a desktop's RubyGems copies it, the gem's
+    # first require path joined to that file, with the paths where a
+    # desktop has it (Library.links).
+    private def ffi_library(package, library)
+      folder = package.spec.require_paths.find { |path| !File.absolute_path?(path) }
+      ext = File.extname(library.file).delete_prefix(".")
+      links = Library.links(package, library.file.delete_suffix(".#{ext}"), platform: @platform.gem_platforms.first, gem_dir: @gem_dir, ext:)
+      library.with(file: folder ? "#{folder}/#{library.file}" : library.file, links:)
     end
 
     # What keeps each linked extension's names its own (Separation).

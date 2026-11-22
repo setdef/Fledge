@@ -482,6 +482,20 @@ class MobileExtensionsTest < Minitest::Test
 ], links
   end
 
+  # A library for Ruby's ffi that an extconf.rb builds for iOS, as
+  # sassc's builds libsass, has the file name of iOS's Ruby, whose DLEXT
+  # is a Mac's, where a desktop's RubyGems leaves it.
+  def test_an_ios_library_an_extconf_builds_is_where_rubygems_leaves_a_bundle
+    _, package = native_gem(name: "sassy", extensions: ["ext/extconf.rb"])
+
+    links = Fledge::MobileExtensions::Library.links(package, "sassy/libsass", platform: "arm64-darwin", gem_dir: "lib/ruby/gems/4.1.0+5", ext: "bundle")
+
+    assert_equal [
+      "lib/ruby/gems/4.1.0+5/gems/sassy-1.0.0/lib/sassy/libsass.bundle",
+      "lib/ruby/gems/4.1.0+5/extensions/arm64-darwin/4.1.0+5-static/sassy-1.0.0/sassy/libsass.bundle",
+    ], links
+  end
+
   # Bundler keeps a git gem's extensions under bundler/gems/extensions,
   # named for the checkout; a path gem has no extension folder.
   def test_a_git_or_path_gems_extension_file_is_where_bundler_leaves_it

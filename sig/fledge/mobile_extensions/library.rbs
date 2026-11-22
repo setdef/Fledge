@@ -13,7 +13,7 @@ module Fledge
       def self.new: (gem: String, feature: String, path: String, flags: Array[String], links: Array[String]) -> instance
                   | (String gem, String feature, String path, Array[String] flags, Array[String] links) -> instance
 
-      def self.links: (package package, String feature, platform: String, gem_dir: String) -> Array[String]
+      def self.links: (package package, String feature, platform: String, gem_dir: String, ?ext: String) -> Array[String]
     end
   end
 end

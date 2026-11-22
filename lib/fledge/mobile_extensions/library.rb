@@ -58,7 +58,9 @@ module Fledge
       # which Ruby searches first, as Gem.install_extension_in_lib has it
       # by default, and leaves it in the gem's extension folder
       # (Gem::Ext::ExtConfBuilder.build); Bundler builds a git gem's
-      # under its own extension folder, and a path gem's in none.
+      # under its own extension folder, and a path gem's in none. The
+      # file's extension is +ext+, the Ruby's +DLEXT+ (default:
+      # <tt>"so"</tt>, Android's).
       #
       # === Example
       #
@@ -73,8 +75,8 @@ module Fledge
       #--
       # SPDX-SnippetEnd
       #++
-      def self.links(package, feature, platform:, gem_dir:)
-        file = "#{feature}.so"
+      def self.links(package, feature, platform:, gem_dir:, ext: "so")
+        file = "#{feature}.#{ext}"
         folder = package.spec.require_paths.find { |path| !File.absolute_path?(path) }
         api = "#{File.basename(gem_dir)}-static"
         extensions = case package

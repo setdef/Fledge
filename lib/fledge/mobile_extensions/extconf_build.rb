@@ -7,7 +7,9 @@
 
 require "json"
 require_relative "../error"
+require_relative "ffi_library"
 require_relative "linking"
+require_relative "rake_build"
 require_relative "rust"
 
 module Fledge
@@ -77,6 +79,29 @@ module Fledge
         reports = JSON.parse(File.read(report))
         make(env, reports, folder, gem, target, what:, shared:)
         describe(reports, folder, init, gem, target, env, shared:)
+      end
+
+      # The FfiLibrary of the library for Ruby's ffi that the Makefile an
+      # <tt>extconf.rb</tt> wrote in +folder+ for an Apple +target+ links,
+      # once #call has made its archive and found no Init function in it,
+      # as sassc's <tt>extconf.rb</tt> builds libsass. It runs mkmf's own
+      # rule, the one a desktop's <tt>make</tt> runs, which links the
+      # objects <tt>make static</tt> compiled, with the target's compilers
+      # through RakeBuild::DYLIB, which links a dynamic library where
+      # mkmf's +LDSHARED+ asks for a bundle, as for a Rakefile's library.
+      # mkmf links no libruby into it, since the phone's Ruby has no shared
+      # one. Its file is the feature's; its path in the gem and its links
+      # the caller knows.
+      def ffi_library(target, gem, folder)
+        report = JSON.parse(File.read(File.join(folder, "fledge-report.json"))).fetch(0)
+        dylib = write("fledge_dylib.sh", RakeBuild::DYLIB)
+        tools = %w[CC CXX].map { |name| "#{name}=/bin/sh #{dylib} #{target.environment.fetch("FLEDGE_#{name}")}" }
+        @run.call(@environment.merge(target.environment), "make", *tools, "all", chdir: folder,
+          what: "linking #{gem}'s library for ffi #{report.fetch('library')} for #{target.name}")
+        library = File.join(folder, report.fetch("library"))
+        raise Error, "#{gem}'s extconf.rb made no #{File.basename(library)} for #{target.name}" unless File.file?(library)
+
+        FfiLibrary.new(gem: gem.name, file: "#{report.fetch('feature')}#{File.extname(library)}", path: library, links: [])
       end
 
       # Runs the Makefile the extconf.rb in +folder+ wrote: <tt>make

@@ -400,6 +400,33 @@ class MobileExtensionsBuildTest < Minitest::Test
     }, kinds)
   end
 
+  # An extconf.rb may build a library for Ruby's ffi with mkmf, which
+  # defines no Init function and links no libruby, as sassc's builds
+  # libsass. On iOS it registers nothing and gets no Ruby file at its
+  # path: it is a dynamic library for each slice, at the path where a
+  # desktop's RubyGems copies it into the gem's lib/.
+  def test_an_extconf_library_with_no_init_function_is_a_library_for_ffi_on_ios
+    runtimes = real_runtimes("ios")
+    extconf = "require \"mkmf\"\n$LIBRUBYARG = nil\ncreate_makefile(\"plain/libplain\")\n"
+    gem = extconf_gem("plain", extconf, { "plain.c" => "int plain(void) { return 1; }\n" })
+
+    built = compile(runtimes, ios, { gem => Fledge::PathPackage.new(gem) })
+
+    assert_empty built.registrations
+    assert_empty built.stubs
+    kinds = built.targets.transform_values do |target|
+      library = target.ffi_libraries.fetch(0)
+      header = Open3.capture2("xcrun", "otool", "-hv", library.path).first.lines.last.split
+      platform = Open3.capture2("xcrun", "vtool", "-show-build", library.path).first[/platform (\S+)/, 1]
+      [target.archives, library.file, library.links, header[4], platform]
+    end
+    links = ["app/vendor/cache/plain/lib/plain/libplain.bundle"]
+    assert_equal({
+      "ios-arm64" => [[], "lib/plain/libplain.bundle", links, "DYLIB", "IOS"],
+      "ios-arm64-simulator" => [[], "lib/plain/libplain.bundle", links, "DYLIB", "IOSSIMULATOR"],
+    }, kinds)
+  end
+
   # A package may hold a library at the path its Rakefile writes, as
   # llhttp-ffi 0.5.1's holds one its author built on a Mac. Ruby's ffi
   # takes iOS for darwin, so a gem would ask dlopen for that library on

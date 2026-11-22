@@ -22,6 +22,8 @@ module Fledge
 
       private def describe_rust: (Hash[String, String] report, String folder, locked_gem gem, Target target) -> Report
 
+      def ffi_library: (Target target, locked_gem gem, String folder) -> FfiLibrary
+
       private def write: (String name, String text) -> String
     end
   end

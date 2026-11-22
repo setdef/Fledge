@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Without this file fledge build would take Fledge's own Gemfile for the
+# app's. The integration test copies the app and names it for each phone.
+name: FfiExtconf
+identifier: com.setdef.fledge.FfiExtconf

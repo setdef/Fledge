@@ -51,6 +51,8 @@ Fledge ships precompiled gems as they are. It compiles gems that ship as source,
 
 If a gem would not load on another computer, `fledge build` stops and names the gem. [`examples/native_app`](../examples/native_app) compiles gems from source. For phones, see [iPhone, iPad, and Android](phones.md).
 
+A gem whose own build fails stops `fledge build` with that build's output, as it stops `gem install`. On Windows on ARM64, sqlite3 is such a gem. It publishes no build for `aarch64-mingw-ucrt`, so it compiles SQLite from source with mini_portile2, which tells SQLite's `configure` the target as MSYS2's clang names it, `aarch64-w64-windows-gnu`, and `configure` rejects that name: "Invalid configuration 'aarch64-w64-windows-gnu': Kernel 'windows' not known to work with OS 'gnu'." `gem install sqlite3` runs the same build on RubyInstaller's ARM64 Ruby, and fails the same way. Until sqlite3 publishes a build for Windows on ARM64, or its build names the target as `configure` knows it, an app that locks sqlite3 builds on x64 Windows but not on ARM64. A gem whose C compiles with the compiler alone compiles on ARM64 as on x64.
+
 ## A gem that links a library of your computer
 
 A gem that compiles from source may link a library your computer has and the app's other computers may not. `fledge build` then refuses it, names the library, and leaves the fix to the gem's own build options, which Bundler passes on as `bundle config build.NAME OPTIONS` (in the project's `.bundle/config`, or `BUNDLE_BUILD__NAME`). Read the gem's README for the option that makes it build its own copy.

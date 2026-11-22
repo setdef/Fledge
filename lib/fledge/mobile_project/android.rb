@@ -70,6 +70,10 @@ module Fledge
       # on Android").
       EXTENSIONS = "fledgeext"
 
+      # What begins the name of each of the runtime's own extensions among
+      # the native libraries of its AAR: <tt>libfledgerubyext.PATH.so</tt>.
+      RUNTIME_EXTENSION = "libfledgerubyext"
+
       # The <tt>versionCode</tt> for +version+: each of its first three
       # numbers in three digits, as Briefcase pads a version's parts into
       # one, so that each later version has a greater code, and 1 for
@@ -173,10 +177,16 @@ module Fledge
         escaped.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;")
       end
 
+      # Moves the runtime's library into +libs+ and its Ruby into ROOT,
+      # with the runtime's AndroidLibraries::LINKS, which lists, for each
+      # ABI, each of Ruby's own extensions in the library and its path in
+      # ROOT, and which the app's own lines join (#runtime_extensions?).
       private def place_runtime(tree, project)
         root = File.join(project, ROOT)
         FileUtils.mkdir_p([root, File.join(project, "libs")])
         %w[lib libexec bin].each { |folder| FileUtils.mv(File.join(tree, folder), root) if File.directory?(File.join(tree, folder)) }
+        links = File.join(tree, AndroidLibraries::LINKS)
+        FileUtils.mv(links, root) if File.file?(links)
         FileUtils.mkdir_p(File.join(root, "include"))
         Dir.glob(File.join(tree, "include", "ruby-*")).each { |headers| FileUtils.mv(headers, File.join(root, "include")) }
         FileUtils.mv(File.join(tree, AAR), File.join(project, "libs"))
@@ -270,15 +280,15 @@ module Fledge
 
       # Refuses the project when a native library Fledge put in it needs
       # one that neither Android, nor the runtime, nor the app carries
-      # (AndroidLinkage), or when its <tt>build.gradle</tt> keeps the
-      # extensions built as files from being extracted (AndroidPackaging),
-      # read once the host's files are in place, since a host may carry a
-      # library, or its own <tt>build.gradle</tt>, too. The rest is
-      # Gradle's to build.
+      # (AndroidLinkage), or when its <tt>build.gradle</tt> keeps Ruby's
+      # own extensions or the app's built as files from being extracted
+      # (AndroidPackaging), read once the host's files are in place, since
+      # a host may carry a library, or its own <tt>build.gradle</tt>, too.
+      # The rest is Gradle's to build.
       private def finish(project)
-        judged = @judged or return
-
-        found = [*packaging_problem(project), *AndroidLinkage.new(readers:).problems(project, judged)]
+        judged = @judged || [] # : Array[[String, String, String, String]]
+        linkage = judged.empty? ? [] : AndroidLinkage.new(readers:).problems(project, judged) # : Array[String]
+        found = [*packaging_problem(project), *linkage]
         raise Error, "#{@app.name} can't ship for android:\n#{found.map { |problem| "  #{problem}" }.join("\n")}" unless found.empty?
       end
 
@@ -291,7 +301,16 @@ module Fledge
         text = File.read(File.join(project, "build.gradle"))
         host = @app.config.android&.host
         shown = (host && File.file?(File.join(@app.root, host, "build.gradle"))) ? "#{host}/build.gradle" : "build.gradle"
-        AndroidPackaging.new(extensions.uniq).refusal(text, shown:)
+        AndroidPackaging.new(extensions.uniq, runtime: runtime_extensions?(project)).refusal(text, shown:)
+      end
+
+      # Whether the runtime's own extensions are among the app's native
+      # libraries: the runtime's AndroidLibraries::LINKS names one of them
+      # (RuntimeBuilder::Android::EXTENSION, in tasks/), where 0.17.0's
+      # runtime, which links them into its library, names none.
+      private def runtime_extensions?(project)
+        links = File.join(ruby_root(project), AndroidLibraries::LINKS)
+        File.file?(links) && File.foreach(links).any? { |line| line.split("\t")[1].to_s.start_with?("#{RUNTIME_EXTENSION}.") }
       end
 
       # The tools that read the app's libraries: the NDK's, or, for a

@@ -41,6 +41,25 @@ class RuntimeContentsTest < Minitest::Test
     end
   end
 
+  # RubyGems keeps a gem's compiled extensions in a folder named for the
+  # Ruby's ABI, with -static for a Ruby without a shared library, as the
+  # iOS runtime's is (Gem.extension_api_version).
+  def test_reads_the_folder_name_rubygems_gives_a_gems_extensions
+    Dir.mktmpdir do |dir|
+      rbconfig = "CONFIG[\"MAJOR\"] = \"4\"\nCONFIG[\"MINOR\"] = \"1\"\nCONFIG[\"TEENY\"] = \"0\"\nCONFIG[\"arch\"] = \"x86_64-linux-android\"\n"
+      apis = %w[yes no].to_h do |shared|
+        archive = File.join(dir, "#{shared}.tar.gz")
+        FakeRuntime.pack(archive, "top", [
+          Fledge::Entry.file("lib/ruby/gems/4.1.0+5/specifications/a-1.gemspec", ""),
+          Fledge::Entry.file("lib/ruby/4.1.0+5/x86_64-linux-android/rbconfig.rb", "#{rbconfig}CONFIG[\"ENABLE_SHARED\"] = \"#{shared}\"\n"),
+        ])
+        [shared, Fledge::RuntimeContents.read(archive).extension_api]
+      end
+
+      assert_equal({ "yes" => "4.1.0+5", "no" => "4.1.0+5-static" }, apis)
+    end
+  end
+
   def test_an_archive_that_is_not_a_runtime_is_refused
     Dir.mktmpdir do |dir|
       bare = File.join(dir, "bare.tar.gz")

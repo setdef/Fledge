@@ -136,7 +136,7 @@ class MobileBuildTest < Minitest::Test
     assert_equal 0, build("android", root)[2]
     project = File.join(@dir, "dist/Hello-android")
     assert_equal "#!/bin/sh\n# rake's wrapper\n", File.read(File.join(project, "fledge/libexec/commands/rake"))
-    assert_equal RAKE_LINKS, File.read(File.join(project, "fledge/fledge.links"))
+    assert_equal FakeRuntime::ANDROID_LINKS + RAKE_LINKS, File.read(File.join(project, "fledge/fledge.links"))
     refute_path_exists File.join(project, "fledge/bin")
   end
 
@@ -337,7 +337,7 @@ class MobileBuildTest < Minitest::Test
     host_files(root, "host/android", {
       activity => "// the host's own\n",
       "src/main/java/org/libsdl/app/SDLActivity.java" => "// SDL's\n",
-      "build.gradle" => "applicationId = '@@APPLICATION_ID@@'\n",
+      "build.gradle" => "applicationId = '@@APPLICATION_ID@@'\nuseLegacyPackaging = true\n",
     })
 
     out, err, status = build("android", root)
@@ -345,7 +345,8 @@ class MobileBuildTest < Minitest::Test
     assert_equal [0, "dist/Hello-android\n", "host/android replaces Fledge's build.gradle, #{activity}\n"], [status, out, err]
     assert_equal "// the host's own\n", read("dist/Hello-android", activity)
     assert_equal "// SDL's\n", read("dist/Hello-android/src/main/java/org/libsdl/app/SDLActivity.java")
-    assert_equal "applicationId = 'com.example.Hello'\n", read("dist/Hello-android/build.gradle"), "Fledge fills its marks in the host's copy"
+    assert_equal "applicationId = 'com.example.Hello'\nuseLegacyPackaging = true\n", read("dist/Hello-android/build.gradle"),
+      "Fledge fills its marks in the host's copy"
     assert_includes read("dist/Hello-android/settings.gradle"), "rootProject.name = 'Hello'", "what the host leaves is Fledge's"
     assert_path_exists File.join(@dir, "dist/Hello-android/fledge/app/main.rb")
     refute_path_exists File.join(@dir, "dist/Hello-android/fledge/app/host/android"), "the host is the project's, not the app's"
@@ -406,7 +407,8 @@ class MobileBuildTest < Minitest::Test
     library = File.join(project, "src/main/jniLibs/x86_64/libfledgeext.adder.adder.so")
     assert_equal "ELF adder", File.read(library)
     refute_includes File.read(File.join(project, "src/main/jniLibs/x86_64/libfledgeext.so")), "fledge_ruby_add_extension("
-    assert_equal "x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n#{RAKE_LINKS}", File.read(File.join(project, "fledge/fledge.links"))
+    assert_equal "#{FakeRuntime::ANDROID_LINKS}x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n#{RAKE_LINKS}",
+      File.read(File.join(project, "fledge/fledge.links"))
     refute_includes File.read(File.join(project, "src/main/java/org/setdef/fledge/host/MainActivity.java")), "loadLibrary"
   end
 
@@ -425,7 +427,8 @@ class MobileBuildTest < Minitest::Test
     error = assert_raises(Fledge::Error) { android_project_with_library("adder/adder", host: { "build.gradle" => gradle }) }
 
     assert_equal "Hello can't ship for android:\n  host/android/build.gradle sets useLegacyPackaging = false, so the package " \
-      "installer extracts none of the app's native libraries, and adder's extension adder/adder, which Ruby loads from among " \
+      "installer extracts none of the app's native libraries, and adder's extension adder/adder and Ruby's own extensions and " \
+      "encodings, which Ruby loads from among " \
       "them, would not load on a phone. Set useLegacyPackaging = true in its packaging { jniLibs { } } block, as Fledge's own " \
       "build.gradle does.", error.message
     refute_path_exists File.join(@dir, "dist", "Hello-android")
@@ -438,9 +441,37 @@ class MobileBuildTest < Minitest::Test
     error = assert_raises(Fledge::Error) { android_project_with_library("adder/adder", host: { "build.gradle" => "android {\n}\n" }) }
     assert_equal "Hello can't ship for android:\n  host/android/build.gradle sets no useLegacyPackaging for its native " \
       "libraries, and for a minSdk of 23 or later the Android Gradle plugin then keeps them stored, so the package installer " \
-      "extracts none of them, and adder's extension adder/adder, which Ruby loads from among them, would not load on a phone. " \
+      "extracts none of them, and adder's extension adder/adder and Ruby's own extensions and encodings, which Ruby loads from " \
+      "among them, would not load on a phone. " \
       "Add useLegacyPackaging = true in a packaging { jniLibs { } } block, as Fledge's own build.gradle has it.", error.message
     refute_path_exists File.join(@dir, "dist", "Hello-android")
+  end
+
+  # Ruby's own extensions and encodings are among every Android app's
+  # native libraries, so an app with no compiled gem of its own is
+  # refused a host's copy that keeps them stored too; with 0.17.0's
+  # runtime, which links them into its library and lists none in its
+  # fledge.links, the same app builds.
+  def test_an_android_host_that_keeps_native_libraries_stored_cannot_ship_rubys_own_extensions
+    root = script_app("identifier: com.example.Hello\nandroid:\n  host: host/android\n")
+    host_files(root, "host/android", { "build.gradle" => "android {\n    packagingOptions.jniLibs.useLegacyPackaging = false\n}\n" })
+
+    _, err, status = build("android", root)
+
+    assert_equal [
+      1,
+      "host/android replaces Fledge's build.gradle\nfledge build: Hello can't ship for android:\n" \
+        "fledge build:   host/android/build.gradle sets useLegacyPackaging = false, so " \
+        "the package installer extracts none of the app's native libraries, and Ruby's own extensions and encodings, which Ruby " \
+        "loads from among them, would not load on a phone. Set useLegacyPackaging = true in its packaging { jniLibs { } } block, " \
+        "as Fledge's own build.gradle does.\n",
+], [status, err]
+
+    FakeRuntime.write_mobile(@runtimes, Fledge::MobilePlatform.find("android"), links: false)
+    out, err, status = build("android", root)
+
+    assert_equal [0, "dist/Hello-android\n"], [status, out], err
+    assert_equal RAKE_LINKS, read("dist/Hello-android/fledge/fledge.links")
   end
 
   # The Android Gradle plugin has a useLegacyPackaging for dex files
@@ -482,7 +513,8 @@ class MobileBuildTest < Minitest::Test
 
     name = "libfledgeffi.llhttp-ffi.ext.x86_64-linux.libllhttp-ext.so"
     assert_equal "ELF llhttp", File.read(File.join(project, "src/main/jniLibs/x86_64", name))
-    assert_equal "x86_64\t#{name}\tlib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/ext/x86_64-linux/libllhttp-ext.so\n#{RAKE_LINKS}",
+    assert_equal "#{FakeRuntime::ANDROID_LINKS}x86_64\t#{name}\tlib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/ext/x86_64-linux/libllhttp-ext.so\n" \
+      "#{RAKE_LINKS}",
       File.read(File.join(project, "fledge/fledge.links"))
   end
 

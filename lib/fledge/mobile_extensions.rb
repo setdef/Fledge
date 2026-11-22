@@ -599,6 +599,15 @@ module Fledge
       end
     end
 
+    # The name RubyGems gives a gem's extension folder in the Ruby of
+    # +target+ (Gem.extension_api_version): the gem folder's name, with
+    # <tt>-static</tt> unless its rbconfig.rb says Ruby is a shared
+    # library, as the Android runtime's is (RuntimeContents#extension_api).
+    private def extension_api(target)
+      shared = File.read(File.join(target.arch_dir, "rbconfig.rb")).match?(RuntimeContents::SHARED)
+      "#{File.basename(@gem_dir)}#{'-static' unless shared}"
+    end
+
     # Compiles the extension the <tt>extconf.rb</tt> at +extension+, a
     # path in +package+'s gem unpacked at +root+, builds (ExtconfBuild),
     # with Cargo when the gem depends on rb_sys, and keeps the Stub that
@@ -614,9 +623,10 @@ module Fledge
       folder = File.dirname(File.join(root, extension))
       report = extconf_build.call(target, gem, folder, File.basename(extension), args, number, rust:, shared:)
       if report.is_a?(Library)
-        return report.with(links: Library.links(package, report.feature, platform: target.name, gem_dir: @gem_dir))
+        return report.with(links: Library.links(package, report.feature, platform: target.name, gem_dir: @gem_dir,
+          api: extension_api(target)))
       end
-      return ffi_library(package, extconf_build.ffi_library(target, gem, folder)) if !rust && target.abi.nil? && !init?(target, report)
+      return ffi_library(target, package, extconf_build.ffi_library(target, gem, folder)) if !rust && target.abi.nil? && !init?(target, report)
 
       stub = Stub.for(package, report.feature, root:, gem_dir: @gem_dir)
       @stubs[stub.path] = stub if stub
@@ -631,14 +641,15 @@ module Fledge
     end
 
     # +library+, a library for Ruby's ffi an <tt>extconf.rb</tt> built
-    # (ExtconfBuild#ffi_library), whose file is its feature's, at the path in
+    # for +target+ (ExtconfBuild#ffi_library), whose file is its feature's, at the path in
     # +package+'s gem where a desktop's RubyGems copies it, the gem's
     # first require path joined to that file, with the paths where a
     # desktop has it (Library.links).
-    private def ffi_library(package, library)
+    private def ffi_library(target, package, library)
       folder = package.spec.require_paths.find { |path| !File.absolute_path?(path) }
       ext = File.extname(library.file).delete_prefix(".")
-      links = Library.links(package, library.file.delete_suffix(".#{ext}"), platform: @platform.gem_platforms.first, gem_dir: @gem_dir, ext:)
+      links = Library.links(package, library.file.delete_suffix(".#{ext}"), platform: @platform.gem_platforms.first, gem_dir: @gem_dir,
+        api: extension_api(target), ext:)
       library.with(file: folder ? "#{folder}/#{library.file}" : library.file, links:)
     end
 

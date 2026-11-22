@@ -90,11 +90,13 @@ module Fledge
 
     private def rake: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> Array[Report | FfiLibrary]
 
+    private def extension_api: (Target target) -> String
+
     private def extconf: (Target target, locked_gem gem, package package, String root, String extension, Array[String] args, Integer number) -> (Report | Library | FfiLibrary)
 
     private def init?: (Target target, Report report) -> bool
 
-    private def ffi_library: (package package, FfiLibrary library) -> FfiLibrary
+    private def ffi_library: (Target target, package package, FfiLibrary library) -> FfiLibrary
 
     private def separation: () -> Separation
 

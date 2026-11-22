@@ -54,7 +54,8 @@ module Fledge
       # Where a desktop's RubyGems leaves the file of +package+'s extension
       # +feature+, for the Ruby of the gem platform +platform+ whose gem
       # folder is +gem_dir+, relative to the Ruby root, as the gem's
-      # entries are. RubyGems copies it into the gem's first require path,
+      # entries are, and whose RubyGems names a gem's extension folder
+      # for +api+ (RuntimeContents#extension_api). RubyGems copies it into the gem's first require path,
       # which Ruby searches first, as Gem.install_extension_in_lib has it
       # by default, and leaves it in the gem's extension folder
       # (Gem::Ext::ExtConfBuilder.build); Bundler builds a git gem's
@@ -69,16 +70,15 @@ module Fledge
       # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
       # SPDX-License-Identifier: MIT-0
       #++
-      #   Fledge::MobileExtensions::Library.links(package, "adder/adder", platform: "x86_64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5")
+      #   Fledge::MobileExtensions::Library.links(package, "adder/adder", platform: "x86_64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5", api: "4.1.0+5")
       #   # => ["lib/ruby/gems/4.1.0+5/gems/adder-1.0.0/lib/adder/adder.so",
-      #   #     "lib/ruby/gems/4.1.0+5/extensions/x86_64-linux-android/4.1.0+5-static/adder-1.0.0/adder/adder.so"]
+      #   #     "lib/ruby/gems/4.1.0+5/extensions/x86_64-linux-android/4.1.0+5/adder-1.0.0/adder/adder.so"]
       #--
       # SPDX-SnippetEnd
       #++
-      def self.links(package, feature, platform:, gem_dir:, ext: "so")
+      def self.links(package, feature, platform:, gem_dir:, api:, ext: "so")
         file = "#{feature}.#{ext}"
         folder = package.spec.require_paths.find { |path| !File.absolute_path?(path) }
-        api = "#{File.basename(gem_dir)}-static"
         extensions = case package
                      when PathPackage then nil
                      when GitPackage then "#{gem_dir}/bundler/gems/extensions/#{platform}/#{api}/#{package.scope}"

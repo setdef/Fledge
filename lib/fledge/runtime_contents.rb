@@ -51,7 +51,8 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :patchlevel, :libraries, :arch, :path, :plugins, :binaries)
+  class RuntimeContents < Data.define(:gem_dir, :gems, :ruby_version, :patchlevel, :libraries, :arch, :path, :plugins, :binaries,
+    :extension_api)
     ##
     # :attr_reader: gem_dir
     # Ruby's gem folder, relative to the runtime's top folder.
@@ -102,6 +103,13 @@ module Fledge
     # as <tt>bin/rake</tt>: the programs of the gems it ships, which a gem
     # of the same name at another version would write over.
 
+    ##
+    # :attr_reader: extension_api
+    # The name of the folder in which the runtime's RubyGems looks for a
+    # gem's compiled extensions (Gem.extension_api_version): the gem
+    # folder's name, such as <tt>4.1.0+5</tt>, with <tt>-static</tt> for
+    # a Ruby without a shared library, as the iOS runtime's is.
+
     # The runtime's bin folder, where RubyGems writes a gem's executables
     # (Gem.bindir): beside the gem folder's <tt>lib</tt>, at <tt>bin</tt>,
     # or <tt>ruby/bin</tt> on Windows.
@@ -139,6 +147,8 @@ module Fledge
     DESCRIPTION = "RUBY_DESCRIPTION"
     # The line of rbconfig.rb that holds Ruby's architecture.
     ARCH = /^\s*CONFIG\["arch"\] = "([^"]+)"/
+    # The line of rbconfig.rb that says Ruby is a shared library.
+    SHARED = /^\s*CONFIG\["ENABLE_SHARED"\] = "yes"/
     # A RubyGems plugin loader in a gem folder.
     PLUGIN = %r{\A(?:[^/]+/)*lib/ruby/gems/[^/]+/plugins/[^/]+_plugin\.[^/]+\z}
     # The file name of a shared library: .so (with a version or not),
@@ -177,6 +187,7 @@ module Fledge
       inside_all = [] # : Array[String]
       rbconfig = nil # : String?
       description = nil # : String?
+      shared = false
       Archive.names(path).each do |name|
         inside = name.split("/", 2).last.to_s
         description = name if inside == DESCRIPTION
@@ -197,6 +208,7 @@ module Fledge
         content = Archive.read(path, rbconfig)
         version = ruby_version_in(content, description && Archive.read(path, description).force_encoding(Encoding::UTF_8))
         arch = content[ARCH, 1]
+        shared = content.match?(SHARED)
         patchlevel = content.scan(VERSION_PARTS).to_h["PATCHLEVEL"].to_s
       end
       raise Error, "#{path} is not a Fledge runtime: its rbconfig.rb names no arch" if version && arch.nil?
@@ -204,7 +216,8 @@ module Fledge
       contents = build(path, gem_dirs.uniq, gems, version)
       prefix = "#{contents.bin_dir}/"
       binaries = inside_all.select { |inside| inside.start_with?(prefix) && !inside.end_with?("/") }
-      contents.with(patchlevel:, libraries: libraries.uniq.sort.freeze, arch: arch.to_s, plugins: plugins.sort.freeze, binaries: binaries.sort.freeze)
+      contents.with(patchlevel:, libraries: libraries.uniq.sort.freeze, arch: arch.to_s, plugins: plugins.sort.freeze, binaries: binaries.sort.freeze,
+        extension_api: "#{File.basename(contents.gem_dir)}#{'-static' unless shared}")
     end
 
     # The tool +name+ the runtime keeps in its <tt>tools</tt> folder
@@ -260,7 +273,7 @@ module Fledge
       raise Error, "#{path} is not a Fledge runtime: it holds no one gem folder (#{gem_dirs.join(', ')})" unless gem_dirs.size == 1
       raise Error, "#{path} is not a Fledge runtime: it holds no rbconfig.rb" unless version
 
-      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, patchlevel: "", libraries: [], arch: "", path:, plugins: [], binaries: [])
+      new(gem_dir: gem_dirs.first.to_s, gems: gems.sort.freeze, ruby_version: version, patchlevel: "", libraries: [], arch: "", path:, plugins: [], binaries: [], extension_api: "")
     end
   end
 end

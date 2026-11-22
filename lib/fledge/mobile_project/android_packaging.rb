@@ -8,24 +8,27 @@
 module Fledge
   class MobileProject
     # Whether an Android project's <tt>build.gradle</tt> lets the
-    # package installer extract the native libraries that the app's
-    # extensions built as files are.
+    # package installer extract the native libraries that Ruby's own
+    # extensions and the app's extensions built as files are.
     #
-    # An extension an <tt>extconf.rb</tt> builds in C or C++ is one of
-    # the app's native libraries, which Ruby loads from the app's native
+    # Each of the runtime's own extensions and encodings, and each
+    # extension an <tt>extconf.rb</tt> builds in C or C++, is one of the
+    # app's native libraries, which Ruby loads from the app's native
     # library folder, and the installer fills that folder only when the
     # Android Gradle plugin packs the libraries compressed, which
     # <tt>useLegacyPackaging = true</tt> asks for. A framework's own copy
     # of <tt>build.gradle</tt>, made from Fledge's template before 0.13.0,
     # says <tt>false</tt>, and the app it builds installs, starts, and
-    # raises +LoadError+ at the extension's +require+. A copy that sets
+    # raises +LoadError+ at the extension's +require+, or, for the
+    # runtime's own, finds none of the encodings Ruby loads as it boots.
+    # A copy that sets
     # nothing builds the same app, since the plugin's default for a
     # +minSdk+ of 23 or later keeps the libraries stored.
     #
     # This class reads the last <tt>useLegacyPackaging</tt> the file sets
     # for native libraries, its comments and its setting for dex files
-    # left out, and refuses the file, naming each such extension and the
-    # line to set, unless it sets +true+
+    # left out, and refuses the file, naming the extensions and the line
+    # to set, unless it sets +true+
     # (doc/contributors/design/phone-projects.md, "A host's copy after an
     # upgrade").
     #
@@ -63,8 +66,12 @@ module Fledge
 
       # [extensions] Each extension built as a file: its gem's name and
       #              its feature.
-      def initialize(extensions)
+      # [runtime] Whether the runtime's own extensions are files among
+      #           the app's native libraries, as a runtime that lists them
+      #           in its <tt>fledge.links</tt> has them (default: +false+).
+      def initialize(extensions, runtime: false)
         @extensions = extensions
+        @runtime = runtime
       end
 
       # Why the app could not ship when +text+, the file a message calls
@@ -85,7 +92,7 @@ module Fledge
       # SPDX-SnippetEnd
       #++
       def refusal(text, shown:)
-        return if @extensions.empty?
+        return if @extensions.empty? && !@runtime
 
         case setting(text)
         when "false"
@@ -109,6 +116,7 @@ module Fledge
 
       private def named
         names = @extensions.map { |gem, feature| "#{gem}'s extension #{feature}" }
+        names << "Ruby's own extensions and encodings" if @runtime
         (names.length > 1) ? "#{names.take(names.length - 1).join(', ')} and #{names.last}" : names.first.to_s
       end
     end

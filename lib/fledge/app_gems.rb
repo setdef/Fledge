@@ -363,7 +363,7 @@ module Fledge
     private def mark_extensions(packages, platform, runtime)
       @extension_packages = packages.select { |_, package| package.extensions? }
       @extension_dependencies = dependencies_of(@extension_packages, packages)
-      api = "#{File.basename(runtime.gem_dir)}-static"
+      api = runtime.extension_api
       packages.to_h do |gem, package|
         root, folder = extension_folder(package, api)
         next [gem, package] unless package.extensions? && root && !package.is_a?(CompiledGem)

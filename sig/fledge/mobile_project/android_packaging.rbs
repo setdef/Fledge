@@ -13,8 +13,9 @@ module Fledge
       FIX: String
 
       @extensions: Array[[String, String]]
+      @runtime: bool
 
-      def initialize: (Array[[String, String]] extensions) -> void
+      def initialize: (Array[[String, String]] extensions, ?runtime: bool) -> void
 
       def refusal: (String text, shown: String) -> String?
 

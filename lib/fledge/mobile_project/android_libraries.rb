@@ -25,7 +25,7 @@ module Fledge
     #
     # This class copies each into its ABI's folder of
     # <tt>src/main/jniLibs/</tt>, stripped, with the shared libraries it
-    # links, under a name of Fledge's own, and writes
+    # links, under a name of Fledge's own, and adds to
     # <tt>fledge.links</tt> in the Ruby root: a line for each ABI, name,
     # and path where a desktop has the file, which the runtime links to
     # the extracted library as the app starts
@@ -104,10 +104,10 @@ module Fledge
       # path in the gem, or its own name for one an extension links.
       attr_reader :judged
 
-      # Copies each library into +project+'s <tt>jniLibs/</tt> and writes
-      # LINKS in +ruby_root+, when there is any. Raises Fledge::Error for a
-      # library whose name Android cannot install, or two that would have
-      # one name.
+      # Copies each library into +project+'s <tt>jniLibs/</tt> and adds its
+      # lines to LINKS in +ruby_root+, after the runtime's, when there are
+      # any. Raises Fledge::Error for a library whose name Android cannot
+      # install, or two that would have one name.
       #
       # === Example
       #
@@ -129,7 +129,7 @@ module Fledge
           FileUtils.mkdir_p(folder)
           extensions(build, folder, abi) + ffi_libraries(build, folder, abi)
         end
-        File.write(File.join(ruby_root, LINKS), lines.join) unless lines.empty?
+        File.write(File.join(ruby_root, LINKS), lines.join, mode: "a") unless lines.empty?
       end
 
       # Copies the NDK's shared C++ runtime (CXX_RUNTIME) for each ABI

@@ -474,11 +474,12 @@ class MobileExtensionsTest < Minitest::Test
   def test_a_gems_extension_file_is_in_its_require_path_and_its_extension_folder
     _, package = native_gem(name: "adder", extensions: ["ext/adder/extconf.rb"])
 
-    links = Fledge::MobileExtensions::Library.links(package, "adder/adder", platform: "x86_64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5")
+    links = Fledge::MobileExtensions::Library.links(package, "adder/adder", platform: "x86_64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5",
+      api: "4.1.0+5")
 
     assert_equal [
       "lib/ruby/gems/4.1.0+5/gems/adder-1.0.0/lib/adder/adder.so",
-      "lib/ruby/gems/4.1.0+5/extensions/x86_64-linux-android/4.1.0+5-static/adder-1.0.0/adder/adder.so",
+      "lib/ruby/gems/4.1.0+5/extensions/x86_64-linux-android/4.1.0+5/adder-1.0.0/adder/adder.so",
 ], links
   end
 
@@ -488,7 +489,8 @@ class MobileExtensionsTest < Minitest::Test
   def test_an_ios_library_an_extconf_builds_is_where_rubygems_leaves_a_bundle
     _, package = native_gem(name: "sassy", extensions: ["ext/extconf.rb"])
 
-    links = Fledge::MobileExtensions::Library.links(package, "sassy/libsass", platform: "arm64-darwin", gem_dir: "lib/ruby/gems/4.1.0+5", ext: "bundle")
+    links = Fledge::MobileExtensions::Library.links(package, "sassy/libsass", platform: "arm64-darwin", gem_dir: "lib/ruby/gems/4.1.0+5",
+      api: "4.1.0+5-static", ext: "bundle")
 
     assert_equal [
       "lib/ruby/gems/4.1.0+5/gems/sassy-1.0.0/lib/sassy/libsass.bundle",
@@ -517,9 +519,11 @@ class MobileExtensionsTest < Minitest::Test
       "lib/ruby/gems/4.1.0+5/bundler/gems/#{git.scope}/lib/oxide/oxide.so",
       "lib/ruby/gems/4.1.0+5/bundler/gems/extensions/aarch64-linux-android/4.1.0+5-static/#{git.scope}/oxide/oxide.so",
 ],
-      Fledge::MobileExtensions::Library.links(git, "oxide/oxide", platform: "aarch64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5")
+      Fledge::MobileExtensions::Library.links(git, "oxide/oxide", platform: "aarch64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5",
+        api: "4.1.0+5-static")
     assert_equal ["app/gems/twice/src/twice/twice.so"],
-      Fledge::MobileExtensions::Library.links(path, "twice/twice", platform: "aarch64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5")
+      Fledge::MobileExtensions::Library.links(path, "twice/twice", platform: "aarch64-linux-android", gem_dir: "lib/ruby/gems/4.1.0+5",
+        api: "4.1.0+5")
   end
 
   # The stub asks for the feature by its .so name, which Ruby looks up

@@ -9,6 +9,7 @@ module Fledge
       VERSION_CODE_MAX: Integer
       AAR: String
       EXTENSIONS: String
+      RUNTIME_EXTENSION: String
       COMMANDS: String
       PROGRAM: String
 
@@ -40,6 +41,8 @@ module Fledge
       private def finish: (String project) -> void
 
       private def packaging_problem: (String project) -> String?
+
+      private def runtime_extensions?: (String project) -> bool
 
       private def readers: () -> Binary::Readers
     end

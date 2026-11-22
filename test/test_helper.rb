@@ -107,12 +107,20 @@ module FakeRuntime
     end
   end
 
+  # The fake Android runtime's fledge.links: json's parser, for each ABI.
+  ANDROID_LINKS = { "arm64-v8a" => "aarch64-linux-android", "x86_64" => "x86_64-linux-android" }.map do |abi, arch|
+    "#{abi}\tlibfledgerubyext.4.1.0+5.#{arch}.json.ext.parser.so\tlib/ruby/4.1.0+5/#{arch}/json/ext/parser.so\n"
+  end.join.freeze
+
   # Writes the runtime for the phone +phone+ (a Fledge::MobilePlatform)
   # into +directory+, shaped as doc/contributors/design/phone-runtimes.md, "What
   # a phone runtime holds", describes it, and returns its path: for iOS,
   # an XCFramework whose two slices each hold a Ruby; for Android, an
-  # AAR beside one Ruby; each with its CA certificates and notices.
-  def self.write_mobile(directory, phone)
+  # AAR beside one Ruby, with fledge.links naming the one extension of
+  # Ruby's own its AAR holds for each ABI (ANDROID_LINKS), unless
+  # +links+ is false, as 0.17.0's runtime, which linked them in, has
+  # none; each with its CA certificates and notices.
+  def self.write_mobile(directory, phone, links: true)
     top = File.basename(Fledge::Runtimes.file_name(phone), Fledge::Runtimes::EXTENSION)
     path = File.join(directory, Fledge::Runtimes.file_name(phone))
     rubies = (phone.name == "ios") ? %w[ios-arm64 ios-arm64-simulator].map { |slice| "FledgeRuby.xcframework/#{slice}/" } : [""]
@@ -128,6 +136,7 @@ module FakeRuntime
       end,
       *((phone.name == "ios") ? [] : [Fledge::Entry.file("include/fledge_ruby.h", "/* fledge_ruby.h */\n")]),
       *((phone.name == "ios") ? [] : [Fledge::Entry.file("bin/rake", "#!/bin/sh\n# rake's wrapper\n", mode: 0o755)]),
+      *((phone.name == "ios" || !links) ? [] : [Fledge::Entry.file("fledge.links", ANDROID_LINKS)]),
       Fledge::Entry.file("notices/NOTICES.txt", "Fledge's runtime for #{phone}\n"),
     ])
   end

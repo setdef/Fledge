@@ -42,33 +42,40 @@ end
 # SPDX-SnippetEnd
 #++
 
-# On Windows, the app starts with what RubyInstaller's start-up loads
-# under ruby.exe, where RubyInstaller's own operating_system.rb requires
-# its library first and then calls
-# RubyInstaller::Runtime.enable_dll_search_paths. Gems test for what it
-# defines: mysql2 0.5.6 preloads libmysql.dll by bare name unless
-# defined?(RubyInstaller) (lib/mysql2.rb, lines 7 to 30). Requiring the
-# library only defines modules and autoloads (ruby_installer/runtime.rb
-# and runtime/singleton.rb, at RubyInstaller 92a692c). The call loads
-# the files of three of those autoloads: Msys2Installation, whose class
-# includes Colors, and DllDirectory, which requires win32/dll_directory
-# and so defines Win32. Its first DllDirectory.new, of Ruby's archdir
-# (Msys2Installation#enable_dll_search_paths), hands
-# Win32::DllDirectory.AddDllDirectory the folder's expanded path, which
-# converts it to UTF-16LE (rb_str_export_to_enc), and so loads that
-# encoding and its converters. Here the same constants are loaded,
-# which only defines classes and modules, and the same path is
-# converted, which only loads encodings; nothing of RubyInstaller's is
-# called, since what its file calls writes into the gem folder, may set
-# GEM_HOME, creates %ProgramData%\gemrc, and adds the person's MSYS2 to
-# the DLL search (doc/contributors/design/runtimes.md, "Fledge's
-# RubyGems defaults").
+# On Windows, the app starts as RubyInstaller's start-up starts
+# ruby.exe, where RubyInstaller's own operating_system.rb requires its
+# library first and then calls
+# RubyInstaller::Runtime.enable_dll_search_paths. Gems test for what
+# the library defines: mysql2 0.5.6 preloads libmysql.dll by bare name
+# unless defined?(RubyInstaller) (lib/mysql2.rb, lines 7 to 30).
+# Requiring it only defines modules and autoloads
+# (ruby_installer/runtime.rb and runtime/singleton.rb, in the runtime's
+# own copy from RubyInstaller's head build of 2026-11-10).
+#
+# The call adds each folder of RUBY_DLL_PATH to the folders Windows
+# searches for a DLL, then, in Msys2Installation#enable_dll_search_paths
+# (runtime/msys2_installation.rb, lines 134 to 145), Ruby's archdir,
+# "for libcrypto.dll loading zlib.dll and legacy.dll loading
+# libcrypto.dll", then MSYS2's bin folder, "for user-installed gems",
+# when it finds an MSYS2. Here only the archdir is added, with the same
+# DllDirectory.new, so that a gem's extension finds the DLLs the
+# runtime keeps there, as under ruby.exe: rugged's, compiled from
+# source, imports the libz-1.dll the runtime adds there. The other two
+# would let the person's own folders into the app's DLL search
+# (AGENTS.md, Design precedence 1), and the launcher hides RUBY_DLL_PATH
+# from Ruby's boot (scrub.c). The rest of RubyInstaller's file writes
+# into the gem folder, may set GEM_HOME, and creates
+# %ProgramData%\gemrc, which no app may do
+# (doc/contributors/design/runtimes.md, "Fledge's RubyGems defaults").
+# Loading Msys2Installation, whose class includes Colors, and
+# DllDirectory, which requires win32/dll_directory, loads the files
+# RubyInstaller's call loads, and DllDirectory.new converts the path to
+# UTF-16LE for AddDllDirectory, which loads the same encodings.
 if Gem.win_platform?
   require "rbconfig"
   require "ruby_installer/runtime"
   RubyInstaller::Runtime.const_get(:Msys2Installation)
-  RubyInstaller::Runtime.const_get(:DllDirectory)
-  File.expand_path(RbConfig::CONFIG["rubyarchdir"]).encode(Encoding::UTF_16LE)
+  RubyInstaller::Runtime::DllDirectory.new(RbConfig::CONFIG["rubyarchdir"])
 end
 
 # A bundled gem that the app's Gemfile does not name, such as irb for

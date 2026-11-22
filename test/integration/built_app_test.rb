@@ -358,6 +358,27 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # A gem compiled from source on Windows links against MSYS2's
+  # libraries, and under bundle exec a RubyInstaller Ruby finds their
+  # DLLs in MSYS2's bin folder, which no computer the app goes to has.
+  # test/fixtures/msys2_linked's two extensions import libz-1.dll, which
+  # the runtime keeps in Ruby's architecture folder, and libffi-8.dll,
+  # which RubyInstaller keeps beside the fiddle gem's extension, as
+  # rugged's and ffi's do; the app finds both in the runtime, as every
+  # gem that goes through ffi needs (doc/contributors/design/runtimes.md,
+  # "The DLLs a compiled gem finds on Windows").
+  def test_a_windows_gem_compiled_against_msys2_finds_the_dlls_in_the_runtime
+    skip "only a Windows gem compiled from source links MSYS2's DLLs" unless @platform.windows?
+
+    Dir.mktmpdir do |dir|
+      launcher = build_and_unpack(dir, File.expand_path("../fixtures/msys2_linked", __dir__))
+
+      out, err, status = run_app({ "HOME" => dir }, launcher, chdir: dir)
+
+      assert_equal ["LinkedZlib.crc32(\"abc\") = 352441c2\nLinkedFfi.add(2, 3) = 5\n", "", 0], [out, err, status.exitstatus]
+    end
+  end
+
   # On Windows both launchers declare UTF-8 as the process's ANSI code
   # page, so a Windows function that takes a narrow string reads Ruby's
   # UTF-8 path as UTF-8. ffi opens a gem's DLL with LoadLibraryExA

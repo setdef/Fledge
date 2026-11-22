@@ -48,6 +48,7 @@ class RuntimeBuilder
       FileUtils.chmod_R("u+w", ruby)
       Pruning.prune_windows(ruby, @builder.bundled_gems)
       add_missing_dlls(ruby)
+      Windows.reach_gem_dlls(ruby)
       compile_ruby(tree, File.join(ruby, "bin"))
       @builder.install_rubygems_defaults(File.join(ruby, "lib", "ruby"))
       copy_nsis(File.join(stage, "tools", "nsis"))
@@ -89,6 +90,27 @@ class RuntimeBuilder
       end
       manifest = File.join(folders.fetch(:arch), "zlib.so-assembly.manifest")
       File.write(manifest, Windows.name_in_manifest(File.read(manifest), after: "zlib1.dll", name: "libz-1.dll"))
+    end
+
+    # Copies into the Ruby tree +ruby+'s <tt>bin\ruby_builtin_dlls</tt>
+    # each DLL RubyInstaller keeps beside a bundled gem's extension, where
+    # only that extension's own assembly manifest reaches it: libffi-8.dll
+    # beside fiddle.so. A gem compiled from source against MSYS2's library
+    # of the same name imports it by name, as ffi's ffi_c.so imports
+    # libffi-8.dll, and under bundle exec finds it in MSYS2's bin folder,
+    # which RubyInstaller adds to the DLL search and an app never has; in
+    # ruby_builtin_dlls, which the launcher and the runtime's ruby.exe add
+    # to that search (windows.c, add_builtin_dlls), it finds the runtime's.
+    # The original stays for its manifest. Raises when the folder already
+    # holds another file of the same name.
+    def self.reach_gem_dlls(ruby)
+      builtin = File.join(ruby, "bin", "ruby_builtin_dlls")
+      Dir.glob(File.join(ruby, "lib", "ruby", "gems", "*", "extensions", "*", "*", "*", "*.dll")).each do |dll|
+        target = File.join(builtin, File.basename(dll))
+        raise "#{target} is another file than #{dll}" if File.exist?(target) && !FileUtils.identical?(target, dll)
+
+        FileUtils.cp(dll, target)
+      end
     end
 
     # The assembly manifest +text+ with a file element for the DLL +name+

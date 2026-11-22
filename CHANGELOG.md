@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An `extconf.rb` that uses RubyGems, as sassc's reads `Gem::Platform.local`, compiles for iOS and Android.
 - On iOS, a library for ffi that a gem's `extconf.rb` builds with no Init function, such as sassc's libsass, is embedded as a framework at the path the gem opens.
 - On Android, a gem's build that runs `strip`, as sassc's does, runs the NDK's, which reads Android's libraries.
+- On Windows, a gem compiled from source against MSYS2's libffi or zlib loads in the app, as under `bundle exec`: the app's Ruby searches Ruby's architecture folder for DLLs, as RubyInstaller's start-up does, and the Windows runtimes carry the fiddle gem's `libffi-8.dll` in `ruby_builtin_dlls` too. Before, an app over ffi, and so over every gem that goes through it, or over rugged, stopped at `require` with "126: The specified module could not be found".
 
 ## [0.17.0] - 2026-11-22
 

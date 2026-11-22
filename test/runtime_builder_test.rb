@@ -195,6 +195,28 @@ class RuntimeBuilderTest < Minitest::Test
     assert_match(/names no zlib\.dll/, error.message)
   end
 
+  # RubyInstaller keeps libffi-8.dll beside fiddle.so, where only
+  # fiddle's own manifest reaches it; a gem compiled against MSYS2's
+  # libffi, as ffi is, imports it by name, so the runtime keeps a copy
+  # where Windows searches for every extension's DLLs.
+  def test_reach_gem_dlls_copies_a_bundled_gems_dll_among_rubys_own
+    Dir.mktmpdir do |ruby|
+      extension = "lib/ruby/gems/4.1.0+6/extensions/x64-mingw-ucrt/4.1.0+6/fiddle-1.1.8"
+      make_files(ruby, ["#{extension}/fiddle.so", "#{extension}/fiddle.so-assembly.manifest", "bin/ruby_builtin_dlls/libgmp-10.dll"])
+      File.binwrite(File.join(ruby, extension, "libffi-8.dll"), "MZ libffi")
+
+      RuntimeBuilder::Windows.reach_gem_dlls(ruby)
+
+      assert_equal %w[libffi-8.dll libgmp-10.dll], Dir.children(File.join(ruby, "bin", "ruby_builtin_dlls")).sort
+      assert_equal "MZ libffi", File.binread(File.join(ruby, "bin", "ruby_builtin_dlls", "libffi-8.dll"))
+      assert_path_exists File.join(ruby, extension, "libffi-8.dll")
+
+      File.binwrite(File.join(ruby, "bin", "ruby_builtin_dlls", "libffi-8.dll"), "MZ another")
+      error = assert_raises(RuntimeError) { RuntimeBuilder::Windows.reach_gem_dlls(ruby) }
+      assert_match(/ruby_builtin_dlls.libffi-8\.dll is another file than .+fiddle-1\.1\.8.libffi-8\.dll/, error.message)
+    end
+  end
+
   # Only .github/scripts/fetch_pin.rb passes a pin's mirrors to the
   # download (RuntimeBuilder#fetch_pin), and it alone reads the
   # replaceability pins; mirrors named anywhere else would never be tried.

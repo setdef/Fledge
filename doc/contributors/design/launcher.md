@@ -235,7 +235,7 @@ The launcher loads Ruby's DLL when it runs, rather than importing it. Windows re
 
 `wmain` in `windows.c`, linked with `-municode` as `ruby.exe` is:
 
-1. `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)`, so no DLL loads by name from the current folder or `PATH`.
+1. `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)`, so no DLL loads by name from the current folder or `PATH`; once it knows its folder, `add_builtin_dlls` adds `ruby\bin\ruby_builtin_dlls` to the folders searched. Fledge's `operating_system.rb` adds Ruby's architecture folder once RubyGems loads (`runtimes.md`, "The DLLs a compiled gem finds on Windows").
 2. Find its own path (see "Finding itself"), split it into ROOT and the program's name.
 3. `read_config`; then `set_app_user_model_id`; then `find_visual_c_runtime` (see "The Visual C++ runtime on Windows").
 4. `scrub_environment`.
@@ -300,7 +300,7 @@ In an app of one program, whose `fledge.cfg` has no sections, the first executab
 
 On Windows the runtime's `ruby\bin\ruby.exe` and `rubyw.exe` are `ruby_main.c` too, in place of RubyInstaller's, compiled by `RuntimeBuilder::Windows#compile_ruby` with llvm-mingw, linked against Ruby's DLL through the tree's import library (`lib\libx64-ucrt-ruby410.dll.a`) as RubyInstaller links its own, `rubyw.exe` with `-mwindows`, and with the launcher's resources, so its manifest is `windows.manifest`. Replacing them in place, rather than adding programs beside them, keeps RubyInstaller's tree in its shape: `RbConfig.ruby`, `Gem.ruby`, the gems' `.bat` wrappers, and mkmf name `ruby.exe` by its place, and nothing else of the tree changes. `wmain`:
 
-1. `fledge_limit_dll_search` (`windows_relaunch.c`): `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)` and `AddDllDirectory` of `ruby_builtin_dlls` beside it, as the launcher does, so a Ruby the app starts loads DLLs from where the app's Ruby does. RubyInstaller's own `operating_system.rb`, which a runtime replaces, called `SetDefaultDllDirectories` for its `ruby.exe` (`ruby_installer/runtime/msys2_installation.rb`, `enable_dll_search_paths`).
+1. `fledge_limit_dll_search` (`windows_relaunch.c`): `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)` and `AddDllDirectory` of `ruby_builtin_dlls` beside it, as the launcher does, so a Ruby the app starts loads DLLs from where the app's Ruby does. RubyInstaller's own `operating_system.rb`, which a runtime replaces, called `SetDefaultDllDirectories` for its `ruby.exe` (`ruby_installer/runtime/msys2_installation.rb`, `enable_dll_search_paths`). Ruby's architecture folder joins the search later, in every Ruby of the app, when RubyGems loads Fledge's `operating_system.rb` (`runtimes.md`, "The DLLs a compiled gem finds on Windows").
 2. `setlocale(LC_CTYPE, "")` and `ruby_sysinit`, as `main.c`.
 3. `fledge_relaunch` (`windows_relaunch.c`), with the arguments `ruby_sysinit` read as Ruby reads them, then `ruby_start_main`.
 

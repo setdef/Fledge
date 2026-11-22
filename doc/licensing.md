@@ -228,7 +228,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | GCC's runtime library (libgcc_s_seh-1.dll), from MSYS2's libgcc 16.2.0-6 | 16.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | ruby/bin/ruby_builtin_dlls/libgcc_s_seh-1.dll, a shared library digest/blake3.so loads |
 | GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | notices/sources/gmp/, in every app |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
-| libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
+| libffi (libffi-8.dll, beside the fiddle gem's extension and in ruby_builtin_dlls) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension, and a copy in ruby/bin/ruby_builtin_dlls/ for gems compiled against libffi |
 | libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/ |
 | LLVM's compiler-rt builtins, linked into the launcher and the runtime's ruby.exe by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe, launcherw.exe, and ruby/bin/ruby.exe and rubyw.exe |
 | llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import | 23.1.4 | `Apache-2.0 WITH LLVM-exception` | tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive |
@@ -268,7 +268,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+6/aarch64-mingw-ucrt/digest/blake3.so (on iOS, into libfledgeruby) |
 | GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | notices/sources/gmp/, in every app |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
-| libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
+| libffi (libffi-8.dll, beside the fiddle gem's extension and in ruby_builtin_dlls) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension, and a copy in ruby/bin/ruby_builtin_dlls/ for gems compiled against libffi |
 | libyaml (libyaml-0-2.dll) | 0.2.5 | `MIT` | a shared library in ruby/lib/ruby/4.1.0+6/x64-mingw-ucrt/ |
 | LLVM's compiler-rt builtins, linked into the launcher and the runtime's ruby.exe by llvm-mingw | 20261020 | `Apache-2.0 WITH LLVM-exception` | compiled into launcher.exe, launcherw.exe, and ruby/bin/ruby.exe and rubyw.exe |
 | llvm-readobj, which fledge build runs to read the DLLs an app's compiled gems import | 23.1.4 | `Apache-2.0 WITH LLVM-exception` | tools/llvm-readobj.exe, which fledge build runs on the app's gems, and never in its folder or archive |

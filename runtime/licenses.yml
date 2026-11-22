@@ -819,18 +819,18 @@ components:
         evidence: /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/
 
   - id: libffi-dll
-    name: libffi (libffi-8.dll, beside the fiddle gem's extension)
+    name: libffi (libffi-8.dll, beside the fiddle gem's extension and in ruby_builtin_dlls)
     version: 3.8.0
     license: MIT
     kind: shared_library
     download: https://github.com/libffi/libffi/releases/tag/v3.8.0
     notice: libffi
-    ships: a shared library beside the fiddle gem's extension
+    ships: a shared library beside the fiddle gem's extension, and a copy in ruby/bin/ruby_builtin_dlls/ for gems compiled against libffi
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
-    files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
-    binaries: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+    files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll", "{prefix}bin/ruby_builtin_dlls/libffi-8.dll"]
+    binaries: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll", "{prefix}bin/ruby_builtin_dlls/libffi-8.dll"]
     embedded:
-      - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll"]
+      - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/libffi-8.dll", "{prefix}bin/ruby_builtin_dlls/libffi-8.dll"]
         evidence: "3.8.0\0"
 
   - id: winpthreads

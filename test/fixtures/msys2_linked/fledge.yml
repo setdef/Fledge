@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+name: Linked
+kind: console

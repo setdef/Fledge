@@ -506,3 +506,9 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 *Governs:* the repository holds no running account of the project's state for the next session; that is kept outside it. What a contributor needs to check or release Fledge stays in the contributor documents. *Applied in:* the removal of `doc/contributors/handoff.md`, whose checks and release steps are in CONTRIBUTING.md, "After a push" and "When CI fails", and `doc/contributors/design/releases.md`, "How a release is made"; AGENTS.md, Project.
 
+> `examples/` is for examples, not tests/fixtures. You can have integration tests too, but examples should at least be... kinda useful/real a bit. Like, they can be silly simple (e.g. LibUI could just be a single screen toy app that does one useful thing, maybe with a second settings screen just to show off the various form etc. UI element types & a menu bar to open settings), but _realistic_. If an app just opens & exits, that's a test or a fixture not an `examples/`.
+
+[re: an example app on the LibUI gem that an agent had written to open a window, write a report of itself, and quit, so that a check could run it.]
+
+*Governs:* an app under `examples/` is a small realistic app that does something useful, however simple; an app that exists to be checked, and only starts and exits, is a fixture under `test/`, with the integration tests. *Applied in:* the LibUI example and its fixture; the review of the other examples.
+

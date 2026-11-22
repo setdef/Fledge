@@ -145,6 +145,16 @@ void fledge_coerce_locale(void);
  */
 int fledge_executable_path(char *out, size_t size);
 
+#ifdef __APPLE__
+/*
+ * On macOS, when Launch Services started this bundle with documents,
+ * sets paths to their paths, in the order the event lists them, and
+ * returns how many; otherwise sets paths to NULL and returns 0
+ * (documents.c). The paths live as long as the process.
+ */
+int fledge_launch_documents(char ***paths);
+#endif
+
 #ifdef __linux__
 /*
  * Whether this computer's loader loads each of the libraries names lists,

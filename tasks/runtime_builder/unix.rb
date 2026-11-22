@@ -30,7 +30,13 @@ class RuntimeBuilder
     end
 
     private def launcher_sources
-      %w[unix.c scrub.c config.c bundler.c locale.c].map { |file| File.join(LAUNCHER, file) } << File.join(LAUNCHER, os_file)
+      (%w[unix.c scrub.c config.c bundler.c locale.c] + launcher_os_files).map { |file| File.join(LAUNCHER, file) } <<
+        File.join(LAUNCHER, os_file)
+    end
+
+    # The files only this system's launcher has, and not its bin/ruby.
+    private def launcher_os_files
+      []
     end
 
     # Runs gcc's static analyzer over each of +sources+, warnings as

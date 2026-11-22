@@ -791,6 +791,39 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
+  # The macOS launcher alone compiles documents.c, which takes the
+  # documents Launch Services opened the app with, and links Carbon and
+  # CoreServices for it; bin/ruby, which Launch Services never starts,
+  # links neither. clang's analyzer checks documents.c with the rest.
+  def test_only_the_macos_launcher_takes_the_documents_the_app_was_opened_with
+    Dir.mktmpdir do |dir|
+      prefix = File.join(dir, "prefix")
+      FileUtils.mkdir_p(File.join(prefix, "include", "ruby-4.1.0", "arm64-darwin23"))
+      FileUtils.mkdir_p(File.join(prefix, "lib"))
+      FileUtils.touch(File.join(prefix, "lib", "libruby.4.1-static.a"))
+      commands = Commands.new
+      recipe = RuntimeBuilder::Darwin.new(builder: commands, build_dir: dir)
+      recipe.instance_variable_set(:@prefix, prefix)
+      documents = File.join(RuntimeBuilder::Recipe::LAUNCHER, "documents.c")
+
+      recipe.compile(File.join(dir, "launcher"), recipe.__send__(:launcher_sources), "$ORIGIN/lib")
+      launcher = commands.ran.dup
+      commands.ran.clear
+      recipe.compile(File.join(dir, "bin", "ruby"), recipe.__send__(:ruby_sources), "$ORIGIN/../lib")
+
+      assert_includes launcher.select { |command| command.include?("--analyze") }.map { |command| command[-3] }, documents
+      assert_equal %w[CoreFoundation CoreServices Carbon], frameworks_linked(launcher)
+      assert_equal %w[CoreFoundation], frameworks_linked(commands.ran)
+      refute_includes commands.ran.flatten, documents
+    end
+  end
+
+  # The frameworks the link command among +commands+, the one at -O2,
+  # names.
+  def frameworks_linked(commands)
+    commands.find { |command| command.include?("-O2") }.each_cons(2).select { |flag, _| flag == "-framework" }.map(&:last)
+  end
+
   # The Windows launcher cross-compiles, so Windows runtimes build where
   # llvm-mingw is pinned, and not on Windows itself.
   def test_a_windows_runtime_builds_on_the_unix_platforms_llvm_mingw_is_pinned_for

@@ -24,7 +24,7 @@ class RuntimeBuilder
       static = Dir.glob(File.join(@prefix, "lib", "libruby.*-static.a")).first or raise "#{@prefix} has no static libruby"
       FileUtils.mkdir_p(File.dirname(output))
       @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, "-mmacosx-version-min=#{Fledge::Platform::MACOS_MINIMUM}", *includes, *sources,
-        "-Wl,-force_load,#{static}", "-framework", "CoreFoundation", "-ldl", "-lobjc", "-lpthread", "-o", output)
+        "-Wl,-force_load,#{static}", *frameworks(sources), "-ldl", "-lobjc", "-lpthread", "-o", output)
       @builder.run("strip", "-x", output)
       @builder.run("codesign", "--sign", "-", "--force", output)
       check_libraries(output)
@@ -34,6 +34,23 @@ class RuntimeBuilder
 
     private def os_file
       "darwin.c"
+    end
+
+    # documents.c, which takes the launch's Open Documents Apple event
+    # (doc/contributors/design/launcher.md, "Documents opened on macOS"),
+    # is the launcher's alone: bin/ruby is never started by Launch
+    # Services.
+    private def launcher_os_files
+      ["documents.c"]
+    end
+
+    # CoreFoundation for every program; the Apple Event Manager
+    # (CoreServices) and Carbon's event queue (HIToolbox) for the one
+    # that compiles documents.c.
+    private def frameworks(sources)
+      names = ["CoreFoundation"]
+      names += %w[CoreServices Carbon] if sources.any? { |source| File.basename(source) == "documents.c" }
+      names.flat_map { |name| ["-framework", name] }
     end
 
     private def check_libraries(output)

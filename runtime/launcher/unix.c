@@ -56,7 +56,10 @@
  *      require_relative, and no --yjit, so RubyVM::YJIT.enabled? is
  *      false until the app enables it, as under ruby. ROOT/app is named
  *      by its real path, which in a macOS .app is Contents/Resources/app
- *      (find_app_folder).
+ *      (find_app_folder). On macOS, when Launch Services started the
+ *      app's bundle with documents, their paths follow ARGS, since they
+ *      came in an Apple event rather than in argv
+ *      (find_launch_documents, documents.c).
  *   5. Once Ruby has booted and before ENTRY runs, it names Ruby's own
  *      $LOAD_PATH by real paths on macOS (name_load_path_by_real_paths),
  *      fixes RubyGems' paths, and for an app with a Gemfile has Bundler
@@ -549,7 +552,29 @@ run_ruby(int argc, char **argv)
 /* SPDX-SnippetEnd */
 
 /*
- * Builds the arguments Ruby sees. argv[0] stays the very pointer
+ * The paths of the documents Launch Services opened a macOS app with,
+ * which follow the arguments it was given (find_launch_documents).
+ */
+static char **documents;
+static int document_count;
+
+/*
+ * On macOS, takes the documents of the launch's Open Documents Apple
+ * event, which Finder's double-click on a document sends in place of an
+ * argument, so the program gets them in ARGV as ruby main.rb FILE gives
+ * it, and as Windows and Linux give it (documents.c).
+ */
+static void
+find_launch_documents(void)
+{
+#ifdef __APPLE__
+    document_count = fledge_launch_documents(&documents);
+#endif
+}
+
+/*
+ * Builds the arguments Ruby sees: the given ones, then the documents.
+ * argv[0] stays the very pointer
  * ruby_sysinit recorded: on Linux, ruby.c recognizes the program that
  * holds libruby by comparing dladdr's file name with that pointer
  * (ruby.c line 649 at Ruby 4.1.0-preview1), and only then reads
@@ -573,12 +598,14 @@ build_ruby_arguments(int argc, char **argv)
     static char end_of_options[] = "--";
     char *before_app_arguments[] = {argv[0], disable_rubyopt, end_of_options, entry};
     size_t fixed = sizeof before_app_arguments / sizeof before_app_arguments[0];
-    size_t count = fixed + (size_t)(argc > 1 ? argc - 1 : 0);
+    size_t given = (size_t)(argc > 1 ? argc - 1 : 0);
+    size_t count = fixed + given + (size_t)document_count;
 
     ruby_argv = calloc(count + 1, sizeof *ruby_argv);
     if (ruby_argv == NULL) fail("out of memory");
     memcpy(ruby_argv, before_app_arguments, sizeof before_app_arguments);
     for (int index = 1; index < argc; index++) ruby_argv[fixed + (size_t)index - 1] = argv[index];
+    for (int index = 0; index < document_count; index++) ruby_argv[fixed + given + (size_t)index] = documents[index];
     ruby_argc = (int)count;
 }
 
@@ -600,6 +627,7 @@ main(int argc, char **argv)
     find_system_typelibs();
 #endif
     find_app_folder();
+    find_launch_documents();
     scrub_environment();
     fledge_coerce_locale();
 

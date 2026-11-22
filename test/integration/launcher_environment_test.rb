@@ -79,10 +79,12 @@ class LauncherEnvironmentTest < Minitest::Test
     File.symlink(config.fetch("libdir"), File.join(root, "lib"))
     File.write(File.join(root, "fledge.cfg"), "entry = main.rb\n")
     File.write(File.join(root, "app", "main.rb"), main)
-    os_file = RUBY_PLATFORM.include?("darwin") ? "darwin.c" : "linux.c"
-    sources = %w[unix.c scrub.c config.c bundler.c locale.c].map { |file| File.join(LAUNCHER, file) } << File.join(LAUNCHER, os_file)
+    darwin = RUBY_PLATFORM.include?("darwin")
+    os_files = darwin ? %w[documents.c darwin.c] : %w[linux.c]
+    sources = (%w[unix.c scrub.c config.c bundler.c locale.c] + os_files).map { |file| File.join(LAUNCHER, file) }
     program = File.join(root, "Probe")
     libraries = "#{config.fetch('LIBRUBYARG')} #{config.fetch('LIBS')} #{config.fetch('MAINLIBS', '')}".split
+    libraries += %w[-framework CoreServices -framework Carbon] if darwin
     _, err, status = Open3.capture3(@compiler, "-std=gnu11", "-I", LAUNCHER, "-isystem", config.fetch("rubyhdrdir"),
       "-isystem", config.fetch("rubyarchhdrdir"), *config.fetch("LDFLAGS").split, *sources, "-L", config.fetch("libdir"), *libraries,
       "-Wl,-rpath,#{config.fetch('libdir')}", "-rdynamic", "-lpthread", "-o", program)

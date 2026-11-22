@@ -32,10 +32,9 @@ programs:
 # Markdown files, by the extensions and the MIME type of RFC 7763, which
 # Linux's shared MIME-info database already knows, so Markdown Preview
 # defines no type of its own. Each system offers the app for them and
-# leaves the person's default alone. Windows and Linux start preview.rb
-# with the file's path in ARGV. macOS sends the path as an Apple event,
-# which Fledge's launcher does not yet turn into ARGV, so there the app
-# opened with a file still shows welcome.md.
+# leaves the person's default alone. Every system starts preview.rb
+# with the file's path in ARGV: on macOS, Launch Services sends it as an
+# Apple event, which Fledge's launcher turns into ARGV.
 file_associations:
   - name: Markdown document
     extensions: [md, markdown]

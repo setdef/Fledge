@@ -221,7 +221,7 @@
       }
     },
     "file_associations": {
-      "description": "The files and folders a windowed app opens, in Tauri's and electron-builder's terms (default: none). macOS lists them as the bundle's document types, ranked Alternate, so the app is offered and never made the default; Windows' setup program adds the app to Open with for each extension, and to the menu of every folder for folders; a Linux desktop entry lists their MIME types, and inode/directory for folders, and passes the paths as arguments. A file or folder dropped on a Windows program arrives in ARGV; on macOS it arrives as an Apple event, which only a GUI library's event loop receives. Only a windowed app has them.",
+      "description": "The files and folders a windowed app opens, in Tauri's and electron-builder's terms (default: none). macOS lists them as the bundle's document types, ranked Alternate, so the app is offered and never made the default; Windows' setup program adds the app to Open with for each extension, and to the menu of every folder for folders; a Linux desktop entry lists their MIME types, and inode/directory for folders, and passes the paths as arguments. The program is started with the paths of the files and folders it is opened with, or that are dropped on it, in ARGV on every system; on macOS the launcher takes them from the Apple event Launch Services starts the app with. Only a windowed app has them.",
       "type": ["array", "null"],
       "items": {
         "type": "object",

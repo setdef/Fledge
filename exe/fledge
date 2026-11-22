@@ -377,11 +377,10 @@
 #                          by its name only once the type is defined,
 #                          which the app's share/mime/packages does and
 #                          its .deb installs. A file
-#                          or folder dropped on a Windows program, or
-#                          opened with a Linux one, arrives in ARGV; on
-#                          macOS it arrives as an Apple event, which only
-#                          a GUI library's event loop receives, and ARGV
-#                          stays empty, as under ruby main.rb.
+#                          or folder opened with the app, or dropped on
+#                          it, arrives in ARGV on every system: on
+#                          macOS the launcher takes it from the Apple
+#                          event Launch Services starts the app with.
 #                        build_tools: true to carry, in the app's tools
 #                          folder, what fledge build --from needs that
 #                          a system lacks, so that an app with Fledge

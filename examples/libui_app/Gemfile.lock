@@ -1,0 +1,32 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    fiddle (1.1.8)
+    libui (0.2.5-aarch64-linux)
+      fiddle
+    libui (0.2.5-arm64-darwin)
+      fiddle
+    libui (0.2.5-x64-mingw-ucrt)
+      fiddle
+    libui (0.2.5-x86_64-linux)
+      fiddle
+
+PLATFORMS
+  aarch64-linux
+  arm64-darwin
+  x64-mingw-ucrt
+  x86_64-linux
+
+DEPENDENCIES
+  libui (= 0.2.5)
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  fiddle (1.1.8) sha256=7fa8ee3627271497f3add5503acdbc3f40b32f610fc1cf49634f083ef3f32eee
+  libui (0.2.5-aarch64-linux) sha256=777e97643eb7a7061bbc6a3053e6a075ea804942256bbf3b7af28ee95eaaa517
+  libui (0.2.5-arm64-darwin) sha256=2c7e82bb0641a76d6a92517619b11af30307818424db0057bc958bdb7629b37d
+  libui (0.2.5-x64-mingw-ucrt) sha256=7c9a3ce48a20efec0fe9b3503d5fddb4acfe493d1fa42ca62815dc635c27a247
+  libui (0.2.5-x86_64-linux) sha256=ffedb964d9d50ba72fd920c29cb22a02806c457c8365b0680af015485b91cf82
+
+BUNDLED WITH
+  4.0.20

@@ -1467,18 +1467,23 @@ jobs:
       # test/fixtures/libui, the LibUI probe: a window from a third
       # party's GUI gem, whose precompiled gems carry libui-ng's library,
       # which links GTK 3 on Linux, named under linux: system_libraries.
-      # Not on musl Linux (build-musl) or aarch64-mingw-ucrt: LibUI
-      # publishes no gem with its library for them, so the probe could
-      # not run there under bundle exec either. On x64-mingw-ucrt its DLL
-      # needs Microsoft's Visual C++ runtime, which the app then carries,
-      # so it is built at the end of the job instead, outside dist, and
-      # nothing of it is uploaded (below).
-      - name: Build the LibUI probe for ${{ matrix.platform }}
+      # And examples/libui_app, Focus Timer, the same gem in an app a
+      # person would use, built but not uploaded: the probe is what
+      # Delivery runs, since a timer nobody watches reports nothing.
+      # Neither on musl Linux (build-musl) nor aarch64-mingw-ucrt: LibUI
+      # publishes no gem with its library for them, so neither could run
+      # there under bundle exec either. On x64-mingw-ucrt their DLL
+      # needs Microsoft's Visual C++ runtime, which the apps then carry,
+      # so they are built at the end of the job instead, outside dist,
+      # and nothing of them is uploaded (below).
+      - name: Build the LibUI probe and Focus Timer for ${{ matrix.platform }}
         if: runner.os != 'Windows'
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
-        run: ruby -I lib exe/fledge build -o dist test/fixtures/libui
+        run: |
+          ruby -I lib exe/fledge build -o dist test/fixtures/libui
+          ruby -I lib exe/fledge build -o "$RUNNER_TEMP/libui-example" examples/libui_app
 
       # Plan 003, "A Linux build takes the icon sizes a developer has":
       # windowed_app with only three of its PNGs builds, warns, and ships
@@ -1669,16 +1674,17 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      # The LibUI probe on Windows, whose fledge.yml says windows:
-      # visual_c_runtime: local, so the app carries the runner's copies
-      # of Microsoft's Visual C++ runtime, which setdef may not publish
-      # (above). So it is built after every upload, into a folder no
-      # upload or cache names, and run here, from /, with System32
-      # alone on its PATH, carrying the runtime's three DLLs; no Delivery
-      # job can have it. The runner's System32 has the runtime too, so
-      # this proves the build and that the app holds its copies, not that
-      # it runs where Windows has none.
-      - name: Build the LibUI probe outside dist, and run it, uploading none of it
+      # The LibUI probe and Focus Timer on Windows, whose fledge.yml files
+      # say windows: visual_c_runtime: local, so the apps carry the
+      # runner's copies of Microsoft's Visual C++ runtime, which setdef
+      # may not publish (above). So they are built after every upload,
+      # into a folder no upload or cache names, and the probe is run
+      # here, from /, with System32 alone on its PATH, carrying the
+      # runtime's three DLLs; no Delivery job can have it. The runner's
+      # System32 has the runtime too, so this proves the build and that
+      # the app holds its copies, not that it runs where Windows has
+      # none.
+      - name: Build the LibUI probe and Focus Timer outside dist, and run the probe, uploading none of them
         if: matrix.platform == 'x64-mingw-ucrt'
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
@@ -1686,6 +1692,7 @@ jobs:
         run: |
           probe="$(cygpath -u "$RUNNER_TEMP")/libui-probe"
           ruby -I lib exe/fledge build -o "$(cygpath -w "$probe")" test/fixtures/libui
+          ruby -I lib exe/fledge build -o "$(cygpath -w "$probe")" examples/libui_app
           .github/scripts/deliver-libui.sh "$probe/LibUIProbe-${{ matrix.platform }}.zip" libui.x64.dll
 
   build-x86_64-linux:

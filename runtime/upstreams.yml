@@ -43,6 +43,16 @@
 #   new digest from its registry's listing of the new tag (quay.io's).
 # keep: keys beside a moved URL that do not depend on the version, which
 #   the move leaves as they are. Any other key stops the move.
+# member: for a pin of one file inside an archive, the key of its path
+#   there, beside file_sha256, its SHA-256. The move rewrites the
+#   version in the path, downloads the new archive, and hashes the file
+#   it unpacks from it (with zstd, or 7-Zip's 7zz, and tar).
+# linked: for an input whose build links libraries whose versions only
+#   its upstream's own build script names, that script's url, with
+#   {version} for the new version, and the ids of runtime/licenses.yml's
+#   entries for those libraries, each with a pattern whose version
+#   capture finds its version in the script. The move rewrites each
+#   entry whose version the script no longer names.
 # licenses: the ids of runtime/licenses.yml's entries that name the
 #   pin's version, which the move rewrites: their version, their
 #   download, and the evidence their files hold.
@@ -145,7 +155,12 @@ watched:
     github: llvm/llvm-project
     tag: '\Allvmorg-(?<version>\d+\.\d+\.\d+)\z'
     names: [llvm-readobj, LLVM]
-    hold: Its file_sha256 is of one file inside the release's archive, and runtime/sources.yml and runtime/licenses.yml record the zlib and Zstandard that file links, which a person reads from LLVM's release script at the new tag.
+    member: path
+    licenses: [llvm-readobj]
+    linked:
+      url: https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-{version}/llvm/utils/release/build_llvm_release.bat
+      zlib-llvm-readobj: '^set zlib_version=(?<version>\S+)'
+      zstd-llvm-readobj: '^set zstd_version=(?<version>\S+)'
   # continuous is its rolling tag, and old its archive.
   appimage-runtime:
     pins: [appimage-runtime]

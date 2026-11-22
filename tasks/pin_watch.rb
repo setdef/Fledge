@@ -9,7 +9,9 @@ require "date"
 require "digest"
 require "json"
 require "net/http"
+require "open3"
 require "rubygems"
+require "tmpdir"
 require "uri"
 require "yaml"
 
@@ -154,6 +156,26 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       end
     end
 
+    # The SHA-256 of the file +member+ of the Zstandard-compressed
+    # tarball at +url+, which is downloaded into a folder of its own and
+    # removed. LLVM's archive is compressed with a 2 GB window, which
+    # zstd reads only with --long=31, as tasks/runtime_builder/windows.rb
+    # unpacks it; where no zstd is, 7-Zip's 7zz, which mise.toml pins.
+    def member_sha256(url, member)
+      Dir.mktmpdir("pin-move") do |folder|
+        archive = File.join(folder, "archive")
+        get(url) { |response| File.open(archive, "wb") { |file| response.read_body { |chunk| file.write(chunk) } } }
+        digest = Digest::SHA256.new
+        Open3.pipeline_r(decompress(archive), ["tar", "-xOf", "-", member]) do |out, threads|
+          while (chunk = out.read(1 << 16))
+            digest << chunk
+          end
+          raise Error, "#{url} holds no #{member}" unless threads.map(&:value).all?(&:success?)
+        end
+        digest.hexdigest
+      end
+    end
+
     private def get(url, redirects = REDIRECTS, &read)
       uri = URI(url)
       Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: @timeout, read_timeout: @timeout) do |http|
@@ -166,6 +188,17 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       end
     rescue SystemCallError, IOError, Timeout::Error, OpenSSL::SSL::SSLError => e
       raise Error, "#{url} could not be read: #{e.message}"
+    end
+
+    private def decompress(archive)
+      return ["zstd", "-dc", "--long=31", archive] if tool?("zstd")
+      return ["7zz", "x", "-so", "-bd", archive] if tool?("7zz")
+
+      raise Error, "unpacking #{archive} needs zstd or 7-Zip's 7zz on PATH"
+    end
+
+    private def tool?(name)
+      ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? { |folder| File.executable?(File.join(folder, name)) }
     end
 
     private def request(uri)

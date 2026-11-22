@@ -82,10 +82,11 @@ class PinMove
     changed = {}
     parts(entry, upstream, from, to).each do |part, named, old, new|
       swaps = move_sources(named, part, old, new, changed)
-      part.fetch("licenses", []).each { |id| write("runtime/licenses.yml", license(read("runtime/licenses.yml"), id, old, new), changed) }
+      part.fetch("licenses", []).each { |id| write("runtime/licenses.yml", license(read("runtime/licenses.yml"), id, old, new, swaps), changed) }
       part.fetch("also", {}).each { |path, patterns| write(path, also(read(path), path, patterns, swaps, old, new), changed) }
       from, to = old, new
     end
+    write("runtime/licenses.yml", linked(read("runtime/licenses.yml"), entry["linked"], to), changed) if entry["linked"]
     write("CHANGELOG.md", changelog(read("CHANGELOG.md"), title(name), from, to), changed) if entry.fetch("ships", true)
     changed
   rescue Error, PinWatch::Error
@@ -213,11 +214,16 @@ class PinMove
     url = mapping.fetch("url")
     return {} unless url.include?(from)
 
-    stray = mapping.keys - MOVED - [upstream.field, "version"] - entry.fetch("keep", [])
+    member = entry["member"]
+    stray = mapping.keys - MOVED - [upstream.field, "version"] - entry.fetch("keep", []) - (member ? [member, "file_sha256"] : [])
     raise Error, "#{url} stands beside #{stray.join(', ')}, which a move cannot know" unless stray.empty?
 
     new_url = url.gsub(from, to)
-    { url => new_url, mapping.fetch("sha256") => sha256(new_url, entry, upstream) }
+    swaps = { url => new_url, mapping.fetch("sha256") => sha256(new_url, entry, upstream) }
+    return swaps unless member
+
+    path = mapping.fetch(member).gsub(from, to)
+    swaps.merge(mapping.fetch(member) => path, mapping.fetch("file_sha256") => @fetch.member_sha256(new_url, path))
   end
 
   # The SHA-256 of +url+, from upstream's record where it keeps one.
@@ -229,9 +235,11 @@ class PinMove
     end
   end
 
+  # GitHub's listing escapes an asset's URL (LLVM's clang+llvm as
+  # clang%2Bllvm), so URLs are compared as they read unescaped.
   private def digest(url, upstream)
     asset = JSON.parse(@fetch.call(upstream.url)).flat_map { |release| release.fetch("assets") }
-      .find { |candidate| candidate.fetch("browser_download_url") == url }
+      .find { |candidate| URI.decode_uri_component(candidate.fetch("browser_download_url")) == URI.decode_uri_component(url) }
     raise Error, "#{upstream.url} lists no asset #{url}" unless asset
 
     asset["digest"]&.delete_prefix("sha256:")
@@ -282,16 +290,33 @@ class PinMove
     raise Error, e.message
   end
 
-  # +text+, runtime/licenses.yml, with the version moved in each entry
-  # +id+ that names it: its version, its download, and the evidence its
-  # files hold. An entry of that id that names another version records
-  # another build, and is left.
-  private def license(text, id, from, to)
+  # +text+, runtime/licenses.yml, with the version moved in the entry
+  # +id+, which is the only entry of that id (the license audit refuses
+  # two): its version, its download, and the evidence its files hold,
+  # and each SHA-256 of +swaps+ it records, as of a file the pin is.
+  private def license(text, id, from, to, swaps = {})
     entries = text.split(/(?=^  - id: )/)
-    moved = entries.map { |entry| (entry.start_with?("  - id: #{id}\n") && entry.include?(from)) ? entry.gsub(from, to) : entry }
+    moved = entries.map do |entry|
+      next entry unless entry.start_with?("  - id: #{id}\n") && entry.include?(from)
+
+      swaps.reduce(entry.gsub(from, to)) { |result, (old, new)| result.gsub(old, new) }
+    end
     raise Error, "runtime/licenses.yml has no entry #{id} that names #{from}" if moved == entries
 
     moved.join
+  end
+
+  # +text+, runtime/licenses.yml, with each entry +linked+ names moved to
+  # the version of the library its pattern finds in the upstream's build
+  # script at +to+.
+  private def linked(text, linked, to)
+    script = @fetch.call(linked.fetch("url").gsub("{version}", to))
+    entries = YAML.safe_load(text).fetch("components")
+    linked.except("url").reduce(text) do |result, (id, pattern)|
+      found = script[Regexp.new(pattern), "version"] or raise Error, "#{linked.fetch('url')} names no version #{pattern} finds, at #{to}"
+      old = entries.find { |entry| entry.fetch("id") == id }&.fetch("version")&.to_s or raise Error, "runtime/licenses.yml has no entry #{id}"
+      (old == found) ? result : license(result, id, old, found)
+    end
   end
 
   # +text+ of +path+ with each URL and SHA-256 the move replaced, and the

@@ -93,6 +93,11 @@ class PinMoveTest < Minitest::Test
       @downloaded << url
       @sums.fetch(url)
     end
+
+    def member_sha256(url, member)
+      @downloaded << url
+      @sums.fetch([url, member])
+    end
   end
 
   def libffi_releases(digest: "sha256:#{LIBFFI_381_SHA256}")
@@ -347,6 +352,51 @@ class PinMoveTest < Minitest::Test
       assert_equal "RECOMMENDED = \"31.0.2\"\n", move.read("ndk.rb")
       assert_includes move.read("runtime/licenses.yml"), "version: r31\n"
       assert_includes move.read("CHANGELOG.md"), "- NDK r31, from r30.\n"
+    end
+  end
+
+  LLVM = "https://api.github.com/repos/llvm/llvm-project/releases?per_page=100"
+  LLVM_OLD = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.4/clang+llvm-23.1.4-x86_64-pc-windows-msvc.tar.zst"
+  LLVM_NEW = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.5/clang+llvm-23.1.5-x86_64-pc-windows-msvc.tar.zst"
+  LLVM_SCRIPT = "https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-23.1.5/llvm/utils/release/build_llvm_release.bat"
+
+  # llvm-readobj is one file of LLVM's archive: the move hashes that
+  # file, and reads the zlib and Zstandard it links from LLVM's release
+  # script at the new tag, whose lines end in CR LF. GitHub lists the
+  # asset with its + escaped, as %2B.
+  def test_llvm_readobj_moves_the_file_it_takes_from_the_archive_and_the_libraries_it_links
+    sources = "llvm-readobj:\n  version: 23.1.4\n  url: #{LLVM_OLD}\n  sha256: #{OLD_SHA256}\n" \
+      "  path: clang+llvm-23.1.4-x86_64-pc-windows-msvc/bin/llvm-readobj.exe\n  file_sha256: #{'0f' * 32}\n"
+    licenses = <<~YAML
+      components:
+        - id: llvm-readobj
+          version: 23.1.4
+          download: https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.4
+          sha256:
+            tools/llvm-readobj.exe: #{'0f' * 32}
+
+        - id: zlib-llvm-readobj
+          version: 1.3.2
+          download: https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
+          embedded:
+            - evidence: "deflate 1.3.2 "
+
+        - id: zstd-llvm-readobj
+          version: 1.5.7
+          download: https://github.com/facebook/zstd/releases/tag/v1.5.7
+    YAML
+    releases = JSON.generate([{ "tag_name" => "llvmorg-23.1.5", "assets" => [{ "browser_download_url" => LLVM_NEW.sub("clang+llvm", "clang%2Bllvm"), "digest" => "sha256:#{'ab' * 32}" }] }])
+    answers = Answers.new({ LLVM => releases, LLVM_SCRIPT => "set zlib_version=1.3.3\r\nset zstd_version=1.5.7\r\n" },
+      [LLVM_NEW, "clang+llvm-23.1.5-x86_64-pc-windows-msvc/bin/llvm-readobj.exe"] => "cd" * 32)
+    checkout("runtime/sources.yml" => sources, "runtime/licenses.yml" => licenses) do |root|
+      move = PinMove.new(root, entries, answers)
+      move.call(finding("llvm-readobj", "23.1.4", "23.1.5"))
+
+      assert_equal "llvm-readobj:\n  version: 23.1.5\n  url: #{LLVM_NEW}\n  sha256: #{'ab' * 32}\n" \
+        "  path: clang+llvm-23.1.5-x86_64-pc-windows-msvc/bin/llvm-readobj.exe\n  file_sha256: #{'cd' * 32}\n", move.read("runtime/sources.yml")
+      assert_equal licenses.gsub("23.1.4", "23.1.5").gsub("0f" * 32, "cd" * 32).gsub("1.3.2", "1.3.3"), move.read("runtime/licenses.yml")
+      assert_equal [LLVM_NEW], answers.downloaded, "the archive is downloaded once, for its file; GitHub records its own SHA-256"
+      assert_includes move.read("CHANGELOG.md"), "- llvm-readobj 23.1.5, from 23.1.4.\n"
     end
   end
 

@@ -301,12 +301,14 @@ rcedit:
 # build runs on Windows to read the DLLs an app's compiled gems import
 # and delay-load, since Windows has no such tool of its own.
 # It is one file (path) of LLVM's own release for Windows, statically
-# linked with zlib 1.3.2 and Zstandard 1.5.7, as LLVM's
-# llvm/utils/release/build_llvm_release.bat at llvmorg-23.1.4 builds it,
-# and it imports only Windows' own DLLs. The release's archive is
-# Zstandard-compressed with a long window, which 7-Zip, pinned in
-# mise.toml, unpacks. The SHA-256s are of the archive, as GitHub records it, and
-# of the file, which the license audit checks too.
+# linked with the zlib and Zstandard that LLVM's
+# llvm/utils/release/build_llvm_release.bat names at the release's tag
+# (runtime/licenses.yml records their versions), and it imports only
+# Windows' own DLLs. The release's archive is Zstandard-compressed with
+# a long window, which zstd, or 7-Zip pinned in mise.toml, unpacks. The
+# SHA-256s are of the archive, as GitHub records it, and of the file,
+# which the license audit checks too. A move takes all of it with no
+# person (runtime/upstreams.yml, member and linked).
 llvm-readobj:
   version: 23.1.4
   url: https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.4/clang+llvm-23.1.4-x86_64-pc-windows-msvc.tar.zst

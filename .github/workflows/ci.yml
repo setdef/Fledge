@@ -1916,7 +1916,7 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console /tmp/parity-bundle examples/my_cool_app examples/windowed_app examples/programs; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app examples/windowed_app examples/programs; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd examples/my_cool_app && bundle install)
@@ -2518,7 +2518,9 @@ jobs:
   # with no Ruby at all, as deliver.sh --no-ruby-installed checks: hello
   # and my_cool_app, the console probe interrupted in a terminal, and the
   # windowed app, its desktop entry, and its AppImage, which has no FUSE
-  # in a container, so says so and runs extracted.
+  # in a container, so says so and runs extracted; and the HTTPS probe,
+  # asking a server on the runner, which the container reaches on the
+  # runner's network (.github/scripts/deliver-https.sh).
   delivery-musl:
     name: Delivery (${{ matrix.platform }}, alpine:3.24)
     needs: build-musl
@@ -2549,7 +2551,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      - name: Run hello, my_cool_app, the console probe, windowed_app, and programs on Alpine with no Ruby installed
+      - name: Run hello, my_cool_app, the console and HTTPS probes, windowed_app, and programs on Alpine with no Ruby installed
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -2563,8 +2565,12 @@ jobs:
           .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
           .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract
           .github/scripts/deliver-programs.sh "$d/Shared Save-$PLATFORM.tar.gz"
+          .github/scripts/deliver-https.sh "$d/Https-$PLATFORM.tar.gz" /https --store-may-change
           SH
-          docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$RUNNER_TEMP:/scripts" -w /work -e PLATFORM "$ALPINE" sh /scripts/deliver-all.sh
+          server="$RUNNER_TEMP/https-server"
+          .github/scripts/https-server.sh start "$server"
+          trap '.github/scripts/https-server.sh stop "$server"' EXIT
+          docker run --rm --network host -v "$GITHUB_WORKSPACE:/work" -v "$RUNNER_TEMP:/scripts" -v "$server:/https:ro" -w /work -e PLATFORM "$ALPINE" sh /scripts/deliver-all.sh
 
   # Delivery on a fresh Windows runner, with nothing of Fledge but the
   # .zip and the script that checks it, and no Ruby set up: the runner's

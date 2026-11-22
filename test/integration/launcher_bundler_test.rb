@@ -191,13 +191,13 @@ class LauncherBundlerTest < Minitest::Test
   # An app, with this Ruby's own Bundler, whose Gemfile says +gemfile+
   # and whose lockfile locks nothing; then the script that sets it up and
   # runs +program+, and the lockfile's path.
-  def frozen_app(gemfile, program)
+  def frozen_app(gemfile, program, platforms: ["ruby", Gem::Platform.local.to_s])
     app = File.join(@dir, "app")
     FileUtils.mkdir_p(File.join(app, ".bundle"))
     File.write(File.join(app, "Gemfile"), gemfile)
     lockfile = File.join(app, "Gemfile.lock")
-    File.write(lockfile, "GEM\n  remote: https://rubygems.org/\n  specs:\n\nPLATFORMS\n  ruby\n  " \
-      "#{Gem::Platform.local}\n\nDEPENDENCIES\n\nBUNDLED WITH\n  #{Bundler::VERSION}\n")
+    File.write(lockfile, "GEM\n  remote: https://rubygems.org/\n  specs:\n\nPLATFORMS\n" \
+      "#{platforms.map { |platform| "  #{platform}\n" }.join}\nDEPENDENCIES\n\nBUNDLED WITH\n  #{Bundler::VERSION}\n")
     File.write(File.join(app, ".bundle", "config"), Fledge::Bundle::SETTINGS)
     require_bundler, setup = driver("code", "-").first.split("\n--\n")
     ["#{require_bundler}\nENV['BUNDLE_GEMFILE'] = ARGV[0]\n#{setup}\n#{program}", lockfile]
@@ -224,6 +224,30 @@ class LauncherBundlerTest < Minitest::Test
     assert status.success?, err
     assert_equal "nil\nnil\n\"true\"\nnil\n[]\ntrue\n", out
     assert_equal before, [File.binread(lockfile), File.mtime(lockfile)]
+  end
+
+  # A lockfile that locks this Mac only under another Darwin version is
+  # one the app's Bundler, frozen, refuses, as bundle exec does when
+  # frozen; the lockfile Fledge::Bundle ships in its place, with this
+  # Ruby's platform added as bundle exec unfrozen writes it, is set up.
+  def test_the_lockfile_shipped_for_another_darwin_version_is_set_up_frozen
+    local = Gem::Platform.local
+    skip "Only a Ruby for an Apple silicon Mac names a Darwin version" unless local.cpu == "arm64" && local.os == "darwin" && local.version
+    other = "arm64-darwin-#{local.version.to_i - 1}"
+    script, lockfile = frozen_app("source \"https://rubygems.org\"\n", "p :ran", platforms: [other])
+    out, err, status = run_frozen_app(script, lockfile)
+
+    refute_predicate status, :success?, out
+    assert_includes err, "Your bundle only supports platforms [\"#{other}\"]"
+    File.write(File.join(File.dirname(lockfile), "main.rb"), "")
+    bundle = Fledge::Bundle.new(Fledge::App.at(File.dirname(lockfile)))
+    bundle.gems_for(Fledge::Platform.find("arm64-darwin"), ruby_version: RUBY_VERSION, patchlevel: RUBY_PATCHLEVEL.to_s,
+      bundler: Bundler::VERSION, arch: RbConfig::CONFIG.fetch("arch"))
+    File.write(lockfile, bundle.app_files.fetch("Gemfile.lock"))
+    out, err, status = run_frozen_app(script, lockfile)
+
+    assert status.success?, err
+    assert_equal ":ran\n", out
   end
 
   # Frozen while it sets the app up, Bundler refuses a Gemfile that moved

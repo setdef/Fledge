@@ -54,21 +54,49 @@ class BundleTest < Minitest::Test
 
   # A built app's Bundler takes its platform from the runtime's Ruby
   # (Gem::Platform.local, from RbConfig's arch), arm64-darwin-23 for
-  # rv-ruby's macOS build, whatever Mac it runs on, and finds a lockfile
-  # platform or a gem's build fits as RubyGems' Gem::Platform#=== says:
-  # arm64-darwin and arm64-darwin-23 do, arm64-darwin-24 does not.
-  def test_a_macos_platform_with_a_darwin_version_counts_as_the_runtimes_bundler_counts_it
+  # rv-ruby's macOS build, whatever Mac it runs on, and finds a gem's
+  # build fits as RubyGems' Gem::Platform#=== says: arm64-darwin and
+  # arm64-darwin-23 do, arm64-darwin-24 does not.
+  def test_a_macos_build_with_a_darwin_version_counts_as_the_runtimes_bundler_counts_it
     darwin23 = FakeGem.build(@dir, "native", "1.0.0", platform: "arm64-darwin-23")
     darwin24 = FakeGem.build(@dir, "other", "1.0.0", platform: "arm64-darwin-24")
     other = FakeGem.build(@dir, "other", "1.0.0")
-    here = Gem::Platform.local.to_s # Bundler, frozen, wants the computer reading the lockfile locked too
     bundle = bundle(dependencies: { "native" => ">= 0", "other" => ">= 0" }, locked: [darwin23, darwin24, other, @source],
-      platforms: ["arm64-darwin-23", "x86_64-linux", here].uniq)
+      platforms: ["arm64-darwin-23", "x86_64-linux"])
 
     assert_equal ["native 1.0.0 (arm64-darwin-23)", "other 1.0.0"], names(bundle, DARWIN)
-    newer = bundle(name: "newer_app", dependencies: {}, locked: [], platforms: ["arm64-darwin-24", "x86_64-linux", here].uniq - ["arm64-darwin-23"])
-    error = assert_raises(Fledge::Error) { names(newer, DARWIN) }
-    assert_includes error.message, "locks no gems for arm64-darwin"
+    refute bundle.app_files.key?("Gemfile.lock")
+  end
+
+  # bundle lock writes the Mac's platform with the Darwin version of the
+  # macOS its Ruby was built on, and a lockfile that locks the runtime's
+  # Mac only under another version is one bundle exec on the runtime's
+  # Ruby runs: Bundler adds that Ruby's platform
+  # (Bundler::Definition#add_current_platform) and writes it into the
+  # lockfile, the rest unchanged. The app's Bundler is frozen and would
+  # refuse the developer's lockfile, so the app ships the one bundle exec
+  # writes.
+  def test_a_lockfile_that_locks_the_mac_under_another_darwin_version_ships_as_bundle_exec_writes_it
+    bundle = bundle(dependencies: { "foo" => "~> 1.0", "native" => "~> 1.0" }, locked: [@foo, @darwin, @source],
+      platforms: ["arm64-darwin-24", "x86_64-linux"])
+    original = File.read(File.join(@dir, "my_app", "Gemfile.lock"))
+
+    assert_equal ["foo 1.0.0", "native 1.0.0 (arm64-darwin)"], names(bundle, DARWIN)
+    shipped = bundle.app_files.fetch("Gemfile.lock")
+    assert_equal ["  arm64-darwin-23\n"], shipped.lines - original.lines
+    assert_equal original.lines, shipped.lines - ["  arm64-darwin-23\n"]
+    names(bundle, LINUX)
+    refute bundle.app_files.key?("Gemfile.lock")
+  end
+
+  # A gem built for one Darwin version only is no build for another, as
+  # Bundler finds no build of it for the runtime's Ruby there.
+  def test_a_gem_built_only_for_another_darwin_version_is_refused
+    darwin24 = FakeGem.build(@dir, "native", "1.0.0", platform: "arm64-darwin-24")
+    bundle = bundle(dependencies: { "native" => ">= 0" }, locked: [darwin24], platforms: ["arm64-darwin-24", "x86_64-linux"])
+
+    error = assert_raises(Fledge::Error) { names(bundle, DARWIN) }
+    assert_includes error.message, "locks no build of native for arm64-darwin, only for arm64-darwin-24."
   end
 
   def test_falls_back_to_the_build_for_every_platform
@@ -203,8 +231,7 @@ class BundleTest < Minitest::Test
   end
 
   def test_a_platform_the_lockfile_does_not_lock_is_refused
-    here = Gem::Platform.local.to_s # Bundler, frozen, wants the computer reading the lockfile locked too
-    bundle = bundle(dependencies: {}, locked: [], platforms: ["arm64-darwin-25", "x86_64-linux-gnu", here].uniq)
+    bundle = bundle(dependencies: {}, locked: [], platforms: ["x86_64-darwin-25", "x86_64-linux-gnu"])
 
     assert_empty names(bundle, LINUX)
     error = assert_raises(Fledge::Error) { names(bundle, DARWIN) }

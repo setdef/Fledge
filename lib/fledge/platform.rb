@@ -284,8 +284,8 @@ module Fledge
     # glibc name too, which RubyGems treats as the same platform
     # (Gem::Platform#=== normalizes +gnu+ away). A macOS lockfile
     # platform with a Darwin version, such as <tt>arm64-darwin-25</tt>,
-    # does not count: Bundler would refuse it on another version of
-    # macOS.
+    # is not among them: it fits a runtime of another Darwin version only
+    # through the lockfile Fledge::Bundle ships in its place.
     #
     # === Example
     #

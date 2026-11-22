@@ -20,6 +20,7 @@ module Fledge
     @without: Array[String]
     @groups: Array[Symbol]
     @sources: Sources?
+    @shipped_lockfile: String?
 
     def initialize: (App app) -> void
 
@@ -52,6 +53,10 @@ module Fledge
     private def patchlevel_refused?: (Object? wanted, String patchlevel, String bundler) -> bool
 
     private def check_locked: (target platform, Gem::Platform target) -> void
+
+    private def other_darwin?: (Gem::Platform candidate, Gem::Platform target) -> bool
+
+    private def lockfile_with: (Gem::Platform target) -> String
 
     def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
 

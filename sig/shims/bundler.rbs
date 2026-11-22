@@ -43,6 +43,10 @@ module Bundler
 
     def dependencies: () -> Array[Dependency]
 
+    def add_platform: (Gem::Platform platform) -> void
+
+    def to_lock: () -> String
+
     private def requested_groups: () -> Array[Symbol]
   end
 

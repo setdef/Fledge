@@ -122,6 +122,7 @@ module Fledge
       @with = [] # : Array[String]
       @without = [] # : Array[String]
       @groups = [] # : Array[Symbol]
+      @shipped_lockfile = nil # : String?
       @gemfile = gemfile
       @definition = definition(gemfile)
       @checksums = checksums(File.read(@lockfile))
@@ -262,7 +263,12 @@ module Fledge
     # would fit there (Bundler::Definition#current_platform_locked? and
     # Gem::Platform#===): <tt>arm64-darwin</tt> and
     # <tt>arm64-darwin-23</tt> fit rv-ruby's <tt>arm64-darwin23</tt>, and
-    # <tt>arm64-darwin-24</tt> does not. A Fledge::MobilePlatform's app
+    # a gem's <tt>arm64-darwin-24</tt> build does not. A lockfile that
+    # locks the Mac only under another Darwin version, such as
+    # <tt>arm64-darwin-24</tt>, is taken as <tt>bundle exec</tt> on that
+    # Ruby takes it, and #app_files then holds the lockfile with the
+    # runtime's platform added, which the app's frozen Bundler needs
+    # (doc/contributors/design/gems.md). A Fledge::MobilePlatform's app
     # runs Bundler with <tt>force_ruby_platform</tt>, as which the lockfile
     # must lock +ruby+, and each gem is its +ruby+
     # build. A gem from a gem server whose best build for +platform+ has a
@@ -425,20 +431,54 @@ module Fledge
     #   runtime's platform as Bundler's local one.
     #++
     private def check_locked(platform, target)
+      @shipped_lockfile = nil
       locked = @definition.platforms
       return if locked.any? { |candidate| candidate.to_s == "ruby" || Gem::Platform.generic(target) == candidate || target === candidate }
       #--
       # SPDX-SnippetEnd
       #++
+      return @shipped_lockfile = lockfile_with(target) if locked.any? { |candidate| other_darwin?(candidate, target) }
 
       raise Error, "#{lockfile_name} locks no gems for #{platform}. Run bundle lock --add-platform #{platform.lockfile_names.first}, " \
         "then build again."
     end
 
+    # Whether +candidate+, a lockfile's platform, is +target+'s macOS
+    # under another Darwin version, as <tt>arm64-darwin-24</tt> is to
+    # <tt>arm64-darwin23</tt>: the same platform to Gem::Platform#===
+    # but for the version, which it compares exactly. A phone's +target+
+    # is +ruby+, which Gem::Platform.new gives as a String.
+    private def other_darwin?(candidate, target)
+      return false unless target.is_a?(Gem::Platform) && candidate.is_a?(Gem::Platform)
+
+      target.os == "darwin" && candidate.os == "darwin" && !candidate.version.nil? &&
+        (Gem::Platform.new("#{candidate.cpu}-darwin") === target) == true
+    end
+
+    # The lockfile as <tt>bundle exec</tt> on the runtime's Ruby writes it
+    # when the lockfile locks no platform that Ruby's matches: with that
+    # Ruby's platform, +target+, added to its platforms
+    # (Bundler::Definition#add_current_platform, which a Bundler that is
+    # not frozen calls, and Bundler::Runtime#setup, which then writes the
+    # lockfile), and the rest as it was, since the gems it locks resolve
+    # as before. The app's Bundler, frozen, refuses the developer's own
+    # lockfile (Bundler::Definition#validate_platforms!) and takes this.
+    private def lockfile_with(target)
+      at_project(@gemfile) do
+        dsl = Bundler::Dsl.new
+        dsl.eval_gemfile(@gemfile)
+        Bundler.settings.temporary(frozen: true) do
+          dsl.to_definition(Pathname.new(@lockfile), {}).tap { |definition| definition.add_platform(target) }.to_lock
+        end
+      end
+    end
+
     # What the built app's +app+ folder holds in place of the project's
     # own files, by path relative to it: Bundler's settings for the app
     # (SETTINGS, as <tt>.bundle/config</tt>, with FORCE_RUBY_PLATFORM when
-    # +force_ruby_platform+ is true, for a phone), and each gemspec of the
+    # +force_ruby_platform+ is true, for a phone), the lockfile with the
+    # runtime's platform added when the last #gems_for found it locks the
+    # Mac only under another Darwin version, and each gemspec of the
     # project's own gems, evaluated now, as Bundler caches a git gem's
     # gemspecs evaluated so that one that runs git keeps working without
     # it (Bundler::Source::Git#serialize_gemspecs_in), and led by a
@@ -461,7 +501,10 @@ module Fledge
     def app_files(force_ruby_platform: false)
       settings = "#{SETTINGS}#{group_settings}#{FORCE_RUBY_PLATFORM if force_ruby_platform}"
       gemspecs = own_folders.flat_map { |folder| Dir.glob(GEMSPECS, base: folder).map { |name| File.join(folder, name) } }
-      gemspecs.uniq.sort.each_with_object({ ".bundle/config" => settings }) do |path, files|
+      shipped = { ".bundle/config" => settings }
+      lockfile = @shipped_lockfile
+      shipped[@lockfile.delete_prefix("#{@app.root}/")] = lockfile if lockfile
+      gemspecs.uniq.sort.each_with_object(shipped) do |path, files|
         spec = Bundler.load_gemspec(path) or next
         spec.installed_by_version = Gem::VERSION
         files[path.delete_prefix("#{@app.root}/")] = with_requires(spec.to_ruby, path)

@@ -6,7 +6,7 @@ module Fledge
     class GemspecLoads
       SCRIPT: String
 
-      def call: (String path) -> Array[String]
+      def call: (String path, gemfile: String) -> Array[[String, String]]
     end
   end
 end

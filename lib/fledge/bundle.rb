@@ -106,8 +106,9 @@ module Fledge
     # Reads +app+'s Gemfile and lockfile. Raises Fledge::Error when there
     # is no lockfile, when Bundler cannot read either, or when the
     # lockfile is out of date. +gemspec_loads+, given a project gemspec's
-    # path, answers the paths of the files evaluating it loads
-    # (GemspecLoads, which starts a Ruby to see).
+    # path and the Gemfile's, answers the files evaluating it after the
+    # Gemfile requires and loads (GemspecLoads, which starts a Ruby to
+    # see).
     def initialize(app, gemspec_loads: GemspecLoads.new)
       require "bundler"
       @app = app
@@ -481,11 +482,11 @@ module Fledge
     # Mac only under another Darwin version, and each gemspec of the
     # project's own gems, evaluated now, as Bundler caches a git gem's
     # gemspecs evaluated so that one that runs git keeps working without
-    # it (Bundler::Source::Git#serialize_gemspecs_in), and led by a
-    # require_relative of each of the project's files its evaluation
-    # loaded, such as <tt>lib/my_cool_app/version.rb</tt>, which the
-    # app's Bundler then loads at every start, as Bundler does under
-    # <tt>bundle exec</tt>.
+    # it (Bundler::Source::Git#serialize_gemspecs_in), and led by a line
+    # that loads each of the project's files its evaluation after the
+    # Gemfile required or loaded, such as
+    # <tt>lib/my_cool_app/version.rb</tt>, which the app's Bundler then
+    # loads at every start, as Bundler does under <tt>bundle exec</tt>.
     #
     # === Example
     #
@@ -507,32 +508,44 @@ module Fledge
       gemspecs.uniq.sort.each_with_object(shipped) do |path, files|
         spec = Bundler.load_gemspec(path) or next
         spec.installed_by_version = Gem::VERSION
-        files[path.delete_prefix("#{@app.root}/")] = with_requires(spec.to_ruby, path)
+        files[path.delete_prefix("#{@app.root}/")] = with_loads(spec.to_ruby, path)
       end
     end
 
-    # The evaluated gemspec +ruby+ of the gemspec at +path+, led by a
-    # require_relative of each file in the project that evaluating it
-    # loads, in the order it loads them. Under <tt>bundle exec</tt>
-    # Bundler evaluates the gemspec at every start, so what it requires
-    # (<tt>bundle gem</tt>'s <tt>lib/NAME/version.rb</tt>, and the
-    # constant it defines) is loaded before the program's first line; the
-    # app's Bundler evaluates the shipped one at every start too, and
-    # loads the same files, by the same paths, with no git. Which files
-    # those are, the gemspec loads collaborator says (GemspecLoads, by
-    # default), which raises Fledge::Error when it cannot evaluate it.
-    private def with_requires(ruby, path)
+    # The evaluated gemspec +ruby+ of the gemspec at +path+, led by a line
+    # that loads each file in the project that evaluating it after the
+    # Gemfile loads, as it loads it. Under <tt>bundle exec</tt> Bundler
+    # evaluates the Gemfile and then the gemspec at every start, so what
+    # the gemspec requires or loads (<tt>bundle gem</tt>'s
+    # <tt>lib/NAME/version.rb</tt>, and the constant it defines) is
+    # loaded before the program's first line; the app's Bundler evaluates
+    # the shipped Gemfile and gemspec at every start too, and loads the
+    # same files, by the same paths, with no git. Which files those are,
+    # the gemspec loads collaborator says (GemspecLoads, by default),
+    # which raises Fledge::Error when it cannot evaluate them.
+    private def with_loads(ruby, path)
       folder = File.dirname(File.realpath(path))
       root = "#{File.realpath(@app.root)}/"
-      loaded = @gemspec_loads.call(path).map { |feature| File.realpath(feature) }.select { |feature| feature.start_with?(root) }
-      requires = loaded.map { |feature| "require_relative #{relative(feature, folder).inspect}\n" }.join
-      requires.empty? ? ruby : ruby.sub(/^Gem::Specification\.new/) { "#{requires}\n#{Regexp.last_match(0)}" }
+      loads = @gemspec_loads.call(path, gemfile: @gemfile).filter_map do |kind, file|
+        real = File.realpath(file)
+        load_line(kind, relative(real, folder)) if real.start_with?(root)
+      end.join
+      loads.empty? ? ruby : ruby.sub(/^Gem::Specification\.new/) { "#{loads}\n#{Regexp.last_match(0)}" }
     end
 
-    # +path+ relative to +folder+, without its .rb, as require_relative
-    # takes it.
+    # The line of a shipped gemspec that loads the file at +path+, from
+    # its folder, as the evaluation it replays did: a require_relative of
+    # a file it required, and a Kernel#load of one it loaded, which a
+    # require_relative would load only once.
+    private def load_line(kind, path)
+      return "load File.expand_path(#{path.inspect}, __dir__)\n" if kind == "load"
+
+      "require_relative #{path.delete_suffix('.rb').inspect}\n"
+    end
+
+    # +path+ relative to +folder+.
     private def relative(path, folder)
-      Pathname.new(path).relative_path_from(Pathname.new(folder)).to_s.delete_suffix(".rb")
+      Pathname.new(path).relative_path_from(Pathname.new(folder)).to_s
     end
 
     # The groups the app leaves out and asks for, as the settings of those

@@ -498,13 +498,14 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
     assert_equal spec.name, eval(evaluated, binding, "my_app.gemspec").name
   end
 
-  # Under bundle exec, Bundler evaluates the project's gemspec at every
-  # start, so the files it requires load before the program's first
-  # line, in the order they finish loading; the shipped gemspec requires
-  # the same files, by paths from its own folder, and nothing from
-  # outside the project. Which files those are, the gemspec loads
-  # collaborator says (test/integration/gemspec_loads_test.rb).
-  def test_the_evaluated_gemspec_requires_the_project_files_its_evaluation_loads
+  # Under bundle exec, Bundler evaluates the project's Gemfile and then
+  # its gemspec at every start, so the files the gemspec requires or
+  # loads are loaded before the program's first line; the shipped
+  # gemspec requires and loads the same files, in the same order, by
+  # paths from its own folder, and nothing from outside the project.
+  # Which files those are, the gemspec loads collaborator says, given
+  # the Gemfile (test/integration/gemspec_loads_test.rb).
+  def test_the_evaluated_gemspec_requires_and_loads_the_project_files_its_evaluation_did
     root = FakeProject.write(@dir, name: "versioned_app")
     edition = File.join(root, "lib", "versioned_app", "edition.rb")
     version = File.join(root, "lib", "versioned_app", "version.rb")
@@ -512,16 +513,16 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
     FileUtils.mkdir_p(File.dirname(version))
     FileUtils.touch([edition, version, outside])
     asked = []
-    loads = lambda do |path|
-      asked << File.realpath(path)
-      [outside, edition, version]
+    loads = lambda do |path, gemfile:|
+      asked << [File.realpath(path), File.realpath(gemfile)]
+      [["require", outside], ["load", outside], ["require", edition], ["load", version]]
     end
 
     evaluated = bundle_at(root, gemspec_loads: loads).app_files.fetch("versioned_app.gemspec")
 
-    assert_equal [File.realpath(File.join(root, "versioned_app.gemspec"))], asked
-    assert_includes evaluated, "\nrequire_relative \"lib/versioned_app/edition\"\nrequire_relative \"lib/versioned_app/version\"\n\n" \
-      "Gem::Specification.new do |s|\n"
+    assert_equal [[File.realpath(File.join(root, "versioned_app.gemspec")), File.realpath(File.join(root, "Gemfile"))]], asked
+    assert_includes evaluated, "\nrequire_relative \"lib/versioned_app/edition\"\n" \
+      "load File.expand_path(\"lib/versioned_app/version.rb\", __dir__)\n\nGem::Specification.new do |s|\n"
     refute_includes evaluated, "elsewhere"
   end
 

@@ -10,7 +10,7 @@ module Fledge
     FORCE_RUBY_PLATFORM: String
 
     interface _GemspecLoads
-      def call: (String path) -> Array[String]
+      def call: (String path, gemfile: String) -> Array[[String, String]]
     end
 
     @app: App
@@ -64,7 +64,9 @@ module Fledge
 
     def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
 
-    private def with_requires: (String ruby, String path) -> String
+    private def with_loads: (String ruby, String path) -> String
+
+    private def load_line: (String kind, String path) -> String
 
     private def relative: (String path, String folder) -> String
 

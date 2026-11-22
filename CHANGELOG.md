@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `fledge build` takes a gemspec that needs what the `Gemfile` defined before its `gemspec` line, such as a `Gemfile` that requires `lib/my_cool_app/version` for a gemspec that names `MyCoolApp::VERSION`, as `bundle exec` does; before, it refused it with "Ruby can't evaluate".
+- An app loads the project's files that its gemspec loads with `load`, before the program's first line, as Bundler does under `bundle exec`; before, only the files it required were loaded.
 - On Android, a file a gem's build writes differently for each ABI, such as data an `extconf.rb` generates for its target, is in the app where the gem's Ruby reads it, the app's own ABI's, with the `Makefile` and `mkmf.log`, as under `bundle exec`; before, the app carried none of it, and the gem raised `ENOENT` there. iOS still carries only what every slice's build wrote alike.
 - An `extconf.rb` that uses RubyGems, as sassc's reads `Gem::Platform.local`, compiles for iOS and Android.
 - On iOS, a library for ffi that a gem's `extconf.rb` builds with no Init function, such as sassc's libsass, is embedded as a framework at the path the gem opens.

@@ -46,6 +46,17 @@ class MacBundleTest < Minitest::Test
     refute info([]).key?("CFBundleDocumentTypes"), "an app that opens nothing declares nothing"
   end
 
+  # Delivery's check of a windowed app runs where there is no Ruby to
+  # ask, so it names the macOS floor itself; it must be the one the
+  # bundle writes, or a move of the floor turns Delivery red.
+  def test_windowed_delivery_expects_the_floor_the_bundle_writes
+    script = File.read(File.expand_path("../.github/scripts/deliver-windowed.sh", __dir__))
+    expected = script[/^\s*expect LSMinimumSystemVersion .* (\S+)$/, 1]
+
+    refute_nil expected, "deliver-windowed.sh no longer checks LSMinimumSystemVersion"
+    assert_equal info([]).fetch("LSMinimumSystemVersion"), expected
+  end
+
   # plutil, which writes the bundle's Info.plist, reads them back.
   def test_plutil_reads_them_back
     skip "plutil is macOS's" unless RUBY_PLATFORM.include?("darwin")

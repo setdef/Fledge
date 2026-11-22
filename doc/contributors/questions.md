@@ -60,3 +60,25 @@ Nothing waits on this, and it may never need an answer.
 
 **To reverse.** Say "build our own Ruby for Linux if you have to". Agents then do that when the need arises, with the lowest floor the tools allow.
 
+## K. May Fledge publish copies of the files Gradle downloads, so that CI never needs Maven Central? (open, no deadline)
+
+Nothing waits on this. It decides whether a move of the Android build tools' pins can stall on another company's servers.
+
+**Context.** To build an Android app, Gradle downloads Google's Android build plugin and about 160 other Java libraries from Maven Central and Google's repository. Maven Central sometimes refuses GitHub's runners, which share their internet addresses with everyone else's, for minutes or hours at a time: nine of Fledge's full CI runs failed that way from 13 to 19 November. CI keeps what Gradle downloaded in GitHub's cache, but the first run after the automation moves the plugin's or Gradle's version has nothing kept, because nothing has downloaded the new version yet. You asked on 2026-11-22 that a new upstream release become a Fledge release with nobody pinged: "I don't want to be pinged, I want Fledge to just... get a new release. (on the happy path)". A refusal on that first run fails the move, and the automation then pings you.
+
+**The question.** May Fledge publish, on its own GitHub Releases, as a pre-release that app developers are never sent to, an archive of exactly the files Gradle downloaded, unmodified, with each project's notice and license? CI would then take them from there and never ask Maven Central. Only Fledge's CI would read the archive. A developer's own build asks the repositories as it always has. It needs no new host or account: of a second host you said "If you want a second host, you come to me asking" (2026-11-04), and this uses the one Fledge already has. It does mean Fledge redistributing other projects' software, and AGENTS.md says: "Every line must be clearly Fledge's or clearly attributed."
+
+**What the licenses ask.** Most of the files are under permissive licenses that ask only that the license and notices go with the copy: Apache-2.0, MIT, BSD-3-Clause, the Eclipse Distribution License, Bouncy Castle's license, and JDOM's (its text adds that the name "JDOM" not be used to promote another product). The rest, read from each license's own text:
+- **MPL 1.1** (juniversalchardet, one library). Section 3.6 allows a copy of the compiled library only with a notice "stating that the Source Code version of the Covered Code is available under the terms of this License", saying how and where. Fledge would publish that library's source beside the archive, as it already does for its LGPL libraries.
+- **EPL 2.0, or GPL 2.0 with the Classpath Exception** (some Java EE and JUnit project files). Every file under these is a Maven POM: an XML file that describes a project and holds no program. A POM is its own source, so under EPL 2.0 Fledge would include the license with it (section 3.2) and keep its notices (section 3.3). The GPL option is not needed.
+- **LGPL 2.1 or Apache-2.0** (JNA): Fledge would take the Apache-2.0 option.
+- **No license stated** (two Sonatype parent POMs, XML files with no program in them), and kxml2, whose POM says "Public Domain" and "BSD style" but links to a page that no longer exists. Neither license text was found, so both are unverified. A third-party file whose license cannot be shown would be left out, which might make the archive incomplete.
+
+That list comes from one partial download, of the set for the runtime's own Android library only: that build stopped partway, most likely on a refused download, since the same build from nothing then finished, with 325 files where the first had 298. The full sets, one for each system CI builds Android apps on, may hold more. The tool that makes a set would refuse a file whose license it does not know, and ask you.
+
+**What it buys.** A move of the Android plugin's or Gradle's pin could never stall on Maven Central, and neither could any other run.
+
+**Default.** No copies are published. Instead, every CI job that runs Gradle retries a refused download patiently, as Gradle itself allows: seven tries, waiting from 10 seconds to more than 5 minutes between them, ten and a half minutes in all. Gradle retries only an answer that says the server is busy or failing, or a lost connection, so a build that fails for its own reasons is not slowed; it cannot retry Central's other refusal, answering "not found" for files it has, since that looks like a library that does not exist. A refusal of either kind that outlasts this still fails that day's move, and the automation pings you as it does today. It cannot report the move as "held" instead, because a hold is something a person sets on a pin ahead of time, not something a failed proof can show. The next day's watch tries the move again.
+
+**To reverse.** Say "publish the Gradle sets", and say whether a library under MPL 1.1, with its source published beside it, may be among them. Agents then build the sets as `doc/contributors/design/phone-projects.md`, "The pinned sets", describes.
+

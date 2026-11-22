@@ -14,9 +14,9 @@ Open an [issue](https://github.com/setdef/Fledge/issues). Describe the problem o
 
 Start with [AGENTS.md](AGENTS.md), which is binding, then read:
 
-- [`doc/contributors/handoff.md`](doc/contributors/handoff.md): where the project stands, how to check it, and how to release it.
 - [`doc/contributors/decisions.md`](doc/contributors/decisions.md): the maintainer's own words, which are the only authority.
-- [`doc/contributors/plan/`](doc/contributors/plan): the plans, with the current one last.
+- [`doc/contributors/plan/`](doc/contributors/plan): the plans, with the current one last, which says what is left.
+- [`doc/contributors/design/`](doc/contributors/design): how each part works, and why, with [`architecture.md`](doc/contributors/design/architecture.md) as the overview and [`releases.md`](doc/contributors/design/releases.md) for how a release is made.
 - [`doc/contributors/adr/`](doc/contributors/adr): the decisions behind each behavior.
 - [`doc/contributors/documentation_style.md`](doc/contributors/documentation_style.md): how to write the documents.
 
@@ -32,7 +32,32 @@ Building `examples/native_app` compiles its gems, and ferro-idna among them is a
 
 Run `mise x -- ruby bin/check`. It is one command, the same in bash, zsh, cmd, and PowerShell, on Linux, macOS, and Windows, and it works on a computer that has nothing but git and mise, as a fresh clone on a fresh CI runner does: `mise x` installs whatever tool `mise.toml` pins that is missing, the Ruby among them, and starts `bin/check` with that Ruby. The first run downloads and installs everything, which takes some minutes; after that, setting up takes seconds. `bin/check` runs `bin/setup` (`bin\setup.ps1` on Windows), then checks the commits since `origin/trunk` (or since the commit you name after it): it fails one whose `Provenance: requested` trailer git does not parse, and runs each of the gate's lints that reads a file they change, on just the files they change where it can: RuboCop on the Ruby files (on every file when they change its configuration or `Gemfile.lock`), shellcheck on the shell scripts, actionlint on the workflows, and clang-format on the C; then the REUSE lint, Steep and the RBS checks when they change `lib/` or `sig/`, RDoc's coverage when they change the Ruby it counts, and the unit tests. Among those is the check that `doc/licensing.md`, which is generated, is current: a change to Fledge's version, to `runtime/licenses.yml`, or to the page's generator changes the page, and when the check fails, `mise x -- bundle exec rake licensing` writes it again, with `runtime/audited.yml` ([`doc/contributors/design/license-audit.md`](doc/contributors/design/license-audit.md), "The licensing page"). On a change that touches all of them it takes about half a minute once set up. It leaves to the gate RubyCritic, which fails nothing, the check of the packaged gem, and the integration tests. Run beside it the one test of the behavior your change alters, which no command can guess: `TEST=test/gem_app_build_test.rb` for how `fledge build` lays out a gem-shaped app's gems, `TEST=test/integration/launcher_environment_test.rb` for what the launcher hides from Ruby, and `bundle exec rake parity`, after `bundle exec rake runtime`, for a change to what a runtime holds. Check it on the system where the behavior lives, or on whichever you have when it is the same everywhere, and on several only for a change about how the systems differ.
 
+### After a push
+
 After the push, CI runs the gate, `bundle exec rake`, on every system: every test and every lint, with zero errors and zero warnings. Its Mac jobs run on `macos-15`, the oldest macOS GitHub has, when they build or run a Mac's apps or need Xcode 16.4, and on `macos-26` when they need Xcode 26.5 or any Mac will do; [`doc/contributors/design/releases.md`](doc/contributors/design/releases.md), "Which macOS each job runs on", says why, so a new Mac job follows the same rule.
+
+Every push gets a verdict in minutes from the fast tier: `.github/workflows/fast.yml`, the lint and the unit tests on Linux and Windows, and `.github/workflows/fast-macos.yml`, the unit tests on macOS, whose verdict comes whenever GitHub has a macOS runner for it. Every push to `trunk` also queues `.github/workflows/ci.yml`, about an hour: the gate, every runtime, the tests and parity on each platform, each platform building its own apps, and Delivery on fresh runners. A push never cancels a full run in progress on `trunk`, so each full run covers the batch of commits pushed since the one before it, and the fast tier's verdicts narrow a red batch to its commit (`releases.md`, "Runs, batches, and the release commit"). `ci.yml` calls `ruby-spec.yml`, which runs ruby/spec on stock Ruby and in a built app and fails on an example that fails on one side only (`doc/contributors/design/parity.md`, "ruby/spec"), and every night `ruby-master.yml` builds the runtimes from Ruby's master and keeps the issue "Ruby's master: nightly status" current (`doc/contributors/design/runtimes.md`, "Testing against Ruby's master"). To read the verdicts:
+
+```sh
+gh run list --branch trunk --workflow fast.yml --limit 5     # each push's; fast-macos.yml for macOS
+gh run list --branch trunk --workflow ci.yml --limit 3       # the full runs
+gh run view RUN --json jobs --jq '.jobs[]|select(.conclusion!="success")|[.name,.conclusion]'
+gh run view RUN --log-failed | tail -80                      # why they failed
+```
+
+### When CI fails
+
+Root-cause a failure before you run it again (AGENTS.md, How to work), and once you know why one passes on a second try, add a sentence for it here. These are known:
+
+- **A job cancelled before any step ran, with the annotation "The job was not acquired by Runner of type hosted"**: no runner took it, most often a macOS one. On `trunk`, `.github/workflows/runnerless.yml` runs such jobs again by itself when they are a run's only red, at most twice, and its run, named "Runnerless jobs", says what it did (`releases.md`, "A job no runner took"). When another job of the run failed for real, it leaves the run: root-cause that failure, then `gh run rerun RUN --failed`. On a branch, run it again by hand.
+- **A run cancelled outright**: on a branch, a later push superseded it; on `trunk`, it was waiting and a newer push's run took its place and covers its commits.
+- **A Mobile apps job that times out**: the iOS Simulator and Android emulators sometimes boot slowly. Read the log: if the app never started, run the job again; if it started, the failure is real.
+- **`apk` says `unable to select packages` and `breaks: world[NAME=VERSION]`** in a musl job: not a flake, and a second run fails the same way. Alpine keeps only each package's newest build, so the pin in `.github/scripts/alpine-packages.sh` stopped resolving. Find the version Alpine now has (`apk policy NAME` in the pinned image), move the pin, and run each role of the script in that image before you push.
+- **A .deb's Delivery job whose step "Fetch apt's package lists and the packages the job installs" fails with `apt-get did not fetch the lists and packages in N seconds` or `did not fetch every list and package`**: Ubuntu's archive did not answer in time from any of the hosts the step tries (`.github/scripts/apt-update.sh` says which, and why), and the `Get:` and `Err:` lines above the message say which host gave what. Run the failed job again. An `E:` line from apt, such as `Unable to locate package`, is no flake: a package the job installs, or a `.deb`'s dependency, is not in the archive as named.
+- **mise's Ruby download timing out after 20 seconds**: run the failed jobs again.
+- **A Gradle build that fails with `Received status code 429 from server: Too Many Requests`, or `Could not find` for modules Maven Central has**: Central refused the runner's shared address (`doc/contributors/design/phone-projects.md`, "Gradle's downloads in CI", says what the cache spares and where a failed job's `--info` log is). Run the failed job again, which may land on another runner.
+
+To try a change to CI without disturbing `trunk`, push it to an `experiment/*` branch with a workflow that runs only the jobs in question; the spikes of musl Linux and Windows on ARM ran that way, on `experiment/signing`. A spike's code is thrown away and its findings kept, in `doc/contributors/research/`. Leave every such branch in place: `experiment/submodule-gem` is the git gem with a submodule that `examples/real_gems` locks.
 
 ### Android on Linux
 

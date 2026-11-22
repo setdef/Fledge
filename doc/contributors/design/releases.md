@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Versions and Releases
 
-This document says how Fledge is versioned, what each kind of release may change, which Rubies and platforms a release keeps, and how a release is made and published, with the reason for each. ADR 093 decides that the runtimes a release publishes are prebuilt in Fledge's CI. The steps a release takes are in `doc/contributors/handoff.md`, "How to release". What 1.x freezes is in `doc/contributors/design/public-interface.md`. App developers read the same rules in `doc/runtimes.md`.
+This document says how Fledge is versioned, what each kind of release may change, which Rubies and platforms a release keeps, and how a release is made and published, with the reason for each. ADR 093 decides that the runtimes a release publishes are prebuilt in Fledge's CI. "How a release is made" gives a release's steps and their commands. What 1.x freezes is in `doc/contributors/design/public-interface.md`. App developers read the same rules in `doc/runtimes.md`.
 
 ## Versions
 
@@ -109,13 +109,15 @@ The pins come from the gem, never from the release: a `SHA256SUMS` fetched from 
 
 ## How a release is made
 
-A release is two commits and a tag, within the 14 days CI keeps a run's runtimes. Before the first, `installed.yml` runs by hand on the commit the release commit goes on, installing that commit as the README says ("installed.yml", below).
+A release is two commits and a tag, within the 14 days CI keeps a run's runtimes. Before the first, the commit the release commit goes on has a full CI run that passed on every job, and `installed.yml`, run by hand on it, installs that commit as the README says and passes on every job but the package managers', which it skips ("installed.yml", below, gives the command).
 
-1. **The release commit** moves `Fledge::VERSION`, the CHANGELOG, and every file that names the version, the schema's `$id` and the documented modeline among them. Its CI run on `trunk` builds every runtime and delivers each on a fresh runner, as on every push, and also runs ruby/spec on all seven desktop platforms.
-2. **The pin commit** changes only `lib/fledge/SHA256SUMS`, written by `rake runtime:pin` from the release commit's run. It runs the short CI below.
-3. **The tag** goes on the pin commit, and `release.yml` publishes.
+1. **The release commit**, with the message `chore: release X.Y.Z`. Set `Fledge::VERSION` in `lib/fledge/version.rb`, and change the old version to the new one wherever a file names it: `Gemfile.lock`, README.md and README.rdoc, the `$id` of `lib/fledge/config.schema.json`, and the modeline in `Fledge::Config`'s RDoc, the last two of which `test/config_schema_test.rb` holds to `Fledge::VERSION`. Move the CHANGELOG's Unreleased entries under `## [X.Y.Z] - DATE` and add its link, mark each story the release ships "First released in" in the plan, and run `mise x -- bundle exec rake licensing`, which writes the new version into `doc/licensing.md`. Run `mise x -- ruby bin/check` and push the commit alone. Its CI run on `trunk` builds every runtime and delivers each on a fresh runner, as on every push, and also runs ruby/spec on all seven desktop platforms; wait for it to pass on every job.
+2. **The pin commit**, with the message `chore: pin X.Y.Z's runtimes`, changes only `lib/fledge/SHA256SUMS`, which `mise x -- bundle exec rake runtime:pin` writes from the release commit's run ("The pins"). Commit that file alone (`git commit lib/fledge/SHA256SUMS`), push it alone, and wait for the short CI below.
+3. **The tag** goes on the pin commit: `git tag -a vX.Y.Z -m "Fledge X.Y.Z" PIN_COMMIT`, then `git push origin vX.Y.Z`. `release.yml` checks the tag and publishes ("release.yml", below). Watch its run (`gh run list --workflow release.yml --limit 2`), then `gh release view vX.Y.Z` lists the assets. The run ends by calling `installed.yml`, and the release is verified when that passes.
 
-The pin commit changing only the pins is what ties the published runtimes to the tagged source: every file a runtime is built from is the same in both commits. So the pin commit is the release commit's child, and nothing else lands on `trunk` between them: from the release commit's push to the pin commit's, about the length of the release commit's run. Other pushes do not cancel that run (below). The commands are in `doc/contributors/handoff.md`, "How to release".
+For 1.0.0, the release commit also makes the gem pushable and changes the install line, and after the tag the maintainer publishes the gem by hand; `doc/contributors/releasing-1.0.md` lists both.
+
+The pin commit changing only the pins is what ties the published runtimes to the tagged source: every file a runtime is built from is the same in both commits. So the pin commit is the release commit's child, and nothing else lands on `trunk` between them: from the release commit's push to the pin commit's, about the length of the release commit's run. Other pushes do not cancel that run (below).
 
 ## Runs, batches, and the release commit
 
@@ -133,7 +135,7 @@ The macOS leg runs on `macos-26`, because any current macOS on Apple silicon wil
 
 A run belongs to the commit at the head of its push. A commit pushed with others after it, or one whose waiting run a newer push replaced, has no run of its own, and `tasks/ci_runs.rb` finds nothing for it: it says so, and that the commit has to be pushed alone, as the head of its push. A batch's run proves its head, so a commit inside a batch cannot be a release commit, and cannot be a pin commit's parent.
 
-The release commit and the pin commit are each pushed alone. Each gets a concurrency group of its own, named for its commit, when its message starts `chore: release ` or `chore: pin `, as `doc/contributors/handoff.md`, "How to release", writes them. Its run starts at once, beside any trunk run in progress, and no later push replaces it, so other agents keep pushing while it runs. A release commit with another message falls into trunk's group, where it can wait an hour and be replaced; `ruby-spec.yml` runs on all seven desktop platforms only for the `chore: release ` message too.
+The release commit and the pin commit are each pushed alone. Each gets a concurrency group of its own, named for its commit, when its message starts `chore: release ` or `chore: pin `, as "How a release is made" writes them. Its run starts at once, beside any trunk run in progress, and no later push replaces it, so other agents keep pushing while it runs. A release commit with another message falls into trunk's group, where it can wait an hour and be replaced; `ruby-spec.yml` runs on all seven desktop platforms only for the `chore: release ` message too.
 
 ## A job no runner took
 
@@ -206,9 +208,9 @@ A full run on the tag, or on the pin commit, would test the same bytes again, th
 - that the tagged commit has a run of `ci.yml` on a push to `trunk` whose latest attempt of every job passed or was skipped;
 - that its parent's newest such run passed on every job, none skipped, and that run's runtimes are exactly the release's and each matches its pin.
 
-It asks GitHub's REST API through `tasks/ci_runs.rb`, which reads 50 jobs a page, asks again after a 5xx, and takes each job's latest attempt, so a run whose failed jobs were run again counts once they pass. A tag that fails a check fails before anything is published, naming the run and each job that did not pass. A run refused only because CI had not finished can be run again once it passes.
+It asks GitHub's REST API through `tasks/ci_runs.rb`, which reads 50 jobs a page, asks again after a 5xx, and takes each job's latest attempt, so a run whose failed jobs were run again counts once they pass. A tag that fails a check fails before anything is published, naming the run and each job that did not pass. A run refused only because CI had not finished can be run again once it passes (`gh run rerun RUN`).
 
-Only its Publish job writes: it checks the assets against the pins once more and creates the GitHub Release with them. Run by hand (`workflow_dispatch`) with an existing tag, it runs every check against that tag's commit and runtimes, with the workflow and scripts of the branch it runs from, keeps the assets it would publish as the run's artifact, and publishes nothing unless given `publish`. A change to `release.yml` is tried that way before a release depends on it.
+Only its Publish job writes: it checks the assets against the pins once more and creates the GitHub Release with them. Run by hand (`workflow_dispatch`) with an existing tag, it runs every check against that tag's commit and runtimes, with the workflow and scripts of the branch it runs from, keeps the assets it would publish as the run's artifact, and publishes nothing unless given `publish`. A change to `release.yml` is tried that way before a release depends on it: `gh workflow run release.yml --ref BRANCH -f tag=vLAST`, with the last release's tag.
 
 ## installed.yml
 
@@ -222,7 +224,7 @@ That run shows, on a fresh runner of every platform, what the run after publishi
 
 ## From 1.0: release branches and a human publishing
 
-Before 1.0, every commit and every release is on `trunk`, with no release branches: there is no older series to patch. Releases through 1.0.0 are made by hand, as `doc/contributors/handoff.md` says.
+Before 1.0, every commit and every release is on `trunk`, with no release branches: there is no older series to patch. Releases through 1.0.0 are made by hand, as "How a release is made" says.
 
 After 1.0, Fledge reuses the version and git tooling of RatatuiRuby and Rooibos, which works differently before 1.0.0 and after it (decisions.md, 2026-11-03), and the tooling is not in this repository yet (decisions.md, 2026-11-07). From then on:
 

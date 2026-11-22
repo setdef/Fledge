@@ -276,7 +276,7 @@ class MobileParity
   # ruby and a gem's command by name, which an Android app cannot yet do,
   # though it starts RbConfig.ruby, and iOS lets no app do at all; the
   # phones compare it once the Android runtime can
-  # (doc/contributors/handoff.md, "Where to start next";
+  # (doc/contributors/design/phone-runtimes.md, "The ruby program on Android";
   # doc/contributors/design/parity.md, "The probe").
   NOT_YET = ["gem commands"].freeze
 

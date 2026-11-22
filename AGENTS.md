@@ -5,7 +5,7 @@
 
 # AGENTS.md
 
-This file is binding for every agent that works in this repository. It holds rules and where to look, not the state of the project: the state lives in the files named under Project, and changes with every story.
+This file is binding for every agent that works in this repository. It holds rules and where to look, not the state of the project, and the repository keeps no running account of that state (decisions, 2026-11-21): what Fledge does is in the README and the design documents, what changed is in CHANGELOG.md and git's history, and what is left is in the plan of record.
 
 ## Project
 
@@ -13,14 +13,15 @@ Fledge (the `fledge` gem, https://github.com/setdef/Fledge) ships a Ruby app to 
 
 Pre-1.0, zero external users. Prefer good design over backward compatibility; record every breaking change in CHANGELOG.md.
 
-Where to look:
+Where to look, in this order for a session with no memory of earlier ones:
 
 - `README.md`: what Fledge does today, for app developers.
-- `doc/contributors/handoff.md`: where things stand, how to check them, how to release. A session with no memory of earlier ones starts here.
+- `CONTRIBUTING.md`: how to set up, check a change, and read CI.
 - `doc/contributors/decisions.md`: the maintainer's words. The only authority.
 - `doc/contributors/plan/003.md`: the plan of record, after `001.md` and `002.md`, both done.
-- `doc/contributors/design/`: how each part works, and why. `architecture.md` there is the overview, and indexes the few ADRs in `doc/contributors/adr/`.
+- `doc/contributors/design/`: how each part works, and why. `architecture.md` there is the overview, and indexes the few ADRs in `doc/contributors/adr/`; `releases.md` there says how to release.
 - `doc/contributors/questions.md`: what only the maintainer can answer.
+- `CHANGELOG.md` and git's history (`git log`): what changed since each release, and why.
 
 ## Design precedence
 
@@ -123,7 +124,7 @@ Before 1.0, agents may push `trunk`, create and push tags (`vX.Y.Z`), and create
 - Agents cut 0.x releases as work accumulates, so that the newest 0.x release has what 1.0.0 will (decisions, 2026-11-08).
 - `doc/contributors/account-tests.md` lists every test blocked on the maintainer's developer accounts; update it in the same commit as any change that adds, proves, or removes one (decisions, 2026-11-08).
 - Tag only a commit whose CI is green on every job. A pin commit, which changes only `lib/fledge/SHA256SUMS`, runs a short CI on push: the gate, and a check that its pins match the runtimes of its parent's run, with every other job skipped. It counts as green on every job when that short CI passes and its parent's CI passed on every job with none skipped (`doc/contributors/design/releases.md`, "A pin commit's short CI"). Never delete a release: each runtime's NOTICES links its LGPL source bundle there.
-- A release is two commits and a tag: the release commit, then the pin commit that changes only `lib/fledge/SHA256SUMS`, which is the commit to tag. `release.yml` refuses a tag whose commit changes anything else, or whose pins do not match the runtimes it would publish. Do both commits within 14 days, while CI keeps the runtimes. The steps are in `doc/contributors/handoff.md`, How to release.
+- A release is two commits and a tag: the release commit, then the pin commit that changes only `lib/fledge/SHA256SUMS`, which is the commit to tag. `release.yml` refuses a tag whose commit changes anything else, or whose pins do not match the runtimes it would publish. Do both commits within 14 days, while CI keeps the runtimes. The steps are in `doc/contributors/design/releases.md`, "How a release is made".
 - Agents never publish to RubyGems.org: no `gem push`, ever. Publishing there is a human-only activity, now and after Fledge is on RubyGems.org (decisions, 2026-11-02). From 1.0.0 Fledge is also released on RubyGems.org by the maintainer, and every release still has its git tag and GitHub Release (decisions, 2026-11-03 and 2026-11-04); agents prepare the release and the maintainer publishes it. Every release still gets its tag, which the schema's address needs; from 1.0, release branches, backports, and `stable` follow RatatuiRuby's tooling, as `doc/contributors/design/releases.md`, "From 1.0: release branches and a human publishing", describes. This rule binds agents and is not a position of the project, so documents for developers do not say Fledge is never published there. The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses.
 
 ## Changelog

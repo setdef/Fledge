@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Fledge's Architecture
 
-This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads `doc/contributors/handoff.md` for where things stand. Seven ADRs hold the decisions that shape the rest: ADR 001 the shape of a desktop app, ADR 010 that each platform's app is built on that platform, ADR 093 that desktop runtimes are prebuilt in Fledge's CI, ADR 035 where their Ruby comes from, ADR 081 how the app's program runs, and ADRs 079 and 012 a phone's Ruby and project. Every other choice is in the design document for its subject.
+This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads the plan of record for what is left and CHANGELOG.md for what each release changed. Seven ADRs hold the decisions that shape the rest: ADR 001 the shape of a desktop app, ADR 010 that each platform's app is built on that platform, ADR 093 that desktop runtimes are prebuilt in Fledge's CI, ADR 035 where their Ruby comes from, ADR 081 how the app's program runs, and ADRs 079 and 012 a phone's Ruby and project. Every other choice is in the design document for its subject.
 
 ## The parts
 

@@ -212,13 +212,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: `questions.md` entry C, which asked for a device cloud account or an Apple-silicon Mac with hardware virtualization so CI could run Android's arm64-v8a build, after no free GitHub-hosted runner could boot an arm64-v8a emulator.]
 
-*Governs:* agents spend no money on Android's arm64-v8a proof: no device cloud, paid runner, or machine; the story waits for a free way to run it. *Applied in:* Plan 003, "Android on arm64"; ADR 079 and ADR 012; the handoff.
+*Governs:* agents spend no money on Android's arm64-v8a proof: no device cloud, paid runner, or machine; the story waits for a free way to run it. *Applied in:* Plan 003, "Android on arm64"; ADR 079 and ADR 012.
 
 > We can't spend money on this right now.
 
 [re: `questions.md` entries A and B, asked in the same session as the Android answer above: an Apple Developer account for a real iPhone and iPad, App Review, Developer ID, and notarization, and a Windows code signing certificate or Azure Trusted Signing account. The orchestrator had said the Apple account was probably due, and the Windows half was not. The maintainer's words follow the question of whether it was the last responsible moment for each.]
 
-*Governs:* agents open and pay for no account, certificate, device, or service, including Apple's, Microsoft's, and a certificate authority's, until the maintainer says otherwise; the stories that need one wait. *Applied in:* Plan 003, "iOS on a real device, and App Review" and "Notarization and real trust chains"; ADR 012 and `doc/contributors/design/signing.md`, "What CI proves, and the stand-ins", which already list what is unproven; the handoff; `questions.md`, entry D.
+*Governs:* agents open and pay for no account, certificate, device, or service, including Apple's, Microsoft's, and a certificate authority's, until the maintainer says otherwise; the stories that need one wait. *Applied in:* Plan 003, "iOS on a real device, and App Review" and "Notarization and real trust chains"; ADR 012 and `doc/contributors/design/signing.md`, "What CI proves, and the stand-ins", which already list what is unproven; `questions.md`, entry D.
 
 ## 2026-11-02
 
@@ -230,13 +230,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the orchestrator's briefing of what it needed: (1) `questions.md` entry D, whether 1.0 may ship with iOS on a real device and App Review, real signing trust chains, and Android arm64 unproven; (2) two unsent drafts, one asking Rooibos to add CI jobs that build its app with a tagged Fledge and one telling Tokra what Fledge now has, the first of which completed Plan 003's wrapper story only if Rooibos's own CI ran it; (3) optional work, of which the `.deb` installer was the cheapest. The numbering is the maintainer's, answering that briefing.]
 
-*Governs:* 1.0 waits until at least some of the unproven things are proven; releases may move from the `0.0.1.pre.N` form to ordinary 0.MINOR.PATCH versions, beginning with 0.1.0; Fledge depends on no wrapper's repository, wrappers depend on Fledge; a `.deb` installer is built. *Applied in:* Plan 003; the handoff; `questions.md` (entry D removed); the drafts; the next release.
+*Governs:* 1.0 waits until at least some of the unproven things are proven; releases may move from the `0.0.1.pre.N` form to ordinary 0.MINOR.PATCH versions, beginning with 0.1.0; Fledge depends on no wrapper's repository, wrappers depend on Fledge; a `.deb` installer is built. *Applied in:* Plan 003; `questions.md` (entry D removed); the drafts; the next release.
 
 > iPadOS, iOS, and Android are our priorities for 0.2.0.
 
 [re: the Lota session's questions about native extensions on phones, which Plan 003 had placed after 1.0, and the maintainer's wish for Lota games on iPhone, iPad, and Android.]
 
-*Governs:* the work for release 0.2.0 is phones: iPadOS, iOS, and Android, ahead of the stories that wait on money. *Applied in:* Plan 003; the handoff.
+*Governs:* the work for release 0.2.0 is phones: iPadOS, iOS, and Android, ahead of the stories that wait on money. *Applied in:* Plan 003.
 
 ## 2026-11-02, later
 
@@ -343,7 +343,7 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 
 [re: the maintainer's wish to publish Dot Popper on the Play Store, App Store, Mac App Store, Windows Store, and brew, after the rulings of 2026-10-28 and 2026-11-02 that no money is spent now.]
 
-*Governs:* the maintainer will spend money on the accounts and certificates the stores need (Apple, Microsoft, Google, a certificate authority, and others), which ends the earlier rulings that none is spent; the maintainer opens and pays for each account, since an agent never opens one, even a free one; agents plan and prepare the work that needs them (signing, notarization, store submissions) and say what each costs. *Applied in:* `doc/contributors/handoff.md`, Plan 003's store and signing stories.
+*Governs:* the maintainer will spend money on the accounts and certificates the stores need (Apple, Microsoft, Google, a certificate authority, and others), which ends the earlier rulings that none is spent; the maintainer opens and pays for each account, since an agent never opens one, even a free one; agents plan and prepare the work that needs them (signing, notarization, store submissions) and say what each costs. *Applied in:* Plan 003's store and signing stories.
 
 
 ## 2026-11-07
@@ -372,13 +372,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the orchestrator's offer to fix the stale statements in the handoff and to write the checklist for the one `gem push`, made while the repository's readiness for 1.0.0 was being weighed.]
 
-*Governs:* agents finish everything for 1.0.0 that the maintainer's developer accounts do not block; what those accounts block is tested by the maintainer, or by an agent he prompts to run the test. It names no test and no account, and it does not say which tests must pass before 1.0.0 is tagged. *Applied in:* `doc/contributors/handoff.md`; `doc/contributors/releasing-1.0.md`; `doc/contributors/questions.md`, question C; Plan 003.
+*Governs:* agents finish everything for 1.0.0 that the maintainer's developer accounts do not block; what those accounts block is tested by the maintainer, or by an agent he prompts to run the test. It names no test and no account, and it does not say which tests must pass before 1.0.0 is tagged. *Applied in:* `doc/contributors/releasing-1.0.md`; `doc/contributors/questions.md`, question C; Plan 003.
 
 > Yes, cut v0.X.Y releases as appropriate as we go along; my ideal is that v0.A.B (where A.B is the highest 0.X.Y release ever made) has the same features/fixes/etc. as v1.0.0 will when it gets cut.
 
 [re: whether agents should keep cutting 0.x releases as work accumulates, given the 2026-11-08 goal of a repository that is 1.0.0-ready pending only the tests the maintainer's accounts block.]
 
-*Governs:* agents release 0.x versions as work accumulates, so that the newest 0.x release carries what 1.0.0 will; the 1.0.0 release then adds only what the maintainer's own testing and decision add. *Applied in:* AGENTS.md, Releasing; `doc/contributors/handoff.md`.
+*Governs:* agents release 0.x versions as work accumulates, so that the newest 0.x release carries what 1.0.0 will; the 1.0.0 release then adds only what the maintainer's own testing and decision add. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`, "Versions".
 
 > Keep a list of account-block tests current and clear for me to work through myself; I may decide at some point which ones I want to keep blocking 1.0.0 and which ones I don't.
 
@@ -394,7 +394,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: the Lota agent's proposal that Lota and Fledge require Ruby 4.1, previews included, after Fledge's Ruby 4.1 spike (`doc/contributors/research/2026-11-09-ruby-4.1-spike.md`), and the maintainer's word before it that he would agree only if both agents did. Both agreed: Fledge's orchestrating agent on the grounds that a 1.0 on Ruby 4.0 would oblige Fledge to keep 4.0's runtimes through all of 1.x (`doc/contributors/design/releases.md`, "Ruby minors and runtimes"), on condition that the spike's open problems are fixed or explained before the first release on 4.1; the Lota agent on condition that Lota's own move lands together with that release. Fledge's orchestrating agent had also proposed a last release on Ruby 4.0.9 first, which these words leave out.]
 
-*Governs:* Fledge's releases carry Ruby 4.1 preview runtimes in place of Ruby 4.0's, from the first release whose CI passes on every job with them; Ruby 4.0 is dropped now, but for the one release the next quotation allows; Fledge 1.0.0 is not released before Ruby 4.1.0 is, and so waits on Ruby 4.1.0 as well as on the maintainer's account-blocked testing. *Applied in:* Plan 003; `doc/contributors/design/releases.md`, "Ruby minors and runtimes"; Plan 003, "1.0"; the handoff.
+*Governs:* Fledge's releases carry Ruby 4.1 preview runtimes in place of Ruby 4.0's, from the first release whose CI passes on every job with them; Ruby 4.0 is dropped now, but for the one release the next quotation allows; Fledge 1.0.0 is not released before Ruby 4.1.0 is, and so waits on Ruby 4.1.0 as well as on the maintainer's account-blocked testing. *Applied in:* Plan 003; `doc/contributors/design/releases.md`, "Ruby minors and runtimes"; Plan 003, "1.0".
 
 > I am okay with a last-release on Ruby 4.0.9 first, as long as it doesn't meaningfully delay "now". Call it "now-ish" :)
 
@@ -460,7 +460,7 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 > My goal by 7:59am is to get Fledge to that release candidate release. My testing happens _on_ the release candidate, which, if it all passes, will be simply made into 1.0.0.
 
-*Governs:* one 0.x release is the release candidate for 1.0.0, and has everything 1.0.0 will; the maintainer's testing is done on that release; and if all of it passes, 1.0.0 is made from it, with no feature or fix added between the two. The hour is that night's goal and governs nothing after it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `doc/contributors/handoff.md`, "What is left before 1.0"; `questions.md`, question C.
+*Governs:* one 0.x release is the release candidate for 1.0.0, and has everything 1.0.0 will; the maintainer's testing is done on that release; and if all of it passes, 1.0.0 is made from it, with no feature or fix added between the two. The hour is that night's goal and governs nothing after it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `questions.md`, question C.
 
 ## 2026-11-21
 
@@ -476,7 +476,7 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 [re: the orchestrating agent's statement that the release it was about to call the candidate for 1.0.0 left known defects unfixed, of which it named three: two gems whose extensions define one global name clash on a phone; a library for ffi that a gem's package holds built for iOS had never been tried; and CI ran none of the iOS integration tests.]
 
-*Governs:* the candidate for 1.0.0 is a release with no bug the project knows of. A known defect is fixed, or shown not to be one, before a release is called the candidate; it is not listed beside it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `doc/contributors/handoff.md`, "Where to start next".
+*Governs:* the candidate for 1.0.0 is a release with no bug the project knows of. A known defect is fixed, or shown not to be one, before a release is called the candidate; it is not listed beside it. *Applied in:* `doc/contributors/design/releases.md`, "Versions".
 
 > we've gotta figure out how to start testing not just Windows on much more recent rubies.
 
@@ -498,5 +498,5 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 [re: `doc/contributors/handoff.md`, the page where agents kept where the project stands, the bugs it knows of, and what to do next, which the maintainer deleted from his checkout with these words.]
 
-*Governs:* the repository holds no running account of the project's state for the next session; that is kept outside it. What a contributor needs to check or release Fledge stays in the contributor documents. *Applied in:* the removal of `doc/contributors/handoff.md`; AGENTS.md, Project.
+*Governs:* the repository holds no running account of the project's state for the next session; that is kept outside it. What a contributor needs to check or release Fledge stays in the contributor documents. *Applied in:* the removal of `doc/contributors/handoff.md`, whose checks and release steps are in CONTRIBUTING.md, "After a push" and "When CI fails", and `doc/contributors/design/releases.md`, "How a release is made"; AGENTS.md, Project.
 

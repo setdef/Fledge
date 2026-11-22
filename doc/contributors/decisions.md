@@ -517,3 +517,10 @@ The orchestrating agent received these words first-hand from the maintainer.
 [re: a question agents had put to him, 2026-11-22: whether a limit the platform itself imposes (Android cutting a process title at the length of the app's identifier; a gem that publishes no build for a platform) is a bug the candidate for 1.0.0 may not have.]
 
 *Governs:* the question is withdrawn. The agents read his words so: a fault in a platform, a gem, or another project is that project's bug, not one of Fledge's known bugs, and it does not keep a release from being the candidate. Fledge's part is to show it from the other project's own documentation or source, and to say it where a developer reads. Anything Fledge itself could close is Fledge's bug. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; the removal of question G from `questions.md`.
+
+> I don't think we can call any version without that a release candidate, then.
+
+[re: 2026-11-22. The orchestrating agent had said that when a library inside a runtime (OpenSSL, say) gets a security fix, nothing reaches an app's users until Fledge moves a pin and releases, whoever compiled the Ruby; that noticing a newer upstream release could be automated with a scheduled GitHub Actions job; and that Fledge had no such job for the inputs it pins. Before that, of noticing security updates being Fledge's duty, he had said: "This scares me. Unless it can be fully automated e.g. with GitHub Actions."]
+
+*Governs:* the candidate for 1.0.0 has automation that notices, with no person or agent remembering to look, when an input a runtime is built from has a newer release upstream. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; the scheduled workflow that watches the pins.
+

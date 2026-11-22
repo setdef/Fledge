@@ -21,7 +21,7 @@ module Fledge
 
     private def self.control_file: (Identity identity, String package, String architecture, Integer size, Array[String] depends) -> String
 
-    private def self.dependencies: (String work, String root, Array[String] libraries) -> Array[String]
+    private def self.dependencies: (String work, String root, Array[String] libraries, String cpu) -> Array[String]
 
     private def self.line: (String text) -> String
 

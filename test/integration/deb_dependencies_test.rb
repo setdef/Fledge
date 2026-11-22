@@ -7,6 +7,7 @@
 
 require_relative "../test_helper"
 require_relative "../support/deb"
+require_relative "../support/binaries"
 require "open3"
 
 # The dependencies of a .deb Fledge::Deb writes, as
@@ -14,6 +15,10 @@ require "open3"
 # compiles. test/deb_test.rb covers the rest of the package.
 class DebDependenciesTest < Minitest::Test
   include DebHelpers
+
+  # The platform of this computer's processor, whose files cc compiles,
+  # so that a check of the package's processor judges them.
+  HOST = (RbConfig::CONFIG["host_cpu"] == "aarch64") ? ARM : X86
 
   # A gem's extension, compiled here, that needs zlib from the
   # distribution, as a wrapper of a desktop library needs that library.
@@ -42,11 +47,27 @@ class DebDependenciesTest < Minitest::Test
     need_dpkg_deb
     Dir.mktmpdir do |dir|
       extension = zlib_extension(dir)
-      depends = field(build(File.join(dir, "listed").tap { |d| FileUtils.mkdir_p(d) }, extension:, system_libraries: ["libz.so.1"]), "Depends")
-      plain = field(build(File.join(dir, "plain").tap { |d| FileUtils.mkdir_p(d) }, extension:), "Depends")
+      depends = field(build(File.join(dir, "listed").tap { |d| FileUtils.mkdir_p(d) }, platform: HOST, extension:, system_libraries: ["libz.so.1"]), "Depends")
+      plain = field(build(File.join(dir, "plain").tap { |d| FileUtils.mkdir_p(d) }, platform: HOST, extension:), "Depends")
 
       assert_match(/\Alibc6 \(>= 2\.39\), zlib1g \(>= [^)]+\)\z/, depends)
       assert_equal "libc6 (>= 2.39)", plain
+    end
+  end
+
+  # A gem for every platform carries a library for each processor, and
+  # the one for another than the app's needs the listed library too. The
+  # app never loads it, so dpkg-shlibdeps, which would look for that
+  # processor's package of the library, is not asked about it: the
+  # dependencies are those of the app's own processor's files.
+  def test_a_file_for_another_processor_adds_no_dependency
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      extension = zlib_extension(dir)
+      other = (HOST == ARM) ? Binaries.elf(needed: %w[libz.so.1 libstdc++.so.6 ld-linux-x86-64.so.2]) : Binaries.elf(cpu: "aarch64", needed: %w[libz.so.1 libc.so.6])
+      depends = field(build(dir, platform: HOST, extension:, files: { "libwrapper.other.so" => other }, system_libraries: ["libz.so.1"]), "Depends")
+
+      assert_match(/\Alibc6 \(>= 2\.39\), zlib1g \(>= [^)]+\)\z/, depends)
     end
   end
 end

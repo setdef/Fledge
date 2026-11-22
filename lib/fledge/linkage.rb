@@ -258,12 +258,11 @@ module Fledge
       @os == "linux" || (@os == "darwin" && library.start_with?("@rpath/"))
     end
 
-    # Whether the app's process could load +binary+: when it holds code
-    # for the app's processor, among others in a universal Mach-O file,
-    # or when no processor was asked for, or none could be read, so that
-    # a file is never let off for what its reader did not say.
+    # Whether the app's process could load +binary+ (Binary#for?), or
+    # no processor was asked for.
     private def native?(binary)
-      @cpu.nil? || binary.architectures.empty? || binary.architectures.include?(@cpu)
+      cpu = @cpu
+      cpu.nil? || binary.for?(cpu)
     end
 
     # Whether the operating system provides +library+.

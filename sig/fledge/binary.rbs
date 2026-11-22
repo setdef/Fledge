@@ -28,6 +28,8 @@ module Fledge
 
     def self.parse: (Hash[String, String] files, readers: Readers) -> Hash[String, Binary]
 
+    def for?: (String cpu) -> bool
+
     private def self.archive: () -> Binary
 
     private def self.with_assemblies: (String path, Binary binary) -> Binary

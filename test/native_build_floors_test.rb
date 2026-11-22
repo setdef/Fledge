@@ -44,6 +44,25 @@ class NativeBuildFloorsTest < Minitest::Test
     ], found
   end
 
+  # A build that leaves a library for each processor, as a gem for every
+  # platform carries one, loads only its own: a file for another
+  # processor never loads in the app, so its floor is no problem.
+  def test_an_elf_file_for_another_processor_is_not_judged_by_the_platforms_glibc
+    TestReaders.need(self, :elf)
+    arm = Binaries.elf(cpu: "aarch64", needed: ["libc.so.6"], versions: %w[GLIBC_2.17 GLIBC_2.41])
+    x86 = Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.2.5 GLIBC_2.41])
+    files = { "lib/libfoo.aarch64.so" => arm, "lib/libfoo.x86_64.so" => x86 }
+
+    assert_equal ["lib/libfoo.x86_64.so"], problems("x86_64-linux", files).map { |problem| problem[%r{lib/\S+}] }
+    assert_equal ["lib/libfoo.aarch64.so"], problems("aarch64-linux", files).map { |problem| problem[%r{lib/\S+}] }
+  end
+
+  def test_a_mach_o_file_for_another_processor_is_not_judged_by_the_platforms_macos
+    TestReaders.need(self, :macho)
+
+    assert_empty problems("arm64-darwin", { "lib/libfoo.x86_64.bundle" => Binaries.macho(cpu: "x86_64", minos: "15.0") })
+  end
+
   def test_a_platform_without_that_floor_judges_no_file_by_it
     assert_empty problems("x86_64-linux", { "lib/redcarpet.bundle" => Binaries.macho(minos: "27.0") })
     assert_empty problems("x64-mingw-ucrt", { "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.99]) })

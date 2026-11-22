@@ -11,18 +11,22 @@ module Fledge
   class NativeBuild
     # Why a compiled file would not load on the oldest system the runtime
     # runs on: a newer macOS than it, or a newer glibc, which a compiler
-    # targets when it builds on a newer computer.
+    # targets when it builds on a newer computer. A file for another
+    # processor than the platform's (Binary#for?), which a build may leave
+    # beside its own as a gem for every platform carries one for each,
+    # never loads in the app, so its needs are no problem.
     module Floors # :nodoc:
       # The problems of +gem+'s compiled +entries+ on +platform+, one per
-      # file that needs a newer system than the platform's oldest, as
-      # +readers+ (Fledge::Binary::Readers) read them.
+      # file for its processor that needs a newer system than the
+      # platform's oldest, as +readers+ (Fledge::Binary::Readers) read
+      # them.
       def self.problems(gem, entries, platform, readers: Binary::Readers.local(platform.os))
         floors = { macho: platform.macos_minimum, elf: platform.glibc_minimum }.compact
         files = entries.filter_map do |entry|
           content = entry.content.to_s
           [entry.path, content] if entry.type == :file && floors.key?(Binary.format_of(content.byteslice(0, 8).to_s))
         end
-        Binary.parse(files.to_h, readers:).filter_map do |path, binary|
+        Binary.parse(files.to_h, readers:).select { |_, binary| binary.for?(platform.cpu) }.filter_map do |path, binary|
           (binary.format == :macho) ? macos(gem, path, binary, platform) : glibc(gem, path, binary, platform)
         end
       end

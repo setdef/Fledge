@@ -207,6 +207,28 @@ module Fledge
       end
     end
 
+    # Whether a process on +cpu+ (Fledge::Platform#cpu) could load the
+    # file: when it holds code for that processor, among others in a
+    # universal Mach-O file, or when its #architectures could not be
+    # read, so that no check lets a file off for what its reader did not
+    # say.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   binary.architectures            # => ["aarch64"]
+    #   binary.for?("x86_64")           # => false
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def for?(cpu)
+      architectures.empty? || architectures.include?(cpu)
+    end
+
     private_class_method def self.archive # :nodoc:
       new(format: :archive, needed: [], rpaths: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil, soname: nil,
         architectures: [])

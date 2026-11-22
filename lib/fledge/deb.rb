@@ -83,7 +83,7 @@ module Fledge
         documents(root, package, license:, changelog:)
         control = File.join(root, "DEBIAN")
         FileUtils.mkdir_p(control, mode: 0o755)
-        depends = ["libc6 (>= #{Platform::GLIBC_MINIMUM})", *dependencies(work, root, system_libraries)]
+        depends = ["libc6 (>= #{Platform::GLIBC_MINIMUM})", *dependencies(work, root, system_libraries, platform.cpu)]
         File.write(File.join(control, "control"), control_file(identity, package, ARCHITECTURES.fetch(platform.name), installed_size(root), depends))
         Command.run("dpkg-deb", "--build", "--root-owner-group", root, to, install: INSTALL)
       end
@@ -217,19 +217,23 @@ module Fledge
     end
 
     # The packages that provide +libraries+, as dpkg-shlibdeps finds
-    # them for the compiled files in the tree at +root+ that need one:
-    # each with the oldest version whose symbols the files use, from the
-    # package's own symbols or shlibs file (Debian Policy 8.6), and any
-    # other package those files need, but not glibc's, which +Depends+
-    # names at the runtime's floor already. None when +libraries+ is
-    # empty. dpkg-shlibdeps reads <tt>debian/control</tt> in the folder
-    # it runs in, so +work+ gets an empty one; the tree's
+    # them for the compiled files in the tree at +root+ for +cpu+'s
+    # processor that need one: each with the oldest version whose symbols
+    # the files use, from the package's own symbols or shlibs file
+    # (Debian Policy 8.6), and any other package those files need, but
+    # not glibc's, which +Depends+ names at the runtime's floor already.
+    # None when +libraries+ is empty. A file for another processor
+    # (Binary#for?), which a gem for every platform carries beside its
+    # own, never loads in the app, so it is not asked about: for it
+    # dpkg-shlibdeps would look for that processor's packages of the
+    # libraries. dpkg-shlibdeps reads <tt>debian/control</tt> in the
+    # folder it runs in, so +work+ gets an empty one; the tree's
     # <tt>DEBIAN</tt> folder tells it the files are a package's.
-    private_class_method def self.dependencies(work, root, libraries)
+    private_class_method def self.dependencies(work, root, libraries, cpu)
       return [] if libraries.empty?
 
       files = Dir.glob("usr/lib/**/*", base: root).map { |path| File.join(root, path) }
-      binaries = Binary.read(files, readers: Binary::Readers.local("linux")).select { |_, binary| binary.format == :elf }
+      binaries = Binary.read(files, readers: Binary::Readers.local("linux")).select { |_, binary| binary.format == :elf && binary.for?(cpu) }
       needing = binaries.select { |_, binary| binary.needed.intersect?(libraries) }.keys
       return [] if needing.empty?
 

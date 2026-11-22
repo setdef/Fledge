@@ -111,6 +111,9 @@ needed: [
     { format: "elf", cpu: "arm", needed: %w[libc.so.6 libGLX.so.0] },
     { format: "macho", cpu: "x86_64", needed: %w[/usr/lib/libSystem.B.dylib /usr/local/opt/libxml2/lib/libxml2.2.dylib] },
     { format: "pe", cpu: "aarch64", needed: %w[KERNEL32.dll libxml2-16.dll] },
+    { format: "elf", cpu: "aarch64", needed: %w[libc.so.6], versions: %w[GLIBC_2.17 GLIBC_2.41] },
+    { format: "macho", cpu: "x86_64", needed: [], minos: "15.0" },
+    { format: "elf", cpu: "aarch64", needed: %w[libz.so.1 libc.so.6] },
   ].freeze
 
   # The processor each format's files are for unless a spec names

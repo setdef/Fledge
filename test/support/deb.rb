@@ -42,13 +42,18 @@ module DebHelpers
     folder
   end
 
-  def build(dir, identity: self.identity, platform: X86, system_libraries: [], extension: nil)
+  # The .deb of the app in #folder, with the compiled file at
+  # +extension+ as a gem's <tt>lib/wrapper.so</tt>, and each of +files+,
+  # by its name, beside it.
+  def build(dir, identity: self.identity, platform: X86, system_libraries: [], extension: nil, files: {})
     folder = folder(dir, identity)
+    gem = "lib/ruby/gems/4.0.0/gems/wrapper-1.0.0/lib"
     if extension
-      path = File.join(folder, "lib/ruby/gems/4.0.0/gems/wrapper-1.0.0/lib/wrapper.so")
+      path = File.join(folder, gem, "wrapper.so")
       FileUtils.mkdir_p(File.dirname(path))
       FileUtils.cp(extension, path)
     end
+    files.each { |name, content| Fledge::Entry.file("#{gem}/#{name}", content).write_into(folder) }
     Fledge::Deb.write(identity:, folder:, platform:, to: File.join(dir, "My App-#{platform.name}.deb"), system_libraries:)
   end
 

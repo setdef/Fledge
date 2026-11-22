@@ -66,5 +66,9 @@ class NativeBuildFloorsTest < Minitest::Test
   def test_a_platform_without_that_floor_judges_no_file_by_it
     assert_empty problems("x86_64-linux", { "lib/redcarpet.bundle" => Binaries.macho(minos: "27.0") })
     assert_empty problems("x64-mingw-ucrt", { "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.99]) })
+    assert_empty problems("arm64-darwin", {
+      "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.99]),
+      "lib/redcarpet.dll" => Binaries.pe(needed: %w[KERNEL32.dll]),
+    })
   end
 end

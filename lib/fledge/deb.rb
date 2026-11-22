@@ -232,8 +232,8 @@ module Fledge
     private_class_method def self.dependencies(work, root, libraries, cpu)
       return [] if libraries.empty?
 
-      files = Dir.glob("usr/lib/**/*", base: root).map { |path| File.join(root, path) }
-      binaries = Binary.read(files, readers: Binary::Readers.local("linux")).select { |_, binary| binary.format == :elf && binary.for?(cpu) }
+      files = Dir.glob("usr/lib/**/*", base: root).map { |path| File.join(root, path) }.select { |path| elf?(path) }
+      binaries = Binary.read(files, readers: Binary::Readers.local("linux")).select { |_, binary| binary.for?(cpu) }
       needing = binaries.select { |_, binary| binary.needed.intersect?(libraries) }.keys
       return [] if needing.empty?
 
@@ -242,6 +242,13 @@ module Fledge
       folders = binaries.keys.map { |path| "-l#{File.dirname(path)}" }.uniq
       output = Command.read("dpkg-shlibdeps", "-O", "-xlibc6", *folders, *needing.map { |path| "-e#{path}" }, chdir: work, install: SHLIBDEPS)
       output[/^shlibs:Depends=(.*)$/, 1].to_s.split(",").map(&:strip).reject(&:empty?)
+    end
+
+    # Whether the file at +path+ is an ELF file, which alone Linux loads:
+    # a gem for every platform carries its Mach-O and PE files too, and
+    # this computer's objdump may read no Mach-O file.
+    private_class_method def self.elf?(path)
+      File.file?(path) && !File.symlink?(path) && Binary.format_of(File.binread(path, 8).to_s) == :elf
     end
 
     # +text+ on one line, as a control field holds it.

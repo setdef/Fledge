@@ -23,6 +23,8 @@ module Fledge
 
     private def self.dependencies: (String work, String root, Array[String] libraries, String cpu) -> Array[String]
 
+    private def self.elf?: (String path) -> bool
+
     private def self.line: (String text) -> String
 
     private def self.installed_size: (String root) -> Integer

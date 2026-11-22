@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `fledge build` judges only a gem's compiled files for the app's processor, so a gem that carries a library for each of several, as raylib-bindings carries `lib/libraylib.aarch64.so` beside `lib/libraylib.x86_64.so`, is no longer refused for what another processor's file needs; and a universal Mach-O file no longer stops a macOS build with "objdump could not read".
-- A gem's compiled file for another processor no longer fails the oldest-glibc or oldest-macOS check, nor stops a `.deb` build with dpkg-shlibdeps's "cannot find library".
+- A gem's compiled file for another processor no longer fails the oldest-glibc or oldest-macOS check, nor stops a `.deb` build with dpkg-shlibdeps's "cannot find library"; and a gem's macOS or Windows library no longer stops a `.deb` build with "no tool on this computer reads macho files".
 - `fledge build` on Windows builds an app whose gems have executables when the temporary folder's name is outside ASCII, as it is under an account named `Jürgen` or `日本`; it failed at "Writing the gems' executables".
 - `fledge build` ships a gem whose executable is named outside ASCII, such as `日本`; the runtime's RubyGems 4.1 gave the name as a BINARY string, and the build failed in `JSON.generate`.
 - `fledge build` on Linux and macOS ships a gem whose library needs another the gem carries under a different file name, by the name that library gives itself (its SONAME, or its `@rpath/` install name on macOS), which the system's loader answers with that library once the gem has loaded it, as raylib-bindings' raygui and physac need `libraylib.so.600` and `@rpath/libraylib.600.dylib`; it refused the gem.

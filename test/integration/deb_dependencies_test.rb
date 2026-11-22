@@ -70,4 +70,20 @@ class DebDependenciesTest < Minitest::Test
       assert_match(/\Alibc6 \(>= 2\.39\), zlib1g \(>= [^)]+\)\z/, depends)
     end
   end
+
+  # Such a gem carries its macOS and Windows libraries too, as
+  # raylib-bindings carries lib/libraylib.arm64.dylib and
+  # lib/libraylib.dll beside its .so files. Linux loads neither, and a
+  # Linux computer's objdump may read no Mach-O file, so the .deb reads
+  # only its ELF files.
+  def test_a_file_for_another_system_adds_no_dependency
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      extension = zlib_extension(dir)
+      others = { "libwrapper.arm64.dylib" => Binaries.macho, "wrapper.dll" => Binaries.pe(needed: %w[KERNEL32.dll]) }
+      depends = field(build(dir, platform: HOST, extension:, files: others, system_libraries: ["libz.so.1"]), "Depends")
+
+      assert_match(/\Alibc6 \(>= 2\.39\), zlib1g \(>= [^)]+\)\z/, depends)
+    end
+  end
 end

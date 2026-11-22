@@ -11,6 +11,7 @@ require "json"
 require "net/http"
 require "open3"
 require "rubygems"
+require "time"
 require "tmpdir"
 require "uri"
 require "yaml"
@@ -183,11 +184,24 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
           return read.call(response) if response.is_a?(Net::HTTPSuccess)
           return get(URI.join(url, response["location"]).to_s, redirects - 1, &read) if response.is_a?(Net::HTTPRedirection) && redirects.positive?
 
-          raise Error, "#{url} answered #{response.code}"
+          raise Error, "#{url} answered #{response.code}#{spent(response)}"
         end
       end
     rescue SystemCallError, IOError, Timeout::Error, OpenSSL::SSL::SSLError => e
       raise Error, "#{url} could not be read: #{e.message}"
+    end
+
+    # Why GitHub's API refused, when it was its rate limit: a 403 or 429
+    # with x-ratelimit-remaining 0 ("Rate limits for the REST API",
+    # docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api),
+    # which is not a missing release, and which a token lifts from the
+    # 60 requests an hour an anonymous caller gets.
+    private def spent(response)
+      return "" unless %w[403 429].include?(response.code) && response["x-ratelimit-remaining"] == "0"
+
+      reset = Time.at(Integer(response["x-ratelimit-reset"], exception: false) || 0).utc.iso8601
+      anonymous = ", and it was asked with no token (GITHUB_TOKEN), which GitHub allows 60 requests an hour" unless @token && !@token.empty?
+      ": its rate limit for this caller is spent until #{reset}#{anonymous}"
     end
 
     private def decompress(archive)

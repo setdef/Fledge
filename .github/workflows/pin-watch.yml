@@ -123,6 +123,9 @@ jobs:
       - name: Move, prove, and land
         id: prove
         env:
+          # The move asks GitHub's API for each release's digests: with no token,
+          # 60 requests an hour, which runners share.
+          GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
           PIN_PROVE_LAND: ${{ github.event_name != 'workflow_dispatch' || inputs.land }}
         run: .github/scripts/pin-prove.sh tmp/pin-watch.json
@@ -167,6 +170,9 @@ jobs:
 
       - name: Move, prove, and land ${{ matrix.pin }}
         env:
+          # The move asks GitHub's API for each release's digests: with no token,
+          # 60 requests an hour, which runners share.
+          GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
           PIN: ${{ matrix.pin }}
           PIN_PROVE_LAND: ${{ github.event_name != 'workflow_dispatch' || inputs.land }}

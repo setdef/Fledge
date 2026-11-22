@@ -149,6 +149,27 @@ class PinWatchTest < Minitest::Test
     server&.stop
   end
 
+  # GitHub's API answers 403 or 429 with x-ratelimit-remaining 0 when a
+  # caller's allowance is spent ("Rate limits for the REST API",
+  # docs.github.com), which the run's reader must not take for a
+  # missing release.
+  def test_the_fetch_says_when_a_rate_limit_is_spent
+    spent = { "x-ratelimit-remaining" => "0", "x-ratelimit-reset" => "1795368308" }
+    server = LoopbackServer.new("/spent" => [403, spent, "{}"], "/slow" => [429, spent, "{}"], "/denied" => [403, {}, "no"])
+    anonymous = PinWatch::Fetch.new(timeout: 5)
+    with_token = PinWatch::Fetch.new(token: "t", timeout: 5)
+
+    error = assert_raises(PinWatch::Error) { anonymous.call(server.url("/spent")) }
+    assert_equal "#{server.url('/spent')} answered 403: its rate limit for this caller is spent until 2026-11-22T17:25:08Z, " \
+      "and it was asked with no token (GITHUB_TOKEN), which GitHub allows 60 requests an hour", error.message
+    error = assert_raises(PinWatch::Error) { with_token.call(server.url("/slow")) }
+    assert_equal "#{server.url('/slow')} answered 429: its rate limit for this caller is spent until 2026-11-22T17:25:08Z",
+      error.message
+    assert_equal "#{server.url('/denied')} answered 403", assert_raises(PinWatch::Error) { anonymous.call(server.url("/denied")) }.message
+  ensure
+    server&.stop
+  end
+
   HELD = { "pins" => ["tool"], "github" => "owner/tool", "tag" => '\Av(?<version>\d+\.\d+\.\d+)\z', "hold" => "A person reads its release notes." }.freeze
 
   def releases(*dated)

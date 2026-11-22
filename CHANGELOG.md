@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `fledge build` on Linux and macOS ships a gem whose library needs another the gem carries under a different file name, by the name that library gives itself (its SONAME, or its `@rpath/` install name on macOS), which the system's loader answers with that library once the gem has loaded it, as raylib-bindings' raygui and physac need `libraylib.so.600` and `@rpath/libraylib.600.dylib`; it refused the gem.
 - `fledge build android` refuses an app with a C or C++ extension built as a file when the project's `build.gradle` sets no `useLegacyPackaging`, naming the line to add, where it warned and built an app that raised `LoadError` at the extension's `require`: the Android Gradle plugin's default keeps the native libraries stored, as `false` does.
 - `fledge build` for Windows lets a gem's DLL need any DLL that is in System32 on every Windows, as delvewheel 1.13.2 lists them for x64 and for ARM64, such as Direct2D's `d2d1.dll` and DirectWrite's `DWrite.dll`, which LibUI's DLL needs; it refused every DLL but some fifty it knew.
 - `fledge build` for Windows, refusing a gem whose DLL needs Microsoft's Visual C++ runtime (`VCRUNTIME140.dll`, `MSVCP140.dll`), says that Windows does not include it and names `windows: visual_c_runtime` and a build of the gem that links it statically, where it told the developer to rebuild the gem.

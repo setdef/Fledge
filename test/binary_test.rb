@@ -38,6 +38,20 @@ class BinaryTest < Minitest::Test
     assert_equal "27.1", one(Binaries.macho(minos: "27.1")).macos_minimum
   end
 
+  # The name a library gives itself, which a loader matches a later need
+  # against once the library is loaded: an ELF file's SONAME, a Mach-O
+  # dylib's install name (LC_ID_DYLIB). A file with none, or a bundle,
+  # has none.
+  def test_reads_the_name_a_library_gives_itself
+    TestReaders.need(self, :elf, :macho)
+
+    assert_equal "libraylib.so.600", one(Binaries.elf(needed: %w[libc.so.6], soname: "libraylib.so.600")).soname
+    assert_nil one(Binaries.elf(needed: %w[libc.so.6])).soname
+    assert_equal "@rpath/libraylib.600.dylib",
+      one(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], install_name: "@rpath/libraylib.600.dylib")).soname
+    assert_nil one(Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib])).soname
+  end
+
   # A file built for iOS names no macOS to run on.
   def test_a_mach_o_file_for_another_platform_says_no_macos
     TestReaders.need(self, :macho)

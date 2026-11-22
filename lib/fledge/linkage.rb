@@ -188,12 +188,13 @@ module Fledge
       binaries = Binary.parse(loadable, readers: @readers).sort.to_h
       shipped = (binaries.keys.map { |path| File.basename(path) } + @provided).map(&:downcase)
       dyld = Dyld.new(binaries) if @os == "darwin"
+      loaded = binaries.values.filter_map(&:soname)
       binaries.flat_map do |path, binary|
         next [] if binary.needed.any? { |library| library.match?(RUBY_DLL) && !shipped.include?(library.downcase) }
 
         binary.needed.reject { |library| system?(library) }.filter_map do |library|
           if !shipped.include?(File.basename(library).downcase)
-            unprovided(label, path, library)
+            unprovided(label, path, library) unless loaded_by_name?(library, loaded)
           elsif dyld && !@provided.map(&:downcase).include?(File.basename(library).downcase)
             unreached(label, path, library, dyld, binaries.keys)
           end
@@ -226,6 +227,23 @@ module Fledge
         "fledge.yml's linux: system_libraries lists #{library}, which none of the gems' compiled files needs beyond what every " \
           "Linux distribution, Fledge's runtime, and the gems themselves provide. Remove it."
       end
+    end
+
+    # Whether +library+, which no file of the gem is named, is a name
+    # one of the gem's libraries gives itself (+loaded+, each one's
+    # Binary#soname), by which the loader gives the need that library
+    # once the gem has loaded it by its path: glibc's, on +linux+ (not
+    # musl's, whose source was not read for it), for any name equal to a
+    # loaded library's SONAME (_dl_map_object in glibc 2.39's
+    # <tt>elf/dl-load.c</tt>, lines 1959 to 1985), dyld's for an
+    # <tt>@rpath/</tt> name equal to a loaded image's install name, before
+    # it searches a run path (Loader::getLoader in dyld-1378's
+    # <tt>Loader.cpp</tt>, lines 797 to 808). Whether the gem loads it
+    # first is in its Ruby, which this check does not read.
+    private def loaded_by_name?(library, loaded)
+      return false unless loaded.include?(library)
+
+      @os == "linux" || (@os == "darwin" && library.start_with?("@rpath/"))
     end
 
     # Whether the operating system provides +library+.

@@ -201,6 +201,50 @@ class LinkageTest < Minitest::Test
     }, android
   end
 
+  # raylib-bindings carries libraylib as lib/libraylib.x86_64.so, whose
+  # SONAME is libraylib.so.600, and its raygui and physac libraries need
+  # libraylib.so.600, a name no file of the gem has. The gem loads
+  # libraylib first, by its path, and glibc's loader then gives a later
+  # need of that name the library already loaded under it (_dl_map_object
+  # in glibc 2.39's elf/dl-load.c): the gem runs, and is not refused.
+  # Without the library that names itself so, the need is refused, and
+  # on musl's Linux, whose loader's source was not read for this, too.
+  def test_a_library_the_gem_carries_under_another_file_name_answers_to_its_soname_on_linux
+    raygui = Binaries.elf(needed: %w[libraylib.so.600 libc.so.6])
+
+    assert_empty problems("linux", {
+      "lib/libraylib.x86_64.so" => Binaries.elf(needed: %w[libc.so.6], soname: "libraylib.so.600"),
+      "lib/raygui.x86_64.so" => raygui,
+    })
+    assert_equal 1, problems("linux", { "lib/raygui.x86_64.so" => raygui }).size
+    musl = problems("linux-musl", {
+      "lib/libraylib.x86_64.so" => Binaries.elf(needed: %w[libc.so.6], soname: "libraylib.so.600"),
+      "lib/raygui.x86_64.so" => raygui,
+    })
+    assert(musl.any? { |problem| problem.include?("lib/raygui.x86_64.so needs libraylib.so.600") }, musl.join("\n"))
+  end
+
+  # On macOS, dyld gives a need of @rpath/NAME an image already loaded
+  # whose install name is that, before it searches any run path
+  # (Loader::getLoader in dyld-1378's Loader.cpp), as raylib-bindings'
+  # raygui.arm64.dylib finds libraylib.arm64.dylib, whose install name is
+  # @rpath/libraylib.600.dylib. dyld does so for @rpath alone: a need of
+  # @loader_path/NAME is looked for as a file, which the gem does not
+  # have, whatever the install name of the copy it does have.
+  def test_a_dylib_the_gem_carries_under_another_file_name_answers_to_its_rpath_install_name_on_macos
+    assert_empty problems("darwin", {
+      "lib/libraylib.arm64.dylib" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], install_name: "@rpath/libraylib.600.dylib"),
+      "lib/raygui.arm64.dylib" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib @rpath/libraylib.600.dylib]),
+    })
+
+    refused = problems("darwin", {
+      "lib/libraylib.arm64.dylib" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], install_name: "@loader_path/libraylib.600.dylib"),
+      "lib/raygui.arm64.dylib" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib @loader_path/libraylib.600.dylib]),
+    })
+    assert_equal 1, refused.size
+    assert_includes refused.first, "lib/raygui.arm64.dylib needs @loader_path/libraylib.600.dylib, which neither darwin"
+  end
+
   def test_a_file_for_another_ruby_is_never_loaded_and_never_judged
     assert_empty problems("windows", { "lib/ext/3.4/ext.so" => Binaries.pe(needed: %w[x64-ucrt-ruby340.dll libother.dll]) },
       provided: ["x64-ucrt-ruby400.dll"])

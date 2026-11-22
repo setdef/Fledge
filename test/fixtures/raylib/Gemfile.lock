@@ -1,0 +1,26 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ffi (1.17.4)
+    raylib-bindings (0.8.4)
+      ffi (~> 1.16)
+    raylib-bindings (0.8.4-arm64-darwin)
+      ffi (~> 1.16)
+
+PLATFORMS
+  aarch64-linux
+  arm64-darwin
+  ruby
+  x86_64-linux
+
+DEPENDENCIES
+  raylib-bindings (= 0.8.4)
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  ffi (1.17.4) sha256=bcd1642e06f0d16fc9e09ac6d49c3a7298b9789bcb58127302f934e437d60acf
+  raylib-bindings (0.8.4) sha256=86a54799e653a387db2cca9af74f36c8c2facdf870d5c74d137a7528669b7afe
+  raylib-bindings (0.8.4-arm64-darwin) sha256=a031686b36ecb35b624b8a4699a3e951e9deb91e2fe15a0212890a17d7867059
+
+BUNDLED WITH
+  4.0.20

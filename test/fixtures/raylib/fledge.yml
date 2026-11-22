@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+name: Raylib Probe
+kind: console
+# raylib-bindings' libraylib needs libglvnd's libGLX.so.0 and
+# libOpenGL.so.0, which manylinux does not let a gem assume, so the
+# project names them as its gems' to load from the distribution.
+linux:
+  system_libraries: [libGLX.so.0, libOpenGL.so.0]

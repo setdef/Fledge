@@ -9,7 +9,8 @@ SPDX-License-Identifier = "CC0-1.0"
 # place for a header; nor does Cargo its lockfile.
 [[annotations]]
 path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock', 'examples/nokogiri_app/Gemfile.lock',
-  'examples/native_app/.bundle/config', 'examples/nokogiri_app/.bundle/config',
+  'examples/native_app/.bundle/config', 'examples/nokogiri_app/.bundle/config', 'test/fixtures/raylib/Gemfile.lock',
+  'test/fixtures/raylib/.bundle/config',
   'examples/mobile_app/Gemfile.lock', 'examples/real_gems/Gemfile.lock',
   'examples/real_gems/.bundle/config', 'examples/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock',
   'examples/cmake_phone/Gemfile.lock', 'examples/rake_phone/Gemfile.lock', 'examples/ffi_phone/Gemfile.lock', 'examples/ffi_library_phone/Gemfile.lock',

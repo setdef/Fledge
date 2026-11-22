@@ -13,9 +13,10 @@ module Fledge
     attr_reader macos_minimum: String?
     attr_reader glibc_minimum: String?
     attr_reader subsystem: Integer?
+    attr_reader soname: String?
 
     def self.new: (format: Symbol, needed: Array[String], rpaths: Array[String], assemblies: Array[String], macos_minimum: String?, glibc_minimum: String?,
-      subsystem: Integer?) -> instance
+      subsystem: Integer?, soname: String?) -> instance
 
 
     def self.format_of: (String bytes) -> Symbol?

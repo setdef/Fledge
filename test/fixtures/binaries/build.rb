@@ -77,7 +77,8 @@ class FixtureBuilder
       exported += versions.each_index.map { |offset| symbol(needed.size + offset) } if library == "libc.so.6"
       elf_stub(dir, library, exported, (library == "libc.so.6") ? versions : [])
     end
-    run(tool("ld.lld"), "-shared", "--no-as-needed", "--hash-style=gnu", object, *stubs, "-o", output)
+    soname = spec[:soname] ? ["-soname", spec.fetch(:soname)] : []
+    run(tool("ld.lld"), "-shared", "--no-as-needed", "--hash-style=gnu", *soname, object, *stubs, "-o", output)
   end
 
   # A shared object named +library+ that defines +symbols+, the last of
@@ -108,7 +109,8 @@ class FixtureBuilder
     target = (spec.fetch(:platform) == "ios") ? "arm64-apple-ios#{spec.fetch(:minos)}" : "arm64-apple-macos#{spec.fetch(:minos)}"
     run(tool("clang"), "--target=#{target}", "-c", source(dir, needed.size), "-o", object)
     stubs = needed.each_with_index.map { |library, index| tbd(dir, library, index, spec.fetch(:platform)) }
-    run(tool("lld"), "-flavor", "darwin", "-arch", "arm64", "-bundle", "-platform_version", spec.fetch(:platform), spec.fetch(:minos),
+    kind = spec[:install_name] ? ["-dylib", "-install_name", spec.fetch(:install_name)] : ["-bundle"]
+    run(tool("lld"), "-flavor", "darwin", "-arch", "arm64", *kind, "-platform_version", spec.fetch(:platform), spec.fetch(:minos),
       spec.fetch(:minos), object, *stubs, "-o", output)
   end
 

@@ -32,7 +32,9 @@ module Binaries
 
   # Every file the tests use, as what build.rb makes it from: its format
   # and the libraries it needs, and for ELF the glibc symbol versions it
-  # needs, for Mach-O the platform and oldest version it is built for,
+  # needs and the SONAME it gives itself, if any, for Mach-O the platform
+  # and oldest version it is built for and, for a dylib rather than a
+  # bundle, its install name,
   # for PE the DLLs it delay-loads and whether it is a console or a GUI
   # program rather than a DLL.
   CATALOG = [
@@ -69,6 +71,12 @@ needed: [
     { format: "macho", needed: [], minos: "27.0" },
     { format: "macho", needed: [], minos: "27.1" },
     { format: "macho", needed: %w[/usr/lib/libSystem.B.dylib], platform: "ios" },
+    { format: "elf", needed: %w[libc.so.6], soname: "libraylib.so.600" },
+    { format: "elf", needed: %w[libraylib.so.600 libc.so.6] },
+    { format: "macho", needed: %w[/usr/lib/libSystem.B.dylib], install_name: "@rpath/libraylib.600.dylib" },
+    { format: "macho", needed: %w[/usr/lib/libSystem.B.dylib @rpath/libraylib.600.dylib] },
+    { format: "macho", needed: %w[/usr/lib/libSystem.B.dylib], install_name: "@loader_path/libraylib.600.dylib" },
+    { format: "macho", needed: %w[/usr/lib/libSystem.B.dylib @loader_path/libraylib.600.dylib] },
     { format: "pe", needed: %w[libgmp-10.dll KERNEL32.dll] },
     { format: "pe", needed: %w[KERNEL32.dll] },
     { format: "pe", needed: %w[x64-ucrt-ruby400.dll KERNEL32.dll api-ms-win-crt-heap-l1-1-0.dll libxml2-16.dll] },
@@ -107,16 +115,17 @@ needed: [
   }.freeze
 
   # An x86-64 ELF shared object that needs +needed+, and from libc.so.6
-  # the symbol versions +versions+, such as "GLIBC_2.34", followed by
-  # +payload+.
-  def self.elf(needed: [], payload: "", versions: [])
-    file({ format: "elf", needed:, versions: }, payload)
+  # the symbol versions +versions+, such as "GLIBC_2.34", whose SONAME
+  # is +soname+ (none when +nil+), followed by +payload+.
+  def self.elf(needed: [], payload: "", versions: [], soname: nil)
+    file({ format: "elf", needed:, versions:, soname: }.compact, payload)
   end
 
   # An arm64 Mach-O bundle that loads +needed+, built for +platform+
-  # (macos or ios) +minos+ and later, followed by +payload+.
-  def self.macho(needed: [], payload: "", minos: "14.0", platform: "macos")
-    file({ format: "macho", needed:, minos:, platform: }, payload)
+  # (macos or ios) +minos+ and later, followed by +payload+; with an
+  # +install_name+, a dylib that names itself so.
+  def self.macho(needed: [], payload: "", minos: "14.0", platform: "macos", install_name: nil)
+    file({ format: "macho", needed:, minos:, platform:, install_name: }.compact, payload)
   end
 
   # An x86-64 PE DLL, or a +program+ for the console or windows
@@ -134,7 +143,7 @@ needed: [
   # The file name of +spec+'s file in DIR.
   def self.name(spec)
     spec = normalize(spec)
-    extension = { "elf" => "so", "macho" => "bundle", "pe" => spec[:program] ? "exe" : "dll" }.fetch(spec.fetch(:format))
+    extension = { "elf" => "so", "macho" => spec[:install_name] ? "dylib" : "bundle", "pe" => spec[:program] ? "exe" : "dll" }.fetch(spec.fetch(:format))
     "#{spec.fetch(:format)}-#{Digest::SHA256.hexdigest(spec.sort.to_h.inspect)[0, 12]}.#{extension}"
   end
 

@@ -28,6 +28,8 @@ module Fledge
 
     def unused: () -> Array[String]
 
+    private def loaded_by_name?: (String library, Array[String] loaded) -> bool
+
     private def system?: (String library) -> bool
 
     private def unprovided: (String label, String path, String library) -> String?

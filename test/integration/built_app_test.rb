@@ -33,6 +33,7 @@ class BuiltAppTest < Minitest::Test
   PROGRAMS = File.expand_path("../../examples/programs", __dir__)
   PROBE = File.expand_path("../fixtures/parity", __dir__)
   CONSOLE = File.expand_path("../fixtures/console", __dir__)
+  RAYLIB = File.expand_path("../fixtures/raylib", __dir__)
   DELIVER_CONSOLE = File.expand_path("../../.github/scripts/deliver-console.sh", __dir__)
   EXE = File.expand_path("../../exe/fledge", __dir__)
   LIB = File.expand_path("../../lib", __dir__)
@@ -822,6 +823,43 @@ class BuiltAppTest < Minitest::Test
     assert err.end_with?("Install it from your Linux distribution's packages, then run the app again\n"), err
   ensure
     File.write(config, original) if config && original
+  end
+
+  # The libraries test/fixtures/raylib's libraylib needs of a Linux
+  # computer, by architecture, as the gem's
+  # lib/libraylib.ARCH.so names them: those manylinux lets a gem assume,
+  # and those the fixture lists as the distribution's (system_libraries).
+  RAYLIB_NEEDS = {
+    "x86_64" => [%w[libX11.so.6 libXext.so.6], %w[libGLX.so.0 libOpenGL.so.0]],
+    "aarch64" => [%w[libX11.so.6 libXext.so.6 libICE.so.6 libSM.so.6], %w[libGLX.so.0 libOpenGL.so.0]],
+  }.freeze
+
+  # raylib-bindings' raygui and physac libraries need libraylib by its
+  # SONAME or install name, which no file of the gem is named, and load
+  # because the gem loads libraylib first (test/fixtures/raylib/main.rb).
+  # fledge build ships it, and the app loads all three as bundle exec
+  # does. On Linux a computer without a library the fixture lists stops
+  # the app before Ruby starts, naming it; one without a library
+  # manylinux assumes cannot run this test.
+  def test_a_gem_whose_libraries_need_each_other_by_their_own_names_ships_and_loads
+    skip "test/fixtures/raylib locks raylib-bindings for macOS and glibc's Linux only" if @platform.windows? || @platform.musl?
+    absent = []
+    if @platform.os == "linux"
+      have = IO.popen(["/sbin/ldconfig", "-p"], &:read)
+      assumed, listed = RAYLIB_NEEDS.fetch(@platform.name.split("-").first).map { |names| names.reject { |name| have.include?("#{name} (") } }
+      skip "this computer lacks #{assumed.join(', ')}, which manylinux lets a gem assume" unless assumed.empty?
+      absent = listed
+    end
+
+    out, err, status = run_app({}, built(RAYLIB))
+
+    if absent.empty?
+      assert_equal ["raylib: GetRandomValue(7, 7) = 7\nraygui: GuiGetState() = 0\nphysac: GetPhysicsBodiesCount() = 0\n", "", 0],
+        [out, err, status.exitstatus]
+    else
+      assert_equal ["", 72], [out, status.exitstatus]
+      assert_match(/\ARaylib Probe: this app needs (#{absent.map { |name| Regexp.escape(name) }.join('|')}), which this computer does not have/, err)
+    end
   end
 
   # The gem-shaped app: exe/my_cool_app, with i18n and the

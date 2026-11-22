@@ -56,7 +56,7 @@ module Fledge
   #--
   # SPDX-SnippetEnd
   #++
-  class Binary < Data.define(:format, :needed, :rpaths, :assemblies, :macos_minimum, :glibc_minimum, :subsystem)
+  class Binary < Data.define(:format, :needed, :rpaths, :assemblies, :macos_minimum, :glibc_minimum, :subsystem, :soname)
     ##
     # :attr_reader: format
     # The file's format: <tt>:elf</tt>, <tt>:macho</tt>, <tt>:pe</tt>, or
@@ -93,6 +93,14 @@ module Fledge
     # :attr_reader: subsystem
     # A PE program's Subsystem: 2 for a GUI program, 3 for a console
     # one; +nil+ for other formats.
+
+    ##
+    # :attr_reader: soname
+    # The name a shared library gives itself, which its system's loader
+    # matches a later need against once the library is loaded: an ELF
+    # file's DT_SONAME, or a Mach-O dylib's install name (LC_ID_DYLIB);
+    # +nil+ for a file that gives none, and for PE, whose loader matches
+    # a loaded DLL by its file name.
 
     # The bytes each format's files begin with: ELF's, a static
     # archive's, a 64-bit and a 32-bit little-endian Mach-O file's and a
@@ -185,7 +193,7 @@ module Fledge
     end
 
     private_class_method def self.archive # :nodoc:
-      new(format: :archive, needed: [], rpaths: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil)
+      new(format: :archive, needed: [], rpaths: [], assemblies: [], macos_minimum: nil, glibc_minimum: nil, subsystem: nil, soname: nil)
     end
 
     # +binary+, with the assemblies the manifest in the PE file at +path+

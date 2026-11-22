@@ -10,8 +10,9 @@ module Fledge
     # What <tt>objdump -p</tt> prints, GNU's and LLVM's alike, which
     # print ELF's dynamic section and version references in one form (LLVM
     # matches GNU's): a header line per file, "FILE: file format
-    # elf64-x86-64", then for ELF a <tt>NEEDED</tt> line per library and,
-    # under "Version References:", a line per symbol version, and for
+    # elf64-x86-64", then for ELF a <tt>NEEDED</tt> line per library, a
+    # <tt>SONAME</tt> line for a library that names itself, and, under
+    # "Version References:", a line per symbol version, and for
     # Mach-O each load command as <tt>otool -l</tt> prints it (LLVM's
     # objdump is otool's own code, llvm-otool).
     module Objdump # :nodoc:
@@ -57,16 +58,26 @@ module Fledge
         if format.start_with?("mach-o")
           commands = section.split(/^Load command \d+\s*$/)
           Binary.new(format: :macho, needed: dylibs(commands), rpaths: rpaths(commands), assemblies: [], macos_minimum: macos(commands),
-            glibc_minimum: nil, subsystem: nil)
+            glibc_minimum: nil, subsystem: nil, soname: install_name(commands))
         else
           Binary.new(format: :elf, needed: section.scan(/^\s+NEEDED\s+(\S+)\s*$/).flatten.map(&:to_s).uniq, rpaths: [], assemblies: [],
-            macos_minimum: nil, glibc_minimum: glibc(section), subsystem: nil)
+            macos_minimum: nil, glibc_minimum: glibc(section), subsystem: nil, soname: section[/^\s+SONAME\s+(\S+)\s*$/, 1])
         end
       end
 
       # The run paths the LC_RPATH load +commands+ name, in order.
       def self.rpaths(commands)
         commands.filter_map { |command| command[/^\s*path (.+?) \(offset \d+\)\s*$/, 1] if command[/^\s*cmd (\S+)\s*$/, 1] == "LC_RPATH" }
+      end
+
+      # The install name a dylib's LC_ID_DYLIB load command among
+      # +commands+ gives it, or +nil+ for a file that has none, such as a
+      # bundle.
+      def self.install_name(commands)
+        commands.each do |command|
+          return command[/^\s*name (.+?) \(offset \d+\)\s*$/, 1] if command[/^\s*cmd (\S+)\s*$/, 1] == "LC_ID_DYLIB"
+        end
+        nil
       end
 
       # The dylibs the load +commands+ name, once each.

@@ -68,13 +68,13 @@ Nothing waits on this.
 
 Nothing waits on this, and it may never need an answer.
 
-**Context.** An app built by Fledge for mainstream Linux needs glibc 2.39 or newer, which is Ubuntu 24.04, Debian 13, and recent Fedora. It does not run on Ubuntu 22.04, Debian 12, RHEL 8 or 9 and their clones, or Amazon Linux 2023. The floor comes from the Ruby that Fledge takes prebuilt from rv-ruby, which is compiled on Ubuntu 24.04. You accepted it on 2026-10-26: "2.39 is fine". On 2026-11-22, shown the list of systems it leaves out, you said "Oof."
+**Context.** Until 2026-11-22, an app built by Fledge for mainstream Linux needed glibc 2.39 or newer, which is Ubuntu 24.04, Debian 13, and recent Fedora, and did not run on Ubuntu 22.04, Debian 12, RHEL 8 or 9 and their clones, or Amazon Linux 2023. That floor came from the Ruby Fledge took prebuilt from rv-ruby, which is compiled on Ubuntu 24.04. You accepted it on 2026-10-26: "2.39 is fine". On 2026-11-22, shown the list of systems it leaves out, you said "Oof."
 
-**What is being done.** The prebuilt Rubies that mise downloads (jdx/ruby, a fork of rv-ruby) are compiled for glibc 2.17, and an agent measured that. Agents are moving Fledge's mainstream Linux runtime to that Ruby, which lowers the floor to cover every system named above without Fledge compiling Ruby itself. That choice between two upstream projects is the agents', and is under way.
+**What was done.** The prebuilt Rubies that mise downloads (jdx/ruby, a fork of rv-ruby) are compiled for glibc 2.17. Fledge's mainstream Linux runtime now takes its Ruby from there, and compiles its own small parts on AlmaLinux 8, so an app needs glibc 2.28 or newer, which covers every system named above, without Fledge compiling Ruby itself.
 
-**The question.** Only if that fails (the other project's Ruby does not pass Fledge's checks, or stops being published): should Fledge then compile its own Ruby for mainstream Linux, as it already does for Alpine Linux and for phones, to keep the lower floor? It would mean Fledge maintains a build of Ruby on its most used Linux platforms, and that keeping its built-in libraries (OpenSSL and the others) current becomes Fledge's own work, which the automation you asked for on 2026-11-22 would have to cover.
+**The question.** Only if that stops working (the other project's Ruby stops passing Fledge's checks, or stops being published): should Fledge then compile its own Ruby for mainstream Linux, as it already does for Alpine Linux and for phones, to keep the lower floor? It would mean Fledge maintains a build of Ruby on its most used Linux platforms, and that keeping its built-in libraries (OpenSSL and the others) current becomes Fledge's own work, which the automation you asked for on 2026-11-22 would have to cover.
 
-**Default.** No. If the other project's Ruby cannot be used, Fledge stays on rv-ruby and the floor stays at glibc 2.39, by your words of 2026-10-26, and agents tell you.
+**Default.** No. If the other project's Ruby can no longer be used, Fledge goes back to rv-ruby and the floor back to glibc 2.39, by your words of 2026-10-26, and agents tell you.
 
 **To reverse.** Say "build our own Ruby for Linux if you have to". Agents then do that when the need arises, with the lowest floor the tools allow.
 

@@ -75,7 +75,9 @@ chmod +x "$image"
 
 depends=$(dpkg-deb --field "$folder/$name-$platform.deb" Depends)
 echo "Depends: $depends"
-printf '%s' "$depends" | grep -Eq "^libc6 \(>= 2\.39\), libpng16-16t64 \(>= [^)]+\)$" || fail "the .deb depends on '$depends'"
+# glibc's version is the floor, 2.28, or the newer one the gem's file,
+# compiled on this runner, needs.
+printf '%s' "$depends" | grep -Eq "^libc6 \(>= 2\.(2[89]|[3-9][0-9])\), libpng16-16t64 \(>= [^)]+\)$" || fail "the .deb depends on '$depends'"
 echo "ok: the .deb depends on libc6 and libpng16-16t64"
 
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$folder/$name-$platform.deb" >/dev/null || fail "apt could not install the .deb"

@@ -55,12 +55,14 @@ module Fledge
     # (doc/contributors/design/releases.md, "Platform floors").
     MACOS_MINIMUM = "14.0"
 
-    # The oldest glibc a Linux runtime runs on, a floor the maintainer
-    # accepted (decision 7; doc/contributors/design/releases.md,
-    # "Platform floors"). A runtime's build fails if any of its files
-    # needs a newer one; they need 2.28 today, built in manylinux_2_28
-    # (doc/contributors/design/runtimes.md, "The glibc floor").
-    GLIBC_MINIMUM = "2.39"
+    # The oldest glibc a Linux runtime runs on: manylinux_2_28's, the
+    # image Fledge's own compiled parts are built in, as low as a
+    # maintained upstream gives it (decisions, 2026-11-22;
+    # doc/contributors/design/releases.md, "Platform floors"). A
+    # runtime's build fails if any of its files needs a newer one
+    # (doc/contributors/design/runtimes.md, "The glibc floor"). An app
+    # whose gems need a newer one needs that (Fledge::Deb).
+    GLIBC_MINIMUM = "2.28"
 
     ##
     # :attr_reader: name
@@ -269,7 +271,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::Platform.find("x86_64-linux").glibc_minimum # => "2.39"
+    #   Fledge::Platform.find("x86_64-linux").glibc_minimum # => "2.28"
     #--
     # SPDX-SnippetEnd
     #++

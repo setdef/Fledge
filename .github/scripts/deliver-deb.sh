@@ -49,7 +49,7 @@ deb=$(cd "$(dirname "$deb")" && pwd)/$(basename "$deb")
 expect Package "$(dpkg-deb --field "$deb" Package)" "$package"
 expect Version "$(dpkg-deb --field "$deb" Version)" "$version"
 expect Architecture "$(dpkg-deb --field "$deb" Architecture)" "$(dpkg --print-architecture)"
-expect Depends "$(dpkg-deb --field "$deb" Depends)" "libc6 (>= 2.39)"
+expect Depends "$(dpkg-deb --field "$deb" Depends)" "libc6 (>= 2.28)"
 expect Homepage "$(dpkg-deb --field "$deb" Homepage)" "https://github.com/setdef/Fledge"
 expect Description "$(dpkg-deb --field "$deb" Description)" "Says hello from a window
  Hello Window is the example windowed app of Fledge, which ships a Ruby

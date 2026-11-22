@@ -150,6 +150,7 @@ module Fledge
           contents = same_ruby(RuntimeContents.read(runtime), platform)
           files = gems ? gems.for(platform, runtime: contents) : [] # : Array[Entry]
           gems&.carried_libraries&.each { |name, source| @err.puts "Carrying #{name} from #{source}" }
+          gems&.warnings&.each { |warning| @err.puts "fledge build: warning: #{warning}" }
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
           written(Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:, bundler: gems&.bundler,
             visual_c_runtime: gems&.visual_c_runtime || [], log: @err), out)

@@ -37,12 +37,13 @@ module Fledge
   # gem's extensions are built in its checkout into Bundler's own
   # extensions folder, as Bundler builds them. The compiler is the
   # developer's: Xcode's command line tools on macOS (with the runtime's
-  # oldest macOS as the deployment target), the C compiler on Linux (whose
-  # glibc must be no newer than the runtime's oldest, 2.39),
+  # oldest macOS as the deployment target), the C compiler on Linux, whose
+  # glibc the files then need,
   # MSYS2's UCRT64 toolchain on Windows, found as RubyInstaller finds it
   # for <tt>gem install</tt>, and cargo for a Rust extension. Then it
   # returns each compiled gem as a Fledge::CompiledGem, with anything it
-  # compiled that needs a newer macOS or glibc than the runtime's oldest.
+  # compiled that needs a newer macOS than the runtime's oldest as a
+  # problem, and a newer glibc as a warning (NativeBuild::Floors).
   #
   # Use it in <tt>fledge build</tt> when a target is the platform Fledge
   # runs on.
@@ -309,10 +310,11 @@ module Fledge
       built = BuiltFiles.of(package, gem_dir)
       extensions = files_in(extension_dir).reject { |entry| LOGS.include?(entry.path) }
       build_info = File.join(home, "build_info", "#{package.spec.full_name}.info")
+      loaded = BuiltFiles.loaded(built, package.spec.require_paths) + extensions
       CompiledGem.new(
         package:, built:, extensions:, extension_dir: relative_to_home(extension_dir), build_args: args,
         build_info: File.file?(build_info) ? File.read(build_info) : nil,
-        problems: Floors.problems(gem, BuiltFiles.loaded(built, package.spec.require_paths) + extensions, platform),
+        problems: Floors.problems(gem, loaded, platform), warnings: Floors.warnings(gem, loaded, platform)
       )
     end
 

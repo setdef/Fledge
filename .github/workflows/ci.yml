@@ -2246,8 +2246,8 @@ jobs:
 
   # Delivery of the windowed app's .deb, in a fresh Debian and a
   # fresh Ubuntu container of each architecture, with no Ruby installed:
-  # apt installs it as a person would, its dependency on glibc 2.39 met by
-  # Ubuntu 24.04's, which is the oldest there is, and by Debian 13's; the
+  # apt installs it as a person would, its dependency on glibc 2.28 met by
+  # Ubuntu 24.04's and by Debian 13's; the
   # MIME database knows the file type the app defines by its extension;
   # the app runs from /usr/lib, as root and as an ordinary user; and removing
   # the package leaves nothing of it (.github/scripts/deliver-deb.sh).

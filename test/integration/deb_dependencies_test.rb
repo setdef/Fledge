@@ -50,8 +50,27 @@ class DebDependenciesTest < Minitest::Test
       depends = field(build(File.join(dir, "listed").tap { |d| FileUtils.mkdir_p(d) }, platform: HOST, extension:, system_libraries: ["libz.so.1"]), "Depends")
       plain = field(build(File.join(dir, "plain").tap { |d| FileUtils.mkdir_p(d) }, platform: HOST, extension:), "Depends")
 
-      assert_match(/\Alibc6 \(>= 2\.39\), zlib1g \(>= [^)]+\)\z/, depends)
-      assert_equal "libc6 (>= 2.39)", plain
+      assert_match(/\Alibc6 \(>= 2\.28\), zlib1g \(>= [^)]+\)\z/, depends)
+      assert_equal "libc6 (>= 2.28)", plain
+    end
+  end
+
+  # A gem's extension compiled on a Linux whose glibc is newer than the
+  # runtime's floor needs that glibc where it calls a function glibc
+  # added since, here arc4random, from glibc 2.36: the package depends
+  # on the glibc the file needs, so apt refuses an older system.
+  def test_a_file_compiled_against_a_newer_glibc_raises_the_packages_glibc
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      zlib_extension(dir) # needs cc, as the other tests here do
+      path = File.join(dir, "random.so")
+      source = "#include <stdlib.h>\nunsigned int random_number(void) { return arc4random(); }\n"
+      out, status = Open3.capture2e("cc", "-shared", "-fPIC", "-x", "c", "-", "-o", path, stdin_data: source)
+      skip "this computer's glibc has no arc4random, which glibc 2.36 added:\n#{out}" unless status.success?
+      needs = Fledge::Binary.read([path], readers: Fledge::Binary::Readers.local("linux")).fetch(path).glibc_minimum.to_s
+      assert_operator Gem::Version.new(needs), :>=, Gem::Version.new("2.36"), "the premise: the file needs a glibc newer than the floor"
+
+      assert_equal "libc6 (>= #{needs})", field(build(dir, platform: HOST, extension: path), "Depends")
     end
   end
 
@@ -67,7 +86,7 @@ class DebDependenciesTest < Minitest::Test
       other = (HOST == ARM) ? Binaries.elf(needed: %w[libz.so.1 libstdc++.so.6 ld-linux-x86-64.so.2]) : Binaries.elf(cpu: "aarch64", needed: %w[libz.so.1 libc.so.6])
       depends = field(build(dir, platform: HOST, extension:, files: { "libwrapper.other.so" => other }, system_libraries: ["libz.so.1"]), "Depends")
 
-      assert_match(/\Alibc6 \(>= 2\.39\), zlib1g \(>= [^)]+\)\z/, depends)
+      assert_match(/\Alibc6 \(>= 2\.28\), zlib1g \(>= [^)]+\)\z/, depends)
     end
   end
 
@@ -83,7 +102,7 @@ class DebDependenciesTest < Minitest::Test
       others = { "libwrapper.arm64.dylib" => Binaries.macho, "wrapper.dll" => Binaries.pe(needed: %w[KERNEL32.dll]) }
       depends = field(build(dir, platform: HOST, extension:, files: others, system_libraries: ["libz.so.1"]), "Depends")
 
-      assert_match(/\Alibc6 \(>= 2\.39\), zlib1g \(>= [^)]+\)\z/, depends)
+      assert_match(/\Alibc6 \(>= 2\.28\), zlib1g \(>= [^)]+\)\z/, depends)
     end
   end
 end

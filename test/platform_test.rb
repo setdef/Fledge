@@ -124,7 +124,7 @@ class PlatformTest < Minitest::Test
         assert_nil platform.macos_minimum, name
       end
       if os == "linux" && !platform.musl?
-        assert_equal "2.39", platform.glibc_minimum
+        assert_equal "2.28", platform.glibc_minimum
       else
         assert_nil platform.glibc_minimum, name
       end

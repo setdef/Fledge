@@ -7,6 +7,7 @@
 
 require_relative "test_helper"
 require_relative "support/deb"
+require_relative "support/binaries"
 
 # Fledge::Deb, which has dpkg-deb build a .deb of the built app's folder,
 # read back with dpkg-deb itself (test/support/deb.rb).
@@ -29,9 +30,29 @@ class DebTest < Minitest::Test
       assert_equal "amd64", field(deb, "Architecture")
       assert_equal "Example, Inc.", field(deb, "Maintainer")
       assert_equal "My App", field(deb, "Description")
-      assert_equal "libc6 (>= 2.39)", field(deb, "Depends")
+      assert_equal "libc6 (>= 2.28)", field(deb, "Depends")
       assert_equal "optional", field(deb, "Priority")
       assert_operator field(deb, "Installed-Size").to_i, :>, 0
+    end
+  end
+
+  # A gem's compiled file needs the glibc it was compiled with, which may
+  # be newer than the runtime's floor: then the package depends on that
+  # one, so apt refuses an older system, saying why, rather than the app
+  # failing to load the file there. A file for another processor never
+  # loads in the app, so its glibc is not the app's.
+  def test_glibc_is_the_newest_any_of_the_apps_files_for_its_processor_needs
+    need_dpkg_deb
+    TestReaders.need(self, :elf)
+    Dir.mktmpdir do |dir|
+      files = {
+        "newer.so" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.34]),
+        "newest.so" => Binaries.elf(needed: %w[libc.so.6], versions: %w[GLIBC_2.2.5 GLIBC_2.41]),
+        "other.so" => Binaries.elf(cpu: "aarch64", needed: %w[libc.so.6], versions: %w[GLIBC_2.17 GLIBC_2.41]),
+      }
+
+      assert_equal "libc6 (>= 2.41)", field(build(File.join(dir, "x86").tap { |d| FileUtils.mkdir_p(d) }, files:), "Depends")
+      assert_equal "libc6 (>= 2.34)", field(build(File.join(dir, "older").tap { |d| FileUtils.mkdir_p(d) }, files: files.except("newest.so")), "Depends")
     end
   end
 
@@ -45,7 +66,7 @@ class DebTest < Minitest::Test
     Dir.mktmpdir do |dir|
       deb = build(dir, system_typelibs: %w[Gtk-4.0 Gdk-4.0 GdkPixbuf-2.0])
 
-      assert_equal "libc6 (>= 2.39), gir1.2-gtk-4.0, gir1.2-gdk-4.0, gir1.2-gdkpixbuf-2.0", field(deb, "Depends")
+      assert_equal "libc6 (>= 2.28), gir1.2-gtk-4.0, gir1.2-gdk-4.0, gir1.2-gdkpixbuf-2.0", field(deb, "Depends")
     end
   end
 

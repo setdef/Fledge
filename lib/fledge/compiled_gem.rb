@@ -56,6 +56,10 @@ module Fledge
     # (NativeBuild::BuiltFiles), with paths relative to the gem's folder.
     attr_reader :built
 
+    # What the compiled files ask of the systems the app runs on beyond
+    # what the runtime asks, as sentences (NativeBuild::Floors.warnings).
+    attr_reader :warnings
+
     # Creates the compiled gem.
     #
     # [package] The Fledge::GemPackage, Fledge::GitPackage, or
@@ -70,7 +74,9 @@ module Fledge
     # [build_info] What RubyGems wrote in its build information, or +nil+.
     # [problems] What keeps the compiled files from running where the app
     #            goes, as sentences.
-    def initialize(package:, built:, extensions:, extension_dir:, build_args:, build_info:, problems:)
+    # [warnings] What they need where the app goes that the runtime does
+    #            not, as sentences.
+    def initialize(package:, built:, extensions:, extension_dir:, build_args:, build_info:, problems:, warnings: [])
       @package = package
       @built = built
       @extensions = extensions
@@ -78,6 +84,7 @@ module Fledge
       @build_args = build_args
       @build_info = build_info
       @problems = problems
+      @warnings = warnings
     end
 
     # The gem's Gem::Specification.

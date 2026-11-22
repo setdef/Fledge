@@ -17,6 +17,11 @@ class NativeBuildFloorsTest < Minitest::Test
     Fledge::NativeBuild::Floors.problems("redcarpet 3.6.1", entries, Fledge::Platform.find(platform), readers: TestReaders.all)
   end
 
+  def warnings(platform, files)
+    entries = files.map { |path, content| Fledge::Entry.file(path, content) }
+    Fledge::NativeBuild::Floors.warnings("redcarpet 3.6.1", entries, Fledge::Platform.find(platform), readers: TestReaders.all)
+  end
+
   def test_a_mach_o_file_for_a_newer_macos_than_the_platforms_oldest_is_a_problem
     TestReaders.need(self, :macho)
     found = problems("arm64-darwin", {
@@ -31,30 +36,39 @@ class NativeBuildFloorsTest < Minitest::Test
     ], found
   end
 
-  def test_an_elf_file_that_needs_a_newer_glibc_than_the_platforms_oldest_is_a_problem
+  # A compiled file needs the glibc it was compiled with or a newer one,
+  # and the developer's computer may have a newer glibc than the
+  # runtime's floor. The app runs wherever that glibc is, so the file is
+  # no problem, but the build says what the app now needs, and why, so
+  # that the developer can build on an older system.
+  def test_an_elf_file_that_needs_a_newer_glibc_than_the_platforms_oldest_is_a_warning_not_a_problem
     TestReaders.need(self, :elf)
-    found = problems("x86_64-linux", {
+    files = {
       "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.2.5 GLIBC_2.41]),
       "lib/old.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.34]),
-    })
+      "lib/plain.so" => Binaries.elf(needed: ["libc.so.6"]),
+    }
 
-    assert_equal [
-      "redcarpet 3.6.1's lib/redcarpet.so needs glibc 2.41, and apps for x86_64-linux run on glibc 2.39 and later. " \
-        "Build on a Linux with glibc 2.39, such as Ubuntu 24.04.",
-    ], found
+    assert_empty problems("x86_64-linux", files)
+    assert_equal %w[2.41 2.34].map { |version|
+      "redcarpet 3.6.1's lib/#{(version == '2.41') ? 'redcarpet' : 'old'}.so needs glibc #{version}, so the app for x86_64-linux " \
+        "runs only on Linux with glibc #{version} or newer, where Fledge's runtime runs on glibc 2.28 and later. Fledge compiled " \
+        "it on this computer, and a compiled file needs the glibc it was compiled with or a newer one: build the app on a Linux " \
+        "with an older glibc, such as AlmaLinux 8, to lower that."
+    }, warnings("x86_64-linux", files)
   end
 
   # A build that leaves a library for each processor, as a gem for every
   # platform carries one, loads only its own: a file for another
-  # processor never loads in the app, so its floor is no problem.
+  # processor never loads in the app, so its floor raises nothing.
   def test_an_elf_file_for_another_processor_is_not_judged_by_the_platforms_glibc
     TestReaders.need(self, :elf)
     arm = Binaries.elf(cpu: "aarch64", needed: ["libc.so.6"], versions: %w[GLIBC_2.17 GLIBC_2.41])
     x86 = Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.2.5 GLIBC_2.41])
     files = { "lib/libfoo.aarch64.so" => arm, "lib/libfoo.x86_64.so" => x86 }
 
-    assert_equal ["lib/libfoo.x86_64.so"], problems("x86_64-linux", files).map { |problem| problem[%r{lib/\S+}] }
-    assert_equal ["lib/libfoo.aarch64.so"], problems("aarch64-linux", files).map { |problem| problem[%r{lib/\S+}] }
+    assert_equal ["lib/libfoo.x86_64.so"], warnings("x86_64-linux", files).map { |warning| warning[%r{lib/\S+}] }
+    assert_equal ["lib/libfoo.aarch64.so"], warnings("aarch64-linux", files).map { |warning| warning[%r{lib/\S+}] }
   end
 
   def test_a_mach_o_file_for_another_processor_is_not_judged_by_the_platforms_macos
@@ -65,7 +79,7 @@ class NativeBuildFloorsTest < Minitest::Test
 
   def test_a_platform_without_that_floor_judges_no_file_by_it
     assert_empty problems("x86_64-linux", { "lib/redcarpet.bundle" => Binaries.macho(minos: "27.0") })
-    assert_empty problems("x64-mingw-ucrt", { "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.99]) })
+    assert_empty warnings("x64-mingw-ucrt", { "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.99]) })
     assert_empty problems("arm64-darwin", {
       "lib/redcarpet.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.99]),
       "lib/redcarpet.dll" => Binaries.pe(needed: %w[KERNEL32.dll]),

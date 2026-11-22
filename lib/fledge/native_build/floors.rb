@@ -9,47 +9,69 @@ require_relative "../binary"
 
 module Fledge
   class NativeBuild
-    # Why a compiled file would not load on the oldest system the runtime
-    # runs on: a newer macOS than it, or a newer glibc, which a compiler
+    # What a compiled file needs of the system it runs on beyond what the
+    # runtime needs: a newer macOS, or a newer glibc, which a compiler
     # targets when it builds on a newer computer. A file for another
     # processor than the platform's (Binary#for?), which a build may leave
     # beside its own as a gem for every platform carries one for each,
-    # never loads in the app, so its needs are no problem.
+    # never loads in the app, so its needs are nothing.
+    #
+    # On macOS that is a problem: Fledge compiles for the runtime's
+    # oldest macOS (MACOSX_DEPLOYMENT_TARGET), so a file that needs a
+    # newer one was built against that on purpose, and the app would
+    # stop on the systems it promises. On Linux it is a warning: a file
+    # needs the glibc it was compiled with or a newer one, as glibc's
+    # symbol versions make it, so the app needs this computer's glibc,
+    # which a Linux with an older one would not have; the app's
+    # <tt>.deb</tt> says so (Fledge::Deb), and building on an older
+    # system lowers it (doc/contributors/design/gems.md, "The glibc a
+    # compiled gem needs").
     module Floors # :nodoc:
       # The problems of +gem+'s compiled +entries+ on +platform+, one per
-      # file for its processor that needs a newer system than the
+      # file for its processor that needs a newer macOS than the
       # platform's oldest, as +readers+ (Fledge::Binary::Readers) read
       # them.
       def self.problems(gem, entries, platform, readers: Binary::Readers.local(platform.os))
-        floors = { macho: platform.macos_minimum, elf: platform.glibc_minimum }.compact
+        floor = platform.macos_minimum
+        return [] unless floor
+
+        needing(:macho, entries, platform, readers, &:macos_minimum).filter_map do |path, found|
+          next unless newer?(found, floor)
+
+          "#{gem}'s #{path} needs macOS #{found}, and apps for #{platform} run on macOS #{floor} and later. Compile it with " \
+            "MACOSX_DEPLOYMENT_TARGET=#{floor}, which Fledge sets, so check its extconf.rb does not override it."
+        end
+      end
+
+      # The warnings about +gem+'s compiled +entries+ on +platform+, one
+      # per file for its processor that needs a newer glibc than the
+      # platform's oldest, which the app then needs.
+      def self.warnings(gem, entries, platform, readers: Binary::Readers.local(platform.os))
+        floor = platform.glibc_minimum
+        return [] unless floor
+
+        needing(:elf, entries, platform, readers, &:glibc_minimum).filter_map do |path, found|
+          next unless newer?(found, floor)
+
+          "#{gem}'s #{path} needs glibc #{found}, so the app for #{platform} runs only on Linux with glibc #{found} or newer, " \
+            "where Fledge's runtime runs on glibc #{floor} and later. Fledge compiled it on this computer, and a compiled file needs " \
+            "the glibc it was compiled with or a newer one: build the app on a Linux with an older glibc, such as AlmaLinux 8, " \
+            "to lower that."
+        end
+      end
+
+      # Each of +entries+ of +format+ for the platform's processor, by
+      # path, with the version of the system it needs that the block
+      # reads from its Binary, when it names one.
+      private_class_method def self.needing(format, entries, platform, readers)
         files = entries.filter_map do |entry|
           content = entry.content.to_s
-          [entry.path, content] if entry.type == :file && floors.key?(Binary.format_of(content.byteslice(0, 8).to_s))
+          [entry.path, content] if entry.type == :file && Binary.format_of(content.byteslice(0, 8).to_s) == format
         end
-        Binary.parse(files.to_h, readers:).select { |_, binary| binary.for?(platform.cpu) }.filter_map do |path, binary|
-          (binary.format == :macho) ? macos(gem, path, binary, platform) : glibc(gem, path, binary, platform)
+        Binary.parse(files.to_h, readers:).filter_map do |path, binary|
+          found = yield(binary) if binary.for?(platform.cpu)
+          [path, found] if found
         end
-      end
-
-      private_class_method def self.macos(gem, path, binary, platform)
-        floor = platform.macos_minimum.to_s
-        found = binary.macos_minimum
-        return nil unless found && newer?(found, floor)
-
-        "#{needs(gem, path, platform, 'macOS', found, floor)} Compile it with MACOSX_DEPLOYMENT_TARGET=#{floor}, which " \
-          "Fledge sets, so check its extconf.rb does not override it."
-      end
-
-      private_class_method def self.glibc(gem, path, binary, platform)
-        floor = platform.glibc_minimum.to_s
-        found = binary.glibc_minimum
-        return nil unless found && newer?(found, floor)
-
-        "#{needs(gem, path, platform, 'glibc', found, floor)} Build on a Linux with glibc #{floor}, such as Ubuntu 24.04."
-      end
-
-      private_class_method def self.needs(gem, path, platform, system, found, floor)
-        "#{gem}'s #{path} needs #{system} #{found}, and apps for #{platform} run on #{system} #{floor} and later."
       end
 
       private_class_method def self.newer?(found, floor)

@@ -95,6 +95,7 @@ module Fledge
       @bundler = nil # : String?
       @carried = [] # : Array[Entry]
       @visual_c_runtime = [] # : Array[String]
+      @warnings = [] # : Array[String]
     end
 
     # What the app's +app+ folder holds in place of the project's own
@@ -152,6 +153,7 @@ module Fledge
         mobile_problems(packages, platform, runtime)
       else
         packages = compile(packages)
+        @warnings = packages.values.flat_map { |package| package.is_a?(CompiledGem) ? package.warnings : [] }
         stubs = executables(packages, runtime)
         desktop_problems(packages, platform, runtime)
       end
@@ -175,6 +177,12 @@ module Fledge
     def carried_libraries
       @carrying&.sources || {}
     end
+
+    # What the gems #for compiled need where the app goes that its
+    # runtime does not, as sentences (Fledge::CompiledGem#warnings): a
+    # newer glibc than the runtime's, which the app then needs. Empty
+    # before #for.
+    attr_reader :warnings
 
     # The version of the Bundler #for added to the runtime, which the app
     # runs with in place of the runtime's own, as <tt>bundle exec</tt>

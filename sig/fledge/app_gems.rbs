@@ -17,6 +17,7 @@ module Fledge
     @visual_c_runtime: Array[String]
     @system32: String
     @carried: Array[Entry]
+    @warnings: Array[String]
     @carrying: CarriedLibraries::AppFiles?
 
     def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild, ?system32: String) -> void
@@ -28,6 +29,7 @@ module Fledge
     attr_reader bundler: String?
 
     attr_reader visual_c_runtime: Array[String]
+    attr_reader warnings: Array[String]
 
     def carried_libraries: () -> Hash[String, String]
 

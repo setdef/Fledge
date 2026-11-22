@@ -12,8 +12,9 @@ module Fledge
     attr_reader built: Array[Entry]
     attr_reader package: GemPackage | GitPackage | PathPackage
     attr_reader build_args: Array[String]
+    attr_reader warnings: Array[String]
 
-    def initialize: (package: GemPackage | GitPackage | PathPackage, built: Array[Entry], extensions: Array[Entry], extension_dir: String, build_args: Array[String], build_info: String?, problems: Array[String]) -> void
+    def initialize: (package: GemPackage | GitPackage | PathPackage, built: Array[Entry], extensions: Array[Entry], extension_dir: String, build_args: Array[String], build_info: String?, problems: Array[String], ?warnings: Array[String]) -> void
 
     def spec: () -> Gem::Specification
 

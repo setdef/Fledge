@@ -80,10 +80,13 @@ name it in Bundler's +without+ setting.
   built, with no Bundler, network, or compiler on the computer.
 
 Fledge builds for macOS 14 and newer on Apple silicon; Linux with glibc
-2.39 and newer, or with musl, on x86-64 and ARM64; Windows 11 on x64 and
+2.28 and newer, or with musl, on x86-64 and ARM64; Windows 11 on x64 and
 ARM64; iOS 15 and newer; and Android 8.0 and newer. It builds nothing for
 Intel Macs, 32-bit systems, or the Mac App Store. Build each system's app
-on a computer of that system, such as a CI runner of each.
+on a computer of that system, such as a CI runner of each. On Linux, a gem
+compiled on your computer may need your computer's newer glibc, and then
+so does your app: <tt>fledge build</tt> warns you, and building on an
+older Linux, such as AlmaLinux 8, lowers it.
 
 === How Fledge Compares
 

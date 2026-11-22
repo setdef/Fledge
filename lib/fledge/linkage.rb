@@ -60,10 +60,11 @@ module Fledge
     # those PEP 656 lets a musllinux_1_2 wheel assume, auditwheel 6.8.2's
     # <tt>musllinux-policy.json</tt>: musl's C library, by its own name
     # and Alpine's, and zlib. On Linux, the
-    # libraries PEP 600 lets a manylinux_2_39 wheel assume of every
-    # distribution with glibc 2.39, Fledge's floor (decision 7):
+    # libraries PEP 600 lets a manylinux_2_28 wheel assume of every
+    # distribution with glibc 2.28, Fledge's floor (Platform::GLIBC_MINIMUM):
     # auditwheel 6.4.2's <tt>manylinux-policy.json</tt>,
-    # <tt>lib_whitelist</tt> for manylinux_2_39, and glibc's dynamic
+    # <tt>lib_whitelist</tt> for manylinux_2_28 (the same as for every
+    # later policy there), and glibc's dynamic
     # loader. On Windows, the API sets, which Windows resolves itself, and
     # <tt>combase.dll</tt>, of every Windows from 8 on, as delvewheel
     # 1.13.2, which repairs Python's Windows wheels as auditwheel repairs

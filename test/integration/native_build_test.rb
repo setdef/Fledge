@@ -10,6 +10,7 @@ require_relative "../support/gems"
 require_relative "../support/git_repos"
 require_relative "../support/loopback_server"
 require_relative "../support/short_path"
+require "etc"
 require "open3"
 require "stringio"
 
@@ -186,6 +187,36 @@ class NativeBuildTest < Minitest::Test
 
     minimum = Fledge::Binary.read([compiled], readers: Fledge::Binary::Readers.local("darwin")).fetch(compiled).macos_minimum
     assert_operator Gem::Version.new(minimum), :<=, Gem::Version.new("14.0")
+  end
+
+  # A gem compiled on a Linux whose glibc is newer than the runtime's
+  # floor needs that glibc where it calls a function glibc added since,
+  # here arc4random, which glibc 2.36 added. The app runs where that
+  # glibc is, so the build ships it, and says plainly what the app now
+  # needs and how to lower it.
+  def test_a_gem_compiled_against_a_newer_glibc_than_the_floor_ships_and_the_build_says_what_the_app_needs
+    skip "the glibc floor is Linux's with glibc" unless @platform.glibc_minimum
+    host = Etc.confstr(Etc::CS_GNU_LIBC_VERSION).to_s[/\d+(?:\.\d+)+/].to_s
+    skip "this computer's glibc, #{host}, has no arc4random, which glibc 2.36 added" if Gem::Version.new(host) < Gem::Version.new("2.36")
+    source = SOURCE.sub("#include <ruby.h>\n", "#include <ruby.h>\n#include <stdlib.h>\n")
+      .sub("rb_str_new_cstr(GREETING)", "(arc4random() | 1) ? rb_str_new_cstr(GREETING) : Qnil")
+    greeter = FakeGem.build(@dir, "greeter", "1.0.0", files: FILES.merge("ext/greeter/greeter.c" => source), extensions: ["ext/greeter/extconf.rb"])
+    @routes["/gems/#{greeter.file_name}"] = [200, {}, File.binread(greeter.path)]
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: { "greeter" => ">= 0" }, locked: [greeter], remote: @server.url("/"))
+    program(root)
+
+    status, err = build(root)
+
+    assert_equal 0, status, err
+    out, ran, folder = run_app
+    assert_predicate ran, :success?, out
+    assert_equal "hello\n", out
+    compiled = Dir.glob(File.join(gem_dir(folder), "gems/greeter-1.0.0/lib/greeter/greeter.so")).first.to_s
+    needs = Fledge::Binary.read([compiled], readers: Fledge::Binary::Readers.local("linux")).fetch(compiled).glibc_minimum.to_s
+    assert_operator Gem::Version.new(needs), :>=, Gem::Version.new("2.36"), "the premise: the compiled file needs a glibc newer than the floor"
+    assert_includes err, "fledge build: warning: greeter 1.0.0's lib/greeter/greeter.so needs glibc #{needs}, so the app for " \
+      "#{@platform} runs only on Linux with glibc #{needs} or newer, where Fledge's runtime runs on glibc #{@platform.glibc_minimum} and later."
+    assert_includes err, "build the app on a Linux with an older glibc, such as AlmaLinux 8, to lower that."
   end
 
   # A gem whose extconf.rb fails, as rugged's does without CMake, shows

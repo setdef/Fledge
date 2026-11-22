@@ -91,7 +91,7 @@ Fledge and the apps it builds run on Ruby 4.1, the version on the Ruby badge, an
 | Platform | Your users run it on | You build it on |
 | --- | --- | --- |
 | `arm64-darwin` | macOS 14 or newer, on Apple silicon | a Mac with Apple silicon |
-| `x86_64-linux`, `aarch64-linux` | Linux with [glibc](https://www.gnu.org/software/libc/) 2.39 or newer (Ubuntu 24.04, Debian 13) | Linux with glibc, on that processor |
+| `x86_64-linux`, `aarch64-linux` | Linux with [glibc](https://www.gnu.org/software/libc/) 2.28 or newer (RHEL 8, Debian 10, Ubuntu 20.04, and later), unless a gem you compile needs more | Linux with glibc, on that processor |
 | `x86_64-linux-musl`, `aarch64-linux-musl` | Linux with [musl](https://musl.libc.org/), such as [Alpine](https://alpinelinux.org/) | Linux with musl, on that processor |
 | `x64-mingw-ucrt` | Windows 11 on x64 | Windows on x64 |
 | `aarch64-mingw-ucrt` | Windows 11 on ARM64 | Windows on ARM64 |
@@ -159,7 +159,7 @@ $ bundle lock --add-checksums
 ```
 <!-- SPDX-SnippetEnd -->
 
-Fledge compiles gems published only as source, and gems from git, on your computer, for the app's Ruby. Install a compiler first: [Xcode's command line tools](https://developer.apple.com/xcode/resources/) on a Mac, a C compiler and `make` on Linux, [RubyInstaller](https://rubyinstaller.org/)'s [MSYS2](https://www.msys2.org/) tools ([`ridk install`](https://github.com/oneclick/rubyinstaller2/wiki/The-ridk-tool)) on Windows, and [`cargo`](https://doc.rust-lang.org/cargo/) for a Rust extension. If a gem won't run on the app's Ruby, or links a library another computer may lack, `fledge build` stops and names the gem. [Gems in a Fledge app](doc/gems.md) covers gems that link a library from the Linux distribution, gems that link one you installed on your Mac, which the app can carry, and gems from `vendor/cache`.
+Fledge compiles gems published only as source, and gems from git, on your computer, for the app's Ruby. Install a compiler first: [Xcode's command line tools](https://developer.apple.com/xcode/resources/) on a Mac, a C compiler and `make` on Linux, [RubyInstaller](https://rubyinstaller.org/)'s [MSYS2](https://www.msys2.org/) tools ([`ridk install`](https://github.com/oneclick/rubyinstaller2/wiki/The-ridk-tool)) on Windows, and [`cargo`](https://doc.rust-lang.org/cargo/) for a Rust extension. If a gem won't run on the app's Ruby, or links a library another computer may lack, `fledge build` stops and names the gem. On Linux, a gem compiled on your computer may need your computer's glibc, such as Ubuntu 24.04's 2.39, and then so does your app: `fledge build` warns you, and you can build on an older Linux, such as AlmaLinux 8, to lower it. [Gems in a Fledge app](doc/gems.md) covers gems that link a library from the Linux distribution, gems that link one you installed on your Mac, which the app can carry, and gems from `vendor/cache`.
 
 ### Describe your app
 

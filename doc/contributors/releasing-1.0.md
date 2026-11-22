@@ -6,13 +6,13 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Publishing Fledge 1.0.0 on RubyGems.org
 
-This is the maintainer's checklist for the one `gem push`. Fledge is a single pure-Ruby gem, `fledge`, so there is one push. Agents wrote this page (AGENTS.md, Provenance) from the maintainer's words of 2026-11-03 and 2026-11-04: nothing goes to RubyGems.org before 1.0.0, from 1.0.0 a human publishes the gem there as well, and every release still has its git tag and GitHub Release (decisions, 2026-11-03 and 2026-11-04). The release tooling (`rake bump:*`, `release:update_stable`) does not block 1.0.0; releases through 1.0.0 are made by hand, as `doc/contributors/design/releases.md`, "How a release is made", says (decisions, 2026-11-07). The runtimes still come from the GitHub Release, which the gem's pins check, so the tag and the Release come first and the push comes last.
+This is the maintainer's checklist for publishing the gem. Fledge is a single pure-Ruby gem, `fledge`, so each release is one push. Agents wrote this page (AGENTS.md, Provenance) from the maintainer's words: nothing goes to RubyGems.org before 1.0.0, from 1.0.0 the gem is published there as well, and every release still has its git tag and GitHub Release (decisions, 2026-11-03 and 2026-11-04); and a deterministic process he decides to trust with the push, such as a GitHub Actions workflow, counts as his act (decisions, 2026-11-22). So `release.yml` pushes the gem, once you have set RubyGems.org to trust it and told the workflow so, and you never type `gem push` unless that fails. The release tooling (`rake bump:*`, `release:update_stable`) does not block 1.0.0; releases through 1.0.0 are made by hand, as `doc/contributors/design/releases.md`, "How a release is made", says (decisions, 2026-11-07). The runtimes still come from the GitHub Release, which the gem's pins check, so the tag and the Release come first and the push comes last.
 
 ## Who does what
 
-Agents prepare 1.0.0: the release commit, the pin commit, the tag, and the GitHub Release, exactly as for any release (`doc/contributors/design/releases.md`, "How a release is made"). They never run `gem push` or `gem signin`, and they never touch RubyGems.org (AGENTS.md, Releasing). They do not change `allowed_push_host` before the 1.0.0 release commit, which is the commit that changes it.
+Agents prepare 1.0.0: the release commit, the pin commit, the tag, and the GitHub Release, exactly as for any release (`doc/contributors/design/releases.md`, "How a release is made"). They never run `gem push` or `gem signin`, never touch RubyGems.org, and never set up its trust (AGENTS.md, Releasing). They do not change `allowed_push_host` before the 1.0.0 release commit, which is the commit that changes it.
 
-You run everything from "Build the gem from the tag" on.
+You set up the trust ("Trust the release workflow", below), before the 1.0.0 tag. `release.yml`'s last job, "Publish the gem on RubyGems.org", then pushes each release from 1.0.0 on, after `installed.yml` has installed that very `.gem` and delivered apps with it on every platform. It does nothing for a 0.x version, and nothing until you set the variable below.
 
 ## What the 1.0.0 release commit changes
 
@@ -25,14 +25,33 @@ As it stands, a push is refused twice over. `fledge.gemspec` sets `spec.metadata
 5. **Statements that the gem is never published**: `AGENTS.md` (Releasing, "The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses") and `doc/contributors/design/releases.md` ("Where releases are") are true before this commit and false after it. Correct each to say what the code then does, and leave the rule that agents never push there.
 6. **`CHANGELOG.md`**: under `## [1.0.0]`, one line saying that Fledge is also on RubyGems.org, and installs with `gem "fledge", "~> 1.0"`.
 
-Then run `mise x -- ruby bin/check` and push `trunk`, wait for CI to pass on every job, pin the runtimes, tag the pin commit, and let `release.yml` publish the GitHub Release, all as `doc/contributors/design/releases.md`, "How a release is made", describes. The tagged commit is the pin commit, which changes only `lib/fledge/SHA256SUMS`, so it carries the six changes above from its parent.
+Then `cut.yml` makes the release commit and the pin commit, tags the pin commit, and runs `release.yml`, which publishes the GitHub Release and then the gem, all as `doc/contributors/design/releases.md`, "How a release is made", describes. The tagged commit is the pin commit, which changes only `lib/fledge/SHA256SUMS`, so it carries the six changes above from its parent.
 
-## Before you push
+## Trust the release workflow
 
-- `installed.yml` passed in the release run: Fledge installed from the tag and delivered hello on every platform with the published runtimes. Watch it with `gh run list --workflow release.yml --limit 2`, then `gh release view v1.0.0`.
+Do this once, before the 1.0.0 tag. The steps are RubyGems' own ("Trusted Publishing", `trusted-publishing.md` in the `rubygems/guides` repository on GitHub, as of its commit of 2026-07-27).
+
+1. Your RubyGems.org account has multi-factor authentication on. The gem asks for it (`rubygems_mfa_required`).
+2. Nobody has taken the name. On 2026-11-08, `https://rubygems.org/api/v1/gems/fledge.json` answered 404. Check again.
+3. Since `fledge` is not on RubyGems.org yet, add a *pending* trusted publisher, which becomes the gem's trusted publisher on its first push and makes you the gem's owner: on https://rubygems.org/profile/oidc/pending_trusted_publishers, choose Create, and enter the gem name `fledge`, the repository owner `setdef`, the repository name `Fledge`, the workflow filename `release.yml`, and the environment `release`. Leave the two "Workflow Repository" fields blank: the job is in `release.yml` itself, not in a reusable workflow from elsewhere.
+4. Tell the workflow it may push: `gh variable set RUBYGEMS_TRUSTED_PUBLISHING --body true --repo setdef/Fledge`. Until this variable is `true`, the job is skipped, so a tag made before you finish the steps above publishes the GitHub Release alone.
+
+GitHub creates the environment `release` the first time a job names it. You may give it rules in the repository's settings (Environments); a rule that asks for a reviewer puts you back in the loop for every release, which the pin watch's releases were built to avoid, and a rule that limits it to tags would refuse `cut.yml`'s dispatch of `release.yml`, which runs on `trunk` with the tag as an input.
+
+To stop the workflow publishing, set the variable to anything but `true`, or remove the trusted publisher on the gem's page ("Trusted publishers").
+
+## Before the tag
+
 - Your testing that is blocked on your developer accounts is done, if you decided it must come before the tag (`questions.md`, C).
-- Nobody has taken the name. On 2026-11-08, `https://rubygems.org/api/v1/gems/fledge.json` answered 404. Check again.
-- Your RubyGems.org account has multi-factor authentication on. The gem asks for it (`rubygems_mfa_required`), and a `gem push` without it fails.
+- The trust is set up, as above.
+
+## After the tag
+
+Watch the release run with `gh run list --workflow release.yml --limit 2`. Its Installed jobs install Fledge from the tag on every platform and deliver apps with the published runtimes, and only when all pass does its last job push the gem. Then "Confirm", below.
+
+## If the workflow does not push
+
+The job's run fails, which reaches you as any failed run of a workflow you started or own does. RubyGems' guide does not say whether a gem that requires multi-factor authentication (`rubygems_mfa_required`) accepts a trusted publisher's key without a one-time password; the first push shows it. If it refuses, or the trust is not set up, push by hand as below, and fix the trust before the next release. The tag and the GitHub Release are already published, and the gem is the only part missing.
 
 ## Build the gem from the tag
 

@@ -549,6 +549,38 @@
   checks:
   - script
   - bundle
+- fact: RubyVM::ZJIT.enabled?
+  reference:
+  - "\\Anull\\z"
+  app:
+  - "\\Afalse\\z"
+  platforms:
+  - aarch64-linux-android
+  - x86_64-linux-android
+  checks:
+  - script
+  - bundle
+- fact: RbConfig::CONFIG's JITs
+  reference:
+  - \A"(?<jit>ZJIT)_SUPPORT"="no"\z
+  app:
+  - \A"(?<jit>ZJIT)_SUPPORT"="yes"\z
+  platforms:
+  - aarch64-linux-android
+  - x86_64-linux-android
+  checks:
+  - script
+  - bundle
+- fact: ENV from require 'openssl'
+  reference: []
+  app:
+  - \A"PORTABLE_RUBY_SSL_CERT_FILE"="<prefix>/libexec/cert\.pem"\z
+  platforms:
+  - aarch64-linux-android
+  - x86_64-linux-android
+  checks:
+  - script
+  - bundle
 - fact: "$stdout writes through"
   reference:
   - "\\Afalse\\z"

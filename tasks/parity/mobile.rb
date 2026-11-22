@@ -86,6 +86,23 @@ class Parity
     Justification.new(fact: "RbConfig::CONFIG's JITs", reference: [/\A"(?<jit>[YZ]JIT)_SUPPORT"="yes"\z/],
       app: [/\A"(?<jit>[YZ]JIT)_SUPPORT"="no"\z/], platforms: IOS,
       reason: "As for RubyVM::YJIT.enabled?: iOS's Ruby is built without either JIT, and RbConfig says so."),
+    Justification.new(fact: "RubyVM::ZJIT.enabled?", reference: [/\Anull\z/], app: [/\Afalse\z/], platforms: ANDROID,
+      reason: "Not a difference between Fledge and Ruby, but between two builds of the reference: on glibc Linux " \
+        "it is jdx/ruby, which is built without ZJIT, so RubyVM::ZJIT is not defined there, where rv-ruby, the " \
+        "reference on macOS, has it. Android's Ruby has ZJIT compiled in and off until the app enables it, as " \
+        "rv-ruby's is, and one phone runtime cannot match both packagers; an app that enables ZJIT only where " \
+        "it is defined runs either way. ZJIT enabled in the app is still a difference."),
+    Justification.new(fact: "RbConfig::CONFIG's JITs", reference: [/\A"(?<jit>ZJIT)_SUPPORT"="no"\z/],
+      app: [/\A"(?<jit>ZJIT)_SUPPORT"="yes"\z/], platforms: ANDROID,
+      reason: "As for RubyVM::ZJIT.enabled? on Android: jdx/ruby is built without ZJIT, and its RbConfig says so."),
+    Justification.new(fact: "ENV from require 'openssl'", app: [%r{\A"PORTABLE_RUBY_SSL_CERT_FILE"="<prefix>/libexec/cert\.pem"\z}],
+      platforms: ANDROID,
+      reason: "Not a difference between Fledge and Ruby, but between two builds of the reference. The phones' " \
+        "Rubies carry rv-ruby's certificate edit, so require \"openssl\" points PORTABLE_RUBY_SSL_CERT_FILE, " \
+        "rv-ruby's name for OpenSSL's SSL_CERT_FILE, at the certificates beside the Ruby, as under rv-ruby, the " \
+        "reference on macOS, where the iOS check runs (RuntimeBuilder::Certificates). jdx/ruby, the reference on " \
+        "glibc Linux, sets no variable and trusts the computer's own certificates first, which a phone app " \
+        "cannot read as OpenSSL would, so the phone keeps rv-ruby's way. Every other variable is still compared."),
     Justification.new(fact: "$stdout writes through", reference: [/\Afalse\z/], app: [/\Atrue\z/], platforms: MOBILE,
       reason: "A phone has no terminal: an app's standard output is the pipe the embedding API reads into the " \
         "system log, where a developer watches the app run. Ruby writes through to a terminal but buffers a pipe " \

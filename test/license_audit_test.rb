@@ -729,7 +729,9 @@ class LicenseAuditTest < Minitest::Test
   # the audit reads each entry as AAR!ENTRY, and finds a copyleft
   # library's code in one as it would in a file. One of Ruby's own
   # extensions there, which the runtime's fledge.links names, is read as
-  # the file the app's Ruby has it as, and belongs to Ruby.
+  # the file the app's Ruby has it as, and belongs to Ruby; Ruby's own
+  # library, which it links from libdir, is read in the AAR, where the
+  # embedding API is.
   def test_an_aar_is_audited_by_what_it_holds
     Dir.mktmpdir do |tree|
       aar = File.join(tree, "aar")
@@ -751,7 +753,8 @@ class LicenseAuditTest < Minitest::Test
       FileUtils.rm_rf(aar)
       FileUtils.mkdir_p(File.join(tree, "include"))
       File.write(File.join(tree, "include", "fledge_ruby.h"), "/* fledge */\n")
-      File.write(File.join(tree, "fledge.links"), "x86_64\t#{openssl}\tlib/ruby/4.1.0+5/x86_64-linux-android/openssl.so\n" \
+      File.write(File.join(tree, "fledge.links"), "x86_64\tlibfledgeruby.so\tlib/libfledgeruby.so\n" \
+        "x86_64\t#{openssl}\tlib/ruby/4.1.0+5/x86_64-linux-android/openssl.so\n" \
         "x86_64\t#{psych}\tlib/ruby/4.1.0+5/x86_64-linux-android/psych.so\n")
 
       report = LicenseAudit.new(platform: "android", tree:, fledge_version: "0.0.0").call

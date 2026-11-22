@@ -11,7 +11,8 @@ require_relative "../support/android"
 require_relative "../support/ios"
 
 # The default gems of the phone runtimes rake runtime[ios] and
-# runtime[android] built (ADR 097), read from the archives they wrote;
+# runtime[android] built (ADR 097), and the Android runtime's link to its
+# Ruby library, read from the archives they wrote;
 # test/mobile_runtime_test.rb checks the parts that need no runtime.
 # Without a phone's runtime, its test fails instead of skipping where
 # FLEDGE_REQUIRE_ANDROID or FLEDGE_REQUIRE_IOS is set (AndroidRequired,
@@ -45,6 +46,49 @@ class MobileDefaultGemsTest < Minitest::Test
     assert_default_gems_list_their_files_as_a_desktops_do("android", rubies: 1)
   end
 
+  # A shared Ruby's library is at libdir/LIBRUBY_SO under ruby main.rb,
+  # where ruby/spec's rbconfig spec and a program that links Ruby look
+  # for it. In an Android app it is in the native library folder the
+  # package installer extracted, so the runtime's fledge.links names, for
+  # each ABI, a link there from the path the ABI's rbconfig.rb gives, and
+  # Ruby's install, which gives that library no other name
+  # (RubySource.configure_soname), had nothing else beside it
+  # (doc/contributors/design/phone-runtimes.md, "Ruby's extensions on
+  # Android").
+  def test_an_android_runtime_links_its_ruby_library_from_where_rbconfig_says_it_is
+    archive = runtime_archive("android")
+    names = Fledge::Archive.names(archive)
+    configs = names.grep(%r{/lib/ruby/[^/]+/[^/]+-linux-android/rbconfig\.rb\z})
+    links = names.grep(%r{\A[^/]+/fledge\.links\z})
+    assert_equal 1, links.size, links.inspect
+    Dir.mktmpdir do |work|
+      Fledge::Archive.unpack(archive, into: work, only: configs + links)
+      lines = File.readlines(File.join(work, links.first), chomp: true)
+      abis = mobile("android").targets.to_h do |target|
+        config = configs.find { |path| path.include?("/#{target.ruby_platform}/") } or flunk "no rbconfig.rb for #{target.name}"
+        text = File.read(File.join(work, config))
+        assert_equal "yes", rbconfig(text, "ENABLE_SHARED"), target.name
+        assert_equal rbconfig(text, "LIBRUBY_SO"), rbconfig(text, "LIBRUBY_SONAME"), target.name
+        assert_equal "", rbconfig(text, "LIBRUBY_ALIASES"), target.name
+        library = rbconfig(text, "LIBRUBY_SO")
+        libdir = rbconfig(text, rbconfig(text, "libdirname"))
+        assert_equal "libfledgeruby.so", library, target.name
+        assert_equal "ROOT/lib", libdir, target.name
+        [target.abi, lines.include?("#{target.abi}\t#{library}\t#{libdir.delete_prefix('ROOT/')}/#{library}")]
+      end
+      assert_equal({ "arm64-v8a" => true, "x86_64" => true }, abis, lines.grep(/libfledgeruby\./).inspect)
+    end
+  end
+
+  # The value of +key+ in the text of an rbconfig.rb, expanded as
+  # RbConfig.expand does, with the runtime's prefix as ROOT.
+  def rbconfig(text, key)
+    return "ROOT" if key == "prefix"
+
+    value = text[/^\s*CONFIG\["#{Regexp.escape(key)}"\] = "(.*)"$/, 1] or flunk "rbconfig.rb sets no #{key}"
+    value.gsub(/\$\((\w+)\)/) { rbconfig(text, Regexp.last_match(1)) }
+  end
+
   def assert_default_gems_list_their_files_as_a_desktops_do(name, rubies:)
     slices = default_specifications(name)
     assert_equal rubies, slices.size, slices.keys.inspect
@@ -62,13 +106,7 @@ class MobileDefaultGemsTest < Minitest::Test
   # tmp/runtime (or FLEDGE_RUNTIME_DIR) holds, by gem name, for each
   # folder of the runtime that holds a Ruby.
   def default_specifications(name)
-    dir = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
-    archive = File.join(dir, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(name)))
-    unless File.file?(archive)
-      message = "no #{File.basename(archive)} in #{dir}; run bundle exec rake runtime[#{name}]"
-      (name == "android") ? android_missing(message) : ios_missing(message)
-    end
-
+    archive = runtime_archive(name)
     # Read with the computer's tar, as Fledge reads a runtime
     # (Fledge::Archive): GNU tar writes a name longer than 100 bytes as a
     # ././@LongLink entry, which Gem::Package::TarReader does not read.
@@ -82,5 +120,18 @@ class MobileDefaultGemsTest < Minitest::Test
       end
     end
     slices
+  end
+
+  # The archive of the phone runtime +name+ that tmp/runtime (or
+  # FLEDGE_RUNTIME_DIR) holds; skips, or fails where required, without
+  # it.
+  def runtime_archive(name)
+    dir = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
+    archive = File.join(dir, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(name)))
+    unless File.file?(archive)
+      message = "no #{File.basename(archive)} in #{dir}; run bundle exec rake runtime[#{name}]"
+      (name == "android") ? android_missing(message) : ios_missing(message)
+    end
+    archive
   end
 end

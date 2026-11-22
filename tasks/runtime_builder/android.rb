@@ -213,7 +213,7 @@ class RuntimeBuilder
       links = @roots.flat_map do |target, root|
         files, lines = extension_files(target, root)
         libraries.fetch(target).concat(files)
-        lines
+        [library_line(target), *lines]
       end
       File.write(File.join(stage, LINKS), links.join)
       merge_trees(stage)
@@ -252,6 +252,17 @@ class RuntimeBuilder
       @builder.run(File.join(tools, "llvm-strip"), "--strip-unneeded", library)
       check(library)
       [library, program(cc, root, folder)]
+    end
+
+    # The LINKS line for +target+ from where Ruby's install puts a shared
+    # Ruby's library, libdir/LIBRUBY_SO, ROOT/lib/libfledgeruby.so, to
+    # the library in the AAR, which the package installer extracts into a
+    # folder of its own: ruby/spec and a program that links Ruby look for
+    # it there, as under ruby main.rb. Ruby's install puts nothing else
+    # beside it, since its SONAME is that name and it has no alias
+    # (RubySource.configure_soname).
+    private def library_line(target)
+      "#{target.abi}\tlibfledgeruby.so\tlib/libfledgeruby.so\n"
     end
 
     # Each ELF file Ruby installed under +root+'s lib/ruby for +target+:

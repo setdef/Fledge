@@ -121,6 +121,36 @@ class ParityTest < Minitest::Test
       .all?(&:justified?)
   end
 
+  # On glibc Linux the reference is jdx/ruby, built without ZJIT and with
+  # no certificate variable of its own, where an Android app's Ruby has
+  # ZJIT compiled in and off, and sets rv-ruby's variable as the iOS
+  # app's reference, rv-ruby on macOS, does: those differences between
+  # the two packagers are allowed on Android, and nothing beside them.
+  def test_android_parity_allows_a_reference_built_without_zjit_or_rv_rubys_certificate_variable
+    reference = {
+      "RubyVM::ZJIT.enabled?" => nil,
+      "RbConfig::CONFIG's JITs" => { "YJIT_SUPPORT" => "yes", "ZJIT_SUPPORT" => "no" },
+      "ENV from require 'openssl'" => {},
+    }
+    app = {
+      "RubyVM::ZJIT.enabled?" => false,
+      "RbConfig::CONFIG's JITs" => { "YJIT_SUPPORT" => "yes", "ZJIT_SUPPORT" => "yes" },
+      "ENV from require 'openssl'" => { "PORTABLE_RUBY_SSL_CERT_FILE" => "<prefix>/libexec/cert.pem" },
+    }
+    compare = -> (changed, platform = "x86_64-linux-android") { Parity::Reports.compare(reference, app.merge(changed), platform:) }
+
+    differences = compare.call({})
+    assert_equal 3, differences.size
+    assert differences.all?(&:justified?), differences.inspect
+    refute compare.call({}, "arm64-ios-simulator").any?(&:justified?)
+    changed = -> (fact, value) { compare.call(fact => value).find { |difference| difference.fact == fact } }
+    refute_predicate changed.call("RubyVM::ZJIT.enabled?", true), :justified?
+    refute_predicate changed.call("RbConfig::CONFIG's JITs", { "YJIT_SUPPORT" => "no", "ZJIT_SUPPORT" => "yes" }), :justified?
+    refute_predicate changed.call("ENV from require 'openssl'", { "PORTABLE_RUBY_SSL_CERT_FILE" => "/elsewhere/cert.pem" }), :justified?
+    refute_predicate changed.call("ENV from require 'openssl'", app.fetch("ENV from require 'openssl'").merge("SSL_CERT_DIR" => "/x")),
+      :justified?
+  end
+
   # bundle exec runs the lockfile's Bundler from the person's gems, the
   # app from the runtime's, the same files paired one for one, but for
   # the feature flags only the person's Bundler asks.

@@ -265,14 +265,16 @@ class LicenseAudit
   # the audit then reads where the app's Ruby has them, so that each
   # belongs to Ruby or to its gem as on a desktop
   # (doc/contributors/design/phone-runtimes.md, "Ruby's extensions on
-  # Android"). Empty for every other runtime.
+  # Android"). Ruby's library, which the file links from libdir, is read
+  # in the AAR, as the embedding API linked into it is. Empty for every
+  # other runtime.
   private def linked
     @linked ||= begin
       links = File.join(tree, "fledge.links")
       lines = File.file?(links) ? File.readlines(links, chomp: true) : []
       lines.each_with_object({}) do |line, found|
         abi, name, path = line.split("\t")
-        found["jni/#{abi}/#{name}"] ||= path.to_s
+        found["jni/#{abi}/#{name}"] ||= path.to_s if path.to_s.start_with?("lib/ruby/")
       end
     end
   end

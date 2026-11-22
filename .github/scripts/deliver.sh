@@ -317,7 +317,9 @@ echo "ok: the app's own gems ignore the person's GEM_HOME"
 # to its launcher. The probe restarts from this folder, whose
 # name is not ASCII, with no locale, in a clean environment, the
 # person's, and the hostile one, and prints what changed across the
-# restart: nothing, not even the process.
+# restart: nothing, not even the process, but what each start of the
+# Ruby changes under ruby main.rb too, jdx/ruby's lib/pkgconfig once
+# more before the person's PKG_CONFIG_PATH.
 # restarts LABEL VARIABLE=VALUE...
 restarts() {
   label=$1
@@ -335,7 +337,7 @@ restarts() {
 }
 restarts "a restart through RbConfig.ruby is the same app" HOME="$home"
 restarts "a restart in the person's environment is the same app" HOME="$home" GEM_HOME="$person_gems" RUBYOPT=-W0 \
-  RUBYLIB="$evil"
+  RUBYLIB="$evil" PKG_CONFIG_PATH=/usr/lib/pkgconfig
 restarts "a restart in a hostile environment is the same app" HOME="$dot_gem_home" \
   RUBYLIB="$evil" RUBYOPT="-rnonexistent" RUBYSHELL=/bin/false \
   GEM_HOME="$dot_gem_home/.gem/ruby/$abi" GEM_PATH="$dot_gem_home/.gem/ruby/$abi" \

@@ -454,6 +454,21 @@ def restart_facts
   )
 end
 
+# The facts +before+ a restart as the restarted Ruby must find them. Each
+# Ruby that loads jdx/ruby's rbconfig.rb puts its prefix's lib/pkgconfig
+# before ENV["PKG_CONFIG_PATH"] (its rbconfig_portability_patch), so
+# under ruby main.rb on that Ruby a restart finds the folder once more,
+# and so does an app's: one more of exactly that folder, with the rest of
+# the value as it was. The patch also sets RbConfig's PKG_CONFIG_PATH,
+# which no other Ruby has, so only a Ruby that carries it expects this.
+def restarted_facts(before)
+  folder = File.join(File.expand_path("..", File.dirname(RbConfig.ruby)), "lib", "pkgconfig")
+  return before unless RbConfig::CONFIG.fetch("PKG_CONFIG_PATH", "").split(File::PATH_SEPARATOR).first == folder
+
+  reloaded = -> (env) { env&.merge("PKG_CONFIG_PATH" => [folder, *env["PKG_CONFIG_PATH"]].reject(&:empty?).join(File::PATH_SEPARATOR)) }
+  before.merge(utf8("ENV" => reloaded.(before["ENV"]), "Bundler.original_env" => reloaded.(before["Bundler.original_env"])))
+end
+
 def facts
   {
     "paths" => { "app" => __dir__, "project" => project_root, "prefix" => RbConfig::TOPDIR, "home" => Dir.home, "user_dir" => Gem.user_dir },
@@ -549,7 +564,7 @@ when "irb"
 when "restart"
   exec(RbConfig.ruby, $0, "restarted", JSON.generate(restart_facts))
 when "restarted"
-  before = JSON.parse(ARGV.fetch(1))
+  before = restarted_facts(JSON.parse(ARGV.fetch(1)))
   after = JSON.parse(JSON.generate(restart_facts))
   changed = before.keys.reject { |key| before[key] == after[key] }
   puts(changed.empty? ? "restarted as itself" : changed.map { |key| "#{key}: #{before[key].inspect} became #{after[key].inspect}" })

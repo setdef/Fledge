@@ -19,7 +19,22 @@
 # Windows), then runs rake check (tasks/check.rake) with the Ruby and
 # tools mise.toml pins, of the commits since BASE, which defaults to the
 # upstream, or else origin/trunk.
+#
+#   mise x -- ruby bin/check --runtime[=PLATFORM] [BASE]
+#
+# for a commit that changes a runtime, or the Ruby a parity check
+# compares one with, then proves the change once the fast check passes:
+# rake runtime:prove (tasks/runtime_proof.rb) builds this computer's
+# runtime, or PLATFORM's (android), and runs CI's checks of apps built
+# from it.
 Dir.chdir(File.expand_path("..", __dir__))
+
+proof, arguments = ARGV.partition { |argument| argument.start_with?("--runtime") }
+tasks = [arguments.empty? ? "check" : "check[#{arguments.first}]"]
+unless proof.empty?
+  platform = proof.first.split("=", 2)[1]
+  tasks << (platform ? "runtime:prove[#{platform}]" : "runtime:prove")
+end
 
 setup = if Gem.win_platform?
   %w[powershell -NoProfile -ExecutionPolicy Bypass -File bin\\setup.ps1]
@@ -28,5 +43,4 @@ else
 end
 system(*setup) or abort "❌ bin/check: #{setup.join(' ')} failed"
 
-task = ARGV.empty? ? "check" : "check[#{ARGV.first}]"
-exec "mise", "x", "--", "bundle", "exec", "rake", task
+exec "mise", "x", "--", "bundle", "exec", "rake", *tasks

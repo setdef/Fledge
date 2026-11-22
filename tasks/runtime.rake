@@ -18,6 +18,16 @@ task :runtime, [:platform] do |_task, arguments|
 end
 
 namespace :runtime do
+  # The proof before the push of a runtime change (tasks/runtime_proof.rb),
+  # which bin/check --runtime runs after the fast check.
+  desc "Prove a runtime change before its push: build this computer's runtime, or PLATFORM's (android), and run CI's checks of apps built from it"
+  task :prove, [:platform] do |_task, arguments|
+    require_relative "runtime_proof"
+    RuntimeProof.new(**{ platform: arguments[:platform] }.compact).call
+  rescue RuntimeProof::Failed => e
+    abort "❌ #{e.message}"
+  end
+
   # The first step of a release (AGENTS.md, Releasing): with the
   # release commit pushed and its CI green, this downloads the runtimes
   # that CI run built (by default HEAD's newest run of ci.yml, on a push

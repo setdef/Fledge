@@ -552,3 +552,9 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 *Governs:* there is no deadline, and quality comes first. The hope, which binds nothing, is 1.0.0 on 2026-12-25 beside Ruby 4.1.0, and a candidate about a week before.
 
+> As long as setdef and/or Fledge aren't taking responsibility for any kinds of licenses here, and the App Dev is making choices so they can comply with licensing, you can do it if you think it's correct. And if you do, it should probably be in 1.0.0's release candidate 0.X.y release, right?
+
+[re: 2026-11-22. On a Mac, a gem whose compiled files link a library that the developer installed with a package manager such as Homebrew is refused by `fledge build`, since the library would be missing on the computer of a person who runs the app, and a Mac has no system package manager to name it to. The orchestrating agent had recommended that Fledge copy such libraries from the developer's Mac into the app, as PyInstaller does, and asked whether to do it before 1.0.]
+
+*Governs:* Fledge may carry, in a Mac app, libraries from the developer's computer that the app's gems link, when the app's developer chooses it. The choice and the licenses of what is carried are the developer's, as with the app's gems (2026-10-28); neither setdef nor Fledge takes responsibility for them. Whether to build it is the agents' to judge; if built, it is in the candidate for 1.0.0. *Applied in:* the design document for gems, when it is built.
+

@@ -54,6 +54,11 @@
 #   entries for those libraries, each with a pattern whose version
 #   capture finds its version in the script. The move rewrites each
 #   entry whose version the script no longer names.
+# platform: for an input that is a Ruby, each platform of its pin with a
+#   pattern whose arch capture finds the Ruby's own name for its platform
+#   in a path of the new archive. The move lists the archive and stops
+#   when that name is not the one runtime/licenses.yml's platforms give,
+#   since a new name is a person's to move.
 # licenses: the ids of runtime/licenses.yml's entries that name the
 #   pin's version, which the move rewrites: their version, their
 #   download, and the evidence their files hold.
@@ -93,13 +98,17 @@ watched:
     hold: The step from Ruby 4.1's preview to 4.1.0 is the maintainer's to take (releases.md, "The day Ruby 4.1.0 appears"); a patch of 4.1 after it waits on the code runtimes.md, "Ruby's patches, with no person", names.
   # rv-ruby's release of the macOS Ruby, which compiles in its own
   # OpenSSL, libyaml, libffi, and zlib, so a newer rv-ruby release is how
-  # those reach the runtime. rubies is its rolling tag.
+  # those reach the runtime. rubies is its rolling tag. Its Ruby names
+  # its platform for the macOS it was built on, which a release can
+  # change (platform).
   rv-ruby:
     pins: [ruby]
     field: release
     github: spinel-coop/rv-ruby
     tag: '\A(?<version>\d{8})\z'
     licenses: [rv-ruby]
+    platform:
+      arm64-darwin: '/lib/ruby/[^/]+/(?<arch>arm64-darwin\d*)/rbconfig\.rb\z'
     also:
       lib/fledge/download.rb: []
   # jdx/ruby's release of the glibc Linux Rubies, one per Ruby version,

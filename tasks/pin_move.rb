@@ -87,6 +87,7 @@ class PinMove
       from, to = old, new
     end
     write("runtime/licenses.yml", linked(read("runtime/licenses.yml"), entry["linked"], to), changed) if entry["linked"]
+    entry.fetch("platform", {}).each { |platform, pattern| same_platform(upstream, title(name), to, platform, pattern) }
     write("CHANGELOG.md", changelog(read("CHANGELOG.md"), title(name), from, to), changed) if entry.fetch("ships", true)
     changed
   rescue Error, PinWatch::Error
@@ -295,6 +296,28 @@ class PinMove
       to = stop || to
     end
     from...to
+  end
+
+  # Raises unless the new archive of each pin of +upstream+ for
+  # +platform+ holds a file whose path +pattern+'s arch capture takes the
+  # same platform name from as runtime/licenses.yml's platforms give. A
+  # Ruby's name for its platform (RbConfig's arch, so RUBY_PLATFORM and
+  # the RubyGems platform Bundler runs as) changes which platforms an
+  # app's Gemfile.lock must lock, and the files the license audit looks
+  # in, so it is a person's to move, as runtimes.md, "The move", says.
+  private def same_platform(upstream, title, to, platform, pattern)
+    named = YAML.safe_load(read("runtime/licenses.yml")).dig("platforms", platform, "arch")
+    sources = YAML.safe_load(read("runtime/sources.yml"))
+    upstream.pins.each do |pin|
+      url = sources.dig(*pin.split("."), "platforms", platform, "url")
+      arch = @fetch.members(url).lazy.filter_map { |path| path[Regexp.new(pattern), "arch"] }.first
+      raise Error, "#{url} holds no file that names its platform" unless arch
+      next if arch == named
+
+      raise Error, "#{title} #{to}'s Ruby for #{platform} calls its platform #{arch}, where runtime/licenses.yml names " \
+        "#{named}: a new RUBY_PLATFORM changes which platforms an app's Gemfile.lock must lock, which a person moves " \
+        "(doc/contributors/design/runtimes.md, \"The move\")"
+    end
   end
 
   # Raises unless the pins of +upstream+ in +text+ hold +to+.

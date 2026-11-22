@@ -11,10 +11,12 @@ require "json"
 require "net/http"
 require "open3"
 require "rubygems"
+require "rubygems/package"
 require "time"
 require "tmpdir"
 require "uri"
 require "yaml"
+require "zlib"
 
 # Finds the pins of runtime/sources.yml that upstream has released a
 # newer version of (doc/contributors/design/runtimes.md, "Keeping the
@@ -175,6 +177,19 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
         end
         digest.hexdigest
       end
+    end
+
+    # The path of every entry in the gzipped tarball at +url+, in the
+    # order it holds them, read with RubyGems' tar reader from a copy
+    # kept in a folder of its own and removed.
+    def members(url)
+      Dir.mktmpdir("pin-move") do |folder|
+        archive = File.join(folder, "archive")
+        get(url) { |response| File.open(archive, "wb") { |file| response.read_body { |chunk| file.write(chunk) } } }
+        Zlib::GzipReader.open(archive) { |gzip| Gem::Package::TarReader.new(gzip).map(&:full_name) }
+      end
+    rescue Zlib::Error, Gem::Package::Error => e
+      raise Error, "#{url} is no gzipped tarball: #{e.message}"
     end
 
     private def get(url, redirects = REDIRECTS, &read)

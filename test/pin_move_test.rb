@@ -439,6 +439,87 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  RV = "https://api.github.com/repos/spinel-coop/rv-ruby/releases?per_page=100"
+  RV_NEW = "https://github.com/spinel-coop/rv-ruby/releases/download/20261119/ruby-4.1.0-preview1.arm64_sonoma.tar.gz"
+
+  # Answers as Answers does, and lists the files of each archive it is
+  # given, as Fetch#members does.
+  class Archives < Answers
+    def initialize(bodies, listings)
+      super(bodies)
+      @listings = listings
+    end
+
+    def members(url)
+      @downloaded << url
+      @listings.fetch(url)
+    end
+  end
+
+  def rv_ruby(listing)
+    sources = "ruby:\n  version: 4.1.0-preview1\n  release: \"20261023\"\n  platforms:\n    arm64-darwin:\n" \
+      "      url: #{RV_NEW.sub('20261119', '20261023')}\n      sha256: #{OLD_SHA256}\n"
+    licenses = "platforms:\n  arm64-darwin: {os: darwin, arch: arm64-darwin23, gem_arch: arm64-darwin-23, so: bundle}\n" \
+      "components:\n  - id: rv-ruby\n    version: \"20261023\"\n"
+    releases = JSON.generate([{ "tag_name" => "20261119", "assets" => [{ "browser_download_url" => RV_NEW, "digest" => "sha256:#{'ab' * 32}" }] }])
+    answers = Archives.new({ RV => releases }, RV_NEW => listing)
+    checkout("runtime/sources.yml" => sources, "runtime/licenses.yml" => licenses, "lib/fledge/download.rb" => "") do |root|
+      yield PinMove.new(root, entries, answers), answers
+    end
+  end
+
+  # rv-ruby's Ruby names its platform for the macOS it was built on
+  # (rv-ruby 20261119's, built on macOS 15, calls itself arm64-darwin24
+  # where 20261023's said arm64-darwin23), and a new name changes which
+  # platforms an app's Gemfile.lock must lock, so the move reads the new
+  # archive's listing and stops, saying so.
+  def test_an_rv_ruby_release_that_renames_its_platform_is_not_moved
+    listing = [
+      "rv-ruby@4.1.0-preview1/4.1.0-preview1/bin/ruby",
+      "rv-ruby@4.1.0-preview1/4.1.0-preview1/lib/ruby/4.1.0+5/arm64-darwin24/rbconfig.rb",
+    ]
+    rv_ruby(listing) do |move, answers|
+      error = assert_raises(PinMove::Error) { move.call(finding("rv-ruby", "20261023", "20261119")) }
+
+      assert_equal "rv-ruby 20261119's Ruby for arm64-darwin calls its platform arm64-darwin24, where runtime/licenses.yml " \
+        "names arm64-darwin23: a new RUBY_PLATFORM changes which platforms an app's Gemfile.lock must lock, which " \
+        "a person moves (doc/contributors/design/runtimes.md, \"The move\")", error.message
+      assert_equal [RV_NEW], answers.downloaded
+      assert_includes move.read("runtime/sources.yml"), "release: \"20261023\""
+    end
+  end
+
+  def test_an_rv_ruby_release_with_the_same_platform_moves
+    rv_ruby(["x/4.1.0-preview1/lib/ruby/4.1.0+5/arm64-darwin23/rbconfig.rb"]) do |move, _|
+      move.call(finding("rv-ruby", "20261023", "20261119"))
+
+      assert_includes move.read("runtime/sources.yml"), "release: \"20261119\"\n  platforms:\n    arm64-darwin:\n      url: #{RV_NEW}\n"
+    end
+  end
+
+  def test_an_archive_that_names_no_platform_is_not_moved
+    rv_ruby(["x/bin/ruby"]) do |move, _|
+      error = assert_raises(PinMove::Error) { move.call(finding("rv-ruby", "20261023", "20261119")) }
+
+      assert_equal "#{RV_NEW} holds no file that names its platform", error.message
+    end
+  end
+
+  def test_the_fetch_lists_a_gzipped_tarballs_files
+    tarball = StringIO.new
+    Zlib::GzipWriter.wrap(tarball) do |gzip|
+      Gem::Package::TarWriter.new(gzip) do |tar|
+        tar.add_file_simple("ruby/lib/rbconfig.rb", 0o644, 2) { |file| file.write("{}") }
+        tar.mkdir("ruby/bin", 0o755)
+      end
+    end
+    server = LoopbackServer.new("/ruby.tar.gz" => [200, {}, tarball.string])
+
+    assert_equal %w[ruby/lib/rbconfig.rb ruby/bin], PinWatch::Fetch.new(timeout: 5).members(server.url("/ruby.tar.gz"))
+  ensure
+    server&.stop
+  end
+
   def test_a_held_upstream_is_refused_with_its_reason
     checkout do |root|
       move = mover(root, Answers.new({}))

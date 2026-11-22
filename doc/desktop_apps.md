@@ -127,6 +127,16 @@ programs:
 
 `fledge build` with no argument builds all of them, and `fledge build bin/shared-save` builds that program alone. At most one program is windowed. Fledge gives it the app's name unless you give it a `name`, builds the installers for it, and on macOS puts the console programs inside its `.app` bundle. Fledge names each console program after its file, such as `shared-save`, the command your users type.
 
+## Serve a page in the browser
+
+An app can be a small web server that people use in their browser, as they use Jupyter or Syncthing. That suits technical and internal users. People who expect a window are better served by a windowed app. Make the server a console app, the default, so the console window it runs in shows its address, and closing that window stops it. With `kind: windowed`, Windows gives it no console, and nothing shows that it is running.
+
+- Listen on `127.0.0.1`, so nothing on the network can reach the server.
+- Keep what it writes in your users' data folder, such as `~/Library/Application Support/NAME` on macOS, `%APPDATA%\NAME` on Windows, and `~/.local/share/name` on Linux, never in the app's own folder. That folder may be read-only, as an AppImage and `/Applications` are, and an update replaces it.
+- Write each change as it happens. Ctrl-C and `TERM` reach your code as they reach it under `ruby main.rb`, but on Windows, closing the console window ends the program before any `ensure` clause or `at_exit` hook runs, under `ruby.exe` and in the app alike.
+
+[`examples/roda_server`](../examples/roda_server) is a complete example: Jot, a notes board on [Roda](https://roda.jeremyevans.net/) and [WEBrick](https://github.com/ruby/webrick). Both gems are plain Ruby, so it builds on every system Fledge builds for.
+
 ## Sign your app
 
 An app is unsigned unless you sign it. Without a signature, macOS's [Gatekeeper](https://support.apple.com/guide/security/gatekeeper-and-runtime-protection-sec5599b66df/web) and Windows' [SmartScreen](https://learn.microsoft.com/windows/security/operating-system-security/virus-and-threat-protection/microsoft-defender-smartscreen/) warn the people who download your app. On a Mac, Gatekeeper opens a downloaded app without a warning only once Apple has also notarized it. Your credentials stay on your computer: none of them goes in `fledge.yml`, which other people build too.

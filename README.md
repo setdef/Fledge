@@ -221,14 +221,14 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. A new Fledge ma
 | --- | --- |
 | `bundle exec fledge --help` | The manual: every option, every `fledge.yml` key, every file Fledge writes, and the exit statuses |
 | [Gems in a Fledge app](doc/gems.md) | Locking, compiled gems, gems that link a Linux library or a library from your Mac, and gems from `vendor/cache` |
-| [Desktop apps](doc/desktop_apps.md) | Names, icons, installers, file associations, several programs in one app, signing, and publishing to a store |
+| [Desktop apps](doc/desktop_apps.md) | Names, icons, installers, file associations, several programs in one app, a server in the browser, signing, and publishing to a store |
 | [iPhone, iPad, and Android](doc/phones.md) | Phone projects, gems with C, C++, and Rust extensions or libraries for `ffi`, and what a phone forbids |
 | [Publishing with a package manager](doc/package_managers.md) | A Scoop manifest, a Homebrew formula, winget's files, a Chocolatey package, and a `PKGBUILD` for a console app |
 | [Building from an app already built](doc/building_from_an_app.md) | `fledge build --from` and `build_tools`, for frameworks |
 | [Runtimes and Ruby versions](doc/runtimes.md) | Which Ruby your app gets, where Fledge downloads it from, mirrors, building offline, updating, and what stays the same from 1.0 |
 | [How a Fledge app differs from `ruby main.rb`](doc/differences_from_ruby.md) | Each difference your code can see, and why it is there |
 | [What ships in your app](doc/licensing.md) | Every component Fledge puts in an app, on each platform, and what you owe under its license |
-| [`examples/`](examples) | Apps to start from, from [`hello`](examples/hello) to [`libui_app`](examples/libui_app), a work timer in a window |
+| [`examples/`](examples) | Apps to start from, from [`hello`](examples/hello) to [`libui_app`](examples/libui_app), a work timer in a window, and [`roda_server`](examples/roda_server), a notes board in the browser |
 | [CHANGELOG](CHANGELOG.md) | What changed in each release |
 
 ## Reporting problems

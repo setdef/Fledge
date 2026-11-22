@@ -286,8 +286,13 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       raise Error, "unpacking #{archive} needs zstd or 7-Zip's 7zz on PATH"
     end
 
+    # Whether +name+ is a program on PATH. On Windows a name is tried
+    # with each extension PATHEXT lists, as cmd does, so zstd is found
+    # as zstd.exe.
     private def tool?(name)
-      ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? { |folder| File.executable?(File.join(folder, name)) }
+      extensions = ["", *(ENV.fetch("PATHEXT", "").split(File::PATH_SEPARATOR) if Gem.win_platform?)]
+      ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).product(extensions).map { |folder, extension| File.join(folder, name + extension) }
+        .any? { |path| File.file?(path) && File.executable?(path) }
     end
 
     private def request(uri)

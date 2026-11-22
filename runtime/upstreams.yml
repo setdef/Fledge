@@ -40,7 +40,8 @@
 #   each download; or download, the file downloaded and hashed (the
 #   default for a page). A github asset with no digest is downloaded.
 #   A container image, pinned as REPOSITORY:TAG@sha256:DIGEST, takes its
-#   new digest from its registry's listing of the new tag (quay.io's).
+#   new digest from its registry's record of the new tag (quay.io's or
+#   Docker Hub's).
 # keep: keys beside a moved URL that do not depend on the version, which
 #   the move leaves as they are. Any other key stops the move.
 # member: for a pin of one file inside an archive, the key of its path
@@ -123,6 +124,39 @@ watched:
     page: https://quay.io/api/v1/repository/pypa/manylinux_2_28_x86_64/tag/?onlyActiveTags=true&limit=100
     pattern: '"name": ?"(?<version>\d{4}\.\d{2}\.\d{2}-\d+)"'
     names: [manylinux_2_28]
+  # The Docker Hub images CI runs in. A tag that names a release moves in
+  # its line, from Docker Hub's list of the repository's tags, newest
+  # first; a tag that names none is the same tag pushed again, so its
+  # version is the day Docker Hub's record of the tag says it was last
+  # pushed. Either way the move takes the new digest from that record.
+  # None ships: what the musl runtimes are built with is pinned by
+  # package (.github/scripts/alpine-packages.sh), not by image.
+  alpine-ruby:
+    pins: [images.alpine-ruby]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/ruby/tags/4.1.0-preview1-alpine3.24
+    pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
+  alpine:
+    pins: [images.alpine]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/alpine/tags?page_size=100
+    pattern: '"name": ?"(?<version>\d+\.\d+\.\d+)"'
+    line: 2
+    ships: false
+  debian-trixie-slim:
+    pins: [images.debian-trixie-slim]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/debian/tags/trixie-slim
+    pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
+  ubuntu-noble:
+    pins: [images.ubuntu-noble]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/ubuntu/tags/24.04
+    pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
+  archlinux-base-devel:
+    pins: [images.archlinux-base-devel]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/archlinux/tags/base-devel
+    pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
   # RubyInstaller's numbered release of the pinned Ruby, which replaces
   # the head build Windows runs while Ruby 4.1 is a preview (runtimes.md,
   # "Windows' Ruby until Ruby 4.1.0").

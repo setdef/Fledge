@@ -64,10 +64,4 @@ class WorkflowRubyMasterTest < Minitest::Test
       assert steps.any? { |step| step.dig("with", "name").to_s.start_with?("result-") && step["if"] == "always()" }, "#{name} keeps no result"
     end
   end
-
-  def test_its_alpine_is_ci_ymls
-    ci = YAML.load_file(File.join(ROOT, ".github", "workflows", "ci.yml"), aliases: true)
-
-    assert_equal ci.dig("env", "ALPINE_RUBY"), workflow.dig("env", "ALPINE_RUBY")
-  end
 end

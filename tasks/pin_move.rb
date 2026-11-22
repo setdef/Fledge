@@ -189,23 +189,39 @@ class PinMove
     match ? [match] : []
   end
 
-  # The reference that replaces +reference+, when its tag names the
-  # version: the new tag, and the digest the registry gives that tag for
-  # the same repository. An image's digest is the SHA-256 of its manifest,
-  # which only the registry holds, so quay.io's API is asked, the one
-  # registry a pin names; another stops the move.
+  # The reference that replaces +reference+: the tag with the version
+  # moved where it names the version, and the digest the registry gives
+  # that tag now. A tag that names no version, such as debian:trixie-slim,
+  # is one the registry moves to a new image under the same name, so the
+  # pin's version is the day it was pushed, and its move is the digest
+  # alone. An image's digest is the SHA-256 of its manifest, which only
+  # the registry holds, so the registry's own record of the tag is asked.
   private def retag(reference, from, to)
-    return {} unless reference[:tag].include?(from)
-
-    host, path = reference[:repository].split("/", 2)
-    raise Error, "#{reference[:repository]} is on no registry the move can ask for a digest (quay.io)" unless host == "quay.io"
-
     tag = reference[:tag].gsub(from, to)
+    moved = "#{reference[:repository]}:#{tag}@#{registry_digest(reference[:repository], tag)}"
+    (moved == reference.to_s) ? {} : { reference.to_s => moved }
+  end
+
+  # The digest of +repository+'s +tag+, from quay.io's tag API or Docker
+  # Hub's, the registries the pins name; another stops the move. A
+  # repository named with no host is Docker Hub's, and one with no
+  # namespace is an official image, in library/, as Docker reads them.
+  private def registry_digest(repository, tag)
+    host, path = repository.split("/", 2)
+    host, path = "docker.io", repository unless path && host.match?(/[.:]/)
+    return quay_digest(path, tag) if host == "quay.io"
+    raise Error, "#{repository} is on no registry the move can ask for a digest (quay.io, Docker Hub)" unless host == "docker.io"
+
+    namespace, name = path.include?("/") ? path.split("/", 2) : ["library", path]
+    JSON.parse(@fetch.call("https://hub.docker.com/v2/namespaces/#{namespace}/repositories/#{name}/tags/#{tag}")).fetch("digest")
+  end
+
+  private def quay_digest(path, tag)
     url = "https://quay.io/api/v1/repository/#{path}/tag/?specificTag=#{tag}&onlyActiveTags=true"
     listed = JSON.parse(@fetch.call(url)).fetch("tags").find { |candidate| candidate.fetch("name") == tag }
     raise Error, "#{url} lists no tag #{tag}" unless listed
 
-    { reference.to_s => "#{reference[:repository]}:#{tag}@#{listed.fetch('manifest_digest')}" }
+    listed.fetch("manifest_digest")
   end
 
   # The URL and SHA-256 that replace +mapping+'s, when its URL names the

@@ -180,6 +180,36 @@ almalinux-perl:
         url: https://repo.almalinux.org/almalinux/8.10/AppStream/aarch64/os/Packages/perl-Filter-1.58-2.el8.aarch64.rpm
         sha256: 74824a320e591f8f53c21e99f18ffb808396df9ccdf3baa1ced6260b4453e4fa
 
+# The Docker Hub images CI runs in, each by tag and by the digest of the
+# tag's multi-platform index, from Docker Hub's record of the tag, which
+# a workflow reads with .github/scripts/pinned-images.sh: alpine-ruby,
+# the Alpine with Ruby that builds the musl runtimes and the apps a
+# developer on Alpine builds; alpine, the bare Alpine their Delivery runs
+# them on; the glibc Linux distributions Delivery runs those apps on;
+# and Arch Linux with its build tools, which builds the AUR recipe.
+# A tag that names a release (alpine:X.Y.Z) moves to the next release
+# in its line; one that names no release (debian:trixie-slim) is moved by
+# Docker under the same name, so its version is the day Docker Hub says
+# the tag was last pushed, and its move is the digest alone
+# (doc/contributors/design/runtimes.md, "Container images").
+images:
+  alpine-ruby:
+    version: "2026-11-09"
+    image: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
+  alpine:
+    version: 3.24.3
+    image: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+  debian-trixie-slim:
+    version: "2026-11-05"
+    image: debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
+  ubuntu-noble:
+    version: "2026-11-20"
+    image: ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289
+  archlinux-base-devel:
+    version: "2026-11-08"
+    image: archlinux:base-devel@sha256:2de80105abb49f813a85393c6758a4334deb6bcec4a2411bd2f059c0bee6ee4c
+
+
 # GNU MP, which RubyInstaller's Ruby DLL imports for big-integer
 # arithmetic, ships unchanged as ruby/bin/ruby_builtin_dlls/libgmp-10.dll.
 # That file is byte for byte the one in MSYS2's package
@@ -455,9 +485,9 @@ mobile:
 # mobile runtimes and RubyInstaller link, the libyaml and libffi every
 # other runtime has, the zlib rv-ruby's runtimes compile in, and Mozilla's
 # CA certificates as curl publishes them, the file rv-ruby's runtimes
-# carry as libexec/cert.pem. alpine is the image CI builds and delivers
-# them in, pinned by digest, and its packages, which build them, by
-# version (ci.yml).
+# carry as libexec/cert.pem. CI builds them in images.alpine-ruby and
+# delivers them on images.alpine, and installs the packages that build
+# them by version (.github/scripts/alpine-packages.sh).
 musl-ruby:
   ruby:
     version: 4.1.0-preview1

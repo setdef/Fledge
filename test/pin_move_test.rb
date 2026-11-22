@@ -299,6 +299,45 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  HUB_IMAGES = <<~YAML
+    images:
+      alpine:
+        version: 3.24.3
+        image: alpine:3.24.3@sha256:#{'66' * 32}
+      debian-trixie-slim:
+        version: "2026-11-17"
+        image: debian:trixie-slim@sha256:#{'77' * 32}
+  YAML
+
+  def hub_tag(repository, tag, digest)
+    { "https://hub.docker.com/v2/namespaces/library/repositories/#{repository}/tags/#{tag}" => JSON.generate("name" => tag, "digest" => "sha256:#{digest}") }
+  end
+
+  def hub_entries
+    listed = { "page" => "https://hub.docker.com/", "pattern" => "(?<version>.)", "ships" => false }
+    { "alpine" => listed.merge("pins" => ["images.alpine"]), "debian-trixie-slim" => listed.merge("pins" => ["images.debian-trixie-slim"]) }
+  end
+
+  def test_an_image_on_docker_hub_moves_its_tag_and_its_digest_from_hubs_record_of_that_tag
+    checkout("runtime/sources.yml" => HUB_IMAGES) do |root|
+      answers = Answers.new(hub_tag("alpine", "3.24.4", "88" * 32))
+      move = mover(root, answers, hub_entries)
+      changed = move.call(finding("alpine", "3.24.3", "3.24.4"))
+
+      assert_equal HUB_IMAGES.gsub("3.24.3", "3.24.4").sub("66" * 32, "88" * 32), move.read("runtime/sources.yml")
+      assert_equal ["runtime/sources.yml"], changed.keys
+    end
+  end
+
+  def test_an_image_under_a_tag_that_moves_takes_the_digest_the_tag_names_now
+    checkout("runtime/sources.yml" => HUB_IMAGES) do |root|
+      move = mover(root, Answers.new(hub_tag("debian", "trixie-slim", "99" * 32)), hub_entries)
+      move.call(finding("debian-trixie-slim", "2026-11-17", "2026-12-01"))
+
+      assert_equal HUB_IMAGES.sub("2026-11-17", "2026-12-01").sub("77" * 32, "99" * 32), move.read("runtime/sources.yml")
+    end
+  end
+
   def test_a_key_beside_the_url_that_the_move_cannot_know_stops_it
     sources = SOURCES.sub("version: 3.5.2\n    url:", "version: 3.5.2\n    file_sha256: 00\n    url:")
     checkout("runtime/sources.yml" => sources) do |root|

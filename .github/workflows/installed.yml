@@ -374,9 +374,6 @@ jobs:
     name: Install, build, and deliver (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    env:
-      ALPINE_RUBY: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
-      ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
     strategy:
       fail-fast: false
       matrix:
@@ -400,8 +397,14 @@ jobs:
         with:
           persist-credentials: false
           path: checks
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            runtime/sources.yml
           sparse-checkout-cone-mode: false
+
+      # The images of the workflow's own commit, as its scripts are.
+      - name: Read the pinned images
+        run: checks/.github/scripts/pinned-images.sh env checks/runtime/sources.yml >> "$GITHUB_ENV"
 
       - name: Install Fledge from the tag in Alpine, and build hello, the parity probe, and my_cool_app
         env:
@@ -834,9 +837,6 @@ jobs:
     needs: gem
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    env:
-      ALPINE_RUBY: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
-      ALPINE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
     strategy:
       fail-fast: false
       matrix:
@@ -860,8 +860,14 @@ jobs:
         with:
           persist-credentials: false
           path: checks
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            runtime/sources.yml
           sparse-checkout-cone-mode: false
+
+      # The images of the workflow's own commit, as its scripts are.
+      - name: Read the pinned images
+        run: checks/.github/scripts/pinned-images.sh env checks/runtime/sources.yml >> "$GITHUB_ENV"
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

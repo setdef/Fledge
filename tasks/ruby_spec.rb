@@ -139,7 +139,7 @@ class RubySpec
       ],
       side: :app, platforms: PHONES - ANDROID,
       reason: "Not forced by a phone: a defect of Fledge's, which doc/phones.md marks Temporary. The iOS " \
-        "runtime links its own extensions into the app (ADR 079), so its archdir holds rbconfig.rb and no " \
+        "runtime links its own extensions into the app (ADR 097), so its archdir holds rbconfig.rb and no " \
         "extension, etc.so among them (doc/contributors/design/phone-runtimes.md, \"Bundled gems' extensions\"). " \
         "iOS does not forbid loading one as a file " \
         "(doc/contributors/research/2026-11-13-phone-extensions-as-files.md), and the Android runtime's " \

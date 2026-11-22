@@ -11,7 +11,7 @@ require_relative "../support/android"
 require_relative "../support/ios"
 
 # The default gems of the phone runtimes rake runtime[ios] and
-# runtime[android] built (ADR 079), read from the archives they wrote;
+# runtime[android] built (ADR 097), read from the archives they wrote;
 # test/mobile_runtime_test.rb checks the parts that need no runtime.
 # Without a phone's runtime, its test fails instead of skipping where
 # FLEDGE_REQUIRE_ANDROID or FLEDGE_REQUIRE_IOS is set (AndroidRequired,

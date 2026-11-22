@@ -12,7 +12,7 @@ require_relative "recipe"
 
 class RuntimeBuilder
   # iOS and iPadOS, and Android: CRuby built from its own source for a
-  # phone, with every extension linked in (ADR 079), and with YJIT and
+  # phone, with every extension linked in (ADR 097), and with YJIT and
   # ZJIT where the phone lets an app run code it writes (Android;
   # jit_options).
   #
@@ -129,7 +129,7 @@ class RuntimeBuilder
     # extensions, encodings, and bundled gems' extensions a file, as a
     # desktop's is: not unless a subclass says so (Android#shared?). Else
     # every one of them is linked into Ruby (--with-static-linked-ext,
-    # ADR 079).
+    # ADR 097).
     private def shared?
       false
     end

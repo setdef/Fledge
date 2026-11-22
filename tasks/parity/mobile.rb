@@ -63,7 +63,7 @@ class Parity
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/#{ABI}/#{DESKTOP_ARCH}/(?:enc/)?(?<feature>[^"]+)\.(?:bundle|so)"\z}o],
       app: [%r{\A"(?<feature>[a-z0-9_/]+)\.so"\z}], platforms: IOS,
       reason: "Not forced by a phone: a defect of Fledge's, which doc/phones.md marks Temporary. The iOS runtime " \
-        "links its own extensions and encoding tables in (ADR 079), and Ruby records each linked one as the " \
+        "links its own extensions and encoding tables in (ADR 097), and Ruby records each linked one as the " \
         "feature it was registered under (json/ext/parser.so, encdb.so, trans/transdb.so, .so on iOS too), where " \
         "a desktop Ruby records the file it loaded (ARCHDIR/json/ext/parser.so, ARCHDIR/enc/encdb.so). The same " \
         "extensions load. iOS loads a dynamic library from a framework in the app " \

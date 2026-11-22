@@ -17,7 +17,7 @@ class RuntimeBuilder
   #
   # The iOS runtime loads none of its own extensions from a file, since
   # Fledge builds it so: it links every extension of its own into the
-  # one library an app carries (ADR 079), and is configured with
+  # one library an app carries (ADR 097), and is configured with
   # --disable-dln. iOS does not forbid a file, and the Android runtime,
   # a shared Ruby, builds each of its extensions as one, so Ruby's own
   # build makes its bundled gems' extensions too, and this module is

@@ -8,7 +8,7 @@
 require_relative "test_helper"
 require_relative "../tasks/runtime_builder"
 
-# The parts of the mobile runtimes (ADR 079) that need no Xcode or NDK:
+# The parts of the mobile runtimes (ADR 097) that need no Xcode or NDK:
 # their names and targets, their pins, their release assets, the edits
 # they make to Ruby's source, and how Ruby's bundled gems with C
 # extensions stay gems. CI's mobile runtime jobs build the real ones, and

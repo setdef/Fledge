@@ -129,6 +129,24 @@ class MsixTest < Minitest::Test
       Fledge::Msix.packaged_config("[main]\nentry = a.rb\nidentifier = com.example.A\n[gui]\nentry = b.rb\nidentifier = com.example.B\n")
   end
 
+  # An app whose gems need Microsoft's Visual C++ runtime and carry none
+  # of it (visual_c_runtime: central, which fledge.cfg's
+  # visual_c_runtime records) depends on Microsoft's framework package
+  # of the runtime, which Windows installs with the package. In the
+  # package the DLLs come from that framework package, not System32, so
+  # the packaged fledge.cfg names none for the launcher to look for.
+  def test_an_app_that_assumes_the_visual_c_runtime_depends_on_its_framework_package
+    assert_nil first(manifest, "//m:PackageDependency")
+
+    File.binwrite(File.join(@folder, "fledge.cfg"), "entry = main.rb\nvisual_c_runtime = msvcp140.dll vcruntime140.dll\n")
+    dependencies = first(manifest, "/m:Package/m:Dependencies").elements.to_a
+
+    assert_equal %w[TargetDeviceFamily PackageDependency], dependencies.map(&:name)
+    assert_equal ["Microsoft.VCLibs.140.00.UWPDesktop", "14.0.24217.0", "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"],
+      %w[Name MinVersion Publisher].map { |key| dependencies.last.attributes[key] }
+    assert_equal "entry = main.rb\n", Fledge::Msix.packaged_config(File.binread(File.join(@folder, "fledge.cfg")))
+  end
+
   def test_it_says_what_a_package_needs
     {
       -> { msix(identity: identity(icon: nil)).manifest } => /an msix installer needs fledge\.yml's icon\. An MSIX package takes one PNG of each size, -44, -50, -150/,

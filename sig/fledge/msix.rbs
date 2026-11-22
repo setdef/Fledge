@@ -9,6 +9,7 @@ module Fledge
     ASSETS: String
     APPLICATION: String
     CONFIG: String
+    VISUAL_C_RUNTIME: Hash[String, String]
     NAMESPACES: Hash[String, String]
 
     @identity: Identity
@@ -28,6 +29,8 @@ module Fledge
     def mapping: (String work) -> String
 
     def self.packaged_config: (String config) -> String
+
+    private def assumes_visual_c_runtime?: () -> bool
 
     private def package_name: () -> String
 

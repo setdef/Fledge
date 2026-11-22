@@ -89,6 +89,17 @@ module Fledge
     # The file in the app's folder that says what its program runs.
     CONFIG = "fledge.cfg"
 
+    # Microsoft's framework package of the Visual C++ runtime for desktop
+    # apps in a package, which a package declares as a dependency in place
+    # of carrying the runtime, and which Windows installs with it, as
+    # "C++ Runtime framework packages for Desktop Bridge" gives it for
+    # version 14.0.
+    VISUAL_C_RUNTIME = {
+      "Name" => "Microsoft.VCLibs.140.00.UWPDesktop",
+      "MinVersion" => "14.0.24217.0",
+      "Publisher" => "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+    }.freeze
+
     # The namespaces of the manifest's elements.
     NAMESPACES = {
       "xmlns" => "http://schemas.microsoft.com/appx/manifest/foundation/windows10",
@@ -171,6 +182,7 @@ module Fledge
         "  </Resources>",
         "  <Dependencies>",
         %(    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="#{MIN_VERSION}" MaxVersionTested="#{MAX_VERSION_TESTED}" />),
+        *(["    <PackageDependency #{attributes(VISUAL_C_RUNTIME)} />"] if assumes_visual_c_runtime?),
         "  </Dependencies>",
         "  <Capabilities>",
         %(    <rescap:Capability Name="runFullTrust" />),
@@ -216,7 +228,10 @@ module Fledge
 
     # The text of +config+, a <tt>fledge.cfg</tt>, without its
     # identifiers, so that the launcher in a package leaves the process
-    # the package's AppUserModelID.
+    # the package's AppUserModelID, and without the Visual C++ runtime's
+    # DLLs the launcher would look for in System32, since in a package
+    # they come from the framework package the manifest depends on
+    # (VISUAL_C_RUNTIME), through the process's package graph.
     #
     # === Example
     #
@@ -230,7 +245,15 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def self.packaged_config(config)
-      config.gsub(/^identifier = [^\n]*\n/, "")
+      config.gsub(/^(?:identifier|visual_c_runtime) = [^\n]*\n/, "")
+    end
+
+    # Whether the app's gems need Microsoft's Visual C++ runtime and the
+    # app carries none of it: <tt>windows: { visual_c_runtime: central
+    # }</tt>, which its <tt>fledge.cfg</tt> records
+    # (Assembly.launch_config).
+    private def assumes_visual_c_runtime?
+      File.binread(File.join(@folder, CONFIG)).match?(/^visual_c_runtime = /)
     end
 
     # The package's name: +msix_name+, or else the identifier. Raises

@@ -224,7 +224,8 @@ class LicenseAudit
   # Every file and symlink in the tree, relative to it, except the
   # notices this audit writes (WRITTEN); and in place of each Android
   # library (an .aar, which is a zip), every file in it, as AAR!ENTRY,
-  # since an app ships what the AAR holds.
+  # since an app ships what the AAR holds, or, for one of Ruby's own
+  # extensions there, as the path it has in the app's Ruby (#linked).
   private def walk
     paths = []
     Find.find(tree) do |path|
@@ -248,7 +249,26 @@ class LicenseAudit
       entry, status = Open3.capture2("unzip", "-p", archive, name, binmode: true)
       raise "unzip could not read #{name} from #{archive}" unless status.success?
 
-      "#{relative}!#{name}".tap { |label| @archived[label] = entry.b }
+      linked.fetch(name) { "#{relative}!#{name}" }.tap { |label| @archived[label] = entry.b }
+    end
+  end
+
+  # Each native library the Android runtime's fledge.links lists, by its
+  # entry in the AAR, jni/ABI/NAME, with the first path in the app's Ruby
+  # it is linked from as the app starts, lib/ruby/...: Ruby's own
+  # extensions, its encodings, and its bundled gems' extensions, which
+  # the audit then reads where the app's Ruby has them, so that each
+  # belongs to Ruby or to its gem as on a desktop
+  # (doc/contributors/design/phone-runtimes.md, "Ruby's extensions on
+  # Android"). Empty for every other runtime.
+  private def linked
+    @linked ||= begin
+      links = File.join(tree, "fledge.links")
+      lines = File.file?(links) ? File.readlines(links, chomp: true) : []
+      lines.each_with_object({}) do |line, found|
+        abi, name, path = line.split("\t")
+        found["jni/#{abi}/#{name}"] ||= path.to_s
+      end
     end
   end
 

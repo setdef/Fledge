@@ -137,7 +137,7 @@ watched:
     line: 2
     names: [OpenSSL]
     licenses: [openssl, openssl-mobile]
-    named: [runtime/mobile/android.c]
+    named: [runtime/mobile/openssl_certificates.c]
   libyaml:
     pins: [mobile.libyaml, musl-ruby.libyaml]
     github: yaml/libyaml

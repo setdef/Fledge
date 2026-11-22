@@ -440,16 +440,14 @@
   platforms:
   - arm64-ios
   - arm64-ios-simulator
-  - aarch64-linux-android
-  - x86_64-linux-android
   checks:
   - script
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/rbconfig\.rb"\z
+  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/(?<file>rbconfig\.rb|[^"]+\.so)"\z
   app:
-  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/rbconfig\.rb"\z
+  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/(?<file>rbconfig\.rb|[^"]+\.so)"\z
   platforms:
   - arm64-ios
   - arm64-ios-simulator

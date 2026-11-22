@@ -57,10 +57,11 @@ system_libraries:
   darwin:
     - /\A\/usr\/lib\/[^\/]+\.dylib\z/
     - /\A\/System\/Library\/Frameworks\//
-  # The mobile runtimes link Ruby statically: on iOS into an archive,
-  # which needs nothing until an app links it with iOS's own libz and
-  # frameworks, and on Android into one library, which needs only what
-  # every Android provides (NDK, "Android NDK native APIs").
+  # The iOS runtime links Ruby statically into an archive, which needs
+  # nothing until an app links it with iOS's own libz and frameworks;
+  # the Android runtime's library, and each of Ruby's extensions beside
+  # it, which also needs that library, need only what every Android
+  # provides (NDK, "Android NDK native APIs").
   ios: []
   android:
     - /\A(?:libc|libm|libdl|liblog|libz)\.so\z/
@@ -177,7 +178,9 @@ components:
   # libfledgeruby.so for each ABI in the Android AAR, beside the AAR's
   # Java class and its packaging, and the Android runtime's ruby program,
   # libfledgerubyexe.so, which links libfledgeruby.so (doc/contributors/design/phone-runtimes.md,
-  # "The ruby program on Android").
+  # "The ruby program on Android"); the Android runtime's fledge.links,
+  # and its openssl_certificates.c, compiled into Ruby's openssl
+  # extension (same document, "Certificates").
   - id: fledge-embedding
     name: Fledge's embedding API, and the library and packages it is built into
     version: "{fledge_version}"
@@ -187,9 +190,12 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar
+    ships: libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/{abi}/{arch}/openssl.so
     platforms: [ios, android]
+    embedded:
+      - files: ["lib/ruby/{abi}/{arch}/openssl.{so}"]
     files:
+      - fledge.links
       - FledgeRuby.xcframework/Info.plist
       - FledgeRuby.xcframework/*/libfledgeruby.a
       - FledgeRuby.xcframework/*/Headers/{fledge_ruby.h,module.modulemap}
@@ -354,10 +360,10 @@ components:
     kind: program
     download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
     notice: openssl
-    ships: compiled into libfledgeruby.a and libfledgeruby.so
+    ships: compiled into libfledgeruby.a on iOS, and into lib/ruby/{abi}/{arch}/openssl.so on Android
     platforms: [ios, android]
     embedded:
-      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, "lib/ruby/{abi}/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.5 "
 
   - id: openssl-dlls
@@ -408,10 +414,10 @@ components:
     kind: program
     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
     notice: libyaml
-    ships: compiled into libfledgeruby.a and libfledgeruby.so
+    ships: compiled into libfledgeruby.a on iOS, and into lib/ruby/{abi}/{arch}/psych.so on Android
     platforms: [ios, android]
     embedded:
-      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, "lib/ruby/{abi}/{arch}/psych.{so}"]
         evidence: "0.2.5\0"
 
   - id: libyaml-dll
@@ -470,10 +476,10 @@ components:
     kind: program
     download: https://github.com/BLAKE3-team/BLAKE3/tree/1.8.5
     notice: blake3
-    ships: compiled into lib/ruby/{abi}/{arch}/digest/blake3.{so} (on iOS and Android, into libfledgeruby)
+    ships: compiled into lib/ruby/{abi}/{arch}/digest/blake3.{so} (on iOS, into libfledgeruby)
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt, ios, android]
     embedded:
-      - files: ["{prefix}lib/ruby/{abi}/{arch}/digest/blake3.{so}", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/digest/blake3.{so}", FledgeRuby.xcframework/*/libfledgeruby.a]
         evidence: "1.8.5\0"
 
   # AppImage's type 2 runtime, as AppImage released it (runtime/sources.yml),
@@ -776,25 +782,25 @@ components:
     kind: program
     download: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
     notice: libffi
-    ships: compiled into libfledgeruby.a and libfledgeruby.so
+    ships: compiled into libfledgeruby.a on iOS, and into the fiddle gem's extension on Android
     platforms: [ios, android]
     embedded:
-      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, "lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
         evidence: "3.5.2\0"
 
   # The NDK's clang links its own runtime into every library it links:
   # compiler-rt's builtins and LLVM's libunwind, under LLVM's exception,
   # which asks nothing of a binary that holds them.
   - id: compiler-rt-ndk
-    name: LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's library by the NDK
+    name: LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's libraries by the NDK
     version: r30
     license: Apache-2.0 WITH LLVM-exception
     kind: program
     download: https://developer.android.com/ndk/downloads
-    ships: compiled into libfledgeruby.so and the ruby program libfledgerubyexe.so
+    ships: compiled into libfledgeruby.so, the ruby program libfledgerubyexe.so, and each of Ruby's extensions
     platforms: [android]
     embedded:
-      - files: [FledgeRuby.aar!jni/*/libfledgeruby.so, FledgeRuby.aar!jni/*/libfledgerubyexe.so]
+      - files: [FledgeRuby.aar!jni/*/libfledgeruby.so, FledgeRuby.aar!jni/*/libfledgerubyexe.so, "lib/ruby/**/*.so"]
 
   # The Android runtime's YJIT and ZJIT are compiled with mise.toml's
   # Rust, whose rustup adds each Android target's standard library, and
@@ -1051,7 +1057,7 @@ components:
     supplier: "Organization: Ruby core team"
     download: https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview1.tar.gz
     notice: ruby
-    ships: "compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/"
+    ships: "compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, ios, android]
     fallback: true
     embedded:

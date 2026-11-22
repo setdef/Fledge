@@ -588,6 +588,17 @@ class RuntimeBuilderTest < Minitest::Test
     Dir.mktmpdir do |build|
       File.write(File.join(build, "rbconfig.rb"), %(  CONFIG["MAJOR"] = "4"\n  CONFIG["ruby_version"] = "4.1.0+5"\n))
       assert_equal "4.1.0+5-static", RuntimeBuilder::Mobile.extension_api(build)
+      File.write(File.join(build, "rbconfig.rb"), %(  CONFIG["ENABLE_SHARED"] = "no"\n  CONFIG["ruby_version"] = "4.1.0+5"\n))
+      assert_equal "4.1.0+5-static", RuntimeBuilder::Mobile.extension_api(build)
+    end
+  end
+
+  # Android's Ruby is a shared library, whose gems' extension folders
+  # RubyGems names for the Ruby's version alone, as a desktop's.
+  def test_the_extension_api_of_a_shared_ruby_is_its_rbconfigs_ruby_version_alone
+    Dir.mktmpdir do |build|
+      File.write(File.join(build, "rbconfig.rb"), %(  CONFIG["ENABLE_SHARED"] = "yes"\n  CONFIG["ruby_version"] = "4.1.0+5"\n))
+      assert_equal "4.1.0+5", RuntimeBuilder::Mobile.extension_api(build)
     end
   end
 

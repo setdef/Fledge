@@ -63,12 +63,10 @@ android {
     // The native libraries are compressed, and the package installer
     // extracts them into the app's native library folder, the only
     // files Android lets an app run: among them is Ruby's own program,
-    // libfledgerubyexe.so, which RbConfig.ruby names, and each gem's C
-    // or C++ extension, which Ruby loads from there. Set this to false
-    // to keep them stored in the APK instead, loaded from it and not
-    // extracted, which takes less space once installed; then the app's
-    // Ruby has no program to start, RbConfig.ruby names nothing, and
-    // fledge build android refuses an app with such an extension.
+    // libfledgerubyexe.so, which RbConfig.ruby names, and each of Ruby's
+    // own extensions and encodings and each gem's C or C++ extension,
+    // which Ruby loads from there. Every app needs it: fledge build
+    // android refuses a build.gradle that sets it to false or sets none.
     packaging {
         jniLibs {
             useLegacyPackaging = true

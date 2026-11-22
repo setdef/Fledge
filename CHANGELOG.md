@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - A gem whose extension fails to compile shows its build output and a sentence naming the gem, with no Ruby backtrace of Fledge's compile script.
+- **Breaking:** `fledge build android` refuses every app whose `build.gradle` sets `useLegacyPackaging = false` or sets none, not only an app with a gem's C or C++ extension, since Ruby's own extensions and encodings are now native libraries the package installer must extract.
+- The Android runtime's Ruby is a shared library, `libfledgeruby.so`, with each extension of Ruby's standard library and bundled gems, and each encoding table, a native library of its own in `FledgeRuby.aar`, which an app's Ruby loads from the path a desktop's has it, so `$LOADED_FEATURES` and `RbConfig::CONFIG["archdir"]` are as under `ruby main.rb`; OpenSSL, libyaml, and libffi are in `openssl.so`, `psych.so`, and `fiddle.so`, no longer in `libfledgeruby.so`.
+- On Android, RubyGems keeps a gem's compiled extension under `extensions/PLATFORM/4.1.0+5/`, as on a desktop Linux, where it was `4.1.0+5-static/`.
 
 ### Fixed
 

@@ -5,18 +5,21 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "digest"
 require "fileutils"
 require_relative "mobile"
 
 class RuntimeBuilder
   # Android: Ruby for arm64-v8a and x86_64 phones and emulators, built
   # with the NDK's compilers after Termux's configure settings
-  # (termux-packages, packages/ruby/build.sh; CONFIGURE), linked with the
-  # embedding API into one shared library per ABI, libfledgeruby.so, and
-  # packed by Gradle and the Android Gradle plugin as an AAR,
-  # FledgeRuby.aar, with the embedding API's Java class
-  # (doc/contributors/design/phone-runtimes.md, "What a phone runtime
-  # holds").
+  # (termux-packages, packages/ruby/build.sh; CONFIGURE) as a shared
+  # library, as a desktop Linux runtime's Ruby is, linked again with the
+  # embedding API into one shared library per ABI, libfledgeruby.so, with
+  # each of Ruby's extensions, encodings, and bundled gems' extensions a
+  # file of its own beside it (#extension_files), and packed by Gradle
+  # and the Android Gradle plugin as an AAR, FledgeRuby.aar, with the
+  # embedding API's Java class (doc/contributors/design/phone-runtimes.md,
+  # "What a phone runtime holds").
   #
   # Beside the AAR the runtime holds the Ruby both ABIs run: one lib/ruby
   # (Ruby names each ABI's folder for its own platform, so both fit in
@@ -49,8 +52,29 @@ class RuntimeBuilder
       rb_cv_type_deprecated=x
     ].freeze
 
-    # The libraries Android itself provides that libfledgeruby.so may need.
+    # The libraries Android itself provides that libfledgeruby.so and
+    # Ruby's extensions may need.
     SYSTEM = /\A(?:libc|libm|libdl|liblog|libz)\.so\z/
+
+    # What begins the name in the AAR of each of Ruby's own extension
+    # files: libfledgerubyext.PATH.so, PATH its path under lib/ruby with
+    # its slashes as dots (#extension_files).
+    EXTENSION = "libfledgerubyext"
+
+    # The file at the runtime's top that lists, for each ABI, each of
+    # Ruby's extension files in the AAR and its path under the app's
+    # Ruby, as fledge build's own fledge.links does for an app's gems
+    # (Fledge::MobileProject::AndroidLibraries), which an app's
+    # fledge.links begins with.
+    LINKS = "fledge.links"
+
+    # The source in runtime/mobile/ that ext/openssl compiles in
+    # (RubySource.openssl_extconf), as fledge_certificates.c.
+    CERTIFICATES = "openssl_certificates.c"
+
+    # The symbols Ruby's build makes local in its shared library
+    # (template/Makefile.in, lines 358 to 360 at 4.1.0-preview1).
+    LOCAL = %w[Init_* InitVM_* ruby_static_id_* *_threadptr_* *_ec_*].freeze
 
     # Play requires every native library of a 64-bit app to load on
     # devices with 16 KB pages from 2027-02-01; NDK r28 and later align
@@ -105,12 +129,25 @@ class RuntimeBuilder
       JITS
     end
 
+    # Ruby is built as a shared library, its extensions as files.
+    private def shared?
+      true
+    end
+
     private def edits
-      %i[psych_extconf configure ruby_c ruby_c_source prism_compile_c process_c process_c_umask process_c_ids file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
+      %i[psych_extconf configure configure_soname openssl_extconf ruby_c ruby_c_source prism_compile_c process_c process_c_umask process_c_ids file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
     end
 
     private def host_triple(target)
       target.triple
+    end
+
+    # The source as Mobile#prepare_source makes it, with CERTIFICATES
+    # among ext/openssl's sources.
+    private def prepare_source(source)
+      super
+      FileUtils.cp(File.join(MOBILE, CERTIFICATES), File.join(source, "ext", "openssl", "fledge_certificates.c"))
+      source
     end
 
     # The NDK, unpacked from its pinned download into the build folder,
@@ -134,14 +171,6 @@ class RuntimeBuilder
     # file for the license audit.
     def readers
       Fledge::Binary::Readers.llvm(tools)
-    end
-
-    # How a bundled gem's extension becomes one object with only its Init
-    # function global (BundledExtensions.relocate): the NDK's lld links it
-    # with -r, and the NDK's llvm-objcopy makes every symbol it defines
-    # but the Init function local (--keep-global-symbol).
-    private def relocatable
-      ["$(CC) -r -nostdlib -o $@ $(FLEDGE_OBJS)", "#{File.join(tools, 'llvm-objcopy')} --keep-global-symbol=$(FLEDGE_INIT) $@"]
     end
 
     private def tools
@@ -181,47 +210,90 @@ class RuntimeBuilder
 
     private def package(stage)
       libraries = @roots.to_h { |target, root| [target, link(target, root)] }
+      links = @roots.flat_map do |target, root|
+        files, lines = extension_files(target, root)
+        libraries.fetch(target).concat(files)
+        lines
+      end
+      File.write(File.join(stage, LINKS), links.join)
       merge_trees(stage)
       FileUtils.cp(File.join(MOBILE, "fledge_ruby.h"), File.join(stage, "include"))
       copy_certificates(File.join(stage, "libexec"))
       pack_aar(libraries, File.join(stage, "FledgeRuby.aar"))
     end
 
-    # libfledgeruby.so for +target+: Ruby whole, so that native code that
-    # links it finds all of Ruby's C API, with its extensions and
-    # encodings, and without libruby's dmyext.o and dmyenc.o (see
-    # IOS#library); the embedding API with its JNI functions; and OpenSSL,
-    # libyaml, and libffi, whose symbols it keeps to itself
-    # (--exclude-libs), so an app's own copies cannot clash with them; and
-    # OpenSSL's X509_get_default_cert_file answered by android.c, since
-    # OpenSSL reads no SSL_CERT_FILE in an Android app. Returns it, with
-    # the ruby program linked against it (#program).
+    # libfledgeruby.so for +target+: Ruby's shared library as Ruby's
+    # build links it (template/Makefile.in, lines 354 to 360 at
+    # 4.1.0-preview1), from the objects in libruby's archive with
+    # dmyext.o and dmyenc.o, by which Ruby loads its extensions and
+    # encodings from files, and with the same symbols made local (LOCAL);
+    # and with the embedding API and its JNI functions, under the SONAME
+    # each extension Ruby built needs (RubySource.configure_soname).
+    # OpenSSL, libyaml, and libffi are linked into the extensions that use
+    # them, not here. Returns it, with the ruby program linked against it
+    # (#program).
     private def link(target, root)
       folder = File.join(@build_dir, target.name, "package")
       FileUtils.rm_rf(folder)
       FileUtils.mkdir_p(folder)
       cc = environment(target).fetch("CC")
-      ruby, libraries = @archives.fetch(target).partition { |path| path.start_with?(File.join(@build_dir, target.name, "ruby")) }
-      static = ruby.map do |path|
-        next path unless File.basename(path).match?(LIBRUBY)
-
-        copy = File.join(folder, File.basename(path))
-        FileUtils.cp(path, copy)
-        @builder.run(File.join(tools, "llvm-ar"), "d", copy, "dmyext.o", "dmyenc.o")
-        copy
-      end
+      static = @archives.fetch(target)
+      build = File.join(@build_dir, target.name, "ruby")
+      members = static.flat_map { |archive| @builder.capture(File.join(tools, "llvm-ar"), "t", archive).split }
+      objects = %w[dmyext.o dmyenc.o].reject { |object| members.include?(object) }.map { |object| File.join(build, object) }
       library = File.join(folder, "libfledgeruby.so")
-      excluded = libraries.map { |path| File.basename(path) }.join(":")
       api_sources.each do |source|
         @builder.run(cc, "--analyze", "-Xclang", "-analyzer-werror", *compile_flags(root), source, "-o", File.join(folder, "analysis.plist"))
       end
-      @builder.run(cc, "-shared", "-fPIC", "-O2", *compile_flags(root), *api_sources, "-Wl,--whole-archive", *static,
-        "-Wl,--no-whole-archive", *libraries, "-Wl,--exclude-libs=#{excluded}", "-Wl,--wrap=X509_get_default_cert_file",
-        "-Wl,-z,max-page-size=#{PAGE}", "-llog", "-lz",
+      @builder.run(cc, "-shared", "-fPIC", "-O2", *compile_flags(root), *api_sources, *objects, "-Wl,--whole-archive", *static,
+        "-Wl,--no-whole-archive", "-Wl,-soname,libfledgeruby.so", "-Wl,-z,max-page-size=#{PAGE}", "-llog", "-lz",
         "-ldl", "-lm", "-o", library)
+      @builder.run(File.join(tools, "llvm-objcopy"), "-w", *LOCAL.flat_map { |pattern| ["-L", pattern] }, library)
       @builder.run(File.join(tools, "llvm-strip"), "--strip-unneeded", library)
       check(library)
       [library, program(cc, root, folder)]
+    end
+
+    # Each ELF file Ruby installed under +root+'s lib/ruby for +target+:
+    # its extensions, encodings and transcoders, and its bundled gems'
+    # extensions, in each gem's require path and in its extension folder,
+    # as on a desktop. The package installer extracts only lib*.so
+    # files, into a folder of its own, so each is copied, stripped, and
+    # checked as libfledgeruby.so is, into the AAR's folder for the ABI
+    # as EXTENSION.PATH.so, and taken out of the tree, which then holds
+    # the same files for both ABIs. Returns the copies, one for each
+    # file's bytes, and a LINKS line for each path.
+    private def extension_files(target, root)
+      ruby = File.join(root, "lib", "ruby")
+      folder = File.join(@build_dir, target.name, "extensions")
+      FileUtils.rm_rf(folder)
+      FileUtils.mkdir_p(folder)
+      named = {} # : Hash[String, String]
+      digests = {} # : Hash[String, String]
+      lines = Dir.glob("**/*.so", base: ruby).sort.filter_map do |path|
+        from = File.join(ruby, path)
+        next unless File.file?(from) && File.binread(from, 4) == "\x7FELF".b
+
+        name = digests[Digest::SHA256.file(from).hexdigest] ||= extension_file(from, path, folder, named)
+        FileUtils.rm(from)
+        "#{target.abi}\t#{name}\tlib/ruby/#{path}\n"
+      end
+      [named.keys.map { |name| File.join(folder, name) }, lines]
+    end
+
+    # Copies the extension file +from+, at +path+ under lib/ruby, into
+    # +folder+ under its name in the AAR, stripped and checked, and
+    # returns the name. Raises when another file in +named+ has that name.
+    private def extension_file(from, path, folder, named)
+      name = "#{EXTENSION}.#{path.tr('/', '.')}"
+      raise "lib/ruby/#{named[name]} and lib/ruby/#{path} would both be #{name}" if named.key?(name)
+
+      named[name] = path
+      copy = File.join(folder, name)
+      FileUtils.cp(from, copy)
+      @builder.run(File.join(tools, "llvm-strip"), "--strip-unneeded", copy)
+      check(copy, also: "libfledgeruby.so")
+      name
     end
 
     # The runtime's ruby program for one ABI, PROGRAM, which RbConfig.ruby

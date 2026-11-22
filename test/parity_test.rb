@@ -92,10 +92,12 @@ class ParityTest < Minitest::Test
   end
 
   # A justification whose patterns name groups on both sides pairs what
-  # it explains: a phone's Ruby records each extension by its feature
-  # where a desktop's records its file, which is allowed one for one,
-  # but an extension loaded on one side only is a difference, as is
-  # another Ruby's version in RUBY_DESCRIPTION.
+  # it explains: Android's Ruby records each extension's file in the
+  # folder of its own platform where a desktop's records the file in
+  # the desktop's, which is allowed one for one, but an extension loaded
+  # on one side only is a difference, as is another Ruby's version in
+  # RUBY_DESCRIPTION, and so is an extension recorded by its feature
+  # alone, as iOS's linked ones are.
   def test_a_paired_justification_allows_a_renamed_element_but_not_a_missing_one
     arch = "<prefix>/lib/ruby/4.1.0+5/x86_64-linux"
     reference = {
@@ -103,14 +105,18 @@ class ParityTest < Minitest::Test
 "RUBY_DESCRIPTION" => "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f) +PRISM [x86_64-linux]",
 }
     app = {
-"$LOADED_FEATURES" => ["encdb.so", "json/ext/parser.so"],
+"$LOADED_FEATURES" => ["#{arch}-android/enc/encdb.so", "#{arch}-android/json/ext/parser.so"],
 "RUBY_DESCRIPTION" => "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f) +PRISM [x86_64-linux-android]",
 }
     compare = -> (changed) { Parity::Reports.compare(reference, app.merge(changed), platform: "x86_64-linux-android") }
 
     assert compare.call({}).all?(&:justified?)
-    refute_predicate compare.call("$LOADED_FEATURES" => ["json/ext/parser.so"]).first, :justified?
-    refute_predicate compare.call("$LOADED_FEATURES" => ["encdb.so", "json/ext/parser.so", "date_core.so"]).first, :justified?
+    refute_predicate compare.call("$LOADED_FEATURES" => ["#{arch}-android/json/ext/parser.so"]).first, :justified?
+    refute_predicate compare.call("$LOADED_FEATURES" => [*app.fetch("$LOADED_FEATURES"), "#{arch}-android/date_core.so"]).first,
+      :justified?
+    refute_predicate compare.call("$LOADED_FEATURES" => ["encdb.so", "json/ext/parser.so"]).first, :justified?
+    assert_predicate Parity::Reports.compare(reference.merge("$LOADED_FEATURES" => ["#{arch}/json/ext/parser.so"]),
+      { "$LOADED_FEATURES" => ["json/ext/parser.so"] }, platform: "arm64-ios-simulator").first, :justified?
     refute compare.call("RUBY_DESCRIPTION" => "ruby 4.1.0 (2026-12-25 master 0123456789) +PRISM [x86_64-linux-android]")
       .all?(&:justified?)
   end

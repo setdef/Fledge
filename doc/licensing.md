@@ -42,11 +42,11 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 | Component | Version | License | How it ships |
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/digest/blake3.bundle (on iOS and Android, into libfledgeruby) |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/digest/blake3.bundle (on iOS, into libfledgeruby) |
 | libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/openssl.bundle |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 
 Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
@@ -69,7 +69,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/x86_64-linux/digest/blake3.so (on iOS and Android, into libfledgeruby) |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/x86_64-linux/digest/blake3.so (on iOS, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -82,7 +82,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/x86_64-linux/zlib.so |
@@ -109,7 +109,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/aarch64-linux/digest/blake3.so (on iOS and Android, into libfledgeruby) |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/aarch64-linux/digest/blake3.so (on iOS, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 13 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -122,7 +122,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/aarch64-linux/zlib.so |
@@ -149,7 +149,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/digest/blake3.so (on iOS and Android, into libfledgeruby) |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/digest/blake3.so (on iOS, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -160,7 +160,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/zlib.so |
@@ -187,7 +187,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | AppImage's type 2 runtime's source code, at the commit AppImage built it from, and how it was built | 20251108 | `MIT` | notices/sources/appimage-runtime/, in every app |
 | AppImage's type 2 runtime, the program at the front of an app's AppImage | 20251108 | `MIT` | tools/appimage-runtime, which fledge build puts at the front of the app's AppImage, and in its folder and archive only when fledge.yml sets build_tools |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/digest/blake3.so (on iOS and Android, into libfledgeruby) |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/digest/blake3.so (on iOS, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
@@ -198,7 +198,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
 | OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/openssl.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
 | zlib, compiled into Ruby's zlib extension | 1.3.2 | `Zlib` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/zlib.so |
@@ -223,7 +223,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Component | Version | License | How it ships |
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and ruby/lib/ruby/4.1.0+6/rubygems/defaults/operating_system.rb |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+6/x64-mingw-ucrt/digest/blake3.so (on iOS and Android, into libfledgeruby) |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+6/x64-mingw-ucrt/digest/blake3.so (on iOS, into libfledgeruby) |
 | GCC's runtime library (libgcc), linked statically by MSYS2's GCC into RubyInstaller's DLLs | 13 to 16 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the DLLs and extensions in ruby/, which MSYS2's GCC built |
 | GCC's runtime library (libgcc_s_seh-1.dll), from MSYS2's libgcc 16.2.0-6 | 16.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | ruby/bin/ruby_builtin_dlls/libgcc_s_seh-1.dll, a shared library digest/blake3.so loads |
 | GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | notices/sources/gmp/, in every app |
@@ -265,7 +265,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Component | Version | License | How it ships |
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and ruby/lib/ruby/4.1.0+6/rubygems/defaults/operating_system.rb |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+6/aarch64-mingw-ucrt/digest/blake3.so (on iOS and Android, into libfledgeruby) |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+6/aarch64-mingw-ucrt/digest/blake3.so (on iOS, into libfledgeruby) |
 | GNU MP's source code, as MSYS2 packaged it, and how the runtime's copy was built | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | notices/sources/gmp/, in every app |
 | GNU MP, which Ruby's Integer uses for arithmetic on large numbers | 6.3.0 | `LGPL-3.0-or-later OR GPL-2.0-or-later` | ruby/bin/ruby_builtin_dlls/libgmp-10.dll, a shared library Ruby's DLL loads |
 | libffi (libffi-8.dll, beside the fiddle gem's extension) | 3.8.0 | `MIT` | a shared library beside the fiddle gem's extension |
@@ -304,14 +304,14 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge's embedding API, and the library and packages it is built into | 0.17.0 | `MIT` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
+| Fledge's embedding API, and the library and packages it is built into | 0.17.0 | `MIT` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/4.1.0+5/arm64-darwin/openssl.so |
 | Fledge's RubyGems defaults | 0.17.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin/digest/blake3.so (on iOS and Android, into libfledgeruby) |
-| libffi, compiled into the mobile runtimes' library for the fiddle gem | 3.5.2 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
-| libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin/digest/blake3.so (on iOS, into libfledgeruby) |
+| libffi, compiled into the mobile runtimes' library for the fiddle gem | 3.5.2 | `MIT` | compiled into libfledgeruby.a on iOS, and into the fiddle gem's extension on Android |
+| libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a on iOS, and into lib/ruby/4.1.0+5/arm64-darwin/psych.so on Android |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
-| OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a on iOS, and into lib/ruby/4.1.0+5/arm64-darwin/openssl.so on Android |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 
 Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 
@@ -330,15 +330,15 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 
 | Component | Version | License | How it ships |
 |---|---|---|---|
-| Fledge's embedding API, and the library and packages it is built into | 0.17.0 | `MIT` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar |
+| Fledge's embedding API, and the library and packages it is built into | 0.17.0 | `MIT` | libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/openssl.so |
 | Fledge's RubyGems defaults | 0.17.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/digest/blake3.so (on iOS and Android, into libfledgeruby) |
-| libffi, compiled into the mobile runtimes' library for the fiddle gem | 3.5.2 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
-| libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a and libfledgeruby.so |
-| LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's library by the NDK | r30 | `Apache-2.0 WITH LLVM-exception` | compiled into libfledgeruby.so and the ruby program libfledgerubyexe.so |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/digest/blake3.so (on iOS, into libfledgeruby) |
+| libffi, compiled into the mobile runtimes' library for the fiddle gem | 3.5.2 | `MIT` | compiled into libfledgeruby.a on iOS, and into the fiddle gem's extension on Android |
+| libyaml, compiled into the mobile runtimes' library | 0.2.5 | `MIT` | compiled into libfledgeruby.a on iOS, and into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/psych.so on Android |
+| LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's libraries by the NDK | r30 | `Apache-2.0 WITH LLVM-exception` | compiled into libfledgeruby.so, the ruby program libfledgerubyexe.so, and each of Ruby's extensions |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
-| OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a and libfledgeruby.so |
-| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/ |
+| OpenSSL, compiled into the mobile runtimes' library | 3.6.5 | `Apache-2.0` | compiled into libfledgeruby.a on iOS, and into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/openssl.so on Android |
+| Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.99.1 | `MIT OR Apache-2.0` | compiled into libfledgeruby.so |
 
 Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):

@@ -24,6 +24,8 @@ class RuntimeBuilder
       vm_dump: "vm_dump.c",
       configure: "configure",
       configure_macos_minimum: "configure",
+      configure_soname: "configure",
+      openssl_extconf: "ext/openssl/extconf.rb",
       ruby_c: "ruby.c",
       ruby_c_source: "ruby.c",
       prism_compile_c: "prism_compile.c",
@@ -78,6 +80,33 @@ class RuntimeBuilder
     def self.configure(text)
       replace(text, /^(\s*)target_os=\$\{target_os\}-android$/,
         "\\1case $target_os in *android*) ;; *) target_os=${target_os}-android ;; esac", "configure appends -android")
+    end
+
+    # configure names a shared Ruby on Linux, Android's target_os among
+    # it, lib$(RUBY_SO_NAME).so.$(RUBY_PROGRAM_VERSION), with a SONAME
+    # of lib$(RUBY_SO_NAME).so.$(RUBY_API_VERSION) and the unversioned
+    # name a link (configure.ac, lines 3568 to 3570 and 3618 to 3626 at
+    # 4.1.0-preview1). Android's package installer extracts only a
+    # native library whose name is lib*.so, so the library and its
+    # SONAME, which each extension needs by that name, are both the
+    # unversioned name, with no link, as configure names a shared Ruby
+    # on macOS. Made where configure has just set
+    # Linux's names, they reach rbconfig.rb too.
+    def self.configure_soname(text)
+      replace(text, /^(  linux\* \| gnu\* \| haiku\*\) :\n.*?\n\tLIBRUBY_ALIASES='\$\(LIBRUBY_SONAME\) lib\$\(RUBY_SO_NAME\)\.\$\(SOEXT\)'\n)/m,
+        "\\1\tLIBRUBY_SO='lib$(RUBY_SO_NAME).$(SOEXT)'\n\tLIBRUBY_SONAME='$(LIBRUBY_SO)'\n\tLIBRUBY_ALIASES=''\n",
+        "configure names Linux's shared Ruby")
+    end
+
+    # Where OpenSSL is linked into the openssl extension's own file
+    # (Mobile#shared?), its every call of X509_get_default_cert_file goes
+    # to Fledge's, which the edit adds beside the extension's sources,
+    # where mkmf compiles every C file it finds (CERTIFICATE_SOURCE), by
+    # the linker's own --wrap, which the edit adds to the extension's
+    # link after its checks, so that none of them is linked with it.
+    def self.openssl_extconf(text)
+      replace(text, /^create_makefile\("openssl"\)$/,
+        "$DLDFLAGS << \" -Wl,--wrap=X509_get_default_cert_file\"\ncreate_makefile(\"openssl\")", "openssl's extconf.rb makes its Makefile")
     end
 
     # configure refuses a darwin target whose MAC_OS_X_VERSION_MIN_REQUIRED
@@ -174,9 +203,11 @@ class RuntimeBuilder
     # "adder/adder.bundle"</tt> on a Mac), where a phone's Ruby registers
     # the extension only by its feature with ".so" (extinit.c, and
     # fledge_ruby_add_extension in <tt>runtime/mobile/fledge_ruby.c</tt>).
+    #
+    # A Ruby that links no bundled gem's extension in (Mobile#shared?)
+    # gives none, and its gate lets every linked extension through: the
+    # app's own, in libfledgeext.so on Android.
     def self.load_c(text, extensions)
-      raise ArgumentError, "the gate needs a gem's extension to guard" if extensions.empty?
-
       table = extensions.sort.map { |feature, full| "    {#{feature.dump}, #{full.dump}},\n" }.join
       gated = replace(text, /^(            if \(st_lookup\(&vm->static_ext_inits, \(st_data_t\)ftptr, NULL\))\) \{\n/,
         "\\1 && fledge_gem_extension_reachable_p(box, ftptr)) {\n", "search_required looks up a linked extension")
@@ -586,9 +617,11 @@ class RuntimeBuilder
     # extension feature with its gem's full name.
     GATE = <<~C
       /* Fledge: each bundled gem's extension this Ruby links in, by the
-         feature it is registered as, with the full name of its gem. */
+         feature it is registered as, with the full name of its gem, and
+         then NULL. */
       static const char *const fledge_gem_extensions[][2] = {
-      %<table>s};
+      %<table>s    {NULL, NULL},
+      };
 
       /* Whether the linked extension +feature+ may be found: always, but for
          a gem's, which only while a folder named for its gem is on
@@ -597,7 +630,7 @@ class RuntimeBuilder
       static int
       fledge_gem_extension_reachable_p(const rb_box_t *box, const char *feature)
       {
-          for (size_t i = 0; i < sizeof(fledge_gem_extensions) / sizeof(fledge_gem_extensions[0]); i++) {
+          for (size_t i = 0; fledge_gem_extensions[i][0] != NULL; i++) {
               if (strcmp(feature, fledge_gem_extensions[i][0]) != 0) continue;
               const char *gem = fledge_gem_extensions[i][1];
               long length = (long)strlen(gem);

@@ -79,8 +79,15 @@ class RuntimeBuilder
     MOBILE = File.join(ROOT, "runtime", "mobile")
 
     # Static libruby, as Ruby's build names it: libruby-static.a, or on
-    # Apple systems libruby.MAJOR.MINOR-static.a.
-    LIBRUBY = /\Alibruby(?:\.[\d.]+)?-static\.a\z/
+    # Apple systems libruby.MAJOR.MINOR-static.a, or, for a Ruby whose
+    # shared library is named libfledgeruby (SONAME),
+    # libfledgeruby-static.a.
+    LIBRUBY = /\Alib(?:fledge)?ruby(?:\.[\d.]+)?-static\.a\z/
+
+    # The name configure is told for the shared library of a Ruby built
+    # as one (Android#shared?), which is also the name of the library an
+    # app's native code links: libfledgeruby.so.
+    SONAME = "fledgeruby"
 
     def hosts
       @builder.platform.hosts
@@ -105,13 +112,26 @@ class RuntimeBuilder
     # recipe), and found only once its gem is active (RubySource.load_c).
     # Each target builds in a source folder of its own (build_target),
     # and the build machine's miniruby from one more.
+    #
+    # A Ruby built as a shared library (shared?) builds its bundled gems'
+    # extensions as files, as a desktop's does, and links none of them
+    # in, so none is copied and none is gated.
     private def prepare_source(source)
       unpack_into(pin("ruby"), source)
       RubySource.apply(source, edits)
-      @kept = BundledExtensions.copy(source, omit: omitted_gems, recipe: relocatable)
+      @kept = shared? ? {} : BundledExtensions.copy(source, omit: omitted_gems, recipe: relocatable)
       RubySource.edit(source, :load_c, BundledExtensions.features(source, @kept))
-      @without = [*BundledExtensions.without(source), "win32", "win32ole", "-test-/*"].uniq
+      @without = [*(shared? ? [] : BundledExtensions.without(source)), "win32", "win32ole", "-test-/*"].uniq
       source
+    end
+
+    # Whether Ruby is built as a shared library, with each of its
+    # extensions, encodings, and bundled gems' extensions a file, as a
+    # desktop's is: not unless a subclass says so (Android#shared?). Else
+    # every one of them is linked into Ruby (--with-static-linked-ext,
+    # ADR 079).
+    private def shared?
+      false
     end
 
     # The bundled gems a phone's Ruby leaves out, as it leaves out the
@@ -206,8 +226,10 @@ class RuntimeBuilder
       use_host_builtin_binary(build)
       logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", *MAKE_VARIABLES, chdir: build, env: environment(target))
       @extension_api = Mobile.extension_api(build)
-      BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: @extension_api)
-      BundledExtensions.write_stubs(build, @kept, platform: target.ruby_platform, api: @extension_api)
+      unless shared?
+        BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: @extension_api)
+        BundledExtensions.write_stubs(build, @kept, platform: target.ruby_platform, api: @extension_api)
+      end
       logged("#{target.name}-install", "make", "install-nodoc", "DESTDIR=#{root}", *MAKE_VARIABLES, chdir: build,
         env: environment(target))
       finish_tree(target, root)
@@ -219,20 +241,20 @@ class RuntimeBuilder
     private def finish_tree(target, root)
       ruby = File.join(root, "lib", "ruby")
       gems = File.join(ruby, "gems", RuntimeBuilder.ruby_abi(ruby))
-      BundledExtensions.check_installed(gems, @kept, platform: target.ruby_platform, api: @extension_api.to_s)
+      BundledExtensions.check_installed(gems, @kept, platform: target.ruby_platform, api: @extension_api.to_s) unless shared?
       Pruning.prune(ruby, @builder.bundled_gems - WINDOWS_GEMS)
       Certificates.point_openssl_rb(ruby)
       @builder.install_rubygems_defaults(ruby)
     end
 
     # The ABI version of the Ruby built in the folder +build+, as RubyGems
-    # names the folders of a Ruby without a shared libruby
-    # (Gem.extension_api_version): the build's rbconfig.rb's ruby_version,
-    # with -static.
+    # names its gems' extension folders (Gem.extension_api_version): the
+    # build's rbconfig.rb's ruby_version, with -static for a Ruby without
+    # a shared libruby (ENABLE_SHARED).
     def self.extension_api(build)
-      rbconfig = File.join(build, "rbconfig.rb")
-      version = File.read(rbconfig)[/^\s*CONFIG\["ruby_version"\] = "([^"]+)"/, 1] or raise "#{rbconfig} names no ruby_version"
-      "#{version}-static"
+      rbconfig = File.read(File.join(build, "rbconfig.rb"))
+      version = rbconfig[/^\s*CONFIG\["ruby_version"\] = "([^"]+)"/, 1] or raise "#{build}/rbconfig.rb names no ruby_version"
+      (rbconfig[/^\s*CONFIG\["ENABLE_SHARED"\] = "([^"]+)"/, 1] == "yes") ? version : "#{version}-static"
     end
 
     # The folder of Ruby's headers in the Ruby installed at +root+,
@@ -260,21 +282,21 @@ class RuntimeBuilder
     NO_GIT = "--without-git"
 
     # What configure is told for every target: a static Ruby, every
-    # extension linked in, with the JIT the platform allows
+    # extension linked in, or a shared Ruby named SONAME, every
+    # extension a file (shared?), with the JIT the platform allows
     # (jit_options), finding its library relative
     # to itself, built with the libraries built for the target and none
     # of the build machine's (PKG_CONFIG=false), and without GMP (LGPL),
-    # Windows' extensions, Ruby's test extensions, or the bundled gems' own
-    # builds (their extensions are linked in among Ruby's;
-    # BundledExtensions).
+    # Windows' extensions, Ruby's test extensions, or, for a static Ruby,
+    # the bundled gems' own builds (their extensions are linked in among
+    # Ruby's; BundledExtensions).
     private def configure_options(target, deps)
       [
         "--host=#{host_triple(target)}",
         "--target=#{host_triple(target)}",
         "--prefix=/",
         "--enable-load-relative",
-        "--disable-shared",
-        "--with-static-linked-ext",
+        *(shared? ? ["--enable-shared", "--with-soname=#{SONAME}"] : ["--disable-shared", "--with-static-linked-ext"]),
         *jit_options(target),
         "--disable-install-doc",
         "--disable-install-rdoc",
@@ -344,9 +366,12 @@ class RuntimeBuilder
     # and the libraries built for it. The JITs' static library, which
     # rustc writes under target/, is left out: libruby already holds it,
     # as the one object defs/jit.mk partly links it into (RUST_LIBOBJ).
+    # A shared Ruby (shared?) built only libruby as an archive, and its
+    # extensions link the libraries built for the target themselves.
     private def archives(build, deps)
       ruby = Dir.glob("**/*.a", base: build).reject { |path| path.start_with?(".bundle/", "target/") || path == "libruby.a" }.sort
       raise "#{build} built no static libruby" unless ruby.any? { |path| path.match?(LIBRUBY) }
+      return ruby.grep(LIBRUBY).map { |path| File.join(build, path) } if shared?
 
       libraries = deps.values.flat_map { |prefix| Dir.glob(File.join(prefix, "lib", "*.a")) }.sort
       [*ruby.map { |path| File.join(build, path) }, File.join(build, "ext", "extinit.o"), File.join(build, "enc", "encinit.o"), *libraries]

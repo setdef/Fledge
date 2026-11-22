@@ -16,20 +16,8 @@
  * be the bytes Ruby expects. The Java class sends each string as its
  * UTF-8 bytes instead, all of them in one array, each followed by a NUL.
  *
- * And OpenSSL reads no environment variable in an Android app: it reads
- * them only through ossl_safe_getenv, which refuses them in a process
- * whose AT_SECURE is set (crypto/uid.c, OPENSSL_issetugid, at 3.6.5),
- * and every app inherits AT_SECURE from zygote, which Android starts in
- * an SELinux domain of its own. So PORTABLE_RUBY_SSL_CERT_FILE, which
- * openssl.rb sets and OpenSSL reads on iOS, as on a desktop
- * (tasks/runtime_builder/certificates.rb), goes unread by OpenSSL, which
- * would trust only its compiled-in file, the build machine's. The
- * runtime's library is linked with the linker's own
- * --wrap=X509_get_default_cert_file (tasks/runtime_builder/android.rb),
- * which sends OpenSSL's every call of that function here, so its default
- * file is the one that variable names, with getenv, which AT_SECURE does
- * not stop: SSL_CERT_FILE's, or else the runtime's CA certificates, as
- * on a desktop; and OpenSSL::X509::DEFAULT_CERT_FILE names it.
+ * OpenSSL's CA certificates are openssl_certificates.c's, in Ruby's
+ * openssl extension, where OpenSSL is linked in.
  *
  * And the runtime's ruby program, which RbConfig.ruby names
  * (doc/contributors/design/phone-runtimes.md, "The ruby program on Android"):
@@ -83,20 +71,6 @@ JNIEXPORT jint JNICALL Java_org_setdef_fledge_FledgeRuby_nativeRun(JNIEnv *env, 
                                                                    jint argc);
 JNIEXPORT jint JNICALL Java_org_setdef_fledge_FledgeRuby_nativeRunApp(JNIEnv *env, jclass type,
                                                                       jbyteArray strings_array, jint argc);
-
-/* OpenSSL's own X509_get_default_cert_file, and the one linked in its place. */
-const char *__real_X509_get_default_cert_file(void);
-const char *__wrap_X509_get_default_cert_file(void);
-
-const char *
-__wrap_X509_get_default_cert_file(void)
-{
-    const char *named = getenv("PORTABLE_RUBY_SSL_CERT_FILE");
-    if (named != NULL && named[0] != '\0') return named;
-    const char *certificates = fledge_ruby_certificates();
-
-    return certificates != NULL ? certificates : __real_X509_get_default_cert_file();
-}
 
 static char *log_tag;
 

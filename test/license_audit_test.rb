@@ -635,6 +635,13 @@ class LicenseAuditTest < Minitest::Test
     .select { |component| Array(component["platforms"]).include?("ios") }
     .flat_map { |component| Array(component["embedded"]).map { |embedded| embedded["evidence"] } }.compact.join(" ")
 
+  # What runtime/licenses.yml says marks the library +id+ in a phone's
+  # runtime, which moves with its pin.
+  def mobile_evidence(id)
+    YAML.safe_load_file(File.expand_path("../runtime/licenses.yml", __dir__)).fetch("components")
+      .find { |component| component["id"] == id }.fetch("embedded").first.fetch("evidence")
+  end
+
   # A path of Rust's standard library, as YJIT's panic messages carry it
   # into Android's libfledgeruby.so.
   ANDROID_RUST = "/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs\0"
@@ -679,12 +686,23 @@ class LicenseAuditTest < Minitest::Test
 
   # An Android runtime's AAR is a zip; the app ships what it holds, so
   # the audit reads each entry as AAR!ENTRY, and finds a copyleft
-  # library's code in one as it would in a file.
+  # library's code in one as it would in a file. One of Ruby's own
+  # extensions there, which the runtime's fledge.links names, is read as
+  # the file the app's Ruby has it as, and belongs to Ruby.
   def test_an_aar_is_audited_by_what_it_holds
     Dir.mktmpdir do |tree|
       aar = File.join(tree, "aar")
-      library = Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so], payload: "#{MOBILE_LIBRARY} #{ANDROID_RUST}")
-      { "AndroidManifest.xml" => "<manifest/>\n", "classes.jar" => "PK\x03\x04", "jni/x86_64/libfledgeruby.so" => library }.each do |path, bytes|
+      library = Binaries.elf(needed: %w[liblog.so libz.so libdl.so libm.so libc.so], payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) #{ANDROID_RUST}")
+      extension = -> (payload) { Binaries.elf(needed: %w[libc.so], payload:) }
+      openssl = "libfledgerubyext.4.1.0+5.x86_64-linux-android.openssl.so"
+      psych = "libfledgerubyext.4.1.0+5.x86_64-linux-android.psych.so"
+      {
+        "AndroidManifest.xml" => "<manifest/>\n",
+        "classes.jar" => "PK\x03\x04",
+        "jni/x86_64/libfledgeruby.so" => library,
+        "jni/x86_64/#{openssl}" => extension.call(mobile_evidence("openssl-mobile")),
+        "jni/x86_64/#{psych}" => extension.call(mobile_evidence("libyaml-mobile")),
+      }.each do |path, bytes|
         FileUtils.mkdir_p(File.dirname(File.join(aar, path)))
         File.binwrite(File.join(aar, path), bytes)
       end
@@ -692,13 +710,16 @@ class LicenseAuditTest < Minitest::Test
       FileUtils.rm_rf(aar)
       FileUtils.mkdir_p(File.join(tree, "include"))
       File.write(File.join(tree, "include", "fledge_ruby.h"), "/* fledge */\n")
+      File.write(File.join(tree, "fledge.links"), "x86_64\t#{openssl}\tlib/ruby/4.1.0+5/x86_64-linux-android/openssl.so\n" \
+        "x86_64\t#{psych}\tlib/ruby/4.1.0+5/x86_64-linux-android/psych.so\n")
 
       report = LicenseAudit.new(platform: "android", tree:, fledge_version: "0.0.0").call
 
       assert_empty report.violations.map(&:to_s)
       assert_equal "fledge-embedding", report.owners.fetch("FledgeRuby.aar!jni/x86_64/libfledgeruby.so").id
+      assert_equal "ruby", report.owners.fetch("lib/ruby/4.1.0+5/x86_64-linux-android/openssl.so").id
       assert_equal :system, report.links.fetch("FledgeRuby.aar!jni/x86_64/libfledgeruby.so").fetch("liblog.so")
-      %w[ruby openssl-mobile libyaml-mobile libffi-mobile rust-std].each { |id| assert_includes report.present.map(&:id), id }
+      %w[ruby openssl-mobile libyaml-mobile rust-std].each { |id| assert_includes report.present.map(&:id), id }
       sbom = LicenseAudit::Spdx.new(report, version: "0.0.0", created: Time.utc(2026, 10, 28)).to_h
       assert_includes sbom.fetch("files").map { |file| file.fetch("fileName") }, "./FledgeRuby.aar!jni/x86_64/libfledgeruby.so"
 

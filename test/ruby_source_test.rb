@@ -199,12 +199,58 @@ class RubySourceTest < Minitest::Test
       "                return 's';\n            }\n        }\n    }\n\n    switch (type) {\n"
 
     edited = Edits.load_c(text, { "racc/cparse.so" => "racc-1.8.1", "bigdecimal.so" => "bigdecimal-4.1.3" })
-    assert_includes edited, "    {\"bigdecimal.so\", \"bigdecimal-4.1.3\"},\n    {\"racc/cparse.so\", \"racc-1.8.1\"},\n};\n"
+    assert_includes edited, "    {\"bigdecimal.so\", \"bigdecimal-4.1.3\"},\n    {\"racc/cparse.so\", \"racc-1.8.1\"},\n    {NULL, NULL},\n};\n"
     assert_includes edited,
       "if (st_lookup(&vm->static_ext_inits, (st_data_t)ftptr, NULL) && fledge_gem_extension_reachable_p(box, ftptr)) {\n"
     assert_operator edited.index("fledge_gem_extension_reachable_p(const rb_box_t"), :<, edited.index("search_required(const")
     assert_raises(RuntimeError) { Edits.load_c(text.sub("NULL)) {", "NULL) == 1) {"), { "nkf.so" => "nkf-0.3.0" }) }
-    assert_raises(ArgumentError) { Edits.load_c(text, {}) }
+  end
+
+  # A Ruby that links no bundled gem's extension in, as Android's builds
+  # each one as a file, gets a gate with no gem in it, which lets the
+  # app's own linked extensions through.
+  def test_a_ruby_with_no_linked_gem_extension_gets_a_gate_that_guards_none
+    text = "static int\nsearch_required(const rb_box_t *box)\n{\n" \
+      "            if (st_lookup(&vm->static_ext_inits, (st_data_t)ftptr, NULL)) {\n" \
+      "                return 's';\n            }\n        }\n    }\n\n    switch (type) {\n"
+
+    assert_includes Edits.load_c(text, {}), "static const char *const fledge_gem_extensions[][2] = {\n    {NULL, NULL},\n};\n"
+  end
+
+  # The gate's loop stops at the row of NULLs, so the gate's own C ends
+  # the table it is given: a table without that row would have the loop
+  # read past it, which a compiler may take as leave to assume the first
+  # row always matches.
+  def test_the_gate_ends_the_table_it_is_given
+    assert_includes format(Edits::GATE, table: "    {\"gate.so\", \"gate-1.0.0\"},\n"),
+      "    {\"gate.so\", \"gate-1.0.0\"},\n    {NULL, NULL},\n};\n"
+  end
+
+  # Android's package installer extracts only lib*.so, so a shared Ruby
+  # for Android is named, and needed by its extensions, without Linux's
+  # version (the lines configure generates from configure.ac, lines 3618
+  # to 3626 at 4.1.0-preview1, tab-indented as autoconf writes them).
+  def test_configure_names_androids_shared_ruby_without_a_version
+    linux = "  linux* | gnu* | haiku*) :\n\n\t# RUBY_APPEND_OPTIONS(LIBRUBY_DLDFLAGS)\n\tdone\n" \
+      "\tLIBRUBY_ALIASES='$(LIBRUBY_SONAME) lib$(RUBY_SO_NAME).$(SOEXT)'\n\tif test \"$load_relative\" = yes\n"
+    freebsd = "  freebsd*) :\n\tLIBRUBY_ALIASES='$(LIBRUBY_SONAME) lib$(RUBY_SO_NAME).$(SOEXT)'\n"
+
+    edited = Edits.configure_soname(linux + freebsd)
+    assert_includes edited, "\tLIBRUBY_ALIASES='$(LIBRUBY_SONAME) lib$(RUBY_SO_NAME).$(SOEXT)'\n\tLIBRUBY_SO='lib$(RUBY_SO_NAME).$(SOEXT)'\n" \
+      "\tLIBRUBY_SONAME='$(LIBRUBY_SO)'\n\tLIBRUBY_ALIASES=''\n\tif test"
+    assert edited.end_with?(freebsd)
+    assert_raises(RuntimeError) { Edits.configure_soname(freebsd) }
+  end
+
+  # The openssl extension, which links OpenSSL in on Android, sends
+  # OpenSSL's every call of X509_get_default_cert_file to Fledge's, with
+  # the flag added to its link after its checks.
+  def test_the_openssl_extension_links_with_fledges_default_certificates
+    text = "create_header\ncreate_makefile(\"openssl\")\nLogging::message \"Done.\\n\"\n"
+
+    assert_equal "create_header\n$DLDFLAGS << \" -Wl,--wrap=X509_get_default_cert_file\"\ncreate_makefile(\"openssl\")\n" \
+      "Logging::message \"Done.\\n\"\n", Edits.openssl_extconf(text)
+    assert_raises(RuntimeError) { Edits.openssl_extconf("create_makefile('openssl')\n") }
   end
 
   # A require of a linked extension's file by its path or by DLEXT, which

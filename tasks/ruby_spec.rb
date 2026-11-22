@@ -137,13 +137,13 @@ class RubySpec
       examples: [
         "library: RbConfig::CONFIG ['archdir'] returns the directory containing standard libraries C extensions",
       ],
-      side: :app, platforms: PHONES,
-      reason: "Not forced by a phone: a defect of Fledge's, which doc/phones.md marks Temporary. A phone " \
+      side: :app, platforms: PHONES - ANDROID,
+      reason: "Not forced by a phone: a defect of Fledge's, which doc/phones.md marks Temporary. The iOS " \
         "runtime links its own extensions into the app (ADR 079), so its archdir holds rbconfig.rb and no " \
         "extension, etc.so among them (doc/contributors/design/phone-runtimes.md, \"Bundled gems' extensions\"). " \
-        "Neither phone forbids loading one as a file " \
-        "(doc/contributors/research/2026-11-13-phone-extensions-as-files.md), and an Android app's own gems' " \
-        "C and C++ extensions are files already; the runtime's own as files would close this difference.",
+        "iOS does not forbid loading one as a file " \
+        "(doc/contributors/research/2026-11-13-phone-extensions-as-files.md), and the Android runtime's " \
+        "extensions are files at the paths Ruby gives them; the iOS runtime's as files would close this difference.",
     ),
     Justification.new(
       examples: [

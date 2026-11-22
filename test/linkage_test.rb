@@ -147,6 +147,18 @@ class LinkageTest < Minitest::Test
     end
   end
 
+  # An app's developer cannot rebuild someone else's gem to carry
+  # Microsoft's runtime, so the refusal says what the DLL is and what
+  # build of the gem would ship.
+  def test_the_refusal_names_the_visual_c_runtime_and_a_build_that_ships
+    dll = Binaries.pe(needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll])
+    problem = problems("windows", { "vendor/libui.x64.dll" => dll }).find { |text| text.include?("VCRUNTIME140.dll") }
+    assert_equal "linked 1.0.0's vendor/libui.x64.dll needs VCRUNTIME140.dll, of Microsoft's Visual C++ runtime, which Windows does " \
+      "not include and Fledge does not copy into an app, so the app could not load it on a computer without the Visual C++ " \
+      "Redistributable. Use a build of the gem that links the Visual C++ runtime statically (/MT), or ask the gem's authors for one.",
+      problem
+  end
+
   # An Android app's native library may need the NDK's public libraries
   # for the API level the runtime is built for, Fledge's
   # libfledgeruby.so, and the libraries the app carries beside it; a

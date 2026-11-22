@@ -6,6 +6,7 @@ module Fledge
     SYSTEM_LIBRARIES: Hash[String, Array[Regexp]]
     WINDOWS_DLLS: String
     SYSTEM_DLLS: Hash[String, Set[String]]
+    VISUAL_C_RUNTIME: Regexp
     RUBY_DLL: Regexp
     FORMATS: Hash[String, Symbol]
 

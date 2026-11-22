@@ -108,6 +108,14 @@ module Fledge
     # once something installed the Visual C++ Redistributable.
     SYSTEM_DLLS = YAML.load_file(WINDOWS_DLLS).transform_values { |names| Set.new(names) }.freeze
 
+    # The DLLs of Microsoft's Visual C++ runtime from Visual Studio 2015
+    # on, which a DLL built with Visual Studio needs unless it links the
+    # runtime statically, and which Windows does not include: those
+    # PyInstaller collects as the VC14 runtime (<tt>_win_includes</tt> in
+    # its <tt>PyInstaller/depend/dylib.py</tt> at abed52cc, lines 150 to
+    # 165).
+    VISUAL_C_RUNTIME = /\A(?:concrt140|msvcp140(?:_1|_2|_atomic_wait|_codecvt_ids)?|vccorlib140|vcruntime140(?:_1)?|vcamp140|vcomp140)\.dll\z/i
+
     # A Windows Ruby's DLL, such as x64-ucrt-ruby410.dll.
     RUBY_DLL = /\A[\w-]*-ruby\d+\.dll\z/i
 
@@ -221,6 +229,12 @@ module Fledge
       if @os == "android"
         return "#{label}'s #{path} needs #{library}, which neither Android, nor Fledge's runtime, nor the app's own native libraries " \
           "provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically."
+      end
+
+      if library.match?(VISUAL_C_RUNTIME)
+        return "#{label}'s #{path} needs #{library}, of Microsoft's Visual C++ runtime, which Windows does not include and Fledge " \
+          "does not copy into an app, so the app could not load it on a computer without the Visual C++ Redistributable. Use a build " \
+          "of the gem that links the Visual C++ runtime statically (/MT), or ask the gem's authors for one."
       end
 
       problem = "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \

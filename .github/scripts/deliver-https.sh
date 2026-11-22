@@ -31,7 +31,10 @@
 # GitHub's runners (GITHUB_ACTIONS is true there; CI is set on other
 # computers too) or where --store-may-change says the computer is a
 # container made for the check, and on any other computer says it was
-# not tried.
+# not tried. On macOS it runs only on GitHub's runners, and leaves the
+# authority in the System keychain, since taking it out again waited
+# unanswered until the job's time ran out; each runner is a new machine,
+# thrown away after its job.
 
 set -eu
 archive=$1
@@ -103,7 +106,7 @@ check() {
 }
 
 # Puts the authority in the computer's store, as a person or an
-# administrator would, and untrust takes it out again.
+# administrator would, and untrust takes it out again, except on macOS.
 trust() {
   case $system in
     macos) sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$server/ca.pem" ;;
@@ -126,8 +129,10 @@ untrust() {
   trusted=
   case $system in
     macos)
-      sudo security remove-trusted-cert -d "$server/ca.pem"
-      sudo security delete-certificate -c "Fledge HTTPS probe test authority" /Library/Keychains/System.keychain
+      # Nothing: taking the authority out of the System keychain's
+      # admin trust settings waited, unanswered, until the job's time
+      # ran out, and the store case runs on macOS only on GitHub's
+      # runners, each a new machine thrown away after its job.
       ;;
     *)
       [ -n "$may_change" ] || {
@@ -146,6 +151,8 @@ case $system:$store in
 esac
 if [ "${GITHUB_ACTIONS:-}" != true ] && [ -z "$may_change" ]; then
   echo "not tried (store): only on GitHub's runners or with --store-may-change, since it changes what this computer trusts"
+elif [ "$system" = macos ] && [ "${GITHUB_ACTIONS:-}" != true ]; then
+  echo "not tried (store): on macOS only on GitHub's runners, since the authority stays in the System keychain"
 elif [ "$system" != macos ] && [ -z "$store" ]; then
   echo "not tried (store): this computer has no store"
 else

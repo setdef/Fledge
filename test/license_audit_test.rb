@@ -227,6 +227,25 @@ class LicenseAuditTest < Minitest::Test
     end
   end
 
+  # An entry may describe several builds of Ruby but not every one, as
+  # an OpenSSL that rv-ruby's and Fledge's builds share and jdx/ruby's
+  # does not.
+  def test_an_entry_may_name_the_builds_of_ruby_it_describes
+    components = [
+      { "id" => "any", "platforms" => ["x86_64-linux"] },
+      { "id" => "two", "platforms" => ["x86_64-linux"], "ruby_build" => %w[upstream fledge] },
+      { "id" => "jdx", "platforms" => ["x86_64-linux"], "ruby_build" => "jdx" },
+    ]
+    map = { "components" => components }
+    ids = %w[upstream fledge jdx].to_h do |build|
+      pin = (build == "upstream") ? {} : { "build" => build }
+      sources = { "ruby" => { "platforms" => { "x86_64-linux" => pin } } }
+      [build, LicenseAudit.entries(map, sources, "x86_64-linux").map { |entry| entry.fetch("id") }]
+    end
+
+    assert_equal({ "upstream" => %w[any two], "fledge" => %w[any two], "jdx" => %w[any jdx] }, ids)
+  end
+
   # rv-ruby's bin/ holds the gems' executables beside ruby; each belongs
   # to its gem, so its license is the gem's.
   def test_a_gems_executable_belongs_to_the_gem

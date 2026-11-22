@@ -120,11 +120,12 @@ signatures:
 #   first_party: Fledge's own work, which NOTICES.txt and doc/licensing.md
 #              name as Fledge's, and into which no LGPL library may be
 #              linked
-#   ruby_build: which build of Ruby the entry describes: upstream (the
-#              one rv-ruby or RubyInstaller publishes) or fledge (Fledge's
-#              own, tasks/ruby_archive.rb), as the platform's Ruby pin in
+#   ruby_build: which build of Ruby the entry describes, or a list of
+#              them: upstream (the one rv-ruby or RubyInstaller
+#              publishes), jdx (jdx/ruby's), or fledge (Fledge's own,
+#              tasks/ruby_archive.rb), as the platform's Ruby pin in
 #              runtime/sources.yml says by its build key; an entry
-#              without it describes either
+#              without it describes any
 components:
   - id: fledge
     name: Fledge launcher and RubyGems defaults

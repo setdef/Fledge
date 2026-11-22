@@ -51,17 +51,3 @@ Nothing waits on this. It decides whether one kind of red CI run can be ruled ou
 **Default.** Nothing more is stored anywhere. CI keeps the cache as it is, a run that Central refuses in one of the two remaining cases is run again, and the design document for phone projects says so.
 
 **To reverse.** Say "publish the set on a release" (and whether beside the runtimes or apart from them), or "pay for more cache". Agents then build that, with the notices the files need, and remove this question.
-
-## G. Is a limit the platform itself imposes a bug the candidate for 1.0.0 may not have? (open, no deadline)
-
-Nothing waits on this. It decides how agents close some of the known bugs that stand before the candidate.
-
-**What you said.** On 2026-11-21: "How can you possibly think we can ship 1.0.0 with **known** bugs?" On 2026-11-12, of differences from `ruby main.rb`: "TRULY justified? Every difference, every lack of parity, is a knife in Fledge's back that could kill the project before it launches."
-
-Agents record the first as: a known defect is fixed, or shown not to be one, before a release is called the candidate. Some known defects cannot be fixed by Fledge, because the system the app runs on does the thing. Two examples from the list: Android cuts a process title that is longer than the app's identifier, so `$0 = "a long title"` shows shortened there; and a gem that publishes no build with its library for a platform, as LibUI publishes none for musl Linux, cannot load there under `bundle exec` either.
-
-**The question.** When a primary source (the platform's own documentation or source code) shows that the platform forbids or does the thing, and Fledge's documents for developers say so, does that count as "shown not to be one", so the candidate may be called with it?
-
-**Default.** Yes, by the standard you set for parity on 2026-11-12: such a limit is accepted only when it is inherent to where the app ships or the platform truly forbids what Ruby does, shown from primary sources, and it is written where a developer will read it. Anything Fledge could close is still a bug to fix, however much work it is.
-
-**To reverse.** Say that such limits block the candidate too. Agents then keep each one on the list of known bugs, and the candidate waits until each is closed or you strike it from the list yourself.

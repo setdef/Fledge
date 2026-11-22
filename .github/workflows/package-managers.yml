@@ -116,16 +116,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { manager: scoop, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
-          - { manager: scoop, os: windows-11-arm, platform: aarch64-mingw-ucrt, ruby-platform: aarch64-mingw-ucrt }
+          - { manager: scoop, os: windows-latest, platform: x64-mingw-ucrt }
+          - { manager: scoop, os: windows-11-arm, platform: aarch64-mingw-ucrt }
           # windows-11-arm runners have no winget.
-          - { manager: winget, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
-          - { manager: chocolatey, os: windows-latest, platform: x64-mingw-ucrt, ruby-platform: x64-mingw-ucrt }
+          - { manager: winget, os: windows-latest, platform: x64-mingw-ucrt }
+          - { manager: chocolatey, os: windows-latest, platform: x64-mingw-ucrt }
           # macos-15, as the build job's.
-          - { manager: homebrew, os: macos-15, platform: arm64-darwin, ruby-platform: arm64-darwin23 }
-          - { manager: homebrew, os: ubuntu-24.04, platform: x86_64-linux, ruby-platform: x86_64-linux }
-          - { manager: homebrew, os: ubuntu-24.04-arm, platform: aarch64-linux, ruby-platform: aarch64-linux }
-          - { manager: aur, os: ubuntu-24.04, platform: x86_64-linux, ruby-platform: x86_64-linux }
+          - { manager: homebrew, os: macos-15, platform: arm64-darwin }
+          - { manager: homebrew, os: ubuntu-24.04, platform: x86_64-linux }
+          - { manager: homebrew, os: ubuntu-24.04-arm, platform: aarch64-linux }
+          - { manager: aur, os: ubuntu-24.04, platform: x86_64-linux }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -133,6 +133,7 @@ jobs:
           sparse-checkout: |
             .github/scripts
             doc/package_managers.md
+            runtime/licenses.yml
             runtime/sources.yml
           sparse-checkout-cone-mode: false
 
@@ -164,24 +165,24 @@ jobs:
       - name: Install with Scoop, run, and uninstall
         if: matrix.manager == 'scoop'
         shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-scoop.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.ruby-platform }}
+        run: pwsh -NoProfile -File .github/scripts/deliver-scoop.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.platform }}
 
       - name: Install with winget, run, and uninstall
         if: matrix.manager == 'winget'
         shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-winget.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.ruby-platform }}
+        run: pwsh -NoProfile -File .github/scripts/deliver-winget.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.platform }}
 
       - name: Install with Chocolatey, run, and uninstall
         if: matrix.manager == 'chocolatey'
         shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-chocolatey.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.ruby-platform }}
+        run: pwsh -NoProfile -File .github/scripts/deliver-chocolatey.ps1 -Recipes "$env:RUNNER_TEMP\recipes" -Platform ${{ matrix.platform }}
 
       - name: Install with Homebrew from a local tap, run, and uninstall
         if: matrix.manager == 'homebrew'
-        run: .github/scripts/deliver-homebrew.sh "$RUNNER_TEMP/recipes" ${{ matrix.ruby-platform }}
+        run: .github/scripts/deliver-homebrew.sh "$RUNNER_TEMP/recipes" "$(.github/scripts/ruby-platform.sh ${{ matrix.platform }})"
 
       - name: Build with makepkg, install with pacman, run, and remove
         if: matrix.manager == 'aur'
         run: >-
           docker run --rm --network host -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" -v "$RUNNER_TEMP/recipes:/recipes:ro"
-          "$ARCHLINUX_BASE_DEVEL" /scripts/deliver-aur.sh /recipes ${{ matrix.ruby-platform }}
+          "$ARCHLINUX_BASE_DEVEL" /scripts/deliver-aur.sh /recipes "$(.github/scripts/ruby-platform.sh ${{ matrix.platform }})"

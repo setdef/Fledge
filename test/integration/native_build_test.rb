@@ -92,6 +92,15 @@ class NativeBuildTest < Minitest::Test
     File.write("Makefile", "all:\\nclean:\\ninstall:\\n")
   RUBY
 
+  # greeter with an extconf.rb that also writes data beside the gem's
+  # root, outside its require paths, which the gem's Ruby reads by its
+  # path: RubyGems leaves it there, so bundle exec reads it.
+  TABLE = FILES.merge(
+    "ext/greeter/extconf.rb" => "#{EXTCONF}FileUtils.mkdir_p(File.join(__dir__, '../../data'))\n" \
+      "File.write(File.join(__dir__, '../../data/table.txt'), \"from the build\\n\")\n",
+    "lib/greeter.rb" => "require \"greeter/greeter\"\nmodule Greeter; TABLE = File.read(File.expand_path(\"../data/table.txt\", __dir__)); end\n",
+  ).freeze
+
   def setup
     @platform = Fledge::Platform.local
     @runtimes = ENV.fetch("FLEDGE_RUNTIME_DIR", File.expand_path("../../tmp/runtime", __dir__))
@@ -166,8 +175,9 @@ class NativeBuildTest < Minitest::Test
     assert_path_exists File.join(extensions.first, "gem.build_complete")
     refute_path_exists File.join(extensions.first, "gem_make.out"), "the build's log holds the build machine's paths"
     assert_includes File.read(File.join(gems, "build_info", "greeter-1.0.0.info")), "--with-greeting=bonjour"
-    refute(Dir.glob(File.join(gems, "gems/greeter-1.0.0/ext/greeter/*")).any? { |path| path.end_with?(".o", "Makefile") },
-      "the build's own leftovers stay behind")
+    left = Dir.children(File.join(gems, "gems/greeter-1.0.0/ext/greeter"))
+    assert_includes left, "Makefile", "the gem's folder ships as RubyGems leaves it"
+    refute(left.any? { |name| name.end_with?(".#{RbConfig::CONFIG['OBJEXT']}", ".log") }, "make clean removes the objects and RubyGems the logs")
     assert_equal 1, Dir.glob(File.join(folder, @platform.windows? ? "ruby/lib/*.dll.a" : "lib/libruby*-static.a")).size,
       "the runtime's own library to link against, which mkmf's checks read, ships as the runtime holds it"
     assert_path_exists File.join(folder, @platform.windows? ? "ruby/include" : "include"), "Ruby's headers ship, for require \"mkmf\""
@@ -224,8 +234,9 @@ class NativeBuildTest < Minitest::Test
     assert_equal 0, status, err
     out, ran, folder = run_app
     assert_equal ["hello from ext\n", true], [out, ran.success?]
-    shipped = Dir.children(File.join(gem_dir(folder), "gems", "greet-1.0.0", "ext", "greet")).sort
-    assert_equal ["extconf.rb", "greet.#{RbConfig::CONFIG['DLEXT']}", "greet.c"].sort, shipped, "the build's own leftovers stay behind"
+    shipped = Dir.children(File.join(gem_dir(folder), "gems", "greet-1.0.0", "ext", "greet"))
+    assert_empty ["extconf.rb", "greet.c", "greet.#{RbConfig::CONFIG['DLEXT']}", "Makefile", "greet.#{RbConfig::CONFIG['OBJEXT']}"] - shipped,
+      "the gem's folder ships as RubyGems leaves it, and no make clean ran in ext/greet"
   end
 
   def with_tmpdir(folder)
@@ -258,11 +269,11 @@ class NativeBuildTest < Minitest::Test
   end
 
   # A project whose Gemfile takes greeter from the folder +path+ (relative
-  # to the project), holding FILES at @dir/+folder+. +stale+ is a file the
-  # developer compiled there for their own Ruby, in the gem's lib.
-  def path_project(path:, folder:, stale: nil)
+  # to the project), holding +files+ at @dir/+folder+. +stale+ is a file
+  # the developer compiled there for their own Ruby, in the gem's lib.
+  def path_project(path:, folder:, stale: nil, files: FILES)
     source = File.join(@dir, folder)
-    FILES.merge(stale || {}).each do |file, content|
+    files.merge(stale || {}).each do |file, content|
       FileUtils.mkdir_p(File.dirname(File.join(source, file)))
       File.write(File.join(source, file), content)
     end
@@ -272,7 +283,7 @@ class NativeBuildTest < Minitest::Test
         s.version = "1.0"
         s.summary = "A path gem for Fledge's tests"
         s.authors = ["Fledge"]
-        s.files = #{FILES.keys.inspect}
+        s.files = #{files.keys.inspect}
         s.extensions = ["ext/greeter/extconf.rb"]
       end
     GEMSPEC
@@ -301,7 +312,21 @@ class NativeBuildTest < Minitest::Test
     copy = File.join(folder, "app", "vendor", "cache", "greeter")
     assert_path_exists File.join(copy, "ext/greeter/greeter.c")
     assert_includes File.read(File.join(copy, "greeter.gemspec")), "s.name = \"greeter\""
-    refute_path_exists File.join(copy, "ext/greeter/Makefile"), "the build's own leftovers stay behind"
+    assert_path_exists File.join(copy, "ext/greeter/Makefile"), "the build's folder ships as RubyGems leaves it"
+    assert_empty Dir.glob(File.join(copy, "ext/greeter/*.#{RbConfig::CONFIG['OBJEXT']}")), "make clean removes the objects, as gem install runs it"
+  end
+
+  def test_a_file_a_gems_build_writes_outside_its_require_paths_ships_where_its_ruby_reads_it
+    root = path_project(path: "../greeter", folder: "greeter", files: TABLE)
+    File.write(File.join(root, "exe", "my_app"), "require \"greeter\"\nputs Greeter.greet, Greeter::TABLE\n")
+
+    status, err = build(root)
+
+    assert_equal 0, status, err
+    FileUtils.rm_rf(File.join(@dir, "greeter"))
+    out, ran, folder = run_app
+    assert_equal ["hello\nfrom the build\n", true], [out, ran.success?]
+    assert_path_exists File.join(folder, "app", "vendor", "cache", "greeter", "data", "table.txt")
   end
 
   def test_a_path_gem_inside_the_project_with_an_extension_replaces_what_the_developer_compiled_for_their_ruby

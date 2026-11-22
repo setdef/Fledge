@@ -300,7 +300,8 @@ module Fledge
       build_info = File.join(home, "build_info", "#{package.spec.full_name}.info")
       CompiledGem.new(
         package:, built:, extensions:, extension_dir: relative_to_home(extension_dir), build_args: args,
-        build_info: File.file?(build_info) ? File.read(build_info) : nil, problems: Floors.problems(gem, built + extensions, platform),
+        build_info: File.file?(build_info) ? File.read(build_info) : nil,
+        problems: Floors.problems(gem, BuiltFiles.loaded(built, package.spec.require_paths) + extensions, platform),
       )
     end
 

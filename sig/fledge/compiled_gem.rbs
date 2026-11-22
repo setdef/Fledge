@@ -27,7 +27,7 @@ module Fledge
 
     def gem_files: () -> Hash[String, String]
 
-    private def with_built: (Hash[String, String] files) -> Hash[String, String]
+    private def with_built: (Hash[String, String] files, Array[Entry] built) -> Hash[String, String]
 
     def entries: (String gem_dir) -> Array[Entry]
   end

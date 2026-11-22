@@ -9,21 +9,22 @@ require_relative "../entry"
 
 module Fledge
   class NativeBuild
-    # What a gem's build left in its folder that the gem's Ruby may load,
-    # and so what ships of it beside the gem's own files.
+    # What a gem's build left in its folder, which ships beside the gem's
+    # own files, and what of it Ruby may load, which the checks read.
     #
     # RubyGems leaves a gem's folder as its build left it: an extconf.rb's
     # Makefile installs the extension into the gem's first require path,
     # and RubyGems then runs <tt>make clean</tt>; a Rakefile's build is
-    # left whole, wherever it wrote (Gem::Ext::ExtConfBuilder.build and
-    # Gem::Ext::RakeBuilder.build, at RubyGems 4.1.0.beta2). So
-    # ffi-compiler leaves the library a gem's Ruby gives ffi_lib in
-    # <tt>ext/ARCH-OS</tt>, outside every require path. What ships is
-    # every file the build wrote into the gem's require paths, and every
-    # shared library it wrote anywhere else in the gem's folder, at its
-    # path; the rest of what a build leaves (objects, Makefiles, logs, a
-    # build tree) no Ruby loads (doc/contributors/design/gems.md, "What a
-    # compiled gem ships").
+    # left whole, wherever it wrote; only the build's logs are removed
+    # (Gem::Ext::ExtConfBuilder.build, Gem::Ext::RakeBuilder.build, and
+    # Gem::Ext::Builder#build_extension, at RubyGems 4.1.0.beta2). So
+    # under <tt>bundle exec</tt> a gem's Ruby may read, by its path, any
+    # file its build left: the library ffi-compiler leaves for ffi_lib in
+    # <tt>ext/ARCH-OS</tt>, or data an extconf.rb generates. Every such
+    # file ships at its path; the linkage and floors checks read those in
+    # the gem's require paths and the shared libraries, which Ruby, ffi,
+    # and fiddle open (doc/contributors/design/gems.md, "What a compiled
+    # gem ships").
     module BuiltFiles # :nodoc:
       # The names of shared libraries, which ffi_lib, Fiddle.dlopen, and
       # require open by path: Ruby's DLEXT on each platform (+so+,
@@ -37,42 +38,27 @@ module Fledge
       DEBUG = %r{\.dSYM/}
 
       # The entries of what the build wrote into +gem_dir+, the folder it
-      # built +package+ in, with paths relative to it: each file in the
-      # gem's require paths and each shared library elsewhere that the
+      # built +package+ in, with paths relative to it: each file the
       # package does not have, or whose bytes differ from the package's
       # (a path gem's own copy of what the build wrote there, compiled by
-      # its developer for their Ruby).
+      # its developer for their Ruby). Neither git's files, such as a
+      # submodule's <tt>.git</tt> in a git gem's copy, which a git or path
+      # gem ships without, nor a path gem's evaluated gemspec, which
+      # Fledge wrote into its copy (PathPackage#copy_to), is the build's.
       def self.of(package, gem_dir)
-        own = package.contents
-        folders = package.spec.require_paths
-        found = folders.flat_map { |folder| walk(gem_dir, folder) } + libraries(gem_dir, folders)
-        found.uniq(&:path).reject { |entry| entry.type == :directory || own[entry.path] == entry.content.to_s }
-      end
-
-      # The entries under +folder+ of +gem_dir+, with paths relative to
-      # +gem_dir+.
-      private_class_method def self.walk(gem_dir, folder)
-        full = File.join(gem_dir, folder)
-        return [] unless File.directory?(full)
-
-        Entry.walk(full).map { |entry| entry.with(path: "#{folder}/#{entry.path}") }
-      end
-
-      # The shared libraries in +gem_dir+ outside each of +folders+, its
-      # require paths, with paths relative to it.
-      private_class_method def self.libraries(gem_dir, folders)
-        Dir.glob("**/*", File::FNM_DOTMATCH, base: gem_dir).sort.filter_map do |path|
-          next unless path.match?(LIBRARY) && !path.match?(DEBUG) && folders.none? { |folder| path.start_with?("#{folder}/") }
-
-          library(File.join(gem_dir, path), path)
+        own = package.gem_files.merge(package.contents)
+        fledges = package.is_a?(PathPackage) ? [package.gemspec] : [] # : Array[String]
+        Entry.walk(gem_dir, prune: -> (folder) { File.basename(folder) == ".git" }).reject do |entry|
+          entry.type == :directory || own[entry.path] == entry.content.to_s || fledges.include?(entry.path) || File.basename(entry.path) == ".git"
         end
       end
 
-      # The Entry of the library at +full+, named +path+, or +nil+ when it
-      # is a folder.
-      private_class_method def self.library(full, path)
-        if File.symlink?(full) then Entry.symlink(path, File.readlink(full))
-        elsif File.file?(full) then Entry.file(path, File.binread(full), mode: File.executable?(full) ? 0o755 : 0o644)
+      # Those of +entries+, from ::of, that Ruby may load: each in one of
+      # +folders+, the gem's require paths, and each shared library
+      # elsewhere.
+      def self.loaded(entries, folders)
+        entries.select do |entry|
+          folders.any? { |folder| entry.path.start_with?("#{folder}/") } || (entry.path.match?(LIBRARY) && !entry.path.match?(DEBUG))
         end
       end
     end

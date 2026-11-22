@@ -6,6 +6,7 @@
 #++
 
 require_relative "entry"
+require_relative "native_build/built_files"
 
 module Fledge
   # A gem whose extension Fledge compiled, as it ships.
@@ -21,15 +22,13 @@ module Fledge
   # (Gem::Installer#write_build_info_file).
   #
   # This class is a gem's package (Fledge::GemPackage, or a git gem's
-  # Fledge::GitPackage) and what Fledge::NativeBuild compiled for it: the
-  # files the build wrote into the gem's require paths and the shared
-  # libraries it wrote anywhere else in the gem's folder
-  # (NativeBuild::BuiltFiles), its extensions
-  # folder (without the build's logs, which hold the build machine's
-  # paths), its build information, and the options it was built with. It
-  # ships all of them where RubyGems, or for a git gem Bundler, put them,
-  # and answers what the package answers, with the compiled files among
-  # the gem's contents, so Fledge::Linkage reads them.
+  # Fledge::GitPackage) and what Fledge::NativeBuild compiled for it: every
+  # file the build left in the gem's folder (NativeBuild::BuiltFiles), its
+  # extensions folder (without the build's logs, which RubyGems removes),
+  # its build information, and the options it was built with. It ships
+  # all of them where RubyGems, or for a git gem Bundler, put them, and
+  # answers what the package answers, with the compiled files among the
+  # gem's contents, so Fledge::Linkage reads those Ruby may load.
   #
   # Use it as the package of a gem Fledge compiled.
   #
@@ -167,12 +166,13 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def contents
-      with_built(package.contents)
+      with_built(package.contents, @built)
     end
 
     # What the linkage check reads: the package's own (its #gem_files),
-    # with what the build wrote and the extensions folder, as #contents
-    # has them.
+    # with what of the build's files Ruby may load (those in the gem's
+    # require paths, and its shared libraries: NativeBuild::BuiltFiles.loaded)
+    # and the extensions folder, as #contents has them.
     #
     # === Example
     #
@@ -186,13 +186,13 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def gem_files
-      with_built(package.gem_files)
+      with_built(package.gem_files, NativeBuild::BuiltFiles.loaded(@built, spec.require_paths))
     end
 
-    # +files+, with what the build wrote, and each file of the extensions
-    # folder whose bytes are not already among them.
-    private def with_built(files)
-      files = files.merge(@built.to_h { |entry| [entry.path, entry.content.to_s] })
+    # +files+, with +built+, of what the build wrote, and each file of the
+    # extensions folder whose bytes are not already among them.
+    private def with_built(files, built)
+      files = files.merge(built.to_h { |entry| [entry.path, entry.content.to_s] })
       copies = files.values
       @extensions.each_with_object(files) do |entry, all|
         all["#{@extension_dir}/#{entry.path}"] = entry.content.to_s if entry.type == :file && !copies.include?(entry.content)

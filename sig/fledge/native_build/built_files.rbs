@@ -10,11 +10,7 @@ module Fledge
 
       def self.of: (GemPackage | GitPackage | PathPackage package, String gem_dir) -> Array[Entry]
 
-      private def self.walk: (String gem_dir, String folder) -> Array[Entry]
-
-      private def self.libraries: (String gem_dir, Array[String] folders) -> Array[Entry]
-
-      private def self.library: (String full, String path) -> Entry?
+      def self.loaded: (Array[Entry] entries, Array[String] folders) -> Array[Entry]
     end
   end
 end

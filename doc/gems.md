@@ -42,7 +42,7 @@ $ bundle lock --add-checksums
 
 ## Gems with compiled extensions
 
-Fledge ships precompiled gems as they are. It compiles gems that ship as source, and gems from git, on your computer, against the app's Ruby. Install a compiler first:
+Fledge ships precompiled gems as they are. It compiles gems that ship as source, and gems from git, on your computer, against the app's Ruby, and the app holds each such gem's folder as `gem install` leaves it, with every file its build wrote there. Install a compiler first:
 
 - **macOS:** Xcode's command line tools.
 - **Linux:** a C compiler and `make`, such as Debian's and Ubuntu's `build-essential`.

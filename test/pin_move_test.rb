@@ -455,27 +455,67 @@ class PinMoveTest < Minitest::Test
   RV_NEW = "https://github.com/spinel-coop/rv-ruby/releases/download/20261119/ruby-4.1.0-preview1.arm64_sonoma.tar.gz"
 
   # Answers as Answers does, and lists the files of each archive it is
-  # given, as Fetch#members does.
+  # given, with the bytes of those +read+ matches, as Fetch#members does.
   class Archives < Answers
     def initialize(bodies, listings)
       super(bodies)
       @listings = listings
     end
 
-    def members(url)
+    def members(url, read = nil)
       @downloaded << url
-      @listings.fetch(url)
+      @listings.fetch(url).to_h { |path, bytes| [path, (read && path.match?(read)) ? bytes : nil] }
     end
+  end
+
+  RV_LICENSES = <<~YAML
+    platforms:
+      arm64-darwin: {os: darwin, arch: arm64-darwin23, gem_arch: arm64-darwin-23, so: bundle}
+    components:
+      - id: openssl
+        version: 3.6.2
+        download: https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz
+        platforms: [arm64-darwin]
+        embedded:
+          - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
+            evidence: "OpenSSL 3.6.2 "
+
+      - id: libyaml
+        version: 0.2.5
+        download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+        platforms: [arm64-darwin]
+        embedded:
+          - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
+            evidence: "0.2.5\\0"
+
+      - id: rv-ruby
+        version: "20261023"
+        download: https://github.com/spinel-coop/rv-ruby/tree/20261023
+  YAML
+
+  # The files of an rv-ruby archive for macOS the move looks in, as
+  # rv-ruby lays them out, with the strings the license audit reads:
+  # OpenSSL's version text in openssl.bundle, and libyaml's version
+  # between NULs in psych.bundle (both as 20261023's and 20261119's
+  # hold them). The debug symbols beside each name an older OpenSSL, so
+  # a move that read them would be seen.
+  def rv_archive(arch: "arm64-darwin23", openssl: "3.6.2", libyaml: "\0000.2.5\000")
+    top = "rv-ruby@4.1.0-preview1/4.1.0-preview1/lib/ruby/4.1.0+5/#{arch}"
+    {
+      "rv-ruby@4.1.0-preview1/4.1.0-preview1/bin/ruby" => "\xCF\xFA\xED\xFE".b,
+      "#{top}/rbconfig.rb" => "{}",
+      "#{top}/openssl.bundle" => "\xCF\xFA\xED\xFE\0OpenSSL #{openssl} 7 Apr 2026\0".b,
+      "#{top}/openssl.bundle.dSYM/Contents/Resources/DWARF/openssl.bundle" => "\0OpenSSL 1.0.0 \0".b,
+      "#{top}/psych.bundle" => "\xCF\xFA\xED\xFE\0%YAML 1.1\0#{libyaml}".b,
+    }
   end
 
   def rv_ruby(listing)
     sources = "ruby:\n  version: 4.1.0-preview1\n  release: \"20261023\"\n  platforms:\n    arm64-darwin:\n" \
       "      url: #{RV_NEW.sub('20261119', '20261023')}\n      sha256: #{OLD_SHA256}\n"
-    licenses = "platforms:\n  arm64-darwin: {os: darwin, arch: arm64-darwin23, gem_arch: arm64-darwin-23, so: bundle}\n" \
-      "components:\n  - id: rv-ruby\n    version: \"20261023\"\n"
     releases = JSON.generate([{ "tag_name" => "20261119", "assets" => [{ "browser_download_url" => RV_NEW, "digest" => "sha256:#{'ab' * 32}" }] }])
     answers = Archives.new({ RV => releases }, RV_NEW => listing)
-    checkout("runtime/sources.yml" => sources, "runtime/licenses.yml" => licenses, "lib/fledge/download.rb" => "") do |root|
+    checkout("runtime/sources.yml" => sources, "runtime/licenses.yml" => RV_LICENSES, "lib/fledge/download.rb" => "") do |root|
       yield PinMove.new(root, entries, answers), answers
     end
   end
@@ -483,51 +523,96 @@ class PinMoveTest < Minitest::Test
   # rv-ruby's Ruby names its platform for the macOS it was built on
   # (rv-ruby 20261119's, built on macOS 15, calls itself arm64-darwin24
   # where 20261023's said arm64-darwin23), and a new name changes which
-  # platforms an app's Gemfile.lock must lock, so the move reads the new
-  # archive's listing and stops, saying so.
+  # lockfiles fit, which is the maintainer's question J, so the move
+  # reads the new archive's listing and stops, saying what is asked.
   def test_an_rv_ruby_release_that_renames_its_platform_is_not_moved
-    listing = [
-      "rv-ruby@4.1.0-preview1/4.1.0-preview1/bin/ruby",
-      "rv-ruby@4.1.0-preview1/4.1.0-preview1/lib/ruby/4.1.0+5/arm64-darwin24/rbconfig.rb",
-    ]
-    rv_ruby(listing) do |move, answers|
+    rv_ruby(rv_archive(arch: "arm64-darwin24")) do |move, answers|
       error = assert_raises(PinMove::Error) { move.call(finding("rv-ruby", "20261023", "20261119")) }
 
-      assert_equal "rv-ruby 20261119's Ruby for arm64-darwin calls its platform arm64-darwin24, where runtime/licenses.yml " \
-        "names arm64-darwin23: a new RUBY_PLATFORM changes which platforms an app's Gemfile.lock must lock, which " \
-        "a person moves (doc/contributors/design/runtimes.md, \"The move\")", error.message
+      assert_equal "rv-ruby 20261119's Ruby for arm64-darwin calls its platform arm64-darwin24, where rv-ruby " \
+        "20261023's, which Fledge pins, calls it arm64-darwin23. Which platform an app's Ruby names there is the " \
+        "maintainer's to decide (question J in doc/contributors/questions.md), so arm64-darwin's Ruby stays on " \
+        "rv-ruby 20261023 until it is answered, and the other pins move without it.", error.message
       assert_equal [RV_NEW], answers.downloaded
       assert_includes move.read("runtime/sources.yml"), "release: \"20261023\""
+      assert_equal RV_LICENSES, move.read("runtime/licenses.yml")
     end
   end
 
+  # A move of rv-ruby moves its own entry's version and its download,
+  # which names the release's tag, and leaves the libraries it compiles
+  # in where the new archive holds the same.
   def test_an_rv_ruby_release_with_the_same_platform_moves
-    rv_ruby(["x/4.1.0-preview1/lib/ruby/4.1.0+5/arm64-darwin23/rbconfig.rb"]) do |move, _|
+    rv_ruby(rv_archive) do |move, answers|
       move.call(finding("rv-ruby", "20261023", "20261119"))
 
       assert_includes move.read("runtime/sources.yml"), "release: \"20261119\"\n  platforms:\n    arm64-darwin:\n      url: #{RV_NEW}\n"
+      assert_equal RV_LICENSES.gsub("20261023", "20261119"), move.read("runtime/licenses.yml")
+      assert_includes move.read("CHANGELOG.md"), "- rv-ruby 20261119, from 20261023.\n"
+      assert_equal [RV_NEW], answers.downloaded
+    end
+  end
+
+  # rv-ruby compiles OpenSSL and libyaml into the macOS Ruby's
+  # extensions, so a release that updates one (a security fix in
+  # OpenSSL, say) moves that library's entry as the license audit will
+  # read it from the runtime, from the archive the move downloads once,
+  # and says so to app developers.
+  def test_an_rv_ruby_release_moves_the_libraries_it_compiles_in
+    rv_ruby(rv_archive(openssl: "3.6.3")) do |move, answers|
+      move.call(finding("rv-ruby", "20261023", "20261119"))
+
+      licenses = move.read("runtime/licenses.yml")
+      assert_includes licenses, "  - id: openssl\n    version: 3.6.3\n    download: https://github.com/openssl/openssl/releases/" \
+        "download/openssl-3.6.3/openssl-3.6.3.tar.gz\n"
+      assert_includes licenses, "evidence: \"OpenSSL 3.6.3 \""
+      assert_includes licenses, "  - id: libyaml\n    version: 0.2.5\n"
+      changelog = move.read("CHANGELOG.md")
+      assert_includes changelog, "- rv-ruby 20261119, from 20261023.\n"
+      assert_includes changelog, "- OpenSSL in the macOS Ruby 3.6.3, from 3.6.2.\n"
+      assert_equal [RV_NEW], answers.downloaded
+    end
+  end
+
+  # A compiled file that names no version, or two, is not guessed at.
+  def test_a_compiled_file_whose_version_is_unclear_stops_the_move
+    rv_ruby(rv_archive(libyaml: "\0000.2.5\0000.2.6\000")) do |move, _|
+      error = assert_raises(PinMove::Error) { move.call(finding("rv-ruby", "20261023", "20261119")) }
+
+      assert_equal "#{RV_NEW}'s psych.bundle names libyaml as 0.2.5 and 0.2.6, not one version", error.message
+      assert_equal RV_LICENSES, move.read("runtime/licenses.yml")
+    end
+    rv_ruby(rv_archive.reject { |path, _| path.end_with?("/psych.bundle") }) do |move, _|
+      error = assert_raises(PinMove::Error) { move.call(finding("rv-ruby", "20261023", "20261119")) }
+
+      assert_equal "#{RV_NEW} holds no file in which to read libyaml's version", error.message
     end
   end
 
   def test_an_archive_that_names_no_platform_is_not_moved
-    rv_ruby(["x/bin/ruby"]) do |move, _|
+    rv_ruby({ "x/bin/ruby" => "" }) do |move, _|
       error = assert_raises(PinMove::Error) { move.call(finding("rv-ruby", "20261023", "20261119")) }
 
       assert_equal "#{RV_NEW} holds no file that names its platform", error.message
     end
   end
 
-  def test_the_fetch_lists_a_gzipped_tarballs_files
+  def test_the_fetch_lists_a_gzipped_tarballs_files_and_reads_those_asked_for
     tarball = StringIO.new
     Zlib::GzipWriter.wrap(tarball) do |gzip|
       Gem::Package::TarWriter.new(gzip) do |tar|
         tar.add_file_simple("ruby/lib/rbconfig.rb", 0o644, 2) { |file| file.write("{}") }
+        tar.add_file_simple("ruby/lib/psych.bundle", 0o644, 3) { |file| file.write("\0\xFF\0".b) }
         tar.mkdir("ruby/bin", 0o755)
       end
     end
     server = LoopbackServer.new("/ruby.tar.gz" => [200, {}, tarball.string])
+    fetch = PinWatch::Fetch.new(timeout: 5)
 
-    assert_equal %w[ruby/lib/rbconfig.rb ruby/bin], PinWatch::Fetch.new(timeout: 5).members(server.url("/ruby.tar.gz"))
+    assert_equal({ "ruby/lib/rbconfig.rb" => nil, "ruby/lib/psych.bundle" => nil, "ruby/bin" => nil }, fetch.members(server.url("/ruby.tar.gz")))
+    read = fetch.members(server.url("/ruby.tar.gz"), /psych/)
+    assert_equal [nil, "\0\xFF\0".b, nil], read.values
+    assert_equal Encoding::BINARY, read.fetch("ruby/lib/psych.bundle").encoding
   ensure
     server&.stop
   end
@@ -598,6 +683,26 @@ class PinMoveTest < Minitest::Test
         text = File.read(File.join(ROOT, path))
         patterns.each { |pattern| assert_equal version, text[Regexp.new(pattern), :version], "#{path}: #{pattern}" }
       end
+    end
+  end
+
+  # Each library an input compiles in, whose version the move reads from
+  # the input's archive, has an entry of its own for that platform alone,
+  # so moving it says nothing of another build's copy, and the move's
+  # pattern reads the entry's version out of the evidence the license
+  # audit looks for in the same file (a C string, between NULs).
+  def test_every_compiled_library_has_an_entry_the_move_can_read_its_version_into
+    components = YAML.safe_load_file(File.join(ROOT, "runtime/licenses.yml")).fetch("components")
+    compiled = entries.reject { |_, entry| entry["hold"] }.flat_map do |_, entry|
+      entry.fetch("compiled", {}).flat_map { |platform, libraries| libraries.map { |id, library| [platform, id, library] } }
+    end
+    refute_empty compiled
+    compiled.each do |platform, id, library|
+      component = components.find { |each| each.fetch("id") == id }
+      assert_equal [platform], component&.fetch("platforms"), "runtime/licenses.yml's #{id} describes #{platform} alone"
+      evidence = component.fetch("embedded").map { |embedded| embedded.fetch("evidence") }
+      found = evidence.map { |text| "\0#{text}\0".b[Regexp.new(library.fetch("version").b), "version"] }
+      assert_equal [component.fetch("version").to_s], found.uniq, "#{id}'s version pattern reads its evidence"
     end
   end
 

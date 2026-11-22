@@ -62,7 +62,16 @@
 #   pattern whose arch capture finds the Ruby's own name for its platform
 #   in a path of the new archive. The move lists the archive and stops
 #   when that name is not the one runtime/licenses.yml's platforms give,
-#   since a new name is a person's to move.
+#   since a new name is the maintainer's to decide.
+# compiled: for an input that compiles libraries into its own files,
+#   each platform of its pin with the ids of runtime/licenses.yml's
+#   entries for those libraries, each with file, a pattern for the path
+#   of the file in the new archive that holds the library, version, a
+#   pattern whose version capture finds the library's version in that
+#   file's bytes, as the license audit's evidence does, and title, what
+#   CHANGELOG.md calls it. The move reads them from the archive it lists
+#   for platform, in the same download, and rewrites each entry whose
+#   version the file no longer holds.
 # licenses: the ids of runtime/licenses.yml's entries that name the
 #   pin's version, which the move rewrites: their version, their
 #   download, and the evidence their files hold.
@@ -101,10 +110,12 @@ watched:
     names: [Ruby]
     hold: The step from Ruby 4.1's preview to 4.1.0 is the maintainer's to take (releases.md, "The day Ruby 4.1.0 appears"); a patch of 4.1 after it waits on the code runtimes.md, "Ruby's patches, with no person", names.
   # rv-ruby's release of the macOS Ruby, which compiles in its own
-  # OpenSSL, libyaml, libffi, and zlib, so a newer rv-ruby release is how
-  # those reach the runtime. rubies is its rolling tag. Its Ruby names
-  # its platform for the macOS it was built on, which a release can
-  # change (platform).
+  # OpenSSL and libyaml (zlib and libffi are macOS's own, in /usr/lib),
+  # so a newer rv-ruby release is how those reach the runtime. rubies is
+  # its rolling tag. Its Ruby names its platform for the macOS it was
+  # built on, which a release can change (platform). libyaml's version
+  # is the only string of three numbers between NULs in psych.bundle,
+  # in 20261023 and 20261119 alike.
   rv-ruby:
     pins: [ruby]
     field: release
@@ -113,6 +124,16 @@ watched:
     licenses: [rv-ruby]
     platform:
       arm64-darwin: '/lib/ruby/[^/]+/(?<arch>arm64-darwin\d*)/rbconfig\.rb\z'
+    compiled:
+      arm64-darwin:
+        openssl:
+          file: '/lib/ruby/[^/]+/[^/]+/openssl\.bundle\z'
+          version: 'OpenSSL (?<version>\d+\.\d+\.\d+) '
+          title: OpenSSL in the macOS Ruby
+        libyaml:
+          file: '/lib/ruby/[^/]+/[^/]+/psych\.bundle\z'
+          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
+          title: libyaml in the macOS Ruby
     also:
       lib/fledge/download.rb: []
   # jdx/ruby's release of the glibc Linux Rubies, one per Ruby version,

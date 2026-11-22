@@ -415,6 +415,9 @@ components:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/libcrypto-3-{x64,arm64}.dll"]
         evidence: "OpenSSL 3.6.5 "
 
+  # rv-ruby's libyaml, whose version the move reads from each new
+  # rv-ruby release (runtime/upstreams.yml, compiled), so it describes
+  # macOS alone.
   - id: libyaml
     name: libyaml, compiled into Ruby's psych extension
     version: 0.2.5
@@ -423,7 +426,23 @@ components:
     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
     notice: libyaml
     ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}"
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    platforms: [arm64-darwin]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
+        evidence: "0.2.5\0"
+
+  # glibc Linux's libyaml, as jdx/ruby and Fledge's own build of Ruby
+  # compile it; jdx/ruby ships its static library in lib/ for compiling
+  # gems, which a runtime leaves out.
+  - id: libyaml-glibc
+    name: libyaml, compiled into Ruby's psych extension
+    version: 0.2.5
+    license: MIT
+    kind: program
+    download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    notice: libyaml
+    ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}"
+    platforms: [x86_64-linux, aarch64-linux]
     files: ["{prefix}lib/libyaml.a"]
     binaries: ["{prefix}lib/libyaml.a"]
     embedded:
@@ -1069,7 +1088,7 @@ components:
     version: "20261023"
     license: BSD-2-Clause
     kind: files
-    download: https://github.com/spinel-coop/rv-ruby/tree/074afbcb773b580516a281c84878f1cd3a651cda
+    download: https://github.com/spinel-coop/rv-ruby/tree/20261023
     ships: rv-ruby's install receipt and SBOM (only in rv-ruby's whole tree)
     platforms: [arm64-darwin]
     notice: rv-ruby

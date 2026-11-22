@@ -558,7 +558,8 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal [
 "thing's ext/libthing.so needs libnowhere.so, which neither Android, nor Fledge's runtime, nor the app's own native " \
   "libraries provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it " \
-  "statically.",
+  "statically, or, when the app's host adds it through its own Gradle dependencies, list it in fledge.yml as " \
+  "android: { host_libraries: [libnowhere.so] }.",
 ], linkage.problems(project, libraries.judged)
   end
 

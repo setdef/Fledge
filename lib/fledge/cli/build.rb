@@ -86,13 +86,18 @@ module Fledge
       #        must have.
       # [pins] The file of SHA-256s Fledge::Runtimes checks runtimes
       #        against (default: Fledge::Runtimes::PINS).
-      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION, pins: Runtimes::PINS)
+      # [gemspec_loads] What tells Fledge::Bundle the files evaluating a
+      #                 project's gemspec loads (default:
+      #                 Fledge::Bundle::GemspecLoads, which starts a Ruby
+      #                 to see).
+      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION, pins: Runtimes::PINS, gemspec_loads: Bundle::GemspecLoads.new)
         @out = out
         @err = err
         @env = env
         @host = host
         @ruby = ruby
         @pins = pins
+        @gemspec_loads = gemspec_loads
       end
 
       # Runs the command with the arguments after +build+, and returns
@@ -245,7 +250,7 @@ module Fledge
         cache = File.dirname(runtimes.cache)
         fetcher = GemFetcher.new(cache: File.join(cache, "gems"), project: app.root, log: @err)
         checkouts = GitCheckout.new(cache: File.join(cache, "git"), work:, log: @err)
-        AppGems.new(app:, bundle: Bundle.new(app), fetcher:, checkouts:, compiler: compiler(runtimes, work), system32: VisualCRuntime.system32(@env))
+        AppGems.new(app:, bundle: Bundle.new(app, gemspec_loads: @gemspec_loads), fetcher:, checkouts:, compiler: compiler(runtimes, work), system32: VisualCRuntime.system32(@env))
       end
 
       # Makes the build's work folder, where gems compile, in the

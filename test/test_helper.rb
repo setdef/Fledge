@@ -258,6 +258,11 @@ module TestReaders
   end
 end
 
+# What a unit test of something else gives Fledge::Bundle in place of
+# Fledge::Bundle::GemspecLoads, which starts a Ruby: a gemspec that loads
+# no file. test/integration/gemspec_loads_test.rb tests the real one.
+NO_GEMSPEC_LOADS = -> (_path) { [] }
+
 # Writes a minimal app, a folder with a main.rb, and returns its path. Its
 # .git folder, which never ships, keeps a search for its project's root
 # from going above it.

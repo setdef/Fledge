@@ -30,7 +30,9 @@ module BuildFromHelpers
   def build(*argv, host: LINUX, env: { "FLEDGE_RUNTIME_DIR" => @runtimes })
     out = StringIO.new
     err = StringIO.new
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host), pins: FakeRuntime.pins(env.fetch("FLEDGE_RUNTIME_DIR", @runtimes))).call(argv) }
+    command = Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host), pins: FakeRuntime.pins(env.fetch("FLEDGE_RUNTIME_DIR", @runtimes)),
+      gemspec_loads: NO_GEMSPEC_LOADS)
+    status = Dir.chdir(@dir) { command.call(argv) }
     [out.string, err.string, status]
   end
 

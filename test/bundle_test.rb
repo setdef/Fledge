@@ -32,8 +32,14 @@ class BundleTest < Minitest::Test
   end
 
   def bundle(**)
-    root = FakeProject.write(@dir, **)
-    Fledge::Bundle.new(Fledge::App.at(root))
+    bundle_at(FakeProject.write(@dir, **))
+  end
+
+  # The bundle of the project at +root+, whose gemspecs load nothing, so
+  # that a test of something else starts no Ruby to see; the Ruby that
+  # sees is tested in test/integration/gemspec_loads_test.rb.
+  def bundle_at(root, gemspec_loads: NO_GEMSPEC_LOADS)
+    Fledge::Bundle.new(Fledge::App.at(root), gemspec_loads:)
   end
 
   def gems(bundle, platform) = bundle.gems_for(platform, ruby_version: "4.0.9", patchlevel: "9", bundler: "4.0.20", arch: FakeRuntime::ARCH.fetch(platform.name))
@@ -154,7 +160,7 @@ class BundleTest < Minitest::Test
     root = FakeProject.write(@dir, name: "with_app", dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar])
     FileUtils.mkdir_p(File.join(root, ".bundle"))
     File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_WITH: \"extras\"\nBUNDLE_WITHOUT: \"docs\"\n")
-    chosen = Fledge::Bundle.new(Fledge::App.at(root))
+    chosen = bundle_at(root)
 
     assert_equal ["foo 1.0.0"], names(chosen, LINUX)
     config = chosen.app_files.fetch(".bundle/config")
@@ -164,28 +170,28 @@ class BundleTest < Minitest::Test
 
   # A Ruby the app starts with bundler/setup reads the app's
   # .bundle/config and the person's ~/.bundle/config, and Bundler takes
-  # each setting from the first that has it; the app's file names its
-  # groups even when it leaves none out and asks for none, so the
+  # each setting from the first that has it (Bundler::Settings, here in
+  # this Ruby, with the person's file named by BUNDLE_USER_CONFIG, as
+  # Bundler::Settings#global_config_file reads it); the app's file names
+  # its groups even when it leaves none out and asks for none, so the
   # person's without and with change nothing.
   def test_the_apps_groups_win_over_the_persons_bundler_settings_when_there_are_none
-    app = File.join(@dir, "app")
-    home = File.join(@dir, "home")
-    FileUtils.mkdir_p([File.join(app, ".bundle"), File.join(home, ".bundle")])
-    File.write(File.join(app, "Gemfile"), "")
-    File.write(File.join(app, ".bundle", "config"), bundle(dependencies: {}, locked: []).app_files.fetch(".bundle/config"))
-    File.write(File.join(home, ".bundle", "config"), "---\nBUNDLE_WITHOUT: \"default\"\nBUNDLE_WITH: \"extras\"\n")
+    app = File.join(@dir, "app", ".bundle")
+    person = File.join(@dir, "home", ".bundle", "config")
+    FileUtils.mkdir_p([app, File.dirname(person)])
+    File.write(File.join(app, "config"), bundle(dependencies: {}, locked: []).app_files.fetch(".bundle/config"))
+    File.write(person, "---\nBUNDLE_WITHOUT: \"default\"\nBUNDLE_WITH: \"extras\"\n")
+    names = %w[BUNDLE_CONFIG BUNDLE_USER_CONFIG BUNDLE_IGNORE_CONFIG BUNDLE_WITHOUT BUNDLE_WITH]
+    saved = ENV.to_h.slice(*names)
+    names.each { |name| ENV.delete(name) }
+    ENV["BUNDLE_USER_CONFIG"] = person
+    groups = -> (root) { Bundler::Settings.new(Pathname.new(root)).then { |settings| [settings[:without], settings[:with]] } }
 
-    out, err, status = Open3.capture3({
-"PATH" => ENV.fetch("PATH"),
-"HOME" => home,
-"USERPROFILE" => home,
-"BUNDLE_GEMFILE" => File.join(app, "Gemfile"),
-},
-      RbConfig.ruby, "-rbundler", "-e", "p Bundler.settings[:without], Bundler.settings[:with]",
-      unsetenv_others: true)
-
-    assert status.success?, err
-    assert_equal "[]\n[]\n", out
+    assert_equal [[:default], [:extras]], groups.call(File.join(@dir, "none"))
+    assert_equal [[], []], groups.call(app)
+  ensure
+    names&.each { |name| ENV.delete(name) }
+    ENV.update(saved) if saved
   end
 
   # A developer who leaves development or test out, from the environment
@@ -204,7 +210,7 @@ class BundleTest < Minitest::Test
     root = FakeProject.write(@dir, name: "config_app", dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar])
     FileUtils.mkdir_p(File.join(root, ".bundle"))
     File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_WITHOUT: \"development:test\"\n")
-    configured = Fledge::Bundle.new(Fledge::App.at(root))
+    configured = bundle_at(root)
 
     assert_empty names(configured, LINUX)
     assert_includes configured.app_files.fetch(".bundle/config"), "BUNDLE_WITHOUT: \"development:test\"\n"
@@ -261,7 +267,7 @@ class BundleTest < Minitest::Test
     root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "ruby \"~> 3.3.0\"\n")
     lock = File.join(root, "Gemfile.lock")
     File.write(lock, File.read(lock).sub("BUNDLED WITH", "RUBY VERSION\n  ruby 3.3.6\n\nBUNDLED WITH"))
-    bundle = Fledge::Bundle.new(Fledge::App.at(root))
+    bundle = bundle_at(root)
 
     error = assert_raises(Fledge::Error) { names(bundle, LINUX) }
     assert_equal "Gemfile asks for Ruby ~> 3.3.0, and Fledge's runtime for x86_64-linux is Ruby 4.0.9.", error.message
@@ -276,7 +282,7 @@ class BundleTest < Minitest::Test
     File.write(File.join(root, ".ruby-version"), "4.1.0-preview1\n")
     lock = File.join(root, "Gemfile.lock")
     File.write(lock, File.read(lock).sub("BUNDLED WITH", "RUBY VERSION\n  ruby 4.1.0.preview1\n\nBUNDLED WITH"))
-    bundle = Fledge::Bundle.new(Fledge::App.at(root))
+    bundle = bundle_at(root)
     gems = lambda do |platform, version|
       bundle.gems_for(platform, ruby_version: version, patchlevel: "-1", bundler: "4.0.22", arch: FakeRuntime::ARCH.fetch(platform.name))
     end
@@ -301,7 +307,7 @@ class BundleTest < Minitest::Test
       root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "ruby #{ruby}\n")
       lock = File.join(root, "Gemfile.lock")
       File.write(lock, File.read(lock).sub("BUNDLED WITH", "RUBY VERSION\n  ruby #{version}p#{locked}\n\nBUNDLED WITH"))
-      Fledge::Bundle.new(Fledge::App.at(root)).gems_for(LINUX, ruby_version: version, patchlevel:, bundler:, arch: "x86_64-linux")
+      bundle_at(root).gems_for(LINUX, ruby_version: version, patchlevel:, bundler:, arch: "x86_64-linux")
     end
     prerelease_first = "\">= 4.1.0.a\", \"< 4.2\""
 
@@ -322,7 +328,7 @@ class BundleTest < Minitest::Test
   def test_a_lockfile_the_gemfile_has_moved_past_is_refused_in_bundlers_words
     root = FakeProject.write(@dir, dependencies: {}, locked: [], gemfile: "gem \"foo\"\n")
 
-    error = assert_raises(Fledge::Error) { Fledge::Bundle.new(Fledge::App.at(root)) }
+    error = assert_raises(Fledge::Error) { bundle_at(root) }
     assert_match(/\ABundler can't read #{Regexp.escape(File.join(root, 'Gemfile'))} and Gemfile.lock:\n/, error.message)
     assert_includes error.message, "* foo"
   end
@@ -337,7 +343,7 @@ class BundleTest < Minitest::Test
     lockfile = File.join(root, "Gemfile.lock")
     File.write(lockfile, File.read(lockfile).sub(" sha256=#{@linux.sha256}", ""))
 
-    error = assert_raises(Fledge::Error) { Fledge::Bundle.new(Fledge::App.at(root)) }
+    error = assert_raises(Fledge::Error) { bundle_at(root) }
 
     assert_includes error.message, "Your lockfile has an empty CHECKSUMS entry for \"native\""
     assert error.message.end_with?("\nbundle lock --add-checksums fills a gem's entry only for a build Bundler installed on this computer, " \
@@ -349,7 +355,7 @@ class BundleTest < Minitest::Test
     root = FakeProject.write(@dir, dependencies: {}, locked: [])
     File.delete(File.join(root, "Gemfile.lock"))
 
-    error = assert_raises(Fledge::Error) { Fledge::Bundle.new(Fledge::App.at(root)) }
+    error = assert_raises(Fledge::Error) { bundle_at(root) }
     assert_equal "#{root} has Gemfile but no Gemfile.lock. Run bundle lock, then build again.", error.message
   end
 
@@ -372,7 +378,7 @@ class BundleTest < Minitest::Test
   # copy it to vendor/cache/NAME (bundle cache --all), which a Bundler that
   # finds it uses in place of the original path.
   def test_a_gem_from_a_folder_outside_the_project_ships_where_bundler_looks_for_its_copy
-    gem = gems(Fledge::Bundle.new(Fledge::App.at(path_project)), LINUX).last
+    gem = gems(bundle_at(path_project), LINUX).last
 
     assert_equal Fledge::PathGem.new(name: "elsewhere", version: "1.0", folder: File.join(@dir, "elsewhere"),
       app_path: "vendor/cache/elsewhere", glob: "{,*,*/*}.gemspec", inside: false), gem
@@ -383,7 +389,7 @@ class BundleTest < Minitest::Test
     FileUtils.mkdir_p(File.join(root, "vendor", "cache"))
     FileUtils.mv(File.join(@dir, "elsewhere"), File.join(root, "vendor", "cache", "elsewhere"))
 
-    gem = gems(Fledge::Bundle.new(Fledge::App.at(root)), LINUX).last
+    gem = gems(bundle_at(root), LINUX).last
 
     assert_equal [File.join(root, "vendor", "cache", "elsewhere"), "vendor/cache/elsewhere"], [gem.folder, gem.app_path]
   end
@@ -392,7 +398,7 @@ class BundleTest < Minitest::Test
     root = path_project
     FileUtils.rm_rf(File.join(@dir, "elsewhere"))
 
-    error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(root)), LINUX) }
+    error = assert_raises(Fledge::Error) { names(bundle_at(root), LINUX) }
     assert_equal "Gemfile.lock takes elsewhere from #{File.join(@dir, 'elsewhere')}, outside the project, and that folder is not " \
       "there. Check out elsewhere there, or move it into the project, or take it from a gem server.", error.message
   end
@@ -400,28 +406,28 @@ class BundleTest < Minitest::Test
   def test_a_gem_outside_the_project_whose_path_names_no_folder_is_refused
     root = path_project(path: "../elsewhere/..", folder: "elsewhere")
 
-    error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(root)), LINUX) }
+    error = assert_raises(Fledge::Error) { names(bundle_at(root), LINUX) }
     assert_includes error.message, "takes elsewhere from ../elsewhere/.., outside the project, and a path that ends in \"..\" names no folder"
   end
 
   def test_a_path_gem_inside_the_project_ships_with_it_unless_it_has_an_extension
     root = path_project(path: "gems/elsewhere", folder: "my_app/gems/elsewhere")
 
-    assert_empty gems(Fledge::Bundle.new(Fledge::App.at(root)), LINUX)
+    assert_empty gems(bundle_at(root), LINUX)
   end
 
   # Bundler never compiles a path gem's extension; bundle exec loads what
   # the developer last compiled there, for their own Ruby.
   def test_a_path_gem_with_an_extension_is_compiled_for_the_runtimes_ruby_wherever_it_is
     inside = path_project(path: "gems/elsewhere", folder: "my_app/gems/elsewhere", extensions: ["ext/e/extconf.rb"])
-    gem = gems(Fledge::Bundle.new(Fledge::App.at(inside)), LINUX).grep(Fledge::PathGem).first
+    gem = gems(bundle_at(inside), LINUX).grep(Fledge::PathGem).first
 
     assert_equal [true, "gems/elsewhere"], [gem.inside, gem.app_path]
 
     root = FakeProject.write(@dir, name: "ext_app", dependencies: {}, locked: [])
     File.write(File.join(root, "ext_app.gemspec"), File.read(File.join(root, "ext_app.gemspec"))
       .sub("spec.bindir", "spec.extensions = [\"ext/ext_app/extconf.rb\"]\n  spec.bindir"))
-    own = gems(Fledge::Bundle.new(Fledge::App.at(root)), LINUX)
+    own = gems(bundle_at(root), LINUX)
 
     assert_equal [[".", true]], own.map { |candidate| [candidate.app_path, candidate.inside] }
   end
@@ -440,7 +446,7 @@ class BundleTest < Minitest::Test
 
   # The lockfile's revision pins a git gem, as its checksum pins a .gem.
   def test_a_gem_from_git_is_taken_at_the_revision_the_lockfile_locks
-    gems = gems(Fledge::Bundle.new(Fledge::App.at(git_project)), LINUX)
+    gems = gems(bundle_at(git_project), LINUX)
 
     assert_equal [
 Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git", revision: "a" * 40,
@@ -449,7 +455,7 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
   end
 
   def test_a_git_gem_without_a_full_revision_is_refused
-    error = assert_raises(Fledge::Error) { names(Fledge::Bundle.new(Fledge::App.at(git_project(revision: "abc1234"))), LINUX) }
+    error = assert_raises(Fledge::Error) { names(bundle_at(git_project(revision: "abc1234")), LINUX) }
 
     assert_equal "Gemfile.lock takes g from https://example.com/repo.git without pinning it to a commit (its revision is " \
       "\"abc1234\"), and Fledge ships a git gem only at the full commit the lockfile locks. Run bundle lock, then build again.",
@@ -460,8 +466,8 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
     root = git_project(options: "  tag: v1.0\n  glob: gems/*/*.gemspec\n  submodules: true\n")
     File.write(File.join(root, "Gemfile"), File.read(File.join(root, "Gemfile")).sub("glob: \"gems/*/*.gemspec\"", "glob: \"gems/*/*.gemspec\", submodules: true"))
 
-    assert_equal [true], gems(Fledge::Bundle.new(Fledge::App.at(root)), LINUX).map(&:submodules)
-    assert_equal [false], gems(Fledge::Bundle.new(Fledge::App.at(git_project)), LINUX).map(&:submodules)
+    assert_equal [true], gems(bundle_at(root), LINUX).map(&:submodules)
+    assert_equal [false], gems(bundle_at(git_project), LINUX).map(&:submodules)
   end
 
   # bundle config build.NAME, at any level Bundler reads, as Bundler
@@ -471,7 +477,7 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
     FileUtils.mkdir_p(File.join(root, ".bundle"))
     File.write(File.join(root, ".bundle", "config"), "---\nBUNDLE_BUILD__NOKOGIRI: \"--use-system-libraries --with-opt='a b'\"\n")
 
-    bundle = Fledge::Bundle.new(Fledge::App.at(root))
+    bundle = bundle_at(root)
 
     assert_equal ["--use-system-libraries", "--with-opt=a b"], bundle.build_args("nokogiri")
     assert_empty bundle.build_args("other")
@@ -495,25 +501,28 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
   # Under bundle exec, Bundler evaluates the project's gemspec at every
   # start, so the files it requires load before the program's first
   # line, in the order they finish loading; the shipped gemspec requires
-  # the same files, and nothing from outside the project.
-  def test_the_evaluated_gemspec_requires_the_projects_files_its_evaluation_loaded
+  # the same files, by paths from its own folder, and nothing from
+  # outside the project. Which files those are, the gemspec loads
+  # collaborator says (test/integration/gemspec_loads_test.rb).
+  def test_the_evaluated_gemspec_requires_the_project_files_its_evaluation_loads
     root = FakeProject.write(@dir, name: "versioned_app")
-    FileUtils.mkdir_p(File.join(root, "lib", "versioned_app"))
-    File.write(File.join(root, "lib", "versioned_app", "edition.rb"), "module VersionedApp\n  EDITION = \"first\"\nend\n")
-    File.write(File.join(root, "lib", "versioned_app", "version.rb"),
-      "require_relative \"edition\"\nmodule VersionedApp\n  VERSION = \"0.1.0\"\nend\n")
-    gemspec = File.join(root, "versioned_app.gemspec")
-    File.write(gemspec, "require \"English\"\nrequire_relative \"lib/versioned_app/version\"\n#{File.read(gemspec)}")
+    edition = File.join(root, "lib", "versioned_app", "edition.rb")
+    version = File.join(root, "lib", "versioned_app", "version.rb")
+    outside = File.join(@dir, "elsewhere.rb")
+    FileUtils.mkdir_p(File.dirname(version))
+    FileUtils.touch([edition, version, outside])
+    asked = []
+    loads = lambda do |path|
+      asked << File.realpath(path)
+      [outside, edition, version]
+    end
 
-    evaluated = Fledge::Bundle.new(Fledge::App.at(root)).app_files.fetch("versioned_app.gemspec")
+    evaluated = bundle_at(root, gemspec_loads: loads).app_files.fetch("versioned_app.gemspec")
 
+    assert_equal [File.realpath(File.join(root, "versioned_app.gemspec"))], asked
     assert_includes evaluated, "\nrequire_relative \"lib/versioned_app/edition\"\nrequire_relative \"lib/versioned_app/version\"\n\n" \
       "Gem::Specification.new do |s|\n"
-    refute_includes evaluated, "English"
-    File.write(gemspec, evaluated)
-    out, err, status = Open3.capture3(RbConfig.ruby, "-e", "load ARGV[0]; print VersionedApp::VERSION, VersionedApp::EDITION", gemspec)
-    assert status.success?, err
-    assert_equal "0.1.0first", out
+    refute_includes evaluated, "elsewhere"
   end
 
   def test_leaves_bundlers_own_root_as_it_found_it
@@ -561,9 +570,9 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
     settings = File.join(project, ".bundle", "config")
     File.write(settings, "---\nBUNDLE_VERSION: \"system\"\n")
 
-    assert_nil Fledge::Bundle.new(Fledge::App.at(project)).bundler_for("4.0.20", ruby_version: "4.0.9")
+    assert_nil bundle_at(project).bundler_for("4.0.20", ruby_version: "4.0.9")
     File.write(settings, "---\nBUNDLE_VERSION: \"4.0.18\"\n")
-    error = assert_raises(Fledge::Error) { Fledge::Bundle.new(Fledge::App.at(project)).bundler_for("4.0.20", ruby_version: "4.0.9") }
+    error = assert_raises(Fledge::Error) { bundle_at(project).bundler_for("4.0.20", ruby_version: "4.0.9") }
     assert_includes error.message, "no checksum for bundler (4.0.18)"
     development = bundle(name: "edge_app", dependencies: {}, locked: [], bundled_with: "4.1.0.dev")
     assert_nil development.bundler_for("4.0.20", ruby_version: "4.0.9")

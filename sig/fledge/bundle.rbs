@@ -7,8 +7,11 @@ module Fledge
     GEMSPECS: String
     PATCHLEVEL_BUNDLERS: Gem::Requirement
     PRERELEASE_FIRST: String
-    GEMSPEC_LOADS: String
     FORCE_RUBY_PLATFORM: String
+
+    interface _GemspecLoads
+      def call: (String path) -> Array[String]
+    end
 
     @app: App
     @lockfile: String
@@ -21,8 +24,9 @@ module Fledge
     @groups: Array[Symbol]
     @sources: Sources?
     @shipped_lockfile: String?
+    @gemspec_loads: _GemspecLoads
 
-    def initialize: (App app) -> void
+    def initialize: (App app, ?gemspec_loads: _GemspecLoads) -> void
 
     def build_args: (String name) -> Array[String]
 

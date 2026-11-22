@@ -5,14 +5,11 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require "json"
-require "open3"
-require "rbconfig"
 require "shellwords"
 require_relative "error"
 require_relative "git_gem"
 require_relative "locked_gem"
-require_relative "native_build"
+require_relative "bundle/gemspec_loads"
 require_relative "bundle/selection"
 require_relative "bundle/sources"
 
@@ -108,8 +105,10 @@ module Fledge
 
     # Reads +app+'s Gemfile and lockfile. Raises Fledge::Error when there
     # is no lockfile, when Bundler cannot read either, or when the
-    # lockfile is out of date.
-    def initialize(app)
+    # lockfile is out of date. +gemspec_loads+, given a project gemspec's
+    # path, answers the paths of the files evaluating it loads
+    # (GemspecLoads, which starts a Ruby to see).
+    def initialize(app, gemspec_loads: GemspecLoads.new)
       require "bundler"
       @app = app
       gemfile = File.join(app.root, app.gemfile.to_s)
@@ -124,6 +123,7 @@ module Fledge
       @groups = [] # : Array[Symbol]
       @shipped_lockfile = nil # : String?
       @gemfile = gemfile
+      @gemspec_loads = gemspec_loads
       @definition = definition(gemfile)
       @checksums = checksums(File.read(@lockfile))
     end
@@ -511,17 +511,6 @@ module Fledge
       end
     end
 
-    # What a Ruby runs to report the files evaluating a gemspec loads, as
-    # Bundler evaluates it (Bundler.load_gemspec), in the order they
-    # finish loading.
-    GEMSPEC_LOADS = <<~RUBY
-      require "bundler"
-      require "json"
-      before = $LOADED_FEATURES.dup
-      Bundler.load_gemspec(ARGV.fetch(0))
-      print JSON.generate($LOADED_FEATURES - before)
-    RUBY
-
     # The evaluated gemspec +ruby+ of the gemspec at +path+, led by a
     # require_relative of each file in the project that evaluating it
     # loads, in the order it loads them. Under <tt>bundle exec</tt>
@@ -529,18 +518,13 @@ module Fledge
     # (<tt>bundle gem</tt>'s <tt>lib/NAME/version.rb</tt>, and the
     # constant it defines) is loaded before the program's first line; the
     # app's Bundler evaluates the shipped one at every start too, and
-    # loads the same files, by the same paths, with no git. The gemspec
-    # is evaluated in a Ruby of its own, with none of the developer's
-    # Ruby settings, since this process may have loaded those files
-    # already. Raises Fledge::Error when that Ruby cannot evaluate it.
+    # loads the same files, by the same paths, with no git. Which files
+    # those are, the gemspec loads collaborator says (GemspecLoads, by
+    # default), which raises Fledge::Error when it cannot evaluate it.
     private def with_requires(ruby, path)
-      env = ENV.keys.grep(NativeBuild::SCRUBBED).to_h { |name| [name, nil] } # : Hash[String, String?]
-      out, err, status = Open3.capture3(env, RbConfig.ruby, "-e", GEMSPEC_LOADS, path)
-      raise Error, "Ruby can't evaluate #{path}:\n#{err.rstrip}" unless status.success?
-
       folder = File.dirname(File.realpath(path))
       root = "#{File.realpath(@app.root)}/"
-      loaded = JSON.parse(out).map { |feature| File.realpath(feature) }.select { |feature| feature.start_with?(root) }
+      loaded = @gemspec_loads.call(path).map { |feature| File.realpath(feature) }.select { |feature| feature.start_with?(root) }
       requires = loaded.map { |feature| "require_relative #{relative(feature, folder).inspect}\n" }.join
       requires.empty? ? ruby : ruby.sub(/^Gem::Specification\.new/) { "#{requires}\n#{Regexp.last_match(0)}" }
     end

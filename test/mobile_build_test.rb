@@ -44,7 +44,9 @@ class MobileBuildTest < Minitest::Test
     out = StringIO.new
     err = StringIO.new
     env = { "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache") }
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host), ruby:, pins: FakeRuntime.pins(@runtimes)).call(argv) }
+    command = Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host), ruby:, pins: FakeRuntime.pins(@runtimes),
+      gemspec_loads: NO_GEMSPEC_LOADS)
+    status = Dir.chdir(@dir) { command.call(argv) }
     [out.string, err.string, status]
   end
 

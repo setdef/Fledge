@@ -188,6 +188,26 @@ class NativeBuildTest < Minitest::Test
     assert_operator Gem::Version.new(minimum), :<=, Gem::Version.new("14.0")
   end
 
+  # A gem whose extconf.rb fails, as rugged's does without CMake, shows
+  # what RubyGems' own `gem install` shows: the build's output, which
+  # holds the cause. Fledge adds one plain sentence naming the gem, and
+  # none of the Ruby backtrace of the child process that compiled it.
+  def test_a_gem_whose_extension_fails_shows_its_build_output_and_a_sentence_naming_it_and_no_backtrace
+    files = { "lib/broken.rb" => "# broken\n", "ext/broken/extconf.rb" => "abort \"ERROR: libbroken is required to build broken.\"\n" }
+    broken = FakeGem.build(@dir, "broken", "1.0.0", files:, extensions: ["ext/broken/extconf.rb"])
+    @routes["/gems/#{broken.file_name}"] = [200, {}, File.binread(broken.path)]
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: { "broken" => ">= 0" }, locked: [broken], remote: @server.url("/"))
+    program(root)
+
+    status, err = build(root)
+
+    refute_equal 0, status, err
+    assert_includes err, "ERROR: libbroken is required to build broken."
+    assert_match(/gem broken-1\.0\.0's extension did not compile for #{Regexp.escape(@platform.to_s)}/, err)
+    refute_match(/\.rb:\d+:in /, err, "no backtrace of Fledge's compile script or RubyGems")
+    refute_includes err, "Gem::Ext::BuildError"
+  end
+
   # The build's work folder is named by its long names where TMPDIR names
   # it by its 8.3 name, as Windows' TMP does for a user folder whose name
   # is no 8.3 name: mini_portile2, which nokogiri's extconf.rb uses,

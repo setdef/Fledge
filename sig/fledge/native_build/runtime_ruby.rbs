@@ -15,6 +15,8 @@ module Fledge
 
       def run: (Array[Hash[String, String | Array[String]]] jobs, ?source: String, ?message: String, ?failure: String) -> Array[Hash[String, String | Array[String]]]
 
+      private def failed: (String result, String failure) -> String
+
       private def prepare: () -> String
 
       def home: () -> String

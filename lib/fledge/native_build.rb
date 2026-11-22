@@ -70,8 +70,11 @@ module Fledge
     # gem as Gem::Installer#install does, or for a git gem build its
     # extensions where Bundler keeps them (Bundler::Source::Git, whose
     # extension folder Bundler's Gem::Specification#extension_dir names
-    # [scope, folder].uniq.join("-")), then write where each went. On
-    # Windows, it first puts MSYS2's tools on PATH as RubyInstaller's own
+    # [scope, folder].uniq.join("-")), then write where each went. A gem
+    # whose extension fails to build prints RubyGems' own message, which
+    # holds the build's output, as <tt>gem install</tt> does, and no
+    # backtrace, and its name goes in the result, for the error Fledge
+    # raises. On Windows, it first puts MSYS2's tools on PATH as RubyInstaller's own
     # operating_system.rb does before it installs a gem with extensions.
     SCRIPT = <<~RUBY
       require "json"
@@ -83,18 +86,26 @@ module Fledge
         require "ruby_installer/runtime"
         RubyInstaller::Runtime.enable_msys_apps(for_gem_install: true)
       end
+      building = nil
       results = plan.fetch("jobs").map do |job|
         if job["gem"]
-          spec = Gem::Installer.at(job.fetch("gem"), install_dir: home, bin_dir: File.join(home, "bin"), ignore_dependencies: true,
-            document: [], build_args: job.fetch("build_args"), wrappers: true, env_shebang: false, force: true).install
+          installer = Gem::Installer.at(job.fetch("gem"), install_dir: home, bin_dir: File.join(home, "bin"), ignore_dependencies: true,
+            document: [], build_args: job.fetch("build_args"), wrappers: true, env_shebang: false, force: true)
+          building = installer.spec.full_name
+          spec = installer.install
         else
           spec = Gem::Specification.load(job.fetch("gemspec"))
+          building = spec.full_name
           spec.full_gem_path = File.dirname(job.fetch("gemspec"))
           extensions = File.join(home, "bundler", "gems", "extensions", Gem::Platform.local.to_s, Gem.extension_api_version)
           spec.extension_dir = File.join(extensions, [job.fetch("scope"), File.basename(spec.full_gem_path)].uniq.join("-"))
           Gem::Ext::Builder.new(spec, job.fetch("build_args")).build_extensions
         end
         { "gem_dir" => spec.full_gem_path, "extension_dir" => spec.extension_dir }
+      rescue Gem::Ext::BuildError => e
+        warn e.message
+        File.write(plan.fetch("result"), JSON.generate("failed" => building))
+        exit 1
       end
       File.write(plan.fetch("result"), JSON.generate(results))
     RUBY

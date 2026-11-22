@@ -48,9 +48,19 @@ module Fledge
           output.each_line { |line| @log.puts line }
           thread.value
         end
-        raise Error, failure unless status.success?
+        raise Error, failed(result, failure) unless status.success?
 
         JSON.parse(File.read(result))
+      end
+
+      # +failure+, naming the gem SCRIPT wrote as the one whose extension
+      # failed, if it wrote one: the build's output, which RubyGems' own
+      # error message holds, is already in the log.
+      private def failed(result, failure)
+        name = JSON.parse(File.read(result)).then { |written| written["failed"] if written.is_a?(Hash) }
+        name ? "gem #{name}'s extension did not compile for #{@platform}; the compiler's output is above" : failure
+      rescue SystemCallError, JSON::ParserError
+        failure
       end
 
       # Unpacks the runtime, once, and returns the path of its Ruby.

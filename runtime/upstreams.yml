@@ -167,7 +167,7 @@ watched:
     github: AppImage/type2-runtime
     tag: '\A(?<version>\d{8})\z'
     names: [AppImage's runtime, appimage-runtime]
-    hold: Its commit, its source archive, and the libfuse its build links move with it, and its release lists none of them.
+    hold: Its release lists neither its commit nor its source archive's SHA-256, and the versions of libfuse, squashfuse, zstd, zlib, musl, mimalloc, and GCC it links come from Alpine's packages on the day it was built, which no file names; only the new runtimes' own bytes say them, and libfuse's own source pin moves with them (runtimes.md, "Held pins").
   # The files SourceForge lists in the NSIS 3 folder, as an RSS feed.
   nsis:
     pins: [nsis]

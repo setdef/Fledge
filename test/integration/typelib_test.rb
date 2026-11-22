@@ -26,7 +26,8 @@ require "open3"
 # leads: Ubuntu 24.04 with libgdk-pixbuf-2.0-0 and without
 # gir1.2-gdkpixbuf-2.0, and that package unpacked into a folder
 # GI_TYPELIB_PATH names, is such a computer. Elsewhere it skips, saying
-# what it lacks. The runtime comes from FLEDGE_RUNTIME_DIR, or from
+# what it lacks, unless FLEDGE_REQUIRE_TYPELIBS is set, as CI sets it on
+# Linux, and then it fails. The runtime comes from FLEDGE_RUNTIME_DIR, or from
 # tmp/runtime, where rake runtime writes it.
 class TypelibTest < Minitest::Test
   FIXTURE = File.expand_path("../fixtures/typelib", __dir__)
@@ -45,7 +46,7 @@ class TypelibTest < Minitest::Test
     end
     packages = %w[gobject-introspection-1.0 gio-2.0]
     unless system("pkg-config", "--exists", *packages)
-      skip "pkg-config finds no #{packages.join(' or ')}, whose development files the fixture's gems compile against"
+      lacking "pkg-config finds no #{packages.join(' or ')}, whose development files the fixture's gems compile against"
     end
     @dir = Dir.mktmpdir
   rescue Fledge::Error => e
@@ -74,7 +75,7 @@ class TypelibTest < Minitest::Test
 
     File.write(config, original.lines.grep_v(/\Asystem_typelibs = /).join)
     out, err, status = run_app(folder, {})
-    skip "this computer has GdkPixbuf-2.0.typelib where libgirepository looks without GI_TYPELIB_PATH, so it cannot lack it" if status.zero?
+    lacking "this computer has GdkPixbuf-2.0.typelib where libgirepository looks without GI_TYPELIB_PATH, so it cannot lack it" if status.zero?
     assert_equal ["", 1], [out, status], "without the check"
     assert_includes err, "Typelib file for namespace 'GdkPixbuf'"
     assert_includes err, "(GObjectIntrospection::RepositoryError::TypelibNotFound)"
@@ -84,6 +85,13 @@ class TypelibTest < Minitest::Test
     message = "Typelib Probe: this app needs GdkPixbuf-2.0.typelib, which this computer does not have (Typelib file for namespace " \
       "'GdkPixbuf', version '2.0' not found). Install it from your Linux distribution's packages, then run the app again\n"
     assert_equal ["", message, 72], run_app(folder, {})
+  end
+
+  # Skips for want of what +message+ names, or fails where
+  # FLEDGE_REQUIRE_TYPELIBS says this computer was set up for the test,
+  # as CI's Linux Test jobs are.
+  private def lacking(message)
+    ENV["FLEDGE_REQUIRE_TYPELIBS"] ? flunk(message) : skip(message)
   end
 
   # The fixture's program under bundle exec, with its gems installed

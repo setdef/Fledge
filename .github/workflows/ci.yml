@@ -1041,7 +1041,9 @@ jobs:
   # runtime, so test/integration/built_app_test.rb builds and runs a
   # real app rather than skipping (FLEDGE_REQUIRE_RUNTIME turns a skip
   # into a failure); on Linux with squashfs-tools' mksquashfs, which
-  # writes an AppImage's file system (ADR 010). No sqlite3 gem is built for Ruby 4.1 yet, so the
+  # writes an AppImage's file system (ADR 010), and with GObject
+  # introspection, so test/integration/typelib_test.rb builds an app
+  # over ruby-gnome's gems. No sqlite3 gem is built for Ruby 4.1 yet, so the
   # builds of examples/my_cool_app and the gem-shaped probe compile it
   # from source, which the limits below leave room for.
   test:
@@ -1108,6 +1110,26 @@ jobs:
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1 "libglib2.0-bin=$(dpkg-query -W -f '${Version}' libglib2.0-0t64)"
           echo "FLEDGE_REQUIRE_MKSQUASHFS=1" >> "$GITHUB_ENV"
           echo "FLEDGE_REQUIRE_DPKG_DEB=1" >> "$GITHUB_ENV"
+
+      # The computer test/integration/typelib_test.rb needs: the
+      # development files of GLib, of GObject introspection, and of
+      # GDK-PixBuf, which the fixture's gems compile against, at the
+      # versions of the GLib and GDK-PixBuf the runner has and of Ubuntu
+      # 24.04's one libgirepository; and GDK-PixBuf's typelib, which
+      # libgdk-pixbuf-2.0-dev depends on, moved where only GI_TYPELIB_PATH
+      # leads, so the test can run the app as on a computer without it.
+      # FLEDGE_REQUIRE_TYPELIBS turns the test's skip into a failure.
+      - name: Set up GObject introspection for the typelib test
+        if: runner.os == 'Linux'
+        run: |
+          glib=$(dpkg-query -W -f '${Version}' libglib2.0-0t64)
+          pixbuf=$(dpkg-query -W -f '${Version}' libgdk-pixbuf-2.0-0)
+          sudo apt-get install -y -qq --no-install-recommends "libglib2.0-dev=$glib" libgirepository1.0-dev=1.80.1-1 "libgdk-pixbuf-2.0-dev=$pixbuf"
+          typelib=$(dpkg -L gir1.2-gdkpixbuf-2.0 | grep '/girepository-1.0/GdkPixbuf-2.0.typelib$')
+          mkdir -p "$RUNNER_TEMP/typelibs"
+          sudo mv "$typelib" "$RUNNER_TEMP/typelibs/"
+          echo "GI_TYPELIB_PATH=$RUNNER_TEMP/typelibs" >> "$GITHUB_ENV"
+          echo "FLEDGE_REQUIRE_TYPELIBS=1" >> "$GITHUB_ENV"
 
       # A self-signed identity for the signed build of
       # test/integration/built_app_test.rb, which no CI runner has

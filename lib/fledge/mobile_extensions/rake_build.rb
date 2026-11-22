@@ -237,7 +237,7 @@ module Fledge
       # <tt>RbConfig.ruby</tt>; on iOS, its compilers run through DYLIB,
       # under the environment's names and rbconfig.rb's.
       private def environment(target, folder, report, first)
-        includes = [target.arch_dir, *@load_path].map { |path| "-I#{path}" }.join(" ")
+        includes = [MobileExtensions.rbconfig_folder(target, @work), *@load_path].map { |path| "-I#{path}" }.join(" ")
         @environment.merge(target.environment, compilers(target, folder)).merge(
           "FLEDGE_INIT_PREFIX" => "Init_fledge_#{first}_", "FLEDGE_REPORT" => report, "FLEDGE_RUBY" => @ruby, "RUBY" => @ruby,
           "RUBYOPT" => "#{includes} -r#{write(folder, 'phone.rb', TOOLS + HOOK)}"

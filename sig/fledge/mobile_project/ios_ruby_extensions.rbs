@@ -6,6 +6,7 @@ module Fledge
     class IOSRubyExtensions
       LINKS: String
       RUBY: String
+      LIBRARY: String
       PRIVACY: String
 
       @runtime: String

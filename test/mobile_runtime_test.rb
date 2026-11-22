@@ -205,6 +205,63 @@ class MobileRuntimeTest < Minitest::Test
     end
   end
 
+  # iOS's Ruby is a dynamic library, as Android's is, and links each
+  # extension as one too (-dynamiclib, not the -bundle iOS takes in no
+  # framework), with room in its header for the install name its
+  # framework gets; Ruby loads each with dlopen.
+  def test_ios_ruby_is_shared_and_its_extensions_are_dynamic_libraries_it_loads
+    ios = RuntimeBuilder::IOS.allocate
+    options = ios.__send__(:target_options, nil, { libffi: "/ffi" })
+
+    assert ios.__send__(:shared?)
+    assert_includes options, "LDSHARED=$(CC) -dynamiclib -Wl,-headerpad_max_install_names"
+    refute_includes options, "--disable-dln"
+  end
+
+  # A shared Ruby's install puts its library at libdir/LIBRUBY_SO, which
+  # RbConfig names and ruby/spec looks for, as Android's line names its
+  # libfledgeruby.so there; on iOS the library is FledgeRuby.framework,
+  # so the line names that framework. An install that put no library
+  # there is refused, not listed.
+  def test_ios_lists_rubys_library_where_rubys_install_put_it
+    Dir.mktmpdir do |root|
+      ios = RuntimeBuilder::IOS.allocate
+      error = assert_raises(RuntimeError) { ios.__send__(:library_line, root) }
+      assert_equal "#{root} has no lib/libfledgeruby.dylib, which a shared Ruby's install puts at libdir/LIBRUBY_SO", error.message
+
+      FileUtils.mkdir_p(File.join(root, "lib"))
+      File.write(File.join(root, "lib", "libfledgeruby.dylib"), "")
+
+      assert_equal "FledgeRuby\tlib/libfledgeruby.dylib\n", ios.__send__(:library_line, root)
+    end
+  end
+
+  # Ruby's dln.c finds an extension's Init function with dlsym, so the
+  # function must be exported, as a desktop's extensions export theirs.
+  # configure hides libruby's own names itself, through XCFLAGS, which
+  # extensions do not take; a -fvisibility=hidden in CFLAGS would hide
+  # every extension's Init function too.
+  def test_ios_extensions_keep_their_init_functions_visible
+    options = RuntimeBuilder::IOS.allocate.__send__(:target_options, nil, { libffi: "/ffi" })
+
+    assert_includes options, "CFLAGS=-Os"
+    assert_empty options.grep(/visibility/)
+  end
+
+  # Each extension's framework is named for the feature Ruby requires
+  # it by, as CPython names each module's framework for its dotted name,
+  # wherever under lib/ruby the extension is installed: a bundled gem's
+  # is installed twice, and both copies are one framework.
+  def test_each_ios_extensions_framework_is_named_for_its_feature
+    assert_equal "fledgerubyext.json.ext.parser.bundle", RuntimeBuilder::IOS.extension_name("4.1.0/arm64-darwin/json/ext/parser.bundle")
+    assert_equal ["fledgerubyext.racc.cparse.bundle"] * 2,
+      ["gems/4.1.0/gems/racc-1.8.1/lib/racc/cparse.bundle", "gems/4.1.0/extensions/arm64-darwin/4.1.0/racc-1.8.1/racc/cparse.bundle"]
+        .map { |path| RuntimeBuilder::IOS.extension_name(path) }
+    assert_equal "fledgerubyext.io.nonblock.bundle", RuntimeBuilder::IOS.extension_name("4.1.0/arm64-darwin/io/nonblock.bundle")
+    error = assert_raises(RuntimeError) { RuntimeBuilder::IOS.extension_name("site_ruby/thing.bundle") }
+    assert_equal "lib/ruby/site_ruby/thing.bundle is in no folder Ruby requires an extension from", error.message
+  end
+
   # configure is told iOS lacks only what its SDK forbids or lacks;
   # backtrace is in the SDK, so a [BUG] report lists the C frames.
   def test_ios_ruby_keeps_backtrace_for_its_crash_reports

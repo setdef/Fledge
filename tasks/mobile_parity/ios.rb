@@ -131,8 +131,10 @@ class MobileParity
     # of a framework in the bundle imports, as nm, Apple's own tool, lists
     # them, and gives each category Fledge declares the reason (REASONS)
     # Fledge expects. The app's manifest stands for its frameworks too,
-    # which Fledge makes of the libraries for Ruby's ffi a gem's build
-    # made, and which carry none of their own.
+    # which Fledge makes of Ruby, its extensions, and the libraries for
+    # Ruby's ffi a gem's build made, all of them the app's own code; only
+    # OpenSSL's, a third party's that Apple lists, carries its own
+    # (IOSArchive::OPENSSL).
     private def check_privacy(bundle, executable)
       binaries = [executable, *Dir.glob(File.join(bundle, "Frameworks", "*.framework")).map { |folder| File.join(folder, File.basename(folder, ".framework")) }]
       imported = binaries.flat_map { |binary| capture("xcrun", "nm", "-u", binary).lines.map { |line| line.strip.delete_prefix("_") } }.uniq

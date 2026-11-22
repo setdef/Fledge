@@ -704,9 +704,12 @@ class LicenseAuditTest < Minitest::Test
   # into Android's libfledgeruby.so.
   ANDROID_RUST = "/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/core/src/panicking.rs\0"
 
-  # An iOS runtime: an XCFramework whose two slices each carry the Ruby
-  # it runs, as CPython's iOS XCFramework does (ADR 097), audited as one
-  # runtime with a Ruby tree per slice, each gem one component.
+  # An iOS runtime: an XCFramework whose two slices each carry Ruby's
+  # framework and the Ruby it runs, its extensions files there, as
+  # CPython's iOS XCFramework does (doc/contributors/design/phone-runtimes.md,
+  # "Ruby's extensions on iOS"), audited as one runtime with a Ruby tree
+  # per slice, each gem one component, and OpenSSL's privacy manifest
+  # OpenSSL's.
   def test_an_ios_runtime_accounts_for_the_ruby_of_each_slice
     Dir.mktmpdir do |tree|
       put = lambda do |path, bytes|
@@ -716,10 +719,17 @@ class LicenseAuditTest < Minitest::Test
       put.call("FledgeRuby.xcframework/Info.plist", "<plist/>\n")
       %w[ios-arm64 ios-arm64-simulator].each do |slice|
         root = "FledgeRuby.xcframework/#{slice}"
-        put.call("#{root}/libfledgeruby.a", "!<arch>\n#{MOBILE_LIBRARY}")
-        put.call("#{root}/Headers/ruby.h", "/* ruby */\n")
-        put.call("#{root}/Headers/fledge_ruby.h", "/* fledge */\n")
-        put.call("#{root}/Headers/module.modulemap", "module FledgeRuby {}\n")
+        framework = "#{root}/FledgeRuby.framework"
+        put.call("#{framework}/FledgeRuby", "Ruby 2d08b5f42f\n")
+        put.call("#{framework}/Info.plist", "<plist/>\n")
+        put.call("#{framework}/Headers/ruby.h", "/* ruby */\n")
+        put.call("#{framework}/Headers/fledge_ruby.h", "/* fledge */\n")
+        put.call("#{framework}/Headers/ruby/internal/ctype.h", "/* not GPL'ed, but ISO C's own */\n")
+        put.call("#{framework}/Modules/module.modulemap", "framework module FledgeRuby {}\n")
+        put.call("#{root}/fledge.links", "fledgerubyext.openssl.bundle\tlib/ruby/4.1.0+5/arm64-darwin/openssl.bundle\n")
+        put.call("#{root}/privacy/fledgerubyext.openssl.bundle.xcprivacy", "<plist/>\n")
+        put.call("#{root}/lib/ruby/4.1.0+5/arm64-darwin/openssl.bundle", mobile_evidence("openssl-mobile"))
+        put.call("#{root}/lib/ruby/4.1.0+5/arm64-darwin/psych.bundle", mobile_evidence("libyaml-mobile"))
         put.call("#{root}/lib/ruby/4.1.0+5/set.rb", "class Set; end\n")
         put.call("#{root}/lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
         put.call("#{root}/libexec/cert.pem", "-----BEGIN CERTIFICATE-----\n")
@@ -732,12 +742,14 @@ class LicenseAuditTest < Minitest::Test
       report = LicenseAudit.new(platform: "ios", tree:, fledge_version: "0.0.0").call
 
       assert_empty report.violations.map(&:to_s)
-      assert_includes report.present.map(&:id), "libffi-mobile"
       assert_equal 1, report.present.count { |component| component.id == "gem-csv-3.3.5" }
       owners = report.owners.transform_values(&:id)
       assert_equal "gem-csv-3.3.5", owners.fetch("FledgeRuby.xcframework/ios-arm64-simulator/lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/lib/csv.rb")
-      assert_equal "fledge-embedding", owners.fetch("FledgeRuby.xcframework/ios-arm64/libfledgeruby.a")
-      assert_equal "ruby", owners.fetch("FledgeRuby.xcframework/ios-arm64/Headers/ruby.h")
+      assert_equal "fledge-embedding", owners.fetch("FledgeRuby.xcframework/ios-arm64/FledgeRuby.framework/FledgeRuby")
+      assert_equal "fledge-embedding", owners.fetch("FledgeRuby.xcframework/ios-arm64/fledge.links")
+      assert_equal "ruby", owners.fetch("FledgeRuby.xcframework/ios-arm64/FledgeRuby.framework/Headers/ruby.h")
+      assert_equal "openssl-mobile", owners.fetch("FledgeRuby.xcframework/ios-arm64/privacy/fledgerubyext.openssl.bundle.xcprivacy")
+      assert_includes report.embeds.fetch("FledgeRuby.xcframework/ios-arm64/lib/ruby/4.1.0+5/arm64-darwin/openssl.bundle"), "openssl-mobile"
       %w[ruby openssl-mobile libyaml-mobile ca-certificates].each { |id| assert_includes report.present.map(&:id), id }
     end
   end

@@ -27,6 +27,7 @@ module Fledge
       def call: (String tree, NDK? ndk) -> Array[Target]
 
       private def ios_target: (String slice, String root) -> Target
+      private def ios_ruby: (String root) -> Hash[String, String]
 
       private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
 

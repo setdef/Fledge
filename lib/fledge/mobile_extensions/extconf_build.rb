@@ -73,7 +73,7 @@ module Fledge
         env = @environment.merge(target.environment).merge("FLEDGE_INIT" => init, "FLEDGE_REPORT" => report, **RUST_FILES)
         env["FLEDGE_SHARED"] = "1" if shared
         what = "compiling #{gem}'s extension #{extconf} for #{target.name}"
-        includes = [target.arch_dir, *@load_path].flat_map { |path| ["-I", path] }
+        includes = [MobileExtensions.rbconfig_folder(target, @work), *@load_path].flat_map { |path| ["-I", path] }
         shims = rust ? [write("fledge_mobile_mkmf.rb", SHIM), write("fledge_mobile_rb_sys.rb", Rust::SHIM)] : [write("fledge_mobile_mkmf.rb", SHIM)]
         @run.call(env, @ruby, "--disable-gems", *includes, *shims.flat_map { |shim| ["-r", shim] }, extconf, *args, chdir: folder, what:)
         reports = JSON.parse(File.read(report))

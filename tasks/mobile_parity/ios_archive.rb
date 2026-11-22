@@ -48,6 +48,21 @@ class MobileParity
     # file of four more bytes is needed to count).
     MACH_O = [0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe, 0xcafebabe].freeze
 
+    # Ruby's framework, which an app embeds when its runtime's Ruby is
+    # dynamic, and the install name its extensions' frameworks and the
+    # executable load it by (doc/contributors/design/phone-runtimes.md,
+    # "Ruby's extensions on iOS").
+    RUBY = "FledgeRuby"
+    RUBY_INSTALL_NAME = "@rpath/#{RUBY}.framework/#{RUBY}".freeze
+
+    # A symbol only OpenSSL defines, by which a framework's binary is
+    # known to hold it: Apple lists OpenSSL among the SDKs that need a
+    # privacy manifest of their own when an app carries them ("Upcoming
+    # third-party SDK requirements", developer.apple.com), as CPython's
+    # iOS build carries OpenSSL's in its _ssl and _hashlib modules'
+    # frameworks (Doc/using/ios.rst at v3.14.0, lines 348 to 361).
+    OPENSSL = "_OPENSSL_init_crypto"
+
     # The problems with an app's +info+ (its Info.plist as a Hash): one
     # message for each, naming the key. +identifier+ and +executable+ are
     # what the project names; +icon+ is whether the app has an icon.
@@ -277,8 +292,9 @@ class MobileParity
     # platform and iOS 15 as its minimum in vtool's report, no bitcode (which Xcode 14
     # and later neither makes nor App Store Connect takes), and only
     # Apple's own libraries and frameworks, which are on every device,
-    # in otool's list, so nothing is missing or loaded from a folder of
-    # the app.
+    # and Ruby's framework, where the runtime's Ruby is dynamic, in
+    # otool's list, so nothing is missing or loaded from a folder of the
+    # app but Ruby's framework, which the app embeds.
     # A framework's binary is checked the same way, +own+ its install
     # name, which otool lists first.
     private def executable_problems(executable, own: nil)
@@ -290,7 +306,9 @@ class MobileParity
       problems << "the executable's minos is not 15.0:\n#{build}" unless build.match?(/^\s*minos 15\.0$/)
       problems << "the executable holds bitcode (an __LLVM segment)" if capture("xcrun", "otool", "-l", executable).include?("segname __LLVM")
       libraries = capture("xcrun", "otool", "-L", executable).lines.drop(1).map { |line| line.split.first }
-      others = libraries.reject { |library| library.start_with?("/usr/lib/", "/System/Library/") || library == own }
+      others = libraries.reject do |library|
+        library.start_with?("/usr/lib/", "/System/Library/") || library == own || (ruby_dynamic? && library == RUBY_INSTALL_NAME)
+      end
       problems << "the executable loads #{others.join(', ')}, which no device has" unless others.empty?
       problems
     end
@@ -298,11 +316,13 @@ class MobileParity
     # Nothing in the bundle but the executable and the binaries of the
     # frameworks the project embeds is Mach-O, the bundle has no folder
     # of extensions or watch apps, and nothing is signed. The frameworks
-    # are the libraries for Ruby's ffi a gem's build made, each of which
-    # iOS takes only in a framework of its own in the app's Frameworks
-    # folder ("Placing content in a bundle", developer.apple.com): the
-    # Frameworks folder holds exactly those the project's
-    # <tt>Frameworks/</tt> folder has an XCFramework of, each as
+    # are Ruby's own, where the runtime's Ruby is dynamic, its
+    # extensions', and the libraries for Ruby's ffi a gem's build made,
+    # each of which iOS takes only in a framework of its own in the app's
+    # Frameworks folder ("Placing content in a bundle",
+    # developer.apple.com): the Frameworks folder holds exactly Ruby's
+    # and those the project's <tt>Frameworks/</tt> folder has an
+    # XCFramework of, each as
     # FRAMEWORK_KEYS and #framework_problems check it. Every link in the
     # bundle leads to a file inside it, as Apple's way of serving code
     # that loads a library by its path makes one ("Embedding nonstandard
@@ -312,7 +332,10 @@ class MobileParity
       problems = %w[PlugIns Watch SC_Info embedded.mobileprovision _CodeSignature].filter_map do |name|
         "the app has #{name}, which Fledge's project does not embed or sign" if File.exist?(File.join(bundle, name))
       end
-      names = Dir.glob("*.xcframework", base: File.join(@project, "Frameworks")).map { |name| File.basename(name, ".xcframework") }.sort
+      names = [
+        *Dir.glob("*.xcframework", base: File.join(@project, "Frameworks")).map { |name| File.basename(name, ".xcframework") },
+        *(ruby_dynamic? ? [RUBY] : []),
+].sort
       embedded = Dir.exist?(File.join(bundle, "Frameworks")) ? Dir.children(File.join(bundle, "Frameworks")).sort : []
       problems << "the app's Frameworks holds #{embedded}, not the project's #{names.map { |name| "#{name}.framework" }}" unless
         embedded == names.map { |name| "#{name}.framework" }
@@ -332,7 +355,8 @@ class MobileParity
     # and PEP 730 says one "must be compiled as dynamic libraries, not
     # shared objects or binary bundles") for iOS devices, as the
     # executable is, unsigned, which loads nothing but Apple's own
-    # libraries.
+    # libraries and Ruby's; and, if it holds OpenSSL (OPENSSL), with
+    # a privacy manifest (#openssl_problems).
     private def framework_problems(bundle, binary)
       folder = File.join(bundle, File.dirname(binary))
       name = File.basename(binary)
@@ -343,6 +367,26 @@ class MobileParity
       problems << "#{binary} is a #{kind}, not a dynamic library (DYLIB)" unless kind == "DYLIB"
       problems << "#{name}.framework is signed, which Fledge's project leaves to Xcode" if File.exist?(File.join(folder, "_CodeSignature"))
       problems.concat(executable_problems(path, own: "@rpath/#{name}.framework/#{name}").map { |problem| problem.sub("the executable", binary) })
+      problems.concat(openssl_problems(folder, path))
+    end
+
+    # A framework whose binary, at +path+ in +folder+, exports OpenSSL's
+    # symbols has a privacy manifest that plutil takes.
+    private def openssl_problems(folder, path)
+      return [] unless capture("xcrun", "nm", "-gjU", path).split.include?(OPENSSL)
+
+      manifest = File.join(folder, "PrivacyInfo.xcprivacy")
+      name = File.basename(folder)
+      return ["#{name} holds OpenSSL but has no PrivacyInfo.xcprivacy"] unless File.file?(manifest)
+
+      _, err, status = Open3.capture3("plutil", "-lint", manifest)
+      status.success? ? [] : ["#{name}'s PrivacyInfo.xcprivacy is not a valid property list: #{err}"]
+    end
+
+    # Whether the runtime in the project holds Ruby as a dynamic
+    # framework, which the app embeds.
+    private def ruby_dynamic?
+      Dir.exist?(File.join(@project, "#{RUBY}.xcframework", "ios-arm64", "#{RUBY}.framework"))
     end
 
     # The privacy manifest is in the app, a valid property list (plutil

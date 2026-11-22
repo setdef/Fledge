@@ -65,10 +65,11 @@ class MobileLinkedSymbolsTest < Minitest::Test
     ios = MobileParity::IOS.new(runtimes:, work: File.join(@dir, "ios"), out: StringIO.new)
     project = MobileParity.projects("ios", runtimes:, out: File.join(@dir, "dist"), apps: [app]).fetch(app)
     bundle = ios.build_app(app, project)
-    printed = nil
-    ios.on_simulator("iPhone", { app => bundle }) { |_, logged, _| printed = said(logged) }
+    printed = everything = nil
+    ios.on_simulator("iPhone", { app => bundle }) { |_, logged, _| printed, everything = said(logged), logged.entries }
 
-    assert_equal ["clash_a 1 100 10", "clash_b 2 200 20", "same_a 3 30", "same_b 4 40", "yamlish 9.9.9, psych's libyaml #{LIBYAML}"], printed
+    assert_equal ["clash_a 1 100 10", "clash_b 2 200 20", "same_a 3 30", "same_b 4 40", "yamlish 9.9.9, psych's libyaml #{LIBYAML}"], printed,
+      "The app logged:\n#{Array(everything).last(40).join("\n")}"
   end
 
   # Two Rakefiles' extensions in libfledgeext.so whose names are in other

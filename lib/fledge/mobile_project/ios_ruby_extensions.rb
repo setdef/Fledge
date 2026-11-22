@@ -24,7 +24,11 @@ module Fledge
     # Each framework is made as a library for Ruby's ffi is
     # (IOSLibraries.xcframework), and each listed file becomes a relative
     # link to its framework's binary in the app (IOSLibraries.target).
-    # An extension that links a library Apple asks a privacy manifest of,
+    # Its first line names Ruby's own library, at libdir/LIBRUBY_SO
+    # (<tt>lib/libfledgeruby.dylib</tt>), under LIBRARY: that path too
+    # becomes a link, to FledgeRuby.framework's binary, so the library is
+    # where RbConfig says, as under <tt>ruby main.rb</tt>, and the app
+    # holds no loose copy, which iOS would refuse. An extension that links a library Apple asks a privacy manifest of,
     # as OpenSSL's does, has that library's own manifest in each slice's
     # PRIVACY folder, as NAME.xcprivacy, which its framework carries as
     # PrivacyInfo.xcprivacy, as CPython's iOS build moves MODULE.xcprivacy
@@ -60,6 +64,11 @@ module Fledge
       # is dynamic.
       RUBY = "FledgeRuby.framework"
 
+      # The name under which LINKS lists Ruby's own library, at
+      # libdir/LIBRUBY_SO, where RbConfig names it: the framework the
+      # runtime holds already, so its line makes a link and no framework.
+      LIBRARY = File.basename(RUBY, ".framework")
+
       # [runtime] The runtime's XCFramework, in the project.
       def initialize(runtime)
         @runtime = runtime
@@ -75,7 +84,7 @@ module Fledge
       # slice. Raises Fledge::Error when the slices list different ones.
       def frameworks
         lines = listed
-        names = lines.transform_values { |paths| paths.keys.sort }
+        names = lines.transform_values { |paths| (paths.keys - [LIBRARY]).sort }
         raise Error, "the iOS runtime's slices list different extensions: #{names.map { |slice, list| "#{slice} #{list.join(', ')}" }.join(', ')}" if
           names.values.uniq.size > 1
 

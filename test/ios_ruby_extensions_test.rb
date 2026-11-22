@@ -96,6 +96,25 @@ class IOSRubyExtensionsTest < Minitest::Test
     end
   end
 
+  # Ruby's own library is FledgeRuby.framework, which the runtime holds
+  # already: its line makes no framework, only the link at libdir/
+  # LIBRUBY_SO, where Ruby's install put it and RbConfig names it, as
+  # under ruby main.rb.
+  def test_rubys_own_library_is_linked_where_rbconfig_names_it_and_is_no_extension
+    runtime("fledgerubyext.etc.bundle" => "4.1.0/arm64-darwin/etc.bundle")
+    SLICES.each do |slice|
+      FileUtils.mkdir_p(File.join(@runtime, slice, "FledgeRuby.framework"))
+      File.write(File.join(@runtime, slice, "fledge.links"), "FledgeRuby\tlib/libfledgeruby.dylib\n", mode: "a")
+    end
+
+    assert_equal %w[fledgerubyext.etc.bundle], extensions.frameworks.keys
+    extensions.link
+
+    SLICES.each do |slice|
+      assert_equal "../../Frameworks/FledgeRuby.framework/FledgeRuby", File.readlink(File.join(@runtime, slice, "lib/libfledgeruby.dylib"))
+    end
+  end
+
   # Each slice of a runtime written here: its lib/ruby holds a file at
   # each listed path, and its fledge.links names each by its framework.
   private def runtime(listed)

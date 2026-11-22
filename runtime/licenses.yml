@@ -57,12 +57,15 @@ system_libraries:
   darwin:
     - /\A\/usr\/lib\/[^\/]+\.dylib\z/
     - /\A\/System\/Library\/Frameworks\//
-  # The iOS runtime links Ruby statically into an archive, which needs
-  # nothing until an app links it with iOS's own libz and frameworks;
-  # the Android runtime's library, and each of Ruby's extensions beside
-  # it, which also needs that library, need only what every Android
-  # provides (NDK, "Android NDK native APIs").
-  ios: []
+  # The iOS runtime's Ruby, a dynamic framework, and each of Ruby's
+  # extensions, which also needs that framework, need only iOS's own
+  # libraries and frameworks, at the paths a Mac has them; the Android
+  # runtime's library, and each of Ruby's extensions beside it, which
+  # also needs that library, need only what every Android provides
+  # (NDK, "Android NDK native APIs").
+  ios:
+    - /\A\/usr\/lib\/[^\/]+\.dylib\z/
+    - /\A\/System\/Library\/Frameworks\//
   android:
     - /\A(?:libc|libm|libdl|liblog|libz)\.so\z/
   windows:
@@ -86,7 +89,7 @@ platforms:
     os: ios
     arch: arm64-darwin
     gem_arch: arm64-darwin
-    so: so
+    so: bundle
     prefixes: [FledgeRuby.xcframework/ios-arm64/, FledgeRuby.xcframework/ios-arm64-simulator/]
   android: {os: android, arch: "{aarch64,x86_64}-linux-android", gem_arch: "{aarch64,x86_64}-linux-android", so: so}
 
@@ -173,13 +176,16 @@ components:
       - {glob: "{prefix}lib/ruby/{abi}/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
 
   # The mobile runtimes' one library (ADR 097): Fledge's embedding API
-  # (runtime/mobile/), compiled with Ruby and what Ruby links into
-  # libfledgeruby.a in each slice of the iOS XCFramework, and into
+  # (runtime/mobile/), compiled with Ruby into the binary of
+  # FledgeRuby.framework in each slice of the iOS XCFramework, beside
+  # the framework's Info.plist and module map, and into
   # libfledgeruby.so for each ABI in the Android AAR, beside the AAR's
   # Java class and its packaging, and the Android runtime's ruby program,
   # libfledgerubyexe.so, which links libfledgeruby.so (doc/contributors/design/phone-runtimes.md,
-  # "The ruby program on Android"); the Android runtime's fledge.links,
-  # and its openssl_certificates.c, compiled into Ruby's openssl
+  # "The ruby program on Android"); each runtime's fledge.links, the
+  # Android runtime's at its root and the iOS runtime's in each slice
+  # (same document, "Ruby's extensions on iOS"), and the Android
+  # runtime's openssl_certificates.c, compiled into Ruby's openssl
   # extension (same document, "Certificates").
   - id: fledge-embedding
     name: Fledge's embedding API, and the library and packages it is built into
@@ -190,21 +196,21 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: libfledgeruby.a in each slice of FledgeRuby.xcframework, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/{abi}/{arch}/openssl.so
+    ships: FledgeRuby.framework in each slice of FledgeRuby.xcframework, with fledge.links beside it, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/{abi}/{arch}/openssl.so
     platforms: [ios, android]
     embedded:
       - files: ["lib/ruby/{abi}/{arch}/openssl.{so}"]
     files:
       - fledge.links
       - FledgeRuby.xcframework/Info.plist
-      - FledgeRuby.xcframework/*/libfledgeruby.a
-      - FledgeRuby.xcframework/*/Headers/{fledge_ruby.h,module.modulemap}
+      - FledgeRuby.xcframework/*/fledge.links
+      - FledgeRuby.xcframework/*/FledgeRuby.framework/{FledgeRuby,Info.plist,Headers/fledge_ruby.h,Modules/module.modulemap}
       - include/fledge_ruby.h
       - FledgeRuby.aar!{AndroidManifest.xml,classes.jar,R.txt,proguard.txt}
       - FledgeRuby.aar!META-INF/**
       - FledgeRuby.aar!jni/*/libfledgeruby.so
       - FledgeRuby.aar!jni/*/libfledgerubyexe.so
-    binaries: [FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so, FledgeRuby.aar!jni/*/libfledgerubyexe.so]
+    binaries: [FledgeRuby.xcframework/*/FledgeRuby.framework/FledgeRuby, FledgeRuby.aar!jni/*/libfledgeruby.so, FledgeRuby.aar!jni/*/libfledgerubyexe.so]
 
   - id: rust-std
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
@@ -388,16 +394,17 @@ components:
         evidence: "OpenSSL 3.6.5 "
 
   - id: openssl-mobile
-    name: OpenSSL, compiled into the mobile runtimes' library
+    name: OpenSSL, compiled into the mobile runtimes' openssl extension
     version: 3.6.5
     license: Apache-2.0
     kind: program
     download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
     notice: openssl
-    ships: compiled into libfledgeruby.a on iOS, and into lib/ruby/{abi}/{arch}/openssl.so on Android
+    ships: compiled into lib/ruby/{abi}/{arch}/openssl.{so}, with, on iOS, its privacy manifest (os-dep/Apple/PrivacyInfo.xcprivacy in its source) in each slice's privacy folder
     platforms: [ios, android]
+    files: ["{prefix}privacy/fledgerubyext.openssl.bundle.xcprivacy"]
     embedded:
-      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, "lib/ruby/{abi}/{arch}/openssl.{so}"]
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.5 "
 
   - id: openssl-dlls
@@ -463,16 +470,16 @@ components:
         evidence: "0.2.5\0"
 
   - id: libyaml-mobile
-    name: libyaml, compiled into the mobile runtimes' library
+    name: libyaml, compiled into the mobile runtimes' psych extension
     version: 0.2.5
     license: MIT
     kind: program
     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
     notice: libyaml
-    ships: compiled into libfledgeruby.a on iOS, and into lib/ruby/{abi}/{arch}/psych.so on Android
+    ships: compiled into lib/ruby/{abi}/{arch}/psych.{so}
     platforms: [ios, android]
     embedded:
-      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, "lib/ruby/{abi}/{arch}/psych.{so}"]
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
         evidence: "0.2.5\0"
 
   - id: libyaml-dll
@@ -550,10 +557,10 @@ components:
     kind: program
     download: https://github.com/BLAKE3-team/BLAKE3/tree/1.8.5
     notice: blake3
-    ships: compiled into lib/ruby/{abi}/{arch}/digest/blake3.{so} (on iOS, into libfledgeruby)
+    ships: compiled into lib/ruby/{abi}/{arch}/digest/blake3.{so}
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, x64-mingw-ucrt, aarch64-mingw-ucrt, ios, android]
     embedded:
-      - files: ["{prefix}lib/ruby/{abi}/{arch}/digest/blake3.{so}", FledgeRuby.xcframework/*/libfledgeruby.a]
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/digest/blake3.{so}"]
         evidence: "1.8.5\0"
 
   # AppImage's type 2 runtime, as AppImage released it (runtime/sources.yml),
@@ -865,16 +872,16 @@ components:
         evidence: "3.5.1\0"
 
   - id: libffi-mobile
-    name: libffi, compiled into the mobile runtimes' library for the fiddle gem
+    name: libffi, compiled into the mobile runtimes' fiddle extension
     version: 3.5.2
     license: MIT
     kind: program
     download: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
     notice: libffi
-    ships: compiled into libfledgeruby.a on iOS, and into the fiddle gem's extension on Android
+    ships: compiled into the fiddle gem's extension
     platforms: [ios, android]
     embedded:
-      - files: [FledgeRuby.xcframework/*/libfledgeruby.a, "lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
+      - files: ["{prefix}lib/ruby/gems/{abi}/{extensions/{gem_arch}/*/fiddle-*,gems/fiddle-*/lib}/fiddle.{so}"]
         evidence: "3.5.2\0"
 
   # The NDK's clang links its own runtime into every library it links:
@@ -1201,17 +1208,18 @@ components:
     supplier: "Organization: Ruby core team"
     download: https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview1.tar.gz
     notice: ruby
-    ships: "compiled into the launcher and bin/ruby (on iOS and Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries"
+    ships: "compiled into the launcher and bin/ruby (on iOS, FledgeRuby.framework, and on Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, ios, android]
     fallback: true
     embedded:
-      - files: [launcher, "{prefix}bin/ruby", FledgeRuby.xcframework/*/libfledgeruby.a, FledgeRuby.aar!jni/*/libfledgeruby.so]
+      - files: [launcher, "{prefix}bin/ruby", FledgeRuby.xcframework/*/FledgeRuby.framework/FledgeRuby, FledgeRuby.aar!jni/*/libfledgeruby.so]
         evidence: "2d08b5f42f"
     files:
       - "{prefix}lib/ruby/{abi}/**"
       - "{prefix}lib/ruby/gems/{abi}/**/"
       - "{prefix}include/**"
       - "{prefix}Headers/**"
+      - FledgeRuby.xcframework/*/FledgeRuby.framework/Headers/**
       - "{prefix}share/**"
       - "{prefix}lib/pkgconfig/**"
       - "{prefix}lib/libruby*-static.a"
@@ -1340,7 +1348,7 @@ reviewed:
     why: Ruby's old license, which offers the GPL-2.0 or Ruby's own conditions; Ruby's apply.
   - files: ["{prefix}lib/ruby/gems/{abi}/gems/rdoc-*/rdoc.gemspec", "{prefix}lib/ruby/gems/{abi}/specifications/rdoc-*.gemspec"]
     why: rdoc 8's gemspec lists Ruby and GPL-2.0-only, the two choices of Ruby's old license (its LICENSE.rdoc); Ruby's apply.
-  - files: ["{prefix}lib/ruby/gems/{abi}/gems/rbs-*/core/dir.rbs", "{prefix}{include/ruby-{abi},Headers}/ruby/internal/ctype.h"]
+  - files: ["{prefix}lib/ruby/gems/{abi}/gems/rbs-*/core/dir.rbs", "{prefix}{include/ruby-{abi},FledgeRuby.framework/Headers}/ruby/internal/ctype.h"]
     why: Mentions the word (a file name in an example, a comment about compatibility); no license.
   - files: ["{prefix}share/doc/ruby/html/**"]
     why: >-

@@ -165,6 +165,15 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
 
+#### IOS-5: App Store Connect takes an app whose Ruby and Ruby's extensions are frameworks
+
+- **Proves:** App Store Connect's validation accepts what every Fledge iOS app now embeds: Ruby as a dynamic framework, `FledgeRuby.framework`, and each extension of Ruby's standard library and bundled gems, and each encoding table, as a framework of its own (99 frameworks in all for `examples/hello`), with a symbolic link at each extension's path under Ruby's `archdir` that leads to its framework's binary, and OpenSSL's own privacy manifest in the framework of Ruby's `openssl` extension (`doc/contributors/design/phone-runtimes.md`, "Ruby's extensions on iOS"). CPython's iOS apps ship their binary modules the same way, but with a placeholder file where Fledge has a link. CI runs every example in the Simulator and checks its unsigned archive with Apple's tools; nothing on Apple's servers, and no device, has seen one.
+- **Needs:** IOS-1's account and app record (any identifier you own will do), Xcode, and XcodeGen. The first step needs only a free Personal Team.
+- **Steps:** in a checkout of Fledge at the release, `fledge build ios -o dist examples/hello` (add `version: 1.0.0` and your identifier to its `fledge.yml` first), open `dist/Hello-ios/Hello.xcodeproj`, and choose your team under Signing & Capabilities. Run it on your iPhone from Xcode first: Xcode signs every framework, and the app must start and log its lines as in the Simulator. Then Product > Archive, and in the Organizer Validate App, then Distribute App to App Store Connect.
+- **Passing:** the app runs on the device, Validate App and the upload report no error, and the build appears under TestFlight. An error that names a framework, the number of frameworks, a link, or a privacy manifest (ITMS-90171, say, or "invalid bundle structure") is the finding: keep its whole text. If App Store Connect refuses the links, CPython's placeholder files are the fallback, which needs a change to how Ruby loads an extension.
+- **Status:** not run.
+- **Blocks 1.0.0?** not decided.
+
 ### On Android, with a Google Play Console account
 
 #### AND-1: Google Play takes a Fledge app bundle

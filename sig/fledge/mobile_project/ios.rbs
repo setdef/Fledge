@@ -29,6 +29,7 @@ module Fledge
       private def extension_flags: () -> Array[String]
 
       private def place_extensions: (String project) -> void
+      private def header: () -> String
 
       private def libraries: () -> IOSLibraries
 

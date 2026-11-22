@@ -135,18 +135,6 @@ class RubySpec
     # that runs the simulator.
     Justification.new(
       examples: [
-        "library: RbConfig::CONFIG ['archdir'] returns the directory containing standard libraries C extensions",
-      ],
-      side: :app, platforms: PHONES - ANDROID,
-      reason: "Not forced by a phone: a defect of Fledge's, which doc/phones.md marks Temporary. The iOS " \
-        "runtime links its own extensions into the app (ADR 097), so its archdir holds rbconfig.rb and no " \
-        "extension, etc.so among them (doc/contributors/design/phone-runtimes.md, \"Bundled gems' extensions\"). " \
-        "iOS does not forbid loading one as a file " \
-        "(doc/contributors/research/2026-11-13-phone-extensions-as-files.md), and the Android runtime's " \
-        "extensions are files at the paths Ruby gives them; the iOS runtime's as files would close this difference.",
-    ),
-    Justification.new(
-      examples: [
         "core: File.setuid? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",
         "core: File.setuid? returns true when the gid bit is set",
         "core: File::Stat#setuid? accepts a path in a non-UTF-8, ASCII-compatible encoding containing non-ASCII characters",

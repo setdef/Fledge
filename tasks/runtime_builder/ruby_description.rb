@@ -26,8 +26,8 @@ class RuntimeBuilder
   # and an Android runtime's ABIs.
   module RubyDescription
     # Where a runtime keeps the Ruby it carries: Ruby's program on macOS
-    # and Linux, its DLL on Windows, and each iOS slice's library.
-    FILES = %w[bin/ruby ruby/bin/*-ruby*.dll FledgeRuby.xcframework/*/libfledgeruby.a].freeze
+    # and Linux, its DLL on Windows, and each iOS slice's framework.
+    FILES = %w[bin/ruby ruby/bin/*-ruby*.dll FledgeRuby.xcframework/*/FledgeRuby.framework/FledgeRuby].freeze
     # Android's library for each ABI, in the runtime's AAR, a zip.
     AAR = "FledgeRuby.aar"
     AAR_FILES = "jni/*/libfledgeruby.so"

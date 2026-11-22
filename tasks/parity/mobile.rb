@@ -60,21 +60,11 @@ class Parity
       app: [%r{\A"<prefix>/lib/ruby/(?<folder>(?:site_ruby/|vendor_ruby/)?#{ABI})/#{MOBILE_ARCH}"\z}o], platforms: MOBILE,
       reason: "As for RUBY_PLATFORM: Ruby's folders of platform-specific files are named for its platform, in the " \
         "same places and order."),
-    Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/#{ABI}/#{DESKTOP_ARCH}/(?:enc/)?(?<feature>[^"]+)\.(?:bundle|so)"\z}o],
-      app: [%r{\A"(?<feature>[a-z0-9_/]+)\.so"\z}], platforms: IOS,
-      reason: "Not forced by a phone: a defect of Fledge's, which doc/phones.md marks Temporary. The iOS runtime " \
-        "links its own extensions and encoding tables in (ADR 097), and Ruby records each linked one as the " \
-        "feature it was registered under (json/ext/parser.so, encdb.so, trans/transdb.so, .so on iOS too), where " \
-        "a desktop Ruby records the file it loaded (ARCHDIR/json/ext/parser.so, ARCHDIR/enc/encdb.so). The same " \
-        "extensions load. iOS loads a dynamic library from a framework in the app " \
-        "(doc/contributors/research/2026-11-13-phone-extensions-as-files.md), as the Android runtime's own " \
-        "extensions are loaded from the app's native libraries already (doc/contributors/design/phone-runtimes.md, " \
-        "\"Ruby's extensions on Android\"), so the iOS runtime's own as files would close this difference."),
     Justification.new(fact: "$LOADED_FEATURES",
-      reference: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{DESKTOP_ARCH}/(?<file>rbconfig\.rb|[^"]+\.so)"\z}o],
-      app: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{MOBILE_ARCH}/(?<file>rbconfig\.rb|[^"]+\.so)"\z}o], platforms: MOBILE,
-      reason: "As for $LOAD_PATH: rbconfig.rb, and on Android each of Ruby's extensions and encodings, is in the " \
-        "folder of Ruby's platform."),
+      reference: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{DESKTOP_ARCH}/(?<file>rbconfig\.rb|[^"]+\.(?:so|bundle))"\z}o],
+      app: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{MOBILE_ARCH}/(?<file>rbconfig\.rb|[^"]+\.(?:so|bundle))"\z}o], platforms: MOBILE,
+      reason: "As for $LOAD_PATH: rbconfig.rb, and each of Ruby's extensions and encodings, is in the folder of " \
+        "Ruby's platform."),
     *%w[YJIT ZJIT].map do |jit|
       Justification.new(fact: "RubyVM::#{jit}.enabled?", reference: [/\Afalse\z/], app: [/\Anull\z/], platforms: IOS,
         reason: "iOS's Ruby is an interpreter only: iOS gives no app memory it may write code into and run, but a " \

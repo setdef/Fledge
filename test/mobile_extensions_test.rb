@@ -172,6 +172,16 @@ class MobileExtensionsTest < Minitest::Test
     assert_includes source, 'fledge_ruby_add_extension("racc-like/cparse", Init_fledge_1)'
   end
 
+  # In an iOS app whose Ruby is FledgeRuby.framework, Xcode finds the
+  # header by the framework's name, as every framework's headers are
+  # found, where Android's include folder has it by its own.
+  def test_the_registration_unit_includes_the_embedding_header_by_the_name_given
+    source = Fledge::MobileExtensions.registration_source([["greeter/greeter", "Init_fledge_0"]], header: "FledgeRuby/fledge_ruby.h")
+
+    assert_includes source, "#include <FledgeRuby/fledge_ruby.h>"
+    refute_includes source, "#include <fledge_ruby.h>"
+  end
+
   def test_a_feature_name_with_a_quote_cannot_break_out_of_the_registration_unit
     source = Fledge::MobileExtensions.registration_source([["a\"b\\c", "Init_fledge_0"]])
 
@@ -552,5 +562,52 @@ class MobileExtensionsTest < Minitest::Test
     gem, package = native_gem(extensions: [], files: { "lib/pure.rb" => "" })
 
     assert_empty Fledge::MobileExtensions.problems(gem, package, ios, Fledge::Platform.find("arm64-darwin"))
+  end
+
+  # The Ruby that runs a gem's build is this computer's, which must load
+  # its own extensions: an iOS Ruby keeps its own at the paths a Mac's
+  # has, in a folder of the same name (arm64-darwin), and dlopen refuses
+  # one built for iOS. So the load path gets the phone's rbconfig.rb
+  # alone, loaded at its own path, from which it finds its folders.
+  def phone_arch_dir
+    arch_dir = File.join(@dir, "phone", "lib", "ruby", "4.1.0", "arm64-darwin")
+    FileUtils.mkdir_p(File.join(arch_dir, "json", "ext"))
+    File.write(File.join(arch_dir, "rbconfig.rb"), "module RbConfig; end\n")
+    File.write(File.join(arch_dir, "json", "ext", "parser.bundle"), "phone")
+    arch_dir
+  end
+
+  def assert_phone_rbconfig_alone(folder, arch_dir)
+    refute_equal arch_dir, folder
+    assert_equal ["rbconfig.rb"], Dir.children(folder)
+    assert_equal "load #{File.join(arch_dir, 'rbconfig.rb').dump}\n", File.read(File.join(folder, "rbconfig.rb"))
+  end
+
+  def test_an_extconf_runs_with_the_phones_rbconfig_but_not_its_extensions
+    arch_dir = phone_arch_dir
+    target = Fledge::MobileExtensions::Target.new(name: "ios-arm64", root: @dir, arch_dir:, libdir: @dir, environment: {}, abi: nil)
+    ran = nil
+    build = Fledge::MobileExtensions::ExtconfBuild.new(ruby: "ruby", work: File.join(@dir, "work"), load_path: ["/gems/lib"],
+      environment: {}, run: -> (_env, *command, **) { ran = command and raise StopIteration })
+    FileUtils.mkdir_p([folder = File.join(@dir, "ext"), File.join(@dir, "work")])
+    assert_raises(StopIteration) { build.call(target, "native 1.0.0", folder, "extconf.rb", [], 0, rust: false) }
+
+    includes = ran.each_cons(2).select { |flag, _| flag == "-I" }.map(&:last)
+    assert_equal "/gems/lib", includes.last
+    assert_phone_rbconfig_alone(includes.first, arch_dir)
+  end
+
+  def test_a_rakefile_runs_with_the_phones_rbconfig_but_not_its_extensions
+    arch_dir = phone_arch_dir
+    target = Fledge::MobileExtensions::Target.new(name: "x86_64-linux-android", root: @dir, arch_dir:, libdir: @dir, environment: {}, abi: "x86_64")
+    env = nil
+    rake = Fledge::MobileExtensions::RakeBuild.new(ruby: "ruby", work: File.join(@dir, "work"), environment: {},
+      run: -> (given, *, **) { env = given and raise StopIteration }, load_path: ["/gems/lib"], built_for: Fledge::MobileExtensions::BuiltFor.new(ndk: nil))
+    FileUtils.mkdir_p(root = File.join(@dir, "held"))
+    assert_raises(StopIteration) { rake.call(target, "held 1.0.0", Gem::Specification.new("held", "1.0.0"), root, "Rakefile", [], 0) }
+
+    includes = env.fetch("RUBYOPT").split.grep(/\A-I/).map { |flag| flag.delete_prefix("-I") }
+    assert_equal "/gems/lib", includes.last
+    assert_phone_rbconfig_alone(includes.first, arch_dir)
   end
 end

@@ -106,8 +106,8 @@ module Fledge
 
       # The slice's tools: Xcode's clang for the slice's SDK, aimed at the
       # triple the runtime was built for (which its rbconfig.rb records),
-      # the slice's headers, which sit beside its library and not where
-      # rbconfig.rb says, and a CMake toolchain file for the same.
+      # the slice's headers and Ruby to link against (#ios_ruby), and a
+      # CMake toolchain file for the same.
       private def ios_target(slice, root)
         sdk = slice.end_with?("-simulator") ? "iphonesimulator" : "iphoneos"
         arch_dir = rbconfig_dir(root)
@@ -118,12 +118,26 @@ module Fledge
         environment = {
           "FLEDGE_CC" => "#{cc} -target #{triple} -isysroot #{sysroot}",
           "FLEDGE_CXX" => "#{cxx} -target #{triple} -isysroot #{sysroot}",
-          "FLEDGE_HEADERS" => File.join(root, "Headers"),
-          "FLEDGE_LIBRUBYARG" => "-L#{root} -lfledgeruby -lz $(MAINLIBS) -framework Security -framework CoreFoundation",
+          **ios_ruby(root),
           "CMAKE_TOOLCHAIN_FILE" => toolchain_file(slice, CMake.ios(triple:, sysroot:, cc:, cxx:)),
           **Rust.ios(slice, triple:, sysroot:),
         }
         Target.new(name: slice, root:, arch_dir:, libdir: root, environment: with_tools(environment), abi: nil)
+      end
+
+      # Where the slice at +root+ keeps Ruby's headers, which are not
+      # where its rbconfig.rb says, and how a link finds Ruby: in Ruby's
+      # framework, which names the libraries it needs itself, or, in a
+      # runtime whose Ruby is static, as 0.17.0's, beside its library.
+      private def ios_ruby(root)
+        framework = File.join(root, "FledgeRuby.framework")
+        return { "FLEDGE_HEADERS" => File.join(framework, "Headers"), "FLEDGE_LIBRUBYARG" => "-F#{root} -framework FledgeRuby" } if
+          File.directory?(framework)
+
+        {
+"FLEDGE_HEADERS" => File.join(root, "Headers"),
+"FLEDGE_LIBRUBYARG" => "-L#{root} -lfledgeruby -lz $(MAINLIBS) -framework Security -framework CoreFoundation",
+}
       end
 
       # The ABI's tools: the NDK's clang of the very name the runtime was

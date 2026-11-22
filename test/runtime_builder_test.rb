@@ -849,7 +849,7 @@ class RuntimeBuilderTest < Minitest::Test
         "ruby/bin/x64-ucrt-ruby410.dll" => library.call("ruby 4.1.0dev (2026-11-10 master 0e25874222) [x64-mingw-ucrt]\0ruby 4.1.0dev (2026-11-10 masterster 0e25874222)"),
         "ruby/bin/ruby.exe" => "MZ",
       },
-      "#{preview} (iOS)" => %w[ios-arm64 ios-arm64-simulator].to_h { |slice| ["FledgeRuby.xcframework/#{slice}/libfledgeruby.a", library.call("#{preview} [arm64-darwin]")] },
+      "#{preview} (iOS)" => %w[ios-arm64 ios-arm64-simulator].to_h { |slice| ["FledgeRuby.xcframework/#{slice}/FledgeRuby.framework/FledgeRuby", library.call("#{preview} [arm64-darwin]")] },
     }
     stages.each do |expected, files|
       Dir.mktmpdir do |stage|
@@ -870,9 +870,9 @@ class RuntimeBuilderTest < Minitest::Test
       error = assert_raises(RuntimeError) { RuntimeBuilder::RubyDescription.read(stage) }
       assert_equal "#{stage} holds no Ruby whose RUBY_DESCRIPTION names it", error.message
 
-      FileUtils.mkdir_p(File.join(stage, "FledgeRuby.xcframework", "ios-arm64"))
+      FileUtils.mkdir_p(File.join(stage, "FledgeRuby.xcframework", "ios-arm64", "FledgeRuby.framework"))
       File.binwrite(File.join(stage, "bin", "ruby"), "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f) [arm64-darwin]\0")
-      File.binwrite(File.join(stage, "FledgeRuby.xcframework", "ios-arm64", "libfledgeruby.a"), "ruby 4.1.0 (2026-12-25 revision 0123456789) [arm64-darwin]\0")
+      File.binwrite(File.join(stage, "FledgeRuby.xcframework", "ios-arm64", "FledgeRuby.framework", "FledgeRuby"), "ruby 4.1.0 (2026-12-25 revision 0123456789) [arm64-darwin]\0")
       error = assert_raises(RuntimeError) { RuntimeBuilder::RubyDescription.read(stage) }
       assert_equal "#{stage} holds Rubies that describe themselves differently: ruby 4.1.0 (2026-12-25 revision 0123456789); " \
         "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)", error.message

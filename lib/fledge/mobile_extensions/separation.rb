@@ -265,10 +265,13 @@ module Fledge
         # object, <tt>nm -m</tt>, <tt>nmedit -R</tt>, and
         # <tt>libtool -static</tt>.
         class Apple < Tools
-          # The names the runtime's libfledgeruby.a defines for the slice.
+          # The names the runtime's Ruby defines for the slice: those its
+          # FledgeRuby.framework exports, or, in a runtime whose Ruby is
+          # static, as 0.17.0's, those its libfledgeruby.a defines.
           def runtime
-            library = File.join(@target.libdir, "libfledgeruby.a")
-            Owner.new(what: "the runtime's library #{File.basename(library)}", names: names(library), keep: []) if File.file?(library)
+            library = [File.join(@target.libdir, "FledgeRuby.framework", "FledgeRuby"), File.join(@target.libdir, "libfledgeruby.a")]
+              .find { |path| File.file?(path) }
+            Owner.new(what: "the runtime's library #{File.basename(library)}", names: names(library), keep: []) if library
           end
 
           # The global names +path+ defines, private externs among them,

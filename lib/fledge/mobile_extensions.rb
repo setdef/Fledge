@@ -335,6 +335,23 @@ module Fledge
       # the app's Ruby root.
     end
 
+    # The folder a gem's build for +target+ puts first on the load path
+    # of this computer's Ruby, written under +work+: an rbconfig.rb alone,
+    # which loads the phone's at its own path, from which it derives its
+    # TOPDIR and every folder it names (<tt>tool/mkconfig.rb</tt>, line
+    # 193 at Ruby 4.1.0-preview1). The phone's archdir itself is not
+    # put there: this computer's Ruby would load the phone's extensions
+    # from it in place of its own, as the iOS runtime's Ruby, which keeps
+    # its extensions at a desktop's paths, has them in a folder of the
+    # name a Mac's Ruby has (arm64-darwin) with the same file extension,
+    # and dlopen refuses a library built for iOS.
+    def self.rbconfig_folder(target, work)
+      folder = File.join(work, "rbconfig", target.name)
+      FileUtils.mkdir_p(folder)
+      File.write(File.join(folder, "rbconfig.rb"), "load #{File.join(target.arch_dir, 'rbconfig.rb').dump}\n")
+      folder
+    end
+
     # Why each of the gem's extensions cannot be compiled for +platform+
     # from +host+, as sentences naming +gem+ and what to do, or none:
     # an extension that something other than an <tt>extconf.rb</tt>
@@ -380,7 +397,10 @@ module Fledge
     # it declares the extension's Init function and registers it by the
     # name <tt>require</tt> asks for
     # (<tt>fledge_ruby_add_extension</tt>), from a constructor, so that the
-    # unit needs no call from the host app, whatever host it is.
+    # unit needs no call from the host app, whatever host it is. It
+    # includes the embedding API's +header+ by the name the app's build
+    # finds it by: <tt>fledge_ruby.h</tt> in an include folder, or
+    # <tt>FledgeRuby/fledge_ruby.h</tt> in FledgeRuby.framework.
     #
     # === Example
     #
@@ -394,7 +414,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.registration_source(registrations)
+    def self.registration_source(registrations, header: "fledge_ruby.h")
       declarations = registrations.map { |_, init| "extern void #{init}(void);\n" }.join
       calls = registrations.map { |feature, init| "    fledge_ruby_add_extension(#{c_string(feature)}, #{init});\n" }.join
       <<~C
@@ -408,7 +428,7 @@ module Fledge
          * gems, which are linked into it, so that require finds them.
          * Ruby registers them once it has booted, before the program runs.
          */
-        #include <fledge_ruby.h>
+        #include <#{header}>
 
         #{declarations.chomp.gsub("\n", "\n#{' ' * 8}")}
 

@@ -191,7 +191,14 @@ module Fledge
           end
           Command.run("xcodebuild", "-create-xcframework", *slices, "-output", File.join(project, EXTENSIONS), install: Fledge::MobileExtensions::INSTALL_XCODE)
         end
-        File.write(File.join(project, "Host", "fledge_extensions.c"), MobileExtensions.registration_source(built.registrations))
+        File.write(File.join(project, "Host", "fledge_extensions.c"), MobileExtensions.registration_source(built.registrations, header:))
+      end
+
+      # The name the app's build finds the embedding API's header by: in
+      # FledgeRuby.framework, as a framework's headers are found, or in
+      # the Headers folder of a static FledgeRuby.xcframework.
+      private def header
+        ruby_extensions.dynamic? ? "FledgeRuby/fledge_ruby.h" : "fledge_ruby.h"
       end
 
       # The frameworks of the libraries for Ruby's ffi that the app's

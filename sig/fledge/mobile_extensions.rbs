@@ -65,11 +65,12 @@ module Fledge
     @left: Hash[String, Hash[String, Array[Entry]]]
     @separation: Separation?
 
+    def self.rbconfig_folder: (Target target, String work) -> String
     def self.problems: (locked_gem gem, package package, MobilePlatform platform, Platform host) -> Array[String]
 
     def self.rake?: (String path) -> bool
 
-    def self.registration_source: (Array[[String, String]] registrations) -> String
+    def self.registration_source: (Array[[String, String]] registrations, ?header: String) -> String
 
     private def self.c_string: (String text) -> String
 

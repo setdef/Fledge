@@ -21,11 +21,11 @@ class RuntimeBuilder
   # Termux build theirs, after the mobile spike (branch spike/mobile,
   # spike/mobile/FINDINGS.txt): Ruby's own configure and make, cross-
   # compiling for each target with Xcode's or the NDK's compiler, against
-  # OpenSSL and libyaml built the same way, with --with-static-linked-ext
-  # and no JIT on iOS. A miniruby built for the build machine from the same
-  # source writes the builtin binary a cross build cannot
-  # (doc/contributors/design/phone-runtimes.md, "The builtin binary"), and the bundled
-  # gems with C extensions stay gems (BundledExtensions). Each subclass names its targets' toolchains and
+  # OpenSSL and libyaml built the same way, as a shared library with each
+  # extension a file (shared?), and no JIT on iOS. A miniruby built for
+  # the build machine from the same source writes the builtin binary a
+  # cross build cannot (doc/contributors/design/phone-runtimes.md, "The
+  # builtin binary"). Each subclass names its targets' toolchains and
   # packs what they built: an XCFramework for iOS (IOS), an AAR for
   # Android (Android).
   class Mobile < Recipe
@@ -127,9 +127,12 @@ class RuntimeBuilder
 
     # Whether Ruby is built as a shared library, with each of its
     # extensions, encodings, and bundled gems' extensions a file, as a
-    # desktop's is: not unless a subclass says so (Android#shared?). Else
-    # every one of them is linked into Ruby (--with-static-linked-ext,
-    # ADR 097).
+    # desktop's is: not unless a subclass says so, as both do
+    # (Android#shared?, IOS#shared?). Else every one of them is linked
+    # into Ruby (--with-static-linked-ext), with the bundled gems with C
+    # extensions kept gems (BundledExtensions), as the iOS runtime was
+    # until 0.17.0 (doc/contributors/design/phone-runtimes.md, "Bundled
+    # gems' extensions").
     private def shared?
       false
     end

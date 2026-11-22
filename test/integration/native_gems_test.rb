@@ -84,7 +84,7 @@ class NativeGemsTest < Minitest::Test
   end
 
   # libusb's Windows builds carry libusb-1.0.dll, which ffi loads and
-  # which needs no Ruby, so they fit Ruby 4.1, and examples/native_app
+  # which needs no Ruby, so they fit Ruby 4.1, and test/fixtures/native_app
   # ships the x64 one. Every file in them is judged, and each needs only
   # what Windows provides.
   def test_libusbs_windows_builds_ship_and_need_nothing_from_the_runtime

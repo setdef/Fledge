@@ -10,7 +10,7 @@
 # (test/workflow_installed_test.rb); fledge build, with no FLEDGE_RUNTIME_DIR and an empty
 # cache, downloads that version's runtime from the GitHub Release and
 # checks it against the SHA-256 the gem pins, and compiles
-# examples/native_app's gems from source against that runtime alone; and
+# test/fixtures/native_app's gems from source against that runtime alone; and
 # each app it builds is delivered as CI delivers every push's
 # (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the
 # runtime's own tools, is installed and its app run, as CI installs every
@@ -138,7 +138,7 @@ jobs:
           sparse-checkout: |
             examples/hello
             examples/my_cool_app
-            examples/native_app
+            test/fixtures/native_app
             examples/windowed_app
             test/fixtures/parity
             mise*.toml
@@ -271,14 +271,14 @@ jobs:
           unset FLEDGE_RUNTIME_DIR
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
           cd "$RUNNER_TEMP/project"
-          bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/native_app" 2> "$RUNNER_TEMP/native.err" ||
+          bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/test/fixtures/native_app" 2> "$RUNNER_TEMP/native.err" ||
             { cat "$RUNNER_TEMP/native.err"; exit 1; }
           cat "$RUNNER_TEMP/native.err"
           if grep -F "Downloading fledge-runtime-" "$RUNNER_TEMP/native.err"; then
             echo "::error::Compiling native_app's gems downloaded a file beside the runtime the step before downloaded"
             exit 1
           fi
-          cd "$GITHUB_WORKSPACE/examples/native_app"
+          cd "$GITHUB_WORKSPACE/test/fixtures/native_app"
           bundle install
           bundle exec ruby main.rb | tee "$RUNNER_TEMP/native_app.expected"
 

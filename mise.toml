@@ -197,7 +197,7 @@ platforms.macos-arm64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/
 platforms.macos-x64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip", checksum = "sha256:4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806", bin_path = "xcodegen/bin" }
 
 # On Linux, libclang, which bindgen loads to read Ruby's headers when
-# rb-sys builds a Rust gem (examples/native_app's ferro-idna). GitHub's
+# rb-sys builds a Rust gem (test/fixtures/native_app's ferro-idna). GitHub's
 # runners have one, a stock Linux computer does not. The libclang 18.1.1
 # wheel of PyPI's libclang package (LLVM's own build, which clang's
 # Python bindings load), by the SHA-256 PyPI records for each file. A

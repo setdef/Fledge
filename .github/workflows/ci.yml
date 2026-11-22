@@ -1593,7 +1593,7 @@ jobs:
             ruby -I lib exe/fledge build -o dist "$app"
           done
 
-      # examples/system_library, whose png_version gem links the
+      # test/fixtures/system_library, whose png_version gem links the
       # distribution's libpng, which fledge.yml lists under linux:
       # system_libraries. Its headers come from libpng-dev at the version
       # of the libpng the runner's image has; dpkg-dev, whose
@@ -1607,9 +1607,9 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           sudo apt-get install -y -qq "libpng-dev=$(dpkg-query -W -f '${Version}' libpng16-16t64)"
-          ruby -I lib exe/fledge build -o dist examples/system_library
+          ruby -I lib exe/fledge build -o dist test/fixtures/system_library
           unlisted="$RUNNER_TEMP/unlisted"
-          cp -R examples/system_library "$unlisted"
+          cp -R test/fixtures/system_library "$unlisted"
           sed -i '/^linux:/,$d' "$unlisted/fledge.yml"
           status=0
           ruby -I lib exe/fledge build -o "$RUNNER_TEMP/unlisted-dist" "$unlisted" 2> "$RUNNER_TEMP/unlisted.err" || status=$?
@@ -2388,7 +2388,7 @@ jobs:
   # MIME database knows the file type the app defines by its extension;
   # the app runs from /usr/lib, as root and as an ordinary user; and removing
   # the package leaves nothing of it (.github/scripts/deliver-deb.sh).
-  # First, examples/system_library runs from its archive and
+  # First, test/fixtures/system_library runs from its archive and
   # its AppImage without libpng, which its gem links, and says so; then
   # apt installs its .deb, which depends on libpng's package, and it runs
   # (.github/scripts/deliver-system-library.sh). The LibUI probe, whose

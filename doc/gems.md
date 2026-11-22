@@ -82,7 +82,7 @@ linux:
 ```
 <!-- SPDX-SnippetEnd -->
 
-Fledge then ships the gem, and refuses a library you list that no gem needs. A `.deb` depends on the packages that provide them, as `dpkg-shlibdeps` finds them, so building one needs `dpkg-dev`, which `build-essential` brings. An AppImage or `.tar.gz` does not carry them. On a computer that lacks one, the app says which library to install and exits with status 72, before your code runs. [`examples/system_library`](../examples/system_library) is a complete example.
+Fledge then ships the gem, and refuses a library you list that no gem needs. A `.deb` depends on the packages that provide them, as `dpkg-shlibdeps` finds them, so building one needs `dpkg-dev`, which `build-essential` brings. An AppImage or `.tar.gz` does not carry them. On a computer that lacks one, the app says which library to install and exits with status 72, before your code runs. [`examples/libui_app`](../examples/libui_app) lists the GTK 3 libraries its LibUI gem links.
 
 A gem over GObject introspection, as each of ruby-gnome's is (gtk4, gtk3, gdk_pixbuf2, gstreamer, vte, and the rest), also loads a typelib while your app runs: a file, such as `Gtk-4.0.typelib`, that describes a library to the gem. No compiled file names it, so `fledge build` cannot find it for you, and Debian and Ubuntu package it apart from the library, as `gir1.2-gtk-4.0` beside `libgtk-4-1`, so a computer can have GTK and not its typelib. Without it, your app would stop with Ruby's own error from inside the gem. List each typelib your code loads by its namespace and version, the file's name less `.typelib`, beside the libraries `fledge build` names:
 

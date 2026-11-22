@@ -338,8 +338,8 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   config = Fledge::Config.load("examples/system_library")
-    #   config.system_libraries("linux")  # => ["libpng16.so.16"]
+    #   config = Fledge::Config.load("examples/libui_app")
+    #   config.system_libraries("linux").first # => "libgtk-3.so.0"
     #   config.system_libraries("darwin") # => []
     #--
     # SPDX-SnippetEnd

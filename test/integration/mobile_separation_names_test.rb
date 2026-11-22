@@ -50,18 +50,20 @@ class MobileSeparationNamesTest < Minitest::Test
   end
 
   def test_ios_names_are_read_from_the_symbol_table_of_an_object_with_bitcode_no_llvm_reads
+    tools = apple
     object = compile("__LLVM,__bitcode", "xcrun", "--sdk", "iphonesimulator", "clang", "-target", "arm64-apple-ios15.0-simulator")
     assert_unreadable("xcrun", "nm", "-m", object)
 
-    assert_equal %w[calls_local default_name hidden_name], apple.names(object).sort
+    assert_equal %w[calls_local default_name hidden_name], tools.names(object).sort
   end
 
   def test_ios_names_are_read_from_an_object_of_rusts_standard_library
+    tools = apple
     object = rust_object("aarch64-apple-ios-sim")
     sections, = Open3.capture2e("xcrun", "otool", "-l", object)
     assert_match(/sectname __bitcode\s+segname __LLVM/, sections, "Rust's core library carries bitcode")
 
-    assert_operator apple.names(object).size, :>, 100
+    assert_operator tools.names(object).size, :>, 100
   end
 
   def test_android_names_are_read_from_the_symbol_table_of_an_object_with_bitcode_no_llvm_reads

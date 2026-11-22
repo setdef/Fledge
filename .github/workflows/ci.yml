@@ -1477,7 +1477,7 @@ jobs:
   # exercise these rules"): the gems real apps lock, from a credentialed
   # mirror, a folder outside the project, a path gem with an extension, git
   # with a submodule, and an optional group. The Mac and Windows build
-  # examples/nokogiri_app too, nokogiri from
+  # test/fixtures/nokogiri_app too, nokogiri from
   # source: with macOS's own iconv on the Mac, and with GNU libiconv
   # linked in on Windows, which ships as any gem's compiled code does
   # (doc/contributors/design/gems.md, "Checks that are not about
@@ -1732,7 +1732,7 @@ jobs:
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
-        run: ruby -I lib exe/fledge build -o dist examples/nokogiri_app
+        run: ruby -I lib exe/fledge build -o dist test/fixtures/nokogiri_app
 
       # doc/contributors/design/gems.md, "Examples that exercise these
       # rules": the gems real apps lock. examples/real_gems takes RubyGems.org
@@ -1779,7 +1779,7 @@ jobs:
         if: matrix.platform != 'aarch64-mingw-ucrt'
         with:
           path: ${{ runner.temp }}/examples-bundle
-          key: examples-bundle-${{ runner.os }}-${{ runner.arch }}-${{ steps.host.outputs.ruby }}-rust-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock', 'examples/nokogiri_app/Gemfile.lock', 'examples/nokogiri_app/.bundle/config') }}
+          key: examples-bundle-${{ runner.os }}-${{ runner.arch }}-${{ steps.host.outputs.ruby }}-rust-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock', 'test/fixtures/nokogiri_app/Gemfile.lock', 'test/fixtures/nokogiri_app/.bundle/config') }}
 
       # What each app prints as its developer runs it, which its built app
       # must print too.
@@ -1792,11 +1792,11 @@ jobs:
           (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) | tee dist/my_cool_app.expected
           (cd test/fixtures/bundled_with && bundle install)
           (cd test/fixtures/bundled_with && bundle exec ruby exe/bundled_with) | tee dist/bundled_with.expected
-          examples=native_app
-          case "${{ matrix.platform }}" in arm64-darwin | x64-mingw-ucrt) examples="native_app nokogiri_app" ;; esac
-          for example in $examples; do
-            (cd "examples/$example" && bundle install)
-            (cd "examples/$example" && bundle exec ruby main.rb) | tee "dist/$example.expected"
+          apps=examples/native_app
+          case "${{ matrix.platform }}" in arm64-darwin | x64-mingw-ucrt) apps="examples/native_app test/fixtures/nokogiri_app" ;; esac
+          for app in $apps; do
+            (cd "$app" && bundle install)
+            (cd "$app" && bundle exec ruby main.rb) | tee "dist/$(basename "$app").expected"
           done
 
       # The builder app Delivery runs fledge build --from inside

@@ -318,7 +318,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   config = Fledge::Config.load("examples/programs")
+    #   config = Fledge::Config.load("test/fixtures/programs")
     #   config.for_program(config.programs.first).kind # => "windowed"
     #--
     # SPDX-SnippetEnd

@@ -1466,7 +1466,7 @@ jobs:
   # whose Gemfile.lock names a Bundler no runtime ships;
   # test/fixtures/windowed_app, a
   # windowed app with its installer;
-  # examples/programs, a windowed and a console program of one project in
+  # test/fixtures/programs, a windowed and a console program of one project in
   # one folder; and
   # test/fixtures/native_app, whose gems must be compiled: redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
@@ -1589,8 +1589,8 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app test/fixtures/windowed_app examples/programs test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app examples/programs)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -1962,7 +1962,7 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app examples/programs; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd examples/my_cool_app && bundle install)
@@ -2230,7 +2230,7 @@ jobs:
   # both (deliver-dmg.sh); on Linux the AppImage, mounted with FUSE, and
   # extracted with APPIMAGE_EXTRACT_AND_RUN=1, where there is none, run
   # each way and in a hostile environment, and unpacked by
-  # --appimage-extract (deliver-appimage.sh). And examples/programs:
+  # --appimage-extract (deliver-appimage.sh). And test/fixtures/programs:
   # a windowed and a console program from one folder, with one
   # project and one Ruby, sharing one save (deliver-programs.sh). On
   # macOS, the LibUI probe opens its window through its own program and
@@ -2705,7 +2705,7 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
 
-      # examples/programs: a GUI and a console program from one
+      # test/fixtures/programs: a GUI and a console program from one
       # folder, with one project and one Ruby, sharing one save
       # (.github/scripts/deliver-programs.ps1).
       - name: Run Shared Save.exe and shared-save.exe from one folder, with one save

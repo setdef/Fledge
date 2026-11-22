@@ -30,7 +30,7 @@ class BuiltAppTest < Minitest::Test
   HELLO = File.expand_path("../../examples/hello", __dir__)
   MY_COOL_APP = File.expand_path("../../examples/my_cool_app", __dir__)
   WINDOWED_APP = File.expand_path("../../test/fixtures/windowed_app", __dir__)
-  PROGRAMS = File.expand_path("../../examples/programs", __dir__)
+  PROGRAMS = File.expand_path("../../test/fixtures/programs", __dir__)
   PROBE = File.expand_path("../fixtures/parity", __dir__)
   CONSOLE = File.expand_path("../fixtures/console", __dir__)
   RAYLIB = File.expand_path("../fixtures/raylib", __dir__)
@@ -1112,7 +1112,7 @@ class BuiltAppTest < Minitest::Test
     assert_equal [File.join(resources, "app"), resources], [report["__dir__"], report.dig("paths", "prefix")]
   end
 
-  # examples/programs: a console program and a windowed one,
+  # test/fixtures/programs: a console program and a windowed one,
   # built into one folder, each run by its own name, open one save, and
   # say they run one project on one Ruby. A copy renamed by hand finds no
   # program of its name in fledge.cfg, and exits with EX_NOINPUT.

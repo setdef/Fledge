@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of one project's several programs on Windows:
-# unpacks what fledge build wrote for examples/programs, checks that the
+# unpacks what fledge build wrote for test/fixtures/programs, checks that the
 # folder holds one copy of the project and one Ruby, and runs both
 # programs from it, with no Ruby anywhere they can reach.
 #

@@ -308,7 +308,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::App.at("examples/programs").main.name # => "Shared Save"
+    #   Fledge::App.at("test/fixtures/programs").main.name # => "Shared Save"
     #--
     # SPDX-SnippetEnd
     #++

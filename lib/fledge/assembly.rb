@@ -295,7 +295,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   puts Fledge::Assembly.launch_config(Fledge::App.at("examples/programs")).lines.drop(1).join
+    #   puts Fledge::Assembly.launch_config(Fledge::App.at("test/fixtures/programs")).lines.drop(1).join
     #   # [Shared Save]
     #   # entry = window.rb
     #   # identifier = com.setdef.fledge.SharedSave

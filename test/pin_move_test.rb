@@ -150,6 +150,16 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  def test_a_version_with_a_comment_after_it_moves_and_keeps_the_comment
+    sources = SOURCES.sub("version: 3.5.2\n", "version: 3.5.2 # libffi's own tag\n")
+    checkout("runtime/sources.yml" => sources) do |root|
+      move = mover(root, Answers.new(LIBFFI => libffi_releases))
+      move.call(finding("libffi", "3.5.2", "3.8.1"))
+
+      assert_includes move.read("runtime/sources.yml"), "  libffi:\n    version: 3.8.1 # libffi's own tag\n"
+    end
+  end
+
   def test_a_quoted_version_keeps_its_quotes
     old = "https://github.com/mstorsjo/llvm-mingw/releases/download/20261020/llvm-mingw-20261020-ucrt-ubuntu-22.04-x86_64.tar.xz"
     new = "https://github.com/mstorsjo/llvm-mingw/releases/download/20261117/llvm-mingw-20261117-ucrt-ubuntu-22.04-x86_64.tar.xz"

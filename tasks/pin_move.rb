@@ -293,17 +293,18 @@ class PinMove
   end
 
   # +text+ with the version of the pin at +path+ moved: its line in the
-  # pin's own block, so another pin that holds the same version is left.
+  # pin's own block, so another pin that holds the same version is left,
+  # and a comment after the value, as YAML reads one, stays.
   private def rename(text, path, upstream, from, to)
     lines = text.lines
     range = block(lines, path)
     key = Regexp.union(upstream.field, path.last)
     found = false
     range.each do |index|
-      lines[index] = lines[index].sub(/\A(\s*(?:#{key}): (["']?))(\S*?)\2$/) do
-        head, quote, value = Regexp.last_match.captures
+      lines[index] = lines[index].sub(/\A(\s*(?:#{key}): (["']?))(\S*?)\2(\s+#.*)?$/) do
+        head, quote, value, comment = Regexp.last_match.captures
         found = true if value.include?(from)
-        "#{head}#{value.sub(from, to)}#{quote}"
+        "#{head}#{value.sub(from, to)}#{quote}#{comment}"
       end
     end
     raise Error, "runtime/sources.yml's #{path.join('.')} has no #{upstream.field} that names #{from}" unless found

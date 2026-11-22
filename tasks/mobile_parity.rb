@@ -42,8 +42,9 @@ require_relative "parity"
 # gem, parses with prism, a bundled gem whose extension compiles its own
 # libprism (doc/contributors/design/phone-runtimes.md, "Bundled gems' extensions"), and
 # reaches rubygems.org over HTTPS
-# (test/fixtures/mobile_hello);
-# and the parity probe (test/fixtures/parity), whose report is compared
+# (test/fixtures/mobile_hello); on Android, an app that runs the command
+# of a gem its lockfile locks, and no runtime has, by its name
+# (test/fixtures/mobile_commands); and the parity probe (test/fixtures/parity), whose report is compared
 # with the same main.rb under the desktop Ruby of the computer that runs
 # the simulator (rv-ruby's, as the desktop parity check runs it). The
 # report is one long line, which the log holds as several entries in a
@@ -95,6 +96,9 @@ class MobileParity
     App.new(path: "examples/ffi_library_phone", name: "FfiLibraryPhone", identifier: "com.setdef.fledge.FfiLibraryPhone",
       prints: %r{\AFfiLibraryPhone: llhttp-ffi 0\.5\.1 parses GET /hello, and scrypt 3\.1\.0's key matches RFC 7914, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z}),
     App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
+    App.new(path: "test/fixtures/mobile_commands", name: "MobileCommands", identifier: "com.setdef.fledge.MobileCommands",
+      prints: /\AMobileCommands runs thor by name \(Thor 1\.5\.0\), from a shell \(Thor 1\.5\.0\), and with ruby -S \(Thor 1\.5\.0\), with Bundler's thor 1\.5\.0, on (?:aarch64|x86_64)-linux-android\z/,
+      phones: %w[android]),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
   ].freeze
 
@@ -253,31 +257,38 @@ class MobileParity
         "Generate one, such as C.UTF-8, for the reference Ruby to run in as a person's Ruby does"
   end
 
-  # The environment the reference Ruby runs main.rb in: a person's,
-  # with the UTF-8 locale +locale+, a home folder of its own in +work+,
-  # and the caller's PATH, but nothing of the caller's own Ruby, and
-  # none of the runner's other settings, which the phone's app does not
-  # see either.
-  def self.reference_environment(work, locale, env = ENV.to_h)
-    { "PATH" => env.fetch("PATH"), "HOME" => File.join(work, "home"), "LANG" => locale }
+  # The environment the reference Ruby, +ruby+, runs main.rb in: a
+  # person's, with the UTF-8 locale +locale+, a home folder of its own
+  # in +work+, and the caller's PATH with that Ruby's bin folder first,
+  # as a developer's shell has it (Parity#developer), but nothing else
+  # of the caller's own Ruby, and none of the runner's other settings,
+  # which the phone's app does not see either.
+  def self.reference_environment(work, locale, ruby, env = ENV.to_h)
+    { "PATH" => [File.dirname(ruby), env.fetch("PATH")].join(File::PATH_SEPARATOR), "HOME" => File.join(work, "home"), "LANG" => locale }
   end
 
   # The differences between the phone's +report+ and the +reference+
   # Ruby's on +platform+, both normalized with +work+, ENV and a child's
   # taken from +environment+, the one the phone gave the app
-  # (Environment), in place of the reference's.
+  # (Environment), in place of the reference's. On Android that
+  # environment's PATH has the app's Ruby's bin folder first, where the
+  # runtime puts it as a developer's shell has the Ruby they run
+  # (doc/contributors/design/phone-runtimes.md, "Gem commands on
+  # Android").
   def self.differences(reference, report, environment, platform:, work:)
-    given = Parity::Reports.normalize({ "paths" => report.fetch("paths"), "ENV" => environment }, work:).fetch("ENV")
-    expected = Parity::Reports.normalize(reference, work:).merge("ENV" => given, "child ENV" => given).except(*NOT_YET)
-    Parity::Reports.compare(expected, Parity::Reports.normalize(report, work:).except(*NOT_YET), platform:)
+    paths = report.fetch("paths")
+    if Parity::ANDROID.include?(platform)
+      environment = environment.merge("PATH" => [File.join(paths.fetch("prefix"), "bin"), environment["PATH"]].compact.join(":"))
+    end
+    given = Parity::Reports.normalize({ "paths" => paths, "ENV" => environment }, work:).fetch("ENV")
+    skipped = Parity::IOS.include?(platform) ? NOT_YET : []
+    expected = Parity::Reports.normalize(reference, work:).merge("ENV" => given, "child ENV" => given).except(*skipped)
+    Parity::Reports.compare(expected, Parity::Reports.normalize(report, work:).except(*skipped), platform:)
   end
 
-  # Facts of the probe's that no phone yet compares. "gem commands" runs
-  # ruby and a gem's command by name, which an Android app cannot yet do,
-  # though it starts RbConfig.ruby, and iOS lets no app do at all; the
-  # phones compare it once the Android runtime can
-  # (doc/contributors/design/phone-runtimes.md, "The ruby program on Android";
-  # doc/contributors/design/parity.md, "The probe").
+  # Facts of the probe's that iOS does not yet compare. "gem commands"
+  # runs ruby and a gem's command by name, which iOS lets no app do
+  # (doc/contributors/design/parity.md, "The probe").
   NOT_YET = ["gem commands"].freeze
 
   def initialize(target:, work: File.join(ROOT, "tmp", "mobile-parity"), out: $stdout)
@@ -346,7 +357,7 @@ class MobileParity
       app = File.join(@work, "reference-app")
       FileUtils.rm_rf(app)
       FileUtils.cp_r(Parity::PROBE, app)
-      out, err, status = Open3.capture3(MobileParity.reference_environment(@work, MobileParity.reference_locale(ruby)), ruby, "main.rb", chdir: app, unsetenv_others: true)
+      out, err, status = Open3.capture3(MobileParity.reference_environment(@work, MobileParity.reference_locale(ruby), ruby), ruby, "main.rb", chdir: app, unsetenv_others: true)
       raise "ruby main.rb failed (#{status}):\n#{out}\n#{err}" unless status.success?
 
       Parity::Reports.report(out)

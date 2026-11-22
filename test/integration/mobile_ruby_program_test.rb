@@ -39,6 +39,7 @@ class MobileRubyProgramTest < Minitest::Test
     const char *ruby_embed_libruby_path;
     __attribute__((weak)) void ruby_init_ext(const char *name, void (*init)(void)) { (void)name; (void)init; }
     void fledge_ruby_link_program(const char *root) { (void)root; }
+    void fledge_ruby_read_commands(const char *root) { (void)root; }
     static void Init_probe(void) {}
     int fledge_ruby_load_extensions(const char *caller) {
         if (fledge_ruby_add_extension("probe/probe", Init_probe) == 0) return 0;

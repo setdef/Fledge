@@ -127,6 +127,7 @@ module FakeRuntime
         ]
       end,
       *((phone.name == "ios") ? [] : [Fledge::Entry.file("include/fledge_ruby.h", "/* fledge_ruby.h */\n")]),
+      *((phone.name == "ios") ? [] : [Fledge::Entry.file("bin/rake", "#!/bin/sh\n# rake's wrapper\n", mode: 0o755)]),
       Fledge::Entry.file("notices/NOTICES.txt", "Fledge's runtime for #{phone}\n"),
     ])
   end

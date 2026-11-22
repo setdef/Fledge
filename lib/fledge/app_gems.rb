@@ -11,6 +11,7 @@ require_relative "binary"
 require_relative "entry"
 require_relative "error"
 require_relative "gem_package"
+require_relative "gem_wrapper"
 require_relative "git_checkout"
 require_relative "git_package"
 require_relative "linkage"
@@ -143,7 +144,9 @@ module Fledge
       packages = locked.to_h { |gem| [gem, package_for(gem)] } # : Hash[locked_gem, package]
       stubs = [] # : Array[Entry]
       problems = case platform
-      when MobilePlatform then mobile_problems(packages, platform, runtime)
+      when MobilePlatform
+        stubs = phone_executables(packages, runtime, platform)
+        mobile_problems(packages, platform, runtime)
       else
         packages = compile(packages)
         stubs = executables(packages, runtime)
@@ -194,6 +197,36 @@ module Fledge
     private def executables(packages, runtime)
       @compiler.binstubs(packages).values.flatten.map { |entry| entry.with(path: "#{runtime.bin_dir}/#{entry.path}") }
         .reject { |entry| runtime.binaries.include?(entry.path) }
+    end
+
+    # The wrappers of the executables of the gems in +packages+ for an
+    # app on the phone +platform+: on Android, RubyGems' wrapper of each
+    # command in a gem's bin folder, written as the phone's RubyGems
+    # writes it (Fledge::GemWrapper), with no Ruby to run, in the
+    # runtime's bin folder, as #executables puts them: all but a program
+    # the runtime already has under that name. Android runs none of
+    # them as a script: the app's Ruby reads each where it reads
+    # <tt>bin/NAME</tt>, a link to its ruby program
+    # (doc/contributors/design/phone-runtimes.md, "Gem commands on
+    # Android"). iOS lets no app run a program, so there are none.
+    private def phone_executables(packages, runtime, platform)
+      return [] unless platform.name == "android"
+
+      packages.values.flat_map { |package| wrappers(package.spec, package, runtime.bin_dir) }
+        .reject { |entry| runtime.binaries.include?(entry.path) }
+    end
+
+    # RubyGems' wrapper, in +bin_dir+, of each command of +package+, whose
+    # specification is +spec+, that its bin folder has, as
+    # <tt>gem install</tt> writes one only for a script that is there.
+    private def wrappers(spec, package, bin_dir)
+      return [] if spec.executables.empty?
+
+      files = package.gem_files
+      spec.executables.filter_map do |program|
+        script = files["#{spec.bindir}/#{program}"] or next
+        Entry.file("#{bin_dir}/#{program}", GemWrapper.new(gem: spec.name, program:, script:).text, mode: 0o755)
+      end
     end
 
     # The entries that install +gem+ (as +package+, compiled or not) in a

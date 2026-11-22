@@ -19,6 +19,10 @@ require "yaml"
 # describes them, real .gem files served at the lockfile's remote, and,
 # for iOS, the real XcodeGen where this computer has it.
 class MobileBuildTest < Minitest::Test
+  # The lines of fledge.links that link the fake Android runtime's one
+  # gem's command, bin/rake, to the ruby program for each ABI.
+  RAKE_LINKS = "arm64-v8a\tlibfledgerubyexe.so\tbin/rake\nx86_64\tlibfledgerubyexe.so\tbin/rake\n"
+
   def setup
     @dir = Dir.mktmpdir
     FileUtils.mkdir_p(File.join(@dir, ".git"))
@@ -118,6 +122,44 @@ class MobileBuildTest < Minitest::Test
     leftover = Dir.glob("**/*", File::FNM_DOTMATCH, base: project).select { |path| File.file?(File.join(project, path)) }
       .grep_v(/\.(?:jar|aar|pem)\z/).select { |path| File.read(File.join(project, path)).match?(Fledge::MobileProject::TOKEN) }
     assert_empty leftover, "every mark in the template is filled"
+  end
+
+  # Android lets an app run only its native libraries, so a gem's
+  # command, bin/NAME, is a link to the runtime's ruby program, which
+  # fledge.links makes as the app starts, and RubyGems' wrapper is kept
+  # in libexec/commands, where the app's Ruby reads it in that link's
+  # place (doc/contributors/design/phone-runtimes.md, "Gem commands on
+  # Android").
+  def test_an_android_apps_gem_commands_are_links_to_its_ruby_program
+    root = script_app("identifier: com.example.hello\n")
+
+    assert_equal 0, build("android", root)[2]
+    project = File.join(@dir, "dist/Hello-android")
+    assert_equal "#!/bin/sh\n# rake's wrapper\n", File.read(File.join(project, "fledge/libexec/commands/rake"))
+    assert_equal RAKE_LINKS, File.read(File.join(project, "fledge/fledge.links"))
+    refute_path_exists File.join(project, "fledge/bin")
+  end
+
+  # A locked gem's command gets RubyGems' wrapper for it, written as the
+  # phone's RubyGems writes one (Fledge::GemWrapper), with no desktop
+  # runtime to run: FLEDGE_RUNTIME_DIR here holds only the phones', as
+  # on the computers CI writes an Android project on.
+  def test_an_android_apps_locked_gems_commands_need_no_desktop_runtime
+    tool = FakeGem.build(@gems, "tool", "1.0.0", executables: %w[tool],
+      files: { "lib/tool.rb" => "# tool\n", "exe/tool" => "#!/usr/bin/env ruby -w\nputs 'tool'\n" })
+    root = gem_project(dependencies: { "tool" => ">= 0" }, locked: [tool], platforms: %w[ruby arm64-darwin x86_64-linux])
+    assert_equal ["fledge-runtime-#{Fledge::VERSION}-android.tar.gz", "fledge-runtime-#{Fledge::VERSION}-ios.tar.gz"],
+      Dir.children(@runtimes).grep(/\.tar\.gz\z/).sort, "only the phones' runtimes are at hand"
+
+    out, err, status = build("android", root)
+
+    assert_equal [0, "dist/MyApp-android\n"], [status, out], err
+    root = File.join(@dir, "dist/MyApp-android/fledge")
+    wrapper = File.read(File.join(root, "libexec/commands/tool"))
+    assert wrapper.start_with?("#!/bin/sh\n# -*- ruby -*-\n"), wrapper
+    assert_includes wrapper, "\n#!/usr/bin/env ruby -w\n"
+    assert_includes wrapper, "Gem.activate_and_load_bin_path('tool', 'tool', version)"
+    assert_includes File.read(File.join(root, "fledge.links")), "x86_64\tlibfledgerubyexe.so\tbin/tool\n"
   end
 
   def test_an_app_without_an_icon_gets_the_systems_own
@@ -364,7 +406,7 @@ class MobileBuildTest < Minitest::Test
     library = File.join(project, "src/main/jniLibs/x86_64/libfledgeext.adder.adder.so")
     assert_equal "ELF adder", File.read(library)
     refute_includes File.read(File.join(project, "src/main/jniLibs/x86_64/libfledgeext.so")), "fledge_ruby_add_extension("
-    assert_equal "x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n", File.read(File.join(project, "fledge/fledge.links"))
+    assert_equal "x86_64\tlibfledgeext.adder.adder.so\tapp/gems/adder/lib/adder/adder.so\n#{RAKE_LINKS}", File.read(File.join(project, "fledge/fledge.links"))
     refute_includes File.read(File.join(project, "src/main/java/org/setdef/fledge/host/MainActivity.java")), "loadLibrary"
   end
 
@@ -440,7 +482,7 @@ class MobileBuildTest < Minitest::Test
 
     name = "libfledgeffi.llhttp-ffi.ext.x86_64-linux.libllhttp-ext.so"
     assert_equal "ELF llhttp", File.read(File.join(project, "src/main/jniLibs/x86_64", name))
-    assert_equal "x86_64\t#{name}\tlib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/ext/x86_64-linux/libllhttp-ext.so\n",
+    assert_equal "x86_64\t#{name}\tlib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/ext/x86_64-linux/libllhttp-ext.so\n#{RAKE_LINKS}",
       File.read(File.join(project, "fledge/fledge.links"))
   end
 

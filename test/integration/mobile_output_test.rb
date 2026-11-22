@@ -161,6 +161,7 @@ class MobileOutputTest < Minitest::Test
     static FILE *log_file;
 
     void fledge_ruby_link_program(const char *root) { (void)root; }
+    void fledge_ruby_read_commands(const char *root) { (void)root; }
     int fledge_ruby_load_extensions(const char *caller) { (void)caller; return 0; }
     int fledge_log_echoes(void) { return 0; }
     int fledge_log_open(const char *tag) { (void)tag; return 0; }

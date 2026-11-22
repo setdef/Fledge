@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class GemWrapper < Data
+    RUBY: String
+    RUBY_INSTALL_NAME: String
+
+    attr_reader gem: String
+    attr_reader program: String
+    attr_reader script: String
+
+    def self.new: (gem: String, program: String, script: String) -> instance
+
+    def text: () -> String
+
+    private def gemdeps_load: () -> String
+    private def explicit_version_requirement: () -> String
+    private def shebang: () -> String
+    private def bash_prolog_script: () -> String
+  end
+end

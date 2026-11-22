@@ -192,6 +192,7 @@ module Fledge
       skip = [@out]
       skip << File.join(@app.root, host) if host
       [*Assembly.app_entries(@app, @app_files, skip:), *@files, *stubs].each { |entry| add(project, root, entry) }
+      place_commands(root)
       place_links(root) if @built
       place_host(host, project) if host
       template_files.each { |path| fill(File.join(project, path)) }
@@ -296,6 +297,11 @@ module Fledge
     # system needs for the extensions (@built): nothing, unless the
     # system says otherwise.
     private def place_links(_root); end
+
+    # Finishes ROOT, +root+, once the app and its gems are in it, as the
+    # system needs for the gems' commands in its <tt>bin/</tt>: nothing,
+    # unless the system says otherwise.
+    private def place_commands(_root); end
 
     private def ruby_root(_project)
       raise(NotImplementedError, "#{self.class} has no Ruby")

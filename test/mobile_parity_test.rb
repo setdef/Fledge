@@ -110,14 +110,16 @@ class MobileParityTest < Minitest::Test
     refute_match app.prints, line.sub("for iOS on", "for watchOS on")
   end
 
-  # An app runs on the phones it names, and every app names both: the
-  # libraries for ffi that ffi_library_phone's gems build reach an iOS
-  # app as they reach an Android one.
-  def test_each_phone_builds_and_runs_every_app
+  # An app runs on the phones it names, and every app names both but
+  # MobileCommands, which runs a gem's command, a program iOS lets no app
+  # run: the libraries for ffi that ffi_library_phone's gems build reach
+  # an iOS app as they reach an Android one.
+  def test_each_phone_builds_and_runs_every_app_but_a_command_where_none_runs
     ios = MobileParity.apps("ios").map(&:name)
 
     assert_includes ios, "FfiLibraryPhone"
-    assert_equal MobileParity.apps("android").map(&:name), ios
+    assert_equal MobileParity.apps("android").map(&:name) - ["MobileCommands"], ios
+    assert_includes MobileParity.apps("android").map(&:name), "MobileCommands"
   end
 
   # Fledge's own manifest gives the reasons the check expects, and a
@@ -141,10 +143,13 @@ class MobileParityTest < Minitest::Test
 
   # The reference runs as a person runs ruby main.rb: in a UTF-8 locale,
   # with a home folder of its own and nothing of the runner's Ruby.
+  # As a developer's shell hands it to the Ruby they run: that Ruby's
+  # bin folder first on PATH, where the shell found ruby.
   def test_the_reference_runs_with_a_persons_plain_environment
-    env = MobileParity.reference_environment("/work", "C.UTF-8", { "PATH" => "/bin", "RUBYOPT" => "-W0", "GEM_HOME" => "/g", "CI" => "true" })
+    env = MobileParity.reference_environment("/work", "C.UTF-8", "/r/bin/ruby",
+      { "PATH" => "/bin", "RUBYOPT" => "-W0", "GEM_HOME" => "/g", "CI" => "true" })
 
-    assert_equal({ "PATH" => "/bin", "HOME" => "/work/home", "LANG" => "C.UTF-8" }, env)
+    assert_equal({ "PATH" => "/r/bin#{File::PATH_SEPARATOR}/bin", "HOME" => "/work/home", "LANG" => "C.UTF-8" }, env)
   end
 
   # Each charmap is what Ruby's Encoding.locale_charmap is under that
@@ -184,7 +189,9 @@ class MobileParityTest < Minitest::Test
     reference = { "paths" => { "app" => "/w/app", "prefix" => "/w/ruby", "home" => "/w/home" }, "ENV" => { "PATH" => "/bin", "LANG" => "C" } }
     given = { "PATH" => "/system/bin", "TMPDIR" => "/data/cache" }
     app = -> (env) { { "paths" => paths, "ENV" => env, "child ENV" => env } }
-    differences = -> (target, env) { MobileParity.differences(reference, app.call(env), given, platform: target, work: "/w") }
+    # Android's runtime puts its bin folder first on PATH (below).
+    seen = -> (target, env) { target.end_with?("android") ? env.merge("PATH" => "/data/ruby/bin:/system/bin") : env }
+    differences = -> (target, env) { MobileParity.differences(reference, app.call(seen.call(target, env)), given, platform: target, work: "/w") }
 
     %w[arm64-ios-simulator x86_64-linux-android].each do |target|
       assert_empty differences.call(target, given), target
@@ -195,6 +202,37 @@ class MobileParityTest < Minitest::Test
     home = given.merge("HOME" => "/data/files")
     assert differences.call("x86_64-linux-android", home).all?(&:justified?)
     refute differences.call("arm64-ios-simulator", home).any?(&:justified?)
+  end
+
+  # Android's runtime puts its bin folder first on the app's PATH, as a
+  # developer's shell has the bin folder of the Ruby they run, so the
+  # environment the system gave the app is compared with that folder
+  # before its PATH there, and only there: iOS has no programs to find.
+  def test_androids_path_is_compared_with_the_apps_ruby_first
+    paths = { "app" => "/data/app", "prefix" => "/data/ruby", "home" => "/data/files" }
+    reference = { "paths" => { "app" => "/w/app", "prefix" => "/w/ruby", "home" => "/w/home" }, "ENV" => { "PATH" => "/w/ruby/bin:/bin" } }
+    given = { "PATH" => "/system/bin" }
+    app = -> (env) { { "paths" => paths, "ENV" => env, "child ENV" => env } }
+    differences = -> (target, env) { MobileParity.differences(reference, app.call(env), given, platform: target, work: "/w") }
+
+    assert_empty differences.call("x86_64-linux-android", { "PATH" => "/data/ruby/bin:/system/bin" })
+    assert_equal ["ENV", "child ENV"], differences.call("x86_64-linux-android", given).map(&:fact)
+    assert_empty differences.call("arm64-ios-simulator", given)
+  end
+
+  # Android compares how a program runs a gem's command; iOS, which lets
+  # no app start a program, does not yet.
+  def test_android_compares_the_gem_commands
+    paths = { "app" => "/data/app", "prefix" => "/data/ruby", "home" => "/data/files" }
+    reference = {
+"paths" => { "app" => "/w/app", "prefix" => "/w/ruby", "home" => "/w/home" },
+"gem commands" => { "system" => ["/w/ruby/bin/ruby 13.3.1", true] },
+}
+    app = { "paths" => paths, "gem commands" => { "system" => ["", nil] } }
+    differences = -> (target) { MobileParity.differences(reference, app, {}, platform: target, work: "/w").map(&:fact) }
+
+    assert_includes differences.call("x86_64-linux-android"), "gem commands"
+    refute_includes differences.call("arm64-ios-simulator"), "gem commands"
   end
 
   # The probe's host logs the environment the system gave it, a line

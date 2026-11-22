@@ -176,10 +176,41 @@ module Fledge
       private def place_runtime(tree, project)
         root = File.join(project, ROOT)
         FileUtils.mkdir_p([root, File.join(project, "libs")])
-        %w[lib libexec].each { |folder| FileUtils.mv(File.join(tree, folder), root) }
+        %w[lib libexec bin].each { |folder| FileUtils.mv(File.join(tree, folder), root) if File.directory?(File.join(tree, folder)) }
         FileUtils.mkdir_p(File.join(root, "include"))
         Dir.glob(File.join(tree, "include", "ruby-*")).each { |headers| FileUtils.mv(headers, File.join(root, "include")) }
         FileUtils.mv(File.join(tree, AAR), File.join(project, "libs"))
+      end
+
+      # Where ROOT keeps RubyGems' wrapper of each gem's command, which
+      # the app's Ruby reads in place of <tt>bin/NAME</tt>
+      # (runtime/mobile/android.c, FLEDGE_COMMANDS).
+      COMMANDS = "libexec/commands"
+
+      # The runtime's ruby program, as the package installer extracts it
+      # into the app's native library folder.
+      PROGRAM = "libfledgerubyexe.so"
+
+      # Moves each gem's command in ROOT's <tt>bin/</tt>, the runtime's
+      # and the app's gems', RubyGems' wrapper as a desktop has it, into
+      # COMMANDS, and adds the lines of AndroidLibraries::LINKS that make
+      # <tt>bin/NAME</tt> a link to PROGRAM for each ABI as the app
+      # starts. Android lets an app run only what its package installer
+      # extracts, its native libraries, so the wrapper in the app's files
+      # can be read but not run; the program run as NAME runs Ruby on
+      # the wrapper, and Ruby reads the wrapper wherever it reads
+      # <tt>bin/NAME</tt> (doc/contributors/design/phone-runtimes.md,
+      # "Gem commands on Android").
+      private def place_commands(root)
+        bin = File.join(root, "bin")
+        return unless File.directory?(bin)
+
+        names = Dir.children(bin).sort
+        FileUtils.mkdir_p(File.join(root, COMMANDS))
+        names.each { |name| FileUtils.mv(File.join(bin, name), File.join(root, COMMANDS, name)) }
+        FileUtils.rmdir(bin)
+        lines = MobileExtensions::Targets::ANDROID_ABIS.values.sort.flat_map { |abi| names.map { |name| "#{abi}\t#{PROGRAM}\tbin/#{name}\n" } }
+        File.write(File.join(root, AndroidLibraries::LINKS), lines.join, mode: "a")
       end
 
       # Links the extensions not built as files into a shared library for

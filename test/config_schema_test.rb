@@ -332,15 +332,18 @@ class ConfigSchemaTest < Minitest::Test
     assert_equal Fledge::Config::PER_PROGRAM, schema.fetch("allOf").first.dig("then", "properties").keys
   end
 
-  # Each phone's mapping holds Config::Phone's keys, and its host is a
-  # path as a program's is.
+  # Each phone's mapping holds Config::Phone's keys for that phone, its
+  # host is a path as a program's is, and each of Android's host
+  # libraries a name Config::Phone takes.
   def test_phones_are_configs
     Fledge::Config::PHONES.each do |phone|
       property = schema.dig("properties", phone)
-      assert_equal Fledge::Config::Phone::KEYS, property.fetch("properties").keys
+      assert_equal Fledge::Config::Phone::KEYS.fetch(phone), property.fetch("properties").keys
       refute property.fetch("additionalProperties")
       assert_equal schema.dig("properties", "programs", "items", "properties", "path", "pattern"), property.dig("properties", "host", "pattern")
     end
+    ecma = Fledge::Config::Phone::LIBRARY.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
+    assert_equal ecma, schema.dig("properties", "android", "properties", "host_libraries", "items", "pattern")
   end
 
   # Linux's mapping holds Config::Linux's keys, and each system library

@@ -38,6 +38,8 @@ module Fledge
 
     private def unprovided: (String label, String path, String library) -> String?
 
+    private def android_unprovided: (String label, String path, String library) -> String
+
     private def visual_c: (String label, String path, String library) -> String?
 
     private def unreached: (String label, String path, String library, Dyld dyld, Array[String] paths) -> String?

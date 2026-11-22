@@ -286,8 +286,14 @@
 #                          or build android copies over the project it
 #                          writes, before XcodeGen runs: each replaces
 #                          Fledge's file at its path, or joins them, and
-#                          the build says which it replaced. Desktop
-#                          builds ignore them.
+#                          the build says which it replaced. android may
+#                          also hold host_libraries, the libraries the
+#                          host adds through its own Gradle
+#                          dependencies, by the names compiled files
+#                          give them, such as [libSDL3.so]: the gems'
+#                          libraries may need them, and the build fails
+#                          on one that none needs. Desktop builds
+#                          ignore them.
 #                        linux: a mapping of system_libraries, the
 #                          libraries the gems load from the Linux
 #                          distribution, by the names their compiled

@@ -138,6 +138,14 @@
           "description": "A folder in the project, such as host/android, whose files fledge build android copies over the project: each replaces Fledge's file at the same path, such as src/main/java/org/setdef/fledge/host/MainActivity.java, or joins the project. Fledge fills its @@NAME@@ marks in a copy of one of its Gradle files, the manifest, strings.xml, or MainActivity.java.",
           "type": ["string", "null"],
           "pattern": "^(?![\\u0000\\t\\n\\u000b\\f\\r ])(?![\\s\\S]*[\\u0000\\t\\n\\u000b\\f\\r ]$)(?![\\s\\S]*[\\r\\n\\\\])(?:(?!\\.\\.?(?:/|$))[^/]+/)*(?!\\.\\.?$)[^/]+$"
+        },
+        "host_libraries": {
+          "description": "The native libraries the host adds to the app through its own Gradle dependencies, such as an AAR's, by the file names the gems' compiled files give them, such as [libSDL3.so] (default: none). fledge build accepts a gem's library that needs one, and refuses one listed that none of the app's libraries needs. A library in the host's own src/main/jniLibs needs no listing.",
+          "type": ["array", "null"],
+          "items": {
+            "type": "string",
+            "pattern": "^lib[A-Za-z0-9_+,=.-]*\\.so$"
+          }
         }
       }
     },

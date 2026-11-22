@@ -46,6 +46,7 @@ module Binaries
     { format: "elf", needed: %w[libc.so.6 libcrypt.so.2] },
     { format: "elf", needed: %w[libreadline.so.8 libc.so.6] },
     { format: "elf", needed: %w[liblog.so libz.so libdl.so libm.so libc.so] },
+    { format: "elf", needed: %w[libc.so libSDL3.so] },
     { format: "elf", needed: %w[libc.so] },
     { format: "elf", needed: %w[libc.so.6 libxml2.so.2] },
     { format: "elf", needed: %w[libc.so.6 libcrypt.so.2 libxml2.so.2 libown.so] },

@@ -80,6 +80,30 @@ class LinkageTest < Minitest::Test
     }, linkage.unused
   end
 
+  # On Android a library may need one the project lists as its host's,
+  # which the host's own Gradle dependencies add to the APK where no
+  # check of Fledge's reads it; one it could list, a name Android's
+  # installer extracts, is named with the key (glibc's libc.so.6 is not,
+  # test_an_android_library_may_need_only_what_android_offers_every_app_and_the_app_carries),
+  # and one listed that nothing needs is refused.
+  def test_an_android_library_may_need_one_the_project_lists_as_its_hosts
+    TestReaders.need(self, :elf)
+    files = { "lib/ext.so" => Binaries.elf(needed: %w[libc.so libSDL3.so]) }
+    unlisted = Fledge::Linkage.new(os: "android", readers: TestReaders.all)
+    assert_equal [
+      "linked 1.0.0's lib/ext.so needs libSDL3.so, which neither Android, nor Fledge's runtime, nor the app's own native libraries " \
+        "provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically, " \
+        "or, when the app's host adds it through its own Gradle dependencies, list it in fledge.yml as android: { host_libraries: [libSDL3.so] }.",
+    ], unlisted.problems("linked 1.0.0", files)
+
+    linkage = Fledge::Linkage.new(os: "android", system: %w[libSDL3.so libunused.so], readers: TestReaders.all)
+    assert_empty linkage.problems("linked 1.0.0", files)
+    assert_equal [
+      "fledge.yml's android: host_libraries lists libunused.so, which none of the app's native libraries, nor the gems' compiled " \
+        "files, needs beyond what Android, Fledge's runtime, and the app's own native libraries provide. Remove it.",
+    ], linkage.unused
+  end
+
   def test_a_dylib_no_one_ships_keeps_a_gem_from_shipping_on_macos
     macos = problems("darwin", {
 "lib/ext.bundle" => Binaries.macho(needed: [

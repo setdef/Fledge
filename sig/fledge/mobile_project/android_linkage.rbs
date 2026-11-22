@@ -8,13 +8,21 @@ module Fledge
 
       @readers: Binary::Readers
 
-      def initialize: (readers: Binary::Readers) -> void
+      @host: Array[String]
+
+      @linkages: Array[Linkage]
+
+      def initialize: (readers: Binary::Readers, ?host: Array[String]) -> void
+
+      def unused: () -> Array[String]
 
       def problems: (String project, Array[[String, String, String, String]] judged) -> Array[String]
 
       def zipped: (String project, String root, Hash[String, String] gem_folders) -> Array[String]
 
       CPUS: Hash[String, String]
+
+      private def check_for: (String? cpu, Array[String] carried) -> Linkage
 
       private def linked_paths: (String root) -> Array[String]
 

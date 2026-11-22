@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fledge.yml`'s `linux: system_typelibs`, the GObject introspection typelibs an app's gems load from the Linux distribution by namespace and version, such as `Gtk-4.0` for ruby-gnome's gtk4: started on a computer that lacks one, or a typelib it needs, the app names it and exits with status 72 before Ruby starts, where it stopped with Ruby's `GObjectIntrospection::RepositoryError` from inside the gem. A `.deb` depends on each one's `gir1.2-` package.
 - `fledge.yml`'s `macos: carried_libraries`, for a gem that links a library from the developer's Mac, such as one Homebrew installed: `fledge build` copies each library listed from where the gem's files find it into the app's `lib/carried`, points the files that need it at the copy, and refuses a library that one of them needs and the list leaves out, one for another processor or a newer macOS than the app's, and one listed that nothing needs. Without the key, the refusal of such a gem names it.
+- `fledge.yml`'s `android: host_libraries`, the native libraries an app's host adds through its own Gradle dependencies, such as `libSDL3.so` from an AAR: `fledge build android` accepts a gem's library that needs one, refuses one listed that nothing needs, and names the key when it refuses a library of such a name.
 
 ### Changed
 

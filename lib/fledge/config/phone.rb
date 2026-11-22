@@ -23,8 +23,11 @@ module Fledge
     # writing again loses nothing.
     #
     # This class reads one phone's mapping: its +host+, a folder in the
-    # project whose files Fledge copies over the project it writes. It
-    # refuses a key it does not know, and a path that leaves the project.
+    # project whose files Fledge copies over the project it writes, and on
+    # Android its +host_libraries+, the native libraries the host's own
+    # Gradle dependencies add to the app, which a gem's library may need
+    # though no file Fledge reads holds them (MobileProject::AndroidLinkage).
+    # It refuses a key it does not know, and a path that leaves the project.
     # Whether the folder exists is for that phone's build to check, so a
     # desktop build, which ignores these keys, never needs it.
     #
@@ -44,15 +47,30 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    class Phone < Data.define(:host)
+    class Phone < Data.define(:host, :host_libraries)
       ##
       # :attr_reader: host
       # The folder of the project's own files for the phone's project,
       # relative to the project's root, with <tt>/</tt> between folders,
       # or +nil+ for none.
 
-      # The keys a phone's mapping may hold.
-      KEYS = %w[host].freeze
+      ##
+      # :attr_reader: host_libraries
+      # The file names of the native libraries the app's host adds to an
+      # Android app through its own Gradle dependencies, once each: empty
+      # on iOS, and when the mapping lists none.
+
+      # The keys each phone's mapping may hold.
+      KEYS = { "ios" => %w[host].freeze, "android" => %w[host host_libraries].freeze }.freeze
+
+      # A name Android's package installer extracts from an APK's
+      # <tt>lib/ABI/</tt> for an app that is not debuggable: +lib+, the
+      # characters it takes in a file name, and <tt>.so</tt>
+      # (ValidLibraryPathLastSlash and isFilenameSafe in AOSP's
+      # <tt>libs/androidfw/ApkParsing.cpp</tt>, lines 36 to 84). A host's
+      # library of any other name never reaches the phone's library
+      # folder, so no library of the app could load it there.
+      LIBRARY = /\Alib[A-Za-z0-9_+,=.-]*\.so\z/
 
       # The phone's mapping at +data+'s +phone+ key, +ios+ or +android+, in
       # the <tt>fledge.yml</tt> at +file+, or +nil+ when it has none.
@@ -73,12 +91,31 @@ module Fledge
       def self.from(data, phone, file)
         item = data[phone]
         return nil if item.nil?
-        raise Error, "#{file}: #{phone} must be a mapping of host, such as #{phone}: { host: host/#{phone} }" unless item.is_a?(Hash)
 
-        unknown = item.keys - KEYS
-        raise Error, "#{file}: #{phone} has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. It knows host." unless unknown.empty?
+        keys = KEYS.fetch(phone)
+        known = keys.join(" and ")
+        raise Error, "#{file}: #{phone} must be a mapping of #{known}, such as #{phone}: { host: host/#{phone} }" unless item.is_a?(Hash)
 
-        new(host: host(item, phone, file))
+        unknown = item.keys - keys
+        raise Error, "#{file}: #{phone} has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. It knows #{known}." unless unknown.empty?
+
+        new(host: host(item, phone, file), host_libraries: libraries(item["host_libraries"], file))
+      end
+
+      # The list at +host_libraries+, each a LIBRARY, once each.
+      private_class_method def self.libraries(value, file) # :nodoc:
+        return [] if value.nil?
+        unless value.is_a?(Array) && value.all?(String)
+          raise Error, "#{file}: android: host_libraries must be a list of the names compiled files give libraries, such as [libSDL3.so]"
+        end
+
+        wrong = value.find { |name| !name.match?(LIBRARY) }
+        if wrong
+          raise Error, "#{file}: android: host_libraries has #{wrong.inspect}, which is not a name Android extracts from an APK: " \
+            "name a library lib*.so, with no folder, such as libSDL3.so"
+        end
+
+        value.uniq
       end
 
       # The host's folder: text, relative to the project's root, as a

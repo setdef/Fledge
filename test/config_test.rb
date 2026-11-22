@@ -260,7 +260,8 @@ class ConfigTest < Minitest::Test
   def test_reads_each_phones_host
     config = load("ios:\n  host: host/ios\nandroid:\n  host: host/android\n")
 
-    assert_equal [Fledge::Config::Phone.new(host: "host/ios"), Fledge::Config::Phone.new(host: "host/android")], [config.ios, config.android]
+    assert_equal [Fledge::Config::Phone.new(host: "host/ios", host_libraries: []), Fledge::Config::Phone.new(host: "host/android", host_libraries: [])],
+      [config.ios, config.android]
     assert_equal [nil, nil], [load("ios:\n").ios, load("android:\n  host:\n").android&.host]
     assert_equal "missing", load("ios:\n  host: missing\n").ios&.host, "the folder is a phone build's to check"
     program = Fledge::Config::Program.from({ "path" => "a" }, 1, "fledge.yml")
@@ -270,8 +271,10 @@ class ConfigTest < Minitest::Test
   def test_refuses_a_host_it_cannot_copy
     {
       "ios: host/ios\n" => %r{: ios must be a mapping of host, such as ios: \{ host: host/ios \}\z},
-      "android: [host]\n" => %r{: android must be a mapping of host, such as android: \{ host: host/android \}\z},
+      "android: [host]\n" => %r{: android must be a mapping of host and host_libraries, such as android: \{ host: host/android \}\z},
       "ios:\n  hots: host/ios\n" => /: ios has 'hots', which Fledge does not know\. It knows host\.\z/,
+      "ios:\n  host_libraries: [libSDL3.so]\n" => /: ios has 'host_libraries', which Fledge does not know\. It knows host\.\z/,
+      "android:\n  hots: host/android\n" => /: android has 'hots', which Fledge does not know\. It knows host and host_libraries\.\z/,
       "ios:\n  host: 3\n" => %r{: ios: host must be text, such as host: host/ios\z},
       "android:\n  host: ../shared/android\n" =>
         %r{: android's host, "\.\./shared/android", must name a folder in the project, with / between folders, such as host: host/android\z},
@@ -282,6 +285,33 @@ class ConfigTest < Minitest::Test
       error = assert_raises(Fledge::Error, yaml) { load(yaml) }
       assert_match message, error.message, yaml
       assert_includes error.message, "fledge.yml", yaml
+    end
+  end
+
+  # doc/contributors/design/phone-projects.md, "What each library
+  # needs": android names, once each, the native libraries the app's
+  # host adds to the APK through its own Gradle dependencies, each a
+  # name Android's package installer extracts, lib*.so.
+  def test_reads_the_libraries_an_android_host_adds
+    config = load("android:\n  host_libraries: [libSDL3.so, libc++_shared.so, libSDL3.so]\n")
+
+    assert_equal Fledge::Config::Phone.new(host: nil, host_libraries: %w[libSDL3.so libc++_shared.so]), config.android
+    assert_equal [], load("android:\n  host: host/android\n").android&.host_libraries
+    assert_equal [], load("android:\n  host_libraries: []\n").android&.host_libraries
+  end
+
+  def test_refuses_a_host_library_android_would_not_extract
+    {
+      "android:\n  host_libraries: libSDL3.so\n" =>
+        /: android: host_libraries must be a list of the names compiled files give libraries, such as \[libSDL3\.so\]\z/,
+      "android:\n  host_libraries: [3]\n" => /: android: host_libraries must be a list/,
+      "android:\n  host_libraries: [libc.so.6]\n" =>
+        /: android: host_libraries has "libc\.so\.6", which is not a name Android extracts from an APK: name a library lib\*\.so, with no folder, such as libSDL3\.so\z/,
+      "android:\n  host_libraries: [SDL3.so]\n" => /: android: host_libraries has "SDL3\.so", which is not a name Android extracts/,
+      "android:\n  host_libraries: [lib/x86_64/libSDL3.so]\n" => %r{: android: host_libraries has "lib/x86_64/libSDL3\.so", which is not},
+    }.each do |yaml, message|
+      error = assert_raises(Fledge::Error, yaml) { load(yaml) }
+      assert_match message, error.message, yaml
     end
   end
 

@@ -56,8 +56,38 @@ module Fledge
 
       # [readers] The tools that read the libraries
       #           (Fledge::Binary::Readers): the NDK's.
-      def initialize(readers:)
+      # [host] The file names of the libraries the project lists as added
+      #        by its host's own Gradle dependencies
+      #        (Config::Phone#host_libraries), which no file in the project
+      #        holds and a library may need, and #unused names when none
+      #        does.
+      def initialize(readers:, host: [])
         @readers = readers
+        @host = host
+        @linkages = [] # : Array[Linkage]
+      end
+
+      # Why the libraries the project lists as its host's are wrong, one
+      # sentence for each that none of the files #problems and #zipped
+      # judged needed, for any ABI, beyond what Android, the runtime, and
+      # the app's native libraries provide (Fledge::Linkage#unused), or
+      # none. Ask after both.
+      #
+      # === Example
+      #
+      #--
+      # SPDX-SnippetBegin
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+      # SPDX-License-Identifier: MIT-0
+      #++
+      #   linkage = Fledge::MobileProject::AndroidLinkage.new(readers:, host: ["libgone.so"])
+      #   linkage.unused # => ["fledge.yml's android: host_libraries lists libgone.so, which none of ..."]
+      #--
+      # SPDX-SnippetEnd
+      #++
+      def unused
+        linkages = @linkages.empty? ? [check_for(nil, [])] : @linkages
+        linkages.map(&:unused).reduce(:&) || []
       end
 
       # Why the libraries +judged+ names would not load, one sentence
@@ -81,7 +111,7 @@ module Fledge
         judged.group_by(&:first).flat_map do |abi, files|
           folder = File.join(project, "src", "main", "jniLibs", abi)
           carried = Dir.children(folder).select { |name| name.end_with?(".so") }
-          linkage = Linkage.new(os: "android", provided: RUNTIME + carried, readers: @readers)
+          linkage = check_for(nil, carried)
           files.flat_map { |_, name, label, path| linkage.problems(label, { path => File.binread(File.join(folder, name)) }) }
         end.uniq
       end
@@ -123,9 +153,16 @@ module Fledge
         MobileExtensions::Targets::ANDROID_ABIS.values.sort.flat_map do |abi|
           folder = File.join(project, "src", "main", "jniLibs", abi)
           carried = File.directory?(folder) ? Dir.children(folder).select { |name| name.end_with?(".so") } : [] # : Array[String]
-          linkage = Linkage.new(os: "android", cpu: CPUS.fetch(abi), provided: RUNTIME + carried, readers: @readers)
+          linkage = check_for(CPUS.fetch(abi), carried)
           gems.flat_map { |label, files| linkage.problems(label, files) }
         end.uniq
+      end
+
+      # A Fledge::Linkage for Android, kept for #unused: for files of
+      # +cpu+ only, or of any processor when it is +nil+, beside the
+      # libraries named +carried+.
+      private def check_for(cpu, carried)
+        Linkage.new(os: "android", cpu:, provided: RUNTIME + carried, system: @host, readers: @readers).tap { |made| @linkages << made }
       end
 
       # The processor each ABI's code is for, as Fledge::Binary#for? names

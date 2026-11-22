@@ -661,6 +661,33 @@ class MobileBuildTest < Minitest::Test
     assert_path_exists File.join(project, "fledge", gem, "lib/libdrawn.x86_64.so")
   end
 
+  # A library the project lists as its Android host's (android:
+  # host_libraries), which the host's own Gradle dependencies add to the
+  # APK, may be needed by a gem's compiled file inside fledge.zip and by
+  # a library in jniLibs; one listed that nothing needs is refused, so
+  # the list says only what is true.
+  def test_an_android_library_may_need_a_library_the_host_adds
+    TestReaders.need(self, :elf)
+    gem = "lib/ruby/gems/4.1.0+5/gems/drawn-1.0.0"
+    files = { "lib/libdrawn.x86_64.so" => Binaries.elf(needed: %w[libc.so libSDL3.so]) }
+    listed = "identifier: com.example.Hello\nandroid:\n  host_libraries: [libSDL3.so, libgone.so]\n"
+    error = assert_raises(Fledge::Error) { android_project_with_gem_files(gem, "drawn 1.0.0", files, config: listed) }
+
+    assert_equal [
+      "Hello can't ship for android:",
+      "  fledge.yml's android: host_libraries lists libgone.so, which none of the app's native libraries, nor the gems' compiled " \
+        "files, needs beyond what Android, Fledge's runtime, and the app's own native libraries provide. Remove it.",
+    ], error.message.lines.map(&:chomp)
+
+    host = "identifier: com.example.Hello\nandroid:\n  host_libraries: [libSDL3.so]\n"
+    project = android_project_with_gem_files(gem, "drawn 1.0.0", files, config: host)
+    assert_path_exists File.join(project, "fledge", gem, "lib/libdrawn.x86_64.so")
+    FileUtils.rm_rf(File.join(@dir, "dist"))
+    project = phone_project_with_ffi_library("android", "x86_64-linux-android", "x86_64", "ext/x86_64-linux/libllhttp-ext.so",
+      content: Binaries.elf(needed: %w[libc.so libSDL3.so]), config: host)
+    assert_path_exists File.join(project, "src/main/jniLibs/x86_64/libfledgeffi.llhttp-ffi.ext.x86_64-linux.libllhttp-ext.so")
+  end
+
   # What every target's build of a gem left alike in its folder
   # (MobileExtensions::LeftFiles) joins the gem's files in the app, where
   # the gem's Ruby reads it as under bundle exec, and a file the build
@@ -681,8 +708,8 @@ class MobileBuildTest < Minitest::Test
   # built a library for ffi, each of +files+ in llhttp-ffi 0.5.1, holding
   # +content+, for the target +name+ (+abi+ on Android), and returns its
   # folder.
-  private def phone_project_with_ffi_library(phone, name, abi, *files, content: "ELF llhttp")
-    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
+  private def phone_project_with_ffi_library(phone, name, abi, *files, content: "ELF llhttp", config: "identifier: com.example.Hello\n")
+    app = Fledge::App.at(script_app(config))
     shared = File.join(@dir, "llhttp.so")
     File.binwrite(shared, content)
     target = Fledge::MobileExtensions::Target.new(name:, root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi:)
@@ -700,8 +727,8 @@ class MobileBuildTest < Minitest::Test
   # is in +folder+ of the Ruby root with +files+ (each path in the gem
   # and its content), and whose runtime's fledge.links names each of
   # +links+, and returns its folder.
-  private def android_project_with_gem_files(folder, label, files, links: [])
-    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
+  private def android_project_with_gem_files(folder, label, files, links: [], config: "identifier: com.example.Hello\n")
+    app = Fledge::App.at(script_app(config))
     entries = [Fledge::Entry.directory(folder), *files.map { |path, content| Fledge::Entry.file("#{folder}/#{path}", content) }]
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
     unless links.empty?

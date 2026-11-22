@@ -4,15 +4,21 @@
 module Fledge
   class Config
     class Phone < Data
-      KEYS: Array[String]
+      KEYS: Hash[String, Array[String]]
+
+      LIBRARY: Regexp
 
       attr_reader host: String?
 
-      def self.new: (host: String?) -> instance
+      attr_reader host_libraries: Array[String]
+
+      def self.new: (host: String?, host_libraries: Array[String]) -> instance
 
       def self.from: (Hash[Object, Object] data, String phone, String file) -> Phone?
 
       private def self.host: (Hash[Object, Object] item, String phone, String file) -> String?
+
+      private def self.libraries: (Object value, String file) -> Array[String]
     end
   end
 end

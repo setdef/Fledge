@@ -7,6 +7,7 @@
 
 require "yaml"
 require_relative "binary"
+require_relative "config/phone"
 
 module Fledge
   # Whether a gem's compiled files would load on the computer an app goes
@@ -139,10 +140,13 @@ module Fledge
     #       where Android would load it.
     # [provided] The file names of the shared libraries the runtime
     #            ships, which a compiled file may need too.
-    # [system] The file names of the libraries the project lists as its
-    #          gems' to load from the Linux distribution
-    #          (Config::Linux#system_libraries), which a compiled file
-    #          may need too, and #unused names when none does.
+    # [system] The file names of the libraries the project lists as
+    #          provided where the app goes, which a compiled file may need
+    #          too, and #unused names when none does: on Linux, those its
+    #          gems load from the distribution
+    #          (Config::Linux#system_libraries); on Android, those the
+    #          app's host adds through its own Gradle dependencies
+    #          (Config::Phone#host_libraries).
     # [readers] The tools that read compiled files here
     #           (Fledge::Binary::Readers).
     # [visual_c_runtime] How the app comes by Microsoft's Visual C++
@@ -223,11 +227,12 @@ module Fledge
       end
     end
 
-    # Why the libraries the project listed as its gems' to load from the
-    # Linux distribution (Config::Linux) are wrong, one sentence for each
-    # that none of the files #problems judged needed beyond what the
-    # system, the runtime, and the gems provide, or none. Ask after
-    # #problems has judged every gem.
+    # Why the libraries the project listed as provided where the app goes
+    # (+system+: the Linux distribution's, or an Android host's) are
+    # wrong, one sentence for each that none of the files #problems
+    # judged needed beyond what the system, the runtime, and the gems or
+    # the app's native libraries provide, or none. Ask after #problems
+    # has judged every gem.
     #
     # === Example
     #
@@ -245,6 +250,11 @@ module Fledge
     #++
     def unused
       (@declared - @needed).map do |library|
+        if @os == "android"
+          next "fledge.yml's android: host_libraries lists #{library}, which none of the app's native libraries, nor the gems' " \
+            "compiled files, needs beyond what Android, Fledge's runtime, and the app's own native libraries provide. Remove it."
+        end
+
         "fledge.yml's linux: system_libraries lists #{library}, which none of the gems' compiled files needs beyond what every " \
           "Linux distribution, Fledge's runtime, and the gems themselves provide. Remove it."
       end
@@ -290,10 +300,7 @@ module Fledge
       end
       return if @carried.include?(File.basename(library))
 
-      if @os == "android"
-        return "#{label}'s #{path} needs #{library}, which neither Android, nor Fledge's runtime, nor the app's own native libraries " \
-          "provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically."
-      end
+      return android_unprovided(label, path, library) if @os == "android"
 
       return visual_c(label, path, library) if library.match?(VISUAL_C_RUNTIME)
 
@@ -308,6 +315,20 @@ module Fledge
           "to have the app carry it from this computer."
       else "#{problem}."
       end
+    end
+
+    # Why the file at +path+ would not load +library+ on an Android phone,
+    # naming the key by which the project lists it as its host's
+    # (Config::Phone#host_libraries) when it is a name a host's library
+    # could have there (Config::Phone::LIBRARY), and not glibc's
+    # <tt>libc.so.6</tt>, say, which no host can add.
+    private def android_unprovided(label, path, library)
+      problem = "#{label}'s #{path} needs #{library}, which neither Android, nor Fledge's runtime, nor the app's own native " \
+        "libraries provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically"
+      return "#{problem}." unless library.match?(Config::Phone::LIBRARY)
+
+      "#{problem}, or, when the app's host adds it through its own Gradle dependencies, list it in fledge.yml as " \
+        "android: { host_libraries: [#{library}] }."
     end
 
     # Why the file at +path+ would not load +library+, a DLL of the Visual

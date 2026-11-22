@@ -8,7 +8,7 @@ module Fledge
 
       DEBUG: Regexp
 
-      def self.of: (GemPackage | GitPackage | PathPackage package, String gem_dir) -> Array[Entry]
+      def self.of: (package package, String gem_dir) -> Array[Entry]
 
       def self.loaded: (Array[Entry] entries, Array[String] folders) -> Array[Entry]
     end

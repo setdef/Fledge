@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileExtensions
+    module LeftFiles
+      FLEDGES: Array[String]
+
+      COMPILED: Array[Symbol]
+
+      def self.of: (package package, String root) -> Array[Entry]
+
+      def self.common: (Array[Array[Entry]] builds) -> Array[Entry]
+    end
+  end
+end

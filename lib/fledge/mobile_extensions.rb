@@ -14,6 +14,7 @@ require_relative "mobile_extensions/built_for"
 require_relative "mobile_extensions/extconf_build"
 require_relative "mobile_extensions/ffi_library"
 require_relative "mobile_extensions/host_gems"
+require_relative "mobile_extensions/left_files"
 require_relative "mobile_extensions/library"
 require_relative "mobile_extensions/linking"
 require_relative "mobile_extensions/ndk"
@@ -289,9 +290,10 @@ module Fledge
 
     # What #call returns: the extensions to register, as pairs of the name
     # <tt>require</tt> asks for and the function that initializes it (the
-    # same for every target), what each target compiled to, and the files
-    # that stand where a desktop has an extension's file (Stub).
-    class Built < Data.define(:registrations, :targets, :ndk, :stubs)
+    # same for every target), what each target compiled to, the files
+    # that stand where a desktop has an extension's file (Stub), and the
+    # files the gems' builds left alike for every target (LeftFiles).
+    class Built < Data.define(:registrations, :targets, :ndk, :stubs, :left)
       ##
       # :attr_reader: registrations
       # Pairs of the feature (<tt>"adder/adder"</tt>) and its renamed Init function.
@@ -308,6 +310,12 @@ module Fledge
       # :attr_reader: stubs
       # The Entry of each file Stub writes, with paths relative to the
       # app's Ruby root, as the gems' entries are.
+
+      ##
+      # :attr_reader: left
+      # The Entry of each file every target's build of a gem left alike
+      # in the gem's folder (LeftFiles.common), with paths relative to
+      # the app's Ruby root, as the gems' entries are.
     end
 
     # Why each of the gem's extensions cannot be compiled for +platform+
@@ -464,6 +472,7 @@ module Fledge
       @load_path = nil # : Array[String]?
       @stubs = {} # : Hash[String, Entry]
       @gems = {} # : Hash[String, String]
+      @left = {} # : Hash[String, Array[Array[Entry]]]
       @separation = nil # : Separation?
     end
 
@@ -489,6 +498,7 @@ module Fledge
       registrations = [] # : Array[[String, String]]
       @stubs = {} # : Hash[String, Entry]
       @gems = {} # : Hash[String, String]
+      @left = {} # : Hash[String, Array[Array[Entry]]]
       builds = Targets.new(work: @work).call(tree, ndk).to_h do |target|
         built = compile_target(target)
         libraries = built.grep(Library) # : Array[Library]
@@ -500,7 +510,7 @@ module Fledge
       end
       same_files(builds.values)
       refuse_clash(registrations)
-      Built.new(registrations:, targets: builds, ndk:, stubs: @stubs.values)
+      Built.new(registrations:, targets: builds, ndk:, stubs: @stubs.values, left: @left.values.flat_map { |each| LeftFiles.common(each) })
     end
 
     # Links the shared library an Android app loads, +into+ it, for the
@@ -566,6 +576,8 @@ module Fledge
 
         reports << extconf(target, gem, package, root, extension, args, number)
       end
+      where = package.installed_path(@gem_dir)
+      (@left[gem.name] ||= []) << LeftFiles.of(package, root).map { |entry| entry.with(path: "#{where}/#{entry.path}") }
       reports
     end
 

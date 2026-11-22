@@ -183,6 +183,7 @@ module Fledge
       FileUtils.cp_r(File.join(TEMPLATES, system), project, preserve: true)
       built = @built = @extensions&.call(tree)
       stubs = built ? built.stubs : [] # : Array[Entry]
+      left = built ? built.left : [] # : Array[Entry]
       place_runtime(tree, project)
       place_extensions(project) if @built
       root = File.join(project, ROOT)
@@ -191,7 +192,10 @@ module Fledge
       FileUtils.cp_r(File.join(tree, "notices"), root)
       skip = [@out]
       skip << File.join(@app.root, host) if host
-      [*Assembly.app_entries(@app, @app_files, skip:), *@files, *stubs].each { |entry| add(project, root, entry) }
+      # A file a gem's build rewrote takes the place of the gem's own.
+      rewritten = left.map(&:path)
+      gems = @files.reject { |entry| rewritten.include?(entry.path) }
+      [*Assembly.app_entries(@app, @app_files, skip:), *gems, *stubs, *left].each { |entry| add(project, root, entry) }
       place_commands(root)
       place_links(root) if @built
       place_host(host, project) if host

@@ -136,7 +136,7 @@ class IOSLibrariesTest < Minitest::Test
       target = Fledge::MobileExtensions::Target.new(name: slice, root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi: nil)
       [slice, Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [], ffi_libraries:)]
     end
-    built = Fledge::MobileExtensions::Built.new(registrations: [], targets:, ndk: nil, stubs: [])
+    built = Fledge::MobileExtensions::Built.new(registrations: [], targets:, ndk: nil, stubs: [], left: [])
     Fledge::MobileProject::IOSLibraries.new(built, identifier: "com.example.Hello", version: "1.0.0")
   end
 end

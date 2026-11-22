@@ -91,7 +91,8 @@ int fledge_bundler_code(char *code, size_t size, const char *version, int setup)
  * folders, the version of the Bundler that sets it up, or NULL for the
  * runtime's own, the app's reverse-DNS identifier, or NULL for none, and the
  * libraries its gems load from the Linux distribution, between spaces, or
- * NULL for none.
+ * NULL for none, and the DLLs of Microsoft's Visual C++ runtime its gems
+ * need from System32, between spaces, or NULL for none.
  */
 struct fledge_config {
     const char *entry;
@@ -99,6 +100,7 @@ struct fledge_config {
     const char *bundler;
     const char *identifier;
     const char *system_libraries;
+    const char *visual_c_runtime;
 };
 
 /*

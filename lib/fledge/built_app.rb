@@ -128,6 +128,7 @@ module Fledge
       @gemfile = config[/^gemfile = (.+)$/, 1]
       @bundler = config[/^bundler = (.+)$/, 1]
       @system_libraries = config[/^system_libraries = (.+)$/, 1].to_s.split
+      @visual_c_runtime = config[/^visual_c_runtime = (.+)$/, 1].to_s.split
       @identifiers = config.scan(/^identifier = (.+)$/).flatten
       @programs = config.scan(/^\[(.+)\]$/).flatten
       @programs = [bundle ? File.basename(bundle, ".app") : File.basename(contents).delete_suffix("-#{platform}")] if @programs.empty?
@@ -170,6 +171,24 @@ module Fledge
     #++
     attr_reader :bundler
 
+    # The DLLs of Microsoft's Visual C++ runtime the app's gems need and
+    # the app does not carry, which its launcher looks for in System32, as
+    # its <tt>fledge.cfg</tt> names them (Assembly.launch_config). A new
+    # app has the same gems, so its launcher looks for the same DLLs.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   from.visual_c_runtime # => ["msvcp140.dll", "vcruntime140.dll"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    attr_reader :visual_c_runtime
+
     # +app+, the project to build, as an app built from this one: with
     # this app's Gemfile, and on Linux the system libraries its gems load.
     # Raises Fledge::Error when the project has gems of its own, a
@@ -197,6 +216,7 @@ module Fledge
       key = {
 "programs" => config.programs,
 "linux: system_libraries" => (libraries unless libraries.empty?),
+"windows: visual_c_runtime" => config.windows&.visual_c_runtime,
 "ios" => config.ios,
 "android" => config.android,
 }.find { |_, value| value }&.first

@@ -61,7 +61,10 @@
  *      one, which becomes the process's AppUserModelID
  *      (set_app_user_model_id). In an app of several programs, each a
  *      copy of this launcher, it reads the section of fledge.cfg named as
- *      its own file is, less .exe.
+ *      its own file is, less .exe. When fledge.cfg names DLLs of
+ *      Microsoft's Visual C++ runtime the app does not carry, it stops
+ *      with a message that names the Redistributable if System32 lacks
+ *      one (find_visual_c_runtime).
  *   3. Sets aside every environment variable scrub.c names, removing it
  *      from both copies of the environment Ruby reads (see
  *      scrub_environment). The runtime's own lib\ruby\4.1.0+5\rubygems\
@@ -731,6 +734,57 @@ set_app_user_model_id(void)
 }
 
 /*
+ * Where a person gets Microsoft's Visual C++ Redistributable for this
+ * launcher's architecture: Microsoft's permanent links to the latest
+ * supported one ("Latest supported Visual C++ Redistributable
+ * downloads").
+ */
+#if defined(__aarch64__)
+#define VISUAL_C_REDISTRIBUTABLE L"https://aka.ms/vc14/vc_redist.arm64.exe"
+#else
+#define VISUAL_C_REDISTRIBUTABLE L"https://aka.ms/vc14/vc_redist.x64.exe"
+#endif
+
+/*
+ * Refuses to start an app built with windows: { visual_c_runtime:
+ * central } whose gems need a DLL of Microsoft's Visual C++ runtime
+ * (fledge.cfg's visual_c_runtime) that System32 lacks, where the
+ * Redistributable installs it, naming the DLL and the Redistributable,
+ * with EX_OSFILE: Ruby would otherwise meet a LoadError or a
+ * Fiddle::DLError that names a gem when the gem loads its DLL. It looks
+ * for each file and loads none, so the app's process holds nothing of
+ * the runtime before a gem loads it, as under ruby.
+ */
+static void
+find_visual_c_runtime(void)
+{
+    wchar_t system[MAX_PATH];
+    UINT length = GetSystemDirectoryW(system, MAX_PATH);
+
+    if (app_config.visual_c_runtime == NULL) return;
+    if (length == 0 || length >= MAX_PATH) return;
+
+    wchar_t *names = wide_text(app_config.visual_c_runtime);
+    for (wchar_t *name = names; *name != L'\0';) {
+        wchar_t *space = wcschr(name, L' ');
+        if (space != NULL) *space = L'\0';
+        wchar_t *folder = join(system, L"\\");
+        wchar_t *path = join(folder, name);
+        DWORD attributes = GetFileAttributesW(path);
+        free(folder);
+        free(path);
+        if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+            fail_with(FLEDGE_EXIT_OSFILE,
+                      L"this app needs Microsoft's Visual C++ Redistributable, which this computer does not have "
+                      L"(%ls has no %ls). Install it from " VISUAL_C_REDISTRIBUTABLE L", then run the app again",
+                      system, name);
+        }
+        name = space != NULL ? space + 1 : name + wcslen(name);
+    }
+    free(names);
+}
+
+/*
  * Has Bundler set up the gems of the app's Gemfile, which fledge build
  * installed into the runtime's gem folder, as bundle exec would before
  * running ENTRY, as unix.c does. BUNDLE_GEMFILE names the app's
@@ -945,6 +999,7 @@ wmain(int argc, wchar_t **argv)
 
     read_config();
     set_app_user_model_id();
+    find_visual_c_runtime();
     scrub_environment();
     add_builtin_dlls(root);
     load_ruby(root);

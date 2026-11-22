@@ -92,6 +92,7 @@ module Fledge
       @path_files = {} # : Hash[String, String]
       @bundler = nil # : String?
       @carried = [] # : Array[Entry]
+      @visual_c_runtime = [] # : Array[String]
     end
 
     # What the app's +app+ folder holds in place of the project's own
@@ -179,6 +180,29 @@ module Fledge
     #++
     attr_reader :bundler
 
+    # The DLLs of Microsoft's Visual C++ runtime the gems #for shipped
+    # need, by their lowercase names, when the project says the computer
+    # the app goes to has them (<tt>windows: { visual_c_runtime: central
+    # }</tt>, Config::Windows), which the launcher looks for in System32
+    # before Ruby starts; empty for <tt>local</tt>, whose copies the app
+    # carries, for gems that need none, and before #for
+    # (doc/contributors/design/gems.md, "The Visual C++ runtime").
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   # fledge.yml: windows: { visual_c_runtime: central }, and LibUI's DLL
+    #   gems.for(Fledge::Platform.find("x64-mingw-ucrt"), runtime: contents)
+    #   gems.visual_c_runtime # => ["msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    attr_reader :visual_c_runtime
+
     # The Bundler the lockfile names in place of +runtime+'s own, version
     # +running+, as a Fledge::LockedGem, or +nil+ for the runtime's, or
     # for a runtime with no Bundler at all (+running+ empty).
@@ -265,6 +289,7 @@ module Fledge
         end
         carried = VisualCRuntime.new((way == "local") ? linkage.visual_c_libraries : [], folder: @system32, readers:)
         @carried = carried.entries("#{runtime.bin_dir}/ruby_builtin_dlls")
+        @visual_c_runtime = (way == "central") ? linkage.visual_c_libraries.map(&:downcase).sort : []
         [*found, *linkage.unused, *carried.problems]
       end
     end

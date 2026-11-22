@@ -30,7 +30,10 @@
  * characters. system_libraries, on Linux, names the libraries the app's
  * gems load from the distribution, between spaces, which the launcher
  * looks for before Ruby starts: letters, digits, and . _ + -,
- * with no folder. Blank lines and lines that begin
+ * with no folder. visual_c_runtime, on Windows, names the DLLs of
+ * Microsoft's Visual C++ runtime the app's gems need and the app does not
+ * carry, between spaces, written as system_libraries is, which the
+ * launcher looks for in System32 before Ruby starts. Blank lines and lines that begin
  * with # say nothing. fledge build and the launcher come from the same
  * Fledge, so a key this launcher does not know means the file is
  * damaged, and it is refused, as is a path that leaves the app folder
@@ -53,8 +56,8 @@
  *
  * Each copy reads the section whose name is its own file's name. A
  * section holds only entry and identifier, and a file with sections
- * holds neither outside them. gemfile, bundler, and system_libraries are
- * the whole app's, so they stay outside the sections. A copy renamed by
+ * holds neither outside them. gemfile, bundler, system_libraries, and
+ * visual_c_runtime are the whole app's, so they stay outside the sections. A copy renamed by
  * hand finds no section, which is a missing input, as a missing entry is.
  */
 
@@ -169,6 +172,7 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
     config->bundler = NULL;
     config->identifier = NULL;
     config->system_libraries = NULL;
+    config->visual_c_runtime = NULL;
 
     char *line = text;
     while (line != NULL) {
@@ -231,6 +235,13 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
                 return -1;
             }
             slot = &config->system_libraries;
+            kind = LIBRARIES;
+        } else if (strcmp(key, "visual_c_runtime") == 0) {
+            if (sectioned) {
+                *problem = "names visual_c_runtime inside a program's section";
+                return -1;
+            }
+            slot = &config->visual_c_runtime;
             kind = LIBRARIES;
         } else {
             *problem = "has a key this app's program does not know";

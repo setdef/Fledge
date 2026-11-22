@@ -54,7 +54,7 @@ The app's program runs on the process's main thread, where macOS wants windows a
 
 Each follows a symbolic link someone or a package manager put on `PATH` to the file it names, so the launcher finds `fledge.cfg` and Ruby beside the real file. On Windows `GetModuleFileNameW` returns the path the program was started by, so a program winget links into its `Links` folder would otherwise look there. Only the file itself is resolved: a folder reached through a junction, as Scoop's `current` is, or a `subst` or mapped drive keeps the path the person used, and the folder beside the program is the app's either way.
 
-The launcher's file name, less `.exe` on Windows, is NAME in its messages and names its section of `fledge.cfg`.
+The launcher's file name is NAME in its messages, `.exe` and all on Windows (`Hello.exe: this app is incomplete: ...`), and, less `.exe` on Windows, names its section of `fledge.cfg`.
 
 On macOS and Linux, `--enable-load-relative` makes Ruby derive its prefix from the file that holds libruby, which is the launcher, so Ruby looks for `ROOT/lib/ruby/` (`ruby.c`, lines 593 to 743). When that folder is named `bin` in any case, or `lib`, `ruby.c` takes its parent as the prefix instead (lines 712 to 722), so the launcher refuses to run there rather than use a standard library from somewhere else. `argv[0]` stays the pointer `ruby_sysinit` recorded: on Linux `ruby.c` recognizes the program that holds libruby by comparing `dladdr`'s file name with it (line 649), and only then reads `/proc/self/exe`, so a launcher found on `PATH` by its bare name still finds its root.
 
@@ -163,10 +163,11 @@ ending `what this app's programs run.` for an app of several programs. A phone p
 | `bundler` | the version of the Bundler that sets up the Gemfile, when it is not the runtime's own: 1 to 32 letters, digits, and dots | at the top only, after `gemfile` |
 | `identifier` | 1 to 128 letters, digits, hyphens, and dots | at the top, or in a section |
 | `system_libraries` | file names of letters, digits, and `. _ + -`, between single spaces | at the top only; the Linux launcher reads it |
+| `visual_c_runtime` | DLL names, written as `system_libraries` is | at the top only; the Windows launcher reads it |
 
 **Sections.** An app of one program has no section. An app of several gives each program a section headed by its name, holding only `entry` and `identifier`, after the shared keys. Each launcher copy reads the section whose name is its own file name, less `.exe` on Windows, ignoring case: ASCII case on macOS and Linux, `CompareStringOrdinal` on Windows, as their file systems compare names. Keys of other sections are checked but not kept.
 
-**Refusals.** `fledge build` and the runtime come from the same Fledge, so anything else means the app is damaged: an unknown key, a line that is not `key = value`, a heading that is not `[NAME]`, a path that leaves the app folder, an identifier or library list with another character, a Bundler version with another character, a key twice, `gemfile`, `bundler`, or `system_libraries` inside a section, `entry` or `identifier` above the first section, no `entry`, text that is not UTF-8 on Windows. Each exits 70 with "this app is damaged: PATH PROBLEM". A missing file, and a file with sections and none for this launcher, exit 66.
+**Refusals.** `fledge build` and the runtime come from the same Fledge, so anything else means the app is damaged: an unknown key, a line that is not `key = value`, a heading that is not `[NAME]`, a path that leaves the app folder, an identifier or library list with another character, a Bundler version with another character, a key twice, `gemfile`, `bundler`, `system_libraries`, or `visual_c_runtime` inside a section, `entry` or `identifier` above the first section, no `entry`, text that is not UTF-8 on Windows. Each exits 70 with "this app is damaged: PATH PROBLEM". A missing file, and a file with sections and none for this launcher, exit 66.
 
 ## Messages and exit statuses
 
@@ -178,6 +179,7 @@ The launcher prints `NAME: message` to standard error and exits. On Windows `sho
 | 66 | the program `entry` names is missing or not a file |
 | 66 | `fledge.cfg` has sections and none for this launcher |
 | 72 (`EX_OSFILE`) | Linux: a library `system_libraries` lists will not load |
+| 72 | Windows: System32 lacks a DLL `visual_c_runtime` lists |
 | 70 (`EX_SOFTWARE`) | the launcher is in a folder named `bin` or `lib` |
 | 70 | `fledge.cfg` is damaged or unreadable |
 | 70 | Windows: Ruby's DLL, or a DLL it needs, is missing |
@@ -185,7 +187,7 @@ The launcher prints `NAME: message` to standard error and exits. On Windows `sho
 | 70 | Bundler cannot start or set up the app's gems |
 | 70 | anything else before the program runs |
 
-The messages follow Ruby's `ruby: message` form and name the app, never Ruby: for example `NAME: this app is incomplete: PATH is missing` for a missing program, and `NAME: this app needs LIB, which this computer does not have (REASON). Install it from your Linux distribution's packages, then run the app again` for status 72. Their exact wording is the launcher's C source (`runtime/launcher/`), which `test/integration/built_app_test.rb` and Delivery read back; this table lists the statuses.
+The messages follow Ruby's `ruby: message` form and name the app, never Ruby: for example `NAME: this app is incomplete: PATH is missing` for a missing program, and `NAME: this app needs LIB, which this computer does not have (REASON). Install it from your Linux distribution's packages, then run the app again` for status 72 on Linux, and `NAME: this app needs Microsoft's Visual C++ Redistributable, which this computer does not have (SYSTEM32 has no DLL). Install it from URL, then run the app again` on Windows. Their exact wording is the launcher's C source (`runtime/launcher/`), which `test/integration/built_app_test.rb` and Delivery read back; this table lists the statuses.
 
 The statuses are sysexits(3)'s, from FreeBSD, which macOS and glibc ship, and `launcher.h` defines them once for every platform: `EX_NOINPUT` (66), "An input file (not a system file) did not exist or was not readable"; `EX_OSFILE` (72), "Some system file ... does not exist, cannot be opened, or has some sort of error"; and `EX_SOFTWARE` (70), "An internal software error has been detected". A launcher cannot reuse Ruby's own statuses, since the app's failures already exit with whatever the app chooses, so a script tells a broken app from the app's own failure by status. An app that exits 66, 70, or 72 for reasons of its own looks broken by status alone, and only the message tells them apart. The maintainer left such conventions to the agents, to follow the standards (`decisions.md`, 2026-10-26, decision 16).
 
@@ -233,7 +235,7 @@ The launcher loads Ruby's DLL when it runs, rather than importing it. Windows re
 
 1. `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)`, so no DLL loads by name from the current folder or `PATH`.
 2. Find its own path (see "Finding itself"), split it into ROOT and the program's name.
-3. `read_config`; then `set_app_user_model_id`.
+3. `read_config`; then `set_app_user_model_id`; then `find_visual_c_runtime` (see "The Visual C++ runtime on Windows").
 4. `scrub_environment`.
 5. `load_ruby`: `LoadLibraryExW(ROOT\ruby\bin\DLL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)`, so the DLL finds its own dependencies in its folder and System32. Past `MAX_PATH`, `LoadLibraryExW` fails with `ERROR_FILENAME_EXCED_RANGE` even in a process aware of long paths, so it tries again with the `\\?\` form (`\\?\UNC\` for a network path). DLL is `FLEDGE_RUBY_DLL`, the name of the tree's Ruby DLL, such as `x64-ucrt-ruby410.dll`, compiled in. It looks up `ruby_sysinit`, `ruby_init_stack`, `ruby_init`, `ruby_options`, `ruby_executable_node`, `rb_eval_string_protect`, and `ruby_run_node` with `GetProcAddress`, typed by Ruby's headers, built with `RUBY_DONT_SUBST` since nothing of Ruby is linked.
 6. `setlocale(LC_CTYPE, "")`, then `ruby_sysinit` with no arguments: on Windows it rebuilds `argv` from `GetCommandLineW` as UTF-8 (`win32/win32.c`, `rb_w32_sysinit`). `wmain` keeps the C runtime from converting the command line to the ANSI code page on the way.
@@ -327,3 +329,11 @@ When `fledge.cfg` has `system_libraries`, written from `fledge.yml`'s `linux: sy
 2. The parent reads the pipe and waits. At a failure with a name it exits 72 with the message above.
 
 The check runs in a child so that the app's own process loads nothing early and a library's constructors run when the gem loads it, as under `ruby`. A computer that cannot make a pipe or fork, and a child that ends without naming a library, skip the check, and the gem's own loading decides. The message names a library, which a person installs from a software center, and never Ruby or a gem.
+
+## The Visual C++ runtime on Windows
+
+When `fledge.cfg` has `visual_c_runtime`, which `fledge build` writes for an app built with `windows: visual_c_runtime: central` whose gems' DLLs need Microsoft's Visual C++ runtime (`doc/contributors/design/gems.md`, "The Visual C++ runtime"), the Windows launcher looks for each DLL it names in System32 (`GetSystemDirectoryW`), after `set_app_user_model_id` and before hiding anything or loading Ruby. At the first that is not a file there it exits 72, with a message that names Microsoft's Visual C++ Redistributable, the DLL, and Microsoft's permanent link to the latest Redistributable for the launcher's architecture, `https://aka.ms/vc14/vc_redist.x64.exe` or `vc_redist.arm64.exe` ("Latest supported Visual C++ Redistributable downloads"). A windowed app, which has no standard error, shows it in a message box, as every other message ("Messages and exit statuses"). Only the console launcher's message is proven by a test (`test/integration/built_app_test.rb`); the message box is not: it waits until a person dismisses it, so a test run would hang, and it is the same `show` path every windowed launcher failure takes.
+
+Without the check, the person met Ruby. On Windows 11 x64, a stand-in DLL that imports a DLL no folder holds, loaded by RubyInstaller's Ruby as the runtime's is, failed through Fiddle with `Fiddle::Handle#initialize: No such file or directory (Fiddle::DLError)`, the same words as for a DLL path that does not exist, and as an extension with `126: The specified module could not be found.` and the extension's path (`LoadError`), each exit 1 with a backtrace into the gem, and no dialog from Windows; a windowed app, which has no standard error, would have closed without a word. That breaks AGENTS.md's design precedence 1.
+
+The check looks for files and loads none, so the app's process holds nothing of the runtime before a gem loads it, as under `ruby` (ADR 081); Linux's check loads each library in a child for the same reason, and Windows has no fork. System32 is where the Redistributable installs the runtime ("Deployment in Visual C++", Central deployment), and the one folder of the process's DLL search that holds it on a computer where `central` is true: the app's own folders hold no copy, and the launcher's search reaches neither the current folder nor `PATH` ("Windows", step 1). Reading the Redistributable's registry key (`HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64`, "Redistribute Visual C++ files") was the other way; it says what the Redistributable's installer recorded, and the loader reads System32, so the file is the truer test of whether the gem will load.

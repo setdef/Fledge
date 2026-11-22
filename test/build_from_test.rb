@@ -74,6 +74,22 @@ class BuildFromTest < Minitest::Test
       "entry = main.rb\ngemfile = Gemfile\nsystem_libraries = libz.so.1\n", File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
   end
 
+  # The new app's gems are the old one's, and so are the DLLs of
+  # Microsoft's Visual C++ runtime they need and the app does not carry,
+  # which its launcher looks for in System32.
+  def test_the_visual_c_runtime_the_gems_need_comes_along
+    from = built_player
+    File.write(File.join(from, "fledge.cfg"), "visual_c_runtime = msvcp140.dll vcruntime140.dll\n", mode: "a")
+    game
+
+    _, err, status = build("--from", from, "game")
+
+    assert_equal [0, ""], [status, err]
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+      "entry = main.rb\ngemfile = Gemfile\nvisual_c_runtime = msvcp140.dll vcruntime140.dll\n",
+      File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
+  end
+
   # The new app runs the old one's lockfile, and so the Bundler it names,
   # which the old app's gem folder holds.
   def test_the_bundler_the_lockfile_names_comes_along
@@ -136,12 +152,14 @@ class BuildFromTest < Minitest::Test
     end
   end
 
-  # programs, linux, ios, and android change the runtime or the gems.
+  # programs, linux, windows: visual_c_runtime, ios, and android change
+  # the runtime or the gems.
   def test_fledge_yml_keys_that_change_the_runtime_or_gems_fail
     from = built_player
     {
       "programs:\n  - path: main.rb\n" => "programs",
       "linux:\n  system_libraries: [libz.so.1]\n" => "linux: system_libraries",
+      "windows:\n  visual_c_runtime: central\n" => "windows: visual_c_runtime",
     }.each do |config, key|
       FileUtils.rm_rf(File.join(@dir, "game"))
       game(config)

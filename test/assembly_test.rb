@@ -216,6 +216,26 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # The DLLs of Microsoft's Visual C++ runtime the gems need, with
+  # windows: { visual_c_runtime: central }, reach the launcher, which
+  # says which one System32 lacks before Ruby starts, once for all the
+  # programs; an app given none is told nothing.
+  def test_a_launcher_is_told_the_visual_c_runtime_the_gems_assume
+    Dir.mktmpdir do |dir|
+      hello = FakeApp.write(dir)
+      assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\nvisual_c_runtime = msvcp140.dll vcruntime140.dll\n",
+        Fledge::Assembly.launch_config(Fledge::App.at(hello), visual_c_runtime: %w[msvcp140.dll vcruntime140.dll])
+      assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\n",
+        Fledge::Assembly.launch_config(Fledge::App.at(hello), visual_c_runtime: [])
+
+      root = Programs.write(dir)
+      File.write(File.join(root, "Gemfile"), "")
+      text = Fledge::Assembly.launch_config(Fledge::App.at(root), visual_c_runtime: %w[vcruntime140.dll])
+      assert text.start_with?("# Written by fledge build: what this app's programs run.\ngemfile = Gemfile\n" \
+        "visual_c_runtime = vcruntime140.dll\n\n[Play Game]\n"), text
+    end
+  end
+
   # One of the programs, built on its own, is an app of one program, as
   # a project with no programs builds.
   def test_one_of_several_programs_builds_alone

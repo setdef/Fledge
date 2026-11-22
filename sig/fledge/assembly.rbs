@@ -26,11 +26,12 @@ module Fledge
     @signing: Signing::signer?
     @from: BuiltApp?
     @bundler: String?
+    @visual_c_runtime: Array[String]
     @log: CLI::_Output?
 
     attr_reader installers: Array[String]
 
-    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?signing: Signing::signer?, ?from: BuiltApp?, ?bundler: String?, ?log: CLI::_Output?) -> void
+    def initialize: (app: App, platform: Platform, runtime: String, out: String, ?app_files: Hash[String, String], ?files: Array[Entry], ?signing: Signing::signer?, ?from: BuiltApp?, ?bundler: String?, ?visual_c_runtime: Array[String], ?log: CLI::_Output?) -> void
 
     def base_name: () -> String
 
@@ -38,9 +39,11 @@ module Fledge
 
     def launch_config: () -> String
 
-    def self.launch_config: (App app, ?system_libraries: Array[String], ?built: String?, ?bundler: String?) -> String
+    def self.launch_config: (App app, ?system_libraries: Array[String], ?visual_c_runtime: Array[String], ?built: String?, ?bundler: String?) -> String
 
-    private def self.single_config: (App app, Array[String] system_libraries, String? bundler) -> String
+    private def self.single_config: (App app, Array[String] shared, String? bundler) -> String
+
+    private def self.library_config: (Array[String] system_libraries, Array[String] visual_c_runtime) -> Array[String]
 
     private def self.bundle_config: (App app, String? bundler) -> Array[String]
 

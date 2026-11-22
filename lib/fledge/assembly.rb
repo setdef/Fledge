@@ -121,11 +121,18 @@ module Fledge
     # [bundler] The version of the Bundler the app runs with in place of
     #           the runtime's own, which +files+ install
     #           (Fledge::AppGems#bundler), or +nil+ for the runtime's.
+    # [visual_c_runtime] The DLLs of Microsoft's Visual C++ runtime the
+    #                    gems need and the app does not carry, which the
+    #                    launcher looks for in System32
+    #                    (Fledge::AppGems#visual_c_runtime).
     # [log] Where warnings go, such as standard error, or +nil+ for
     #       nowhere.
-    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil, from: nil, bundler: nil, log: nil)
+    def initialize(app:, platform:, runtime:, out:, app_files: {}, files: [], signing: nil, from: nil, bundler: nil, visual_c_runtime: [],
+      log: nil
+    )
       @app = app
       @bundler = bundler
+      @visual_c_runtime = visual_c_runtime
       @log = log
       @from = from
       @platform = platform
@@ -222,8 +229,8 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def launch_config
-      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os), built: "#{VERSION} for #{@platform}",
-        bundler: @bundler)
+      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os), visual_c_runtime: @visual_c_runtime,
+        built: "#{VERSION} for #{@platform}", bundler: @bundler)
     end
 
     # The contents of CONFIG for +app+ (#launch_config), which the
@@ -233,7 +240,10 @@ module Fledge
     # which platform, such as <tt>0.5.0 for x86_64-linux</tt>. Given
     # +bundler+, a version, it names the Bundler the app's gems are set up
     # with, which the build installed in the runtime's gem folder, in place
-    # of the runtime's own. Raises
+    # of the runtime's own. Given +visual_c_runtime+, the DLLs of
+    # Microsoft's Visual C++ runtime the gems need and the app does not
+    # carry, the Windows launcher looks for each in System32 before Ruby
+    # starts, as the Linux launcher looks for +system_libraries+. Raises
     # Fledge::Error for a program or Gemfile whose name the file cannot
     # hold.
     #
@@ -269,13 +279,13 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.launch_config(app, system_libraries: [], built: nil, bundler: nil)
+    def self.launch_config(app, system_libraries: [], visual_c_runtime: [], built: nil, bundler: nil)
       by = built ? "fledge build #{built}" : "fledge build"
       programs = app.programs
-      return "# Written by #{by}: what this app's program runs.\n#{single_config(app, system_libraries, bundler)}" if programs.size == 1
+      shared = library_config(system_libraries, visual_c_runtime)
+      return "# Written by #{by}: what this app's program runs.\n#{single_config(app, shared, bundler)}" if programs.size == 1
 
-      lines = bundle_config(app, bundler)
-      lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
+      lines = [*bundle_config(app, bundler), *shared]
       lines << "" unless lines.empty?
       programs.each do |program|
         lines.push("[#{program.name}]", "entry = #{config_value(program.entry)}")
@@ -286,12 +296,21 @@ module Fledge
       "# Written by #{by}: what this app's programs run.\n#{lines.join("\n").chomp}\n"
     end
 
-    private_class_method def self.single_config(app, system_libraries, bundler) # :nodoc:
+    private_class_method def self.single_config(app, shared, bundler) # :nodoc:
       lines = ["entry = #{config_value(app.entry)}", *bundle_config(app, bundler)]
       identifier = app.identity.identifier
       lines << "identifier = #{identifier}" if identifier
+      "#{[*lines, *shared].join("\n")}\n"
+    end
+
+    # The lines that name the libraries the launcher looks for before
+    # Ruby starts: +system_libraries+ from the Linux distribution, and the
+    # Visual C++ runtime's DLLs, +visual_c_runtime+, in System32.
+    private_class_method def self.library_config(system_libraries, visual_c_runtime) # :nodoc:
+      lines = [] # : Array[String]
       lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
-      "#{lines.join("\n")}\n"
+      lines << "visual_c_runtime = #{visual_c_runtime.join(' ')}" unless visual_c_runtime.empty?
+      lines
     end
 
     # The lines that name +app+'s Gemfile, if it has one, and +bundler+.

@@ -14,6 +14,7 @@ module Fledge
     @runtimes: Runtimes
     @gemfile: String?
     @bundler: String?
+    @visual_c_runtime: Array[String]
     @system_libraries: Array[String]
     @identifiers: Array[String]
     @programs: Array[String]
@@ -27,6 +28,8 @@ module Fledge
     def path: () -> String
 
     attr_reader bundler: String?
+
+    attr_reader visual_c_runtime: Array[String]
 
     def adopt: (App app) -> App
 

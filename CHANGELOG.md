@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `fledge.yml`'s `windows: visual_c_runtime`, for a gem whose DLL needs Microsoft's Visual C++ runtime: `local` copies the runtime's DLLs the gems need from the building computer's System32 into the app, and `central` ships none, for computers that have the Visual C++ Redistributable.
+- `fledge.yml`'s `windows: visual_c_runtime`, for a gem whose DLL needs Microsoft's Visual C++ runtime: `local` copies the runtime's DLLs the gems need from the building computer's System32 into the app, and `central` ships none, for computers that have the Visual C++ Redistributable; started on a computer without it, such an app names the Redistributable and Microsoft's download and exits with status 72, before Ruby starts.
 - `defines_type: true` in a `file_associations` entry, for a file type of the app's own, such as a game's `*.lota`, with its one MIME type and its extensions: a windowed Linux app carries the type's definition in `share/mime/packages`, which its `.deb` installs, so that a desktop knows such a file by its name and offers the app for it. Before, a desktop knew no such file, and the app's `MimeType` matched nothing.
 
 ### Changed

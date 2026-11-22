@@ -322,9 +322,11 @@
 #                          this computer's System32 into the app, which
 #                          Microsoft limits to licensed Visual Studio
 #                          users; central ships none, for computers that
-#                          have the Visual C++ Redistributable (default:
-#                          neither, and such a gem is refused). Other
-#                          builds ignore it.
+#                          have the Visual C++ Redistributable, and the
+#                          app started on one without it names the
+#                          Redistributable and exits with 72, before
+#                          Ruby starts (default: neither, and such a gem
+#                          is refused). Other builds ignore it.
 #                        file_associations: what a windowed app opens,
 #                          a list of mappings of name (what a person
 #                          calls the documents), role (viewer, the
@@ -381,9 +383,10 @@
 #                        IDENTIFIER.desktop and share/icons/ beside
 #                        it. It runs app/PROGRAM as ruby, or bundle
 #                        exec, would, and exits with its status, or
-#                        with 66 when it is missing, 72 on Linux when
-#                        a library fledge.yml lists is not on the
-#                        computer, and 70 when the rest of the folder
+#                        with 66 when it is missing, 72 when a library
+#                        fledge.yml lists is not on the computer, or
+#                        the Visual C++ Redistributable its gems need
+#                        on Windows, and 70 when the rest of the folder
 #                        is broken. exec RbConfig.ruby, $0, *ARGV
 #                        restarts it the same way, on Windows in a
 #                        new process, as there under ruby. Its notices/

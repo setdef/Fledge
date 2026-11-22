@@ -14,6 +14,7 @@ module Fledge
     @extension_packages: Hash[locked_gem, package]
     @extension_dependencies: Hash[locked_gem, package]
     @bundler: String?
+    @visual_c_runtime: Array[String]
     @system32: String
     @carried: Array[Entry]
 
@@ -24,6 +25,8 @@ module Fledge
     def for: (target platform, runtime: RuntimeContents) -> Array[Entry]
 
     attr_reader bundler: String?
+
+    attr_reader visual_c_runtime: Array[String]
 
     private def locked_bundler: (RuntimeContents runtime, String running) -> LockedGem?
 

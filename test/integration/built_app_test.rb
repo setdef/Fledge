@@ -862,6 +862,33 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # On Windows, a DLL of Microsoft's Visual C++ runtime that the app's
+  # gems need and the app does not carry (visual_c_runtime: central),
+  # and that System32 lacks, stops the app before Ruby starts, with
+  # EX_OSFILE and the Redistributable's name, never a LoadError or a
+  # Fiddle::DLError that names a gem; a DLL System32 holds changes
+  # nothing. The launcher looks for files by name, so kernel32.dll, in
+  # every System32, stands in for a runtime's DLL the computer has.
+  def test_a_visual_c_runtime_the_computer_lacks_is_named_before_ruby_starts
+    skip "only a Windows app's gems need Microsoft's Visual C++ runtime" unless @platform.windows?
+    config = File.join(File.realpath(File.dirname(app)), "fledge.cfg")
+    original = File.binread(config)
+
+    File.binwrite(config, "#{original}visual_c_runtime = kernel32.dll\n")
+    assert_equal [expected, "", 0], run_app({}, app).then { |out, err, status| [out, err, status.exitstatus] }
+
+    File.binwrite(config, "#{original}visual_c_runtime = kernel32.dll fledge-absent140.dll\n")
+    out, err, status = run_app({}, app)
+    assert_equal ["", 72], [out, status.exitstatus]
+    redistributable = @platform.name.start_with?("aarch64") ? "vc_redist.arm64.exe" : "vc_redist.x64.exe"
+    folder = err[/ \((.+) has no fledge-absent140\.dll\)/, 1].to_s
+    assert folder.casecmp?(File.join(ENV.fetch("SystemRoot"), "System32").tr("/", "\\")), err
+    assert_equal "#{@platform.executable('Hello')}: this app needs Microsoft's Visual C++ Redistributable, which this computer does not have " \
+      "(#{folder} has no fledge-absent140.dll). Install it from https://aka.ms/vc14/#{redistributable}, then run the app again\n", err
+  ensure
+    File.binwrite(config, original) if config && original
+  end
+
   # The gem-shaped app: exe/my_cool_app, with i18n and the
   # runtime's own build of sqlite3 set up by Bundler as bundle exec would.
   def test_the_gem_shaped_app_runs_with_its_gems_and_its_status

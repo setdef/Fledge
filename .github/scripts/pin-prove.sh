@@ -19,7 +19,10 @@
 # moved, after proving the rest, and when the proof was red for a single
 # pin. A red proof of several pins exits 0 with proven=false in
 # GITHUB_OUTPUT, for the workflow to prove each alone. It writes moved,
-# the names it moved as JSON, there too.
+# the names it moved as JSON, there too, and landed, the commit it put
+# on trunk, once that commit's run is green: the proof's own when it
+# landed as proven, and when it was rebased, the run it starts on trunk
+# and waits for.
 #
 # PIN_PROVE_LAND=false proves and lands nothing on trunk.
 # PIN_PROVE_DRY_RUN=true commits the move in the checkout and stops,
@@ -69,20 +72,26 @@ fi
 prove() {
   commit=$(git rev-parse HEAD)
   git push --quiet --force origin "HEAD:refs/heads/$branch"
-  gh workflow run ci.yml --ref "$branch"
+  follow "$branch" "$commit"
+}
+
+# Starts ci.yml on BRANCH, whose head is COMMIT, waits for it, and
+# returns its status; sets run and url.
+follow() {
+  gh workflow run ci.yml --ref "$1"
   run=
   for _ in $(seq 60); do
-    run=$(gh run list --workflow ci.yml --branch "$branch" --event workflow_dispatch --commit "$commit" \
+    run=$(gh run list --workflow ci.yml --branch "$1" --event workflow_dispatch --commit "$2" \
       --json databaseId --jq '.[0].databaseId // empty')
     [ -n "$run" ] && break
     sleep 10
   done
   if [ -z "$run" ]; then
-    echo "::error::No run of ci.yml started on $branch for $commit"
+    echo "::error::No run of ci.yml started on $1 for $2"
     exit 1
   fi
   url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run"
-  echo "Proving $commit in $url"
+  echo "Proving $2 in $url"
   gh run watch "$run" --exit-status --interval 60 >tmp/pin-proof.txt 2>&1
 }
 
@@ -125,6 +134,7 @@ for _ in 1 2 3; do
   git fetch --quiet origin trunk
   if git merge-base --is-ancestor FETCH_HEAD HEAD; then
     if git push --quiet origin HEAD:refs/heads/trunk; then
+      echo "landed=$commit" >>"$output"
       echo "Landed $commit on trunk as proven." | tee -a "$summary"
       exit "$moving"
     fi
@@ -142,8 +152,14 @@ for _ in 1 2 3; do
     git "${bot[@]}" commit --quiet --amend --no-edit
   fi
   if git push --quiet origin HEAD:refs/heads/trunk; then
-    gh workflow run ci.yml --ref trunk
-    echo "Landed $commit on trunk as $(git rev-parse HEAD), rebased; ci.yml runs on trunk to judge it." | tee -a "$summary"
+    landed=$(git rev-parse HEAD)
+    echo "Landed $commit on trunk as $landed, rebased; ci.yml runs on trunk to judge it." | tee -a "$summary"
+    if ! follow trunk "$landed"; then
+      echo "::error::The move rebased onto trunk as $landed is red with what landed meanwhile: $url"
+      exit 1
+    fi
+    echo "landed=$landed" >>"$output"
+    echo "Green on trunk: $url" | tee -a "$summary"
     exit "$moving"
   fi
 done

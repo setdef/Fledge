@@ -19,6 +19,10 @@
 # only when a person is needed: an upstream could not be read or listed
 # no version its pattern takes, a pin is held for a person or could not
 # be moved, or a pin's proof was red.
+#
+# Once a move is on trunk and green there, Release cuts a release of it
+# (cut.yml), so that the fix reaches apps with nobody in the loop; a
+# red run of that calls a person as the rest do.
 
 name: Pin watch
 
@@ -90,6 +94,7 @@ jobs:
     outputs:
       moved: ${{ steps.prove.outputs.moved }}
       proven: ${{ steps.prove.outputs.proven }}
+      landed: ${{ steps.prove.outputs.landed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -162,3 +167,52 @@ jobs:
           PIN: ${{ matrix.pin }}
           PIN_PROVE_LAND: ${{ github.event_name != 'workflow_dispatch' || inputs.land }}
         run: .github/scripts/pin-prove.sh tmp/pin-watch.json "$PIN"
+
+  # The newest move this run put on trunk: Move's, or else the last that
+  # Alone landed, found on trunk by its author and subject, since a
+  # matrix's jobs share one set of outputs.
+  pick:
+    name: Pick the move to release
+    needs: [move, alone]
+    if: always() && (needs.move.outputs.landed != '' || needs.alone.result == 'success' || needs.alone.result == 'failure')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      commit: ${{ steps.pick.outputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: trunk
+          fetch-depth: 200
+
+      - name: Pick the newest move this run landed
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LANDED: ${{ needs.move.outputs.landed }}
+        run: |
+          commit=$LANDED
+          if [ -z "$commit" ]; then
+            since=$(gh run view "$GITHUB_RUN_ID" --json createdAt --jq .createdAt)
+            commit=$(git log --format=%H --author='github-actions\[bot\]' --since="$since" --grep='^chore: move ' -1)
+          fi
+          echo "Release: ${commit:-nothing landed}"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Release
+    needs: pick
+    if: always() && needs.pick.outputs.commit != ''
+    permissions:
+      contents: write
+      actions: write
+    uses: ./.github/workflows/cut.yml
+    with:
+      commit: ${{ needs.pick.outputs.commit }}
+      # Stops before the tag until cut.yml has gone that far on GitHub
+      # once, green (runtimes.md, "The proof"); then true.
+      publish: false

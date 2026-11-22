@@ -534,3 +534,21 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 *Governs:* a deterministic process that the maintainer has decided to trust may publish Fledge to RubyGems.org, and that counts as the human's act: a GitHub Actions workflow, once he has set RubyGems.org to trust it. An agent still never publishes there itself, and never sets up that trust, which is done in his account. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`.
 
+> I'd be okay moving the floor to 15 for now, and maybe 26 if it becomes costly to keep it at 15.
+
+[re: 2026-11-22. Told that Fledge promises macOS 14 or newer, he had said: "That's... really old. Older than I would've guessed. Older that Apple supports maybe even?"]
+
+*Governs:* the oldest macOS a Fledge app runs on may be raised to 15, and to 26 if keeping 15 becomes costly. *Applied in:* `doc/contributors/design/releases.md`, "Platform floors", when the floor moves.
+
+> Yes, and so would be switching away from rv-ruby entirely if you so judge it valuable.
+
+[re: 2026-11-22. Asked whether taking mainstream Linux's Ruby from jdx/ruby, the builds mise downloads, in place of rv-ruby, to lower the glibc floor from 2.39 to 2.17, may land before the candidate for 1.0.0.]
+
+*Governs:* the Linux Ruby's source may change before the candidate, and whether Fledge takes any Ruby from rv-ruby at all is the agents' to judge. This replaces "2.39 is fine" (2026-10-26, decision 7) as the word on the Linux floor: a lower floor is wanted where a maintained upstream gives it. *Applied in:* the decision record that replaces ADR 035, when the change lands.
+
+> I expect solid work towards a candidate, I am not setting a deadline. Quality! (The non-deadline hopeful date is Christmas Day, a 1.0.0 co-release with Ruby 4.1, and therefore a release candidate maybe a week beforehand)
+
+[re: 2026-11-22. The orchestrating agent had said no release that day could be the candidate, with four long items before it.]
+
+*Governs:* there is no deadline, and quality comes first. The hope, which binds nothing, is 1.0.0 on 2026-12-25 beside Ruby 4.1.0, and a candidate about a week before.
+

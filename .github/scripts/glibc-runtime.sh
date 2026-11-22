@@ -11,9 +11,16 @@
 #
 #   .github/scripts/glibc-runtime.sh PLATFORM
 #
-# runs the build in the image with docker, on a computer of PLATFORM's
-# architecture (x86_64-linux or aarch64-linux), and leaves the runtime
-# where rake runtime leaves it, in tmp/runtime/. It first downloads the
+# runs the build in the image, on a computer of PLATFORM's architecture
+# (x86_64-linux or aarch64-linux), and leaves the runtime where rake
+# runtime leaves it, in tmp/runtime/. It runs the image with docker, as
+# CI's runners have it (podman's docker command serves too). On a
+# computer without docker, and with no root to install it, it unpacks
+# the image with crane (go-containerregistry's, which mise.toml pins on
+# Linux) and enters it with bubblewrap, which needs no root where the
+# kernel lets users make user namespaces, as root of a namespace of its
+# own, with the checkout and the downloads bound in as docker binds
+# them. It first downloads the
 # platform's Ruby pin and its AlmaLinux Perl packages into the folder
 # Fledge's builds keep downloads in ($XDG_CACHE_HOME/fledge/downloads),
 # each checked by its SHA-256, with the computer's own Ruby, since that
@@ -134,10 +141,46 @@ on_host() {
       *) echo "glibc-runtime.sh: $file is not in $cache" >&2; exit 1 ;;
     esac
   done
-  docker run --rm -v "$root:/fledge" -v "$cache:/cache/fledge/downloads" -w /fledge \
-    -e XDG_CACHE_HOME=/cache -e SOURCE_DATE_EPOCH -e FLEDGE_OWNER="$(id -u):$(id -g)" "$(pin manylinux images "$platform")" \
-    .github/scripts/glibc-runtime.sh --in-image "$platform" "/cache/fledge/downloads/${archive#"$cache"/}" \
+  local image
+  image=$(pin manylinux images "$platform")
+  set -- .github/scripts/glibc-runtime.sh --in-image "$platform" "/cache/fledge/downloads/${archive#"$cache"/}" \
     "${packages[@]/#"$cache"//cache/fledge/downloads}"
+  if command -v docker >/dev/null; then
+    exec docker run --rm -v "$root:/fledge" -v "$cache:/cache/fledge/downloads" -w /fledge \
+      -e XDG_CACHE_HOME=/cache -e SOURCE_DATE_EPOCH -e FLEDGE_OWNER="$(id -u):$(id -g)" "$image" "$@"
+  fi
+  unprivileged "$image" "$root" "$cache" "$@"
+}
+# unprivileged IMAGE ROOT CACHE COMMAND...: runs COMMAND in IMAGE as
+# docker run would, with no daemon and no root. crane export writes the
+# image's filesystem, its layers applied in order, as one tar; the
+# image's environment is its config's Env. Files it writes are already
+# the caller's, so no FLEDGE_OWNER.
+unprivileged() {
+  local image=$1 root=$2 cache=$3 rootfs status=0 variable
+  shift 3
+  for variable in crane bwrap; do
+    command -v "$variable" >/dev/null || {
+      echo "glibc-runtime.sh: no docker, and no $variable to run $image without them" >&2
+      exit 1
+    }
+  done
+  rootfs=$(mktemp -d "${TMPDIR:-/tmp}/manylinux.XXXXXX")
+  crane export "$image" - | tar -x -C "$rootfs" --no-same-owner --delay-directory-restore --exclude='dev/*'
+  local environment=()
+  # shellcheck disable=SC2016 # Ruby's $stdin, not the shell's
+  while IFS= read -r variable; do
+    environment+=(--setenv "${variable%%=*}" "${variable#*=}")
+  done < <(crane config "$image" | ruby -rjson -e 'puts JSON.parse($stdin.read).dig("config", "Env")')
+  [ -z "${SOURCE_DATE_EPOCH:-}" ] || environment+=(--setenv SOURCE_DATE_EPOCH "$SOURCE_DATE_EPOCH")
+  bwrap --unshare-user --uid 0 --gid 0 --unshare-pid --unshare-ipc --unshare-uts --die-with-parent \
+    --bind "$rootfs" / --proc /proc --dev /dev --tmpfs /tmp --ro-bind /etc/resolv.conf /etc/resolv.conf \
+    --bind "$root" /fledge --bind "$cache" /cache/fledge/downloads --chdir /fledge \
+    --clearenv "${environment[@]}" --setenv HOME /root --setenv XDG_CACHE_HOME /cache "$@" || status=$?
+  # The image keeps some folders read-only, which rm cannot empty.
+  chmod -R u+w "$rootfs"
+  rm -rf "$rootfs"
+  exit "$status"
 }
 
 if [ "${1:-}" = --in-image ]; then

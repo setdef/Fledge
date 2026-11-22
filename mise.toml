@@ -74,6 +74,18 @@ os = ["linux"]
 platforms.linux-x64 = { url = "https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz", checksum = "sha256:ce84f2447fb7a8679e58bc54a20dc2b01b37b5802e12c57eece772a6f14bf3f0", bin_path = "bin" }
 platforms.linux-arm64 = { url = "https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-aarch64.tar.gz", checksum = "sha256:ae13e2effe077e829be759182396b931d8f85cfb9cfe9d49385516ea367ef7b2", bin_path = "bin" }
 
+# crane, go-containerregistry's, unpacks the image a glibc Linux runtime
+# is built in, by the digest runtime/sources.yml pins (manylinux), on a
+# computer without docker, for bubblewrap to enter
+# (.github/scripts/glibc-runtime.sh). By the SHA-256 the release's
+# checksums.txt lists for each asset. It runs at build time only, and no
+# runtime carries it.
+[tools."http:crane"]
+version = "0.22.1"
+os = ["linux"]
+platforms.linux-x64 = { url = "https://github.com/google/go-containerregistry/releases/download/v0.22.1/go-containerregistry_Linux_x86_64.tar.gz", checksum = "sha256:0ab7a1d6932a213aed964ce97666c3077fe691c8606413674a8b3e0b9ec4cda0" }
+platforms.linux-arm64 = { url = "https://github.com/google/go-containerregistry/releases/download/v0.22.1/go-containerregistry_Linux_arm64.tar.gz", checksum = "sha256:898c0cff975f898a33e8c4580bdafb0e7c02c7faa33374e946762f97c4ab7110" }
+
 # 7-Zip unpacks RubyInstaller's .7z archive when rake runtime builds a
 # Windows runtime on Linux (tasks/runtime_builder/windows.rb,
 # extract_7z), which finds its 7zz, and when rake parity unpacks the

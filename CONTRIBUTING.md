@@ -24,7 +24,7 @@ Install git and [mise](https://mise.jdx.dev/), 2026.10.11 or later, the mise CI 
 
 mise puts that Ruby first on `PATH` only in a shell it has activated (`eval "$(mise activate zsh)"`, or bash's, in your shell's startup file), and only once that shell is in this folder; there `ruby -v` prints the version `mise.toml` pins. A script, an editor's task, a CI job, or a shell you have not activated runs none of the hooks `mise activate` installs, so it keeps whatever Ruby its `PATH` already had, or none, and `bundle exec` there stops with Bundler's stack trace, because the gemspec needs that very Ruby. Start each command there with `mise x --`, as `bin/setup` does. `mise x` puts the pinned tools first on `PATH` for that one command, and installs first any of them that is missing ([`mise exec`](https://mise.jdx.dev/cli/exec.html)).
 
-`bundle exec rake runtime` builds this computer's runtime, which the gate otherwise skips the checks of. On Linux it needs a C compiler, binutils, make, perl, and xz from your system, and patchelf 0.18.0, which mise installs from `mise.toml`, pinned by SHA-256.
+`bundle exec rake runtime` builds this computer's runtime, which the gate otherwise skips the checks of. On glibc Linux, build it with `mise x -- .github/scripts/glibc-runtime.sh x86_64-linux` (or `aarch64-linux`) instead, as CI does: the script runs the build in the manylinux_2_28 image `runtime/sources.yml` pins, whose glibc 2.28 is the runtime's floor, and `rake runtime` run on a newer glibc fails the floor check ([`doc/contributors/design/runtimes.md`](doc/contributors/design/runtimes.md), "The glibc floor"). The script runs the image with docker, or, on a computer without docker, with crane, which mise installs from `mise.toml`, and your system's bubblewrap (`bwrap`), with no root and no daemon, wherever the kernel lets you make user namespaces, as Ubuntu, Debian, and Fedora do. The image holds every compiler and tool the build runs. Other runtimes built on Linux, such as Windows' and Android's (`rake "runtime[x64-mingw-ucrt]"`), need a C compiler, binutils, make, perl, and xz from your system, and patchelf 0.18.0, which mise installs from `mise.toml`, pinned by SHA-256.
 
 Building `examples/native_app` compiles its gems, and ferro-idna among them is a Rust gem, whose build runs bindgen, which loads libclang to read Ruby's headers. On macOS and Linux mise installs the Rust it needs. A Mac has libclang with Xcode's command-line tools; on Linux mise installs LLVM's libclang 18.1.1, from PyPI's `libclang` wheel (a 25 MB download), pinned by SHA-256, names its folder in `LIBCLANG_PATH`, and gives bindgen your C compiler's headers, which the wheel lacks. On Windows mise installs neither, and CI's runners supply both. mise sets these only under `mise x --` or in a shell it has activated.
 
@@ -69,7 +69,7 @@ On an x86-64 Linux computer with KVM (`/dev/kvm`, which your user can read and w
 export MISE_ENV=android
 mise install
 mise x -- bin/android-sdk
-mise x -- ruby tasks/runtime_builder.rb x86_64-linux   # whose Ruby compiles a gem's extension for the phone
+mise x -- .github/scripts/glibc-runtime.sh x86_64-linux   # whose Ruby compiles a gem's extension for the phone
 mise x -- ruby tasks/runtime_builder.rb android
 mise x -- bash -c 'BUNDLETOOL=$(ruby .github/scripts/fetch_pin.rb mobile bundletool) ruby tasks/mobile_parity.rb android-build tmp/runtime'
 mise x -- bash -c 'BUNDLETOOL=$(ruby .github/scripts/fetch_pin.rb mobile bundletool) bin/android-emulator google_apis -- ruby tasks/mobile_parity.rb android'

@@ -45,13 +45,15 @@ $ bundle lock --add-checksums
 Fledge ships precompiled gems as they are. It compiles gems that ship as source, and gems from git, on your computer, against the app's Ruby, and the app holds each such gem's folder as `gem install` leaves it, with every file its build wrote there. Install a compiler first:
 
 - **macOS:** Xcode's command line tools.
-- **Linux:** a C compiler and `make`, such as Debian's and Ubuntu's `build-essential`.
+- **Linux:** a C compiler and `make`, such as Debian's and Ubuntu's `build-essential`, or Alpine's `build-base` with `linux-headers`, the kernel's headers, which build-base leaves out and the libffi that ffi carries needs.
 - **Windows:** RubyInstaller's MSYS2 tools (`ridk install`).
 - **Any system:** `cargo`, for a gem with a Rust extension.
 
 If a gem would not load on another computer, `fledge build` stops and names the gem. One limit it does not stop for: on Linux, a gem compiled on your computer needs your computer's glibc, or a newer one, wherever it calls a function glibc has added or changed since 2.28, the oldest glibc Fledge's runtime needs. Compiled on Ubuntu 24.04, such a gem needs glibc 2.39, and so does your app. `fledge build` ships it, warns you, naming the file and the glibc the app now needs, and gives the app's `.deb` that glibc, so apt refuses an older system and says why. To lower it, build the app on a Linux with an older glibc, such as AlmaLinux 8 or Rocky Linux 8, whose glibc is 2.28. For phones, see [iPhone, iPad, and Android](phones.md).
 
 A gem whose own build fails stops `fledge build` with that build's output, as it stops `gem install`. On Windows on ARM64, sqlite3 is such a gem. It publishes no build for `aarch64-mingw-ucrt`, so it compiles SQLite from source with mini_portile2, which tells SQLite's `configure` the target as MSYS2's clang names it, `aarch64-w64-windows-gnu`, and `configure` rejects that name: "Invalid configuration 'aarch64-w64-windows-gnu': Kernel 'windows' not known to work with OS 'gnu'." `gem install sqlite3` runs the same build on RubyInstaller's ARM64 Ruby, and fails the same way. Until sqlite3 publishes a build for Windows on ARM64, or its build names the target as `configure` knows it, an app that locks sqlite3 builds on x64 Windows but not on ARM64. A gem whose C compiles with the compiler alone compiles on ARM64 as on x64.
+
+On Linux with musl, such as Alpine, a gem that publishes a build for plain `x86_64-linux` or `aarch64-linux` and none for musl is installed with that build, which RubyGems allows on musl though such builds are almost always glibc's. onnxruntime 0.11.9 is one: under `bundle exec` its library does not load ("Error loading shared library ld-linux-x86-64.so.2"), and `fledge build` refuses it, saying that it was built for Linux with glibc. Use a build of the gem for musl, if it has one, or, if the gem's source builds on musl, have Bundler install it from its source with `force_ruby_platform: true` on its line in the Gemfile.
 
 ## A gem that links a library of your computer
 

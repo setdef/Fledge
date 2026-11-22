@@ -95,6 +95,17 @@ module Fledge
       "windows-arm64" => [/\Aapi-ms-win-[a-z0-9-]+\.dll\z/i, /\Acombase\.dll\z/i],
     }.freeze
 
+    # The libraries of glibc itself among those SYSTEM_LIBRARIES lets
+    # every glibc Linux provide: the C library, the libraries glibc
+    # ships beside it, and its dynamic loader. musl
+    # Linux has none of them (musl's own C library is +libc.so+, or
+    # Alpine's <tt>libc.musl-ARCH.so.1</tt>), so a file that needs one
+    # was built for glibc, as a gem for plain <tt>x86_64-linux</tt> often
+    # is, which RubyGems 4.1.0.beta2 installs on musl when nothing more
+    # fitting is published (Gem::Platform#=== in its
+    # <tt>rubygems/platform.rb</tt>, lines 216 and 217).
+    GLIBC = /\A(?:libanl\.so\.1|libc\.so\.6|libdl\.so\.2|libm\.so\.6|libnsl\.so\.1|libpthread\.so\.0|libresolv\.so\.2|librt\.so\.1|libutil\.so\.1|ld-linux[-\w.]*\.so\.\d)\z/
+
     # The file that holds SYSTEM_DLLS.
     WINDOWS_DLLS = File.join(File.dirname(__FILE__), "linkage", "windows.yml")
 
@@ -217,6 +228,9 @@ module Fledge
       binaries.flat_map do |path, binary|
         next [] if binary.needed.any? { |library| library.match?(RUBY_DLL) && !shipped.include?(library.downcase) }
 
+        glibc = glibc_need(binary)
+        next [built_for_glibc(label, path, glibc)] if glibc
+
         binary.needed.reject { |library| system?(library) }.filter_map do |library|
           if !shipped.include?(File.basename(library).downcase)
             unprovided(label, path, library) unless loaded_by_name?(library, loaded)
@@ -315,6 +329,29 @@ module Fledge
           "to have the app carry it from this computer."
       else "#{problem}."
       end
+    end
+
+    # On musl Linux, the first library of GLIBC that +binary+ needs and
+    # the project did not list as the distribution's, or +nil+.
+    private def glibc_need(binary)
+      return unless @os == "linux-musl"
+
+      binary.needed.find { |library| library.match?(GLIBC) && !@declared.include?(library) }
+    end
+
+    # Why the file at +path+, which needs +library+ of glibc, would not
+    # load on musl Linux: once for the file, since what else it needs is
+    # no matter while it was built for glibc, and with advice a
+    # developer on musl can follow, which listing the library under
+    # <tt>linux: system_libraries</tt> is not. Bundler's
+    # +force_ruby_platform+ is its Gemfile option for installing a gem
+    # from its source in place of a build for a platform
+    # (<tt>bundler/man/gemfile.5.ronn</tt> in Bundler 4.0.20, lines 261
+    # to 263).
+    private def built_for_glibc(label, path, library)
+      "#{label}'s #{path} needs #{library}, of glibc, so it was built for Linux with glibc, and could not load on Linux with " \
+        "musl, which has no glibc. Use a build of the gem for musl Linux, or, if the gem's source compiles here, have Bundler " \
+        "install the gem from its source, with force_ruby_platform: true on its line in the Gemfile."
     end
 
     # Why the file at +path+ would not load +library+ on an Android phone,

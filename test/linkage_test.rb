@@ -60,6 +60,25 @@ class LinkageTest < Minitest::Test
     end
   end
 
+  # On musl's Linux, a file that needs glibc's own libraries was built
+  # for glibc's, as onnxruntime 0.11.9-x86_64-linux's library is, which
+  # RubyGems installs on musl when a gem publishes no build for it. No
+  # musl computer has glibc, so the refusal, once for the file, names
+  # what a developer there can do instead, and not linux:
+  # system_libraries; another library the file needs is no matter then.
+  def test_a_file_built_for_glibc_is_refused_on_musl_with_advice_for_musl
+    found = problems("linux-musl", {
+      "lib/libonnx.so" => Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2]),
+      "lib/plain.so" => Binaries.elf(needed: %w[libc.so]),
+    })
+
+    assert_equal [
+      "linked 1.0.0's lib/libonnx.so needs libm.so.6, of glibc, so it was built for Linux with glibc, and could not load on " \
+        "Linux with musl, which has no glibc. Use a build of the gem for musl Linux, or, if the gem's source compiles here, " \
+        "have Bundler install the gem from its source, with force_ruby_platform: true on its line in the Gemfile.",
+    ], found
+  end
+
   # A library listed that no gem's compiled file needs from the system,
   # because none needs it, or every distribution, the runtime, or the gem
   # already provides it, is refused, so the list says only what is true
@@ -252,7 +271,9 @@ class LinkageTest < Minitest::Test
   # need of that name the library already loaded under it (_dl_map_object
   # in glibc 2.39's elf/dl-load.c): the gem runs, and is not refused.
   # Without the library that names itself so, the need is refused, and
-  # on musl's Linux, whose loader's source was not read for this, too.
+  # on musl's Linux, whose loader's source was not read for this, too
+  # (there the files' libc.so.6 is listed as the distribution's, so that
+  # they are not refused for being built for glibc instead).
   def test_a_library_the_gem_carries_under_another_file_name_answers_to_its_soname_on_linux
     raygui = Binaries.elf(needed: %w[libraylib.so.600 libc.so.6])
 
@@ -261,7 +282,7 @@ class LinkageTest < Minitest::Test
       "lib/raygui.x86_64.so" => raygui,
     })
     assert_equal 1, problems("linux", { "lib/raygui.x86_64.so" => raygui }).size
-    musl = problems("linux-musl", {
+    musl = Fledge::Linkage.new(os: "linux-musl", system: %w[libc.so.6], readers: TestReaders.all).problems("linked 1.0.0", {
       "lib/libraylib.x86_64.so" => Binaries.elf(needed: %w[libc.so.6], soname: "libraylib.so.600"),
       "lib/raygui.x86_64.so" => raygui,
     })

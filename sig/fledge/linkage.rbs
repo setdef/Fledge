@@ -7,6 +7,7 @@ module Fledge
     WINDOWS_DLLS: String
     SYSTEM_DLLS: Hash[String, Set[String]]
     VISUAL_C_RUNTIME: Regexp
+    GLIBC: Regexp
     RUBY_DLL: Regexp
     FORMATS: Hash[String, Symbol]
 
@@ -37,6 +38,10 @@ module Fledge
     private def system?: (String library) -> bool
 
     private def unprovided: (String label, String path, String library) -> String?
+
+    private def glibc_need: (Binary binary) -> String?
+
+    private def built_for_glibc: (String label, String path, String library) -> String
 
     private def android_unprovided: (String label, String path, String library) -> String
 

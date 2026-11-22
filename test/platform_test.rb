@@ -48,7 +48,7 @@ class PlatformTest < Minitest::Test
   end
 
   # RubyInstaller's Ruby reports exactly the target's name, on x64 and
-  # on ARM64 (ADR 035).
+  # on ARM64 (ADR 098).
   def test_local_maps_windows_with_the_ucrt
     assert_equal "x64-mingw-ucrt", Fledge::Platform.local(Gem::Platform.new("x64-mingw-ucrt")).name
     assert_equal "aarch64-mingw-ucrt", Fledge::Platform.local(Gem::Platform.new("aarch64-mingw-ucrt")).name

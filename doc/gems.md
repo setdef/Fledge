@@ -68,6 +68,26 @@ linux:
 
 Fledge then ships the gem, and refuses a library you list that no gem needs. A `.deb` depends on the packages that provide them, as `dpkg-shlibdeps` finds them, so building one needs `dpkg-dev`, which `build-essential` brings. An AppImage or `.tar.gz` does not carry them. On a computer that lacks one, the app says which library to install and exits with status 72, before your code runs. [`examples/system_library`](../examples/system_library) is a complete example.
 
+## A gem whose DLL needs the Visual C++ runtime
+
+On Windows, a DLL built with Visual Studio needs Microsoft's Visual C++ runtime, `vcruntime140.dll` and `msvcp140.dll`, unless it links the runtime statically. LibUI's DLL is one. Windows does not include the runtime: a computer has it once something installs Microsoft's Visual C++ Redistributable. `fledge build` refuses such a gem until you say in `fledge.yml` how your app gets the runtime:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+windows:
+  visual_c_runtime: local    # or central
+```
+<!-- SPDX-SnippetEnd -->
+
+- **`local`** copies the runtime's DLLs that your gems need from this computer's `System32` into the app, so the app runs on a computer without the Redistributable. Install the Redistributable on the computer that builds the app. You distribute Microsoft's files when you ship the app: Microsoft's page [Redistribute Visual C++ files](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files) says "Distribution of the Visual C++ Runtime Redistributable package, merge modules, and individual binaries is limited to licensed Visual Studio users and is subject to Microsoft Software License Terms." Whether you hold that right, and what its terms ask of you, is yours to check; Fledge cannot. Microsoft also recommends against copies in the app's folder, which Windows Update does not update: build the app again to ship a newer runtime.
+- **`central`** ships no runtime, for computers that have the Redistributable. Microsoft recommends this way. A person who starts the app from its `.zip` without the Redistributable meets Windows' error for a missing DLL, so tell them to install it first. The setup program and MSIX package do not install it yet.
+
+Or use a build of the gem that links the runtime statically (`/MT`), which needs neither.
+
 ## A gem that only `vendor/cache` holds
 
 A gem from a GitHub release, which is not on rubygems.org, has no checksum on any server. `bundle lock --add-checksums` fills in the checksum of the gem Bundler installed on your computer, and leaves an empty entry for each other platform's build. `fledge build` refuses a lockfile with an empty entry. Print each `.gem` file's SHA-256, and write it after that build's entry in the `CHECKSUMS` section of `Gemfile.lock`:

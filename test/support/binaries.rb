@@ -95,6 +95,8 @@ needed: [
     { format: "pe", needed: %w[KERNEL32.dll], program: "console" },
     { format: "pe", needed: %w[KERNEL32.dll], program: "windows" },
     { format: "pe", needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll] },
+    { format: "pe", needed: %w[MSVCP140.dll KERNEL32.dll] },
+    { format: "pe", needed: %w[VCRUNTIME140.dll VCRUNTIME140_1.dll KERNEL32.dll api-ms-win-crt-runtime-l1-1-0.dll] },
   ].freeze
 
   # The defaults of each format's spec.

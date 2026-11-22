@@ -17,8 +17,12 @@ module Fledge
     @declared: Array[String]
     @needed: Array[String]
     @readers: Binary::Readers
+    @visual_c_runtime: String?
+    @visual_c: Array[String]
 
-    def initialize: (os: String, ?provided: Array[String], ?system: Array[String], ?readers: Binary::Readers) -> void
+    def initialize: (os: String, ?provided: Array[String], ?system: Array[String], ?readers: Binary::Readers, ?visual_c_runtime: String?) -> void
+
+    def visual_c_libraries: () -> Array[String]
 
     def problems: (String label, Hash[String, String] files) -> Array[String]
 
@@ -27,6 +31,8 @@ module Fledge
     private def system?: (String library) -> bool
 
     private def unprovided: (String label, String path, String library) -> String?
+
+    private def visual_c: (String label, String path, String library) -> String?
 
     private def unreached: (String label, String path, String library, Dyld dyld, Array[String] paths) -> String?
 

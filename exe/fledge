@@ -316,7 +316,15 @@
 #                          Partner Center's Package/Identity/Name
 #                          (default: the identifier). The package's
 #                          version is the version's first three numbers
-#                          and a 0. Other builds ignore it.
+#                          and a 0. And visual_c_runtime, how the app
+#                          comes by Microsoft's Visual C++ runtime when
+#                          a gem's DLL needs it: local copies it from
+#                          this computer's System32 into the app, which
+#                          Microsoft limits to licensed Visual Studio
+#                          users; central ships none, for computers that
+#                          have the Visual C++ Redistributable (default:
+#                          neither, and such a gem is refused). Other
+#                          builds ignore it.
 #                        file_associations: what a windowed app opens,
 #                          a list of mappings of name (what a person
 #                          calls the documents), role (viewer, the

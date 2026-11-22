@@ -44,7 +44,7 @@ class MsixTest < Minitest::Test
   end
 
   def windows(msix_name: nil, msix_publisher: PUBLISHER)
-    Fledge::Config::Windows.new(msix_name:, msix_publisher:)
+    Fledge::Config::Windows.new(msix_name:, msix_publisher:, visual_c_runtime: nil)
   end
 
   def msix(identity: self.identity, windows: self.windows, platform: X64, env: {})

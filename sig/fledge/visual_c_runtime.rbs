@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class VisualCRuntime
+    @folder: String
+    @readers: Binary::Readers
+    @found: Hash[String, String]
+    @missing: Array[String]
+
+    def self.system32: (Runtimes::_Env env) -> String
+
+    def initialize: (Array[String] names, folder: String, readers: Binary::Readers) -> void
+
+    def problems: () -> Array[String]
+
+    def entries: (String into) -> Array[Entry]
+
+    private def gather: (Array[String] names) -> void
+  end
+end

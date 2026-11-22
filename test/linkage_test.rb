@@ -147,16 +147,37 @@ class LinkageTest < Minitest::Test
     end
   end
 
-  # An app's developer cannot rebuild someone else's gem to carry
-  # Microsoft's runtime, so the refusal says what the DLL is and what
-  # build of the gem would ship.
-  def test_the_refusal_names_the_visual_c_runtime_and_a_build_that_ships
+  # An app's developer cannot rebuild someone else's gem, so the refusal
+  # says what the DLL is and names the two ways fledge.yml ships it, and
+  # the build of the gem that needs neither.
+  def test_the_refusal_names_the_visual_c_runtime_and_the_key_that_ships_it
     dll = Binaries.pe(needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll])
-    problem = problems("windows", { "vendor/libui.x64.dll" => dll }).find { |text| text.include?("VCRUNTIME140.dll") }
+    found = problems("windows", { "vendor/libui.x64.dll" => dll })
+    assert_equal %w[MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll], found.map { |text| text[/needs (\S+),/, 1] }
     assert_equal "linked 1.0.0's vendor/libui.x64.dll needs VCRUNTIME140.dll, of Microsoft's Visual C++ runtime, which Windows does " \
-      "not include and Fledge does not copy into an app, so the app could not load it on a computer without the Visual C++ " \
-      "Redistributable. Use a build of the gem that links the Visual C++ runtime statically (/MT), or ask the gem's authors for one.",
-      problem
+      "not include, so the app could not load it on a computer without the Visual C++ Redistributable. Set windows: " \
+      "{ visual_c_runtime: local } in fledge.yml to copy the runtime from this computer into the app, if you may distribute it " \
+      "(Microsoft limits that to licensed Visual Studio users), or windows: { visual_c_runtime: central } if every computer the " \
+      "app goes to has the Redistributable; or use a build of the gem that links the runtime statically (/MT).",
+      found[1]
+  end
+
+  # With either way chosen the runtime's DLLs are no gem's problem: the
+  # check names them, once each, for the app to carry or the computer to
+  # have, and still refuses any other DLL nothing provides.
+  def test_a_chosen_visual_c_runtime_is_named_rather_than_refused
+    TestReaders.need(self, :pe)
+    %w[local central].each do |choice|
+      linkage = Fledge::Linkage.new(os: "windows", provided: ["x64-ucrt-ruby400.dll"], readers: TestReaders.all, visual_c_runtime: choice)
+      found = linkage.problems("linked 1.0.0", {
+        "vendor/libui.x64.dll" => Binaries.pe(needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll]),
+        "vendor/other.dll" => Binaries.pe(needed: %w[MSVCP140.dll KERNEL32.dll]),
+        "lib/ext.so" => Binaries.pe(needed: %w[x64-ucrt-ruby400.dll KERNEL32.dll api-ms-win-crt-heap-l1-1-0.dll libxml2-16.dll]),
+      })
+      assert_equal [], found.grep(/Visual C\+\+/), choice
+      assert_equal 1, found.grep(/libxml2-16\.dll/).size, choice
+      assert_equal %w[MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll], linkage.visual_c_libraries, choice
+    end
   end
 
   # An Android app's native library may need the NDK's public libraries

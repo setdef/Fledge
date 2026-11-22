@@ -174,7 +174,7 @@
       }
     },
     "windows": {
-      "description": "The package identity of a Windows app's MSIX package, which an msix installer needs (default: nothing). Other builds ignore it.",
+      "description": "The package identity of a Windows app's MSIX package, which an msix installer needs, and how the app comes by Microsoft's Visual C++ runtime (default: nothing). Other builds ignore it.",
       "type": ["object", "null"],
       "additionalProperties": false,
       "properties": {
@@ -188,6 +188,11 @@
           "type": ["string", "null"],
           "maxLength": 8192,
           "pattern": "^[A-Za-z][A-Za-z0-9.]*=\\S"
+        },
+        "visual_c_runtime": {
+          "description": "How the app comes by Microsoft's Visual C++ runtime (vcruntime140.dll, msvcp140.dll) when a gem's DLL needs it, which Windows does not include: local copies it from this computer's System32 into the app, which Microsoft limits to licensed Visual Studio users; central ships none, for computers that have the Visual C++ Redistributable (default: neither, and fledge build refuses such a gem).",
+          "type": ["string", "null"],
+          "enum": ["local", "central", null]
         }
       }
     },

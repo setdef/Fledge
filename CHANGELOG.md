@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `fledge.yml`'s `windows: visual_c_runtime`, for a gem whose DLL needs Microsoft's Visual C++ runtime: `local` copies the runtime's DLLs the gems need from the building computer's System32 into the app, and `central` ships none, for computers that have the Visual C++ Redistributable.
 - `defines_type: true` in a `file_associations` entry, for a file type of the app's own, such as a game's `*.lota`, with its one MIME type and its extensions: a windowed Linux app carries the type's definition in `share/mime/packages`, which its `.deb` installs, so that a desktop knows such a file by its name and offers the app for it. Before, a desktop knew no such file, and the app's `MimeType` matched nothing.
 
 ### Changed
@@ -25,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fledge build android` refuses an app with a C or C++ extension built as a file when the project's `build.gradle` sets no `useLegacyPackaging`, naming the line to add, where it warned and built an app that raised `LoadError` at the extension's `require`: the Android Gradle plugin's default keeps the native libraries stored, as `false` does.
 - `fledge build` for Windows lets a gem's DLL need any DLL that is in System32 on every Windows, as delvewheel 1.13.2 lists them for x64 and for ARM64, such as Direct2D's `d2d1.dll` and DirectWrite's `DWrite.dll`, which LibUI's DLL needs; it refused every DLL but some fifty it knew.
-- `fledge build` for Windows, refusing a gem whose DLL needs Microsoft's Visual C++ runtime (`VCRUNTIME140.dll`, `MSVCP140.dll`), says that Windows does not include it and Fledge does not copy it, and to use a build of the gem that links it statically, where it told the developer to rebuild the gem.
+- `fledge build` for Windows, refusing a gem whose DLL needs Microsoft's Visual C++ runtime (`VCRUNTIME140.dll`, `MSVCP140.dll`), says that Windows does not include it and names `windows: visual_c_runtime` and a build of the gem that links it statically, where it told the developer to rebuild the gem.
 - `fledge build` on Windows archives an app whose name, or the name of a file in it, is outside ASCII: Windows PowerShell's .NET writes the `.zip`, with every name in UTF-8. Windows' `tar.exe` failed to open the archive of an app named `日本語ツール` under code page 1252, crashed on such a name inside the app, and wrote one such as `Prüfung ü` in a code page Expand-Archive does not unpack it from.
 - `fledge --help` says what a phone build does with a gem's extension since 0.13.0 and 0.14.0: Rust and Rakefile extensions build, and on Android an `extconf.rb` extension is a native library that needs `useLegacyPackaging = true`. It had said they were refused, and linked in.
 - On iOS, and among Android's Rust and Rakefile extensions, two gems whose extensions define a function or variable of one name, or one that defines a name of the runtime's libraries such as libyaml's, each call their own definition, as on a Mac, where the app answered with the other's without a word or stopped `fledge build` with "duplicate symbol"; `fledge build` refuses, naming both, a name that two static libraries several extensions link, or one and the runtime, both define.

@@ -19,6 +19,7 @@ require_relative "mobile_platform"
 require_relative "native_build"
 require_relative "path_gem"
 require_relative "path_package"
+require_relative "visual_c_runtime"
 
 module Fledge
   # The gems one platform's build of an app adds to its runtime.
@@ -76,14 +77,20 @@ module Fledge
     # [checkouts] The Fledge::GitCheckout that fetches each git gem.
     # [compiler] The Fledge::NativeBuild that compiles gems for the
     #            platform Fledge runs on, which is the one it builds for.
-    def initialize(app:, bundle:, fetcher:, checkouts:, compiler:)
+    # [system32] On Windows, the folder a Windows app copies Microsoft's
+    #            Visual C++ runtime from when its project asks for
+    #            <tt>visual_c_runtime: local</tt>
+    #            (Fledge::VisualCRuntime.system32).
+    def initialize(app:, bundle:, fetcher:, checkouts:, compiler:, system32: VisualCRuntime.system32(ENV))
       @app = app
       @bundle = bundle
       @fetcher = fetcher
       @checkouts = checkouts
       @compiler = compiler
+      @system32 = system32
       @path_files = {} # : Hash[String, String]
       @bundler = nil # : String?
+      @carried = [] # : Array[Entry]
     end
 
     # What the app's +app+ folder holds in place of the project's own
@@ -145,7 +152,7 @@ module Fledge
       raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
 
       packages = mark_extensions(packages, platform, runtime) if platform.is_a?(MobilePlatform)
-      entries = [*packages.flat_map { |gem, package| entries_for(gem, package, runtime.gem_dir) }, *stubs]
+      entries = [*packages.flat_map { |gem, package| entries_for(gem, package, runtime.gem_dir) }, *stubs, *@carried]
       entries.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
     end
 
@@ -207,16 +214,25 @@ module Fledge
     end
 
     # What keeps each gem from running on a desktop +platform+'s runtime:
-    # the Ruby it asks for, and what its compiled files need; and on
-    # Linux, each library <tt>fledge.yml</tt> lists as the distribution's
-    # that none of them needs (Config::Linux).
+    # the Ruby it asks for, and what its compiled files need; on Linux,
+    # each library <tt>fledge.yml</tt> lists as the distribution's that
+    # none of them needs (Config::Linux); and on Windows, each DLL of the
+    # Visual C++ runtime they need that the app is to carry and this
+    # computer lacks (Fledge::VisualCRuntime), whose copies the app
+    # carries in the folder of the DLLs Ruby's DLL needs, which the
+    # launcher and the runtime's ruby.exe search for every DLL loaded
+    # later (doc/contributors/design/gems.md, "The Visual C++ runtime").
     private def desktop_problems(packages, platform, runtime)
+      way = @app.config.windows&.visual_c_runtime if platform.windows?
       readers(platform, runtime) do |readers|
-        linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, system: @app.config.system_libraries(platform.os), readers:)
+        linkage = Linkage.new(os: platform.libraries, provided: runtime.libraries, system: @app.config.system_libraries(platform.os), readers:,
+          visual_c_runtime: way)
         found = packages.flat_map do |gem, package|
           [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.gem_files)]
         end
-        [*found, *linkage.unused]
+        carried = VisualCRuntime.new((way == "local") ? linkage.visual_c_libraries : [], folder: @system32, readers:)
+        @carried = carried.entries("#{runtime.bin_dir}/ruby_builtin_dlls")
+        [*found, *linkage.unused, *carried.problems]
       end
     end
 

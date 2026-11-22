@@ -14,8 +14,10 @@ module Fledge
     @extension_packages: Hash[locked_gem, package]
     @extension_dependencies: Hash[locked_gem, package]
     @bundler: String?
+    @system32: String
+    @carried: Array[Entry]
 
-    def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild) -> void
+    def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild, ?system32: String) -> void
 
     def app_files: (?force_ruby_platform: bool) -> Hash[String, String]
 

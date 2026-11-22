@@ -242,7 +242,7 @@ module Fledge
         cache = File.dirname(runtimes.cache)
         fetcher = GemFetcher.new(cache: File.join(cache, "gems"), project: app.root, log: @err)
         checkouts = GitCheckout.new(cache: File.join(cache, "git"), work:, log: @err)
-        AppGems.new(app:, bundle: Bundle.new(app), fetcher:, checkouts:, compiler: compiler(runtimes, work))
+        AppGems.new(app:, bundle: Bundle.new(app), fetcher:, checkouts:, compiler: compiler(runtimes, work), system32: VisualCRuntime.system32(@env))
       end
 
       # Makes the build's work folder, where gems compile, in the

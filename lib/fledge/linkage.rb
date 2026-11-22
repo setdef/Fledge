@@ -135,7 +135,12 @@ module Fledge
     #          may need too, and #unused names when none does.
     # [readers] The tools that read compiled files here
     #           (Fledge::Binary::Readers).
-    def initialize(os:, provided: [], system: [], readers: Binary::Readers.local(os))
+    # [visual_c_runtime] How the app comes by Microsoft's Visual C++
+    #                    runtime (Config::Windows#visual_c_runtime), or
+    #                    +nil+ for not at all: with a way chosen, a DLL of
+    #                    VISUAL_C_RUNTIME is no gem's problem, and
+    #                    #visual_c_libraries names it.
+    def initialize(os:, provided: [], system: [], readers: Binary::Readers.local(os), visual_c_runtime: nil)
       @system = SYSTEM_LIBRARIES.fetch(os)
       @dlls = SYSTEM_DLLS.fetch(os, Set.new)
       @os = os
@@ -143,6 +148,17 @@ module Fledge
       @declared = system
       @needed = [] # : Array[String]
       @readers = readers
+      @visual_c_runtime = visual_c_runtime
+      @visual_c = [] # : Array[String]
+    end
+
+    # The DLLs of Microsoft's Visual C++ runtime that the files #problems
+    # judged need, by the name the first of them gives each, which the
+    # app carries or the computer it goes to has, as the project chose
+    # (Config::Windows#visual_c_runtime): empty when it chose neither.
+    # Ask after #problems has judged every gem.
+    def visual_c_libraries
+      @visual_c.uniq(&:downcase)
     end
 
     # Why the gem whose files are +files+ (paths relative to its folder,
@@ -231,11 +247,7 @@ module Fledge
           "provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically."
       end
 
-      if library.match?(VISUAL_C_RUNTIME)
-        return "#{label}'s #{path} needs #{library}, of Microsoft's Visual C++ runtime, which Windows does not include and Fledge " \
-          "does not copy into an app, so the app could not load it on a computer without the Visual C++ Redistributable. Use a build " \
-          "of the gem that links the Visual C++ runtime statically (/MT), or ask the gem's authors for one."
-      end
+      return visual_c(label, path, library) if library.match?(VISUAL_C_RUNTIME)
 
       problem = "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \
         "the app could not load it on another computer. Build the gem so that it carries the library, or links it statically"
@@ -243,6 +255,22 @@ module Fledge
 
       "#{problem}, or, when every computer the app goes to has it from its Linux distribution, list it in fledge.yml as " \
         "linux: { system_libraries: [#{library}] }."
+    end
+
+    # Why the file at +path+ would not load +library+, a DLL of the Visual
+    # C++ runtime, or +nil+ when the project chose how the app comes by
+    # it, which #visual_c_libraries then names.
+    private def visual_c(label, path, library)
+      if @visual_c_runtime
+        @visual_c << library
+        return
+      end
+
+      "#{label}'s #{path} needs #{library}, of Microsoft's Visual C++ runtime, which Windows does not include, so the app could " \
+        "not load it on a computer without the Visual C++ Redistributable. Set windows: { visual_c_runtime: local } in fledge.yml " \
+        "to copy the runtime from this computer into the app, if you may distribute it (Microsoft limits that to licensed Visual " \
+        "Studio users), or windows: { visual_c_runtime: central } if every computer the app goes to has the Redistributable; or " \
+        "use a build of the gem that links the runtime statically (/MT)."
     end
 
     # Why dyld would not find +library+, which the file at +path+ names

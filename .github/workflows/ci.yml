@@ -2631,6 +2631,14 @@ jobs:
           -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-$env:PLATFORM.zip" -Platform $env:PLATFORM
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/bundled_with.expected" -Raw).TrimEnd()
 
+      # The HTTPS probe asks a server on the runner, as on macOS and
+      # Linux, with the test authority nowhere, in SSL_CERT_FILE, in the
+      # bundle RubyInstaller's OpenSSL reads, and in Windows' own store,
+      # which it must not read (.github/scripts/deliver-https.ps1).
+      - name: Ask a server on this runner over HTTPS as someone with no Ruby would
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-https.ps1 -Archive "$env:RUNNER_TEMP/delivered/Https-$env:PLATFORM.zip"
+
       # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
       # the console probe in a console of its own, ended by
       # Ctrl-C on code pages 65001 and 437 and by its window closing, and

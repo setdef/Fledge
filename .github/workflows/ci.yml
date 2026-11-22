@@ -1428,9 +1428,9 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
-          ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
+          ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
           apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs examples/native_app test/fixtures/bundled_with/exe/bundled_with)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console examples/windowed_app examples/programs)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/windowed_app examples/programs)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -1555,7 +1555,6 @@ jobs:
       # optional group. Its Delivery prints what a person with no Ruby sees,
       # which no bundle exec can: Bundler compiles no path gem's extension.
       - name: Build real_gems through a credentialed mirror for ${{ matrix.platform }}
-        if: matrix.platform != 'aarch64-mingw-ucrt'
         shell: bash
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
@@ -1693,10 +1692,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows on ARM64 (ADR 035) builds what needs no gem compiled for
-          # it: sqlite3 publishes no aarch64-mingw-ucrt build and its source
-          # does not configure there, so no my_cool_app, gem-shaped probe,
-          # or native_app.
+          # Windows on ARM64 (ADR 035) builds no my_cool_app: sqlite3
+          # publishes no aarch64-mingw-ucrt build and its source does not
+          # configure there, mini_portile2 passing configure clang's name
+          # for the target (doc/contributors/design/gems.md, "Examples that
+          # exercise these rules"), so the gem-shaped probe is that app
+          # without sqlite3 (Parity.gem_app). It builds no native_app
+          # either: the job installs no Rust, and ferro-idna's rb-sys would
+          # need Rust's aarch64-pc-windows-gnullvm target, which no job of
+          # Fledge's has tried; and no nokogiri_app, as on Linux. real_gems,
+          # whose path gem's C compiles with MSYS2's CLANGARM64 clang, it
+          # builds as x64 does.
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
             rust: ""
@@ -1802,7 +1808,7 @@ jobs:
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/real_gems.expected")"
 
       - name: Run NativeApp.exe as someone with no Ruby would
-        if: runner.os == 'Windows'
+        if: matrix.platform == 'x64-mingw-ucrt'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
@@ -1815,12 +1821,12 @@ jobs:
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/RealGems-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Archive "$env:RUNNER_TEMP/delivered/RealGems-${{ matrix.platform }}.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.zip" -Platform ${{ matrix.platform }}
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/real_gems.expected" -Raw).TrimEnd()
 
       - name: Run NokogiriApp.exe as someone with no Ruby would
-        if: runner.os == 'Windows'
+        if: matrix.platform == 'x64-mingw-ucrt'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
@@ -1865,6 +1871,20 @@ jobs:
         include:
           - os: windows-latest
             platform: x64-mingw-ucrt
+    steps: *delivery-native-steps
+  # real_gems alone: ARM64 Windows builds no native_app or nokogiri_app
+  # (build-aarch64-mingw-ucrt says why).
+  delivery-native-aarch64-mingw-ucrt:
+    name: Delivery from source (${{ matrix.platform }})
+    needs: build-aarch64-mingw-ucrt
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-11-arm
+            platform: aarch64-mingw-ucrt
     steps: *delivery-native-steps
 
   # Delivery (Plan 001): each app on a fresh runner of its platform, with

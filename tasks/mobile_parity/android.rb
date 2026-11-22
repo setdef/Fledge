@@ -83,7 +83,7 @@ class MobileParity
     end
 
     # What Gradle's --info +log+ says of a build that failed: each answer
-    # a repository gave that was not the file, as Gradle 9.8.2 logs it
+    # a repository gave that was not the file, as Gradle logs it
     # (ApacheCommonsHttpClient#processResponse, "Resource missing" for a
     # 404, which alone Gradle reports as "Could not find", and "Failed to
     # get resource" with any other status), then Gradle's own account of

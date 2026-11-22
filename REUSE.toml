@@ -51,7 +51,7 @@ path = 'lib/fledge/config.schema.json'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT"
 
-# Gradle's wrapper, as Gradle 9.8.2's gradle wrapper task writes it, in
+# Gradle's wrapper, as Gradle's gradle wrapper task writes it, in
 # every Android project fledge build writes (ADR 012); the jar is the one
 # Gradle publishes, whose SHA-256 runtime/sources.yml pins.
 [[annotations]]

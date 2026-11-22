@@ -15,9 +15,9 @@ Agents wrote this page from a checkout of `trunk` at `c20a629` (Fledge 0.4.0's r
 ## 1. What you set up once, on the Mac
 
 - **Xcode 27.2 or newer**, from the App Store. Xcode runs an app only on a device whose OS it knows: if the iPad reports a newer iPadOS than Xcode offers, Xcode offers to download its support (Apple, "Running your app on simulated or physical devices": "To install platform support, click the Get button that appears next to the run destination").
-- **XcodeGen 2.46.0**, which `fledge build ios` runs (`mint install yonaskolb/XcodeGen@2.46.0`, or `brew install xcodegen`).
+- **XcodeGen**, which `fledge build ios` runs: the version `runtime/sources.yml` pins as `mobile.xcodegen` (`mint install yonaskolb/XcodeGen@VERSION`, or `brew install xcodegen`).
 - **CMake**, which builds SDL3. With mise: `mise use -g cmake@4.3.2`. Any CMake 3.24 or newer builds SDL 3.4.18.
-- **A JDK 17 or newer**, which the Android Gradle plugin 9.4.1 runs on (`java -version`).
+- **A JDK 17 or newer**, which the Android Gradle plugin `runtime/sources.yml` pins runs on (`java -version`).
 - **The Android SDK and NDK r30.** Android Studio installs them under `~/Library/Android/sdk`. Without Android Studio, take Google's command-line tools (`commandlinetools-mac-15641748_latest.zip` from developer.android.com/studio, SHA-1 `b62a5d8cf63ded173b47be867be4ee058ceda6df`, unpacked as `~/Library/Android/sdk/cmdline-tools/latest`) and run:
 
   ```sh

@@ -54,7 +54,7 @@ class RuntimeBuilderTest < Minitest::Test
 
     assert_equal Fledge::Platform.names.reject { |name| name.end_with?("-musl") }.sort, pins.keys.sort
     pins.except("x64-mingw-ucrt", "aarch64-mingw-ucrt").each_value do |pin|
-      assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4\.1\.0-preview1\.}, pin.fetch("url"))
+      assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/\d{8}/ruby-4\.1\.0-preview1\.}, pin.fetch("url"))
       assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
     end
   end
@@ -275,7 +275,8 @@ class RuntimeBuilderTest < Minitest::Test
       assert_empty report.violations
       assert_equal %w[NOTICES.txt sbom.spdx.json], Dir.children(File.join(stage, "notices")).sort
       notices = File.read(File.join(stage, "notices/NOTICES.txt"))
-      assert_includes notices, "libxcrypt, which backs String#crypt\n  Version: 4.5.2\n  License: LGPL-2.1-or-later"
+      libxcrypt = YAML.safe_load_file(File.expand_path("../runtime/sources.yml", __dir__)).dig("libxcrypt", "version")
+      assert_includes notices, "libxcrypt, which backs String#crypt\n  Version: #{libxcrypt}\n  License: LGPL-2.1-or-later"
       assert_includes notices, "fledge-runtime-#{Fledge::VERSION}-x86_64-linux-lgpl-sources.tar.gz"
       assert_includes notices, "=== libxcrypt/COPYING.LIB"
       sbom = JSON.parse(File.read(File.join(stage, "notices/sbom.spdx.json")))

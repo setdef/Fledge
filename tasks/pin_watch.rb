@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "digest"
 require "json"
 require "net/http"
 require "rubygems"
@@ -112,15 +113,30 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     end
 
     # The body +url+ answers with.
-    def call(url, redirects = REDIRECTS)
-      uri = URI(url)
-      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: @timeout, read_timeout: @timeout) do |http|
-        http.request(request(uri))
-      end
-      return response.body if response.is_a?(Net::HTTPSuccess)
-      return call(URI.join(url, response["location"]).to_s, redirects - 1) if response.is_a?(Net::HTTPRedirection) && redirects.positive?
+    def call(url)
+      get(url, &:body)
+    end
 
-      raise Error, "#{url} answered #{response.code}"
+    # The SHA-256 of the file at +url+, read as it downloads and never
+    # kept, for an upstream that records none of its own.
+    def sha256(url)
+      get(url) do |response|
+        digest = Digest::SHA256.new
+        response.read_body { |chunk| digest << chunk }
+        digest.hexdigest
+      end
+    end
+
+    private def get(url, redirects = REDIRECTS, &read)
+      uri = URI(url)
+      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: @timeout, read_timeout: @timeout) do |http|
+        http.request(request(uri)) do |response|
+          return read.call(response) if response.is_a?(Net::HTTPSuccess)
+          return get(URI.join(url, response["location"]).to_s, redirects - 1, &read) if response.is_a?(Net::HTTPRedirection) && redirects.positive?
+
+          raise Error, "#{url} answered #{response.code}"
+        end
+      end
     rescue SystemCallError, IOError, Timeout::Error, OpenSSL::SSL::SSLError => e
       raise Error, "#{url} could not be read: #{e.message}"
     end

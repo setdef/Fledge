@@ -52,7 +52,11 @@ class MobileLinkedSymbolsTest < Minitest::Test
   # answered clash_a's 1 100 10. The same gems define both names beside
   # Init: same_b answered its own function and same_a's variable, 4 30.
   # yamlish defines libyaml's yaml_get_version, which the runtime's
-  # library holds too: it answered the runtime's 0.2.5.
+  # library holds too: it answered the runtime's, the version
+  # runtime/sources.yml pins.
+  # The libyaml the mobile runtimes are built from.
+  LIBYAML = YAML.safe_load_file(File.expand_path("../../runtime/sources.yml", __dir__)).dig("mobile", "libyaml", "version")
+
   def test_ios_extensions_that_define_one_name_each_call_their_own
     ios_missing("Xcode builds an iOS app on a Mac only") unless Fledge::Platform.local.name == "arm64-darwin"
     app = app("LinkedSymbols", clash_gem("clash_a", 1), clash_gem("clash_b", 2), same_gem("same_a", 3), same_gem("same_b", 4), yaml_gem)
@@ -64,7 +68,7 @@ class MobileLinkedSymbolsTest < Minitest::Test
     printed = nil
     ios.on_simulator("iPhone", { app => bundle }) { |_, logged, _| printed = said(logged) }
 
-    assert_equal ["clash_a 1 100 10", "clash_b 2 200 20", "same_a 3 30", "same_b 4 40", "yamlish 9.9.9, psych's libyaml 0.2.5"], printed
+    assert_equal ["clash_a 1 100 10", "clash_b 2 200 20", "same_a 3 30", "same_b 4 40", "yamlish 9.9.9, psych's libyaml #{LIBYAML}"], printed
   end
 
   # Two Rakefiles' extensions in libfledgeext.so whose names are in other

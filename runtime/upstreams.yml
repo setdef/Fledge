@@ -24,7 +24,36 @@
 #   the pin stays in: a newer release in the line is the pin's next
 #   version, and one beyond it is reported but not taken.
 # ships: false for an input no runtime or app carries, which CI alone
-#   uses; true by default.
+#   uses; true by default. A move of one that ships adds a line to
+#   CHANGELOG.md.
+#
+# What tasks/pin_move.rb needs to move the pin when the watch finds it
+# behind:
+#
+# hold: why a person moves this pin and the move does not, when it does
+#   not. The move refuses it, and says this.
+# checksum: where each new SHA-256 comes from: github, the digest
+#   GitHub's API lists beside each release asset (the default for a
+#   repository); beside, the .sha256 file the upstream publishes beside
+#   each download; or download, the file downloaded and hashed (the
+#   default for a page). A github asset with no digest is downloaded.
+# keep: keys beside a moved URL that do not depend on the version, which
+#   the move leaves as they are. Any other key stops the move.
+# licenses: the ids of runtime/licenses.yml's entries that name the
+#   pin's version, which the move rewrites: their version, their
+#   download, and the evidence their files hold.
+# also: other files that name the pin, each with patterns whose version
+#   capture the move rewrites; each URL and SHA-256 the move replaces is
+#   replaced in them too.
+# names: what prose calls the input, the first in CHANGELOG.md; the key
+#   by default. test/pin_move_test.rb fails when a line names a movable
+#   pin's version beside one of these anywhere but in the files above,
+#   the records of what changed (CHANGELOG.md, the research and plans
+#   kept as they were on their day), and the files of named.
+# named: files that name the version for itself and not as the pin: a
+#   fact about that release, a source cited at it, a test's own data, or
+#   another build's copy of the same input (mise.toml's MSYS2 zlib). A
+#   move leaves them as they are, and they stay true.
 #
 # A version that Ruby's Gem::Version calls a prerelease (one with a
 # letter in it, as 4.1.0-preview2 or 9.6.0-alpha05) counts only when the
@@ -39,6 +68,8 @@ watched:
     page: https://cache.ruby-lang.org/pub/ruby/index.txt
     pattern: '^ruby-(?<version>\d+\.\d+\.\d+(?:-(?:preview|rc)\d+)?)\t\S+\.tar\.gz\t'
     line: 2
+    names: [Ruby]
+    hold: A move of Ruby is planned work, which moves its bundled gems, its ABI, Windows' head build, and the license audit's evidence with it (runtimes.md, "Windows' Ruby until Ruby 4.1.0").
   # rv-ruby's release of the macOS and glibc Linux Rubies, which compile
   # in their own OpenSSL, libyaml, libffi, and zlib, so a newer rv-ruby
   # release is how those reach the runtimes. rubies is its rolling tag.
@@ -47,6 +78,9 @@ watched:
     field: release
     github: spinel-coop/rv-ruby
     tag: '\A(?<version>\d{8})\z'
+    licenses: [rv-ruby]
+    also:
+      lib/fledge/download.rb: []
   # RubyInstaller's numbered release of the pinned Ruby, which replaces
   # the head build Windows runs while Ruby 4.1 is a preview (runtimes.md,
   # "Windows' Ruby until Ruby 4.1.0").
@@ -55,50 +89,71 @@ watched:
     github: oneclick/rubyinstaller2
     tag: '\ARubyInstaller-(?<version>\d+\.\d+\.\d+)-\d+\z'
     line: 2
+    names: [RubyInstaller]
+    hold: RubyInstaller's numbered release replaces the head build only with Ruby 4.1.0, which is a move of Ruby.
   llvm-mingw:
     pins: [llvm-mingw]
     github: mstorsjo/llvm-mingw
     tag: '\A(?<version>\d{8})\z'
+    licenses: [compiler-rt]
   libxcrypt:
     pins: [libxcrypt]
     github: besser82/libxcrypt
     tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
+    licenses: [libxcrypt, libxcrypt-static, libxcrypt-source]
+    named: [doc/contributors/design/runtimes.md, tasks/runtime_builder/linux.rb, test/runtime_builder_test.rb,
+      test/license_audit_test.rb, test/integration/licensing_page_test.rb]
   rcedit:
     pins: [rcedit]
     github: electron/rcedit
     tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
+    licenses: [rcedit]
   llvm-readobj:
     pins: [llvm-readobj]
     github: llvm/llvm-project
     tag: '\Allvmorg-(?<version>\d+\.\d+\.\d+)\z'
+    names: [llvm-readobj, LLVM]
+    hold: Its file_sha256 is of one file inside the release's archive, and runtime/sources.yml and runtime/licenses.yml record the zlib and Zstandard that file links, which a person reads from LLVM's release script at the new tag.
   # continuous is its rolling tag, and old its archive.
   appimage-runtime:
     pins: [appimage-runtime]
     github: AppImage/type2-runtime
     tag: '\A(?<version>\d{8})\z'
+    names: [AppImage's runtime, appimage-runtime]
+    hold: Its commit, its source archive, and the libfuse its build links move with it, and its release lists none of them.
   # The files SourceForge lists in the NSIS 3 folder, as an RSS feed.
   nsis:
     pins: [nsis]
     page: https://sourceforge.net/projects/nsis/rss?path=/NSIS%203
     pattern: '/NSIS%203/(?<version>3\.\d+(?:\.\d+)?)/'
+    names: [NSIS]
+    licenses: [nsis, nsis-source]
+    named: [doc/contributors/design/signing.md]
   # The OpenSSL release line RubyInstaller's Windows Ruby links.
   openssl:
     pins: [mobile.openssl, musl-ruby.openssl]
     github: openssl/openssl
     tag: '\Aopenssl-(?<version>\d+\.\d+\.\d+)\z'
     line: 2
+    names: [OpenSSL]
+    licenses: [openssl, openssl-mobile]
+    named: [runtime/mobile/android.c]
   libyaml:
     pins: [mobile.libyaml, musl-ruby.libyaml]
     github: yaml/libyaml
     tag: '\A(?<version>\d+\.\d+\.\d+)\z'
+    licenses: [libyaml-mobile, libyaml-musl]
   libffi:
     pins: [mobile.libffi, musl-ruby.libffi]
     github: libffi/libffi
     tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
+    licenses: [libffi-mobile, libffi-musl]
   zlib:
     pins: [musl-ruby.zlib]
     github: madler/zlib
     tag: '\Av(?<version>\d+\.\d+(?:\.\d+)*)\z'
+    licenses: [zlib-musl]
+    named: [mise.toml]
   # curl's page of Mozilla's CA certificates, which links every dated
   # extract it has published.
   ca-certificates:
@@ -106,6 +161,9 @@ watched:
     current: '\Acacert-(?<version>\d{4}-\d{2}-\d{2})\z'
     page: https://curl.se/docs/caextract.html
     pattern: 'cacert-(?<version>\d{4}-\d{2}-\d{2})\.pem'
+    names: [Mozilla's CA certificates, cacert, ca-certificates]
+    checksum: beside
+    licenses: [ca-certificates]
   # Google's repository of Android's SDK packages, the one Android
   # Studio's SDK manager reads; channel-0 is its stable channel.
   ndk:
@@ -113,19 +171,35 @@ watched:
     field: revision
     page: https://dl.google.com/android/repository/repository2-3.xml
     pattern: 'path="ndk;(?<version>[\d.]+)">(?:(?!</remotePackage>).)*?<channelRef ref="channel-0"/>'
+    names: [NDK]
+    hold: Its release's name, as r30, which its URLs and mise.android.toml carry, is not in the listing, which gives only its revision.
   gradle:
     pins: [mobile.gradle]
     page: https://services.gradle.org/versions/current
     pattern: '"version" : "(?<version>[^"]+)"'
+    names: [Gradle]
+    checksum: beside
+    keep: [wrapper_sha256]
+    named: [doc/contributors/design/phone-projects.md]
+    also:
+      lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties: ['distributions/gradle-(?<version>[\d.]+)-bin\.zip']
   agp:
     pins: [mobile.agp]
     page: https://dl.google.com/android/maven2/com/android/tools/build/gradle/maven-metadata.xml
     pattern: '<version>(?<version>[^<]+)</version>'
+    names: [Android Gradle plugin, AGP]
+    named: [doc/contributors/design/phone-projects.md]
+    also:
+      lib/fledge/mobile_project/android.rb: ['AGP = "(?<version>[^"]+)"']
   xcodegen:
     pins: [mobile.xcodegen]
     github: yonaskolb/XcodeGen
     tag: '\A(?<version>\d+\.\d+\.\d+)\z'
     ships: false
+    names: [XcodeGen]
+    named: [doc/contributors/device-test.md]
+    also:
+      mise.toml: ['\[tools\."http:xcodegen"\]\nversion = "(?<version>[^"]+)"']
   bundletool:
     pins: [mobile.bundletool]
     github: google/bundletool

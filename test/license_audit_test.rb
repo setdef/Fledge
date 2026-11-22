@@ -211,7 +211,8 @@ class LicenseAuditTest < Minitest::Test
   def test_the_build_of_ruby_a_pin_names_decides_what_the_runtime_must_hold
     write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2],
       payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/ GCC: (Ubuntu 13.3.0)"))
-    write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.5 "))
+    openssl = YAML.safe_load_file(File.expand_path("../runtime/sources.yml", __dir__)).dig("musl-ruby", "openssl", "version")
+    write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL #{openssl} "))
     stale = [["stale", "launcher"], ["stale", "#{ARCH}/openssl.so"]]
 
     assert_equal stale, rules(audit) & stale
@@ -608,9 +609,12 @@ class LicenseAuditTest < Minitest::Test
   end
 
   # The bytes each mobile runtime's one library holds of what is linked
-  # into it (runtime/licenses.yml): Ruby's revision, OpenSSL's version
-  # string, libyaml's, and libffi's.
-  MOBILE_LIBRARY = "ruby 4.1.0preview1 (revision 2d08b5f42f) OpenSSL 3.6.5 0.2.5\0 BLAKE3 1.8.5\0 3.5.2\0"
+  # into it, as runtime/licenses.yml's evidence says: Ruby's revision,
+  # OpenSSL's version string, libyaml's, BLAKE3's, and libffi's, which
+  # move with their pins.
+  MOBILE_LIBRARY = YAML.safe_load_file(File.expand_path("../runtime/licenses.yml", __dir__)).fetch("components")
+    .select { |component| Array(component["platforms"]).include?("ios") }
+    .flat_map { |component| Array(component["embedded"]).map { |embedded| embedded["evidence"] } }.compact.join(" ")
 
   # A path of Rust's standard library, as YJIT's panic messages carry it
   # into Android's libfledgeruby.so.

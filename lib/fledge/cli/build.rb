@@ -84,12 +84,15 @@ module Fledge
       # [ruby] The version of the Ruby running the build (default:
       #        +RUBY_VERSION+), whose minor version the runtime's Ruby
       #        must have.
-      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION)
+      # [pins] The file of SHA-256s Fledge::Runtimes checks runtimes
+      #        against (default: Fledge::Runtimes::PINS).
+      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION, pins: Runtimes::PINS)
         @out = out
         @err = err
         @env = env
         @host = host
         @ruby = ruby
+        @pins = pins
       end
 
       # Runs the command with the arguments after +build+, and returns
@@ -110,7 +113,7 @@ module Fledge
       def call(argv)
         options = Options.parse(argv)
         host = Platform.local(@host)
-        from = options.from&.then { |path| BuiltApp.at(path, platform: host, runtimes: Runtimes.new(env: @env, log: @err)) }
+        from = options.from&.then { |path| BuiltApp.at(path, platform: host, runtimes: Runtimes.new(env: @env, log: @err, pins: @pins)) }
         app = App.at(options.path)
         phone = MobilePlatform.find(options.phone.to_s)
         signing = phone ? nil : signing(options, host)
@@ -140,7 +143,7 @@ module Fledge
 
       private def build(app, platform, out, signing)
         out_dir = out_dir(app, out)
-        runtimes = Runtimes.new(env: @env, log: @err)
+        runtimes = Runtimes.new(env: @env, log: @err, pins: @pins)
         work_folder do |work|
           gems = gems_for(app, runtimes, work)
           runtime = runtimes.archive(platform)
@@ -181,7 +184,7 @@ module Fledge
         phone.check_host(host)
         out_dir = out_dir(app, out)
 
-        runtimes = Runtimes.new(env: @env, log: @err)
+        runtimes = Runtimes.new(env: @env, log: @err, pins: @pins)
         writer = MobileProject.for(phone)
         work_folder do |work|
           gems = gems_for(app, runtimes, work)

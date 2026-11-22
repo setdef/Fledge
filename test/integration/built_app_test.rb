@@ -316,7 +316,7 @@ class BuiltAppTest < Minitest::Test
       from = File.join(dir, "players", "Player-#{@platform}")
       place = File.join(dir, "My Games", "Ünïcödé 日本")
       out, err, status = Open3.capture3(env, RbConfig.ruby, "-I", LIB, EXE, "build", "--from", from, "-o", place, game)
-      assert_equal [true, ""], [status.success?, err]
+      assert_equal [true, ""], [status.success?, but_unchecked(err)]
       assert_equal "#{File.join(place, "Game-#{@platform}#{@platform.archive_extension}")}\n", out
 
       out, err, status = run_app({ "HOME" => dir }, File.join(place, "Game-#{@platform}", @platform.executable("Game")))
@@ -1299,5 +1299,11 @@ class BuiltAppTest < Minitest::Test
       env = { "SystemRoot" => system_root, "PATH" => File.join(system_root, "System32") }.merge(env)
     end
     Open3.capture3(env, [app, app], *argv, unsetenv_others: true, chdir:, stdin_data: stdin)
+  end
+
+  # What fledge build wrote on standard error but the line saying that
+  # the runtime it took, this checkout's own, is unchecked.
+  def but_unchecked(err)
+    err.lines.grep_v(/ is used unchecked$/).join
   end
 end

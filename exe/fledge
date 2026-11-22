@@ -508,7 +508,16 @@
 # ENVIRONMENT
 #     FLEDGE_RUNTIME_DIR Take runtimes from this folder of
 #                        fledge-runtime-VERSION-PLATFORM.tar.gz files,
-#                        and never download them.
+#                        and never download them. Each is checked
+#                        against the SHA-256 this Fledge pins, and one
+#                        that does not match fails the build; one this
+#                        Fledge pins nothing for is used, and the build
+#                        says it is unchecked.
+#     FLEDGE_RUNTIME_DIR_UNCHECKED
+#                        Set to 1 to use a runtime from
+#                        FLEDGE_RUNTIME_DIR that does not match its
+#                        pin, such as one you built with rake runtime.
+#                        The build says it is unchecked.
 #     FLEDGE_RUNTIME_MIRROR
 #                        Download runtimes from this server instead
 #                        of Fledge's GitHub Release, as

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Windows 11 is the oldest Windows Fledge names for its apps, on x64 as on ARM64, where the README named Windows 10, which Microsoft stopped supporting on 2025-10-14. Nothing in an app changes.
+- **Breaking:** a runtime in `FLEDGE_RUNTIME_DIR` is checked against the SHA-256 Fledge pins for it, as a download is, and one that does not match fails the build, naming both SHA-256s; it was used unchecked. To build with a runtime you built yourself, set `FLEDGE_RUNTIME_DIR_UNCHECKED=1`. A runtime used unchecked, so, or one Fledge pins nothing for, is named on standard error.
 
 ### Fixed
 

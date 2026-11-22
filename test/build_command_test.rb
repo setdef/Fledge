@@ -24,10 +24,11 @@ class BuildCommandTest < Minitest::Test
     FileUtils.rm_rf(@dir)
   end
 
-  def build(*argv, host: Gem::Platform.new("x86_64-linux"), env: { "FLEDGE_RUNTIME_DIR" => @runtimes }, ruby: RUBY_VERSION)
+  def build(*argv, host: Gem::Platform.new("x86_64-linux"), env: { "FLEDGE_RUNTIME_DIR" => @runtimes }, ruby: RUBY_VERSION, pins: nil)
     out = StringIO.new
     err = StringIO.new
-    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host:, ruby:).call(argv) }
+    pins ||= FakeRuntime.pins(@runtimes)
+    status = Dir.chdir(@dir) { Fledge::CLI::Build.new(out:, err:, env:, host:, ruby:, pins:).call(argv) }
     [out.string, err.string, status]
   end
 
@@ -155,7 +156,7 @@ class BuildCommandTest < Minitest::Test
     out = StringIO.new
     status = Dir.chdir(@app) do
       Fledge::CLI::Build.new(out:, err: StringIO.new, env: { "FLEDGE_RUNTIME_DIR" => @runtimes },
-        host: Gem::Platform.new("x86_64-linux")).call(["-o", "../dist"])
+        host: Gem::Platform.new("x86_64-linux"), pins: FakeRuntime.pins(@runtimes)).call(["-o", "../dist"])
     end
 
     assert_equal 0, status
@@ -236,6 +237,32 @@ class BuildCommandTest < Minitest::Test
       "fledge-runtime-#{Fledge::VERSION}-aarch64-linux.tar.gz\n", err
   end
 
+  # A copy of a release in FLEDGE_RUNTIME_DIR that is not the release's
+  # stops the build before anything is written; one you say you built
+  # yourself builds, and standard error says it was not checked.
+  def test_a_runtime_in_the_folder_that_does_not_match_its_pin_fails_unless_you_say_you_built_it
+    pins = FakeRuntime.pins(@runtimes)
+    runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::Platform.find("x86_64-linux")))
+    pinned = Digest::SHA256.file(runtime).hexdigest
+    File.binwrite(runtime, File.binread(runtime)[0, 200])
+
+    out, err, status = build("hello", pins:)
+
+    assert_equal [1, ""], [status, out]
+    assert_equal "fledge build: FLEDGE_RUNTIME_DIR is #{@runtimes}, whose #{File.basename(runtime)} has SHA-256 " \
+      "#{Digest::SHA256.file(runtime).hexdigest}, but Fledge #{Fledge::VERSION} pins #{pinned} for it. Copy it again " \
+      "from the v#{Fledge::VERSION} release, or, if you built it yourself (rake runtime), set " \
+      "FLEDGE_RUNTIME_DIR_UNCHECKED=1 to use it unchecked.\n", err
+    refute_path_exists File.join(@dir, "dist")
+
+    FakeRuntime.write(@runtimes, Fledge::Platform.find("x86_64-linux"), extra: [Fledge::Entry.file("built-here", "")])
+    out, err, status = build("hello", env: { "FLEDGE_RUNTIME_DIR" => @runtimes, "FLEDGE_RUNTIME_DIR_UNCHECKED" => "1" }, pins:)
+
+    assert_equal [0, "dist/Hello-x86_64-linux.tar.gz\n"], [status, out]
+    assert_equal "#{File.basename(runtime)} in FLEDGE_RUNTIME_DIR (#{@runtimes}) does not match the SHA-256 Fledge " \
+      "#{Fledge::VERSION} pins for it; FLEDGE_RUNTIME_DIR_UNCHECKED is set, so it is used unchecked\n", err
+  end
+
   # A windowed app's installer is printed after its archive.
   def test_a_windowed_apps_installer_follows_its_archive
     skip "an AppImage is built on Linux, with mksquashfs" unless RUBY_PLATFORM.include?("linux") && system("mksquashfs", "-version", out: File::NULL)
@@ -255,7 +282,8 @@ class BuildCommandTest < Minitest::Test
     argv = %w[-o dist hello].freeze
 
     Dir.chdir(@dir) do
-      Fledge::CLI::Build.new(out: StringIO.new, err: StringIO.new, env: { "FLEDGE_RUNTIME_DIR" => @runtimes }).call(argv)
+      Fledge::CLI::Build.new(out: StringIO.new, err: StringIO.new, env: { "FLEDGE_RUNTIME_DIR" => @runtimes },
+        pins: FakeRuntime.pins(@runtimes)).call(argv)
     end
 
     assert_equal %w[-o dist hello], argv

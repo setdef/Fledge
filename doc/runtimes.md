@@ -19,7 +19,9 @@ Name your Ruby in a `.ruby-version` file, which version managers and CI's [`setu
 The first time you build for a platform, Fledge downloads its runtime from Fledge's [GitHub Release](https://github.com/setdef/Fledge/releases), checks it against the SHA-256 that Fledge carries for it, and keeps it in `~/.cache/fledge` (or `$XDG_CACHE_HOME/fledge`). A download that fails for a moment, with a server error or a broken connection, is tried again after 2, 4, and 8 seconds; one the server does not have, or that does not match, stops the build at once. The gems your app locks download the same way. Because of the check, any copy of the release is as good as the release:
 
 - **A server of yours.** Copy the release's files to it, one folder per tag, as `vVERSION/NAME`, and set `FLEDGE_RUNTIME_MIRROR` to its address, such as `https://files.example.com/fledge`. Fledge stops the build on a file that does not match or that the server lacks.
-- **No network.** Set `FLEDGE_RUNTIME_DIR` to a folder of runtime archives, and Fledge never downloads one.
+- **No network.** Copy the release's runtime archives to a folder and set `FLEDGE_RUNTIME_DIR` to it, and Fledge never downloads one. Fledge checks each archive it takes from there against the SHA-256 it carries, and stops the build on one that does not match, naming both SHA-256s.
+
+A runtime you built yourself with `rake runtime`, from a checkout of Fledge, is not the release's, so it does not match. Set `FLEDGE_RUNTIME_DIR_UNCHECKED=1` beside `FLEDGE_RUNTIME_DIR` to build with it anyway. A Fledge that carries no SHA-256 for the runtime at all, as at a release commit before the commit that pins its runtimes, builds with it as it is. Either way, `fledge build` says on standard error that the runtime is unchecked.
 
 ## Updating Fledge
 
@@ -40,7 +42,7 @@ From 1.0, Fledge follows [Semantic Versioning](https://semver.org/). In a minor 
 - **How your code runs.** Fledge may remove a [difference from `ruby main.rb`](differences_from_ruby.md), but never add one.
 - **Ruby and the systems your users run.** Every Ruby minor version 1.0 has a runtime for, Ruby 4.1 today, and the oldest system each platform runs on, as the [compatibility table](../README.md#compatibility) lists them.
 - **Phone projects.** The folders of the project Fledge writes, the files in it you may replace, and the functions your host code calls to start Ruby.
-- **Runtime downloads.** The names of the release's files, `FLEDGE_RUNTIME_DIR`, and `FLEDGE_RUNTIME_MIRROR`.
+- **Runtime downloads.** The names of the release's files, `FLEDGE_RUNTIME_DIR`, `FLEDGE_RUNTIME_DIR_UNCHECKED`, and `FLEDGE_RUNTIME_MIRROR`.
 
 Any version may change what you should not depend on:
 

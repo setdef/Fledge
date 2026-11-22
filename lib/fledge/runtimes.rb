@@ -26,8 +26,8 @@ module Fledge
   #
   # This class looks in three places, in order. When the environment
   # variable +FLEDGE_RUNTIME_DIR+ names a folder, the runtime comes from
-  # there and nowhere else, which is how CI and Fledge's own development
-  # build apps from runtimes they just built. Otherwise it looks in a
+  # there and nowhere else: a copy of the release, for a build with no
+  # network, or runtimes CI or a contributor just built. Otherwise it looks in a
   # cache (<tt>$XDG_CACHE_HOME/fledge/runtimes</tt>, or
   # <tt>~/.cache/fledge/runtimes</tt>), and if the runtime is not there,
   # it downloads it from this version's GitHub Release into the cache.
@@ -37,14 +37,18 @@ module Fledge
   # and from nowhere else: a mirror that lacks a file fails the build
   # rather than sending it to a host its owner chose to avoid.
   #
-  # Either way, a runtime from the cache or a download must have the
+  # Wherever it comes from, a runtime must have the
   # SHA-256 this gem pins for it in +PINS+, which <tt>rake runtime:pin</tt>
   # wrote from the very runtimes the release then published
   # (doc/contributors/design/releases.md, "The pins"). The
   # release's own +SHA256SUMS+ catches a damaged download, but a release
   # whose assets and sums were both replaced would pass it; the pins were
   # fixed when this gem was, so it does not, and neither does a mirror
-  # that serves other bytes.
+  # that serves other bytes. Only in +FLEDGE_RUNTIME_DIR+ may a runtime
+  # go unchecked, and the log says so each time: one this gem pins
+  # nothing for, and one that does not match while
+  # +FLEDGE_RUNTIME_DIR_UNCHECKED+ is set, as it is for runtimes Fledge's
+  # own CI and contributors build from a checkout.
   #
   # Use it to get the archive Fledge::Assembly copies an app into.
   #
@@ -117,6 +121,7 @@ module Fledge
       @log = log
       @pins = pins
       @waits = waits
+      @checked = {} # : Hash[String, String]
     end
 
     # The path of the runtime archive for +platform+, downloading it
@@ -158,18 +163,17 @@ module Fledge
     def at_hand(platform)
       name = self.class.file_name(platform)
       directory = @env["FLEDGE_RUNTIME_DIR"].to_s
-      path = directory.empty? ? File.join(cache, name) : File.join(File.expand_path(directory), name)
-      return nil unless File.file?(path)
-      return path unless directory.empty?
+      return in_directory(directory, name) unless directory.empty?
 
-      path if Digest::SHA256.file(path).hexdigest == pin(name)
-    rescue Error
-      nil
+      cached = File.join(cache, name)
+      cached if File.file?(cached) && Digest::SHA256.file(cached).hexdigest == pinned(name)
     end
 
     private def find(name)
       directory = @env["FLEDGE_RUNTIME_DIR"].to_s
-      return from_directory(directory, name) unless directory.empty?
+      unless directory.empty?
+        return in_directory(directory, name) || raise(Error, "FLEDGE_RUNTIME_DIR is #{directory}, which has no #{name}")
+      end
 
       sha256 = pin(name)
       cached = File.join(cache, name)
@@ -198,11 +202,47 @@ module Fledge
       File.join(File.expand_path(base), "fledge", "runtimes")
     end
 
-    private def from_directory(directory, name)
+    # The runtime +name+ in FLEDGE_RUNTIME_DIR, checked against its pin
+    # once for each finder, or +nil+ when the folder has no such file.
+    private def in_directory(directory, name)
       path = File.join(File.expand_path(directory), name)
-      return path if File.file?(path)
+      return nil unless File.file?(path)
 
-      raise Error, "FLEDGE_RUNTIME_DIR is #{directory}, which has no #{name}"
+      @checked[path] ||= checked(directory, name, path)
+    end
+
+    # +path+, when it matches the pin for +name+. A runtime this Fledge
+    # pins nothing for, or one that does not match while
+    # FLEDGE_RUNTIME_DIR_UNCHECKED is set, is used, and the log says it
+    # is unchecked; one that does not match otherwise fails the build
+    # (doc/contributors/design/runtimes.md, "Where fledge build finds a
+    # runtime").
+    private def checked(directory, name, path)
+      sha256 = pinned(name)
+      where = "FLEDGE_RUNTIME_DIR (#{directory})"
+      unless sha256
+        @log&.puts "Fledge #{VERSION} pins no SHA-256 for #{name}, so the one in #{where} is used unchecked"
+        return path
+      end
+      actual = Digest::SHA256.file(path).hexdigest
+      return path if actual == sha256
+
+      unless unchecked?
+        raise Error, "FLEDGE_RUNTIME_DIR is #{directory}, whose #{name} has SHA-256 #{actual}, but Fledge #{VERSION} " \
+          "pins #{sha256} for it. Copy it again from the v#{VERSION} release, or, if you built it yourself " \
+          "(rake runtime), set FLEDGE_RUNTIME_DIR_UNCHECKED=1 to use it unchecked."
+      end
+      @log&.puts "#{name} in #{where} does not match the SHA-256 Fledge #{VERSION} pins for it; " \
+        "FLEDGE_RUNTIME_DIR_UNCHECKED is set, so it is used unchecked"
+      path
+    end
+
+    # Whether FLEDGE_RUNTIME_DIR_UNCHECKED is set to anything but empty,
+    # 0, f, false, n, or no, as Bundler reads a switch it takes from the
+    # environment (Bundler::Settings#to_bool, lib/bundler/settings.rb in
+    # bundler 4.0.20).
+    private def unchecked?
+      !@env["FLEDGE_RUNTIME_DIR_UNCHECKED"].to_s.match?(/\A(false|f|no|n|0|)\z/i)
     end
 
     private def pinned?(cached, sha256)
@@ -236,14 +276,19 @@ module Fledge
       raise Error, "FLEDGE_RUNTIME_MIRROR is #{mirror}: #{e.message}"
     end
 
-    private def pin(name)
-      if File.file?(@pins)
-        File.foreach(@pins, chomp: true) do |line|
-          sha256, file = line.split(" ", 2)
-          return sha256.to_s.downcase if file.to_s.strip.delete_prefix("*") == name
-        end
+    # The SHA-256 this Fledge pins for +name+, or +nil+.
+    private def pinned(name)
+      return nil unless File.file?(@pins)
+
+      File.foreach(@pins, chomp: true) do |line|
+        sha256, file = line.split(" ", 2)
+        return sha256.to_s.downcase if file.to_s.strip.delete_prefix("*") == name
       end
-      raise Error, "Fledge #{VERSION} pins no SHA-256 for #{name}, so it is not a released Fledge and has no " \
+      nil
+    end
+
+    private def pin(name)
+      pinned(name) or raise Error, "Fledge #{VERSION} pins no SHA-256 for #{name}, so it is not a released Fledge and has no " \
         "runtimes to download. Install Fledge from a release tag, or set FLEDGE_RUNTIME_DIR to a folder of " \
         "runtimes you built (rake runtime)."
     end

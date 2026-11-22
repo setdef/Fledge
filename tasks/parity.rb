@@ -416,10 +416,13 @@ class Parity
   # folder, which must exist, and returns its launcher, the program
   # +name+. The ruby/spec comparison (tasks/ruby_spec.rb) builds its app
   # with it too.
+  # The runtime is one this checkout built, which its pins do not name,
+  # so the build is told so (FLEDGE_RUNTIME_DIR_UNCHECKED) and says it
+  # is unchecked.
   def build_app(path = PROBE, name = "Parity")
     out = StringIO.new
     err = StringIO.new
-    env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => @runtimes)
+    env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => @runtimes, "FLEDGE_RUNTIME_DIR_UNCHECKED" => "1")
     status = Fledge::CLI::Build.new(out:, err:, env:).call(["-o", File.join(@work, "dist"), path])
     raise "fledge build failed: #{err.string}" unless status.zero?
 

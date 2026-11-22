@@ -22,12 +22,83 @@ class RuntimesTest < Minitest::Test
   def test_the_runtime_directory_wins_and_is_the_only_place_looked
     Dir.mktmpdir do |dir|
       archive = FakeRuntime.write(dir, LINUX)
-      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir }, release_url: "http://127.0.0.1:1")
+      log = StringIO.new
+      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir }, release_url: "http://127.0.0.1:1", log:,
+        pins: write_pins(dir, File.basename(archive) => File.binread(archive)))
 
       assert_equal archive, runtimes.archive(LINUX)
+      assert_empty log.string, "a runtime that matches its pin is used without a word"
       error = assert_raises(Fledge::Error) { runtimes.archive(Fledge::Platform.find("aarch64-linux")) }
       assert_equal "FLEDGE_RUNTIME_DIR is #{dir}, which has no " \
         "fledge-runtime-#{Fledge::VERSION}-aarch64-linux.tar.gz", error.message
+    end
+  end
+
+  # A copy of a release in FLEDGE_RUNTIME_DIR, for a build with no
+  # network, is checked as a download is: a damaged or substituted copy
+  # stops the build, and the message says what to do.
+  def test_a_runtime_in_the_directory_that_does_not_match_its_pin_fails_the_build
+    Dir.mktmpdir do |dir|
+      archive = FakeRuntime.write(dir, LINUX)
+      pins = write_pins(dir, File.basename(archive) => "the released runtime")
+      File.binwrite(archive, File.binread(archive)[0, 100])
+      log = StringIO.new
+      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir }, log:, pins:)
+
+      [-> { runtimes.archive(LINUX) }, -> { runtimes.at_hand(LINUX) }].each do |take|
+        error = assert_raises(Fledge::Error, &take)
+        assert_equal "FLEDGE_RUNTIME_DIR is #{dir}, whose #{File.basename(archive)} has SHA-256 " \
+          "#{Digest::SHA256.file(archive).hexdigest}, but Fledge #{Fledge::VERSION} pins " \
+          "#{Digest::SHA256.hexdigest('the released runtime')} for it. Copy it again from the " \
+          "v#{Fledge::VERSION} release, or, if you built it yourself (rake runtime), set " \
+          "FLEDGE_RUNTIME_DIR_UNCHECKED=1 to use it unchecked.", error.message
+      end
+      assert_empty log.string
+    end
+  end
+
+  # Fledge's own CI and its contributors build runtimes and then build
+  # apps from them, at a version whose pins are the last release's. They
+  # say so, and each build says that its runtime is unchecked.
+  def test_a_runtime_you_built_is_used_unchecked_when_you_say_so_and_the_build_says_so
+    Dir.mktmpdir do |dir|
+      archive = FakeRuntime.write(dir, LINUX)
+      pins = write_pins(dir, File.basename(archive) => "the released runtime")
+      notice = "#{File.basename(archive)} in FLEDGE_RUNTIME_DIR (#{dir}) does not match the SHA-256 Fledge " \
+        "#{Fledge::VERSION} pins for it; FLEDGE_RUNTIME_DIR_UNCHECKED is set, so it is used unchecked\n"
+
+      ["1", "true", "yes"].each do |value|
+        log = StringIO.new
+        runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "FLEDGE_RUNTIME_DIR_UNCHECKED" => value },
+          log:, pins:)
+        assert_equal archive, runtimes.archive(LINUX)
+        assert_equal archive, runtimes.archive(LINUX)
+        assert_equal archive, runtimes.at_hand(LINUX)
+        assert_equal notice, log.string, "said once, however often the build takes the runtime"
+      end
+      ["", "0", "f", "false", "FALSE", "n", "no"].each do |value|
+        runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "FLEDGE_RUNTIME_DIR_UNCHECKED" => value }, pins:)
+        assert_raises(Fledge::Error) { runtimes.archive(LINUX) }
+      end
+    end
+  end
+
+  # A Fledge between releases, or at a release commit before its pin
+  # commit, pins nothing for the runtime it would take: there is nothing
+  # to check against, and the build says so rather than failing.
+  def test_a_runtime_in_the_directory_with_no_pin_is_used_and_the_build_says_it_is_unchecked
+    Dir.mktmpdir do |dir|
+      archive = FakeRuntime.write(dir, LINUX)
+      notice = "Fledge #{Fledge::VERSION} pins no SHA-256 for #{File.basename(archive)}, so the one in " \
+        "FLEDGE_RUNTIME_DIR (#{dir}) is used unchecked\n"
+
+      [write_pins(dir, "other.tar.gz" => "other"), File.join(dir, "absent")].each do |pins|
+        log = StringIO.new
+        runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir }, log:, pins:)
+        assert_equal archive, runtimes.archive(LINUX)
+        assert_equal archive, runtimes.at_hand(LINUX)
+        assert_equal notice, log.string
+      end
     end
   end
 
@@ -37,8 +108,10 @@ class RuntimesTest < Minitest::Test
   def test_a_runtime_at_hand_is_one_this_computer_has_and_nothing_is_downloaded
     Dir.mktmpdir do |home|
       archive = FakeRuntime.write(home, LINUX)
-      assert_equal archive, Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => home }).at_hand(LINUX)
-      assert_nil Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => home }).at_hand(Fledge::Platform.find("aarch64-linux"))
+      pinned = write_pins(home, File.basename(archive) => File.binread(archive))
+      assert_equal archive, Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => home }, pins: pinned).at_hand(LINUX)
+      assert_nil Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => home }, pins: pinned)
+        .at_hand(Fledge::Platform.find("aarch64-linux"))
 
       cache = File.join(home, ".cache/fledge/runtimes")
       FileUtils.mkdir_p(cache)
@@ -247,7 +320,8 @@ class RuntimesTest < Minitest::Test
   def test_the_runtime_directory_wins_over_a_mirror
     Dir.mktmpdir do |dir|
       archive = FakeRuntime.write(dir, LINUX)
-      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "FLEDGE_RUNTIME_MIRROR" => "http://127.0.0.1:1" })
+      runtimes = Fledge::Runtimes.new(env: { "FLEDGE_RUNTIME_DIR" => dir, "FLEDGE_RUNTIME_MIRROR" => "http://127.0.0.1:1" },
+        pins: write_pins(dir, File.basename(archive) => File.binread(archive)))
 
       assert_equal archive, runtimes.archive(LINUX)
     end

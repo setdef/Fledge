@@ -10,8 +10,16 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require "fledge"
 
 require "minitest/autorun"
+require "digest"
 require "fileutils"
 require "tmpdir"
+
+# The runtimes the integration tests build apps from, in tmp/runtime or
+# the folder FLEDGE_RUNTIME_DIR names, are this checkout's own, which
+# its pins do not name: every fledge build they run is told so, and says
+# on standard error that its runtime is unchecked. A unit test passes
+# its environment in and is untouched by this.
+ENV["FLEDGE_RUNTIME_DIR_UNCHECKED"] = "1"
 
 # Builds runtime archives shaped like the ones rake runtime writes, small
 # enough for a unit test: a launcher that is a shell script (on Windows,
@@ -45,6 +53,17 @@ module FakeRuntime
   def self.rbconfig(platform)
     "module RbConfig\n  CONFIG = {}\n  CONFIG[\"MAJOR\"] = \"4\"\n  CONFIG[\"MINOR\"] = \"1\"\n  CONFIG[\"TEENY\"] = \"0\"\n" \
       "  CONFIG[\"arch\"] = \"#{ARCH.fetch(platform.name)}\"\nend\n"
+  end
+
+  # Pins every runtime archive in +directory+, as a release's SHA256SUMS
+  # pins its runtimes, and returns the file's path: a build of the
+  # test's own runtimes then checks them as fledge build checks a
+  # release's, whatever this commit's own pins name.
+  def self.pins(directory)
+    path = File.join(directory, "SHA256SUMS")
+    archives = Dir.glob("fledge-runtime-*", base: directory).sort
+    File.write(path, archives.map { |name| "#{Digest::SHA256.file(File.join(directory, name)).hexdigest}  #{name}\n" }.join)
+    path
   end
 
   # Writes the runtime for +platform+ into +directory+, named as

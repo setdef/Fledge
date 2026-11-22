@@ -11,8 +11,9 @@ module Fledge
       @env: Runtimes::_Env
       @host: Gem::Platform
       @ruby: String
+      @pins: String
 
-      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?host: Gem::Platform, ?ruby: String) -> void
+      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?host: Gem::Platform, ?ruby: String, ?pins: String) -> void
 
       def call: (Array[String]) -> Integer
 

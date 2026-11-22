@@ -18,6 +18,7 @@ module Fledge
     @log: CLI::_Output?
     @pins: String
     @waits: Array[Integer]
+    @checked: Hash[String, String]
 
     def self.file_name: (target platform, ?version: String) -> String
 
@@ -31,13 +32,19 @@ module Fledge
 
     def cache: () -> String
 
-    private def from_directory: (String directory, String name) -> String
+    private def in_directory: (String directory, String name) -> String?
+
+    private def checked: (String directory, String name, String path) -> String
+
+    private def unchecked?: () -> bool
 
     private def pinned?: (String cached, String sha256) -> bool
 
     private def download: (String name, String destination, String sha256) -> String
 
     private def from_mirror: (String mirror, String name, String destination, String sha256) -> String
+
+    private def pinned: (String name) -> String?
 
     private def pin: (String name) -> String
   end

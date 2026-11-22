@@ -40,6 +40,8 @@ $Work = [IO.Path]::GetFullPath($Work)
 Remove-Item -LiteralPath $Work -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $Work | Out-Null
 $env:FLEDGE_RUNTIME_DIR = [IO.Path]::GetFullPath($Runtimes)
+# The runtime is this checkout's own build, not the one its pins name.
+$env:FLEDGE_RUNTIME_DIR_UNCHECKED = '1'
 
 $made = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Fledge Test Signing' `
   -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(1)

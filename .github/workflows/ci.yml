@@ -693,6 +693,7 @@ jobs:
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
           FLEDGE_REQUIRE_IOS: "1"
         run: bundle exec rake test:integration TEST=test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb
 
@@ -858,6 +859,7 @@ jobs:
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
           FLEDGE_REQUIRE_ANDROID: "1"
         run: bundle exec rake test:integration TEST=test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb
 
@@ -878,6 +880,7 @@ jobs:
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
           FLEDGE_REQUIRE_ANDROID: "1"
         with:
           api-level: 36
@@ -970,6 +973,7 @@ jobs:
       - name: Write examples/mobile_app's Android project with fledge build android
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: ruby -I lib exe/fledge build android -o dist examples/mobile_app
 
       - name: Fetch the pinned bundletool
@@ -1098,6 +1102,7 @@ jobs:
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test:all
 
@@ -1110,6 +1115,7 @@ jobs:
         timeout-minutes: 10
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: bundle exec rake parity
 
       # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
@@ -1146,7 +1152,7 @@ jobs:
 
       - name: Check parity with ruby main.rb and bundle exec, in Alpine
         run: >-
-          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes "$ALPINE_RUBY"
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes -e FLEDGE_RUNTIME_DIR_UNCHECKED=1 "$ALPINE_RUBY"
           sh -c '.github/scripts/alpine-packages.sh apps && .github/scripts/alpine-packages.sh parity && git config --global --add safe.directory /fledge && ruby tasks/parity.rb'
 
   # ruby/spec on stock Ruby and in a built app (ruby-spec.yml): on every
@@ -1248,6 +1254,7 @@ jobs:
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
           FLEDGE_REQUIRE_RUNTIME: "1"
         run: bundle exec rake test:all
 
@@ -1260,6 +1267,7 @@ jobs:
         timeout-minutes: 10
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: bundle exec rake parity
 
       # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
@@ -1401,6 +1409,7 @@ jobs:
       - name: Build hello, the parity and console probes, my_cool_app, windowed_app, programs, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' "$RUNNER_TEMP/parity-bundle"
           apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs examples/native_app test/fixtures/bundled_with/exe/bundled_with)
@@ -1420,6 +1429,7 @@ jobs:
         if: runner.os == 'Linux'
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           sudo apt-get install -y -qq "libpng-dev=$(dpkg-query -W -f '${Version}' libpng16-16t64)"
           ruby -I lib exe/fledge build -o dist examples/system_library
@@ -1440,6 +1450,7 @@ jobs:
         if: runner.os == 'Linux'
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           sudo apt-get install -y -qq desktop-file-utils
           mkdir "$RUNNER_TEMP/icon-sizes"
@@ -1465,6 +1476,7 @@ jobs:
         if: runner.os != 'Linux'
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           for app in examples/hello examples/windowed_app; do
             ruby -I lib exe/fledge build --sign "$FLEDGE_TEST_SIGN_IDENTITY" -o dist-signed "$app"
@@ -1481,6 +1493,7 @@ jobs:
         shell: pwsh
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           $signtool = ruby -I lib -r fledge -e 'print Fledge::Nsis.host_path(Fledge::WindowsSigning.signtool(ENV))'
           if ($LASTEXITCODE -ne 0) { exit 1 }
@@ -1512,6 +1525,7 @@ jobs:
         if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x64-mingw-ucrt'
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: ruby -I lib exe/fledge build -o dist examples/nokogiri_app
 
       # doc/contributors/design/gems.md, "Examples that exercise these
@@ -1528,6 +1542,7 @@ jobs:
         shell: bash
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby .github/scripts/gem-mirror.rb 9292 fledge:mirror-password "$RUNNER_TEMP/mirror.log" &
           mirror=$!
@@ -1586,6 +1601,7 @@ jobs:
         if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x86_64-linux' || matrix.platform == 'x64-mingw-ucrt'
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: .github/scripts/prepare-from.sh "$RUNNER_TEMP/from" "${{ matrix.platform }}"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -1711,7 +1727,7 @@ jobs:
           (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
           cat dist/my_cool_app.expected
           SH
-          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes \
+          docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes -e FLEDGE_RUNTIME_DIR_UNCHECKED=1 \
             -e BUNDLE_FROZEN "$ALPINE_RUBY" sh /scripts/build-apps.sh
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

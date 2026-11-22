@@ -153,6 +153,7 @@ jobs:
         if: "!endsWith(matrix.platform, '-musl')"
         env:
           FLEDGE_RUNTIME_DIR: runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
           RUBY_SPEC_OUT: ${{ runner.temp }}/ruby-spec
           PLATFORM: ${{ matrix.platform }}
         run: ruby tasks/ruby_spec.rb "$PLATFORM"
@@ -168,7 +169,7 @@ jobs:
           mkdir -p "$HOME/.cache/fledge/downloads" &&
           docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/out" -v "$GITHUB_STEP_SUMMARY:/summary.md"
           -v "$HOME/.cache/fledge/downloads:/cache/fledge/downloads" -w /fledge
-          -e PLATFORM -e FLEDGE_RUNTIME_DIR=/fledge/runtimes -e RUBY_SPEC_OUT=/out/ruby-spec -e GITHUB_STEP_SUMMARY=/summary.md
+          -e PLATFORM -e FLEDGE_RUNTIME_DIR=/fledge/runtimes -e FLEDGE_RUNTIME_DIR_UNCHECKED=1 -e RUBY_SPEC_OUT=/out/ruby-spec -e GITHUB_STEP_SUMMARY=/summary.md
           -e XDG_CACHE_HOME=/cache
           "$ALPINE_RUBY"
           sh -c '.github/scripts/alpine-packages.sh apps && git config --global --add safe.directory /fledge &&

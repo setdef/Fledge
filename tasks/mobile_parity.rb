@@ -121,10 +121,13 @@ class MobileParity
   # as a developer would, taking the runtime from +runtimes+, and
   # returns each app's project folder: what fledge build prints on
   # standard output, as what it downloads goes to standard error.
+  # The runtime is one this checkout built, which its pins do not name,
+  # so the build is told so (FLEDGE_RUNTIME_DIR_UNCHECKED).
   def self.projects(phone, runtimes:, out:, apps: self.apps(phone), env: {})
     fledge = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), File.join(ROOT, "exe", "fledge")]
     apps.to_h do |app|
-      printed, logged, status = Open3.capture3(env.merge("FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes)), *fledge, "build", phone,
+      own = { "FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes), "FLEDGE_RUNTIME_DIR_UNCHECKED" => "1" }
+      printed, logged, status = Open3.capture3(env.merge(own), *fledge, "build", phone,
         "-o", out, File.expand_path(app.path, ROOT), chdir: ROOT)
       raise "fledge build #{phone} #{app.path} failed:\n#{printed}#{logged}" unless status.success?
 

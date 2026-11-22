@@ -51,3 +51,38 @@ Nothing waits on this. It decides whether one kind of red CI run can be ruled ou
 **Default.** Nothing more is stored anywhere. CI keeps the cache as it is, a run that Central refuses in one of the two remaining cases is run again, and the design document for phone projects says so.
 
 **To reverse.** Say "publish the set on a release" (and whether beside the runtimes or apart from them), or "pay for more cache". Agents then build that, with the notices the files need, and remove this question.
+
+## G. May Fledge copy Microsoft's Visual C++ runtime into a Windows app? (open, no deadline)
+
+Nothing waits on this but apps on gems whose DLLs were built with Visual Studio, which `fledge build` refuses for Windows until it is answered.
+
+**Context.** Some gems ship a DLL built with Microsoft's Visual Studio; LibUI's `libui` gem is one. Such a DLL needs Microsoft's Visual C++ runtime (`vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`), which is not part of Windows: a computer has it only if something installed the Visual C++ Redistributable. Today `fledge build` refuses such a gem for Windows ("needs VCRUNTIME140.dll, which neither windows, nor Fledge's runtime, nor the gem itself provides"), so a LibUI app cannot ship, though it runs under `bundle exec` on a computer that has the Redistributable.
+
+Python's packagers copy those DLLs into the app beside the program (Microsoft calls this local deployment). But Microsoft's page "Redistribute Visual C++ files" says: "Distribution of the Visual C++ Runtime Redistributable package, merge modules, and individual binaries is limited to licensed Visual Studio users and is subject to Microsoft Software License Terms." Its list of distributable files for Visual Studio 2022 begins: "If you have a validly licensed copy of such software, you may copy and distribute with your program the unmodified form of the files listed below, subject to the License Terms for the software." A Ruby developer who uses RubyInstaller may have no Visual Studio license at all, and the DLL would not be Fledge's runtime, nor the gem's own file, but one Fledge copied from the developer's computer.
+
+You wrote that a gem's licenses are the developer's: "The gems an app depends on are the app developer's choice and responsibility, licenses and all" (2026-10-28), and that Fledge's runtime carries only what decision 8 allows. Neither says whether Fledge may copy into an app a file whose right to be distributed belongs only to someone who holds a license Fledge cannot check.
+
+**The question.** Which of these should Fledge do when a gem's DLL needs the Visual C++ runtime?
+
+1. Keep refusing, with a message that says to build the gem with the runtime linked statically, or to ask its author to. (Nothing to license.)
+2. Copy the three DLLs into the app from the developer's computer, and say in the documentation that the developer must hold a Visual Studio license to distribute them. (The app runs everywhere; the developer carries a license duty they may not know of.)
+3. Let `fledge.yml` say the person's computer has the Redistributable (a `windows: system_libraries` list, like Linux's), and ship without it. (No distribution; a person without the Redistributable sees Windows' missing-DLL dialog, which your rule that a person never meets Ruby's insides argues against.)
+4. Have the Windows setup program Fledge builds run Microsoft's `vc_redist.x64.exe`. (The same license condition as 2 applies to the package; the `.zip` app would still lack it.)
+
+**Default the work proceeds on.** 1: `fledge build` keeps refusing, as now; nothing was built for 2, 3, or 4.
+
+**To reverse.** Answer with 2, 3, or 4, and an agent builds that. The Visual Studio license terms themselves were not read: Microsoft's page of them loads its text in a way an agent's download did not get, so the two sentences quoted above, from Microsoft's documentation, are all this rests on.
+
+## H. Is a limit the platform itself imposes a bug the candidate for 1.0.0 may not have? (open, no deadline)
+
+Nothing waits on this. It decides how agents close some of the known bugs that stand before the candidate.
+
+**What you said.** On 2026-11-21: "How can you possibly think we can ship 1.0.0 with **known** bugs?" On 2026-11-12, of differences from `ruby main.rb`: "TRULY justified? Every difference, every lack of parity, is a knife in Fledge's back that could kill the project before it launches."
+
+Agents record the first as: a known defect is fixed, or shown not to be one, before a release is called the candidate. Some known defects cannot be fixed by Fledge, because the system the app runs on does the thing. Two examples from the list: Android cuts a process title that is longer than the app's identifier, so `$0 = "a long title"` shows shortened there; and a gem whose DLL needs Microsoft's Visual C++ runtime cannot ship for Windows while question G stands.
+
+**The question.** When a primary source (the platform's own documentation or source code) shows that the platform forbids or does the thing, and Fledge's documents for developers say so, does that count as "shown not to be one", so the candidate may be called with it?
+
+**Default.** Yes, by the standard you set for parity on 2026-11-12: such a limit is accepted only when it is inherent to where the app ships or the platform truly forbids what Ruby does, shown from primary sources, and it is written where a developer will read it. Anything Fledge could close is still a bug to fix, however much work it is.
+
+**To reverse.** Say that such limits block the candidate too. Agents then keep each one on the list of known bugs, and the candidate waits until each is closed or you strike it from the list yourself.

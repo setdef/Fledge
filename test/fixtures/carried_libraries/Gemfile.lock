@@ -1,0 +1,21 @@
+PATH
+  remote: gems/greet
+  specs:
+    greet (1.0.0)
+
+GEM
+  specs:
+
+PLATFORMS
+  arm64-darwin
+  ruby
+
+DEPENDENCIES
+  greet!
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  greet (1.0.0)
+
+BUNDLED WITH
+  4.0.20

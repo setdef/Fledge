@@ -16,12 +16,13 @@ module Fledge
     @cpu: String?
     @provided: Array[String]
     @declared: Array[String]
+    @carried: Array[String]
     @needed: Array[String]
     @readers: Binary::Readers
     @visual_c_runtime: String?
     @visual_c: Array[String]
 
-    def initialize: (os: String, ?cpu: String?, ?provided: Array[String], ?system: Array[String], ?readers: Binary::Readers, ?visual_c_runtime: String?) -> void
+    def initialize: (os: String, ?cpu: String?, ?provided: Array[String], ?system: Array[String], ?readers: Binary::Readers, ?visual_c_runtime: String?, ?carried: Array[String]) -> void
 
     def visual_c_libraries: () -> Array[String]
 

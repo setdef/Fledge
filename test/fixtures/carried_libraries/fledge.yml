@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# A Mac app whose gem links libraries from the developer's computer, as
+# gosu links Homebrew's SDL: greet, a path gem whose C extension links
+# libgreet, which needs libpunct. test/integration/carried_libraries_test.rb
+# builds both libraries into a folder of their own, as a package manager
+# installs them, and lists them here so the app carries them.
+name: Carried Libraries Probe
+kind: windowed
+identifier: com.setdef.fledge.CarriedLibrariesProbe
+installers: [dmg]
+macos:
+  carried_libraries: [libgreet.1.dylib, libpunct.1.dylib]

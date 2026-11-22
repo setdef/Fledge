@@ -1,0 +1,66 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class CarriedLibraries
+    FOLDER: String
+    INSTALL: String
+
+    type run_paths = Array[[String?, String]]
+
+    @names: Array[String]
+    @platform: Platform
+    @readers: Binary::Readers
+    @provided: Array[String]
+    @root: String
+    @files: Hash[String, String]
+    @problems: Array[String]
+    @sources: Hash[String, String]
+    @binaries: Hash[String, Binary]
+    @unlisted: Array[[String, String, String, String?]]
+    @seen: Array[String]
+    @gem_binaries: Hash[String, Binary]
+
+    def initialize: (Array[String] names, files: Hash[String, String], platform: Platform, readers: Binary::Readers, ?provided: Array[String], ?root: String) -> void
+
+    def problems: () -> Array[String]
+
+    attr_reader sources: Hash[String, String]
+
+    def changes: () -> Hash[String, Array[[String, String]]]
+
+    def files: () -> Hash[String, String]
+
+    def unreached: (Hash[String, String] files) -> Array[String]
+
+    private def gem_binaries: () -> Hash[String, Binary]
+
+    private def gather: () -> void
+
+    private def carry: (String name, String source) -> Binary?
+
+    private def unlisted: (String? owner, String need, String? found) -> void
+
+    private def missing: (String needer, String need, run_paths chain) -> void
+
+    private def unused: () -> Array[String]
+
+    private def all_names: () -> Array[String]
+
+    private def carried_needs: (Binary binary) -> Array[String]
+
+    private def locate: (String need, String? owner, run_paths chain) -> String?
+
+    private def candidates: (String need, String? owner, run_paths chain) -> Array[String]
+
+    private def expand: (String rpath, String? folder) -> String?
+
+    private def changes_of: (String path, Binary binary) -> Array[[String, String]]
+
+    private def rewritten: (String content, Array[[String, String]] list, String file) -> String
+
+    private def host: (String path) -> String
+
+    private def real: (String path) -> String
+  end
+end

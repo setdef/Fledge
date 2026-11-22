@@ -29,7 +29,9 @@ module Fledge
   # What the operating system provides is SYSTEM_LIBRARIES, and on Linux
   # also what the project lists as its gems' to load from the
   # distribution (Config::Linux), which a desktop library's
-  # wrapper needs. On macOS a
+  # wrapper needs; on macOS also what the project has the app carry from
+  # the developer's computer (Config::Macos), which
+  # Fledge::CarriedLibraries copies in and judges. On macOS a
   # library the gem carries must also be where its name leads: a file that
   # names <tt>@rpath/libfoo.dylib</tt> or
   # <tt>@loader_path/libfoo.dylib</tt> loads the gem's copy only if dyld
@@ -147,8 +149,14 @@ module Fledge
     #                    +nil+ for not at all: with a way chosen, a DLL of
     #                    VISUAL_C_RUNTIME is no gem's problem, and
     #                    #visual_c_libraries names it.
-    def initialize(os:, cpu: nil, provided: [], system: [], readers: Binary::Readers.local(os), visual_c_runtime: nil)
+    # [carried] On macOS, the file names of the libraries the project
+    #           has the app carry from this computer
+    #           (Config::Macos#carried_libraries): a need of one, by any
+    #           path, is no gem's problem, since Fledge::CarriedLibraries
+    #           copies it in and makes the file load the copy.
+    def initialize(os:, cpu: nil, provided: [], system: [], readers: Binary::Readers.local(os), visual_c_runtime: nil, carried: [])
       @system = SYSTEM_LIBRARIES.fetch(os)
+      @carried = (os == "darwin") ? carried : []
       @cpu = cpu
       @dlls = SYSTEM_DLLS.fetch(os, Set.new)
       @os = os
@@ -272,12 +280,14 @@ module Fledge
 
     # Why the file at +path+ would not load +library+, which nothing
     # provides, or +nil+ when the project listed it as the Linux
-    # distribution's (Config::Linux).
+    # distribution's (Config::Linux), or as one the macOS app carries
+    # (Config::Macos).
     private def unprovided(label, path, library)
       if @declared.include?(library)
         @needed |= [library]
         return
       end
+      return if @carried.include?(File.basename(library))
 
       if @os == "android"
         return "#{label}'s #{path} needs #{library}, which neither Android, nor Fledge's runtime, nor the app's own native libraries " \
@@ -288,10 +298,15 @@ module Fledge
 
       problem = "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \
         "the app could not load it on another computer. Build the gem so that it carries the library, or links it statically"
-      return "#{problem}." unless FORMATS.fetch(@os) == :elf
-
-      "#{problem}, or, when every computer the app goes to has it from its Linux distribution, list it in fledge.yml as " \
-        "linux: { system_libraries: [#{library}] }."
+      case FORMATS.fetch(@os)
+      when :elf
+        "#{problem}, or, when every computer the app goes to has it from its Linux distribution, list it in fledge.yml as " \
+          "linux: { system_libraries: [#{library}] }."
+      when :macho
+        "#{problem}, or, if you may distribute it, list it in fledge.yml as macos: { carried_libraries: [#{File.basename(library)}] } " \
+          "to have the app carry it from this computer."
+      else "#{problem}."
+      end
     end
 
     # Why the file at +path+ would not load +library+, a DLL of the Visual

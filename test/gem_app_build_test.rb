@@ -134,6 +134,42 @@ class GemAppBuildTest < Minitest::Test
     assert_empty Dir.glob(File.join(@dir, "dist", "*"))
   end
 
+  # On a Mac, a gem that links a library from this computer, such as
+  # Homebrew's SDL, is refused with the setting that carries it; with the
+  # library listed, the build looks for it where dyld would, and refuses
+  # one it does not find there, or one listed that nothing needs, both in
+  # the same list as every other problem. Fledge's objdump reads Mach-O
+  # only on a Mac; test/integration/carried_libraries_test.rb builds an
+  # app that carries one.
+  def test_a_mac_apps_gem_that_links_a_library_from_this_computer_is_refused_until_the_project_lists_it
+    skip "fledge build reads Mach-O files with Xcode's objdump, which only a Mac has" unless TestReaders.os == "darwin"
+    library = "@rpath/libffi.dylib"
+    sdlish = FakeGem.build(@gems, "sdlish", "1.0.0", platform: "arm64-darwin",
+      files: { "lib/sdlish.bundle" => Binaries.macho(needed: ["/usr/lib/libSystem.B.dylib", library]) })
+    root = project(dependencies: { "sdlish" => ">= 0" }, locked: [sdlish], platforms: %w[arm64-darwin])
+    bundle = "lib/ruby/gems/4.1.0+5/gems/sdlish-1.0.0-arm64-darwin/lib/sdlish.bundle"
+
+    _, err, status = build(root, host: "arm64-darwin-23")
+    assert_equal 1, status
+    assert_includes err, "sdlish 1.0.0 (arm64-darwin)'s lib/sdlish.bundle needs #{library}, which neither darwin, nor Fledge's runtime, " \
+      "nor the gem itself provides, so the app could not load it on another computer. Build the gem so that it carries " \
+      "the library, or links it statically, or, if you may distribute it, list it in fledge.yml as macos: { " \
+      "carried_libraries: [libffi.dylib] } to have the app carry it from this computer.\n"
+
+    File.write(File.join(root, "fledge.yml"), "macos:\n  carried_libraries: [libffi.dylib, libunused.dylib]\n")
+    out, err, status = build(root, host: "arm64-darwin-23")
+    assert_equal [1, ""], [status, out]
+    assert_equal [
+      "fledge build: MyApp can't ship for arm64-darwin:",
+      "fledge build:   #{bundle} needs #{library}, which fledge.yml's macos: carried_libraries has the app carry, but none of the run " \
+        "paths dyld would search for it on this computer (it has none) leads to a file, so there is nothing to copy. Install it, or " \
+        "build the gem so that it names the library where it is.",
+      "fledge build:   fledge.yml's macos: carried_libraries lists libunused.dylib, which none of the gems' compiled files, nor the " \
+        "libraries the app carries, needs. Remove it.",
+    ], err.lines.map(&:chomp).grep_v(/\ADownloading /)
+    assert_empty Dir.glob(File.join(@dir, "dist", "*"))
+  end
+
   # A gem for every platform may carry a library for each processor and
   # load the one for its own, as raylib-bindings does: each app's build
   # judges its own processor's file, and ships the other unjudged, as

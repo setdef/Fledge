@@ -8,6 +8,8 @@
 require "fileutils"
 require "tmpdir"
 require_relative "binary"
+require_relative "carried_libraries"
+require_relative "carried_libraries/app_files"
 require_relative "entry"
 require_relative "error"
 require_relative "gem_package"
@@ -153,11 +155,25 @@ module Fledge
         stubs = executables(packages, runtime)
         desktop_problems(packages, platform, runtime)
       end
-      raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
-
       packages = mark_extensions(packages, platform, runtime) if platform.is_a?(MobilePlatform)
       entries = [*packages.flat_map { |gem, package| entries_for(gem, package, runtime.gem_dir) }, *stubs, *@carried]
-      entries.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
+      entries = entries.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
+      carrying = carrying(platform, runtime, entries)
+      problems += carrying.problems if carrying
+      raise Error, "#{@app.name} can't ship for #{platform}:\n#{problems.map { |problem| "  #{problem}" }.join("\n")}" unless problems.empty?
+
+      return entries unless carrying
+
+      carried = carrying.entries(@app.name)
+      @path_files.merge!(carrying.path_files)
+      carried
+    end
+
+    # Where on this computer each library the macOS app carries came
+    # from, by its file name in the app (Fledge::CarriedLibraries#sources):
+    # empty before #for, and when the project lists none.
+    def carried_libraries
+      @carrying&.sources || {}
     end
 
     # The version of the Bundler #for added to the runtime, which the app
@@ -284,7 +300,7 @@ module Fledge
       way = @app.config.windows&.visual_c_runtime if platform.windows?
       readers(platform, runtime) do |readers|
         linkage = Linkage.new(os: platform.libraries, cpu: platform.cpu, provided: runtime.libraries, system: @app.config.system_libraries(platform.os), readers:,
-          visual_c_runtime: way)
+          visual_c_runtime: way, carried: @app.config.carried_libraries(platform.os))
         found = packages.flat_map do |gem, package|
           [*package.problems(ruby_version: runtime.ruby_version), *linkage.problems(gem.to_s, package.gem_files)]
         end
@@ -293,6 +309,21 @@ module Fledge
         @visual_c_runtime = (way == "central") ? linkage.visual_c_libraries.map(&:downcase).sort : []
         [*found, *linkage.unused, *carried.problems]
       end
+    end
+
+    # The app's files with what a macOS app carries from this computer,
+    # for the libraries its project lists (Config::Macos#carried_libraries),
+    # planned over the gems' files as +entries+ and the project's path
+    # gems (CarriedLibraries::AppFiles), or +nil+ when it lists none, or the
+    # app is not for a Mac.
+    private def carrying(platform, runtime, entries)
+      return nil if platform.is_a?(MobilePlatform)
+
+      names = @app.config.carried_libraries(platform.os)
+      return nil if names.empty?
+
+      @carrying = CarriedLibraries::AppFiles.new(names, entries:, path_files: @path_files, platform:, provided: runtime.libraries,
+        readers: Binary::Readers.local(platform.os))
     end
 
     # Yields the tools that read +platform+'s compiled files

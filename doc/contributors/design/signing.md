@@ -33,7 +33,7 @@ codesign --force --sign IDENTITY --options runtime --timestamp --entitlements li
 
 The ad hoc identity, `-`, gets the same options but `--timestamp`, which needs a certificate to stamp. The order is inside out, as Apple asks of nested code:
 
-1. Every Mach-O program and library of a console app's folder, or of a windowed app's `Contents/Resources`: the launcher, `bin/ruby`, Ruby's extensions, and the app's gems' compiled files. A file is code when its first bytes say Mach-O (`Fledge::Binary.format_of`); symbolic links are skipped, and so are object files (`MH_OBJECT`, a thin Mach-O whose file type is 1), which a gem's build can leave beside its extension and which nothing runs or loads. They go to codesign 100 at a time.
+1. Every Mach-O program and library of a console app's folder, or of a windowed app's `Contents/Resources`: the launcher, `bin/ruby`, Ruby's extensions, the app's gems' compiled files, and the libraries it carries from its developer's Mac in `lib/carried`. A file is code when its first bytes say Mach-O (`Fledge::Binary.format_of`); symbolic links are skipped, and so are object files (`MH_OBJECT`, a thin Mach-O whose file type is 1), which a gem's build can leave beside its extension and which nothing runs or loads. They go to codesign 100 at a time.
 2. A windowed app's console programs in `Contents/MacOS` (`doc/contributors/design/desktop-apps.md`, "Several programs"), in one run.
 3. The bundle, with `--identifier IDENTIFIER`, which seals the rest, in place of the ad hoc signature an unsigned bundle gets.
 4. The disk image, after `hdiutil` writes it: `codesign --force --sign IDENTITY --timestamp FILE.dmg`, with no hardened runtime or entitlements, as notarization asks of an image it staples a ticket to.

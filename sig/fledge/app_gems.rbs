@@ -17,6 +17,7 @@ module Fledge
     @visual_c_runtime: Array[String]
     @system32: String
     @carried: Array[Entry]
+    @carrying: CarriedLibraries::AppFiles?
 
     def initialize: (app: App, bundle: Bundle, fetcher: GemFetcher, checkouts: GitCheckout, compiler: NativeBuild, ?system32: String) -> void
 
@@ -27,6 +28,8 @@ module Fledge
     attr_reader bundler: String?
 
     attr_reader visual_c_runtime: Array[String]
+
+    def carried_libraries: () -> Hash[String, String]
 
     private def locked_bundler: (RuntimeContents runtime, String running) -> LockedGem?
 
@@ -45,6 +48,8 @@ module Fledge
     private def entries_for: (locked_gem gem, package package, String gem_dir) -> Array[Entry]
 
     private def desktop_problems: (Hash[locked_gem, package] packages, Platform platform, RuntimeContents runtime) -> Array[String]
+
+    private def carrying: (target platform, RuntimeContents runtime, Array[Entry] entries) -> CarriedLibraries::AppFiles?
 
     private def readers: (Platform platform, RuntimeContents runtime) { (Binary::Readers readers) -> Array[String] } -> Array[String]
 

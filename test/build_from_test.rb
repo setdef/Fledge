@@ -176,6 +176,7 @@ class BuildFromTest < Minitest::Test
       "programs:\n  - path: main.rb\n" => "programs",
       "linux:\n  system_libraries: [libz.so.1]\n" => "linux: system_libraries",
       "windows:\n  visual_c_runtime: central\n" => "windows: visual_c_runtime",
+      "macos:\n  carried_libraries: [libSDL3.0.dylib]\n" => "macos: carried_libraries",
     }.each do |config, key|
       FileUtils.rm_rf(File.join(@dir, "game"))
       game(config)

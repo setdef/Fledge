@@ -170,7 +170,7 @@
       }
     },
     "macos": {
-      "description": "What a build for macOS writes in place of what it derives (default: nothing). Other builds ignore it.",
+      "description": "What a build for macOS writes in place of what it derives, and the libraries it carries from this computer (default: nothing). Other builds ignore it.",
       "type": ["object", "null"],
       "additionalProperties": false,
       "properties": {
@@ -178,6 +178,14 @@
           "description": "The app's build number, its Info.plist's CFBundleVersion, which the App Store and updaters compare: one to three whole numbers between periods, such as \"42\" or \"1.2.417\", quoted (default: the version's first three numbers, as CFBundleShortVersionString).",
           "type": ["string", "null"],
           "pattern": "^[0-9]+(?:\\.[0-9]+){0,2}$"
+        },
+        "carried_libraries": {
+          "description": "The libraries from this computer that the app carries, such as one Homebrew installed, by the file names the gems' compiled files and these libraries give them, such as [libSDL3.0.dylib] (default: none). fledge build copies each into the app and makes the files that need it load the copy; it refuses a gem that needs a library not listed, and one listed that nothing needs. You distribute these libraries, so you must be entitled to.",
+          "type": ["array", "null"],
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_+-][A-Za-z0-9._+-]*\\.dylib$"
+          }
         }
       }
     },

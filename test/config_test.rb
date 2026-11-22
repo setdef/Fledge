@@ -50,6 +50,18 @@ class ConfigTest < Minitest::Test
     assert_nil load("name: A\n").macos
   end
 
+  # The libraries from the developer's computer that a macOS app carries,
+  # by the file names its gems' compiled files give them, once each
+  # (doc/contributors/design/gems.md, "Libraries a Mac app carries").
+  def test_reads_the_libraries_a_mac_app_carries
+    config = load("macos:\n  carried_libraries: [libSDL3.0.dylib, libc++.1.dylib, libSDL3.0.dylib]\n")
+    assert_equal ["libSDL3.0.dylib", "libc++.1.dylib"], config.macos&.carried_libraries
+    assert_equal ["libSDL3.0.dylib", "libc++.1.dylib"], config.carried_libraries("darwin")
+    assert_empty config.carried_libraries("linux")
+    assert_empty load("macos:\n  build: \"4\"\n").carried_libraries("darwin")
+    assert_empty load("name: A\n").carried_libraries("darwin")
+  end
+
   # What an app says about itself: a line, paragraphs, and a web page,
   # which a program of several takes from the project.
   def test_reads_what_an_app_says_about_itself
@@ -121,8 +133,12 @@ class ConfigTest < Minitest::Test
       "license_file: ../LICENSE\n" => %r{: license_file, "\.\./LICENSE", must name a file in the project, with / between folders, such as license_file: LICENSE\.txt\z},
       "linux:\n  deb_changelog: /CHANGELOG\n" => %r{: linux: deb_changelog, "/CHANGELOG", must name a file in the project},
       "linux:\n  changelog: CHANGELOG\n" => /: linux has 'changelog', which Fledge does not know\. It knows system_libraries, system_typelibs, and deb_changelog\.\z/,
-      "macos: \"42\"\n" => /: macos must be a mapping of build, such as macos: \{ build: "42" \}\z/,
-      "macos:\n  bulid: \"42\"\n" => /: macos has 'bulid', which Fledge does not know\. It knows build\.\z/,
+      "macos: \"42\"\n" => /: macos must be a mapping of build and carried_libraries, such as macos: \{ build: "42" \}\z/,
+      "macos:\n  bulid: \"42\"\n" => /: macos has 'bulid', which Fledge does not know\. It knows build and carried_libraries\.\z/,
+      "macos:\n  carried_libraries: libSDL3.0.dylib\n" => /: macos: carried_libraries must be a list of the names compiled files give libraries, such as \[libSDL3\.0\.dylib\]\z/,
+      "macos:\n  carried_libraries: [/opt/homebrew/lib/libSDL3.0.dylib]\n" =>
+        %r{: macos: carried_libraries has "/opt/homebrew/lib/libSDL3\.0\.dylib", which is not a library's name: name it as compiled files do, such as libSDL3\.0\.dylib, with no folder\z},
+      "macos:\n  carried_libraries: [SDL3.framework]\n" => /: macos: carried_libraries has "SDL3\.framework", which is not a library's name/,
       "macos:\n  build: 42\n" => /: macos: build must be text; quote it, as in build: "42"\z/,
       "macos:\n  build: \"1.2.3.4\"\n" => /: macos: build must be one to three whole numbers between periods, as Apple's CFBundleVersion is, .* not 1\.2\.3\.4\z/,
       "macos:\n  build: \"1.0b2\"\n" => /: macos: build must be one to three whole numbers between periods/,

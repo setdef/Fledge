@@ -55,7 +55,7 @@ A gem whose own build fails stops `fledge build` with that build's output, as it
 
 ## A gem that links a library of your computer
 
-A gem that compiles from source may link a library your computer has and the app's other computers may not. `fledge build` then refuses it, names the library, and leaves the fix to the gem's own build options, which Bundler passes on as `bundle config build.NAME OPTIONS` (in the project's `.bundle/config`, or `BUNDLE_BUILD__NAME`). Read the gem's README for the option that makes it build its own copy.
+A gem that compiles from source may link a library your computer has and the app's other computers may not. `fledge build` then refuses it and names the library. The first fix to try is the gem's own build options, which Bundler passes on as `bundle config build.NAME OPTIONS` (in the project's `.bundle/config`, or `BUNDLE_BUILD__NAME`): read the gem's README for the option that makes it build its own copy. When it has none, list the library as the Linux distribution's or, on a Mac, have the app carry it, as the next two sections show.
 
 ffi is the one most Linux apps meet, once the Ruby it builds for is newer than its precompiled gems (Ruby 4.1's preview, for one). Its `extconf.rb` links the libffi it finds first, and `fledge build` refuses: "ffi 1.17.4's lib/ffi_c.so needs libffi.so.8, which neither linux, nor Fledge's runtime, nor the gem itself provides". Ask ffi to build the libffi it carries, which then ships inside `ffi_c.so`:
 
@@ -96,6 +96,27 @@ linux:
 <!-- SPDX-SnippetEnd -->
 
 On a computer that lacks one, or a typelib it needs, the app names it and exits with status 72, before your code runs, as it does for a library. It looks where the gem will, so a typelib that `GI_TYPELIB_PATH` leads to counts. Fledge carries no typelib in your app: each describes the library of the computer it is on. A `.deb` depends on the package Debian and Ubuntu name for each, `gir1.2-` and the namespace and version in lower case (`gir1.2-gtk-4.0` for `Gtk-4.0`), so `apt` installs them with the app; an AppImage or `.tar.gz` carries none.
+
+## A gem that links a library from your Mac
+
+On a Mac, a gem's compiled files may link only what macOS provides, the libraries the app carries, and the libraries the gem carries itself. A gem you compile may link a library you installed with a package manager, such as gosu with Homebrew's or conda-forge's SDL, and no other Mac has it. `fledge build` refuses such a gem and names each library. A Mac has no package manager of its own for the app to name it to, so the app can carry a copy. If you may distribute the library, list it in `fledge.yml` by the file name the refusal gives:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+macos:
+  carried_libraries: [libSDL3.0.dylib]
+```
+<!-- SPDX-SnippetEnd -->
+
+`fledge build` then finds the library where macOS's loader finds it for your own `bundle exec`, copies it into the app's `lib/carried` folder, and changes the app's copy of each file that needs it to load the copy from there, wherever the app is put. Your installed gems and libraries stay as they are. The app's build prints each library it carries and the file it came from.
+
+Fledge carries nothing you did not list. A gem may need several, as gosu built with conda-forge's SDL needs conda-forge's `libc++.1.dylib` too, and a carried library may need others of its own: the build refuses until you list them all, and names every one at once, with the whole list to write. It also refuses a library built only for Intel Macs, one built for a newer macOS than the app runs on (macOS 14 or later), and a listed library that nothing needs.
+
+You distribute these libraries when you ship the app, under their own licenses, as you distribute your gems: read each one's license, and do what it asks of you, such as including its notice or offering its source. Fledge does not read their licenses, and the app's `notices/` covers only what Fledge put there.
 
 ## A gem whose DLL needs the Visual C++ runtime
 
@@ -140,4 +161,4 @@ If the gem's publisher lists a SHA-256 for each file, compare it with yours. Bun
 
 ## Licenses
 
-Your gems' licenses are yours to read. Fledge ships every gem you lock, whatever its license, and says nothing about it. For what Fledge itself puts in an app, see [What ships in your app](licensing.md).
+Your gems' licenses are yours to read, and so are the licenses of the libraries a Mac app carries. Fledge ships every gem you lock, and every library you list, whatever its license, and says nothing about it. For what Fledge itself puts in an app, see [What ships in your app](licensing.md).

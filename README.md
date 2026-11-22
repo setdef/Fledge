@@ -159,7 +159,7 @@ $ bundle lock --add-checksums
 ```
 <!-- SPDX-SnippetEnd -->
 
-Fledge compiles gems published only as source, and gems from git, on your computer, for the app's Ruby. Install a compiler first: [Xcode's command line tools](https://developer.apple.com/xcode/resources/) on a Mac, a C compiler and `make` on Linux, [RubyInstaller](https://rubyinstaller.org/)'s [MSYS2](https://www.msys2.org/) tools ([`ridk install`](https://github.com/oneclick/rubyinstaller2/wiki/The-ridk-tool)) on Windows, and [`cargo`](https://doc.rust-lang.org/cargo/) for a Rust extension. If a gem won't run on the app's Ruby, or links a library another computer may lack, `fledge build` stops and names the gem. [Gems in a Fledge app](doc/gems.md) covers gems that link a library from the Linux distribution, and gems from `vendor/cache`.
+Fledge compiles gems published only as source, and gems from git, on your computer, for the app's Ruby. Install a compiler first: [Xcode's command line tools](https://developer.apple.com/xcode/resources/) on a Mac, a C compiler and `make` on Linux, [RubyInstaller](https://rubyinstaller.org/)'s [MSYS2](https://www.msys2.org/) tools ([`ridk install`](https://github.com/oneclick/rubyinstaller2/wiki/The-ridk-tool)) on Windows, and [`cargo`](https://doc.rust-lang.org/cargo/) for a Rust extension. If a gem won't run on the app's Ruby, or links a library another computer may lack, `fledge build` stops and names the gem. [Gems in a Fledge app](doc/gems.md) covers gems that link a library from the Linux distribution, gems that link one you installed on your Mac, which the app can carry, and gems from `vendor/cache`.
 
 ### Describe your app
 
@@ -220,7 +220,7 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. A new Fledge ma
 | Resource | Description |
 | --- | --- |
 | `bundle exec fledge --help` | The manual: every option, every `fledge.yml` key, every file Fledge writes, and the exit statuses |
-| [Gems in a Fledge app](doc/gems.md) | Locking, compiled gems, gems that link a Linux library, and gems from `vendor/cache` |
+| [Gems in a Fledge app](doc/gems.md) | Locking, compiled gems, gems that link a Linux library or a library from your Mac, and gems from `vendor/cache` |
 | [Desktop apps](doc/desktop_apps.md) | Names, icons, installers, file associations, several programs in one app, signing, and publishing to a store |
 | [iPhone, iPad, and Android](doc/phones.md) | Phone projects, gems with C, C++, and Rust extensions or libraries for `ffi`, and what a phone forbids |
 | [Publishing with a package manager](doc/package_managers.md) | A Scoop manifest, a Homebrew formula, winget's files, a Chocolatey package, and a `PKGBUILD` for a console app |

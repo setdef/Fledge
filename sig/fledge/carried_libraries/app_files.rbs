@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class CarriedLibraries
+    class AppFiles
+      APP: String
+
+      @entries: Array[Entry]
+      @held: Hash[String, String]
+      @plan: CarriedLibraries
+      @changed: Hash[String, String]?
+
+      attr_reader sources: Hash[String, String]
+
+      def initialize: (Array[String] names, entries: Array[Entry], path_files: Hash[String, String], platform: Platform, provided: Array[String], readers: Binary::Readers) -> void
+
+      def problems: () -> Array[String]
+
+      def entries: (String name) -> Array[Entry]
+
+      def path_files: () -> Hash[String, String]
+
+      private def changed: () -> Hash[String, String]
+    end
+  end
+end

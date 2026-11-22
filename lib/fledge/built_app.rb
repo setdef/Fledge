@@ -217,9 +217,11 @@ module Fledge
 
       config = app.config
       libraries = config.system_libraries("linux")
+      carried = config.carried_libraries("darwin")
       key = {
 "programs" => config.programs,
 "linux: system_libraries" => (libraries unless libraries.empty?),
+"macos: carried_libraries" => (carried unless carried.empty?),
 "windows: visual_c_runtime" => config.windows&.visual_c_runtime,
 "ios" => config.ios,
 "android" => config.android,

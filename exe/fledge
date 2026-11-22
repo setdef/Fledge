@@ -131,8 +131,10 @@
 #                        PATH's project may have no Gemfile, gems.rb,
 #                        or gemspec, nor a file where APP keeps one
 #                        Bundler needs, and its fledge.yml no programs,
-#                        linux: system_libraries, ios, or android,
-#                        which change the runtime or the gems. An APP
+#                        linux: system_libraries, macos:
+#                        carried_libraries, windows: visual_c_runtime,
+#                        ios, or android, which change the runtime or
+#                        the gems. An APP
 #                        Fledge did not build, another Fledge release
 #                        built, or built for another system fails the
 #                        build.
@@ -312,7 +314,16 @@
 #                          updaters compare: one to three whole numbers
 #                          between periods, quoted, such as "42"
 #                          (default: the version's first three
-#                          numbers). Other builds ignore it.
+#                          numbers). It may also hold
+#                          carried_libraries, the libraries from this
+#                          computer the app carries, by the names
+#                          compiled files give them, such as
+#                          [libSDL3.0.dylib]: the build copies each
+#                          into lib/carried and points the files that
+#                          need it there, and fails on one a carried
+#                          library needs and the list leaves out, and
+#                          on one that none needs. You distribute
+#                          them. Other builds ignore it.
 #                        windows: a mapping of msix_publisher, the MSIX
 #                          package's publisher, a distinguished name
 #                          such as CN=Example: Partner Center's

@@ -17,7 +17,8 @@ path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock',
   'examples/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock', 'examples/libui_app/Gemfile.lock',
   'examples/rust_phone/Gemfile.lock', 'examples/rust_phone/gems/rusty/ext/rusty/Cargo.lock',
   'test/fixtures/bundled_with/Gemfile.lock', 'test/fixtures/mobile_commands/Gemfile.lock', 'test/fixtures/ffi_extconf/Gemfile.lock',
-  'test/fixtures/my_cool_app_without_sqlite3/Gemfile.lock', 'test/fixtures/typelib/Gemfile.lock']
+  'test/fixtures/my_cool_app_without_sqlite3/Gemfile.lock', 'test/fixtures/typelib/Gemfile.lock',
+  'test/fixtures/carried_libraries/Gemfile.lock']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 

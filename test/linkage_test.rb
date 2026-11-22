@@ -94,6 +94,26 @@ class LinkageTest < Minitest::Test
     assert_includes macos.first, "needs /opt/homebrew/opt/libxml2/lib/libxml2.2.dylib, which neither darwin"
   end
 
+  # On macOS the refusal names the setting that carries the library from
+  # this computer, by its file name, as the Linux refusal names
+  # system_libraries; a library the project lists there is no gem's
+  # problem, by whatever path or run path the file names it, since
+  # Fledge::CarriedLibraries finds and places it.
+  def test_a_mac_app_may_carry_a_dylib_the_project_lists
+    TestReaders.need(self, :macho)
+    files = { "lib/ext.bundle" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib @rpath/libffi.dylib]) }
+    refused = Fledge::Linkage.new(os: "darwin", readers: TestReaders.all).problems("linked 1.0.0", files)
+    assert_equal [
+"linked 1.0.0's lib/ext.bundle needs @rpath/libffi.dylib, which neither darwin, nor Fledge's runtime, nor the gem " \
+  "itself provides, so the app could not load it on another computer. Build the gem so that it carries the library, or " \
+  "links it statically, or, if you may distribute it, list it in fledge.yml as macos: { carried_libraries: [libffi.dylib] } " \
+  "to have the app carry it from this computer.",
+], refused
+
+    assert_empty Fledge::Linkage.new(os: "darwin", carried: ["libffi.dylib"], readers: TestReaders.all).problems("linked 1.0.0", files)
+    assert_equal 1, Fledge::Linkage.new(os: "darwin", carried: ["libother.dylib"], readers: TestReaders.all).problems("linked 1.0.0", files).size
+  end
+
   def test_a_dll_no_one_ships_keeps_a_gem_from_shipping_on_windows
     windows = problems("windows", {
 "lib/ext.so" => Binaries.pe(needed: %w[

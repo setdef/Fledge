@@ -374,6 +374,29 @@ module Fledge
       linux&.system_typelibs || []
     end
 
+    # The libraries from this computer that the project's app carries on
+    # +os+ (Fledge::Platform#os): on +darwin+, those its +macos+ mapping
+    # lists (Config::Macos), and none elsewhere.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   config = Fledge::Config.load("test/fixtures/carried_libraries")
+    #   config.carried_libraries("darwin") # => ["libgreet.1.dylib", "libpunct.1.dylib"]
+    #   config.carried_libraries("linux")  # => []
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def carried_libraries(os)
+      return [] unless os == "darwin"
+
+      macos&.carried_libraries || []
+    end
+
     # The programs under +programs+: a list of at least one,
     # with names and identifiers no two share, at most one windowed, and
     # no kind, identifier, or icon beside them, which belong to each

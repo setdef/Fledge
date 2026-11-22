@@ -22,7 +22,7 @@ The new app runs `my_game`'s program with `Player`'s `Gemfile`, `Gemfile.lock`, 
 ## What `--from` refuses
 
 - A project with a `Gemfile`, `gems.rb`, or gemspec.
-- A project whose `fledge.yml` has `programs`, `linux: system_libraries`, `ios`, or `android`, since for each of those, Fledge would change the Ruby or the gems.
+- A project whose `fledge.yml` has `programs`, `linux: system_libraries`, `macos: carried_libraries`, `windows: visual_c_runtime`, `ios`, or `android`, since for each of those, Fledge would change the Ruby or the gems.
 - An app that another Fledge release built, or that Fledge built for another platform. `--from` builds only from an app that the same Fledge release built for the platform you build on.
 
 ## Ship an app that builds apps

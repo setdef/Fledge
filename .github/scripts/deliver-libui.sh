@@ -12,8 +12,9 @@
 #
 # ARCHIVE is "LibUIProbe-PLATFORM.tar.gz", or ".zip" on Windows; LIBRARY
 # is the file of libui-ng's library LibUI opens there, such as
-# libui.arm64.dylib. On macOS the app runs through its own program and
-# through open -W, as Finder starts it. On Linux it runs on the display
+# libui.arm64.dylib. On macOS the app runs through its own program,
+# through open -W, as Finder starts it, and through open -a with a
+# document, as a double-click on one starts it. On Linux it runs on the display
 # DISPLAY names, or on an Xvfb of its own when none is named, with the
 # distribution's GTK 3; with without-gtk, on a computer that has no GTK
 # 3 yet, its program must instead name a library it lacks and exit with
@@ -142,4 +143,13 @@ check "$work/program.json" "its own program"
 if [ "$os" = Darwin ]; then
   limit open -n -W "$bundle" --args "$work/open.json" || fail "open -W exited with $?"
   check "$work/open.json" "open -W"
+  # Opened with a document, as a double-click on one in Finder opens it:
+  # the launcher takes the Open Documents Apple event before Ruby starts
+  # and gives the program the document's path, over which the probe
+  # writes its report, and LibUI must still show its window
+  # (doc/contributors/design/launcher.md, "Documents opened on macOS").
+  document="$work/Geöffnet.libuiprobe"
+  : >"$document"
+  limit open -n -W -a "$bundle" "$document" || fail "open -a with a document exited with $?"
+  check "$document" "open -a with a document"
 fi

@@ -7,10 +7,11 @@
 # on a Markdown file and compares the HTML it prints with what kramdown
 # prints under bundle exec (EXPECTED, a file the Build job wrote), checks
 # that the app declares Markdown files to the system (the bundle's
-# CFBundleDocumentTypes, the desktop entry's MimeType), and starts its
-# windowed program with the file's path, as Linux's desktop entry does
-# (its Exec with %F replaced), with BROWSER naming a recorder, which
-# must be handed the preview page.
+# CFBundleDocumentTypes, the desktop entry's MimeType), and opens the
+# file with its windowed program as each system's file manager does:
+# on macOS with open -a, through Launch Services, and on Linux with the
+# file's path, as the desktop entry's Exec with %F replaced gives it,
+# with BROWSER naming a recorder, which must be handed the preview page.
 #
 #   deliver-markdown.sh ARCHIVE SAMPLE EXPECTED
 #
@@ -67,10 +68,11 @@ case "$(uname -s)" in
     [ "$(plutil -extract "$types.CFBundleTypeMIMETypes.0" raw "$plist")" = text/markdown ] || fail "the bundle's Markdown type lists no text/markdown"
     [ "$(plutil -extract "$types.LSHandlerRank" raw "$plist")" = Alternate ] || fail "the bundle ranks itself other than Alternate"
     echo "ok: the bundle declares Markdown documents"
-    # Launch Services hands a document to the program as an Apple event,
-    # which the launcher does not yet turn into arguments, so the program
-    # is started with the path as one, as Windows and Linux start it.
-    set -- "$root/$name.app/Contents/MacOS/$name" "$work/notes.md"
+    # Finder's double-click: open -a starts the app through Launch
+    # Services, which hands it the document in an Apple event, and the
+    # launcher gives the program its path in ARGV. open passes the
+    # environment on with --env, and waits with -W.
+    set -- /usr/bin/open -n -W --env TMPDIR="$work/tmp/" --env BROWSER="$work/browser" -a "$root/$name.app" "$work/notes.md"
     ;;
   Linux)
     desktop=$(find "$root" -maxdepth 1 -name '*.desktop' | head -1)

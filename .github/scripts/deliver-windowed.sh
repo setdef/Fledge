@@ -15,7 +15,8 @@
 # what fledge.yml says from its Info.plist, the files and folders it
 # opens among it, which Launch Services must then offer it for, and it
 # must run both through open -W, as Finder starts it, and through its
-# own program. On Linux it is a folder with a desktop entry, which
+# own program, and open -a with a document, as Finder's double-click on
+# one starts it, must give its program that document's path. On Linux it is a folder with a desktop entry, which
 # desktop-file-validate must accept, with the MIME types of what it
 # opens, and icons in the hicolor theme's folders. The app writes a
 # report of what it ran on to the path it is given, and exits with the
@@ -139,6 +140,25 @@ case "$(uname -s)" in
     report="$work/report-open.json"
     open -n -W "$bundle" --args "$report" 4 || fail "open could not start $name.app"
     check_report "open -W" "$report"
+    # open -a APP DOCUMENT is what a double-click on a document in Finder
+    # sends: Launch Services starts the app and hands it the document in
+    # an Open Documents Apple event, which the launcher gives the program
+    # as an argument (doc/contributors/design/launcher.md, "Documents
+    # opened on macOS"). The app writes its report over the document it
+    # is given, so an empty document means the program never saw it.
+    opened="$work/Geöffnet ☃.hellowindow"
+    : >"$opened"
+    open -n -W -a "$bundle" "$opened" || fail "open could not start $name.app with a document"
+    [ -s "$opened" ] || fail "open -a: the program was not given the document it was opened with"
+    grep -q '"arguments":1,' "$opened" || fail "open -a: the program was given other arguments: $(cat "$opened")"
+    check_report "open -a with a document" "$opened"
+    # Given arguments as well, the program sees them first and the
+    # document after them, as ruby main.rb ARGS DOCUMENT would.
+    : >"$opened"
+    report="$work/report-open-both.json"
+    open -n -W -a "$bundle" "$opened" --args "$report" 0 || fail "open could not start $name.app with a document and arguments"
+    grep -q '"arguments":3,' "$report" || fail "open -a with arguments: the program was given other arguments: $(cat "$report" 2>/dev/null)"
+    check_report "open -a with a document and arguments" "$report"
     ;;
   Linux)
     program="$root/$name"

@@ -2291,7 +2291,8 @@ jobs:
   # Delivery of the windowed app, on a fresh runner of each
   # platform: on macOS its .app bundle must pass codesign --verify --strict
   # --deep, plutil must read its identity, and it must run through open -W,
-  # as Finder starts it, and through its own program; on Linux
+  # as Finder starts it, and through its own program, and open -a with a
+  # document must give its program the document's path; on Linux
   # desktop-file-validate must accept its desktop entry, and its icons and
   # program must be there and run (.github/scripts/deliver-windowed.sh).
   # Then its installer: on macOS the disk image, attached,
@@ -2304,10 +2305,12 @@ jobs:
   # project and one Ruby, sharing one save (deliver-programs.sh). And
   # examples/markdown_preview: its md2html prints what it printed under
   # bundle exec, it declares Markdown files to the system, and its
-  # windowed program, started with a file as Linux's desktop entry starts
-  # it, previews the file in the browser (deliver-markdown.sh). On
-  # macOS, the LibUI probe opens its window through its own program and
-  # through open -W, and reports it shown (deliver-libui.sh).
+  # windowed program, opened with a file as each system's file manager
+  # opens it (open -a on macOS), previews the file in the browser
+  # (deliver-markdown.sh). On
+  # macOS, the LibUI probe opens its window through its own program,
+  # through open -W, and through open -a with a document, and reports it
+  # shown (deliver-libui.sh).
   delivery-windowed-arm64-darwin:
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build-arm64-darwin

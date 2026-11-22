@@ -17,6 +17,12 @@ identifier: com.setdef.fledge.LibUIProbe
 version: "1.0.0"
 publisher: setdef
 installers: []
+# The probe's own files, so that Delivery on macOS can open one with it
+# through Launch Services and see LibUI still show its window once the
+# launcher has taken the document's Apple event (deliver-libui.sh).
+file_associations:
+  - name: LibUI probe report
+    extensions: [libuiprobe]
 linux:
   system_libraries: [libgtk-3.so.0, libgdk-3.so.0, libpangocairo-1.0.so.0, libpango-1.0.so.0, libcairo.so.2]
 windows:

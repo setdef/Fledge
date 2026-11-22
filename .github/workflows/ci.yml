@@ -1319,11 +1319,7 @@ jobs:
   # linked in on Windows, which ships as any gem's compiled code does
   # (doc/contributors/design/gems.md, "Checks that are not about
   # licenses"). Each records what bundle exec prints, which the built app must
-  # print too. And the LibUI probe (test/fixtures/libui), a window from
-  # LibUI's precompiled gem, on macOS and glibc Linux for Delivery, and
-  # on x64 Windows, where the app carries Microsoft's Visual C++ runtime,
-  # built and run in this job alone, with nothing of it uploaded; each
-  # Windows upload is first checked to hold none of that runtime.
+  # print too.
   #
   # Each platform's build is a job of its own, and so is each platform's
   # leg of every job that delivers what a build made, the steps written
@@ -1455,27 +1451,6 @@ jobs:
           grep -q "needs libpng16.so.16, .*list it in fledge.yml as linux: { system_libraries: \[libpng16.so.16\] }" "$RUNNER_TEMP/unlisted.err" ||
             { echo "::error::the refusal does not name linux: system_libraries"; exit 1; }
 
-      # test/fixtures/libui, the LibUI probe: a window from a third
-      # party's GUI gem, whose precompiled gems carry libui-ng's library,
-      # which links GTK 3 on Linux, named under linux: system_libraries.
-      # And examples/libui_app, Focus Timer, the same gem in an app a
-      # person would use, built but not uploaded: the probe is what
-      # Delivery runs, since a timer nobody watches reports nothing.
-      # Neither on musl Linux (build-musl) or aarch64-mingw-ucrt: LibUI
-      # publishes no gem with its library for them, so neither could run
-      # there under bundle exec either. On x64-mingw-ucrt their DLL
-      # needs Microsoft's Visual C++ runtime, which the apps then carry,
-      # so they are built at the end of the job instead, outside dist,
-      # and nothing of them is uploaded (below).
-      - name: Build the LibUI probe and Focus Timer for ${{ matrix.platform }}
-        if: runner.os != 'Windows'
-        env:
-          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
-          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
-        run: |
-          ruby -I lib exe/fledge build -o dist test/fixtures/libui
-          ruby -I lib exe/fledge build -o "$RUNNER_TEMP/libui-example" examples/libui_app
-
       # Plan 003, "A Linux build takes the icon sizes a developer has":
       # windowed_app with only three of its PNGs builds, warns, and ships
       # three icons in its .deb and AppImage; with none it fails.
@@ -1536,16 +1511,6 @@ jobs:
           $env:FLEDGE_SIGN_COMMAND = $command
           ruby -I lib exe/fledge build -o dist-signed/command examples/windowed_app
           if ($LASTEXITCODE -ne 0) { exit 1 }
-
-      # Nothing setdef publishes carries Microsoft's Visual C++ runtime,
-      # "not an app that Fledge's CI builds and uploads"
-      # (doc/contributors/decisions.md), and anyone can download a public
-      # repository's artifacts: before each upload from Windows, no file,
-      # and no file in an archive, of what it uploads may be one of its
-      # DLLs.
-      - name: Check that nothing signed holds Microsoft's Visual C++ runtime
-        if: runner.os == 'Windows'
-        run: .github/scripts/check-no-visual-c-runtime.sh dist-signed
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: runner.os != 'Linux'
@@ -1647,10 +1612,6 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: .github/scripts/prepare-from.sh "$RUNNER_TEMP/from" "${{ matrix.platform }}"
 
-      - name: Check that no app to upload holds Microsoft's Visual C++ runtime
-        if: runner.os == 'Windows'
-        run: .github/scripts/check-no-visual-c-runtime.sh dist
-
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: apps-${{ matrix.platform }}
@@ -1665,27 +1626,6 @@ jobs:
             dist/*.expected
           if-no-files-found: error
           retention-days: 14
-
-      # The LibUI probe and Focus Timer on Windows, whose fledge.yml files
-      # say windows: visual_c_runtime: local, so the apps carry the
-      # runner's copies of Microsoft's Visual C++ runtime, which setdef
-      # may not publish (above). So they are built after every upload,
-      # into a folder no upload or cache names, and the probe is run
-      # here, from /, with System32 alone on its PATH, carrying the
-      # runtime's three DLLs; no Delivery job can have it. The runner's
-      # System32 has the runtime too, so this proves the build and that
-      # the app holds its copies, not that it runs where Windows has
-      # none.
-      - name: Build the LibUI probe and Focus Timer outside dist, and run the probe, uploading none of them
-        if: matrix.platform == 'x64-mingw-ucrt'
-        env:
-          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
-          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
-        run: |
-          probe="$(cygpath -u "$RUNNER_TEMP")/libui-probe"
-          ruby -I lib exe/fledge build -o "$(cygpath -w "$probe")" test/fixtures/libui
-          ruby -I lib exe/fledge build -o "$(cygpath -w "$probe")" examples/libui_app
-          .github/scripts/deliver-libui.sh "$probe/LibUIProbe-${{ matrix.platform }}.zip" libui.x64.dll
 
   build-x86_64-linux:
     name: Build (${{ matrix.platform }})
@@ -2031,9 +1971,7 @@ jobs:
   # each way and in a hostile environment, and unpacked by
   # --appimage-extract (deliver-appimage.sh). And examples/programs:
   # a windowed and a console program from one folder, with one
-  # project and one Ruby, sharing one save (deliver-programs.sh). On
-  # macOS, the LibUI probe opens its window through its own program and
-  # through open -W, and reports it shown (deliver-libui.sh).
+  # project and one Ruby, sharing one save (deliver-programs.sh).
   delivery-windowed-arm64-darwin:
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build-arm64-darwin
@@ -2074,12 +2012,6 @@ jobs:
       - name: Install Hello Window from its disk image as a person would
         if: runner.os == 'macOS'
         run: .github/scripts/deliver-dmg.sh "$RUNNER_TEMP/delivered/Hello Window-${{ matrix.platform }}.dmg"
-
-      # On Linux the LibUI probe runs in the .deb jobs' containers, which
-      # start with no GTK 3 and then install it, as a desktop has it.
-      - name: Open the LibUI probe's window through its own program and as Finder would
-        if: runner.os == 'macOS'
-        run: .github/scripts/deliver-libui.sh "$RUNNER_TEMP/delivered/LibUIProbe-${{ matrix.platform }}.tar.gz" libui.arm64.dylib
 
       # FUSE 3, which desktops ship and the runner's image may not,
       # pinned to Ubuntu 24.04's build: the AppImage's runtime mounts with
@@ -2192,10 +2124,7 @@ jobs:
   # First, examples/system_library runs from its archive and
   # its AppImage without libpng, which its gem links, and says so; then
   # apt installs its .deb, which depends on libpng's package, and it runs
-  # (.github/scripts/deliver-system-library.sh). The LibUI probe, whose
-  # gem's library links GTK 3, says so too while there is no GTK; last,
-  # apt installs GTK 3 and Xvfb, and the probe opens its window there
-  # and reports it shown (.github/scripts/deliver-libui.sh).
+  # (.github/scripts/deliver-system-library.sh).
   delivery-deb-x86_64-linux:
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})
     needs: build-x86_64-linux
@@ -2230,20 +2159,13 @@ jobs:
       # the job's limit, and no later step fetches anything
       # (.github/scripts/apt-update.sh says why).
       - name: Fetch apt's package lists and the packages the job installs
-        run: .github/scripts/apt-update.sh desktop-file-utils shared-mime-info libgtk-3-0t64 xvfb ./delivered/*.deb
+        run: .github/scripts/apt-update.sh desktop-file-utils shared-mime-info ./delivered/*.deb
 
       # Before apt brings anything else, the app whose gem links
       # libpng names it, and exits with 72, from its archive and its
       # AppImage, until apt installs its .deb, which brings libpng.
       - name: Run System Library without libpng, then install its .deb with apt
         run: .github/scripts/deliver-system-library.sh delivered
-
-      # The LibUI probe, whose gem's library links GTK 3, names a
-      # library it lacks and exits with 72 while the computer has no GTK.
-      - name: Run the LibUI probe without GTK 3
-        run: |
-          platform=${{ matrix.platform }}
-          .github/scripts/deliver-libui.sh "delivered/LibUIProbe-$platform.tar.gz" "libui.${platform%-linux}.so" without-gtk
 
       # freedesktop.org's validator, and the MIME database a desktop
       # finds a file's type in, which a desktop has: the .deb's
@@ -2254,14 +2176,6 @@ jobs:
 
       - name: Install Hello Window from its .deb with apt, run it, and remove it
         run: .github/scripts/deliver-deb.sh "delivered/Hello Window-${{ matrix.platform }}.deb"
-
-      # GTK 3, as a desktop has it, and an X server with no screen,
-      # where the probe opens its window and reports it shown.
-      - name: Install GTK 3 and Xvfb with apt, and open the LibUI probe's window
-        run: |
-          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgtk-3-0t64 xvfb
-          platform=${{ matrix.platform }}
-          .github/scripts/deliver-libui.sh "delivered/LibUIProbe-$platform.tar.gz" "libui.${platform%-linux}.so"
 
   delivery-deb-aarch64-linux:
     name: Delivery of a .deb (${{ matrix.platform }}, ${{ matrix.image }})

@@ -93,12 +93,16 @@ The Ruby versions pinned today: on macOS and Linux, `ruby`, `mobile.ruby`, and `
 
 A pin holds a runtime to one release of each input. When OpenSSL, zlib, or Ruby itself fixes a security hole, no app built with Fledge gets the fix until the pin moves and Fledge releases, and nothing in a pin says upstream has moved. So the candidate for 1.0.0 has automation that moves the pins itself: when an input has a newer release, Fledge moves the pin, proves the new runtimes in CI, and releases, and nobody is told unless that path fails (decisions.md, 2026-11-22; `releases.md`, "Versions"). It is built in four steps, and only the first exists yet:
 
-1. **The watch**, `tasks/pin_watch.rb`, finds what is newer. Built.
+1. **The watch**, `tasks/pin_watch.rb`, finds what is newer, and `.github/workflows/pin-watch.yml` runs it every day. Built.
 2. **The move** rewrites the pin and everything that names its version. Not built.
-3. **The proof**: a scheduled workflow puts the move on a branch and has CI run on it. Not built.
+3. **The proof**: the scheduled workflow puts the move on a branch and has CI run on it. Not built.
 4. **The release**: the release commit, the pin commit, the tag, and `release.yml`, run by the workflow. Not built.
 
 Until steps 2 to 4 exist, the candidate's requirement is not met, and the watch's report is for an agent to act on by hand.
+
+`.github/workflows/pin-watch.yml` runs the watch at 06:37 UTC each day, and by hand (`gh workflow run pin-watch.yml`), with `contents: read` and the run's own token, which only lifts GitHub's limit on reading public releases. It prints what it found in the run's summary and keeps the JSON as the run's `pin-watch` artifact for 30 days: `gh run download RUN -n pin-watch` fetches it. A pin with a newer release leaves the run green, since that is the next steps' work and not a fault, and the maintainer asked not to be pinged (decisions.md, 2026-11-22). The run fails only when an upstream could not be read or listed nothing its pattern takes, because then a release could pass unseen, and that failure is the one a person has to hear of. GitHub sends the notice of a scheduled run to the account that created the workflow, or to whoever changed its `cron` line since, as that account's notification settings ask ("Notifications for workflow runs", docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs): the maintainer's, whose account pushes this repository's commits. That is how keep-rubyinstaller-head.yml's failures reach anyone too.
+
+"In a public repository, scheduled workflows are automatically disabled when no repository activity has occurred in 60 days" ("Events that trigger workflows", `schedule`, docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows); the page does not say what counts as activity, or whether anyone is warned first. Trunk takes commits every day today, and once steps 2 to 4 exist, every pin the workflow moves is a commit too, and the inputs it watches release every few weeks: the CA certificates, llvm-mingw, and rv-ruby each released in November 2026. A quiet repository whose upstreams are all quiet for 60 days would still lose the schedule; the workflow cannot re-enable itself once disabled, so `gh workflow enable pin-watch.yml` is the remedy, and step 3 is the place to weigh a check that warns before the 60 days pass.
 
 ### The watch
 

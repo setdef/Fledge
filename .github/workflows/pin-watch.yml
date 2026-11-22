@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Asks every upstream of runtime/sources.yml, each day, whether it has
+# released a newer version than the pin (doc/contributors/design/
+# runtimes.md, "Keeping the pins current"). tasks/pin_watch.rb reads
+# where each pin is released from runtime/upstreams.yml, and this run
+# writes what it found into its summary and into the pin-watch
+# artifact, as JSON.
+#
+# This is the first of the four steps that keep the pins current: it
+# finds, and moves nothing. A pin with a newer release is the next
+# steps' work, not a failure, so it leaves the run green. The run fails
+# only when an upstream could not be read, or listed no version its
+# pattern takes, since then a release could be missed.
+
+name: Pin watch
+
+on:
+  schedule:
+    # Each day, at a minute when few other schedules start.
+    - cron: "37 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pin-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Watch the pins
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      # The token only raises GitHub's limit for reading public releases
+      # from 60 requests an hour, which runners share, to the token's own.
+      - name: Ask each upstream for its newest release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: .github/scripts/pin-watch.sh
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: pin-watch
+          path: tmp/pin-watch.json
+          retention-days: 30
+          if-no-files-found: ignore

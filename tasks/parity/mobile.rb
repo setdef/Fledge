@@ -62,13 +62,14 @@ class Parity
         "same places and order."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/#{ABI}/#{DESKTOP_ARCH}/(?:enc/)?(?<feature>[^"]+)\.(?:bundle|so)"\z}o],
       app: [%r{\A"(?<feature>[a-z0-9_/]+)\.so"\z}], platforms: MOBILE,
-      reason: "A phone's Ruby links the runtime's own extensions in, by Fledge's choice (ADR 079), not because a " \
-        "phone forbids loading them as files: iOS loads a dynamic library from a framework in the app, and Android " \
-        "loads one from the app's own files (doc/contributors/research/2026-11-13-phone-extensions-as-files.md). " \
-        "It records each as the feature it registers (json/ext/parser.so, encdb.so, with no enc/), where a desktop " \
-        "Ruby records the file it loaded. The same extensions load. An Android app's own gems' C and C++ extensions " \
-        "are files already (doc/contributors/design/phone-projects.md, \"Linking extensions on Android\"); the " \
-        "runtime's own as files would close this difference."),
+      reason: "Not forced by a phone: a defect of Fledge's, which doc/phones.md marks Temporary. A phone runtime " \
+        "links its own extensions and encoding tables in (ADR 079), and Ruby records each linked one as the " \
+        "feature it was registered under (json/ext/parser.so, encdb.so, trans/transdb.so, .so on iOS too), where " \
+        "a desktop Ruby records the file it loaded (ARCHDIR/json/ext/parser.so, ARCHDIR/enc/encdb.so). The same " \
+        "extensions load. iOS loads a dynamic library from a framework in the app, and Android one from the " \
+        "app's native libraries (doc/contributors/research/2026-11-13-phone-extensions-as-files.md), as an " \
+        "Android app's gems' C and C++ extensions are loaded already (doc/contributors/design/phone-projects.md, " \
+        "\"Linking extensions on Android\"), so the runtime's own as files would close this difference."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{DESKTOP_ARCH}/rbconfig\.rb"\z}o],
       app: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{MOBILE_ARCH}/rbconfig\.rb"\z}o], platforms: MOBILE,
       reason: "As for $LOAD_PATH: rbconfig.rb is in the folder of Ruby's platform."),

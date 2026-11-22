@@ -15,9 +15,11 @@ class RuntimeBuilder
   # symbol but its Init function to itself (doc/contributors/design/phone-runtimes.md,
   # "Bundled gems' extensions").
   #
-  # A mobile Ruby loads no extension from a file, since Fledge builds it
-  # so: both runtimes link every extension into the one library an app
-  # carries (ADR 079), and the iOS one is configured with --disable-dln.
+  # A mobile runtime loads none of its own extensions from a file, since
+  # Fledge builds it so: both runtimes link every extension of their own
+  # into the one library an app carries (ADR 079), and the iOS one is
+  # configured with --disable-dln. Neither phone forbids a file, and an
+  # Android app's gems' C and C++ extensions are files.
   # Ruby's build links its own extensions in that way
   # (--with-static-linked-ext), registering each in extinit.c, but never a
   # bundled gem's: template/configure-ext.mk.tmpl builds .bundle/gems with

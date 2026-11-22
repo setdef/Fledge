@@ -138,11 +138,12 @@ class RubySpec
         "library: RbConfig::CONFIG ['archdir'] returns the directory containing standard libraries C extensions",
       ],
       side: :app, platforms: PHONES,
-      reason: "A phone runtime links its own extensions into the app by Fledge's choice (ADR 079), not " \
-        "because a phone forbids loading them as files, so no archdir holds them " \
-        "(doc/contributors/research/2026-11-13-phone-extensions-as-files.md; doc/contributors/design/" \
-        "phone-runtimes.md, \"What a phone runtime holds\"). An Android app's own gems' C and C++ extensions are " \
-        "files already; the runtime's own as files would close this difference.",
+      reason: "Not forced by a phone: a defect of Fledge's, which doc/phones.md marks Temporary. A phone " \
+        "runtime links its own extensions into the app (ADR 079), so its archdir holds rbconfig.rb and no " \
+        "extension, etc.so among them (doc/contributors/design/phone-runtimes.md, \"Bundled gems' extensions\"). " \
+        "Neither phone forbids loading one as a file " \
+        "(doc/contributors/research/2026-11-13-phone-extensions-as-files.md), and an Android app's own gems' " \
+        "C and C++ extensions are files already; the runtime's own as files would close this difference.",
     ),
     Justification.new(
       examples: [

@@ -20,6 +20,8 @@ module Fledge
 
       def self.info: (String name, identifier: String, version: String, platform: String) -> Hash[String, String | Array[String]]
 
+      def self.xcframework: (String project, String name, Hash[String, String] slices, identifier: String, version: String) -> void
+
       def initialize: (MobileExtensions::Built built, identifier: String, version: String) -> void
 
       def frameworks: () -> Hash[String, Hash[String, MobileExtensions::FfiLibrary]]
@@ -29,8 +31,6 @@ module Fledge
       def link: (String ruby_root) -> void
 
       private def named: (Array[MobileExtensions::FfiLibrary] libraries) -> Hash[String, MobileExtensions::FfiLibrary]
-
-      private def framework: (String work, String slice, String name, MobileExtensions::FfiLibrary library) -> String
     end
   end
 end

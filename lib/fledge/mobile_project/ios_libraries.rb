@@ -146,6 +146,31 @@ module Fledge
         }
       end
 
+      # Writes into +project+'s FOLDER the XCFramework of the framework
+      # +name+, whose binary for each slice in +slices+ is a copy of the
+      # dynamic library at its path there, with the install name
+      # <tt>@rpath/NAME.framework/NAME</tt> and the Info.plist #info gives
+      # for an app whose bundle identifier is +identifier+ and bundle
+      # version +version+.
+      def self.xcframework(project, name, slices, identifier:, version:)
+        Dir.mktmpdir("fledge-framework") do |work|
+          made = slices.flat_map do |slice, path|
+            folder = File.join(work, slice, "#{name}.framework")
+            FileUtils.mkdir_p(folder)
+            binary = File.join(folder, name)
+            FileUtils.cp(path, binary)
+            Command.run("xcrun", "install_name_tool", "-id", "@rpath/#{name}.framework/#{name}", binary,
+              install: MobileExtensions::INSTALL_XCODE)
+            json = File.join(work, "#{slice}.json")
+            File.write(json, JSON.generate(info(name, identifier:, version:, platform: PLATFORMS.fetch(slice))))
+            Command.run("plutil", "-convert", "xml1", "-o", File.join(folder, "Info.plist"), json, install: MobileExtensions::INSTALL_XCODE)
+            ["-framework", folder]
+          end
+          Command.run("xcodebuild", "-create-xcframework", *made, "-output", File.join(project, FOLDER, "#{name}.xcframework"),
+            install: MobileExtensions::INSTALL_XCODE)
+        end
+      end
+
       # [built] The MobileExtensions::Built whose libraries the app
       #         carries.
       # [identifier] The app's bundle identifier.
@@ -173,13 +198,9 @@ module Fledge
       # Writes each framework's XCFramework into +project+'s FOLDER, and
       # returns their names.
       def call(project)
-        Dir.mktmpdir("fledge-frameworks") do |work|
-          frameworks.map do |name, slices|
-            made = slices.flat_map { |slice, library| ["-framework", framework(work, slice, name, library)] }
-            Command.run("xcodebuild", "-create-xcframework", *made, "-output", File.join(project, FOLDER, "#{name}.xcframework"),
-              install: MobileExtensions::INSTALL_XCODE)
-            name
-          end
+        frameworks.map do |name, slices|
+          IOSLibraries.xcframework(project, name, slices.transform_values(&:path), identifier: @identifier, version: @version)
+          name
         end
       end
 
@@ -210,20 +231,6 @@ module Fledge
           named[name] = library
         end
         named
-      end
-
-      # Writes the framework +name+ for +slice+ in +work+, of +library+,
-      # and returns its folder.
-      private def framework(work, slice, name, library)
-        folder = File.join(work, slice, "#{name}.framework")
-        FileUtils.mkdir_p(folder)
-        binary = File.join(folder, name)
-        FileUtils.cp(library.path, binary)
-        Command.run("xcrun", "install_name_tool", "-id", "@rpath/#{name}.framework/#{name}", binary, install: MobileExtensions::INSTALL_XCODE)
-        json = File.join(work, "#{slice}-#{name}.json")
-        File.write(json, JSON.generate(IOSLibraries.info(name, identifier: @identifier, version: @version, platform: PLATFORMS.fetch(slice))))
-        Command.run("plutil", "-convert", "xml1", "-o", File.join(folder, "Info.plist"), json, install: MobileExtensions::INSTALL_XCODE)
-        folder
       end
     end
   end

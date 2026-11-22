@@ -387,6 +387,50 @@ class MobileBuildTest < Minitest::Test
     assert_includes read("dist/Hello-ios/Hello.xcodeproj/project.pbxproj"), "PRODUCT_BUNDLE_IDENTIFIER = com.example.Hello;"
   end
 
+  # 0.17.0's runtime is a static library, which the app links and does
+  # not embed; a runtime whose Ruby is a framework is embedded too.
+  def test_an_ios_app_embeds_rubys_framework_only_when_the_runtime_has_one
+    skip "this computer has no XcodeGen" unless xcodegen?
+    root = script_app("identifier: com.example.Hello\n")
+    embed = lambda do
+      assert_equal 0, build("ios", root, host: "arm64-darwin-24").last
+      dependencies = YAML.safe_load_file(File.join(@dir, "dist/Hello-ios/project.yml")).dig("targets", "Hello", "dependencies")
+      dependencies.find { |dependency| dependency["framework"] == "FledgeRuby.xcframework" }.fetch("embed")
+    end
+
+    assert_equal [false], [embed.call]
+    FakeRuntime.write_mobile(@runtimes, Fledge::MobilePlatform.find("ios"), dynamic: true)
+    assert_equal [true], [embed.call]
+  end
+
+  # A host's copy of the template from before the runtime's Ruby was a
+  # framework links it without embedding it, and its app would stop as
+  # it starts.
+  def test_an_ios_host_that_does_not_embed_a_dynamic_ruby_is_refused
+    FakeRuntime.write_mobile(@runtimes, Fledge::MobilePlatform.find("ios"), dynamic: true)
+    root = script_app("identifier: com.example.Hello\nios:\n  host: host/ios\n")
+    spec = File.read(File.join(Fledge::MobileProject::TEMPLATES, "ios", "project.yml"))
+    host_files(root, "host/ios", { "project.yml" => spec.sub("embed: @@RUBY_EMBED@@", "embed: false") })
+
+    _, err, status = build("ios", root, host: "arm64-darwin-24")
+
+    assert_equal [
+      1,
+      "host/ios replaces Fledge's project.yml\nfledge build: project.yml links FledgeRuby.xcframework without " \
+        "embedding it, and the runtime's Ruby is a framework the app must embed: give its dependency " \
+        "embed: @@RUBY_EMBED@@, as Fledge's template does\n",
+], [status, err]
+  end
+
+  def test_the_dependencies_mark_lists_the_apps_extensions_and_each_framework_embedded_and_not_linked
+    assert_equal "", Fledge::MobileProject::IOS.dependencies(extensions: false, frameworks: [])
+    assert_equal "- framework: Frameworks/fledgerubyext.etc.bundle.xcframework\n        embed: true\n        link: false",
+      Fledge::MobileProject::IOS.dependencies(extensions: false, frameworks: ["fledgerubyext.etc.bundle"])
+    assert_equal "- framework: FledgeExtensions.xcframework\n        embed: false\n      " \
+      "- framework: Frameworks/a.xcframework\n        embed: true\n        link: false",
+      Fledge::MobileProject::IOS.dependencies(extensions: true, frameworks: ["a"])
+  end
+
   def test_the_version_code_grows_with_the_version
     assert_equal [1, 1000, 1_002_003, 2_100_000_000], %w[0.0.0 0.1.0.pre.1 1.2.3 2100.0.0].map { |version|
       Fledge::MobileProject::Android.version_code(version)

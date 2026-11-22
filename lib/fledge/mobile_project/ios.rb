@@ -7,11 +7,13 @@
 
 require "fileutils"
 require "json"
+require "yaml"
 require_relative "../command"
 require_relative "../icon"
 require_relative "../binary"
 require_relative "../mac_bundle"
 require_relative "ios_libraries"
+require_relative "ios_ruby_extensions"
 
 module Fledge
   class MobileProject
@@ -124,21 +126,35 @@ module Fledge
 "VERSION" => version,
 "APP_ICON" => icon,
 "LDFLAGS" => ["$(inherited)", *extension_flags].join(" "),
+"RUBY_EMBED" => ruby_extensions.dynamic?,
 }.transform_values { |value| JSON.generate(value) }
-        strings.merge("EXTENSIONS" => dependencies)
+        frameworks = @ruby_frameworks || [] # : Array[String]
+        frameworks += libraries.frameworks.keys if @built
+        strings.merge("EXTENSIONS" => IOS.dependencies(extensions: !@built.nil?, frameworks:))
       end
 
-      # The block of <tt>project.yml</tt>'s dependencies for the app's
-      # extensions: FledgeExtensions.xcframework, linked, and each
-      # library for Ruby's ffi, embedded and not linked, since Ruby's ffi
-      # opens it by its path, as on a desktop, where no program links it.
-      private def dependencies
-        return "" unless @built
-
-        frameworks = libraries.frameworks.keys.map do |name|
-          "\n      - framework: #{IOSLibraries::FOLDER}/#{name}.xcframework\n        embed: true\n        link: false"
-        end
-        "- framework: #{EXTENSIONS}\n        embed: false#{frameworks.join}"
+      # The block of <tt>project.yml</tt>'s dependencies that the mark
+      # +EXTENSIONS+ stands for: FledgeExtensions.xcframework, linked, when
+      # the app's gems have +extensions+, and each of +frameworks+, the
+      # runtime's own extensions and the libraries for Ruby's ffi, embedded
+      # and not linked, since Ruby or its ffi opens each by its path, as on
+      # a desktop, where no program links it.
+      #
+      # === Example
+      #
+      #--
+      # SPDX-SnippetBegin
+      # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+      # SPDX-License-Identifier: MIT-0
+      #++
+      #   Fledge::MobileProject::IOS.dependencies(extensions: false, frameworks: []) # => ""
+      #--
+      # SPDX-SnippetEnd
+      #++
+      def self.dependencies(extensions:, frameworks:)
+        blocks = frameworks.map { |name| "- framework: #{IOSLibraries::FOLDER}/#{name}.xcframework\n        embed: true\n        link: false" }
+        blocks.unshift("- framework: #{EXTENSIONS}\n        embed: false") if extensions
+        blocks.join("\n      ")
       end
 
       # The linker flags the extensions' extconf.rb files asked for, and
@@ -202,8 +218,36 @@ module Fledge
         @log&.puts "Left out of the iOS app, which carries compiled code only in its executable and its frameworks: #{found.join(', ')}"
       end
 
+      # Moves the runtime into +project+, with a framework of each of its
+      # own extensions and a link at each one's path (IOSRubyExtensions).
       private def place_runtime(tree, project)
         FileUtils.mv(File.join(tree, FRAMEWORK), project)
+        extensions = @ruby_extensions = IOSRubyExtensions.new(File.join(project, FRAMEWORK))
+        @ruby_frameworks = extensions.call(project, identifier:, version: MacBundle.bundle_version(@app.identity.version))
+        extensions.link
+      end
+
+      private def ruby_extensions
+        @ruby_extensions or raise Error, "the iOS runtime is not in the project yet"
+      end
+
+      # Raises Fledge::Error when +project+'s <tt>project.yml</tt> links
+      # a dynamic FledgeRuby.xcframework without embedding it, as a host's
+      # copy of a template from before the runtime's Ruby was a framework
+      # does (<tt>embed: false</tt>): the app would stop as it starts,
+      # since iOS's loader would find no FledgeRuby in it.
+      private def check_ruby_embedded(project)
+        spec = YAML.safe_load_file(File.join(project, "project.yml"))
+        targets = spec.is_a?(Hash) ? spec["targets"] : nil
+        listed = targets.is_a?(Hash) ? targets.values : [] # : Array[Object]
+        dependencies = listed.flat_map do |target|
+          target.is_a?(Hash) ? Array(target["dependencies"]) : [] # : Array[Object]
+        end
+        ruby = dependencies.select { |dependency| dependency.is_a?(Hash) && dependency["framework"] == FRAMEWORK }
+        return if ruby.all? { |dependency| dependency.is_a?(Hash) && dependency["embed"] == true }
+
+        raise Error, "project.yml links #{FRAMEWORK} without embedding it, and the runtime's Ruby is a framework the app must embed: " \
+          "give its dependency embed: @@RUBY_EMBED@@, as Fledge's template does"
       end
 
       private def ruby_root(project)
@@ -219,6 +263,7 @@ module Fledge
 
       # Has XcodeGen write the Xcode project from <tt>project.yml</tt>.
       private def finish(project)
+        check_ruby_embedded(project) if ruby_extensions.dynamic?
         Command.run("xcodegen", "generate", "--quiet", "--spec", File.join(project, "project.yml"), "--project", project, install: INSTALL)
       end
     end

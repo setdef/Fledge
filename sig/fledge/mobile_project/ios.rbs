@@ -11,10 +11,14 @@ module Fledge
       INSTALL: String
 
       @libraries: IOSLibraries?
+      @ruby_extensions: IOSRubyExtensions?
+      @ruby_frameworks: Array[String]?
 
       def self.ruby_under: () -> String
 
       def self.mach_o?: (String path) -> bool
+
+      def self.dependencies: (extensions: bool, frameworks: Array[String]) -> String
 
       private def system: () -> String
 
@@ -30,9 +34,11 @@ module Fledge
 
       private def place_links: (String root) -> void
 
-      private def dependencies: () -> String
-
       private def place_runtime: (String tree, String project) -> void
+
+      private def ruby_extensions: () -> IOSRubyExtensions
+
+      private def check_ruby_embedded: (String project) -> void
 
       private def ruby_root: (String project) -> String
 

@@ -119,8 +119,10 @@ module FakeRuntime
   # AAR beside one Ruby, with fledge.links naming the one extension of
   # Ruby's own its AAR holds for each ABI (ANDROID_LINKS), unless
   # +links+ is false, as 0.17.0's runtime, which linked them in, has
-  # none; each with its CA certificates and notices.
-  def self.write_mobile(directory, phone, links: true)
+  # none; each with its CA certificates and notices. An iOS runtime
+  # whose Ruby is +dynamic+ holds FledgeRuby.framework in each slice, and
+  # lists no extensions, whose frameworks only Xcode's tools could make.
+  def self.write_mobile(directory, phone, links: true, dynamic: false)
     top = File.basename(Fledge::Runtimes.file_name(phone), Fledge::Runtimes::EXTENSION)
     path = File.join(directory, Fledge::Runtimes.file_name(phone))
     rubies = (phone.name == "ios") ? %w[ios-arm64 ios-arm64-simulator].map { |slice| "FledgeRuby.xcframework/#{slice}/" } : [""]
@@ -132,6 +134,7 @@ module FakeRuntime
           *ruby("#{prefix}lib/ruby", phone),
           Fledge::Entry.file("#{prefix}libexec/cert.pem", "certificates\n"),
           Fledge::Entry.file("#{prefix}include/ruby-4.1.0+5/ruby.h", "/* ruby.h */\n"),
+          *(dynamic ? [Fledge::Entry.file("#{prefix}FledgeRuby.framework/Info.plist", "<plist/>\n")] : []),
         ]
       end,
       *((phone.name == "ios") ? [] : [Fledge::Entry.file("include/fledge_ruby.h", "/* fledge_ruby.h */\n")]),

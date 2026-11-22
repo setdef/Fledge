@@ -57,7 +57,7 @@ targets:
       - path: Host
     dependencies:
       - framework: FledgeRuby.xcframework
-        embed: false
+        embed: @@RUBY_EMBED@@
       @@EXTENSIONS@@
     postCompileScripts:
       - name: Copy Ruby and the app

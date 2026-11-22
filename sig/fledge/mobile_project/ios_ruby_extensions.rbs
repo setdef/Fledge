@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class MobileProject
+    class IOSRubyExtensions
+      LINKS: String
+      RUBY: String
+
+      @runtime: String
+      @listed: Hash[String, Hash[String, Array[String]]]?
+
+      def initialize: (String runtime) -> void
+
+      def dynamic?: () -> bool
+
+      def frameworks: () -> Hash[String, Hash[String, String]]
+
+      def call: (String project, identifier: String, version: String) -> Array[String]
+
+      def link: () -> void
+
+      private def slices: () -> Array[String]
+
+      private def listed: () -> Hash[String, Hash[String, Array[String]]]
+    end
+  end
+end

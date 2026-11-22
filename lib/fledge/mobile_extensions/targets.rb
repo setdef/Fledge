@@ -127,8 +127,9 @@ module Fledge
       end
 
       # The ABI's tools: the NDK's clang of the very name the runtime was
-      # built with, its llvm-ar and llvm-ranlib, the library that holds
-      # Ruby, from the AAR, and a CMake toolchain file for the same.
+      # built with, its llvm-ar and llvm-ranlib, its llvm-strip as strip
+      # (#strip_folder), the library that holds Ruby, from the AAR, and a
+      # CMake toolchain file for the same.
       private def android_target(arch, abi, tree, aar, ndk)
         arch_dir = File.join(tree, "lib", "ruby", Dir.children(File.join(tree, "lib", "ruby")).grep(/\A\d/).first.to_s, arch)
         compiler = File.basename(recorded_compiler(arch_dir))
@@ -145,6 +146,7 @@ module Fledge
           "FLEDGE_DLDFLAGS" => DLDFLAGS,
           "FLEDGE_LDSHAREDXX" => "$(CXX) -shared",
           "CMAKE_TOOLCHAIN_FILE" => toolchain_file(arch, CMake.android(ndk: ndk.root, abi:, compiler:)),
+          "PATH" => [strip_folder(ndk), ENV.fetch("PATH", "")].join(File::PATH_SEPARATOR),
           **Rust.android(arch, bin: ndk.bin, cc:, resource: resource_dir(cc, ndk)),
         }
         Target.new(name: arch, root: tree, arch_dir:, libdir:, environment: with_tools(environment), abi:)
@@ -168,6 +170,22 @@ module Fledge
       private def with_tools(environment)
         tools = %w[CC CXX AR RANLIB].to_h { |name| [name, environment["FLEDGE_#{name}"]] }.compact
         environment.merge(tools, "PKG_CONFIG" => "false")
+      end
+
+      # A folder in the build's, first on the +PATH+ of an Android build,
+      # whose +strip+ is the NDK's +llvm-strip+, so that a build that runs
+      # strip by that plain name strips the ABI's ELF file as a desktop's
+      # strips its own: sassc 2.4.0's <tt>extconf.rb</tt> adds
+      # <tt>strip -x $@</tt> to mkmf's link off Apple's systems
+      # (<tt>ext/extconf.rb</tt>, lines 68 and 69), and a Mac's or an
+      # x86-64 Linux's own strip refuses an AArch64 Android library
+      # ("Unable to recognise the format of the input file"). The rest of
+      # the folders keep their order.
+      private def strip_folder(ndk)
+        folder = File.join(@work, "android-tools")
+        FileUtils.mkdir_p(folder)
+        FileUtils.ln_sf(File.join(ndk.bin, "llvm-strip"), File.join(folder, "strip"))
+        folder
       end
 
       # The resource folder of the NDK's compiler +cc+, which holds the

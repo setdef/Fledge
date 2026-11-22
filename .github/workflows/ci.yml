@@ -745,8 +745,9 @@ jobs:
   # the NDK, CMake, Rust's Android targets, and an emulator: those that
   # need no device once, before the emulator starts, and
   # test/integration/mobile_extension_symbols_test.rb,
-  # test/integration/mobile_linked_symbols_test.rb, and
-  # test/integration/mobile_built_files_test.rb, whose apps Gradle
+  # test/integration/mobile_linked_symbols_test.rb,
+  # test/integration/mobile_built_files_test.rb, and
+  # test/integration/mobile_ffi_extconf_test.rb, whose apps Gradle
   # builds, on each emulator.
   # FLEDGE_REQUIRE_ANDROID fails a test that would skip for want of any
   # of these, so a green job means every one of them ran.
@@ -909,7 +910,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
             ruby tasks/mobile_parity.rb android
-            bundle exec rake test:integration TEST=test/integration/mobile_extension_symbols_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_built_files_test.rb
+            bundle exec rake test:integration TEST=test/integration/mobile_extension_symbols_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_built_files_test.rb,test/integration/mobile_ffi_extconf_test.rb
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()

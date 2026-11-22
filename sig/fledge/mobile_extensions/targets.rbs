@@ -30,6 +30,8 @@ module Fledge
 
       private def android_target: (String arch, String abi, String tree, String aar, NDK ndk) -> Target
 
+      private def strip_folder: (NDK ndk) -> String
+
       private def with_tools: (Hash[String, String] environment) -> Hash[String, String]
 
       private def resource_dir: (String cc, NDK ndk) -> String

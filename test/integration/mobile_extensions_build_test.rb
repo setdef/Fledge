@@ -190,6 +190,31 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "aarch64-linux-android" => "AArch64", "x86_64-linux-android" => "Advanced Micro Devices X86-64" }, machines)
   end
 
+  # An extconf.rb may run strip on what it links, by that plain name, as
+  # sassc 2.4.0's adds "strip -x $@" to mkmf's link off Apple's systems.
+  # On a desktop that is the strip for the file; for Android it is the
+  # NDK's, which reads the ABI's ELF, where this computer's refused it
+  # ("Unable to recognise the format of the input file").
+  def test_an_android_extconf_that_strips_its_library_strips_it_with_the_ndks_strip
+    runtimes = real_runtimes("android")
+    ndk = android_ndk
+    extconf = "require \"mkmf\"\nMakeMakefile::LINK_SO << \"\\nstrip -x $@\"\ncreate_makefile(\"stripped/stripped\")\n"
+    source = <<~C
+      #include <ruby.h>
+      static VALUE kept(VALUE self) { return Qtrue; }
+      void Init_stripped(void) { rb_define_global_function("kept", kept, 0); }
+    C
+    gem = extconf_gem("stripped", extconf, { "stripped.c" => source })
+
+    built = compile(runtimes, android, { gem => Fledge::PathPackage.new(gem) }, files: true)
+
+    locals = built.targets.transform_values do |target|
+      symbols = Open3.capture2(File.join(ndk.bin, "llvm-nm"), "--defined-only", target.libraries.fetch(0).path).first
+      symbols.lines.map(&:split).select { |fields| fields[-2] == "t" }.map(&:last)
+    end
+    assert_equal({ "aarch64-linux-android" => [], "x86_64-linux-android" => [] }, locals, "strip -x left no local symbol")
+  end
+
   # A C extension over a C++ library names a desktop's C++ runtime
   # (-lstdc++); built as a file, it links the NDK's shared C++ runtime in
   # its place, as a C++ extension and libfledgeext.so do.

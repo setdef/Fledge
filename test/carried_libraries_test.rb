@@ -113,8 +113,8 @@ class CarriedLibrariesTest < Minitest::Test
 
     place(LIBXML2, Binaries.macho(needed: [], minos: "27.0"))
     assert_equal [
-      "libxml2.2.dylib, which the app is to carry from #{LIBXML2}, needs macOS 27.0, and apps for arm64-darwin run on macOS 14.0 " \
-        "and later. Carry a build of it made for macOS 14.0, such as one compiled with MACOSX_DEPLOYMENT_TARGET=14.0.",
+      "libxml2.2.dylib, which the app is to carry from #{LIBXML2}, needs macOS 27.0, and apps for arm64-darwin run on macOS 15.0 " \
+        "and later. Carry a build of it made for macOS 15.0, such as one compiled with MACOSX_DEPLOYMENT_TARGET=15.0.",
     ], carried(["libxml2.2.dylib"], { "lib/xml/xml.bundle" => gem_file }).problems
   end
 

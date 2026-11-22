@@ -186,7 +186,7 @@ class NativeBuildTest < Minitest::Test
     return unless @platform.os == "darwin"
 
     minimum = Fledge::Binary.read([compiled], readers: Fledge::Binary::Readers.local("darwin")).fetch(compiled).macos_minimum
-    assert_operator Gem::Version.new(minimum), :<=, Gem::Version.new("14.0")
+    assert_operator Gem::Version.new(minimum), :<=, Gem::Version.new(Fledge::Platform::MACOS_MINIMUM)
   end
 
   # A gem compiled on a Linux whose glibc is newer than the runtime's

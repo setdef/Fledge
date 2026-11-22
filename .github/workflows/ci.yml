@@ -28,8 +28,8 @@
 # proves, never macos-latest, which moves (doc/contributors/design/
 # releases.md, "Which macOS each job runs on"): macos-15 for the Xcode
 # 16.4 the arm64-darwin runtime is built with, and, as the oldest macOS
-# GitHub has, the nearest to the macOS 14 floor, for every job that
-# builds a Mac's apps or runs them; macos-26 for the Xcode 26.5 the
+# GitHub has and the macOS 15 floor, for every job that builds a Mac's
+# apps or runs them; macos-26 for the Xcode 26.5 the
 # iOS jobs build with.
 #
 # A windowed app gets an installer too: a disk image for macOS,

@@ -23,7 +23,7 @@ class RuntimeBuilder
       end
       static = Dir.glob(File.join(@prefix, "lib", "libruby.*-static.a")).first or raise "#{@prefix} has no static libruby"
       FileUtils.mkdir_p(File.dirname(output))
-      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, "-mmacosx-version-min=14.0", *includes, *sources,
+      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, "-mmacosx-version-min=#{Fledge::Platform::MACOS_MINIMUM}", *includes, *sources,
         "-Wl,-force_load,#{static}", "-framework", "CoreFoundation", "-ldl", "-lobjc", "-lpthread", "-o", output)
       @builder.run("strip", "-x", output)
       @builder.run("codesign", "--sign", "-", "--force", output)

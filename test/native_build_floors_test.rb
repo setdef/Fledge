@@ -25,14 +25,14 @@ class NativeBuildFloorsTest < Minitest::Test
   def test_a_mach_o_file_for_a_newer_macos_than_the_platforms_oldest_is_a_problem
     TestReaders.need(self, :macho)
     found = problems("arm64-darwin", {
-      "lib/redcarpet.bundle" => Binaries.macho(minos: "15.0"),
-      "lib/old.bundle" => Binaries.macho(minos: "14.0"),
+      "lib/redcarpet.bundle" => Binaries.macho(minos: "27.0"),
+      "lib/old.bundle" => Binaries.macho(minos: "15.0"),
       "lib/redcarpet.rb" => "require 'redcarpet.bundle'\n",
     })
 
     assert_equal [
-      "redcarpet 3.6.1's lib/redcarpet.bundle needs macOS 15.0, and apps for arm64-darwin run on macOS 14.0 and later. " \
-        "Compile it with MACOSX_DEPLOYMENT_TARGET=14.0, which Fledge sets, so check its extconf.rb does not override it.",
+      "redcarpet 3.6.1's lib/redcarpet.bundle needs macOS 27.0, and apps for arm64-darwin run on macOS 15.0 and later. " \
+        "Compile it with MACOSX_DEPLOYMENT_TARGET=15.0, which Fledge sets, so check its extconf.rb does not override it.",
     ], found
   end
 

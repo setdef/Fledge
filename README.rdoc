@@ -33,7 +33,7 @@ of the app, look like this:
   $ /tmp/Greet-arm64-darwin/Greet Ruby
   {"greeting":"Hello, Ruby!"}
 
-The archive is 29 MB. Anyone with an Apple silicon Mac on macOS 14 or newer
+The archive is 29 MB. Anyone with an Apple silicon Mac on macOS 15 or newer
 can run it, whether or not they have Ruby. On Windows, the same command
 writes <tt>dist/Greet-x64-mingw-ucrt.zip</tt>, which holds +Greet.exe+, and
 on Linux, a <tt>.tar.gz</tt> for your processor, such as
@@ -79,7 +79,7 @@ name it in Bundler's +without+ setting.
   <tt>fledge build --from</tt> makes a new app from one Fledge already
   built, with no Bundler, network, or compiler on the computer.
 
-Fledge builds for macOS 14 and newer on Apple silicon; Linux with glibc
+Fledge builds for macOS 15 and newer on Apple silicon; Linux with glibc
 2.28 and newer, or with musl, on x86-64 and ARM64; Windows 11 on x64 and
 ARM64; iOS 15 and newer; and Android 8.0 and newer. It builds nothing for
 Intel Macs, 32-bit systems, or the Mac App Store. Build each system's app

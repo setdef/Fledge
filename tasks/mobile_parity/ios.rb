@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "etc"
 require "fileutils"
 require "json"
 require "open3"
@@ -64,6 +65,13 @@ class MobileParity
       manifest.fetch("NSPrivacyAccessedAPITypes").to_h do |type|
         [type.fetch("NSPrivacyAccessedAPIType"), type.fetch("NSPrivacyAccessedAPITypeReasons", [])]
       end.select { |category, reasons| REASONS.key?(category) && !reasons.include?(REASONS.fetch(category)) }
+    end
+
+    # The folder macOS writes a crashed Simulator app's report into: the
+    # account's own home's, wherever HOME points, as ReportCrash writes for
+    # the account and not for a process's environment.
+    def self.crash_reports
+      File.join(Etc.getpwuid.dir, "Library", "Logs", "DiagnosticReports")
     end
 
     # The messages of the process +pid+ in +ndjson+, what log show
@@ -232,7 +240,7 @@ class MobileParity
       running = Open3.capture2e("xcrun", "simctl", "spawn", udid, "launchctl", "list").first.lines.grep(/#{Regexp.escape(app.identifier)}/)
       logged = Open3.capture2e("xcrun", "simctl", "spawn", udid, "log", "show", "--last", "10m", "--style", "compact", "--predicate",
         "process == \"#{app.name}\"").first.lines.last(80)
-      crashes = Dir.glob(File.join(Dir.home, "Library", "Logs", "DiagnosticReports", "#{app.name}*"))
+      crashes = Dir.glob(File.join(IOS.crash_reports, "#{app.name}*"))
       crashes.each { |crash| FileUtils.cp(crash, @work) }
       [
         "The app's process: #{running.empty? ? 'not running' : running.join.strip}",

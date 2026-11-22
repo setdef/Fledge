@@ -144,6 +144,19 @@ class MobileParityTest < Minitest::Test
     assert_empty MobileParity::IOS.wrong_reasons(manifest)
   end
 
+  # macOS writes a crashed Simulator app's report into the account's own
+  # home, which a HOME set elsewhere (a CI step's, a build node's
+  # workspace) does not move.
+  def test_crash_reports_are_read_from_the_accounts_own_home
+    skip "the Simulator's crash reports are a Mac's" unless RUBY_PLATFORM.include?("darwin")
+    saved = ENV.to_h
+    ENV["HOME"] = File.join(MobileParity::ROOT, "tmp", "not-the-accounts-home")
+
+    assert_equal File.join(Etc.getpwuid.dir, "Library", "Logs", "DiagnosticReports"), MobileParity::IOS.crash_reports
+  ensure
+    ENV.replace(saved) if saved
+  end
+
   # The reference runs as a person runs ruby main.rb: in a UTF-8 locale,
   # with a home folder of its own and nothing of the runner's Ruby.
   # As a developer's shell hands it to the Ruby they run: that Ruby's

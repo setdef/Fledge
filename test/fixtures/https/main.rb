@@ -5,40 +5,30 @@
 # SPDX-License-Identifier: MIT
 #++
 
-# The HTTPS probe: a request to rubygems.org over HTTPS, whose status it
-# prints, with the certificate file Ruby's OpenSSL was pointed at by a
-# variable, if any, so that the line says whose certificates verified
-# the server's:
-# the computer's own store where it has one, and the runtime's
-# libexec/cert.pem only where it has none, on glibc Linux
-# (doc/contributors/design/runtimes.md, "Certificates on glibc Linux").
-# rubygems.org is the host the phones' apps ask
-# (test/fixtures/mobile_hello/main.rb), and one every Ruby developer's
-# computer already reaches. .github/scripts/deliver-https.sh runs it
-# where it is delivered and checks the line.
+# The HTTPS probe: a GET over HTTPS, with Ruby's own net/http and
+# openssl, to the URL its one argument names, which Delivery points at a
+# server of its own on the same computer, whose certificate a test
+# authority made for the run has signed (.github/scripts/https-server.sh).
+# It prints the status, or that the certificate did not verify, with
+# each variable that points OpenSSL at a file, so that the line says
+# whose certificates were asked. Delivery puts the authority where the
+# platform's Ruby looks, or nowhere, and checks the line
+# (.github/scripts/deliver-https.sh and deliver-https.ps1;
+# doc/contributors/design/runtimes.md, "Certificates").
 require "net/http"
-require "timeout"
 
-# A runner's network drops a connection now and then, so a dropped or
-# stalled connection is tried again, at most three times, each bounded;
-# a certificate that does not verify is never retried, since that is
-# what this probe checks.
-attempts = 0
-begin
-  attempts += 1
-  status = Timeout.timeout(60) do
-    Net::HTTP.start("rubygems.org", 443, use_ssl: true, open_timeout: 20, read_timeout: 20) { |http| http.head("/").code }
-  end
-rescue SystemCallError, IOError, SocketError, Timeout::Error => e
-  raise if attempts == 3
-
-  warn "main.rb: #{e.class}: #{e.message}; trying again"
-  sleep 5
-  retry
+uri = URI(ARGV.fetch(0))
+# By the names Ruby's OpenSSL and the runtimes' renamed copies of it
+# read: SSL_CERT_FILE, and PORTABLE_RUBY_SSL_CERT_FILE, which the
+# openssl.rb of macOS's and musl Linux's runtimes sets.
+pointed = lambda do
+  names = ENV.select { |name, _| name.end_with?("SSL_CERT_FILE") }.sort.map { |pair| pair.join("=") }
+  names.empty? ? "no file a variable names" : names.join(" ")
 end
-# Any variable that points OpenSSL at a file, by the names Ruby's
-# OpenSSL and the runtimes' renamed copies of it read: SSL_CERT_FILE on
-# glibc Linux, which the runtime's openssl.rb sets only where the
-# computer has no store.
-pointed = ENV.select { |name, _| name.end_with?("SSL_CERT_FILE") }.sort.map { |pair| pair.join("=") }
-puts "HTTPS to rubygems.org: #{status}, certificates #{pointed.empty? ? 'from no file a variable names' : pointed.join(' ')}"
+begin
+  status = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 10) { |http| http.get(uri.path).code }
+rescue OpenSSL::SSL::SSLError => e
+  puts "HTTPS to #{uri.host}: #{e.message[/certificate verify failed[^)]*\)?/] || e.message}, certificates #{pointed.call}"
+  exit 1
+end
+puts "HTTPS to #{uri.host}: #{status}, certificates #{pointed.call}"

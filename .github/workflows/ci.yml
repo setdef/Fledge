@@ -2101,14 +2101,17 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
 
-      # The HTTPS probe asks rubygems.org (.github/scripts/deliver-https.sh):
-      # on the Linux runners, Ubuntu's own certificate store must verify
-      # it, with the runtime's file and without it.
-      - name: Ask rubygems.org over HTTPS as someone with no Ruby would
-        if: runner.os == 'Linux'
+      # The HTTPS probe asks a server on the runner, whose certificate a
+      # test authority made for the run signed (.github/scripts/https-server.sh),
+      # with that authority nowhere, in SSL_CERT_FILE, in the runtime's
+      # own CA bundle, and in the runner's store, and must trust it or
+      # refuse it as the platform's Ruby does (.github/scripts/deliver-https.sh).
+      - name: Ask a server on this runner over HTTPS as someone with no Ruby would
         run: |
-          .github/scripts/deliver-https.sh "$RUNNER_TEMP/delivered/Https-${{ matrix.platform }}.tar.gz" store
-          .github/scripts/deliver-https.sh "$RUNNER_TEMP/delivered/Https-${{ matrix.platform }}.tar.gz" store --remove-bundled
+          server="$RUNNER_TEMP/https-server"
+          .github/scripts/https-server.sh start "$server"
+          trap '.github/scripts/https-server.sh stop "$server"' EXIT
+          .github/scripts/deliver-https.sh "$RUNNER_TEMP/delivered/Https-${{ matrix.platform }}.tar.gz" "$server"
 
       # An app whose Gemfile.lock names a Bundler the runtime's
       # Ruby does not ship runs with it, as bundle exec did where it was
@@ -2437,10 +2440,11 @@ jobs:
   # source, is built here in manylinux_2_28, as a developer who follows
   # fledge build's warning about a gem compiled on a newer glibc builds
   # it (.github/scripts/glibc-app.sh), so that its floor is the image's;
-  # and the HTTPS probe asks rubygems.org. AlmaLinux's and Amazon
-  # Linux's own certificate stores must verify it, with the runtime's
-  # file and without it; Ubuntu's and Debian's images have no store, so
-  # the runtime's file must, and without it the probe must fail. Each
+  # and the HTTPS probe asks a server on the runner, which the image
+  # reaches on the runner's network (.github/scripts/deliver-https.sh):
+  # in AlmaLinux 8 and Amazon Linux 2023, whose images have a
+  # certificate store, the store is read and the runtime's CA bundle is
+  # not; in Ubuntu's and Debian's, which have none, the bundle is. Each
   # image runs from a step with docker run
   # (.github/scripts/deliver-glibc-floor.sh), not as the job's
   # container, since GitHub's actions run inside a job's container and
@@ -2485,16 +2489,16 @@ jobs:
         run: .github/scripts/glibc-app.sh "${{ matrix.platform }}" "$RUNNER_TEMP/runtimes" "$RUNNER_TEMP/floor" examples/my_cool_app
 
       - name: Run hello, my_cool_app, and the HTTPS probe in AlmaLinux 8 (glibc 2.28)
-        run: .github/scripts/deliver-glibc-floor.sh "$ALMALINUX_8" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" store
+        run: .github/scripts/deliver-glibc-floor.sh "$ALMALINUX_8" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor"
 
       - name: Run hello, my_cool_app, and the HTTPS probe in Amazon Linux 2023 (glibc 2.34)
-        run: .github/scripts/deliver-glibc-floor.sh "$AMAZONLINUX_2023" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" store tar gzip
+        run: .github/scripts/deliver-glibc-floor.sh "$AMAZONLINUX_2023" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" tar gzip
 
       - name: Run hello, my_cool_app, and the HTTPS probe in Ubuntu 22.04 (glibc 2.35)
-        run: .github/scripts/deliver-glibc-floor.sh "$UBUNTU_JAMMY" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" bundled
+        run: .github/scripts/deliver-glibc-floor.sh "$UBUNTU_JAMMY" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor"
 
       - name: Run hello, my_cool_app, and the HTTPS probe in Debian 12 (glibc 2.36)
-        run: .github/scripts/deliver-glibc-floor.sh "$DEBIAN_BOOKWORM_SLIM" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" bundled
+        run: .github/scripts/deliver-glibc-floor.sh "$DEBIAN_BOOKWORM_SLIM" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor"
 
   delivery-glibc-floor-aarch64-linux:
     name: Delivery on the oldest glibc (${{ matrix.platform }})

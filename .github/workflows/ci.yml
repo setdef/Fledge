@@ -1347,7 +1347,8 @@ jobs:
   # probe (test/fixtures/parity), which Delivery asks what a child Ruby
   # sees, and the probe as a gem-shaped app's program (Parity.gem_probe),
   # which Delivery asks what Bundler.with_original_env and
-  # with_unbundled_env give a child; examples/my_cool_app, whose gems come
+  # with_unbundled_env give a child; the HTTPS probe (test/fixtures/https),
+  # which asks rubygems.org over HTTPS; examples/my_cool_app, whose gems come
   # from RubyGems.org, each checked against its Gemfile.lock's checksum,
   # precompiled for the platform; test/fixtures/bundled_with,
   # whose Gemfile.lock names a Bundler no runtime ships;
@@ -1470,14 +1471,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
-      - name: Build hello, the parity and console probes, my_cool_app, windowed_app, programs, and native_app for ${{ matrix.platform }}
+      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs examples/native_app test/fixtures/bundled_with/exe/bundled_with)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console "$RUNNER_TEMP/parity-bundle" examples/windowed_app examples/programs)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs examples/native_app test/fixtures/bundled_with/exe/bundled_with)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/windowed_app examples/programs)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -2034,6 +2035,15 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/MyCoolApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/my_cool_app.expected")"
 
+      # The HTTPS probe asks rubygems.org (.github/scripts/deliver-https.sh):
+      # on the Linux runners, Ubuntu's own certificate store must verify
+      # it, with the runtime's file and without it.
+      - name: Ask rubygems.org over HTTPS as someone with no Ruby would
+        if: runner.os == 'Linux'
+        run: |
+          .github/scripts/deliver-https.sh "$RUNNER_TEMP/delivered/Https-${{ matrix.platform }}.tar.gz" store
+          .github/scripts/deliver-https.sh "$RUNNER_TEMP/delivered/Https-${{ matrix.platform }}.tar.gz" store --remove-bundled
+
       # An app whose Gemfile.lock names a Bundler the runtime's
       # Ruby does not ship runs with it, as bundle exec did where it was
       # built.
@@ -2352,6 +2362,86 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
     steps: *delivery-deb-steps
+
+  # Delivery where the glibc floor says an app runs (runtimes.md, "The
+  # glibc floor"), in the oldest systems it admits, each pinned by
+  # digest, with no Ruby installed: AlmaLinux 8 (glibc 2.28), Amazon
+  # Linux 2023 (2.34), Ubuntu 22.04 (2.35), and Debian 12 (2.36). hello
+  # comes from the Build job; my_cool_app, whose sqlite3 compiles from
+  # source, is built here in manylinux_2_28, as a developer who follows
+  # fledge build's warning about a gem compiled on a newer glibc builds
+  # it (.github/scripts/glibc-app.sh), so that its floor is the image's;
+  # and the HTTPS probe asks rubygems.org. AlmaLinux's and Amazon
+  # Linux's own certificate stores must verify it, with the runtime's
+  # file and without it; Ubuntu's and Debian's images have no store, so
+  # the runtime's file must, and without it the probe must fail. Each
+  # image runs from a step with docker run
+  # (.github/scripts/deliver-glibc-floor.sh), not as the job's
+  # container, since GitHub's actions run inside a job's container and
+  # need what some of these images lack.
+  delivery-glibc-floor-x86_64-linux:
+    name: Delivery on the oldest glibc (${{ matrix.platform }})
+    needs: [runtime, build-x86_64-linux]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+    steps: &delivery-glibc-floor-steps
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The computer's own Ruby only fetches the pinned Ruby that runs
+      # fledge build in the image, so mise installs only Ruby.
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: ${{ runner.temp }}/runtimes
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: ${{ runner.temp }}/delivered
+
+      - name: Read the pinned images
+        run: .github/scripts/pinned-images.sh env >> "$GITHUB_ENV"
+
+      - name: Build my_cool_app in manylinux_2_28, whose glibc is the floor
+        run: .github/scripts/glibc-app.sh "${{ matrix.platform }}" "$RUNNER_TEMP/runtimes" "$RUNNER_TEMP/floor" examples/my_cool_app
+
+      - name: Run hello, my_cool_app, and the HTTPS probe in AlmaLinux 8 (glibc 2.28)
+        run: .github/scripts/deliver-glibc-floor.sh "$ALMALINUX_8" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" store
+
+      - name: Run hello, my_cool_app, and the HTTPS probe in Amazon Linux 2023 (glibc 2.34)
+        run: .github/scripts/deliver-glibc-floor.sh "$AMAZONLINUX_2023" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" store tar gzip
+
+      - name: Run hello, my_cool_app, and the HTTPS probe in Ubuntu 22.04 (glibc 2.35)
+        run: .github/scripts/deliver-glibc-floor.sh "$UBUNTU_JAMMY" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" bundled
+
+      - name: Run hello, my_cool_app, and the HTTPS probe in Debian 12 (glibc 2.36)
+        run: .github/scripts/deliver-glibc-floor.sh "$DEBIAN_BOOKWORM_SLIM" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor" bundled
+
+  delivery-glibc-floor-aarch64-linux:
+    name: Delivery on the oldest glibc (${{ matrix.platform }})
+    needs: [runtime, build-aarch64-linux]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps: *delivery-glibc-floor-steps
 
   # Delivery on musl Linux: each app in a bare Alpine container,
   # with no Ruby at all, as deliver.sh --no-ruby-installed checks: hello

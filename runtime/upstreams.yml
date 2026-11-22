@@ -161,6 +161,26 @@ watched:
     page: https://hub.docker.com/v2/namespaces/library/repositories/ubuntu/tags/24.04
     pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
     ships: false
+  almalinux-8:
+    pins: [images.almalinux-8]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/almalinux/tags/8
+    pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
+  amazonlinux-2023:
+    pins: [images.amazonlinux-2023]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/amazonlinux/tags/2023
+    pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
+  ubuntu-jammy:
+    pins: [images.ubuntu-jammy]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/ubuntu/tags/22.04
+    pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
+  debian-bookworm-slim:
+    pins: [images.debian-bookworm-slim]
+    page: https://hub.docker.com/v2/namespaces/library/repositories/debian/tags/bookworm-slim
+    pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
   archlinux-base-devel:
     pins: [images.archlinux-base-devel]
     page: https://hub.docker.com/v2/namespaces/library/repositories/archlinux/tags/base-devel

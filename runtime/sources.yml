@@ -205,6 +205,18 @@ images:
   ubuntu-noble:
     version: "2026-11-20"
     image: ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289
+  almalinux-8:
+    version: "2026-11-16"
+    image: almalinux:8@sha256:768bedc30fe0a536adb0a65d2eddb7caad364e514fbddd0ae9e026975f590342
+  amazonlinux-2023:
+    version: "2026-11-18"
+    image: amazonlinux:2023@sha256:9cf762f5099b606bcd851391317af7cd75b11363c4816ebcb5e91292dd5736a7
+  ubuntu-jammy:
+    version: "2026-11-20"
+    image: ubuntu:22.04@sha256:f64b2ffc2f10ab8f8505aa56b2664bd846cbb9df87c7e2532e30f7667021c0e6
+  debian-bookworm-slim:
+    version: "2026-11-05"
+    image: debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
   archlinux-base-devel:
     version: "2026-11-08"
     image: archlinux:base-devel@sha256:2de80105abb49f813a85393c6758a4334deb6bcec4a2411bd2f059c0bee6ee4c

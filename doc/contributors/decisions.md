@@ -487,3 +487,16 @@ The orchestrating agent received these words first-hand from the maintainer.
 [re: the orchestrating agent's plan, made in answer to the words above, for a nightly run that tests Fledge against Ruby's main branch while Fledge's releases stayed on the preview. The agent answered yes, and took the question as direction.]
 
 *Governs:* Fledge is tested against a recent Ruby on every platform, not only on Windows; and before 1.0 a release may carry a recent snapshot of Ruby's main branch on every platform, built by Fledge where no project publishes one that can move, so that the frameworks built on Fledge can test with its releases and ship their sample apps on it. *Applied in:* `.github/workflows/ruby-master.yml`; `doc/contributors/design/runtimes.md`, "Testing against Ruby's master" and "Fledge's own Ruby builds".
+
+> An app developer who has the rights to do a thing should _be able_ to do it and distribute their app with Fledge.
+
+[re: the orchestrating agent's question whether Fledge may copy Microsoft's Visual C++ runtime (`vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`) into a Windows app. A gem's DLL built with Visual Studio needs it, Windows does not include it, and Microsoft's documentation limits distributing it to licensed Visual Studio users, a license Fledge cannot check; `fledge build` refused such a gem. The maintainer began: "I am not a lawyer or a MS-ecosystem dev. I have no idea what any of this means from any angle."]
+
+*Governs:* where distributing a file with an app needs a right only the app's developer can hold, Fledge gives the developer a way to do it, and does not refuse the app for want of a right it cannot check; the right, and the duty to hold it, stay the developer's, as a gem's license does (2026-10-28). *Applied in:* the work to let a Windows app carry the Visual C++ runtime.
+
+> This is not the kind of thing that belongs in-repo.
+
+[re: `doc/contributors/handoff.md`, the page where agents kept where the project stands, the bugs it knows of, and what to do next, which the maintainer deleted from his checkout with these words.]
+
+*Governs:* the repository holds no running account of the project's state for the next session; that is kept outside it. What a contributor needs to check or release Fledge stays in the contributor documents. *Applied in:* the removal of `doc/contributors/handoff.md`; AGENTS.md, Project.
+

@@ -1,0 +1,34 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    rack (3.2.9)
+    rackup (2.3.1)
+      rack (>= 3)
+    roda (3.110.0)
+      rack
+    webrick (1.9.2)
+
+PLATFORMS
+  aarch64-linux
+  aarch64-linux-musl
+  aarch64-mingw-ucrt
+  arm64-darwin
+  ruby
+  x64-mingw-ucrt
+  x86_64-linux
+  x86_64-linux-musl
+
+DEPENDENCIES
+  rackup (= 2.3.1)
+  roda (= 3.110.0)
+  webrick (= 1.9.2)
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  rack (3.2.9) sha256=8235c1d08f0c461bedcff4413bbeba888173e5b09e1332ae951c98f0ee460dcc
+  rackup (2.3.1) sha256=6c79c26753778e90983761d677a48937ee3192b3ffef6bc963c0950f94688868
+  roda (3.110.0) sha256=474afda2668759c668b87de5bd6ddb996669a6fe75cca5c90c999c6abd8e7b30
+  webrick (1.9.2) sha256=beb4a15fc474defed24a3bda4ffd88a490d517c9e4e6118c3edce59e45864131
+
+BUNDLED WITH
+  4.0.20

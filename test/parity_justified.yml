@@ -455,7 +455,7 @@
   - bundle
 - fact: RUBY_PLATFORM
   reference:
-  - \A"(?:arm64-darwin23|x86_64-linux|aarch64-linux)"\z
+  - \A"(?:arm64-darwin\d+|x86_64-linux|aarch64-linux)"\z
   app:
   - \A"(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"\z
   platforms:
@@ -468,7 +468,7 @@
   - bundle
 - fact: RUBY_DESCRIPTION
   reference:
-  - \A(?<version>"[^"]*) \[(?:arm64-darwin23|x86_64-linux|aarch64-linux)\]"\z
+  - \A(?<version>"[^"]*) \[(?:arm64-darwin\d+|x86_64-linux|aarch64-linux)\]"\z
   app:
   - \A(?<version>"[^"]*) \[(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)\]"\z
   platforms:
@@ -481,7 +481,7 @@
   - bundle
 - fact: "$LOAD_PATH"
   reference:
-  - \A"<prefix>/lib/ruby/(?<folder>(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin23|x86_64-linux|aarch64-linux)"\z
+  - \A"<prefix>/lib/ruby/(?<folder>(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin\d+|x86_64-linux|aarch64-linux)"\z
   app:
   - \A"<prefix>/lib/ruby/(?<folder>(?:site_ruby/|vendor_ruby/)?\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"\z
   platforms:
@@ -494,7 +494,7 @@
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/(?:enc/)?(?<feature>[^"]+)\.(?:bundle|so)"\z
+  - \A"<prefix>/lib/ruby/\d+\.\d+\.0(?:\+\d+)?/(?:arm64-darwin\d+|x86_64-linux|aarch64-linux)/(?:enc/)?(?<feature>[^"]+)\.(?:bundle|so)"\z
   app:
   - \A"(?<feature>[a-z0-9_/]+)\.so"\z
   platforms:
@@ -505,7 +505,7 @@
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin23|x86_64-linux|aarch64-linux)/(?<file>rbconfig\.rb|[^"]+\.so)"\z
+  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin\d+|x86_64-linux|aarch64-linux)/(?<file>rbconfig\.rb|[^"]+\.so)"\z
   app:
   - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/(?<file>rbconfig\.rb|[^"]+\.so)"\z
   platforms:

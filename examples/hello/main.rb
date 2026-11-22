@@ -8,8 +8,9 @@
 # The app Plan 001's walking skeleton ships: it greets you and exits.
 #
 # It prints one line, <tt>Hello from Ruby VERSION on PLATFORM</tt>,
-# where PLATFORM is +RUBY_PLATFORM+: <tt>arm64-darwin23</tt> (rv-ruby
-# builds for macOS 14, Darwin 23), <tt>x86_64-linux</tt>,
+# where PLATFORM is +RUBY_PLATFORM+: on a Mac <tt>arm64-darwin</tt> and
+# the Darwin version of the macOS rv-ruby built its Ruby on, as
+# <tt>arm64-darwin23</tt> for macOS 14; <tt>x86_64-linux</tt>,
 # <tt>aarch64-linux</tt>, or <tt>x64-mingw-ucrt</tt>. Delivery checks
 # that line exactly.
 #

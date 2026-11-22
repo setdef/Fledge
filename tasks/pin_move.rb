@@ -32,11 +32,6 @@ class PinMove
   # move cannot take as it is.
   class Error < StandardError; end
 
-  # A move that waits for what the move cannot carry yet, which the run
-  # reports as it reports a pin held for a person: held, and a failure
-  # only once its release has waited longer than PinWatch::HELD_DAYS.
-  class Held < Error; end
-
   # The keys of a mapping whose URL moves that the move knows how to
   # write: anything else in it, such as the SHA-256 of a file inside the
   # download, it would leave false.
@@ -94,7 +89,7 @@ class PinMove
     write("runtime/licenses.yml", linked(read("runtime/licenses.yml"), entry["linked"], to), changed) if entry["linked"]
     write("CHANGELOG.md", changelog(read("CHANGELOG.md"), title(name), from, to), changed) if entry.fetch("ships", true)
     entry.fetch("platform", {}).each do |platform, pattern|
-      archive(upstream, title(name), from, to, platform, pattern, entry.fetch("compiled", {}).fetch(platform, {}), changed)
+      archive(upstream, platform, pattern, entry.fetch("compiled", {}).fetch(platform, {}), changed)
     end
     changed
   rescue Error, PinWatch::Error
@@ -134,10 +129,8 @@ class PinMove
 
   # Moves each of +findings+, the watch's report's hashes, with +move+,
   # printing to +out+ what became of each, and returns those it moved and
-  # those a person is needed for: each it could not move, but one that
-  # waits (Held) while its newer release is no more than
-  # PinWatch::HELD_DAYS old on +today+.
-  def self.move_each(move, findings, out:, today: Date.today)
+  # those it could not, for which a person is needed.
+  def self.move_each(move, findings, out:)
     moved = []
     failed = []
     findings.each do |finding|
@@ -145,9 +138,6 @@ class PinMove
       changed = move.call(finding)
       out.puts "moved    #{moving}: #{changed.keys.join(', ')}"
       moved << finding
-    rescue Held => e
-      out.puts "held     #{moving}#{" (since #{finding['since']})" if finding['since']}: #{e.message}"
-      failed << finding if PinWatch.overdue?(finding["since"], today)
     rescue Error, PinWatch::Error => e
       out.puts "failed   #{moving}: #{e.message}"
       failed << finding
@@ -331,14 +321,13 @@ class PinMove
 
   # Reads the new archive of each pin of +upstream+ for +platform+, once:
   # raises unless it holds a file whose path +pattern+'s arch capture
-  # takes the same platform name from as runtime/licenses.yml's
-  # platforms give, and moves each entry of +compiled+ to the version its
-  # file holds. A Ruby's name for its platform (RbConfig's arch, so
-  # RUBY_PLATFORM and the RubyGems platform Bundler runs as) changes
-  # which lockfiles fit, which is the maintainer's to decide, as
-  # runtimes.md, "The move", says.
-  private def archive(upstream, title, from, to, platform, pattern, compiled, changed)
-    named = YAML.safe_load(read("runtime/licenses.yml")).dig("platforms", platform, "arch")
+  # takes a platform name from, moves runtime/licenses.yml's platform to
+  # that name where it differs, and moves each entry of +compiled+ to the
+  # version its file holds. A Ruby names its platform (RbConfig's arch,
+  # so RUBY_PLATFORM and the RubyGems platform Bundler runs as) for the
+  # macOS it was built on, and the license audit, parity, and Delivery
+  # read the name there (runtimes.md, "The move").
+  private def archive(upstream, platform, pattern, compiled, changed)
     sources = YAML.safe_load(read("runtime/sources.yml"))
     wanted = compiled.empty? ? nil : Regexp.union(compiled.values.map { |library| Regexp.new(library.fetch("file")) })
     upstream.pins.each do |pin|
@@ -346,17 +335,27 @@ class PinMove
       files = @fetch.members(url, wanted)
       arch = files.each_key.lazy.filter_map { |path| path[Regexp.new(pattern), "arch"] }.first
       raise Error, "#{url} holds no file that names its platform" unless arch
-      raise Held, renamed(title, from, to, platform, arch, named) unless arch == named
 
+      rename_platform(platform, arch, changed)
       compiled.each { |id, library| compiled_version(url, files, id, library, changed) }
     end
   end
 
-  private def renamed(title, from, to, platform, arch, named)
-    "#{title} #{to}'s Ruby for #{platform} calls its platform #{arch}, where #{title} #{from}'s, which Fledge pins, " \
-      "calls it #{named}. The move does not yet carry a new name for a Ruby's platform (doc/contributors/design/" \
-      "runtimes.md, \"The move\"), so #{platform}'s Ruby stays on #{title} #{from}, held, and the other pins move " \
-      "without it."
+  # Moves runtime/licenses.yml's +platform+ to the arch +arch+, and its
+  # gem_arch to the name RubyGems gives that arch, with a line in
+  # CHANGELOG.md, when they name another.
+  private def rename_platform(platform, arch, changed)
+    text = read("runtime/licenses.yml")
+    named = YAML.safe_load(text).dig("platforms", platform, "arch") or raise Error, "runtime/licenses.yml gives #{platform} no arch"
+    return if named == arch
+
+    moved = text.sub(/^  #{Regexp.escape(platform)}: \{.*\}$/) do |line|
+      line.sub("arch: #{named},", "arch: #{arch},").sub("gem_arch: #{Gem::Platform.new(named)},", "gem_arch: #{Gem::Platform.new(arch)},")
+    end
+    raise Error, "runtime/licenses.yml's line for #{platform} gives its arch in no form the move can rewrite" unless YAML.safe_load(moved).dig("platforms", platform, "arch") == arch
+
+    write("runtime/licenses.yml", moved, changed)
+    write("CHANGELOG.md", changelog(read("CHANGELOG.md"), "The #{platform} app's RUBY_PLATFORM", named, arch), changed)
   end
 
   # Moves runtime/licenses.yml's entry +id+ to the version of its
@@ -455,9 +454,8 @@ end
 # or, with --into, into DIR at the same paths, for a run that must change
 # nothing to compare them with the checkout's. With --message, it writes
 # the commit message of what it moved into FILE. It exits 1
-# when a pin behind could not be moved, or has waited (PinMove::Held)
-# longer than PinWatch::HELD_DAYS. A pin held for a person is not in the
-# report as behind, but as held, and is left.
+# when a pin behind could not be moved. A pin held for a person is not
+# in the report as behind, but as held, and is left.
 if $PROGRAM_NAME == __FILE__
   args = ARGV.dup
   into = (index = args.index("--into")) && args.slice!(index, 2).last

@@ -60,9 +60,8 @@
 #   entry whose version the script no longer names.
 # platform: for an input that is a Ruby, each platform of its pin with a
 #   pattern whose arch capture finds the Ruby's own name for its platform
-#   in a path of the new archive. The move lists the archive and stops
-#   when that name is not the one runtime/licenses.yml's platforms give,
-#   since a new name is the maintainer's to decide.
+#   in a path of the new archive. The move lists the archive and moves
+#   runtime/licenses.yml's platform to that name when it gives another.
 # compiled: for an input that compiles libraries into its own files,
 #   each platform of its pin with the ids of runtime/licenses.yml's
 #   entries for those libraries, each with file, a pattern for the path

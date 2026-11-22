@@ -20,7 +20,7 @@ class Parity
 
   # The folders of a Ruby's platform-specific files, named for its
   # platform, on the desktops the reference runs on and on the phones.
-  DESKTOP_ARCH = "(?:arm64-darwin23|x86_64-linux|aarch64-linux)"
+  DESKTOP_ARCH = "(?:arm64-darwin\\d+|x86_64-linux|aarch64-linux)"
   MOBILE_ARCH = "(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)"
 
   # What starting a program raises on iOS: ENOENT in the Simulator,
@@ -50,7 +50,7 @@ class Parity
     Justification.new(fact: "RbConfig.ruby runs", reference: [/\A"42"\z/], app: [ERRNO_SPAWN], platforms: IOS,
       reason: "As for child ENV."),
     Justification.new(fact: "RUBY_PLATFORM", reference: [/\A"#{DESKTOP_ARCH}"\z/o], app: [/\A"#{MOBILE_ARCH}"\z/o], platforms: MOBILE,
-      reason: "Ruby names the platform it was built for: rv-ruby's for macOS 14 (darwin23) or glibc Linux, a " \
+      reason: "Ruby names the platform it was built for: rv-ruby's for the macOS it was built on (darwin23 for macOS 14) or glibc Linux, a " \
         "phone's for iOS, which Ruby calls arm64-darwin, or Android, which it calls ARCH-linux-android. Fledge " \
         "names its targets for them in doc/contributors/design/phone-runtimes.md, \"Targets\"."),
     Justification.new(fact: "RUBY_DESCRIPTION", reference: [/\A(?<version>"[^"]*) \[#{DESKTOP_ARCH}\]"\z/o],

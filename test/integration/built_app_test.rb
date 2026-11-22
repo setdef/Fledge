@@ -55,10 +55,11 @@ class BuiltAppTest < Minitest::Test
     "Hello from Ruby 4.1.0 on #{expected_platform}\n"
   end
 
-  # RUBY_PLATFORM as rv-ruby reports it: macOS builds carry the Darwin
-  # version they were built for, macOS 14's.
+  # RUBY_PLATFORM as the runtime's Ruby reports it, which
+  # runtime/licenses.yml's platforms give: a macOS build carries the
+  # Darwin version of the macOS it was built on.
   def expected_platform
-    (@platform.name == "arm64-darwin") ? "arm64-darwin23" : @platform.name
+    YAML.safe_load_file(File.expand_path("../../runtime/licenses.yml", __dir__)).dig("platforms", @platform.name, "arch")
   end
 
   # What examples/my_cool_app prints: the versions of i18n and sqlite3 its

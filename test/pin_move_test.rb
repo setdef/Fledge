@@ -532,35 +532,34 @@ class PinMoveTest < Minitest::Test
 
   # rv-ruby's Ruby names its platform for the macOS it was built on
   # (rv-ruby 20261119's, built on macOS 15, calls itself arm64-darwin24
-  # where 20261023's said arm64-darwin23), and a new name changes which
-  # lockfiles fit, which the move does not yet carry, so it reads the
-  # new archive's listing and waits, saying why.
-  def test_an_rv_ruby_release_that_renames_its_platform_is_not_moved
+  # where 20261023's said arm64-darwin23). The move reads the name in
+  # the new archive and moves runtime/licenses.yml's platform to it,
+  # which the license audit, parity, and Delivery read, with a line in
+  # CHANGELOG.md, since RUBY_PLATFORM is what an app's code sees.
+  def test_an_rv_ruby_release_that_renames_its_platform_moves_the_platform
     rv_ruby(rv_archive(arch: "arm64-darwin24")) do |move, answers|
-      error = assert_raises(PinMove::Held) { move.call(finding("rv-ruby", "20261023", "20261119")) }
+      move.call(finding("rv-ruby", "20261023", "20261119"))
 
-      assert_equal "rv-ruby 20261119's Ruby for arm64-darwin calls its platform arm64-darwin24, where rv-ruby " \
-        "20261023's, which Fledge pins, calls it arm64-darwin23. The move does not yet carry a new name for a Ruby's " \
-        "platform (doc/contributors/design/runtimes.md, \"The move\"), so arm64-darwin's Ruby stays on rv-ruby " \
-        "20261023, held, and the other pins move without it.", error.message
+      assert_includes move.read("runtime/sources.yml"), "release: \"20261119\""
+      assert_equal RV_LICENSES.gsub("20261023", "20261119").sub("arch: arm64-darwin23, gem_arch: arm64-darwin-23",
+        "arch: arm64-darwin24, gem_arch: arm64-darwin-24"), move.read("runtime/licenses.yml")
+      assert_includes move.read("CHANGELOG.md"), "- The arm64-darwin app's RUBY_PLATFORM arm64-darwin24, from arm64-darwin23.\n"
       assert_equal [RV_NEW], answers.downloaded
-      assert_includes move.read("runtime/sources.yml"), "release: \"20261023\""
-      assert_equal RV_LICENSES, move.read("runtime/licenses.yml")
     end
   end
 
-  # A stop that waits on what the move cannot yet carry is a hold, not a
-  # failure: the run reports it as held, and fails for it only when the
-  # release has waited longer than PinWatch::HELD_DAYS, as for a pin
-  # held for a person.
-  def test_a_move_that_waits_is_reported_held_until_it_is_overdue
-    rv_ruby(rv_archive(arch: "arm64-darwin24")) do |move, _answers|
-      found = finding("rv-ruby", "20261023", "20261119").merge("since" => "2026-11-19")
+  # The task moves each pin behind and reports each, and a person is
+  # needed for those it could not move.
+  def test_each_move_is_reported_and_those_not_moved_are_returned
+    rv_ruby(rv_archive) do |move, _answers|
+      moved = finding("rv-ruby", "20261023", "20261119")
       out = StringIO.new
 
-      assert_equal [[], []], PinMove.move_each(move, [found], out:, today: Date.new(2026, 12, 19))
-      assert_match(/\Aheld     rv-ruby 20261023 -> 20261119 \(since 2026-11-19\): rv-ruby 20261119's Ruby/, out.string)
-      assert_equal [[], [found]], PinMove.move_each(move, [found], out: StringIO.new, today: Date.new(2026, 12, 20))
+      assert_equal [[moved], []], PinMove.move_each(move, [moved], out:)
+      assert_match(%r{\Amoved    rv-ruby 20261023 -> 20261119: runtime/sources.yml, }, out.string)
+      unlisted = finding("rv-ruby", "20261119", "20261201")
+      assert_equal [[], [unlisted]], PinMove.move_each(move, [unlisted], out:)
+      assert_match(/^failed   rv-ruby 20261119 -> 20261201: /, out.string)
     end
   end
 

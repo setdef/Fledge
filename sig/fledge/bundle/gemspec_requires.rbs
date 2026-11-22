@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class Bundle
+    class GemspecRequires
+      LOADS: String
+
+      LOADING: Array[Symbol]
+
+      def self.inert?: (String source) -> bool
+
+      class Inert < Prism::Visitor
+        @inert: bool
+
+        attr_reader inert: bool
+
+        def initialize: () -> void
+
+        def visit_call_node: (Prism::CallNode node) -> void
+
+        def visit_block_argument_node: (Prism::BlockArgumentNode node) -> void
+
+        def visit_alias_method_node: (Prism::AliasMethodNode node) -> void
+      end
+
+      @path: String
+      @root: String
+
+      def initialize: (String path, root: String) -> void
+
+      def call: (String ruby) -> String
+
+      private def loaded: () -> Array[String]
+
+      private def relative: (String path) -> String
+    end
+  end
+end

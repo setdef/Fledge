@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+gemspec
+
+# A built app sets up the groups bundle exec does, so rake ships too, and
+# require "rake" works in the app as under bundle exec.
+group :development do
+  gem "rake", "~> 13.0"
+end

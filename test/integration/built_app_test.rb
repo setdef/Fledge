@@ -80,11 +80,11 @@ class BuiltAppTest < Minitest::Test
 
   # examples/my_cool_app's Gemfile, which the gem-shaped probe shares,
   # locks sqlite3, which has no build for some platforms and does not
-  # compile there (Parity::WITHOUT_GEM_APP;
+  # compile there (Parity::WITHOUT_SQLITE3;
   # doc/contributors/design/parity.md, "The gem-shaped run").
   def gem_shaped!
     skip "sqlite3, which examples/my_cool_app locks, does not install on #{@platform} (doc/contributors/design/parity.md, \"The gem-shaped run\")" if
-      Parity::WITHOUT_GEM_APP.include?(@platform.name)
+      Parity::WITHOUT_SQLITE3.include?(@platform.name)
   end
 
   def probe = built(PROBE)
@@ -651,7 +651,7 @@ class BuiltAppTest < Minitest::Test
         "BUNDLE_GEMFILE" => File.join(evil, "Gemfile"), "RUBYGEMS_GEMDEPS" => "-")
       programs = [probe]
       programs << windowed_probe if @platform.os == "darwin" || @platform.windows?
-      programs << bundled_probe unless Parity::WITHOUT_GEM_APP.include?(@platform.name)
+      programs << bundled_probe unless Parity::WITHOUT_SQLITE3.include?(@platform.name)
 
       programs.product([{ "HOME" => dir }, person, hostile]).each do |program, env|
         out, err, status = run_app(env, program, "restart")

@@ -1277,7 +1277,8 @@ jobs:
       # ADR 081: the probe app, built from this runtime,
       # against RubyInstaller's own ruby.exe running the same main.rb, then
       # both again under code page 437, then the probe as
-      # examples/my_cool_app's program against bundle exec. The report
+      # examples/my_cool_app's program against bundle exec (on ARM64, that
+      # app without the sqlite3 that cannot be installed there). The report
       # lands in the job summary; an unjustified difference fails the job.
       - name: Check parity with ruby main.rb and bundle exec
         timeout-minutes: 10

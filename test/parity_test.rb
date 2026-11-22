@@ -345,4 +345,29 @@ class ParityTest < Minitest::Test
 
     assert_equal [["<project>/lib"], "<app>/app"], [normalized.fetch("$LOAD_PATH"), normalized.fetch("$0")]
   end
+
+  # sqlite3 cannot be installed on ARM64 Windows, so the gem-shaped
+  # check there takes examples/my_cool_app without it, and only there.
+  def test_the_gem_shaped_app_leaves_sqlite3_out_only_where_it_cannot_be_installed
+    Fledge::Platform::NAMES.each do |name|
+      expected = (name == "aarch64-mingw-ucrt") ? Parity::GEM_APP_WITHOUT_SQLITE3 : Parity::GEM_APP
+
+      assert_equal expected, Parity.gem_app(name), name
+    end
+  end
+
+  # The stand-in must lock what examples/my_cool_app locks, on the same
+  # platforms, but for sqlite3 and the mini_portile2 its source build
+  # needs, so that it cannot drift from the app it stands in for.
+  def test_the_app_without_sqlite3_locks_the_rest_of_my_cool_apps_gems
+    full, without = [Parity::GEM_APP, Parity::GEM_APP_WITHOUT_SQLITE3].map do |app|
+      Bundler::LockfileParser.new(File.read(File.join(app, "Gemfile.lock")))
+    end
+    rest = full.specs.reject { |spec| %w[sqlite3 mini_portile2].include?(spec.name) }.map(&:full_name)
+
+    assert_equal [rest.sort, full.platforms, full.dependencies.keys, full.bundler_version],
+      [without.specs.map(&:full_name).sort, without.platforms, without.dependencies.keys, without.bundler_version]
+    assert_equal full.specs.find { |spec| spec.name == "my_cool_app" }.dependencies.map(&:name) - ["sqlite3"],
+      without.specs.find { |spec| spec.name == "my_cool_app" }.dependencies.map(&:name)
+  end
 end

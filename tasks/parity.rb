@@ -27,8 +27,9 @@ require_relative "parity/windowed"
 # very Ruby the runtime was made from (rv-ruby's, or RubyInstaller's,
 # fetched by the pins in runtime/sources.yml and left as it ships), as
 # ruby main.rb from the app's folder. Then it does the same for a
-# gem-shaped app: examples/my_cool_app with the probe as its
-# exe/my_cool_app, built with its locked gems, against bundle exec ruby
+# gem-shaped app: examples/my_cool_app (on ARM64 Windows, where its
+# sqlite3 cannot be installed, the same app without it) with the probe as
+# its exe/my_cool_app, built with its locked gems, against bundle exec ruby
 # exe/my_cool_app on the same Ruby, with the bundle installed there as
 # its developer would install it (bundle install, into GEM_HOME); and
 # again for test/fixtures/bundled_with, whose Gemfile.lock names a
@@ -55,6 +56,13 @@ class Parity
   PROBE = File.join(ROOT, "test", "fixtures", "parity")
   # The gem-shaped app whose exe/my_cool_app the probe stands in for.
   GEM_APP = File.join(ROOT, "examples", "my_cool_app")
+  # Platforms on which GEM_APP's sqlite3 cannot be installed: it
+  # publishes no aarch64-mingw-ucrt build, and its source build fails
+  # there, SQLite's own configure not knowing aarch64-w64-windows-gnu
+  # (doc/contributors/design/parity.md, "The gem-shaped run").
+  WITHOUT_SQLITE3 = %w[aarch64-mingw-ucrt].freeze
+  # GEM_APP without sqlite3, which stands in for it on WITHOUT_SQLITE3.
+  GEM_APP_WITHOUT_SQLITE3 = File.join(ROOT, "test", "fixtures", "my_cool_app_without_sqlite3")
   # The app whose Gemfile.lock names another Bundler than the runtime's,
   # whose exe/bundled_with the probe stands in for.
   BUNDLED_WITH_APP = File.join(ROOT, "test", "fixtures", "bundled_with")
@@ -236,22 +244,15 @@ class Parity
       results << check(" under LC_CTYPE=C", nil, locale: { "LC_CTYPE" => "C" })
     end
     results << check_windowed
-    results << (WITHOUT_GEM_APP.include?(platform.name) ? skip_bundle : check_bundle)
+    results << check_bundle(Parity.gem_app(platform.name))
     results << check_bundle(BUNDLED_WITH_APP, "bundled_with", "BundledWith", " of an app whose lockfile names another Bundler")
     results.all?
   end
 
-  # Platforms the gem-shaped probe cannot be bundled on: its Gemfile is
-  # examples/my_cool_app's, whose sqlite3 publishes no aarch64-mingw-ucrt
-  # build, and whose source build fails there, SQLite's own configure
-  # not knowing aarch64-w64-windows-gnu (doc/contributors/design/parity.md,
-  # "The gem-shaped run").
-  WITHOUT_GEM_APP = %w[aarch64-mingw-ucrt].freeze
-
-  private def skip_bundle
-    @out.puts "Parity of a gem-shaped app with bundle exec on #{platform}: not checked, as sqlite3 cannot be " \
-      "installed there (doc/contributors/design/parity.md, \"The gem-shaped run\")"
-    true
+  # The gem-shaped app on the platform named +platform+: GEM_APP, or
+  # GEM_APP_WITHOUT_SQLITE3 where sqlite3 cannot be installed.
+  def self.gem_app(platform)
+    WITHOUT_SQLITE3.include?(platform) ? GEM_APP_WITHOUT_SQLITE3 : GEM_APP
   end
 
   # The gem-shaped check: the probe as the program exe/PROGRAM of
@@ -273,7 +274,7 @@ class Parity
     differences = Reports.compare(Reports.normalize(expected, work: @work), Reports.normalize(actual, work: @work),
       platform: platform.name, check: :bundle)
     report(label, env, differences)
-    return differences.all?(&:justified?) unless platform.windows? && source == GEM_APP
+    return differences.all?(&:justified?) unless platform.windows? && program == "my_cool_app"
 
     [differences.all?(&:justified?), check_spelled_otherwise(env, [@ruby, bundle, "exec", @ruby, "exe/#{program}"], reference, launcher)].all?
   end

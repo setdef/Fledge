@@ -61,7 +61,7 @@ Fledge then builds:
 | --- | --- | --- |
 | a `.tar.gz` holding `NAME.app`, and a `.dmg` | a `.zip` holding `NAME.exe`, which opens no console; a `-setup.exe` that installs without an administrator; and an `.msix` package if you ask for one | a `.tar.gz` holding the program, a desktop entry, and icons; an AppImage; and a `.deb` if you ask for one |
 
-Each system shows the app's name, icon, and version in its usual places. If you change `identifier` later, each system sees a new app, and Windows and `apt` install it beside the old one. [`examples/windowed_app`](../examples/windowed_app) is a complete example.
+Each system shows the app's name, icon, and version in its usual places. If you change `identifier` later, each system sees a new app, and Windows and `apt` install it beside the old one. [`examples/libui_app`](../examples/libui_app), a work timer on LibUI, is a complete example, with its icon's files and a disk image, a setup program, and an AppImage.
 
 What each key does:
 

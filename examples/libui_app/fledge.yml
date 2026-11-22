@@ -3,7 +3,16 @@
 # SPDX-License-Identifier: MIT-0
 
 # A windowed app whose window comes from a third party's GUI gem, LibUI,
-# shipped as an archive for each system, with no installers.
+# with what it says about itself to the operating system and the person
+# who installs it: its name in a Dock, taskbar, or menu; the identifier
+# macOS and Windows know it by, a reverse-DNS name of a domain its
+# developer controls; its version, publisher, and copyright; a line, a
+# paragraph, and a web page about it; its license, which its Windows
+# setup program shows before it installs; and its icon, the bird of
+# Fledge, whose example it is, as each system takes it: icons/icon.icns
+# for macOS, icons/icon.ico for Windows, and icons/icon-16.png to
+# icons/icon-512.png for Linux. It ships as an archive and an installer
+# for each system: a disk image, a setup program, and an AppImage.
 #
 # On Linux, libui-ng's library links GTK 3, its Pango and Cairo, and
 # GDK, which the desktop provides and no gem carries, so the app names
@@ -20,7 +29,18 @@ kind: windowed
 identifier: com.setdef.fledge.FocusTimer
 version: "1.0.0"
 publisher: setdef
-installers: []
+copyright: © 2026 setdef
+description: Counts down stretches of focused work and breaks
+long_description: |
+  Focus Timer counts down a stretch of focused work, then a break, then
+  work again, in a small window with a progress bar.
+
+  Its settings set how long each stretch lasts, what you are working on,
+  and what happens when time is up.
+homepage: https://github.com/setdef/Fledge
+license_file: LICENSE.txt
+icon: icons/icon
+installers: [dmg, nsis, appimage]
 linux:
   system_libraries: [libgtk-3.so.0, libgdk-3.so.0, libpangocairo-1.0.so.0, libpango-1.0.so.0, libcairo.so.2]
 windows:

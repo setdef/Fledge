@@ -30,11 +30,11 @@ path = 'lib/fledge/SHA256SUMS'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "CC0-1.0"
 
-# The windowed example's icon, drawn by a script, saved as a PNG, and
+# The windowed apps' icon, drawn by a script, saved as a PNG, and
 # made into each system's files with sips and iconutil, none of which
 # has a place for a header.
 [[annotations]]
-path = ['examples/windowed_app/icons/**', 'examples/mobile_app/icons/**']
+path = ['examples/windowed_app/icons/**', 'examples/mobile_app/icons/**', 'examples/libui_app/icons/**']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 
@@ -234,11 +234,11 @@ path = "test/fixtures/binaries/*.base64"
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT"
 
-# The windowed example's license text and changelog, which its setup
-# program shows and its .deb installs as they are, so a header in them
+# The windowed apps' license texts and changelog, which a setup
+# program shows and a .deb installs as they are, so a header in them
 # would be shown and installed too.
 [[annotations]]
-path = ['examples/windowed_app/LICENSE.txt', 'examples/windowed_app/CHANGES.txt']
+path = ['examples/windowed_app/LICENSE.txt', 'examples/windowed_app/CHANGES.txt', 'examples/libui_app/LICENSE.txt']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 

@@ -51,3 +51,30 @@ Nothing waits on this. It decides whether one kind of red CI run can be ruled ou
 **Default.** Nothing more is stored anywhere. CI keeps the cache as it is, a run that Central refuses in one of the two remaining cases is run again, and the design document for phone projects says so.
 
 **To reverse.** Say "publish the set on a release" (and whether beside the runtimes or apart from them), or "pay for more cache". Agents then build that, with the notices the files need, and remove this question.
+
+## H. Should Fledge build apps for Intel Macs? (open, no deadline)
+
+Nothing waits on this.
+
+**Context.** Fledge builds Mac apps for Apple silicon only, and the README says so: "Fledge builds nothing for Intel Macs". An app built for Apple silicon does not run on an Intel Mac. The question came up on 2026-11-22 because the maintainer has two Intel Macs he would like to put to use as build machines, and the program that runs on a build machine is a Fledge app. Of the cost he said "this is kinda damning" when told that Apple stopped selling Intel Macs in 2023 and has announced macOS 26 as the last release that runs on them.
+
+**What it would take.** A pinned Ruby for Intel macOS (rv-ruby publishes one; the builds mise downloads do not), the launcher and runtime built for it, a job in CI that builds, tests, and delivers on an Intel macOS runner, and that runtime published with every release from then on. An agent estimated one to two days of agents' work. The lasting cost is the runner: GitHub is retiring its Intel macOS runners, and once they are gone only a Mac of the maintainer's own could prove an Intel release.
+
+**Default.** No. Fledge stays on Apple silicon, and nothing is built for Intel Macs. The agents recommend this default: nobody who builds apps has asked, the computers it serves get no new macOS, and each release would carry another runtime to build and prove.
+
+**To reverse.** Say "support Intel Macs", and which macOS is the oldest they must run. Agents then add the platform as `x86_64-darwin`, with the README and the compatibility table changed to match.
+
+## I. If no maintained project's Ruby runs on older Linux, should Fledge build its own? (open, no deadline)
+
+Nothing waits on this, and it may never need an answer.
+
+**Context.** An app built by Fledge for mainstream Linux needs glibc 2.39 or newer, which is Ubuntu 24.04, Debian 13, and recent Fedora. It does not run on Ubuntu 22.04, Debian 12, RHEL 8 or 9 and their clones, or Amazon Linux 2023. The floor comes from the Ruby that Fledge takes prebuilt from rv-ruby, which is compiled on Ubuntu 24.04. You accepted it on 2026-10-26: "2.39 is fine". On 2026-11-22, shown the list of systems it leaves out, you said "Oof."
+
+**What is being done.** The prebuilt Rubies that mise downloads (jdx/ruby, a fork of rv-ruby) are compiled for glibc 2.17, and an agent measured that. Agents are moving Fledge's mainstream Linux runtime to that Ruby, which lowers the floor to cover every system named above without Fledge compiling Ruby itself. That choice between two upstream projects is the agents', and is under way.
+
+**The question.** Only if that fails (the other project's Ruby does not pass Fledge's checks, or stops being published): should Fledge then compile its own Ruby for mainstream Linux, as it already does for Alpine Linux and for phones, to keep the lower floor? It would mean Fledge maintains a build of Ruby on its most used Linux platforms, and that keeping its built-in libraries (OpenSSL and the others) current becomes Fledge's own work, which the automation you asked for on 2026-11-22 would have to cover.
+
+**Default.** No. If the other project's Ruby cannot be used, Fledge stays on rv-ruby and the floor stays at glibc 2.39, by your words of 2026-10-26, and agents tell you.
+
+**To reverse.** Say "build our own Ruby for Linux if you have to". Agents then do that when the need arises, with the lowest floor the tools allow.
+

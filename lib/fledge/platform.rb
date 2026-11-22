@@ -218,7 +218,8 @@ module Fledge
 
     # Which system's libraries an app's compiled gems may assume on the
     # platform (Fledge::Linkage): "linux-musl" on musl Linux, which has
-    # none of glibc's, and otherwise the platform's #os.
+    # none of glibc's, "windows-arm64" on ARM64 Windows, whose System32
+    # holds ARM64 DLLs, not x64's, and otherwise the platform's #os.
     #
     # === Example
     #
@@ -232,7 +233,10 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def libraries
-      musl? ? "linux-musl" : os
+      return "linux-musl" if musl?
+      return "windows-arm64" if name == "aarch64-mingw-ucrt"
+
+      os
     end
 
     # The oldest glibc the platform's apps run on (GLIBC_MINIMUM), or +nil+

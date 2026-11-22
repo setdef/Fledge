@@ -141,4 +141,10 @@ class PlatformTest < Minitest::Test
     assert_equal "linux", Fledge::Platform.find("aarch64-linux").libraries
     assert_equal "windows", Fledge::Platform.find("x64-mingw-ucrt").libraries
   end
+
+  # x64 and ARM64 Windows have different DLLs in System32.
+  def test_arm64_windows_has_its_own_libraries
+    assert_equal "windows-arm64", Fledge::Platform.find("aarch64-mingw-ucrt").libraries
+    assert_equal "windows", Fledge::Platform.find("aarch64-mingw-ucrt").os
+  end
 end

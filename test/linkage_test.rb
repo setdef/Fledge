@@ -134,6 +134,19 @@ class LinkageTest < Minitest::Test
     assert_empty windows
   end
 
+  # LibUI's DLL, built with Visual Studio, draws with Direct2D and
+  # DirectWrite, which are parts of Windows, and links Microsoft's
+  # Visual C++ runtime, which is not: a computer has it only once
+  # something installed the Visual C++ Redistributable. Both x64 and
+  # ARM64 Windows have the first.
+  def test_windows_provides_its_own_components_but_not_the_visual_c_runtime
+    dll = Binaries.pe(needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll])
+    %w[windows windows-arm64].each do |os|
+      unprovided = problems(os, { "vendor/libui.x64.dll" => dll }).map { |problem| problem[/needs (\S+),/, 1] }
+      assert_equal %w[MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll], unprovided, os
+    end
+  end
+
   # An Android app's native library may need the NDK's public libraries
   # for the API level the runtime is built for, Fledge's
   # libfledgeruby.so, and the libraries the app carries beside it; a

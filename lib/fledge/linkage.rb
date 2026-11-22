@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "yaml"
 require_relative "binary"
 
 module Fledge
@@ -60,22 +61,16 @@ module Fledge
     # distribution with glibc 2.39, Fledge's floor (decision 7):
     # auditwheel 6.4.2's <tt>manylinux-policy.json</tt>,
     # <tt>lib_whitelist</tt> for manylinux_2_39, and glibc's dynamic
-    # loader. Elsewhere, <tt>runtime/licenses.yml</tt>'s
-    # <tt>system_libraries</tt>, which a runtime's own files meet, and on
-    # Windows <tt>bcryptprimitives.dll</tt> too, whose ProcessPrng the Rust
-    # standard library imports for random numbers (its
-    # x86_64-pc-windows-gnu libstd rlib names both, at Rust 1.99.1), and
-    # the DLLs a game's or a windowed program's own libraries link for
-    # windows, input, graphics, and sound, as SDL, OpenAL Soft, and LÖVE's
-    # engine do: avrt, cfgmgr32, comctl32, d3d9, d3d11, dinput8, dsound,
-    # dwmapi, dxgi, hid, imm32, and setupapi. Each is in System32 on every
-    # x64 Windows from 7 SP1 and every ARM64 Windows from 10, as
-    # delvewheel 1.13.2, which repairs Python's Windows wheels as
-    # auditwheel repairs Linux's, lists them (<tt>ignore_names_x64</tt>
-    # and <tt>ignore_names_arm64</tt> in its <tt>delvewheel/_dll_list.py</tt>,
-    # lines 1338 to 2761 and 2767 to 5535). On Android, the NDK's public
-    # libraries for API 26, the oldest the runtime runs on, as the NDK
-    # r30 holds their stubs in <tt>sysroot/usr/lib/TRIPLE/26/</tt>, where
+    # loader. On Windows, the API sets, which Windows resolves itself, and
+    # <tt>combase.dll</tt>, of every Windows from 8 on, as delvewheel
+    # 1.13.2, which repairs Python's Windows wheels as auditwheel repairs
+    # Linux's, ignores them (<tt>ignore_regexes</tt> in its
+    # <tt>delvewheel/_dll_list.py</tt>); each DLL that list's
+    # <tt>ignore_names_x64</tt> or <tt>ignore_names_arm64</tt> names is
+    # SYSTEM_DLLS. On macOS, anything in <tt>/usr/lib</tt> and the system's
+    # frameworks. On Android, the NDK's public libraries for API 26, the
+    # oldest the runtime runs on, as the NDK r30 holds their stubs in
+    # <tt>sysroot/usr/lib/TRIPLE/26/</tt>, where
     # bionic's <tt>android-changes-for-ndk-developers.md</tt> ("Private
     # API") says the complete list of public libraries is, since from API
     # 24 Android's linker loads an app no other library of the system's;
@@ -91,18 +86,35 @@ module Fledge
         /\A(?:libEGL|libGLESv1_CM|libGLESv2|libGLESv3|libOpenMAXAL|libOpenSLES|libaaudio|libandroid|libc|libcamera2ndk|libdl|libjnigraphics|liblog|libm|libmediandk|libnativewindow|libstdc\+\+|libsync|libvulkan|libz)\.so\z/,
       ],
       "darwin" => [%r{\A/usr/lib/[^/]+\.dylib\z}, %r{\A/System/Library/Frameworks/}],
-      "windows" => [
-        /\Aapi-ms-win-[a-z0-9-]+\.dll\z/i,
-        /\A(?:advapi32|bcrypt|bcryptprimitives|comdlg32|crypt32|dbghelp|gdi32|imagehlp|iphlpapi|kernel32|ncrypt|ntdll|ole32|oleaut32|rpcrt4|secur32|shell32|shlwapi|user32|userenv|uxtheme|version|winmm|ws2_32|wsock32)\.dll\z/i,
-        /\A(?:avrt|cfgmgr32|comctl32|d3d9|d3d11|dinput8|dsound|dwmapi|dxgi|hid|imm32|setupapi)\.dll\z/i,
-      ],
+      "windows" => [/\Aapi-ms-win-[a-z0-9-]+\.dll\z/i, /\Acombase\.dll\z/i],
+      "windows-arm64" => [/\Aapi-ms-win-[a-z0-9-]+\.dll\z/i, /\Acombase\.dll\z/i],
     }.freeze
+
+    # The file that holds SYSTEM_DLLS.
+    WINDOWS_DLLS = File.join(File.dirname(__FILE__), "linkage", "windows.yml")
+
+    # By system (Fledge::Platform#libraries), the lowercase names of the
+    # DLLs in System32 on every Windows a Fledge app runs on: on x64, every
+    # DLL with exports that delvewheel 1.13.2 found there on the
+    # installation discs of x64 Windows 7 SP1, 8, 8.1, 10, and 11, and on
+    # ARM64, every ARM64 DLL it found there on ARM64 Windows 10 and 11
+    # (<tt>ignore_names_x64</tt> and <tt>ignore_names_arm64</tt> in its
+    # <tt>delvewheel/_dll_list.py</tt>), which
+    # <tt>tasks/windows_dlls.rb</tt> writes into
+    # <tt>linkage/windows.yml</tt>. Windows 11 is Fledge's floor, so an
+    # older Windows's list assumes less than the floor gives, never more.
+    # Microsoft's Visual C++ runtime (<tt>vcruntime140.dll</tt>,
+    # <tt>msvcp140.dll</tt>) is in none of them: a computer has it only
+    # once something installed the Visual C++ Redistributable.
+    SYSTEM_DLLS = YAML.load_file(WINDOWS_DLLS).transform_values { |names| Set.new(names) }.freeze
 
     # A Windows Ruby's DLL, such as x64-ucrt-ruby410.dll.
     RUBY_DLL = /\A[\w-]*-ruby\d+\.dll\z/i
 
     # The format each operating system's loader loads.
-    FORMATS = { "linux" => :elf, "linux-musl" => :elf, "android" => :elf, "darwin" => :macho, "windows" => :pe }.freeze
+    FORMATS = {
+      "linux" => :elf, "linux-musl" => :elf, "android" => :elf, "darwin" => :macho, "windows" => :pe, "windows-arm64" => :pe
+    }.freeze
 
     # Creates the check.
     #
@@ -117,6 +129,7 @@ module Fledge
     #           (Fledge::Binary::Readers).
     def initialize(os:, provided: [], system: [], readers: Binary::Readers.local(os))
       @system = SYSTEM_LIBRARIES.fetch(os)
+      @dlls = SYSTEM_DLLS.fetch(os, Set.new)
       @os = os
       @provided = provided
       @declared = system
@@ -154,7 +167,7 @@ module Fledge
       binaries.flat_map do |path, binary|
         next [] if binary.needed.any? { |library| library.match?(RUBY_DLL) && !shipped.include?(library.downcase) }
 
-        binary.needed.reject { |library| @system.any? { |pattern| pattern.match?(library) } }.filter_map do |library|
+        binary.needed.reject { |library| system?(library) }.filter_map do |library|
           if !shipped.include?(File.basename(library).downcase)
             unprovided(label, path, library)
           elsif dyld && !@provided.map(&:downcase).include?(File.basename(library).downcase)
@@ -189,6 +202,11 @@ module Fledge
         "fledge.yml's linux: system_libraries lists #{library}, which none of the gems' compiled files needs beyond what every " \
           "Linux distribution, Fledge's runtime, and the gems themselves provide. Remove it."
       end
+    end
+
+    # Whether the operating system provides +library+.
+    private def system?(library)
+      @dlls.include?(library.downcase) || @system.any? { |pattern| pattern.match?(library) }
     end
 
     # Why the file at +path+ would not load +library+, which nothing

@@ -21,6 +21,7 @@ class GemContentsTest < Minitest::Test
   # holds its path, and for a folder every file git tracks in it.
   READ_BESIDE_THE_CODE = [
     Fledge::Runtimes::PINS,
+    Fledge::Linkage::WINDOWS_DLLS,
     Fledge::MacSigning::ENTITLEMENTS,
     Fledge::MobileProject::TEMPLATES,
     File.join(ROOT, "lib", "fledge", "config.schema.json"),
@@ -68,6 +69,7 @@ class GemContentsTest < Minitest::Test
     end
 
     assert_equal [
+      %(lib/fledge/linkage.rb: WINDOWS_DLLS = File.join(File.dirname(__FILE__), "linkage", "windows.yml")),
       %(lib/fledge/mac_signing.rb: ENTITLEMENTS = File.join(File.dirname(__FILE__), "templates", "macos", "entitlements.plist")),
       %(lib/fledge/mobile_project.rb: TEMPLATES = File.join(File.dirname(__FILE__), "templates")),
       %(lib/fledge/runtimes.rb: PINS = File.join(File.dirname(__FILE__), "SHA256SUMS")),

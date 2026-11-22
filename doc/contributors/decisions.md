@@ -558,3 +558,6 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 *Governs:* Fledge may carry, in a Mac app, libraries from the developer's computer that the app's gems link, when the app's developer chooses it. The choice and the licenses of what is carried are the developer's, as with the app's gems (2026-10-28); neither setdef nor Fledge takes responsibility for them. Whether to build it is the agents' to judge; if built, it is in the candidate for 1.0.0. *Applied in:* the design document for gems, when it is built.
 
+> Whatever you can do to reduce wall clock time, reduce risk of red on trunk, reduce metered usage, hasten cycle time, increase confidence, and decrease actual-real-world-regression risk is great.
+
+[re: 2026-11-22. Of CI: the per-push check took 1 to 3 minutes and the full run about an hour, and a runtime change had passed the first and broken the second.]

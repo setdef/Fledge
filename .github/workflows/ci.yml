@@ -612,32 +612,18 @@ jobs:
   # iOS"); a script that requires json and csv,
   # a bundled gem, and reaches rubygems.org over HTTPS; and the parity
   # probe, against ruby main.rb on this Mac's desktop Ruby, with every
-  # difference justified for a phone (tasks/mobile_parity.rb). The iOS
-  # integration tests run here too, after the apps, the one job with the
-  # iOS runtime, the pinned Xcode, XcodeGen, CMake, and Rust's iOS
-  # targets: test/integration/mobile_extensions_build_test.rb's iOS tests,
-  # the iOS runtime's in test/integration/mobile_default_gems_test.rb, the
-  # iOS apps of test/integration/mobile_linked_symbols_test.rb and
-  # test/integration/mobile_built_files_test.rb, which it builds with
-  # Xcode and runs on a Simulator of its own, and the iOS
-  # tests of test/integration/mobile_separation_names_test.rb, which read
-  # names with the pinned Xcode's nm from objects that carry bitcode, and
-  # the iOS app of test/integration/mobile_ffi_extconf_test.rb, a library
-  # for ffi an extconf.rb builds, as sassc's builds libsass.
-  # FLEDGE_REQUIRE_IOS fails a test that would skip for want of any of
-  # these, so a green job means every one of them ran.
+  # difference justified for a phone (tasks/mobile_parity.rb).
   mobile-apps-ios:
     name: Mobile apps (iOS Simulator, iPhone and iPad)
     needs: [runtime, runtime-mobile]
     runs-on: macos-26
-    # Each long step has a limit of its own, so that a slow runner
-    # cancels the step that was slow, which the run's annotation names,
-    # and not the job at some step's middle. The job's limit is the sum
-    # of the steps' with the setup's, as a backstop. A green run takes
-    # about 20 minutes to build and run the apps and 10 for the tests;
-    # on a slow runner the first took 38 (CONTRIBUTING.md, "When CI
+    # The long step has a limit of its own, so that a slow runner cancels
+    # the step, which the run's annotation names, and not the job at some
+    # step's middle; the job's limit is the step's with the setup's, as a
+    # backstop. A green run takes about 28 minutes to build and run the
+    # apps; on a slow runner it took 38 (CONTRIBUTING.md, "When CI
     # fails").
-    timeout-minutes: 80
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -698,6 +684,86 @@ jobs:
           path: ~/.cache/fledge/downloads
           key: mobile-parity-downloads-ios-files-${{ steps.downloads-key.outputs.files }}
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: mobile-apps-ios
+          path: |
+            tmp/mobile-parity/ios/*.ndjson
+            tmp/mobile-parity/ios/*.log
+            tmp/mobile-parity/ios/*.ips
+          retention-days: 14
+
+  # The iOS integration tests, in a job of their own beside the apps', so
+  # that the two, each about a quarter of an hour or more on the iOS
+  # chain that is the full run's longest path, run at once and not one
+  # after the other (doc/contributors/design/releases.md, "The full
+  # run's longest path"). This is the one job with the iOS runtime, the
+  # pinned Xcode, XcodeGen, CMake, and Rust's iOS targets that runs
+  # them: test/integration/mobile_extensions_build_test.rb's iOS tests,
+  # the iOS runtime's in test/integration/mobile_default_gems_test.rb, the
+  # iOS apps of test/integration/mobile_linked_symbols_test.rb and
+  # test/integration/mobile_built_files_test.rb, which it builds with
+  # Xcode and runs on a Simulator of its own, and the iOS
+  # tests of test/integration/mobile_separation_names_test.rb, which read
+  # names with the pinned Xcode's nm from objects that carry bitcode, and
+  # the iOS app of test/integration/mobile_ffi_extconf_test.rb, a library
+  # for ffi an extconf.rb builds, as sassc's builds libsass.
+  # FLEDGE_REQUIRE_IOS fails a test that would skip for want of any of
+  # these, so a green job means every one of them ran.
+  mobile-tests-ios:
+    name: iOS integration tests (iOS Simulator)
+    needs: [runtime, runtime-mobile]
+    runs-on: macos-26
+    # A green run takes 13 to 16 minutes for the tests; the step's limit
+    # is 25, and the job's that with the setup's, as a backstop.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby rust
+
+      - name: Select the pinned Xcode
+        run: |
+          xcode=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcode")')
+          sudo xcode-select -s "/Applications/Xcode_$xcode.app"
+          xcrun simctl list runtimes
+          cmake --version
+
+      # The pinned downloads, as the runtime jobs keep theirs
+      # (doc/contributors/design/runtimes.md, "Pinned downloads in CI").
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: downloads
+        with:
+          path: ~/.cache/fledge/downloads
+          key: mobile-parity-downloads-ios-files-
+
+      # XcodeGen writes each app's Xcode project in fledge build ios, as a
+      # developer installs it; pinned by SHA-256.
+      - name: Install XcodeGen
+        run: |
+          archive=$(ruby .github/scripts/fetch_pin.rb mobile xcodegen)
+          unzip -q "$archive" -d "$RUNNER_TEMP/xcodegen"
+          echo "$RUNNER_TEMP/xcodegen/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-ios
+          path: ${{ runner.temp }}/runtimes
+
+      # The runtime of this Mac, whose Ruby runs mkmf to compile a gem's
+      # extension for the phone (doc/contributors/design/phone-projects.md,
+      # "Gems with extensions").
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: runtime-arm64-darwin
+          path: ${{ runner.temp }}/runtimes
+
       # The tests' own gems, from the cache fast-macos.yml's Unit tests
       # save under the same key, of the same Ruby on the same image,
       # macos-26. This job only restores it.
@@ -727,15 +793,15 @@ jobs:
           FLEDGE_REQUIRE_IOS: "1"
         run: bundle exec rake test:integration TEST=test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_built_files_test.rb,test/integration/mobile_separation_names_test.rb,test/integration/mobile_ffi_extconf_test.rb
 
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
+      - name: Key the downloads by the files they hold
+        id: downloads-key
+        run: ruby .github/scripts/download_cache_key.rb
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('mobile-parity-downloads-ios-files-{0}', steps.downloads-key.outputs.files)
         with:
-          name: mobile-apps-ios
-          path: |
-            tmp/mobile-parity/ios/*.ndjson
-            tmp/mobile-parity/ios/*.log
-            tmp/mobile-parity/ios/*.ips
-          retention-days: 14
+          path: ~/.cache/fledge/downloads
+          key: mobile-parity-downloads-ios-files-${{ steps.downloads-key.outputs.files }}
 
   # The same on Android emulators of API 36 with 4 KB and with 16 KB
   # pages: the apps built with fledge build android, each Gradle project

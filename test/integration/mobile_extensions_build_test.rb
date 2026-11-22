@@ -22,8 +22,8 @@ require_relative "../support/ios"
 # is set, as in CI's Mobile apps (Android emulator) job, which has them
 # all (AndroidRequired). The iOS tests skip off a Mac, or without the
 # iOS runtime, CMake, or Rust's iOS targets, and fail instead where
-# FLEDGE_REQUIRE_IOS is set, as in CI's Mobile apps (iOS Simulator) job,
-# which has them all (IOSRequired).
+# FLEDGE_REQUIRE_IOS is set, as in CI's iOS integration tests (iOS Simulator)
+# job, which has them all (IOSRequired).
 class MobileExtensionsBuildTest < Minitest::Test
   include AndroidRequired
   include IOSRequired
@@ -46,8 +46,8 @@ class MobileExtensionsBuildTest < Minitest::Test
   # Without the iOS runtime they skip even where FLEDGE_REQUIRE_RUNTIME
   # is set, since that asks for this computer's own runtime, the one CI's
   # Test jobs download. Those jobs run on macos-15, which has neither the
-  # Xcode runtime/sources.yml pins nor XcodeGen. The Mobile apps (iOS
-  # Simulator) job has both, and the iOS runtime, and runs these tests
+  # Xcode runtime/sources.yml pins nor XcodeGen. The iOS integration tests
+  # (iOS Simulator) job has both, and the iOS runtime, and runs these tests
   # with FLEDGE_REQUIRE_IOS set.
   def test_a_c_extension_is_compiled_for_the_device_and_the_simulator
     runtimes = real_runtimes("ios")

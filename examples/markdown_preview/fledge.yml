@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+
+# Markdown Preview: two programs of one project, in one app. preview.rb
+# is windowed, since a double-click starts it, and a console window
+# beside the browser would be noise; it takes the app's name. bin/md2html
+# is console, for a terminal, named after its file. Both read Markdown
+# through lib/, with one copy of kramdown.
+name: Markdown Preview
+version: "1.0.0"
+publisher: setdef
+copyright: © 2026 setdef
+description: Shows Markdown files rendered, in your browser
+long_description: |
+  Markdown Preview shows a Markdown file rendered in your browser, read
+  as GitHub-Flavored Markdown, when you open the file with it.
+
+  It comes with md2html, which prints a Markdown file's HTML in a
+  terminal.
+homepage: https://github.com/setdef/Fledge
+license_file: LICENSE.txt
+installers: [dmg, nsis, appimage, deb]
+programs:
+  - path: preview.rb
+    kind: windowed
+    identifier: com.setdef.fledge.MarkdownPreview
+    icon: icons/icon
+  - path: bin/md2html
+    kind: console
+
+# Markdown files, by the extensions and the MIME type of RFC 7763, which
+# Linux's shared MIME-info database already knows, so Markdown Preview
+# defines no type of its own. Each system offers the app for them and
+# leaves the person's default alone. Windows and Linux start preview.rb
+# with the file's path in ARGV. macOS sends the path as an Apple event,
+# which Fledge's launcher does not yet turn into ARGV, so there the app
+# opened with a file still shows welcome.md.
+file_associations:
+  - name: Markdown document
+    extensions: [md, markdown]
+    mime_types: [text/markdown]

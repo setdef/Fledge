@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# Markdown Preview's console program: prints the HTML of the Markdown
+# files it is given, one after another, or of what it reads when it is
+# given none or -, as Markdown.pl and kramdown's own command do; with
+# --page, as a whole page, the one the preview shows.
+#
+#   bin/md2html [--page] [FILE...] > out.html
+
+require_relative "../lib/markdown_preview"
+
+USAGE = "usage: md2html [--page] [FILE...]"
+
+page = ARGV.delete("--page")
+if ARGV.delete("--help")
+  puts USAGE
+  exit
+end
+unknown = ARGV.find { |argument| argument.start_with?("-") && argument != "-" }
+if unknown
+  warn "md2html: unknown option #{unknown}\n#{USAGE}"
+  exit 64
+end
+
+# A page's title and links come from its first file, or from the folder
+# it is run in.
+source = (ARGV.fetch(0, "-") == "-") ? File.join(Dir.pwd, "stdin") : ARGV.fetch(0)
+begin
+  markdown = ARGF.read.force_encoding(Encoding::UTF_8).delete_prefix("\u{FEFF}")
+rescue SystemCallError => e
+  warn "md2html: #{MarkdownPreview.reason(e)}"
+  exit 66
+end
+html = MarkdownPreview.to_html(markdown)
+html = MarkdownPreview::Page.html(html, title: File.basename(source), base: MarkdownPreview::Page.base(source)) if page
+$stdout.write(html)

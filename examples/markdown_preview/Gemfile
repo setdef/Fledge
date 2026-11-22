@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+# kramdown, with its parser for GitHub-Flavored Markdown, the Markdown
+# most people write today: fenced code, tables, task lists, and
+# strikethrough. Both are pure Ruby, so one Gemfile.lock serves every
+# platform, and nothing is compiled.
+gem "kramdown", "2.5.1"
+gem "kramdown-parser-gfm", "1.1.0"

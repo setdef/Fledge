@@ -14,7 +14,7 @@ path = ['examples/my_cool_app/Gemfile.lock', 'test/fixtures/native_app/Gemfile.l
   'examples/mobile_app/Gemfile.lock', 'test/fixtures/real_gems/Gemfile.lock',
   'test/fixtures/real_gems/.bundle/config', 'examples/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock',
   'examples/cmake_phone/Gemfile.lock', 'examples/rake_phone/Gemfile.lock', 'examples/ffi_phone/Gemfile.lock', 'examples/ffi_library_phone/Gemfile.lock',
-  'test/fixtures/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock', 'examples/libui_app/Gemfile.lock', 'examples/roda_server/Gemfile.lock',
+  'test/fixtures/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock', 'examples/libui_app/Gemfile.lock', 'examples/roda_server/Gemfile.lock', 'examples/markdown_preview/Gemfile.lock',
   'examples/rust_phone/Gemfile.lock', 'examples/rust_phone/gems/rusty/ext/rusty/Cargo.lock',
   'test/fixtures/bundled_with/Gemfile.lock', 'test/fixtures/mobile_commands/Gemfile.lock', 'test/fixtures/ffi_extconf/Gemfile.lock',
   'test/fixtures/my_cool_app_without_sqlite3/Gemfile.lock', 'test/fixtures/typelib/Gemfile.lock',
@@ -34,7 +34,7 @@ SPDX-License-Identifier = "CC0-1.0"
 # made into each system's files with sips and iconutil, none of which
 # has a place for a header.
 [[annotations]]
-path = ['test/fixtures/windowed_app/icons/**', 'examples/mobile_app/icons/**', 'examples/libui_app/icons/**']
+path = ['test/fixtures/windowed_app/icons/**', 'examples/mobile_app/icons/**', 'examples/libui_app/icons/**', 'examples/markdown_preview/icons/**']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 
@@ -238,7 +238,7 @@ SPDX-License-Identifier = "MIT"
 # program shows and a .deb installs as they are, so a header in them
 # would be shown and installed too.
 [[annotations]]
-path = ['test/fixtures/windowed_app/LICENSE.txt', 'test/fixtures/windowed_app/CHANGES.txt', 'examples/libui_app/LICENSE.txt']
+path = ['test/fixtures/windowed_app/LICENSE.txt', 'test/fixtures/windowed_app/CHANGES.txt', 'examples/libui_app/LICENSE.txt', 'examples/markdown_preview/LICENSE.txt']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 

@@ -105,6 +105,8 @@ file_associations:
 
 On Windows and Linux, your program receives the path of a file or folder opened with it, or dropped on it, in `ARGV`. On macOS, the system sends the path as an Apple event instead, and your GUI library's event loop receives it, as SDL3 does with `SDL_EVENT_DROP_FILE`. `ARGV` stays empty there, as it does under `ruby main.rb`.
 
+[`examples/markdown_preview`](../examples/markdown_preview), Markdown Preview, is a complete example: its `fledge.yml` lists Markdown files by their extensions and the MIME type every Linux desktop knows, so it defines no type, and its windowed program shows each file it is given in `ARGV` in the browser, rendered. It has no GUI library, so on macOS, where the path comes as an Apple event, it shows its welcome page instead.
+
 ## Ship several programs in one app
 
 If your app has more than one way in, such as a window, a terminal interface, and a command line that all open the same save file, list them under `programs`. Fledge builds them into one folder that shares one Ruby, one copy of your project, and one set of gems:
@@ -126,6 +128,8 @@ programs:
 <!-- SPDX-SnippetEnd -->
 
 `fledge build` with no argument builds all of them, and `fledge build bin/shared-save` builds that program alone. At most one program is windowed. Fledge gives it the app's name unless you give it a `name`, builds the installers for it, and on macOS puts the console programs inside its `.app` bundle. Fledge names each console program after its file, such as `shared-save`, the command your users type.
+
+Markdown Preview, in [`examples/markdown_preview`](../examples/markdown_preview), is a complete example of two programs: `preview.rb`, the windowed one a double-click starts, and `bin/md2html`, a console one that prints a Markdown file's HTML, which share the project's `lib/` and its one copy of kramdown.
 
 ## Serve a page in the browser
 

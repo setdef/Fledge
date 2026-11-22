@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class NativeBuild
+    module Bindgen
+      NAME: String
+
+      FLAG: Regexp
+
+      def self.env: (Hash[String, String] env, String cppflags) -> Hash[String, String]
+    end
+  end
+end

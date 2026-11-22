@@ -1474,12 +1474,16 @@ jobs:
   # program in an app a person would use, which opens Markdown files,
   # with its installers; and
   # test/fixtures/native_app, whose gems must be compiled: redcarpet,
-  # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
-  # its git tag, each compiled against the runtime's own Ruby, with
-  # nothing but the runtime; libusb, whose precompiled build ships on
-  # Windows and which compiles from source elsewhere, with the ffi it
-  # needs compiled everywhere; and spreadsheet, a GPL gem, with the
-  # bigdecimal it needs, the one the runtime's Ruby bundles.
+  # a C gem published only as source, ferro-idna, a Rust gem (rb-sys and
+  # magnus) from its git tag, but not on Windows, where magnus 0.9.3 does
+  # not compile against Ruby's rb_len_t, each compiled against the
+  # runtime's own Ruby, with nothing but the runtime; libusb, whose
+  # precompiled build ships on Windows and which compiles from source
+  # elsewhere, with the ffi it needs compiled everywhere; and
+  # spreadsheet, a GPL gem, with the bigdecimal it needs, the one the
+  # runtime's Ruby bundles. test/fixtures/rust_lengths, a Rust gem on
+  # rb-sys alone, whose line says its bindings agree with Ruby on
+  # rb_len_t, Windows on x64 included.
   # test/fixtures/real_gems (doc/contributors/design/gems.md, "Examples that
   # exercise these rules"): the gems real apps lock, from a credentialed
   # mirror, a folder outside the project, a path gem with an extension, git
@@ -1599,6 +1603,23 @@ jobs:
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
+
+      # test/fixtures/rust_lengths, a Rust gem on rb-sys alone, which says
+      # how its bindings declare rb_len_t and calls two functions whose
+      # results differ when that is not the runtime's Ruby's
+      # (doc/contributors/design/gems.md, "Rust gems on Windows and
+      # rb_len_t"), on every platform with Rust here. Its Delivery prints
+      # what a person with no Ruby sees, which no bundle exec can: Bundler
+      # compiles no path gem's extension, and on Windows gem install binds
+      # rb_len_t 4 bytes wide.
+      - name: Build rust_lengths for ${{ matrix.platform }}
+        if: matrix.platform != 'aarch64-mingw-ucrt'
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
+        run: |
+          ruby -I lib exe/fledge build -o dist test/fixtures/rust_lengths
+          echo "RustLengths binds rb_len_t in 8 bytes, finds 3 at -1 of [1, 2, 3], and takes 2 and 3 of 10 for 2..4 with its canaries whole" > dist/rust_lengths.expected
 
       # test/fixtures/system_library, whose png_version gem links the
       # distribution's libpng, which fledge.yml lists under linux:
@@ -2000,8 +2021,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Delivery of native_app and nokogiri_app, on a fresh runner of each
-  # platform, as Delivery runs the others.
+  # Delivery of native_app, rust_lengths, and nokogiri_app, on a fresh
+  # runner of each platform, as Delivery runs the others.
   delivery-native-arm64-darwin:
     name: Delivery from source (${{ matrix.platform }})
     needs: build-arm64-darwin
@@ -2037,6 +2058,21 @@ jobs:
         run: >-
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/NokogiriApp-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/nokogiri_app.expected")"
+
+      - name: Run rust_lengths as someone with no Ruby would
+        if: runner.os != 'Windows'
+        run: >-
+          .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/RustLengths-${{ matrix.platform }}.tar.gz"
+          "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/rust_lengths.expected")"
+
+      - name: Run RustLengths.exe as someone with no Ruby would
+        if: matrix.platform == 'x64-mingw-ucrt'
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/RustLengths-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/delivered/ParityBundle-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/delivered/rust_lengths.expected" -Raw).TrimEnd()
 
       - name: Run real_gems as someone with no Ruby would
         if: runner.os != 'Windows'

@@ -178,7 +178,9 @@ jobs:
 
       # native_app's Rust gem compiles on each platform for itself, as in
       # ci.yml's Build from source jobs, which say why Windows takes Rust's
-      # GNU toolchain and how bindgen finds MSYS2.
+      # GNU toolchain and how bindgen finds MSYS2. A tag whose native_app
+      # leaves ferro-idna out on Windows (its Gemfile says why) compiles
+      # no Rust there, and the toolchain waits for its return.
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         if: matrix.platform != 'aarch64-mingw-ucrt'
         with:

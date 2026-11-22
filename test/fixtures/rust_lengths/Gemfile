@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+# A Rust extension on rb-sys alone, with no magnus, in a path gem, which
+# fledge build compiles against the runtime's Ruby.
+gem "lengths", path: "gems/lengths"

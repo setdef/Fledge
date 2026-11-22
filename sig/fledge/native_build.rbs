@@ -4,6 +4,7 @@
 module Fledge
   class NativeBuild
     SCRUBBED: Regexp
+    BINDGEN: String
     SCRIPT: String
     STUBS: String
     LOGS: Array[String]

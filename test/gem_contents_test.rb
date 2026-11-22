@@ -24,6 +24,7 @@ class GemContentsTest < Minitest::Test
     Fledge::Linkage::WINDOWS_DLLS,
     Fledge::MacSigning::ENTITLEMENTS,
     Fledge::MobileProject::TEMPLATES,
+    Fledge::NativeBuild::BINDGEN,
     File.join(ROOT, "lib", "fledge", "config.schema.json"),
   ].freeze
 
@@ -72,6 +73,7 @@ class GemContentsTest < Minitest::Test
       %(lib/fledge/linkage.rb: WINDOWS_DLLS = File.join(File.dirname(__FILE__), "linkage", "windows.yml")),
       %(lib/fledge/mac_signing.rb: ENTITLEMENTS = File.join(File.dirname(__FILE__), "templates", "macos", "entitlements.plist")),
       %(lib/fledge/mobile_project.rb: TEMPLATES = File.join(File.dirname(__FILE__), "templates")),
+      %(lib/fledge/native_build.rb: BINDGEN = File.join(File.dirname(__FILE__), "native_build", "bindgen.rb")),
       %(lib/fledge/runtimes.rb: PINS = File.join(File.dirname(__FILE__), "SHA256SUMS")),
     ], readers.sort
   end

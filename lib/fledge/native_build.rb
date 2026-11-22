@@ -12,6 +12,7 @@ require_relative "error"
 require_relative "git_package"
 require_relative "path_package"
 require_relative "archive"
+require_relative "native_build/bindgen"
 require_relative "native_build/built_files"
 require_relative "native_build/floors"
 require_relative "native_build/runtime_ruby"
@@ -67,6 +68,9 @@ module Fledge
     # (runtime/launcher/scrub.c).
     SCRUBBED = /\A(?:RUBY|GEM_|BUNDLE_|BUNDLER_)|\A(?:GEMRC|RI_FORCE_PATH_FOR_DLL)\z/i
 
+    # The file of NativeBuild::Bindgen, which SCRIPT begins with.
+    BINDGEN = File.join(File.dirname(__FILE__), "native_build", "bindgen.rb")
+
     # What the runtime's Ruby runs, given the path of a plan: install each
     # gem as Gem::Installer#install does, or for a git gem build its
     # extensions where Bundler keeps them (Bundler::Source::Git, whose
@@ -77,7 +81,10 @@ module Fledge
     # backtrace, and its name goes in the result, for the error Fledge
     # raises. On Windows, it first puts MSYS2's tools on PATH as RubyInstaller's own
     # operating_system.rb does before it installs a gem with extensions.
-    SCRIPT = <<~RUBY
+    # It begins with NativeBuild::Bindgen, whose source BINDGEN names, and
+    # tells bindgen the width of +rb_len_t+ before any gem's extension is
+    # built.
+    SCRIPT = File.read(BINDGEN) + <<~RUBY
       require "json"
       require "rubygems/installer"
       require "rubygems/ext"
@@ -87,6 +94,7 @@ module Fledge
         require "ruby_installer/runtime"
         RubyInstaller::Runtime.enable_msys_apps(for_gem_install: true)
       end
+      ENV.update(Fledge::NativeBuild::Bindgen.env(ENV.to_h, RbConfig::CONFIG.fetch("CPPFLAGS", "")))
       building = nil
       results = plan.fetch("jobs").map do |job|
         if job["gem"]

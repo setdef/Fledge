@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+
+[package]
+name = "lengths"
+version = "1.0.0"
+edition = "2021"
+license = "MIT-0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rb-sys = "0.9.130"

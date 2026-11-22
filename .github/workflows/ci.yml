@@ -1304,21 +1304,35 @@ jobs:
   # wrote, and runs Hello.exe and MyCoolApp.exe. As on the other
   # platforms, sqlite3 compiles from source on Ruby 4.1, which the limits
   # below leave room for.
+  #
+  # Each platform's tests run in two shards, two jobs at once on runners
+  # of their own: shard 1 runs the tests of built_app_test.rb that
+  # SHARD_1_TESTS matches, about two fifths of the time, and the parity
+  # check; shard 2 every other test, and the console checks. One pattern
+  # serves both, as minitest's -i in one and -x in the other
+  # (test/workflow_shards_test.rb), so that together they run every test
+  # once. Minitest::TestTask passes it through Shellwords.escape, whose
+  # backslashes no shell removes on Windows, so it is written in
+  # characters that escape leaves alone. Unsplit, ARM64's tests took 26
+  # minutes on one runner and ran out the step's 35-minute limit on a
+  # slower one.
   test-windows:
-    name: Test (${{ matrix.platform }})
+    name: Test (${{ matrix.platform }}, ${{ matrix.shard }} of 2)
     needs: runtime
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
+        platform: [x64-mingw-ucrt, aarch64-mingw-ucrt]
+        shard: [1, 2]
         include:
-          - os: windows-latest
-            platform: x64-mingw-ucrt
+          - platform: x64-mingw-ucrt
+            os: windows-latest
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2
           # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 098).
-          - os: windows-11-arm
-            platform: aarch64-mingw-ucrt
+          - platform: aarch64-mingw-ucrt
+            os: windows-11-arm
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1374,6 +1388,9 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/make-test-identity.ps1 -Certificate "$env:RUNNER_TEMP/certificate.cer"
 
+      # Git Bash rewrites a value that looks like a path, as a /regexp/
+      # may, when it starts a Windows program, unless its name is in
+      # MSYS2_ENV_CONV_EXCL.
       - name: Run the tests
         timeout-minutes: 35
         env:
@@ -1381,7 +1398,16 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
           FLEDGE_REQUIRE_RUNTIME: "1"
-        run: bundle exec rake test:all
+          SHARD: ${{ matrix.shard }}
+          SHARD_1_TESTS: /BuiltAppTest.test_.+bundle/
+          MSYS2_ENV_CONV_EXCL: N;X
+        run: |
+          case "$SHARD" in
+            1) export N="$SHARD_1_TESTS" ;;
+            2) export X="$SHARD_1_TESTS" ;;
+            *) echo "no shard $SHARD" >&2; exit 64 ;;
+          esac
+          bundle exec rake test:all
 
       # ADR 081: the probe app, built from this runtime,
       # against RubyInstaller's own ruby.exe running the same main.rb, then
@@ -1390,6 +1416,7 @@ jobs:
       # app without the sqlite3 that cannot be installed there). The report
       # lands in the job summary; an unjustified difference fails the job.
       - name: Check parity with ruby main.rb and bundle exec
+        if: matrix.shard == 1
         timeout-minutes: 10
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
@@ -1401,6 +1428,7 @@ jobs:
       # ruby.exe main.rb as the console Delivery expects of a built app,
       # and rubyw.exe, typed into a console, gets none.
       - name: Interrupt ruby.exe main.rb in a console, and close it
+        if: matrix.shard == 2
         shell: pwsh
         run: >-
           & .github/scripts/deliver-console.ps1

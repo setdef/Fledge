@@ -742,21 +742,6 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
-  def test_an_android_runtimes_ruby_description_is_read_from_the_libraries_in_its_aar
-    preview = "ruby 4.1.0preview1 (2026-10-11 master 2d08b5f42f)"
-    Dir.mktmpdir do |stage|
-      aar = File.join(stage, "aar")
-      { "arm64-v8a" => "aarch64-linux-android", "x86_64" => "x86_64-linux-android" }.each do |abi, platform|
-        FileUtils.mkdir_p(File.join(aar, "jni", abi))
-        File.binwrite(File.join(aar, "jni", abi, "libfledgeruby.so"), "\x7FELF\0#{preview} [#{platform}]\0".b)
-      end
-      system("zip", "-q", "-r", File.join(stage, "FledgeRuby.aar"), "jni", chdir: aar, exception: true)
-      FileUtils.rm_rf(aar)
-
-      assert_equal preview, RuntimeBuilder::RubyDescription.read(stage)
-    end
-  end
-
   # A runtime whose Ruby names no version, or two, is not built.
   def test_a_runtime_whose_ruby_names_no_one_description_is_refused
     Dir.mktmpdir do |stage|

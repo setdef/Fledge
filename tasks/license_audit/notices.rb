@@ -67,7 +67,7 @@ class LicenseAudit
 
     private def header
       <<~HEADER
-        Third-party software in this app
+        The Fledge runtime in this app
 
         This app was built with Fledge #{@version} (https://github.com/setdef/Fledge),
         which copied a Ruby runtime into it. The runtime is the work of the
@@ -75,6 +75,9 @@ class LicenseAudit
         is at the end of this file. notices/sbom.spdx.json, an SPDX 2.3
         software bill of materials, lists every file of the runtime with its
         checksums, and what each compiled file links.
+
+        The app's own code, and the gems its developer added, are not listed
+        here: their licenses are for the app's developer to give.
 
       HEADER
     end

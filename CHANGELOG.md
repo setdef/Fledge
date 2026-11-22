@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- An app's `notices/NOTICES.txt` is headed "The Fledge runtime in this app", not "Third-party software in this app", and says that the app's own code and gems are not listed.
 - A gem refused because it does not run on the runtime's Ruby names the way out: re-lock it with `bundle update` on that Ruby.
 - A gem whose extension fails to compile shows its build output and a sentence naming the gem, with no Ruby backtrace of Fledge's compile script.
 - `fledge build` takes a `Gemfile.lock` that locks the Mac only under another Darwin version, such as `arm64-darwin-24`, as `bundle exec` does, and the macOS app ships it with its Ruby's own platform added; it refused it before.

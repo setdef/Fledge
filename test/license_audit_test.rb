@@ -428,6 +428,22 @@ class LicenseAuditTest < Minitest::Test
     assert_equal "LGPL-2.1-or-later", sbom.fetch("packages").find { |package| package["name"].start_with?("libxcrypt") }.fetch("licenseConcluded")
   end
 
+  # The notices list the runtime Fledge copied in, its third-party
+  # components and Fledge's own files, and nothing of the app's own code
+  # or of the gems its developer chose, whose licenses are the
+  # developer's (decisions, 2026-10-28). So the heading names the runtime,
+  # and the opening says what is not listed.
+  def test_notices_say_they_list_the_runtime_and_not_the_apps_own_code_or_gems
+    audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
+    text = LicenseAudit::Notices.new(audit_run.call, version: "0.0.0", map: audit_run.map).text
+
+    assert_equal "The Fledge runtime in this app", text.lines.first.chomp
+    refute_includes text, "Third-party software in this app"
+    assert_includes text.split("COMPONENTS").first.tr("\n", " "),
+      "The app's own code, and the gems its developer added, are not listed here"
+    assert_match(/^This app was built with Fledge 0\.0\.0 /, text, "Delivery's scripts find the notices by this line")
+  end
+
   def test_notices_tell_the_recipient_how_to_replace_the_lgpl_library_and_where_its_source_is
     audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
     notices = LicenseAudit::Notices.new(audit_run.call, version: "0.0.0", map: audit_run.map)
@@ -584,7 +600,7 @@ class LicenseAuditTest < Minitest::Test
   # The notices folder is audited too, but for the two files the audit
   # itself writes there: anything else in it belongs to a component.
   def test_a_file_in_the_notices_folder_that_no_component_owns_fails
-    write("notices/NOTICES.txt", "Third-party software in this app\n")
+    write("notices/NOTICES.txt", "The Fledge runtime in this app\n")
     write("notices/sbom.spdx.json", "{}\n")
     write("notices/sources/stray.txt", "hello\n")
     write("notices/extra.txt", "hello\n")

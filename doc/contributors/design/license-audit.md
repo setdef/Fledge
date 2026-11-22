@@ -110,7 +110,7 @@ Each check reports a violation with a rule, a path, and a message (`LicenseAudit
 
 `LicenseAudit::Notices` (`tasks/license_audit/notices.rb`) writes `notices/NOTICES.txt` from the audit's report. In order:
 
-1. a header saying what the file is;
+1. a header saying what the file is: the runtime Fledge copied into the app, headed "The Fledge runtime in this app", and not the app's own code or the gems its developer added, whose licenses are the developer's (`decisions.md`, 2026-10-28). It said "Third-party software in this app" before, which was untrue twice: Fledge's own files are listed, and the app's gems are not. Delivery's scripts find the file by its line "This app was built with Fledge";
 2. every component present, Fledge's first, then the rest, then the gems: its name, version, license, how it ships, and where its source is;
 3. Fledge's own files, which they are, and where their source is, at the release's tag; on a desktop it says the first is the program the app's user runs, the launcher `fledge build` renames for the app, which the component `fledge` lists among its binaries there, and on a phone, whose runtime has no launcher, that the app's host, which its developer builds, starts Ruby through them (`Notices#started`);
 4. for each LGPL library, that it is not part of the app's own code, that whoever receives the app may replace it, and where its exact source is: first the app's own `notices/sources/`, then the release's source bundle;

@@ -8,6 +8,7 @@
 require_relative "test_helper"
 require_relative "support/loopback_server"
 require_relative "../tasks/pin_watch"
+require "stringio"
 
 # The watch that finds a pin upstream has released a newer version of
 # (doc/contributors/design/runtimes.md, "Keeping the pins current"),
@@ -196,6 +197,62 @@ class PinWatchTest < Minitest::Test
     assert_equal 3, PinWatch.exit_status([found.(:held), found.(:newer)])
     assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:overdue)])
     assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:error)])
+  end
+
+  # An Alpine index as Alpine serves one: a gzip member holding the
+  # signature's tar entry, with no end of archive, then one holding the
+  # index, whose blocks +served+ gives as package => version.
+  def apkindex(served)
+    text = served.map { |package, version| "P:#{package}\nV:#{version}\nA:x86_64\nt:1763000000\n\n" }.join
+    gzip = lambda do |entries, close|
+      tar = StringIO.new(+"".b)
+      writer = Gem::Package::TarWriter.new(tar)
+      entries.each { |name, body| writer.add_file_simple(name, 0o644, body.bytesize) { |io| io.write(body) } }
+      writer.close if close
+      Zlib.gzip(tar.string)
+    end
+    gzip.([[".SIGN.RSA.key.rsa.pub", "signature"]], false) + gzip.([["DESCRIPTION", "v3.24"], ["APKINDEX", text]], true)
+  end
+
+  def alpine(version, x86_64:, aarch64: x86_64, community: {})
+    sources = { "alpine-packages" => { "glib" => version } }
+    entries = { "alpine-packages" => entry("alpine-packages") }
+    upstreams = PinWatch.watched(entries, sources).map { |name, upstream| PinWatch::Upstream.from(name, upstream) }
+    bodies = { "x86_64" => x86_64, "aarch64" => aarch64 }.flat_map do |arch, served|
+      %w[main community].map do |repository|
+        url = "https://dl-cdn.alpinelinux.org/alpine/v3.24/#{repository}/#{arch}/APKINDEX.tar.gz"
+        [url, apkindex((repository == "main") ? { "glib" => served }.compact : community)]
+      end
+    end
+    PinWatch.new(sources:, upstreams:, unwatched: {}).run(Answers.new(bodies.to_h)).first
+  end
+
+  def test_an_alpine_package_is_behind_when_its_branch_serves_another_build_and_ahead_of_nothing
+    rebuilt = alpine("2.88.4-r0", x86_64: "2.88.4-r1")
+    older = alpine("2.88.4-r1", x86_64: "2.88.4-r0")
+
+    assert_equal ["alpine-packages.glib", ["alpine-packages.glib"], :newer, "2.88.4-r0", "2.88.4-r1"],
+      [rebuilt.name, rebuilt.pins, rebuilt.status, rebuilt.current, rebuilt.newer], "the branch keeps only its newest build"
+    assert_equal "2.88.4-r0", older.newer, "what the branch serves is the only build that installs, whatever its number"
+    assert_equal :current, alpine("2.88.4-r1", x86_64: "2.88.4-r1").status
+  end
+
+  def test_an_alpine_package_its_architectures_serve_differently_or_not_at_all_is_an_error
+    apart = alpine("2.88.4-r0", x86_64: "2.88.4-r1", aarch64: "2.88.4-r0")
+    missing = alpine("2.88.4-r0", x86_64: nil)
+
+    assert_equal "Alpine's indexes serve glib 2.88.4-r1 on x86_64 and 2.88.4-r0 on aarch64, and no one build of it on every architecture", apart.error
+    assert_equal "Alpine's indexes serve no glib on x86_64 or on aarch64", missing.error
+    assert_equal :current, alpine("2.88.4-r0", x86_64: nil, community: { "glib" => "2.88.4-r0" }).status, "a package may be in either repository"
+  end
+
+  def test_every_package_alpine_packages_sh_installs_is_pinned_and_every_pin_is_installed
+    script = File.read(File.join(ROOT, ".github/scripts/alpine-packages.sh"))
+    installed = script.scan(/^\s+\w+\) names="([^"]*)"/).flatten.flat_map(&:split).uniq
+    pinned = YAML.safe_load_file(File.join(ROOT, "runtime/sources.yml")).fetch("alpine-packages").keys
+
+    refute_empty installed
+    assert_equal pinned.sort, installed.sort
   end
 
   def test_every_held_pin_is_dated_by_a_held_upstream_whose_releases_github_dates

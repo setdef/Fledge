@@ -20,6 +20,10 @@
 #   are left out.
 # page: or the URL of a listing with no API, with pattern, which finds
 #   every version on it.
+# apk: or the URL of an Alpine branch's index, with {repository} and
+#   {arch} for each of repositories and architectures; its pin is a
+#   mapping of packages, each of which is an upstream of its own, behind
+#   when its indexes serve another build than the pin.
 # line: when set, how many leading numbers of the version make a line
 #   the pin stays in: a newer release in the line is the pin's next
 #   version, and one beyond it is reported but not taken.
@@ -139,7 +143,7 @@ watched:
   # version is the day Docker Hub's record of the tag says it was last
   # pushed. Either way the move takes the new digest from that record.
   # None ships: what the musl runtimes are built with is pinned by
-  # package (.github/scripts/alpine-packages.sh), not by image.
+  # package (alpine-packages, below), not by image.
   alpine-ruby:
     pins: [images.alpine-ruby]
     page: https://hub.docker.com/v2/namespaces/library/repositories/ruby/tags/4.1.0-preview1-alpine3.24
@@ -185,6 +189,21 @@ watched:
     pins: [images.archlinux-base-devel]
     page: https://hub.docker.com/v2/namespaces/library/repositories/archlinux/tags/base-devel
     pattern: '"tag_last_pushed": ?"(?<version>\d{4}-\d{2}-\d{2})'
+    ships: false
+  # The Alpine packages CI installs, one upstream for each package of
+  # the mapping alpine-packages, read from the branch's index for each
+  # repository and architecture. A branch keeps only each package's
+  # newest build, so a pin is behind when every architecture serves one
+  # other build, older or newer, since the pinned one no longer installs.
+  # The branch is the image's: 3.25 moves with images.alpine, by a person.
+  # None ships: what the musl runtimes compile in from GCC and Rust is
+  # recorded in runtime/licenses.yml by its upstream version, which the
+  # license audit checks in every runtime the proof builds.
+  alpine-packages:
+    pins: [alpine-packages]
+    apk: https://dl-cdn.alpinelinux.org/alpine/v3.24/{repository}/{arch}/APKINDEX.tar.gz
+    repositories: [main, community]
+    architectures: [x86_64, aarch64]
     ships: false
   # RubyInstaller's numbered release of the pinned Ruby, which replaces
   # the head build Windows runs while Ruby 4.1 is a preview (runtimes.md,
@@ -339,6 +358,6 @@ unwatched:
   replaceability.gmp: CI's stand-in for an older GMP in the replaceability proof, which must stay older.
   mobile.xcode: Apple publishes no download to pin; CI chooses Xcode by version on the runner.
   ruby-build.rust: Builds no runtime; it follows the Rust that mise.toml pins.
-  almalinux-perl.perl-open: Its newest build cannot be read mechanically, since an RPM's version and release (1.11-423.el8_10.1) are no version that Ruby's Gem::Version, by which the watch orders releases, can parse; a person moves the three AlmaLinux Perl packages together when the image's Perl needs it.
+  almalinux-perl.perl-open: AlmaLinux's repository keeps every build it has published, of this Perl's stream and of module streams for other Perls, so the pinned build keeps resolving and a newer one is a choice of stream, which the move cannot make; and its version-release (1.11-423.el8_10.1) is no version Ruby's Gem::Version can order. A person moves the three AlmaLinux Perl packages together when the image's Perl needs it (runtimes.md, "Alpine's packages").
   almalinux-perl.perl-encoding: Its newest build cannot be read mechanically, as almalinux-perl.perl-open's cannot; it moves with that package.
   almalinux-perl.perl-Filter: Its newest build cannot be read mechanically, as almalinux-perl.perl-open's cannot; it moves with that package.

@@ -221,6 +221,37 @@ images:
     version: "2026-11-08"
     image: archlinux:base-devel@sha256:2de80105abb49f813a85393c6758a4334deb6bcec4a2411bd2f059c0bee6ee4c
 
+# The Alpine 3.24 packages CI installs in images.alpine-ruby and
+# images.alpine, by exact version, as apk names them: what builds a musl
+# runtime, what a developer on Alpine builds apps with, and what Delivery
+# and the parity check run there. .github/scripts/alpine-packages.sh
+# says which each job takes, and reads their versions here, where the
+# move can rewrite them. An Alpine branch keeps only each package's
+# newest build, so a pin the branch no longer serves stops every musl job
+# until it moves (doc/contributors/design/runtimes.md, "Alpine's
+# packages").
+alpine-packages:
+  binutils: 2.45.1-r1
+  build-base: 0.5-r4
+  cargo: 1.96.1-r0
+  desktop-file-utils: 0.28-r0
+  file: 5.47-r2
+  gcc: 15.2.0-r5
+  git: 2.54.1-r0
+  glib: 2.88.4-r0
+  linux-headers: 7.0.0-r1
+  make: 4.4.1-r4
+  musl-dev: 1.2.6-r3
+  perl: 5.42.3-r0
+  pkgconf: 2.5.1-r0
+  procps-ng: 4.0.6-r0
+  rust: 1.96.1-r0
+  squashfs-tools: 4.7.5-r0
+  tar: 1.35-r5
+  util-linux-misc: 2.42.3-r1
+  xz: 5.8.4-r0
+  zstd: 1.5.7-r2
+
 
 # GNU MP, which RubyInstaller's Ruby DLL imports for big-integer
 # arithmetic, ships unchanged as ruby/bin/ruby_builtin_dlls/libgmp-10.dll.
@@ -499,7 +530,7 @@ mobile:
 # CA certificates as curl publishes them, the file rv-ruby's runtimes
 # carry as libexec/cert.pem. CI builds them in images.alpine-ruby and
 # delivers them on images.alpine, and installs the packages that build
-# them by version (.github/scripts/alpine-packages.sh).
+# them by version (alpine-packages, above).
 musl-ruby:
   ruby:
     version: 4.1.0-preview1

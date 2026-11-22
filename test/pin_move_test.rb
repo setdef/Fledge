@@ -250,6 +250,18 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  def test_an_alpine_package_moves_to_the_build_its_branch_serves_and_alone
+    sources = "#{SOURCES}alpine-packages:\n  gcc: 15.2.0-r5\n  glib: 2.88.4-r0\n  glib-dev: 2.88.4-r0\n"
+    checkout("runtime/sources.yml" => sources, "runtime/upstreams.yml" => File.read(File.join(ROOT, "runtime/upstreams.yml"))) do |root|
+      move = PinMove.load(root, Answers.new({}))
+      changed = move.call(finding("alpine-packages.glib", "2.88.4-r0", "2.88.4-r1"))
+
+      assert_equal ["runtime/sources.yml"], changed.keys, "no Alpine package ships, so CHANGELOG.md stays"
+      assert_equal sources.sub("glib: 2.88.4-r0", "glib: 2.88.4-r1"), move.read("runtime/sources.yml")
+      assert_equal "chore: move Alpine's glib to 2.88.4-r1", move.message([finding("alpine-packages.glib", "2.88.4-r0", "2.88.4-r1")]).lines.first.chomp
+    end
+  end
+
   IMAGES = <<~YAML
     manylinux:
       version: 2026.11.21-1
@@ -562,7 +574,7 @@ class PinMoveTest < Minitest::Test
   # with that release's licenses and also.
   def movable_parts
     watch = PinWatch.load(ROOT)
-    entries.reject { |_, entry| entry["hold"] }.flat_map do |name, entry|
+    PinWatch.watched(entries, watch.sources).reject { |_, entry| entry["hold"] }.flat_map do |name, entry|
       upstream = watch.upstreams.find { |candidate| candidate.name == name }
       parts = [[name, entry, watch.current(upstream)]]
       if (release = entry["release"])

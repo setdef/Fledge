@@ -25,30 +25,35 @@
 #                               GLib's gio, which launches a windowed
 #                               app's desktop entry as a desktop does
 #
-# An Alpine branch keeps only each package's newest build, so a pin that
-# stops resolving fails the job, and is moved on purpose.
+# Each package's version is pinned in runtime/sources.yml, under
+# alpine-packages, beside this script's checkout, where the pin move can
+# rewrite it. An Alpine branch keeps only each package's newest build, so
+# a pin that stops resolving fails the job until the pin watch moves it
+# (doc/contributors/design/runtimes.md, "Alpine's packages"). The
+# versions are read with awk, since Delivery's Alpine has no Ruby.
 
 set -eu
 
 case "${1:?usage: alpine-packages.sh build|apps|deliver|parity}" in
-  build)
-    set -- build-base=0.5-r4 gcc=15.2.0-r5 musl-dev=1.2.6-r3 make=4.4.1-r4 linux-headers=7.0.0-r1 \
-      rust=1.96.1-r0 cargo=1.96.1-r0 perl=5.42.3-r0 binutils=2.45.1-r1 file=5.47-r2 tar=1.35-r5 xz=5.8.4-r0 \
-      zstd=1.5.7-r2
-    ;;
-  apps)
-    set -- git=2.54.1-r0 binutils=2.45.1-r1 tar=1.35-r5 squashfs-tools=4.7.5-r0 \
-      build-base=0.5-r4 gcc=15.2.0-r5 musl-dev=1.2.6-r3 make=4.4.1-r4 pkgconf=2.5.1-r0
-    ;;
-  deliver)
-    set -- util-linux-misc=2.42.3-r1 procps-ng=4.0.6-r0 desktop-file-utils=0.28-r0 file=5.47-r2
-    ;;
-  parity)
-    set -- glib=2.88.4-r0
-    ;;
+  build) names="build-base gcc musl-dev make linux-headers rust cargo perl binutils file tar xz zstd" ;;
+  apps) names="git binutils tar squashfs-tools build-base gcc musl-dev make pkgconf" ;;
+  deliver) names="util-linux-misc procps-ng desktop-file-utils file" ;;
+  parity) names="glib" ;;
   *)
     echo "alpine-packages.sh: unknown role $1" >&2
     exit 2
     ;;
 esac
+sources="$(dirname "$0")/../../runtime/sources.yml"
+set --
+for name in $names; do
+  version=$(awk -v name="$name:" '
+    /^[^ #]/ { inside = ($0 == "alpine-packages:") }
+    inside && $1 == name { print $2; exit }' "$sources")
+  if [ -z "$version" ]; then
+    echo "alpine-packages.sh: $sources pins no version of $name under alpine-packages" >&2
+    exit 2
+  fi
+  set -- "$@" "$name=$version"
+done
 apk add --no-cache "$@"

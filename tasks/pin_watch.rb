@@ -12,6 +12,7 @@ require "net/http"
 require "open3"
 require "rubygems"
 require "rubygems/package"
+require "stringio"
 require "time"
 require "tmpdir"
 require "uri"
@@ -83,20 +84,73 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     end
   end
 
+  # One Alpine package, read from its branch's index for each repository
+  # and architecture (apk in runtime/upstreams.yml). A branch keeps only
+  # each package's newest build, so the build its indexes serve is the
+  # only one that installs, and a pin of any other is behind, whichever
+  # number is higher: apk's versions need no order of their own.
+  class AlpinePackage < Data.define(:name, :indexes)
+    # The URLs of the indexes +entry+ names, by architecture, from the
+    # template +url+.
+    def self.indexes(url, entry)
+      entry.fetch("architectures").to_h do |arch|
+        [arch, entry.fetch("repositories").map { |repository| url.gsub("{repository}", repository).gsub("{arch}", arch) }]
+      end
+    end
+
+    # The build every architecture's index serves, when it is not
+    # +current+, asking +answer+ for each index; nil when each serves
+    # +current+.
+    def newer(current, &answer)
+      served = indexes.transform_values { |urls| urls.flat_map { |url| versions(answer.call(url), url) }.uniq }
+      return nil if served.values.all? { |versions| versions.include?(current) }
+
+      common = served.values.reduce(:&)
+      return common.first if common.one?
+
+      raise Error, unserved(served)
+    end
+
+    private def unserved(served)
+      return "Alpine's indexes serve no #{name} on #{served.keys.join(' or on ')}" if served.values.all?(&:empty?)
+
+      each = served.map { |arch, versions| "#{versions.empty? ? 'nothing' : versions.join(' and ')} on #{arch}" }
+      "Alpine's indexes serve #{name} #{each.join(' and ')}, and no one build of it on every architecture"
+    end
+
+    # The versions of this package the index +body+ lists. Alpine serves
+    # an index as two gzip members, the signature's tar entry and then
+    # the index's, so the members are read as one stream.
+    private def versions(body, url)
+      index = nil
+      Gem::Package::TarReader.new(StringIO.new(Zlib::GzipReader.zcat(StringIO.new(body)))).each do |entry|
+        index = entry.read if entry.full_name == "APKINDEX"
+      end
+      raise Error, "#{url} holds no APKINDEX" unless index
+
+      index.split(/\n\n+/).filter_map { |block| block[/^V:(.+)$/, 1] if block[/^P:(.+)$/, 1] == name }
+    rescue Zlib::Error, Gem::Package::Error => e
+      raise Error, "#{url} is no Alpine index: #{e.message}"
+    end
+  end
+
   # Where one input is released, as runtime/upstreams.yml says.
-  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships, :hold)
+  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships, :hold, :package)
     # The upstream runtime/upstreams.yml names +name+ with +entry+.
     def self.from(name, entry)
       if (repository = entry["github"])
         url = "https://api.github.com/repos/#{repository}/releases?per_page=100"
         pattern = entry.fetch("tag")
+      elsif (url = entry["apk"])
+        pattern = "\\A\\z"
       else
         url = entry.fetch("page")
         pattern = entry.fetch("pattern")
       end
       current = entry["current"] && Regexp.new(entry["current"])
       new(name:, pins: entry.fetch("pins"), field: entry.fetch("field", "version"), current:, url:,
-        pattern: Regexp.new(pattern, Regexp::MULTILINE), line: entry["line"], ships: entry.fetch("ships", true), hold: entry["hold"])
+        pattern: Regexp.new(pattern, Regexp::MULTILINE), line: entry["line"], ships: entry.fetch("ships", true), hold: entry["hold"],
+        package: entry["package"] && AlpinePackage.new(name: entry["package"], indexes: AlpinePackage.indexes(url, entry)))
     end
 
     # Whether the versions come from GitHub's list of releases.
@@ -245,7 +299,22 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   def self.load(root)
     sources = YAML.safe_load_file(File.join(root, "runtime/sources.yml"))
     file = YAML.safe_load_file(File.join(root, "runtime/upstreams.yml"))
-    new(sources:, upstreams: file.fetch("watched").map { |name, entry| Upstream.from(name, entry) }, unwatched: file.fetch("unwatched"))
+    upstreams = watched(file.fetch("watched"), sources).map { |name, entry| Upstream.from(name, entry) }
+    new(sources:, upstreams:, unwatched: file.fetch("unwatched"))
+  end
+
+  # The watched upstreams of runtime/upstreams.yml's +entries+, by name,
+  # each entry with apk made one upstream for each package of the mapping
+  # +sources+ holds at its pin, named for that package's path there.
+  def self.watched(entries, sources)
+    entries.flat_map do |name, entry|
+      next [[name, entry]] unless entry["apk"]
+
+      path = entry.fetch("pins").first
+      sources.dig(*path.split(".")).keys.map do |package|
+        ["#{path}.#{package}", entry.merge("pins" => ["#{path}.#{package}"], "package" => package, "names" => ["Alpine's #{package}", package])]
+      end
+    end.to_h
   end
 
   # Every component of runtime/sources.yml, as a dotted path: each mapping
@@ -294,6 +363,8 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
 
   private def find(upstream, answers, today)
     current = current(upstream)
+    return finding(upstream, current:, newer: upstream.package.newer(current) { |url| answers[url] }) if upstream.package
+
     newer = upstream.versions(answers[upstream.url]).select { |version| newer?(version, current) }
     in_line, beyond = newer.partition { |version| same_line?(upstream, version, current) }
     since = upstream.dates(answers[upstream.url]).values_at(*in_line).compact.min

@@ -46,7 +46,7 @@ class PinMove
   # records.
   def self.load(root, fetch)
     entries = YAML.safe_load_file(File.join(root, "runtime/upstreams.yml")).fetch("watched")
-    new(root, entries, fetch)
+    new(root, PinWatch.watched(entries, YAML.safe_load_file(File.join(root, "runtime/sources.yml"))), fetch)
   end
 
   def initialize(root, entries, fetch)

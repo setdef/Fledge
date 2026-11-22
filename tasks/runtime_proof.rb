@@ -30,10 +30,11 @@ require_relative "parity"
 class RuntimeProof
   ROOT = File.expand_path("..", __dir__)
 
-  # deliver.ps1 unpacks onto D:\ wherever that drive exists, as on CI's
-  # Windows runners, so on Windows the proof runs neither it nor
-  # deliver-from.ps1, and leaves Windows Delivery to CI.
-  WINDOWS_DELIVERY = "⚠️ Delivery on Windows is CI's: deliver.ps1 unpacks onto D:\\ wherever that drive exists"
+  # deliver.ps1 has run only on CI's Windows runners, and
+  # deliver-from.ps1 needs a runner's RUNNER_TEMP and installs the app it
+  # builds, so on Windows the proof runs neither, and leaves Windows
+  # Delivery to CI.
+  WINDOWS_DELIVERY = "⚠️ Delivery on Windows is CI's: deliver.ps1 and deliver-from.ps1 have run only on its runners"
 
   # Raised when a step fails, naming it.
   class Failed < StandardError; end

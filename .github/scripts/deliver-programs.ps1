@@ -6,7 +6,10 @@
 # folder holds one copy of the project and one Ruby, and runs both
 # programs from it, with no Ruby anywhere they can reach.
 #
-#   pwsh -NoProfile -File deliver-programs.ps1 -Archive ARCHIVE
+#   pwsh -NoProfile -File deliver-programs.ps1 -Archive ARCHIVE [-Work FOLDER]
+#
+# WORK is the one folder the script writes in: RUNNER_TEMP on a runner,
+# and the system's temporary folder elsewhere.
 #
 # ARCHIVE is "Shared Save-x64-mingw-ucrt.zip", or aarch64-mingw-ucrt's.
 # Its folder holds Shared Save.exe, a GUI program, and shared-save.exe, a
@@ -18,7 +21,8 @@
 # both, inside the folder. Nothing here may need Ruby.
 
 param(
-  [Parameter(Mandatory)] [string] $Archive
+  [Parameter(Mandatory)] [string] $Archive,
+  [string] $Work = $(if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [IO.Path]::GetTempPath() })
 )
 
 Set-StrictMode -Version Latest
@@ -43,8 +47,7 @@ function Expect([string] $Label, $Actual, $Expected) {
 
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $name = [IO.Path]::GetFileNameWithoutExtension($Archive)
-$drive = if (Test-Path 'D:\') { 'D:\' } else { $env:RUNNER_TEMP }
-$place = Join-Path (Join-Path $drive 'Fledge programs') "h$([char]0xE9)llo w$([char]0xF6)rld"
+$place = Join-Path (Join-Path $Work 'Fledge programs') "h$([char]0xE9)llo w$([char]0xF6)rld"
 New-Item -ItemType Directory -Force $place | Out-Null
 Expand-Archive -LiteralPath $Archive -DestinationPath $place
 $root = Join-Path $place $name
@@ -84,8 +87,8 @@ $system = $env:SystemRoot
 $env:PATH = "$system\System32;$system;$system\System32\Wbem;$system\System32\WindowsPowerShell\v1.0"
 if (Get-Command ruby -ErrorAction SilentlyContinue) { Fail "Get-Command still finds a Ruby on $env:PATH" }
 
-$save = Join-Path $env:RUNNER_TEMP 'programs save.jsonl'
-$report = Join-Path $env:RUNNER_TEMP 'programs report.json'
+$save = Join-Path $Work 'programs save.jsonl'
+$report = Join-Path $Work 'programs report.json'
 Remove-Item -LiteralPath $save, $report -ErrorAction SilentlyContinue
 
 # Console: runs the console program, failing unless it exits with 0,

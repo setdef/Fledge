@@ -7,14 +7,17 @@
 # and more where Windows has more ways in. CI delivers examples/hello and
 # examples/my_cool_app.
 #
-#   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Probe PROBE_ARCHIVE -Platform PLATFORM -Expected LINE
+#   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Probe PROBE_ARCHIVE -Platform PLATFORM -Expected LINE [-Work FOLDER]
 #
 # ARCHIVE is NAME-PLATFORM.zip as fledge build wrote it, and PROBE_ARCHIVE
 # the parity probe (test/fixtures/parity) built the same way, which
 # reports what a child Ruby sees: Parity-PLATFORM.zip, a lone script, for
 # hello, and ParityBundle-PLATFORM.zip, the probe as a gem-shaped app's
 # program (Parity.gem_probe), for my_cool_app. PLATFORM is x64-mingw-ucrt,
-# and LINE the one line the app must print.
+# and LINE the one line the app must print. WORK is the one folder the
+# script writes in, where it unpacks the apps and keeps what the runs
+# leave: RUNNER_TEMP on a runner, and the system's temporary folder
+# elsewhere, so that on a person's own computer it writes nowhere else.
 #
 # Each run goes through .NET's Process, which waits for the program and
 # captures both of its streams: PowerShell's & operator neither waits for
@@ -26,7 +29,8 @@ param(
   [Parameter(Mandatory)] [string] $Archive,
   [Parameter(Mandatory)] [string] $Probe,
   [Parameter(Mandatory)] [string] $Platform,
-  [Parameter(Mandatory)] [string] $Expected
+  [Parameter(Mandatory)] [string] $Expected,
+  [string] $Work = $(if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [IO.Path]::GetTempPath() })
 )
 
 Set-StrictMode -Version Latest
@@ -101,14 +105,14 @@ function Get-Snapshot([string] $Folder) {
     } | Sort-Object) -join "`n"
 }
 
-# Unpack somewhere the app was never built, on another drive when the
-# runner has one, under a folder with a space and characters outside
-# ASCII, with Windows' own Expand-Archive, as a person would.
+# Unpack somewhere the app was never built, under WORK, in a folder with
+# a space and characters outside ASCII, with Windows' own Expand-Archive,
+# as a person would. On GitHub's x64 runners WORK is on D:, a drive other
+# than Windows' own, and on its ARM64 runners, which have one drive, on C:.
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $name = [IO.Path]::GetFileNameWithoutExtension($Archive)
 $folderName = "h$([char]0xE9)llo w$([char]0xF6)rld"
-$drive = if (Test-Path 'D:\') { 'D:\' } else { $env:RUNNER_TEMP }
-$place = Join-Path (Join-Path (Join-Path $drive 'Fledge test') $name) $folderName
+$place = Join-Path (Join-Path (Join-Path $Work 'Fledge test') $name) $folderName
 New-Item -ItemType Directory -Force $place | Out-Null
 Expand-Archive -LiteralPath $Archive -DestinationPath $place
 $Probe = (Resolve-Path -LiteralPath $Probe).Path
@@ -176,8 +180,16 @@ if ($LASTEXITCODE -eq 0) { Fail "where gcc still finds a compiler on $env:PATH" 
 if (Get-Command ruby -ErrorAction SilentlyContinue) { Fail "Get-Command still finds a Ruby on $env:PATH" }
 Write-Host "No Ruby or compiler on the app's PATH: $env:PATH"
 
-$work = Join-Path $env:RUNNER_TEMP 'delivery'
+# PowerShell's names ignore case, so from here $work, the folder the runs
+# write in, is no longer the parameter.
+$work = Join-Path $Work 'delivery'
 New-Item -ItemType Directory -Force $work | Out-Null
+# The person's profile, a folder of $work's, since the checks below plant
+# a hostile Bundler configuration and gems in it, which must never land in
+# the profile of whoever runs this script. Ruby finds it, as it finds the
+# real one, by USERPROFILE (win32/win32.c, rb_w32_home_dir).
+$personProfile = Join-Path $work 'profile'
+New-Item -ItemType Directory -Force $personProfile | Out-Null
 
 # The environment a desktop gives a program, and nothing else: Windows'
 # own folders, the person's profile, and a temporary folder.
@@ -186,7 +198,7 @@ $clean = @{
   SystemDrive = $env:SystemDrive
   windir = $system
   PATH = $env:PATH
-  USERPROFILE = $env:USERPROFILE
+  USERPROFILE = $personProfile
   TEMP = $work
   TMP = $work
 }
@@ -204,7 +216,7 @@ Check "a renamed copy, $folderName.exe" 0 $renamed $clean
 # As a package manager puts a console app on PATH (doc/contributors/
 # research/2026-11-04-package-managers.md, sections 2, 3, and 5): winget
 # links a portable package's program into its Links folder by a symbolic
-# link named as its command, on another drive here, and Scoop reaches
+# link named as its command, in another folder here, and Scoop reaches
 # the version it installed through a junction, its current folder. The
 # launcher must find the folder it really lives in through either, and
 # carry the arguments and the exit status through. Each app gets links
@@ -246,8 +258,8 @@ end
 # A %USERPROFILE%\.bundle\config that points Bundler elsewhere, asks for
 # gems compiled from source, leaves out the app's own gems, and installs
 # whatever is missing, which the app's Bundler must never read.
-New-Item -ItemType Directory -Force (Join-Path $env:USERPROFILE '.bundle') | Out-Null
-Set-Content -LiteralPath (Join-Path $env:USERPROFILE '.bundle\config') -Value @"
+New-Item -ItemType Directory -Force (Join-Path $personProfile '.bundle') | Out-Null
+Set-Content -LiteralPath (Join-Path $personProfile '.bundle\config') -Value @"
 ---
 BUNDLE_GEMFILE: "$($work -replace '\\', '/')/evil/Gemfile"
 BUNDLE_PATH: "$($work -replace '\\', '/')/evil"
@@ -255,10 +267,10 @@ BUNDLE_FORCE_RUBY_PLATFORM: "true"
 BUNDLE_WITHOUT: "default"
 BUNDLE_AUTO_INSTALL: "true"
 "@
-$xdgGems = Join-Path $env:USERPROFILE ".local\share\gem\ruby\$abi"
+$xdgGems = Join-Path $personProfile ".local\share\gem\ruby\$abi"
 Install-LeakingJson $xdgGems
 Check 'a json gem in %USERPROFILE%\.local\share\gem' 0 $app $clean
-$dotGems = Join-Path $env:USERPROFILE ".gem\ruby\$abi"
+$dotGems = Join-Path $personProfile ".gem\ruby\$abi"
 Install-LeakingJson $dotGems
 Check 'a json gem in %USERPROFILE%\.gem' 0 $app $clean
 

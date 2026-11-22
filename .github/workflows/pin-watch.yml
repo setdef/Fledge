@@ -1,18 +1,24 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Asks every upstream of runtime/sources.yml, each day, whether it has
-# released a newer version than the pin (doc/contributors/design/
-# runtimes.md, "Keeping the pins current"). tasks/pin_watch.rb reads
-# where each pin is released from runtime/upstreams.yml, and this run
-# writes what it found into its summary and into the pin-watch
-# artifact, as JSON.
+# Keeps the pins of runtime/sources.yml current, each day, with nobody
+# in the loop unless that fails (doc/contributors/design/runtimes.md,
+# "Keeping the pins current"). The watch asks every upstream whether it
+# has released a newer version than the pin (tasks/pin_watch.rb reads
+# where from runtime/upstreams.yml), writes what it found into the
+# run's summary, and keeps it as the pin-watch artifact, as JSON.
 #
-# This is the first of the four steps that keep the pins current: it
-# finds, and moves nothing. A pin with a newer release is the next
-# steps' work, not a failure, so it leaves the run green. The run fails
-# only when an upstream could not be read, or listed no version its
-# pattern takes, since then a release could be missed.
+# When a pin is behind, Move moves every such pin at once, proves the
+# move with a full run of ci.yml on the branch pin-move, and puts it on
+# trunk once that run is green (.github/scripts/pin-prove.sh). When it
+# is red, Alone moves and proves each pin by itself, one after another,
+# and lands each that passes. pin-move is this workflow's alone: no
+# person or agent pushes it, and it is deleted after each proof.
+#
+# The run fails, and GitHub tells the account that owns its schedule,
+# only when a person is needed: an upstream could not be read or listed
+# no version its pattern takes, a pin is held for a person or could not
+# be moved, or a pin's proof was red.
 
 name: Pin watch
 
@@ -21,6 +27,11 @@ on:
     # Each day, at a minute when few other schedules start.
     - cron: "37 6 * * *"
   workflow_dispatch:
+    inputs:
+      land:
+        description: Put a proven move on trunk (false proves it only)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -34,6 +45,8 @@ jobs:
     name: Watch the pins
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    outputs:
+      behind: ${{ steps.watch.outputs.behind }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -47,6 +60,7 @@ jobs:
       # The token only raises GitHub's limit for reading public releases
       # from 60 requests an hour, which runners share, to the token's own.
       - name: Ask each upstream for its newest release
+        id: watch
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: .github/scripts/pin-watch.sh
@@ -58,3 +72,93 @@ jobs:
           path: tmp/pin-watch.json
           retention-days: 30
           if-no-files-found: ignore
+
+  # The proof waits in the job for the run of ci.yml it started, rather
+  # than in a workflow of its own that the run's end starts, since GitHub
+  # does not say whether the end of a run that the workflow's token
+  # started starts another. A full run of ci.yml takes one to three
+  # hours; a job may take six.
+  move:
+    name: Move the pins and prove them
+    needs: watch
+    if: needs.watch.outputs.behind == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      moved: ${{ steps.prove.outputs.moved }}
+      proven: ${{ steps.prove.outputs.proven }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: trunk
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Install the bundle
+        env:
+          BUNDLE_FROZEN: "true"
+        run: bundle install
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pin-watch
+          path: tmp
+
+      - name: Move, prove, and land
+        id: prove
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PIN_PROVE_LAND: ${{ github.event_name != 'workflow_dispatch' || inputs.land }}
+        run: .github/scripts/pin-prove.sh tmp/pin-watch.json
+
+  # Only when the proof of every pin together was red: each pin again,
+  # by itself, on trunk as it stands then, one after another, so that a
+  # red one is named by its job and the rest land.
+  alone:
+    name: Prove ${{ matrix.pin }} alone
+    needs: move
+    if: always() && needs.move.outputs.proven == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    permissions:
+      contents: write
+      actions: write
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        pin: ${{ fromJSON(needs.move.outputs.moved) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: trunk
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      - name: Install the bundle
+        env:
+          BUNDLE_FROZEN: "true"
+        run: bundle install
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pin-watch
+          path: tmp
+
+      - name: Move, prove, and land ${{ matrix.pin }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PIN: ${{ matrix.pin }}
+          PIN_PROVE_LAND: ${{ github.event_name != 'workflow_dispatch' || inputs.land }}
+        run: .github/scripts/pin-prove.sh tmp/pin-watch.json "$PIN"

@@ -276,6 +276,20 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  def test_the_commit_message_names_each_move_in_its_subject_or_its_body
+    checkout do |root|
+      move = mover(root, Answers.new({}))
+      one = move.message([finding("libffi", "3.5.2", "3.8.1")])
+      two = move.message([finding("libffi", "3.5.2", "3.8.1"), finding("ca-certificates", "2026-03-19", "2026-11-05")])
+
+      assert_equal "chore: move libffi to 3.8.1", one.lines.first.chomp
+      assert_equal "chore: move 2 pins to their upstreams' newest releases", two.lines.first.chomp
+      assert_includes two.tr("\n", " "), "libffi 3.5.2 to 3.8.1, and Mozilla's CA certificates 2026-03-19 to 2026-11-05."
+      assert(two.lines.all? { |line| line.chomp.size <= 72 }, two)
+      assert_match(/\n\nProvenance: requested\n\z/, two)
+    end
+  end
+
   # What the move needs of this checkout holds for every upstream it may
   # move: each licenses entry names the pin's version, and each pattern
   # of each other file captures it.

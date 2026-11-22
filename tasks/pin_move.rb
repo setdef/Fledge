@@ -95,6 +95,26 @@ class PinMove
     Array(@entries.fetch(name)["names"]).first || name
   end
 
+  # The commit message of the moves of +findings+, as the workflow that
+  # proves them commits it: a subject in Conventional Commits' form, a
+  # body that says what moved and why, wrapped at 72, and the trailer
+  # every commit of Fledge's carries (AGENTS.md, "Committing").
+  def message(findings)
+    moves = findings.map(&:to_h).map { |finding| "#{title(finding.fetch('name'))} #{finding.fetch('current')} to #{finding.fetch('newer')}" }
+    subject = if findings.one?
+      finding = findings.first.to_h
+      "chore: move #{title(finding.fetch('name'))} to #{finding.fetch('newer')}"
+    else
+      "chore: move #{findings.size} pins to their upstreams' newest releases"
+    end
+    list = (moves.size > 1) ? "#{moves[0..-2].join(', ')}, and #{moves.last}" : moves.first
+    body = "The pin watch found #{findings.one? ? 'this pin' : 'these pins'} behind upstream, and the " \
+      "workflow that keeps the pins current moved #{findings.one? ? 'it' : 'them'} with tasks/pin_move.rb, " \
+      "taking each SHA-256 from upstream's own record of it, and proved the move with a full run of CI " \
+      "before it reached trunk (doc/contributors/design/runtimes.md, \"Keeping the pins current\"): #{list}."
+    "#{subject}\n\n#{body.gsub(/(.{1,72})(?:\s+|\z)/, "\\1\n")}\nProvenance: requested\n"
+  end
+
   # Writes every text this move changed into the checkout, or into the
   # folder +root+ instead, at the same paths, so it can be compared.
   def save(root = @root)
@@ -252,16 +272,18 @@ class PinMove
   end
 end
 
-# ruby tasks/pin_move.rb REPORT [--only NAME] [--into DIR]
+# ruby tasks/pin_move.rb REPORT [--only NAME] [--into DIR] [--message FILE]
 # moves every pin the watch's REPORT found behind, or only the one named,
 # prints each move, and writes the files it changed into the checkout,
 # or, with --into, into DIR at the same paths, for a run that must change
-# nothing to compare them with the checkout's. It exits 1
+# nothing to compare them with the checkout's. With --message, it writes
+# the commit message of what it moved into FILE. It exits 1
 # when a pin behind could not be moved, or is held for a person.
 if $PROGRAM_NAME == __FILE__
   args = ARGV.dup
   into = (index = args.index("--into")) && args.slice!(index, 2).last
   only = (index = args.index("--only")) && args.slice!(index, 2).last
+  message = (index = args.index("--message")) && args.slice!(index, 2).last
   findings = JSON.parse(File.read(args.fetch(0))).select { |finding| finding["status"] == "newer" }
   findings.select! { |finding| finding["name"] == only } if only
   move = PinMove.load(File.expand_path("..", __dir__), PinWatch::Fetch.new(token: ENV.fetch("GITHUB_TOKEN", nil)))
@@ -274,5 +296,7 @@ if $PROGRAM_NAME == __FILE__
     false
   end
   into ? move.save(into) : move.save
+  moved = findings - failed
+  File.write(message, move.message(moved)) if message && moved.any?
   exit(failed.empty? ? 0 : 1)
 end

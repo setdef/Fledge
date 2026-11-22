@@ -74,6 +74,10 @@ on:
     # Not on tags: release.yml looks up the tagged commit's run on trunk.
     branches: ["**"]
   pull_request:
+  # pin-watch.yml starts a run on the branch pin-move to prove a move of
+  # the pins, and on trunk after it lands a move rebased there, since a
+  # push made with a workflow's token starts no run.
+  workflow_dispatch:
 
 permissions:
   contents: read

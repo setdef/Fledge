@@ -122,9 +122,8 @@ end
 # A gem's extension required before its gem is active: racc/cparse, which
 # a desktop's RubyGems finds among racc's files and activates racc for.
 # Whether the require loaded it, and whether racc is then active, or the
-# class of what it raised. A phone links the extension in, where no
-# file of racc's would be found but for the one fledge's runtime puts in
-# racc's extension folder (doc/contributors/design/phone-runtimes.md,
+# class of what it raised. A phone's Ruby has the extension as a file
+# among racc's, as a desktop's does (doc/contributors/design/phone-runtimes.md,
 # "Bundled gems' extensions").
 def extension_before_its_gem
   [require("racc/cparse"), Gem.loaded_specs.key?("racc")]

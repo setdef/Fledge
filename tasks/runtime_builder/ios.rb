@@ -106,11 +106,6 @@ class RuntimeBuilder
       super
     end
 
-    # Ruby is built as a shared library, its extensions as files.
-    private def shared?
-      true
-    end
-
     private def edits
       %i[psych_extconf vm_dump ruby_c configure_macos_minimum file_c setproctitle_c]
     end

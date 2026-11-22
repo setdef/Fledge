@@ -98,10 +98,10 @@ class RuntimeBuilder
         "configure names Linux's shared Ruby")
     end
 
-    # Where OpenSSL is linked into the openssl extension's own file
-    # (Mobile#shared?), its every call of X509_get_default_cert_file goes
-    # to Fledge's, which the edit adds beside the extension's sources,
-    # where mkmf compiles every C file it finds (CERTIFICATE_SOURCE), by
+    # Where OpenSSL is linked into the openssl extension's own file, its
+    # every call of X509_get_default_cert_file goes to Fledge's, which
+    # the edit adds beside the extension's sources, where mkmf compiles
+    # every C file it finds (CERTIFICATE_SOURCE), by
     # the linker's own --wrap, which the edit adds to the extension's
     # link after its checks, so that none of them is linked with it.
     def self.openssl_extconf(text)
@@ -204,9 +204,10 @@ class RuntimeBuilder
     # the extension only by its feature with ".so" (extinit.c, and
     # fledge_ruby_add_extension in <tt>runtime/mobile/fledge_ruby.c</tt>).
     #
-    # A Ruby that links no bundled gem's extension in (Mobile#shared?)
-    # gives none, and its gate lets every linked extension through: the
-    # app's own, in libfledgeext.so on Android.
+    # A phone's Ruby links no bundled gem's extension in, so Mobile
+    # gives none, and its gate lets every linked extension through:
+    # the app's own gems', in libfledgeext.so on Android and in
+    # FledgeExtensions.xcframework on iOS.
     def self.load_c(text, extensions)
       table = extensions.sort.map { |feature, full| "    {#{feature.dump}, #{full.dump}},\n" }.join
       gated = replace(text, /^(            if \(st_lookup\(&vm->static_ext_inits, \(st_data_t\)ftptr, NULL\))\) \{\n/,

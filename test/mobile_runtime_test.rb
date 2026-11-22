@@ -213,7 +213,6 @@ class MobileRuntimeTest < Minitest::Test
     ios = RuntimeBuilder::IOS.allocate
     options = ios.__send__(:target_options, nil, { libffi: "/ffi" })
 
-    assert ios.__send__(:shared?)
     assert_includes options, "LDSHARED=$(CC) -dynamiclib -Wl,-headerpad_max_install_names"
     refute_includes options, "--disable-dln"
   end

@@ -22,7 +22,7 @@ class RuntimeBuilder
   # spike/mobile/FINDINGS.txt): Ruby's own configure and make, cross-
   # compiling for each target with Xcode's or the NDK's compiler, against
   # OpenSSL and libyaml built the same way, as a shared library with each
-  # extension a file (shared?), and no JIT on iOS. A miniruby built for
+  # extension a file, and no JIT on iOS. A miniruby built for
   # the build machine from the same source writes the builtin binary a
   # cross build cannot (doc/contributors/design/phone-runtimes.md, "The
   # builtin binary"). Each subclass names its targets' toolchains and
@@ -84,10 +84,14 @@ class RuntimeBuilder
     # libfledgeruby-static.a.
     LIBRUBY = /\Alib(?:fledge)?ruby(?:\.[\d.]+)?-static\.a\z/
 
-    # The name configure is told for the shared library of a Ruby built
-    # as one (Android#shared?), which is also the name of the library an
-    # app's native code links: libfledgeruby.so.
+    # The name configure is told for Ruby's shared library, which is also
+    # the name of the library an Android app's native code links:
+    # libfledgeruby.so.
     SONAME = "fledgeruby"
+
+    # The extensions configure is told to leave out: Windows' and Ruby's
+    # tests'.
+    WITHOUT = %w[win32 win32ole -test-/*].freeze
 
     def hosts
       @builder.platform.hosts
@@ -105,36 +109,18 @@ class RuntimeBuilder
     end
 
     # Ruby's release tarball, unpacked into the fresh folder +source+,
-    # with this platform's edits made and the bundled gems' extensions
-    # copied among Ruby's own, each to be linked into one relocatable
-    # object with only its Init function global
-    # (BundledExtensions.relocate, with the subclass's relocatable
-    # recipe), and found only once its gem is active (RubySource.load_c).
+    # with this platform's edits made, and load.c's lookup of linked
+    # extensions taught the names a desktop finds their files by
+    # (RubySource.load_c), for the app's own gems' extensions, which
+    # are linked in. Ruby builds as a shared library, so its bundled
+    # gems' extensions build as files, as a desktop's do.
     # Each target builds in a source folder of its own (build_target),
     # and the build machine's miniruby from one more.
-    #
-    # A Ruby built as a shared library (shared?) builds its bundled gems'
-    # extensions as files, as a desktop's does, and links none of them
-    # in, so none is copied and none is gated.
     private def prepare_source(source)
       unpack_into(pin("ruby"), source)
       RubySource.apply(source, edits)
-      @kept = shared? ? {} : BundledExtensions.copy(source, omit: omitted_gems, recipe: relocatable)
-      RubySource.edit(source, :load_c, BundledExtensions.features(source, @kept))
-      @without = [*(shared? ? [] : BundledExtensions.without(source)), "win32", "win32ole", "-test-/*"].uniq
+      RubySource.edit(source, :load_c, {})
       source
-    end
-
-    # Whether Ruby is built as a shared library, with each of its
-    # extensions, encodings, and bundled gems' extensions a file, as a
-    # desktop's is: not unless a subclass says so, as both do
-    # (Android#shared?, IOS#shared?). Else every one of them is linked
-    # into Ruby (--with-static-linked-ext), with the bundled gems with C
-    # extensions kept gems (BundledExtensions), as the iOS runtime was
-    # until 0.17.0 (doc/contributors/design/phone-runtimes.md, "Bundled
-    # gems' extensions").
-    private def shared?
-      false
     end
 
     # The bundled gems a phone's Ruby leaves out, as it leaves out the
@@ -146,12 +132,6 @@ class RuntimeBuilder
     # runs, leave it out, so a phone's Ruby lists the gems a desktop's
     # does.
     WINDOWS_GEMS = %w[win32-registry].freeze
-
-    # The bundled gems whose extensions this platform leaves out: none
-    # but those a subclass names.
-    private def omitted_gems
-      []
-    end
 
     # Unpacks the tarball +pin+ names into a fresh folder named +name+
     # and returns the folder it holds.
@@ -229,22 +209,17 @@ class RuntimeBuilder
       use_host_builtin_binary(build)
       logged("#{target.name}-make", "make", "-j#{Etc.nprocessors}", *MAKE_VARIABLES, chdir: build, env: environment(target))
       @extension_api = Mobile.extension_api(build)
-      unless shared?
-        BundledExtensions.mark_built(build, @kept, platform: target.ruby_platform, api: @extension_api)
-        BundledExtensions.write_stubs(build, @kept, platform: target.ruby_platform, api: @extension_api)
-      end
       logged("#{target.name}-install", "make", "install-nodoc", "DESTDIR=#{root}", *MAKE_VARIABLES, chdir: build,
         env: environment(target))
       finish_tree(target, root)
       @archives ||= {}
-      @archives[target] = archives(build, deps)
+      @archives[target] = archives(build)
       root
     end
 
     private def finish_tree(target, root)
       ruby = File.join(root, "lib", "ruby")
       gems = File.join(ruby, "gems", RuntimeBuilder.ruby_abi(ruby))
-      BundledExtensions.check_installed(gems, @kept, platform: target.ruby_platform, api: @extension_api.to_s) unless shared?
       Pruning.prune(ruby, @builder.bundled_gems - WINDOWS_GEMS)
       Certificates.point_openssl_rb(ruby)
       @builder.install_rubygems_defaults(ruby)
@@ -284,22 +259,20 @@ class RuntimeBuilder
     # takes the tarball's, which its SHA-256 pins, and downloads nothing.
     NO_GIT = "--without-git"
 
-    # What configure is told for every target: a static Ruby, every
-    # extension linked in, or a shared Ruby named SONAME, every
-    # extension a file (shared?), with the JIT the platform allows
-    # (jit_options), finding its library relative
-    # to itself, built with the libraries built for the target and none
-    # of the build machine's (PKG_CONFIG=false), and without GMP (LGPL),
-    # Windows' extensions, Ruby's test extensions, or, for a static Ruby,
-    # the bundled gems' own builds (their extensions are linked in among
-    # Ruby's; BundledExtensions).
+    # What configure is told for every target: a shared Ruby named
+    # SONAME, every extension a file, with the JIT the platform allows
+    # (jit_options), finding its library relative to itself, built with
+    # the libraries built for the target and none of the build machine's
+    # (PKG_CONFIG=false), and without GMP (LGPL) or the extensions
+    # WITHOUT names.
     private def configure_options(target, deps)
       [
         "--host=#{host_triple(target)}",
         "--target=#{host_triple(target)}",
         "--prefix=/",
         "--enable-load-relative",
-        *(shared? ? ["--enable-shared", "--with-soname=#{SONAME}"] : ["--disable-shared", "--with-static-linked-ext"]),
+        "--enable-shared",
+        "--with-soname=#{SONAME}",
         *jit_options(target),
         "--disable-install-doc",
         "--disable-install-rdoc",
@@ -309,7 +282,7 @@ class RuntimeBuilder
         "--with-openssl-dir=#{deps.fetch(:openssl)}",
         "--with-libyaml-dir=#{deps.fetch(:libyaml)}",
         "--without-gmp",
-        "--with-out-ext=#{@without.join(',')}",
+        "--with-out-ext=#{WITHOUT.join(',')}",
         "PKG_CONFIG=false",
         *target_options(target, deps),
       ]
@@ -363,21 +336,16 @@ class RuntimeBuilder
       File.write(File.join(build, "GNUmakefile"), "\nbuiltin_binary.rbbin: ; @:\n", mode: "a")
     end
 
-    # Every static archive Ruby's build made for the target (libruby,
-    # each extension's, the encodings' and transcoders'), the objects
-    # that register the extensions and encodings (extinit.o, encinit.o),
-    # and the libraries built for it. The JITs' static library, which
-    # rustc writes under target/, is left out: libruby already holds it,
-    # as the one object defs/jit.mk partly links it into (RUST_LIBOBJ).
-    # A shared Ruby (shared?) built only libruby as an archive, and its
-    # extensions link the libraries built for the target themselves.
-    private def archives(build, deps)
+    # The static libruby Ruby's build made for the target beside its
+    # shared one, which the subclass links into the runtime's library.
+    # The JITs' static library, which rustc writes under target/, is
+    # left out: libruby already holds it, as the one object defs/jit.mk
+    # partly links it into (RUST_LIBOBJ).
+    private def archives(build)
       ruby = Dir.glob("**/*.a", base: build).reject { |path| path.start_with?(".bundle/", "target/") || path == "libruby.a" }.sort
       raise "#{build} built no static libruby" unless ruby.any? { |path| path.match?(LIBRUBY) }
-      return ruby.grep(LIBRUBY).map { |path| File.join(build, path) } if shared?
 
-      libraries = deps.values.flat_map { |prefix| Dir.glob(File.join(prefix, "lib", "*.a")) }.sort
-      [*ruby.map { |path| File.join(build, path) }, File.join(build, "ext", "extinit.o"), File.join(build, "enc", "encinit.o"), *libraries]
+      ruby.grep(LIBRUBY).map { |path| File.join(build, path) }
     end
 
     # Builds libyaml, OpenSSL, and libffi, for fiddle, for +target+, once,

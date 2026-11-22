@@ -129,11 +129,6 @@ class RuntimeBuilder
       JITS
     end
 
-    # Ruby is built as a shared library, its extensions as files.
-    private def shared?
-      true
-    end
-
     private def edits
       %i[psych_extconf configure configure_soname openssl_extconf ruby_c ruby_c_source prism_compile_c process_c process_c_umask process_c_ids file_c_umask thread_pthread_c thread_c dir_c setproctitle_c]
     end

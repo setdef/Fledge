@@ -76,13 +76,17 @@ module Fledge
       # Ruby finds them, since RubyGems follows a GEM_PATH that ends in the
       # path separator with its default path
       # (Gem::PathSupport#split_gem_path, at RubyGems 4.1.0.beta2), so
-      # that Gem::Ext::RakeBuilder finds the rake the runtime bundles; and
-      # on macOS the runtime's oldest macOS as the deployment target, which
-      # clang and rustc both read.
+      # that Gem::Ext::RakeBuilder finds the rake the runtime bundles; with
+      # RubyGems reading a gem's metadata with Psych, as RubyGems 4.0
+      # did, since the parser RubyGems 4.1 (4.1.0.beta2 and beta3) reads
+      # it with by default gives every name in it as a BINARY string; and
+      # on macOS the runtime's oldest macOS as the deployment target,
+      # which clang and rustc both read.
       def env
         env = @env.to_h.keys.grep(SCRUBBED).to_h { |name| [name, nil] } # : Hash[String, String?]
         env["GEM_HOME"] = home
         env["GEM_PATH"] = "#{home}#{File::PATH_SEPARATOR}"
+        env["RUBYGEMS_USE_PSYCH"] = "true"
         minimum = @platform.macos_minimum
         env["MACOSX_DEPLOYMENT_TARGET"] = minimum if minimum
         env

@@ -365,6 +365,59 @@ class NativeBuildTest < Minitest::Test
     refute_match(/Successfully built RubyGem|^\s*File: tool-1\.0\.0\.gem$/, err, "RubyGems' report of packing the gem stays out of the build's log")
   end
 
+  # A person whose account's name is outside ASCII has a temporary
+  # folder so named, where fledge build works. RubyGems 4.1's
+  # own YAML parser gives a packed gem's names as BINARY strings, and on
+  # Windows File.expand_path reads a BINARY name, and the folder it
+  # expands against, in code page 1252 whatever the system's is
+  # (win32/file.c, code_page), which writes "日本" as "??" and "ü" as a
+  # byte that is not UTF-8. Off Windows, where a path is its bytes, this
+  # passed before the build read gems' metadata with Psych.
+  def test_a_gems_executables_are_written_in_a_temporary_folder_named_outside_ascii
+    cli = FakeGem.build(@dir, "tool", "1.0.0", executables: ["tool-cli"],
+      files: { "lib/tool.rb" => "", "exe/tool-cli" => "#!/usr/bin/env ruby\nputs 'tool-cli ran'\n" })
+    @routes["/gems/#{cli.file_name}"] = [200, {}, File.binread(cli.path)]
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: { "tool" => ">= 0" }, locked: [cli], remote: @server.url("/"))
+    File.write(File.join(root, "exe", "my_app"), "puts IO.popen([File.join(Gem.bindir, Gem.win_platform? ? 'tool-cli.bat' : 'tool-cli')], &:read)\n")
+    tmp = File.join(@dir, "Jürgen 日本")
+    FileUtils.mkdir_p(tmp)
+
+    status, err = with_tmpdir(tmp) do
+      assert_equal File.expand_path(tmp), Dir.tmpdir, "the build works in #{tmp}"
+      build(root)
+    end
+
+    assert_equal 0, status, err
+    out, ran, = run_app
+    assert_equal ["tool-cli ran\n", true], [out, ran.success?]
+  end
+
+  # A gem's executable, and a file it reads, named outside ASCII ship and
+  # run, built in a temporary folder named outside ASCII too, as a
+  # Japanese developer's may be. RubyGems 4.1's own YAML parser gives
+  # the executables' names of a packed gem as BINARY strings, which hold
+  # UTF-8 bytes, so on any system Gem::Installer#generate_bin cannot join
+  # one to a folder named outside ASCII (Encoding::CompatibilityError),
+  # and JSON writes no BINARY string that is not ASCII.
+  def test_a_gems_executable_named_outside_ascii_ships_and_runs
+    exe = "#!/usr/bin/env ruby\nputs File.read(File.join(__dir__, '..', 'data', '日本語.txt'), encoding: 'UTF-8')\n"
+    cli = FakeGem.build(@dir, "nihon", "1.0.0", executables: ["日本"], files: { "lib/nihon.rb" => "", "data/日本語.txt" => "日本語\n", "exe/日本" => exe })
+    @routes["/gems/#{cli.file_name}"] = [200, {}, File.binread(cli.path)]
+    root = FakeProject.write(@dir, bundled_with: FakeProject.runtime_bundler, dependencies: { "nihon" => ">= 0" }, locked: [cli], remote: @server.url("/"))
+    File.write(File.join(root, "exe", "my_app"), "print IO.popen([File.join(Gem.bindir, Gem.win_platform? ? '日本.bat' : '日本')], &:read).unpack1('H*')\n")
+    tmp = File.join(@dir, "日本")
+    FileUtils.mkdir_p(tmp)
+
+    status, err = with_tmpdir(tmp) do
+      assert_equal File.expand_path(tmp), Dir.tmpdir, "the build works in #{tmp}"
+      build(root)
+    end
+
+    assert_equal 0, status, err
+    out, ran, = run_app
+    assert_equal ["日本語\n".unpack1("H*"), true], [out, ran.success?]
+  end
+
   def test_a_path_gems_executables_ship_too_and_a_runtime_gems_stay_the_runtimes
     source = File.join(@dir, "my_app", "gems", "tool")
     FileUtils.mkdir_p(File.join(source, "exe"))

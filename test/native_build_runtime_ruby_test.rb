@@ -36,4 +36,12 @@ class NativeBuildRuntimeRubyTest < Minitest::Test
     assert_equal "/work/gems", path.first
     assert_includes path, Gem.default_dir
   end
+
+  # RubyGems 4.1 (4.1.0.beta2 and beta3) reads a packed gem's metadata
+  # with its own YAML parser, which gives its names as BINARY strings;
+  # Psych, which RUBYGEMS_USE_PSYCH chooses, gives them as UTF-8, as
+  # RubyGems 4.0 did (gems.md, "Compiling native gems").
+  def test_rubygems_reads_a_gems_metadata_with_psych_whatever_the_developer_set
+    assert_equal "true", env({ "RUBYGEMS_USE_PSYCH" => "false" }).fetch("RUBYGEMS_USE_PSYCH")
+  end
 end

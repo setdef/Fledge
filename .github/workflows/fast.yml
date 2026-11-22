@@ -14,7 +14,10 @@
 #
 # The lint runs once, on Linux: RuboCop, RubyCritic, RDoc coverage,
 # REUSE, the RBS checks, actionlint and shellcheck, clang-format, and
-# Steep read the same files on every OS. The unit tests run on Linux
+# Steep read the same files on every OS. The package check runs there
+# too, in seconds: the gem built, installed into an empty GEM_HOME, and
+# its fledge run with only the gemspec's gems, which is the one check
+# that fails when lib/ requires a gem the gemspec does not depend on. The unit tests run on Linux
 # and Windows, each with the Ruby and the bundle cache ci.yml's test
 # jobs use there, and on macOS in fast-macos.yml, a workflow of its own
 # for the same reason this one is: a macOS job waits for a runner far
@@ -91,8 +94,8 @@ jobs:
 
       # The checks of bundle exec rake that fix nothing: lint:fix is left
       # out, so an offense fails here instead of being corrected.
-      - name: Lint
-        run: bundle exec rake lint steep
+      - name: Lint and the package check
+        run: bundle exec rake lint steep package:check
 
   unit:
     name: Unit tests (ubuntu-24.04)

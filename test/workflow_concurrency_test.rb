@@ -53,11 +53,12 @@ class WorkflowConcurrencyTest < Minitest::Test
   end
 
   # The macOS leg is a workflow of its own, so its wait for a macOS
-  # runner never holds the verdict of the lint and the Linux and Windows
-  # unit tests.
-  def test_fast_tier_runs_the_lint_and_the_unit_tests_on_linux_and_windows_and_macos_alone
+  # runner never holds the verdict of the lint, the package check, and
+  # the Linux and Windows unit tests. The package check is the one check
+  # of the tier that loads Fledge as an installed gem.
+  def test_fast_tier_runs_the_lint_the_package_check_and_the_unit_tests_on_linux_and_windows_and_macos_alone
     assert_equal %w[ubuntu-24.04 windows-latest], runners("fast.yml").uniq.sort
-    assert_includes commands("fast.yml"), "bundle exec rake lint steep"
+    assert_includes commands("fast.yml"), "bundle exec rake lint steep package:check"
     assert_equal 2, commands("fast.yml").count("bundle exec rake test")
     assert_equal %w[macos-26], runners("fast-macos.yml")
     assert_equal ["bundle exec rake test"], commands("fast-macos.yml").grep(/\Abundle exec rake/)

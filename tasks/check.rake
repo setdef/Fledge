@@ -14,9 +14,11 @@ require "stringio"
 # where the lint can be narrowed so: RuboCop (on every file when its
 # configuration or version changes), shellcheck, actionlint, and
 # clang-format; then REUSE, Steep and the RBS checks when typed code
-# changes, RDoc's coverage when documented code changes, and the unit
-# tests. It runs each and then fails if any failed. RubyCritic, which
-# fails nothing, the package check, and the integration tests are the
+# changes, RDoc's coverage when documented code changes, the unit
+# tests, and the package check (tasks/package.rake), which loads Fledge
+# as an installed gem with only its gemspec's gems, as nothing else here
+# does, in about two seconds. It runs each and then fails if any failed.
+# RubyCritic, which fails nothing, and the integration tests are the
 # gate's (rake), on every system, which CI runs after the push.
 desc "The fast check before a push, of the commits since BASE (default: the upstream, or origin/trunk); bin/check sets up and runs it"
 task :check, [:base] do |_task, arguments|
@@ -63,6 +65,7 @@ task :check, [:base] do |_task, arguments|
     *(%w[steep rbs:validate rbs:parity] if check.typed?),
     *("lint:safe_rdoc_coverage" if check.documented?),
     "test",
+    "package:check",
   ]
   steps.each do |step|
     Rake::Task[step].invoke

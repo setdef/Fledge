@@ -527,3 +527,10 @@ The orchestrating agent received these words first-hand from the maintainer.
 [re: the agents' first reading of the words above, that the candidate needs automation that notices a newer upstream release.]
 
 *Governs:* the candidate for 1.0.0 has automation that takes care of all of it: when an input a runtime is built from has a newer release upstream, Fledge moves the pin, proves the new runtimes in CI, and releases, with no person or agent in the loop on the happy path, and the maintainer is not pinged. A person is called only when that path fails. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; the scheduled workflow that keeps the pins current.
+
+> My reading of this is that if a human decides to trust a deterministic process with it, that counts as a human decision. For example, trusting `gem push` instead of making raw HTTP requests. For another example... trusting GitHub Actions.
+
+[re: 2026-11-22. The orchestrating agent had said that his rule of 2026-11-02, that publishing to RubyGems.org is a human-only activity, left open whether a workflow may publish there when a release is made with nobody in the loop.]
+
+*Governs:* a deterministic process that the maintainer has decided to trust may publish Fledge to RubyGems.org, and that counts as the human's act: a GitHub Actions workflow, once he has set RubyGems.org to trust it. An agent still never publishes there itself, and never sets up that trust, which is done in his account. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`.
+

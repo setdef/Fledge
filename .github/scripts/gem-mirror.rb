@@ -7,8 +7,8 @@
 #++
 
 # A credentialed mirror of RubyGems.org on the loopback interface, for the
-# job that builds examples/real_gems: Bundler's own mirror setting
-# (BUNDLE_MIRROR__HTTPS://RUBYGEMS__ORG/) points the example's Bundler and
+# job that builds test/fixtures/real_gems: Bundler's own mirror setting
+# (BUNDLE_MIRROR__HTTPS://RUBYGEMS__ORG/) points the fixture's Bundler and
 # Fledge at it, and its login setting (BUNDLE_127__0__0__1) gives them the
 # password it asks for. It answers 401 to a request without that HTTP Basic
 # login, forwards any other GET to RubyGems.org, and appends a line to its

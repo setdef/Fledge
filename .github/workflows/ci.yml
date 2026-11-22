@@ -1473,7 +1473,7 @@ jobs:
   # Windows and which compiles from source elsewhere, with the ffi it
   # needs compiled everywhere; and spreadsheet, a GPL gem, with the
   # bigdecimal it needs, the one the runtime's Ruby bundles.
-  # examples/real_gems (doc/contributors/design/gems.md, "Examples that
+  # test/fixtures/real_gems (doc/contributors/design/gems.md, "Examples that
   # exercise these rules"): the gems real apps lock, from a credentialed
   # mirror, a folder outside the project, a path gem with an extension, git
   # with a submodule, and an optional group. The Mac and Windows build
@@ -1735,7 +1735,7 @@ jobs:
         run: ruby -I lib exe/fledge build -o dist test/fixtures/nokogiri_app
 
       # doc/contributors/design/gems.md, "Examples that exercise these
-      # rules": the gems real apps lock. examples/real_gems takes RubyGems.org
+      # rules": the gems real apps lock. test/fixtures/real_gems takes RubyGems.org
       # through a mirror that wants a login, as its .bundle/config says in
       # Bundler's own settings, from a loopback server of ours
       # (.github/scripts/gem-mirror.rb); a gem from a folder outside its
@@ -1753,7 +1753,7 @@ jobs:
           mirror=$!
           sleep 3
           status=0
-          ruby -I lib exe/fledge build -o dist examples/real_gems || status=$?
+          ruby -I lib exe/fledge build -o dist test/fixtures/real_gems || status=$?
           kill "$mirror" || true
           cat "$RUNNER_TEMP/mirror.log"
           [ "$status" = 0 ] || exit "$status"

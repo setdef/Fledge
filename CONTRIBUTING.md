@@ -90,7 +90,7 @@ Root-cause a failure before you run it again (AGENTS.md, How to work), and once 
 - **mise's Ruby download timing out after 20 seconds**: run the failed jobs again.
 - **A Gradle build that fails with `Received status code 429 from server: Too Many Requests`, or `Could not find` for modules Maven Central has**: Central refused the runner's shared address (`doc/contributors/design/phone-projects.md`, "Gradle's downloads in CI", says what the cache spares and where a failed job's `--info` log is). Run the failed job again, which may land on another runner.
 
-To try a change to CI without disturbing `trunk`, push it to an `experiment/*` branch with a workflow that runs only the jobs in question; the spikes of musl Linux and Windows on ARM ran that way, on `experiment/signing`. A spike's code is thrown away and its findings kept, in `doc/contributors/research/`. Leave every such branch in place: `experiment/submodule-gem` is the git gem with a submodule that `examples/real_gems` locks.
+To try a change to CI without disturbing `trunk`, push it to an `experiment/*` branch with a workflow that runs only the jobs in question; the spikes of musl Linux and Windows on ARM ran that way, on `experiment/signing`. A spike's code is thrown away and its findings kept, in `doc/contributors/research/`. Leave every such branch in place: `experiment/submodule-gem` is the git gem with a submodule that `test/fixtures/real_gems` locks.
 
 ### Android on Linux
 

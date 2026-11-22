@@ -6,12 +6,11 @@
 #++
 
 Gem::Specification.new do |spec|
-  spec.name = "shared"
+  spec.name = "greeter"
   spec.version = "1.0.0"
   spec.authors = ["Kerrick Long"]
-  spec.summary = "A gem in a folder beside examples/real_gems, outside its project"
+  spec.summary = "A path gem with a C extension, in test/fixtures/real_gems"
   spec.license = "MIT-0"
-  spec.files = ["lib/shared.rb", "exe/shared-cli"]
-  spec.bindir = "exe"
-  spec.executables = ["shared-cli"]
+  spec.files = ["lib/greeter.rb", "ext/greeter/extconf.rb", "ext/greeter/greeter.c"]
+  spec.extensions = ["ext/greeter/extconf.rb"]
 end

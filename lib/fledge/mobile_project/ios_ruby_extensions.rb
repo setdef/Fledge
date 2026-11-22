@@ -24,7 +24,15 @@ module Fledge
     # Each framework is made as a library for Ruby's ffi is
     # (IOSLibraries.xcframework), and each listed file becomes a relative
     # link to its framework's binary in the app (IOSLibraries.target).
-    # A runtime whose Ruby is static, as 0.17.0's, lists none.
+    # An extension that links a library Apple asks a privacy manifest of,
+    # as OpenSSL's does, has that library's own manifest in each slice's
+    # PRIVACY folder, as NAME.xcprivacy, which its framework carries as
+    # PrivacyInfo.xcprivacy, as CPython's iOS build moves MODULE.xcprivacy
+    # into a module's framework (Apple/testbed/Python.xcframework/build/
+    # utils.sh at v3.14.0, lines 63 to 112). The runtime keeps it beside
+    # its list rather than beside the file, so that Ruby's tree holds
+    # what a desktop's does. A runtime whose Ruby is static, as 0.17.0's,
+    # lists none.
     #
     # Use it from MobileProject::IOS, once the runtime is in the project.
     #
@@ -44,6 +52,9 @@ module Fledge
     class IOSRubyExtensions
       # The list in each slice of the runtime's extensions.
       LINKS = "fledge.links"
+
+      # The folder in each slice of the extensions' privacy manifests.
+      PRIVACY = "privacy"
 
       # The framework of Ruby's own in each slice of a runtime whose Ruby
       # is dynamic.
@@ -73,12 +84,18 @@ module Fledge
         end
       end
 
+      # The privacy manifest of the framework +name+ in each slice that
+      # keeps one.
+      def manifests(name)
+        slices.to_h { |slice| [slice, File.join(@runtime, slice, PRIVACY, "#{name}.xcprivacy")] }.select { |_slice, path| File.file?(path) }
+      end
+
       # Writes each framework's XCFramework into +project+, for an app
       # whose bundle identifier is +identifier+ and bundle version
       # +version+, and returns their names.
       def call(project, identifier:, version:)
         frameworks.map do |name, files|
-          IOSLibraries.xcframework(project, name, files, identifier:, version:)
+          IOSLibraries.xcframework(project, name, files, identifier:, version:, manifests: manifests(name))
           name
         end
       end

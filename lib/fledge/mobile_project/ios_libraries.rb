@@ -151,14 +151,17 @@ module Fledge
       # dynamic library at its path there, with the install name
       # <tt>@rpath/NAME.framework/NAME</tt> and the Info.plist #info gives
       # for an app whose bundle identifier is +identifier+ and bundle
-      # version +version+.
-      def self.xcframework(project, name, slices, identifier:, version:)
+      # version +version+, and for each slice in +manifests+ that privacy
+      # manifest as its PrivacyInfo.xcprivacy.
+      def self.xcframework(project, name, slices, identifier:, version:, manifests: {})
         Dir.mktmpdir("fledge-framework") do |work|
           made = slices.flat_map do |slice, path|
             folder = File.join(work, slice, "#{name}.framework")
             FileUtils.mkdir_p(folder)
             binary = File.join(folder, name)
             FileUtils.cp(path, binary)
+            manifest = manifests[slice]
+            FileUtils.cp(manifest, File.join(folder, "PrivacyInfo.xcprivacy")) if manifest
             Command.run("xcrun", "install_name_tool", "-id", "@rpath/#{name}.framework/#{name}", binary,
               install: MobileExtensions::INSTALL_XCODE)
             json = File.join(work, "#{slice}.json")

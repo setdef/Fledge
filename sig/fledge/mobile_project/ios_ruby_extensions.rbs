@@ -6,6 +6,7 @@ module Fledge
     class IOSRubyExtensions
       LINKS: String
       RUBY: String
+      PRIVACY: String
 
       @runtime: String
       @listed: Hash[String, Hash[String, Array[String]]]?
@@ -15,6 +16,8 @@ module Fledge
       def dynamic?: () -> bool
 
       def frameworks: () -> Hash[String, Hash[String, String]]
+
+      def manifests: (String name) -> Hash[String, String]
 
       def call: (String project, identifier: String, version: String) -> Array[String]
 

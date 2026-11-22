@@ -60,6 +60,21 @@ class IOSRubyExtensionsTest < Minitest::Test
       "ios-arm64-simulator fledgerubyext.io.console.bundle", error.message
   end
 
+  # OpenSSL's extension carries OpenSSL's own privacy manifest, which
+  # the runtime keeps beside its list, out of Ruby's tree.
+  def test_an_extension_whose_slices_keep_a_privacy_manifest_has_it_in_its_framework
+    runtime("fledgerubyext.openssl.bundle" => "4.1.0/arm64-darwin/openssl.bundle",
+      "fledgerubyext.etc.bundle" => "4.1.0/arm64-darwin/etc.bundle")
+    SLICES.each do |slice|
+      FileUtils.mkdir_p(File.join(@runtime, slice, "privacy"))
+      File.write(File.join(@runtime, slice, "privacy", "fledgerubyext.openssl.bundle.xcprivacy"), "<plist/>")
+    end
+
+    assert_equal SLICES.to_h { |slice| [slice, File.join(@runtime, slice, "privacy", "fledgerubyext.openssl.bundle.xcprivacy")] },
+      extensions.manifests("fledgerubyext.openssl.bundle")
+    assert_empty extensions.manifests("fledgerubyext.etc.bundle")
+  end
+
   # A bundled gem's extension is installed twice, in the gem's require
   # path and its extension folder, and both paths lead to one framework.
   def test_each_listed_path_in_each_slice_becomes_a_link_to_its_framework_in_the_app

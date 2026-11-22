@@ -1,0 +1,144 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Where each pin of runtime/sources.yml is released upstream, so that
+# tasks/pin_watch.rb can find a release newer than the pin with nobody
+# remembering to look (doc/contributors/design/runtimes.md, "Keeping the
+# pins current"). A test fails when a component of runtime/sources.yml
+# is in neither list below, so a new pin is watched, or says why not.
+#
+# Each watched entry names:
+#
+# pins: the components of runtime/sources.yml it is the upstream of, as
+#   dotted paths; every one holds the same version, or the watch fails.
+# field: the key of each pin that holds its version (version by
+#   default), and current, a pattern whose version capture takes it out
+#   of that value when the value holds more than the version.
+# github: the repository whose releases are listed, with tag, a pattern
+#   whose version capture is a release's version, which a tag that does
+#   not match is not. Drafts and releases GitHub marks as prereleases
+#   are left out.
+# page: or the URL of a listing with no API, with pattern, which finds
+#   every version on it.
+# line: when set, how many leading numbers of the version make a line
+#   the pin stays in: a newer release in the line is the pin's next
+#   version, and one beyond it is reported but not taken.
+# ships: false for an input no runtime or app carries, which CI alone
+#   uses; true by default.
+#
+# A version that Ruby's Gem::Version calls a prerelease (one with a
+# letter in it, as 4.1.0-preview2 or 9.6.0-alpha05) counts only when the
+# pin is a prerelease too.
+watched:
+  # Ruby itself, from Ruby's own index of every release it has published,
+  # which gives each tarball's SHA-256. Ruby's minor versions are lines:
+  # a move to the next one is a planned change (releases.md, "Ruby minors
+  # and runtimes").
+  ruby:
+    pins: [ruby, mobile.ruby, musl-ruby.ruby, ruby-build.ruby]
+    page: https://cache.ruby-lang.org/pub/ruby/index.txt
+    pattern: '^ruby-(?<version>\d+\.\d+\.\d+(?:-(?:preview|rc)\d+)?)\t\S+\.tar\.gz\t'
+    line: 2
+  # rv-ruby's release of the macOS and glibc Linux Rubies, which compile
+  # in their own OpenSSL, libyaml, libffi, and zlib, so a newer rv-ruby
+  # release is how those reach the runtimes. rubies is its rolling tag.
+  rv-ruby:
+    pins: [ruby]
+    field: release
+    github: spinel-coop/rv-ruby
+    tag: '\A(?<version>\d{8})\z'
+  # RubyInstaller's numbered release of the pinned Ruby, which replaces
+  # the head build Windows runs while Ruby 4.1 is a preview (runtimes.md,
+  # "Windows' Ruby until Ruby 4.1.0").
+  rubyinstaller:
+    pins: [ruby]
+    github: oneclick/rubyinstaller2
+    tag: '\ARubyInstaller-(?<version>\d+\.\d+\.\d+)-\d+\z'
+    line: 2
+  llvm-mingw:
+    pins: [llvm-mingw]
+    github: mstorsjo/llvm-mingw
+    tag: '\A(?<version>\d{8})\z'
+  libxcrypt:
+    pins: [libxcrypt]
+    github: besser82/libxcrypt
+    tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
+  rcedit:
+    pins: [rcedit]
+    github: electron/rcedit
+    tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
+  llvm-readobj:
+    pins: [llvm-readobj]
+    github: llvm/llvm-project
+    tag: '\Allvmorg-(?<version>\d+\.\d+\.\d+)\z'
+  # continuous is its rolling tag, and old its archive.
+  appimage-runtime:
+    pins: [appimage-runtime]
+    github: AppImage/type2-runtime
+    tag: '\A(?<version>\d{8})\z'
+  # The files SourceForge lists in the NSIS 3 folder, as an RSS feed.
+  nsis:
+    pins: [nsis]
+    page: https://sourceforge.net/projects/nsis/rss?path=/NSIS%203
+    pattern: '/NSIS%203/(?<version>3\.\d+(?:\.\d+)?)/'
+  # The OpenSSL release line RubyInstaller's Windows Ruby links.
+  openssl:
+    pins: [mobile.openssl, musl-ruby.openssl]
+    github: openssl/openssl
+    tag: '\Aopenssl-(?<version>\d+\.\d+\.\d+)\z'
+    line: 2
+  libyaml:
+    pins: [mobile.libyaml, musl-ruby.libyaml]
+    github: yaml/libyaml
+    tag: '\A(?<version>\d+\.\d+\.\d+)\z'
+  libffi:
+    pins: [mobile.libffi, musl-ruby.libffi]
+    github: libffi/libffi
+    tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
+  zlib:
+    pins: [musl-ruby.zlib]
+    github: madler/zlib
+    tag: '\Av(?<version>\d+\.\d+(?:\.\d+)*)\z'
+  # curl's page of Mozilla's CA certificates, which links every dated
+  # extract it has published.
+  ca-certificates:
+    pins: [mobile.ca-certificates, musl-ruby.ca-certificates]
+    current: '\Acacert-(?<version>\d{4}-\d{2}-\d{2})\z'
+    page: https://curl.se/docs/caextract.html
+    pattern: 'cacert-(?<version>\d{4}-\d{2}-\d{2})\.pem'
+  # Google's repository of Android's SDK packages, the one Android
+  # Studio's SDK manager reads; channel-0 is its stable channel.
+  ndk:
+    pins: [mobile.ndk]
+    field: revision
+    page: https://dl.google.com/android/repository/repository2-3.xml
+    pattern: 'path="ndk;(?<version>[\d.]+)">(?:(?!</remotePackage>).)*?<channelRef ref="channel-0"/>'
+  gradle:
+    pins: [mobile.gradle]
+    page: https://services.gradle.org/versions/current
+    pattern: '"version" : "(?<version>[^"]+)"'
+  agp:
+    pins: [mobile.agp]
+    page: https://dl.google.com/android/maven2/com/android/tools/build/gradle/maven-metadata.xml
+    pattern: '<version>(?<version>[^<]+)</version>'
+  xcodegen:
+    pins: [mobile.xcodegen]
+    github: yonaskolb/XcodeGen
+    tag: '\A(?<version>\d+\.\d+\.\d+)\z'
+    ships: false
+  bundletool:
+    pins: [mobile.bundletool]
+    github: google/bundletool
+    tag: '\A(?<version>\d+\.\d+\.\d+)\z'
+    ships: false
+
+# Components that are not watched on their own, each with the reason.
+unwatched:
+  gmp: Moves with the Windows Ruby, whose DLL a runtime ships byte for byte from RubyInstaller.
+  windows-dlls.libz-1.dll: Moves with the Windows Ruby, whose zlib1.dll comes from the same MSYS2 build.
+  windows-dlls.libgcc_s_seh-1.dll: Moves with the Windows Ruby, the MSYS2 build its blake3.so was linked against.
+  libfuse: Moves with appimage-runtime, as the libfuse its install-dependencies.sh builds in.
+  replaceability.musl: CI's stand-in for libxcrypt in the replaceability proof, which no runtime carries.
+  replaceability.gmp: CI's stand-in for an older GMP in the replaceability proof, which must stay older.
+  mobile.xcode: Apple publishes no download to pin; CI chooses Xcode by version on the runner.
+  ruby-build.rust: Builds no runtime; it follows the Rust that mise.toml pins.

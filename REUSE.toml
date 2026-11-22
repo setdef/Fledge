@@ -241,3 +241,11 @@ SPDX-License-Identifier = "MIT-0"
 path = 'test/fixtures/runnerless/*.json'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "CC0-1.0"
+
+# What each upstream of runtime/upstreams.yml answered, cut down to the
+# lines that name a version, which test/pin_watch_test.rb serves; an
+# answer has no place for a header.
+[[annotations]]
+path = 'test/fixtures/pin_watch/*'
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
+SPDX-License-Identifier = "CC0-1.0"

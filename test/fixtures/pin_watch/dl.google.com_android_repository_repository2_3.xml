@@ -1,0 +1,747 @@
+  <remotePackage path="ndk;30.0.16248370">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>30</major>
+      <minor>0</minor>
+      <micro>16248370</micro>
+    </revision>
+    <display-name>NDK (Side by side) 30.0.16248370</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;30.0.16138531">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>30</major>
+      <minor>0</minor>
+      <micro>16138531</micro>
+      <preview>3</preview>
+    </revision>
+    <display-name>NDK (Side by side) 30.0.16138531</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;30.0.15729638">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>30</major>
+      <minor>0</minor>
+      <micro>15729638</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 30.0.15729638</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;30.0.14904198">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>30</major>
+      <minor>0</minor>
+      <micro>14904198</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 30.0.14904198</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;29.0.14206865">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>29</major>
+      <minor>0</minor>
+      <micro>14206865</micro>
+    </revision>
+    <display-name>NDK (Side by side) 29.0.14206865</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;29.0.14033849">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>29</major>
+      <minor>0</minor>
+      <micro>14033849</micro>
+      <preview>4</preview>
+    </revision>
+    <display-name>NDK (Side by side) 29.0.14033849</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;29.0.13846066">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>29</major>
+      <minor>0</minor>
+      <micro>13846066</micro>
+      <preview>3</preview>
+    </revision>
+    <display-name>NDK (Side by side) 29.0.13846066</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;27.3.13750724">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>27</major>
+      <minor>3</minor>
+      <micro>13750724</micro>
+    </revision>
+    <display-name>NDK (Side by side) 27.3.13750724</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;28.2.13676358">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>28</major>
+      <minor>2</minor>
+      <micro>13676358</micro>
+    </revision>
+    <display-name>NDK (Side by side) 28.2.13676358</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;29.0.13599879">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>29</major>
+      <minor>0</minor>
+      <micro>13599879</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 29.0.13599879</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;28.1.13356709">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>28</major>
+      <minor>1</minor>
+      <micro>13356709</micro>
+    </revision>
+    <display-name>NDK (Side by side) 28.1.13356709</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;29.0.13113456">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>29</major>
+      <minor>0</minor>
+      <micro>13113456</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 29.0.13113456</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;28.0.13004108">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>28</major>
+      <minor>0</minor>
+      <micro>13004108</micro>
+    </revision>
+    <display-name>NDK (Side by side) 28.0.13004108</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;28.0.12916984">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>28</major>
+      <minor>0</minor>
+      <micro>12916984</micro>
+      <preview>3</preview>
+    </revision>
+    <display-name>NDK (Side by side) 28.0.12916984</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;28.0.12674087">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>28</major>
+      <minor>0</minor>
+      <micro>12674087</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 28.0.12674087</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;27.2.12479018">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>27</major>
+      <minor>2</minor>
+      <micro>12479018</micro>
+    </revision>
+    <display-name>NDK (Side by side) 27.2.12479018</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;28.0.12433566">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>28</major>
+      <minor>0</minor>
+      <micro>12433566</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 28.0.12433566</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;27.1.12297006">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>27</major>
+      <minor>1</minor>
+      <micro>12297006</micro>
+    </revision>
+    <display-name>NDK (Side by side) 27.1.12297006</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;27.0.12077973">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>27</major>
+      <minor>0</minor>
+      <micro>12077973</micro>
+    </revision>
+    <display-name>NDK (Side by side) 27.0.12077973</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;27.0.11902837">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>27</major>
+      <minor>0</minor>
+      <micro>11902837</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 27.0.11902837</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;27.0.11718014">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>27</major>
+      <minor>0</minor>
+      <micro>11718014</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 27.0.11718014</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;26.3.11579264">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>26</major>
+      <minor>3</minor>
+      <micro>11579264</micro>
+    </revision>
+    <display-name>NDK (Side by side) 26.3.11579264</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.0.7344513">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>0</minor>
+      <micro>7344513</micro>
+      <preview>4</preview>
+    </revision>
+    <display-name>NDK (Side by side) 23.0.7344513</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.0.7272597">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>0</minor>
+      <micro>7272597</micro>
+      <preview>3</preview>
+    </revision>
+    <display-name>NDK (Side by side) 23.0.7272597</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.0.7196353">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>0</minor>
+      <micro>7196353</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 23.0.7196353</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.0.7123448">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>0</minor>
+      <micro>7123448</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 23.0.7123448</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;22.1.7171670">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>22</major>
+      <minor>1</minor>
+      <micro>7171670</micro>
+    </revision>
+    <display-name>NDK (Side by side) 22.1.7171670</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;22.0.7026061">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>22</major>
+      <minor>0</minor>
+      <micro>7026061</micro>
+    </revision>
+    <display-name>NDK (Side by side) 22.0.7026061</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;22.0.6917172">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>22</major>
+      <minor>0</minor>
+      <micro>6917172</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 22.0.6917172</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.4.7075529">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>4</minor>
+      <micro>7075529</micro>
+    </revision>
+    <display-name>NDK (Side by side) 21.4.7075529</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.3.6528147">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>3</minor>
+      <micro>6528147</micro>
+    </revision>
+    <display-name>NDK (Side by side) 21.3.6528147</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.2.6472646">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>2</minor>
+      <micro>6472646</micro>
+    </revision>
+    <display-name>NDK (Side by side) 21.2.6472646</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.1.6352462">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>1</minor>
+      <micro>6352462</micro>
+    </revision>
+    <display-name>NDK (Side by side) 21.1.6352462</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.1.6363665">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>1</minor>
+      <micro>6363665</micro>
+      <preview>3</preview>
+    </revision>
+    <display-name>NDK (Side by side) 21.1.6363665</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-2"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.1.6273396">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>1</minor>
+      <micro>6273396</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 21.1.6273396</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-2"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.1.6210238">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>1</minor>
+      <micro>6210238</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 21.1.6210238</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-2"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.0.6113669">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>0</minor>
+      <micro>6113669</micro>
+    </revision>
+    <display-name>NDK (Side by side) 21.0.6113669</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;21.0.6011959">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>21</major>
+      <minor>0</minor>
+      <micro>6011959</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 21.0.6011959</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;20.1.5948944">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>20</major>
+      <minor>1</minor>
+      <micro>5948944</micro>
+    </revision>
+    <display-name>NDK (Side by side) 20.1.5948944</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;20.0.5594570">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>20</major>
+      <minor>0</minor>
+      <micro>5594570</micro>
+    </revision>
+    <display-name>NDK (Side by side) 20.0.5594570</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;19.2.5345600">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>19</major>
+      <minor>2</minor>
+      <micro>5345600</micro>
+    </revision>
+    <display-name>NDK (Side by side) 19.2.5345600</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;18.1.5063045">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>18</major>
+      <minor>1</minor>
+      <micro>5063045</micro>
+    </revision>
+    <display-name>NDK (Side by side) 18.1.5063045</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;17.2.4988734">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>17</major>
+      <minor>2</minor>
+      <micro>4988734</micro>
+    </revision>
+    <display-name>NDK (Side by side) 17.2.4988734</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;16.1.4479499">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>16</major>
+      <minor>1</minor>
+      <micro>4479499</micro>
+    </revision>
+    <display-name>NDK (Side by side) 16.1.4479499</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;26.2.11394342">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>26</major>
+      <minor>2</minor>
+      <micro>11394342</micro>
+    </revision>
+    <display-name>NDK (Side by side) 26.2.11394342</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;26.1.10909125">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>26</major>
+      <minor>1</minor>
+      <micro>10909125</micro>
+    </revision>
+    <display-name>NDK (Side by side) 26.1.10909125</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;26.0.10792818">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>26</major>
+      <minor>0</minor>
+      <micro>10792818</micro>
+    </revision>
+    <display-name>NDK (Side by side) 26.0.10792818</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;26.0.10636728">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>26</major>
+      <minor>0</minor>
+      <micro>10636728</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 26.0.10636728</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;26.0.10404224">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>26</major>
+      <minor>0</minor>
+      <micro>10404224</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 26.0.10404224</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;25.2.9519653">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>25</major>
+      <minor>2</minor>
+      <micro>9519653</micro>
+    </revision>
+    <display-name>NDK (Side by side) 25.2.9519653</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;25.1.8937393">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>25</major>
+      <minor>1</minor>
+      <micro>8937393</micro>
+    </revision>
+    <display-name>NDK (Side by side) 25.1.8937393</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;25.0.8775105">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>25</major>
+      <minor>0</minor>
+      <micro>8775105</micro>
+    </revision>
+    <display-name>NDK (Side by side) 25.0.8775105</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;25.0.8528842">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>25</major>
+      <minor>0</minor>
+      <micro>8528842</micro>
+      <preview>4</preview>
+    </revision>
+    <display-name>NDK (Side by side) 25.0.8528842</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;25.0.8355429">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>25</major>
+      <minor>0</minor>
+      <micro>8355429</micro>
+      <preview>3</preview>
+    </revision>
+    <display-name>NDK (Side by side) 25.0.8355429</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;25.0.8221429">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>25</major>
+      <minor>0</minor>
+      <micro>8221429</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 25.0.8221429</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;25.0.8151533">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>25</major>
+      <minor>0</minor>
+      <micro>8151533</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 25.0.8151533</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;24.0.8079956">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>24</major>
+      <minor>0</minor>
+      <micro>8079956</micro>
+      <preview>3</preview>
+    </revision>
+    <display-name>NDK (Side by side) 24.0.8079956</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;24.0.8215888">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>24</major>
+      <minor>0</minor>
+      <micro>8215888</micro>
+    </revision>
+    <display-name>NDK (Side by side) 24.0.8215888</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;24.0.7956693">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>24</major>
+      <minor>0</minor>
+      <micro>7956693</micro>
+      <preview>2</preview>
+    </revision>
+    <display-name>NDK (Side by side) 24.0.7956693</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;24.0.7856742">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>24</major>
+      <minor>0</minor>
+      <micro>7856742</micro>
+      <preview>1</preview>
+    </revision>
+    <display-name>NDK (Side by side) 24.0.7856742</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.2.8568313">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>2</minor>
+      <micro>8568313</micro>
+    </revision>
+    <display-name>NDK (Side by side) 23.2.8568313</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.1.7779620">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>1</minor>
+      <micro>7779620</micro>
+    </revision>
+    <display-name>NDK (Side by side) 23.1.7779620</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.0.7599858">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>0</minor>
+      <micro>7599858</micro>
+    </revision>
+    <display-name>NDK (Side by side) 23.0.7599858</display-name>
+    <uses-license ref="android-sdk-license"/>
+    <channelRef ref="channel-0"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.0.7530507">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>0</minor>
+      <micro>7530507</micro>
+      <preview>6</preview>
+    </revision>
+    <display-name>NDK (Side by side) 23.0.7530507</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>
+  <remotePackage path="ndk;23.0.7421159">
+    <type-details xsi:type="generic:genericDetailsType"/>
+    <revision>
+      <major>23</major>
+      <minor>0</minor>
+      <micro>7421159</micro>
+      <preview>5</preview>
+    </revision>
+    <display-name>NDK (Side by side) 23.0.7421159</display-name>
+    <uses-license ref="android-sdk-preview-license"/>
+    <channelRef ref="channel-1"/>
+      </remotePackage>

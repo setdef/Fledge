@@ -1,0 +1,112 @@
+[
+  {
+    "tag_name": "v3.8.1",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.8.0",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.7.1",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.7.0",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.6.0",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.5.2",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.5.1",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "snapshots",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "v3.5.0",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.4.8",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.4.7",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.4.6",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.4.5",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.4.4",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.4.3",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.4.2",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.4.0-rc2",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "v3.4-rc1",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "v3.3",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v3.3-rc2",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "v3.3-rc1",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "v3.3-rc0",
+    "draft": false,
+    "prerelease": true
+  }
+]

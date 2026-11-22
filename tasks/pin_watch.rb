@@ -1,0 +1,250 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+#++
+
+require "json"
+require "net/http"
+require "rubygems"
+require "uri"
+require "yaml"
+
+# Finds the pins of runtime/sources.yml that upstream has released a
+# newer version of (doc/contributors/design/runtimes.md, "Keeping the
+# pins current").
+#
+# Every input a runtime is built from is pinned, so a security fix
+# upstream, in OpenSSL or in Ruby itself, reaches no app until the pin
+# moves. Nothing in the pins says when upstream has moved, and a person
+# who has to remember to look will not, every day, for every input.
+#
+# This reads where each pin is released (runtime/upstreams.yml), asks
+# each upstream once for what it has released, and says, for each, the
+# newest release in the pin's line and the newest beyond it. It changes
+# nothing: what it finds is for the scheduled workflow to act on.
+#
+#   watch = PinWatch.load(".")
+#   report = watch.run(PinWatch::Fetch.new(token: ENV["GITHUB_TOKEN"]))
+#   report.map(&:status)   # => [:current, :newer, ...]
+class PinWatch < Data.define(:sources, :upstreams, :unwatched)
+  # Something an upstream's answer or a pin does not hold as expected.
+  class Error < StandardError; end
+
+  # What the watch found for one upstream: the pin's version, the newest
+  # release in its line, and the newest beyond the line, or the error
+  # that kept it from knowing.
+  class Finding < Data.define(:name, :pins, :ships, :current, :newer, :beyond, :error)
+    # :error when the upstream could not be read, :newer when it has a
+    # release in the pin's line newer than the pin, :beyond when its only
+    # newer release is in another line, and :current otherwise.
+    def status
+      if error then :error
+      elsif newer then :newer
+      elsif beyond then :beyond
+      else :current
+      end
+    end
+
+    # The finding as JSON's types, for the report file.
+    def to_h
+      {
+"name" => name,
+"status" => status.to_s,
+"pins" => pins,
+"ships" => ships,
+"current" => current,
+"newer" => newer,
+"beyond" => beyond,
+"error" => error,
+}.compact
+    end
+  end
+
+  # Where one input is released, as runtime/upstreams.yml says.
+  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships)
+    # The upstream runtime/upstreams.yml names +name+ with +entry+.
+    def self.from(name, entry)
+      if (repository = entry["github"])
+        url = "https://api.github.com/repos/#{repository}/releases?per_page=100"
+        pattern = entry.fetch("tag")
+      else
+        url = entry.fetch("page")
+        pattern = entry.fetch("pattern")
+      end
+      current = entry["current"] && Regexp.new(entry["current"])
+      new(name:, pins: entry.fetch("pins"), field: entry.fetch("field", "version"), current:, url:,
+        pattern: Regexp.new(pattern, Regexp::MULTILINE), line: entry["line"], ships: entry.fetch("ships", true))
+    end
+
+    # Whether the versions come from GitHub's list of releases.
+    def github?
+      url.start_with?("https://api.github.com/")
+    end
+
+    # Every version the upstream's answer +body+ lists.
+    def versions(body)
+      found = github? ? tags(body) : body.scan(pattern).map { |match| match[pattern.names.index("version")] }
+      raise Error, "#{url} lists no version that #{pattern.source} matches" if found.empty?
+
+      found.uniq
+    end
+
+    private def tags(body)
+      JSON.parse(body).reject { |release| release["draft"] || release["prerelease"] }
+        .filter_map { |release| release.fetch("tag_name")[pattern, "version"] }
+    rescue JSON::ParserError => e
+      raise Error, "#{url} answered with no JSON: #{e.message}"
+    end
+  end
+
+  # Fetches an upstream's answer over HTTPS, following redirects, with
+  # the token for GitHub's API when there is one (a public listing needs
+  # none, but an anonymous caller gets 60 requests an hour).
+  class Fetch
+    # How many redirects one request follows.
+    REDIRECTS = 5
+
+    def initialize(token: nil, timeout: 30)
+      @token = token
+      @timeout = timeout
+    end
+
+    # The body +url+ answers with.
+    def call(url, redirects = REDIRECTS)
+      uri = URI(url)
+      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: @timeout, read_timeout: @timeout) do |http|
+        http.request(request(uri))
+      end
+      return response.body if response.is_a?(Net::HTTPSuccess)
+      return call(URI.join(url, response["location"]).to_s, redirects - 1) if response.is_a?(Net::HTTPRedirection) && redirects.positive?
+
+      raise Error, "#{url} answered #{response.code}"
+    rescue SystemCallError, IOError, Timeout::Error, OpenSSL::SSL::SSLError => e
+      raise Error, "#{url} could not be read: #{e.message}"
+    end
+
+    private def request(uri)
+      request = Net::HTTP::Get.new(uri)
+      request["User-Agent"] = "Fledge pin watch (https://github.com/setdef/Fledge)"
+      if uri.host == "api.github.com"
+        request["Accept"] = "application/vnd.github+json"
+        request["Authorization"] = "Bearer #{@token}" if @token && !@token.empty?
+      end
+      request
+    end
+  end
+
+  # The watch of the checkout at +root+.
+  def self.load(root)
+    sources = YAML.safe_load_file(File.join(root, "runtime/sources.yml"))
+    file = YAML.safe_load_file(File.join(root, "runtime/upstreams.yml"))
+    new(sources:, upstreams: file.fetch("watched").map { |name, entry| Upstream.from(name, entry) }, unwatched: file.fetch("unwatched"))
+  end
+
+  # Every component of runtime/sources.yml, as a dotted path: each mapping
+  # that has a version, and each plain value that stands beside no
+  # version, as mobile.xcode does.
+  def components(node = sources, path = [])
+    node.flat_map do |key, value|
+      here = [*path, key]
+      if !value.is_a?(Hash) || value.key?("version") then [here.join(".")]
+      else components(value, here)
+      end
+    end
+  end
+
+  # The components that neither a watched upstream nor the unwatched list
+  # names.
+  def unaccounted
+    components - upstreams.flat_map(&:pins) - unwatched.keys
+  end
+
+  # What each upstream has released, asking +fetch+ once for each URL.
+  def run(fetch)
+    answers = Hash.new { |cache, url| cache[url] = fetch.call(url) }
+    upstreams.map { |upstream| find(upstream, answers) }
+  end
+
+  # The version the pins of +upstream+ hold.
+  def current(upstream)
+    values = upstream.pins.map { |pin| version_of(upstream, pin) }.uniq
+    raise Error, "#{upstream.pins.join(', ')} hold different versions: #{values.join(', ')}" unless values.one?
+
+    values.first
+  end
+
+  private def find(upstream, answers)
+    current = current(upstream)
+    newer = upstream.versions(answers[upstream.url]).select { |version| newer?(version, current) }
+    in_line, beyond = newer.partition { |version| same_line?(upstream, version, current) }
+    finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond))
+  rescue Error => e
+    finding(upstream, current:, error: e.message)
+  end
+
+  private def finding(upstream, current: nil, newer: nil, beyond: nil, error: nil)
+    Finding.new(name: upstream.name, pins: upstream.pins, ships: upstream.ships, current:, newer:, beyond:, error:)
+  end
+
+  private def version_of(upstream, pin)
+    value = sources.dig(*pin.split("."))
+    raise Error, "runtime/sources.yml has no #{pin}" if value.nil?
+
+    value = value.fetch(upstream.field) { raise Error, "#{pin} has no #{upstream.field}" } if value.is_a?(Hash)
+    return value.to_s unless upstream.current
+
+    value.to_s[upstream.current, "version"] or raise Error, "#{pin}'s #{upstream.field} #{value} does not match #{upstream.current.source}"
+  end
+
+  private def newer?(version, current)
+    candidate = gem_version(version)
+    return false if candidate.prerelease? && !gem_version(current).prerelease?
+
+    candidate > gem_version(current)
+  end
+
+  private def same_line?(upstream, version, current)
+    return true unless upstream.line
+
+    numbers(version).first(upstream.line) == numbers(current).first(upstream.line)
+  end
+
+  private def newest(versions)
+    versions.max_by { |version| gem_version(version) }
+  end
+
+  private def numbers(version)
+    gem_version(version).segments.take_while { |segment| segment.is_a?(Integer) }
+  end
+
+  # Dates (2026-03-19) and MSYS2's pkgrel (16.2.0-7) count as numbers,
+  # and RubyGems reads 4.1.0.preview1 as the prerelease it is.
+  private def gem_version(version)
+    Gem::Version.new(version.tr("-", "."))
+  rescue ArgumentError
+    raise Error, "#{version} is not a version"
+  end
+end
+
+# ruby tasks/pin_watch.rb [REPORT]
+# asks every upstream, prints what it found, writes it to REPORT as
+# JSON, and exits 0 when every pin is current, 3 when an upstream has a
+# newer release in a pin's line, and 1 when one could not be read.
+if $PROGRAM_NAME == __FILE__
+  report = PinWatch.load(File.expand_path("..", __dir__)).run(PinWatch::Fetch.new(token: ENV.fetch("GITHUB_TOKEN", nil)))
+  File.write(ARGV[0], JSON.pretty_generate(report.map(&:to_h))) if ARGV[0]
+  report.each do |finding|
+    puts [
+      finding.status.to_s.ljust(8),
+      finding.name.ljust(18),
+      finding.current,
+      finding.newer && "-> #{finding.newer}",
+      finding.beyond && "(beyond its line: #{finding.beyond})",
+      finding.error,
+].compact.join(" ")
+  end
+  exit 1 if report.any? { |finding| finding.status == :error }
+  exit((report.any? { |finding| finding.status == :newer }) ? 3 : 0)
+end

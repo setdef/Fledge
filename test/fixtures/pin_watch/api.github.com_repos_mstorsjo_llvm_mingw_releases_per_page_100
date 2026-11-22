@@ -1,0 +1,502 @@
+[
+  {
+    "tag_name": "20261117",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20261104",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20261020",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20261006",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260922",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260908",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260826",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260812",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20260728",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20260721",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20260616",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260602",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260519",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260505",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260421",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260407",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260324",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260311",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260224",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20260210",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20260127",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20260116",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20251216",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20251202",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20251118",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20251104",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20251021",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20251007",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250924",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250910",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250826",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250812",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20250730",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20250717",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20250709",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250613",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250528",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250514",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250430",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250417",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250402",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250319",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250305",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20250227",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20250212",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20250203",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20250114",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20241217",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20241203",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20241119",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20241030",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20241015",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20241001",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240917",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240903",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20240820",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20240805",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20240726",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20240619",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240606",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240518",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240502",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240417",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240404",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240320",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240308",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240306",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20240227",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20240221",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20240207",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20240130",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20231128",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20231114",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20231031",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20231017",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20231003",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20230919",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20230905",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20230822",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20230811",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20230730",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20230614",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20230603",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20230517",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20230504",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20230427",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "nightly",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20230320",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20230130",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20220906",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20220802",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20220323",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20220209",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20211002",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20210816",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "20210423",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20201020",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20200325",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20191230",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20190920",
+    "draft": false,
+    "prerelease": false
+  }
+]

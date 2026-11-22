@@ -87,6 +87,53 @@ Every input that comes from outside the repository is in `runtime/sources.yml`, 
 
 The Ruby versions pinned today: on macOS and Linux, `ruby`, `mobile.ruby`, and `musl-ruby.ruby` name the same release, 4.1.0-preview1, and the musl build runs in the Alpine Ruby image of that version. On Windows, `ruby` names RubyInstaller's head build of Ruby's main branch instead ("Windows' Ruby until Ruby 4.1.0", below). A move to a new Ruby moves all of them together.
 
+`runtime/upstreams.yml` says where each pin is released, so that a newer release upstream is found without anyone looking ("Keeping the pins current", below).
+
+## Keeping the pins current
+
+A pin holds a runtime to one release of each input. When OpenSSL, zlib, or Ruby itself fixes a security hole, no app built with Fledge gets the fix until the pin moves and Fledge releases, and nothing in a pin says upstream has moved. So the candidate for 1.0.0 has automation that moves the pins itself: when an input has a newer release, Fledge moves the pin, proves the new runtimes in CI, and releases, and nobody is told unless that path fails (decisions.md, 2026-11-22; `releases.md`, "Versions"). It is built in four steps, and only the first exists yet:
+
+1. **The watch**, `tasks/pin_watch.rb`, finds what is newer. Built.
+2. **The move** rewrites the pin and everything that names its version. Not built.
+3. **The proof**: a scheduled workflow puts the move on a branch and has CI run on it. Not built.
+4. **The release**: the release commit, the pin commit, the tag, and `release.yml`, run by the workflow. Not built.
+
+Until steps 2 to 4 exist, the candidate's requirement is not met, and the watch's report is for an agent to act on by hand.
+
+### The watch
+
+`runtime/upstreams.yml` names, for each watched input, the components of `runtime/sources.yml` it is the upstream of, the key that holds the version, and where its releases are listed: a GitHub repository, with a pattern for its tags, or a page with a pattern for the versions on it. Components that are not watched are listed there with the reason, such as GMP and the two DLLs Windows adds, which move with RubyInstaller's build and not on their own, and libfuse, which moves with AppImage's runtime. `test/pin_watch_test.rb` fails when a component of `runtime/sources.yml` is in neither list, so a new pin is watched or says why not.
+
+`ruby tasks/pin_watch.rb REPORT` asks each upstream once, compares its newest release with the pin, prints one line for each, writes them to REPORT as JSON, and exits 0 when every pin is current, 3 when one has a newer release, and 1 when an upstream could not be read or listed nothing its pattern takes. It reads public listings and needs no token, though GitHub gives an anonymous caller 60 requests an hour and the workflow passes its own. Releases GitHub marks as drafts or prereleases are left out, and so is any version with a letter in it, as `4.1.0-preview2` or `9.6.0-alpha05`, unless the pin is a prerelease too: while Ruby's pin is 4.1.0-preview1, preview2 is its next version.
+
+An input with `line` stays in a line: OpenSSL in 3.6, the line RubyInstaller's Ruby links, and Ruby in 4.1. A newer release in the line is the pin's next version, and one beyond it is reported as `beyond` and not taken, since a new line of OpenSSL or a new Ruby minor is planned work (`releases.md`, "Ruby minors and runtimes"), which AGENTS.md has arrive on purpose. Every other input takes its newest release, and CI is what proves it fits.
+
+Run by hand on 2026-11-22 against the real upstreams, it found ten pins behind: rv-ruby (20261023, newest 20261119), llvm-mingw (20261020, 20261117), llvm-readobj (23.1.4, 23.1.6), libyaml (0.2.5, 0.2.6), libffi (3.5.2, 3.8.1), zlib (1.3.2, 1.4), the CA certificates (2026-03-19, 2026-11-05), Gradle (9.8.2, 9.9.2), the Android Gradle plugin (9.4.1, 9.5.2), and XcodeGen (2.46.0, 2.48.0); OpenSSL 3.6.5 is the newest of its line, with 4.1.0 beyond it. The tests read what each upstream answered that day, cut down to the lines that name a version, in `test/fixtures/pin_watch/`; no test reaches an upstream.
+
+### What each upstream offers
+
+| Upstream | Listing | What it gives besides the version |
+|---|---|---|
+| GitHub releases: rv-ruby, RubyInstaller, llvm-mingw, libxcrypt, rcedit, LLVM, AppImage's runtime, OpenSSL, libyaml, libffi, zlib, XcodeGen, bundletool | GitHub's REST API, `GET /repos/OWNER/REPO/releases` | Each asset's `digest`, its SHA-256 as GitHub recorded it on upload ("Release assets", docs.github.com/en/rest/releases/assets), the very SHA-256 `runtime/sources.yml`'s comments say its GitHub pins hold (on 2026-11-22 it matched the pins of OpenSSL 3.6.5 and of rv-ruby's x86_64 Linux archive); OpenSSL's and RubyInstaller's PGP signatures beside their files |
+| Ruby | `cache.ruby-lang.org/pub/ruby/index.txt`, a plain listing of every release | Each file's SHA-1, SHA-256, and SHA-512 |
+| Gradle | `services.gradle.org/versions/current`, a JSON API | The distribution's URL, and its SHA-256 beside it as `.sha256` |
+| Android's NDK | `dl.google.com/android/repository/repository2-3.xml`, the repository Android Studio's SDK manager reads, with a channel for each package | Each archive's size and SHA-1 |
+| Android Gradle plugin | Google's Maven repository's `maven-metadata.xml` | Maven's checksums beside each file |
+| Mozilla's CA certificates | curl's page, `curl.se/docs/caextract.html` | A `.sha256` beside each dated file |
+| NSIS | SourceForge's RSS feed of the NSIS 3 folder | SourceForge's SHA-1 and MD5 of each file |
+
+None of the listings is signed. The watch reads the version only; the move (step 2) takes the SHA-256 from the upstream's own record where it has one, GitHub's digest or Ruby's index, and checks a signature where the upstream signs, as the RubyInstaller pins already are.
+
+### Tools considered
+
+The watch is about 150 lines because no maintained tool fits the shape of `runtime/sources.yml`. Dependabot updates the manifests of package managers, GitHub Actions' `uses:`, and Docker images; it has no notion of a URL and SHA-256 pinned in a YAML file. Renovate does, with its regex managers and its `github-releases` and custom datasources, and its `automergeType: "branch"` is the shape step 3 takes ("automergeType", docs.renovatebot.com/configuration-options/). But it runs as a Node application with a write token, its branches pushed with the workflow's token start no CI, exactly as this workflow's would not, and the rest of a move (the SHA-256 from GitHub's digest, `runtime/licenses.yml`'s versions and evidence, the release) would still be Fledge's code, behind a configuration as long as `runtime/upstreams.yml`. nvchecker, the version checker Arch Linux's packagers use, finds versions from GitHub and from pages much as the watch does, but brings a Python tool to pin, gives a version without an asset or its SHA-256, and leaves the comparison with the pins to Fledge. Homebrew's livecheck has the same strategies (GitHub's latest release, a page and a pattern) and its autobump opens a pull request every three hours for formulae on its list (docs.brew.sh/Autobump), but it runs only inside Homebrew. So the watch takes their way of finding a version, a listing and a pattern, and keeps the pins' own shape.
+
+### What the watch cannot know
+
+It knows releases, not fixes. A fix backported without a new version, as a distribution's patched package, is invisible to it; MSYS2's package release numbers (`1.4-2`) would show one, but those inputs move with RubyInstaller. An advisory for a version that has no fixed release yet leaves nothing to move to. rv-ruby compiles its own OpenSSL into each Ruby (3.6.2 in the pinned release, by `runtime/licenses.yml`'s evidence), so OpenSSL's fixes reach macOS and glibc Linux only through a newer rv-ruby release, which the watch does see. An advisory feed would be a second source: OSV and GitHub's advisory database index package managers' packages, not C libraries' release tarballs, and would need a mapping from each pin to the identifier each database uses; ruby-advisory-db covers Ruby itself and is cheap to read. Neither is wired in: what Fledge can act on is a release, and the watch sees every one.
+
+The pins outside `runtime/sources.yml` are not watched: the Alpine image and packages the musl runtimes build in (`.github/scripts/alpine-packages.sh`, whose pins stop resolving by themselves when Alpine moves on), the Ubuntu packages and Xcode of CI's runtime jobs, the tools `mise.toml` pins, and the actions every workflow pins.
+
 ## Windows' Ruby until Ruby 4.1.0
 
 The Ruby versions pinned today are not one release everywhere. While that release is a preview, which RubyInstaller does not build, the Windows pins name RubyInstaller's head build of Ruby's main branch taken on the day the release appeared, or the nearest day with one: today the build of 2026-11-10, ruby 4.1.0dev at 0e25874222, beside 4.1.0-preview1 at 2d08b5f42f everywhere else, since no head build exists from preview1's day. Its library folders may carry another ABI version (`4.1.0+6` beside the preview's `4.1.0+5`); nothing in Fledge keeps that name, which `RuntimeBuilder.ruby_abi` and `LicenseAudit#abi` read from each tree. RubyGems and Bundler call it Ruby 4.1.0.dev, where the others are 4.1.0.preview1 (`Gem.ruby_version`), so a Gemfile that asks for `ruby "4.1.0-preview1"` builds and starts everywhere but Windows, under `bundle exec` as in an app (`doc/contributors/design/gems.md`, "The runtime's Ruby version"). Each move to a later preview, a release candidate, or 4.1.0 moves every platform in one Fledge release, takes that day's head build, and says in `runtime/sources.yml` and the CHANGELOG which revision Windows runs against the release's own; at 4.1.0, RubyInstaller's numbered build replaces head.

@@ -1,0 +1,17 @@
+[
+  {
+    "tag_name": "continuous",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "20251108",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "old",
+    "draft": false,
+    "prerelease": false
+  }
+]

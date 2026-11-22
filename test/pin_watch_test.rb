@@ -1,0 +1,151 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+#++
+
+require_relative "test_helper"
+require_relative "support/loopback_server"
+require_relative "../tasks/pin_watch"
+
+# The watch that finds a pin upstream has released a newer version of
+# (doc/contributors/design/runtimes.md, "Keeping the pins current"),
+# against what each upstream answered on 2026-11-22, saved in
+# test/fixtures/pin_watch with each answer cut down to what the watch
+# reads: the tags and flags of GitHub's releases, and the lines of each
+# page that name a version.
+class PinWatchTest < Minitest::Test
+  ROOT = File.expand_path("..", __dir__)
+  ANSWERS = File.join(__dir__, "fixtures/pin_watch")
+
+  # Serves each URL its saved answer, or the body +bodies+ gives it, and
+  # counts the requests.
+  class Answers
+    attr_reader :asked
+
+    def initialize(bodies = {})
+      @bodies = bodies
+      @asked = []
+    end
+
+    def call(url)
+      @asked << url
+      body = @bodies.fetch(url) { File.binread(File.join(ANSWERS, url.sub(%r{\Ahttps://}, "").gsub(/[^A-Za-z0-9.]+/, "_"))) }
+      raise body if body.is_a?(Exception)
+
+      body
+    end
+  end
+
+  def watch(sources, upstreams)
+    PinWatch.new(sources:, upstreams: upstreams.map { |name, entry| PinWatch::Upstream.from(name, entry) }, unwatched: {})
+  end
+
+  def entry(name)
+    YAML.safe_load_file(File.join(ROOT, "runtime/upstreams.yml")).fetch("watched").fetch(name)
+  end
+
+  def finding(sources, name, upstream = entry(name), answers = Answers.new)
+    watch(sources, name => upstream).run(answers).first
+  end
+
+  def test_every_component_of_the_pins_is_watched_or_says_why_not
+    watch = PinWatch.load(ROOT)
+    named = watch.upstreams.flat_map(&:pins) + watch.unwatched.keys
+
+    assert_includes watch.components, "mobile.xcode", "a plain value is a component"
+    assert_includes watch.components, "windows-dlls.libz-1.dll", "a mapping of components is not one"
+    assert_empty watch.unaccounted, "runtime/upstreams.yml names neither where these are released nor why they are not watched"
+    assert_empty named - watch.components, "runtime/upstreams.yml names what runtime/sources.yml does not pin"
+  end
+
+  def test_todays_pins_and_todays_answers_leave_no_upstream_unread
+    report = PinWatch.load(ROOT).run(Answers.new)
+
+    assert_equal PinWatch.load(ROOT).upstreams.map(&:name), report.map(&:name)
+    assert_empty report.select(&:error).map { |f| "#{f.name}: #{f.error}" }
+  end
+
+  def test_a_newer_release_in_the_line_is_the_next_version_and_a_newer_line_is_only_reported
+    sources = { "mobile" => { "openssl" => { "version" => "3.6.4" } }, "musl-ruby" => { "openssl" => { "version" => "3.6.4" } } }
+    found = finding(sources, "openssl")
+
+    assert_equal [:newer, "3.6.4", "3.6.5", "4.1.0"], [found.status, found.current, found.newer, found.beyond]
+
+    newest = finding(sources.transform_values { { "openssl" => { "version" => "3.6.5" } } }, "openssl")
+
+    assert_equal [:beyond, nil, "4.1.0"], [newest.status, newest.newer, newest.beyond]
+  end
+
+  def test_a_prerelease_counts_only_for_a_pin_that_is_one
+    libyaml = finding({ "mobile" => { "libyaml" => { "version" => "0.2.5" } } }, "libyaml", entry("libyaml").merge("pins" => ["mobile.libyaml"]))
+    agp = finding({ "mobile" => { "agp" => "9.4.1" } }, "agp")
+    preview = "ruby-4.1.0-preview2\thttps://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview2.tar.gz\tx\n"
+    ruby = -> (version, body) { finding({ "ruby" => { "version" => version } }, "ruby", entry("ruby").merge("pins" => ["ruby"]), Answers.new(entry("ruby")["page"] => body)) }
+
+    assert_equal "0.2.6", libyaml.newer, "GitHub marks 0.2.6-rc.1 a prerelease"
+    assert_equal "9.5.2", agp.newer, "9.6.0-alpha05 is a prerelease"
+    assert_equal "4.1.0-preview2", ruby.("4.1.0-preview1", preview).newer
+    assert_nil ruby.("4.0.0", "ruby-4.0.1\turl.tar.gz\tx\n#{preview}").beyond, "a prerelease does not count for a release"
+  end
+
+  def test_versions_are_compared_as_numbers_dates_included
+    found = finding({ "mobile" => { "ca-certificates" => { "version" => "cacert-2026-03-19" } } }, "ca-certificates",
+      entry("ca-certificates").merge("pins" => ["mobile.ca-certificates"]))
+    llvm = finding({ "llvm-readobj" => { "version" => "23.1.4" } }, "llvm-readobj")
+
+    assert_equal ["2026-03-19", "2026-11-05"], [found.current, found.newer]
+    assert_equal "23.1.6", llvm.newer, "23.1.10 would be newer still, not older"
+  end
+
+  def test_a_listing_names_only_what_its_pattern_takes
+    stable = '<remotePackage path="ndk;30.0.1"><channelRef ref="channel-0"/></remotePackage>'
+    beta = '<remotePackage path="ndk;31.0.1"><channelRef ref="channel-1"/></remotePackage>'
+    found = finding({ "mobile" => { "ndk" => { "revision" => "29.0.1" } } }, "ndk", entry("ndk"),
+      Answers.new(entry("ndk")["page"] => "#{beta}\n#{stable}\n"))
+    rv = finding({ "ruby" => { "release" => "20261023" } }, "rv-ruby")
+
+    assert_equal "30.0.1", found.newer, "only the stable channel counts"
+    assert_equal "20261119", rv.newer, "rubies, the rolling tag, is not a version"
+  end
+
+  def test_pins_that_disagree_are_an_error
+    sources = { "mobile" => { "libffi" => { "version" => "3.5.2" } }, "musl-ruby" => { "libffi" => { "version" => "3.5.1" } } }
+    found = finding(sources, "libffi")
+
+    assert_equal :error, found.status
+    assert_equal "mobile.libffi, musl-ruby.libffi hold different versions: 3.5.2, 3.5.1", found.error
+  end
+
+  def test_an_upstream_that_cannot_be_read_is_an_error_and_the_rest_are_still_asked
+    sources = { "libxcrypt" => { "version" => "4.5.1" }, "rcedit" => { "version" => "2.0.0" }, "nsis" => { "version" => "3.13" } }
+    upstreams = %w[libxcrypt rcedit nsis].to_h { |name| [name, entry(name)] }
+    answers = Answers.new(PinWatch::Upstream.from("libxcrypt", entry("libxcrypt")).url => PinWatch::Error.new("answered 503"),
+      entry("nsis")["page"] => "<rss>nothing</rss>")
+    report = watch(sources, upstreams).run(answers)
+
+    assert_equal %i[error current error], report.map(&:status)
+    assert_equal "answered 503", report[0].error
+    assert_match(/lists no version that/, report[2].error)
+  end
+
+  def test_each_url_is_asked_once
+    sources = { "mobile" => { "openssl" => { "version" => "3.6.5" } }, "musl-ruby" => { "openssl" => { "version" => "3.6.5" } } }
+    answers = Answers.new
+    watch(sources, "openssl" => entry("openssl"), "also" => entry("openssl")).run(answers)
+
+    assert_equal ["https://api.github.com/repos/openssl/openssl/releases?per_page=100"], answers.asked
+  end
+
+  def test_the_fetch_follows_a_redirect_and_refuses_a_failure
+    server = LoopbackServer.new("/moved" => [302, { "Location" => "/here" }, ""], "/here" => [200, {}, "listing"], "/gone" => [404, {}, "no"])
+    fetch = PinWatch::Fetch.new(timeout: 5)
+
+    assert_equal "listing", fetch.call(server.url("/moved"))
+    error = assert_raises(PinWatch::Error) { fetch.call(server.url("/gone")) }
+    assert_equal "#{server.url('/gone')} answered 404", error.message
+  ensure
+    server&.stop
+  end
+end

@@ -494,6 +494,12 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 *Governs:* where distributing a file with an app needs a right only the app's developer can hold, Fledge gives the developer a way to do it, and does not refuse the app for want of a right it cannot check; the right, and the duty to hold it, stay the developer's, as a gem's license does (2026-10-28). *Applied in:* the work to let a Windows app carry the Visual C++ runtime.
 
+> Neither should setdef, right?
+
+[re: the orchestrating agent's remark, of whether Fledge should copy the Visual C++ runtime unasked, that a developer who never asked should not end up distributing Microsoft's files without knowing it.]
+
+*Governs:* nothing setdef publishes carries Microsoft's Visual C++ runtime: not the gem, not a runtime, not a release's files, not a fixture in the repository, and not an app that Fledge's CI builds and uploads. The files go only from a developer's own computer into that developer's own app. *Applied in:* `doc/contributors/design/gems.md`, "The Visual C++ runtime"; the tests' stand-in DLLs.
+
 > This is not the kind of thing that belongs in-repo.
 
 [re: `doc/contributors/handoff.md`, the page where agents kept where the project stands, the bugs it knows of, and what to do next, which the maintainer deleted from his checkout with these words.]

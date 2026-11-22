@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-22
+
 ### Added
 
 - `fledge.yml`'s `windows: visual_c_runtime`, for a gem whose DLL needs Microsoft's Visual C++ runtime: `local` copies the runtime's DLLs the gems need from the building computer's System32 into the app, and `central` ships none, for computers that have the Visual C++ Redistributable; started on a computer without it, such an app names the Redistributable and Microsoft's download and exits with status 72, before Ruby starts.
@@ -511,7 +513,8 @@ Nothing an app's developer or its users can observe changed: this release proves
 - Each release attaches, per platform, the runtime, its SBOM (`.spdx.json`) and NOTICES (`-NOTICES.txt`), and for Linux and Windows the source of their LGPL libraries, libxcrypt and GNU MP (`-lgpl-sources.tar.gz`), with `SHA256SUMS` over all of them.
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
-[Unreleased]: https://github.com/setdef/Fledge/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/setdef/Fledge/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/setdef/Fledge/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/setdef/Fledge/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/setdef/Fledge/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/setdef/Fledge/compare/v0.13.0...v0.14.0

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of a windowed app on macOS and Linux:
-# unpacks what fledge build wrote for examples/windowed_app, checks the
+# unpacks what fledge build wrote for test/fixtures/windowed_app, checks the
 # identity each operating system reads with that system's own tools, and
 # starts the app the way the system would, with no Ruby anywhere it can
 # reach.

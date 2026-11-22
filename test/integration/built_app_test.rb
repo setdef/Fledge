@@ -29,7 +29,7 @@ require "stringio"
 class BuiltAppTest < Minitest::Test
   HELLO = File.expand_path("../../examples/hello", __dir__)
   MY_COOL_APP = File.expand_path("../../examples/my_cool_app", __dir__)
-  WINDOWED_APP = File.expand_path("../../examples/windowed_app", __dir__)
+  WINDOWED_APP = File.expand_path("../../test/fixtures/windowed_app", __dir__)
   PROGRAMS = File.expand_path("../../examples/programs", __dir__)
   PROBE = File.expand_path("../fixtures/parity", __dir__)
   CONSOLE = File.expand_path("../fixtures/console", __dir__)
@@ -1051,7 +1051,7 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # examples/windowed_app, built as a windowed app: on macOS
+  # test/fixtures/windowed_app, built as a windowed app: on macOS
   # an .app bundle that Apple's codesign verifies, strictly and deeply,
   # and whose Info.plist plutil reads; on Windows a GUI program; on
   # Linux a folder with a desktop entry. Run by its program, it writes
@@ -1306,7 +1306,7 @@ class BuiltAppTest < Minitest::Test
     out
   end
 
-  # examples/windowed_app's installer, built beside its archive
+  # test/fixtures/windowed_app's installer, built beside its archive
   # from this computer's runtime: on macOS a disk image that hdiutil
   # verifies and attaches, whose bundle codesign verifies, strictly and
   # deeply, inside it, and runs from it; on Linux an AppImage that runs,
@@ -1359,7 +1359,7 @@ class BuiltAppTest < Minitest::Test
 
   # The MSIX package at +path+, which the Windows SDK's MakeAppx packed
   # (Fledge::Msix), read back with Windows' own tar, which reads a zip:
-  # examples/windowed_app's identity, its logos, its program, and a
+  # test/fixtures/windowed_app's identity, its logos, its program, and a
   # fledge.cfg with no identifier. Delivery installs and runs it
   # (.github/scripts/deliver-msix.ps1).
   def assert_msix(path, dir)
@@ -1382,7 +1382,7 @@ class BuiltAppTest < Minitest::Test
     refute_includes File.read(File.join(into, "fledge.cfg")), "identifier"
   end
 
-  # The .deb at +path+, which dpkg-deb reads back as examples/windowed_app's
+  # The .deb at +path+, which dpkg-deb reads back as test/fixtures/windowed_app's
   # package for this platform.
   def assert_deb(path)
     deb = File.expand_path(path, Dir.pwd)

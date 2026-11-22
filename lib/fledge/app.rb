@@ -344,7 +344,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::App.at("examples/windowed_app").identity.windowed? # => true
+    #   Fledge::App.at("examples/libui_app").identity.windowed? # => true
     #--
     # SPDX-SnippetEnd
     #++

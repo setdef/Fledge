@@ -1451,7 +1451,7 @@ jobs:
         run: >-
           & .github/scripts/deliver-console.ps1
           -Reference @((Get-Command ruby.exe).Source, 'test/fixtures/console/main.rb')
-          -WindowedReference @((Get-Command rubyw.exe).Source, 'examples/windowed_app/main.rb')
+          -WindowedReference @((Get-Command rubyw.exe).Source, 'test/fixtures/windowed_app/main.rb')
 
   # Each platform's apps, built on a runner of that platform from the
   # runtime the runtime job built for it, with that platform's own tools
@@ -1464,7 +1464,7 @@ jobs:
   # from RubyGems.org, each checked against its Gemfile.lock's checksum,
   # precompiled for the platform; test/fixtures/bundled_with,
   # whose Gemfile.lock names a Bundler no runtime ships;
-  # examples/windowed_app, a
+  # test/fixtures/windowed_app, a
   # windowed app with its installer;
   # examples/programs, a windowed and a console program of one project in
   # one folder; and
@@ -1589,8 +1589,8 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app examples/windowed_app examples/programs test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/windowed_app examples/programs)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app test/fixtures/windowed_app examples/programs test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app examples/programs)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -1676,7 +1676,7 @@ jobs:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
-          for app in examples/hello examples/windowed_app; do
+          for app in examples/hello test/fixtures/windowed_app; do
             ruby -I lib exe/fledge build --sign "$FLEDGE_TEST_SIGN_IDENTITY" -o dist-signed "$app"
           done
 
@@ -1699,7 +1699,7 @@ jobs:
           ruby -I lib exe/fledge build --sign-command $command -o dist-signed/command examples/hello
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $env:FLEDGE_SIGN_COMMAND = $command
-          ruby -I lib exe/fledge build -o dist-signed/command examples/windowed_app
+          ruby -I lib exe/fledge build -o dist-signed/command test/fixtures/windowed_app
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       # Nothing setdef publishes carries Microsoft's Visual C++ runtime,
@@ -1962,7 +1962,7 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app examples/windowed_app examples/programs; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app examples/programs; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd examples/my_cool_app && bundle install)

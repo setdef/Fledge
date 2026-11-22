@@ -28,7 +28,7 @@ All of these use the Developer ID Application certificate and notarization profi
 
 - **Proves:** Apple's notary service accepts what Fledge signs (hardened runtime, timestamps, entitlements), and stapling the app after notarizing its disk image finds a ticket.
 - **Needs:** the Apple Developer Program (US$99 a year; enrollment is under way), Xcode, and a Developer ID Application certificate.
-- **Steps:** `signing-test.md`, Part 1, steps 1 to 4 (`fledge build --sign ... --notarize ... examples/windowed_app`, then `stapler validate` and `spctl --assess`).
+- **Steps:** `signing-test.md`, Part 1, steps 1 to 4 (`fledge build --sign ... --notarize ... test/fixtures/windowed_app`, then `stapler validate` and `spctl --assess`).
 - **Passing:** the build prints "Apple accepted Hello Window-arm64-darwin.dmg" and two stapling lines; both `stapler validate` calls end `The validate action worked!`; both `spctl` calls say `source=Notarized Developer ID`.
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
@@ -122,7 +122,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 
 - **Proves:** the Store's certification accepts an MSIX package Fledge builds (`installers: [msix]`; `doc/contributors/design/desktop-apps.md`, "The MSIX package"), with the `runFullTrust` capability a desktop app declares, and signs it itself, so a developer needs no certificate of their own.
 - **Needs:** a Partner Center account, with an app name reserved, whose Publisher goes in `fledge.yml` as `windows: msix_publisher`.
-- **Steps:** build `examples/windowed_app` with its `msix_publisher` set to the reservation's Publisher and no `--sign`, and submit the `.msix` in Partner Center (`doc/desktop_apps.md`, "The Microsoft Store").
+- **Steps:** build `test/fixtures/windowed_app` with its `msix_publisher` set to the reservation's Publisher and no `--sign`, and submit the `.msix` in Partner Center (`doc/desktop_apps.md`, "The Microsoft Store").
 - **Passing:** the Store certifies the submission, approves `runFullTrust`, and installing the app from the Store runs it.
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.

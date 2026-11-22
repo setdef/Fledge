@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
@@ -28,7 +28,7 @@ publisher: setdef
 copyright: © 2026 setdef
 description: Says hello from a window
 long_description: |
-  Hello Window is the example windowed app of Fledge, which ships a Ruby
+  Hello Window is the windowed app that tests Fledge, which ships a Ruby
   app to people who don't have Ruby.
 
   It opens no window: given a path, it writes a report there.

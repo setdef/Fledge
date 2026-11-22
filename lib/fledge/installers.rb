@@ -46,9 +46,9 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   app = Fledge::App.at("examples/windowed_app")
+  #   app = Fledge::App.at("examples/libui_app")
   #   Fledge::Installers.formats(app, Fledge::Platform.find("x64-mingw-ucrt")) # => ["nsis"]
-  #   Fledge::Installers.file_name("nsis", "Hello Window-x64-mingw-ucrt")    # => "Hello Window-x64-mingw-ucrt-setup.exe"
+  #   Fledge::Installers.file_name("nsis", "Focus Timer-x64-mingw-ucrt")     # => "Focus Timer-x64-mingw-ucrt-setup.exe"
   #--
   # SPDX-SnippetEnd
   #++
@@ -167,7 +167,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::Installers.license(Fledge::App.at("examples/windowed_app")).lines.first # => "MIT No Attribution\n"
+    #   Fledge::Installers.license(Fledge::App.at("examples/libui_app")).lines.first # => "MIT No Attribution\n"
     #--
     # SPDX-SnippetEnd
     #++

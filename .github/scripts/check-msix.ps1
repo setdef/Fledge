@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Checks windowed_app's MSIX package on a contributor's Windows computer,
-# with no administrator: builds examples/windowed_app with the runtime in
+# with no administrator: builds test/fixtures/windowed_app with the runtime in
 # RUNTIMES (bundle exec rake runtime, or one CI built), once unsigned and
 # once signed with a test certificate made for this run in the current
 # user's store, whose subject is the example's msix_publisher; checks
@@ -50,9 +50,9 @@ Export-Certificate -Cert $made -FilePath $certificate | Out-Null
 Write-Host "Made Fledge Test Signing, $($made.Thumbprint), in Cert:\CurrentUser\My"
 
 try {
-  bundle exec ruby -I lib exe/fledge build -o (Join-Path $Work 'dist') examples/windowed_app
+  bundle exec ruby -I lib exe/fledge build -o (Join-Path $Work 'dist') test/fixtures/windowed_app
   if ($LASTEXITCODE -ne 0) { Fail 'the unsigned build failed' }
-  bundle exec ruby -I lib exe/fledge build --sign $made.Thumbprint -o (Join-Path $Work 'signed') examples/windowed_app
+  bundle exec ruby -I lib exe/fledge build --sign $made.Thumbprint -o (Join-Path $Work 'signed') test/fixtures/windowed_app
   if ($LASTEXITCODE -ne 0) { Fail 'the signed build failed' }
 
   pwsh -NoProfile -File (Join-Path $PSScriptRoot 'deliver-msix.ps1') `

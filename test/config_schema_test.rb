@@ -419,7 +419,7 @@ class ConfigSchemaTest < Minitest::Test
   # both the schema and fledge build take it.
   def test_every_fledge_yml_names_the_schema_and_passes_it
     files = IO.popen(["git", "ls-files", "-z", "--", "*fledge.yml"], chdir: ROOT, &:read).split("\x0")
-    assert_includes files, "examples/windowed_app/fledge.yml"
+    assert_includes files, "test/fixtures/windowed_app/fledge.yml"
     files.each do |file|
       yaml = File.read(File.join(ROOT, file))
       relative = Pathname(PATH).relative_path_from(Pathname(File.join(ROOT, file)).dirname).to_s

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of a signed Windows build: examples/hello and
-# examples/windowed_app, built with fledge build --sign and CI's test
+# test/fixtures/windowed_app, built with fledge build --sign and CI's test
 # certificate (make-test-identity.ps1), checked on a fresh Windows with
 # Microsoft's own signtool.
 #

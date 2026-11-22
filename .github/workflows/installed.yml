@@ -139,7 +139,7 @@ jobs:
             examples/hello
             examples/my_cool_app
             test/fixtures/native_app
-            examples/windowed_app
+            test/fixtures/windowed_app
             test/fixtures/parity
             mise*.toml
             runtime/licenses.yml
@@ -248,8 +248,8 @@ jobs:
             exit 1
           }
           cd "$RUNNER_TEMP/project"
-          apps="test/fixtures/parity examples/my_cool_app examples/windowed_app"
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps="test/fixtures/parity examples/windowed_app"
+          apps="test/fixtures/parity examples/my_cool_app test/fixtures/windowed_app"
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps="test/fixtures/parity test/fixtures/windowed_app"
           for app in $apps; do
             bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err" || {
               cat "$RUNNER_TEMP/build.err"
@@ -672,7 +672,7 @@ jobs:
           ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
-            examples/windowed_app
+            test/fixtures/windowed_app
             test/fixtures/parity
             mise*.toml
             runtime/sources.yml
@@ -741,7 +741,7 @@ jobs:
           export XDG_CACHE_HOME="$RUNNER_TEMP/cache"
           cd "$RUNNER_TEMP/project"
           fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/hello" 2>> "$RUNNER_TEMP/build.err"
-          for app in test/fixtures/parity examples/windowed_app; do
+          for app in test/fixtures/parity test/fixtures/windowed_app; do
             bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err"
           done
           cat "$RUNNER_TEMP/build.err"
@@ -860,7 +860,7 @@ jobs:
           ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
-            examples/windowed_app
+            test/fixtures/windowed_app
             test/fixtures/parity
           sparse-checkout-cone-mode: false
 
@@ -899,7 +899,7 @@ jobs:
           fledge --version
           export XDG_CACHE_HOME=/tmp/cache
           fledge build -o /work/dist /work/examples/hello 2>> /tmp/build.err
-          for app in test/fixtures/parity examples/windowed_app; do
+          for app in test/fixtures/parity test/fixtures/windowed_app; do
             bundle exec fledge build -o /work/dist "/work/$app" 2>> /tmp/build.err
           done
           cat /tmp/build.err

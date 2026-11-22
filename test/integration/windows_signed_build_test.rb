@@ -16,7 +16,7 @@ require "open3"
 # The command is the stand-in of test/support/stand_in_signer.rb.
 # test/sign_command_test.rb covers Fledge::SignCommand itself.
 class WindowsSignedBuildTest < Minitest::Test
-  WINDOWED_APP = File.expand_path("../../examples/windowed_app", __dir__)
+  WINDOWED_APP = File.expand_path("../../test/fixtures/windowed_app", __dir__)
   EXE = File.expand_path("../../exe/fledge", __dir__)
   LIB = File.expand_path("../../lib", __dir__)
 
@@ -67,7 +67,7 @@ class WindowsSignedBuildTest < Minitest::Test
     end
   end
 
-  # Runs fledge build on examples/windowed_app into +dir+ with +env+ and
+  # Runs fledge build on test/fixtures/windowed_app into +dir+ with +env+ and
   # +arguments+, and returns its output, its errors, and its status.
   private def fledge(runtimes, dir, env, *)
     Open3.capture3({ "FLEDGE_RUNTIME_DIR" => runtimes }.merge(env), RbConfig.ruby, "-I", LIB, EXE, "build", *,

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of a windowed app's MSIX package (Fledge::Msix) on Windows:
-# the packages fledge build wrote for examples/windowed_app, unsigned as
+# the packages fledge build wrote for test/fixtures/windowed_app, unsigned as
 # the Microsoft Store takes one and signed with a test certificate as a
 # developer sideloads one, installed, run, and removed as a person
 # would, with nothing of Fledge or Ruby on this computer.

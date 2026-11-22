@@ -185,10 +185,10 @@ module FakeRuntime
     end
   end
 
-  # The icon files of examples/windowed_app, named as Fledge::Icon names
+  # The icon files of test/fixtures/windowed_app, named as Fledge::Icon names
   # them, written into +root+ under +base+.
   def self.icons(root, base = "icon")
-    source = File.expand_path("../examples/windowed_app/icons", __dir__)
+    source = File.expand_path("../test/fixtures/windowed_app/icons", __dir__)
     Dir.children(source).each { |name| FileUtils.cp(File.join(source, name), File.join(root, name.sub("icon", base))) }
   end
 

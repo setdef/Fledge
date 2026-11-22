@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of a windowed app's NSIS installer on Windows: the
-# setup program fledge build wrote for examples/windowed_app, run as a
+# setup program fledge build wrote for test/fixtures/windowed_app, run as a
 # person runs it, with nothing of Fledge or Ruby on this computer.
 #
 #   pwsh -NoProfile -File deliver-installer.ps1 -Installer INSTALLER

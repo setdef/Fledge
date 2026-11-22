@@ -5,7 +5,7 @@
 # A Linux build takes the icon sizes a project has (Plan 003, "A Linux
 # build takes the icon sizes a developer has";
 # doc/contributors/design/desktop-apps.md, "Icons"):
-# examples/windowed_app with only its 32-, 128-, and 256-pixel PNGs, as
+# test/fixtures/windowed_app with only its 32-, 128-, and 256-pixel PNGs, as
 # other bundlers' icon tools make a set, builds, names the three sizes it
 # lacks on standard error, and its .deb and AppImage hold three hicolor
 # icons, the AppImage's top one the 256-pixel PNG, with a desktop entry
@@ -31,7 +31,7 @@ fail() {
   exit 1
 }
 
-cp -R examples/windowed_app "$project"
+cp -R test/fixtures/windowed_app "$project"
 rm "$project"/icons/icon-16.png "$project"/icons/icon-64.png "$project"/icons/icon-512.png
 ruby -I lib exe/fledge build -o "$dist" "$project" 2>"$work/err" || { cat "$work/err"; fail "the build failed"; }
 cat "$work/err"

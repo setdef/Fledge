@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of a windowed app's disk image on macOS: the .dmg
-# fledge build wrote for examples/windowed_app, opened and installed as
+# fledge build wrote for test/fixtures/windowed_app, opened and installed as
 # a person does, with nothing of Fledge or Ruby within the app's reach.
 #
 #   deliver-dmg.sh DMG

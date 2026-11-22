@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of a windowed app on Windows: unpacks what
-# fledge build wrote for examples/windowed_app, checks the identity
+# fledge build wrote for test/fixtures/windowed_app, checks the identity
 # Windows reads from the program with Windows' own means, and starts it
 # as Explorer would, with no Ruby anywhere it can reach.
 #

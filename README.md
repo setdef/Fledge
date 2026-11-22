@@ -228,7 +228,7 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. A new Fledge ma
 | [Runtimes and Ruby versions](doc/runtimes.md) | Which Ruby your app gets, where Fledge downloads it from, mirrors, building offline, updating, and what stays the same from 1.0 |
 | [How a Fledge app differs from `ruby main.rb`](doc/differences_from_ruby.md) | Each difference your code can see, and why it is there |
 | [What ships in your app](doc/licensing.md) | Every component Fledge puts in an app, on each platform, and what you owe under its license |
-| [`examples/`](examples) | Apps to start from, from [`hello`](examples/hello) to [`windowed_app`](examples/windowed_app) |
+| [`examples/`](examples) | Apps to start from, from [`hello`](examples/hello) to [`libui_app`](examples/libui_app), a work timer in a window |
 | [CHANGELOG](CHANGELOG.md) | What changed in each release |
 
 ## Reporting problems

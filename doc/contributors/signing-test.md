@@ -93,12 +93,12 @@ To use them, specify `--keychain-profile "fledge-notary"`
 
 Check it: `xcrun notarytool history --keychain-profile fledge-notary` should print an empty history, not an error.
 
-### 3. Build, sign, and notarize `examples/windowed_app`
+### 3. Build, sign, and notarize `test/fixtures/windowed_app`
 
 Type, with your identity from step 1:
 
 ```console
-$ bundle exec fledge build --sign "Developer ID Application: setdef (ABCDE12345)" --notarize fledge-notary examples/windowed_app
+$ bundle exec fledge build --sign "Developer ID Application: setdef (ABCDE12345)" --notarize fledge-notary test/fixtures/windowed_app
 ```
 
 What happens: Fledge downloads its runtime the first time, builds the app, signs every program and library with the hardened runtime and a timestamp, then the bundle, then the disk image; sends the disk image to Apple and waits; staples Apple's ticket to the disk image and the bundle; and packs the archive. macOS may ask once whether `codesign` may use the key "Developer ID Application: setdef": click **Always Allow** and type your login password.
@@ -206,7 +206,7 @@ Type every command below in PowerShell, in the checkout's folder.
 
 1. For a `.pfx`, double-click it, choose **Current User**, click **Next** twice, type its password, leave **Automatically select the certificate store** chosen, and click **Finish**. For a token, plug it in and install its vendor's driver (SafeNet Authentication Client for most).
 2. Find its thumbprint: `Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Format-List Subject, Thumbprint, NotAfter`. Copy the 40 hexadecimal digits of the right one.
-3. Build: `bundle exec fledge build --sign THUMBPRINT examples/windowed_app`. A token may ask for its PIN once for each file; its vendor's client can be set to ask once per session.
+3. Build: `bundle exec fledge build --sign THUMBPRINT test/fixtures/windowed_app`. A token may ask for its PIN once for each file; its vendor's client can be set to ask once per session.
 
 ### 3b. Azure Artifact Signing (formerly Trusted Signing)
 
@@ -228,7 +228,7 @@ Microsoft's guide is [Set up signing integrations to use Artifact Signing](https
 5. Build, with your paths in place of SIGNTOOL and DLIB:
 
    ```powershell
-   bundle exec fledge build --sign-command '"SIGNTOOL" sign /v /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 /dlib "DLIB" /dmdf C:\ArtifactSigning\metadata.json %1' examples/windowed_app
+   bundle exec fledge build --sign-command '"SIGNTOOL" sign /v /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 /dlib "DLIB" /dmdf C:\ArtifactSigning\metadata.json %1' test/fixtures/windowed_app
    ```
 
    The single quotes keep PowerShell from reading the double quotes, which keep paths with spaces whole.

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # Delivery of a windowed app's .deb on Debian and Ubuntu: the
-# .deb fledge build wrote for examples/windowed_app, installed with apt as
+# .deb fledge build wrote for test/fixtures/windowed_app, installed with apt as
 # root on a computer that has never seen Ruby, run, and removed.
 #
 #   deliver-deb.sh DEB
@@ -52,7 +52,7 @@ expect Architecture "$(dpkg-deb --field "$deb" Architecture)" "$(dpkg --print-ar
 expect Depends "$(dpkg-deb --field "$deb" Depends)" "libc6 (>= 2.28)"
 expect Homepage "$(dpkg-deb --field "$deb" Homepage)" "https://github.com/setdef/Fledge"
 expect Description "$(dpkg-deb --field "$deb" Description)" "Says hello from a window
- Hello Window is the example windowed app of Fledge, which ships a Ruby
+ Hello Window is the windowed app that tests Fledge, which ships a Ruby
  app to people who don't have Ruby.
  .
  It opens no window: given a path, it writes a report there."

@@ -357,6 +357,13 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     end
   end
 
+  # Whether a pin behind since +since+, the day its oldest newer release
+  # came out, has been behind for longer than HELD_DAYS on +today+; never
+  # when its upstream dates no release.
+  def self.overdue?(since, today)
+    !since.nil? && today - Date.iso8601(since) > HELD_DAYS
+  end
+
   # What each upstream has released, asking +fetch+ once for each URL, as
   # it stands on +today+.
   def run(fetch, today: Date.today)
@@ -379,8 +386,7 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     newer = upstream.versions(answers[upstream.url]).select { |version| newer?(version, current) }
     in_line, beyond = newer.partition { |version| same_line?(upstream, version, current) }
     since = upstream.dates(answers[upstream.url]).values_at(*in_line).compact.min
-    overdue = !since.nil? && today - Date.iso8601(since) > HELD_DAYS
-    finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond), since:, overdue:)
+    finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond), since:, overdue: PinWatch.overdue?(since, today))
   rescue Error => e
     finding(upstream, current:, error: e.message)
   end

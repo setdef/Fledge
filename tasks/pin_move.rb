@@ -32,6 +32,11 @@ class PinMove
   # move cannot take as it is.
   class Error < StandardError; end
 
+  # A move that waits for what the move cannot carry yet, which the run
+  # reports as it reports a pin held for a person: held, and a failure
+  # only once its release has waited longer than PinWatch::HELD_DAYS.
+  class Held < Error; end
+
   # The keys of a mapping whose URL moves that the move knows how to
   # write: anything else in it, such as the SHA-256 of a file inside the
   # download, it would leave false.
@@ -125,6 +130,29 @@ class PinMove
       "taking each SHA-256 from upstream's own record of it, and proved the move with a full run of CI " \
       "before it reached trunk (doc/contributors/design/runtimes.md, \"Keeping the pins current\"): #{list}."
     "#{subject}\n\n#{body.gsub(/(.{1,72})(?:\s+|\z)/, "\\1\n")}\nProvenance: requested\n"
+  end
+
+  # Moves each of +findings+, the watch's report's hashes, with +move+,
+  # printing to +out+ what became of each, and returns those it moved and
+  # those a person is needed for: each it could not move, but one that
+  # waits (Held) while its newer release is no more than
+  # PinWatch::HELD_DAYS old on +today+.
+  def self.move_each(move, findings, out:, today: Date.today)
+    moved = []
+    failed = []
+    findings.each do |finding|
+      moving = "#{finding['name']} #{finding['current']} -> #{finding['newer']}"
+      changed = move.call(finding)
+      out.puts "moved    #{moving}: #{changed.keys.join(', ')}"
+      moved << finding
+    rescue Held => e
+      out.puts "held     #{moving}#{" (since #{finding['since']})" if finding['since']}: #{e.message}"
+      failed << finding if PinWatch.overdue?(finding["since"], today)
+    rescue Error, PinWatch::Error => e
+      out.puts "failed   #{moving}: #{e.message}"
+      failed << finding
+    end
+    [moved, failed]
   end
 
   # Writes every text this move changed into the checkout, or into the
@@ -317,7 +345,7 @@ class PinMove
       files = @fetch.members(url, wanted)
       arch = files.each_key.lazy.filter_map { |path| path[Regexp.new(pattern), "arch"] }.first
       raise Error, "#{url} holds no file that names its platform" unless arch
-      raise Error, renamed(title, from, to, platform, arch, named) unless arch == named
+      raise Held, renamed(title, from, to, platform, arch, named) unless arch == named
 
       compiled.each { |id, library| compiled_version(url, files, id, library, changed) }
     end
@@ -325,9 +353,9 @@ class PinMove
 
   private def renamed(title, from, to, platform, arch, named)
     "#{title} #{to}'s Ruby for #{platform} calls its platform #{arch}, where #{title} #{from}'s, which Fledge pins, " \
-      "calls it #{named}. Which platform an app's Ruby names there is the maintainer's to decide (question J in " \
-      "doc/contributors/questions.md), so #{platform}'s Ruby stays on #{title} #{from} until it is answered, and the " \
-      "other pins move without it."
+      "calls it #{named}. The move does not yet carry a new name for a Ruby's platform (doc/contributors/design/" \
+      "runtimes.md, \"The move\"), so #{platform}'s Ruby stays on #{title} #{from}, held, and the other pins move " \
+      "without it."
   end
 
   # Moves runtime/licenses.yml's entry +id+ to the version of its
@@ -426,8 +454,9 @@ end
 # or, with --into, into DIR at the same paths, for a run that must change
 # nothing to compare them with the checkout's. With --message, it writes
 # the commit message of what it moved into FILE. It exits 1
-# when a pin behind could not be moved. A pin held for a person is not
-# in the report as behind, but as held, and is left.
+# when a pin behind could not be moved, or has waited (PinMove::Held)
+# longer than PinWatch::HELD_DAYS. A pin held for a person is not in the
+# report as behind, but as held, and is left.
 if $PROGRAM_NAME == __FILE__
   args = ARGV.dup
   into = (index = args.index("--into")) && args.slice!(index, 2).last
@@ -436,16 +465,8 @@ if $PROGRAM_NAME == __FILE__
   findings = JSON.parse(File.read(args.fetch(0))).select { |finding| finding["status"] == "newer" }
   findings.select! { |finding| finding["name"] == only } if only
   move = PinMove.load(File.expand_path("..", __dir__), PinWatch::Fetch.new(token: ENV.fetch("GITHUB_TOKEN", nil)))
-  failed = findings.reject do |finding|
-    changed = move.call(finding)
-    puts "moved    #{finding['name']} #{finding['current']} -> #{finding['newer']}: #{changed.keys.join(', ')}"
-    true
-  rescue PinMove::Error, PinWatch::Error => e
-    puts "failed   #{finding['name']} #{finding['current']} -> #{finding['newer']}: #{e.message}"
-    false
-  end
+  moved, failed = PinMove.move_each(move, findings, out: $stdout)
   into ? move.save(into) : move.save
-  moved = findings - failed
   File.write(message, move.message(moved)) if message && moved.any?
   exit(failed.empty? ? 0 : 1)
 end

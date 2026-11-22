@@ -522,5 +522,8 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 [re: 2026-11-22. The orchestrating agent had said that when a library inside a runtime (OpenSSL, say) gets a security fix, nothing reaches an app's users until Fledge moves a pin and releases, whoever compiled the Ruby; that noticing a newer upstream release could be automated with a scheduled GitHub Actions job; and that Fledge had no such job for the inputs it pins. Before that, of noticing security updates being Fledge's duty, he had said: "This scares me. Unless it can be fully automated e.g. with GitHub Actions."]
 
-*Governs:* the candidate for 1.0.0 has automation that notices, with no person or agent remembering to look, when an input a runtime is built from has a newer release upstream. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; the scheduled workflow that watches the pins.
+> Not that notices. That takes care of all of it. I don't want to be pinged, I want Fledge to just... get a new release. (on the happy path)
 
+[re: the agents' first reading of the words above, that the candidate needs automation that notices a newer upstream release.]
+
+*Governs:* the candidate for 1.0.0 has automation that takes care of all of it: when an input a runtime is built from has a newer release upstream, Fledge moves the pin, proves the new runtimes in CI, and releases, with no person or agent in the loop on the happy path, and the maintainer is not pinged. A person is called only when that path fails. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; the scheduled workflow that keeps the pins current.

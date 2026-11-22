@@ -9,8 +9,9 @@ require "fileutils"
 require_relative "recipe"
 
 class RuntimeBuilder
-  # macOS and Linux: rv-ruby's Ruby, whose static libruby the launcher
-  # links, so each builds only on its own platform. The runtime is the
+  # macOS and Linux: a prebuilt relocatable Ruby (rv-ruby's on macOS,
+  # jdx/ruby's on glibc Linux, Fledge's own on musl), whose static
+  # libruby the launcher links, so each builds only on its own platform. The runtime is the
   # launcher with bin/, lib/ruby, the static libruby, and
   # libexec/cert.pem beside it.
   class Unix < Recipe
@@ -51,9 +52,17 @@ class RuntimeBuilder
       tarball = @builder.fetch(pin.fetch("url"), pin.fetch("sha256"))
       unpacked = File.join(@build_dir, "rv-ruby")
       FileUtils.mkdir_p(unpacked)
-      @builder.run("tar", "-xzf", tarball, "-C", unpacked)
-      prefixes = Dir.glob(File.join(unpacked, "*", @builder.sources.fetch("ruby").fetch("version")))
-      raise "#{tarball} does not hold one Ruby prefix: #{prefixes}" unless prefixes.size == 1
+      @builder.run("tar", "-xzf", tarball, "-C", unpacked, "--no-same-owner")
+      Unix.prefix(unpacked, @builder.sources.fetch("ruby").fetch("version"))
+    end
+
+    # The one Ruby prefix in the archive unpacked into +unpacked+: NAME/VERSION/
+    # in rv-ruby's archives and Fledge's own (ruby/VERSION/), ruby-VERSION/
+    # in jdx/ruby's.
+    def self.prefix(unpacked, version)
+      prefixes = [*Dir.glob(File.join(unpacked, "*", version)), *Dir.glob(File.join(unpacked, "ruby-#{version}"))]
+      prefixes = prefixes.select { |prefix| File.directory?(File.join(prefix, "bin")) }
+      raise "#{unpacked} does not hold one Ruby #{version} prefix: #{prefixes}" unless prefixes.size == 1
 
       prefixes.first.to_s
     end
@@ -68,7 +77,11 @@ class RuntimeBuilder
       FileUtils.cp_r(File.join(@prefix, "bin"), File.join(stage, "bin"))
       FileUtils.rm_f(File.join(stage, "bin", "ruby"))
       FileUtils.cp_r(File.join(@prefix, "lib", "ruby"), File.join(stage, "lib", "ruby"))
-      FileUtils.cp_r(File.join(@prefix, "include"), File.join(stage, "include"))
+      # Ruby's own headers, which mkmf reads; not the headers jdx/ruby's
+      # tree adds beside them for the static libraries a runtime leaves
+      # out (OpenSSL's, libyaml's, zlib's, and libxcrypt's crypt.h).
+      FileUtils.mkdir_p(File.join(stage, "include"))
+      Dir.glob(File.join(@prefix, "include", "ruby-*")).each { |headers| FileUtils.cp_r(headers, File.join(stage, "include")) }
       FileUtils.chmod_R("u+w", [File.join(stage, "lib"), File.join(stage, "bin"), File.join(stage, "include")])
       removed = Pruning.prune(File.join(stage, "lib", "ruby"), @builder.bundled_gems)
       Pruning.prune_bin(File.join(stage, "bin"), removed)

@@ -55,10 +55,11 @@ module Fledge
     # (doc/contributors/design/releases.md, "Platform floors").
     MACOS_MINIMUM = "14.0"
 
-    # The oldest glibc a Linux runtime runs on: rv-ruby's Linux builds
-    # call functions glibc added in 2.39, a floor the maintainer accepted
-    # (decision 7; doc/contributors/design/releases.md, "Platform
-    # floors").
+    # The oldest glibc a Linux runtime runs on, a floor the maintainer
+    # accepted (decision 7; doc/contributors/design/releases.md,
+    # "Platform floors"). A runtime's build fails if any of its files
+    # needs a newer one; they need 2.28 today, built in manylinux_2_28
+    # (doc/contributors/design/runtimes.md, "The glibc floor").
     GLIBC_MINIMUM = "2.39"
 
     ##

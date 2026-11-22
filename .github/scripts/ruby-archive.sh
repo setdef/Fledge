@@ -62,9 +62,10 @@ PACKAGES=(
   libreadline8=8.1.2-1
 )
 
-# The Ruby that runs the task: neither rv-ruby's nor jdx/ruby's builds
-# start on glibc 2.35, so ruby/setup-ruby's own build of Ruby for Ubuntu
-# 22.04, from ruby/ruby-builder, at the folder it was built for.
+# The Ruby that runs the task: rv-ruby's builds do not start on glibc
+# 2.35, so ruby/setup-ruby's own build of Ruby for Ubuntu 22.04, from
+# ruby/ruby-builder, at the folder it was built for. jdx/ruby's, which
+# need glibc 2.17, would serve too.
 DRIVER_VERSION=4.1.0-preview1
 DRIVER_URL=https://github.com/ruby/ruby-builder/releases/download/ruby-$DRIVER_VERSION/ruby-$DRIVER_VERSION-ubuntu-22.04
 

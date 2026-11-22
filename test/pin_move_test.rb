@@ -245,6 +245,55 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  IMAGES = <<~YAML
+    manylinux:
+      version: 2026.11.21-1
+      images:
+        x86_64-linux: quay.io/pypa/manylinux_2_28_x86_64:2026.11.21-1@sha256:#{'11' * 32}
+        aarch64-linux: quay.io/pypa/manylinux_2_28_aarch64:2026.11.21-1@sha256:#{'22' * 32}
+      perl-open:
+        url: https://repo.almalinux.org/almalinux/8.10/AppStream/x86_64/os/Packages/perl-open-1.11-423.el8_10.1.noarch.rpm
+        sha256: #{'33' * 32}
+  YAML
+
+  def quay_tag(arch, tag, digest)
+    url = "https://quay.io/api/v1/repository/pypa/manylinux_2_28_#{arch}/tag/?specificTag=#{tag}&onlyActiveTags=true"
+    { url => JSON.generate("tags" => [{ "name" => tag, "manifest_digest" => "sha256:#{digest}" }], "page" => 1) }
+  end
+
+  def test_an_image_moves_its_tag_and_each_digest_from_quays_record_of_that_tag
+    checkout("runtime/sources.yml" => IMAGES) do |root|
+      answers = Answers.new(quay_tag("x86_64", "2026.12.01-1", "44" * 32).merge(quay_tag("aarch64", "2026.12.01-1", "55" * 32)))
+      move = mover(root, answers, "manylinux" => { "hold" => nil })
+      move.call(finding("manylinux", "2026.11.21-1", "2026.12.01-1"))
+
+      assert_equal IMAGES.gsub("2026.11.21-1", "2026.12.01-1").sub("11" * 32, "44" * 32).sub("22" * 32, "55" * 32), move.read("runtime/sources.yml")
+      assert_empty answers.downloaded
+    end
+  end
+
+  def test_an_image_whose_new_tag_quay_does_not_list_moves_nothing
+    checkout("runtime/sources.yml" => IMAGES) do |root|
+      empty = "https://quay.io/api/v1/repository/pypa/manylinux_2_28_aarch64/tag/?specificTag=2026.12.01-1&onlyActiveTags=true"
+      answers = Answers.new(quay_tag("x86_64", "2026.12.01-1", "44" * 32).merge(empty => JSON.generate("tags" => [], "page" => 1)))
+      move = mover(root, answers, "manylinux" => { "hold" => nil })
+      error = assert_raises(PinMove::Error) { move.call(finding("manylinux", "2026.11.21-1", "2026.12.01-1")) }
+
+      assert_equal "#{empty} lists no tag 2026.12.01-1", error.message
+      assert_equal IMAGES, move.read("runtime/sources.yml")
+    end
+  end
+
+  def test_an_image_on_a_registry_the_move_cannot_ask_stops_it
+    sources = IMAGES.sub("quay.io/pypa/manylinux_2_28_aarch64", "ghcr.io/pypa/manylinux_2_28_aarch64")
+    checkout("runtime/sources.yml" => sources) do |root|
+      move = mover(root, Answers.new(quay_tag("x86_64", "2026.12.01-1", "44" * 32)), "manylinux" => { "hold" => nil })
+      error = assert_raises(PinMove::Error) { move.call(finding("manylinux", "2026.11.21-1", "2026.12.01-1")) }
+
+      assert_match(%r{\Aghcr\.io/pypa/manylinux_2_28_aarch64 is on no registry the move can ask for a digest}, error.message)
+    end
+  end
+
   def test_a_key_beside_the_url_that_the_move_cannot_know_stops_it
     sources = SOURCES.sub("version: 3.5.2\n    url:", "version: 3.5.2\n    file_sha256: 00\n    url:")
     checkout("runtime/sources.yml" => sources) do |root|

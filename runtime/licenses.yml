@@ -214,11 +214,27 @@ components:
     download: https://github.com/rust-lang/rust/tree/1.85.1
     notice: rust
     ships: compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
-    ruby_build: upstream
+    platforms: [arm64-darwin]
     embedded:
       - files: [launcher, "{prefix}bin/ruby", "{prefix}lib/libruby*-static.a"]
         evidence: /rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/
+
+  # jdx/ruby's builds compile YJIT with the Rust its build pins
+  # (RUSTUP_TOOLCHAIN 1.58 in its package.rb), 1.58.1, whose commit the
+  # path names.
+  - id: rust-std
+    name: The Rust standard library, compiled into Ruby's YJIT
+    version: 1.58.1
+    license: MIT OR Apache-2.0
+    kind: program
+    download: https://github.com/rust-lang/rust/tree/1.58.1
+    notice: rust
+    ships: compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: jdx
+    embedded:
+      - files: [launcher, "{prefix}bin/ruby", "{prefix}lib/libruby*-static.a"]
+        evidence: /rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b/
 
   # Fledge's own build of Ruby compiles YJIT and ZJIT with the Rust
   # runtime/sources.yml pins under ruby-build, whose commit names it.
@@ -238,7 +254,7 @@ components:
 
   - id: gcc-runtime
     name: GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc)
-    version: "13"
+    version: 14.2.1
     license: GPL-3.0-or-later WITH GCC-exception-3.1
     kind: program
     download: https://gcc.gnu.org/
@@ -319,11 +335,29 @@ components:
     download: https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz
     notice: openssl
     ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}"
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
-    ruby_build: upstream
+    platforms: [arm64-darwin]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.2 "
+
+  # jdx/ruby's builds compile in OpenSSL 3.5.5 (its
+  # recipes/dependencies.yml), and ship its static libraries in lib/ for
+  # compiling gems, which a runtime leaves out.
+  - id: openssl
+    name: OpenSSL, compiled into Ruby's openssl extension
+    version: 3.5.5
+    license: Apache-2.0
+    kind: program
+    download: https://github.com/openssl/openssl/releases/download/openssl-3.5.5/openssl-3.5.5.tar.gz
+    notice: openssl
+    ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}"
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: jdx
+    files: ["{prefix}lib/lib{ssl,crypto}.a"]
+    binaries: ["{prefix}lib/lib{ssl,crypto}.a"]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
+        evidence: "OpenSSL 3.5.5 "
 
   - id: openssl
     name: OpenSSL, compiled into Ruby's openssl extension
@@ -390,6 +424,8 @@ components:
     notice: libyaml
     ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    files: ["{prefix}lib/libyaml.a"]
+    binaries: ["{prefix}lib/libyaml.a"]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
         evidence: "0.2.5\0"
@@ -444,6 +480,7 @@ components:
     notice: zlib
     ships: "compiled into lib/ruby/{abi}/{arch}/zlib.so"
     platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: [upstream, fledge]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/zlib.so"]
         evidence: "deflate 1.3.2 "
@@ -460,6 +497,24 @@ components:
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/zlib.so"]
         evidence: "deflate 1.3.2 "
+
+  # jdx/ruby's zlib (its recipes/dependencies.yml), whose static library
+  # it ships in lib/ for compiling gems, which a runtime leaves out.
+  - id: zlib
+    name: zlib, compiled into Ruby's zlib extension
+    version: 1.3.1
+    license: Zlib
+    kind: program
+    download: https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+    notice: zlib
+    ships: "compiled into lib/ruby/{abi}/{arch}/zlib.so"
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: jdx
+    files: ["{prefix}lib/libz.a"]
+    binaries: ["{prefix}lib/libz.a"]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/zlib.so"]
+        evidence: "inflate 1.3.1 "
 
   # BLAKE3's reference C implementation, which Ruby 4.1 vendors in
   # ext/digest/blake3 for Digest::BLAKE3 (ruby/ruby df881376ca, "initial
@@ -758,6 +813,7 @@ components:
     notice: libffi
     ships: compiled into the fiddle gem's extension
     platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: [upstream, fledge]
     embedded:
       - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
         evidence: "3.5.2\0"
@@ -774,6 +830,20 @@ components:
     embedded:
       - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
         evidence: "3.5.2\0"
+
+  - id: libffi
+    name: libffi, compiled into the fiddle gem's extension
+    version: 3.5.1
+    license: MIT
+    kind: program
+    download: https://github.com/libffi/libffi/releases/download/v3.5.1/libffi-3.5.1.tar.gz
+    notice: libffi
+    ships: compiled into the fiddle gem's extension
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: jdx
+    embedded:
+      - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
+        evidence: "3.5.1\0"
 
   - id: libffi-mobile
     name: libffi, compiled into the mobile runtimes' library for the fiddle gem
@@ -870,7 +940,24 @@ components:
     notice: libxcrypt
     ships: lib/libcrypt.a (only in rv-ruby's whole tree; a runtime leaves it out)
     platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: [upstream, fledge]
     files: ["{prefix}lib/libcrypt.a"]
+    binaries: ["{prefix}lib/libcrypt.a"]
+
+  # jdx/ruby's libxcrypt (its recipes/dependencies.yml), linked statically
+  # into its bin/ruby, which a runtime replaces, and shipped as a static
+  # archive and header for compiling gems, which a runtime leaves out.
+  - id: libxcrypt-static
+    name: libxcrypt's static archive and header, which jdx/ruby ships for compiling native gems
+    version: 4.4.38
+    license: LGPL-2.1-or-later
+    kind: program
+    download: https://github.com/besser82/libxcrypt/releases/download/v4.4.38/libxcrypt-4.4.38.tar.xz
+    notice: libxcrypt
+    ships: lib/libcrypt.a and include/crypt.h (only in jdx/ruby's whole tree; a runtime leaves them out)
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: jdx
+    files: ["{prefix}lib/libcrypt.a", "{prefix}include/crypt.h"]
     binaries: ["{prefix}lib/libcrypt.a"]
 
   - id: gmp
@@ -928,6 +1015,23 @@ components:
     notice: ca-certificates
     ships: libexec/cert.pem, unmodified
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, ios, android]
+    ruby_build: [upstream, fledge]
+    files: ["{prefix}libexec/cert.pem"]
+
+  # jdx/ruby's builds carry the extract its recipes/dependencies.yml pins,
+  # which a glibc Linux app reads only on a computer with no CA
+  # certificates of its own (doc/contributors/design/runtimes.md,
+  # "Certificates on glibc Linux").
+  - id: ca-certificates
+    name: Mozilla's CA certificates, as curl publishes them
+    version: cacert-2025-07-15
+    license: MPL-2.0
+    kind: files
+    download: https://curl.se/ca/cacert-2025-07-15.pem
+    notice: ca-certificates
+    ships: libexec/cert.pem, unmodified
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: jdx
     files: ["{prefix}libexec/cert.pem"]
 
   - id: ca-certificates-msys2
@@ -967,9 +1071,30 @@ components:
     kind: files
     download: https://github.com/spinel-coop/rv-ruby/tree/074afbcb773b580516a281c84878f1cd3a651cda
     ships: rv-ruby's install receipt and SBOM (only in rv-ruby's whole tree)
-    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    platforms: [arm64-darwin]
     notice: rv-ruby
     files: ["{prefix}INSTALL_RECEIPT.json", "{prefix}sbom.spdx.json", "{prefix}.brew/*.rb", "{prefix}lib/ruby/{abi}/{arch}/portable_ruby_gems.rb"]
+
+  # jdx/ruby's own code in its Ruby: the lines it adds to openssl.rb,
+  # which choose the CA certificates, and to rbconfig.rb, which point
+  # mkmf at the tree's own headers and libraries, both of which a
+  # runtime ships, and its load-path helper, which a runtime prunes.
+  - id: jdx-ruby
+    name: jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb
+    version: 4.1.0-preview1
+    license: BSD-2-Clause
+    kind: files
+    download: https://github.com/jdx/ruby/tree/ad498b278b97f1c631e3e6db5aafee01ab326901
+    notice: jdx-ruby
+    ships: "lines of lib/ruby/{abi}/openssl.rb and lib/ruby/{abi}/{arch}/rbconfig.rb"
+    platforms: [x86_64-linux, aarch64-linux]
+    ruby_build: jdx
+    files: ["{prefix}lib/ruby/{abi}/{arch}/portable_ruby_gems.rb"]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/openssl.rb"]
+        evidence: JDX_RUBY_SSL_CERT_FILE
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/rbconfig.rb"]
+        evidence: Prefer the relocated portable Ruby prefix when building native gems.
 
   # The source of each component above whose license asks for it, which
   # each runtime carries in notices/sources/ and so every app that copies

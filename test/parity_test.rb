@@ -215,6 +215,26 @@ class ParityTest < Minitest::Test
     refute Parity::Reports.compare(reference, elsewhere, platform: "x64-mingw-ucrt", check: :spelled).all?(&:justified?)
   end
 
+  # jdx/ruby's rbconfig.rb puts its prefix's pkgconfig folder first in
+  # PKG_CONFIG_PATH each time a Ruby loads it, and bundle exec runs one
+  # Ruby more than the app: so on glibc Linux, under the bundle check, the
+  # reference may repeat that folder, but the rest must be the same.
+  def test_a_repeated_pkgconfig_folder_is_justified_only_with_the_same_rest_on_glibc_linux
+    facts = ["ENV", "child ENV", "Bundler.original_env", "Bundler.unbundled_env", "original child ENV", "unbundled child ENV"]
+    pkgconfig = "<prefix>/lib/pkgconfig"
+    reference = facts.to_h { |fact| [fact, { "PKG_CONFIG_PATH" => "#{pkgconfig}:#{pkgconfig}:/usr/lib/pkgconfig" }] }
+    app = facts.to_h { |fact| [fact, { "PKG_CONFIG_PATH" => "#{pkgconfig}:/usr/lib/pkgconfig" }] }
+    unset = facts.to_h { |fact| [fact, { "PKG_CONFIG_PATH" => pkgconfig }] }
+    other = facts.to_h { |fact| [fact, { "PKG_CONFIG_PATH" => "#{pkgconfig}:/opt/lib/pkgconfig" }] }
+
+    assert Parity::Reports.compare(reference, app, platform: "x86_64-linux", check: :bundle).all?(&:justified?)
+    assert Parity::Reports.compare(facts.to_h { |fact| [fact, { "PKG_CONFIG_PATH" => "#{pkgconfig}:#{pkgconfig}" }] }, unset,
+      platform: "aarch64-linux", check: :bundle).all?(&:justified?)
+    refute Parity::Reports.compare(reference, other, platform: "x86_64-linux", check: :bundle).any?(&:justified?)
+    refute Parity::Reports.compare(reference, app, platform: "x86_64-linux", check: :script).any?(&:justified?)
+    refute Parity::Reports.compare(reference, app, platform: "arm64-darwin", check: :bundle).any?(&:justified?)
+  end
+
   # A desktop may start a windowed app with no locale, as Launch Services
   # does, so the windowed check allows what the check with no locale
   # allows, and what the script check does, but not the gem-shaped one's.

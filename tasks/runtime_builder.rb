@@ -23,8 +23,9 @@ require_relative "../lib/fledge/version"
 # "What a runtime is").
 #
 # On macOS and Linux, a runtime is the launcher in runtime/launcher/,
-# compiled against rv-ruby's static libruby, beside Ruby's own program
-# (bin/ruby, built from the same libruby), rv-ruby's standard library,
+# compiled against the pinned Ruby's static libruby (rv-ruby's on macOS,
+# jdx/ruby's on glibc Linux), beside Ruby's own program (bin/ruby, built
+# from the same libruby), that Ruby's standard library,
 # default gems, and bundled gems, its CA bundle, and the license notices
 # of everything it carries. Those launchers link Ruby itself, so each builds
 # on its own platform's runner. On Windows, a runtime is the launcher,

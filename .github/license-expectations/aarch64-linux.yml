@@ -3,21 +3,26 @@
 # SPDX-FileComment: Adapted from .github/license-expectations/ on Fledge's
 #   spike/permissive branch (58edf27d27912d062ccfa5c4960533a220c9eb24).
 
-# What the license audit finds in rv-ruby's whole aarch64-linux tree, which the
-# runtime builder prunes and replaces (ci.yml, Licenses of the whole
-# upstream tree). rv-ruby links libxcrypt, which is LGPL, statically into
-# its bin/ruby, which a runtime replaces with one built from Ruby's own
-# main.c against the shared lib/libcrypt.so.2, and ships libxcrypt's
-# static archive for compiling native gems, which a runtime prunes.
+# What the license audit finds in jdx/ruby's whole aarch64-linux tree,
+# which the runtime builder prunes and replaces (ci.yml, Licenses of the
+# whole upstream tree). jdx/ruby links libxcrypt, which is LGPL,
+# statically into its bin/ruby, which a runtime replaces with one built
+# from Ruby's own main.c against the shared lib/libcrypt.so.2, and ships
+# libxcrypt's static archive and header for compiling native gems, which
+# a runtime leaves out.
 - "static-copyleft: bin/ruby:"
 - "static-copyleft: lib/libcrypt.a:"
-- "policy: lib/libcrypt.a:"
+- "policy: include/crypt.h:"
 # nkf ships JRuby's Java sources (EPL-2.0 OR LGPL-2.1-or-later) in its
 # folder and in its cached .gem; a runtime prunes them
 # (RuntimeBuilder::Pruning.prune_jruby).
 - "copyleft-text: lib/ruby/gems/4.1.0+5/gems/nkf-0.3.0/ext/java/"
 - "copyleft-text: lib/ruby/gems/4.1.0+5/cache/nkf-0.3.0.gem!ext/java/"
-# rv-ruby's own bin/ruby is Ruby's main.c alone; a runtime's carries
+# msgpack, which jdx/ruby adds and no standard Ruby installs, declares
+# its license as "Apache 2.0", which is no SPDX identifier; a runtime
+# prunes the gem (RuntimeBuilder::Pruning.prune).
+- "policy: lib/ruby/gems/4.1.0+5/cache/"
+# jdx/ruby's own bin/ruby is Ruby's main.c alone; a runtime's carries
 # Fledge's code beside it (runtime/launcher/ruby_main.c), which
 # the audit looks for by a string of relaunch.c's.
 - "stale: bin/ruby: should hold Fledge launcher and RubyGems defaults"

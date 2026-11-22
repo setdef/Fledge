@@ -39,6 +39,8 @@
 #   repository); beside, the .sha256 file the upstream publishes beside
 #   each download; or download, the file downloaded and hashed (the
 #   default for a page). A github asset with no digest is downloaded.
+#   A container image, pinned as REPOSITORY:TAG@sha256:DIGEST, takes its
+#   new digest from its registry's listing of the new tag (quay.io's).
 # keep: keys beside a moved URL that do not depend on the version, which
 #   the move leaves as they are. Any other key stops the move.
 # licenses: the ids of runtime/licenses.yml's entries that name the
@@ -78,9 +80,9 @@ watched:
     line: 2
     names: [Ruby]
     hold: The step from Ruby 4.1's preview to 4.1.0 is the maintainer's to take (releases.md, "The day Ruby 4.1.0 appears"); a patch of 4.1 after it waits on the code runtimes.md, "Ruby's patches, with no person", names.
-  # rv-ruby's release of the macOS and glibc Linux Rubies, which compile
-  # in their own OpenSSL, libyaml, libffi, and zlib, so a newer rv-ruby
-  # release is how those reach the runtimes. rubies is its rolling tag.
+  # rv-ruby's release of the macOS Ruby, which compiles in its own
+  # OpenSSL, libyaml, libffi, and zlib, so a newer rv-ruby release is how
+  # those reach the runtime. rubies is its rolling tag.
   rv-ruby:
     pins: [ruby]
     field: release
@@ -89,6 +91,28 @@ watched:
     licenses: [rv-ruby]
     also:
       lib/fledge/download.rb: []
+  # jdx/ruby's release of the glibc Linux Rubies, one per Ruby version,
+  # tagged with it, so a newer one is a Ruby that glibc Linux can take.
+  # A rebuild of the same Ruby, with newer OpenSSL or zlib, is tagged
+  # VERSION-N, which Ruby's Gem::Version orders before VERSION, so the
+  # pattern leaves rebuilds out and the watch does not report them.
+  jdx-ruby:
+    pins: [ruby]
+    field: jdx_release
+    github: jdx/ruby
+    tag: '\A(?<version>\d+\.\d+\.\d+(?:-(?:preview|rc)\d+)?)\z'
+    line: 2
+    hold: jdx/ruby releases one build per Ruby version, so its next release is a move of Ruby, which is planned work (ruby, above).
+  # PyPA's manylinux_2_28 image, which the glibc Linux runtimes build
+  # in, from quay.io's listing of its tags, newest first (the first page
+  # of 100 holds the newest). Each processor's image has its own
+  # repository with the same tags; the x86_64 one is asked, and the move
+  # takes each repository's digest of the new tag from the same API.
+  manylinux:
+    pins: [manylinux]
+    page: https://quay.io/api/v1/repository/pypa/manylinux_2_28_x86_64/tag/?onlyActiveTags=true&limit=100
+    pattern: '"name": ?"(?<version>\d{4}\.\d{2}\.\d{2}-\d+)"'
+    names: [manylinux_2_28]
   # RubyInstaller's numbered release of the pinned Ruby, which replaces
   # the head build Windows runs while Ruby 4.1 is a preview (runtimes.md,
   # "Windows' Ruby until Ruby 4.1.0").
@@ -237,3 +261,6 @@ unwatched:
   replaceability.gmp: CI's stand-in for an older GMP in the replaceability proof, which must stay older.
   mobile.xcode: Apple publishes no download to pin; CI chooses Xcode by version on the runner.
   ruby-build.rust: Builds no runtime; it follows the Rust that mise.toml pins.
+  almalinux-perl.perl-open: Its newest build cannot be read mechanically, since an RPM's version and release (1.11-423.el8_10.1) are no version that Ruby's Gem::Version, by which the watch orders releases, can parse; a person moves the three AlmaLinux Perl packages together when the image's Perl needs it.
+  almalinux-perl.perl-encoding: Its newest build cannot be read mechanically, as almalinux-perl.perl-open's cannot; it moves with that package.
+  almalinux-perl.perl-Filter: Its newest build cannot be read mechanically, as almalinux-perl.perl-open's cannot; it moves with that package.

@@ -51,10 +51,11 @@
 # Every runtime build runs the license audit and refuses to archive a
 # runtime that breaks Fledge's license policy. The Licenses
 # jobs check what it wrote and that it still fails on GPL code; the
-# upstream jobs show it catching what rv-ruby and RubyInstaller ship and
-# runtimes remove; the licensing page job keeps doc/licensing.md true to
-# the runtimes; and the Replace jobs prove that whoever receives an app
-# can replace its LGPL libraries, as that page tells developers.
+# upstream jobs show it catching what rv-ruby, jdx/ruby, and
+# RubyInstaller ship and runtimes remove; the licensing page job keeps
+# doc/licensing.md true to the runtimes; and the Replace jobs prove that
+# whoever receives an app can replace its LGPL libraries, as that page
+# tells developers.
 #
 # ruby/spec runs on stock Ruby and in a built app from each runtime,
 # desktop and phone, and any example that fails on one side only, unless
@@ -282,8 +283,9 @@ jobs:
 
   # One runtime per platform (rake runtime): the launcher compiled with
   # warnings as errors and the compiler's static analyzer, the pinned
-  # Ruby's standard library pruned beside it (rv-ruby's, or for Windows
-  # RubyInstaller's, checked against its PGP signature), and the license
+  # Ruby's standard library pruned beside it (rv-ruby's on macOS,
+  # jdx/ruby's on glibc Linux, or for Windows RubyInstaller's, checked
+  # against its PGP signature), and the license
   # audit, which fails the build of a runtime that breaks
   # Fledge's license policy and writes its NOTICES and SBOM. Beside each
   # archive go the release assets that describe it: the SBOM, the
@@ -323,23 +325,6 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
-      # The compiler and linker that build the launcher, bin/ruby, and
-      # libxcrypt, pinned to the Ubuntu 24.04 builds of gcc 13 and
-      # binutils that built the runtimes before this pin, and patchelf,
-      # which removes the RUNPATHs rv-ruby's build left in its extensions.
-      # make, perl, and xz, which libxcrypt's build needs, are on the
-      # runner already. Ubuntu's archive lists only a package's newest
-      # update, so a pin that stops resolving fails the job, and is moved
-      # on purpose.
-      - name: Install the pinned compiler, linker, and patchelf
-        if: runner.os == 'Linux' && !endsWith(matrix.platform, '-mingw-ucrt')
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc-13=13.3.0-6ubuntu2~24.04.1 binutils=2.42-4ubuntu2.10 patchelf=0.18.0-1.1build1
-          echo "CC=gcc-13" >> "$GITHUB_ENV"
-          gcc-13 --version | head -n 1
-          ld --version | head -n 1
-
       # The Xcode whose clang and linker build the launcher and bin/ruby,
       # chosen by version as the iOS runtime's is, since Apple publishes
       # no download to pin: 16.4, macos-15's default, whose macOS 15.5 SDK
@@ -350,11 +335,11 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.4.app
           xcodebuild -version
 
-      # rv-ruby, RubyInstaller, llvm-mingw, and libxcrypt downloads: the
-      # newest set saved for this platform, which the builder takes a
-      # file from only when its SHA-256 is the pin's, downloading the
-      # rest (doc/contributors/design/runtimes.md, "Pinned downloads in
-      # CI"). The job's last steps save what it holds.
+      # rv-ruby, jdx/ruby, RubyInstaller, llvm-mingw, and libxcrypt
+      # downloads: the newest set saved for this platform, which the
+      # builder takes a file from only when its SHA-256 is the pin's,
+      # downloading the rest (doc/contributors/design/runtimes.md, "Pinned
+      # downloads in CI"). The job's last steps save what it holds.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: downloads
         with:
@@ -362,12 +347,21 @@ jobs:
           key: runtime-downloads-${{ matrix.platform }}-files-
 
       # The archive's timestamps are the commit's, so two builds of one
-      # commit differ only where the compiler's output does.
+      # commit differ only where the compiler's output does. glibc Linux
+      # builds in the pinned manylinux_2_28 image, with its compiler,
+      # linker, and patchelf, so that what the builder compiles needs no
+      # newer glibc than the image's 2.28
+      # (doc/contributors/design/runtimes.md, "The glibc floor").
       - name: Build the runtime
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
           export SOURCE_DATE_EPOCH
-          ruby tasks/runtime_builder.rb "${{ matrix.platform }}"
+          case "$PLATFORM" in
+            x86_64-linux | aarch64-linux) .github/scripts/glibc-runtime.sh "$PLATFORM" ;;
+            *) ruby tasks/runtime_builder.rb "$PLATFORM" ;;
+          esac
 
       # The Windows source bundle holds MSYS2's source package of GMP as
       # the exact source of RubyInstaller's libgmp-10.dll. That holds only
@@ -2721,11 +2715,12 @@ jobs:
           grep -F "VIOLATION: unlisted-binary: $extension:" "$RUNNER_TEMP/tampered.txt"
           grep -F "gem-copyleft-1.0.0 is GPL-3.0-only, which the policy does not allow" "$RUNNER_TEMP/tampered.txt"
 
-  # The same audit of the whole tree each runtime comes from, rv-ruby's or
-  # RubyInstaller's, bundled gems, bin/ruby, and all: it must find exactly
-  # what .github/license-expectations/ lists, which is what the runtime
-  # builder removes (rv-ruby's bin/ruby, which links libxcrypt
-  # statically, and its libcrypt.a; nkf's Java sources; MSYS2's keyring).
+  # The same audit of the whole tree each runtime comes from, rv-ruby's,
+  # jdx/ruby's, or RubyInstaller's, bundled gems, bin/ruby, and all: it
+  # must find exactly what .github/license-expectations/ lists, which is
+  # what the runtime builder removes (rv-ruby's and jdx/ruby's bin/ruby,
+  # which link libxcrypt statically, and their libcrypt.a; nkf's Java
+  # sources; MSYS2's keyring).
   # It shows the audit catching the real thing, not only planted files.
   licenses-upstream:
     name: Licenses of the whole upstream tree (${{ matrix.platform }})
@@ -2778,7 +2773,7 @@ jobs:
             *) tar -xzf "$archive" -C "$RUNNER_TEMP/upstream" ;;
           esac
           version=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("ruby", "version")')
-          tree=$(find "$RUNNER_TEMP/upstream" -mindepth 1 -maxdepth 3 -type d \( -name "$version" -o -name 'rubyinstaller-*' \) | head -n 1)
+          tree=$(find "$RUNNER_TEMP/upstream" -mindepth 1 -maxdepth 3 -type d \( -name "$version" -o -name "ruby-$version" -o -name 'rubyinstaller-*' \) | head -n 1)
           echo "TREE=$tree" >> "$GITHUB_ENV"
 
       - name: Key the downloads by the files they hold

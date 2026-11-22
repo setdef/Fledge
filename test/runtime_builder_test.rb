@@ -49,13 +49,36 @@ class RuntimeBuilderTest < Minitest::Test
     variables.each_key { |name| saved.key?(name) ? ENV[name] = saved[name] : ENV.delete(name) }
   end
 
+  # macOS takes rv-ruby's build, and glibc Linux jdx/ruby's, which is
+  # built against glibc 2.17 (runtime/sources.yml), and says so by its
+  # build key, so that the license audit asks for what that build holds.
   def test_every_platform_pins_a_ruby_build_by_sha256
     pins = builder("x86_64-linux").sources.fetch("ruby").fetch("platforms")
 
     assert_equal Fledge::Platform.names.reject { |name| name.end_with?("-musl") }.sort, pins.keys.sort
-    pins.except("x64-mingw-ucrt", "aarch64-mingw-ucrt").each_value do |pin|
-      assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/\d{8}/ruby-4\.1\.0-preview1\.}, pin.fetch("url"))
-      assert_match(/\A\h{64}\z/, pin.fetch("sha256"))
+    assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/\d{8}/ruby-4\.1\.0-preview1\.}, pins.dig("arm64-darwin", "url"))
+    release = builder("x86_64-linux").sources.fetch("ruby").fetch("jdx_release")
+    %w[x86_64-linux aarch64-linux].each do |name|
+      assert pins.dig(name, "url").start_with?("https://github.com/jdx/ruby/releases/download/#{release}/ruby-4.1.0-preview1."), name
+      assert_equal "jdx", pins.dig(name, "build")
+    end
+    pins.each_value { |pin| assert_match(/\A\h{64}\z/, pin.fetch("sha256")) }
+  end
+
+  # rv-ruby's archives hold their Ruby in NAME/VERSION/, as Fledge's own
+  # builds do (ruby/VERSION/), and jdx/ruby's in ruby-VERSION/.
+  def test_a_ruby_archive_holds_its_prefix_in_any_of_the_layouts_its_sources_use
+    %w[rv-ruby@4.1.0-preview1/4.1.0-preview1 ruby/4.1.0-preview1 ruby-4.1.0-preview1].each do |layout|
+      Dir.mktmpdir do |dir|
+        FileUtils.mkdir_p(File.join(dir, layout, "bin"))
+
+        assert_equal File.join(dir, layout), RuntimeBuilder::Unix.prefix(dir, "4.1.0-preview1")
+      end
+    end
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, "ruby-4.1.0"))
+
+      assert_raises(RuntimeError) { RuntimeBuilder::Unix.prefix(dir, "4.1.0-preview1") }
     end
   end
 
@@ -274,7 +297,7 @@ class RuntimeBuilderTest < Minitest::Test
   # the one the Linux recipe stages, which a tool here must read.
   def linux_stage(root)
     TestReaders.need(self, :elf)
-    rust = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
+    rust = "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b/"
     {
       "launcher" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "2d08b5f42f #{rust} GCC: ("),
       "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "2d08b5f42f #{rust} GCC: ( ruby: could not run "),
@@ -455,7 +478,8 @@ class RuntimeBuilderTest < Minitest::Test
   # against the static libruby in $(libdir), so a runtime keeps it beside
   # lib/ruby, stripped of the debug sections a link never reads;
   # rv-ruby's other static library, libxcrypt's, and its pkg-config
-  # files stay out.
+  # files stay out, and of include/ only Ruby's own headers come, not
+  # the headers jdx/ruby's tree has beside them for its static libraries.
   def test_a_unix_runtime_keeps_the_static_libruby_mkmf_links_against
     Dir.mktmpdir do |dir|
       prefix = File.join(dir, "prefix")
@@ -463,6 +487,8 @@ class RuntimeBuilderTest < Minitest::Test
         bin/ruby
         bin/gem
         include/ruby-4.1.0+5/ruby.h
+        include/crypt.h
+        include/openssl/ssl.h
         lib/libruby.4.1-static.a
         lib/libcrypt.a
         lib/pkgconfig/ruby-4.1.pc
@@ -479,6 +505,7 @@ class RuntimeBuilderTest < Minitest::Test
 
       assert_equal %w[lib/libruby.4.1-static.a], kept(File.join(stage)).grep(/\.a\z/)
       refute_path_exists File.join(stage, "lib/pkgconfig")
+      assert_equal %w[include/ruby-4.1.0+5/ruby.h], kept(stage).grep(%r{\Ainclude/})
       assert_equal [["strip", "-S", File.join(stage, "lib/libruby.4.1-static.a")]], commands.ran
     end
   end

@@ -101,7 +101,6 @@ x86_64-linux:
   abi: 4.1.0+5
   absent:
   - libxcrypt-static
-  - rv-ruby
   files:
     fledge:
     - launcher
@@ -199,7 +198,6 @@ aarch64-linux:
   abi: 4.1.0+5
   absent:
   - libxcrypt-static
-  - rv-ruby
   files:
     libfuse: []
     libxcrypt:

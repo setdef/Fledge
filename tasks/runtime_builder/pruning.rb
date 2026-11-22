@@ -31,8 +31,8 @@ class RuntimeBuilder
     #          (mkmf.rb, "can't find header files for ruby").
     # [gems/4.1.0+5/doc] RDoc and ri documentation, read by the rdoc and ri
     #          tools a developer runs, never by an app's requires.
-    # [portable_ruby_gems.rb, and gems no standard Ruby installs] rv-ruby's
-    #          own additions (a load-path helper for its executables, and
+    # [portable_ruby_gems.rb, and gems no standard Ruby installs] rv-ruby's and
+    #          jdx/ruby's own additions (a load-path helper for their executables, and
     #          bootsnap and msgpack): a standard Ruby 4.1, and
     #          RubyInstaller's, has none of them, so an app that worked
     #          under ruby never needed them. Gems that are neither default

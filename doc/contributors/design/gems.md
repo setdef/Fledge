@@ -161,7 +161,7 @@ The runtime's own Ruby (`bin/ruby`, or `ruby\bin\ruby.exe`) runs `NativeBuild::S
 - a gem from a server is installed as RubyGems installs one, `Gem::Installer.at(...).install`, with its build options, `ignore_dependencies`, and no documents, into the build's own gem folder;
 - a git gem's or path gem's extensions are built in a copy of its checkout at `bundler/gems/SCOPE` in that folder, with `Gem::Ext::Builder#build_extensions` and the specification's `extension_dir` set as Bundler's `Gem::Specification#extension_dir` would set it (`bundler/gems/extensions/PLATFORM/ABI/` and the scope and folder joined with `-`, `bundler/rubygems_ext.rb`, lines 226 to 236). A path gem is copied from the files its gemspec lists, as `gem build` and `gem install` would see them.
 
-So the headers, `RbConfig`, compiler flags, `Gem::Platform.local`, and `Gem.extension_api_version` are the runtime's (`4.1.0+5-static` for rv-ruby's static Ruby, `4.1.0+6` for RubyInstaller's), and the extension lands where the app's RubyGems and Bundler look. The developer's Ruby compiles nothing.
+So the headers, `RbConfig`, compiler flags, `Gem::Platform.local`, and `Gem.extension_api_version` are the runtime's (`4.1.0+5-static` for rv-ruby's and jdx/ruby's static Rubies, `4.1.0+6` for RubyInstaller's), and the extension lands where the app's RubyGems and Bundler look. The developer's Ruby compiles nothing.
 
 **Order.** Every gem with an extension is installed after the gems it depends on that come from a gem server, which its `extconf.rb` may require (rb_sys and its rake-compiler-dock for an rb-sys gem, mini_portile2 for nokogiri); those are installed into the build's gem folder first, from the lockfile's own files.
 

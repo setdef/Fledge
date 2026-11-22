@@ -17,7 +17,7 @@ require "stringio"
 # and checked against the real runtime/licenses.yml. CI runs it against
 # the four real runtimes and the whole trees they come from.
 class LicenseAuditTest < Minitest::Test
-  RUST = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
+  RUST = "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b/"
   ARCH = "lib/ruby/4.1.0+5/x86_64-linux"
 
   def setup
@@ -26,7 +26,7 @@ class LicenseAuditTest < Minitest::Test
     write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2],
       payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) #{RUST} GCC: (Ubuntu 13.3.0)"))
     write("lib/libcrypt.so.2", Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"))
-    write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.2 "))
+    write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.5.5 "))
     write("lib/ruby/4.1.0+5/set.rb", "class Set; end\n")
     write("lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
     write("libexec/cert.pem", "-----BEGIN CERTIFICATE-----\n")
@@ -205,9 +205,9 @@ class LicenseAuditTest < Minitest::Test
   end
 
   # A runtime made from Fledge's own build of Ruby holds that build's Rust
-  # and OpenSSL, not rv-ruby's. The platform's Ruby pin says which build
-  # it is, so today's pins still ask for rv-ruby's, and Fledge's passes
-  # only under a pin that names it.
+  # and OpenSSL, not jdx/ruby's. The platform's Ruby pin says which build
+  # it is, so today's pins ask for jdx/ruby's, and Fledge's passes only
+  # under a pin that names it.
   def test_the_build_of_ruby_a_pin_names_decides_what_the_runtime_must_hold
     write("launcher", Binaries.elf(needed: %w[libcrypt.so.2 libm.so.6 libc.so.6 ld-linux-x86-64.so.2],
       payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/ GCC: (Ubuntu 13.3.0)"))

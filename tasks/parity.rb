@@ -68,8 +68,8 @@ class Parity
   BUNDLED_WITH_APP = File.join(ROOT, "test", "fixtures", "bundled_with")
   ARGUMENTS = ["one", "two words", "ünïcödé"].freeze
 
-  # rv-ruby installs two gems a standard Ruby 4.1 does not, which a
-  # runtime prunes (RuntimeBuilder::Pruning.prune).
+  # rv-ruby and jdx/ruby install two gems a standard Ruby 4.1 does not,
+  # which a runtime prunes (RuntimeBuilder::Pruning.prune).
   RV_RUBY_EXTRAS = /\A"(?:bootsnap|msgpack)(?: |"=)/
 
   # Where bundle install puts a gem's files for the person, and where
@@ -80,6 +80,10 @@ class Parity
   # The variables Bundler sets for the bundle it set up, whose values
   # name where the gems are.
   BUNDLE_LOCATIONS = /\A"(?<name>GEM_HOME|PATH)"=/
+
+  # PKG_CONFIG_PATH with the Ruby prefix's pkgconfig folder first, once or
+  # more, and the rest of the value after it.
+  REPEATED_PKGCONFIG = %r{\A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)}
 
   # PATH, as Windows itself spells it.
   SPELLED_LOCATIONS = /\A"(?<name>Path)"=/
@@ -133,6 +137,15 @@ class Parity
           "person's own values in both, and records theirs as BUNDLER_ORIG_*.")
     end,
     *["ENV", "child ENV", "Bundler.original_env", "Bundler.unbundled_env", "original child ENV", "unbundled child ENV"].map do |fact|
+      Justification.new(fact:, reference: [REPEATED_PKGCONFIG], app: [REPEATED_PKGCONFIG], platforms: %w[x86_64-linux aarch64-linux],
+        checks: %i[bundle],
+        reason: "jdx/ruby's rbconfig.rb, which every Ruby loads as it boots, puts its prefix's lib/pkgconfig first in " \
+          "PKG_CONFIG_PATH each time, so the folder is there once for each Ruby between the person and the program. " \
+          "bundle exec runs one more than the app, bundle itself, which execs the program's Ruby; the launcher " \
+          "starts that Ruby in its own process. The rest of the value is the same in both, and pkg-config searches " \
+          "the same folders in the same order.")
+    end,
+    *["ENV", "child ENV", "Bundler.original_env", "Bundler.unbundled_env", "original child ENV", "unbundled child ENV"].map do |fact|
       Justification.new(fact:, reference: [SPELLED_LOCATIONS], app: [SPELLED_LOCATIONS], platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
         checks: %i[spelled],
         reason: "As for GEM_HOME and PATH: Bundler puts the bundle's gems first in PATH, which Windows spells Path, the " \
@@ -173,14 +186,14 @@ class Parity
     Justification.new(fact: "Gem.dir", reference: [%r{\A"<work>/person-gems"\z}], app: [%r{\A"<prefix>/lib/ruby/gems/#{ABI}"\z}o],
       reason: "As for Gem.path: RubyGems installs into the runtime's gem folder, never the person's GEM_HOME."),
     Justification.new(fact: "gems", reference: [RV_RUBY_EXTRAS],
-      reason: "rv-ruby adds bootsnap and msgpack, which no standard Ruby 4.1 installs; runtimes keep " \
+      reason: "rv-ruby and jdx/ruby add bootsnap and msgpack, which no standard Ruby 4.1 installs; runtimes keep " \
         "Ruby's own default and bundled gems."),
     Justification.new(fact: "requireable", reference: [RV_RUBY_EXTRAS], reason: "As for gems."),
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/#{ABI}/rubygems/defaults/operating_system\.rb"\z}o],
       platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", "x86_64-linux-musl", "aarch64-linux-musl", *MOBILE],
       reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems " \
         "(doc/contributors/design/runtimes.md, \"Fledge's RubyGems defaults\"); " \
-        "rv-ruby ships no such file, nor does the Ruby a musl runtime is built from."),
+        "rv-ruby and jdx/ruby ship no such file, nor does the Ruby a musl runtime is built from."),
     Justification.new(fact: "Windows", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reference: [/\A"code page"=\d+\z/, /\A"narrow DLL load"="no DLL"\z/],
       app: [/\A"code page"=65001\z/, /\A"narrow DLL load"="loaded"\z/],

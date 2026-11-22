@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** `fledge build android` refuses every app whose `build.gradle` sets `useLegacyPackaging = false` or sets none, not only an app with a gem's C or C++ extension, since Ruby's own extensions and encodings are now native libraries the package installer must extract.
 - The Android runtime's Ruby is a shared library, `libfledgeruby.so`, with each extension of Ruby's standard library and bundled gems, and each encoding table, a native library of its own in `FledgeRuby.aar`, which an app's Ruby loads from the path a desktop's has it, so `$LOADED_FEATURES` and `RbConfig::CONFIG["archdir"]` are as under `ruby main.rb`; OpenSSL, libyaml, and libffi are in `openssl.so`, `psych.so`, and `fiddle.so`, no longer in `libfledgeruby.so`.
 - On Android, RubyGems keeps a gem's compiled extension under `extensions/PLATFORM/4.1.0+5/`, as on a desktop Linux, where it was `4.1.0+5-static/`.
+- The `x86_64-linux` and `aarch64-linux` runtimes take their Ruby 4.1.0-preview1 from jdx/ruby's build in place of rv-ruby's, so their openssl, zlib, and fiddle extensions carry OpenSSL 3.5.5, zlib 1.3.1, and libffi 3.5.1 (rv-ruby's carried OpenSSL 3.6.2, zlib 1.3.2, and libffi 3.5.2), and Fledge's launcher, `bin/ruby`, and libxcrypt in them are compiled in manylinux_2_28, so that no file of the runtime needs a glibc newer than 2.28.
+- A glibc Linux app trusts the computer's own CA certificates, as other Linux programs do, and the certificates it carries only on a computer with none.
 
 ### Fixed
 

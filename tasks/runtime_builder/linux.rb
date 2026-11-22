@@ -58,8 +58,9 @@ class RuntimeBuilder
     end
 
     # Strips debug sections from extensions, and removes the RUNPATHs
-    # rv-ruby's build machine left in some (zlib.so names a Linuxbrew
-    # folder), so no extension looks for libraries outside the runtime.
+    # the pinned Ruby's build machine left in some (rv-ruby's zlib.so
+    # named a Linuxbrew folder), so no extension looks for libraries
+    # outside the runtime.
     # Then puts AppImage's released runtime into tools/.
     def finish(stage)
       Dir.glob(File.join(stage, "lib", "ruby", "**", "*.so")).each do |extension|
@@ -105,7 +106,10 @@ class RuntimeBuilder
       source = File.join(build_dir, "libxcrypt")
       prefix = File.join(build_dir, "libxcrypt-prefix")
       FileUtils.mkdir_p(source)
-      builder.run("tar", "-xJf", tarball, "-C", source, "--strip-components=1")
+      # The build owns what it unpacks, whoever owned it in the archive:
+      # as root in a container, tar otherwise keeps the archive's owners,
+      # which a user namespace cannot map.
+      builder.run("tar", "-xJf", tarball, "-C", source, "--strip-components=1", "--no-same-owner")
       builder.run("./configure", "--prefix=#{prefix}", *LIBXCRYPT_CONFIGURE, chdir: source)
       builder.run("make", "-j#{Etc.nprocessors}", chdir: source)
       builder.run("make", "install", chdir: source)

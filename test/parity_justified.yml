@@ -103,6 +103,66 @@
   - bundle
 - fact: ENV
   reference:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  app:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  platforms:
+  - x86_64-linux
+  - aarch64-linux
+  checks:
+  - bundle
+- fact: child ENV
+  reference:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  app:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  platforms:
+  - x86_64-linux
+  - aarch64-linux
+  checks:
+  - bundle
+- fact: Bundler.original_env
+  reference:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  app:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  platforms:
+  - x86_64-linux
+  - aarch64-linux
+  checks:
+  - bundle
+- fact: Bundler.unbundled_env
+  reference:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  app:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  platforms:
+  - x86_64-linux
+  - aarch64-linux
+  checks:
+  - bundle
+- fact: original child ENV
+  reference:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  app:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  platforms:
+  - x86_64-linux
+  - aarch64-linux
+  checks:
+  - bundle
+- fact: unbundled child ENV
+  reference:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  app:
+  - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
+  platforms:
+  - x86_64-linux
+  - aarch64-linux
+  checks:
+  - bundle
+- fact: ENV
+  reference:
   - \A"(?<name>Path)"=
   app:
   - \A"(?<name>Path)"=

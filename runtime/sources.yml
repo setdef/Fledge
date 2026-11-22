@@ -11,13 +11,18 @@
 # doc/contributors/design/runtimes.md, "Sources and pins"), but Windows,
 # whose Ruby is a snapshot of Ruby's master of a month later, below.
 #
-# macOS and Linux: rv-ruby's relocatable CRuby builds, release 20261023,
-# one asset per target. Each carries a static libruby the launcher links,
+# macOS: rv-ruby's relocatable CRuby build, release 20261023 (release,
+# below). glibc Linux: jdx/ruby's (github.com/jdx/ruby, a fork of
+# rv-ruby, whose builds mise installs), release 4.1.0-preview1 of
+# 2026-10-22 (jdx_release, below), at commit ad498b278b, built in
+# manylinux2014 containers against glibc 2.17, where rv-ruby's builds on
+# Ubuntu 24.04 need glibc 2.38 (doc/contributors/design/runtimes.md,
+# "The glibc floor"). Each carries a static libruby the launcher links,
 # and the standard library the runtime ships. The SHA-256s are those
-# GitHub records for each asset. A pin of Fledge's own build of Ruby
-# (ruby-build, below) in their place says build: fledge, so that the
-# license audit asks for what that build holds (runtime/licenses.yml,
-# ruby_build).
+# GitHub records for each asset. A pin's build key says whose build it
+# is when it is not rv-ruby's or RubyInstaller's: jdx for jdx/ruby's,
+# fledge for Fledge's own (ruby-build, below), so that the license audit
+# asks for what that build holds (runtime/licenses.yml, ruby_build).
 #
 # Windows: RubyInstaller publishes no build of a Ruby preview, so the
 # Windows runtimes take its rolling build of Ruby's master,
@@ -44,14 +49,16 @@
 # bundled_gems lists Ruby 4.1.0-preview1's bundled gems, from
 # gems/bundled_gems at its v4_1_0_preview1 tag (2d08b5f42f). A runtime
 # keeps every default gem and every one of these that its Ruby installs
-# (rv-ruby installs all but win32ole and win32-registry, which only
-# Windows builds; RubyInstaller all but syslog, which needs a Unix), and
-# prunes any other gem its Ruby adds (rv-ruby adds bootsnap and
-# msgpack), so that an app finds exactly what a standard Ruby 4.1 has
-# (doc/contributors/design/runtimes.md, "What a runtime keeps").
+# (rv-ruby and jdx/ruby install all but win32ole and win32-registry,
+# which only Windows builds; RubyInstaller all but syslog, which needs a
+# Unix), and prunes any other gem its Ruby adds (rv-ruby and jdx/ruby
+# add bootsnap and msgpack), so that an app finds exactly what a
+# standard Ruby 4.1 has (doc/contributors/design/runtimes.md, "What a
+# runtime keeps").
 ruby:
   version: 4.1.0-preview1
   release: "20261023"
+  jdx_release: 4.1.0-preview1
   bundled_gems: [minitest, power_assert, rake, test-unit, rexml, rss, net-imap, net-smtp, matrix, prime, rbs, typeprof,
     debug, racc, mutex_m, getoptlong, base64, bigdecimal, observer, abbrev, resolv-replace, rinda, drb, nkf, syslog, csv,
     repl_type_completor, ostruct, pstore, benchmark, logger, rdoc, prism, win32ole, irb, reline, readline, fiddle, tsort,
@@ -61,11 +68,13 @@ ruby:
       url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.arm64_sonoma.tar.gz
       sha256: 9e3944ade8e237835a7eca5cae1ce1140c32ca6b6854c25a4d56c26512df7033
     x86_64-linux:
-      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.x86_64_linux.tar.gz
-      sha256: 29fd684d85aa4d08d97160d1c0a21b11b9ee95f2d87ab231044df03ca9d39361
+      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1/ruby-4.1.0-preview1.x86_64_linux.tar.gz
+      sha256: b56d9f6c5d318713f6a970cd60c5c773efbeba5609bf744b68e475ca9a241284
+      build: jdx
     aarch64-linux:
-      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.arm64_linux.tar.gz
-      sha256: 5462ee70c273007fa21ff63991f9bcaf68edbcf01f50f81bd416f9a6ed71e1ac
+      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1/ruby-4.1.0-preview1.arm64_linux.tar.gz
+      sha256: f4ce52e44c6e472a1b89f324a5e89a3c42aa0ef8e5b2849fea4c99309a1fd047
+      build: jdx
     x64-mingw-ucrt:
       url: https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-x64.7z
       sha256: 901473edafd6b174d79978fc109d3df3ab73b1436719233f35c1a31b5b18bf58
@@ -116,17 +125,60 @@ llvm-mingw:
       url: https://github.com/mstorsjo/llvm-mingw/releases/download/20261020/llvm-mingw-20261020-ucrt-macos-universal.tar.xz
       sha256: e9c13e4ede38e715003ffc674d4d00a1088df8235439d1f0c16188ff0704c17e
 
-# libxcrypt, which libruby calls for String#crypt on Linux. rv-ruby links
-# it statically, but it is LGPL-2.1-or-later, so the runtime builds it as
-# a shared library from the same release rv-ruby used (its formula
-# rv-portable-libxcrypt.rb at the commit that built release 20261023) and
-# the launcher loads it from the runtime's lib/ folder, where whoever
-# receives an app can replace it
+# libxcrypt, which libruby calls for String#crypt on Linux. jdx/ruby's
+# build links its 4.4.38 statically, but it is LGPL-2.1-or-later, so the
+# runtime builds it as a shared library, from the release rv-ruby's
+# formula rv-portable-libxcrypt.rb named at the commit that built its
+# release 20261023, and the launcher loads it from the runtime's lib/
+# folder, where whoever receives an app can replace it
 # (doc/contributors/design/runtimes.md, "libxcrypt on glibc Linux").
 libxcrypt:
   version: 4.5.2
   url: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
   sha256: 71513a31c01a428bccd5367a32fd95f115d6dac50fb5b60c779d5c7942aec071
+
+# The image the glibc Linux runtimes are built in
+# (.github/scripts/glibc-runtime.sh): PyPA's manylinux_2_28, AlmaLinux 8
+# with glibc 2.28 and a newer GCC, one image a week, by the digest of each
+# processor's image of the release (version), each from quay.io's API
+# (doc/contributors/design/runtimes.md, "The glibc floor").
+manylinux:
+  version: 2026.11.21-1
+  images:
+    x86_64-linux: quay.io/pypa/manylinux_2_28_x86_64:2026.11.21-1@sha256:55a36963bc0504cdf004011001c1072306402f0b8b83be5a5eba7068f93eec53
+    aarch64-linux: quay.io/pypa/manylinux_2_28_aarch64:2026.11.21-1@sha256:126d9eea9d6b1717f3e17b2b3ac51da04ef159a5f935dac36fe92d621dc8f246
+
+# The image's Perl, 5.26.3, lacks the open module, which AlmaLinux 8
+# ships apart and libxcrypt's configure loads, so the build installs
+# AlmaLinux 8.10's perl-open and the two packages it needs that the image
+# lacks, as dnf resolved them in the image on 2026-11-22: perl-encoding
+# and perl-Filter, which hold compiled code, so one file for each
+# processor. That tree keeps every build of 8.10's packages, as its
+# listing shows (perl-open 1.10-404 to 1.12-475 today); AlmaLinux moves a
+# retired release's tree to vault.almalinux.org under the same path.
+almalinux-perl:
+  perl-open:
+    version: 1.11-423.el8_10.1
+    url: https://repo.almalinux.org/almalinux/8.10/AppStream/x86_64/os/Packages/perl-open-1.11-423.el8_10.1.noarch.rpm
+    sha256: 12138da964ec7d2ad6d77632ef474bc2d84b2f75cddf6f5975ab6d57eac8c604
+  perl-encoding:
+    version: 2.22-3.el8
+    platforms:
+      x86_64-linux:
+        url: https://repo.almalinux.org/almalinux/8.10/AppStream/x86_64/os/Packages/perl-encoding-2.22-3.el8.x86_64.rpm
+        sha256: afa27fe65c2b995d3a642796fbe9b2750092c37cb09e208915fed44e216f83a3
+      aarch64-linux:
+        url: https://repo.almalinux.org/almalinux/8.10/AppStream/aarch64/os/Packages/perl-encoding-2.22-3.el8.aarch64.rpm
+        sha256: 1e1a3d897cfcd2a4eefa94fe14344559372c473672b7e732796e4d51911d252f
+  perl-Filter:
+    version: 1.58-2.el8
+    platforms:
+      x86_64-linux:
+        url: https://repo.almalinux.org/almalinux/8.10/AppStream/x86_64/os/Packages/perl-Filter-1.58-2.el8.x86_64.rpm
+        sha256: a730e8457bec629fcd752e3e0115811d008b1bfc2adf58113d80cc1a542e5592
+      aarch64-linux:
+        url: https://repo.almalinux.org/almalinux/8.10/AppStream/aarch64/os/Packages/perl-Filter-1.58-2.el8.aarch64.rpm
+        sha256: 74824a320e591f8f53c21e99f18ffb808396df9ccdf3baa1ced6260b4453e4fa
 
 # GNU MP, which RubyInstaller's Ruby DLL imports for big-integer
 # arithmetic, ships unchanged as ruby/bin/ruby_builtin_dlls/libgmp-10.dll.

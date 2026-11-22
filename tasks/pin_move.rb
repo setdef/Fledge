@@ -18,7 +18,9 @@ require_relative "pin_watch"
 # A move rewrites all of them as text, so every comment stays, and takes
 # each new SHA-256 from upstream's own record of it: GitHub's digest of a
 # release asset, or the .sha256 file beside a download. Only where the
-# upstream records none does it download the file and compute it.
+# upstream records none does it download the file and compute it. A
+# container image, pinned as REPOSITORY:TAG@sha256:DIGEST, moves its tag
+# and takes each new digest from the registry's listing of that tag.
 #
 # An upstream runtime/upstreams.yml marks with hold is never moved: its
 # reason says what a person has to do instead.
@@ -34,6 +36,9 @@ class PinMove
   # write: anything else in it, such as the SHA-256 of a file inside the
   # download, it would leave false.
   MOVED = %w[url sha256].freeze
+
+  # A container image pinned by tag and digest.
+  IMAGE = /\A(?<repository>[^\s:@]+):(?<tag>[^\s@]+)@sha256:(?<digest>\h{64})\z/
 
   attr_reader :texts
 
@@ -157,7 +162,9 @@ class PinMove
     swaps = {}
     upstream.pins.each do |pin|
       text = rename(text, pin.split("."), upstream, from, to)
-      urls(sources.dig(*pin.split("."))).each { |mapping| swaps.merge!(swap(mapping, entry, upstream, from, to)) }
+      node = sources.dig(*pin.split("."))
+      urls(node).each { |mapping| swaps.merge!(swap(mapping, entry, upstream, from, to)) }
+      images(node).each { |reference| swaps.merge!(retag(reference, from, to)) }
     end
     text = swaps.reduce(text) { |result, (old, new)| result.gsub(old, new) }
     check(text, upstream, to)
@@ -170,6 +177,34 @@ class PinMove
     return [] unless node.is_a?(Hash)
 
     (node.key?("url") ? [node] : []) + node.values.flat_map { |value| urls(value) }
+  end
+
+  # Every container image reference under +node+, a string of the form
+  # REPOSITORY:TAG@sha256:DIGEST, as a match with those three captures.
+  private def images(node)
+    return node.values.flat_map { |value| images(value) } if node.is_a?(Hash)
+
+    match = IMAGE.match(node.to_s)
+    match ? [match] : []
+  end
+
+  # The reference that replaces +reference+, when its tag names the
+  # version: the new tag, and the digest the registry gives that tag for
+  # the same repository. An image's digest is the SHA-256 of its manifest,
+  # which only the registry holds, so quay.io's API is asked, the one
+  # registry a pin names; another stops the move.
+  private def retag(reference, from, to)
+    return {} unless reference[:tag].include?(from)
+
+    host, path = reference[:repository].split("/", 2)
+    raise Error, "#{reference[:repository]} is on no registry the move can ask for a digest (quay.io)" unless host == "quay.io"
+
+    tag = reference[:tag].gsub(from, to)
+    url = "https://quay.io/api/v1/repository/#{path}/tag/?specificTag=#{tag}&onlyActiveTags=true"
+    listed = JSON.parse(@fetch.call(url)).fetch("tags").find { |candidate| candidate.fetch("name") == tag }
+    raise Error, "#{url} lists no tag #{tag}" unless listed
+
+    { reference.to_s => "#{reference[:repository]}:#{tag}@#{listed.fetch('manifest_digest')}" }
   end
 
   # The URL and SHA-256 that replace +mapping+'s, when its URL names the

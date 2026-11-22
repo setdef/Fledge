@@ -158,7 +158,7 @@ components:
   # fledge build writes starts Ruby through the embedding API (ADR 012),
   # so of this component a phone's runtime holds only the RubyGems
   # defaults, in each Ruby it carries.
-  - id: fledge
+  - id: fledge-mobile
     name: Fledge's RubyGems defaults
     version: "{fledge_version}"
     license: MIT
@@ -222,7 +222,7 @@ components:
   # jdx/ruby's builds compile YJIT with the Rust its build pins
   # (RUSTUP_TOOLCHAIN 1.58 in its package.rb), 1.58.1, whose commit the
   # path names.
-  - id: rust-std
+  - id: rust-std-jdx
     name: The Rust standard library, compiled into Ruby's YJIT
     version: 1.58.1
     license: MIT OR Apache-2.0
@@ -238,7 +238,7 @@ components:
 
   # Fledge's own build of Ruby compiles YJIT and ZJIT with the Rust
   # runtime/sources.yml pins under ruby-build, whose commit names it.
-  - id: rust-std
+  - id: rust-std-fledge
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
     version: 1.99.1
     license: MIT OR Apache-2.0
@@ -266,7 +266,7 @@ components:
 
   # The musl runtimes build their Ruby from source in Alpine,
   # with Alpine's Rust and GCC, whose versions ci.yml pins.
-  - id: rust-std
+  - id: rust-std-musl
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
     version: 1.96.1
     license: MIT OR Apache-2.0
@@ -279,7 +279,7 @@ components:
       - files: [launcher, "{prefix}bin/ruby", "{prefix}lib/libruby*-static.a"]
         evidence: /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/
 
-  - id: gcc-runtime
+  - id: gcc-runtime-musl
     name: GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc)
     version: 15.2.0
     license: GPL-3.0-or-later WITH GCC-exception-3.1
@@ -343,7 +343,7 @@ components:
   # jdx/ruby's builds compile in OpenSSL 3.5.5 (its
   # recipes/dependencies.yml), and ship its static libraries in lib/ for
   # compiling gems, which a runtime leaves out.
-  - id: openssl
+  - id: openssl-jdx
     name: OpenSSL, compiled into Ruby's openssl extension
     version: 3.5.5
     license: Apache-2.0
@@ -359,7 +359,7 @@ components:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.5.5 "
 
-  - id: openssl
+  - id: openssl-musl
     name: OpenSSL, compiled into Ruby's openssl extension
     version: 3.6.5
     license: Apache-2.0
@@ -373,7 +373,7 @@ components:
         evidence: "OpenSSL 3.6.5 "
 
   # Fledge's own build of Ruby takes its OpenSSL from musl-ruby's pin.
-  - id: openssl
+  - id: openssl-fledge
     name: OpenSSL, compiled into Ruby's openssl extension
     version: 3.6.5
     license: Apache-2.0
@@ -500,7 +500,7 @@ components:
 
   # jdx/ruby's zlib (its recipes/dependencies.yml), whose static library
   # it ships in lib/ for compiling gems, which a runtime leaves out.
-  - id: zlib
+  - id: zlib-jdx
     name: zlib, compiled into Ruby's zlib extension
     version: 1.3.1
     license: Zlib
@@ -767,7 +767,7 @@ components:
       "{prefix}lib/ruby/{abi}/{arch}/libz-1.dll": 934103c50623302548a1cf66fbc22f0029e4eb4556343252a505e2fc005e835f
 
   # The same zlib, from MSYS2's CLANGARM64 package, for Windows on ARM64.
-  - id: zlib-libz-dll
+  - id: zlib-libz-dll-arm64
     name: zlib (libz-1.dll), from MSYS2's zlib 1.4-2
     version: "1.4"
     license: Zlib
@@ -831,7 +831,7 @@ components:
       - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
         evidence: "3.5.2\0"
 
-  - id: libffi
+  - id: libffi-jdx
     name: libffi, compiled into the fiddle gem's extension
     version: 3.5.1
     license: MIT
@@ -875,7 +875,7 @@ components:
   # The Android runtime's YJIT and ZJIT are compiled with mise.toml's
   # Rust, whose rustup adds each Android target's standard library, and
   # its commit names the release.
-  - id: rust-std
+  - id: rust-std-android
     name: The Rust standard library, compiled into Ruby's YJIT and ZJIT
     version: 1.99.1
     license: MIT OR Apache-2.0
@@ -947,7 +947,7 @@ components:
   # jdx/ruby's libxcrypt (its recipes/dependencies.yml), linked statically
   # into its bin/ruby, which a runtime replaces, and shipped as a static
   # archive and header for compiling gems, which a runtime leaves out.
-  - id: libxcrypt-static
+  - id: libxcrypt-static-jdx
     name: libxcrypt's static archive and header, which jdx/ruby ships for compiling native gems
     version: 4.4.38
     license: LGPL-2.1-or-later
@@ -979,7 +979,7 @@ components:
 
 
   # RubyInstaller's ARM64 Ruby ships MSYS2's CLANGARM64 build of the same release.
-  - id: gmp
+  - id: gmp-arm64
     name: GNU MP, which Ruby's Integer uses for arithmetic on large numbers
     version: 6.3.0
     license: LGPL-3.0-or-later OR GPL-2.0-or-later
@@ -1022,7 +1022,7 @@ components:
   # which a glibc Linux app reads only on a computer with no CA
   # certificates of its own (doc/contributors/design/runtimes.md,
   # "Certificates on glibc Linux").
-  - id: ca-certificates
+  - id: ca-certificates-jdx
     name: Mozilla's CA certificates, as curl publishes them
     version: cacert-2025-07-15
     license: MPL-2.0
@@ -1223,7 +1223,7 @@ components:
 
   # Windows' Ruby: RubyInstaller's head build of Ruby's master of
   # 2026-11-10 (runtime/sources.yml).
-  - id: ruby
+  - id: ruby-windows
     name: Ruby, with the third-party code its LEGAL lists (Onigmo, and others)
     version: 4.1.0dev (master 0e25874222)
     license: Ruby OR BSD-2-Clause

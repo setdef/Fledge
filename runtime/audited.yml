@@ -100,7 +100,7 @@ x86_64-linux:
   prefix: ''
   abi: 4.1.0+5
   absent:
-  - libxcrypt-static
+  - libxcrypt-static-jdx
   files:
     fledge:
     - launcher
@@ -197,7 +197,7 @@ aarch64-linux:
   prefix: ''
   abi: 4.1.0+5
   absent:
-  - libxcrypt-static
+  - libxcrypt-static-jdx
   files:
     libfuse: []
     libxcrypt:
@@ -563,7 +563,7 @@ aarch64-mingw-ucrt:
   absent:
   - msys2-keyring
   files:
-    gmp:
+    gmp-arm64:
     - ruby/bin/ruby_builtin_dlls/libgmp-10.dll
   embedded: {}
   gems:

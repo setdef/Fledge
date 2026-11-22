@@ -185,8 +185,13 @@ class LicenseAudit
   # Ruby must hold what that build compiled in, one made from jdx/ruby's
   # what jdx's compiled in, and one made from Fledge's own build what
   # Fledge's compiled in, each by its own evidence, and a pin that moves
-  # from one to another moves the audit with it.
+  # from one to another moves the audit with it. Each entry has an id of
+  # its own, since a pin's move finds the entries it rewrites by id
+  # (tasks/pin_move.rb): a map that gives two entries one id is refused.
   def self.entries(map, sources, platform)
+    shared = map.fetch("components").map { |entry| entry.fetch("id") }.tally.select { |_id, count| count > 1 }.keys
+    raise ArgumentError, "runtime/licenses.yml gives more than one entry the id #{shared.join(', ')}" if shared.any?
+
     build = sources.dig("ruby", "platforms", platform, "build") || "upstream"
     map.fetch("components").select do |entry|
       entry.fetch("platforms").include?(platform) && Array(entry.fetch("ruby_build", build)).include?(build)
@@ -397,8 +402,10 @@ class LicenseAudit
         content = bytes(path)
         next unless signature.fetch("bytes").any? { |needle| content.include?(needle.b) }
 
+        # A signature names its library by id, or by the source pin its
+        # builds for several platforms share (gmp and gmp-arm64).
         owner = owners[path]
-        next if owner&.id == signature.fetch("component") && owner&.kind == "shared_library"
+        next if owner && [owner.id, owner.source].include?(signature.fetch("component")) && owner.kind == "shared_library"
         next if embeds.fetch(path, []).include?(signature.fetch("component"))
 
         violate("static-copyleft", path, "holds #{signature.fetch('component')}'s code, which may ship only as its own shared library")

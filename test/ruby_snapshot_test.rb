@@ -81,10 +81,10 @@ class RubySnapshotTest < Minitest::Test
     after = RubySnapshot.evidence(before, "21ee43fb1e")
     rubies = YAML.safe_load(after).fetch("components").select { |component| component.fetch("id") == "ruby" }
     android = rubies.find { |component| component.fetch("platforms").include?("android") }
-    windows = rubies.find { |component| component.fetch("platforms").include?("x64-mingw-ucrt") }
+    windows = YAML.safe_load(after).fetch("components").find { |component| component.fetch("id") == "ruby-windows" }
 
     assert_equal ["21ee43fb1e"], android.fetch("embedded").map { |embedded| embedded.fetch("evidence") }
-    assert_equal YAML.safe_load(before).fetch("components").find { |c| c.fetch("id") == "ruby" && c.fetch("platforms").include?("x64-mingw-ucrt") }, windows
+    assert_equal YAML.safe_load(before).fetch("components").find { |c| c.fetch("id") == "ruby-windows" }, windows
     assert_equal before.lines.size, after.lines.size
   end
 

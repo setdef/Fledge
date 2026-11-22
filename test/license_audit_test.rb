@@ -79,7 +79,7 @@ class LicenseAuditTest < Minitest::Test
     report = audit
 
     assert_empty report.violations.map(&:to_s)
-    assert_equal %w[fledge gem-csv-3.3.5 libxcrypt openssl ruby rust-std ca-certificates gcc-runtime].sort, report.present.map(&:id).sort
+    assert_equal %w[fledge gem-csv-3.3.5 libxcrypt openssl-jdx ruby rust-std-jdx ca-certificates-jdx gcc-runtime].sort, report.present.map(&:id).sort
     assert_equal "lib/libcrypt.so.2", report.links.fetch("launcher").fetch("libcrypt.so.2")
     assert_equal :system, report.links.fetch("launcher").fetch("libc.so.6")
   end
@@ -154,6 +154,26 @@ class LicenseAuditTest < Minitest::Test
                                                                           "fuse: unsupported protocol version: "))
 
     assert_includes rules(audit), ["static-copyleft", "launcher"]
+  end
+
+  # GNU MP's code is allowed in GNU MP's own DLL on each Windows, whose
+  # entries are gmp and gmp-arm64, two ids of one source pin.
+  def test_gnu_mp_in_its_own_dll_passes_on_both_windows
+    TestReaders.need(self, :pe)
+    dll = "ruby/bin/ruby_builtin_dlls/libgmp-10.dll"
+    tree = Dir.mktmpdir("license-audit-windows")
+    FileUtils.mkdir_p(File.join(tree, "ruby/lib/ruby/4.1.0+6"))
+    FileUtils.mkdir_p(File.join(tree, File.dirname(dll)))
+    File.binwrite(File.join(tree, dll), Binaries.pe(needed: %w[KERNEL32.dll], payload: "GNU MP: Cannot allocate memory"))
+
+    %w[x64-mingw-ucrt aarch64-mingw-ucrt].each do |platform|
+      report = LicenseAudit.new(platform:, tree:, fledge_version: "0.0.0", readers: TestReaders.all).call
+
+      assert_equal (platform == "x64-mingw-ucrt") ? "gmp" : "gmp-arm64", report.owners.fetch(dll).id
+      refute_includes rules(report), ["static-copyleft", dll], platform
+    end
+  ensure
+    FileUtils.rm_rf(tree) if tree
   end
 
   # An LGPL library linked into a component whose source Fledge does not
@@ -244,6 +264,25 @@ class LicenseAuditTest < Minitest::Test
     end
 
     assert_equal({ "upstream" => %w[any two], "fledge" => %w[any two], "jdx" => %w[any jdx] }, ids)
+  end
+
+  # A pin's move rewrites the entries runtime/upstreams.yml names by id,
+  # so an id names one entry: two builds of one component are two ids,
+  # and a move of one cannot rewrite the other.
+  def test_two_entries_of_one_id_are_refused
+    components = [
+      { "id" => "openssl", "platforms" => ["x86_64-linux"] },
+      { "id" => "openssl", "platforms" => ["x86_64-linux-musl"] },
+    ]
+
+    error = assert_raises(ArgumentError) { LicenseAudit.entries({ "components" => components }, {}, "x86_64-linux") }
+    assert_includes error.message, "openssl"
+  end
+
+  def test_each_entry_of_the_map_has_its_own_id
+    ids = YAML.safe_load_file(LicenseAudit::MAP).fetch("components").map { |entry| entry.fetch("id") }
+
+    assert_equal [], ids.tally.select { |_id, count| count > 1 }.keys
   end
 
   # rv-ruby's bin/ holds the gems' executables beside ruby; each belongs
@@ -385,7 +424,7 @@ class LicenseAuditTest < Minitest::Test
     assert_equal report.owners.keys.sort.map { |path| "./#{path}" }, files.keys
     assert(files.each_value.all? { |file| file.fetch("checksums").map { |checksum| checksum.fetch("algorithm") } == %w[SHA1 SHA256] })
     assert_includes relationships, [launcher, "DYNAMIC_LINK", files.fetch("./lib/libcrypt.so.2").fetch("SPDXID")]
-    assert_includes relationships, [launcher, "STATIC_LINK", "SPDXRef-Package-rust-std"]
+    assert_includes relationships, [launcher, "STATIC_LINK", "SPDXRef-Package-rust-std-jdx"]
     assert_equal "LGPL-2.1-or-later", sbom.fetch("packages").find { |package| package["name"].start_with?("libxcrypt") }.fetch("licenseConcluded")
   end
 
@@ -535,7 +574,9 @@ class LicenseAuditTest < Minitest::Test
       [*Fledge::Platform.names, *Fledge::MobilePlatform.names].each do |platform|
         report = LicenseAudit.new(platform:, tree:, fledge_version: "0.0.0").call
 
-        assert_equal ["ruby", false], report.owners.fetch("RUBY_DESCRIPTION").then { |owner| [owner.id, owner.first_party] }, platform
+        ruby = platform.end_with?("mingw-ucrt") ? "ruby-windows" : "ruby"
+
+        assert_equal [ruby, false], report.owners.fetch("RUBY_DESCRIPTION").then { |owner| [owner.id, owner.first_party] }, platform
       end
     end
   end
@@ -719,7 +760,7 @@ class LicenseAuditTest < Minitest::Test
       assert_equal "fledge-embedding", report.owners.fetch("FledgeRuby.aar!jni/x86_64/libfledgeruby.so").id
       assert_equal "ruby", report.owners.fetch("lib/ruby/4.1.0+5/x86_64-linux-android/openssl.so").id
       assert_equal :system, report.links.fetch("FledgeRuby.aar!jni/x86_64/libfledgeruby.so").fetch("liblog.so")
-      %w[ruby openssl-mobile libyaml-mobile rust-std].each { |id| assert_includes report.present.map(&:id), id }
+      %w[ruby openssl-mobile libyaml-mobile rust-std-android].each { |id| assert_includes report.present.map(&:id), id }
       sbom = LicenseAudit::Spdx.new(report, version: "0.0.0", created: Time.utc(2026, 10, 28)).to_h
       assert_includes sbom.fetch("files").map { |file| file.fetch("fileName") }, "./FledgeRuby.aar!jni/x86_64/libfledgeruby.so"
 

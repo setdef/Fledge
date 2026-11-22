@@ -80,7 +80,7 @@ class LicenseAudit
     end
 
     private def add_component(top, entry)
-      folder = File.join(top, entry.fetch("id"))
+      folder = File.join(top, entry.fetch("source"))
       pin = @sources.fetch(entry.fetch("source"))
       source = pin.fetch("source", pin)
       FileUtils.mkdir_p(folder)
@@ -106,20 +106,22 @@ class LicenseAudit
         how the runtime's copy was built and how to replace it. Every app
         built with this runtime carries the same folders in #{FOLDER}/.
 
-        #{components.map { |entry| "  #{entry.fetch('id')}/  #{entry.fetch('name')} #{entry.fetch('version')} (#{entry.fetch('license')})" }.join("\n")}
+        #{components.map { |entry| "  #{entry.fetch('source')}/  #{entry.fetch('name')} #{entry.fetch('version')} (#{entry.fetch('license')})" }.join("\n")}
 
         Fledge: https://github.com/setdef/Fledge (#{commit})
       README
     end
 
+    # The folder and BUILD.txt are the source pin's, which the entries of
+    # one component on several platforms share (gmp and gmp-arm64).
     private def build_text(entry, pin)
-      case entry.fetch("id")
+      case entry.fetch("source")
       when "libxcrypt" then libxcrypt_text(pin)
       when "appimage-runtime" then appimage_runtime_text(pin)
       when "libfuse" then libfuse_text(pin)
       when "nsis" then nsis_text(pin)
       when "gmp" then gmp_text(pin)
-      else raise "no build instructions for #{entry.fetch('id')}"
+      else raise "no build instructions for #{entry.fetch('source')}"
       end
     end
 

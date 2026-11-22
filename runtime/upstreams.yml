@@ -168,7 +168,7 @@ watched:
     tag: '\Aopenssl-(?<version>\d+\.\d+\.\d+)\z'
     line: 2
     names: [OpenSSL]
-    licenses: [openssl, openssl-mobile]
+    licenses: [openssl-fledge, openssl-musl, openssl-mobile]
     named: [runtime/mobile/openssl_certificates.c]
   libyaml:
     pins: [mobile.libyaml, musl-ruby.libyaml]

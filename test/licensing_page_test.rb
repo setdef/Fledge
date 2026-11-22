@@ -71,10 +71,10 @@ class LicensingPageTest < Minitest::Test
   end
 
   def test_a_component_the_runtime_lacks_has_no_row_and_one_newly_mapped_has_one
-    lacking = linux(page(change("x86_64-linux", absent: [*findings.fetch("x86_64-linux").absent, "zlib"])).text)
+    lacking = linux(page(change("x86_64-linux", absent: [*findings.fetch("x86_64-linux").absent, "zlib-jdx"])).text)
     mapped = linux(with_map do |map|
       sources = YAML.safe_load_file(File.expand_path("../runtime/sources.yml", __dir__))
-      zlib = LicenseAudit.entries(map, sources, "x86_64-linux").find { |entry| entry.fetch("id") == "zlib" }
+      zlib = LicenseAudit.entries(map, sources, "x86_64-linux").find { |entry| entry.fetch("id") == "zlib-jdx" }
       map.fetch("components") << Marshal.load(Marshal.dump(zlib)).merge("id" => "zlib-new", "name" => "zlib, newly mapped")
     end)
 

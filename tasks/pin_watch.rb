@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "date"
 require "digest"
 require "json"
 require "net/http"
@@ -33,15 +34,27 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   # Something an upstream's answer or a pin does not hold as expected.
   class Error < StandardError; end
 
+  # How many days a pin held for a person may stay behind before the
+  # watch fails, to call that person: longer than the planned move a hold
+  # waits for takes (Ruby 4.0.0 to RubyInstaller-4.0.0-1 took three
+  # days), and short enough that a fix upstream does not wait a season
+  # unseen.
+  HELD_DAYS = 30
+
   # What the watch found for one upstream: the pin's version, the newest
   # release in its line, and the newest beyond the line, or the error
-  # that kept it from knowing.
-  class Finding < Data.define(:name, :pins, :ships, :current, :newer, :beyond, :error)
-    # :error when the upstream could not be read, :newer when it has a
-    # release in the pin's line newer than the pin, :beyond when its only
-    # newer release is in another line, and :current otherwise.
+  # that kept it from knowing; and, for a pin held for a person, why, the
+  # day the oldest release newer than the pin came out, when the upstream
+  # dates its releases, and whether that was more than HELD_DAYS ago.
+  class Finding < Data.define(:name, :pins, :ships, :current, :newer, :beyond, :error, :held, :since, :overdue)
+    # :error when the upstream could not be read; when it has a release
+    # in the pin's line newer than the pin, :overdue when the pin is held
+    # and has been behind for longer than HELD_DAYS, :held when it is
+    # held, and :newer otherwise; :beyond when its only newer release is
+    # in another line, and :current otherwise.
     def status
       if error then :error
+      elsif newer && held then overdue ? :overdue : :held
       elsif newer then :newer
       elsif beyond then :beyond
       else :current
@@ -59,12 +72,14 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
 "newer" => newer,
 "beyond" => beyond,
 "error" => error,
+"held" => held,
+"since" => since,
 }.compact
     end
   end
 
   # Where one input is released, as runtime/upstreams.yml says.
-  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships)
+  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships, :hold)
     # The upstream runtime/upstreams.yml names +name+ with +entry+.
     def self.from(name, entry)
       if (repository = entry["github"])
@@ -76,7 +91,7 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       end
       current = entry["current"] && Regexp.new(entry["current"])
       new(name:, pins: entry.fetch("pins"), field: entry.fetch("field", "version"), current:, url:,
-        pattern: Regexp.new(pattern, Regexp::MULTILINE), line: entry["line"], ships: entry.fetch("ships", true))
+        pattern: Regexp.new(pattern, Regexp::MULTILINE), line: entry["line"], ships: entry.fetch("ships", true), hold: entry["hold"])
     end
 
     # Whether the versions come from GitHub's list of releases.
@@ -92,9 +107,21 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       found.uniq
     end
 
+    # The day each version the answer +body+ lists came out, as GitHub
+    # dates a release; a page dates none.
+    def dates(body)
+      return {} unless github?
+
+      releases(body).to_h { |version, release| [version, release["published_at"]&.slice(0, 10)] }.compact
+    end
+
     private def tags(body)
+      releases(body).map(&:first)
+    end
+
+    private def releases(body)
       JSON.parse(body).reject { |release| release["draft"] || release["prerelease"] }
-        .filter_map { |release| release.fetch("tag_name")[pattern, "version"] }
+        .filter_map { |release| (version = release.fetch("tag_name")[pattern, "version"]) && [version, release] }
     rescue JSON::ParserError => e
       raise Error, "#{url} answered with no JSON: #{e.message}"
     end
@@ -177,10 +204,22 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     components - upstreams.flat_map(&:pins) - unwatched.keys
   end
 
-  # What each upstream has released, asking +fetch+ once for each URL.
-  def run(fetch)
+  # The status the watch exits with for +report+: 1 when an upstream
+  # could not be read or a held pin is overdue, since a person is needed;
+  # else 3 when a pin is behind, for the move; and else 0.
+  def self.exit_status(report)
+    statuses = report.map(&:status)
+    if statuses.intersect?(%i[error overdue]) then 1
+    elsif statuses.include?(:newer) then 3
+    else 0
+    end
+  end
+
+  # What each upstream has released, asking +fetch+ once for each URL, as
+  # it stands on +today+.
+  def run(fetch, today: Date.today)
     answers = Hash.new { |cache, url| cache[url] = fetch.call(url) }
-    upstreams.map { |upstream| find(upstream, answers) }
+    upstreams.map { |upstream| find(upstream, answers, today) }
   end
 
   # The version the pins of +upstream+ hold.
@@ -191,17 +230,20 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     values.first
   end
 
-  private def find(upstream, answers)
+  private def find(upstream, answers, today)
     current = current(upstream)
     newer = upstream.versions(answers[upstream.url]).select { |version| newer?(version, current) }
     in_line, beyond = newer.partition { |version| same_line?(upstream, version, current) }
-    finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond))
+    since = upstream.dates(answers[upstream.url]).values_at(*in_line).compact.min
+    overdue = !since.nil? && today - Date.iso8601(since) > HELD_DAYS
+    finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond), since:, overdue:)
   rescue Error => e
     finding(upstream, current:, error: e.message)
   end
 
-  private def finding(upstream, current: nil, newer: nil, beyond: nil, error: nil)
-    Finding.new(name: upstream.name, pins: upstream.pins, ships: upstream.ships, current:, newer:, beyond:, error:)
+  private def finding(upstream, current: nil, newer: nil, beyond: nil, error: nil, since: nil, overdue: false)
+    Finding.new(name: upstream.name, pins: upstream.pins, ships: upstream.ships, current:, newer:, beyond:, error:,
+      held: upstream.hold, since:, overdue:)
   end
 
   private def version_of(upstream, pin)
@@ -246,8 +288,10 @@ end
 
 # ruby tasks/pin_watch.rb [REPORT]
 # asks every upstream, prints what it found, writes it to REPORT as
-# JSON, and exits 0 when every pin is current, 3 when an upstream has a
-# newer release in a pin's line, and 1 when one could not be read.
+# JSON, and exits as PinWatch.exit_status says: 0 when no pin is behind
+# but those held in time, 3 when an upstream has a newer release in the
+# line of a pin nobody holds, and 1 when one could not be read or a held
+# pin has been behind for longer than PinWatch::HELD_DAYS.
 if $PROGRAM_NAME == __FILE__
   report = PinWatch.load(File.expand_path("..", __dir__)).run(PinWatch::Fetch.new(token: ENV.fetch("GITHUB_TOKEN", nil)))
   File.write(ARGV[0], JSON.pretty_generate(report.map(&:to_h))) if ARGV[0]
@@ -259,8 +303,9 @@ if $PROGRAM_NAME == __FILE__
       finding.newer && "-> #{finding.newer}",
       finding.beyond && "(beyond its line: #{finding.beyond})",
       finding.error,
+      finding.newer && finding.since && "(since #{finding.since})",
+      finding.newer && finding.held && "held for a person, who has #{PinWatch::HELD_DAYS} days: #{finding.held}",
 ].compact.join(" ")
   end
-  exit 1 if report.any? { |finding| finding.status == :error }
-  exit((report.any? { |finding| finding.status == :newer }) ? 3 : 0)
+  exit PinWatch.exit_status(report)
 end

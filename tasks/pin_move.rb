@@ -278,7 +278,8 @@ end
 # or, with --into, into DIR at the same paths, for a run that must change
 # nothing to compare them with the checkout's. With --message, it writes
 # the commit message of what it moved into FILE. It exits 1
-# when a pin behind could not be moved, or is held for a person.
+# when a pin behind could not be moved. A pin held for a person is not
+# in the report as behind, but as held, and is left.
 if $PROGRAM_NAME == __FILE__
   args = ARGV.dup
   into = (index = args.index("--into")) && args.slice!(index, 2).last
@@ -292,7 +293,7 @@ if $PROGRAM_NAME == __FILE__
     puts "moved    #{finding['name']} #{finding['current']} -> #{finding['newer']}: #{changed.keys.join(', ')}"
     true
   rescue PinMove::Error, PinWatch::Error => e
-    puts "#{move.hold(finding['name']) ? 'held' : 'failed'}     #{finding['name']} #{finding['current']} -> #{finding['newer']}: #{e.message}"
+    puts "failed   #{finding['name']} #{finding['current']} -> #{finding['newer']}: #{e.message}"
     false
   end
   into ? move.save(into) : move.save

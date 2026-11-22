@@ -148,4 +148,32 @@ class PinWatchTest < Minitest::Test
   ensure
     server&.stop
   end
+
+  HELD = { "pins" => ["tool"], "github" => "owner/tool", "tag" => '\Av(?<version>\d+\.\d+\.\d+)\z', "hold" => "A person reads its release notes." }.freeze
+
+  def releases(*dated)
+    JSON.generate(dated.map { |tag, published| { "tag_name" => tag, "draft" => false, "prerelease" => false, "published_at" => published } })
+  end
+
+  def test_a_held_pin_behind_is_reported_and_fails_only_once_it_has_been_behind_longer_than_the_stated_days
+    body = releases(["v1.0.6", "2026-11-17T16:32:45Z"], ["v1.0.5", "2026-11-03T21:35:47Z"], ["v1.0.4", "2026-10-20T13:03:13Z"])
+    answers = Answers.new(PinWatch::Upstream.from("tool", HELD).url => body)
+    held = -> (today) { watch({ "tool" => { "version" => "1.0.4" } }, "tool" => HELD).run(answers, today:).first }
+    day = Date.new(2026, 11, 3) + PinWatch::HELD_DAYS
+
+    assert_equal [:held, "1.0.6", "2026-11-03", "A person reads its release notes."],
+      [held.(day).status, held.(day).newer, held.(day).since, held.(day).held], "behind since the oldest release newer than the pin"
+    assert_equal :overdue, held.(day + 1).status
+    assert_equal :newer, watch({ "tool" => { "version" => "1.0.4" } }, "tool" => HELD.except("hold")).run(answers, today: day + 1).first.status,
+      "a pin nobody holds is the move's, however long it has been behind"
+  end
+
+  def test_the_watch_fails_for_an_unread_upstream_or_an_overdue_hold_and_not_for_a_hold_in_time
+    found = -> (status) { Struct.new(:status).new(status) }
+
+    assert_equal 0, PinWatch.exit_status([found.(:current), found.(:held), found.(:beyond)])
+    assert_equal 3, PinWatch.exit_status([found.(:held), found.(:newer)])
+    assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:overdue)])
+    assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:error)])
+  end
 end

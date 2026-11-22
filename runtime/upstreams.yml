@@ -31,7 +31,9 @@
 # behind:
 #
 # hold: why a person moves this pin and the move does not, when it does
-#   not. The move refuses it, and says this.
+#   not. The watch reports it behind as held, with this, and fails only
+#   once it has been behind for longer than PinWatch::HELD_DAYS; the move
+#   refuses it.
 # checksum: where each new SHA-256 comes from: github, the digest
 #   GitHub's API lists beside each release asset (the default for a
 #   repository); beside, the .sha256 file the upstream publishes beside
@@ -69,7 +71,7 @@ watched:
     pattern: '^ruby-(?<version>\d+\.\d+\.\d+(?:-(?:preview|rc)\d+)?)\t\S+\.tar\.gz\t'
     line: 2
     names: [Ruby]
-    hold: A move of Ruby is planned work, which moves its bundled gems, its ABI, Windows' head build, and the license audit's evidence with it (runtimes.md, "Windows' Ruby until Ruby 4.1.0").
+    hold: The step from Ruby 4.1's preview to 4.1.0 is the maintainer's to take (releases.md, "The day Ruby 4.1.0 appears"); a patch of 4.1 after it waits on the code runtimes.md, "Ruby's patches, with no person", names.
   # rv-ruby's release of the macOS and glibc Linux Rubies, which compile
   # in their own OpenSSL, libyaml, libffi, and zlib, so a newer rv-ruby
   # release is how those reach the runtimes. rubies is its rolling tag.
@@ -90,7 +92,7 @@ watched:
     tag: '\ARubyInstaller-(?<version>\d+\.\d+\.\d+)-\d+\z'
     line: 2
     names: [RubyInstaller]
-    hold: RubyInstaller's numbered release replaces the head build only with Ruby 4.1.0, which is a move of Ruby.
+    hold: RubyInstaller's numbered release replaces the head build with the step to Ruby 4.1.0, which is the maintainer's to take (releases.md, "The day Ruby 4.1.0 appears"); a patch after it waits on the code runtimes.md, "Ruby's patches, with no person", names.
   llvm-mingw:
     pins: [llvm-mingw]
     github: mstorsjo/llvm-mingw

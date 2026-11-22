@@ -15,8 +15,8 @@
 #
 #   .github/scripts/pin-prove.sh REPORT [NAME]
 #
-# It exits 1 when a pin behind was held for a person or could not be
-# moved, after proving the rest, and when the proof was red for a single
+# It exits 1 when a pin behind could not be moved, after proving the
+# rest, and when the proof was red for a single
 # pin. A red proof of several pins exits 0 with proven=false in
 # GITHUB_OUTPUT, for the workflow to prove each alone. It writes moved,
 # the names it moved as JSON, there too, and landed, the commit it put

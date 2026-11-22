@@ -259,7 +259,7 @@ class PinMoveTest < Minitest::Test
       move = mover(root, Answers.new({}))
       error = assert_raises(PinMove::Error) { move.call(finding("ruby", "4.1.0-preview1", "4.1.0-preview2")) }
 
-      assert_match(/\Aruby is held: A move of Ruby is planned work/, error.message)
+      assert_match(/\Aruby is held: The step from Ruby 4.1's preview to 4.1.0 is the maintainer's/, error.message)
       assert_includes move.movable, "libffi"
       refute_includes move.movable, "ruby"
     end

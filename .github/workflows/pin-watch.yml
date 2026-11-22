@@ -17,8 +17,10 @@
 #
 # The run fails, and GitHub tells the account that owns its schedule,
 # only when a person is needed: an upstream could not be read or listed
-# no version its pattern takes, a pin is held for a person or could not
-# be moved, or a pin's proof was red.
+# no version its pattern takes, a pin held for a person has been behind
+# for longer than PinWatch::HELD_DAYS, a pin could not be moved, or a
+# pin's proof was red. A pin held for a person and behind for less is
+# only reported in the summary, and the rest move beside it.
 #
 # Once a move is on trunk and green there, Release cuts a release of it
 # (cut.yml), so that the fix reaches apps with nobody in the loop; a
@@ -81,11 +83,13 @@ jobs:
   # than in a workflow of its own that the run's end starts, since GitHub
   # does not say whether the end of a run that the workflow's token
   # started starts another. A full run of ci.yml takes one to three
-  # hours; a job may take six.
+  # hours; a job may take six. It runs when the watch failed too, for an
+  # unread upstream or an overdue hold, so that those do not keep the
+  # other pins from moving.
   move:
     name: Move the pins and prove them
     needs: watch
-    if: needs.watch.outputs.behind == 'true'
+    if: ${{ !cancelled() && needs.watch.outputs.behind == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 340
     permissions:

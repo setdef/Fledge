@@ -1964,8 +1964,13 @@ jobs:
 
   # musl Linux's apps, built in Alpine with Ruby, as a developer
   # on Alpine builds them: hello, the parity and console probes, the
-  # probe as a gem-shaped app's program, my_cool_app, whose sqlite3 is
-  # precompiled for musl, windowed_app, with its AppImage, and programs.
+  # probe as a gem-shaped app's program, my_cool_app, whose sqlite3
+  # compiles from source, windowed_app, with its AppImage, programs, Jot,
+  # the server example, markdown_preview, and ffi_libc, whose ffi
+  # compiles from source with the libffi it carries, which needs
+  # linux-headers (doc/contributors/design/gems.md, "Examples that
+  # exercise these rules"). It builds no native_app, whose ferro-idna
+  # needs Rust, which the apps set leaves out.
   build-musl:
     name: Build (${{ matrix.platform }})
     needs: runtime-musl
@@ -1992,14 +1997,14 @@ jobs:
           name: runtime-${{ matrix.platform }}
           path: runtimes
 
-      - name: Build the examples in Alpine, and run my_cool_app with bundle exec
+      - name: Build the examples in Alpine, and run my_cool_app and ffi_libc with bundle exec
         run: |
           cat > "$RUNNER_TEMP/build-apps.sh" <<'SH'
           set -eu
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/roda_server examples/markdown_preview; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/roda_server examples/markdown_preview test/fixtures/ffi_libc; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd examples/my_cool_app && bundle install)
@@ -2007,6 +2012,9 @@ jobs:
           cat dist/my_cool_app.expected
           BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle install
           BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle exec ruby examples/markdown_preview/bin/md2html examples/markdown_preview/welcome.md > dist/markdown_preview.expected
+          (cd test/fixtures/ffi_libc && bundle install)
+          (cd test/fixtures/ffi_libc && bundle exec ruby main.rb) > dist/ffi_libc.expected
+          cat dist/ffi_libc.expected
           SH
           docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes -e FLEDGE_RUNTIME_DIR_UNCHECKED=1 \
             -e BUNDLE_FROZEN "$ALPINE_RUBY" sh /scripts/build-apps.sh
@@ -2631,8 +2639,9 @@ jobs:
     steps: *delivery-glibc-floor-steps
 
   # Delivery on musl Linux: each app in a bare Alpine container,
-  # with no Ruby at all, as deliver.sh --no-ruby-installed checks: hello
-  # and my_cool_app, the console probe interrupted in a terminal, and the
+  # with no Ruby at all, as deliver.sh --no-ruby-installed checks: hello,
+  # my_cool_app, and ffi_libc, whose ffi was compiled in Alpine, the
+  # console probe interrupted in a terminal, and the
   # windowed app, its desktop entry, and its AppImage, which has no FUSE
   # in a container, so says so and runs extracted; and the HTTPS probe,
   # asking a server on the runner, which the container reaches on the
@@ -2667,7 +2676,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      - name: Run hello, my_cool_app, the console and HTTPS probes, windowed_app, programs, Jot, and markdown_preview on Alpine with no Ruby installed
+      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, Jot, and markdown_preview on Alpine with no Ruby installed
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -2677,6 +2686,7 @@ jobs:
           d=delivered
           .github/scripts/deliver.sh "$d/Hello-$PLATFORM.tar.gz" "$d/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed
           .github/scripts/deliver.sh "$d/MyCoolApp-$PLATFORM.tar.gz" "$d/ParityBundle-$PLATFORM.tar.gz" "$(cat "$d/my_cool_app.expected")" --no-ruby-installed
+          .github/scripts/deliver.sh "$d/FfiLibc-$PLATFORM.tar.gz" "$d/ParityBundle-$PLATFORM.tar.gz" "$(cat "$d/ffi_libc.expected")" --no-ruby-installed
           .github/scripts/deliver-console.sh "$d/Console-$PLATFORM.tar.gz"
           .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
           .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract

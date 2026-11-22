@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# Without this file fledge build would take Fledge's own Gemfile for the
+# app's. CI builds it on musl Linux and runs it there with no Ruby.
+name: FfiLibc
+identifier: com.setdef.fledge.FfiLibc

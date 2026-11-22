@@ -15,7 +15,11 @@
 #                               AppImage, and a C toolchain with
 #                               pkg-config, which compile a gem with no
 #                               build for the Ruby, as sqlite3 2.10.2 has
-#                               none for 4.1
+#                               none for 4.1, and linux-headers, the
+#                               kernel's headers, which build-base leaves
+#                               out and the libffi ffi 1.17.4 carries
+#                               includes, as doc/gems.md tells a
+#                               developer on Alpine
 #   alpine-packages.sh deliver  what Delivery checks a built app with, on
 #                               a computer with no Ruby: script(1) and
 #                               pgrep for the console,
@@ -36,7 +40,7 @@ set -eu
 
 case "${1:?usage: alpine-packages.sh build|apps|deliver|parity}" in
   build) names="build-base gcc musl-dev make linux-headers rust cargo perl binutils file tar xz zstd" ;;
-  apps) names="git binutils tar squashfs-tools build-base gcc musl-dev make pkgconf" ;;
+  apps) names="git binutils tar squashfs-tools build-base gcc musl-dev make linux-headers pkgconf" ;;
   deliver) names="util-linux-misc procps-ng desktop-file-utils file" ;;
   parity) names="glib" ;;
   *)

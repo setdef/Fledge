@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+#++
+
+# ffi alone, which every ffi gem of an app depends on. Its precompiled
+# builds exclude Ruby 4.1, so it compiles from source, with the libffi
+# it carries, which on Alpine needs the kernel's headers (linux-headers).
+source "https://rubygems.org"
+
+gem "ffi", "1.17.4"

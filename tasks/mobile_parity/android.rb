@@ -262,13 +262,31 @@ class MobileParity
       parity = MobileParity.new(target:, work: @work, out: @out)
       MobileParity.apps("android").flat_map do |app|
         adb("install", "-r", File.join(APKS, "#{app.identifier}.apk"))
-        from_apk = parity.check(app, launch(app), "#{device}, from its debug APK")
+        from_apk = check_launch(app, parity, "from its debug APK")
         # The bundle's APKs are signed with another key than the debug
         # APK, which Android refuses to install over it.
         adb("uninstall", app.identifier)
         Android.bundletool("install-apks", "--apks=#{File.join(APKS, "#{app.identifier}.apks")}")
-        [from_apk, parity.check(app, launch(app), "#{device}, from its release bundle")]
+        [from_apk, check_launch(app, parity, "from its release bundle")]
       end.all?
+    end
+
+    # Launches +app+ and checks what it logged with +parity+
+    # (MobileParity#check), as installed +how+, and returns whether it
+    # passed. When the check fails, everything logcat holds of the launch
+    # is kept for the job's artifact, beside liblog's count of the
+    # entries it could not send to logd: liblog drops an entry when logd's
+    # socket is full and tells the app nothing (logd_writer.cpp,
+    # LogdWrite, at android-16.0.0_r1), and logs the count to the events
+    # buffer, under the tag liblog, with the process's next entry
+    # (doc/contributors/design/phone-runtimes.md, "Output to the system
+    # log").
+    def check_launch(app, parity, how)
+      logged = launch(app)
+      parity.check(app, logged, "#{device}, #{how}")
+    rescue RuntimeError
+      keep_log(app)
+      raise
     end
 
     # The platform of the running emulator, as Parity::JUSTIFIED and
@@ -352,8 +370,7 @@ class MobileParity
     # ActivityManager gave them, and those of Android's crash reporters,
     # where Android writes why an app did not start or died.
     private def diagnosis(app, pid)
-      everything = whole_log
-      File.write(File.join(@work, "logcat-#{app.identifier}.txt"), everything)
+      everything = keep_log(app)
       [
         "The app's process: #{if pid.nil? then 'never found' elsif running?(pid) then pid else "#{pid}, not running" end}",
         "What logcat says of it:",
@@ -385,11 +402,28 @@ class MobileParity
       Logged.new(entries: Android.messages(log, app.identifier), output: Android.messages(log, app.identifier, standard_error: false))
     end
 
+    # Keeps in the work folder, for the job's artifact, everything logcat
+    # holds of +app+'s launch (logcat-IDENTIFIER.txt), and the entries of
+    # liblog's dropped count in its events buffer, which a launch does
+    # not clear (logcat-IDENTIFIER-liblog.txt), and returns the former.
+    private def keep_log(app)
+      everything = whole_log
+      File.write(File.join(@work, "logcat-#{app.identifier}.txt"), everything)
+      File.write(File.join(@work, "logcat-#{app.identifier}-liblog.txt"), liblog_events)
+      everything
+    end
+
     # Everything logcat holds, in its threadtime format, or what adb
     # printed when it could not read it, for a diagnosis that must not
     # fail on its own.
     private def whole_log
       Open3.capture2e("adb", "logcat", "-d", "-v", "threadtime").first
+    end
+
+    # The entries in which liblog counted those it dropped, as whole_log
+    # reads the log.
+    private def liblog_events
+      Open3.capture2e("adb", "logcat", "-b", "events", "-d", "-v", "threadtime", "-s", "liblog").first
     end
 
     # Whether the process +pid+ still runs, by its folder in /proc.

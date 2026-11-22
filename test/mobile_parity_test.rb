@@ -377,16 +377,20 @@ class MobileParityTest < Minitest::Test
   # that moves on a step each time the app's log is read: the app's
   # process appears, to logcat and to pidof, from step +started+, ends
   # at step +ends+, and logs the host's status from step +finishes+,
-  # each nil for never.
+  # each nil for never. The app prints the lines +said+ first, and
+  # liblog's events buffer holds +dropped+, its count of entries it
+  # could not send to logd.
   class Emulator < MobileParity::Android
     PID = "4242"
 
-    def initialize(app, work:, started: 0, ends: nil, finishes: nil)
+    def initialize(app, work:, started: 0, ends: nil, finishes: nil, said: [], dropped: nil)
       super(work:, out: StringIO.new)
       @app = app
       @started = started
       @ends = ends
       @finishes = finishes
+      @said = said
+      @dropped = dropped
       @step = 0
     end
 
@@ -405,8 +409,12 @@ class MobileParityTest < Minitest::Test
         "{#{@app.identifier}/#{ACTIVITY}}\n"
     end
 
+    private def liblog_events
+      @dropped ? "11-19 06:00:01.200  #{PID}  #{PID} I liblog  : #{@dropped}\n" : ""
+    end
+
     private def tagged
-      lines = ["I/#{@app.identifier}: running"]
+      lines = ["I/#{@app.identifier}: running", *@said.map { |line| "I/#{@app.identifier}: #{line}" }]
       lines << "I/#{@app.identifier}: #{@app.name} exited with status 0" if @finishes && @step >= @finishes
       "#{lines.join("\n")}\n"
     end
@@ -442,6 +450,24 @@ class MobileParityTest < Minitest::Test
 
       assert_match(/\AMobile App ended without a status:/, ended.message)
       assert_match(/\AMobile App did not finish in 0 seconds:/, unseen.message)
+    end
+  end
+
+  # A probe whose report came back short from logcat failed once in CI
+  # with nothing kept to say why, so a launch whose check fails keeps
+  # everything logcat holds, and liblog's count of the entries it
+  # dropped (logd_writer.cpp, LogdWrite), for the job's artifact.
+  def test_a_failed_check_keeps_logcat_and_liblogs_drops
+    app = MobileParity.apps("android").find { |each| each.prints.nil? }
+    Dir.mktmpdir do |work|
+      emulator = Emulator.new(app, work:, finishes: 0, said: ['FLEDGE-PARITY {"ARGV":[],"long":"'], dropped: 3)
+      parity = MobileParity.new(target: "x86_64-linux-android", work:, out: StringIO.new)
+
+      failure = assert_raises(RuntimeError) { emulator.check_launch(app, parity, "from its release bundle") }
+
+      assert_match(/the probe's report ends before it is whole/, failure.message)
+      assert_includes File.read(File.join(work, "logcat-#{app.identifier}.txt")), "Start proc #{Emulator::PID}:#{app.identifier}"
+      assert_includes File.read(File.join(work, "logcat-#{app.identifier}-liblog.txt")), "I liblog  : 3"
     end
   end
 

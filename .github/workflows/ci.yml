@@ -613,7 +613,14 @@ jobs:
     name: Mobile apps (iOS Simulator, iPhone and iPad)
     needs: [runtime, runtime-mobile]
     runs-on: macos-26
-    timeout-minutes: 50
+    # Each long step has a limit of its own, so that a slow runner
+    # cancels the step that was slow, which the run's annotation names,
+    # and not the job at some step's middle. The job's limit is the sum
+    # of the steps' with the setup's, as a backstop. A green run takes
+    # about 20 minutes to build and run the apps and 10 for the tests;
+    # on a slow runner the first took 38 (CONTRIBUTING.md, "When CI
+    # fails").
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -661,6 +668,7 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       - name: Build the apps with fledge build ios, and run them in the iOS Simulator
+        timeout-minutes: 45
         run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP/runtimes"
 
       - name: Key the downloads by the files they hold
@@ -694,7 +702,7 @@ jobs:
       # Their Android tests skip here, with no Android runtime or NDK, and
       # run in the Android emulator job with 4 KB pages.
       - name: Run the iOS integration tests
-        timeout-minutes: 15
+        timeout-minutes: 25
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes

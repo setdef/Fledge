@@ -14,7 +14,7 @@ path = ['examples/my_cool_app/Gemfile.lock', 'examples/native_app/Gemfile.lock',
   'examples/mobile_app/Gemfile.lock', 'examples/real_gems/Gemfile.lock',
   'examples/real_gems/.bundle/config', 'examples/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock',
   'examples/cmake_phone/Gemfile.lock', 'examples/rake_phone/Gemfile.lock', 'examples/ffi_phone/Gemfile.lock', 'examples/ffi_library_phone/Gemfile.lock',
-  'examples/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock',
+  'examples/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock',
   'examples/rust_phone/Gemfile.lock', 'examples/rust_phone/gems/rusty/ext/rusty/Cargo.lock',
   'test/fixtures/bundled_with/Gemfile.lock', 'test/fixtures/mobile_commands/Gemfile.lock',
   'test/fixtures/my_cool_app_without_sqlite3/Gemfile.lock']

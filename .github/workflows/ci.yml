@@ -227,19 +227,29 @@ jobs:
       actions: read
     outputs:
       pins-only: ${{ steps.kind.outputs.pins-only }}
+      release: ${{ steps.kind.outputs.release }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 2
 
-      - name: Tell whether this is a pin commit
+      # From the commit alone, never the event, so a run started on a
+      # branch whose head it is (workflow_dispatch) runs the jobs a push
+      # of it would (releases.md, "Which runs are a commit's"). A pull
+      # request's run checks out a merge, and runs everything.
+      - name: Tell whether this is a pin commit or a release commit
         id: kind
         run: |
           pins_only=false
-          if [ "$GITHUB_EVENT_NAME" = push ]; then pins_only=$(.github/scripts/pins-only.sh); fi
-          echo "Pin commit: $pins_only"
+          release=false
+          if [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            pins_only=$(.github/scripts/pins-only.sh)
+            case "$(git log -1 --format=%s)" in "chore: release "*) release=true ;; esac
+          fi
+          echo "Pin commit: $pins_only; release commit: $release"
           echo "pins-only=$pins_only" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         if: steps.kind.outputs.pins-only == 'true'
@@ -253,7 +263,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           built=$(git rev-parse HEAD^)
-          run=$(ruby tasks/ci_runs.rb green "$built" --every-job --branch "$GITHUB_REF_NAME")
+          run=$(ruby tasks/ci_runs.rb green "$built" --every-job)
           echo "The pins name the runtimes of $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$run, built from $built"
           echo "RUN=$run" >> "$GITHUB_ENV"
 
@@ -1206,13 +1216,13 @@ jobs:
   # seven desktop platforms too, which also run every night.
   ruby-spec:
     name: ruby/spec
-    needs: [runtime, runtime-musl, runtime-mobile]
+    needs: [changes, runtime, runtime-musl, runtime-mobile]
     permissions:
       contents: read
       actions: read
     uses: ./.github/workflows/ruby-spec.yml
     with:
-      full: "${{ startsWith(github.event.head_commit.message, 'chore: release ') }}"
+      full: ${{ needs.changes.outputs.release == 'true' }}
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
   # Ruby, which the runtime ships too (ADR 035): the very build the

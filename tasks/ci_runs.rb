@@ -9,8 +9,8 @@ require "json"
 require "net/http"
 require "uri"
 
-# Finds a commit's green run of ci.yml on a push to trunk, from GitHub's
-# REST API.
+# Finds a commit's green run of ci.yml, on a push or a dispatch, from
+# GitHub's REST API.
 #
 # A release tags a commit only once CI has passed on it (AGENTS.md,
 # Releasing), and publishes the runtimes CI built from that commit's
@@ -20,7 +20,12 @@ require "uri"
 # run failed on a download unrelated to its runtimes
 # (doc/contributors/design/releases.md, "A pin commit's short CI").
 #
-# This class looks the push's run up instead. A run counts when it has
+# This class looks the commit's run up instead: a run of a push of it,
+# or one started on a branch whose head it was (workflow_dispatch), as
+# pin-watch.yml starts them, since both check out the very commit and
+# ci.yml chooses its jobs from the commit alone; never a pull request's,
+# which checks out a merge of it (doc/contributors/design/releases.md,
+# "Which runs are a commit's"). A run counts when it has
 # finished and the latest attempt of every one of its jobs passed, or,
 # where allowed, was skipped, so a run whose failed jobs were run again
 # counts once they pass. release.yml and the pin commit's CI ask it for
@@ -28,7 +33,7 @@ require "uri"
 # runtime:pin asks it for the run whose runtimes it pins, so all three
 # take the same one.
 #
-#   ruby tasks/ci_runs.rb green COMMIT [--every-job] [--branch BRANCH]
+#   ruby tasks/ci_runs.rb green COMMIT [--every-job]
 #
 # prints the run's ID, or fails saying which run is not green and why.
 # It reads GITHUB_REPOSITORY, GITHUB_API_URL, and GH_TOKEN or
@@ -48,6 +53,9 @@ class CIRuns
   # had been run again (41596806895), and answered 50 at once.
   PER_PAGE = 50
 
+  # The events whose runs check out the commit itself.
+  EVENTS = %w[push workflow_dispatch].freeze
+
   # Why a pushed commit can have no run, and how to give it one. A run
   # of ci.yml on trunk covers every commit pushed since the run before it
   # started, and only its head has a run of its own
@@ -61,22 +69,22 @@ class CIRuns
 
   # +pause+ is the seconds to wait before the first repeat of a request
   # GitHub failed on its side, doubled for each repeat after it.
-  def initialize(repository:, token:, api: "https://api.github.com", branch: "trunk", pause: 5)
+  def initialize(repository:, token:, api: "https://api.github.com", pause: 5)
     @repository = repository
     @token = token
     @api = api.delete_suffix("/")
-    @branch = branch
     @pause = pause
     @problems = {}
   end
 
-  # The ID of the newest run of ci.yml on a push of +commit+ to the
-  # branch that finished with every job's latest attempt a success, or
+  # The ID of the newest run of ci.yml on a push or a dispatch of
+  # +commit+, on any branch, that finished with every job's latest attempt a success, or
   # with +skipped+, a success or skipped. Raises NotGreen naming the
   # newest run and what is wrong with it when no run is green.
   def green(commit, skipped: true)
-    runs = all("actions/workflows/#{WORKFLOW}/runs", "workflow_runs", head_sha: commit, branch: @branch, event: "push")
-    raise NotGreen, "#{commit} has no run of #{WORKFLOW} on a push to #{@branch}: #{NO_RUN}" if runs.empty?
+    runs = all("actions/workflows/#{WORKFLOW}/runs", "workflow_runs", head_sha: commit)
+    runs = runs.select { |run| EVENTS.include?(run.fetch("event")) }
+    raise NotGreen, "#{commit} has no run of #{WORKFLOW} on a push or a dispatch: #{NO_RUN}" if runs.empty?
 
     runs = runs.sort_by { |run| -run.fetch("id") }
     found = runs.find { |run| problems(run, skipped:).empty? }
@@ -143,11 +151,10 @@ end
 
 if $PROGRAM_NAME == __FILE__
   command, commit = ARGV.shift(2)
-  abort "usage: ruby tasks/ci_runs.rb green COMMIT [--every-job] [--branch BRANCH]" unless command == "green" && commit
+  abort "usage: ruby tasks/ci_runs.rb green COMMIT [--every-job]" unless command == "green" && commit
   every = ARGV.delete("--every-job")
-  branch = ARGV.include?("--branch") ? ARGV[ARGV.index("--branch") + 1] : "trunk"
   token = ENV["GH_TOKEN"] || ENV.fetch("GITHUB_TOKEN")
-  runs = CIRuns.new(repository: ENV.fetch("GITHUB_REPOSITORY"), token:, api: ENV.fetch("GITHUB_API_URL", "https://api.github.com"), branch:)
+  runs = CIRuns.new(repository: ENV.fetch("GITHUB_REPOSITORY"), token:, api: ENV.fetch("GITHUB_API_URL", "https://api.github.com"))
   begin
     puts runs.green(commit, skipped: !every)
   rescue CIRuns::Error => e

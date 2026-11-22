@@ -11,7 +11,7 @@ require_relative "../tasks/ci_runs"
 require "json"
 
 # How release.yml, and rake runtime:pin, learn that a commit passed CI
-# on trunk without running CI again: GitHub's REST API, served
+# without running CI again: GitHub's REST API, served
 # here by a loopback server that answers as GitHub's does, read through
 # Net::HTTP itself.
 class CIRunsTest < Minitest::Test
@@ -55,12 +55,34 @@ class CIRunsTest < Minitest::Test
 
   # A commit inside a batch has no run of its own, so the
   # message says how a commit gets one.
-  def test_refuses_a_commit_with_no_run_on_a_push_to_the_branch
+  def test_refuses_a_commit_with_no_run_of_its_own
     with_api(runs: [], jobs: {}) do |_, runs|
       error = assert_raises(CIRuns::NotGreen) { runs.green(SHA) }
       assert_includes error.message, SHA
-      assert_includes error.message, "no run of ci.yml on a push to trunk"
+      assert_includes error.message, "no run of ci.yml on a push or a dispatch"
       assert_includes error.message, "push it alone, as the head of its push"
+    end
+  end
+
+  # A run started by hand or by a workflow (workflow_dispatch) checks
+  # out the very commit, on whatever branch it was started, as a push's
+  # run does, and runs the same jobs (doc/contributors/design/releases.md,
+  # "Which runs are a commit's"), so it is the commit's run as a push's is.
+  def test_takes_a_dispatched_run_on_any_branch
+    with_api(runs: [a_run(7, event: "workflow_dispatch", branch: "release-next")], jobs: { 7 => [a_job("Gate")] }) do |_, runs|
+      assert_equal 7, runs.green(SHA)
+    end
+  end
+
+  # A pull request's run checks out a merge of the commit with its base,
+  # not the commit, so its verdict is not the commit's, green or not.
+  def test_leaves_a_pull_requests_run
+    listed = [a_run(9, event: "pull_request", branch: "feature"), a_run(8, branch: "feature", conclusion: "failure")]
+    with_api(runs: listed, jobs: { 9 => [a_job("Gate")], 8 => [a_job("Gate", "failure")] }) do |_, runs|
+      assert_includes assert_raises(CIRuns::NotGreen) { runs.green(SHA) }.message, "actions/runs/8"
+    end
+    with_api(runs: [a_run(9, event: "pull_request")], jobs: { 9 => [a_job("Gate")] }) do |_, runs|
+      assert_includes assert_raises(CIRuns::NotGreen) { runs.green(SHA) }.message, "no run of ci.yml on a push or a dispatch"
     end
   end
 
@@ -136,15 +158,15 @@ class CIRunsTest < Minitest::Test
   end
 
   private def runs_path
-    "/repos/setdef/Fledge/actions/workflows/ci.yml/runs?head_sha=#{SHA}&branch=trunk&event=push&per_page=#{CIRuns::PER_PAGE}&page=1"
+    "/repos/setdef/Fledge/actions/workflows/ci.yml/runs?head_sha=#{SHA}&per_page=#{CIRuns::PER_PAGE}&page=1"
   end
 
   private def jobs_path(id, page)
     "/repos/setdef/Fledge/actions/runs/#{id}/jobs?filter=latest&per_page=#{CIRuns::PER_PAGE}&page=#{page}"
   end
 
-  private def a_run(id, status: "completed", conclusion: "success", attempt: 1)
-    { id:, html_url: "https://github.com/setdef/Fledge/actions/runs/#{id}", head_sha: SHA, status:, conclusion:, run_attempt: attempt }
+  private def a_run(id, status: "completed", conclusion: "success", attempt: 1, event: "push", branch: "trunk")
+    { id:, html_url: "https://github.com/setdef/Fledge/actions/runs/#{id}", head_sha: SHA, head_branch: branch, event:, status:, conclusion:, run_attempt: attempt }
   end
 
   private def a_job(name, conclusion = "success", status: "completed")

@@ -133,9 +133,17 @@ That wait is why the macOS leg is a workflow of its own too. GitHub's hosted mac
 
 The macOS leg runs on `macos-26`, because any current macOS on Apple silicon will do for the unit tests, and its runners came sooner; it no longer runs the unit tests on macOS 15 for each push, which `ci.yml`'s Test (arm64-darwin) still does for each batch. Its bundle cache is keyed by the runner's image, as every installed-gems cache is ("Installed gems in CI"), so a bundle built on macOS 26 is never restored on `macos-15`.
 
-A run belongs to the commit at the head of its push. A commit pushed with others after it, or one whose waiting run a newer push replaced, has no run of its own, and `tasks/ci_runs.rb` finds nothing for it: it says so, and that the commit has to be pushed alone, as the head of its push. A batch's run proves its head, so a commit inside a batch cannot be a release commit, and cannot be a pin commit's parent.
+A run belongs to the commit at the head of its push, or of the branch it was started on ("Which runs are a commit's", below). A commit pushed with others after it, or one whose waiting run a newer push replaced, has no run of its own, and `tasks/ci_runs.rb` finds nothing for it: it says so, and that the commit has to be pushed alone, as the head of its push. A batch's run proves its head, so a commit inside a batch cannot be a release commit, and cannot be a pin commit's parent.
 
 The release commit and the pin commit are each pushed alone. Each gets a concurrency group of its own, named for its commit, when its message starts `chore: release ` or `chore: pin `, as "How a release is made" writes them. Its run starts at once, beside any trunk run in progress, and no later push replaces it, so other agents keep pushing while it runs. A release commit with another message falls into trunk's group, where it can wait an hour and be replaced; `ruby-spec.yml` runs on all seven desktop platforms only for the `chore: release ` message too.
+
+## Which runs are a commit's
+
+A run of `ci.yml` is a commit's run when it tested that commit's files with the jobs that commit calls for. A push's run does: its `GITHUB_SHA` is the commit pushed. So does a run started on a branch whose head is the commit, by hand or by a workflow (`workflow_dispatch`), whose `GITHUB_SHA` is the last commit on the branch it was started on ("Events that trigger workflows", docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows, the table of each event's `GITHUB_SHA`), which the API reports as the run's `head_sha`, and whose workflow file is that commit's own. A pull request's run is not one: its `GITHUB_SHA` is a merge of the pull request's head into its base, whose files are not the head's. And `ci.yml` chooses its jobs from the commit alone: `Changes` tells a pin commit by its files and a release commit by its subject, on a push and a dispatch alike, and no job asks which event or branch started it.
+
+So `tasks/ci_runs.rb` takes a run of a push or of a dispatch of the commit, on any branch, and never a pull request's, and `rake runtime:pin`, a pin commit's check, and `release.yml` take a dispatched run as they take a push's. A push made with a workflow's own token starts no run (`runtimes.md`, "The proof"), so this is what lets a workflow prove a commit at all. What a dispatched run does not share with a push's is its concurrency group: a dispatched run has no `head_commit`, so even a release or pin commit's run shares its branch's group, where on any branch but trunk it cancels the run before it. That changes when a run starts, not what it proves.
+
+Taking only runs of a push to trunk, as `tasks/ci_runs.rb` did until 2026-11-22, held the pins and the release to commits a person or an agent had pushed, since a workflow's push starts no run. A token of an account or an app whose pushes do start runs would keep that rule, at the cost of an account and a stored secret, which are the maintainer's to give (AGENTS.md, "Questions"), for no difference in what the run proves.
 
 ## A job no runner took
 
@@ -188,10 +196,10 @@ Jobs on one image share one entry: on `ubuntu-24.04`, `fast.yml`'s Lint and Unit
 
 ## A pin commit's short CI
 
-A commit pushed to `trunk` with one parent and `lib/fledge/SHA256SUMS` as its only change runs two jobs of `ci.yml`:
+A commit with one parent and `lib/fledge/SHA256SUMS` as its only change, pushed or dispatched, runs two jobs of `ci.yml`:
 
 - **The gate**, as on every commit, whose tests read the pins.
-- **`Changes`**, which runs on every commit and tells a pin commit apart with `.github/scripts/pins-only.sh`. On a pin commit it finds the parent's newest run on the same branch in which every job ran and passed (`tasks/ci_runs.rb`), downloads its runtimes, and runs `.github/scripts/check-pins.sh`: the runtimes must be exactly `RuntimeBuilder.release_assets`, the pins must name exactly those, and each must match its pin under `sha256sum --strict -c`.
+- **`Changes`**, which runs on every commit and tells a pin commit apart with `.github/scripts/pins-only.sh`. On a pin commit, pushed or dispatched, it finds the parent's newest run in which every job ran and passed (`tasks/ci_runs.rb`), downloads its runtimes, and runs `.github/scripts/check-pins.sh`: the runtimes must be exactly `RuntimeBuilder.release_assets`, the pins must name exactly those, and each must match its pin under `sha256sum --strict -c`.
 
 Every other job is skipped. A merge, a first commit, a pull request, a clone without the parent, and any commit that changes anything else run all of CI. The pin check is a step of `Changes`, not a job of its own, because a job of its own would be skipped on every other commit, and a release commit's run may skip none.
 
@@ -205,7 +213,7 @@ A full run on the tag, or on the pin commit, would test the same bytes again, th
 
 - that the tag matches `Fledge::VERSION`;
 - that the tagged commit changes nothing but `lib/fledge/SHA256SUMS` from its parent;
-- that the tagged commit has a run of `ci.yml` on a push to `trunk` whose latest attempt of every job passed or was skipped;
+- that the tagged commit has a run of `ci.yml` of its own ("Which runs are a commit's") whose latest attempt of every job passed or was skipped;
 - that its parent's newest such run passed on every job, none skipped, and that run's runtimes are exactly the release's and each matches its pin.
 
 It asks GitHub's REST API through `tasks/ci_runs.rb`, which reads 50 jobs a page, asks again after a 5xx, and takes each job's latest attempt, so a run whose failed jobs were run again counts once they pass. A tag that fails a check fails before anything is published, naming the run and each job that did not pass. A run refused only because CI had not finished can be run again once it passes (`gh run rerun RUN`).

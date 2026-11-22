@@ -3,9 +3,8 @@
 
 # Publishes a Fledge release when a vX.Y.Z tag is pushed
 # (doc/contributors/design/releases.md, "Where releases are";
-# AGENTS.md, Releasing). Only when CI passed on a
-# push to trunk on every job, the license audit and Delivery included,
-# for the tagged commit's parent, and for the tagged commit the short CI
+# AGENTS.md, Releasing). Only when CI passed on every job, the license
+# audit and Delivery included, for the tagged commit's parent, and for the tagged commit the short CI
 # a pin commit runs, does it create the GitHub Release, with, for each
 # platform:
 #
@@ -35,8 +34,9 @@
 # run built, and only when every one matches its pin
 # (doc/contributors/design/releases.md, "The pins").
 #
-# It does not run CI again. CI ran on both commits when they were pushed
-# to trunk, and this looks those runs up (tasks/ci_runs.rb) and refuses
+# It does not run CI again. CI ran on both commits, on a push or a
+# dispatch (releases.md, "Which runs are a commit's"), and this looks
+# those runs up (tasks/ci_runs.rb) and refuses
 # the tag unless both are green, naming a run still going, or a run and
 # the jobs in it that did not pass. A second run of the same
 # commit would test the same files, throw its runtimes away, and draw
@@ -157,12 +157,12 @@ jobs:
             exit 1
           fi
 
-      # AGENTS.md, Releasing: tag only a commit whose CI is green. Its run
-      # on a push to trunk must have finished with the latest attempt of
+      # AGENTS.md, Releasing: tag only a commit whose CI is green. Its run,
+      # on a push or a dispatch, must have finished with the latest attempt of
       # every job a success, so failed jobs run again and passed count.
       # A pin commit's run is the short one: the gate and ci.yml's Changes
       # job, which checks the pins, pass, and every other job is skipped.
-      - name: Check the tagged commit passed CI on trunk
+      - name: Check the tagged commit passed CI
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

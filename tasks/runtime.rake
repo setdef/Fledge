@@ -20,8 +20,9 @@ end
 namespace :runtime do
   # The first step of a release (AGENTS.md, Releasing): with the
   # release commit pushed and its CI green, this downloads the runtimes
-  # that CI run built (by default HEAD's newest push run of ci.yml on
-  # trunk in which every job passed, the run release.yml publishes from,
+  # that CI run built (by default HEAD's newest run of ci.yml, on a push
+  # or a dispatch, in which every job passed, the run release.yml
+  # publishes from,
   # CIRuns#green) with the GitHub CLI and pins their SHA-256s in
   # lib/fledge/SHA256SUMS, for a commit of their own that is then tagged.
   desc "Pin the runtimes CI run RUN built (default: HEAD's) in lib/fledge/SHA256SUMS, before tagging a release"

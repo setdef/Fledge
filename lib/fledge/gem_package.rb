@@ -56,7 +56,10 @@ module Fledge
   #++
   class GemPackage
     # Why +spec+'s gem cannot run on a runtime whose Ruby is
-    # +ruby_version+, as RubyGems would refuse it, or none.
+    # +ruby_version+, as RubyGems would refuse it, or none. The reason
+    # says how out: Bundler run on the runtime's Ruby locks only a build
+    # that admits it (a newer version, or the source build in place of a
+    # precompiled one), so re-locking the gem there is the way out.
     #
     # === Example
     #
@@ -65,7 +68,8 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::GemPackage.ruby_problems(spec, "4.1.0") # => ["old 1.0 needs Ruby < 3.0, and Fledge's runtime is Ruby 4.1.0."]
+    #   Fledge::GemPackage.ruby_problems(spec, "4.1.0").first
+    #   # => "old 1.0 needs Ruby < 3.0, and Fledge's runtime is Ruby 4.1.0. Run bundle update old with Ruby 4.1, ..."
     #--
     # SPDX-SnippetEnd
     #++
@@ -74,7 +78,8 @@ module Fledge
 
       [
 "#{spec.name} #{spec.version}#{" (#{spec.platform})" unless spec.platform.to_s == 'ruby'} needs Ruby " \
-  "#{spec.required_ruby_version}, and Fledge's runtime is Ruby #{ruby_version}.",
+  "#{spec.required_ruby_version}, and Fledge's runtime is Ruby #{ruby_version}. Run bundle update #{spec.name} with " \
+  "Ruby #{ruby_version.split('.').first(2).join('.')}, so that Bundler locks a build of it that runs there, then build again.",
 ]
     end
 

@@ -108,7 +108,8 @@ class GemAppBuildTest < Minitest::Test
     root = project(dependencies: { "lite" => ">= 0" }, locked: [precompiled, neither])
     _, err, status = build(root)
     assert_equal 1, status
-    assert_includes err, "lite 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.1.0."
+    assert_includes err, "lite 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.1.0. Run bundle update lite " \
+      "with Ruby 4.1, so that Bundler locks a build of it that runs there, then build again."
   end
 
   # Fledge refuses a gem only when it would not run where the app goes,
@@ -125,7 +126,8 @@ class GemAppBuildTest < Minitest::Test
     assert_equal [1, ""], [status, out]
     assert_equal [
       "fledge build: MyApp can't ship for x86_64-linux:",
-      "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.1.0.",
+      "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.1.0. Run bundle update old " \
+        "with Ruby 4.1, so that Bundler locks a build of it that runs there, then build again.",
       "fledge build:   unloadable 1.0.0 (x86_64-linux-gnu)'s lib/unloadable.so needs libxml2.so.2, which neither linux, nor " \
         "Fledge's runtime, nor the gem itself provides, so the app could not load it on another computer. Build the gem so " \
         "that it carries the library, or links it statically, or, when every computer the app goes to has it from its Linux " \

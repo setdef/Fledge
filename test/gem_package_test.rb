@@ -57,7 +57,10 @@ class GemPackageTest < Minitest::Test
 
     assert_predicate compiled, :extensions?
     assert_empty compiled.problems(ruby_version: "4.0.9"), "compiling is for Fledge::AppGems to judge"
-    assert_equal ["old 1.0.0 needs Ruby >= 3.1, < 3.5, and Fledge's runtime is Ruby 4.0.9."], old.problems(ruby_version: "4.0.9")
+    assert_equal [
+      "old 1.0.0 needs Ruby >= 3.1, < 3.5, and Fledge's runtime is Ruby 4.0.9. Run bundle update old with Ruby 4.0, " \
+        "so that Bundler locks a build of it that runs there, then build again.",
+    ], old.problems(ruby_version: "4.0.9")
     assert_empty fine.problems(ruby_version: "4.0.9")
     refute_predicate fine, :extensions?
     assert_equal "lib/ruby/gems/4.0.0/gems/fine-1.0.0", fine.installed_path("lib/ruby/gems/4.0.0")

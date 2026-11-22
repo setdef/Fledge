@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A gem refused because it does not run on the runtime's Ruby names the way out: re-lock it with `bundle update` on that Ruby.
 - A gem whose extension fails to compile shows its build output and a sentence naming the gem, with no Ruby backtrace of Fledge's compile script.
 - `fledge build` takes a `Gemfile.lock` that locks the Mac only under another Darwin version, such as `arm64-darwin-24`, as `bundle exec` does, and the macOS app ships it with its Ruby's own platform added; it refused it before.
 - **Breaking:** `fledge build android` refuses every app whose `build.gradle` sets `useLegacyPackaging = false` or sets none, not only an app with a gem's C or C++ extension, since Ruby's own extensions and encodings are now native libraries the package installer must extract.

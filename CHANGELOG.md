@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A glibc Linux app (`x86_64-linux`, `aarch64-linux`) runs on glibc 2.28 or newer, such as RHEL 8, Debian 10, and Ubuntu 20.04, where it needed 2.39.
 - A gem compiled on a Linux whose glibc is newer than 2.28 no longer fails `fledge build`: the build warns that the app needs that glibc, and the app's `.deb` depends on it.
 - A glibc Linux app trusts the computer's own CA certificates, as other Linux programs do, and the certificates it carries only on a computer with none.
+- In the SBOM published beside each runtime and carried in its `notices/`, a component that another build of a runtime also has is named for what sets it apart, so each package's `SPDXID` names one component of one build: `SPDXRef-Package-openssl-musl` and `SPDXRef-Package-openssl-fledge` where both were `SPDXRef-Package-openssl`, and so for libyaml, zlib, and libffi on `x86_64-linux-musl`, GNU MP and zlib's `libz.dll` on `aarch64-mingw-ucrt`, Ruby on Windows, Fledge's mobile code, GCC's runtime on musl, and Rust's standard library.
 - On Windows, `fledge build` counts a DLL of the runtime's as provided only where the app's Ruby looks for it, in `ruby_builtin_dlls`, Ruby's architecture folder, and Ruby's own DLL, and refuses a gem that needs one the runtime holds only elsewhere, such as beside another gem's extension, which before built an app that stopped at `require`.
 
 ### Fixed

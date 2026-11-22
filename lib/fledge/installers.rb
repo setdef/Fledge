@@ -150,7 +150,7 @@ module Fledge
     private_class_method def self.deb(app, folder:, platform:, to:)
       changelog = app.config.linux&.deb_changelog
       Deb.write(identity: app.identity, folder:, platform:, to:, system_libraries: app.config.system_libraries(platform.os),
-        license: license(app), changelog: changelog && project_file(app, changelog, "linux: deb_changelog"))
+        system_typelibs: app.config.system_typelibs(platform.os), license: license(app), changelog: changelog && project_file(app, changelog, "linux: deb_changelog"))
     end
 
     # The text of +app+'s <tt>license_file</tt>, or +nil+ when it names

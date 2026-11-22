@@ -73,7 +73,7 @@ What each key does:
 - With **`linux: deb_changelog`**, Fledge adds your changelog to the `.deb`.
 - **`macos: build`** is the Mac app's build number, which the App Store and updaters compare. Without it, the build number is the version's first three numbers.
 
-A `.deb` depends on `libc6`, and on the packages of any libraries you list under `linux: system_libraries` (see [Gems](gems.md)), so `apt` installs it on a computer without a desktop too. A library that a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there. Nor does a `.deb` yet depend on the packages of the typelibs you list under `linux: system_typelibs`; the app names one a computer lacks.
+A `.deb` depends on `libc6`, on the packages of any libraries you list under `linux: system_libraries`, and on the `gir1.2-` package of each typelib you list under `linux: system_typelibs` (see [Gems](gems.md)), so `apt` installs it on a computer without a desktop too. A library that a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there.
 
 ## Open files and folders with your app
 

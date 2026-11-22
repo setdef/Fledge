@@ -35,6 +35,27 @@ class DebTest < Minitest::Test
     end
   end
 
+  # A typelib fledge.yml lists is a dependency on the package named for
+  # it as Debian's GObject introspection packages are, gir1.2- and the
+  # namespace and version in lower case, which the package that holds
+  # it is or provides: Gdk-4.0's is gir1.2-gtk-4.0, which provides
+  # gir1.2-gdk-4.0.
+  def test_a_typelib_listed_as_the_distributions_is_a_dependency_on_its_package
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      deb = build(dir, system_typelibs: %w[Gtk-4.0 Gdk-4.0 GdkPixbuf-2.0])
+
+      assert_equal "libc6 (>= 2.39), gir1.2-gtk-4.0, gir1.2-gdk-4.0, gir1.2-gdkpixbuf-2.0", field(deb, "Depends")
+    end
+  end
+
+  # Debian's GObject introspection mini-policy, section 2: an underscore
+  # in the namespace becomes a hyphen, as a package name has none, and a
+  # typelib listed twice is one dependency.
+  def test_a_typelib_package_name_replaces_underscores_and_is_named_once
+    assert_equal %w[gir1.2-gtk-4.0 gir1.2-foo-bar-1.0], Fledge::Deb.typelib_packages(%w[Gtk-4.0 Foo_Bar-1.0 Gtk-4.0])
+  end
+
   # Policy 5.6.13 and 5.6.23: the description is the synopsis, the long
   # description its extended lines, and the homepage a field of its own.
   def test_the_description_and_homepage_are_the_packages

@@ -58,7 +58,9 @@ module Fledge
     # +identity+ and whose built folder is +folder+, for +platform+, to
     # +to+, and returns +to+. +system_libraries+ are the libraries the
     # app's gems load from the distribution (Config::Linux), whose
-    # packages the <tt>.deb</tt> depends on. +license+ is the app's license
+    # packages the <tt>.deb</tt> depends on, and +system_typelibs+ the
+    # typelibs they load, whose packages it depends on too (#typelib_packages).
+    # +license+ is the app's license
     # text, and +changelog+ the path of its changelog, or +nil+ for none
     # (#documents). Raises Fledge::Error when
     # this computer has no dpkg-deb, or no dpkg-shlibdeps when it needs
@@ -75,7 +77,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(identity:, folder:, platform:, to:, system_libraries: [], license: nil, changelog: nil)
+    def self.write(identity:, folder:, platform:, to:, system_libraries: [], system_typelibs: [], license: nil, changelog: nil)
       package = package_name(identity)
       Dir.mktmpdir("fledge-deb") do |work|
         root = File.join(work, "root")
@@ -83,7 +85,8 @@ module Fledge
         documents(root, package, license:, changelog:)
         control = File.join(root, "DEBIAN")
         FileUtils.mkdir_p(control, mode: 0o755)
-        depends = ["libc6 (>= #{Platform::GLIBC_MINIMUM})", *dependencies(work, root, system_libraries, platform.cpu)]
+        libraries = dependencies(work, root, system_libraries, platform.cpu)
+        depends = ["libc6 (>= #{Platform::GLIBC_MINIMUM})", *libraries, *typelib_packages(system_typelibs)]
         File.write(File.join(control, "control"), control_file(identity, package, ARCHITECTURES.fetch(platform.name), installed_size(root), depends))
         Command.run("dpkg-deb", "--build", "--root-owner-group", root, to, install: INSTALL)
       end
@@ -242,6 +245,31 @@ module Fledge
       folders = binaries.keys.map { |path| "-l#{File.dirname(path)}" }.uniq
       output = Command.read("dpkg-shlibdeps", "-O", "-xlibc6", *folders, *needing.map { |path| "-e#{path}" }, chdir: work, install: SHLIBDEPS)
       output[/^shlibs:Depends=(.*)$/, 1].to_s.split(",").map(&:strip).reject(&:empty?)
+    end
+
+    # The packages of +typelibs+, each a namespace and its version as
+    # libgirepository names it (Config::Linux::TYPELIB), as Debian's
+    # GObject introspection mini-policy names them: +gir1.2-+, the
+    # namespace in lower case with a hyphen for each underscore, and the
+    # version. A package that holds several typelibs provides that name
+    # for each, as gir1.2-gtk-4.0 provides gir1.2-gdk-4.0 and
+    # gir1.2-glib-2.0 provides gir1.2-gobject-2.0, so apt installs the
+    # package that holds the typelib
+    # (doc/contributors/design/desktop-apps.md, "Depends").
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Deb.typelib_packages(["Gtk-4.0", "GdkPixbuf-2.0"]) # => ["gir1.2-gtk-4.0", "gir1.2-gdkpixbuf-2.0"]
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.typelib_packages(typelibs)
+      typelibs.map { |typelib| "gir1.2-#{typelib.downcase.tr('_', '-')}" }.uniq
     end
 
     # Whether the file at +path+ is an ELF file, which alone Linux loads:

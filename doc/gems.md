@@ -95,7 +95,7 @@ linux:
 ```
 <!-- SPDX-SnippetEnd -->
 
-On a computer that lacks one, or a typelib it needs, the app names it and exits with status 72, before your code runs, as it does for a library. It looks where the gem will, so a typelib that `GI_TYPELIB_PATH` leads to counts. Fledge carries no typelib in your app: each describes the library of the computer it is on. A `.deb` does not yet depend on the packages that hold them, nor does an AppImage or `.tar.gz` carry them.
+On a computer that lacks one, or a typelib it needs, the app names it and exits with status 72, before your code runs, as it does for a library. It looks where the gem will, so a typelib that `GI_TYPELIB_PATH` leads to counts. Fledge carries no typelib in your app: each describes the library of the computer it is on. A `.deb` depends on the package Debian and Ubuntu name for each, `gir1.2-` and the namespace and version in lower case (`gir1.2-gtk-4.0` for `Gtk-4.0`), so `apt` installs them with the app; an AppImage or `.tar.gz` carries none.
 
 ## A gem whose DLL needs the Visual C++ runtime
 

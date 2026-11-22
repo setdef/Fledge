@@ -329,6 +329,30 @@ class LinkageTest < Minitest::Test
     assert_equal [1, 0], [judged.call("windows", "x86_64", x64), judged.call("windows-arm64", "aarch64", x64)]
   end
 
+  # On Windows a DLL of the runtime's counts only where the app's Ruby
+  # searches for one an extension imports by name (RuntimeContents#libraries):
+  # a gem's DLL that needs libgmp-10.dll loads with the runtime's copy in
+  # ruby_builtin_dlls, and is refused when the runtime holds it only
+  # beside another gem's extension, where Windows would not look.
+  def test_on_windows_a_runtime_dll_counts_only_where_the_apps_ruby_searches
+    TestReaders.need(self, :pe)
+    windows = Fledge::Platform.find("x64-mingw-ucrt")
+    dll = Binaries.pe(needed: %w[libgmp-10.dll KERNEL32.dll])
+    Dir.mktmpdir do |dir|
+      judged = lambda do |place|
+        runtime = Fledge::RuntimeContents.read(FakeRuntime.write(dir, windows, extra: [Fledge::Entry.file(place, "MZ")]))
+        Fledge::Linkage.new(os: "windows", cpu: "x86_64", provided: runtime.libraries, readers: TestReaders.all)
+          .problems("linked 1.0.0", { "lib/linked.so" => dll })
+      end
+
+      assert_empty judged.call("ruby/bin/ruby_builtin_dlls/libgmp-10.dll")
+      refusal = "linked 1.0.0's lib/linked.so needs libgmp-10.dll, which neither windows, nor Fledge's runtime, nor the gem " \
+        "itself provides, so the app could not load it on another computer. Build the gem so that it carries the library, or " \
+        "links it statically."
+      assert_equal [refusal], judged.call("ruby/lib/ruby/gems/4.1.0+5/extensions/x64-mingw-ucrt/4.1.0+5/fiddle-1.1.8/libgmp-10.dll")
+    end
+  end
+
   # A loader loads only its own system's format, so a Linux gem's copy of
   # a Windows DLL, say, is never loaded and never judged.
   def test_a_file_for_another_systems_loader_is_never_judged

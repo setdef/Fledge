@@ -60,6 +60,28 @@ class RuntimeContentsTest < Minitest::Test
     end
   end
 
+  # Windows finds a DLL an extension imports by name only in the folders
+  # the app's Ruby searches, ruby_builtin_dlls and Ruby's architecture
+  # folder, or among what is loaded, Ruby's DLL first; a DLL anywhere
+  # else in the runtime, such as the libffi-8.dll beside fiddle.so, is
+  # no other extension's.
+  def test_on_windows_only_the_dlls_where_the_apps_ruby_searches_are_counted
+    Dir.mktmpdir do |dir|
+      gems = "ruby/lib/ruby/gems/4.1.0+5"
+      extra = [
+        Fledge::Entry.file("ruby/bin/x64-ucrt-ruby410.dll", "MZ"),
+        Fledge::Entry.file("ruby/bin/ruby_builtin_dlls/libgmp-10.dll", "MZ"),
+        Fledge::Entry.file("ruby/lib/ruby/4.1.0+5/fake-arch/libz-1.dll", "MZ"),
+        Fledge::Entry.file("#{gems}/extensions/x64-mingw-ucrt/4.1.0+5/fiddle-1.1.8/libffi-8.dll", "MZ"),
+        Fledge::Entry.file("ruby/lib/ruby/4.1.0+5/lib/engines-3/capi.dll", "MZ"),
+        Fledge::Entry.file("tools/nsis/Plugins/System.dll", "MZ"),
+      ]
+      windows = Fledge::RuntimeContents.read(FakeRuntime.write(dir, Fledge::Platform.find("x64-mingw-ucrt"), extra:))
+
+      assert_equal %w[libgmp-10.dll libz-1.dll x64-ucrt-ruby410.dll], windows.libraries
+    end
+  end
+
   def test_an_archive_that_is_not_a_runtime_is_refused
     Dir.mktmpdir do |dir|
       bare = File.join(dir, "bare.tar.gz")

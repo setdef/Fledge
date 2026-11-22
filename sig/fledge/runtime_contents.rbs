@@ -33,6 +33,8 @@ module Fledge
 
     private def self.ruby_version_in: (String rbconfig, String? description) -> String?
 
+    private def self.searched?: (String path, String bin_dir, String archdir) -> bool
+
     private def self.build: (String path, Array[String] gem_dirs, Array[String] gems, String? version) -> RuntimeContents
   end
 end

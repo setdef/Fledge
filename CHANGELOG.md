@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Android, RubyGems keeps a gem's compiled extension under `extensions/PLATFORM/4.1.0+5/`, as on a desktop Linux, where it was `4.1.0+5-static/`.
 - The `x86_64-linux` and `aarch64-linux` runtimes take their Ruby 4.1.0-preview1 from jdx/ruby's build in place of rv-ruby's, so their openssl, zlib, and fiddle extensions carry OpenSSL 3.5.5, zlib 1.3.1, and libffi 3.5.1 (rv-ruby's carried OpenSSL 3.6.2, zlib 1.3.2, and libffi 3.5.2), and Fledge's launcher, `bin/ruby`, and libxcrypt in them are compiled in manylinux_2_28, so that no file of the runtime needs a glibc newer than 2.28.
 - A glibc Linux app trusts the computer's own CA certificates, as other Linux programs do, and the certificates it carries only on a computer with none.
+- On Windows, `fledge build` counts a DLL of the runtime's as provided only where the app's Ruby looks for it, in `ruby_builtin_dlls`, Ruby's architecture folder, and Ruby's own DLL, and refuses a gem that needs one the runtime holds only elsewhere, such as beside another gem's extension, which before built an app that stopped at `require`.
 
 ### Fixed
 

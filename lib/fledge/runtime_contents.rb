@@ -21,15 +21,15 @@ module Fledge
   # audited, and must not be added twice; a gem must suit the runtime's
   # Ruby. The runtime knows all three, so they are read from it rather
   # than kept a second time in Fledge. A gem's compiled file may need one
-  # of the runtime's own shared libraries, too.
+  # of the runtime's own shared libraries, too, where the loader finds it.
   #
   # This class reads a runtime archive once and keeps the gem folder, by
   # the path of its <tt>specifications</tt> folder, the full name of every
   # gem specification in it, the Ruby version RubyGems and Bundler compare
   # gems and Gemfiles with (Gem.ruby_version), from RbConfig's MAJOR,
   # MINOR, TEENY, and PATCHLEVEL and the runtime's DESCRIPTION file, and
-  # that patch level, the file name of
-  # every shared library it holds, and the architecture its rbconfig.rb
+  # that patch level, the file name of every shared library it holds
+  # where a compiled file finds it, and the architecture its rbconfig.rb
   # records, which is the platform RubyGems and Bundler see when the app
   # runs (Gem::Platform.local), whatever computer it runs on.
   #
@@ -83,8 +83,11 @@ module Fledge
 
     ##
     # :attr_reader: libraries
-    # The file name of every shared library the runtime holds, sorted,
-    # such as <tt>x64-ucrt-ruby410.dll</tt>.
+    # The file name of every shared library the runtime holds where a
+    # compiled file that needs it by name finds it, sorted, such as
+    # <tt>x64-ucrt-ruby410.dll</tt>: on Windows, Ruby's DLL and the DLLs
+    # in <tt>ruby_builtin_dlls</tt> and Ruby's architecture folder, and
+    # elsewhere every one, since the runtime places its own.
 
     ##
     # :attr_reader: path
@@ -183,6 +186,7 @@ module Fledge
       arch = nil # : String?
       patchlevel = ""
       libraries = [] # : Array[String]
+      rbconfig_inside = "" # : String
       plugins = [] # : Array[String]
       inside_all = [] # : Array[String]
       rbconfig = nil # : String?
@@ -194,13 +198,14 @@ module Fledge
         next unless inside.start_with?(under)
 
         inside = inside.delete_prefix(under)
-        libraries << File.basename(inside) if inside.match?(LIBRARY)
+        libraries << inside if inside.match?(LIBRARY)
         plugins << inside if inside.match?(PLUGIN)
         inside_all << inside
         if (found = SPECIFICATION.match(inside))
           gem_dirs << found[:gem_dir].to_s
           gems << found[:full_name].to_s
         elsif RBCONFIG.match?(inside)
+          rbconfig_inside = inside unless rbconfig
           rbconfig ||= name
         end
       end
@@ -216,8 +221,25 @@ module Fledge
       contents = build(path, gem_dirs.uniq, gems, version)
       prefix = "#{contents.bin_dir}/"
       binaries = inside_all.select { |inside| inside.start_with?(prefix) && !inside.end_with?("/") }
-      contents.with(patchlevel:, libraries: libraries.uniq.sort.freeze, arch: arch.to_s, plugins: plugins.sort.freeze, binaries: binaries.sort.freeze,
-        extension_api: "#{File.basename(contents.gem_dir)}#{'-static' unless shared}")
+      archdir = File.dirname(rbconfig_inside)
+      found = arch.to_s.include?("mingw") ? libraries.select { |library| searched?(library, contents.bin_dir, archdir) } : libraries
+      contents.with(patchlevel:, libraries: found.map { |library| File.basename(library) }.uniq.sort.freeze, arch: arch.to_s,
+        plugins: plugins.sort.freeze, binaries: binaries.sort.freeze, extension_api: "#{File.basename(contents.gem_dir)}#{'-static' unless shared}")
+    end
+
+    # Whether the app's Ruby on Windows finds the DLL at +path+ when an
+    # extension imports it by name: Windows looks among the modules
+    # loaded, Ruby's DLL in +bin_dir+ first, which the launcher loads by
+    # its path, then in the folders the process's DLL search names, never
+    # beside the extension. Those are <tt>ruby_builtin_dlls</tt> in
+    # +bin_dir+, which the launcher and the runtime's ruby.exe add, and
+    # Ruby's architecture folder, +archdir+, which Fledge's RubyGems
+    # defaults add, as RubyInstaller's start-up does
+    # (doc/contributors/design/runtimes.md, "The DLLs a compiled gem finds
+    # on Windows").
+    private_class_method def self.searched?(path, bin_dir, archdir)
+      folder = File.dirname(path)
+      folder == "#{bin_dir}/ruby_builtin_dlls" || folder == archdir || (folder == bin_dir && File.basename(path).match?(Linkage::RUBY_DLL))
     end
 
     # The tool +name+ the runtime keeps in its <tt>tools</tt> folder

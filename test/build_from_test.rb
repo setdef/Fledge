@@ -74,6 +74,22 @@ class BuildFromTest < Minitest::Test
       "entry = main.rb\ngemfile = Gemfile\nsystem_libraries = libz.so.1\n", File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
   end
 
+  # The typelibs the old app's gems load from a Linux distribution come
+  # along, and the new project's program, which may load others through
+  # the same gems, adds its own.
+  def test_the_system_typelibs_the_gems_load_come_along_with_the_projects_own
+    from = built_player
+    File.write(File.join(from, "fledge.cfg"), "system_typelibs = GdkPixbuf-2.0 Gio-2.0\n", mode: "a")
+    game("linux:\n  system_typelibs: [Gtk-4.0, Gio-2.0]\n")
+
+    _, err, status = build("--from", from, "game")
+
+    assert_equal [0, ""], [status, err]
+    assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n" \
+      "entry = main.rb\ngemfile = Gemfile\nsystem_typelibs = GdkPixbuf-2.0 Gio-2.0 Gtk-4.0\n",
+      File.read(File.join(@dir, "dist", "Game-x86_64-linux", "fledge.cfg"))
+  end
+
   # The new app's gems are the old one's, and so are the DLLs of
   # Microsoft's Visual C++ runtime they need and the app does not carry,
   # which its launcher looks for in System32.

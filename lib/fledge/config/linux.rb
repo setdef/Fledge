@@ -10,7 +10,8 @@ require_relative "../error"
 module Fledge
   class Config
     # What a project's <tt>fledge.yml</tt> says under +linux+: the
-    # libraries its gems load from the Linux distribution.
+    # libraries and the GObject introspection data its gems load from the
+    # Linux distribution.
     #
     # A gem's compiled files may need only the libraries every Linux
     # distribution has, Fledge's runtime ships, or the gem carries
@@ -25,9 +26,20 @@ module Fledge
     # and the app's program says which one is missing on a computer that
     # lacks it, before Ruby starts.
     #
+    # A gem over GObject introspection, as each of ruby-gnome's is, also
+    # loads a typelib, a file of data that describes a library's
+    # interface, by its namespace and version while the app runs.
+    # Nothing in a compiled file names it, and a distribution may package
+    # it apart from the library, so Fledge cannot find it for itself.
+    # Listing one here has the app's program say which one is missing on
+    # a computer that lacks it, before Ruby starts, rather than Ruby's
+    # error from inside the gem.
+    #
     # This class reads the mapping: its +system_libraries+, each a name
     # as a compiled file gives it (its soname, such as
-    # <tt>libgtk-3.so.0</tt>), once each.
+    # <tt>libgtk-3.so.0</tt>), and its +system_typelibs+, each a
+    # namespace and its version as libgirepository names a typelib
+    # (such as <tt>Gtk-4.0</tt>), once each.
     #
     # Use it through Fledge::Config#linux.
     #
@@ -41,23 +53,39 @@ module Fledge
     #   # fledge.yml:
     #   #   linux:
     #   #     system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0]
-    #   Fledge::Config.load("path/to/project").linux.system_libraries # => ["libwebkit2gtk-4.1.so.0", "libgtk-3.so.0"]
+    #   #     system_typelibs: [Gtk-4.0]
+    #   linux = Fledge::Config.load("path/to/project").linux
+    #   linux.system_libraries # => ["libwebkit2gtk-4.1.so.0", "libgtk-3.so.0"]
+    #   linux.system_typelibs  # => ["Gtk-4.0"]
     #--
     # SPDX-SnippetEnd
     #++
-    class Linux < Data.define(:system_libraries, :deb_changelog)
+    class Linux < Data.define(:system_libraries, :system_typelibs, :deb_changelog)
       ##
       # :attr_reader: system_libraries
       # The names of the libraries the project's gems load from the
       # distribution, as their compiled files give them, or none.
 
+      ##
+      # :attr_reader: system_typelibs
+      # The typelibs the project's gems load from the distribution, each
+      # a namespace and its version, such as <tt>Gtk-4.0</tt>, or none.
+
       # The keys the mapping may hold.
-      KEYS = %w[system_libraries deb_changelog].freeze
+      KEYS = %w[system_libraries system_typelibs deb_changelog].freeze
 
       # A library's name as an ELF file's <tt>DT_NEEDED</tt> gives it: a
       # file name, in letters, digits, and <tt>. _ + -</tt>, that ends in
       # <tt>.so</tt> and any version numbers after it.
       SONAME = /\A[A-Za-z0-9_+-][A-Za-z0-9._+-]*\.so(?:\.[0-9]+)*\z/
+
+      # A typelib as libgirepository names one, and its file is named less
+      # <tt>.typelib</tt>: a namespace, which begins with a letter or
+      # <tt>_</tt> and holds letters, digits, and <tt>_</tt>, a hyphen,
+      # and the version, two numbers between a period
+      # (<tt>girepository.c</tt>, <tt>load_dependencies_recurse</tt>, splits
+      # a dependency at its last hyphen).
+      TYPELIB = /\A[A-Za-z_][A-Za-z0-9_]*-[0-9]+\.[0-9]+\z/
 
       # The mapping at +data+'s +linux+ key in the <tt>fledge.yml</tt> at
       # +file+, or +nil+ when it has none. Raises Fledge::Error, naming the
@@ -79,16 +107,17 @@ module Fledge
         item = data["linux"]
         return nil if item.nil?
         unless item.is_a?(Hash)
-          raise Error, "#{file}: linux must be a mapping of system_libraries and deb_changelog, such as linux: { system_libraries: [libgtk-3.so.0] }"
+          raise Error, "#{file}: linux must be a mapping of system_libraries, system_typelibs, and deb_changelog, such as linux: { system_libraries: [libgtk-3.so.0] }"
         end
 
         unknown = item.keys - KEYS
         unless unknown.empty?
           raise Error, "#{file}: linux has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. " \
-            "It knows system_libraries and deb_changelog."
+            "It knows system_libraries, system_typelibs, and deb_changelog."
         end
 
-        new(system_libraries: libraries(item["system_libraries"], file), deb_changelog: Config.file(item, "deb_changelog", "#{file}: linux", "CHANGELOG.md"))
+        new(system_libraries: libraries(item["system_libraries"], file), system_typelibs: typelibs(item["system_typelibs"], file),
+          deb_changelog: Config.file(item, "deb_changelog", "#{file}: linux", "CHANGELOG.md"))
       end
 
       # The list at +system_libraries+, each a SONAME, once each.
@@ -102,6 +131,22 @@ module Fledge
         if wrong
           raise Error, "#{file}: linux: system_libraries has #{wrong.inspect}, which is not a library's name: name it as compiled files do, " \
             "such as libgtk-3.so.0, with no folder"
+        end
+
+        value.uniq
+      end
+
+      # The list at +system_typelibs+, each a TYPELIB, once each.
+      private_class_method def self.typelibs(value, file) # :nodoc:
+        return [] if value.nil?
+        unless value.is_a?(Array) && value.all?(String)
+          raise Error, "#{file}: linux: system_typelibs must be a list of GObject introspection namespaces and their versions, such as [Gtk-4.0]"
+        end
+
+        wrong = value.find { |name| !name.match?(TYPELIB) }
+        if wrong
+          raise Error, "#{file}: linux: system_typelibs has #{wrong.inspect}, which is not a namespace and its version: name it as its typelib file " \
+            "is named, less .typelib, such as Gtk-4.0"
         end
 
         value.uniq

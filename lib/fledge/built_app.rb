@@ -128,6 +128,7 @@ module Fledge
       @gemfile = config[/^gemfile = (.+)$/, 1]
       @bundler = config[/^bundler = (.+)$/, 1]
       @system_libraries = config[/^system_libraries = (.+)$/, 1].to_s.split
+      @system_typelibs = config[/^system_typelibs = (.+)$/, 1].to_s.split
       @visual_c_runtime = config[/^visual_c_runtime = (.+)$/, 1].to_s.split
       @identifiers = config.scan(/^identifier = (.+)$/).flatten
       @programs = config.scan(/^\[(.+)\]$/).flatten
@@ -190,7 +191,10 @@ module Fledge
     attr_reader :visual_c_runtime
 
     # +app+, the project to build, as an app built from this one: with
-    # this app's Gemfile, and on Linux the system libraries its gems load.
+    # this app's Gemfile, and on Linux the system libraries its gems load
+    # and the typelibs they load, with those the project's own
+    # <tt>fledge.yml</tt> lists, which its program may load through the
+    # same gems.
     # Raises Fledge::Error when the project has gems of its own, a
     # <tt>fledge.yml</tt> key that changes the runtime or the gems, or a
     # file where this app keeps one Bundler needs, or when this app's own
@@ -230,7 +234,10 @@ module Fledge
         raise Error, "#{root} holds #{path}, which --from takes from #{@given}. Remove it, or build with fledge build." if File.exist?(full) || File.symlink?(full)
       end
       changelog = config.linux&.deb_changelog
-      linux = Config::Linux.new(system_libraries: @system_libraries, deb_changelog: changelog) unless @system_libraries.empty? && changelog.nil?
+      typelibs = (@system_typelibs + config.system_typelibs("linux")).uniq
+      unless @system_libraries.empty? && typelibs.empty? && changelog.nil?
+        linux = Config::Linux.new(system_libraries: @system_libraries, system_typelibs: typelibs, deb_changelog: changelog)
+      end
       app.with(gemfile: @gemfile, config: config.with(linux:))
     end
 

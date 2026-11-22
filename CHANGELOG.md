@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fledge.yml`'s `linux: system_typelibs`, the GObject introspection typelibs an app's gems load from the Linux distribution by namespace and version, such as `Gtk-4.0` for ruby-gnome's gtk4: started on a computer that lacks one, or a typelib it needs, the app names it and exits with status 72 before Ruby starts, where it stopped with Ruby's `GObjectIntrospection::RepositoryError` from inside the gem.
+
 ### Changed
 
 - A gem whose extension fails to compile shows its build output and a sentence naming the gem, with no Ruby backtrace of Fledge's compile script.

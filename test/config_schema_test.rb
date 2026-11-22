@@ -154,6 +154,19 @@ class ConfigSchemaTest < Minitest::Test
     "linux:\n  system_libraries: [.so]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0 \"]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0\\n\"]\n" => false,
+    "linux:\n  system_typelibs: [Gtk-4.0, GdkPixbuf-2.0, cairo-1.0, HarfBuzz-0.0, freetype2-2.0]\n" => true,
+    "linux:\n  system_typelibs: [Gtk-4.0, Gtk-4.0]\n" => true,
+    "linux:\n  system_typelibs: []\n" => true,
+    "linux:\n  system_typelibs:\n" => true,
+    "linux:\n  system_typelibs: Gtk-4.0\n" => false,
+    "linux:\n  system_typelibs: [4]\n" => false,
+    "linux:\n  system_typelibs: [Gtk]\n" => false,
+    "linux:\n  system_typelibs: [Gtk-4]\n" => false,
+    "linux:\n  system_typelibs: [Gtk-4.0.typelib]\n" => false,
+    "linux:\n  system_typelibs: [gir1.2-gtk-4.0]\n" => false,
+    "linux:\n  system_typelibs: [4Gtk-4.0]\n" => false,
+    "linux:\n  system_typelibs: [\"Gtk-4.0 \"]\n" => false,
+    "linux:\n  system_typelibs: [\"Gtk-4.0\\n\"]\n" => false,
     "license_file: LICENSE.txt\n" => true,
     "license_file: docs/License.md\n" => true,
     "license_file: ../LICENSE\n" => false,
@@ -331,13 +344,15 @@ class ConfigSchemaTest < Minitest::Test
   end
 
   # Linux's mapping holds Config::Linux's keys, and each system library
-  # is a name Config::Linux takes.
+  # and typelib is a name Config::Linux takes.
   def test_linux_is_configs
     property = schema.dig("properties", "linux")
     assert_equal Fledge::Config::Linux::KEYS, property.fetch("properties").keys
     refute property.fetch("additionalProperties")
-    ecma = Fledge::Config::Linux::SONAME.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
-    assert_equal ecma, property.dig("properties", "system_libraries", "items", "pattern")
+    { "system_libraries" => Fledge::Config::Linux::SONAME, "system_typelibs" => Fledge::Config::Linux::TYPELIB }.each do |key, pattern|
+      ecma = pattern.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
+      assert_equal ecma, property.dig("properties", key, "items", "pattern"), key
+    end
   end
 
   def test_macos_is_configs

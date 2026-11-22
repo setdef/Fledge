@@ -39,7 +39,9 @@
  *      On Linux, it then has the loader look for each library the app's
  *      gems load from the distribution, which fledge.cfg lists, and
  *      names the first one this computer lacks instead of starting Ruby
- *      (find_system_libraries, linux.c).
+ *      (find_system_libraries, linux.c), and then has libgirepository
+ *      load each typelib they load, which fledge.cfg also lists
+ *      (find_system_typelibs).
  *   2. It sets aside every environment variable through which a Ruby
  *      that happens to be installed on the computer could change how
  *      Ruby boots: RUBYOPT, RUBYLIB, GEM_HOME, BUNDLE_GEMFILE, and the
@@ -461,6 +463,29 @@ find_system_libraries(void)
               "packages, then run the app again",
               library, reason);
 }
+
+/*
+ * On Linux, refuses to start an app whose gems load a typelib from the
+ * distribution (fledge.cfg's system_typelibs) that this computer's
+ * libgirepository cannot load, naming it, with EX_OSFILE, as
+ * find_system_libraries does for a library: the gem would otherwise
+ * raise Ruby's GObjectIntrospection::RepositoryError (linux.c). When
+ * libgirepository itself will not load, it names that library instead.
+ */
+static void
+find_system_typelibs(void)
+{
+    static char typelib[512];
+    static char reason[512];
+
+    if (app_config.system_typelibs == NULL) return;
+    int found = fledge_find_system_typelibs(app_config.system_typelibs, typelib, reason, sizeof typelib);
+    if (found == 0) return;
+    fail_with(FLEDGE_EXIT_OSFILE,
+              "this app needs %s%s, which this computer does not have (%s). Install it from your Linux distribution's "
+              "packages, then run the app again",
+              typelib, found == -1 ? ".typelib" : "", reason);
+}
 #endif
 
 /*
@@ -572,6 +597,7 @@ main(int argc, char **argv)
     read_config();
 #ifdef __linux__
     find_system_libraries();
+    find_system_typelibs();
 #endif
     find_app_folder();
     scrub_environment();

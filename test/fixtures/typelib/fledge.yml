@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+name: Typelib Probe
+kind: console
+# gobject-introspection's extension links libgirepository, which
+# manylinux does not let a gem assume, and gdk_pixbuf2 loads
+# GDK-PixBuf's typelib, which no compiled file names and Debian and
+# Ubuntu package apart from the library (gir1.2-gdkpixbuf-2.0 beside
+# libgdk-pixbuf-2.0-0).
+linux:
+  system_libraries: [libgirepository-1.0.so.1]
+  system_typelibs: [GdkPixbuf-2.0]

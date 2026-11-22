@@ -51,6 +51,8 @@ module Fledge
 
     def system_libraries: (String os) -> Array[String]
 
+    def system_typelibs: (String os) -> Array[String]
+
     private def self.programs: (Hash[Object, Object] data, String path) -> Array[Config::Program]?
 
     private def self.unique: (Array[Config::Program] programs, String path, String what) { (Config::Program) -> String } -> void

@@ -6,15 +6,19 @@ module Fledge
     class Linux < Data
       KEYS: Array[String]
       SONAME: Regexp
+      TYPELIB: Regexp
 
       attr_reader system_libraries: Array[String]
+      attr_reader system_typelibs: Array[String]
       attr_reader deb_changelog: String?
 
-      def self.new: (system_libraries: Array[String], deb_changelog: String?) -> instance
+      def self.new: (system_libraries: Array[String], system_typelibs: Array[String], deb_changelog: String?) -> instance
 
       def self.from: (Hash[Object, Object] data, String file) -> Linux?
 
       private def self.libraries: (Object value, String file) -> Array[String]
+
+      private def self.typelibs: (Object value, String file) -> Array[String]
     end
   end
 end

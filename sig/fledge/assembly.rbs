@@ -39,11 +39,11 @@ module Fledge
 
     def launch_config: () -> String
 
-    def self.launch_config: (App app, ?system_libraries: Array[String], ?visual_c_runtime: Array[String], ?built: String?, ?bundler: String?) -> String
+    def self.launch_config: (App app, ?system_libraries: Array[String], ?system_typelibs: Array[String], ?visual_c_runtime: Array[String], ?built: String?, ?bundler: String?) -> String
 
     private def self.single_config: (App app, Array[String] shared, String? bundler) -> String
 
-    private def self.library_config: (Array[String] system_libraries, Array[String] visual_c_runtime) -> Array[String]
+    private def self.library_config: (Array[String] system_libraries, Array[String] system_typelibs, Array[String] visual_c_runtime) -> Array[String]
 
     private def self.bundle_config: (App app, String? bundler) -> Array[String]
 

@@ -828,6 +828,31 @@ class BuiltAppTest < Minitest::Test
     File.write(config, original) if config && original
   end
 
+  # On Linux, a typelib the app's gems load from the distribution that
+  # this computer's libgirepository cannot load stops the app before Ruby
+  # starts, with EX_OSFILE and the typelib's name, never Ruby's
+  # GObjectIntrospection error from inside a gem; on a computer without
+  # libgirepository at all, the app names that library.
+  # test/integration/typelib_test.rb shows a gem's real typelib.
+  def test_a_typelib_the_computer_lacks_is_named_before_ruby_starts
+    skip "only a Linux app's gems load typelibs from its distribution" unless @platform.os == "linux"
+    config = File.join(File.realpath(File.dirname(app)), "fledge.cfg")
+    original = File.read(config)
+
+    File.write(config, "#{original}system_typelibs = FledgeAbsent-1.0\n")
+    out, err, status = run_app({}, app)
+
+    assert_equal ["", 72], [out, status.exitstatus]
+    if IO.popen(["/sbin/ldconfig", "-p"], &:read).include?("libgirepository-1.0.so.1 (")
+      assert_equal "Hello: this app needs FledgeAbsent-1.0.typelib, which this computer does not have (Typelib file for namespace " \
+        "'FledgeAbsent', version '1.0' not found). Install it from your Linux distribution's packages, then run the app again\n", err
+    else
+      assert_match(/\AHello: this app needs libgirepository-1\.0\.so\.1, which this computer does not have \(.*libgirepository-1\.0\.so\.1.*\)\. /, err)
+    end
+  ensure
+    File.write(config, original) if config && original
+  end
+
   # The libraries test/fixtures/raylib's libraylib needs of a Linux
   # computer, by architecture, as the gem's
   # lib/libraylib.ARCH.so names them: those manylinux lets a gem assume,

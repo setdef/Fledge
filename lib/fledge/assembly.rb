@@ -229,7 +229,8 @@ module Fledge
     # SPDX-SnippetEnd
     #++
     def launch_config
-      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os), visual_c_runtime: @visual_c_runtime,
+      Assembly.launch_config(@app, system_libraries: @app.config.system_libraries(@platform.os),
+        system_typelibs: @app.config.system_typelibs(@platform.os), visual_c_runtime: @visual_c_runtime,
         built: "#{VERSION} for #{@platform}", bundler: @bundler)
     end
 
@@ -243,7 +244,8 @@ module Fledge
     # of the runtime's own. Given +visual_c_runtime+, the DLLs of
     # Microsoft's Visual C++ runtime the gems need and the app does not
     # carry, the Windows launcher looks for each in System32 before Ruby
-    # starts, as the Linux launcher looks for +system_libraries+. Raises
+    # starts, as the Linux launcher looks for +system_libraries+, and then
+    # has libgirepository load each of +system_typelibs+. Raises
     # Fledge::Error for a program or Gemfile whose name the file cannot
     # hold.
     #
@@ -279,10 +281,10 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.launch_config(app, system_libraries: [], visual_c_runtime: [], built: nil, bundler: nil)
+    def self.launch_config(app, system_libraries: [], system_typelibs: [], visual_c_runtime: [], built: nil, bundler: nil)
       by = built ? "fledge build #{built}" : "fledge build"
       programs = app.programs
-      shared = library_config(system_libraries, visual_c_runtime)
+      shared = library_config(system_libraries, system_typelibs, visual_c_runtime)
       return "# Written by #{by}: what this app's program runs.\n#{single_config(app, shared, bundler)}" if programs.size == 1
 
       lines = [*bundle_config(app, bundler), *shared]
@@ -304,11 +306,13 @@ module Fledge
     end
 
     # The lines that name the libraries the launcher looks for before
-    # Ruby starts: +system_libraries+ from the Linux distribution, and the
-    # Visual C++ runtime's DLLs, +visual_c_runtime+, in System32.
-    private_class_method def self.library_config(system_libraries, visual_c_runtime) # :nodoc:
+    # Ruby starts: +system_libraries+ and +system_typelibs+ from the Linux
+    # distribution, and the Visual C++ runtime's DLLs,
+    # +visual_c_runtime+, in System32.
+    private_class_method def self.library_config(system_libraries, system_typelibs, visual_c_runtime) # :nodoc:
       lines = [] # : Array[String]
       lines << "system_libraries = #{system_libraries.join(' ')}" unless system_libraries.empty?
+      lines << "system_typelibs = #{system_typelibs.join(' ')}" unless system_typelibs.empty?
       lines << "visual_c_runtime = #{visual_c_runtime.join(' ')}" unless visual_c_runtime.empty?
       lines
     end

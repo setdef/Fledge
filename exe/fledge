@@ -295,6 +295,11 @@
 #                          one that none needs; a .deb depends on their
 #                          packages; the app names one a computer
 #                          lacks, and exits with 72, before Ruby starts.
+#                          system_typelibs lists the GObject
+#                          introspection data the gems load from the
+#                          distribution, by namespace and version, such
+#                          as [Gtk-4.0]: the app names one a computer
+#                          lacks, and exits with 72, before Ruby starts.
 #                          It may also hold deb_changelog, the app's
 #                          changelog, a file in ROOT, which a .deb
 #                          installs as /usr/share/doc/PACKAGE/
@@ -481,7 +486,8 @@
 #                        files that need them. A library a gem opens at
 #                        run time, such as the X11, Wayland, or OpenGL
 #                        that SDL opens, is the desktop's, and apt does
-#                        not check for it.
+#                        not check for it; nor does it for a typelib
+#                        linux: system_typelibs lists.
 #     DIR/NAME-PLATFORM.msix
 #                        A windowed app's MSIX package for Windows, when
 #                        fledge.yml lists msix, which the Windows SDK's

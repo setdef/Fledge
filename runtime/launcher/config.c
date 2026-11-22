@@ -30,7 +30,11 @@
  * characters. system_libraries, on Linux, names the libraries the app's
  * gems load from the distribution, between spaces, which the launcher
  * looks for before Ruby starts: letters, digits, and . _ + -,
- * with no folder. visual_c_runtime, on Windows, names the DLLs of
+ * with no folder. system_typelibs, on Linux, names the typelibs the
+ * app's gems load from the distribution, NAMESPACE-VERSION between spaces,
+ * which the launcher has libgirepository load next: a namespace of
+ * letters, digits, and _, a hyphen, and a version of digits and a period.
+ * visual_c_runtime, on Windows, names the DLLs of
  * Microsoft's Visual C++ runtime the app's gems need and the app does not
  * carry, between spaces, written as system_libraries is, which the
  * launcher looks for in System32 before Ruby starts. Blank lines and lines that begin
@@ -56,8 +60,8 @@
  *
  * Each copy reads the section whose name is its own file's name. A
  * section holds only entry and identifier, and a file with sections
- * holds neither outside them. gemfile, bundler, system_libraries, and
- * visual_c_runtime are the whole app's, so they stay outside the sections. A copy renamed by
+ * holds neither outside them. gemfile, bundler, system_libraries,
+ * system_typelibs, and visual_c_runtime are the whole app's, so they stay outside the sections. A copy renamed by
  * hand finds no section, which is a missing input, as a missing entry is.
  */
 
@@ -111,6 +115,38 @@ safe_libraries(const char *names)
         if (!allowed) return 0;
     }
     return 1;
+}
+
+/* Whether letter is one a typelib's namespace may hold: a letter, a
+ * digit, or _. */
+static int
+namespace_letter(char letter)
+{
+    return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') || (letter >= '0' && letter <= '9') ||
+           letter == '_';
+}
+
+/* Whether names is one or more typelibs, NAMESPACE-VERSION, between
+ * single spaces: a namespace that begins with a letter or _ and holds
+ * letters, digits, and _, a hyphen, and digits, a period, and digits, as
+ * fledge build writes them (Fledge::Config::Linux::TYPELIB). */
+static int
+safe_typelibs(const char *names)
+{
+    const char *letter = names;
+
+    for (;;) {
+        if (!namespace_letter(*letter) || (*letter >= '0' && *letter <= '9')) return 0;
+        while (namespace_letter(*letter)) letter++;
+        if (*letter++ != '-') return 0;
+        if (!(*letter >= '0' && *letter <= '9')) return 0;
+        while (*letter >= '0' && *letter <= '9') letter++;
+        if (*letter++ != '.') return 0;
+        if (!(*letter >= '0' && *letter <= '9')) return 0;
+        while (*letter >= '0' && *letter <= '9') letter++;
+        if (*letter == '\0') return 1;
+        if (*letter++ != ' ') return 0;
+    }
 }
 
 /* Whether version is one fledge build writes of a Bundler: 1 to 32
@@ -172,6 +208,7 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
     config->bundler = NULL;
     config->identifier = NULL;
     config->system_libraries = NULL;
+    config->system_typelibs = NULL;
     config->visual_c_runtime = NULL;
 
     char *line = text;
@@ -210,7 +247,7 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
         const char *key = trim(content);
         const char *value = trim(equals + 1);
         const char **slot;
-        enum { PATH, IDENTIFIER, LIBRARIES, VERSION } kind = PATH;
+        enum { PATH, IDENTIFIER, LIBRARIES, TYPELIBS, VERSION } kind = PATH;
         if (strcmp(key, "entry") == 0) {
             slot = &config->entry;
         } else if (strcmp(key, "gemfile") == 0) {
@@ -236,6 +273,13 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
             }
             slot = &config->system_libraries;
             kind = LIBRARIES;
+        } else if (strcmp(key, "system_typelibs") == 0) {
+            if (sectioned) {
+                *problem = "names system_typelibs inside a program's section";
+                return -1;
+            }
+            slot = &config->system_typelibs;
+            kind = TYPELIBS;
         } else if (strcmp(key, "visual_c_runtime") == 0) {
             if (sectioned) {
                 *problem = "names visual_c_runtime inside a program's section";
@@ -253,6 +297,10 @@ fledge_parse_config(char *text, const char *program, fledge_same_name same_name,
         }
         if (kind == LIBRARIES && !safe_libraries(value)) {
             *problem = "names a system library that is not a file name";
+            return -1;
+        }
+        if (kind == TYPELIBS && !safe_typelibs(value)) {
+            *problem = "names a typelib that is not a namespace and its version";
             return -1;
         }
         if (kind == VERSION && !safe_version(value)) {

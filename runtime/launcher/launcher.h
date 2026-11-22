@@ -91,8 +91,9 @@ int fledge_bundler_code(char *code, size_t size, const char *version, int setup)
  * folders, the version of the Bundler that sets it up, or NULL for the
  * runtime's own, the app's reverse-DNS identifier, or NULL for none, and the
  * libraries its gems load from the Linux distribution, between spaces, or
- * NULL for none, and the DLLs of Microsoft's Visual C++ runtime its gems
- * need from System32, between spaces, or NULL for none.
+ * NULL for none, the typelibs they load from it, NAMESPACE-VERSION between
+ * spaces, or NULL for none, and the DLLs of Microsoft's Visual C++ runtime
+ * its gems need from System32, between spaces, or NULL for none.
  */
 struct fledge_config {
     const char *entry;
@@ -100,6 +101,7 @@ struct fledge_config {
     const char *bundler;
     const char *identifier;
     const char *system_libraries;
+    const char *system_typelibs;
     const char *visual_c_runtime;
 };
 
@@ -151,6 +153,17 @@ int fledge_executable_path(char *out, size_t size);
  * reason in reason, each NUL-terminated within size bytes.
  */
 int fledge_find_system_libraries(const char *names, char *library, char *reason, size_t size);
+
+/*
+ * Whether libgirepository-1.0 loads each of the typelibs names lists,
+ * NAMESPACE-VERSION between spaces, with the typelibs each needs, as it
+ * would for a gem (linux.c). Returns 0; -1 with the first it could not
+ * load in typelib and libgirepository's reason in reason; or -2 with the
+ * library's own name in typelib and the loader's reason in reason when
+ * libgirepository-1.0 itself does not load; each NUL-terminated within
+ * size bytes.
+ */
+int fledge_find_system_typelibs(const char *names, char *typelib, char *reason, size_t size);
 #endif
 
 #endif

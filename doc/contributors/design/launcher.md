@@ -33,7 +33,7 @@ On macOS and Linux, `main` in `unix.c` follows Ruby's `main.c` (lines 37 to 63) 
 
 1. `find_root`: find the launcher's own file and folder (see "Finding itself"); refuse a folder named `bin` (in any case) or `lib`.
 2. `read_config`: read `ROOT/fledge.cfg` (see "fledge.cfg").
-3. On Linux, `find_system_libraries` (see "System libraries on Linux").
+3. On Linux, `find_system_libraries`, then `find_system_typelibs` (see "System libraries on Linux").
 4. `find_app_folder`: name `ROOT/app` by its real path (see "The app folder in a macOS bundle").
 5. `scrub_environment`: set aside and remove the person's Ruby settings.
 6. `fledge_coerce_locale` (see "The locale").
@@ -163,11 +163,12 @@ ending `what this app's programs run.` for an app of several programs. A phone p
 | `bundler` | the version of the Bundler that sets up the Gemfile, when it is not the runtime's own: 1 to 32 letters, digits, and dots | at the top only, after `gemfile` |
 | `identifier` | 1 to 128 letters, digits, hyphens, and dots | at the top, or in a section |
 | `system_libraries` | file names of letters, digits, and `. _ + -`, between single spaces | at the top only; the Linux launcher reads it |
+| `system_typelibs` | typelibs, each a namespace of letters, digits, and `_` that does not begin with a digit, a hyphen, and a version of two numbers between a period, between single spaces | at the top only; the Linux launcher reads it |
 | `visual_c_runtime` | DLL names, written as `system_libraries` is | at the top only; the Windows launcher reads it |
 
 **Sections.** An app of one program has no section. An app of several gives each program a section headed by its name, holding only `entry` and `identifier`, after the shared keys. Each launcher copy reads the section whose name is its own file name, less `.exe` on Windows, ignoring case: ASCII case on macOS and Linux, `CompareStringOrdinal` on Windows, as their file systems compare names. Keys of other sections are checked but not kept.
 
-**Refusals.** `fledge build` and the runtime come from the same Fledge, so anything else means the app is damaged: an unknown key, a line that is not `key = value`, a heading that is not `[NAME]`, a path that leaves the app folder, an identifier or library list with another character, a Bundler version with another character, a key twice, `gemfile`, `bundler`, `system_libraries`, or `visual_c_runtime` inside a section, `entry` or `identifier` above the first section, no `entry`, text that is not UTF-8 on Windows. Each exits 70 with "this app is damaged: PATH PROBLEM". A missing file, and a file with sections and none for this launcher, exit 66.
+**Refusals.** `fledge build` and the runtime come from the same Fledge, so anything else means the app is damaged: an unknown key, a line that is not `key = value`, a heading that is not `[NAME]`, a path that leaves the app folder, an identifier or library list with another character, a typelib list of another form, a Bundler version with another character, a key twice, `gemfile`, `bundler`, `system_libraries`, `system_typelibs`, or `visual_c_runtime` inside a section, `entry` or `identifier` above the first section, no `entry`, text that is not UTF-8 on Windows. Each exits 70 with "this app is damaged: PATH PROBLEM". A missing file, and a file with sections and none for this launcher, exit 66.
 
 ## Messages and exit statuses
 
@@ -179,6 +180,7 @@ The launcher prints `NAME: message` to standard error and exits. On Windows `sho
 | 66 | the program `entry` names is missing or not a file |
 | 66 | `fledge.cfg` has sections and none for this launcher |
 | 72 (`EX_OSFILE`) | Linux: a library `system_libraries` lists will not load |
+| 72 | Linux: a typelib `system_typelibs` lists, or one it needs, will not load, or libgirepository-1.0 itself will not |
 | 72 | Windows: System32 lacks a DLL `visual_c_runtime` lists |
 | 70 (`EX_SOFTWARE`) | the launcher is in a folder named `bin` or `lib` |
 | 70 | `fledge.cfg` is damaged or unreadable |
@@ -329,6 +331,10 @@ When `fledge.cfg` has `system_libraries`, written from `fledge.yml`'s `linux: sy
 2. The parent reads the pipe and waits. At a failure with a name it exits 72 with the message above.
 
 The check runs in a child so that the app's own process loads nothing early and a library's constructors run when the gem loads it, as under `ruby`. A computer that cannot make a pipe or fork, and a child that ends without naming a library, skip the check, and the gem's own loading decides. The message names a library, which a person installs from a software center, and never Ruby or a gem.
+
+When `fledge.cfg` has `system_typelibs` (`doc/contributors/design/gems.md`, "Typelibs from the Linux distribution", covers the list and why the app carries none), `find_system_typelibs` asks the same of each, in a second child, the same way: the child `dlopen`s `libgirepository-1.0.so.1`, the library ruby-gnome's gems link, by that name, with `RTLD_LAZY | RTLD_LOCAL`, finds `g_irepository_require` with `dlsym`, and calls it on the default repository for each typelib, split at its last hyphen into namespace and version, as libgirepository splits a dependency. libgirepository searches `GI_TYPELIB_PATH`, which the launcher leaves alone, and its own folder, and requires each typelib's dependencies too, so the child finds what the gem would find. At the first that fails the parent exits 72 with `NAME: this app needs Gtk-4.0.typelib, which this computer does not have (REASON). Install it from your Linux distribution's packages, then run the app again`, where REASON is libgirepository's own message, which names the typelib actually missing, such as `Typelib file for namespace 'GdkPixbuf', version '2.0' not found`. When the library itself will not load, the message names `libgirepository-1.0.so.1` and the loader's reason instead, as for a library. The launcher links neither libgirepository nor GLib, includes none of their headers, and loads them only in that child, only for an app whose `fledge.cfg` lists typelibs: it declares the one function it calls, from GObject Introspection's reference for `g_irepository_require`, and the three fields of the error it reads, from GLib's for `GError`, itself, so it carries none of their code (`license-audit.md`). It calls libgirepository-1.0's interface, not GLib 2.80's libgirepository-2.0 (`gi_repository_require`, `libgirepository-2.0.so.0`): ruby-gnome's gobject-introspection gem links the first, at 4.4.0 and at its repository's head. On a computer with only the second, the gem's extension cannot load either, and the app names `libgirepository-1.0.so.1`, through `system_libraries` when it lists it and through this check when it does not. Should ruby-gnome move to libgirepository-2.0, the check must follow it.
+
+The check is the launcher's, before Ruby starts, for the same reasons as the libraries': once Ruby has started, loading libgirepository and GLib in the app's process, between `ruby_options` and `ruby_run_node`, would put them there before the gem loads them, which `ruby main.rb` never does (ADR 081), and it would need Ruby to reach them. A program of its own beside the launcher would be one more file in every runtime to find and start, for what a forked child of the launcher already is. `test/integration/typelib_test.rb` shows it with ruby-gnome's gdk_pixbuf2 on a computer that has GDK-PixBuf and not its typelib, and `test/integration/built_app_test.rb` with a namespace no computer has.
 
 ## The Visual C++ runtime on Windows
 

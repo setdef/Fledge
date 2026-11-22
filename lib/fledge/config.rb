@@ -350,6 +350,30 @@ module Fledge
       linux&.system_libraries || []
     end
 
+    # The typelibs the project's gems load from the system on +os+
+    # (Fledge::Platform#os), as #system_libraries answers for libraries:
+    # on +linux+, those its +linux+ mapping lists (Config::Linux), and
+    # none elsewhere.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   # fledge.yml: linux: { system_typelibs: [GdkPixbuf-2.0] }
+    #   config.system_typelibs("linux")  # => ["GdkPixbuf-2.0"]
+    #   config.system_typelibs("darwin") # => []
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def system_typelibs(os)
+      return [] unless os == "linux"
+
+      linux&.system_typelibs || []
+    end
+
     # The programs under +programs+: a list of at least one,
     # with names and identifiers no two share, at most one windowed, and
     # no kind, identifier, or icon beside them, which belong to each

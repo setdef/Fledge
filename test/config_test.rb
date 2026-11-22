@@ -120,7 +120,7 @@ class ConfigTest < Minitest::Test
       "long_description: [a]\n" => /: long_description must be text/,
       "license_file: ../LICENSE\n" => %r{: license_file, "\.\./LICENSE", must name a file in the project, with / between folders, such as license_file: LICENSE\.txt\z},
       "linux:\n  deb_changelog: /CHANGELOG\n" => %r{: linux: deb_changelog, "/CHANGELOG", must name a file in the project},
-      "linux:\n  changelog: CHANGELOG\n" => /: linux has 'changelog', which Fledge does not know\. It knows system_libraries and deb_changelog\.\z/,
+      "linux:\n  changelog: CHANGELOG\n" => /: linux has 'changelog', which Fledge does not know\. It knows system_libraries, system_typelibs, and deb_changelog\.\z/,
       "macos: \"42\"\n" => /: macos must be a mapping of build, such as macos: \{ build: "42" \}\z/,
       "macos:\n  bulid: \"42\"\n" => /: macos has 'bulid', which Fledge does not know\. It knows build\.\z/,
       "macos:\n  build: 42\n" => /: macos: build must be text; quote it, as in build: "42"\z/,
@@ -276,7 +276,7 @@ class ConfigTest < Minitest::Test
   def test_reads_the_system_libraries_a_projects_gems_load_on_linux
     config = load("linux:\n  system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
 
-    assert_equal Fledge::Config::Linux.new(system_libraries: %w[libwebkit2gtk-4.1.so.0 libgtk-3.so.0], deb_changelog: nil), config.linux
+    assert_equal Fledge::Config::Linux.new(system_libraries: %w[libwebkit2gtk-4.1.so.0 libgtk-3.so.0], system_typelibs: [], deb_changelog: nil), config.linux
     assert_equal [], load("linux:\n  system_libraries: []\n").linux&.system_libraries
     assert_equal [], load("linux: {}\n").linux&.system_libraries
     assert_nil load("linux:\n").linux
@@ -288,11 +288,45 @@ class ConfigTest < Minitest::Test
     assert_equal [], Fledge::Config.none.system_libraries("linux")
   end
 
+  # The GObject introspection data a project's gems load from the Linux
+  # distribution by name while the app runs (doc/contributors/design/gems.md,
+  # "Typelibs from the Linux distribution"), each as libgirepository
+  # names a typelib, its namespace and version, once each.
+  def test_reads_the_system_typelibs_a_projects_gems_load_on_linux
+    config = load("linux:\n  system_typelibs: [Gtk-4.0, GdkPixbuf-2.0, cairo-1.0, HarfBuzz-0.0, Gtk-4.0]\n")
+
+    assert_equal Fledge::Config::Linux.new(system_libraries: [], system_typelibs: %w[Gtk-4.0 GdkPixbuf-2.0 cairo-1.0 HarfBuzz-0.0], deb_changelog: nil),
+      config.linux
+    assert_equal [], load("linux:\n  system_typelibs: []\n").linux&.system_typelibs
+    assert_equal [], load("linux:\n  system_libraries: [libgtk-4.so.1]\n").linux&.system_typelibs
+    assert_equal [%w[Gtk-4.0 GdkPixbuf-2.0 cairo-1.0 HarfBuzz-0.0], [], []], %w[linux darwin windows].map { |os| config.system_typelibs(os) }
+    assert_equal [], Fledge::Config.none.system_typelibs("linux")
+  end
+
+  def test_refuses_a_system_typelib_that_is_not_a_namespace_and_its_version
+    {
+      "linux:\n  system_typelibs: Gtk-4.0\n" =>
+        /: linux: system_typelibs must be a list of GObject introspection namespaces and their versions, such as \[Gtk-4\.0\]\z/,
+      "linux:\n  system_typelibs: [4]\n" => /: linux: system_typelibs must be a list/,
+      "linux:\n  system_typelibs: [Gtk]\n" =>
+        /: linux: system_typelibs has "Gtk", which is not a namespace and its version: name it as its typelib file is named, less \.typelib, such as Gtk-4\.0\z/,
+      "linux:\n  system_typelibs: [Gtk-4.0.typelib]\n" => /: linux: system_typelibs has "Gtk-4\.0\.typelib", which is not a namespace and its version/,
+      "linux:\n  system_typelibs: [/usr/lib/girepository-1.0/Gtk-4.0]\n" => /: linux: system_typelibs has ".+", which is not a namespace/,
+      "linux:\n  system_typelibs: [Gtk-4]\n" => /: linux: system_typelibs has "Gtk-4", which is not a namespace/,
+      "linux:\n  system_typelibs: [gir1.2-gtk-4.0]\n" => /: linux: system_typelibs has "gir1\.2-gtk-4\.0", which is not a namespace/,
+      "linux:\n  system_typelibs: [\"Gtk-4.0 \"]\n" => /: linux: system_typelibs has "Gtk-4\.0 ", which is not a namespace/,
+    }.each do |yaml, message|
+      error = assert_raises(Fledge::Error, yaml) { load(yaml) }
+      assert_match message, error.message, yaml
+      assert_includes error.message, "fledge.yml", yaml
+    end
+  end
+
   def test_refuses_a_system_library_that_is_not_a_librarys_name
     {
       "linux: [libpng16.so.16]\n" =>
-        /: linux must be a mapping of system_libraries and deb_changelog, such as linux: \{ system_libraries: \[libgtk-3\.so\.0\] \}\z/,
-      "linux:\n  libraries: [libpng16.so.16]\n" => /: linux has 'libraries', which Fledge does not know\. It knows system_libraries and deb_changelog\.\z/,
+        /: linux must be a mapping of system_libraries, system_typelibs, and deb_changelog, such as linux: \{ system_libraries: \[libgtk-3\.so\.0\] \}\z/,
+      "linux:\n  libraries: [libpng16.so.16]\n" => /: linux has 'libraries', which Fledge does not know\. It knows system_libraries, system_typelibs, and deb_changelog\.\z/,
       "linux:\n  system_libraries: libpng16.so.16\n" =>
         /: linux: system_libraries must be a list of the names compiled files give libraries, such as \[libgtk-3\.so\.0\]\z/,
       "linux:\n  system_libraries: [3]\n" => /: linux: system_libraries must be a list/,

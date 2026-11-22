@@ -154,6 +154,14 @@
             "pattern": "^[A-Za-z0-9_+-][A-Za-z0-9._+-]*\\.so(?:\\.[0-9]+)*$"
           }
         },
+        "system_typelibs": {
+          "description": "The GObject introspection data the project's gems load from the Linux distribution while the app runs, each a namespace and its version as its typelib file is named less .typelib, such as [Gtk-4.0] (default: none). The app says which is missing on a computer that lacks one, or a typelib it needs, before Ruby starts.",
+          "type": ["array", "null"],
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*-[0-9]+\\.[0-9]+$"
+          }
+        },
         "deb_changelog": {
           "description": "The app's changelog, a file in the project, such as CHANGELOG.md (default: none), which a .deb installs compressed as /usr/share/doc/PACKAGE/changelog.gz.",
           "type": ["string", "null"],

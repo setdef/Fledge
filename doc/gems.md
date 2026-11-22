@@ -82,6 +82,21 @@ linux:
 
 Fledge then ships the gem, and refuses a library you list that no gem needs. A `.deb` depends on the packages that provide them, as `dpkg-shlibdeps` finds them, so building one needs `dpkg-dev`, which `build-essential` brings. An AppImage or `.tar.gz` does not carry them. On a computer that lacks one, the app says which library to install and exits with status 72, before your code runs. [`examples/system_library`](../examples/system_library) is a complete example.
 
+A gem over GObject introspection, as each of ruby-gnome's is (gtk4, gtk3, gdk_pixbuf2, gstreamer, vte, and the rest), also loads a typelib while your app runs: a file, such as `Gtk-4.0.typelib`, that describes a library to the gem. No compiled file names it, so `fledge build` cannot find it for you, and Debian and Ubuntu package it apart from the library, as `gir1.2-gtk-4.0` beside `libgtk-4-1`, so a computer can have GTK and not its typelib. Without it, your app would stop with Ruby's own error from inside the gem. List each typelib your code loads by its namespace and version, the file's name less `.typelib`, beside the libraries `fledge build` names:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+linux:
+  system_typelibs: [Gtk-4.0]
+```
+<!-- SPDX-SnippetEnd -->
+
+On a computer that lacks one, or a typelib it needs, the app names it and exits with status 72, before your code runs, as it does for a library. It looks where the gem will, so a typelib that `GI_TYPELIB_PATH` leads to counts. Fledge carries no typelib in your app: each describes the library of the computer it is on. A `.deb` does not yet depend on the packages that hold them, nor does an AppImage or `.tar.gz` carry them.
+
 ## A gem whose DLL needs the Visual C++ runtime
 
 On Windows, a DLL built with Visual Studio needs Microsoft's Visual C++ runtime, `vcruntime140.dll` and `msvcp140.dll`, unless it links the runtime statically. LibUI's DLL is one. Windows does not include the runtime: a computer has it once something installs Microsoft's Visual C++ Redistributable. `fledge build` refuses such a gem until you say in `fledge.yml` how your app gets the runtime:

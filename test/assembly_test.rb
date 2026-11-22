@@ -216,6 +216,29 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # The typelibs fledge.yml lists as the Linux distribution's reach a
+  # Linux launcher, after the libraries, which says which one a computer
+  # lacks before Ruby starts, once for all the programs; other systems'
+  # launchers are not told.
+  def test_a_linux_launcher_is_told_the_system_typelibs_the_gems_load
+    unix!
+    Dir.mktmpdir do |dir|
+      hello = FakeApp.write(dir)
+      File.write(File.join(hello, "fledge.yml"), "linux:\n  system_libraries: [libgirepository-1.0.so.1]\n  system_typelibs: [Gtk-4.0, GdkPixbuf-2.0]\n")
+      assemble(dir, hello)
+      assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\nentry = main.rb\n" \
+        "system_libraries = libgirepository-1.0.so.1\nsystem_typelibs = Gtk-4.0 GdkPixbuf-2.0\n", File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
+      assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\n",
+        Fledge::Assembly.launch_config(Fledge::App.at(hello))
+
+      root = Programs.write(dir)
+      File.write(File.join(root, "Gemfile"), "")
+      text = Fledge::Assembly.launch_config(Fledge::App.at(root), system_typelibs: ["Gtk-4.0"])
+      assert text.start_with?("# Written by fledge build: what this app's programs run.\ngemfile = Gemfile\n" \
+        "system_typelibs = Gtk-4.0\n\n[Play Game]\n"), text
+    end
+  end
+
   # The DLLs of Microsoft's Visual C++ runtime the gems need, with
   # windows: { visual_c_runtime: central }, reach the launcher, which
   # says which one System32 lacks before Ruby starts, once for all the

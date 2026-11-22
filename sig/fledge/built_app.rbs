@@ -16,6 +16,7 @@ module Fledge
     @bundler: String?
     @visual_c_runtime: Array[String]
     @system_libraries: Array[String]
+    @system_typelibs: Array[String]
     @identifiers: Array[String]
     @programs: Array[String]
 

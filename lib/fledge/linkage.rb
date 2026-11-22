@@ -72,7 +72,7 @@ module Fledge
     # <tt>ignore_names_x64</tt> or <tt>ignore_names_arm64</tt> names is
     # SYSTEM_DLLS. On macOS, anything in <tt>/usr/lib</tt> and the system's
     # frameworks. On Android, the NDK's public libraries for API 26, the
-    # oldest the runtime runs on, as the NDK r30 holds their stubs in
+    # oldest the runtime runs on, as the pinned NDK holds their stubs in
     # <tt>sysroot/usr/lib/TRIPLE/26/</tt>, where
     # bionic's <tt>android-changes-for-ndk-developers.md</tt> ("Private
     # API") says the complete list of public libraries is, since from API

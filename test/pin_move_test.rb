@@ -254,6 +254,53 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  NDK_LISTING = <<~XML
+    <remotePackage path="ndk;31.0.2">
+      <revision><major>31</major><minor>0</minor><micro>2</micro></revision>
+      <channelRef ref="channel-0"/>
+      <archives><archive><complete><url>android-ndk-r31-darwin.zip</url></complete></archive>
+      <archive><complete><url>android-ndk-r31-linux.zip</url></complete></archive></archives>
+    </remotePackage>
+    <remotePackage path="ndk;31.0.1">
+      <revision><major>31</major><minor>0</minor><micro>1</micro><preview>1</preview></revision>
+      <channelRef ref="channel-0"/>
+      <archives><archive><complete><url>android-ndk-r31-beta1-linux.zip</url></complete></archive></archives>
+    </remotePackage>
+  XML
+
+  def test_the_ndk_moves_its_revision_and_the_release_name_its_listing_gives
+    old = "https://dl.google.com/android/repository/android-ndk-r30-linux.zip"
+    new = "https://dl.google.com/android/repository/android-ndk-r31-linux.zip"
+    sources = "mobile:\n  ndk:\n    version: r30\n    revision: 30.0.16248370\n    hosts:\n      x86_64-linux:\n        url: #{old}\n        sha256: #{OLD_SHA256}\n"
+    tool = "[tools.\"http:android-ndk\"]\nversion = \"r30\"\nplatforms.linux-x64 = { url = \"#{old}\", checksum = \"sha256:#{OLD_SHA256}\" }\n"
+    files = {
+"runtime/sources.yml" => sources,
+"runtime/licenses.yml" => "components:\n  - id: compiler-rt-ndk\n    version: r30\n",
+"mise.android.toml" => tool,
+"ndk.rb" => "RECOMMENDED = \"30.0.16248370\"\n",
+}
+    checkout(files) do |root|
+      entry = entries.fetch("ndk")
+      move = mover(root, Answers.new({ entry.fetch("page") => NDK_LISTING }, new => "ab" * 32),
+        "ndk" => {
+"also" => { "ndk.rb" => ['RECOMMENDED = "(?<version>[^"]+)"'] },
+"release" => entry.fetch("release").merge("also" => { "mise.android.toml" => ['version = "(?<version>[^"]+)"'] }),
+})
+      watched = PinWatch.new(sources: YAML.safe_load(sources), upstreams: [PinWatch::Upstream.from("ndk", entry)], unwatched: {})
+
+      assert_equal "31.0.2", watched.run(Answers.new(entry.fetch("page") => NDK_LISTING)).first.newer, "a preview is not the NDK's next version"
+      move.call(finding("ndk", "30.0.16248370", "31.0.2"))
+
+      assert_equal "mobile:\n  ndk:\n    version: r31\n    revision: 31.0.2\n    hosts:\n      x86_64-linux:\n        url: #{new}\n        sha256: #{'ab' * 32}\n",
+        move.read("runtime/sources.yml")
+      assert_equal "[tools.\"http:android-ndk\"]\nversion = \"r31\"\nplatforms.linux-x64 = { url = \"#{new}\", checksum = \"sha256:#{'ab' * 32}\" }\n",
+        move.read("mise.android.toml")
+      assert_equal "RECOMMENDED = \"31.0.2\"\n", move.read("ndk.rb")
+      assert_includes move.read("runtime/licenses.yml"), "version: r31\n"
+      assert_includes move.read("CHANGELOG.md"), "- NDK r31, from r30.\n"
+    end
+  end
+
   def test_a_held_upstream_is_refused_with_its_reason
     checkout do |root|
       move = mover(root, Answers.new({}))
@@ -290,16 +337,29 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  # Each part of the move of each upstream the move may move, as its
+  # name, its entry, and the version its pin holds today: the version the
+  # watch compares, and the release name of an upstream with release,
+  # with that release's licenses and also.
+  def movable_parts
+    watch = PinWatch.load(ROOT)
+    entries.reject { |_, entry| entry["hold"] }.flat_map do |name, entry|
+      upstream = watch.upstreams.find { |candidate| candidate.name == name }
+      parts = [[name, entry, watch.current(upstream)]]
+      if (release = entry["release"])
+        named = upstream.with(field: release.fetch("field"), current: nil)
+        parts << [name, entry.except("licenses", "also").merge(release.slice("licenses", "also")), watch.current(named)]
+      end
+      parts
+    end
+  end
+
   # What the move needs of this checkout holds for every upstream it may
   # move: each licenses entry names the pin's version, and each pattern
   # of each other file captures it.
   def test_every_movable_pin_is_named_where_the_move_will_look
-    watch = PinWatch.load(ROOT)
     licenses = File.read(File.join(ROOT, "runtime/licenses.yml")).split(/(?=^  - id: )/)
-    entries.each do |name, entry|
-      next if entry["hold"]
-
-      version = watch.current(watch.upstreams.find { |upstream| upstream.name == name })
+    movable_parts.each do |_, entry, version|
       entry.fetch("licenses", []).each do |id|
         assert licenses.any? { |text| text.start_with?("  - id: #{id}\n") && text.include?(version) }, "runtime/licenses.yml's #{id} names no #{version}"
       end
@@ -332,9 +392,7 @@ class PinMoveTest < Minitest::Test
   # files above, only a file runtime/upstreams.yml gives the move (also),
   # or says names the version as a fact about that version (named), may.
   def test_a_movable_pin_is_named_only_where_the_move_rewrites_it
-    watch = PinWatch.load(ROOT)
-    named = entries.reject { |_, entry| entry["hold"] }.flat_map do |name, entry|
-      version = watch.current(watch.upstreams.find { |upstream| upstream.name == name })
+    named = movable_parts.flat_map do |name, entry, version|
       words = Array(entry["names"] || name).map(&:downcase)
       left = RECORDS + entry.fetch("also", {}).keys + entry.fetch("named", [])
       found = IO.popen(["git", "-C", ROOT, "grep", "-n", "-I", "-w", "-F", "-e", version, "--", ".", *left.map { |path| ":!#{path}" }], &:read)

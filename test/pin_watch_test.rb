@@ -176,4 +176,12 @@ class PinWatchTest < Minitest::Test
     assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:overdue)])
     assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:error)])
   end
+
+  def test_every_held_pin_is_dated_by_a_held_upstream_whose_releases_github_dates
+    upstreams = PinWatch.load(ROOT).upstreams
+    dated = upstreams.select { |upstream| upstream.hold && upstream.github? }.flat_map(&:pins)
+    undated = upstreams.select(&:hold).reject { |upstream| upstream.github? || upstream.pins.intersect?(dated) }
+
+    assert_empty undated.map(&:name), "a held pin nothing dates could stay behind for ever and never call a person"
+  end
 end

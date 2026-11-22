@@ -75,9 +75,12 @@ class PinMove
     to = finding.fetch("newer")
     before = @texts.dup
     changed = {}
-    swaps = move_sources(upstream, entry, from, to, changed)
-    entry.fetch("licenses", []).each { |id| write("runtime/licenses.yml", license(read("runtime/licenses.yml"), id, from, to), changed) }
-    entry.fetch("also", {}).each { |path, patterns| write(path, also(read(path), path, patterns, swaps, from, to), changed) }
+    parts(entry, upstream, from, to).each do |part, named, old, new|
+      swaps = move_sources(named, part, old, new, changed)
+      part.fetch("licenses", []).each { |id| write("runtime/licenses.yml", license(read("runtime/licenses.yml"), id, old, new), changed) }
+      part.fetch("also", {}).each { |path, patterns| write(path, also(read(path), path, patterns, swaps, old, new), changed) }
+      from, to = old, new
+    end
     write("CHANGELOG.md", changelog(read("CHANGELOG.md"), title(name), from, to), changed) if entry.fetch("ships", true)
     changed
   rescue Error, PinWatch::Error
@@ -129,6 +132,23 @@ class PinMove
 
     @texts[path] = text
     changed[path] = text
+  end
+
+  # What one move rewrites, each part with its entry, its upstream, and
+  # the versions it moves from and to: the version the watch compares,
+  # and, for an upstream with release, the release name its URLs carry,
+  # which the listing gives for the new version. CHANGELOG.md takes the
+  # last.
+  private def parts(entry, upstream, from, to)
+    parts = [[entry, upstream, from, to]]
+    release = entry["release"] or return parts
+
+    named = upstream.with(field: release.fetch("field"), current: nil)
+    pattern = Regexp.new(release.fetch("pattern").gsub("{version}", Regexp.escape(to)), Regexp::MULTILINE)
+    name = @fetch.call(upstream.url)[pattern, "version"] or raise Error, "#{upstream.url} names no release of #{to}"
+    sources = YAML.safe_load(read("runtime/sources.yml"))
+    old = PinWatch.new(sources:, upstreams: [named], unwatched: {}).current(named)
+    parts << [entry.except("release", "licenses", "also").merge(release.slice("licenses", "also")), named, old, name]
   end
 
   private def move_sources(upstream, entry, from, to, changed)

@@ -16,7 +16,7 @@ module Fledge
     # Google's tools look for it, since Fledge downloads no toolchain onto
     # a developer's computer. Its tools are the very ones Fledge's runtime
     # was built with, from the NDK Google publishes (<tt>runtime/sources.yml</tt>
-    # pins its r30), and any NDK of r26 or later has the same names.
+    # pins it), and any NDK of r26 or later has the same names.
     #
     # Use NDK.find, with the environment.
     #

@@ -47,6 +47,12 @@
 # also: other files that name the pin, each with patterns whose version
 #   capture the move rewrites; each URL and SHA-256 the move replaces is
 #   replaced in them too.
+# release: for an input whose URLs carry a release name other than the
+#   version the watch compares (the NDK's release name, beside its revision), the
+#   key of that name (field), a pattern whose version capture finds the
+#   new release's name in the listing, with {version} for the new
+#   version, and the licenses and also that name it. The move rewrites
+#   the name as it rewrites the version.
 # names: what prose calls the input, the first in CHANGELOG.md; the key
 #   by default. test/pin_move_test.rb fails when a line names a movable
 #   pin's version beside one of these anywhere but in the files above,
@@ -167,14 +173,27 @@ watched:
     checksum: beside
     licenses: [ca-certificates]
   # Google's repository of Android's SDK packages, the one Android
-  # Studio's SDK manager reads; channel-0 is its stable channel.
+  # Studio's SDK manager reads; channel-0 is its stable channel, which
+  # lists betas too, marked by a preview in their revision. Its revision
+  # orders the releases, and the name of each release's archives (r30,
+  # r29b) is the release name its URLs carry.
   ndk:
     pins: [mobile.ndk]
     field: revision
     page: https://dl.google.com/android/repository/repository2-3.xml
-    pattern: 'path="ndk;(?<version>[\d.]+)">(?:(?!</remotePackage>).)*?<channelRef ref="channel-0"/>'
+    pattern: 'path="ndk;(?<version>[\d.]+)">(?:(?!</remotePackage>|<preview>).)*?<channelRef ref="channel-0"/>'
     names: [NDK]
-    hold: Its release's name, as r30, which its URLs and mise.android.toml carry, is not in the listing, which gives only its revision.
+    named: [doc/contributors/design/phone-projects.md, lib/fledge/mobile_extensions/cmake.rb]
+    also:
+      lib/fledge/mobile_extensions/ndk.rb: ['RECOMMENDED = "(?<version>[^"]+)"']
+      doc/contributors/device-test.md: ['"ndk;(?<version>[\d.]+)"', 'ndk/(?<version>[\d.]+)\n']
+    release:
+      field: version
+      pattern: 'path="ndk;{version}">(?:(?!</remotePackage>).)*?<url>android-ndk-(?<version>r\d+[a-z]?)-linux\.zip</url>'
+      licenses: [compiler-rt-ndk]
+      also:
+        mise.android.toml: ['\[tools\."http:android-ndk"\]\nversion = "(?<version>[^"]+)"']
+        doc/contributors/device-test.md: ['NDK (?<version>r\d+[a-z]?)\.\*\*', 'NDK (?<version>r\d+[a-z]?) is the one']
   gradle:
     pins: [mobile.gradle]
     page: https://services.gradle.org/versions/current

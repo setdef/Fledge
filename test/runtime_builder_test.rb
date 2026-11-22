@@ -14,7 +14,6 @@ require_relative "../tasks/runtime_builder"
 # runtimes, and test/integration/built_app_test.rb runs them.
 class RuntimeBuilderTest < Minitest::Test
   LEAKED = { "RUBYOPT" => "-rbundler/setup", "BUNDLE_GEMFILE" => "/nowhere/Gemfile", "RUBYLIB" => "/nowhere/lib" }.freeze
-  PRINT_LEAKED = LEAKED.keys.map { |name| "echo #{name}=${#{name}-unset}" }.join("; ").freeze
 
   def builder(name)
     RuntimeBuilder.new(platform: Fledge::Platform.find(name))
@@ -27,18 +26,20 @@ class RuntimeBuilderTest < Minitest::Test
     seen = with_env(LEAKED) do
       Dir.mktmpdir do |dir|
         out = File.join(dir, "seen")
-        builder("x86_64-linux").run("sh", "-c", PRINT_LEAKED, out:)
+        builder("x86_64-linux").run("env", out:)
         File.read(out)
       end
     end
 
-    assert_equal(LEAKED.keys.map { |name| "#{name}=unset" }, seen.lines.map(&:chomp))
+    assert_match(/^PATH=/i, seen)
+    assert_empty(seen.lines.grep(/\A(#{LEAKED.keys.join('|')})=/))
   end
 
   def test_a_captured_step_runs_without_the_bundler_variables_of_the_rake_that_started_it
-    seen = with_env(LEAKED) { builder("x86_64-linux").capture("sh", "-c", PRINT_LEAKED) }
+    seen = with_env(LEAKED) { builder("x86_64-linux").capture("env") }
 
-    assert_equal(LEAKED.keys.map { |name| "#{name}=unset" }, seen.lines.map(&:chomp))
+    assert_match(/^PATH=/i, seen)
+    assert_empty(seen.lines.grep(/\A(#{LEAKED.keys.join('|')})=/))
   end
 
   def with_env(variables)

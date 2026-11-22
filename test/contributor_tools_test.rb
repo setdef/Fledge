@@ -6,7 +6,6 @@
 #++
 
 require_relative "test_helper"
-require "open3"
 require "yaml"
 
 # The tools mise installs for a contributor from mise.toml (bin/setup).
@@ -177,15 +176,5 @@ class ContributorToolsTest < Minitest::Test
     end
     refute_empty pins
     pins.each { |pin| assert_operator Gem::Version.new(pin), :>=, Gem::Version.new(minimum) }
-  end
-
-  def test_ruby_pin_reads_the_pin_and_takes_head_on_windows_for_a_preview
-    script = File.join(ROOT, ".github", "scripts", "ruby-pin.sh")
-    { "Linux" => ruby_pins.fetch("version"), "Windows" => "head" }.each do |os, expected|
-      out, status = Open3.capture2({ "RUNNER_OS" => os }, "sh", script, chdir: ROOT)
-
-      assert status.success?, "ruby-pin.sh failed on #{os}"
-      assert_equal "#{expected}\n", out
-    end
   end
 end

@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require_relative "test_helper"
+require_relative "../test_helper"
 
 # Fledge::Command runs the system's tools, which write in their
 # console's encoding, such as a Windows OEM code page, not UTF-8. The

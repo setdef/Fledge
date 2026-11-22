@@ -7,12 +7,12 @@
 
 require "open3"
 require "rbconfig"
-require_relative "test_helper"
+require_relative "../test_helper"
 
 # Fledge's RubyGems defaults (runtime/rubygems/operating_system.rb), as
 # a Ruby loads them when RubyGems starts, in a Ruby of their own.
 class RubygemsDefaultsTest < Minitest::Test
-  DEFAULTS = File.expand_path("../runtime/rubygems/operating_system.rb", __dir__)
+  DEFAULTS = File.expand_path("../../runtime/rubygems/operating_system.rb", __dir__)
 
   # A stand-in for RubyInstaller's library in site_ruby, shaped as
   # ruby_installer/runtime.rb and its autoloads are at RubyInstaller

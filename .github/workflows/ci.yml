@@ -1004,8 +1004,10 @@ jobs:
             ruby tasks/mobile_parity.rb android
             bundle exec rake test:integration TEST=test/integration/mobile_extension_symbols_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_built_files_test.rb,test/integration/mobile_ffi_extconf_test.rb
 
+      # A passing check keeps a logcat only of a parity probe launched
+      # again for a report the log cut short (MobileParity::Android#check_launch).
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
+        if: failure() || hashFiles('tmp/mobile-parity/android/logcat-*.txt') != ''
         with:
           name: mobile-apps-android-${{ matrix.target }}
           path: |

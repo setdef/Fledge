@@ -188,14 +188,20 @@ class MobileParity
     end
   end
 
+  # The log holds no whole report of the probe's: none of its facts can
+  # be compared, so none is, and the Android check launches the probe
+  # again (Android#check_launch).
+  class CutShort < RuntimeError
+  end
+
   # The probe's report, from the system log's +entries+ (its lines, in
   # order, those of standard output alone, Logged#output): the entry that begins it, joined with those after it up to
   # where they make a JSON object. The host's line with the app's status
   # may come among them, since the host logs it from Ruby's thread while
   # the embedding API's thread is still logging what Ruby printed, so it
-  # is left out.
+  # is left out. Without a whole report it raises CutShort.
   def self.report(entries)
-    start = entries.index { |entry| entry.start_with?("FLEDGE-PARITY ") } or raise "the probe printed no report"
+    start = entries.index { |entry| entry.start_with?("FLEDGE-PARITY ") } or raise CutShort, "the probe printed no report"
     text = +""
     entries.drop(start).grep_v(STATUS).each do |entry|
       text << entry
@@ -205,7 +211,7 @@ class MobileParity
         next
       end
     end
-    raise "the probe's report ends before it is whole: #{text[-200..]}"
+    raise CutShort, "the probe's report ends before it is whole: #{text[-200..]}"
   end
 
   # The status a host app reported Ruby exited with, or nil before it

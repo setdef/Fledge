@@ -47,9 +47,12 @@ class MobileParityTest < Minitest::Test
     assert_includes logged.entries, "warning: something on standard error"
   end
 
+  # A report the log cut short, or never held, is not the probe's
+  # report, and says so as a CutShort, for which the Android check alone
+  # launches the probe again (MobileParity::Android#check_launch).
   def test_a_log_without_a_whole_report_fails
-    assert_raises(RuntimeError) { MobileParity.report(["FLEDGE-PARITY {\"ARGV\":"]) }
-    assert_raises(RuntimeError) { MobileParity.report(["nothing here"]) }
+    assert_raises(MobileParity::CutShort) { MobileParity.report(["FLEDGE-PARITY {\"ARGV\":"]) }
+    assert_raises(MobileParity::CutShort) { MobileParity.report(["nothing here"]) }
   end
 
   # The host app of every project fledge build writes logs the app's
@@ -383,23 +386,38 @@ class MobileParityTest < Minitest::Test
   class Emulator < MobileParity::Android
     PID = "4242"
 
-    def initialize(app, work:, started: 0, ends: nil, finishes: nil, said: [], dropped: nil)
-      super(work:, out: StringIO.new)
+    # How many times the app was launched.
+    attr_reader :launches
+
+    def initialize(app, work:, started: 0, ends: nil, finishes: nil, said: [], dropped: nil, launched: [said], out: StringIO.new)
+      super(work:, out:)
       @app = app
       @started = started
       @ends = ends
       @finishes = finishes
+      @launched = launched
       @said = said
       @dropped = dropped
       @step = 0
+      @launches = 0
     end
 
     private def adb(*arguments)
       case arguments
+      in ["logcat", "-c"] then launched
       in ["logcat", "-d", "-v", "threadtime"] then whole_log
       in ["logcat", "-d", "-v", "tag", "-s", _] then tagged.tap { @step += 1 }
       else ""
       end
+    end
+
+    # Each launch clears the log, after which the app says the lines of
+    # the next of +launched+, or of its last once none is left.
+    private def launched
+      @said = @launched.fetch(@launches, @launched.last)
+      @launches += 1
+      @step = 0
+      ""
     end
 
     private def whole_log
@@ -453,21 +471,97 @@ class MobileParityTest < Minitest::Test
     end
   end
 
-  # A probe whose report came back short from logcat failed once in CI
-  # with nothing kept to say why, so a launch whose check fails keeps
-  # everything logcat holds, and liblog's count of the entries it
-  # dropped (logd_writer.cpp, LogdWrite), for the job's artifact.
+  # A launch whose check fails keeps everything logcat holds, and
+  # liblog's count of the entries it dropped (logd_writer.cpp,
+  # LogdWrite), for the job's artifact: a probe whose report came back
+  # short from logcat failed once in CI with nothing kept to say why.
   def test_a_failed_check_keeps_logcat_and_liblogs_drops
     app = MobileParity.apps("android").find { |each| each.prints.nil? }
     Dir.mktmpdir do |work|
-      emulator = Emulator.new(app, work:, finishes: 0, said: ['FLEDGE-PARITY {"ARGV":[],"long":"'], dropped: 3)
-      parity = MobileParity.new(target: "x86_64-linux-android", work:, out: StringIO.new)
+      emulator = Emulator.new(app, work:, finishes: 0, said: ['FLEDGE-PARITY {"ARGV":[]}'], dropped: 3)
 
-      failure = assert_raises(RuntimeError) { emulator.check_launch(app, parity, "from its release bundle") }
+      failure = assert_raises(RuntimeError) { emulator.check_launch(app, Comparing.new(same: true, work:), "from its release bundle") }
 
-      assert_match(/the probe's report ends before it is whole/, failure.message)
+      assert_match(/the probe's host logged no environment/, failure.message)
       assert_includes File.read(File.join(work, "logcat-#{app.identifier}.txt")), "Start proc #{Emulator::PID}:#{app.identifier}"
       assert_includes File.read(File.join(work, "logcat-#{app.identifier}-liblog.txt")), "I liblog  : 3"
+    end
+  end
+
+  # A MobileParity that compares a whole report with no reference Ruby's
+  # and finds it the same when +same+, keeping each it was given.
+  class Comparing < MobileParity
+    attr_reader :compared
+
+    def initialize(same:, work:)
+      super(target: "x86_64-linux-android", work:, out: StringIO.new)
+      @same = same
+      @compared = []
+    end
+
+    def compare(report, _device, environment:)
+      @compared << [report, environment]
+      @same
+    end
+  end
+
+  # What the probe's host logs of its environment, and a report whole
+  # and cut short, as the log's entries hold them.
+  PROBE_HOST = ["FLEDGE-ENVIRON PATH=/system/bin", "FLEDGE-ENVIRON HOME=/data/user/0/com.setdef.fledge.Parity/files"].freeze
+  WHOLE = [*PROBE_HOST, 'FLEDGE-PARITY {"ARGV":[],', '"long":"tail"}'].freeze
+  CUT = [*PROBE_HOST, 'FLEDGE-PARITY {"ARGV":[],'].freeze
+
+  # liblog drops an entry when logd is busy and tells the app nothing
+  # (doc/contributors/design/phone-runtimes.md, "Output to the system
+  # log"), so a report the log cut short launches the probe again, the
+  # short launch's log kept, and the next launch's whole report is the
+  # one compared.
+  def test_a_report_the_log_cut_short_launches_the_probe_again
+    app = MobileParity.apps("android").find { |each| each.prints.nil? }
+    Dir.mktmpdir do |work|
+      out = StringIO.new
+      emulator = Emulator.new(app, work:, finishes: 0, launched: [CUT, WHOLE], dropped: 3, out:)
+      parity = Comparing.new(same: true, work:)
+
+      assert emulator.check_launch(app, parity, "from its release bundle")
+      assert_equal 2, emulator.launches
+      assert_equal [[{ "ARGV" => [], "long" => "tail" }, { "PATH" => "/system/bin", "HOME" => "/data/user/0/com.setdef.fledge.Parity/files" }]],
+        parity.compared
+      assert_includes File.read(File.join(work, "logcat-#{app.identifier}-1.txt")), "Start proc #{Emulator::PID}:#{app.identifier}"
+      assert_includes File.read(File.join(work, "logcat-#{app.identifier}-1-liblog.txt")), "I liblog  : 3"
+      assert_match(/\AParity, from its release bundle, launch 1 of 3: the probe's report ends before it is whole/, out.string)
+    end
+  end
+
+  # A whole report is compared once, and a difference in it fails the
+  # check: launching again could only hide it.
+  def test_a_whole_report_that_differs_is_not_launched_again
+    app = MobileParity.apps("android").find { |each| each.prints.nil? }
+    Dir.mktmpdir do |work|
+      emulator = Emulator.new(app, work:, finishes: 0, launched: [WHOLE, WHOLE])
+      parity = Comparing.new(same: false, work:)
+
+      refute emulator.check_launch(app, parity, "from its debug APK")
+      assert_equal 1, emulator.launches
+      assert_equal 1, parity.compared.size
+    end
+  end
+
+  # A report cut short at every launch fails after Android::ATTEMPTS
+  # launches, each one's log kept.
+  def test_a_report_cut_short_each_time_fails_after_a_few_launches
+    app = MobileParity.apps("android").find { |each| each.prints.nil? }
+    Dir.mktmpdir do |work|
+      emulator = Emulator.new(app, work:, finishes: 0, launched: [CUT])
+      parity = Comparing.new(same: true, work:)
+
+      failure = assert_raises(MobileParity::CutShort) { emulator.check_launch(app, parity, "from its debug APK") }
+
+      assert_match(/the probe's report ends before it is whole/, failure.message)
+      assert_equal MobileParity::Android::ATTEMPTS, emulator.launches
+      assert_empty parity.compared
+      assert_equal((1..MobileParity::Android::ATTEMPTS).map { |launch| "logcat-#{app.identifier}-#{launch}.txt" },
+        Dir.children(work).grep(/\Alogcat-[^-]+-\d+\.txt\z/).sort)
     end
   end
 

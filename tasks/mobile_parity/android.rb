@@ -271,6 +271,10 @@ class MobileParity
       end.all?
     end
 
+    # How many times the check launches the parity probe, at most, for a
+    # whole report.
+    ATTEMPTS = 3
+
     # Launches +app+ and checks what it logged with +parity+
     # (MobileParity#check), as installed +how+, and returns whether it
     # passed. When the check fails, everything logcat holds of the launch
@@ -281,12 +285,36 @@ class MobileParity
     # buffer, under the tag liblog, with the process's next entry
     # (doc/contributors/design/phone-runtimes.md, "Output to the system
     # log").
+    #
+    # So when the probe's report comes back cut short (CutShort), and
+    # only then, the launch's log is kept as logcat-IDENTIFIER-N.txt,
+    # and the probe is launched again, up to ATTEMPTS launches in all:
+    # a report that is not whole has none of its facts compared, and a
+    # whole one is compared once, whatever it shows, so a launch again
+    # can never pass a difference. Each launch again is printed, so a
+    # report cut short in every run shows in every job's log.
     def check_launch(app, parity, how)
-      logged = launch(app)
-      parity.check(app, logged, "#{device}, #{how}")
-    rescue RuntimeError
-      keep_log(app)
-      raise
+      (1..ATTEMPTS).each do |attempt|
+        logged = launch(app)
+        return parity.check(app, logged, "#{device}, #{how}")
+      rescue MobileParity::CutShort => e
+        keep_log(app, attempt)
+        raise if attempt == ATTEMPTS
+
+        note "#{app.name}, #{how}, launch #{attempt} of #{ATTEMPTS}: #{e.message.lines.first.chomp}; " \
+          "its log kept in logcat-#{app.identifier}-#{attempt}.txt, launching it again"
+      rescue RuntimeError
+        keep_log(app)
+        raise
+      end
+    end
+
+    # Prints +line+, and adds it to the job's summary in CI, where a
+    # passing job's log is seldom read.
+    private def note(line)
+      @out.puts line
+      summary = ENV.fetch("GITHUB_STEP_SUMMARY", nil)
+      File.write(summary, "#{line}\n\n", mode: "a") if summary
     end
 
     # The platform of the running emulator, as Parity::JUSTIFIED and
@@ -403,13 +431,16 @@ class MobileParity
     end
 
     # Keeps in the work folder, for the job's artifact, everything logcat
-    # holds of +app+'s launch (logcat-IDENTIFIER.txt), and the entries of
-    # liblog's dropped count in its events buffer, which a launch does
-    # not clear (logcat-IDENTIFIER-liblog.txt), and returns the former.
-    private def keep_log(app)
+    # holds of +app+'s launch (logcat-IDENTIFIER.txt, or
+    # logcat-IDENTIFIER-N.txt for the launch numbered +attempt+), and
+    # the entries of liblog's dropped count in its events buffer, which a
+    # launch does not clear (logcat-IDENTIFIER-liblog.txt, or
+    # logcat-IDENTIFIER-N-liblog.txt), and returns the former.
+    private def keep_log(app, attempt = nil)
+      name = ["logcat-#{app.identifier}", attempt].compact.join("-")
       everything = whole_log
-      File.write(File.join(@work, "logcat-#{app.identifier}.txt"), everything)
-      File.write(File.join(@work, "logcat-#{app.identifier}-liblog.txt"), liblog_events)
+      File.write(File.join(@work, "#{name}.txt"), everything)
+      File.write(File.join(@work, "#{name}-liblog.txt"), liblog_events)
       everything
     end
 

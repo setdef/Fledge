@@ -1469,7 +1469,10 @@ jobs:
   # test/fixtures/programs, a windowed and a console program of one project in
   # one folder; examples/roda_server, Jot, a notes board that Roda and
   # WEBrick serve on 127.0.0.1, whose gems are plain Ruby, so it builds
-  # on every platform, Windows on ARM64 and musl Linux included; and
+  # on every platform, Windows on ARM64 and musl Linux included;
+  # examples/markdown_preview, Markdown Preview, a windowed and a console
+  # program in an app a person would use, which opens Markdown files,
+  # with its installers; and
   # test/fixtures/native_app, whose gems must be compiled: redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys) from
   # its git tag, each compiled against the runtime's own Ruby, with
@@ -1585,14 +1588,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
-      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Jot, and native_app for ${{ matrix.platform }}
+      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Jot, markdown_preview, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/roda_server test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/roda_server)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/roda_server examples/markdown_preview test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/roda_server examples/markdown_preview)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -1803,6 +1806,17 @@ jobs:
             (cd "$app" && bundle exec ruby main.rb) | tee "dist/$(basename "$app").expected"
           done
 
+      # The HTML Markdown Preview's md2html prints for its welcome page
+      # under bundle exec, which the built md2html must print too. Its
+      # gems are pure Ruby, so this runs on every platform.
+      - name: Run Markdown Preview's md2html with bundle exec
+        env:
+          BUNDLE_GEMFILE: ${{ github.workspace }}/examples/markdown_preview/Gemfile
+          BUNDLE_PATH: ${{ runner.temp }}/markdown-bundle
+        run: |
+          bundle install
+          bundle exec ruby examples/markdown_preview/bin/md2html examples/markdown_preview/welcome.md > dist/markdown_preview.expected
+
       # The builder app Delivery runs fledge build --from inside
       # (doc/contributors/design/desktop-apps.md, "Building from a built
       # app"), on one platform of each operating system.
@@ -1964,12 +1978,14 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/roda_server; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/roda_server examples/markdown_preview; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd examples/my_cool_app && bundle install)
           (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
           cat dist/my_cool_app.expected
+          BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle install
+          BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle exec ruby examples/markdown_preview/bin/md2html examples/markdown_preview/welcome.md > dist/markdown_preview.expected
           SH
           docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes -e FLEDGE_RUNTIME_DIR_UNCHECKED=1 \
             -e BUNDLE_FROZEN "$ALPINE_RUBY" sh /scripts/build-apps.sh
@@ -2241,7 +2257,11 @@ jobs:
   # each way and in a hostile environment, and unpacked by
   # --appimage-extract (deliver-appimage.sh). And test/fixtures/programs:
   # a windowed and a console program from one folder, with one
-  # project and one Ruby, sharing one save (deliver-programs.sh). On
+  # project and one Ruby, sharing one save (deliver-programs.sh). And
+  # examples/markdown_preview: its md2html prints what it printed under
+  # bundle exec, it declares Markdown files to the system, and its
+  # windowed program, started with a file as Linux's desktop entry starts
+  # it, previews the file in the browser (deliver-markdown.sh). On
   # macOS, the LibUI probe opens its window through its own program and
   # through open -W, and reports it shown (deliver-libui.sh).
   delivery-windowed-arm64-darwin:
@@ -2280,6 +2300,11 @@ jobs:
 
       - name: Run Shared Save and shared-save from one folder, with one save
         run: .github/scripts/deliver-programs.sh "$RUNNER_TEMP/delivered/Shared Save-${{ matrix.platform }}.tar.gz"
+
+      - name: Preview a Markdown file with Markdown Preview, and print its HTML with md2html
+        run: >-
+          .github/scripts/deliver-markdown.sh "$RUNNER_TEMP/delivered/Markdown Preview-${{ matrix.platform }}.tar.gz"
+          examples/markdown_preview/welcome.md "$RUNNER_TEMP/delivered/markdown_preview.expected"
 
       - name: Install Hello Window from its disk image as a person would
         if: runner.os == 'macOS'
@@ -2606,7 +2631,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      - name: Run hello, my_cool_app, the console and HTTPS probes, windowed_app, programs, and Jot on Alpine with no Ruby installed
+      - name: Run hello, my_cool_app, the console and HTTPS probes, windowed_app, programs, Jot, and markdown_preview on Alpine with no Ruby installed
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -2620,6 +2645,7 @@ jobs:
           .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
           .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract
           .github/scripts/deliver-programs.sh "$d/Shared Save-$PLATFORM.tar.gz"
+          .github/scripts/deliver-markdown.sh "$d/Markdown Preview-$PLATFORM.tar.gz" examples/markdown_preview/welcome.md "$d/markdown_preview.expected"
           .github/scripts/deliver-https.sh "$d/Https-$PLATFORM.tar.gz" /https --store-may-change
           .github/scripts/deliver-server.sh "$d/Jot-$PLATFORM.tar.gz"
           SH
@@ -2729,6 +2755,18 @@ jobs:
       - name: Run Shared Save.exe and shared-save.exe from one folder, with one save
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-programs.ps1 -Archive "$env:RUNNER_TEMP/delivered/Shared Save-$env:PLATFORM.zip"
+
+      # examples/markdown_preview, from its NSIS installer: md2html.exe in
+      # the installed folder prints what it printed under bundle exec, and
+      # a .md file opened through the shell with the app's ProgID starts
+      # Markdown Preview.exe with its path, which previews it in the
+      # browser (.github/scripts/deliver-markdown.ps1).
+      - name: Install Markdown Preview, preview a Markdown file with it, and print its HTML with md2html
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver-markdown.ps1
+          -Installer "$env:RUNNER_TEMP/delivered/Markdown Preview-$env:PLATFORM-setup.exe"
+          -Sample examples/markdown_preview/welcome.md -Expected "$env:RUNNER_TEMP/delivered/markdown_preview.expected"
 
       # The NSIS installer: installed silently for this person,
       # its Start menu shortcut's AppUserModelID read back and matched to

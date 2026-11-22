@@ -86,7 +86,7 @@ windows:
 - **`local`** copies the runtime's DLLs that your gems need from this computer's `System32` into the app, so the app runs on a computer without the Redistributable. Install the Redistributable on the computer that builds the app. You distribute Microsoft's files when you ship the app: Microsoft's page [Redistribute Visual C++ files](https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files) says "Distribution of the Visual C++ Runtime Redistributable package, merge modules, and individual binaries is limited to licensed Visual Studio users and is subject to Microsoft Software License Terms." Whether you hold that right, and what its terms ask of you, is yours to check; Fledge cannot. Microsoft also recommends against copies in the app's folder, which Windows Update does not update: build the app again to ship a newer runtime.
 - **`central`** ships no runtime, for computers that have the Redistributable. Microsoft recommends this way. A person who starts the app from its `.zip` without the Redistributable meets Windows' error for a missing DLL, so tell them to install it first. The setup program and MSIX package do not install it yet.
 
-Or use a build of the gem that links the runtime statically (`/MT`), which needs neither.
+Or use a build of the gem that links the runtime statically (`/MT`), which needs neither. [`examples/libui_app`](../examples/libui_app), a timer on LibUI, says `local`, and lists GTK 3 for Linux as the section above shows.
 
 ## A gem that only `vendor/cache` holds
 

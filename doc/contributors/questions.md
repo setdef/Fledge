@@ -45,3 +45,15 @@ Nothing waits on this.
 **Default.** No. Fledge stays on Apple silicon, and nothing is built for Intel Macs. The agents recommend this default: nobody who builds apps has asked, the computers it serves get no new macOS, and each release would carry another runtime to build and prove.
 
 **To reverse.** Say "support Intel Macs", and which macOS is the oldest they must run. Agents then add the platform as `x86_64-darwin`, with the README and the compatibility table changed to match.
+
+## L. Should Fledge ask rv-ruby to build its Alpine Linux Rubies the way its other Linux Rubies are built? (open, no deadline)
+
+Nothing waits on this.
+
+**Context.** Fledge still compiles its own Ruby for Alpine Linux (musl). rv-ruby, the project whose prebuilt Ruby Fledge's macOS apps use, does publish Alpine Linux Rubies for the version Fledge pins, 4.1.0-preview1, on Intel and ARM. On 2026-11-22, told that, you said "Whenever we're adding a platform, that should be the first thing we check before building our own." Agents checked both of those files the same day. rv-ruby builds them differently from its other Linux Rubies: every built-in library that is compiled (OpenSSL, JSON, YAML, sockets, and the rest) is baked into rv-ruby's own `ruby` program, and the library Fledge's launcher links Ruby from has none of them. A Fledge app made from it could not load any of them. The files also carry no list of the third-party code inside them, which Fledge's license check needs. So Fledge keeps its own build for now. It costs Fledge a compile of Ruby, OpenSSL, and three smaller libraries each time it builds an Alpine runtime, a small edit to Ruby's source until Ruby 4.1.0, and Rust, Perl, and the few other Alpine packages only that compile needs, all pinned and moved on purpose. Apps would still be built and tested in Alpine either way. You said on 2026-10-28 that "Code is a liability".
+
+**The question.** Should someone ask rv-ruby to build its Alpine Linux Rubies with each compiled library as a separate file, as its other Linux Rubies already are, and to ship the license list with them? If rv-ruby did, Fledge could take its Alpine Ruby from there and delete its own build. Asking means an issue or pull request on rv-ruby's GitHub project, posted from your account, which agents do not do.
+
+**Default.** No one asks. Fledge keeps building Alpine Linux's Ruby, and agents check rv-ruby's Alpine files again when Ruby 4.1.0 is released.
+
+**To reverse.** Say "ask rv-ruby". Agents then write the issue for you to post, with what they measured and the one build option that makes the difference.

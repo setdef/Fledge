@@ -78,3 +78,21 @@ Nothing waits on this, and it may never need an answer.
 
 **To reverse.** Say "build our own Ruby for Linux if you have to". Agents then do that when the need arises, with the lowest floor the tools allow.
 
+## J. On a Mac, which platform should an app's Ruby say it is? (open; the macOS Ruby cannot be updated unattended until answered)
+
+**Context.** Ruby names its platform after the macOS it was built on: `arm64-darwin23` if built on macOS 14, `arm64-darwin24` on macOS 15. Fledge takes its macOS Ruby prebuilt from rv-ruby, and the build it pins says `arm64-darwin23`. rv-ruby's release of 2026-11-19 was built on macOS 15 and says `arm64-darwin24`; it is otherwise the same Ruby, and still runs on macOS 14.
+
+Bundler compares that name with the platforms a project's `Gemfile.lock` lists, and darwin versions must be equal. A lockfile that lists `arm64-darwin` (no number, which the README tells developers to add) or `ruby` fits any of them. A lockfile that lists only `arm64-darwin-23`, which is what `bundle install` writes for a developer whose own Ruby was built on macOS 14, fits today's runtime and would not fit the newer one: `fledge build` would stop and tell them to run `bundle lock --add-platform arm64-darwin`. The reverse is true today for a developer on macOS 15, whose lockfile says `arm64-darwin-24`.
+
+So moving to rv-ruby's newer build can make `fledge build` refuse a lockfile it accepted the day before. You asked on 2026-11-22 that a newer upstream release become a Fledge release with nobody in the loop, and after 1.0 a release that does this could not be a patch or a minor one.
+
+**The question.** Choose one:
+
+1. **The app's Ruby says `arm64-darwin`, with no number,** whatever macOS rv-ruby built it on, as Fledge's iOS Ruby already does. Every lockfile fits, on every release, and the name never changes again. The cost is a difference from `ruby main.rb`: `RUBY_PLATFORM` and `RbConfig`'s names would read `arm64-darwin` where the developer's own Ruby reads `arm64-darwin23` or `24`, and the runtime's folders are renamed to match. The agents recommend this one: the number records where someone else built Ruby, not anything about the person's Mac, and a difference that keeps every developer's lockfile working is a cheaper one than a build that refuses them once a year.
+2. **The name follows rv-ruby's build.** No difference from that Ruby. Each time rv-ruby builds on a newer macOS, developers who list only the old number are refused at build time, with the one-line fix. Such a move would be a breaking release and would wait for a person.
+3. **Stay as it is.** The pin automation stops on such a release and calls a person, who decides then.
+
+**Default.** 3. Agents change nothing: the macOS Ruby stays on the build Fledge pins, and the automation reports that rv-ruby's newer build names another platform. Security fixes in the macOS Ruby wait until you answer.
+
+**To reverse.** Say "1" or "2". Agents then build it, with the documents and the parity record changed to match.
+

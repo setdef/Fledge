@@ -6,8 +6,13 @@ module Fledge
     TAR_GZ: String
     ZIP: String
     INSTALL: String
+    PACK_ZIP: String
 
     def self.pack: (String folder, to: String) -> String
+
+    private def self.pack_with_dotnet: (String folder, String to) -> String
+
+    private def self.powershell: () -> String
 
     def self.unpack: (String archive, into: String, ?only: Array[String]) -> String
 

@@ -397,6 +397,49 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
+  # An app whose name, and a file of whose project, Windows' ANSI code
+  # page cannot write is archived under its own names, which
+  # Expand-Archive unpacks as a person on Windows would, and runs. The
+  # premise is the system's code page, as the registry keeps it, which
+  # Windows' own tools run in: this test's own Ruby may declare UTF-8 as
+  # its process's, as the runtime's does.
+  def test_a_windows_app_named_outside_the_ansi_code_page_is_archived_under_its_names
+    skip "the ANSI code page is Windows'" unless @platform.windows?
+    name = "日本語ツール"
+    skip "code page #{system_code_page} can write #{name}" if writable?(name, system_code_page)
+
+    Dir.mktmpdir do |dir|
+      project = File.join(dir, "nihongo")
+      FileUtils.mkdir_p(File.join(project, "挨拶 ü"))
+      FileUtils.cp(File.join(HELLO, "main.rb"), project)
+      File.write(File.join(project, "挨拶 ü", "こんにちは.txt"), "hi\n")
+      File.write(File.join(project, "fledge.yml"), "name: #{name}\n")
+      launcher = build_and_unpack(dir, project, name:)
+
+      out, err, status = run_app({ "HOME" => dir }, launcher)
+
+      assert_equal [expected, "", 0], [out, err, status.exitstatus]
+      assert_equal "hi\n", File.read(File.join(File.dirname(launcher), "app", "挨拶 ü", "こんにちは.txt"))
+    end
+  end
+
+  # The ANSI code page as reg.exe reads it from the registry. Ruby's
+  # win32/registry and fiddle are bundled gems, which the Gemfile does
+  # not lock, so neither loads under bundle exec.
+  def system_code_page
+    reg = File.join(ENV.fetch("SystemRoot", "C:\\Windows"), "System32", "reg.exe")
+    out, status = Open3.capture2(reg, "query", "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Nls\\CodePage", "/v", "ACP")
+    assert_predicate status, :success?, out
+    Integer(out[/ACP\s+REG_SZ\s+(\d+)/, 1])
+  end
+
+  def writable?(text, code_page)
+    text.encode("CP#{code_page}")
+    true
+  rescue EncodingError
+    false
+  end
+
   # require "mkmf" loads in a built app, as under ruby, since the
   # runtime keeps Ruby's headers, and some gems require it at
   # run time for MakeMakefile#find_executable.

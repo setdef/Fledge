@@ -9,7 +9,9 @@ require_relative "test_helper"
 
 # Fledge::Archive with the computer's own tar, in folders whose names are
 # not ASCII: Windows' tar.exe reads its arguments in the ANSI code page,
-# where they are not, and CI runs this test there too.
+# where they are not, and CI runs this test there too. A Windows app's
+# .zip, which Windows PowerShell writes there, is BuiltAppTest's: a unit
+# test starts no shell.
 class ArchiveTest < Minitest::Test
   def test_an_app_packs_and_unpacks_in_folders_named_outside_ascii
     Dir.mktmpdir do |dir|
@@ -18,7 +20,7 @@ class ArchiveTest < Minitest::Test
       FileUtils.mkdir_p(File.join(folder, "app"))
       File.binwrite(File.join(folder, "app", "main.rb"), "puts 1\n")
       File.binwrite(File.join(folder, "notes.txt"), "")
-      extension = Gem.win_platform? ? Fledge::Archive::ZIP : Fledge::Archive::TAR_GZ
+      extension = Fledge::Archive::TAR_GZ
 
       archive = Fledge::Archive.pack(folder, to: "#{folder}#{extension}")
       elsewhere = Fledge::Archive.pack(folder, to: File.join(dir, "Mein Ort", "anderswo#{extension}"))

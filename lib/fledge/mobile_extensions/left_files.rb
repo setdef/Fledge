@@ -21,8 +21,9 @@ module Fledge
     # into a folder of its own, and the app has one Ruby tree for every
     # target. So the app carries each file every target's build left
     # alike, byte for byte, at its path, as data an <tt>extconf.rb</tt>
-    # writes is; and none that the builds left differently, or that only
-    # some left, since a file one target's build wrote is not that file
+    # writes is (#common); and each that the builds left differently, or
+    # that only some left, apart for the target whose build left it
+    # (#apart), since a file one target's build wrote is not that file
     # for another: a Makefile names its target's compiler, and Cargo's
     # records its target. Nor does it carry compiled code, which a phone
     # runs only from the app's executable, its frameworks, or its native
@@ -67,6 +68,15 @@ module Fledge
         first, *rest = builds
         sets = rest.map(&:to_set)
         (first || []).select { |entry| sets.all? { |set| set.include?(entry) } }
+      end
+
+      # The entries of each of +builds+, each target's #of by the
+      # target's name, that are not in every one alike (#common): what
+      # each target's build left for itself, such as data an
+      # <tt>extconf.rb</tt> writes for its target, and its Makefile.
+      def self.apart(builds)
+        common = common(builds.values).to_set
+        builds.transform_values { |entries| entries.reject { |entry| common.include?(entry) } }
       end
     end
   end

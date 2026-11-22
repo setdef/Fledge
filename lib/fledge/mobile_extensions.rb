@@ -301,8 +301,9 @@ module Fledge
     # <tt>require</tt> asks for and the function that initializes it (the
     # same for every target), what each target compiled to, the files
     # that stand where a desktop has an extension's file (Stub), and the
-    # files the gems' builds left alike for every target (LeftFiles).
-    class Built < Data.define(:registrations, :targets, :ndk, :stubs, :left)
+    # files the gems' builds left alike for every target and those each
+    # target's left for itself (LeftFiles).
+    class Built < Data.define(:registrations, :targets, :ndk, :stubs, :left, :apart)
       ##
       # :attr_reader: registrations
       # Pairs of the feature (<tt>"adder/adder"</tt>) and its renamed Init function.
@@ -325,6 +326,13 @@ module Fledge
       # The Entry of each file every target's build of a gem left alike
       # in the gem's folder (LeftFiles.common), with paths relative to
       # the app's Ruby root, as the gems' entries are.
+
+      ##
+      # :attr_reader: apart
+      # The Entry of each file a target's build of a gem left in the
+      # gem's folder that not every target's left alike
+      # (LeftFiles.apart), by the target's name, with paths relative to
+      # the app's Ruby root.
     end
 
     # Why each of the gem's extensions cannot be compiled for +platform+
@@ -481,7 +489,7 @@ module Fledge
       @load_path = nil # : Array[String]?
       @stubs = {} # : Hash[String, Entry]
       @gems = {} # : Hash[String, String]
-      @left = {} # : Hash[String, Array[Array[Entry]]]
+      @left = {} # : Hash[String, Hash[String, Array[Entry]]]
       @separation = nil # : Separation?
     end
 
@@ -507,7 +515,7 @@ module Fledge
       registrations = [] # : Array[[String, String]]
       @stubs = {} # : Hash[String, Entry]
       @gems = {} # : Hash[String, String]
-      @left = {} # : Hash[String, Array[Array[Entry]]]
+      @left = {} # : Hash[String, Hash[String, Array[Entry]]]
       builds = Targets.new(work: @work).call(tree, ndk).to_h do |target|
         built = compile_target(target)
         libraries = built.grep(Library) # : Array[Library]
@@ -519,7 +527,16 @@ module Fledge
       end
       same_files(builds.values)
       refuse_clash(registrations)
-      Built.new(registrations:, targets: builds, ndk:, stubs: @stubs.values, left: @left.values.flat_map { |each| LeftFiles.common(each) })
+      left = @left.values.flat_map { |each| LeftFiles.common(each.values) }
+      Built.new(registrations:, targets: builds, ndk:, stubs: @stubs.values, left:, apart:)
+    end
+
+    # What each target's build of every gem left for itself
+    # (LeftFiles.apart), by the target's name.
+    private def apart
+      apart = {} # : Hash[String, Array[Entry]]
+      @left.each_value { |builds| LeftFiles.apart(builds).each { |name, entries| (apart[name] ||= []).concat(entries) } }
+      apart
     end
 
     # Links the shared library an Android app loads, +into+ it, for the
@@ -586,7 +603,7 @@ module Fledge
         reports << extconf(target, gem, package, root, extension, args, number)
       end
       where = package.installed_path(@gem_dir)
-      (@left[gem.name] ||= []) << LeftFiles.of(package, root).map { |entry| entry.with(path: "#{where}/#{entry.path}") }
+      (@left[gem.name] ||= {})[target.name] = LeftFiles.of(package, root).map { |entry| entry.with(path: "#{where}/#{entry.path}") }
       reports
     end
 

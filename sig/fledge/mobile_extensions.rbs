@@ -37,9 +37,10 @@ module Fledge
       attr_reader ndk: NDK?
       attr_reader stubs: Array[Entry]
       attr_reader left: Array[Entry]
+      attr_reader apart: Hash[String, Array[Entry]]
 
-      def self.new: (registrations: Array[[String, String]], targets: Hash[String, TargetBuild], ndk: NDK?, stubs: Array[Entry], left: Array[Entry]) -> instance
-                  | (Array[[String, String]] registrations, Hash[String, TargetBuild] targets, NDK? ndk, Array[Entry] stubs, Array[Entry] left) -> instance
+      def self.new: (registrations: Array[[String, String]], targets: Hash[String, TargetBuild], ndk: NDK?, stubs: Array[Entry], left: Array[Entry], apart: Hash[String, Array[Entry]]) -> instance
+                  | (Array[[String, String]] registrations, Hash[String, TargetBuild] targets, NDK? ndk, Array[Entry] stubs, Array[Entry] left, Hash[String, Array[Entry]] apart) -> instance
     end
 
     @platform: MobilePlatform
@@ -61,7 +62,7 @@ module Fledge
     @load_path: Array[String]?
     @stubs: Hash[String, Entry]
     @gems: Hash[String, String]
-    @left: Hash[String, Array[Array[Entry]]]
+    @left: Hash[String, Hash[String, Array[Entry]]]
     @separation: Separation?
 
     def self.problems: (locked_gem gem, package package, MobilePlatform platform, Platform host) -> Array[String]
@@ -81,6 +82,8 @@ module Fledge
     private def compile_target: (Target target) -> Array[Report | Library | FfiLibrary]
 
     private def same_registrations: (Array[[String, String]] registrations, Array[Report] reports) -> Array[[String, String]]
+
+    private def apart: () -> Hash[String, Array[Entry]]
 
     private def same_files: (Array[TargetBuild] builds) -> void
 

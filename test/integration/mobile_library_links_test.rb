@@ -13,16 +13,20 @@ require "rbconfig"
 # looks for a file at to the native libraries the installer extracted
 # (runtime/mobile/library_links.c), compiled with this computer's C
 # compiler: ROOT/fledge.links names, for each ABI, a library in the
-# native library folder and the path under ROOT to link to it.
+# native library folder and the path under ROOT to link to it. And how
+# it puts in place what a gem's build left for one ABI alone:
+# ROOT/fledge.files names, for each ABI, a path under ROOT whose copy
+# for that ABI is under ROOT/.fledge-abi/ABI/.
 class MobileLibraryLinksTest < Minitest::Test
   MOBILE = File.expand_path("../../runtime/mobile", __dir__)
 
-  # The program: HOST ROOT FOLDER ABI calls fledge_link_libraries and
-  # exits with what it returns.
+  # The program: HOST ROOT FOLDER ABI calls fledge_link_libraries, and
+  # HOST ROOT ABI fledge_place_abi_files, and exits with what it returns.
   HOST = <<~C
     #include "mobile.h"
 
     int main(int argc, char **argv) {
+        if (argc == 3) return fledge_place_abi_files(argv[1], argv[2]);
         if (argc != 4) return 2;
         return fledge_link_libraries(argv[1], argv[2], argv[3]);
     }
@@ -92,6 +96,63 @@ class MobileLibraryLinksTest < Minitest::Test
   def test_no_list_links_nothing
     assert_equal [0, ""], run_host("x86_64")
     assert_equal [], Dir.children(@root)
+  end
+
+  # This ABI's copy takes the place of the gem's own file, as a regular
+  # file, and another ABI's stays where it is; a later start finds it
+  # placed.
+  def test_this_abis_files_are_moved_to_their_paths
+    files("x86_64\tgems/tabled/data/arch.txt", "arm64-v8a\tgems/tabled/data/arch.txt", "x86_64\tgems/tabled/ext/tabled/Makefile")
+    write("gems/tabled/data/arch.txt", "the gem's own\n")
+    write(".fledge-abi/x86_64/gems/tabled/data/arch.txt", "x86_64\n")
+    write(".fledge-abi/x86_64/gems/tabled/ext/tabled/Makefile", "CC = x86_64\n")
+    write(".fledge-abi/arm64-v8a/gems/tabled/data/arch.txt", "arm64-v8a\n")
+
+    assert_equal [0, ""], run_files("x86_64")
+    assert_equal [0, ""], run_files("x86_64")
+    placed = File.join(@root, "gems/tabled/data/arch.txt")
+    assert_equal ["x86_64\n", "file"], [File.read(placed), File.lstat(placed).ftype]
+    assert_equal "CC = x86_64\n", File.read(File.join(@root, "gems/tabled/ext/tabled/Makefile"))
+    assert_equal "arm64-v8a\n", File.read(File.join(@root, ".fledge-abi/arm64-v8a/gems/tabled/data/arch.txt"))
+  end
+
+  def test_a_listed_file_that_is_nowhere_is_said
+    files("x86_64\tgems/tabled/data/arch.txt")
+
+    status, err = run_files("x86_64")
+
+    assert_equal 1, status
+    assert_includes err, ".fledge-abi/x86_64/gems/tabled/data/arch.txt"
+  end
+
+  def test_a_listed_path_outside_the_root_is_refused
+    files("x86_64\t../outside.txt", "x86_64\t/tmp/abs.txt")
+    write(".fledge-abi/outside.txt", "outside\n")
+
+    status, err = run_files("x86_64")
+
+    assert_equal 2, status
+    assert_includes err, "../outside.txt"
+    assert_path_exists File.join(@root, ".fledge-abi/outside.txt")
+  end
+
+  def test_no_file_list_places_nothing
+    assert_equal [0, ""], run_files("x86_64")
+    assert_equal [], Dir.children(@root)
+  end
+
+  private def files(*lines)
+    File.write(File.join(@root, "fledge.files"), lines.map { |line| "#{line}\n" }.join)
+  end
+
+  private def write(path, text)
+    FileUtils.mkdir_p(File.dirname(File.join(@root, path)))
+    File.write(File.join(@root, path), text)
+  end
+
+  private def run_files(abi)
+    _, err, status = Open3.capture3(@host, @root, abi)
+    [status.exitstatus, err]
   end
 
   private def links(*lines)

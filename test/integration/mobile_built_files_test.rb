@@ -44,8 +44,23 @@ class MobileBuiltFilesTest < Minitest::Test
     "lib/tabled.rb" => "require \"tabled/tabled\"\n\nmodule Tabled\n  TABLE = File.read(File.expand_path(\"../data/table.txt\", __dir__))\nend\n",
   }.freeze
 
+  # The Android app's gem, in place of GEM's files: its extconf.rb also
+  # writes data/arch.txt, the architecture of the Ruby it builds for,
+  # each target's own, and its Ruby reads that too.
+  OWN = {
+    "ext/tabled/extconf.rb" => GEM.fetch("ext/tabled/extconf.rb").sub("create_makefile", <<~RUBY.chomp),
+      File.write(File.join(__dir__, "../../data/arch.txt"), RbConfig::CONFIG["arch"])
+      create_makefile
+    RUBY
+    "lib/tabled.rb" => GEM.fetch("lib/tabled.rb").sub("end\n", "  ARCH = File.read(File.expand_path(\"../data/arch.txt\", __dir__))\nend\n"),
+  }.freeze
+
   # What the app prints with the data its gem's build wrote.
   SAYS = ["tabled says hello and reads from the build"].freeze
+
+  # What the Android app prints with the data its gem's build wrote,
+  # alike and for its own target.
+  SAYS_OWN = ["tabled says hello and reads from the build for its own target"].freeze
 
   def setup
     @dir = Fledge::LongPath.of(Dir.mktmpdir)
@@ -71,9 +86,9 @@ class MobileBuiltFilesTest < Minitest::Test
     assert_carried project
   end
 
-  def test_an_android_app_carries_the_data_its_gems_build_wrote_for_every_abi_alike
+  def test_an_android_app_carries_the_data_its_gems_build_wrote_alike_and_for_each_abi
     android_missing("no Android device or emulator: set ANDROID_SERIAL, as bin/android-emulator does") unless ENV["ANDROID_SERIAL"]
-    app = app("BuiltDataAndroid")
+    app = app("BuiltDataAndroid", own: true)
     project = MobileParity.projects("android", runtimes: runtimes("android"), out: File.join(@dir, "dist"), apps: [app]).fetch(app)
     log = File.join(@dir, "gradle.log")
     built = system(File.join(project, "gradlew"), "--no-daemon", "--project-dir", project, "assembleDebug", out: log, err: %i[child out])
@@ -81,8 +96,9 @@ class MobileBuiltFilesTest < Minitest::Test
     apk = Dir.glob(File.join(project, "build", "outputs", "apk", "debug", "*-debug.apk")).first or flunk "Gradle built no debug APK"
     adb("install", "-r", apk)
 
-    assert_said MobileParity::Android.new(work: File.join(@dir, "android"), out: StringIO.new).launch(app)
+    assert_said MobileParity::Android.new(work: File.join(@dir, "android"), out: StringIO.new).launch(app), SAYS_OWN
     assert_carried project
+    assert_carried_apart project
   ensure
     system("adb", "uninstall", app.identifier, out: File::NULL, err: File::NULL) if ENV["ANDROID_SERIAL"] && app
   end
@@ -97,12 +113,27 @@ class MobileBuiltFilesTest < Minitest::Test
     assert_empty Dir.glob("**/*.o", base: folder), "a phone carries no compiled code among a gem's files"
   end
 
+  # +project+'s Ruby root holds, for each ABI, what that ABI's build left
+  # for itself, the data and the Makefile, under .fledge-abi/ABI/, and
+  # lists it in fledge.files.
+  private def assert_carried_apart(project)
+    root = File.join(project, "fledge")
+    Fledge::MobileExtensions::Targets::ANDROID_ABIS.each_value do |abi|
+      folder = File.join(root, ".fledge-abi", abi, "app", "tabled")
+      assert_includes File.read(File.join(folder, "data", "arch.txt")), "android"
+      assert_path_exists File.join(folder, "ext", "tabled", "Makefile")
+      assert_includes File.read(File.join(root, "fledge.files")), "#{abi}\tapp/tabled/data/arch.txt\n"
+    end
+  end
+
   # A developer's app +name+ with the path gem tabled in its folder,
   # locked for the ruby platform, whose program prints what the gem's
-  # extension and data say, as a MobileParity::App.
-  private def app(name)
+  # extension and data say, as a MobileParity::App; with +own+, data its
+  # build writes for each target too (OWN).
+  private def app(name, own: false)
     root = File.join(@dir, "apps", name)
-    GEM.each do |path, text|
+    files = GEM.merge(own ? OWN : {})
+    files.each do |path, text|
       FileUtils.mkdir_p(File.dirname(File.join(root, "tabled", path)))
       File.write(File.join(root, "tabled", path), text)
     end
@@ -112,7 +143,7 @@ class MobileBuiltFilesTest < Minitest::Test
         spec.version = "1.0.0"
         spec.authors = ["Kerrick Long"]
         spec.summary = "A gem whose extconf.rb writes data its Ruby reads"
-        spec.files = #{GEM.keys.inspect}
+        spec.files = #{files.keys.inspect}
         spec.extensions = ["ext/tabled/extconf.rb"]
       end
     RUBY
@@ -141,14 +172,15 @@ class MobileBuiltFilesTest < Minitest::Test
         4.0.20
     LOCK
     File.write(File.join(root, "fledge.yml"), "name: #{name}\nidentifier: com.setdef.fledge.#{name}\n")
-    File.write(File.join(root, "main.rb"), "require \"tabled\"\nputs \"tabled says \#{Tabled.hello} and reads \#{Tabled::TABLE.strip}\"\n")
+    target = " for \#{(Tabled::ARCH == RbConfig::CONFIG['arch']) ? 'its own target' : Tabled::ARCH}" if own
+    File.write(File.join(root, "main.rb"), "require \"tabled\"\nputs \"tabled says \#{Tabled.hello} and reads \#{Tabled::TABLE.strip}#{target}\"\n")
     MobileParity::App.new(path: root, name:, identifier: "com.setdef.fledge.#{name}", prints: /./)
   end
 
-  # That the app said SAYS in what it +logged+ (MobileParity::Logged),
+  # That the app said +says+ in what it +logged+ (MobileParity::Logged),
   # without the host's own lines.
-  private def assert_said(logged)
-    assert_equal SAYS, logged.output.grep(/\Atabled/), "the app logged:\n#{logged.output.last(8).join("\n")}"
+  private def assert_said(logged, says = SAYS)
+    assert_equal says, logged.output.grep(/\Atabled/), "the app logged:\n#{logged.output.last(8).join("\n")}"
   end
 
   # The folder of the runtimes, which holds +phone+'s, as rake runtime

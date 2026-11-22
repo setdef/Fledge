@@ -12,6 +12,8 @@ module Fledge
       RUNTIME_EXTENSION: String
       COMMANDS: String
       PROGRAM: String
+      ABI_FILES: String
+      FILES: String
 
       def self.version_code: (String version) -> Integer
 
@@ -31,6 +33,7 @@ module Fledge
 
       private def place_runtime: (String tree, String project) -> void
       private def place_commands: (String root) -> void
+      private def place_apart: (String root) -> void
 
       private def place_extensions: (String project) -> void
 

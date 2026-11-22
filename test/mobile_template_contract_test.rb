@@ -149,7 +149,7 @@ class MobileTemplateContractTest < Minitest::Test
       end
       [name, Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: files, ffi_libraries: [])]
     end
-    Fledge::MobileExtensions::Built.new(registrations:, targets:, ndk: nil, stubs: [], left: [])
+    Fledge::MobileExtensions::Built.new(registrations:, targets:, ndk: nil, stubs: [], left: [], apart: {})
   end
 
   def teardown

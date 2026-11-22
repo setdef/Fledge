@@ -223,6 +223,34 @@ module Fledge
         File.write(File.join(root, AndroidLibraries::LINKS), lines.join, mode: "a")
       end
 
+      # The folder in ROOT that holds, under each ABI's name, what that
+      # ABI's build of a gem left for itself, at its path in ROOT.
+      ABI_FILES = ".fledge-abi"
+
+      # The file in ROOT that lists each file in ABI_FILES, a line each:
+      # the ABI and the path, separated by a tab.
+      FILES = "fledge.files"
+
+      # Puts what each ABI's build of a gem left for itself
+      # (MobileExtensions::Built#apart) in ABI_FILES, and lists it in
+      # FILES, from which the runtime moves the app's own ABI's copy to
+      # its path as the app starts (runtime/mobile/library_links.c,
+      # fledge_place_abi_files), since one <tt>fledge.zip</tt> serves
+      # every ABI and Android packs no asset for one ABI alone
+      # (doc/contributors/design/phone-projects.md, "Files a gem's build
+      # leaves").
+      private def place_apart(root)
+        built = @built or return
+        lines = built.apart.sort.flat_map do |name, entries|
+          abi = built.targets.fetch(name).target.abi.to_s
+          entries.map do |entry|
+            entry.with(path: "#{ABI_FILES}/#{abi}/#{entry.path}").write_into(root)
+            "#{abi}\t#{entry.path}\n"
+          end
+        end
+        File.write(File.join(root, FILES), lines.join) unless lines.empty?
+      end
+
       # Links the extensions not built as files into a shared library for
       # each ABI, <tt>libfledgeext.so</tt>, against the runtime's
       # <tt>libfledgeruby.so</tt>, in <tt>src/main/jniLibs/</tt>, where

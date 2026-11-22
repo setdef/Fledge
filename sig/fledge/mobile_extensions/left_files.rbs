@@ -11,6 +11,8 @@ module Fledge
       def self.of: (package package, String root) -> Array[Entry]
 
       def self.common: (Array[Array[Entry]] builds) -> Array[Entry]
+
+      def self.apart: (Hash[String, Array[Entry]] builds) -> Hash[String, Array[Entry]]
     end
   end
 end

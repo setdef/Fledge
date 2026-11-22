@@ -14,6 +14,15 @@
  * writes, lists them, a line each: the ABI, the library's file name, and
  * the path under ROOT, separated by tabs.
  *
+ * And the files a gem's build left for one ABI alone, such as data an
+ * extconf.rb writes for its target, which one fledge.zip carries for
+ * every ABI under ROOT/.fledge-abi/ABI/PATH, since Android packs no
+ * asset for one ABI (mobile.h, fledge_place_abi_files). ROOT/fledge.files,
+ * which fledge build writes, lists them, a line each: the ABI and the
+ * path, separated by a tab. The app's own ABI's copy is moved to its
+ * path once, at the first start after the app unpacked its Ruby, so a
+ * regular file stands there, as on a desktop.
+ *
  * And the library of the extensions linked into the app,
  * libfledgeext.so, which the runtime opens itself before Ruby boots
  * (fledge_load_extensions), so that its constructor registers them
@@ -32,6 +41,8 @@
 #include <unistd.h>
 
 #define FLEDGE_LINKS "fledge.links"
+#define FLEDGE_FILES "fledge.files"
+#define FLEDGE_ABI_FILES ".fledge-abi"
 #define FLEDGE_EXTENSIONS "libfledgeext.so"
 
 /* Nonzero when the length bytes at name are a file's name: not empty, ".", or "..". */
@@ -134,6 +145,66 @@ fledge_link_libraries(const char *root, const char *folder, const char *abi)
         *library++ = '\0';
         *path++ = '\0';
         if (strcmp(line, abi) == 0 && link_one(root, folder, library, path) != 0) failures++;
+    }
+    fclose(file);
+    return failures;
+}
+
+/*
+ * Moves root/.fledge-abi/abi/path to root/path, over the gem's own file
+ * there; 0 when the ABI's file is at path, -1 when not. Where the ABI's
+ * copy is gone and path holds a file, an earlier start, or another
+ * process starting with it, moved it.
+ */
+static int
+place_one(const char *root, const char *abi, const char *path)
+{
+    char from[PATH_MAX];
+    char to[PATH_MAX];
+    struct stat status;
+
+    if (!inside(path)) {
+        fprintf(stderr, "fledge_ruby_run: %s names %s, which is not a path inside the app's Ruby\n", FLEDGE_FILES,
+                path);
+        return -1;
+    }
+    if (snprintf(from, sizeof from, "%s/" FLEDGE_ABI_FILES "/%s/%s", root, abi, path) >= (int)sizeof from ||
+        snprintf(to, sizeof to, "%s/%s", root, path) >= (int)sizeof to) {
+        fprintf(stderr, "fledge_ruby_run: the path to %s is too long\n", path);
+        return -1;
+    }
+    if (lstat(from, &status) != 0) {
+        if (errno == ENOENT && lstat(to, &status) == 0) return 0;
+        fprintf(stderr, "fledge_ruby_run: %s, which %s lists for %s, is not in the app's Ruby: %s\n", from,
+                FLEDGE_FILES, abi, strerror(errno));
+        return -1;
+    }
+    if (make_parents(to, strlen(root) + 1) != 0 || rename(from, to) != 0) {
+        fprintf(stderr, "fledge_ruby_run: could not move %s to %s: %s\n", from, to, strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
+int
+fledge_place_abi_files(const char *root, const char *abi)
+{
+    char list[PATH_MAX];
+    char line[2 * PATH_MAX];
+    int failures = 0;
+
+    if (snprintf(list, sizeof list, "%s/" FLEDGE_FILES, root) >= (int)sizeof list) return 1;
+    FILE *file = fopen(list, "r");
+    if (file == NULL) return 0;
+    while (fgets(line, sizeof line, file) != NULL) {
+        line[strcspn(line, "\r\n")] = '\0';
+        char *path = strchr(line, '\t');
+        if (path == NULL) {
+            if (line[0] != '\0') failures++;
+            continue;
+        }
+        *path++ = '\0';
+        if (strcmp(line, abi) == 0 && place_one(root, abi, path) != 0) failures++;
     }
     fclose(file);
     return failures;

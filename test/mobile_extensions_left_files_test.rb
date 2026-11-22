@@ -55,9 +55,21 @@ class MobileExtensionsLeftFilesTest < Minitest::Test
   end
 
   # A file one target's build wrote is not that file for another: a
-  # Makefile names its target's compiler, so no target's is carried.
+  # Makefile names its target's compiler, so no target's is carried with
+  # the files every target shares.
   def test_what_the_targets_builds_left_differently_is_not_carried
     assert_empty carried("ext/tabled/Makefile" => -> (target) { "CC = #{target}26-clang\n" })
+  end
+
+  # What a target's build left that the others' did not leave alike is
+  # that target's own, carried apart for it: data an extconf.rb writes
+  # for its target, and its Makefile, but not what every build left alike.
+  def test_what_the_targets_builds_left_differently_is_each_targets_own
+    built = builds("data/arch.txt" => -> (target) { "#{target}\n" }, "data/table.txt" => -> (_) { "from the build\n" })
+    apart = Fledge::MobileExtensions::LeftFiles.apart(TARGETS.zip(built).to_h)
+
+    assert_equal(TARGETS.to_h { |target| [target, { "data/arch.txt" => "#{target}\n" }] },
+      apart.transform_values { |entries| entries.to_h { |entry| [entry.path, entry.content] } })
   end
 
   # A phone runs compiled code only from the app's executable, its

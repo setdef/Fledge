@@ -203,6 +203,7 @@ module Fledge
       [*Assembly.app_entries(@app, @app_files, skip:), *gems, *stubs, *left].each { |entry| add(project, root, entry) }
       place_commands(root)
       place_links(root) if @built
+      place_apart(root) if @built
       place_host(host, project) if host
       template_files.each { |path| fill(File.join(project, path)) }
       place_icons(project)
@@ -306,6 +307,13 @@ module Fledge
     # system needs for the extensions (@built): nothing, unless the
     # system says otherwise.
     private def place_links(_root); end
+
+    # Finishes ROOT, +root+, with what each target's build of a gem left
+    # for itself (MobileExtensions::Built#apart), as the system can carry
+    # it: nothing, unless the system says otherwise, which leaves such a
+    # file out of an iOS app (doc/contributors/design/phone-projects.md,
+    # "Files a gem's build leaves").
+    private def place_apart(_root); end
 
     # Finishes ROOT, +root+, once the app and its gems are in it, as the
     # system needs for the gems' commands in its <tt>bin/</tt>: nothing,

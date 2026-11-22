@@ -697,11 +697,36 @@ class MobileBuildTest < Minitest::Test
     gem = "lib/ruby/gems/4.1.0+5/gems/tabled-1.0.0"
     own = [Fledge::Entry.directory(gem), Fledge::Entry.file("#{gem}/lib/tabled.rb", "the gem's own\n")]
     left = [Fledge::Entry.file("#{gem}/data/table.txt", "from the build\n"), Fledge::Entry.file("#{gem}/lib/tabled.rb", "as the build rewrote it\n")]
-    built = Fledge::MobileExtensions::Built.new(registrations: [], targets: {}, ndk: nil, stubs: [], left:)
+    built = Fledge::MobileExtensions::Built.new(registrations: [], targets: {}, ndk: nil, stubs: [], left:, apart: {})
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
     project = Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(@dir, "dist"), files: own, extensions: FakeExtensions.new(built)).call
 
     assert_equal ["from the build\n", "as the build rewrote it\n"], %w[data/table.txt lib/tabled.rb].map { |path| File.read(File.join(project, "fledge", gem, path)) }
+  end
+
+  # What each ABI's build of a gem left for itself
+  # (MobileExtensions::LeftFiles.apart) is in fledge.zip under
+  # .fledge-abi/ABI/, listed in fledge.files, from which the runtime
+  # moves the app's own ABI's copy to the path as the app starts; the
+  # gem's own file stays at the path for an ABI whose build left it be.
+  def test_what_each_abis_build_left_for_itself_is_carried_for_that_abi
+    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
+    gem = "lib/ruby/gems/4.1.0+5/gems/tabled-1.0.0"
+    own = [Fledge::Entry.directory(gem), Fledge::Entry.file("#{gem}/data/arch.txt", "the gem's own\n")]
+    targets = { "aarch64-linux-android" => "arm64-v8a", "x86_64-linux-android" => "x86_64" }.to_h do |name, abi|
+      target = Fledge::MobileExtensions::Target.new(name:, root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi:)
+      [name, Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [], ffi_libraries: [])]
+    end
+    apart = { "x86_64-linux-android" => [Fledge::Entry.file("#{gem}/data/arch.txt", "x86_64\n"), Fledge::Entry.file("#{gem}/ext/Makefile", "CC = x86_64\n")] }
+    built = Fledge::MobileExtensions::Built.new(registrations: [], targets:, ndk: nil, stubs: [], left: [], apart:)
+    runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
+    project = Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(@dir, "dist"), files: own, extensions: FakeExtensions.new(built)).call
+    root = File.join(project, "fledge")
+
+    assert_equal "x86_64\t#{gem}/data/arch.txt\nx86_64\t#{gem}/ext/Makefile\n", File.read(File.join(root, "fledge.files"))
+    assert_equal ["x86_64\n", "CC = x86_64\n"], %w[data/arch.txt ext/Makefile].map { |path| File.read(File.join(root, ".fledge-abi/x86_64", gem, path)) }
+    assert_equal "the gem's own\n", File.read(File.join(root, gem, "data/arch.txt"))
+    refute_path_exists File.join(root, ".fledge-abi/arm64-v8a")
   end
 
   # Writes +phone+'s project for a script app whose one gem's Rakefile
@@ -717,7 +742,7 @@ class MobileBuildTest < Minitest::Test
       Fledge::MobileExtensions::FfiLibrary.new(gem: "llhttp-ffi", file:, path: shared, links: ["lib/ruby/gems/4.1.0+5/gems/llhttp-ffi-0.5.1/#{file}"])
     end
     build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [], ffi_libraries: libraries)
-    built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [], left: [])
+    built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [], left: [], apart: {})
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(phone)))
     project = (phone == "ios") ? Fledge::MobileProject::IOS : Fledge::MobileProject::Android
     project.new(app:, runtime:, out: File.join(@dir, "dist"), extensions: FakeExtensions.new(built)).call
@@ -755,7 +780,7 @@ class MobileBuildTest < Minitest::Test
     target = Fledge::MobileExtensions::Target.new(name: "x86_64-linux-android", root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi: "x86_64")
     library = Fledge::MobileExtensions::Library.new(gem: "adder", feature:, path: shared, flags: [], links: ["app/gems/adder/lib/#{feature}.so"])
     build = Fledge::MobileExtensions::TargetBuild.new(target:, archives: [], flags: [], cxx: false, libraries: [library], ffi_libraries: [])
-    built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [], left: [])
+    built = Fledge::MobileExtensions::Built.new(registrations: [], targets: { target.name => build }, ndk: nil, stubs: [], left: [], apart: {})
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
     Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(@dir, "dist"), extensions: FakeExtensions.new(built), log:).call
   end

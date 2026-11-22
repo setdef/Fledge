@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Android, a file a gem's build writes differently for each ABI, such as data an `extconf.rb` generates for its target, is in the app where the gem's Ruby reads it, the app's own ABI's, with the `Makefile` and `mkmf.log`, as under `bundle exec`; before, the app carried none of it, and the gem raised `ENOENT` there. iOS still carries only what every slice's build wrote alike.
 - An `extconf.rb` that uses RubyGems, as sassc's reads `Gem::Platform.local`, compiles for iOS and Android.
 - On iOS, a library for ffi that a gem's `extconf.rb` builds with no Init function, such as sassc's libsass, is embedded as a framework at the path the gem opens.
 - On Android, a gem's build that runs `strip`, as sassc's does, runs the NDK's, which reads Android's libraries.

@@ -89,6 +89,16 @@ void fledge_ruby_read_commands(const char *root);
 int fledge_link_libraries(const char *root, const char *folder, const char *abi);
 
 /*
+ * Moves each file root/fledge.files lists for abi from
+ * root/.fledge-abi/abi/PATH to root/PATH, over what is there, where a
+ * gem's Ruby looks for what its build left for that ABI alone, whenever
+ * the ABI's copy is still there (library_links.c). Returns how many
+ * lines it could not place, each said on standard error; none without
+ * the list.
+ */
+int fledge_place_abi_files(const char *root, const char *abi);
+
+/*
  * Opens libfledgeext.so, the library of the extensions linked into an
  * Android app, from folder, the app's native library folder, so that
  * its constructor registers them with fledge_ruby_add_extension, or by

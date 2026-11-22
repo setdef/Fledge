@@ -26,7 +26,9 @@
  * With it, each link ROOT/fledge.links lists, from where the app's Ruby
  * looks for a file to a native library of the app's
  * (fledge_link_libraries, library_links.c), each gem's command among
- * them, which the program runs as its name says (commands.c). And before
+ * them, which the program runs as its name says (commands.c), and each
+ * file a gem's build left for this ABI alone, which ROOT/fledge.files
+ * lists, moved to its path (fledge_place_abi_files). And before
  * Ruby boots, the library of the app's linked extensions, libfledgeext.so
  * (fledge_ruby_load_extensions).
  */
@@ -218,6 +220,7 @@ fledge_ruby_link_program(const char *root)
         return;
     }
     if (library_folder(folder) != 0) folder[0] = '\0';
+    fledge_place_abi_files(root, FLEDGE_ABI);
     fledge_link_libraries(root, folder, FLEDGE_ABI);
     if (folder[0] == '\0' ||
         snprintf(program, sizeof program, "%s/" FLEDGE_RUBY_PROGRAM, folder) >= (int)sizeof program ||

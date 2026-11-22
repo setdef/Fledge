@@ -535,6 +535,12 @@ jobs:
       # (doc/contributors/design/phone-projects.md, "Gradle's downloads
       # in CI"). A key the cache lacks restores the newest set for the
       # same pins, which is saved again, with what Gradle added, under it.
+      # Gradle retries what a repository refused, patiently
+      # (.github/scripts/gradle-patience.sh says how).
+      - name: Make Gradle patient with refused downloads
+        if: matrix.platform == 'android'
+        run: .github/scripts/gradle-patience.sh
+
       - name: Key Gradle's dependency cache
         if: matrix.platform == 'android'
         id: gradle-key
@@ -904,6 +910,11 @@ jobs:
       # other jobs that build the template restore
       # (mobile-apps-android-hosts saves its own system's; ruby-spec.yml
       # and installed.yml only restore).
+      # Gradle retries what a repository refused, patiently
+      # (.github/scripts/gradle-patience.sh says how).
+      - name: Make Gradle patient with refused downloads
+        run: .github/scripts/gradle-patience.sh
+
       - name: Key Gradle's dependency cache
         id: gradle-key
         run: echo "agp=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "agp")')" >> "$GITHUB_OUTPUT"
@@ -1087,6 +1098,11 @@ jobs:
       # system it runs on, so each system has a set of its own. A key the
       # cache lacks restores the newest set for the same system and
       # plugin, which is saved again, with what Gradle added, under it.
+      # Gradle retries what a repository refused, patiently
+      # (.github/scripts/gradle-patience.sh says how).
+      - name: Make Gradle patient with refused downloads
+        run: .github/scripts/gradle-patience.sh
+
       - name: Key Gradle's dependency cache
         id: gradle-key
         run: echo "agp=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "agp")')" >> "$GITHUB_OUTPUT"

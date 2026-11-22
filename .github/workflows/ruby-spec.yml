@@ -349,6 +349,11 @@ jobs:
       # CI"). Only restored, so this job's smaller set never takes the key.
       # Before those jobs have saved the key, the newest set for the same
       # system and plugin is restored instead.
+      # Gradle retries what a repository refused, patiently
+      # (.github/scripts/gradle-patience.sh says how).
+      - name: Make Gradle patient with refused downloads
+        run: .github/scripts/gradle-patience.sh
+
       - name: Key Gradle's dependency cache
         id: gradle-key
         run: echo "agp=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "agp")')" >> "$GITHUB_OUTPUT"

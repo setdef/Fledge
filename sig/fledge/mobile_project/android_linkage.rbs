@@ -11,6 +11,14 @@ module Fledge
       def initialize: (readers: Binary::Readers) -> void
 
       def problems: (String project, Array[[String, String, String, String]] judged) -> Array[String]
+
+      def zipped: (String project, String root, Hash[String, String] gem_folders) -> Array[String]
+
+      CPUS: Hash[String, String]
+
+      private def linked_paths: (String root) -> Array[String]
+
+      private def compiled_files: (String root, String folder, Array[String] linked) -> Hash[String, String]
     end
   end
 end

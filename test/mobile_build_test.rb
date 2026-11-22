@@ -280,6 +280,28 @@ class MobileBuildTest < Minitest::Test
       "identifier = com.example.MyApp\n", read("dist/MyApp-android/fledge/fledge.cfg")
   end
 
+  # A gem with no extension that carries a library built for desktop
+  # Linux, which its Ruby would open from fledge.zip on the phone, keeps
+  # the Android app from shipping, named as a desktop's build names it.
+  def test_an_android_app_whose_gem_carries_a_library_for_desktop_linux_cannot_ship
+    TestReaders.need(self, :elf)
+    drawn = FakeGem.build(@gems, "drawn", "1.0.0", files: { "lib/drawn.rb" => "", "lib/libdrawn.x86_64.so" => Binaries.elf(needed: %w[libc.so.6]) })
+    root = gem_project(dependencies: { "drawn" => ">= 0" }, locked: [drawn], platforms: %w[ruby arm64-darwin x86_64-linux aarch64-linux x64-mingw-ucrt])
+
+    _, err, status = build("android", root)
+
+    assert_equal [
+      1,
+      [
+        "fledge build: MyApp can't ship for android:",
+        "fledge build:   drawn 1.0.0's lib/libdrawn.x86_64.so needs libc.so.6, which neither Android, nor Fledge's runtime, nor the " \
+          "app's own native libraries provide, so the app could not load it on a phone. Build the gem so that it carries the library, " \
+          "or links it statically.",
+          ],
+], [status, err.lines.map(&:chomp).grep_v(/\ADownloading /)]
+    refute_path_exists File.join(@dir, "dist/MyApp-android")
+  end
+
   # A gemspec that names a bare CMakeLists.txt is refused by name before
   # anything compiles, whether or not this computer has an NDK. One that
   # names a Rakefile is built (test/mobile_extensions_test.rb, and
@@ -609,6 +631,36 @@ class MobileBuildTest < Minitest::Test
     assert_path_exists File.join(project, "src/main/jniLibs/x86_64/libfledgeffi.llhttp-ffi.ext.x86_64-linux.libllhttp-ext.so")
   end
 
+  # A compiled file a gem's package holds, which reaches the app inside
+  # fledge.zip, where the gem's Ruby opens it by its path, is judged as a
+  # desktop's build judges a gem's file, for the ABI of its processor:
+  # one built for desktop Linux, as raylib-bindings carries one for each
+  # processor, needs glibc's libraries, which no phone has. One that
+  # needs only Android's libraries builds, and so does a file another
+  # system's loader reads, or one fledge.links puts a native library at.
+  def test_an_android_gems_compiled_file_inside_fledge_zip_is_judged_for_its_processor
+    TestReaders.need(self, :elf)
+    gem = "lib/ruby/gems/4.1.0+5/gems/drawn-1.0.0"
+    files = {
+"lib/libdrawn.x86_64.so" => Binaries.elf(needed: %w[libc.so.6]),
+"lib/libdrawn.aarch64.so" => Binaries.elf(needed: %w[libc.so.6 libGLX.so.0], cpu: "aarch64"),
+"lib/libdrawn.arm64.dylib" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib]),
+"lib/linked.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2]),
+}
+    error = assert_raises(Fledge::Error) { android_project_with_gem_files(gem, "drawn 1.0.0", files, links: ["#{gem}/lib/linked.so"]) }
+
+    assert_equal [
+      "Hello can't ship for android:",
+      *[%w[lib/libdrawn.aarch64.so libc.so.6], %w[lib/libdrawn.aarch64.so libGLX.so.0], %w[lib/libdrawn.x86_64.so libc.so.6]].map { |file, library|
+        "  drawn 1.0.0's #{file} needs #{library}, which neither Android, nor Fledge's runtime, nor the app's own native libraries " \
+          "provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically."
+      },
+    ], error.message.lines.map(&:chomp)
+
+    project = android_project_with_gem_files(gem, "drawn 1.0.0", { "lib/libdrawn.x86_64.so" => Binaries.elf(needed: %w[libc.so]) })
+    assert_path_exists File.join(project, "fledge", gem, "lib/libdrawn.x86_64.so")
+  end
+
   # What every target's build of a gem left alike in its folder
   # (MobileExtensions::LeftFiles) joins the gem's files in the app, where
   # the gem's Ruby reads it as under bundle exec, and a file the build
@@ -642,6 +694,23 @@ class MobileBuildTest < Minitest::Test
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find(phone)))
     project = (phone == "ios") ? Fledge::MobileProject::IOS : Fledge::MobileProject::Android
     project.new(app:, runtime:, out: File.join(@dir, "dist"), extensions: FakeExtensions.new(built)).call
+  end
+
+  # Writes an Android project for a script app whose one gem, +label+,
+  # is in +folder+ of the Ruby root with +files+ (each path in the gem
+  # and its content), and whose runtime's fledge.links names each of
+  # +links+, and returns its folder.
+  private def android_project_with_gem_files(folder, label, files, links: [])
+    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
+    entries = [Fledge::Entry.directory(folder), *files.map { |path, content| Fledge::Entry.file("#{folder}/#{path}", content) }]
+    runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
+    unless links.empty?
+      runtime = File.join(@dir, "linked", File.basename(runtime))
+      FileUtils.mkdir_p(File.dirname(runtime))
+      FakeRuntime.write_mobile(File.dirname(runtime), Fledge::MobilePlatform.find("android"),
+        more_links: links.map { |link| "x86_64\tlibfledgeffi.linked.so\t#{link}\n" }.join)
+    end
+    Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(@dir, "dist"), files: entries, gem_folders: { folder => label }).call
   end
 
   # Writes an Android project for a script app whose one extension,

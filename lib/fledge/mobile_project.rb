@@ -117,8 +117,13 @@ module Fledge
     #           (Fledge::AppGems#bundler), or +nil+ for the runtime's.
     # [log] Where to say which of Fledge's files the project's host
     #       replaced, such as <tt>$stderr</tt>, or +nil+ for nowhere.
-    def initialize(app:, runtime:, out:, app_files: {}, files: [], extensions: nil, bundler: nil, log: nil)
+    # [gem_folders] Each gem's folder in ROOT and what a message calls the
+    #               gem (Fledge::AppGems#gem_folders), whose compiled files
+    #               an Android project judges where Ruby opens them from
+    #               ROOT (MobileProject::AndroidLinkage#zipped).
+    def initialize(app:, runtime:, out:, app_files: {}, files: [], extensions: nil, bundler: nil, log: nil, gem_folders: {})
       @app = app
+      @gem_folders = gem_folders
       @bundler = bundler
       @runtime = runtime
       @out = out

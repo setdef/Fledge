@@ -119,10 +119,11 @@ module FakeRuntime
   # AAR beside one Ruby, with fledge.links naming the one extension of
   # Ruby's own its AAR holds for each ABI (ANDROID_LINKS), unless
   # +links+ is false, as 0.17.0's runtime, which linked them in, has
-  # none; each with its CA certificates and notices. An iOS runtime
+  # none, and with +more_links+ after them; each with its CA certificates
+  # and notices. An iOS runtime
   # whose Ruby is +dynamic+ holds FledgeRuby.framework in each slice, and
   # lists no extensions, whose frameworks only Xcode's tools could make.
-  def self.write_mobile(directory, phone, links: true, dynamic: false)
+  def self.write_mobile(directory, phone, links: true, dynamic: false, more_links: "")
     top = File.basename(Fledge::Runtimes.file_name(phone), Fledge::Runtimes::EXTENSION)
     path = File.join(directory, Fledge::Runtimes.file_name(phone))
     rubies = (phone.name == "ios") ? %w[ios-arm64 ios-arm64-simulator].map { |slice| "FledgeRuby.xcframework/#{slice}/" } : [""]
@@ -139,7 +140,7 @@ module FakeRuntime
       end,
       *((phone.name == "ios") ? [] : [Fledge::Entry.file("include/fledge_ruby.h", "/* fledge_ruby.h */\n")]),
       *((phone.name == "ios") ? [] : [Fledge::Entry.file("bin/rake", "#!/bin/sh\n# rake's wrapper\n", mode: 0o755)]),
-      *((phone.name == "ios" || !links) ? [] : [Fledge::Entry.file("fledge.links", ANDROID_LINKS)]),
+      *((phone.name == "ios" || !links) ? [] : [Fledge::Entry.file("fledge.links", ANDROID_LINKS + more_links)]),
       Fledge::Entry.file("notices/NOTICES.txt", "Fledge's runtime for #{phone}\n"),
     ])
   end

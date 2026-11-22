@@ -278,8 +278,9 @@ module Fledge
         end
       end
 
-      # Refuses the project when a native library Fledge put in it needs
-      # one that neither Android, nor the runtime, nor the app carries
+      # Refuses the project when a native library Fledge put in it, or a
+      # compiled file a gem keeps in its folder in ROOT, needs one that
+      # neither Android, nor the runtime, nor the app carries
       # (AndroidLinkage), or when its <tt>build.gradle</tt> keeps Ruby's
       # own extensions or the app's built as files from being extracted
       # (AndroidPackaging), read once the host's files are in place, since
@@ -287,8 +288,9 @@ module Fledge
       # The rest is Gradle's to build.
       private def finish(project)
         judged = @judged || [] # : Array[[String, String, String, String]]
-        linkage = judged.empty? ? [] : AndroidLinkage.new(readers:).problems(project, judged) # : Array[String]
-        found = [*packaging_problem(project), *linkage]
+        checker = AndroidLinkage.new(readers:)
+        linkage = judged.empty? ? [] : checker.problems(project, judged) # : Array[String]
+        found = [*packaging_problem(project), *linkage, *checker.zipped(project, ruby_root(project), @gem_folders)]
         raise Error, "#{@app.name} can't ship for android:\n#{found.map { |problem| "  #{problem}" }.join("\n")}" unless found.empty?
       end
 

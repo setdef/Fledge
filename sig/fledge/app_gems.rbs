@@ -31,6 +31,8 @@ module Fledge
     attr_reader visual_c_runtime: Array[String]
     attr_reader warnings: Array[String]
 
+    attr_reader gem_folders: Hash[String, String]
+
     def carried_libraries: () -> Hash[String, String]
 
     private def locked_bundler: (RuntimeContents runtime, String running) -> LockedGem?

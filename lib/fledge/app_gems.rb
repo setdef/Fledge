@@ -96,6 +96,7 @@ module Fledge
       @carried = [] # : Array[Entry]
       @visual_c_runtime = [] # : Array[String]
       @warnings = [] # : Array[String]
+      @gem_folders = {} # : Hash[String, String]
     end
 
     # What the app's +app+ folder holds in place of the project's own
@@ -157,7 +158,10 @@ module Fledge
         stubs = executables(packages, runtime)
         desktop_problems(packages, platform, runtime)
       end
-      packages = mark_extensions(packages, platform, runtime) if platform.is_a?(MobilePlatform)
+      if platform.is_a?(MobilePlatform)
+        @gem_folders = packages.to_h { |gem, package| [package.installed_path(runtime.gem_dir), gem.to_s] }
+        packages = mark_extensions(packages, platform, runtime)
+      end
       entries = [*packages.flat_map { |gem, package| entries_for(gem, package, runtime.gem_dir) }, *stubs, *@carried]
       entries = entries.uniq(&:path).reject { |entry| runtime.plugins.include?(entry.path) }
       carrying = carrying(platform, runtime, entries)
@@ -183,6 +187,26 @@ module Fledge
     # newer glibc than the runtime's, which the app then needs. Empty
     # before #for.
     attr_reader :warnings
+
+    # Each gem's folder in a phone's Ruby root, by its path there, and
+    # what a message calls the gem (Fledge::LockedGem#to_s), for the
+    # phone #for last shipped to: an Android project judges the compiled
+    # files a gem keeps there (MobileProject::AndroidLinkage#zipped).
+    # Empty before #for, and after it for a desktop.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   gems.for(Fledge::MobilePlatform.find("android"), runtime: contents)
+    #   gems.gem_folders # => { "lib/ruby/gems/4.1.0+5/gems/drawn-1.0.0" => "drawn 1.0.0" }
+    #--
+    # SPDX-SnippetEnd
+    #++
+    attr_reader :gem_folders
 
     # The version of the Bundler #for added to the runtime, which the app
     # runs with in place of the runtime's own, as <tt>bundle exec</tt>

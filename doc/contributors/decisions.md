@@ -631,3 +631,9 @@ The orchestrating agent received these words first-hand from the maintainer.
 > Isn't that what I said in the first place?
 
 *Governs:* Fledge takes its macOS and glibc Linux Ruby from jdx/ruby and does not build its own for them because that project's libraries lag. Depending on a widely used project is preferred to depending on Fledge's own unproven build automation. The lag is a stated dependency, the same every mise user has. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "Why Fledge builds no Ruby for macOS and glibc Linux".
+
+> > Nothing says whether the candidate may carry the Ruby preview or must wait for Ruby 4.1.0. The docs say 1.0 waits for it.
+>
+> 1.0.0 waits for it, but the 0.X.Y that serves as the release candidate does NOT wait for it. In an ideal world, one where nothing between the dev ruby on the day 0.X.Y releases breaks Fledge, Fledge has no changes between 0.X.Y an 1.0.0 except pointing at the Ruby 4.1.0 release on Christmas Day. (In the real world, there are likely a couple tweaks as new daily builds arrive.)
+
+*Governs:* the release that serves as the candidate carries whatever Ruby the runtimes carry on the day it is cut, today Ruby 4.1's preview, and RubyInstaller's head build on Windows. 1.0.0 waits for Ruby 4.1.0, whose release Ruby expects on Christmas Day, as every year's. Between the candidate and 1.0.0 nothing is meant to change but the pin to Ruby 4.1.0 and what newer builds of Ruby force. *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "The day Ruby 4.1.0 appears".

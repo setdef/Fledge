@@ -1,0 +1,35 @@
+/*
+ * SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+ * SPDX-License-Identifier: MIT-0
+ */
+
+/* Light or dark as the system is, in the system's font and colors. */
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  --line: color-mix(in srgb, GrayText 35%, transparent);
+}
+
+body { max-width: 40rem; margin: 1.5rem auto; padding: 0 1rem; line-height: 1.45; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+h1 { margin: 0 0 1rem; }
+h2 { font-size: 1rem; color: GrayText; margin: 1.5rem 0 0.25rem; }
+
+.loans { list-style: none; padding: 0; margin: 0; }
+.loans li { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--line); }
+.loans .since { display: block; color: GrayText; font-size: 0.9rem; }
+.loans .note { margin: 0.25rem 0 0; white-space: pre-wrap; }
+.loans.back li { color: GrayText; padding: 0.4rem 0; }
+.actions { display: flex; align-items: center; gap: 0.75rem; white-space: nowrap; }
+.empty { color: GrayText; }
+
+form { display: grid; gap: 0.35rem; }
+form label { font-weight: 600; margin-top: 0.5rem; }
+input, textarea, button, .button { font: inherit; }
+input[type="text"], input[type="date"], textarea { padding: 0.4rem; border: 1px solid var(--line); border-radius: 0.3rem; }
+button, .button, input[type="submit"] {
+  padding: 0.35rem 0.8rem; border: 1px solid var(--line); border-radius: 0.3rem;
+  background: Canvas; color: CanvasText; cursor: pointer; text-decoration: none;
+}
+.error { color: #c0392b; margin: 0; font-size: 0.9rem; }
+.quiet { margin-top: 1.5rem; }

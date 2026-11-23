@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# Puts in vendor/cache each .gem file of Tokra and ferro-url that
+# Gemfile.lock names, downloaded from the GitHub release it was published
+# on, since no gem server has them, and refuses a file whose SHA-256 is
+# not the one Gemfile.lock's CHECKSUMS holds for it. A file already there
+# with that SHA-256 is kept. Run it before bundle install or fledge build.
+#
+#   ruby bin/fetch-gems
+
+require "digest"
+require "fileutils"
+require "net/http"
+
+# Where each release puts a gem's files, by the gem's version and file.
+RELEASES = {
+  "tokra" => "https://github.com/setdef/Tokra/releases/download/tokra/v%<version>s/%<file>s",
+  "ferro-url" => "https://github.com/setdef/Ferro/releases/download/ferro-url/v%<version>s/%<file>s",
+}.freeze
+
+# The body at +url+, after GitHub's redirects to where it keeps the file.
+def download(url, redirects = 5)
+  response = Net::HTTP.get_response(URI(url))
+  return response.body if response.is_a?(Net::HTTPSuccess)
+  return download(response["location"], redirects - 1) if response.is_a?(Net::HTTPRedirection) && redirects.positive?
+
+  abort "fetch-gems: #{url} answered #{response.code} #{response.message}"
+end
+
+root = File.expand_path("..", __dir__)
+cache = File.join(root, "vendor", "cache")
+# Each CHECKSUMS line: NAME (VERSION or VERSION-PLATFORM) sha256=HEX.
+checksums = File.read(File.join(root, "Gemfile.lock")).scan(/^  (\S+) \((\S+)\) sha256=(\h{64})$/)
+wanted = checksums.select { |name, _, _| RELEASES.key?(name) }
+abort "fetch-gems: Gemfile.lock holds no checksum of #{RELEASES.keys.join(' or ')}" if wanted.empty?
+
+FileUtils.mkdir_p(cache)
+wanted.each do |name, version_platform, sha256|
+  file = "#{name}-#{version_platform}.gem"
+  path = File.join(cache, file)
+  next puts("fetch-gems: #{file} is here") if File.file?(path) && Digest::SHA256.file(path).hexdigest == sha256
+
+  url = format(RELEASES.fetch(name), version: version_platform.split("-").first, file:)
+  body = download(url)
+  got = Digest::SHA256.hexdigest(body)
+  abort "fetch-gems: #{url} has SHA-256 #{got}, and Gemfile.lock says #{sha256}" unless got == sha256
+
+  File.binwrite(path, body)
+  puts "fetch-gems: #{file} from #{url}"
+end

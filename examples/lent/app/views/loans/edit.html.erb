@@ -1,0 +1,7 @@
+<%#
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+%>
+<h1><%= @loan.thing_was %></h1>
+<%= render "form", loan: @loan %>
+<%= button_to "Forget it", loan_path(@loan), method: :delete, class: "quiet" %>

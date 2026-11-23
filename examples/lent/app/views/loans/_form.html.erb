@@ -1,0 +1,25 @@
+<%#
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+%>
+<%= form_with model: loan do |form| %>
+  <%= form.label :thing, "What" %>
+  <%= form.text_field :thing, required: true %>
+  <% loan.errors.full_messages_for(:thing).each do |message| %><p class="error"><%= message %></p><% end %>
+
+  <%= form.label :borrower, "To whom" %>
+  <%= form.text_field :borrower, required: true %>
+  <% loan.errors.full_messages_for(:borrower).each do |message| %><p class="error"><%= message %></p><% end %>
+
+  <%= form.label :lent_on, "Since" %>
+  <%= form.date_field :lent_on, required: true, max: Date.today %>
+  <% loan.errors.full_messages_for(:lent_on).each do |message| %><p class="error"><%= message %></p><% end %>
+
+  <%= form.label :note, "Note" %>
+  <%= form.text_area :note, rows: 3 %>
+
+  <div class="actions">
+    <%= form.submit "Save" %>
+    <%= link_to "Cancel", root_path %>
+  </div>
+<% end %>

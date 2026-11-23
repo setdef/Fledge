@@ -486,9 +486,9 @@ mobile:
     url: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
     sha256: a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98
   libyaml:
-    version: 0.2.5
-    url: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
-    sha256: c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4
+    version: 0.2.6
+    url: https://github.com/yaml/libyaml/releases/download/0.2.6/yaml-0.2.6.tar.gz
+    sha256: 43b393a117bd4fe39812fddc94e3d654359a3ae05653dcf0110a1122d1747e61
   libffi:
     version: 3.5.2
     url: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
@@ -551,9 +551,9 @@ musl-ruby:
     url: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
     sha256: a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98
   libyaml:
-    version: 0.2.5
-    url: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
-    sha256: c642ae9b75fee120b2d96c712538bd2cf283228d2337df2cf2988e3c02678ef4
+    version: 0.2.6
+    url: https://github.com/yaml/libyaml/releases/download/0.2.6/yaml-0.2.6.tar.gz
+    sha256: 43b393a117bd4fe39812fddc94e3d654359a3ae05653dcf0110a1122d1747e61
   libffi:
     version: 3.5.2
     url: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz

@@ -443,10 +443,10 @@ components:
 
   - id: libyaml-musl
     name: libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems
-    version: 0.2.5
+    version: 0.2.6
     license: MIT
     kind: program
-    download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    download: https://github.com/yaml/libyaml/releases/download/0.2.6/yaml-0.2.6.tar.gz
     notice: libyaml
     ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against"
     platforms: [x86_64-linux-musl, aarch64-linux-musl]
@@ -454,20 +454,20 @@ components:
     binaries: ["{prefix}lib/libyaml.a"]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
-        evidence: "0.2.5\0"
+        evidence: "0.2.6\0"
 
   - id: libyaml-mobile
     name: libyaml, compiled into the mobile runtimes' psych extension
-    version: 0.2.5
+    version: 0.2.6
     license: MIT
     kind: program
-    download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    download: https://github.com/yaml/libyaml/releases/download/0.2.6/yaml-0.2.6.tar.gz
     notice: libyaml
     ships: compiled into lib/ruby/{abi}/{arch}/psych.{so}
     platforms: [ios, android]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
-        evidence: "0.2.5\0"
+        evidence: "0.2.6\0"
 
   - id: libyaml-dll
     name: libyaml (libyaml-0-2.dll)

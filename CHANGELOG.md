@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In the SBOM published beside each runtime and carried in its `notices/`, a component that another build of a runtime also has is named for what sets it apart, so each package's `SPDXID` names one component of one build: `SPDXRef-Package-openssl-musl` and `SPDXRef-Package-openssl-fledge` where both were `SPDXRef-Package-openssl`, and so for libyaml, zlib, and libffi on `x86_64-linux-musl`, GNU MP and zlib's `libz.dll` on `aarch64-mingw-ucrt`, Ruby on Windows, Fledge's mobile code, GCC's runtime on musl, and Rust's standard library.
 - In the macOS and glibc Linux runtimes' `NOTICES.txt` and SBOM, jdx/ruby's own code is versioned by the build of its Ruby the runtime takes, `4.1.0-preview1-1`, where it was `4.1.0-preview1`, and its libyaml is `SPDXRef-Package-libyaml-jdx`, apart from the libyaml of Fledge's own build of Ruby.
 - On Windows, `fledge build` counts a DLL of the runtime's as provided only where the app's Ruby looks for it, in `ruby_builtin_dlls`, Ruby's architecture folder, and Ruby's own DLL, and refuses a gem that needs one the runtime holds only elsewhere, such as beside another gem's extension, which before built an app that stopped at `require`.
+- libyaml 0.2.6, from 0.2.5.
 
 ### Fixed
 

@@ -23,8 +23,9 @@
 #   alpine-packages.sh deliver  what Delivery checks a built app with, on
 #                               a computer with no Ruby: script(1) and
 #                               pgrep for the console,
-#                               desktop-file-validate, and file, which
-#                               reads an icon's size
+#                               desktop-file-validate; file, which
+#                               reads an icon's size; and curl, which
+#                               asks a server app as a browser would
 #   alpine-packages.sh parity   what the parity check needs beyond apps:
 #                               GLib's gio, which launches a windowed
 #                               app's desktop entry as a desktop does
@@ -41,7 +42,7 @@ set -eu
 case "${1:?usage: alpine-packages.sh build|apps|deliver|parity}" in
   build) names="build-base gcc musl-dev make linux-headers rust cargo perl binutils file tar xz zstd" ;;
   apps) names="git binutils tar squashfs-tools build-base gcc musl-dev make linux-headers pkgconf" ;;
-  deliver) names="util-linux-misc procps-ng desktop-file-utils file" ;;
+  deliver) names="util-linux-misc procps-ng desktop-file-utils file curl" ;;
   parity) names="glib" ;;
   *)
     echo "alpine-packages.sh: unknown role $1" >&2

@@ -236,6 +236,7 @@ alpine-packages:
   binutils: 2.45.1-r1
   build-base: 0.5-r4
   cargo: 1.96.1-r0
+  curl: 8.23.0-r0
   desktop-file-utils: 0.28-r0
   file: 5.47-r2
   gcc: 15.2.0-r5

@@ -19,9 +19,12 @@
 # after stay unreleased.
 #
 #   ruby tasks/release_commit.rb next
+#   ruby tasks/release_commit.rb pending FILE
 #   ruby tasks/release_commit.rb write VERSION [--date DATE] [--released FILE]
 #
-# +next+ prints the next version. +write+ writes VERSION, dated DATE
+# +next+ prints the next version. +pending+ exits 0 when the CHANGELOG
+# in FILE has entries under [Unreleased] and 1, saying so, when it has
+# none. +write+ writes VERSION, dated DATE
 # (today, in UTC, by default); with --released, FILE holds a CHANGELOG
 # as it stood at the commit the release was made from, and only its
 # unreleased entries move.
@@ -42,6 +45,10 @@ class ReleaseCommit
     body[0, body.index(/^## \[/) || body.index(/^\[Unreleased\]:/) || body.length]
   end
 
+  # Whether +text+, a CHANGELOG, has an entry under [Unreleased], which
+  # a release is made to say.
+  def self.pending?(text) = unreleased(text).match?(/^- /)
+
   def initialize(root:)
     @root = root
   end
@@ -59,7 +66,7 @@ class ReleaseCommit
   # itself, are a person's to name.
   def next_version
     body = ReleaseCommit.unreleased(changelog)
-    raise Error, "CHANGELOG.md has nothing under [Unreleased]: there is nothing to release" unless body.match?(/^- /)
+    raise Error, "CHANGELOG.md has nothing under [Unreleased]: there is nothing to release" unless ReleaseCommit.pending?(changelog)
 
     major, minor, patch = numbers
     breaking = body.match?(/^- (\*\*)?Breaking:/) || body.match?(/^### Removed$/)
@@ -129,12 +136,15 @@ if $PROGRAM_NAME == __FILE__
   begin
     case ARGV.shift
     when "next" then puts release.next_version
+    when "pending"
+      file = ARGV.shift or abort "usage: ruby tasks/release_commit.rb pending FILE"
+      ReleaseCommit.pending?(File.read(file)) or raise ReleaseCommit::Error, "CHANGELOG.md has nothing under [Unreleased]: there is nothing to release"
     when "write"
       version = ARGV.shift or abort "usage: ruby tasks/release_commit.rb write VERSION [--date DATE] [--released FILE]"
       date = ARGV.include?("--date") ? ARGV[ARGV.index("--date") + 1] : Time.now.utc.strftime("%Y-%m-%d")
       released = ReleaseCommit.unreleased(File.read(ARGV[ARGV.index("--released") + 1])) if ARGV.include?("--released")
       release.write(version, date:, released:)
-    else abort "usage: ruby tasks/release_commit.rb next | write VERSION [--date DATE] [--released FILE]"
+    else abort "usage: ruby tasks/release_commit.rb next | pending FILE | write VERSION [--date DATE] [--released FILE]"
     end
   rescue ReleaseCommit::Error => e
     abort "#{'::error::' if ENV['GITHUB_ACTIONS']}#{e.message}"

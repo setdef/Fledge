@@ -210,7 +210,15 @@ jobs:
             since=$(gh run view "$GITHUB_RUN_ID" --json createdAt --jq .createdAt)
             commit=$(git log --format=%H --author='github-actions\[bot\]' --since="$since" --grep='^chore: move ' -1)
           fi
-          echo "Release: ${commit:-nothing landed}"
+          # A move of pins that ship nothing adds no CHANGELOG line, and
+          # a release of nothing fails (releases.md, "How a release is
+          # made"): none is started unless the picked commit has an
+          # unreleased entry from before.
+          if [ -n "$commit" ]; then
+            git show "$commit:CHANGELOG.md" > "$RUNNER_TEMP/changelog.md"
+            ruby tasks/release_commit.rb pending "$RUNNER_TEMP/changelog.md" || commit=
+          fi
+          echo "Release: ${commit:-nothing to release}"
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
 
   release:

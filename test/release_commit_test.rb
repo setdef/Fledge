@@ -62,6 +62,14 @@ class ReleaseCommitTest < Minitest::Test
     end
   end
 
+  # A move of pins that ship nothing adds no CHANGELOG line, so a
+  # release picked on it has nothing to say unless something else is
+  # unreleased; the pin watch asks before it starts one.
+  def test_a_changelog_is_pending_only_when_it_has_unreleased_entries
+    assert ReleaseCommit.pending?(CHANGELOG)
+    assert_equal false, ReleaseCommit.pending?(CHANGELOG.sub(/### Changed.*?(?=## \[0\.17\.0\])/m, ""))
+  end
+
   def test_writes_the_version_everywhere_a_release_names_it_and_dates_the_changelog
     in_tree do |release, root|
       release.write("0.17.1", date: "2026-11-23")

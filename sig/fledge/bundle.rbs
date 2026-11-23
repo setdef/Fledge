@@ -40,6 +40,8 @@ module Fledge
 
     private def empty_checksum_advice: (String message) -> String
 
+    private def no_gem_file_advice: (String name) -> String
+
     private def at_project: [T] (String gemfile) { () -> T } -> T
 
     private def checksums: (String text) -> Hash[String, String]

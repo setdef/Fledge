@@ -167,6 +167,8 @@ CHECKSUMS
 
 If the gem's publisher lists a SHA-256 for each file, compare it with yours. Bundler keeps the checksums you write, and Bundler and Fledge both refuse a `.gem` that does not match.
 
+A gem with no file in `vendor/cache` has nothing to hash, and `fledge build` says so. The usual cause is a default gem of a preview Ruby, such as `erb` on Ruby 4.1.0-preview1, whose version no gem server holds yet, so `bundle lock` leaves its entry empty. Pin the gem in your `Gemfile` to a released version, such as `gem "erb", "~> 6.0.7"`, and run `bundle lock` again.
+
 ## Licenses
 
 Your gems' licenses are yours to read, and so are the licenses of the libraries a Mac app carries. Fledge ships every gem you lock, and every library you list, whatever its license, and says nothing about it. For what Fledge itself puts in an app, see [What ships in your app](licensing.md).

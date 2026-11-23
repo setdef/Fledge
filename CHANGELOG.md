@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- When `Gemfile.lock` has an empty `CHECKSUMS` entry for a gem that `vendor/cache` has no file of, such as the default gem a preview Ruby ships ahead of every gem server, `fledge build` says to pin the gem to a released version, not to hash a file that does not exist.
 - On macOS and Linux, glibc and musl, a gem whose extension links OpenSSL or libyaml, such as Puma, compiles against the OpenSSL and libyaml the runtime's Ruby was built with, which the runtime now carries for `fledge build` and no app holds: it links them in, so it is no longer refused for the computer's `libssl.so.3` or Homebrew's `libssl.dylib`, no longer builds without TLS where the computer has no OpenSSL headers, and needs no `libssl-dev`, Homebrew, or `fledge.yml` key.
 - A gem `fledge build` compiles no longer links what the Ruby running `fledge build` added to `PKG_CONFIG_PATH`, as jdx/ruby, mise's default Ruby, adds its own static OpenSSL there, so what a gem links no longer depends on which Ruby ran the build.
 - `fledge build` takes a gemspec that needs what the `Gemfile` defined before its `gemspec` line, such as a `Gemfile` that requires `lib/my_cool_app/version` for a gemspec that names `MyCoolApp::VERSION`, as `bundle exec` does; before, it refused it with "Ruby can't evaluate".

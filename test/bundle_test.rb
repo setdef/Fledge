@@ -342,6 +342,8 @@ class BundleTest < Minitest::Test
     root = FakeProject.write(@dir, dependencies: { "native" => ">= 0" }, locked: [@linux, @darwin])
     lockfile = File.join(root, "Gemfile.lock")
     File.write(lockfile, File.read(lockfile).sub(" sha256=#{@linux.sha256}", ""))
+    FileUtils.mkdir_p(File.join(root, "vendor", "cache"))
+    File.write(File.join(root, "vendor", "cache", "native-1.0.gem"), "")
 
     error = assert_raises(Fledge::Error) { bundle_at(root) }
 
@@ -349,6 +351,21 @@ class BundleTest < Minitest::Test
     assert error.message.end_with?("\nbundle lock --add-checksums fills a gem's entry only for a build Bundler installed on this computer, " \
       "or one its gem server lists a checksum for. Write the SHA-256 of each of native's .gem files after its entry in Gemfile.lock's " \
       "CHECKSUMS section, as sha256=HEX (shasum -a 256 vendor/cache/native-*.gem prints them), then build again."), error.message
+  end
+
+  # A default gem's own version, which a preview Ruby ships ahead of
+  # every gem server, has no .gem file anywhere to hash.
+  def test_an_empty_checksum_entry_with_nothing_to_hash_says_to_pin_a_released_version
+    root = FakeProject.write(@dir, dependencies: { "native" => ">= 0" }, locked: [@linux, @darwin])
+    lockfile = File.join(root, "Gemfile.lock")
+    File.write(lockfile, File.read(lockfile).sub(" sha256=#{@linux.sha256}", ""))
+
+    error = assert_raises(Fledge::Error) { bundle_at(root) }
+
+    assert_includes error.message, "Your lockfile has an empty CHECKSUMS entry for \"native\""
+    assert_includes error.message, "vendor/cache has no native .gem file to hash"
+    assert_includes error.message, "Pin native in the Gemfile to a released version (gem \"native\", \"~> X.Y\""
+    refute_includes error.message, "shasum"
   end
 
   def test_a_gemfile_without_a_lockfile_says_to_lock_it

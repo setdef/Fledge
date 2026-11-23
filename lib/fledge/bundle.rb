@@ -193,13 +193,24 @@ module Fledge
     # a checksum only for a build installed on this computer, or takes
     # one from the gem server (Bundler::Definition#add_checksums at
     # Bundler 4.0.20), so a gem only in vendor/cache keeps an empty entry
-    # for each other platform's build.
+    # for each other platform's build. A gem with no .gem file in
+    # vendor/cache has nothing to hash, as a default gem's own version
+    # has none when a preview Ruby ships it ahead of every gem server,
+    # so the advice for it is to lock a version a gem server holds.
     private def empty_checksum_advice(message)
       name = message[/empty CHECKSUMS entry for "([^"]+)"/, 1] or return ""
+      return no_gem_file_advice(name) if Dir.glob(File.join(File.dirname(@lockfile), "vendor", "cache", "#{name}-*.gem")).empty?
 
       "\nbundle lock --add-checksums fills a gem's entry only for a build Bundler installed on this computer, or one its gem server " \
         "lists a checksum for. Write the SHA-256 of each of #{name}'s .gem files after its entry in #{lockfile_name}'s CHECKSUMS " \
         "section, as sha256=HEX (shasum -a 256 vendor/cache/#{name}-*.gem prints them), then build again."
+    end
+
+    private def no_gem_file_advice(name)
+      "\nNo gem server lists a checksum for that version of #{name}, and vendor/cache has no #{name} .gem file to hash. A version " \
+        "only the Ruby itself ships, as a default gem, is one no gem server holds, as a preview Ruby's can be. Pin #{name} in the " \
+        "Gemfile to a released version (gem \"#{name}\", \"~> X.Y\", with the version a gem server lists), run bundle lock, then " \
+        "build again."
     end
 
     # The groups the app sets up, as Bundler sets them up

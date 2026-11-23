@@ -175,7 +175,7 @@ components:
     files:
       - {glob: "{prefix}lib/ruby/{abi}/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
 
-  # The mobile runtimes' one library (ADR 097): Fledge's embedding API
+  # The mobile runtimes' one library (ADR 099): Fledge's embedding API
   # (runtime/mobile/), compiled with Ruby into the binary of
   # FledgeRuby.framework in each slice of the iOS XCFramework, beside
   # the framework's Info.plist and module map, and into

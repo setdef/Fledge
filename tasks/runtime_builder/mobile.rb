@@ -12,7 +12,7 @@ require_relative "recipe"
 
 class RuntimeBuilder
   # iOS and iPadOS, and Android: CRuby built from its own source for a
-  # phone, with every extension linked in (ADR 097), and with YJIT and
+  # phone, with every extension linked in (ADR 099), and with YJIT and
   # ZJIT where the phone lets an app run code it writes (Android;
   # jit_options).
   #

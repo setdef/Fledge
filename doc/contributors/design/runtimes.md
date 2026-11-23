@@ -604,7 +604,7 @@ sha256sum rubyinstaller-head-*   # the SHA-256s in the release's notes
 
 ## Testing against Ruby's master
 
-A release pins one Ruby, and until the next one is released nothing a runtime builds meets a change in Ruby's master. The phone runtimes edit Ruby's source and link bundled gems' extensions by hand (ADR 097), the musl runtimes build Ruby from source, the launcher follows Ruby's `main.c`, and the parity and ruby/spec checks compare against Ruby itself: each can break on a commit to Ruby's master, and without a run against it the first day they would meet that commit is the day of the release, and Fledge is to be tested against a recent Ruby on every platform (decisions.md, 2026-11-21). `.github/workflows/ruby-master.yml` runs every night, at 20:43 UTC, and by hand (`gh workflow run ruby-master.yml`). It changes no pin on trunk, and no release carries what it builds.
+A release pins one Ruby, and until the next one is released nothing a runtime builds meets a change in Ruby's master. The phone runtimes edit Ruby's source and link bundled gems' extensions by hand (ADR 099), the musl runtimes build Ruby from source, the launcher follows Ruby's `main.c`, and the parity and ruby/spec checks compare against Ruby itself: each can break on a commit to Ruby's master, and without a run against it the first day they would meet that commit is the day of the release, and Fledge is to be tested against a recent Ruby on every platform (decisions.md, 2026-11-21). `.github/workflows/ruby-master.yml` runs every night, at 20:43 UTC, and by hand (`gh workflow run ruby-master.yml`). It changes no pin on trunk, and no release carries what it builds.
 
 ### Where a recent Ruby comes from
 

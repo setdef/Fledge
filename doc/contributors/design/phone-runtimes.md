@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Phone Runtimes
 
-This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, and what a phone runtime's licenses are. ADR 097 records why a phone's Ruby is a library Fledge builds from source, and why it was static on iOS until 0.17.0; "Ruby's extensions on iOS", below, says why it no longer is; the rest of the design, and why each part is as it is, is here. The projects `fledge build` writes around a runtime, and what CI checks before a store would, are `doc/contributors/design/phone-projects.md`. What a developer does with the project is in `doc/phones.md`; this document adds the internals.
+This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, and what a phone runtime's licenses are. ADR 099 records why a phone's Ruby is a library Fledge builds from source, and why it was static on iOS until 0.17.0; "Ruby's extensions on iOS", below, says why it no longer is; the rest of the design, and why each part is as it is, is here. The projects `fledge build` writes around a runtime, and what CI checks before a store would, are `doc/contributors/design/phone-projects.md`. What a developer does with the project is in `doc/phones.md`; this document adds the internals.
 
 ## Targets
 

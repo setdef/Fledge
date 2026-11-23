@@ -61,9 +61,11 @@ class PinMove
     @entries.fetch(name)["hold"]
   end
 
-  # The names of the upstreams a move may change.
+  # The names of the upstreams a move may change: those not held, and
+  # those whose hold is for a new release alone, whose other builds of
+  # the pinned release move (rebuild in runtime/upstreams.yml).
   def movable
-    @entries.keys.reject { |name| hold(name) }
+    @entries.keys.reject { |name| hold(name) && !@entries.fetch(name)["rebuild"] }
   end
 
   # Moves the pins of +finding+, a PinWatch::Finding or its report's
@@ -72,12 +74,11 @@ class PinMove
   def call(finding)
     finding = finding.to_h
     name = finding.fetch("name")
-    raise Error, "#{name} is held: #{hold(name)}" if hold(name)
-
     entry = @entries.fetch(name)
     upstream = PinWatch::Upstream.from(name, entry)
     from = finding.fetch("current")
     to = finding.fetch("newer")
+    raise Error, "#{name} is held: #{hold(name)}" if hold(name) && !upstream.rebuild?(to, from)
     before = @texts.dup
     changed = {}
     parts(entry, upstream, from, to).each do |part, named, old, new|
@@ -277,7 +278,7 @@ class PinMove
   # GitHub's listing escapes an asset's URL (LLVM's clang+llvm as
   # clang%2Bllvm), so URLs are compared as they read unescaped.
   private def digest(url, upstream)
-    asset = JSON.parse(@fetch.call(upstream.url)).flat_map { |release| release.fetch("assets") }
+    asset = JSON.parse(upstream.listing { |url| @fetch.call(url) }).flat_map { |release| release.fetch("assets") }
       .find { |candidate| URI.decode_uri_component(candidate.fetch("browser_download_url")) == URI.decode_uri_component(url) }
     raise Error, "#{upstream.url} lists no asset #{url}" unless asset
 

@@ -135,11 +135,18 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   end
 
   # Where one input is released, as runtime/upstreams.yml says.
-  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships, :hold, :package)
+  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships, :hold, :package, :rebuild)
+    # How many releases GitHub lists on one page at most.
+    PAGE = 100
+
+    # How many pages of releases are read at most, past which an upstream
+    # lists more than the watch can know it read whole.
+    PAGES = 20
+
     # The upstream runtime/upstreams.yml names +name+ with +entry+.
     def self.from(name, entry)
       if (repository = entry["github"])
-        url = "https://api.github.com/repos/#{repository}/releases?per_page=100"
+        url = "https://api.github.com/repos/#{repository}/releases?per_page=#{PAGE}"
         pattern = entry.fetch("tag")
       elsif (url = entry["apk"])
         pattern = "\\A\\z"
@@ -150,7 +157,8 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       current = entry["current"] && Regexp.new(entry["current"])
       new(name:, pins: entry.fetch("pins"), field: entry.fetch("field", "version"), current:, url:,
         pattern: Regexp.new(pattern, Regexp::MULTILINE), line: entry["line"], ships: entry.fetch("ships", true), hold: entry["hold"],
-        package: entry["package"] && AlpinePackage.new(name: entry["package"], indexes: AlpinePackage.indexes(url, entry)))
+        package: entry["package"] && AlpinePackage.new(name: entry["package"], indexes: AlpinePackage.indexes(url, entry)),
+        rebuild: entry["rebuild"] && Regexp.new(entry["rebuild"]))
     end
 
     # Whether the versions come from GitHub's list of releases.
@@ -158,9 +166,40 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       url.start_with?("https://api.github.com/")
     end
 
-    # Every version the upstream's answer +body+ lists.
-    def versions(body)
-      found = github? ? tags(body) : body.scan(pattern).map { |match| match[pattern.names.index("version")] }
+    # Whether +version+ is another build of the release the pin's version
+    # +current+ is a build of: the rebuild pattern's +of+ capture takes
+    # the same release from both, as 4.1.0-preview1 from jdx/ruby's
+    # 4.1.0-preview1-1 and 4.1.0-preview1-2.
+    def rebuild?(version, current)
+      return false unless rebuild
+
+      of = current[rebuild, "of"]
+      !of.nil? && version[rebuild, "of"] == of
+    end
+
+    # What the upstream answers, asking +answer+ for each URL. GitHub lists
+    # releases newest first, a page at a time, and one rebuild of every
+    # release an upstream has can list more than a page above the pin's,
+    # so for an upstream with rebuild every page is read and joined, until
+    # one lists fewer than a page holds.
+    def listing(&answer)
+      return answer.call(url) unless rebuild && github?
+
+      listed = []
+      (1..PAGES).each do |page|
+        releases = JSON.parse(answer.call((page == 1) ? url : "#{url}&page=#{page}"))
+        listed.concat(releases)
+        return JSON.generate(listed) if releases.size < PAGE
+      end
+      raise Error, "#{url} lists more than #{PAGES} pages of releases"
+    rescue JSON::ParserError => e
+      raise Error, "#{url} answered with no JSON: #{e.message}"
+    end
+
+    # Every version the upstream's answer +body+ lists, for a pin that
+    # holds +current+.
+    def versions(body, current = nil)
+      found = github? ? tags(body, current) : body.scan(pattern).map { |match| match[pattern.names.index("version")] }
       raise Error, "#{url} lists no version that #{pattern.source} matches" if found.empty?
 
       found.uniq
@@ -168,19 +207,27 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
 
     # The day each version the answer +body+ lists came out, as GitHub
     # dates a release; a page dates none.
-    def dates(body)
+    def dates(body, current = nil)
       return {} unless github?
 
-      releases(body).to_h { |version, release| [version, release["published_at"]&.slice(0, 10)] }.compact
+      releases(body, current).to_h { |version, release| [version, release["published_at"]&.slice(0, 10)] }.compact
     end
 
-    private def tags(body)
-      releases(body).map(&:first)
+    private def tags(body, current)
+      releases(body, current).map(&:first)
     end
 
-    private def releases(body)
-      JSON.parse(body).reject { |release| release["draft"] || release["prerelease"] }
-        .filter_map { |release| (version = release.fetch("tag_name")[pattern, "version"]) && [version, release] }
+    # The releases of +body+ the watch takes, each with its version: no
+    # draft, and no release GitHub marks as a prerelease but another build
+    # of the pin's own release, which an upstream marks as it marked the
+    # pin's, as jdx/ruby marks every build of a preview.
+    private def releases(body, current)
+      JSON.parse(body).reject { |release| release["draft"] }.filter_map do |release|
+        version = release.fetch("tag_name")[pattern, "version"] or next
+        next if release["prerelease"] && !(current && rebuild?(version, current))
+
+        [version, release]
+      end
     rescue JSON::ParserError => e
       raise Error, "#{url} answered with no JSON: #{e.message}"
     end
@@ -383,17 +430,23 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     current = current(upstream)
     return finding(upstream, current:, newer: upstream.package.newer(current) { |url| answers[url] }) if upstream.package
 
-    newer = upstream.versions(answers[upstream.url]).select { |version| newer?(version, current) }
+    body = upstream.listing { |url| answers[url] }
+    newer = upstream.versions(body, current).select { |version| newer?(version, current) }
     in_line, beyond = newer.partition { |version| same_line?(upstream, version, current) }
-    since = upstream.dates(answers[upstream.url]).values_at(*in_line).compact.min
+    # A hold is for a new release; another build of the pinned one moves
+    # as any pin does, and a held new release is reported once it has.
+    rebuilds = in_line.select { |version| upstream.rebuild?(version, current) }
+    return finding(upstream, current:, newer: newest(rebuilds), beyond: newest(beyond), held: nil) if upstream.hold && rebuilds.any?
+
+    since = upstream.dates(body, current).values_at(*in_line).compact.min
     finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond), since:, overdue: PinWatch.overdue?(since, today))
   rescue Error => e
     finding(upstream, current:, error: e.message)
   end
 
-  private def finding(upstream, current: nil, newer: nil, beyond: nil, error: nil, since: nil, overdue: false)
+  private def finding(upstream, current: nil, newer: nil, beyond: nil, error: nil, since: nil, overdue: false, held: upstream.hold)
     Finding.new(name: upstream.name, pins: upstream.pins, ships: upstream.ships, current:, newer:, beyond:, error:,
-      held: upstream.hold, since:, overdue:)
+      held:, since:, overdue:)
   end
 
   private def version_of(upstream, pin)

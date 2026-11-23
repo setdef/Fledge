@@ -17,7 +17,7 @@
 # github: the repository whose releases are listed, with tag, a pattern
 #   whose version capture is a release's version, which a tag that does
 #   not match is not. Drafts and releases GitHub marks as prereleases
-#   are left out.
+#   are left out, but a prerelease that rebuilds the pin (rebuild).
 # page: or the URL of a listing with no API, with pattern, which finds
 #   every version on it.
 # apk: or the URL of an Alpine branch's index, with {repository} and
@@ -38,6 +38,14 @@
 #   not. The watch reports it behind as held, with this, and fails only
 #   once it has been behind for longer than PinWatch::HELD_DAYS; the move
 #   refuses it.
+# rebuild: for an upstream that publishes each build of a release under
+#   a version of its own, as jdx/ruby publishes 4.1.0-preview1-1 and then
+#   4.1.0-preview1-2, a pattern whose of capture takes the release out
+#   of a version. A newer build of the pin's own release is its next
+#   version even when the upstream is held, and the move takes it, since
+#   a hold is for a new release; GitHub's prerelease mark does not leave
+#   it out; and every page of the upstream's releases is read, since a
+#   rebuild of every release can list more than a page above the pin's.
 # checksum: where each new SHA-256 comes from: github, the digest
 #   GitHub's API lists beside each release asset (the default for a
 #   repository); beside, the .sha256 file the upstream publishes beside
@@ -68,9 +76,10 @@
 #   of the file in the new archive that holds the library, version, a
 #   pattern whose version capture finds the library's version in that
 #   file's bytes, as the license audit's evidence does, and title, what
-#   CHANGELOG.md calls it. The move reads them from the archive it lists
-#   for platform, in the same download, and rewrites each entry whose
-#   version the file no longer holds.
+#   CHANGELOG.md calls it. The move reads them from each platform's new
+#   archive, in the download that names its platform, and rewrites each
+#   entry whose version the files no longer hold; an entry named under
+#   several platforms moves only when they all hold one version.
 # licenses: the ids of runtime/licenses.yml's entries that name the
 #   pin's version, which the move rewrites: their version, their
 #   download, and the evidence their files hold.

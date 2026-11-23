@@ -685,8 +685,9 @@ class PinMoveTest < Minitest::Test
   YAML
 
   # A checkout pinned to jdx/ruby's first build of Ruby 4.0.10, whose
-  # second build's archives hold the OpenSSL +mac+ and +linux+ name.
-  def jdx_ruby(mac:, linux:)
+  # second build's archives hold the OpenSSL +mac+ and +linux+ name,
+  # listed after the releases +ahead+, a page of them or none.
+  def jdx_ruby(mac:, linux:, upstream: JDX_UPSTREAM, ahead: [])
     old = { JDX_MAC => "ab" * 32, JDX_LINUX => "cd" * 32 }
     pins = old.map do |url, sha256|
       platform = url.include?("macos") ? "arm64-darwin" : "x86_64-linux"
@@ -699,9 +700,11 @@ class PinMoveTest < Minitest::Test
       JDX_MAC => { "#{top}/arm64-darwin25/rbconfig.rb" => "{}", "#{top}/arm64-darwin25/openssl.bundle" => "\0OpenSSL #{mac} 1 Jan 2027\0".b },
       JDX_LINUX => { "#{top}/x86_64-linux/rbconfig.rb" => "{}", "#{top}/x86_64-linux/openssl.so" => "\0OpenSSL #{linux} 1 Jan 2027\0".b },
     }
-    answers = Archives.new({ JDX => JSON.generate([{ "tag_name" => "4.0.10-2", "assets" => assets }]) }, listings)
+    rebuild = JSON.generate([{ "tag_name" => "4.0.10-2", "assets" => assets }])
+    bodies = ahead.empty? ? { JDX => rebuild } : { JDX => JSON.generate(ahead), "#{JDX}&page=2" => rebuild }
+    answers = Archives.new(bodies, listings)
     checkout("runtime/sources.yml" => sources, "runtime/licenses.yml" => JDX_LICENSES) do |root|
-      yield PinMove.new(root, entries.merge("jdx-ruby" => JDX_UPSTREAM), answers), answers
+      yield PinMove.new(root, entries.merge("jdx-ruby" => upstream), answers), answers
     end
   end
 
@@ -728,6 +731,33 @@ class PinMoveTest < Minitest::Test
 
       assert_equal "jdx-ruby's archives name openssl-jdx as 3.5.6 in #{JDX_MAC} and 3.5.5 in #{JDX_LINUX}, not one version", error.message
       assert_equal JDX_LICENSES, move.read("runtime/licenses.yml")
+    end
+  end
+
+  # A hold is for a new release: another build of the pinned one, as
+  # jdx/ruby's 4.0.10-2 of 4.0.10-1, moves with no person.
+  def test_a_held_upstream_moves_another_build_of_the_pinned_release_and_no_new_release
+    held = JDX_UPSTREAM.merge("hold" => "A new Ruby is planned work.", "rebuild" => '\A(?<of>.+)-\d+\z')
+    jdx_ruby(mac: "3.5.5", linux: "3.5.5", upstream: held) do |move, _|
+      error = assert_raises(PinMove::Error) { move.call(finding("jdx-ruby", "4.0.10-1", "4.0.11-1")) }
+      assert_equal "jdx-ruby is held: A new Ruby is planned work.", error.message
+
+      move.call(finding("jdx-ruby", "4.0.10-1", "4.0.10-2"))
+      assert_includes move.read("runtime/sources.yml"), "jdx_release: 4.0.10-2\n"
+      assert_includes move.movable, "jdx-ruby"
+    end
+  end
+
+  # GitHub lists a page of releases at a time, so the move finds the
+  # digest of a rebuild a hundred newer releases follow on a later page,
+  # as the watch found the rebuild there.
+  def test_a_digest_listed_on_a_later_page_is_found
+    others = (1..100).map { |n| { "tag_name" => "3.#{n}.0-1", "assets" => [] } }
+    upstream = JDX_UPSTREAM.merge("rebuild" => '\A(?<of>.+)-\d+\z')
+    jdx_ruby(mac: "3.5.5", linux: "3.5.5", upstream:, ahead: others) do |move, _|
+      move.call(finding("jdx-ruby", "4.0.10-1", "4.0.10-2"))
+
+      assert_includes move.read("runtime/sources.yml"), "url: #{JDX_LINUX}\n      sha256: #{'1' * 64}\n"
     end
   end
 
@@ -795,13 +825,18 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  # Whether the move never moves the upstream +entry+: one held for a
+  # person, unless its hold is for a new release alone and another build
+  # of its pinned release moves (rebuild).
+  def held?(entry) = entry["hold"] && !entry["rebuild"]
+
   # Each part of the move of each upstream the move may move, as its
   # name, its entry, and the version its pin holds today: the version the
   # watch compares, and the release name of an upstream with release,
   # with that release's licenses and also.
   def movable_parts
     watch = PinWatch.load(ROOT)
-    PinWatch.watched(entries, watch.sources).reject { |_, entry| entry["hold"] }.flat_map do |name, entry|
+    PinWatch.watched(entries, watch.sources).reject { |_, entry| held?(entry) }.flat_map do |name, entry|
       upstream = watch.upstreams.find { |candidate| candidate.name == name }
       parts = [[name, entry, watch.current(upstream)]]
       if (release = entry["release"])
@@ -838,7 +873,7 @@ class PinMoveTest < Minitest::Test
   def test_every_compiled_library_has_an_entry_the_move_can_read_its_version_into
     components = YAML.safe_load_file(File.join(ROOT, "runtime/licenses.yml")).fetch("components")
     sources = YAML.safe_load_file(File.join(ROOT, "runtime/sources.yml"))
-    compiled = entries.reject { |_, entry| entry["hold"] }.flat_map do |_, entry|
+    compiled = entries.reject { |_, entry| held?(entry) }.flat_map do |_, entry|
       entry.fetch("compiled", {}).flat_map do |platform, libraries|
         builds = entry.fetch("pins").map { |pin| sources.dig(*pin.split("."), "platforms", platform, "build") || "upstream" }
         libraries.map { |id, library| [id, platform, builds, library] }

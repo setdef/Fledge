@@ -209,6 +209,50 @@ class PinWatchTest < Minitest::Test
       "a pin nobody holds is the move's, however long it has been behind"
   end
 
+  # An upstream that publishes each build of a release as RELEASE-N, as
+  # jdx/ruby publishes each build of a Ruby, and marks a preview's builds
+  # as prereleases, as jdx/ruby does: a new release is held for a person,
+  # and a newer build of the pinned release is not.
+  REBUILT = {
+    "pins" => ["tool"],
+    "github" => "example/tool",
+    "tag" => '\A(?<version>\d+\.\d+\.\d+(?:-preview\d+)?-\d+)\z',
+    "rebuild" => '\A(?<of>.+)-\d+\z',
+    "hold" => "A new release is planned work.",
+  }.freeze
+
+  def rebuilt(pin, *tags, pages: nil)
+    listed = tags.map { |tag, published = nil| { "tag_name" => tag, "draft" => false, "prerelease" => tag.include?("preview"), "published_at" => published } }
+    url = PinWatch::Upstream.from("tool", REBUILT).url
+    bodies = pages ? pages.call(url, listed) : { url => JSON.generate(listed) }
+    answers = Answers.new(bodies)
+    [watch({ "tool" => { "version" => pin } }, "tool" => REBUILT).run(answers, today: Date.new(2026, 12, 31)).first, answers]
+  end
+
+  def test_a_newer_build_of_the_pinned_release_is_the_next_version_and_a_new_release_stays_held
+    both, = rebuilt("4.1.0-preview1-1", ["4.1.0-preview2-1"], ["4.1.0-preview1-2"], ["4.1.0-preview1-1"])
+    release, = rebuilt("4.1.0-1", ["4.1.1-1", "2026-11-03T00:00:00Z"], ["4.1.0-1"])
+    preview, = rebuilt("4.1.0-preview1-1", ["4.1.0-preview2-1", "2026-11-03T00:00:00Z"], ["4.1.0-preview1-1"])
+
+    assert_equal [:newer, "4.1.0-preview1-2", nil], [both.status, both.newer, both.held], "a build of the pinned release moves with no person"
+    assert_equal [:overdue, "4.1.1-1"], [release.status, release.newer], "a new release is held, and calls a person once overdue"
+    assert_equal [:current, nil], [preview.status, preview.newer], "a release GitHub marks a prerelease counts only as a build of the pin"
+  end
+
+  # A rebuild of many releases at once can list a hundred builds of other
+  # releases above the pin's, so every page of such an upstream's
+  # releases is read, until one lists fewer than a page holds.
+  def test_every_page_of_an_upstream_with_rebuilds_is_read
+    pages = lambda do |url, listed|
+      others = (1..100).map { |n| { "tag_name" => "3.#{n}.0-1", "draft" => false, "prerelease" => false } }
+      { url => JSON.generate(others), "#{url}&page=2" => JSON.generate(listed) }
+    end
+    found, answers = rebuilt("4.0.10-1", ["4.0.10-2"], ["4.0.10-1"], pages:)
+
+    assert_equal "4.0.10-2", found.newer
+    assert_equal ["https://api.github.com/repos/example/tool/releases?per_page=100", "https://api.github.com/repos/example/tool/releases?per_page=100&page=2"], answers.asked
+  end
+
   def test_the_watch_fails_for_an_unread_upstream_or_an_overdue_hold_and_not_for_a_hold_in_time
     found = -> (status) { Struct.new(:status).new(status) }
 

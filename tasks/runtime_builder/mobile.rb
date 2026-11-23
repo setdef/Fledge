@@ -219,7 +219,6 @@ class RuntimeBuilder
 
     private def finish_tree(target, root)
       ruby = File.join(root, "lib", "ruby")
-      gems = File.join(ruby, "gems", RuntimeBuilder.ruby_abi(ruby))
       Pruning.prune(ruby, @builder.bundled_gems - WINDOWS_GEMS)
       Certificates.point_openssl_rb(ruby)
       @builder.install_rubygems_defaults(ruby)

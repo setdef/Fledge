@@ -120,4 +120,15 @@ class RubyArchiveTest < Minitest::Test
       refute build.configure_options("/prefix", "/deps").any? { |option| option.start_with?("CPPFLAGS") }
     end
   end
+
+  # Apple's clang refuses -static-libgcc ("unsupported option"), and with
+  # it Ruby's configure finds no working compiler, so a Mac's build
+  # passes no LDFLAGS of its own; macOS has no libgcc to take statically.
+  def test_a_macs_build_links_with_no_libgcc_flag
+    Dir.mktmpdir do |dir|
+      options = archive("arm64-darwin", dir).ruby_build(nil).configure_options("/prefix", "/deps")
+
+      refute options.any? { |option| option.start_with?("LDFLAGS") }, options.inspect
+    end
+  end
 end

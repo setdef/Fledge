@@ -32,7 +32,7 @@ class RuntimeBuilder
     # ca-certificates; +edits+ names the RubySource edits Ruby takes;
     # +openssl_target+ is OpenSSL's Configure target; +options+ are
     # configure options beyond the common ones, and +ldflags+ the LDFLAGS
-    # Ruby links with. A +library_path+ names a prefix of other libraries
+    # Ruby links with, or +nil+ for none (macOS). A +library_path+ names a prefix of other libraries
     # Ruby's configure may find (libxcrypt's, on glibc Linux), and +env+
     # sets variables of every step's environment (the Rust compiler's
     # PATH, say).
@@ -89,8 +89,15 @@ class RuntimeBuilder
         "--without-gmp",
         "--with-out-ext=win32,win32ole",
         *(@library_path ? ["CPPFLAGS=-I#{File.join(@library_path, 'include')}"] : []),
-        "LDFLAGS=#{[*(@library_path ? ["-L#{File.join(@library_path, 'lib')}"] : []), @ldflags].join(' ')}",
+        *ldflags_option,
       ]
+    end
+
+    # LDFLAGS for configure, or none when there is nothing to pass, as on
+    # macOS, whose clang refuses -static-libgcc.
+    private def ldflags_option
+      flags = [*(@library_path ? ["-L#{File.join(@library_path, 'lib')}"] : []), *@ldflags].join(" ")
+      flags.empty? ? [] : ["LDFLAGS=#{flags}"]
     end
 
     private def build_autotools(name, prefix)

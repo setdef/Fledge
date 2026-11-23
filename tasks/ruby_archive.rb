@@ -67,6 +67,7 @@ class RubyArchive
   def ruby_build(xcrypt)
     RuntimeBuilder::RubyBuild.new(builder: @builder, build_dir:, pins:, edits: [],
       openssl_target: OPENSSL_TARGETS.fetch(@platform.name), options: ["--enable-zjit"], library_path: xcrypt,
+      ldflags: linux? ? "-static-libgcc" : nil,
       env: environment(xcrypt))
   end
 

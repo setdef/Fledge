@@ -121,6 +121,7 @@ module Fledge
       @build_args = {} # : Hash[String, Array[String]]
       @with = [] # : Array[String]
       @without = [] # : Array[String]
+      @only = [] # : Array[String]
       @groups = [] # : Array[Symbol]
       @shipped_lockfile = nil # : String?
       @gemfile = gemfile
@@ -219,11 +220,13 @@ module Fledge
     # plus <tt>with</tt>), +development+ and +test+ among them unless the
     # settings leave them out, as <tt>bundle exec</tt> sets them up. The
     # settings Bundler reads are the project's <tt>.bundle/config</tt>,
-    # BUNDLE_WITH and BUNDLE_WITHOUT, and the developer's own.
+    # BUNDLE_WITH, BUNDLE_WITHOUT, and BUNDLE_ONLY (which limits the
+    # groups to those it names), and the developer's own.
     private def read_groups(definition)
       settings = Bundler.settings
       @with = settings[:with].map(&:to_s)
       @without = settings[:without].map(&:to_s)
+      @only = settings[:only].map(&:to_s)
       @groups = definition.__send__(:requested_groups).map(&:to_sym)
     end
 
@@ -559,8 +562,8 @@ module Fledge
       Pathname.new(path).relative_path_from(Pathname.new(folder)).to_s
     end
 
-    # The groups the app leaves out and asks for, as the settings of those
-    # names in the app's own <tt>.bundle/config</tt>, an empty list too.
+    # The groups the app leaves out, asks for, and is limited to, as the
+    # settings of those names in the app's own <tt>.bundle/config</tt>, an empty list too.
     # Bundler takes a setting from the first level that has it, the
     # app's file before the person's <tt>~/.bundle/config</tt>, and an
     # empty string is a value there (Bundler::Settings#[] and #to_array,
@@ -568,7 +571,7 @@ module Fledge
     # which reads both files, sets up the app's groups whatever the
     # person's own +without+ or +with+ says.
     private def group_settings
-      "BUNDLE_WITHOUT: \"#{@without.join(':')}\"\nBUNDLE_WITH: \"#{@with.join(':')}\"\n"
+      "BUNDLE_WITHOUT: \"#{@without.join(':')}\"\nBUNDLE_WITH: \"#{@with.join(':')}\"\nBUNDLE_ONLY: \"#{@only.join(':')}\"\n"
     end
 
     private def own_folders

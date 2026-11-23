@@ -216,6 +216,25 @@ class BundleTest < Minitest::Test
     assert_includes configured.app_files.fetch(".bundle/config"), "BUNDLE_WITHOUT: \"development:test\"\n"
   end
 
+  # Bundler's only setting (bundle install --only, BUNDLE_ONLY) narrows the
+  # groups bundle exec sets up (Bundler::Definition#requested_groups), so
+  # the build ships those and no others. The app's Bundler, which has no
+  # only, would set up every group less without, and stop at the first
+  # gem it was not given, so the app's file names it, an empty list too.
+  def test_bundlers_only_narrows_the_groups_and_the_app_says_so
+    gemfile = "group :development do\n  gem \"foo\"\nend\ngroup :test do\n  gem \"bar\"\nend\n"
+    project = -> (name) { bundle(name:, dependencies: {}, locked: [@foo, @bar], gemfile:, lock_dependencies: %w[foo bar]) }
+
+    assert_includes project.call("all_groups").app_files.fetch(".bundle/config"), "BUNDLE_WITH: \"\"\nBUNDLE_ONLY: \"\"\n"
+    ENV["BUNDLE_ONLY"] = "test"
+    narrowed = project.call("only_test")
+
+    assert_equal ["bar 2.0.0"], names(narrowed, LINUX)
+    assert_includes narrowed.app_files.fetch(".bundle/config"), "BUNDLE_ONLY: \"test\"\n"
+  ensure
+    ENV.delete("BUNDLE_ONLY")
+  end
+
   # Bundler on the target cannot install a gem of a group it sets up that
   # has no build there, so neither can fledge build, which says how
   # Bundler leaves the group out.
@@ -507,7 +526,7 @@ Fledge::GitGem.new(name: "g", version: "1.0", uri: "https://example.com/repo.git
 
     assert_equal [".bundle/config", "my_app.gemspec"], files.keys
     assert_equal "---\nBUNDLE_VERSION: \"system\"\nBUNDLE_FROZEN: \"true\"\nBUNDLE_PATH__SYSTEM: \"true\"\n" \
-      "BUNDLE_AUTO_INSTALL: \"false\"\nBUNDLE_WITHOUT: \"\"\nBUNDLE_WITH: \"\"\n", files.fetch(".bundle/config")
+      "BUNDLE_AUTO_INSTALL: \"false\"\nBUNDLE_WITHOUT: \"\"\nBUNDLE_WITH: \"\"\nBUNDLE_ONLY: \"\"\n", files.fetch(".bundle/config")
     spec = Gem::Specification.from_yaml(Gem::Specification.load(File.join(@dir, "my_app", "my_app.gemspec")).to_yaml)
     evaluated = files.fetch("my_app.gemspec")
     refute_includes evaluated, "IO.popen"

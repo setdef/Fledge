@@ -21,6 +21,7 @@ module Fledge
     @build_args: Hash[String, Array[String]]
     @with: Array[String]
     @without: Array[String]
+    @only: Array[String]
     @groups: Array[Symbol]
     @sources: Sources?
     @shipped_lockfile: String?

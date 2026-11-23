@@ -20,7 +20,7 @@ module Bundler
 
     def app_cache_path: () -> String
 
-    def []: (:with | :without) -> Array[Symbol]
+    def []: (:with | :without | :only) -> Array[Symbol]
          | (String | Symbol name) -> (String | bool | Integer)?
   end
 

@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - A `.tar.gz` app records owner id 0 and group id 0 with no names, not the numeric ids and names of the account that built it.
+- A build with Bundler's `only` setting (`BUNDLE_ONLY`, `bundle config only`) ships only those groups' gems, and the app's `.bundle/config` now carries `BUNDLE_ONLY` too, so the app sets up the groups it shipped instead of stopping at a missing gem.
 - When `Gemfile.lock` has an empty `CHECKSUMS` entry for a gem that `vendor/cache` has no file of, such as the default gem a preview Ruby ships ahead of every gem server, `fledge build` says to pin the gem to a released version, not to hash a file that does not exist.
 - On macOS and Linux, glibc and musl, a gem whose extension links OpenSSL or libyaml, such as Puma, compiles against the OpenSSL and libyaml the runtime's Ruby was built with, which the runtime now carries for `fledge build` and no app holds: it links them in, so it is no longer refused for the computer's `libssl.so.3` or Homebrew's `libssl.dylib`, no longer builds without TLS where the computer has no OpenSSL headers, and needs no `libssl-dev`, Homebrew, or `fledge.yml` key.
 - A gem `fledge build` compiles no longer links what the Ruby running `fledge build` added to `PKG_CONFIG_PATH`, as jdx/ruby, mise's default Ruby, adds its own static OpenSSL there, so what a gem links no longer depends on which Ruby ran the build.

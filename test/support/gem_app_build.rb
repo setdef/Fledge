@@ -82,7 +82,7 @@ module GemAppBuild
     assert_equal "foo is MIT\n", File.read(File.join(gems, "gems/foo-1.0.0/LICENSE.txt")), "a gem's own notices ship in its folder"
     refute_path_exists File.join(@dir, folder, "notices/GEMS.txt"), "Fledge writes no notices of its own for the app's gems"
 
-    assert_equal "#{Fledge::Bundle::SETTINGS}BUNDLE_WITHOUT: \"\"\nBUNDLE_WITH: \"\"\n", File.read(File.join(@dir, folder, "app/.bundle/config"))
+    assert_equal "#{Fledge::Bundle::SETTINGS}BUNDLE_WITHOUT: \"\"\nBUNDLE_WITH: \"\"\nBUNDLE_ONLY: \"\"\n", File.read(File.join(@dir, folder, "app/.bundle/config"))
     gemspec = File.read(File.join(@dir, folder, "app/my_app.gemspec"))
     refute_includes gemspec, "git ls-files", "the gemspec ships evaluated, so it needs no git"
     assert_includes gemspec, "s.name = \"my_app\""

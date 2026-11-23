@@ -591,3 +591,10 @@ The orchestrating agent received these words first-hand from the maintainer.
 [re: 2026-11-22. Asked to choose between raising the macOS floor to 26, which taking the Mac's Ruby from jdx/ruby costs, and Fledge building and keeping an OpenSSL of its own for the Mac.]
 
 *Governs:* the weighing of the macOS floor against a Fledge-built OpenSSL was the agents' to do. They chose the floor of 26, with his earlier leave to raise it ("maybe 26 if it becomes costly to keep it at 15", above). *Applied in:* ADR 100; `doc/contributors/design/releases.md`, "Platform floors".
+
+> Everybody and their brother trusts mise, but Fledge shouldn't?
+> Even if Fledge cuts their own Rubies, a developer still relies on e.g. our GitHub Actions not being paused/buggy. They rely on a practically-unknown third party (us) or a very famous third party (mise).
+
+[re: 2026-11-22. The orchestrating agent had found that jdx/ruby, the project whose prebuilt Rubies mise downloads and whose Ruby Fledge's macOS and glibc Linux runtimes take, compiles in OpenSSL 3.5.5 where OpenSSL's newest 3.5 release was 3.5.9, and that nothing in that project updates its libraries by itself. It had decided that Fledge should build Ruby for those platforms from pins its own automation moves, and had said that a developer can upgrade a Ruby in a minute where a person handed an app cannot.]
+
+*Governs:* Fledge takes its macOS and glibc Linux Ruby from jdx/ruby and does not build its own for them because that project's libraries lag. Depending on a widely used project is preferred to depending on Fledge's own unproven build automation. The lag is a stated dependency, the same every mise user has. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "Why Fledge builds no Ruby for macOS and glibc Linux".

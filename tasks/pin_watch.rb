@@ -47,22 +47,35 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   # unseen.
   HELD_DAYS = 30
 
+  # How many days a pin may have a newer release only beyond its line
+  # before the watch fails, to call a person. A new line (OpenSSL's, or a
+  # Ruby minor) is planned work that arrives on purpose, and the old line
+  # is supported a while after it; but when the old line stops getting
+  # releases, nothing newer appears in it to say so, and the one sign is
+  # the age of the release beyond. A year is twice the six months that
+  # separate OpenSSL's regular lines and well inside the two years a line
+  # lasts, so the end is heard before the line has none left.
+  BEYOND_DAYS = 365
+
   # What the watch found for one upstream: the pin's version, the newest
   # release in its line, and the newest beyond the line, or the error
   # that kept it from knowing; and, for a pin held for a person, why, the
   # day the oldest release newer than the pin came out, when the upstream
   # dates its releases, and whether that was more than HELD_DAYS ago.
+  # With no newer release in the line, +since+ and +overdue+ say the same
+  # of the oldest release beyond it and BEYOND_DAYS.
   class Finding < Data.define(:name, :pins, :ships, :current, :newer, :beyond, :error, :held, :since, :overdue)
     # :error when the upstream could not be read; when it has a release
     # in the pin's line newer than the pin, :overdue when the pin is held
     # and has been behind for longer than HELD_DAYS, :held when it is
-    # held, and :newer otherwise; :beyond when its only newer release is
-    # in another line, and :current otherwise.
+    # held, and :newer otherwise; when its only newer release is in
+    # another line, :ended once that has been so for longer than
+    # BEYOND_DAYS and :beyond until then; and :current otherwise.
     def status
       if error then :error
       elsif newer && held then overdue ? :overdue : :held
       elsif newer then :newer
-      elsif beyond then :beyond
+      elsif beyond then overdue ? :ended : :beyond
       else :current
       end
     end
@@ -401,14 +414,22 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   end
 
   # The status the watch exits with for +report+: 1 when an upstream
-  # could not be read or a held pin is overdue, since a person is needed;
+  # could not be read, a held pin is overdue, or a line has ended, since a
+  # person is needed;
   # else 3 when a pin is behind, for the move; and else 0.
   def self.exit_status(report)
     statuses = report.map(&:status)
-    if statuses.intersect?(%i[error overdue]) then 1
+    if statuses.intersect?(%i[error overdue ended]) then 1
     elsif statuses.include?(:newer) then 3
     else 0
     end
+  end
+
+  # Whether a release beyond the pin's line, the oldest of which came out
+  # on +since+, has been the only newer one for longer than BEYOND_DAYS on
+  # +today+; never when its upstream dates no release.
+  def self.ended?(since, today)
+    !since.nil? && today - Date.iso8601(since) > BEYOND_DAYS
   end
 
   # Whether a pin behind since +since+, the day its oldest newer release
@@ -445,7 +466,13 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     rebuilds = in_line.select { |version| upstream.rebuild?(version, current) }
     return finding(upstream, current:, newer: newest(rebuilds), beyond: newest(beyond), held: nil) if upstream.hold && rebuilds.any?
 
-    since = upstream.dates(body, current).values_at(*in_line).compact.min
+    dates = upstream.dates(body, current)
+    if in_line.empty?
+      since = dates.values_at(*beyond).compact.min
+      return finding(upstream, current:, beyond: newest(beyond), since:, overdue: PinWatch.ended?(since, today))
+    end
+
+    since = dates.values_at(*in_line).compact.min
     finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond), since:, overdue: PinWatch.overdue?(since, today))
   rescue Error => e
     finding(upstream, current:, error: e.message)
@@ -500,8 +527,10 @@ end
 # asks every upstream, prints what it found, writes it to REPORT as
 # JSON, and exits as PinWatch.exit_status says: 0 when no pin is behind
 # but those held in time, 3 when an upstream has a newer release in the
-# line of a pin nobody holds, and 1 when one could not be read or a held
-# pin has been behind for longer than PinWatch::HELD_DAYS.
+# line of a pin nobody holds, and 1 when one could not be read, a held
+# pin has been behind for longer than PinWatch::HELD_DAYS, or the only
+# newer release of a pin is beyond its line and older than
+# PinWatch::BEYOND_DAYS.
 if $PROGRAM_NAME == __FILE__
   report = PinWatch.load(File.expand_path("..", __dir__)).run(PinWatch::Fetch.new(token: ENV.fetch("GITHUB_TOKEN", nil)))
   File.write(ARGV[0], JSON.pretty_generate(report.map(&:to_h))) if ARGV[0]
@@ -513,7 +542,7 @@ if $PROGRAM_NAME == __FILE__
       finding.newer && "-> #{finding.newer}",
       finding.beyond && "(beyond its line: #{finding.beyond})",
       finding.error,
-      finding.newer && finding.since && "(since #{finding.since})",
+      finding.since && (finding.newer || finding.beyond) && "(since #{finding.since})",
       finding.newer && finding.held && "held for a person, who has #{PinWatch::HELD_DAYS} days: #{finding.held}",
 ].compact.join(" ")
   end

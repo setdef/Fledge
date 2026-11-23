@@ -7,8 +7,9 @@
 # tmp/pin-watch.json. A pin with a newer release (the script's status 3)
 # passes, as every pin current does, and so does a pin held for a person
 # that has been behind for no longer than PinWatch::HELD_DAYS; an
-# upstream that could not be read, or a held pin behind for longer (1),
-# fails. GITHUB_TOKEN, when set, is the token GitHub's API is asked
+# upstream that could not be read, a held pin behind for longer, or a
+# line that has ended, its only newer release beyond it for longer than
+# PinWatch::BEYOND_DAYS (1), fails. GITHUB_TOKEN, when set, is the token GitHub's API is asked
 # with; GITHUB_STEP_SUMMARY, when set, the summary written to; and
 # GITHUB_OUTPUT, when set, gets behind=true when a pin nobody holds is
 # behind, written before the step fails, so that the move of those pins

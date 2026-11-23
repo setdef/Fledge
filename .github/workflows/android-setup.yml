@@ -52,8 +52,6 @@ defaults:
 env:
   # As in ci.yml: a missing precompiled Ruby fails instead of compiling.
   MISE_RUBY_COMPILE: "false"
-  # What mise reads besides mise.toml: the Android packages.
-  MISE_ENV: android
 
 jobs:
   setup:
@@ -73,11 +71,20 @@ jobs:
           install_args: ruby
           cache: false
 
+      # MISE_ENV=android only from here: mise-action exports mise's
+      # environment before any tool is installed, and mise.android.toml's
+      # [env] names tools that this very setup installs.
       - name: Run the setup
+        env:
+          MISE_ENV: android
         run: mise x -- ruby tasks/setup.rb
 
       - name: Lay out the SDK
+        env:
+          MISE_ENV: android
         run: mise x -- bin/android-sdk
 
       - name: Check the SDK holds what the runtime's build and an emulator need
+        env:
+          MISE_ENV: android
         run: mise x -- .github/scripts/check-android-sdk.sh

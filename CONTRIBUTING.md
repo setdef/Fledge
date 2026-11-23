@@ -123,6 +123,8 @@ Fledge's tests come in two tiers, by folder, as Rails keeps its system tests in 
 
 A new test file is a unit test unless you put it in `test/integration/`. When a unit test needs one of the things above, or takes more than about a tenth of a second on your computer, make it fast without weakening it, or move it. Tests of one class can be in both tiers: `test/assembly_test.rb` and `test/integration/assembly_tools_test.rb` share `test/support/assembly.rb`.
 
+A fixture or example that CI hands to `.github/scripts/deliver.sh` or `deliver.ps1` must end its program with `exit Integer(ARGV.fetch(0, "0"))`: Delivery runs every app with the argument 3 and fails unless it exits 3. `test/workflow_delivery_apps_test.rb` reads the workflows for those apps, so a new one is covered without editing it, and names the program that lacks the line; before it, only a full CI run an hour later said so. Apps that another script delivers, because they differ on purpose, are not read.
+
 While you work:
 
 - `bundle exec rake test` runs the unit tests, in seconds. Run it as often as you like. CI's fast tier runs them on every push: `.github/workflows/fast.yml` on Linux and Windows, beside the lint, and `.github/workflows/fast-macos.yml` on macOS, a workflow of its own because a macOS runner often takes twenty minutes or more to come.

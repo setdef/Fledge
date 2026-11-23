@@ -154,7 +154,7 @@ module Fledge
         mobile_problems(packages, platform, runtime)
       else
         packages = compile(packages)
-        @warnings = packages.values.flat_map { |package| package.is_a?(CompiledGem) ? package.warnings : [] }
+        @warnings = packages.flat_map { |gem, package| warnings_for(gem, package, platform) }
         stubs = executables(packages, runtime)
         desktop_problems(packages, platform, runtime)
       end
@@ -316,6 +316,18 @@ module Fledge
 
       @path_files.merge!(path.app_files(built))
       []
+    end
+
+    # What +package+'s compiled files need where the app goes that the
+    # runtime does not: for a gem Fledge compiled, what its build found
+    # (Fledge::CompiledGem#warnings), and for any other, whose compiled
+    # files arrived as they are, what NativeBuild::Floors.warnings reads
+    # in them.
+    private def warnings_for(gem, package, platform)
+      return package.warnings if package.is_a?(CompiledGem)
+
+      entries = package.gem_files.map { |path, content| Entry.file(path, content) }
+      NativeBuild::Floors.warnings(gem, entries, platform, precompiled: true)
     end
 
     # What keeps each gem from running on a desktop +platform+'s runtime:

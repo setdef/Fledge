@@ -251,6 +251,29 @@ class GemAppBuildTest < Minitest::Test
     refute_path_exists File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt")
   end
 
+  # A gem that arrives compiled needs the glibc its authors compiled it
+  # with, as one Fledge compiled does, so the build warns for it too, and
+  # says that it was not Fledge's compile and what to do instead.
+  def test_a_precompiled_gem_that_needs_a_newer_glibc_than_the_runtimes_is_a_warning
+    TestReaders.need(self, :elf)
+    ferro = FakeGem.build(@gems, "ferro-url", "0.1.1", platform: "x86_64-linux-gnu",
+      files: { "lib/ferro/url/ferro_url.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.34]) })
+    old = FakeGem.build(@gems, "old-url", "1.0.0", platform: "x86_64-linux-gnu",
+      files: { "lib/old/old.so" => Binaries.elf(needed: ["libc.so.6"]) })
+    root = project(dependencies: { "ferro-url" => ">= 0", "old-url" => ">= 0" }, locked: [ferro, old])
+
+    _, err, status = build(root)
+
+    assert_equal 0, status, err
+    assert_equal [
+"fledge build: warning: ferro-url 0.1.1 (x86_64-linux-gnu)'s lib/ferro/url/ferro_url.so needs glibc 2.34, so the app for x86_64-linux " \
+  "runs only on Linux with glibc 2.34 or newer, where Fledge's runtime runs on glibc 2.28 and later. The gem arrived compiled, " \
+  "and a compiled file needs the glibc it was compiled with or a newer one: use a build of the gem for an older glibc if it has " \
+  "one, or have Bundler compile it from its source, with force_ruby_platform: true on its line in the Gemfile, on a Linux with " \
+  "an older glibc, such as AlmaLinux 8.\n",
+], err.lines.grep(/warning/)
+  end
+
   # fledge.yml no longer says what a gem's license is or what its
   # compiled files hold, since Fledge no longer asks; like any key it does
   # not know, each fails the build, so a stale file is noticed.

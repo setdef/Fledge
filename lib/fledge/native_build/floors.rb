@@ -27,6 +27,15 @@ module Fledge
     # system lowers it (doc/contributors/design/gems.md, "The glibc a
     # compiled gem needs").
     module Floors # :nodoc:
+      COMPILED_ADVICE = "Fledge compiled it on this computer, and a compiled file needs the glibc it was compiled with or a newer one: " \
+        "build the app on a Linux with an older glibc, such as AlmaLinux 8, to lower that."
+      private_constant :COMPILED_ADVICE
+
+      PRECOMPILED_ADVICE = "The gem arrived compiled, and a compiled file needs the glibc it was compiled with or a newer one: use a " \
+        "build of the gem for an older glibc if it has one, or have Bundler compile it from its source, with " \
+        "force_ruby_platform: true on its line in the Gemfile, on a Linux with an older glibc, such as AlmaLinux 8."
+      private_constant :PRECOMPILED_ADVICE
+
       # The problems of +gem+'s compiled +entries+ on +platform+, one per
       # file for its processor that needs a newer macOS than the
       # platform's oldest, as +readers+ (Fledge::Binary::Readers) read
@@ -49,8 +58,10 @@ module Fledge
       # an earlier one has is one file to the app (a build installs an
       # extension into the gem's require path, and RubyGems keeps a copy
       # in the extensions folder: Fledge::CompiledGem), so it warns once,
-      # at the first path.
-      def self.warnings(gem, entries, platform, readers: Binary::Readers.local(platform.os))
+      # at the first path. For +precompiled+ files, which a gem's authors
+      # compiled and Fledge did not, the warning says so and what lowers
+      # the need: a build of the gem against an older glibc.
+      def self.warnings(gem, entries, platform, precompiled: false, readers: Binary::Readers.local(platform.os))
         floor = platform.glibc_minimum
         return [] unless floor
 
@@ -59,9 +70,7 @@ module Fledge
           next unless newer?(found, floor)
 
           "#{gem}'s #{path} needs glibc #{found}, so the app for #{platform} runs only on Linux with glibc #{found} or newer, " \
-            "where Fledge's runtime runs on glibc #{floor} and later. Fledge compiled it on this computer, and a compiled file needs " \
-            "the glibc it was compiled with or a newer one: build the app on a Linux with an older glibc, such as AlmaLinux 8, " \
-            "to lower that."
+            "where Fledge's runtime runs on glibc #{floor} and later. " + (precompiled ? PRECOMPILED_ADVICE : COMPILED_ADVICE)
         end
       end
 

@@ -51,6 +51,8 @@ module Fledge
 
     private def entries_for: (locked_gem gem, package package, String gem_dir) -> Array[Entry]
 
+    private def warnings_for: (locked_gem gem, package package, Platform platform) -> Array[String]
+
     private def desktop_problems: (Hash[locked_gem, package] packages, Platform platform, RuntimeContents runtime) -> Array[String]
 
     private def carrying: (target platform, RuntimeContents runtime, Array[Entry] entries) -> CarriedLibraries::AppFiles?

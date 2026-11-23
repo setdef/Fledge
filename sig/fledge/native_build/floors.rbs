@@ -6,7 +6,11 @@ module Fledge
     module Floors
       def self.problems: (locked_gem gem, Array[Entry] entries, Platform platform, ?readers: Binary::Readers) -> Array[String]
 
-      def self.warnings: (locked_gem gem, Array[Entry] entries, Platform platform, ?readers: Binary::Readers) -> Array[String]
+      COMPILED_ADVICE: String
+
+      PRECOMPILED_ADVICE: String
+
+      def self.warnings: (locked_gem gem, Array[Entry] entries, Platform platform, ?precompiled: bool, ?readers: Binary::Readers) -> Array[String]
 
       def self.glibc: (Array[Entry] entries, Platform platform, ?floor: String?, ?readers: Binary::Readers) -> String?
 

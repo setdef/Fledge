@@ -52,15 +52,23 @@ shellcheck = "0.11.0"
 # clang-format checks the launcher's C in the gate (rake lint:c), against
 # .clang-format.
 "pipx:clang-format" = "23.1.3"
-# Rust compiles the examples' Rust gems: rust_phone's for each phone's
-# targets, whose standard libraries rustup adds (the iOS device and
-# Simulator, and Android's arm64-v8a and x86_64), and native_app's for
-# the desktop. The release CI's RUST_TOOLCHAIN names, which Ferro's gems
-# are tested with. mise installs it with rustup, which checks every
-# component it downloads against the SHA-256 that release's manifest
-# lists (channel-rust-1.99.1.toml). Windows takes Rust's GNU target for
-# RubyInstaller's Ruby, which CI installs itself.
-rust = { version = "1.99.1", profile = "minimal", targets = "aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,x86_64-linux-android", os = ["linux", "macos"] }
+# Rust compiles the Rust gems of the examples and fixtures: rust_phone's
+# for each phone's targets, whose standard libraries rustup adds (the
+# iOS device and Simulator, and Android's arm64-v8a and x86_64), and
+# native_app's and rust_lengths' for the desktop. The release CI's
+# RUST_TOOLCHAIN names, which Ferro's gems are tested with. mise
+# installs it with rustup, which checks every component it downloads
+# against the SHA-256 that release's manifest lists
+# (channel-rust-1.99.1.toml). On x64 Windows the toolchain's name
+# carries its host, Rust's GNU target, since RubyInstaller's Ruby is a
+# MinGW build and rb-sys refuses MSVC's, and rustup, which mise starts
+# with MSVC's host there, would otherwise install MSVC's. ARM64 Windows
+# would take aarch64-pc-windows-gnullvm, which nothing of Fledge's has
+# tried, so it has none.
+rust = [
+  { version = "1.99.1", profile = "minimal", targets = "aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,x86_64-linux-android", os = ["linux", "macos"] },
+  { version = "1.99.1-x86_64-pc-windows-gnu", profile = "minimal", os = ["windows/x64"] },
+]
 
 # patchelf removes the RUNPATHs rv-ruby's build left in its extensions
 # when rake runtime builds a Linux runtime (tasks/runtime_builder/
@@ -204,8 +212,6 @@ platforms.macos-x64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/do
 # wheel is a zip, which mise unpacks as it is, so the library is in
 # libclang-18.1.1.data/platlib/clang/native, which the end of this file
 # names. It runs at build time only, and no runtime or app carries it.
-# Windows has none: there CI installs the Rust that builds such a gem
-# itself, and mise installs no Rust to use it with.
 [tools."http:libclang"]
 version = "18.1.1"
 os = ["linux"]
@@ -213,16 +219,18 @@ platforms.linux-x64 = { url = "https://files.pythonhosted.org/packages/1d/fc/716
 platforms.linux-arm64 = { url = "https://files.pythonhosted.org/packages/3c/3d/f0ac1150280d8d20d059608cf2d5ff61b7c3b7f7bcf9c0f425ab92df769a/libclang-18.1.1-py2.py3-none-manylinux2014_aarch64.whl", checksum = "sha256:54dda940a4a0491a9d1532bf071ea3ef26e6dbaf03b5000ed94dd7174e8f9592", format = "zip" }
 
 [env]
-# Where the libclang wheel is installed, bindgen loads it: LIBCLANG_PATH,
-# which .config/mise/libclang.env sets from FLEDGE_LIBCLANG, names its
-# folder, and clang-sys then searches that folder alone. Where it is
-# not, as on a Mac or in CI's jobs that install only some tools, mise
+# Where the libclang wheel is installed, or on Windows the LLVM of
+# mise.rust.toml, bindgen loads its libclang: LIBCLANG_PATH, which
+# .config/mise/libclang.env sets from FLEDGE_LIBCLANG, names its folder,
+# with forward slashes, and clang-sys then searches that folder alone.
+# Where neither is, as on a Mac or in CI's jobs that install only some
+# tools, mise
 # reads no such file and FLEDGE_LIBCLANG is empty, and clang-sys finds
 # the computer's own libclang as before. An empty LIBCLANG_PATH would
 # hide that one, and an empty LIBRARY_PATH, which clang-sys searches
 # too, puts the current folder first in GCC's search for libraries, so
 # neither is set at all there.
-FLEDGE_LIBCLANG = { value = '{% if tools["http:libclang"] is defined %}{{ tools["http:libclang"].path }}/libclang-18.1.1.data/platlib/clang/native{% endif %}', tools = true }
+FLEDGE_LIBCLANG = { value = '{% if tools["http:libclang"] is defined %}{{ tools["http:libclang"].path }}/libclang-18.1.1.data/platlib/clang/native{% elif tools["http:llvm"] is defined %}{{ tools["http:llvm"].path | replace(from="\\", to="/") }}/bin{% endif %}', tools = true }
 # On Windows, the rest of what `ridk enable` sets, so a shell has what a
 # RubyInstaller user's has: RI_DEVKIT here, the variables that depend on
 # the architecture in .config/mise/windows-ARCH.env (no file exists for
@@ -233,7 +241,7 @@ FLEDGE_LIBCLANG = { value = '{% if tools["http:libclang"] is defined %}{{ tools[
 # variables below empty, and only RubyInstaller reads them.
 _.file = [
   { path = ".config/mise/{{ os() }}-{{ arch() }}.env", tools = true },
-  { path = '.config/mise/{% if tools["http:libclang"] is defined %}libclang{% else %}none{% endif %}.env', tools = true, expand = true },
+  { path = '.config/mise/{% if tools["http:libclang"] is defined or tools["http:llvm"] is defined %}libclang{% else %}none{% endif %}.env', tools = true, expand = true },
 ]
 MSYS2_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }
 RI_DEVKIT = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }
@@ -242,6 +250,11 @@ RUBY_DLL_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2-zlib"]
 # stdbool.h), which bindgen's parse of Ruby's headers needs, so where it
 # is installed the C compiler's folder of the same headers is searched
 # after every other, ahead of whatever the environment already gives.
-# Elsewhere the variable stays as the environment has it, and an empty
-# one adds nothing.
-BINDGEN_EXTRA_CLANG_ARGS = { value = '{% if tools["http:libclang"] is defined %}{% set include = exec(command="cc -print-file-name=include 2>/dev/null || true") %}{% if include %}-idirafter {{ include }} {% endif %}{% endif %}{{ get_env(name="BINDGEN_EXTRA_CLANG_ARGS", default="") }}', tools = true }
+# Where LLVM is, on Windows, clang gets the arguments CI's Windows Build
+# job gives it (ci.yml, "Point bindgen and RubyInstaller at MSYS2"):
+# MinGW's target and the MSYS2 above as its sysroot, with forward
+# slashes, since bindgen splits the variable as a shell would, and two
+# defines that keep it out of AVX-512 headers it cannot parse
+# (rust-bindgen #2500). Elsewhere the variable stays as the environment
+# has it, and an empty one adds nothing.
+BINDGEN_EXTRA_CLANG_ARGS = { value = '{% if tools["http:libclang"] is defined %}{% set include = exec(command="cc -print-file-name=include 2>/dev/null || true") %}{% if include %}-idirafter {{ include }} {% endif %}{% elif tools["http:llvm"] is defined %}--target=x86_64-pc-windows-gnu --sysroot={{ tools["http:msys2"].path | replace(from="\\", to="/") }}/ucrt64 -D__AVX512VLFP16INTRIN_H -D__AVX512FP16INTRIN_H {% endif %}{{ get_env(name="BINDGEN_EXTRA_CLANG_ARGS", default="") }}', tools = true }

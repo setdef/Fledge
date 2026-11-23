@@ -19,8 +19,9 @@ require "stringio"
 #
 # It needs the runtime, as test/integration/native_build_test.rb finds
 # it, and the cargo of the Rust mise.toml pins, with a libclang for
-# bindgen (mise.toml's on Linux, and LIBCLANG_PATH on Windows, as
-# ci.yml's Build job sets it). Without them it skips, unless
+# bindgen (mise.toml's on Linux, and on Windows LIBCLANG_PATH, which
+# mise.rust.toml's LLVM sets under MISE_ENV=rust, as ci.yml's Build job
+# sets it from the runner's). Without them it skips, unless
 # FLEDGE_REQUIRE_RUST is set: CI's Test jobs install only Ruby, and a
 # runner's own Rust is neither pinned nor set up for bindgen, so CI's
 # Build and Delivery jobs prove the fixture there.
@@ -28,7 +29,7 @@ class RustLengthsTest < Minitest::Test
   FIXTURE = File.expand_path("../fixtures/rust_lengths", __dir__)
 
   # The Rust mise.toml pins.
-  RUST = File.read(File.expand_path("../../mise.toml", __dir__))[/^rust = \{ version = "([^"]+)"/, 1]
+  RUST = File.read(File.expand_path("../../mise.toml", __dir__))[/^rust = \[\n *\{ version = "([^"]+)"/, 1]
 
   EXPECTED = "RustLengths binds rb_len_t in 8 bytes, finds 3 at -1 of [1, 2, 3], " \
     "and takes 2 and 3 of 10 for 2..4 with its canaries whole"

@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# What compiling a Rust gem on x64 Windows needs beyond mise.toml, whose
+# Rust it uses: the libclang bindgen loads to read Ruby's headers, with
+# clang's own headers beside it, as CI's Windows runners give them from
+# the LLVM their image installs. mise reads this file beside mise.toml
+# only when MISE_ENV is rust (MISE_ENV=rust mise install), so a
+# contributor who never builds a Rust gem on Windows downloads none of
+# it: LLVM's own release archive is a 276 MB download, and 4 GB
+# unpacked. mise.toml's [env] then names its bin/ folder in
+# LIBCLANG_PATH and points clang at MinGW and the MSYS2 mise installs,
+# as CI's Build job does. On Linux and macOS this file adds nothing:
+# there mise.toml's libclang wheel, or Xcode's, serves. The wheel does
+# not serve on Windows: it lacks clang's headers, and MSYS2's GCC, whose
+# headers Linux lends it, begins its stdarg.h and stddef.h with an
+# #include_next that clang cannot follow.
+#
+# LLVM 23.1.6, by the SHA-256 GitHub records for the asset. It runs at
+# build time only, and no runtime or app carries it.
+[tools."http:llvm"]
+version = "23.1.6"
+os = ["windows/x64"]
+platforms.windows-x64 = { url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.6/clang%2Bllvm-23.1.6-x86_64-pc-windows-msvc.tar.zst", checksum = "sha256:7623f582089983c1cb51030cf1996514b19464e5669099571b399e8543770155", strip_components = 1 }

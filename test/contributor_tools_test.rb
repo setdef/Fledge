@@ -80,16 +80,35 @@ class ContributorToolsTest < Minitest::Test
     assert_includes mise_toml, %([tools."http:libclang"]\nversion = "18.1.1"\nos = ["linux"]\n)
   end
 
-  # LIBCLANG_PATH names the wheel's folder only where the wheel is
-  # installed, through a file mise reads only there; elsewhere neither it
-  # nor LIBRARY_PATH is set at all, since an empty one would hide the
-  # computer's own libclang, or put the current folder in GCC's search for
-  # libraries.
-  def test_libclang_path_names_the_wheel_only_where_it_is_installed
-    wheel = %({% if tools["http:libclang"] is defined %})
+  def rust_toml = File.read(File.join(ROOT, "mise.rust.toml"))
 
-    assert_includes mise_toml, %(FLEDGE_LIBCLANG = { value = '#{wheel}{{ tools["http:libclang"].path }}/libclang-18.1.1.data/platlib/clang/native{% endif %}', tools = true }\n)
-    assert_includes mise_toml, %({ path = '.config/mise/#{wheel}libclang{% else %}none{% endif %}.env', tools = true, expand = true },\n)
+  # On x64 Windows, where neither the wheel nor the C compiler's headers
+  # serve, mise installs LLVM's own release, which carries libclang with
+  # clang's headers, as CI's Windows runners have it, by its SHA-256; but
+  # only with MISE_ENV=rust, since it is 4 GB unpacked, and every download
+  # that file names is pinned so too (AGENTS.md).
+  def test_mise_installs_llvm_for_bindgen_on_x64_windows_with_mise_env_rust
+    downloads = rust_toml.lines.grep(/\burl = "/)
+
+    assert_equal 1, downloads.size
+    assert_match(%r{\Aplatforms\.windows-x64 = \{ url = "https://github\.com/llvm/llvm-project/releases/download/llvmorg-23\.1\.6/clang%2Bllvm-23\.1\.6-x86_64-pc-windows-msvc\.tar\.zst", checksum = "sha256:\h{64}", strip_components = 1 \}\n\z}, downloads.first)
+    assert_includes rust_toml, %([tools."http:llvm"]\nversion = "23.1.6"\nos = ["windows/x64"]\n)
+    refute_includes mise_toml, %([tools."http:llvm"])
+  end
+
+  # LIBCLANG_PATH names the folder of the wheel's libclang, or of LLVM's,
+  # only where one is installed, through a file mise reads only there;
+  # elsewhere neither it nor LIBRARY_PATH is set at all, since an empty
+  # one would hide the computer's own libclang, or put the current folder
+  # in GCC's search for libraries. bindgen splits the variable's words as
+  # a shell would, so LLVM's Windows path has forward slashes.
+  def test_libclang_path_names_the_wheel_or_llvm_only_where_one_is_installed
+    wheel = %({% if tools["http:libclang"] is defined %})
+    either = %({% if tools["http:libclang"] is defined or tools["http:llvm"] is defined %})
+    llvm = %({% elif tools["http:llvm"] is defined %}{{ tools["http:llvm"].path | replace(from="\\\\", to="/") }}/bin)
+
+    assert_includes mise_toml, %(FLEDGE_LIBCLANG = { value = '#{wheel}{{ tools["http:libclang"].path }}/libclang-18.1.1.data/platlib/clang/native#{llvm}{% endif %}', tools = true }\n)
+    assert_includes mise_toml, %({ path = '.config/mise/#{either}libclang{% else %}none{% endif %}.env', tools = true, expand = true },\n)
     assert_match(/^LIBCLANG_PATH=\$\{FLEDGE_LIBCLANG\}$/, File.read(File.join(ROOT, ".config", "mise", "libclang.env")))
     refute_path_exists File.join(ROOT, ".config", "mise", "none.env")
     refute_match(/^(LIBCLANG_PATH|LIBRARY_PATH) =/, mise_toml)
@@ -98,13 +117,20 @@ class ContributorToolsTest < Minitest::Test
   # The wheel has no compiler headers of its own, so the C compiler's are
   # searched after every other where it is installed, and a missing
   # compiler leaves the variable as it was rather than failing every mise
-  # command.
+  # command. Where LLVM is installed, on Windows, clang is pointed at
+  # MinGW and the MSYS2 that mise installs, with CI's Build job's very
+  # arguments, so that a contributor's bindgen reads Ruby's headers as
+  # CI's does.
   def test_bindgen_gets_the_c_compilers_headers_where_the_wheel_is_installed
     lines = mise_toml.lines.grep(/\ABINDGEN_EXTRA_CLANG_ARGS = /)
     line = lines.first
+    ci = File.read(File.join(ROOT, ".github", "workflows", "ci.yml"))[/echo "BINDGEN_EXTRA_CLANG_ARGS=(.*)"$/, 1]
 
     assert_equal 1, lines.size
-    assert_includes line, %({% if tools["http:libclang"] is defined %}{% set include = exec(command="cc -print-file-name=include 2>/dev/null || true") %}{% if include %}-idirafter {{ include }} {% endif %}{% endif %})
+    assert_includes line, %({% if tools["http:libclang"] is defined %}{% set include = exec(command="cc -print-file-name=include 2>/dev/null || true") %}{% if include %}-idirafter {{ include }} {% endif %})
+    windows = %(--target=x86_64-pc-windows-gnu --sysroot={{ tools["http:msys2"].path | replace(from="\\\\", to="/") }}/ucrt64 -D__AVX512VLFP16INTRIN_H -D__AVX512FP16INTRIN_H)
+    assert_includes line, %({% elif tools["http:llvm"] is defined %}#{windows} {% endif %})
+    assert_equal(ci.sub("$sysroot") { %({{ tools["http:msys2"].path | replace(from="\\\\", to="/") }}/ucrt64) }, windows)
     assert_includes line, %({{ get_env(name="BINDGEN_EXTRA_CLANG_ARGS", default="") }}', tools = true }\n)
   end
 
@@ -139,13 +165,20 @@ class ContributorToolsTest < Minitest::Test
 
   # The Rust a contributor's mise installs is the release CI's desktop
   # jobs install, with the standard library of every phone target, which
-  # a Rust gem's extension is compiled for (MobileExtensions::Rust).
+  # a Rust gem's extension is compiled for (MobileExtensions::Rust). On
+  # x64 Windows it is the same release for Rust's GNU host, as CI's
+  # Windows Build job asks for it, with RubyInstaller's MinGW Ruby.
   def test_mise_installs_cis_rust_with_every_phone_target
-    rust = YAML.safe_load_file(File.join(ROOT, ".github", "workflows", "ci.yml"), aliases: true).fetch("env").fetch("RUST_TOOLCHAIN")
-    line = mise_toml.lines.find { |candidate| candidate.start_with?("rust = ") } or flunk "mise.toml installs no Rust"
+    ci = YAML.safe_load_file(File.join(ROOT, ".github", "workflows", "ci.yml"), aliases: true)
+    rust = ci.fetch("env").fetch("RUST_TOOLCHAIN")
+    windows = ci.dig("jobs", "build-x64-mingw-ucrt", "strategy", "matrix", "include", 0, "rust")
+    entries = mise_toml[/^rust = \[\n(.*?)^\]\n/m, 1] or flunk "mise.toml installs no Rust"
+    desktop, gnu = entries.lines
 
-    assert_includes line, %(version = "#{rust}")
-    assert_includes line, %(targets = "#{Fledge::MobileExtensions::Rust::TRIPLES.values.join(',')}")
+    assert_includes desktop, %(version = "#{rust}")
+    assert_includes desktop, %(targets = "#{Fledge::MobileExtensions::Rust::TRIPLES.values.join(',')}")
+    assert_includes desktop, %(os = ["linux", "macos"])
+    assert_equal %(  { version = "#{rust}#{windows}", profile = "minimal", os = ["windows/x64"] },\n), gnu
   end
 
   # XcodeGen writes the Xcode project fledge build ios makes, which the

@@ -448,8 +448,8 @@ nsis:
     sha256: a8ffe024602d46b6d766f9e1ce30c324ad2a24daeacd3efc2642d436a0c157ac
 
 # The mobile runtimes (ADR 099): CRuby built from its own source for
-# iOS and iPadOS and for Android, interpreter only, with its extensions
-# linked statically, which no prebuilt Ruby offers. Each builds on its
+# iOS and iPadOS and for Android, interpreter only, as a shared library
+# with its extensions as files, which no prebuilt Ruby offers. Each builds on its
 # own system (AGENTS.md): iOS on a Mac with the Xcode below, Android on
 # Linux with the NDK below. Their sources are Ruby's release tarball, the
 # same 4.1.0-preview1 the macOS and Linux runtimes carry; OpenSSL 3.6.5, the release

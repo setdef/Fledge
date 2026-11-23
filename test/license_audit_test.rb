@@ -9,6 +9,7 @@
 #   spike/permissive branch (58edf27d27912d062ccfa5c4960533a220c9eb24).
 require_relative "test_helper"
 require_relative "support/binaries"
+require_relative "support/ca_bundles"
 require_relative "../tasks/license_audit"
 require "stringio"
 
@@ -29,7 +30,7 @@ class LicenseAuditTest < Minitest::Test
     write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.5.5 "))
     write("lib/ruby/4.1.0+5/set.rb", "class Set; end\n")
     write("lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
-    write("libexec/cert.pem", "-----BEGIN CERTIFICATE-----\n")
+    write("libexec/cert.pem", CaBundles.jdx)
     write_gem("csv", "3.3.5", ["Ruby", "BSD-2-Clause"])
   end
 
@@ -218,6 +219,41 @@ class LicenseAuditTest < Minitest::Test
     assert_includes rules(audit), ["unresolved", "launcher"]
   end
 
+  # Mozilla's CA bundle is a file, not code, so no evidence string says
+  # which one a runtime carries: each entry pins the SHA-256 of the
+  # extract its version names, and the audit refuses any other bytes.
+  def test_a_ca_bundle_that_is_not_the_one_its_entry_names_fails
+    write("libexec/cert.pem", "## Bundle of CA Root Certificates\n")
+
+    assert_includes rules(audit), ["stale", "libexec/cert.pem"]
+  end
+
+  def test_the_bundle_a_windows_runtime_carries_is_pinned_too
+    TestReaders.need(self, :pe)
+    cert = "ruby/lib/ruby/4.1.0+6/etc/ssl/cert.pem"
+    tree = Dir.mktmpdir("license-audit-windows")
+    FileUtils.mkdir_p(File.join(tree, File.dirname(cert)))
+    File.write(File.join(tree, cert), "## Bundle of CA Root Certificates\n")
+
+    report = LicenseAudit.new(platform: "x64-mingw-ucrt", tree:, fledge_version: "0.0.0", readers: TestReaders.all).call
+
+    assert_includes rules(report), ["stale", cert]
+  ensure
+    FileUtils.rm_rf(tree) if tree
+  end
+
+  def test_each_ca_bundle_entry_pins_the_sha256_of_its_file
+    entries = YAML.safe_load_file(LicenseAudit::MAP).fetch("components").select { |entry| entry.fetch("id").start_with?("ca-certificates") }
+    sources = YAML.safe_load_file(LicenseAudit::SOURCES)
+
+    assert_equal %w[ca-certificates ca-certificates-jdx ca-certificates-msys2], entries.map { |entry| entry.fetch("id") }
+    entries.each { |entry| assert_equal entry.fetch("files"), entry.fetch("sha256", {}).keys, entry.fetch("id") }
+    mobile = sources.dig("mobile", "ca-certificates", "sha256")
+
+    assert_equal mobile, sources.dig("musl-ruby", "ca-certificates", "sha256")
+    assert_equal [mobile], entries.first.fetch("sha256").values
+  end
+
   def test_a_component_whose_version_changed_fails
     write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL 3.6.3 "))
 
@@ -236,6 +272,7 @@ class LicenseAuditTest < Minitest::Test
     stale = [["stale", "launcher"], ["stale", "#{ARCH}/openssl.so"]]
 
     assert_equal stale, rules(audit) & stale
+    write("libexec/cert.pem", CaBundles.curl)
     Dir.mktmpdir("sources") do |dir|
       sources = YAML.safe_load_file(LicenseAudit::SOURCES)
       sources.dig("ruby", "platforms", "x86_64-linux")["build"] = "fledge"
@@ -732,7 +769,7 @@ class LicenseAuditTest < Minitest::Test
         put.call("#{root}/lib/ruby/4.1.0+5/arm64-darwin/psych.bundle", mobile_evidence("libyaml-mobile"))
         put.call("#{root}/lib/ruby/4.1.0+5/set.rb", "class Set; end\n")
         put.call("#{root}/lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb", "# Fledge's RubyGems defaults for a built app.\n")
-        put.call("#{root}/libexec/cert.pem", "-----BEGIN CERTIFICATE-----\n")
+        put.call("#{root}/libexec/cert.pem", CaBundles.curl)
         put.call("#{root}/lib/ruby/gems/4.1.0+5/specifications/csv-3.3.5.gemspec", File.read(File.join(@tree, "lib/ruby/gems/4.1.0+5/specifications/csv-3.3.5.gemspec")))
         put.call("#{root}/lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/lib/csv.rb", "module Csv; end\n")
         put.call("#{root}/lib/ruby/gems/4.1.0+5/gems/csv-3.3.5/LICENSE.txt", "Ruby or BSD-2-Clause\n")

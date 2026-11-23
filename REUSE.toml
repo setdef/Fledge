@@ -227,6 +227,14 @@ precedence = "override"
 SPDX-FileCopyrightText = "The LLVM Project contributors"
 SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception"
 
+# Two of curl's extracts of Mozilla's CA certificates, byte for byte, as
+# the audit's pins of runtime/licenses.yml name them, so a test's runtime
+# can hold the file its entry pins; a header would change the bytes.
+[[annotations]]
+path = "test/fixtures/cacert-*.pem"
+SPDX-FileCopyrightText = "Mozilla Foundation"
+SPDX-License-Identifier = "MPL-2.0"
+
 # The compiled files the tests read, which test/fixtures/binaries/build.rb
 # makes with LLVM's compiler and linker, kept as base64 text that the
 # tests decode, which has no place for a header.

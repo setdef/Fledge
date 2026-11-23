@@ -1034,6 +1034,10 @@ components:
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux, x86_64-linux-musl, aarch64-linux-musl, ios, android]
     ruby_build: [upstream, fledge]
     files: ["{prefix}libexec/cert.pem"]
+    # The pin's own SHA-256 in runtime/sources.yml (musl-ruby and mobile
+    # pin one extract), which a move of the pin rewrites here too.
+    sha256:
+      "{prefix}libexec/cert.pem": b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171
 
   # jdx/ruby's builds carry the extract its recipes/dependencies.yml pins,
   # which a glibc Linux app reads only on a computer with no CA
@@ -1050,6 +1054,10 @@ components:
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
     ruby_build: jdx
     files: ["{prefix}libexec/cert.pem"]
+    # The file in each of jdx/ruby's three pinned archives (checked
+    # 2026-11-22; the same bytes in all), which is curl.se/ca/cacert-2025-07-15.pem byte for byte.
+    sha256:
+      "{prefix}libexec/cert.pem": 7430e90ee0cdca2d0f02b1ece46fbf255d5d0408111f009638e3b892d6ca089c
 
   - id: ca-certificates-msys2
     name: Mozilla's CA certificates, as MSYS2 packages them
@@ -1061,6 +1069,10 @@ components:
     ships: ruby/lib/ruby/{abi}/etc/ssl/cert.pem, unmodified
     platforms: [x64-mingw-ucrt, aarch64-mingw-ucrt]
     files: ["{prefix}lib/ruby/{abi}/etc/ssl/cert.pem"]
+    # The file in RubyInstaller's two pinned archives (checked
+    # 2026-11-22), whose own line reads "as of: 2026-10-21 11:14:25 UTC".
+    sha256:
+      "{prefix}lib/ruby/{abi}/etc/ssl/cert.pem": 450ab518651d7c2161a27f483178131cc971a6750bb05b89eb48a3c58a72b6c0
 
   - id: rubyinstaller
     name: RubyInstaller's runtime files, manifests, and tools

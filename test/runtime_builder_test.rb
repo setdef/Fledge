@@ -7,6 +7,7 @@
 
 require_relative "test_helper"
 require_relative "support/binaries"
+require_relative "support/ca_bundles"
 require_relative "../tasks/runtime_builder"
 
 # The parts of rake runtime that need no compiler: the pins it reads, the
@@ -307,7 +308,7 @@ class RuntimeBuilderTest < Minitest::Test
       "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "2d08b5f42f #{rust} GCC: ( ruby: could not run "),
       "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
       "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
-      "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n",
+      "libexec/cert.pem" => CaBundles.jdx,
     }.each do |path, bytes|
       FileUtils.mkdir_p(File.dirname(File.join(root, path)))
       File.binwrite(File.join(root, path), bytes)

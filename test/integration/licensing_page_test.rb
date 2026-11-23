@@ -7,6 +7,7 @@
 
 require_relative "../test_helper"
 require_relative "../support/binaries"
+require_relative "../support/ca_bundles"
 require_relative "../../tasks/licensing_page"
 
 # The licensing page from runtime archives for all nine platforms, small
@@ -38,13 +39,13 @@ class LicensingPageFromRuntimesTest < Minitest::Test
   # A macOS or Linux runtime: its launcher, and its bin/ruby, which is
   # Ruby's main.c with Fledge's code compiled in, so the same
   # binary with the string runtime/licenses.yml looks for.
-  def unix(binary)
+  def unix(binary, certificates = CaBundles.jdx)
     {
       "launcher" => binary.call(""),
       "bin/ruby" => binary.call(" ruby: could not run "),
       "lib/ruby/4.0.0/rubygems/defaults/operating_system.rb" => "# Fledge's RubyGems defaults for a built app.\n",
       "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
-      "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n",
+      "libexec/cert.pem" => certificates,
       "lib/ruby/gems/4.0.0/specifications/csv-3.3.5.gemspec" => gemspec("csv", "3.3.5", %w[Ruby BSD-2-Clause]),
       "lib/ruby/gems/4.0.0/gems/csv-3.3.5/LICENSE.txt" => "Ruby or BSD-2-Clause\n",
       "lib/ruby/gems/4.0.0/specifications/rake-13.3.1.gemspec" => gemspec("rake", "13.3.1", %w[MIT]),
@@ -66,7 +67,7 @@ class LicensingPageFromRuntimesTest < Minitest::Test
       %w[x86_64-linux-musl aarch64-linux-musl].each do |platform|
         runtime(directory, platform, unix(lambda do |more|
           Binaries.elf(needed: %w[libc.so], payload: "2d08b5f42f /rustc/31fca3adb283cc9dfd56b49cdee9a96eb9c96ffd/ GCC: (Alpine 15.2.0) 15.2.0#{more}")
-        end))
+        end, CaBundles.curl))
       end
       %w[x64-mingw-ucrt aarch64-mingw-ucrt].each do |platform|
         runtime(directory, platform, "launcher.exe" => Binaries.pe(needed: %w[KERNEL32.dll]), "ruby/lib/ruby/4.0.0/set.rb" => "class Set; end\n")
@@ -80,7 +81,7 @@ class LicensingPageFromRuntimesTest < Minitest::Test
       end.to_h
       runtime(directory, "ios", slices.merge("FledgeRuby.xcframework/Info.plist" => "<plist/>\n"))
       runtime(directory, "android", "include/fledge_ruby.h" => "int fledge_ruby_run_app(void);\n", "lib/ruby/4.0.0/set.rb" => "class Set; end\n",
-        "lib/ruby/4.0.0/rubygems/defaults/operating_system.rb" => defaults, "libexec/cert.pem" => "-----BEGIN CERTIFICATE-----\n")
+        "lib/ruby/4.0.0/rubygems/defaults/operating_system.rb" => defaults, "libexec/cert.pem" => CaBundles.curl)
       findings = LicensingPage.audit(directory, version: "9.8.7")
       text = LicensingPage.new(findings, version: "9.8.7").text
       recorded = LicensingPage.parse(LicensingPage.new(findings).audited)

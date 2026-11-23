@@ -98,7 +98,7 @@ Each check reports a violation with a rule, a path, and a message (`LicenseAudit
 | `unaccounted` | a file belongs to no component and to no gem |
 | `unresolved` | a compiled file needs a library neither the system (`system_libraries`) nor the tree provides, or names an assembly whose manifest is not in the tree |
 | `unlisted-binary` | a compiled file is one its owner does not list among its `binaries`, so a library nobody reviewed cannot ride in under a broad pattern |
-| `stale` | a component's `evidence` string is not in a file it is compiled into, or a file the map pins by SHA-256 moved (GNU MP's DLL, `tools/rcedit.exe`, `tools/llvm-readobj.exe`), so the map cannot go stale quietly |
+| `stale` | a component's `evidence` string is not in a file it is compiled into, or a file the map pins by SHA-256 moved (GNU MP's DLL, `tools/rcedit.exe`, `tools/llvm-readobj.exe`, and each CA bundle, which has no evidence string to look for), so the map cannot go stale quietly |
 | `static-copyleft` | a copyleft library's signature is in a file that is not that library's own shared library and that the map does not say it is linked into |
 | `macos-floor` | a Mach-O file in a macOS runtime needs a macOS newer than `Fledge::Platform::MACOS_MINIMUM`, or names none, since only a major version raises a floor (`doc/contributors/design/releases.md`) |
 | `copyleft-text` | a text file names a copyleft license, its owner's license is notice-only, and no entry in `reviewed` accounts for it |

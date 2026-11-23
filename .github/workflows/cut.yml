@@ -20,9 +20,15 @@
 #   gh workflow run cut.yml -f commit=SHA -f publish=true
 #
 # The run fails, and so calls a person, when any run it waits for is
-# red. A push made with the workflow's own token starts no run, so it
-# starts each run it needs with workflow_dispatch, which that token may,
-# and waits for it in the job.
+# red. It pushes release-next and the tag with a token of the GitHub App
+# that may push workflow files, whose ID and private key the environment
+# release holds: the run's own token may not push a workflow file that no
+# branch holds, and starts no workflow by its pushes. The App's pushes
+# do, so the push of the tag starts release.yml, which the cut waits for
+# and does not start again. A token lasts an hour and the job longer, so
+# one is minted before each push. The runs it needs on release-next, where
+# ci.yml does not run by itself, it starts with workflow_dispatch, which
+# the run's own token may, and waits for each in the job.
 
 name: Cut a release
 
@@ -68,17 +74,27 @@ jobs:
     # installed.yml's, and release.yml's run with its own installed.yml
     # an hour more; GitHub stops a job at six.
     timeout-minutes: 350
+    # Limited to trunk, it holds the App's ID and private key.
+    environment: release
     permissions:
-      contents: write
+      contents: read
+      # Starting runs and waiting for them.
       actions: write
     outputs:
-      version: ${{ steps.cut.outputs.version }}
-      pin: ${{ steps.cut.outputs.pin }}
+      version: ${{ steps.tag.outputs.version }}
+      pin: ${{ steps.tag.outputs.pin }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMMIT: ${{ inputs.commit }}
+      RELEASE_CUT_STOP: ${{ !inputs.publish && 'tag' || '' }}
     steps:
+      # No credentials kept: each push names its own token, and the
+      # repository is public to fetch from.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: trunk
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
@@ -90,13 +106,71 @@ jobs:
           BUNDLE_FROZEN: "true"
         run: bundle install
 
-      - name: Cut the release
-        id: cut
+      # The App's ID is a number, which this release of the action still
+      # takes as app-id and calls deprecated in favor of client-id.
+      - name: Mint a token for the release commit's push
+        id: branch-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
+      - name: Make the release commit, push it, and start its runs
         env:
-          GH_TOKEN: ${{ github.token }}
-          COMMIT: ${{ inputs.commit }}
-          RELEASE_CUT_STOP: ${{ !inputs.publish && 'tag' || '' }}
-        run: .github/scripts/release-cut.sh "$COMMIT"
+          RELEASE_PUSH_TOKEN: ${{ steps.branch-token.outputs.token }}
+        run: .github/scripts/release-cut.sh branch "$COMMIT"
+
+      - name: Wait for the release commit's CI and installed.yml
+        run: .github/scripts/release-cut.sh wait
+
+      - name: Mint a token for the pin commit's push
+        id: pin-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
+      - name: Make the pin commit, push it, and wait for its CI
+        env:
+          RELEASE_PUSH_TOKEN: ${{ steps.pin-token.outputs.token }}
+        run: .github/scripts/release-cut.sh pin
+
+      - name: Mint a token for the tag's push
+        if: inputs.publish
+        id: tag-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
+      # The tag's push starts release.yml, and this waits for that run.
+      - name: Tag the pin commit and wait for release.yml
+        if: inputs.publish
+        id: tag
+        env:
+          RELEASE_PUSH_TOKEN: ${{ steps.tag-token.outputs.token }}
+        run: .github/scripts/release-cut.sh tag
+
+      - name: Mint a token to delete the branch
+        if: always()
+        id: clean-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Delete the branch
+        if: always()
+        env:
+          RELEASE_PUSH_TOKEN: ${{ steps.clean-token.outputs.token }}
+        run: .github/scripts/release-cut.sh clean
 
   record:
     name: Record the release on trunk

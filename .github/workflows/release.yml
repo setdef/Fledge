@@ -47,7 +47,9 @@
 # the same runtimes, with the checks from the commit it is run from, up
 # to the assets it would publish, which it keeps as the run's artifact.
 # Only the Publish job writes, and it runs on a pushed tag, or by hand
-# with publish set. Try a change to this workflow so, from a branch,
+# with publish set. cut.yml pushes the tag with a token of a GitHub App,
+# whose pushes start workflows, so that push is what starts the run that
+# publishes, and cut.yml starts none by hand. Try a change to this workflow so, from a branch,
 # before a release depends on it.
 #
 # Releases are never deleted: each runtime's NOTICES points at its LGPL

@@ -355,6 +355,53 @@ class MobileParityTest < Minitest::Test
     REPORT
   end
 
+  # Some of GitHub's runners were answered 404 for modules Maven Central
+  # holds, which Gradle reports at once and does not cache (issue 27), so
+  # a build whose log says a repository answered "Resource missing" runs
+  # once more, and no other failure does.
+  def test_a_gradle_build_that_a_repository_answered_404_runs_once_more
+    Dir.mktmpdir do |dir|
+      log = File.join(dir, "gradle.log")
+      runs = 0
+      built = MobileParity::Android.gradle_with_a_second_try(log) do
+        runs += 1
+        File.write(log, (runs == 1) ? "Resource missing. [HTTP GET: https://repo.maven.apache.org/maven2/a.pom]\nBUILD FAILED in 9s\n" : "BUILD SUCCESSFUL in 9s\n", mode: "a")
+        runs == 2
+      end
+
+      assert built
+      assert_equal 2, runs
+      assert_includes File.read(log), "Resource missing", "the first try's log is kept"
+    end
+  end
+
+  def test_a_gradle_build_that_failed_for_another_reason_or_twice_is_not_run_again
+    Dir.mktmpdir do |dir|
+      log = File.join(dir, "gradle.log")
+      runs = 0
+      refute(MobileParity::Android.gradle_with_a_second_try(log) do
+        runs += 1
+        File.write(log, "Failed to get resource: GET. [HTTP 429: x]\nBUILD FAILED\n")
+        false
+      end)
+      assert_equal 1, runs
+
+      File.write(log, "")
+      runs = 0
+      refute(MobileParity::Android.gradle_with_a_second_try(log) do
+        runs += 1
+        File.write(log, "Resource missing. [HTTP GET: x]\n", mode: "a")
+        false
+      end)
+      assert_equal 2, runs
+
+      File.write(log, "")
+      runs = 0
+      assert(MobileParity::Android.gradle_with_a_second_try(log) { runs += 1 })
+      assert_equal 1, runs
+    end
+  end
+
   # An app that never finished is diagnosed from logcat's lines about it:
   # those naming it, those of its process, by the ID ActivityManager
   # started it with, and the crash reporters', not the system's chatter.

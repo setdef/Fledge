@@ -58,8 +58,10 @@ class MobileParity
       MobileParity.projects("android", runtimes:, out: File.join(work, "projects")).each do |app, project|
         gradlew = File.join(project, Gem.win_platform? ? "gradlew.bat" : "gradlew")
         log = File.join(work, "gradle-#{app.identifier}.log")
-        succeeded = system(gradlew, "--no-daemon", "--info", "--project-dir", project, "assembleDebug", "assembleRelease", "bundleDebug",
-          "bundleRelease", out: log, err: %i[child out])
+        succeeded = gradle_with_a_second_try(log) do
+          system(gradlew, "--no-daemon", "--info", "--project-dir", project, "assembleDebug", "assembleRelease", "bundleDebug",
+            "bundleRelease", out: [log, "a"], err: %i[child out])
+        end
         raise "Gradle did not build #{app.name} (#{log}):\n#{gradle_failure(File.read(log))}" unless succeeded
 
         debug, release, bundle = built(app, project)
@@ -69,6 +71,22 @@ class MobileParity
         out.puts "Built #{app.name}: #{File.basename(debug)}, #{File.basename(release)}, and #{File.basename(bundle)}"
       end
       true
+    end
+
+    # Runs the Gradle build the block runs, which appends its --info
+    # output to +log+ and answers whether it succeeded, and runs it once
+    # more when it failed and its log shows a repository answered 404
+    # ("Resource missing", as #gradle_failure reads it). Some CI runners
+    # were answered 404 for modules Maven Central holds, which Gradle
+    # reports at once and does not cache, so the second build, in the
+    # same Gradle home with what the first fetched, asks again and passes
+    # (doc/contributors/design/phone-projects.md, "Gradle's downloads in
+    # CI"). Any other failure is final, and so is a second 404.
+    def self.gradle_with_a_second_try(log)
+      return true if yield
+      return false unless File.read(log).match?(/^Resource missing\. /)
+
+      yield
     end
 
     # What Gradle built of +app+ in +project+: its debug APK, its unsigned

@@ -312,7 +312,12 @@ class RubySpec
       app = prepare
       project = MobileParity.projects("android", runtimes: @runtimes, out: File.join(@work, "projects"), apps: [app]).fetch(app)
       gradlew = File.join(project, Gem.win_platform? ? "gradlew.bat" : "gradlew")
-      system(gradlew, "--no-daemon", "--quiet", "--project-dir", project, "assembleDebug", exception: true)
+      log = File.join(@work, "gradle.log")
+      built = MobileParity::Android.gradle_with_a_second_try(log) do
+        system(gradlew, "--no-daemon", "--info", "--project-dir", project, "assembleDebug", out: [log, "a"], err: %i[child out])
+      end
+      raise "Gradle did not build the debug APK (#{log}):\n#{MobileParity::Android.gradle_failure(File.read(log))}" unless built
+
       apk = Dir.glob(File.join(project, "build", "outputs", "apk", "debug", "*-debug.apk")).first or raise "Gradle built no debug APK"
       FileUtils.cp(apk, apk_path)
       run_stock

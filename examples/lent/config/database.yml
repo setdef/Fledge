@@ -1,8 +1,0 @@
-# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-# SPDX-License-Identifier: MIT-0
-
-# In the person's data folder (config/application.rb). Not DATABASE_URL:
-# a URL cannot hold the space in macOS's "Application Support" unescaped.
-production:
-  adapter: sqlite3
-  database: <%= File.join(Rails.configuration.x.data_folder, "lent.sqlite3") %>

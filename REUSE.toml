@@ -14,7 +14,7 @@ path = ['test/fixtures/my_cool_app/Gemfile.lock', 'test/fixtures/native_app/Gemf
   'test/fixtures/mobile_app/Gemfile.lock', 'test/fixtures/real_gems/Gemfile.lock',
   'test/fixtures/real_gems/.bundle/config', 'test/fixtures/native_phone/Gemfile.lock', 'test/fixtures/sdl_phone/Gemfile.lock',
   'test/fixtures/cmake_phone/Gemfile.lock', 'test/fixtures/rake_phone/Gemfile.lock', 'test/fixtures/ffi_phone/Gemfile.lock', 'test/fixtures/ffi_library_phone/Gemfile.lock',
-  'test/fixtures/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock', 'examples/libui_app/Gemfile.lock', 'examples/file_drop/Gemfile.lock', 'examples/markdown_preview/Gemfile.lock', 'examples/lent/Gemfile.lock',
+  'test/fixtures/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock', 'examples/libui_app/Gemfile.lock', 'examples/file_drop/Gemfile.lock', 'examples/markdown_preview/Gemfile.lock',
   'test/fixtures/rust_phone/Gemfile.lock', 'test/fixtures/rust_phone/gems/rusty/ext/rusty/Cargo.lock',
   'test/fixtures/rust_lengths/Gemfile.lock', 'test/fixtures/rust_lengths/gems/lengths/ext/lengths/Cargo.lock',
   'test/fixtures/bundled_with/Gemfile.lock', 'test/fixtures/mobile_commands/Gemfile.lock', 'test/fixtures/ffi_extconf/Gemfile.lock', 'test/fixtures/ffi_libc/Gemfile.lock',
@@ -33,16 +33,9 @@ SPDX-License-Identifier = "CC0-1.0"
 
 # The windowed apps' icon, drawn by a script, saved as a PNG, and
 # made into each system's files with sips and iconutil, none of which
-# has a place for a header; Lent's web view shows it as its page's icon.
+# has a place for a header.
 [[annotations]]
-path = ['test/fixtures/windowed_app/icons/**', 'test/fixtures/mobile_app/icons/**', 'examples/libui_app/icons/**', 'examples/markdown_preview/icons/**',
-  'examples/lent/icons/**', 'examples/lent/public/favicon.ico']
-SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
-SPDX-License-Identifier = "MIT-0"
-
-# Lent's window, in the JSON Tokra reads, which has no place for a header.
-[[annotations]]
-path = 'examples/lent/tokra.conf.json'
+path = ['test/fixtures/windowed_app/icons/**', 'test/fixtures/mobile_app/icons/**', 'examples/libui_app/icons/**', 'examples/markdown_preview/icons/**']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 
@@ -254,8 +247,7 @@ SPDX-License-Identifier = "MIT"
 # program shows and a .deb installs as they are, so a header in them
 # would be shown and installed too.
 [[annotations]]
-path = ['test/fixtures/windowed_app/LICENSE.txt', 'test/fixtures/windowed_app/CHANGES.txt', 'examples/libui_app/LICENSE.txt', 'examples/markdown_preview/LICENSE.txt',
-  'examples/lent/LICENSE.txt']
+path = ['test/fixtures/windowed_app/LICENSE.txt', 'test/fixtures/windowed_app/CHANGES.txt', 'examples/libui_app/LICENSE.txt', 'examples/markdown_preview/LICENSE.txt']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 

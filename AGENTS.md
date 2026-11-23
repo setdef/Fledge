@@ -5,7 +5,7 @@
 
 # AGENTS.md
 
-This file is binding for every agent that works in this repository. It holds rules and where to look, not the state of the project, and the repository keeps no running account of that state (decisions, 2026-11-21): what Fledge does is in the README and the design documents, what changed is in CHANGELOG.md and git's history, and what is left is in the plan of record.
+This file is binding for every agent that works in this repository. It holds rules and where to look, not the state of the project, and the repository keeps no running account of that state (decisions, 2026-11-21): what Fledge does is in the README and the design documents, what changed is in CHANGELOG.md and git's history, and what is left is in the open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge, with the stories and the direction in the plan of record.
 
 ## Project
 
@@ -18,7 +18,8 @@ Where to look, in this order for a session with no memory of earlier ones:
 - `README.md`: what Fledge does today, for app developers.
 - `CONTRIBUTING.md`: how to set up, check a change, and read CI.
 - `doc/contributors/decisions.md`: the maintainer's words. The only authority.
-- `doc/contributors/plan/003.md`: the plan of record, after `001.md` and `002.md`, both done.
+- The open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left before the candidate, each written so that an agent can start from it. A commit that fixes one ends its body with "Fixes #N".
+- `doc/contributors/plan/003.md`: the plan of record, with the stories and the direction behind those issues, after `001.md` and `002.md`, both done.
 - `doc/contributors/design/`: how each part works, and why. `architecture.md` there is the overview, and indexes the few ADRs in `doc/contributors/adr/`; `releases.md` there says how to release.
 - `doc/contributors/questions.md`: what only the maintainer can answer.
 - `CHANGELOG.md` and git's history (`git log`): what changed since each release, and why.

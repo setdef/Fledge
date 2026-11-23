@@ -38,7 +38,7 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   identity = Fledge::App.at("examples/my_cool_app/exe/my_cool_app").identity
+  #   identity = Fledge::App.at("my_cool_app/exe/my_cool_app").identity
   #   identity.version   # => "0.1.0", the gemspec's
   #   identity.publisher # => "Kerrick Long", its authors
   #   identity.windowed? # => false

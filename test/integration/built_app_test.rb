@@ -15,7 +15,7 @@ require "json"
 require "open3"
 require "stringio"
 
-# examples/hello and examples/my_cool_app, built by fledge build from a
+# examples/hello and test/fixtures/my_cool_app, built by fledge build from a
 # real runtime for this computer, unpacked by the system's own tool (tar,
 # or Expand-Archive on Windows), and run in a clean and in a hostile
 # environment. Building my_cool_app downloads its gems from RubyGems.org.
@@ -28,7 +28,7 @@ require "stringio"
 # runtime, so a missing runtime there fails instead of passing silently.
 class BuiltAppTest < Minitest::Test
   HELLO = File.expand_path("../../examples/hello", __dir__)
-  MY_COOL_APP = File.expand_path("../../examples/my_cool_app", __dir__)
+  MY_COOL_APP = File.expand_path("../../test/fixtures/my_cool_app", __dir__)
   WINDOWED_APP = File.expand_path("../../test/fixtures/windowed_app", __dir__)
   PROGRAMS = File.expand_path("../../test/fixtures/programs", __dir__)
   PROBE = File.expand_path("../fixtures/parity", __dir__)
@@ -62,7 +62,7 @@ class BuiltAppTest < Minitest::Test
     YAML.safe_load_file(File.expand_path("../../runtime/licenses.yml", __dir__)).dig("platforms", @platform.name, "arch")
   end
 
-  # What examples/my_cool_app prints: the versions of i18n and sqlite3 its
+  # What test/fixtures/my_cool_app prints: the versions of i18n and sqlite3 its
   # Gemfile.lock locks, and the SQLite that sqlite3 carries.
   def my_cool_app_line
     lock = File.read(File.join(MY_COOL_APP, "Gemfile.lock"))
@@ -79,12 +79,12 @@ class BuiltAppTest < Minitest::Test
     built(MY_COOL_APP)
   end
 
-  # examples/my_cool_app's Gemfile, which the gem-shaped probe shares,
+  # test/fixtures/my_cool_app's Gemfile, which the gem-shaped probe shares,
   # locks sqlite3, which has no build for some platforms and does not
   # compile there (Parity::WITHOUT_SQLITE3;
   # doc/contributors/design/parity.md, "The gem-shaped run").
   def gem_shaped!
-    skip "sqlite3, which examples/my_cool_app locks, does not install on #{@platform} (doc/contributors/design/parity.md, \"The gem-shaped run\")" if
+    skip "sqlite3, which test/fixtures/my_cool_app locks, does not install on #{@platform} (doc/contributors/design/parity.md, \"The gem-shaped run\")" if
       Parity::WITHOUT_SQLITE3.include?(@platform.name)
   end
 

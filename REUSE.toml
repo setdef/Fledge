@@ -8,10 +8,10 @@ SPDX-License-Identifier = "CC0-1.0"
 # Bundler writes a lockfile, and its own settings, and gives neither a
 # place for a header; nor does Cargo its lockfile.
 [[annotations]]
-path = ['examples/my_cool_app/Gemfile.lock', 'test/fixtures/native_app/Gemfile.lock', 'test/fixtures/nokogiri_app/Gemfile.lock',
+path = ['test/fixtures/my_cool_app/Gemfile.lock', 'test/fixtures/native_app/Gemfile.lock', 'test/fixtures/nokogiri_app/Gemfile.lock',
   'test/fixtures/native_app/.bundle/config', 'test/fixtures/nokogiri_app/.bundle/config', 'test/fixtures/raylib/Gemfile.lock',
   'test/fixtures/raylib/.bundle/config',
-  'examples/mobile_app/Gemfile.lock', 'test/fixtures/real_gems/Gemfile.lock',
+  'test/fixtures/mobile_app/Gemfile.lock', 'test/fixtures/real_gems/Gemfile.lock',
   'test/fixtures/real_gems/.bundle/config', 'test/fixtures/native_phone/Gemfile.lock', 'examples/sdl_phone/Gemfile.lock',
   'test/fixtures/cmake_phone/Gemfile.lock', 'test/fixtures/rake_phone/Gemfile.lock', 'test/fixtures/ffi_phone/Gemfile.lock', 'test/fixtures/ffi_library_phone/Gemfile.lock',
   'test/fixtures/system_library/Gemfile.lock', 'examples/rooibos_console/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock', 'examples/libui_app/Gemfile.lock', 'examples/file_drop/Gemfile.lock', 'examples/markdown_preview/Gemfile.lock',
@@ -35,7 +35,7 @@ SPDX-License-Identifier = "CC0-1.0"
 # made into each system's files with sips and iconutil, none of which
 # has a place for a header.
 [[annotations]]
-path = ['test/fixtures/windowed_app/icons/**', 'examples/mobile_app/icons/**', 'examples/libui_app/icons/**', 'examples/markdown_preview/icons/**']
+path = ['test/fixtures/windowed_app/icons/**', 'test/fixtures/mobile_app/icons/**', 'examples/libui_app/icons/**', 'examples/markdown_preview/icons/**']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 

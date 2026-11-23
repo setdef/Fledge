@@ -27,7 +27,7 @@ require_relative "parity/windowed"
 # very Ruby the runtime was made from (rv-ruby's, or RubyInstaller's,
 # fetched by the pins in runtime/sources.yml and left as it ships), as
 # ruby main.rb from the app's folder. Then it does the same for a
-# gem-shaped app: examples/my_cool_app (on ARM64 Windows, where its
+# gem-shaped app: test/fixtures/my_cool_app (on ARM64 Windows, where its
 # sqlite3 cannot be installed, the same app without it) with the probe as
 # its exe/my_cool_app, built with its locked gems, against bundle exec ruby
 # exe/my_cool_app on the same Ruby, with the bundle installed there as
@@ -55,7 +55,7 @@ class Parity
   ROOT = File.expand_path("..", __dir__)
   PROBE = File.join(ROOT, "test", "fixtures", "parity")
   # The gem-shaped app whose exe/my_cool_app the probe stands in for.
-  GEM_APP = File.join(ROOT, "examples", "my_cool_app")
+  GEM_APP = File.join(ROOT, "test", "fixtures", "my_cool_app")
   # Platforms on which GEM_APP's sqlite3 cannot be installed: it
   # publishes no aarch64-mingw-ucrt build, and its source build fails
   # there, SQLite's own configure not knowing aarch64-w64-windows-gnu
@@ -269,7 +269,7 @@ class Parity
   end
 
   # The gem-shaped check: the probe as the program exe/PROGRAM of
-  # +source+ (examples/my_cool_app's exe/my_cool_app, unless given), built
+  # +source+ (test/fixtures/my_cool_app's exe/my_cool_app, unless given), built
   # with its locked gems as the app +name+, against bundle exec ruby
   # exe/PROGRAM, with the bundle installed into the person's GEM_HOME by
   # bundle install, which installs the Bundler the lockfile names, as it
@@ -319,7 +319,7 @@ class Parity
   end
 
   # Writes the gem-shaped probe into the new folder +project+: a copy of
-  # +source+ (examples/my_cool_app, unless given), without the
+  # +source+ (test/fixtures/my_cool_app, unless given), without the
   # developer's .bundle, with the probe as its exe/PROGRAM, and with
   # +name+, when given, as the app's name in its fledge.yml. Returns
   # +project+. CI builds one for Delivery, and test/integration/built_app_test.rb for

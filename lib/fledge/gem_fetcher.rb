@@ -39,7 +39,7 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   fetcher = Fledge::GemFetcher.new(cache: File.expand_path("~/.cache/fledge/gems"), project: "examples/my_cool_app")
+  #   fetcher = Fledge::GemFetcher.new(cache: File.expand_path("~/.cache/fledge/gems"), project: "my_cool_app")
   #   fetcher.fetch(locked_gem) # => "/home/you/.cache/fledge/gems/sqlite3-2.10.2-x64-mingw-ucrt.gem"
   #--
   # SPDX-SnippetEnd

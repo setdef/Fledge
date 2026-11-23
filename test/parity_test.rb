@@ -406,7 +406,7 @@ class ParityTest < Minitest::Test
   end
 
   # sqlite3 cannot be installed on ARM64 Windows, so the gem-shaped
-  # check there takes examples/my_cool_app without it, and only there.
+  # check there takes test/fixtures/my_cool_app without it, and only there.
   def test_the_gem_shaped_app_leaves_sqlite3_out_only_where_it_cannot_be_installed
     Fledge::Platform::NAMES.each do |name|
       expected = (name == "aarch64-mingw-ucrt") ? Parity::GEM_APP_WITHOUT_SQLITE3 : Parity::GEM_APP
@@ -415,7 +415,7 @@ class ParityTest < Minitest::Test
     end
   end
 
-  # The stand-in must lock what examples/my_cool_app locks, on the same
+  # The stand-in must lock what test/fixtures/my_cool_app locks, on the same
   # platforms, but for sqlite3 and the mini_portile2 its source build
   # needs, so that it cannot drift from the app it stands in for.
   def test_the_app_without_sqlite3_locks_the_rest_of_my_cool_apps_gems

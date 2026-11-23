@@ -137,7 +137,7 @@ jobs:
           ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
-            examples/my_cool_app
+            test/fixtures/my_cool_app
             test/fixtures/native_app
             test/fixtures/windowed_app
             test/fixtures/parity
@@ -250,7 +250,7 @@ jobs:
             exit 1
           }
           cd "$RUNNER_TEMP/project"
-          apps="test/fixtures/parity examples/my_cool_app test/fixtures/windowed_app"
+          apps="test/fixtures/parity test/fixtures/my_cool_app test/fixtures/windowed_app"
           [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps="test/fixtures/parity test/fixtures/windowed_app"
           for app in $apps; do
             bundle exec fledge build -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/$app" 2>> "$RUNNER_TEMP/build.err" || {
@@ -288,7 +288,7 @@ jobs:
       # app must print too.
       - name: Run my_cool_app with bundle exec
         if: matrix.platform != 'aarch64-mingw-ucrt'
-        working-directory: examples/my_cool_app
+        working-directory: test/fixtures/my_cool_app
         run: |
           bundle install
           bundle exec ruby exe/my_cool_app | tee "$RUNNER_TEMP/my_cool_app.expected"
@@ -387,7 +387,7 @@ jobs:
           ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
-            examples/my_cool_app
+            test/fixtures/my_cool_app
             test/fixtures/parity
           sparse-checkout-cone-mode: false
 
@@ -432,12 +432,12 @@ jobs:
             exit 1
           }
           cd /project
-          for app in test/fixtures/parity examples/my_cool_app; do
+          for app in test/fixtures/parity test/fixtures/my_cool_app; do
             bundle exec fledge build -o /work/dist "/work/$app" 2>> /tmp/build.err || { cat /tmp/build.err; echo "fledge build, run from a Gemfile of Fledge's own, refused $app"; exit 1; }
           done
           cat /tmp/build.err
           grep -F "https://github.com/setdef/Fledge/releases/download/$TAG" /tmp/build.err
-          cd /work/examples/my_cool_app && bundle install && bundle exec ruby exe/my_cool_app > /work/dist/my_cool_app.expected
+          cd /work/test/fixtures/my_cool_app && bundle install && bundle exec ruby exe/my_cool_app > /work/dist/my_cool_app.expected
           SH
           docker run --rm -v "$GITHUB_WORKSPACE:/work" -v "$GITHUB_WORKSPACE/checks:/checks" -v "$RUNNER_TEMP:/scripts" -e TAG -e COMMIT \
             "$ALPINE_RUBY" sh /scripts/install.sh
@@ -454,7 +454,7 @@ jobs:
   # fledge build android on Linux, installed from the tag with Bundler,
   # download that version's mobile runtime from the release, checked
   # against the gem's pins, and write the projects of examples/hello and
-  # examples/mobile_app, which each system's own tools then build, as a
+  # test/fixtures/mobile_app, which each system's own tools then build, as a
   # developer builds them: xcodebuild for the iOS Simulator, unsigned,
   # with XcodeGen installed as the README says; and each project's Gradle
   # wrapper, with the runner's Android SDK.
@@ -479,7 +479,7 @@ jobs:
           ref: ${{ inputs.commit || inputs.tag }}
           sparse-checkout: |
             examples/hello
-            examples/mobile_app
+            test/fixtures/mobile_app
             mise*.toml
             runtime/sources.yml
             lib/fledge/templates/android/*.gradle
@@ -546,9 +546,9 @@ jobs:
             exit 1
           }
           cd "$RUNNER_TEMP/project"
-          bundle exec fledge build "$PHONE" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/examples/mobile_app" 2>> "$RUNNER_TEMP/build.err" || {
+          bundle exec fledge build "$PHONE" -o "$RUNNER_TEMP/dist" "$GITHUB_WORKSPACE/test/fixtures/mobile_app" 2>> "$RUNNER_TEMP/build.err" || {
             cat "$RUNNER_TEMP/build.err"
-            echo "::error::fledge build $PHONE, run from a Gemfile of Fledge's own, refused examples/mobile_app"
+            echo "::error::fledge build $PHONE, run from a Gemfile of Fledge's own, refused test/fixtures/mobile_app"
             exit 1
           }
           cat "$RUNNER_TEMP/build.err"

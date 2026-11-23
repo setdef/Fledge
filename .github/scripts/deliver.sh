@@ -4,7 +4,7 @@
 
 # Delivery (Plan 001): runs a built app the way a person who has never
 # installed Ruby would, and fails unless it behaves. CI delivers two:
-# examples/hello, a lone main.rb, and examples/my_cool_app, a gem whose
+# examples/hello, a lone main.rb, and test/fixtures/my_cool_app, a gem whose
 # exe/my_cool_app needs a pure-Ruby gem and a native one.
 #
 #   deliver.sh ARCHIVE PROBE_ARCHIVE EXPECTED [--no-ruby-installed]

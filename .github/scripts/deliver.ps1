@@ -5,7 +5,7 @@
 # has never installed Ruby would, and fails unless it behaves. It is
 # deliver.sh's counterpart, with the same checks where Windows has them,
 # and more where Windows has more ways in. CI delivers examples/hello and
-# examples/my_cool_app.
+# test/fixtures/my_cool_app.
 #
 #   pwsh -NoProfile -File deliver.ps1 -Archive ARCHIVE -Probe PROBE_ARCHIVE -Platform PLATFORM -Expected LINE [-Work FOLDER]
 #

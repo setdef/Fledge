@@ -51,7 +51,7 @@ module Fledge
   # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
   # SPDX-License-Identifier: MIT-0
   #++
-  #   bundle = Fledge::Bundle.new(Fledge::App.at("examples/my_cool_app"))
+  #   bundle = Fledge::Bundle.new(Fledge::App.at("my_cool_app"))
   #   bundle.gems_for(Fledge::Platform.find("x64-mingw-ucrt"), ruby_version: "4.1.0.dev", patchlevel: "-1",
   #     bundler: "4.1.0.beta3", arch: "x64-mingw-ucrt").map(&:to_s)
   #   # => ["concurrent-ruby 1.3.8", "i18n 1.15.2", "sqlite3 2.10.2 (x64-mingw-ucrt)"]

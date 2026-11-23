@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
   spec.email = ["kerrick@setdef.com"]
 
   spec.summary = "Says hello through a chain of pure-Ruby gems, on a desktop or a phone."
-  spec.homepage = "https://github.com/setdef/Fledge/tree/trunk/examples/mobile_app"
+  spec.homepage = "https://github.com/setdef/Fledge/tree/trunk/test/fixtures/mobile_app"
   spec.license = "MIT-0"
   spec.required_ruby_version = ">= 4.0.1"
 

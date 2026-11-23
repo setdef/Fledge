@@ -18,7 +18,7 @@ class MobileIOSArchiveTest < Minitest::Test
   APP = { "name" => "Mobile App", "identifier" => "com.example.MobileApp" }.freeze
 
   # What Xcode writes into the Info.plist of an app built from the
-  # template for a device (measured on an archive of examples/mobile_app).
+  # template for a device (measured on an archive of test/fixtures/mobile_app).
   def info
     {
       "CFBundleIdentifier" => APP["identifier"],
@@ -151,7 +151,7 @@ class MobileIOSArchiveTest < Minitest::Test
   end
 
   def test_the_examples_app_icon_has_no_alpha
-    icon = File.join(MobileParity::ROOT, "examples", "mobile_app", "icons", "app-1024.png")
+    icon = File.join(MobileParity::ROOT, "test", "fixtures", "mobile_app", "icons", "app-1024.png")
 
     refute MobileParity::IOSArchive.alpha?(icon)
   end

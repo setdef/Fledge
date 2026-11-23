@@ -606,7 +606,7 @@ jobs:
   # show the device slice links and the privacy manifest names every
   # category of API the app's executable imports that Apple asks a reason
   # for; then each run in the Simulator on an iPhone and an iPad, its
-  # output read from os_log: examples/hello; examples/mobile_app, whose
+  # output read from os_log: examples/hello; test/fixtures/mobile_app, whose
   # pure-Ruby gems Bundler sets up; test/fixtures/native_phone,
   # test/fixtures/cmake_phone, and test/fixtures/rust_phone, whose gems' extensions
   # are compiled for the phone, the second's C++ library by CMake from
@@ -1024,7 +1024,7 @@ jobs:
 
   # An Android app's project is built on macOS and Windows too, as Google
   # supports its SDK there and Briefcase, Flutter, React Native, and Tauri
-  # build Android apps there (ADR 012): examples/mobile_app, written with
+  # build Android apps there (ADR 012): test/fixtures/mobile_app, written with
   # fledge build android and built with its Gradle wrapper and the
   # runner's Android SDK, as an APK and as the release bundle Play takes,
   # which is signed, validated, and made into Play's APKs with bundletool.
@@ -1090,11 +1090,11 @@ jobs:
           name: runtime-android
           path: ${{ runner.temp }}/runtimes
 
-      - name: Write examples/mobile_app's Android project with fledge build android
+      - name: Write test/fixtures/mobile_app's Android project with fledge build android
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
-        run: ruby -I lib exe/fledge build android -o dist examples/mobile_app
+        run: ruby -I lib exe/fledge build android -o dist test/fixtures/mobile_app
 
       - name: Fetch the pinned bundletool
         run: |
@@ -1150,7 +1150,7 @@ jobs:
   # writes an AppImage's file system (ADR 010), and with GObject
   # introspection, so test/integration/typelib_test.rb builds an app
   # over ruby-gnome's gems. No sqlite3 gem is built for Ruby 4.1 yet, so the
-  # builds of examples/my_cool_app and the gem-shaped probe compile it
+  # builds of test/fixtures/my_cool_app and the gem-shaped probe compile it
   # from source, which the limits below leave room for.
   test:
     name: Test (${{ matrix.platform }})
@@ -1255,7 +1255,7 @@ jobs:
 
       # ADR 081: the probe app, built from this runtime,
       # against rv-ruby's own ruby running the same main.rb, then the probe
-      # as examples/my_cool_app's program, built with its gems, against
+      # as test/fixtures/my_cool_app's program, built with its gems, against
       # bundle exec on that Ruby. The report lands in the job summary; an
       # unjustified difference fails the job.
       - name: Check parity with ruby main.rb and bundle exec
@@ -1437,7 +1437,7 @@ jobs:
       # ADR 081: the probe app, built from this runtime,
       # against RubyInstaller's own ruby.exe running the same main.rb, then
       # both again under code page 437, then the probe as
-      # examples/my_cool_app's program against bundle exec (on ARM64, that
+      # test/fixtures/my_cool_app's program against bundle exec (on ARM64, that
       # app without the sqlite3 that cannot be installed there). The report
       # lands in the job summary; an unjustified difference fails the job.
       - name: Check parity with ruby main.rb and bundle exec
@@ -1467,7 +1467,7 @@ jobs:
   # sees, and the probe as a gem-shaped app's program (Parity.gem_probe),
   # which Delivery asks what Bundler.with_original_env and
   # with_unbundled_env give a child; the HTTPS probe (test/fixtures/https),
-  # which asks rubygems.org over HTTPS; examples/my_cool_app, whose gems come
+  # which asks rubygems.org over HTTPS; test/fixtures/my_cool_app, whose gems come
   # from RubyGems.org, each checked against its Gemfile.lock's checksum,
   # precompiled for the platform; test/fixtures/bundled_with,
   # whose Gemfile.lock names a Bundler no runtime ships;
@@ -1605,7 +1605,7 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
           [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
@@ -1814,7 +1814,7 @@ jobs:
         if: matrix.platform != 'aarch64-mingw-ucrt'
         with:
           path: ${{ runner.temp }}/examples-bundle
-          key: examples-bundle-${{ runner.os }}-${{ runner.arch }}-${{ steps.host.outputs.ruby }}-rust-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('examples/my_cool_app/Gemfile.lock', 'test/fixtures/native_app/Gemfile.lock', 'test/fixtures/nokogiri_app/Gemfile.lock', 'test/fixtures/nokogiri_app/.bundle/config') }}
+          key: examples-bundle-${{ runner.os }}-${{ runner.arch }}-${{ steps.host.outputs.ruby }}-rust-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('test/fixtures/my_cool_app/Gemfile.lock', 'test/fixtures/native_app/Gemfile.lock', 'test/fixtures/nokogiri_app/Gemfile.lock', 'test/fixtures/nokogiri_app/.bundle/config') }}
 
       # What each app prints as its developer runs it, which its built app
       # must print too.
@@ -1823,8 +1823,8 @@ jobs:
         env:
           BUNDLE_PATH: ${{ runner.temp }}/examples-bundle
         run: |
-          (cd examples/my_cool_app && bundle install)
-          (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) | tee dist/my_cool_app.expected
+          (cd test/fixtures/my_cool_app && bundle install)
+          (cd test/fixtures/my_cool_app && bundle exec ruby exe/my_cool_app) | tee dist/my_cool_app.expected
           (cd test/fixtures/bundled_with && bundle install)
           (cd test/fixtures/bundled_with && bundle exec ruby exe/bundled_with) | tee dist/bundled_with.expected
           apps=test/fixtures/native_app
@@ -2011,11 +2011,11 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview test/fixtures/ffi_libc; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview test/fixtures/ffi_libc; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
-          (cd examples/my_cool_app && bundle install)
-          (cd examples/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
+          (cd test/fixtures/my_cool_app && bundle install)
+          (cd test/fixtures/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
           cat dist/my_cool_app.expected
           BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle install
           BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle exec ruby examples/markdown_preview/bin/md2html examples/markdown_preview/welcome.md > dist/markdown_preview.expected
@@ -2626,7 +2626,7 @@ jobs:
         run: .github/scripts/pinned-images.sh env >> "$GITHUB_ENV"
 
       - name: Build my_cool_app in manylinux_2_28, whose glibc is the floor
-        run: .github/scripts/glibc-app.sh "${{ matrix.platform }}" "$RUNNER_TEMP/runtimes" "$RUNNER_TEMP/floor" examples/my_cool_app
+        run: .github/scripts/glibc-app.sh "${{ matrix.platform }}" "$RUNNER_TEMP/runtimes" "$RUNNER_TEMP/floor" test/fixtures/my_cool_app
 
       - name: Run hello, my_cool_app, and the HTTPS probe in AlmaLinux 8 (glibc 2.28)
         run: .github/scripts/deliver-glibc-floor.sh "$ALMALINUX_8" "${{ matrix.platform }}" "$RUNNER_TEMP/delivered" "$RUNNER_TEMP/floor"

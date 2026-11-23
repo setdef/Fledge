@@ -63,7 +63,7 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   # From a terminal:
-    #   #   $ fledge build examples/my_cool_app/exe/my_cool_app
+    #   #   $ fledge build my_cool_app/exe/my_cool_app
     #   #   dist/MyCoolApp-x86_64-linux.tar.gz
     #
     #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call(["examples/hello"]) # => 0

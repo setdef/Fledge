@@ -8,7 +8,7 @@
 require "i18n"
 require_relative "my_cool_app/version"
 
-# examples/my_cool_app without sqlite3: its greeting goes through i18n
+# test/fixtures/my_cool_app without sqlite3: its greeting goes through i18n
 # alone.
 module MyCoolApp
   # The line the app prints, naming the gem it went through.

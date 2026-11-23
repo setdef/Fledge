@@ -7,7 +7,7 @@
 
 require_relative "lib/my_cool_app/version"
 
-# examples/my_cool_app's gemspec without sqlite3, for the gem-shaped
+# test/fixtures/my_cool_app's gemspec without sqlite3, for the gem-shaped
 # parity run on a platform where sqlite3 cannot be installed
 # (Parity::WITHOUT_SQLITE3; doc/contributors/design/parity.md, "The
 # gem-shaped run").

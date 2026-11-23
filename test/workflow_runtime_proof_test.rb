@@ -57,8 +57,11 @@ class WorkflowRuntimeProofTest < Minitest::Test
 
   private def paths = workflow.dig(true, "push", "paths")
 
-  # GitHub's filter patterns: ** matches across folders, * within one.
+  # GitHub's filter patterns: ** matches across folders, * within one;
+  # a folder a proof names, as File.join(ROOT, "lib"), is covered by its "folder/**".
   private def covers?(glob, path)
+    return true if glob == "#{path}/**"
+
     File.fnmatch?(glob.sub(%r{/\*\*\z}, "/**/*"), path, File::FNM_PATHNAME | File::FNM_DOTMATCH)
   end
 

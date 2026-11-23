@@ -56,12 +56,8 @@ class MobileParity
       FileUtils.rm_rf(work)
       FileUtils.mkdir_p(APKS)
       MobileParity.projects("android", runtimes:, out: File.join(work, "projects")).each do |app, project|
-        gradlew = File.join(project, Gem.win_platform? ? "gradlew.bat" : "gradlew")
         log = File.join(work, "gradle-#{app.identifier}.log")
-        succeeded = gradle_with_a_second_try(log) do
-          system(gradlew, "--no-daemon", "--info", "--project-dir", project, "assembleDebug", "assembleRelease", "bundleDebug",
-            "bundleRelease", out: [log, "a"], err: %i[child out])
-        end
+        succeeded = gradle(project, "assembleDebug", "assembleRelease", "bundleDebug", "bundleRelease", log:)
         raise "Gradle did not build #{app.name} (#{log}):\n#{gradle_failure(File.read(log))}" unless succeeded
 
         debug, release, bundle = built(app, project)
@@ -71,6 +67,22 @@ class MobileParity
         out.puts "Built #{app.name}: #{File.basename(debug)}, #{File.basename(release)}, and #{File.basename(bundle)}"
       end
       true
+    end
+
+    # Builds +tasks+ in +project+ with the project's own Gradle wrapper,
+    # logging at --info to +log+, as #gradle_with_a_second_try runs it,
+    # and answers whether it succeeded. A build that failed has what
+    # went wrong printed to +out+ (#gradle_failure). The workflows' own
+    # Gradle steps run it through .github/scripts/gradle.rb, so that the
+    # one rule for a second try is held here.
+    def self.gradle(project, *tasks, log:, out: $stdout)
+      FileUtils.mkdir_p(File.dirname(log))
+      gradlew = File.join(project, Gem.win_platform? ? "gradlew.bat" : "gradlew")
+      succeeded = gradle_with_a_second_try(log) do
+        system(gradlew, "--no-daemon", "--info", "--project-dir", project, *tasks, out: [log, "a"], err: %i[child out])
+      end
+      out.puts gradle_failure(File.read(log)) unless succeeded
+      succeeded
     end
 
     # Runs the Gradle build the block runs, which appends its --info

@@ -32,6 +32,20 @@ class WorkflowGradleTest < Minitest::Test
     end
   end
 
+  # Some runners were answered 404 for files Maven Central holds, and a
+  # build run again passes (issue 27), so a step builds with Gradle only
+  # through .github/scripts/gradle.rb, which calls the one method that
+  # holds the second try, and never runs a wrapper itself.
+  def test_no_workflow_step_runs_a_gradle_wrapper_itself
+    runs = Dir[File.join(ROOT, ".github", "workflows", "*.yml")].flat_map do |file|
+      YAML.safe_load_file(file, aliases: true).fetch("jobs").values.flat_map { |job| job.fetch("steps", []).filter_map { |step| step["run"] } }
+    end
+    lines = runs.flat_map { |text| text.lines.map(&:strip).reject { |line| line.start_with?("#") } }
+
+    assert_equal 2, lines.count { |line| line.match?(%r{\Aruby (?:checks/)?\.github/scripts/gradle\.rb }) }, "ci.yml's and installed.yml's Android host builds"
+    assert_empty lines.grep(%r{gradlew(?:\.bat)?["']?\s+-|(?:\A|[(;&]\s*)(?:\./)?gradle(?:w|\.bat)?\s}), "a step runs Gradle without the second try"
+  end
+
   def test_the_script_raises_gradles_own_retry_settings
     assert_equal 7, setting("max.tentatives")
     assert_equal 10_000, setting("initial.backoff")

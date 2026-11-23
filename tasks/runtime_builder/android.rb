@@ -386,17 +386,30 @@ class RuntimeBuilder
     # The AAR, packed by the Android Gradle plugin from the Java class in
     # runtime/mobile/android/ and each ABI's library and ruby program,
     # with the pinned
-    # Gradle, its project files and caches kept out of the repository.
+    # Gradle, its project files and caches kept out of the repository,
+    # and tried a second time when a repository answered 404 for a file
+    # Maven Central holds (MobileParity::Android.gradle_with_a_second_try).
     private def pack_aar(libraries, aar)
+      require_relative "../mobile_parity"
       jni = File.join(@build_dir, "jniLibs")
       libraries.each do |target, files|
         FileUtils.mkdir_p(File.join(jni, target.abi))
         FileUtils.cp(files, File.join(jni, target.abi))
       end
       out = File.join(@build_dir, "gradle")
-      @builder.run(gradle, "--no-daemon", "--quiet", "--project-dir", File.join(MOBILE, "android"), "--project-cache-dir",
-        File.join(out, "cache"), "assembleRelease", "-Pfledge.jniLibs=#{jni}", "-Pfledge.buildDir=#{File.join(out, 'build')}",
-        "-Pfledge.agp=#{pin('agp')}")
+      log = File.join(out, "gradle.log")
+      FileUtils.mkdir_p(out)
+      File.write(log, "")
+      packed = MobileParity::Android.gradle_with_a_second_try(log) do
+        @builder.run(gradle, "--no-daemon", "--info", "--project-dir", File.join(MOBILE, "android"), "--project-cache-dir",
+          File.join(out, "cache"), "assembleRelease", "-Pfledge.jniLibs=#{jni}", "-Pfledge.buildDir=#{File.join(out, 'build')}",
+          "-Pfledge.agp=#{pin('agp')}", out: [log, "a"], err: %i[child out])
+        true
+      rescue RuntimeError
+        false
+      end
+      raise "Gradle did not pack the AAR (#{log}):\n#{MobileParity::Android.gradle_failure(File.read(log))}" unless packed
+
       built = Dir.glob(File.join(out, "build", "outputs", "aar", "*-release.aar"))
       raise "Gradle built no single AAR: #{built}" unless built.size == 1
 

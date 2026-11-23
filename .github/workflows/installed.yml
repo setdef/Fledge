@@ -582,7 +582,10 @@ jobs:
         with:
           persist-credentials: false
           path: checks
-          sparse-checkout: .github/scripts/gradle-patience.sh
+          sparse-checkout: |
+            .github/scripts/gradle-patience.sh
+            .github/scripts/gradle.rb
+            tasks
           sparse-checkout-cone-mode: false
 
       - name: Make Gradle patient with refused downloads
@@ -608,7 +611,7 @@ jobs:
         if: matrix.phone == 'android'
         run: |
           for name in Hello "Mobile App"; do
-            (cd "$RUNNER_TEMP/dist/$name-android" && ./gradlew --no-daemon --quiet assembleDebug assembleRelease)
+            ruby checks/.github/scripts/gradle.rb "$RUNNER_TEMP/dist/$name-android" assembleDebug assembleRelease
             ls "$RUNNER_TEMP/dist/$name-android/build/outputs/apk/debug" "$RUNNER_TEMP/dist/$name-android/build/outputs/apk/release"
           done
 

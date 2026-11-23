@@ -1129,8 +1129,8 @@ jobs:
       - name: Build it with its Gradle wrapper and check the APK and the bundle
         run: |
           cd "dist/Mobile App-android"
-          if [ "$RUNNER_OS" = Windows ]; then ./gradlew.bat --no-daemon assembleDebug bundleRelease; else ./gradlew --no-daemon assembleDebug bundleRelease; fi
           cd ../..
+          ruby .github/scripts/gradle.rb "dist/Mobile App-android" assembleDebug bundleRelease
           ruby tasks/mobile_parity.rb android-check "dist/Mobile App-android/build/outputs/apk/debug/Mobile App-debug.apk"
           ruby tasks/mobile_parity.rb android-bundle "dist/Mobile App-android/build/outputs/bundle/release/Mobile App-release.aab"
 

@@ -606,3 +606,7 @@ The orchestrating agent received these words first-hand from the maintainer.
 > 1.0.0 waits for it, but the 0.X.Y that serves as the release candidate does NOT wait for it. In an ideal world, one where nothing between the dev ruby on the day 0.X.Y releases breaks Fledge, Fledge has no changes between 0.X.Y an 1.0.0 except pointing at the Ruby 4.1.0 release on Christmas Day. (In the real world, there are likely a couple tweaks as new daily builds arrive.)
 
 *Governs:* the candidate carries whatever Ruby the runtimes carry on the day it is cut, and 1.0.0 waits for Ruby 4.1.0; between them nothing is meant to change but the pin to Ruby 4.1.0 and what newer builds of Ruby force. *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "The day Ruby 4.1.0 appears".
+
+> I value "Fast, Reliable Tests" incredibly highly. Consider it a maxim.
+
+*Governs:* Fledge's tests are fast and reliable; a test that is slow for its tier, or fails for no fault in the code, is a defect to fix. *Applied in:* CONTRIBUTING.md, "The tests" and "When CI fails"; AGENTS.md, Commands.

@@ -88,7 +88,7 @@ linux:
 ```
 <!-- SPDX-SnippetEnd -->
 
-Fledge then ships the gem, and refuses a library you list that no gem needs. A `.deb` depends on the packages that provide them, as `dpkg-shlibdeps` finds them, so building one needs `dpkg-dev`, which `build-essential` brings. An AppImage or `.tar.gz` does not carry them. On a computer that lacks one, the app says which library to install and exits with status 72, before your code runs. [`examples/libui_app`](../examples/libui_app) lists the GTK 3 libraries its LibUI gem links.
+Fledge then ships the gem, and refuses a library you list that no gem needs. A `.deb` depends on the packages that provide them, as `dpkg-shlibdeps` finds them, so building one needs `dpkg-dev`, which `build-essential` brings. An AppImage or `.tar.gz` does not carry them. On a computer that lacks one, the app says which library to install and exits with status 72, before your code runs. [`examples/libui_app`](../examples/libui_app) lists the GTK 3 libraries its LibUI gem links, and [`examples/lent`](../examples/lent) the WebKitGTK and libxdo libraries its Tokra gem links.
 
 A gem over GObject introspection, as each of ruby-gnome's is (gtk4, gtk3, gdk_pixbuf2, gstreamer, vte, and the rest), also loads a typelib while your app runs: a file, such as `Gtk-4.0.typelib`, that describes a library to the gem. No compiled file names it, so `fledge build` cannot find it for you, and Debian and Ubuntu package it apart from the library, as `gir1.2-gtk-4.0` beside `libgtk-4-1`, so a computer can have GTK and not its typelib. Without it, your app would stop with Ruby's own error from inside the gem. List each typelib your code loads by its namespace and version, the file's name less `.typelib`, beside the libraries `fledge build` names:
 
@@ -181,6 +181,8 @@ A gem from a GitHub release, which is not on rubygems.org, has no checksum on an
    <!-- SPDX-SnippetEnd -->
 
    If the gem's publisher lists a SHA-256 for each file, compare it with yours. Bundler keeps the checksums you write, through later `bundle lock --add-checksums` and `bundle install` runs, and Bundler and Fledge both refuse a `.gem` that does not match.
+
+Lock only the platform builds you put in `vendor/cache`. If the gem's source file is there too, Bundler locks it beside them as a fallback, with what it depends on to compile, such as rb_sys for a Rust gem. [`examples/lent`](../examples/lent) locks Tokra and ferro-url this way, and keeps their files out of git: its `bin/fetch-gems` downloads each file `Gemfile.lock` names from the GitHub release it was published on, and refuses one whose SHA-256 is not the lockfile's.
 
 A platform gem may require the Ruby that locks it. ferro-url 0.1.2's platform gems require `>= 4.1.0.a, < 4.1.0`, which Ruby 4.1.0-preview1 meets, and Ruby 4.0.10 does not. Under 4.0.10, both `bundle install --local` and `bundle lock --add-platform` fail, because Bundler turns to the gem's source file, which depends on rb_sys: "rb_sys ~> 0.9.129 could not be found in cached gems or installed locally". Run all three steps with the Ruby your app builds with.
 

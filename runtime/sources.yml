@@ -203,8 +203,8 @@ almalinux-perl:
 # (doc/contributors/design/runtimes.md, "Container images").
 images:
   alpine-ruby:
-    version: "2026-11-09"
-    image: ruby:4.1.0-preview1-alpine3.24@sha256:3377ef9d7e5c4c430ccc9c3459d172158c575771e1aac2010702dee54388ace0
+    version: "2026-11-12"
+    image: ruby:4.1.0-preview1-alpine3.24@sha256:95302085717d6a6fecba2c9e93e990167277b4b5ce4519b5fe7bd28436092fbb
   alpine:
     version: 3.24.3
     image: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a

@@ -1,0 +1,602 @@
+[
+  {
+    "tag_name": "RubyInstaller-4.0.10-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-11-19T21:04:07Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.13-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-11-19T21:13:27Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.14-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-11-19T21:08:44Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.9-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-23T20:39:46Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.12-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-23T20:39:12Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.13-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-23T20:33:10Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.7-2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-21T16:19:41Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.11-2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-21T16:19:17Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.12-2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-21T16:20:11Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.11-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-09-25T06:20:09Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-09-15T07:04:50Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.12-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-07-21T12:09:26Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-07-14T19:06:51Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.10-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-07-02T08:54:38Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-05-20T15:45:39Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.4-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-05-16T17:28:56Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.3-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-04-21T17:28:27Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.11-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-03-27T20:08:31Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.11-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-03-26T13:38:42Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.2-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-03-17T19:09:05Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.9-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-03-14T13:21:28Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.1-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-01-16T20:13:08Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.10-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-01-16T20:01:53Z"
+  },
+  {
+    "tag_name": "RubyInstaller-4.0.0-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-12-27T13:40:46Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.8-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-12-18T17:23:31Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.10-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-10-24T19:39:57Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-10-09T19:08:55Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-09-19T15:22:35Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-07-24T19:15:02Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.9-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-07-24T19:16:21Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.9-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-07-24T19:15:49Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.4-2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-05-18T14:29:35Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.4-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-05-16T19:01:53Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.3-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-04-15T19:16:17Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.8-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-04-10T17:25:14Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.8-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-03-26T19:58:48Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.1.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-03-26T19:45:57Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.2-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-02-15T14:51:08Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-02-05T17:09:35Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.1-2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-01-18T14:49:57Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2025-01-18T14:29:29Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.4.1-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-12-30T14:57:59Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.6-2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-11-09T09:49:51Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-11-06T20:38:12Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-10-31T12:55:09Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-07-27T12:07:30Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-09-05T07:12:28Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.4-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-07-10T16:01:07Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.3-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-06-14T20:12:55Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.2-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-06-03T07:09:06Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.1.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-06-03T07:08:43Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.1-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-04-25T19:32:52Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.4-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-04-25T19:33:44Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.1.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-04-25T19:34:03Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.0.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-04-25T19:33:26Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.3-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2024-01-25T07:34:41Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.3.0-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2023-12-26T12:34:01Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.2-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2023-04-01T20:11:15Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.1.4-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2023-04-01T19:56:45Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.0.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2023-04-01T19:55:47Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.8-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2023-04-01T19:56:14Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.1-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2023-02-09T17:15:01Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.2.0-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-12-29T20:34:29Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.1.3-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-11-27T21:06:48Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.0.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-11-27T21:06:18Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-11-27T21:05:50Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.1.2-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-04-19T20:39:24Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.0.4-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-04-19T20:40:08Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-04-19T20:40:33Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.10-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-04-19T20:39:46Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.1.1-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2022-02-18T21:28:09Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.1.0-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-12-30T21:36:32Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.0.3-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-11-27T16:06:19Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-11-27T16:06:44Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.9-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-11-27T16:05:53Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.0.2-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-07-09T19:59:02Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.4-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-07-09T19:59:19Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.8-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-07-09T19:59:34Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.0.1-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-04-19T19:10:37Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.3-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-04-19T19:11:28Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-04-19T19:11:47Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.5.9-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2021-04-19T19:12:10Z"
+  },
+  {
+    "tag_name": "RubyInstaller-3.0.0-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-12-27T20:15:04Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.2-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-10-06T10:26:07Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.6-2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-10-06T20:05:04Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.5.8-2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-10-06T19:57:08Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.1-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-04-03T06:17:27Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-04-03T06:17:52Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.5.8-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-04-03T06:17:05Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.4.10-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-04-03T06:18:13Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.7.0-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2020-01-05T12:35:23Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.4.9-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-10-02T19:22:41Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-10-02T04:19:15Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.5.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-10-02T04:19:55Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.4-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-09-10T04:12:51Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.5.6-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-09-10T04:14:25Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.4.7-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-09-10T04:13:12Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.3-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-04-18T09:35:46Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.6.2-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-04-16T16:40:52Z"
+  },
+  {
+    "tag_name": "RubyInstaller-2.5.5-1",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2019-04-16T16:27:48Z"
+  }
+]

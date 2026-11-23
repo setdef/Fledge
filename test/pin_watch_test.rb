@@ -209,6 +209,72 @@ class PinWatchTest < Minitest::Test
       "a pin nobody holds is the move's, however long it has been behind"
   end
 
+  # What the watch finds for +name+'s pin at +pin+ on +today+, from the
+  # first page of its releases as GitHub listed it on 2026-11-22, with the
+  # day each was published, saved as dated_OWNER_REPOSITORY_releases.
+  def dated(name, pin, today)
+    upstream = entry(name).merge("pins" => ["tool"])
+    url = PinWatch::Upstream.from(name, upstream).url
+    body = File.read(File.join(ANSWERS, "dated_#{url[%r{repos/([^/]+/[^/]+)/}, 1].tr('/', '_')}_releases"))
+    watch({ "tool" => { "version" => pin } }, name => upstream).run(Answers.new(url => body), today:).first
+  end
+
+  # The watch cannot read when an upstream stops a line, so it reads the
+  # days the upstream released on (runtimes.md, "A line that has ended").
+  # OpenSSL never went more than 118 days between releases on the page,
+  # so the floor of 180 days holds: 3.3's last release, 3.3.7, came out
+  # on 2026-04-07, and newer lines released four times before 2026-10-04.
+  # RubyInstaller once went 269 days with none, so a line of Ruby's is
+  # called ended only after 1.5 times that.
+  def test_a_line_has_ended_once_newer_lines_have_released_three_times_since_its_last_and_it_is_quieter_than_its_upstream_ever_was
+    before = dated("openssl", "3.3.7", Date.new(2026, 10, 4))
+
+    assert_equal [:beyond, "2026-04-07"], [before.status, before.last], "180 days after its last release, and not more"
+    assert_equal :ended, dated("openssl", "3.3.7", Date.new(2026, 10, 5)).status
+    assert_equal :beyond, dated("rubyinstaller", "3.1.7", Date.new(2026, 5, 3)).status, "3.1.7 came out on 2025-03-26"
+    assert_equal :ended, dated("rubyinstaller", "3.1.7", Date.new(2026, 5, 4)).status
+    lined = HELD.except("hold").merge("line" => 1)
+    three = releases(["v2.0.2", "2026-03-01T00:00:00Z"], ["v2.0.1", "2026-02-01T00:00:00Z"], ["v2.0.0", "2026-01-15T00:00:00Z"],
+      ["v1.0.0", "2026-01-01T00:00:00Z"])
+    assert_equal :ended, watch({ "tool" => { "version" => "1.0.0" } }, "tool" => lined)
+      .run(Answers.new(PinWatch::Upstream.from("tool", lined).url => three), today: Date.new(2026, 7, 1)).first.status, "three days are enough"
+    unlisted = dated("openssl", "1.1.1", Date.new(2026, 11, 22))
+
+    assert_equal [:ended, "2023-02-01"], [unlisted.status, unlisted.last],
+      "the pattern takes none of 1.1.1's tags (OpenSSL_1_1_1w), so it last released before anything the page lists"
+  end
+
+  # The rule reverted on 2026-11-23 called a line ended a year after the
+  # first release beyond it, which called OpenSSL's long-term 3.5 ended
+  # two months after its last release.
+  def test_a_line_still_releasing_or_whose_upstream_is_quiet_too_has_not_ended
+    today = Date.new(2026, 11, 22)
+    pinned = dated("openssl", "3.6.5", today)
+
+    assert_equal [:beyond, "2026-09-29", { "last" => "2026-09-29" }], [pinned.status, pinned.last, pinned.to_h.slice("last")]
+    assert_equal %i[beyond beyond], [dated("openssl", "3.5.9", today).status, dated("openssl", "3.0.22", today).status]
+    assert_equal :beyond, dated("openssl", "3.0.22", Date.new(2027, 11, 22)).status,
+      "newer lines released on two days since 3.0.22, so the page says no more than that OpenSSL has been quiet"
+  end
+
+  # Ruby's index dates nothing, so the watch cannot tell when a line of
+  # it has ended, and reports only what is beyond.
+  def test_an_upstream_that_dates_nothing_never_ends_a_line
+    body = "ruby-4.1.0\thttps://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0.tar.gz\tx\nruby-4.0.0\turl.tar.gz\tx\n"
+    found = watch({ "ruby" => { "version" => "4.0.0" } }, "ruby" => entry("ruby").merge("pins" => ["ruby"]))
+      .run(Answers.new(entry("ruby")["page"] => body), today: Date.new(2036, 1, 1)).first
+
+    assert_equal [:beyond, nil, "4.1.0"], [found.status, found.last, found.beyond]
+  end
+
+  def test_every_line_that_ships_is_dated_by_an_upstream_with_a_line_whose_releases_github_dates
+    upstreams = PinWatch.load(ROOT).upstreams.select(&:line)
+    dated = upstreams.select(&:github?).flat_map(&:pins)
+    undated = upstreams.select(&:ships).reject { |upstream| upstream.github? || upstream.pins.intersect?(dated) }
+
+    assert_empty undated.map(&:name), "the end of a line nothing dates would pass unheard"
+  end
+
   # An upstream that publishes each build of a release as RELEASE-N, as
   # jdx/ruby publishes each build of a Ruby, and marks a preview's builds
   # as prereleases, as jdx/ruby does: a new release is held for a person,
@@ -270,13 +336,14 @@ class PinWatchTest < Minitest::Test
     assert_equal ["https://api.github.com/repos/example/tool/releases?per_page=100", "https://api.github.com/repos/example/tool/releases?per_page=100&page=2"], answers.asked
   end
 
-  def test_the_watch_fails_for_an_unread_upstream_or_an_overdue_hold_and_not_for_a_hold_in_time
+  def test_the_watch_fails_for_an_unread_upstream_an_overdue_hold_or_an_ended_line_and_not_for_a_hold_in_time
     found = -> (status) { Struct.new(:status).new(status) }
 
     assert_equal 0, PinWatch.exit_status([found.(:current), found.(:held), found.(:beyond)])
     assert_equal 3, PinWatch.exit_status([found.(:held), found.(:newer)])
     assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:overdue)])
     assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:error)])
+    assert_equal 1, PinWatch.exit_status([found.(:newer), found.(:ended)])
   end
 
   # An Alpine index as Alpine serves one: a gzip member holding the

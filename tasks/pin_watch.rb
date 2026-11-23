@@ -47,22 +47,40 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   # unseen.
   HELD_DAYS = 30
 
+  # When a pin's line has ended, as the watch tells it from the days its
+  # upstream released on, with no support policy read: newer lines have
+  # released on ENDED_RELEASES days or more since the line's newest
+  # release, and that release is older than ENDED_DAYS, or than
+  # ENDED_GAPS times the longest the upstream's listing ever went between
+  # two releases, whichever is longer. Measured against every line
+  # OpenSSL's, RubyInstaller's, jdx/ruby's, and Ruby's histories hold, it
+  # called no line ended that released again, and called OpenSSL's ended
+  # lines ended 181 to 189 days after their last release
+  # (doc/contributors/design/runtimes.md, "A line that has ended").
+  ENDED_DAYS = 180
+  ENDED_GAPS = 1.5
+  ENDED_RELEASES = 3
+
   # What the watch found for one upstream: the pin's version, the newest
   # release in its line, and the newest beyond the line, or the error
-  # that kept it from knowing; and, for a pin held for a person, why, the
-  # day the oldest release newer than the pin came out, when the upstream
-  # dates its releases, and whether that was more than HELD_DAYS ago.
-  class Finding < Data.define(:name, :pins, :ships, :current, :newer, :beyond, :error, :held, :since, :overdue)
+  # that kept it from knowing; for a pin held for a person, why, the day
+  # the oldest release newer than the pin came out, when the upstream
+  # dates its releases, and whether that was more than HELD_DAYS ago; and,
+  # for a pin whose only newer release is beyond its line, the day its
+  # line last released, when the upstream dates it, and whether the line
+  # has ended.
+  class Finding < Data.define(:name, :pins, :ships, :current, :newer, :beyond, :error, :held, :since, :overdue, :last, :ended)
     # :error when the upstream could not be read; when it has a release
     # in the pin's line newer than the pin, :overdue when the pin is held
     # and has been behind for longer than HELD_DAYS, :held when it is
-    # held, and :newer otherwise; :beyond when its only newer release is
-    # in another line, and :current otherwise.
+    # held, and :newer otherwise; when its only newer release is in
+    # another line, :ended when the pin's line has ended and :beyond
+    # otherwise; and :current otherwise.
     def status
       if error then :error
       elsif newer && held then overdue ? :overdue : :held
       elsif newer then :newer
-      elsif beyond then :beyond
+      elsif beyond then ended ? :ended : :beyond
       else :current
       end
     end
@@ -80,7 +98,38 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
 "error" => error,
 "held" => held,
 "since" => since,
+"last" => last,
 }.compact
+    end
+  end
+
+  # The days an upstream's listing dates its releases on, as they bear on
+  # one pin's line: the day of the line's newest release, every day
+  # anything came out, and the days a newer line released on.
+  class Quiet < Data.define(:last, :days, :newer)
+    # The days +dates+ gives each version, with +place+ saying of a
+    # version whether its line is the pin's (0), older (-1), or newer (1);
+    # nil when the upstream dates nothing. A line the listing holds no
+    # release of last released before anything it lists.
+    def self.from(dates, &place)
+      dated = dates.transform_values { |day| Date.iso8601(day) }
+      return nil if dated.empty?
+
+      lines = dated.group_by { |version, _| place.call(version) }.transform_values { |pairs| pairs.map(&:last) }
+      days = dated.values.uniq.sort
+      new(last: lines.fetch(0, []).max || days.first, days:, newer: lines.fetch(1, []).uniq)
+    end
+
+    # How long the line may go with no release before it has ended: the
+    # longer of ENDED_DAYS and ENDED_GAPS times the upstream's longest
+    # silence between two releases.
+    def limit
+      [ENDED_DAYS, ENDED_GAPS * days.each_cons(2).map { |before, after| after - before }.max.to_i].max
+    end
+
+    # Whether the line has ended on +today+.
+    def ended?(today)
+      newer.count { |day| day > last } >= ENDED_RELEASES && today - last > limit
     end
   end
 
@@ -401,11 +450,12 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   end
 
   # The status the watch exits with for +report+: 1 when an upstream
-  # could not be read or a held pin is overdue, since a person is needed;
-  # else 3 when a pin is behind, for the move; and else 0.
+  # could not be read, a held pin is overdue, or a pin's line has ended,
+  # since a person is needed; else 3 when a pin is behind, for the move;
+  # and else 0.
   def self.exit_status(report)
     statuses = report.map(&:status)
-    if statuses.intersect?(%i[error overdue]) then 1
+    if statuses.intersect?(%i[error overdue ended]) then 1
     elsif statuses.include?(:newer) then 3
     else 0
     end
@@ -445,15 +495,20 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     rebuilds = in_line.select { |version| upstream.rebuild?(version, current) }
     return finding(upstream, current:, newer: newest(rebuilds), beyond: newest(beyond), held: nil) if upstream.hold && rebuilds.any?
 
-    since = upstream.dates(body, current).values_at(*in_line).compact.min
-    finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond), since:, overdue: PinWatch.overdue?(since, today))
+    dates = upstream.dates(body, current)
+    since = dates.values_at(*in_line).compact.min
+    quiet = Quiet.from(dates) { |version| place(upstream, version, current) } if upstream.line && in_line.empty? && beyond.any?
+    finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond), since:, overdue: PinWatch.overdue?(since, today),
+      last: quiet&.last&.iso8601, ended: quiet&.ended?(today) || false)
   rescue Error => e
     finding(upstream, current:, error: e.message)
   end
 
-  private def finding(upstream, current: nil, newer: nil, beyond: nil, error: nil, since: nil, overdue: false, held: upstream.hold)
+  private def finding(upstream, current: nil, newer: nil, beyond: nil, error: nil, since: nil, overdue: false, held: upstream.hold,
+    last: nil, ended: false
+  )
     Finding.new(name: upstream.name, pins: upstream.pins, ships: upstream.ships, current:, newer:, beyond:, error:,
-      held:, since:, overdue:)
+      held:, since:, overdue:, last:, ended:)
   end
 
   private def version_of(upstream, pin)
@@ -476,7 +531,13 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   private def same_line?(upstream, version, current)
     return true unless upstream.line
 
-    numbers(version).first(upstream.line) == numbers(current).first(upstream.line)
+    place(upstream, version, current).zero?
+  end
+
+  # Whether the line of +version+ is older than the pin's, at +current+
+  # (-1), the same (0), or newer (1).
+  private def place(upstream, version, current)
+    numbers(version).first(upstream.line) <=> numbers(current).first(upstream.line)
   end
 
   private def newest(versions)
@@ -500,8 +561,9 @@ end
 # asks every upstream, prints what it found, writes it to REPORT as
 # JSON, and exits as PinWatch.exit_status says: 0 when no pin is behind
 # but those held in time, 3 when an upstream has a newer release in the
-# line of a pin nobody holds, and 1 when one could not be read or a held
-# pin has been behind for longer than PinWatch::HELD_DAYS.
+# line of a pin nobody holds, and 1 when one could not be read, a held
+# pin has been behind for longer than PinWatch::HELD_DAYS, or a pin's
+# line has ended (PinWatch::Quiet).
 if $PROGRAM_NAME == __FILE__
   report = PinWatch.load(File.expand_path("..", __dir__)).run(PinWatch::Fetch.new(token: ENV.fetch("GITHUB_TOKEN", nil)))
   File.write(ARGV[0], JSON.pretty_generate(report.map(&:to_h))) if ARGV[0]
@@ -512,6 +574,8 @@ if $PROGRAM_NAME == __FILE__
       finding.current,
       finding.newer && "-> #{finding.newer}",
       finding.beyond && "(beyond its line: #{finding.beyond})",
+      finding.last && "(its line last released on #{finding.last})",
+      ("its line has ended, and a person moves the pin to a newer one" if finding.ended),
       finding.error,
       finding.newer && finding.since && "(since #{finding.since})",
       finding.newer && finding.held && "held for a person, who has #{PinWatch::HELD_DAYS} days: #{finding.held}",

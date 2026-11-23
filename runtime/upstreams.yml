@@ -26,7 +26,9 @@
 #   when its indexes serve another build than the pin.
 # line: when set, how many leading numbers of the version make a line
 #   the pin stays in: a newer release in the line is the pin's next
-#   version, and one beyond it is reported but not taken.
+#   version, and one beyond it is reported but not taken. When the
+#   upstream dates its releases, the watch fails once the line has ended
+#   (PinWatch::Quiet), to call a person, who moves the pin to a newer line.
 # ships: false for an input no runtime or app carries, which CI alone
 #   uses; true by default. A move of one that ships adds a line to
 #   CHANGELOG.md.

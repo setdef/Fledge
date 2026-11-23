@@ -83,11 +83,12 @@ class RuntimeBuilder
       FileUtils.cp_r(File.join(@prefix, "bin"), File.join(stage, "bin"))
       FileUtils.rm_f(File.join(stage, "bin", "ruby"))
       FileUtils.cp_r(File.join(@prefix, "lib", "ruby"), File.join(stage, "lib", "ruby"))
-      # Ruby's own headers, which mkmf reads; not the headers jdx/ruby's
-      # tree adds beside them for the static libraries a runtime leaves
-      # out (OpenSSL's, libyaml's, zlib's, and libxcrypt's crypt.h).
+      # Ruby's own headers, which mkmf reads, and those of the libraries
+      # gems compile against (#gem_libraries); not the rest jdx/ruby's
+      # tree adds beside them (zlib's, and libxcrypt's crypt.h).
       FileUtils.mkdir_p(File.join(stage, "include"))
       Dir.glob(File.join(@prefix, "include", "ruby-*")).each { |headers| FileUtils.cp_r(headers, File.join(stage, "include")) }
+      Unix.copy_gem_libraries(gem_libraries, stage)
       FileUtils.chmod_R("u+w", [File.join(stage, "lib"), File.join(stage, "bin"), File.join(stage, "include")])
       removed = Pruning.prune(File.join(stage, "lib", "ruby"), @builder.bundled_gems)
       Pruning.prune_bin(File.join(stage, "bin"), removed)
@@ -95,6 +96,48 @@ class RuntimeBuilder
       FileUtils.mkdir_p(File.join(stage, "libexec"))
       FileUtils.cp(File.join(@prefix, "libexec", "cert.pem"), File.join(stage, "libexec", "cert.pem"))
       copy_static_libruby(stage)
+    end
+
+    # What a gem fledge build compiles finds of OpenSSL and libyaml, the
+    # libraries the runtime's Ruby linked into its openssl and psych
+    # extensions, which no computer an app goes to can be counted on to
+    # have: their headers, static libraries, and pkg-config files, as
+    # jdx/ruby keeps them in its tree for compiling gems
+    # (libexec/package.rb, copy_native_gem_dependencies, at 09c4b6b).
+    # No app holds them (Fledge::Assembly::RuntimeFolder).
+    GEM_LIBRARIES = %w[
+      include/openssl
+      include/yaml.h
+      lib/libssl.a
+      lib/libcrypto.a
+      lib/libyaml.a
+      lib/pkgconfig/openssl.pc
+      lib/pkgconfig/libssl.pc
+      lib/pkgconfig/libcrypto.pc
+      lib/pkgconfig/yaml-0.1.pc
+    ].freeze
+
+    # The prefix that holds GEM_LIBRARIES: the Ruby's own, as jdx/ruby's
+    # tree holds them.
+    private def gem_libraries
+      @prefix
+    end
+
+    # Copies GEM_LIBRARIES from the prefix +from+ into +stage+, each that
+    # +from+ holds, with each pkg-config file naming the folder it is in
+    # (<tt>${pcfiledir}/../..</tt>) wherever it named +from+, so that it
+    # holds wherever the runtime is unpacked.
+    def self.copy_gem_libraries(from, stage)
+      GEM_LIBRARIES.each do |path|
+        source = File.join(from, path)
+        next unless File.exist?(source)
+
+        target = File.join(stage, path)
+        FileUtils.mkdir_p(File.dirname(target))
+        FileUtils.cp_r(source, target)
+        FileUtils.chmod_R("u+w", target)
+        File.write(target, File.read(target).gsub(from, "${pcfiledir}/../..")) if path.end_with?(".pc")
+      end
     end
 
     # Copies the static libruby into the runtime's lib/, stripped of its

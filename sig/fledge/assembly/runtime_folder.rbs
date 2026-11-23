@@ -19,6 +19,8 @@ module Fledge
 
       def move_into: (String folder) -> void
 
+      private def for_compiling: () -> Array[String]
+
       private def held: () -> Array[String]
 
       private def check: (String name) -> void

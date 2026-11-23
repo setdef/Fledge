@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+# A stand-in for Puma: a path gem whose C extension links OpenSSL.
+gem "ssl_version", path: "gems/ssl_version"

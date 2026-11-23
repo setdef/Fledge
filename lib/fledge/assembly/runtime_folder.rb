@@ -58,12 +58,27 @@ module Fledge
       end
 
       # Moves everything the app holds of the runtime, which is all of it
-      # but its launchers, its tools folder, and the description of its
-      # Ruby that fledge build reads (RuntimeContents::DESCRIPTION), into
-      # +folder+, once nothing of the app's could collide with it.
+      # but its launchers, its tools folder, the description of its
+      # Ruby that fledge build reads (RuntimeContents::DESCRIPTION), and
+      # what it holds for compiling gems (#for_compiling), into +folder+,
+      # once nothing of the app's could collide with it.
       def move_into(folder)
         FileUtils.mkdir_p(folder)
+        FileUtils.rm_rf(for_compiling)
         held.each { |name| FileUtils.mv(File.join(@top, name), File.join(folder, name)) }
+      end
+
+      # The headers, static libraries, and pkg-config files of the
+      # libraries the runtime's Ruby was built with, which fledge build
+      # compiles a gem against (doc/contributors/design/runtimes.md,
+      # "What a runtime keeps for compiling gems"): every header beside
+      # Ruby's own folder of them, every static library but the libruby
+      # an app's own mkmf links its checks against, and the pkg-config
+      # files. No running Ruby code reads them.
+      private def for_compiling
+        include = Dir.glob(File.join(@top, "include", "*")).reject { |path| File.basename(path).start_with?("ruby-") }
+        static = Dir.glob(File.join(@top, "lib", "*.a")).reject { |path| File.basename(path).match?(/\Alibruby.*-static\.a\z/) }
+        [*include, *static, *Dir.glob(File.join(@top, "lib", "pkgconfig"))]
       end
 
       private def held

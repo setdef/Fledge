@@ -19,7 +19,7 @@ path = ['examples/my_cool_app/Gemfile.lock', 'test/fixtures/native_app/Gemfile.l
   'test/fixtures/rust_lengths/Gemfile.lock', 'test/fixtures/rust_lengths/gems/lengths/ext/lengths/Cargo.lock',
   'test/fixtures/bundled_with/Gemfile.lock', 'test/fixtures/mobile_commands/Gemfile.lock', 'test/fixtures/ffi_extconf/Gemfile.lock', 'test/fixtures/ffi_libc/Gemfile.lock',
   'test/fixtures/my_cool_app_without_sqlite3/Gemfile.lock', 'test/fixtures/typelib/Gemfile.lock',
-  'test/fixtures/carried_libraries/Gemfile.lock', 'test/fixtures/msys2_linked/Gemfile.lock']
+  'test/fixtures/carried_libraries/Gemfile.lock', 'test/fixtures/msys2_linked/Gemfile.lock', 'test/fixtures/openssl_gem/Gemfile.lock']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 

@@ -24,6 +24,8 @@ module Fledge
 
       def env: () -> Hash[String, String?]
 
+      private def gem_libraries: (Hash[String, String?] env) -> void
+
       private def pkg_config_path: (String given) -> String?
     end
   end

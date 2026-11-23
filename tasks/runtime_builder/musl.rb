@@ -65,6 +65,13 @@ class RuntimeBuilder
         openssl_target: "linux-#{ARCHES.fetch(@builder.platform.name)}").call
     end
 
+    # The prefix RubyBuild built OpenSSL and libyaml into, whose headers,
+    # static libraries, and pkg-config files gems compile against, as
+    # jdx/ruby's tree holds them on glibc Linux (Unix::GEM_LIBRARIES).
+    private def gem_libraries
+      File.join(@build_dir, "deps")
+    end
+
     # The libraries libruby-static.a needs, as its own Ruby links them
     # (RbConfig's LIBS), which on musl are all in its C library.
     private def libruby_libraries

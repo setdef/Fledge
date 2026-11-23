@@ -61,6 +61,8 @@ On Windows, a gem with a Rust extension built with magnus 0.9, which most Rust g
 
 A gem that compiles from source may link a library your computer has and the app's other computers may not. `fledge build` then refuses it and names the library. The first fix to try is the gem's own build options, which Bundler passes on as `bundle config build.NAME OPTIONS` (in the project's `.bundle/config`, or `BUNDLE_BUILD__NAME`): read the gem's README for the option that makes it build its own copy. When it has none, list the library as the Linux distribution's or, on a Mac, have the app carry it, as the next two sections show.
 
+OpenSSL and libyaml are the exception on Linux. A gem whose extension links either one, such as Puma, which links OpenSSL for TLS, or the psych gem at a version other than the one Ruby comes with, compiles against the copy Fledge's runtime carries for this, the copy Ruby's own `openssl` and `psych` were built with. It links it in, needs nothing of the computers the app goes to, and asks nothing of yours: no `libssl-dev`, no `fledge.yml` key. The copy is the runtime's, so a fix to OpenSSL reaches your app when a Fledge release moves the runtime's OpenSSL and you build the app again. Your app holds that copy only inside the gem's extension, beside Ruby's own.
+
 ffi is the one most Linux apps meet, once the Ruby it builds for is newer than its precompiled gems (Ruby 4.1's preview, for one). Its `extconf.rb` links the libffi it finds first, and `fledge build` refuses: "ffi 1.17.4's lib/ffi_c.so needs libffi.so.8, which neither linux, nor Fledge's runtime, nor the gem itself provides". Ask ffi to build the libffi it carries, which then ships inside `ffi_c.so`:
 
 ```sh

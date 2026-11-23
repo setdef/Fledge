@@ -38,6 +38,38 @@ class NativeBuildRuntimeRubyTest < Minitest::Test
     assert_equal({ "PKG_CONFIG_PATH" => nil }, found.slice("PKG_CONFIG_PATH"))
   end
 
+  # A runtime that holds the headers, static libraries, and pkg-config
+  # files of the OpenSSL and libyaml its Ruby was built with puts them
+  # before the computer's, for a gem that asks pkg-config and for one
+  # that looks for a header by name, as Puma does for each.
+  def test_the_runtimes_libraries_for_gems_come_before_the_computers
+    Dir.mktmpdir do |dir|
+      runtime = File.join(dir, "fledge-runtime")
+      FileUtils.mkdir_p([File.join(runtime, "lib", "pkgconfig"), File.join(runtime, "include", "openssl"), File.join(runtime, "bin")])
+      ruby = Fledge::NativeBuild::RuntimeRuby.new(platform: Fledge::Platform.find("x86_64-linux"), runtimes: Fledge::Runtimes.new(env: {}),
+        work: dir, log: StringIO.new, env: { "PKG_CONFIG_PATH" => "/opt/homebrew/lib/pkgconfig", "CPATH" => "/opt/include" },
+        prefix: "/rubies/4.1.0")
+      ruby.instance_variable_set(:@ruby, File.join(runtime, "bin", "ruby"))
+
+      found = ruby.env
+
+      assert_equal [File.join(runtime, "lib", "pkgconfig"), "/opt/homebrew/lib/pkgconfig"].join(File::PATH_SEPARATOR), found.fetch("PKG_CONFIG_PATH")
+      assert_equal [File.join(runtime, "include"), "/opt/include"].join(File::PATH_SEPARATOR), found.fetch("CPATH")
+    end
+  end
+
+  def test_a_runtime_with_no_libraries_for_gems_leaves_the_search_paths_alone
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, "fledge-runtime", "bin"))
+      ruby = Fledge::NativeBuild::RuntimeRuby.new(platform: Fledge::Platform.find("x86_64-linux"), runtimes: Fledge::Runtimes.new(env: {}),
+        work: dir, log: StringIO.new, env: { "CPATH" => "/opt/include" }, prefix: "/rubies/4.1.0")
+      ruby.instance_variable_set(:@ruby, File.join(dir, "fledge-runtime", "bin", "ruby"))
+
+      refute_includes ruby.env.keys, "CPATH"
+      refute_includes ruby.env.keys, "PKG_CONFIG_PATH"
+    end
+  end
+
   # A folder whose name only begins with the prefix's is another one.
   def test_a_folder_beside_the_developers_ruby_stays
     path = "/rubies/4.1.0-other/lib/pkgconfig"

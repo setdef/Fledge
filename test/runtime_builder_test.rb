@@ -478,10 +478,12 @@ class RuntimeBuilderTest < Minitest::Test
   # mkmf links the test program of every have_func and have_library
   # against the static libruby in $(libdir), so a runtime keeps it beside
   # lib/ruby, stripped of the debug sections a link never reads;
-  # rv-ruby's other static library, libxcrypt's, and its pkg-config
-  # files stay out, and of include/ only Ruby's own headers come, not
-  # the headers jdx/ruby's tree has beside them for its static libraries.
-  def test_a_unix_runtime_keeps_the_static_libruby_mkmf_links_against
+  # libxcrypt's static library and crypt.h stay out, and so do zlib's,
+  # whose shared library every Linux provides. OpenSSL's and libyaml's
+  # headers, static libraries, and pkg-config files come, which jdx/ruby
+  # keeps for compiling gems and its rbconfig.rb points mkmf at, so that
+  # a gem fledge build compiles links the OpenSSL the runtime's Ruby has.
+  def test_a_unix_runtime_keeps_the_static_libruby_and_the_libraries_gems_compile_against
     Dir.mktmpdir do |dir|
       prefix = File.join(dir, "prefix")
       make_files(prefix, %w[
@@ -490,12 +492,23 @@ class RuntimeBuilderTest < Minitest::Test
         include/ruby-4.1.0+5/ruby.h
         include/crypt.h
         include/openssl/ssl.h
+        include/yaml.h
+        include/zlib.h
         lib/libruby.4.1-static.a
         lib/libcrypt.a
+        lib/libssl.a
+        lib/libcrypto.a
+        lib/libyaml.a
+        lib/libz.a
         lib/pkgconfig/ruby-4.1.pc
+        lib/pkgconfig/libcrypt.pc
+        lib/pkgconfig/zlib.pc
         lib/ruby/4.1.0+5/rubygems.rb
         libexec/cert.pem
       ])
+      %w[openssl libssl libcrypto yaml-0.1].each do |name|
+        File.write(File.join(prefix, "lib/pkgconfig/#{name}.pc"), "prefix=${pcfiledir}/../..\nlibdir=${prefix}/lib\n")
+      end
       FileUtils.mkdir_p(File.join(prefix, "lib/ruby/gems/4.1.0+5/specifications"))
       commands = Recording.new(platform: Fledge::Platform.find("x86_64-linux"))
       recipe = RuntimeBuilder::Linux.new(builder: commands, build_dir: dir)
@@ -504,10 +517,29 @@ class RuntimeBuilderTest < Minitest::Test
 
       recipe.__send__(:copy_ruby, stage)
 
-      assert_equal %w[lib/libruby.4.1-static.a], kept(File.join(stage)).grep(/\.a\z/)
-      refute_path_exists File.join(stage, "lib/pkgconfig")
-      assert_equal %w[include/ruby-4.1.0+5/ruby.h], kept(stage).grep(%r{\Ainclude/})
+      assert_equal %w[lib/libcrypto.a lib/libruby.4.1-static.a lib/libssl.a lib/libyaml.a], kept(stage).grep(/\.a\z/).sort
+      assert_equal %w[lib/pkgconfig/libcrypto.pc lib/pkgconfig/libssl.pc lib/pkgconfig/openssl.pc lib/pkgconfig/yaml-0.1.pc],
+        kept(stage).grep(%r{\Alib/pkgconfig/}).sort
+      assert_equal %w[include/openssl/ssl.h include/ruby-4.1.0+5/ruby.h include/yaml.h], kept(stage).grep(%r{\Ainclude/}).sort
       assert_equal [["strip", "-S", File.join(stage, "lib/libruby.4.1-static.a")]], commands.ran
+    end
+  end
+
+  # Fledge's own build of OpenSSL and libyaml writes its folder into
+  # their pkg-config files, which must name the runtime's own folder
+  # wherever the runtime is unpacked, as jdx/ruby's do.
+  def test_a_gem_librarys_pkg_config_file_names_the_folder_it_is_in
+    Dir.mktmpdir do |dir|
+      deps = File.join(dir, "deps")
+      make_files(deps, %w[include/yaml.h lib/libyaml.a])
+      FileUtils.mkdir_p(File.join(deps, "lib/pkgconfig"))
+      File.write(File.join(deps, "lib/pkgconfig/yaml-0.1.pc"), "prefix=#{deps}\nlibdir=#{deps}/lib\nincludedir=${prefix}/include\n")
+      stage = File.join(dir, "stage")
+
+      RuntimeBuilder::Unix.copy_gem_libraries(deps, stage)
+
+      assert_equal "prefix=${pcfiledir}/../..\nlibdir=${pcfiledir}/../../lib\nincludedir=${prefix}/include\n",
+        File.read(File.join(stage, "lib/pkgconfig/yaml-0.1.pc"))
     end
   end
 

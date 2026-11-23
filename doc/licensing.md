@@ -78,11 +78,11 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
 | libxcrypt's source code, as its authors released it, and how the runtime's copy was built | 4.5.2 | `LGPL-2.1-or-later` | notices/sources/libxcrypt/, in every app |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/x86_64-linux/psych.so |
+| libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/x86_64-linux/psych.so, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against |
 | mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2025-07-15 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
-| OpenSSL, compiled into Ruby's openssl extension | 3.5.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux/openssl.so |
+| OpenSSL, compiled into Ruby's openssl extension, with its headers and static libraries for compiling gems | 3.5.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux/openssl.so, and as include/openssl/, lib/libssl.a, and lib/libcrypto.a for fledge build to compile gems against |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS, FledgeRuby.framework, and on Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT | 1.58.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
@@ -119,11 +119,11 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
 | libxcrypt's source code, as its authors released it, and how the runtime's copy was built | 4.5.2 | `LGPL-2.1-or-later` | notices/sources/libxcrypt/, in every app |
 | libxcrypt, which backs String#crypt | 4.5.2 | `LGPL-2.1-or-later` | lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/aarch64-linux/psych.so |
+| libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/aarch64-linux/psych.so, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against |
 | mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2025-07-15 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
-| OpenSSL, compiled into Ruby's openssl extension | 3.5.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux/openssl.so |
+| OpenSSL, compiled into Ruby's openssl extension, with its headers and static libraries for compiling gems | 3.5.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux/openssl.so, and as include/openssl/, lib/libssl.a, and lib/libcrypto.a for fledge build to compile gems against |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS, FledgeRuby.framework, and on Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT | 1.58.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
@@ -157,11 +157,11 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libfuse's source code, as its authors released it | 3.15.0 | `LGPL-2.1-only` | notices/sources/libfuse/, in every app |
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/psych.so |
+| libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/psych.so, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against |
 | mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
-| OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/openssl.so |
+| OpenSSL, compiled into Ruby's openssl extension, with its headers and static libraries for compiling gems | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/openssl.so, and as include/openssl/, lib/libssl.a, and lib/libcrypto.a for fledge build to compile gems against |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS, FledgeRuby.framework, and on Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
@@ -195,11 +195,11 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libfuse's source code, as its authors released it | 3.15.0 | `LGPL-2.1-only` | notices/sources/libfuse/, in every app |
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/psych.so |
+| libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/psych.so, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against |
 | mimalloc, the memory allocator linked into the AppImage runtime | 2.1.7 | `MIT` | linked into tools/appimage-runtime |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | musl, the C library the AppImage runtime is linked with | 1.2.5 | `MIT` | linked into tools/appimage-runtime |
-| OpenSSL, compiled into Ruby's openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/openssl.so |
+| OpenSSL, compiled into Ruby's openssl extension, with its headers and static libraries for compiling gems | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/openssl.so, and as include/openssl/, lib/libssl.a, and lib/libcrypto.a for fledge build to compile gems against |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS, FledgeRuby.framework, and on Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
 | squashfuse, which reads the AppImage's file system, linked into the AppImage runtime | 0.5.2 | `BSD-2-Clause` | linked into tools/appimage-runtime |
 | The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.96.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |

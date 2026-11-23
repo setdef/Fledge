@@ -99,17 +99,42 @@ module Fledge
       # what a gem links does not depend on which Ruby ran Fledge
       # (gems.md, "What the build takes from the developer's
       # environment").
+      #
+      # A runtime that holds the headers, static libraries, and
+      # pkg-config files of the libraries its Ruby was built with
+      # (doc/contributors/design/runtimes.md, "What a runtime keeps for
+      # compiling gems") puts its pkg-config folder first in
+      # PKG_CONFIG_PATH and its include folder first in CPATH, which gcc
+      # and clang search before the system's headers, so that a gem finds
+      # those before the computer's; mkmf already links against the
+      # runtime's lib/ first.
       def env
         env = @env.to_h.keys.grep(SCRUBBED).to_h { |name| [name, nil] } # : Hash[String, String?]
         given = @env.to_h["PKG_CONFIG_PATH"]
         path = pkg_config_path(given.to_s)
         env["PKG_CONFIG_PATH"] = path unless path == given
+        gem_libraries(env)
         env["GEM_HOME"] = home
         env["GEM_PATH"] = "#{home}#{File::PATH_SEPARATOR}"
         env["RUBYGEMS_USE_PSYCH"] = "true"
         minimum = @platform.macos_minimum
         env["MACOSX_DEPLOYMENT_TARGET"] = minimum if minimum
         env
+      end
+
+      # Puts the unpacked runtime's pkg-config and include folders first in
+      # +env+, when it has a pkg-config folder.
+      private def gem_libraries(env)
+        ruby = @ruby
+        return unless ruby && !@platform.windows?
+
+        prefix = File.dirname(File.dirname(ruby))
+        pkgconfig = File.join(prefix, "lib", "pkgconfig")
+        return unless File.directory?(pkgconfig)
+
+        rest = env.key?("PKG_CONFIG_PATH") ? env["PKG_CONFIG_PATH"] : @env["PKG_CONFIG_PATH"]
+        env["PKG_CONFIG_PATH"] = [pkgconfig, rest].compact.reject(&:empty?).join(File::PATH_SEPARATOR)
+        env["CPATH"] = [File.join(prefix, "include"), @env["CPATH"]].compact.reject(&:empty?).join(File::PATH_SEPARATOR)
       end
 
       # +given+ without any folder inside the developer's own Ruby, or nil

@@ -347,33 +347,36 @@ components:
         evidence: "OpenSSL 3.6.2 "
 
   # jdx/ruby's builds compile in OpenSSL 3.5.5 (its
-  # recipes/dependencies.yml), and ship its static libraries in lib/ for
-  # compiling gems, which a runtime leaves out.
+  # recipes/dependencies.yml), and ship its headers, static libraries, and
+  # pkg-config files in include/ and lib/ for compiling gems, which a
+  # runtime keeps for fledge build and no app holds.
   - id: openssl-jdx
-    name: OpenSSL, compiled into Ruby's openssl extension
+    name: OpenSSL, compiled into Ruby's openssl extension, with its headers and static libraries for compiling gems
     version: 3.5.5
     license: Apache-2.0
     kind: program
     download: https://github.com/openssl/openssl/releases/download/openssl-3.5.5/openssl-3.5.5.tar.gz
     notice: openssl
-    ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}"
+    ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}, and as include/openssl/, lib/libssl.a, and lib/libcrypto.a for fledge build to compile gems against"
     platforms: [x86_64-linux, aarch64-linux]
     ruby_build: jdx
-    files: ["{prefix}lib/lib{ssl,crypto}.a"]
+    files: ["{prefix}lib/lib{ssl,crypto}.a", "{prefix}include/openssl/*.h", "{prefix}lib/pkgconfig/{openssl,libssl,libcrypto}.pc"]
     binaries: ["{prefix}lib/lib{ssl,crypto}.a"]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.5.5 "
 
   - id: openssl-musl
-    name: OpenSSL, compiled into Ruby's openssl extension
+    name: OpenSSL, compiled into Ruby's openssl extension, with its headers and static libraries for compiling gems
     version: 3.6.5
     license: Apache-2.0
     kind: program
     download: https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
     notice: openssl
-    ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}"
+    ships: "compiled into lib/ruby/{abi}/{arch}/openssl.{so}, and as include/openssl/, lib/libssl.a, and lib/libcrypto.a for fledge build to compile gems against"
     platforms: [x86_64-linux-musl, aarch64-linux-musl]
+    files: ["{prefix}lib/lib{ssl,crypto}.a", "{prefix}include/openssl/*.h", "{prefix}lib/pkgconfig/{openssl,libssl,libcrypto}.pc"]
+    binaries: ["{prefix}lib/lib{ssl,crypto}.a"]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
         evidence: "OpenSSL 3.6.5 "
@@ -439,32 +442,35 @@ components:
         evidence: "0.2.5\0"
 
   # glibc Linux's libyaml, as jdx/ruby and Fledge's own build of Ruby
-  # compile it; jdx/ruby ships its static library in lib/ for compiling
-  # gems, which a runtime leaves out.
+  # compile it; jdx/ruby ships its header, static library, and pkg-config
+  # file for compiling gems, which a runtime keeps for fledge build and no
+  # app holds.
   - id: libyaml-glibc
-    name: libyaml, compiled into Ruby's psych extension
+    name: libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems
     version: 0.2.5
     license: MIT
     kind: program
     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
     notice: libyaml
-    ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}"
+    ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against"
     platforms: [x86_64-linux, aarch64-linux]
-    files: ["{prefix}lib/libyaml.a"]
+    files: ["{prefix}lib/libyaml.a", "{prefix}include/yaml.h", "{prefix}lib/pkgconfig/yaml-0.1.pc"]
     binaries: ["{prefix}lib/libyaml.a"]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
         evidence: "0.2.5\0"
 
   - id: libyaml-musl
-    name: libyaml, compiled into Ruby's psych extension
+    name: libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems
     version: 0.2.5
     license: MIT
     kind: program
     download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
     notice: libyaml
-    ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}"
+    ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against"
     platforms: [x86_64-linux-musl, aarch64-linux-musl]
+    files: ["{prefix}lib/libyaml.a", "{prefix}include/yaml.h", "{prefix}lib/pkgconfig/yaml-0.1.pc"]
+    binaries: ["{prefix}lib/libyaml.a"]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
         evidence: "0.2.5\0"

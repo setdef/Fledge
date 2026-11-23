@@ -78,6 +78,34 @@ class AssemblyTest < Minitest::Test
     end
   end
 
+  # The headers, static libraries, and pkg-config files a runtime holds
+  # for compiling gems (OpenSSL's and libyaml's) are fledge build's, and
+  # no app holds them; Ruby's own headers and the static libruby, which
+  # an app's own mkmf reads, stay.
+  def test_what_a_runtime_holds_for_compiling_gems_stays_out_of_the_app
+    unix!
+    Dir.mktmpdir do |dir|
+      extra = %w[
+        include/ruby-4.1.0+5/ruby.h
+        include/openssl/ssl.h
+        include/yaml.h
+        lib/libruby.4.1-static.a
+        lib/libssl.a
+        lib/libcrypto.a
+        lib/libyaml.a
+        lib/pkgconfig/openssl.pc
+        lib/pkgconfig/yaml-0.1.pc
+      ].map { |path| Fledge::Entry.file(path, "x") }
+
+      archive = assemble(dir, FakeApp.write(dir), runtime: FakeRuntime.write(dir, LINUX, extra:))
+
+      held = tree(File.join(unpacked(dir, archive), "Hello-x86_64-linux"))
+      assert_includes held, "include/ruby-4.1.0+5/ruby.h"
+      assert_includes held, "lib/libruby.4.1-static.a"
+      assert_empty held.grep(%r{\Ainclude/(?:openssl|yaml)|\Alib/(?:libssl|libcrypto|libyaml|pkgconfig)})
+    end
+  end
+
   # The launcher reads fledge.cfg, beside it, to learn what to run
   # (runtime/launcher/config.c).
   def test_fledge_cfg_names_the_entry_point_and_a_gemfile

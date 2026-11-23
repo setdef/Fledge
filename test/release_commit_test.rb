@@ -99,6 +99,21 @@ class ReleaseCommitTest < Minitest::Test
     end
   end
 
+  # A pin moved again after the release was picked: its line was
+  # rewritten in place, still from the version before the release. The
+  # record names the version the release shipped as its old one.
+  def test_a_pin_moved_again_after_the_pick_is_from_the_version_the_release_shipped
+    released = ReleaseCommit.unreleased(CHANGELOG)
+    later = CHANGELOG.sub("libexample 2.0.1, from 2.0.0.", "libexample 2.0.2, from 2.0.0.")
+    in_tree(later) do |release, root|
+      release.write("0.17.1", date: "2026-11-23", released:)
+
+      changelog = File.read(File.join(root, "CHANGELOG.md"))
+      assert_includes changelog, "## [Unreleased]\n\n### Changed\n\n- libexample 2.0.2, from 2.0.1.\n\n## [0.17.1]"
+      assert_includes changelog, "## [0.17.1] - 2026-11-23\n\n### Changed\n\n- libexample 2.0.1, from 2.0.0.\n"
+    end
+  end
+
   def test_refuses_a_file_that_no_longer_names_the_version
     in_tree do |release, root|
       File.write(File.join(root, "README.rdoc"), "no version here\n")

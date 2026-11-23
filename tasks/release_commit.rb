@@ -100,7 +100,7 @@ class ReleaseCommit
     body = ReleaseCommit.unreleased(text)
     gone = released.lines.grep(/^- /)
     left = sections(body).filter_map do |heading, entries|
-      entries -= gone
+      entries = (entries - gone).map { |entry| moved_on(entry, gone) }
       "#{heading}\n#{entries.join}\n" unless entries.empty?
     end
     text = text.sub("## [Unreleased]\n#{body}", "## [Unreleased]\n\n#{left.join}## [#{version}] - #{date}\n#{released.rstrip}\n\n")
@@ -109,6 +109,18 @@ class ReleaseCommit
 
     text.sub(link, "[Unreleased]: https://github.com/setdef/Fledge/compare/v#{version}...HEAD\n" \
       "[#{version}]: https://github.com/setdef/Fledge/compare/v#{old}...v#{version}\n")
+  end
+
+  # A pin's +entry+ ("- TITLE NEW, from OLD.") that a move rewrote in
+  # place after the release was picked still says "from" the version
+  # before the release. When +gone+, the entries released, moved the
+  # same pin, the release shipped its version, and that is the one
+  # the entry moved from.
+  private def moved_on(entry, gone)
+    pin = /\A- (?<title>.+) \S+, from \S+\.$/.match(entry) or return entry
+    shipped = gone.filter_map { |line| line[/\A- #{Regexp.escape(pin[:title])} (\S+), from \S+\.$/, 1] }.first or return entry
+
+    entry.sub(/, from \S+\.$/, ", from #{shipped}.")
   end
 
   # Each "### Heading" of an unreleased +body+, with its entries.

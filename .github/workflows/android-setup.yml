@@ -1,0 +1,83 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# The Android setup, from nothing, on a Linux runner: what CONTRIBUTING.md,
+# "Android on Linux", has a person type, MISE_ENV=android with
+# tasks/setup.rb, which installs every tool mise.android.toml pins (a JDK,
+# the NDK, CMake, platform-tools, a platform, two build-tools, the
+# emulator, two system images: about 5 GB, from Adoptium, Google, and
+# Kitware), then bin/android-sdk, which lays the SDK out of them. No other
+# job runs either with MISE_ENV=android: CI's Android jobs use the runner
+# image's own JDK, CMake, and SDK, so a change to the setup, or a pinned
+# download that went away, would break the documented way to build the
+# Android runtime unseen (issue 14).
+#
+# It downloads too much to run on every push, so it runs on a push to
+# trunk that changes what it reads, and once a week, which finds a
+# download that has gone or changed on its host. It judges no push and
+# takes nothing from ci.yml. As the other scheduled workflows do, it
+# fails its run when the setup fails, and GitHub tells the account that
+# owns its schedule (CONTRIBUTING.md, "After a push"); keep-schedules.yml
+# enables it again if GitHub disables it for a quiet repository.
+
+name: Android setup
+
+on:
+  push:
+    branches: [trunk]
+    paths:
+      - ".github/workflows/android-setup.yml"
+      - ".github/scripts/check-android-sdk.sh"
+      - "bin/android-sdk"
+      - "mise.android.toml"
+      - "tasks/setup.rb"
+  schedule:
+    # Mondays, at a minute when few other schedules start.
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Each run of a push has a group of its own, named for its commit, as in
+# runtime-proof.yml; the week's run never cancels one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # As in ci.yml: a missing precompiled Ruby fails instead of compiling.
+  MISE_RUBY_COMPILE: "false"
+  # What mise reads besides mise.toml: the Android packages.
+  MISE_ENV: android
+
+jobs:
+  setup:
+    name: Android setup from nothing (x86_64-linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Only mise and the Ruby setup.rb runs on; no cache of mise's
+      # downloads, so the setup starts from nothing as a person's does.
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+          cache: false
+
+      - name: Run the setup
+        run: mise x -- ruby tasks/setup.rb
+
+      - name: Lay out the SDK
+        run: mise x -- bin/android-sdk
+
+      - name: Check the SDK holds what the runtime's build and an emulator need
+        run: mise x -- .github/scripts/check-android-sdk.sh

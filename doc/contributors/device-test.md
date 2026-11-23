@@ -260,10 +260,10 @@ The APKs were built on a Linux computer from `trunk` at `88205410`, with both ru
 | `examples/mobile_app` | `MobileApp 1.2.3 says hello through i18n 1.15.2 and concurrent-ruby 1.3.8, set up by Bundler` | passed |
 | `test/fixtures/native_phone` | `NativePhone adds 5 and totals 10 with a C extension (C and C++) on aarch64-linux-android` | passed |
 | `test/fixtures/cmake_phone` | `CmakePhone totals 10 in C++ that CMake 3.31.6 built for Android on arm64, on aarch64-linux-android` | exit 0; see below |
-| `examples/rake_phone` | `RakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0.7.0's Rakefile, on aarch64-linux-android` | passed |
+| `test/fixtures/rake_phone` | `RakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0.7.0's Rakefile, on aarch64-linux-android` | passed |
 | `test/fixtures/rust_phone` | `RustPhone totals 10 in Rust built for android on aarch64, on aarch64-linux-android` | exit 0; see below |
-| `examples/ffi_phone` | `FfiPhone: ffi 1.17.4 finds strlen of hello 5 and sorts [1, 2, 3] with a Ruby block, on aarch64-linux-android` | passed |
-| `examples/ffi_library_phone` | `FfiLibraryPhone: llhttp-ffi 0.5.1 parses GET /hello, and scrypt 3.1.0's key matches RFC 7914, on aarch64-linux-android` | passed |
+| `test/fixtures/ffi_phone` | `FfiPhone: ffi 1.17.4 finds strlen of hello 5 and sorts [1, 2, 3] with a Ruby block, on aarch64-linux-android` | passed |
+| `test/fixtures/ffi_library_phone` | `FfiLibraryPhone: llhttp-ffi 0.5.1 parses GET /hello, and scrypt 3.1.0's key matches RFC 7914, on aarch64-linux-android` | passed |
 | `test/fixtures/mobile_hello` | `Hello from Ruby 4.1.0 on aarch64-linux-android: ["csv","3.3.6"], prism 1.9.0 parses 1 + 2 as +, over HTTPS: 200, YJIT on: fib(20) is 6765 in 688 bytes of machine code` | passed |
 | the parity probe | 13 differences from `ruby main.rb` under rv-ruby's Ruby 4.1.0-preview1 for arm64-darwin, every one justified, none unjustified | passed |
 | `examples/sdl_phone` | `SdlDemo runs Ruby on a thread of its own with a stack of 66583 KB, on aarch64-linux-android with SDL 3.4.18`, `SdlDemo recurses 3970 levels deep`, then `SdlDemo drew 3599 frames in all, with no touch` | exited 0 |
@@ -284,14 +284,14 @@ On the maintainer's Mac each project was built with `xcodebuild -configuration D
 
 | App | Identifier it ran under | What it printed | Verdict |
 |---|---|---|---|
-| `examples/ffi_library_phone` | `com.setdef.fledge.Hello` | `FfiLibraryPhone: llhttp-ffi 0.5.1 parses GET /hello, and scrypt 3.1.0's key matches RFC 7914, on arm64-darwin` | passed |
+| `test/fixtures/ffi_library_phone` | `com.setdef.fledge.Hello` | `FfiLibraryPhone: llhttp-ffi 0.5.1 parses GET /hello, and scrypt 3.1.0's key matches RFC 7914, on arm64-darwin` | passed |
 | `examples/hello` | its own | `Hello from Ruby 4.1.0 on arm64-darwin` | passed |
 | `examples/mobile_app` | its own | `MobileApp 1.2.3 says hello through i18n 1.15.2 and concurrent-ruby 1.3.8, set up by Bundler` | passed |
 | `test/fixtures/native_phone` | its own | `NativePhone adds 5 and totals 10 with a C extension (C and C++) on arm64-darwin` | passed |
 | `test/fixtures/rust_phone` | its own | `RustPhone totals 10 in Rust built for ios on aarch64, on arm64-darwin` | passed |
 | `test/fixtures/mobile_hello` | its own | `Hello from Ruby 4.1.0 on arm64-darwin: ["csv","3.3.6"], prism 1.9.0 parses 1 + 2 as +, over HTTPS: 200, no YJIT` | passed |
-| `examples/ffi_phone` | `com.setdef.fledge.Hello` | `FfiPhone: ffi 1.17.4 finds strlen of hello 5 and sorts [1, 2, 3] with a Ruby block, on arm64-darwin` | passed |
-| `examples/rake_phone` | `com.setdef.fledge.Hello` | `RakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0.7.0's Rakefile, on arm64-darwin` | passed |
+| `test/fixtures/ffi_phone` | `com.setdef.fledge.Hello` | `FfiPhone: ffi 1.17.4 finds strlen of hello 5 and sorts [1, 2, 3] with a Ruby block, on arm64-darwin` | passed |
+| `test/fixtures/rake_phone` | `com.setdef.fledge.Hello` | `RakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0.7.0's Rakefile, on arm64-darwin` | passed |
 | `test/fixtures/cmake_phone` | `com.setdef.fledge.Hello` | `CmakePhone totals 10 in C++ that CMake 4.3.2 built for iOS on arm64, on arm64-darwin` | exit 0; see below |
 | the parity probe | its own | 17 differences from `ruby main.rb` under rv-ruby's Ruby 4.1.0-preview1 for arm64-darwin, every one justified, none unjustified | passed |
 | `examples/sdl_phone` | `com.setdef.fledge.Hello` | `SdlDemo runs Ruby on the main thread with a stack of 65536 KB, on arm64-darwin with SDL 3.4.18`, `SdlDemo recurses 3970 levels deep`, then `SdlDemo drew 3594 frames in all, with no touch` | exited 0 |

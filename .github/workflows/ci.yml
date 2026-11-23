@@ -614,11 +614,11 @@ jobs:
   # Cargo, with mise.toml's Rust and its phone targets
   # (doc/contributors/design/phone-projects.md, "Gems with extensions"
   # and "CMake toolchain files");
-  # examples/rake_phone, whose digest-crc builds its extensions from a
+  # test/fixtures/rake_phone, whose digest-crc builds its extensions from a
   # Rakefile (doc/contributors/design/phone-projects.md, "Rakefiles");
-  # examples/ffi_phone,
+  # test/fixtures/ffi_phone,
   # whose ffi gem builds its own libffi and calls C with a Ruby block as
-  # a callback; examples/ffi_library_phone, whose gems' Rakefiles build
+  # a callback; test/fixtures/ffi_library_phone, whose gems' Rakefiles build
   # libraries for ffi, each embedded as a framework of its own
   # (doc/contributors/design/phone-projects.md, "Libraries for ffi on
   # iOS"); a script that requires json and csv,
@@ -831,7 +831,7 @@ jobs:
   # arm64-v8a library is built and checked but run on no
   # emulator here. test/fixtures/rust_phone's Rust is compiled with mise.toml's
   # Rust and its Android targets, and bindgen reads the phone's headers
-  # with the runner's libclang. examples/ffi_library_phone's gems'
+  # with the runner's libclang. test/fixtures/ffi_library_phone's gems'
   # Rakefiles build libraries for ffi, which the app carries as native
   # libraries of its own, with ffi-compiler's ffi compiled by the
   # runner's C compiler. The Android

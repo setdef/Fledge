@@ -807,7 +807,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     refute_includes activity, "loadLibrary"
   end
 
-  # examples/ffi_library_phone's gems, llhttp-ffi and scrypt from
+  # test/fixtures/ffi_library_phone's gems, llhttp-ffi and scrypt from
   # rubygems.org, each build a library for ffi from a Rakefile, with
   # ffi-compiler and ffi compiled for this computer: each library is a
   # native library of the app's own in each ABI, built for that ABI,
@@ -850,7 +850,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     refute_path_exists File.join(project, "fledge", "notices", "libc++_shared.txt")
   end
 
-  # On iOS, examples/ffi_library_phone's two libraries, llhttp-ffi's and
+  # On iOS, test/fixtures/ffi_library_phone's two libraries, llhttp-ffi's and
   # scrypt's, are each a framework of its own, a dynamic library for
   # each slice whose install name is the framework's, which the project
   # embeds and does not link, and a link at the path where ffi-compiler's

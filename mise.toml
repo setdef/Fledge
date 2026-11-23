@@ -259,6 +259,12 @@ platforms.linux-arm64 = { url = "https://files.pythonhosted.org/packages/3c/3d/f
 # too, puts the current folder first in GCC's search for libraries, so
 # neither is set at all there.
 FLEDGE_LIBCLANG = { value = '{% if tools["http:libclang"] is defined %}{{ tools["http:libclang"].path }}/libclang-18.1.1.data/platlib/clang/native{% elif tools["http:llvm"] is defined %}{{ tools["http:llvm"].path | replace(from="\\", to="/") }}/bin{% endif %}', tools = true }
+# On Windows, mise's data folder, where .config/mise/rust-homes.env puts
+# rustup's and cargo's homes, since they would otherwise ask Windows for
+# the account's profile folder and share one store with every workspace.
+# Elsewhere it is empty and no file reads it: an empty RUSTUP_HOME would
+# stop rustup.
+FLEDGE_RUST_HOMES = { value = '{% if os() == "windows" %}{{ env.MISE_DATA_DIR | default(value=xdg_data_home ~ "/mise") | replace(from="\\", to="/") }}{% endif %}' }
 # On Windows, the rest of what `ridk enable` sets, so a shell has what a
 # RubyInstaller user's has: RI_DEVKIT here, the variables that depend on
 # the architecture in .config/mise/windows-ARCH.env (no file exists for
@@ -270,6 +276,7 @@ FLEDGE_LIBCLANG = { value = '{% if tools["http:libclang"] is defined %}{{ tools[
 _.file = [
   { path = ".config/mise/{{ os() }}-{{ arch() }}.env", tools = true },
   { path = '.config/mise/{% if tools["http:libclang"] is defined or tools["http:llvm"] is defined %}libclang{% else %}none{% endif %}.env', tools = true, expand = true },
+  { path = '.config/mise/{% if os() == "windows" %}rust-homes{% else %}none{% endif %}.env', expand = true },
 ]
 MSYS2_PATH = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }
 RI_DEVKIT = { value = '{% if os() == "windows" %}{{ tools["http:msys2"].path }}{% endif %}', tools = true }

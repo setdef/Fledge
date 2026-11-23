@@ -181,6 +181,23 @@ class ContributorToolsTest < Minitest::Test
     assert_equal %(  { version = "#{rust}#{windows}", profile = "minimal", os = ["windows/x64"] },\n), gnu
   end
 
+  # rustup and cargo ask Windows for the account's profile folder and
+  # ignore HOME, so on Windows mise's Rust would install into the one
+  # store every workspace of the account shares. mise.toml names a home
+  # for each inside mise's own data folder instead, through a file mise
+  # reads on Windows only, since neither Linux nor macOS has the problem
+  # and an empty RUSTUP_HOME there would break rustup.
+  def test_mise_keeps_rustups_and_cargos_homes_in_its_data_folder_on_windows_only
+    env = File.read(File.join(ROOT, ".config", "mise", "rust-homes.env"))
+
+    assert_match(%r{^RUSTUP_HOME=\$\{FLEDGE_RUST_HOMES\}/rustup$}, env)
+    assert_match(%r{^CARGO_HOME=\$\{FLEDGE_RUST_HOMES\}/cargo$}, env)
+    assert_includes mise_toml, %(FLEDGE_RUST_HOMES = { value = '{% if os() == "windows" %}{{ env.MISE_DATA_DIR | default(value=xdg_data_home ~ "/mise") | replace(from="\\\\", to="/") }}{% endif %}' }\n)
+    assert_includes mise_toml, %({ path = '.config/mise/{% if os() == "windows" %}rust-homes{% else %}none{% endif %}.env', expand = true },\n)
+    refute_path_exists File.join(ROOT, ".config", "mise", "none.env")
+    refute_match(/^(RUSTUP_HOME|CARGO_HOME) =/, mise_toml)
+  end
+
   # XcodeGen writes the Xcode project fledge build ios makes, which the
   # iOS integration tests build. On a Mac, Apple silicon or Intel, mise
   # installs the release CI installs, by runtime/sources.yml's URL and

@@ -283,15 +283,22 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     # The path of every entry in the gzipped tarball at +url+, in the
     # order it holds them, each with its bytes when +read+, a pattern,
     # matches its path, and nil otherwise; read with RubyGems' tar reader
-    # from a copy kept in a folder of its own and removed.
+    # from a copy kept in a folder of its own and removed. GNU tar writes
+    # a path longer than a header holds as an entry of type L before the
+    # entry it names, which RubyGems' reader yields as an entry of its
+    # own, ././@LongLink; its bytes are the next entry's path.
     def members(url, read = nil)
       Dir.mktmpdir("pin-move") do |folder|
         archive = File.join(folder, "archive")
         get(url) { |response| File.open(archive, "wb") { |file| response.read_body { |chunk| file.write(chunk) } } }
         Zlib::GzipReader.open(archive) do |gzip|
-          Gem::Package::TarReader.new(gzip).to_h do |entry|
-            path = entry.full_name
-            [path, (read && entry.file? && path.match?(read)) ? entry.read.to_s.b : nil]
+          long = nil
+          Gem::Package::TarReader.new(gzip).each_with_object({}) do |entry, files|
+            next long = entry.read.to_s.sub(/\0+\z/, "") if entry.header.typeflag == "L"
+
+            path = long || entry.full_name
+            long = nil
+            files[path] = (read && entry.file? && path.match?(read)) ? entry.read.to_s.b : nil
           end
         end
       end

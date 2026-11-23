@@ -789,6 +789,27 @@ class PinMoveTest < Minitest::Test
     server&.stop
   end
 
+  # GNU tar writes a path longer than a header's hundred bytes as an
+  # entry of its own, ././@LongLink, of type L, before the entry it
+  # names, which holds the first hundred bytes; jdx/ruby's Linux archives
+  # name fiddle's extension so. RubyGems' reader yields the two apart.
+  def test_the_fetch_lists_a_path_gnu_tar_wrote_as_a_long_name
+    path = "ruby-4.1.0-preview1/lib/ruby/gems/4.1.0+5/extensions/x86_64-linux/4.1.0+5-static/fiddle-1.1.8/fiddle.so"
+    tarball = StringIO.new
+    Zlib::GzipWriter.wrap(tarball) do |gzip|
+      name = "#{path}\0"
+      gzip.write(Gem::Package::TarHeader.new(name: "././@LongLink", size: name.bytesize, prefix: "", mode: 0, typeflag: "L").to_s)
+      gzip.write(name.ljust(512, "\0"))
+      Gem::Package::TarWriter.new(gzip) { |tar| tar.add_file_simple(path[0, 100], 0o755, 5) { |file| file.write("\x003.5.1\0".b[0, 5]) } }
+    end
+    server = LoopbackServer.new("/ruby.tar.gz" => [200, {}, tarball.string])
+
+    assert_operator path.bytesize, :>, 100
+    assert_equal({ path => "\x003.5.".b }, PinWatch::Fetch.new(timeout: 5).members(server.url("/ruby.tar.gz"), %r{/fiddle\.so\z}))
+  ensure
+    server&.stop
+  end
+
   def test_a_held_upstream_is_refused_with_its_reason
     checkout do |root|
       move = mover(root, Answers.new({}))

@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class NativeBuild
+    module Skipped
+      def self.warnings: (String gem, Array[String] extensions, Array[Entry] entries) -> Array[String]
+    end
+  end
+end

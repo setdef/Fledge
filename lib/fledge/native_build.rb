@@ -16,6 +16,7 @@ require_relative "native_build/bindgen"
 require_relative "native_build/built_files"
 require_relative "native_build/floors"
 require_relative "native_build/runtime_ruby"
+require_relative "native_build/skipped"
 
 module Fledge
   # Compiles an app's native gems for the platform Fledge runs on, against
@@ -322,7 +323,7 @@ module Fledge
       CompiledGem.new(
         package:, built:, extensions:, extension_dir: relative_to_home(extension_dir), build_args: args,
         build_info: File.file?(build_info) ? File.read(build_info) : nil,
-        problems: Floors.problems(gem, loaded, platform), warnings: Floors.warnings(gem, loaded, platform)
+        problems: Floors.problems(gem, loaded, platform), warnings: Floors.warnings(gem, loaded, platform) + Skipped.warnings(gem.to_s, package.spec.extensions, loaded),
       )
     end
 

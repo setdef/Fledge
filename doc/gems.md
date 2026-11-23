@@ -148,24 +148,41 @@ Or use a build of the gem that links the runtime statically (`/MT`), which needs
 
 ## A gem that only `vendor/cache` holds
 
-A gem from a GitHub release, which is not on rubygems.org, has no checksum on any server. `bundle lock --add-checksums` fills in the checksum of the gem Bundler installed on your computer, and leaves an empty entry for each other platform's build. `fledge build` refuses a lockfile with an empty entry. Print each `.gem` file's SHA-256, and write it after that build's entry in the `CHECKSUMS` section of `Gemfile.lock`:
+A gem from a GitHub release, which is not on rubygems.org, has no checksum on any server, and Bundler can read it only from the `vendor/cache` folder beside your `Gemfile`. Lock it in three steps, with the `.gem` file of each platform you build on in `vendor/cache`, and the gem in your `Gemfile` (`gem "ferro-url", "0.1.2"`, here):
 
-<!-- SPDX-SnippetBegin -->
-<!--
-  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
-  SPDX-License-Identifier: MIT-0
--->
-```console
-$ shasum -a 256 vendor/cache/my_gem-*.gem
-a40dd10e0d71ed27d8ad95aa0db9bb17f7076adaa8fdf45fefd712266759f102  vendor/cache/my_gem-1.0.0-x86_64-linux-gnu.gem
-```
-```
-CHECKSUMS
-  my_gem (1.0.0-x86_64-linux-gnu) sha256=a40dd10e0d71ed27d8ad95aa0db9bb17f7076adaa8fdf45fefd712266759f102
-```
-<!-- SPDX-SnippetEnd -->
+1. **Lock from the folder.** `bundle lock --local` cannot: it stops with "Could not find gem 'ferro-url (= 0.1.2)' in locally installed gems or in gems cached in vendor/cache". `bundle install --local` reads the folder and writes `Gemfile.lock`, but under `PLATFORMS` it names the platforms Bundler could use on this computer, and may leave out another of your platforms, such as `x64-mingw-ucrt`.
+2. **Add the other platforms**, by their names in the lockfile with `bundle lock --add-platform`:
 
-If the gem's publisher lists a SHA-256 for each file, compare it with yours. Bundler keeps the checksums you write, and Bundler and Fledge both refuse a `.gem` that does not match.
+   <!-- SPDX-SnippetBegin -->
+   <!--
+     SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+     SPDX-License-Identifier: MIT-0
+   -->
+   ```console
+   $ bundle lock --add-platform arm64-darwin x86_64-linux-gnu aarch64-linux-gnu x64-mingw-ucrt
+   ```
+   <!-- SPDX-SnippetEnd -->
+
+3. **Write the checksums.** `bundle lock --add-checksums` fills in the checksum of the gem Bundler installed on your computer, and leaves an empty entry for each other platform's build. `fledge build` refuses a lockfile with an empty entry. Print each `.gem` file's SHA-256, and write it after that build's entry in the `CHECKSUMS` section of `Gemfile.lock`:
+
+   <!-- SPDX-SnippetBegin -->
+   <!--
+     SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+     SPDX-License-Identifier: MIT-0
+   -->
+   ```console
+   $ shasum -a 256 vendor/cache/my_gem-*.gem
+   a40dd10e0d71ed27d8ad95aa0db9bb17f7076adaa8fdf45fefd712266759f102  vendor/cache/my_gem-1.0.0-x86_64-linux-gnu.gem
+   ```
+   ```
+   CHECKSUMS
+     my_gem (1.0.0-x86_64-linux-gnu) sha256=a40dd10e0d71ed27d8ad95aa0db9bb17f7076adaa8fdf45fefd712266759f102
+   ```
+   <!-- SPDX-SnippetEnd -->
+
+   If the gem's publisher lists a SHA-256 for each file, compare it with yours. Bundler keeps the checksums you write, through later `bundle lock --add-checksums` and `bundle install` runs, and Bundler and Fledge both refuse a `.gem` that does not match.
+
+A platform gem may require the Ruby that locks it. ferro-url 0.1.2's platform gems require `>= 4.1.0.a, < 4.1.0`, which Ruby 4.1.0-preview1 meets, and Ruby 4.0.10 does not. Under 4.0.10, both `bundle install --local` and `bundle lock --add-platform` fail, because Bundler turns to the gem's source file, which depends on rb_sys: "rb_sys ~> 0.9.129 could not be found in cached gems or installed locally". Run all three steps with the Ruby your app builds with.
 
 A gem with no file in `vendor/cache` has nothing to hash, and `fledge build` says so. The usual cause is a default gem of a preview Ruby, such as `erb` on Ruby 4.1.0-preview1, whose version no gem server holds yet, so `bundle lock` leaves its entry empty. Pin the gem in your `Gemfile` to a released version, such as `gem "erb", "~> 6.0.7"`, and run `bundle lock` again.
 

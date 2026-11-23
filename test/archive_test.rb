@@ -6,6 +6,7 @@
 #++
 
 require_relative "test_helper"
+require "etc"
 
 # Fledge::Archive with the computer's own tar, in folders whose names are
 # not ASCII: Windows' tar.exe reads its arguments in the ANSI code page,
@@ -59,6 +60,26 @@ class ArchiveTest < Minitest::Test
         Fledge::Archive.pack("dist/Hello-x86_64-linux", to: "out/hello.tar.gz")
 
         assert_includes Fledge::Archive.names("out/hello.tar.gz").map { |name| name.chomp("/") }, "Hello-x86_64-linux/hello.rb"
+      end
+    end
+  end
+
+  # An archive meant to be passed on records no account of the one that
+  # packed it: owner id 0, with no names, as tar's own listing shows.
+  def test_an_archive_records_a_neutral_owner_not_the_packers
+    Dir.mktmpdir do |dir|
+      folder = File.join(dir, "Hello-x86_64-linux")
+      FileUtils.mkdir_p(File.join(folder, "app"))
+      File.binwrite(File.join(folder, "app", "main.rb"), "puts 1\n")
+
+      archive = Fledge::Archive.pack(folder, to: "#{folder}#{Fledge::Archive::TAR_GZ}")
+
+      listing = Fledge::Command.read(Fledge::Archive.tar, "-tvzf", archive, install: "").lines
+      assert_equal 3, listing.size
+      listing.each do |line|
+        assert_match(%r{\s0[ /]+0\s}, line)
+        refute_match(/#{Regexp.escape(Etc.getpwuid(Process.uid).name)}\s/, line)
+        refute_match(/\sroot\s|\swheel\s/, line)
       end
     end
   end

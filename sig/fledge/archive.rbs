@@ -12,6 +12,8 @@ module Fledge
 
     private def self.pack_with_dotnet: (String folder, String to) -> String
 
+    private def self.neutral_owner: () -> Array[String]
+
     private def self.powershell: () -> String
 
     def self.unpack: (String archive, into: String, ?only: Array[String]) -> String

@@ -25,7 +25,9 @@ module Fledge
   # the archive unpacks into one folder; it unpacks an archive into a
   # folder; and it lists an archive's paths and reads one file from it,
   # which is how Fledge reads what a runtime holds before it unpacks it.
-  # On macOS it asks bsdtar for no AppleDouble files (+COPYFILE_DISABLE+),
+  # It records a neutral owner, id 0 with no name, as an archive meant
+  # to be passed on does, not the account that built it. On macOS it
+  # asks bsdtar for no AppleDouble files (+COPYFILE_DISABLE+),
   # which no other computer reads. On Windows it names
   # <tt>System32\\tar.exe</tt> itself, since another tar on the +PATH+,
   # such as Git's GNU tar, reads <tt>C:</tt> as a host name. That tar
@@ -89,11 +91,24 @@ module Fledge
       FileUtils.rm_f(to)
       return pack_with_dotnet(folder, to) if zip && Gem.win_platform?
 
-      format = zip ? ["--format", "zip", "-cf"] : ["-czf"]
+      format = zip ? ["--format", "zip", "-cf"] : ["-cz", *neutral_owner, "-f"]
       parent = File.dirname(folder)
       file = (File.dirname(to) == parent) ? File.basename(to) : File.expand_path(to)
       Command.run(tar, *format, file, File.basename(folder), env: { "COPYFILE_DISABLE" => "1" }, chdir: parent, install: INSTALL)
       to
+    end
+
+    # The options that make tar record owner id 0 and group id 0, with
+    # no names, in place of the account that packs: +--numeric-owner+
+    # drops the names in both tars, and each takes the ids in its own
+    # spelling, GNU tar's +--owner+ and +--group+, bsdtar's +--uid+ and
+    # +--gid+. GNU tar says "GNU tar" in its +--version+; bsdtar, which
+    # macOS and Windows ship, does not.
+    private_class_method def self.neutral_owner
+      version = Command.read(tar, "--version", install: INSTALL)
+      return ["--owner=0", "--group=0", "--numeric-owner"] if version.include?("GNU tar")
+
+      ["--uid", "0", "--gid", "0", "--numeric-owner"]
     end
 
     # What Windows PowerShell runs to zip the folder its +FLEDGE_FOLDER+

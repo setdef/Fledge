@@ -352,7 +352,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > setdef now licenses Fledge under the MIT license.
 
-[re: the orchestrator's account of what the AGPL cost Fledge's app developers and what it protected, after the maintainer asked for reasons not to go MIT. setdef is the registered d/b/a of the maintainer's single-member Missouri LLC, Kerrick Design, LLC.]
+[re: the orchestrating agent had written: "Say "MIT" and I'll quote you in `decisions.md`, then have an agent list everything the change touches, for you to review before anything lands." setdef is the registered d/b/a of the maintainer's single-member Missouri LLC, Kerrick Design, LLC.]
 
 *Governs:* Fledge's own code is MIT, held by setdef; there is no commercial license for Fledge. It replaces decision 1 and the entries of 2026-11-06 (the additional permission, the icon, and "Option A"), which no longer govern anything. Released tags through `v0.7.0` keep the license they were released under. *Applied in:* every file's SPDX header, `LICENSE`, the gemspec, each app's `notices/NOTICES.txt`, the README, AGENTS.md, Licensing, and the ADRs that described the AGPL.
 
@@ -360,7 +360,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > Only if I explicitly instruct it.
 
-[re: an agent starting to copy RatatuiRuby's release tooling into Fledge, which the maintainer had never asked for; the second line answers whether Fledge's agents should ever do that second extraction.]
+[re: he had just written: "I never said you may port RatatuiRuby's release tooling." The second line answers the orchestrating agent's "Should Fledge's agents ever be the ones to do that second extraction, or is it always the RatatuiRuby side's?"]
 
 *Governs:* Fledge's release tooling (`rake bump:*`, the release task's tags, `stable`) waits until RatatuiRuby's agents finish extracting `ratatui_ruby-devtools` and its non-RatatuiRuby parts are extracted again for Fledge, Lota, and the rest; nothing is ported or copied before then, and Fledge's agents do that second extraction only when the maintainer explicitly instructs it. *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; `doc/contributors/design/releases.md`, "From 1.0: release branches and a human publishing".
 
@@ -370,19 +370,19 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > I want this 1.0.0-ready pending only my manual testing (or the testing I need to prompt you to do) that is blocked on my developer accounts.
 
-[re: the orchestrator's offer to fix the stale statements in the handoff and to write the checklist for the one `gem push`, made while the repository's readiness for 1.0.0 was being weighed.]
+[re: the orchestrating agent had written: "What would you like next: those doc fixes, the `gem push` checklist, or something else?" His message began "All of the above."]
 
 *Governs:* agents finish everything for 1.0.0 that the maintainer's developer accounts do not block; what those accounts block is tested by the maintainer, or by an agent he prompts to run the test. It names no test and no account, and it does not say which tests must pass before 1.0.0 is tagged. *Applied in:* `doc/contributors/releasing-1.0.md`; `doc/contributors/questions.md`, question C; Plan 003.
 
 > Yes, cut v0.X.Y releases as appropriate as we go along; my ideal is that v0.A.B (where A.B is the highest 0.X.Y release ever made) has the same features/fixes/etc. as v1.0.0 will when it gets cut.
 
-[re: whether agents should keep cutting 0.x releases as work accumulates, given the 2026-11-08 goal of a repository that is 1.0.0-ready pending only the tests the maintainer's accounts block.]
+[re: the orchestrating agent had written: "Should I cut v0.10.0 now?"]
 
 *Governs:* agents release 0.x versions as work accumulates, so that the newest 0.x release carries what 1.0.0 will; the 1.0.0 release then adds only what the maintainer's own testing and decision add. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`, "Versions".
 
 > Keep a list of account-block tests current and clear for me to work through myself; I may decide at some point which ones I want to keep blocking 1.0.0 and which ones I don't.
 
-[re: question C in `questions.md`, which account-blocked tests must pass before 1.0.0 is tagged, and how the maintainer is to find and run them.]
+[re: the orchestrating agent had written: "Which of the account-blocked tests must pass before 1.0.0 is tagged?"]
 
 *Governs:* agents keep a list of the tests that wait on the maintainer's developer accounts, current and clear enough for the maintainer to work through alone; which of them block 1.0.0 is the maintainer's choice, made later, and until then none is named a requirement. *Applied in:* `doc/contributors/account-tests.md`; AGENTS.md, Releasing; question C in `questions.md`.
 
@@ -392,13 +392,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > If the Fledge agent and Lota agent agree, I'd rather see Fledge and Lota ship 4.1-preview now, drop 4.0 now, and not ship Fledge 1.0.0 or Lota 1.0.0 until 4.1 releases.
 
-[re: the Lota agent's proposal that Lota and Fledge require Ruby 4.1, previews included, after Fledge's Ruby 4.1 spike (`doc/contributors/research/2026-11-09-ruby-4.1-spike.md`), and the maintainer's word before it that he would agree only if both agents did. Both agreed: Fledge's orchestrating agent on the grounds that a 1.0 on Ruby 4.0 would oblige Fledge to keep 4.0's runtimes through all of 1.x (`doc/contributors/design/releases.md`, "Ruby minors and runtimes"), on condition that the spike's open problems are fixed or explained before the first release on 4.1; the Lota agent on condition that Lota's own move lands together with that release. Fledge's orchestrating agent had also proposed a last release on Ruby 4.0.9 first, which these words leave out.]
+[re: the orchestrating agent had written: "If that's your yes, say it in your own words; that's what goes into `decisions.md`." The Lota agent had proposed that Lota and Fledge require Ruby 4.1, previews included, after Fledge's Ruby 4.1 spike (`doc/contributors/research/2026-11-09-ruby-4.1-spike.md`).]
 
 *Governs:* Fledge's releases carry Ruby 4.1 preview runtimes in place of Ruby 4.0's, from the first release whose CI passes on every job with them; Ruby 4.0 is dropped now, but for the one release the next quotation allows; Fledge 1.0.0 is not released before Ruby 4.1.0 is, and so waits on Ruby 4.1.0 as well as on the maintainer's account-blocked testing. *Applied in:* Plan 003; `doc/contributors/design/releases.md`, "Ruby minors and runtimes"; Plan 003, "1.0".
 
 > I am okay with a last-release on Ruby 4.0.9 first, as long as it doesn't meaningfully delay "now". Call it "now-ish" :)
 
-[re: the release on Ruby 4.0.9 that the quotation above left out, which the orchestrating agent noted when it recorded that one.]
+[re: the orchestrating agent had written: "Fledge agrees with that. It differs from my conditions in one place: no last release on Ruby 4.0.9 first."]
 
 *Governs:* one last Fledge release on Ruby 4.0.9 is made before the first on Ruby 4.1, as long as it does not meaningfully delay the move to 4.1; "now" in the quotation above means as soon as that release and the 4.1 work allow. *Applied in:* release 0.11.0; Plan 003; `doc/contributors/design/releases.md`, "Ruby minors and runtimes"; Plan 003, "1.0".
 
@@ -406,37 +406,43 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
 
+> > An MSIX submission: you upload it to Partner Center, and Microsoft signs it during certification. For the Store, you need no code-signing certificate of your own. That's the strongest argument for MSIX.
+>
 > Very valuable, let's do it if we can.
-
-[re: the orchestrating agent's account, after the maintainer's public poll listed `.msix` among what Fledge ships to Windows, that the Microsoft Store takes an MSIX package and Microsoft signs it during certification, so a developer who ships through the Store needs no code-signing certificate of their own, where an EXE or MSI installer submitted to the Store must be signed with the developer's own certificate.]
 
 *Governs:* Fledge builds an MSIX package for a Windows app, if it can, so that a developer can ship through the Microsoft Store without a code-signing certificate of their own. *Applied in:* the work to add it.
 
+> > So it's refused because nobody has made it work yet, not because it can't work.
+>
 > Right, Tauri 2 does phones so it must be possible. If that's the case, we should do it.
 
-[re: the orchestrating agent's account that `fledge build` refuses a gem whose extension is written in Rust (rb-sys) for iOS and Android, because nobody has made it work there yet (the record of the phones' extensions then said "rb-sys was not tried"; how they build now is `doc/contributors/design/phone-projects.md`, "Gems with extensions"), not because it cannot work.]
+[re: how gems with extensions build for the phones now is `doc/contributors/design/phone-projects.md`, "Gems with extensions".]
 
 *Governs:* gems whose extensions are written in Rust build for iOS and Android, as they do for the desktops. *Applied in:* the work to add it.
 
+> > Extensions built without an extconf.rb (a gemspec that names a Rakefile, CMake or configure directly) give Fledge no hook to aim the build at the phone, or to get a static archive out.
+>
 > Python and other languages that have Fledge-like tools must solve this somehow; so can we.
 
-[re: the orchestrating agent's account that on a phone `fledge build` compiles a gem's extension only through its `extconf.rb`, so a gem whose gemspec names a Rakefile, CMake, or `configure` directly is refused (what is refused now is `doc/contributors/design/phone-projects.md`, "Refusals").]
+[re: what is refused on a phone now is `doc/contributors/design/phone-projects.md`, "Refusals".]
 
 *Governs:* gems whose extensions build without an `extconf.rb` build for iOS and Android too, as the prior art of other languages' tools does it. *Applied in:* the work to add it.
 
+> > ffi gems on phones.
+>
 > Why can't we have it on both? And why does Fledge leave Ruby's `fiddle` out?
-
-[re: the orchestrating agent's recommendation to support gems that build a library for Ruby's ffi to load on Android only, and to keep refusing them on iOS, as Fledge leaves Ruby's fiddle out of iOS runtimes for App Review; the agent then found that reason was one sentence borrowed from xord/cruby, never checked, and proposed to check it against its sources and, if it fails, to support ffi libraries on both phones and restore fiddle on iOS.]
 
 > Yes.
 
-[re: the agent's question whether to start that work.]
+[re: the orchestrating agent had written: "Shall I start it?"]
 
 *Governs:* gems whose libraries Ruby's ffi loads work on iOS and Android, and fiddle is in the iOS runtime, unless checked sources show App Review or iOS forbids them; the reason to leave either out must be cited, not assumed. *Applied in:* the work to add them.
 
+> > Every platform has justified differences
+>
 > TRULY justified? Every difference, every lack of parity, is a knife in Fledge's back that could kill the project before it launches.
 
-[re: the orchestrating agent's statement that every platform has 7 to 16 justified differences from `ruby main.rb` in the parity check, after two accepted justifications that day (Android's `$0 =` and `fiddle` on iOS) proved to be closable.]
+[re: the orchestrating agent had said every platform has 7 to 16 justified differences from `ruby main.rb` in the parity check, after two accepted justifications that day (Android's `$0 =` and `fiddle` on iOS) proved to be closable.]
 
 *Governs:* a difference from `ruby main.rb` is accepted only when it is inherent to where the app ships or a platform truly forbids what Ruby does, shown from primary sources; one that could be closed is a bug to fix. *Applied in:* the audits of every justification and exclusion.
 
@@ -444,9 +450,11 @@ The orchestrating agent received these words first-hand from the maintainer and 
 >
 > What happened to trunk-based development?
 
+[re: the orchestrating agent's sub-agents were each working on a branch for hours, landed later by the orchestrator, with conflicts between them.]
+
 > I don't know why AGENTS.md says that. Read the trunk-based development skill; that's how we should work.
 
-[re: the orchestrating agent's sub-agents each working on a branch for hours, landed later by the orchestrator, with conflicts between them; and the agent's question whether sub-agents should push `trunk` themselves, since AGENTS.md said a parallel sub-agent does not.]
+[re: he chose this answer to the orchestrating agent's question: "To make the work trunk-based again, sub-agents have to integrate within minutes. AGENTS.md says a parallel sub-agent never pushes trunk, so today every change waits for me to land it, and branches pile up. How do you want it?"]
 
 *Governs:* every agent works trunk-based as trunkbaseddevelopment.com describes: small green commits pushed straight to `trunk` within minutes of being proven, no long-lived or sideways branches, no push to find out whether CI passes, and a red `trunk` reverted at once. *Applied in:* AGENTS.md, Working as an agent.
 

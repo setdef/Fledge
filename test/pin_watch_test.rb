@@ -79,6 +79,22 @@ class PinWatchTest < Minitest::Test
     assert_equal [:beyond, nil, "4.1.0"], [newest.status, newest.newer, newest.beyond]
   end
 
+  # zlib's deflateInit_ and inflateInit_ refuse a caller built against
+  # another first character of the version (deflate.c, my_version[0]),
+  # and its soname is libz.so.1; libxcrypt keeps libcrypt.so.1 through
+  # 4.x, and a new soname would be another major. So each takes any
+  # release of its major and reports the next major (runtimes.md,
+  # "Keeping the pins current").
+  def test_zlib_and_libxcrypt_take_any_release_of_their_major_and_report_the_next_major
+    releases = -> (*tags) { JSON.generate(tags.map { |tag| { "tag_name" => tag, "draft" => false, "prerelease" => false } }) }
+    url = -> (repository) { "https://api.github.com/repos/#{repository}/releases?per_page=100" }
+    zlib = finding({ "musl-ruby" => { "zlib" => { "version" => "1.3.2" } } }, "zlib", entry("zlib"), Answers.new(url.("madler/zlib") => releases.("v2.0", "v1.4", "v1.3.2")))
+    xcrypt = finding({ "libxcrypt" => { "version" => "4.4.38" } }, "libxcrypt", entry("libxcrypt"), Answers.new(url.("besser82/libxcrypt") => releases.("v5.0.0", "v4.5.2", "v4.4.38")))
+
+    assert_equal [:newer, "1.4", "2.0"], [zlib.status, zlib.newer, zlib.beyond]
+    assert_equal [:newer, "4.5.2", "5.0.0"], [xcrypt.status, xcrypt.newer, xcrypt.beyond]
+  end
+
   def test_a_prerelease_counts_only_for_a_pin_that_is_one
     libyaml = finding({ "mobile" => { "libyaml" => { "version" => "0.2.5" } } }, "libyaml", entry("libyaml").merge("pins" => ["mobile.libyaml"]))
     agp = finding({ "mobile" => { "agp" => "9.4.1" } }, "agp")

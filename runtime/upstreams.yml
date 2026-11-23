@@ -221,6 +221,7 @@ watched:
     pins: [libxcrypt]
     github: besser82/libxcrypt
     tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
+    line: 1
     licenses: [libxcrypt, libxcrypt-static, libxcrypt-source]
     named: [doc/contributors/design/runtimes.md, tasks/runtime_builder/linux.rb, test/runtime_builder_test.rb,
       test/license_audit_test.rb, test/integration/licensing_page_test.rb]
@@ -278,6 +279,7 @@ watched:
     pins: [musl-ruby.zlib]
     github: madler/zlib
     tag: '\Av(?<version>\d+\.\d+(?:\.\d+)*)\z'
+    line: 1
     licenses: [zlib-musl]
     named: [mise.toml]
   # curl's page of Mozilla's CA certificates, which links every dated

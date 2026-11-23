@@ -705,7 +705,7 @@ jobs:
             tmp/mobile-parity/ios/*.ndjson
             tmp/mobile-parity/ios/*.log
             tmp/mobile-parity/ios/*.ips
-          retention-days: 14
+          retention-days: 3
 
   # The iOS integration tests, in a job of their own beside the apps', so
   # that the two, each about a quarter of an hour or more on the iOS
@@ -1020,7 +1020,7 @@ jobs:
           path: |
             tmp/mobile-parity/android/logcat-*.txt
             tmp/mobile-parity/android/gradle-*.log
-          retention-days: 14
+          retention-days: 3
 
   # An Android app's project is built on macOS and Windows too, as Google
   # supports its SDK there and Briefcase, Flutter, React Native, and Tauri
@@ -1760,7 +1760,7 @@ jobs:
             dist-signed/command/*-${{ matrix.platform }}.msix
             dist-signed/certificate.*
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
       - name: Build nokogiri_app from source for ${{ matrix.platform }}
         if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x64-mingw-ucrt'
@@ -1872,7 +1872,7 @@ jobs:
             dist/*-${{ matrix.platform }}.deb
             dist/*.expected
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
       # The LibUI probe and Focus Timer on Windows, whose fledge.yml files
       # say windows: visual_c_runtime: local, so the apps carry the
@@ -2034,7 +2034,7 @@ jobs:
             dist/*-${{ matrix.platform }}.AppImage
             dist/*.expected
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
   # Delivery of native_app, rust_lengths, and nokogiri_app, on a fresh
   # runner of each platform, as Delivery runs the others.
@@ -3315,7 +3315,7 @@ jobs:
           name: gmp-replacement-${{ matrix.platform }}
           path: ${{ runner.temp }}/gmp-dll/libgmp-10.dll
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
   # Whoever receives a Windows app may replace
   # ruby\bin\ruby_builtin_dlls\libgmp-10.dll (LGPL-3.0, section 4(d)(1)),

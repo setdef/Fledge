@@ -228,6 +228,10 @@ So every installed-gems key is `gems-` and the system and processor (`runner.os`
 
 Jobs on one image share one entry: on `ubuntu-24.04`, `fast.yml`'s Lint and Unit tests, `ci.yml`'s Test (x86_64-linux), and the Android emulator jobs, which only restore it; on `macos-26`, `fast-macos.yml`'s Unit tests and `ci.yml`'s iOS integration tests (iOS Simulator), which only restores it. `test/workflow_caches_test.rb` fails when a key lacks any of these parts, when jobs on different labels share a key that names no image, or when a job that only restores has no job on its label saving that key.
 
+## How long a run keeps what it made
+
+GitHub bills an artifact's storage by the gigabyte-hour for as long as it is kept, and in November 2026 storage was about 4 percent of what Fledge's Actions cost. Most of what a full run uploads is read only by its own later jobs: the apps each Build job makes (`apps-PLATFORM`, `signed-PLATFORM`), the phone apps (`mobile-apps-ios`, `mobile-apps-android-TARGET`), and the GNU MP that the Replace GMP jobs swap into a built Windows app (`gmp-replacement-PLATFORM`). Those are kept three days, long enough to run a failed job again over a weekend, after which a job that needs them is run again with the jobs that make them. What a later workflow reads from a run is kept two weeks: the runtimes (`runtime-PLATFORM`), which `release.yml` publishes from the CI run of the commit it tags, and the licensing page, which the pin proof (`.github/scripts/pin-prove.sh`) takes from its run. A failed runtime build's logs are kept two weeks too, for the person who reads them. `test/workflow_retention_test.rb` fails when an upload is kept for another length, or when another workflow or script asks for one kept three days.
+
 ## A pin commit's short CI
 
 A commit with one parent and `lib/fledge/SHA256SUMS` as its only change, pushed or dispatched, runs two jobs of `ci.yml`:

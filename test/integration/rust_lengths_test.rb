@@ -16,6 +16,9 @@ require "stringio"
 # [1, 2, 3] and rb_range_beg_len leaves the canaries beside its lengths
 # whole (doc/contributors/design/gems.md, "Rust gems on Windows and
 # rb_len_t"). On Windows bindings of 4 bytes say 4, nil, and overwritten.
+# It exits with the status its argument names, as every app Delivery
+# runs does (.github/scripts/deliver.sh, "exit status 3 reaches the
+# caller").
 #
 # It needs the runtime, as test/integration/native_build_test.rb finds
 # it, and the cargo of the Rust mise.toml pins, with a libclang for
@@ -72,10 +75,10 @@ class RustLengthsTest < Minitest::Test
     assert_equal 0, status, err.string
     folder = File.join(@dir, "dist", "RustLengths-#{@platform}")
     scrubbed = ENV.keys.grep(Fledge::NativeBuild::SCRUBBED).to_h { |name| [name, nil] }
-    out, ran = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }.merge(scrubbed), File.join(folder, @platform.executable("RustLengths")),
+    out, ran = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }.merge(scrubbed), File.join(folder, @platform.executable("RustLengths")), "3",
       unsetenv_others: !Gem.win_platform?)
 
-    assert_predicate ran, :success?, out
+    assert_equal 3, ran.exitstatus, out
     assert_equal EXPECTED, out.strip
   end
 end

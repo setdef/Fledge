@@ -118,7 +118,7 @@ jobs:
             platform: aarch64-linux
           - os: windows-latest
             platform: x64-mingw-ucrt
-          # Windows on ARM64 (ADR 098), whose apps here need no gem
+          # Windows on ARM64 (ADR 100), whose apps here need no gem
           # compiled for it: no my_cool_app or native_app.
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt

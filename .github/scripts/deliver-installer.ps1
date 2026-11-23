@@ -36,7 +36,7 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
 $appName = 'Hello Window'
-# Hello Window-PLATFORM-setup.exe: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 098).
+# Hello Window-PLATFORM-setup.exe: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 100).
 $platform = [IO.Path]::GetFileNameWithoutExtension($Installer) -replace "^$appName-", '' -replace '-setup$', ''
 $identifier = $Identifier
 

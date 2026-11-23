@@ -43,7 +43,7 @@ function Fail([string] $message) {
   exit 1
 }
 
-# Hello-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 098).
+# Hello-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 100).
 $platform = [IO.Path]::GetFileNameWithoutExtension($Hello) -replace '^Hello-', ''
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
 $kits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'

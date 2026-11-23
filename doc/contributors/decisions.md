@@ -60,7 +60,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 7. 2.39 is fine, and even newer may be fine if there becomes good reason to raise the floor.
 
-*Governs:* the oldest glibc a Linux app runs on. *Applied in:* ADR 098; `doc/contributors/design/releases.md`, "Platform floors".
+*Governs:* the oldest glibc a Linux app runs on. *Applied in:* ADR 100; `doc/contributors/design/releases.md`, "Platform floors".
 
 > 8. Because of what I said re: #1, we must be VERY careful to be able to let app devs _not_ be copyleft-laden when they pay for a commercial license.
 
@@ -108,7 +108,7 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 19. I don't understand what I'd be deciding here. [re: RubyInstaller signing key expiry — agents own this]
 
-*Governs:* the RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 098; `doc/contributors/design/runtimes.md`, "The RubyInstaller signing key"; `runtime/sources.yml`.
+*Governs:* the RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "The RubyInstaller signing key"; `runtime/sources.yml`.
 
 > 20. Tiny filesize is not a priority; "my ruby code just works" _is_ a (high) priority.
 
@@ -544,7 +544,7 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 [re: 2026-11-22. Asked whether taking mainstream Linux's Ruby from jdx/ruby, the builds mise downloads, in place of rv-ruby, to lower the glibc floor from 2.39 to 2.17, may land before the candidate for 1.0.0.]
 
-*Governs:* the Linux Ruby's source may change before the candidate, and whether Fledge takes any Ruby from rv-ruby at all is the agents' to judge. This replaces "2.39 is fine" (2026-10-26, decision 7) as the word on the Linux floor: a lower floor is wanted where a maintained upstream gives it. *Applied in:* the decision record that replaces ADR 098, when the change lands.
+*Governs:* the Linux Ruby's source may change before the candidate, and whether Fledge takes any Ruby from rv-ruby at all is the agents' to judge. This replaces "2.39 is fine" (2026-10-26, decision 7) as the word on the Linux floor: a lower floor is wanted where a maintained upstream gives it. *Applied in:* ADR 100.
 
 > I expect solid work towards a candidate, I am not setting a deadline. Quality! (The non-deadline hopeful date is Christmas Day, a 1.0.0 co-release with Ruby 4.1, and therefore a release candidate maybe a week beforehand)
 

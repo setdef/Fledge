@@ -125,6 +125,8 @@ A new test file is a unit test unless you put it in `test/integration/`. When a 
 
 A fixture or example that CI hands to `.github/scripts/deliver.sh` or `deliver.ps1` must end its program with `exit Integer(ARGV.fetch(0, "0"))`: Delivery runs every app with the argument 3 and fails unless it exits 3. `test/workflow_delivery_apps_test.rb` reads the workflows for those apps, so a new one is covered without editing it, and names the program that lacks the line; before it, only a full CI run an hour later said so. Apps that another script delivers, because they differ on purpose, are not read.
 
+An app under `examples/` is a small real app that does something a person would use, however simple; one that only starts, reports, and exits is a fixture under `test/fixtures/`, with an integration test. Together the examples show what Fledge does, so each has a reason to be what it is. An example that is a server is a server because other computers connect to it, and does something only a server does: an app that listens on `127.0.0.1` alone could be a windowed or a terminal app. At least one example shows file associations, and at least one shows several programs in one app, so that `doc/` has an app to point to for each.
+
 While you work:
 
 - `bundle exec rake test` runs the unit tests, in seconds. Run it as often as you like. CI's fast tier runs them on every push: `.github/workflows/fast.yml` on Linux and Windows, beside the lint, and `.github/workflows/fast-macos.yml` on macOS, a workflow of its own because a macOS runner often takes twenty minutes or more to come.

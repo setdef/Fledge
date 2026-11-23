@@ -579,3 +579,15 @@ The orchestrating agent received these words first-hand from the maintainer.
 [re: 2026-11-22. On learning that rv-ruby publishes musl Linux builds while Fledge builds its own. "That" is whether a maintained project already publishes a portable Ruby for the platform.]
 
 *Governs:* a standing rule: when a platform is added, the first check is whether a maintained project already publishes a portable Ruby for it, before Fledge builds one. *Applied in:* AGENTS.md, How to work.
+
+> What else it buys: Intel Mac is a non-decision.
+
+[re: 2026-11-22. Told that taking the Mac's Ruby from jdx/ruby, in place of rv-ruby, would cost that "apps would need macOS 26 or newer", he added this. jdx/ruby builds no Intel Mac Ruby, and rv-ruby's Intel build was the only one Fledge could have taken.]
+
+*Governs:* Fledge builds no Intel Mac apps, since no maintained project publishes an Intel Mac Ruby that Fledge takes; whether to build them is no longer a question. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "The Mac's Ruby is jdx/ruby's".
+
+> You know how to weight the costs and benefits.
+
+[re: 2026-11-22. Asked to choose between raising the macOS floor to 26, which taking the Mac's Ruby from jdx/ruby costs, and Fledge building and keeping an OpenSSL of its own for the Mac.]
+
+*Governs:* the weighing of the macOS floor against a Fledge-built OpenSSL was the agents' to do. They chose the floor of 26, with his earlier leave to raise it ("maybe 26 if it becomes costly to keep it at 15", above). *Applied in:* ADR 100; `doc/contributors/design/releases.md`, "Platform floors".

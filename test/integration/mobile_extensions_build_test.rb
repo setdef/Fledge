@@ -717,8 +717,21 @@ class MobileExtensionsBuildTest < Minitest::Test
     frameworks = %w[ios-arm64 ios-arm64-simulator].flat_map { |slice| ["-framework", File.join(placed, slice, "#{name}.framework")] }
     _, status = Open3.capture2e("xcodebuild", "-create-xcframework", *frameworks, "-output", made)
     assert status.success?, "xcodebuild -create-xcframework"
-    difference, = Open3.capture2e("diff", "-r", made, placed)
+    difference, = Open3.capture2e("diff", "-r", "-x", "Info.plist", made, placed)
     assert_empty difference
+    assert_equal xcframework_index(made), xcframework_index(placed)
+  end
+
+  # An XCFramework's Info.plist as a Hash, with AvailableLibraries in
+  # the order of their identifiers: xcodebuild -create-xcframework lists
+  # the libraries in an order that differs from one run to the next
+  # (issue 76), and Xcode finds each by its LibraryIdentifier, so the
+  # order is no part of what the two indexes say.
+  private def xcframework_index(xcframework)
+    json, status = Open3.capture2e("plutil", "-convert", "json", "-o", "-", File.join(xcframework, "Info.plist"))
+    assert status.success?, json
+    index = JSON.parse(json)
+    index.merge("AvailableLibraries" => index.fetch("AvailableLibraries").sort_by { |library| library.fetch("LibraryIdentifier") })
   end
 
   # test/fixtures/rust_phone's gem has a Rust extension, built with rb-sys and

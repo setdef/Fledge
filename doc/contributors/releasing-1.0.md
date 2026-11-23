@@ -42,7 +42,7 @@ To stop the workflow publishing, set the variable to anything but `true`, or rem
 
 ## Before the tag
 
-- Your testing that is blocked on your developer accounts is done, if you decided it must come before the tag (`questions.md`, C).
+- Your testing that is blocked on your developer accounts is done, if you decided it must come before the tag (question issue #64).
 - The trust is set up, as above.
 
 ## After the tag

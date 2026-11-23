@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 This file records what the maintainer has said, word for word, and nothing else. It is the source of truth for "what the maintainer decided." Everything else in this repository (the ADRs, the plans, the help header, the error messages, the layouts, this file's notes) was written by agents, and agents may change it, as long as it stays true to what is quoted here (AGENTS.md, Provenance).
 
-His words are the blockquotes. When he quoted a sentence with `>`, that sentence is part of his words, kept inside the quotation exactly as he typed it. Under a quotation, an agent notes what it governs and where it is applied, and a "[re:" line says what his words refer to when they do not say. When a quotation and a note disagree, the quotation wins. When a quotation seems to conflict with another, or is ambiguous, ask in `questions.md`; never guess.
+His words are the blockquotes. When he quoted a sentence with `>`, that sentence is part of his words, kept inside the quotation exactly as he typed it. Under a quotation, an agent notes what it governs and where it is applied, and a "[re:" line says what his words refer to when they do not say. When a quotation and a note disagree, the quotation wins. When a quotation seems to conflict with another, or is ambiguous, ask in a `question` issue; never guess.
 
 ## From the original session
 
@@ -36,7 +36,7 @@ The project was started with these directions, given in prose rather than as a n
 
 ## 2026-10-26
 
-Answers to the numbered entries of an earlier `questions.md`. Each answer names, in brackets, what the entry asked when the answer alone does not say.
+Answers to the numbered entries of an earlier file of questions, now the `question` issues. Each answer names, in brackets, what the entry asked when the answer alone does not say.
 
 > 2. What are the other options? [re: "an app is a folder with a main.rb" — still open]
 
@@ -194,7 +194,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 [re: an Apple Developer account and real devices, for testing and App Store submission. Asked whether to record this, he said: "Yes, record it in decisions.md."]
 
-*Governs:* agents proceed without an Apple Developer account, and raise it in `questions.md` when a story cannot be done without one. *Applied in:* Plan 002.
+*Governs:* agents proceed without an Apple Developer account, and raise it in a `question` issue when a story cannot be done without one. *Applied in:* Plan 002.
 
 > Code is a liability and we should _not_ have 4k+ lines of things we could use existing tools for.
 
@@ -353,7 +353,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > I want this 1.0.0-ready pending only my manual testing (or the testing I need to prompt you to do) that is blocked on my developer accounts.
 
-*Governs:* agents finish everything for 1.0.0 that his developer accounts do not block, and he tests the rest, or prompts an agent to; it does not say which tests must pass before 1.0.0 is tagged. *Applied in:* `doc/contributors/releasing-1.0.md`; `doc/contributors/questions.md`, question C; Plan 003.
+*Governs:* agents finish everything for 1.0.0 that his developer accounts do not block, and he tests the rest, or prompts an agent to; it does not say which tests must pass before 1.0.0 is tagged. *Applied in:* `doc/contributors/releasing-1.0.md`; issue #64 (question C); Plan 003.
 
 > Yes, cut v0.X.Y releases as appropriate as we go along; my ideal is that v0.A.B (where A.B is the highest 0.X.Y release ever made) has the same features/fixes/etc. as v1.0.0 will when it gets cut.
 
@@ -363,7 +363,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > Keep a list of account-block tests current and clear for me to work through myself; I may decide at some point which ones I want to keep blocking 1.0.0 and which ones I don't.
 
-*Governs:* agents keep a current, clear list of the tests that wait on his developer accounts; which of them block 1.0.0 is his to choose, later. *Applied in:* `doc/contributors/account-tests.md`; AGENTS.md, Releasing; `doc/contributors/questions.md`, question C.
+*Governs:* agents keep a current, clear list of the tests that wait on his developer accounts; which of them block 1.0.0 is his to choose, later. *Applied in:* `doc/contributors/account-tests.md`; AGENTS.md, Releasing; issue #64 (question C).
 
 ## 2026-11-09
 
@@ -441,7 +441,7 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 > My goal by 7:59am is to get Fledge to that release candidate release. My testing happens _on_ the release candidate, which, if it all passes, will be simply made into 1.0.0.
 
-*Governs:* one 0.x release is the release candidate for 1.0.0, and has everything 1.0.0 will; his testing is done on it, and if all of it passes, 1.0.0 is made from it with nothing added. The hour was that night's goal and governs nothing after it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `doc/contributors/questions.md`, question C.
+*Governs:* one 0.x release is the release candidate for 1.0.0, and has everything 1.0.0 will; his testing is done on it, and if all of it passes, 1.0.0 is made from it with nothing added. The hour was that night's goal and governs nothing after it. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; issue #64 (question C).
 
 ## 2026-11-21
 

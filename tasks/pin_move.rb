@@ -88,9 +88,11 @@ class PinMove
     end
     write("runtime/licenses.yml", linked(read("runtime/licenses.yml"), entry["linked"], to), changed) if entry["linked"]
     write("CHANGELOG.md", changelog(read("CHANGELOG.md"), title(name), from, to), changed) if entry.fetch("ships", true)
-    entry.fetch("platform", {}).each do |platform, pattern|
-      archive(upstream, platform, pattern, entry.fetch("compiled", {}).fetch(platform, {}), changed)
+    platforms = entry.fetch("platform", {}).keys | entry.fetch("compiled", {}).keys
+    read = platforms.flat_map do |platform|
+      archive(upstream, platform, entry.dig("platform", platform), entry.dig("compiled", platform) || {}, changed)
     end
+    compiled(name, read, changed)
     changed
   rescue Error, PinWatch::Error
     @texts = before if before
@@ -319,25 +321,51 @@ class PinMove
     from...to
   end
 
-  # Reads the new archive of each pin of +upstream+ for +platform+, once:
-  # raises unless it holds a file whose path +pattern+'s arch capture
-  # takes a platform name from, moves runtime/licenses.yml's platform to
-  # that name where it differs, and moves each entry of +compiled+ to the
-  # version its file holds. A Ruby names its platform (RbConfig's arch,
-  # so RUBY_PLATFORM and the RubyGems platform Bundler runs as) for the
-  # macOS it was built on, and the license audit, parity, and Delivery
-  # read the name there (runtimes.md, "The move").
+  # Reads the new archive of each pin of +upstream+ for +platform+, once,
+  # and returns, for each library of +compiled+, its id, its entry there,
+  # the archive's URL, and the version its file holds. With a +pattern+,
+  # it raises unless the archive holds a file whose path the pattern's
+  # arch capture takes a platform name from, and moves
+  # runtime/licenses.yml's platform to that name where it differs. A Ruby
+  # names its platform (RbConfig's arch, so RUBY_PLATFORM and the RubyGems
+  # platform Bundler runs as) for the macOS it was built on, and the
+  # license audit, parity, and Delivery read the name there (runtimes.md,
+  # "The move").
   private def archive(upstream, platform, pattern, compiled, changed)
     sources = YAML.safe_load(read("runtime/sources.yml"))
     wanted = compiled.empty? ? nil : Regexp.union(compiled.values.map { |library| Regexp.new(library.fetch("file")) })
-    upstream.pins.each do |pin|
+    upstream.pins.flat_map do |pin|
       url = sources.dig(*pin.split("."), "platforms", platform, "url")
       files = @fetch.members(url, wanted)
-      arch = files.each_key.lazy.filter_map { |path| path[Regexp.new(pattern), "arch"] }.first
-      raise Error, "#{url} holds no file that names its platform" unless arch
+      if pattern
+        arch = files.each_key.lazy.filter_map { |path| path[Regexp.new(pattern), "arch"] }.first
+        raise Error, "#{url} holds no file that names its platform" unless arch
 
-      rename_platform(platform, arch, changed)
-      compiled.each { |id, library| compiled_version(url, files, id, library, changed) }
+        rename_platform(platform, arch, changed)
+      end
+      compiled.map { |id, library| [id, library, url, compiled_version(url, files, id, library)] }
+    end
+  end
+
+  # Moves each entry of runtime/licenses.yml that +read+, from the
+  # archives of the upstream +name+, names to the version its files hold,
+  # with a line in CHANGELOG.md. An entry read from several platforms'
+  # archives describes them all, as jdx/ruby builds each target from one
+  # list of libraries, so it moves only when they all hold one version.
+  private def compiled(name, read, changed)
+    read.group_by(&:first).each do |id, found|
+      versions = found.map(&:last).uniq
+      unless versions.one?
+        each = found.map { |_, _, url, version| "#{version} in #{url}" }
+        raise Error, "#{name}'s archives name #{id} as #{each.join(' and ')}, not one version"
+      end
+
+      old = YAML.safe_load(read("runtime/licenses.yml")).fetch("components").find { |entry| entry.fetch("id") == id }&.fetch("version")&.to_s
+      raise Error, "runtime/licenses.yml has no entry #{id}" unless old
+      next if old == versions.first
+
+      write("runtime/licenses.yml", license(read("runtime/licenses.yml"), id, old, versions.first), changed)
+      write("CHANGELOG.md", changelog(read("CHANGELOG.md"), found.first[1].fetch("title"), old, versions.first), changed)
     end
   end
 
@@ -358,10 +386,10 @@ class PinMove
     write("CHANGELOG.md", changelog(read("CHANGELOG.md"), "The #{platform} app's RUBY_PLATFORM", named, arch), changed)
   end
 
-  # Moves runtime/licenses.yml's entry +id+ to the version of its
-  # library that +library+'s version pattern finds in the bytes of its
-  # file among +files+, the new archive's, with a line in CHANGELOG.md.
-  private def compiled_version(url, files, id, library, changed)
+  # The version of the library of runtime/licenses.yml's entry +id+ that
+  # +library+'s version pattern finds in the bytes of its file among
+  # +files+, the new archive at +url+'s.
+  private def compiled_version(url, files, id, library)
     path, bytes = files.find { |name, content| content && name.match?(Regexp.new(library.fetch("file"))) }
     raise Error, "#{url} holds no file in which to read #{id}'s version" unless path
 
@@ -369,12 +397,7 @@ class PinMove
     raise Error, "#{url}'s #{File.basename(path)} names no version of #{id}" if found.empty?
     raise Error, "#{url}'s #{File.basename(path)} names #{id} as #{found.join(' and ')}, not one version" unless found.one?
 
-    old = YAML.safe_load(read("runtime/licenses.yml")).fetch("components").find { |entry| entry.fetch("id") == id }&.fetch("version")&.to_s
-    raise Error, "runtime/licenses.yml has no entry #{id}" unless old
-    return if old == found.first
-
-    write("runtime/licenses.yml", license(read("runtime/licenses.yml"), id, old, found.first), changed)
-    write("CHANGELOG.md", changelog(read("CHANGELOG.md"), library.fetch("title"), old, found.first), changed)
+    found.first
   end
 
   # Raises unless the pins of +upstream+ in +text+ hold +to+.

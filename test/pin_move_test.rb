@@ -640,6 +640,97 @@ class PinMoveTest < Minitest::Test
     end
   end
 
+  JDX = "https://api.github.com/repos/jdx/ruby/releases?per_page=100"
+  JDX_MAC = "https://github.com/jdx/ruby/releases/download/4.0.10-2/ruby-4.0.10.macos.tar.gz"
+  JDX_LINUX = "https://github.com/jdx/ruby/releases/download/4.0.10-2/ruby-4.0.10.x86_64_linux.tar.gz"
+
+  # An upstream that builds one Ruby for macOS and Linux from one list of
+  # the libraries it compiles in, as jdx/ruby builds every target from
+  # its recipes/dependencies.yml: one entry of runtime/licenses.yml then
+  # describes the library on every platform, and the move reads its
+  # version out of each platform's archive.
+  JDX_UPSTREAM = YAML.safe_load(<<~'YAML').freeze
+    pins: [ruby]
+    field: jdx_release
+    github: jdx/ruby
+    tag: '\A(?<version>\d+\.\d+\.\d+-\d+)\z'
+    keep: [build]
+    platform:
+      arm64-darwin: '/lib/ruby/[^/]+/(?<arch>arm64-darwin\d*)/rbconfig\.rb\z'
+    compiled:
+      arm64-darwin:
+        openssl-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/openssl\.bundle\z'
+          version: 'OpenSSL (?<version>\d+\.\d+\.\d+) '
+          title: OpenSSL in the macOS and glibc Linux Ruby
+      x86_64-linux:
+        openssl-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/openssl\.so\z'
+          version: 'OpenSSL (?<version>\d+\.\d+\.\d+) '
+          title: OpenSSL in the macOS and glibc Linux Ruby
+  YAML
+
+  JDX_LICENSES = <<~YAML
+    platforms:
+      arm64-darwin: {os: darwin, arch: arm64-darwin25, gem_arch: arm64-darwin-25, so: bundle}
+      x86_64-linux: {os: linux, arch: x86_64-linux, gem_arch: x86_64-linux, so: so}
+    components:
+      - id: openssl-jdx
+        version: 3.5.5
+        download: https://github.com/openssl/openssl/releases/download/openssl-3.5.5/openssl-3.5.5.tar.gz
+        platforms: [arm64-darwin, x86_64-linux]
+        embedded:
+          - files: ["{prefix}lib/ruby/{abi}/{arch}/openssl.{so}"]
+            evidence: "OpenSSL 3.5.5 "
+  YAML
+
+  # A checkout pinned to jdx/ruby's first build of Ruby 4.0.10, whose
+  # second build's archives hold the OpenSSL +mac+ and +linux+ name.
+  def jdx_ruby(mac:, linux:)
+    old = { JDX_MAC => "ab" * 32, JDX_LINUX => "cd" * 32 }
+    pins = old.map do |url, sha256|
+      platform = url.include?("macos") ? "arm64-darwin" : "x86_64-linux"
+      "    #{platform}:\n      url: #{url.sub('4.0.10-2', '4.0.10-1')}\n      sha256: #{sha256}\n      build: jdx\n"
+    end
+    sources = "ruby:\n  version: 4.0.10\n  jdx_release: 4.0.10-1\n  platforms:\n#{pins.join}"
+    assets = old.keys.map.with_index { |url, index| { "browser_download_url" => url, "digest" => "sha256:#{index.to_s * 64}" } }
+    top = "ruby-4.0.10/lib/ruby/4.0.0"
+    listings = {
+      JDX_MAC => { "#{top}/arm64-darwin25/rbconfig.rb" => "{}", "#{top}/arm64-darwin25/openssl.bundle" => "\0OpenSSL #{mac} 1 Jan 2027\0".b },
+      JDX_LINUX => { "#{top}/x86_64-linux/rbconfig.rb" => "{}", "#{top}/x86_64-linux/openssl.so" => "\0OpenSSL #{linux} 1 Jan 2027\0".b },
+    }
+    answers = Archives.new({ JDX => JSON.generate([{ "tag_name" => "4.0.10-2", "assets" => assets }]) }, listings)
+    checkout("runtime/sources.yml" => sources, "runtime/licenses.yml" => JDX_LICENSES) do |root|
+      yield PinMove.new(root, entries.merge("jdx-ruby" => JDX_UPSTREAM), answers), answers
+    end
+  end
+
+  # A new build that compiles in a newer OpenSSL on every platform moves
+  # the one entry they share, once, with one line in CHANGELOG.md.
+  def test_a_library_every_platform_compiles_in_moves_once_each_archive_names_the_same_version
+    jdx_ruby(mac: "3.5.6", linux: "3.5.6") do |move, answers|
+      move.call(finding("jdx-ruby", "4.0.10-1", "4.0.10-2"))
+
+      assert_equal JDX_LICENSES.gsub("3.5.5", "3.5.6"), move.read("runtime/licenses.yml")
+      assert_includes move.read("runtime/sources.yml"), "jdx_release: 4.0.10-2\n"
+      assert_includes move.read("runtime/sources.yml"), "url: #{JDX_LINUX}\n      sha256: #{'1' * 64}\n      build: jdx\n"
+      assert_equal 1, move.read("CHANGELOG.md").scan("OpenSSL").size
+      assert_includes move.read("CHANGELOG.md"), "- OpenSSL in the macOS and glibc Linux Ruby 3.5.6, from 3.5.5.\n"
+      assert_equal [JDX_MAC, JDX_LINUX], answers.downloaded
+    end
+  end
+
+  # One entry cannot say two versions: when the archives disagree, a
+  # person reads them.
+  def test_a_library_the_platforms_archives_name_differently_stops_the_move
+    jdx_ruby(mac: "3.5.6", linux: "3.5.5") do |move, _|
+      error = assert_raises(PinMove::Error) { move.call(finding("jdx-ruby", "4.0.10-1", "4.0.10-2")) }
+
+      assert_equal "jdx-ruby's archives name openssl-jdx as 3.5.6 in #{JDX_MAC} and 3.5.5 in #{JDX_LINUX}, not one version", error.message
+      assert_equal JDX_LICENSES, move.read("runtime/licenses.yml")
+    end
+  end
+
   def test_an_archive_that_names_no_platform_is_not_moved
     rv_ruby({ "x/bin/ruby" => "" }) do |move, _|
       error = assert_raises(PinMove::Error) { move.call(finding("rv-ruby", "20261023", "20261119")) }
@@ -738,21 +829,30 @@ class PinMoveTest < Minitest::Test
   end
 
   # Each library an input compiles in, whose version the move reads from
-  # the input's archive, has an entry of its own for that platform alone,
-  # so moving it says nothing of another build's copy, and the move's
-  # pattern reads the entry's version out of the evidence the license
-  # audit looks for in the same file (a C string, between NULs).
+  # the input's archives, has an entry of its own that describes exactly
+  # the platforms whose archives the move reads it from, and that build
+  # of Ruby alone, so moving it says nothing of another build's copy or
+  # of a platform it did not read; and the move's pattern reads the
+  # entry's version out of the evidence the license audit looks for in
+  # the same file (a C string, between NULs).
   def test_every_compiled_library_has_an_entry_the_move_can_read_its_version_into
     components = YAML.safe_load_file(File.join(ROOT, "runtime/licenses.yml")).fetch("components")
+    sources = YAML.safe_load_file(File.join(ROOT, "runtime/sources.yml"))
     compiled = entries.reject { |_, entry| entry["hold"] }.flat_map do |_, entry|
-      entry.fetch("compiled", {}).flat_map { |platform, libraries| libraries.map { |id, library| [platform, id, library] } }
+      entry.fetch("compiled", {}).flat_map do |platform, libraries|
+        builds = entry.fetch("pins").map { |pin| sources.dig(*pin.split("."), "platforms", platform, "build") || "upstream" }
+        libraries.map { |id, library| [id, platform, builds, library] }
+      end
     end
-    compiled.each do |platform, id, library|
+    compiled.group_by(&:first).each do |id, reads|
       component = components.find { |each| each.fetch("id") == id }
-      assert_equal [platform], component&.fetch("platforms"), "runtime/licenses.yml's #{id} describes #{platform} alone"
+      assert_equal reads.map { |read| read[1] }.sort, component&.fetch("platforms")&.sort, "runtime/licenses.yml's #{id} describes the platforms the move reads it from"
+      assert_equal reads.flat_map { |read| read[2] }.uniq, Array(component["ruby_build"]), "runtime/licenses.yml's #{id} describes the build the move reads it from alone"
       evidence = component.fetch("embedded").map { |embedded| embedded.fetch("evidence") }
-      found = evidence.map { |text| "\0#{text}\0".b[Regexp.new(library.fetch("version").b), "version"] }
-      assert_equal [component.fetch("version").to_s], found.uniq, "#{id}'s version pattern reads its evidence"
+      reads.each do |_, platform, _, library|
+        found = evidence.map { |text| "\0#{text}\0".b[Regexp.new(library.fetch("version").b), "version"] }
+        assert_equal [component.fetch("version").to_s], found.uniq, "#{id}'s version pattern for #{platform} reads its evidence"
+      end
     end
   end
 

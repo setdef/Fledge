@@ -80,7 +80,7 @@ class RuntimeBuilder
     -Wsign-conversion
   ].freeze
 
-  attr_reader :platform, :host, :sources
+  attr_reader :platform, :host, :sources, :downloads
 
   def initialize(platform: Fledge::Platform.local, host: Fledge::Platform.local, work: File.join(ROOT, "tmp", "runtime"),
     downloads: DownloadCache.folder, sources: File.join(ROOT, "runtime", "sources.yml")
@@ -155,11 +155,13 @@ class RuntimeBuilder
   # sbom.spdx.json, reading compiled files with +readers+
   # (Fledge::Binary::Readers). Raises LicenseAudit::Failure when the runtime breaks
   # the policy or a component's license text is nowhere, so that no such
-  # runtime is ever archived. Returns the audit's Report.
-  def license(stage, readers: LicenseAudit.readers)
-    audit = LicenseAudit.new(platform: platform.name, tree: stage, fledge_version: Fledge::VERSION, readers:)
+  # runtime is ever archived. Returns the audit's Report. With +archive+,
+  # +stage+ is the Ruby prefix of Fledge's own Ruby archive
+  # (RubyArchive), audited and described as that.
+  def license(stage, readers: LicenseAudit.readers, archive: false)
+    audit = LicenseAudit.new(platform: platform.name, tree: stage, fledge_version: Fledge::VERSION, readers:, archive:)
     report = audit.call
-    notices = LicenseAudit::Notices.new(report, version: Fledge::VERSION, map: audit.map)
+    notices = LicenseAudit::Notices.new(report, version: Fledge::VERSION, map: audit.map, archive:)
     problems = LicenseAudit.problems(report, notices)
     raise LicenseAudit::Failure.new(platform.name, problems) unless problems.empty?
 

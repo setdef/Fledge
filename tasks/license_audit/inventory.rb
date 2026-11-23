@@ -21,7 +21,7 @@ class LicenseAudit
     # The components runtime/licenses.yml maps for the audit's platform
     # and the build of Ruby its pin names (LicenseAudit.entries).
     def map_components
-      LicenseAudit.entries(@audit.map, @audit.sources, @audit.platform).map do |entry|
+      LicenseAudit.entries(@audit.map, @audit.sources, @audit.platform, archive: @audit.archive).map do |entry|
         Component.from_map(entry, @audit.method(:expand))
       end
     end

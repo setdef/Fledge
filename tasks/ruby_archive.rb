@@ -51,7 +51,25 @@ class RubyArchive
     top = File.join(build_dir, "ruby")
     prefix = build(File.join(top, version))
     check(prefix)
+    license(prefix)
     ReleaseArchive.pack(top, File.join(@work, "ruby-#{version}-#{@platform.name}.tar.gz"), top: "ruby")
+  end
+
+  # Audits +prefix+ against the license policy as the runtimes are, and
+  # writes into it notices/NOTICES.txt, notices/sbom.spdx.json, and the
+  # source of each component whose license asks for it,
+  # notices/sources/ (LicenseAudit::SourceBundle), so that the archive,
+  # which a developer unpacks and conveys, carries what its licenses ask
+  # for. Raises LicenseAudit::Failure when the archive breaks the policy.
+  def license(prefix, bundle: source_bundle, readers: LicenseAudit.readers)
+    bundle.copy_into(prefix)
+    @builder.license(prefix, readers:, archive: true)
+  end
+
+  # The source bundle of the archive's LGPL library, from the build's pins
+  # and download cache.
+  def source_bundle
+    LicenseAudit::SourceBundle.new(platform: @platform.name, version: Fledge::VERSION, downloads: @builder.downloads, archive: true)
   end
 
   def version

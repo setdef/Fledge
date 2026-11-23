@@ -71,7 +71,12 @@ name: CI
 on:
   push:
     # Not on tags: release.yml looks up the tagged commit's run on trunk.
-    branches: ["**"]
+    # Not on other branches either: a full run asks for about an hour of
+    # several macOS and Windows runners, and a branch's run is started on
+    # purpose (gh workflow run ci.yml --ref BRANCH), as pin-watch.yml and
+    # cut.yml start theirs (doc/contributors/design/releases.md, "Runs,
+    # batches, and the release commit").
+    branches: [trunk]
   pull_request:
   # pin-watch.yml starts a run on the branch pin-move to prove a move of
   # the pins, and on trunk after it lands a move rebased there, since a
@@ -81,7 +86,8 @@ on:
 permissions:
   contents: read
 
-# A push to a branch cancels that branch's run in progress. A push to
+# A run on a branch, a pull request's or one started by hand, cancels
+# that branch's run in progress. A push to
 # trunk never does: GitHub keeps one run going and one waiting in a
 # group, and a newer push replaces only the waiting one, so every
 # run that starts finishes, and covers every commit pushed since the

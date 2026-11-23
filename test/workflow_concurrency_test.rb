@@ -42,6 +42,16 @@ class WorkflowConcurrencyTest < Minitest::Test
     assert_includes group, "format('-{0}', github.sha)"
   end
 
+  # A push runs the full run only on trunk; a branch's full run is
+  # started on purpose, as pin-watch.yml and cut.yml start theirs on
+  # pin-move and release-next, and a pull request still gets one.
+  def test_ci_runs_on_a_push_to_trunk_a_pull_request_and_a_dispatch
+    on = workflow("ci.yml").fetch(true)
+
+    assert_equal({ "branches" => ["trunk"] }, on.fetch("push"))
+    assert_equal %w[pull_request push workflow_dispatch], on.keys.sort
+  end
+
   def test_fast_tier_cancels_on_branches_only_and_gives_each_trunk_push_a_group
     FAST_TIER.each do |name|
       concurrency = workflow(name).fetch("concurrency")

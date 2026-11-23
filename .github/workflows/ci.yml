@@ -1406,6 +1406,18 @@ jobs:
           name: runtime-${{ matrix.platform }}
           path: ${{ runner.temp }}/runtimes
 
+      # Issue 8: whether Windows 11 on ARM64 has opengl32.dll and glu32.dll
+      # in System32, and the machine type each declares, read with the
+      # runtime's own llvm-readobj and printed in this step's log. The
+      # script exits 0 on any answer, and the step may not fail the job.
+      - name: Print whether System32 holds opengl32.dll and glu32.dll, and their machine types
+        if: matrix.platform == 'aarch64-mingw-ucrt' && matrix.shard == 1
+        continue-on-error: true
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
+        run: ruby .github/scripts/read-system-opengl.rb
+
       # A self-signed certificate for the signed build of
       # test/integration/built_app_test.rb, which no CI runner has
       # otherwise.

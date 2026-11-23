@@ -45,11 +45,16 @@ module Fledge
 
       # The warnings about +gem+'s compiled +entries+ on +platform+, one
       # per file for its processor that needs a newer glibc than the
-      # platform's oldest, which the app then needs.
+      # platform's oldest, which the app then needs. A file whose bytes
+      # an earlier one has is one file to the app (a build installs an
+      # extension into the gem's require path, and RubyGems keeps a copy
+      # in the extensions folder: Fledge::CompiledGem), so it warns once,
+      # at the first path.
       def self.warnings(gem, entries, platform, readers: Binary::Readers.local(platform.os))
         floor = platform.glibc_minimum
         return [] unless floor
 
+        entries = entries.uniq { |entry| (entry.type == :file) ? entry.content.to_s : entry.path }
         needing(:elf, entries, platform, readers, &:glibc_minimum).filter_map do |path, found|
           next unless newer?(found, floor)
 

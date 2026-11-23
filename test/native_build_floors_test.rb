@@ -58,6 +58,18 @@ class NativeBuildFloorsTest < Minitest::Test
     }, warnings("x86_64-linux", files)
   end
 
+  # An extconf.rb's Makefile installs the extension into the gem's require
+  # path, and RubyGems keeps a copy in the extensions folder: the same
+  # bytes at two paths, one file to the app (Fledge::CompiledGem), so one
+  # warning, not one for each path.
+  def test_the_same_file_at_two_paths_is_one_warning
+    TestReaders.need(self, :elf)
+    elf = Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.2.5 GLIBC_2.41])
+    files = { "lib/redcarpet.so" => elf, "redcarpet.so" => elf.dup, "lib/other.so" => Binaries.elf(needed: ["libc.so.6"], versions: %w[GLIBC_2.34]) }
+
+    assert_equal ["lib/redcarpet.so", "lib/other.so"], warnings("x86_64-linux", files).map { |warning| warning[/'s (\S+) needs/, 1] }
+  end
+
   # A build that leaves a library for each processor, as a gem for every
   # platform carries one, loads only its own: a file for another
   # processor never loads in the app, so its floor raises nothing.

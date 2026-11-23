@@ -196,6 +196,24 @@ class ContributorToolsTest < Minitest::Test
     end
   end
 
+  # On Ruby 4.1 sqlite3 and nokogiri compile from source, and
+  # mini_portile2, which builds their libraries, runs the commands
+  # pkg-config and xzcat by those names. A stock Mac has neither, so on
+  # a Mac mise installs both from prebuilt archives, each by its SHA-256:
+  # pkgconf from PyPI's pkgconf wheel, renamed pkg-config, and xz from
+  # pkgx's build.
+  def test_mise_installs_on_macos_the_pkg_config_and_xzcat_gems_compile_with
+    assert_includes mise_toml, %([tools."http:pkgconf"]\nversion = "3.0.7.post0"\nos = ["macos"]\n)
+    assert_includes mise_toml, %([tools."http:xz"]\nversion = "5.8.4"\nos = ["macos"]\n)
+    %w[macos-arm64 macos-x64].each do |platform|
+      pkgconf = mise_toml[/^platforms\.#{platform} = \{ url = "[^"]*pkgconf-3\.0\.7\.post0-py3-none-macosx_[^"]*\.whl".*$/]
+      xz = mise_toml[%r{^platforms\.#{platform} = \{ url = "https://dist\.pkgx\.dev/tukaani\.org/xz/darwin/[^"]*/v5\.8\.4\.tar\.xz".*$}]
+
+      assert_match(%r{, format = "zip", bin_path = "pkgconf/\.bin", rename_exe = "pkg-config" \}\z}, pkgconf.to_s)
+      assert_match(%r{, bin_path = "tukaani\.org/xz/v5\.8\.4/bin" \}\z}, xz.to_s)
+    end
+  end
+
   # CI's Windows jobs read the pin from mise.toml with this script.
   # mise.toml's min_version names the oldest mise that reads it, the one
   # whose mise install and mise exec trust it on a computer that has

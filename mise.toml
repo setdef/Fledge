@@ -204,6 +204,34 @@ os = ["macos"]
 platforms.macos-arm64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip", checksum = "sha256:4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806", bin_path = "xcodegen/bin" }
 platforms.macos-x64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip", checksum = "sha256:4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806", bin_path = "xcodegen/bin" }
 
+# On macOS, the pkg-config and xzcat commands that compiling sqlite3 and
+# nokogiri from source runs, as they compile on the Ruby 4.1 above,
+# which their precompiled gems do not take (CONTRIBUTING.md): sqlite3's
+# extconf.rb and mini_portile2 run pkg-config by that name, and
+# mini_portile2 unpacks libxml2's .tar.xz with xzcat. A stock Mac has
+# neither; Homebrew's pkgconf and xz bring them, and CI's runners have
+# both. pkgconf comes from PyPI's pkgconf wheel (pypackaging-native/
+# pkgconf-pypi), a pkgconf built with no library but the system's, by
+# the SHA-256 PyPI records for each file, renamed pkg-config, the one
+# name mini_portile2 runs. xz comes from pkgx's build of it, whose
+# programs find their liblzma beside them, by the SHA-256 its
+# .sha256sum lists. Under mise x these come first on PATH even where
+# Homebrew has its own, so every Mac compiles the gems with the same
+# tools, and a pkg-config that knows only its own folders finds none of
+# Homebrew's libraries. They run at build time only, and no runtime or
+# app carries them.
+[tools."http:pkgconf"]
+version = "3.0.7.post0"
+os = ["macos"]
+platforms.macos-arm64 = { url = "https://files.pythonhosted.org/packages/bf/67/fcd20a9e78fd6bba952e982a86e98e0240a95a216143eab389cbef045d43/pkgconf-3.0.7.post0-py3-none-macosx_11_0_arm64.whl", checksum = "sha256:47cbf6889d84297b9a4e1741ae016daa4e198f3ec8bab7ce74554cc50b77cce4", format = "zip", bin_path = "pkgconf/.bin", rename_exe = "pkg-config" }
+platforms.macos-x64 = { url = "https://files.pythonhosted.org/packages/df/ea/3d7f83f95f53190d1b9abb9f67b5dfdc3ece092110a0bc1fc60115dcfad9/pkgconf-3.0.7.post0-py3-none-macosx_10_9_x86_64.whl", checksum = "sha256:3a688f02e12602b4a2be79d9a54ed598d5c44fc2fe042a7501aae53054e4688d", format = "zip", bin_path = "pkgconf/.bin", rename_exe = "pkg-config" }
+
+[tools."http:xz"]
+version = "5.8.4"
+os = ["macos"]
+platforms.macos-arm64 = { url = "https://dist.pkgx.dev/tukaani.org/xz/darwin/aarch64/v5.8.4.tar.xz", checksum = "sha256:45bac764305accc818c9cea5340361a120464a715d8022bd6293ef44f5d71120", bin_path = "tukaani.org/xz/v5.8.4/bin" }
+platforms.macos-x64 = { url = "https://dist.pkgx.dev/tukaani.org/xz/darwin/x86-64/v5.8.4.tar.xz", checksum = "sha256:d93afe9dbb1b19e4e60c336d6f0893e90be3815c025d482a42e6bdd72bb4b63f", bin_path = "tukaani.org/xz/v5.8.4/bin" }
+
 # On Linux, libclang, which bindgen loads to read Ruby's headers when
 # rb-sys builds a Rust gem (test/fixtures/native_app's ferro-idna). GitHub's
 # runners have one, a stock Linux computer does not. The libclang 18.1.1

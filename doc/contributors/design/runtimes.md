@@ -97,6 +97,8 @@ Every input that comes from outside the repository is in `runtime/sources.yml`, 
 
 The Ruby versions pinned today: on macOS and Linux, `ruby`, `mobile.ruby`, and `musl-ruby.ruby` name the same release, 4.1.0-preview1, and the musl build runs in the Alpine Ruby image of that version. On Windows, `ruby` names RubyInstaller's head build of Ruby's main branch instead ("Windows' Ruby until Ruby 4.1.0", below). A move to a new Ruby moves all of them together.
 
+jdx/ruby, whose Rubies the macOS and glibc Linux runtimes take, publishes two releases for each build of a Ruby, and the pins name the one that keeps its files. Its `.github/workflows/release.yml` (jdx/ruby at 09c4b6b, lines 65 to 83 and 153 to 179) gives each build a release of its own, `VERSION-N`, with N one more than the last build of that Ruby, and deletes the release `VERSION`, and its tag, and publishes it again with the new build's files. jdx/ruby builds its Rubies again about monthly, so a pin of `VERSION`'s files would fail its SHA-256 at the next build, and every runtime build with it, until a person moved the pin. No workflow there deletes a `VERSION-N`: on 2026-11-22 it had 327 releases and as many tags, 253 of them `VERSION-N` with no number missing, and 4.1.0-preview1 had one build, `4.1.0-preview1-1`, whose three files Fledge pins had the very SHA-256 of `VERSION`'s, downloaded and hashed. GitHub does not mark these releases immutable (`immutable` is false), so it is jdx/ruby's practice, not GitHub, that keeps them. The asset names carry the Ruby's version and not N, as `4.1.0-preview1-1/ruby-4.1.0-preview1.macos.tar.gz`, and both releases of a preview are marked as prereleases.
+
 `runtime/upstreams.yml` says where each pin is released, so that a newer release upstream is found without anyone looking ("Keeping the pins current", below).
 
 ## Keeping the pins current
@@ -225,7 +227,7 @@ What is held, and why:
 
 Once Ruby 4.1.0 is pinned, a patch of 4.1 should move as libffi does. What the move would need, and why none of it is built yet:
 
-- **jdx/ruby's assets.** The macOS and glibc Linux Rubies are jdx/ruby's, named `ruby-VERSION.PLATFORM.tar.gz` in a release named for the Ruby's version, so a move of Ruby moves both the version and `jdx_release`, with GitHub's digest of each asset. For whichever rows take jdx/ruby's builds then, the same rule holds with their own asset names.
+- **jdx/ruby's assets.** The macOS and glibc Linux Rubies are jdx/ruby's, named `ruby-VERSION.PLATFORM.tar.gz` in the release of one build, `VERSION-N`, so a move of Ruby moves both the version and `jdx_release`, with GitHub's digest of each asset. For whichever rows take jdx/ruby's builds then, the same rule holds with their own asset names.
 - **RubyInstaller's release**, `RubyInstaller-VERSION-1`, whose `.7z` for each Windows platform and its `.asc` signature replace the head build kept on Fledge's own release, each with GitHub's digest, with the signing key and its fingerprint unchanged; the runtime build already checks the signature against that key ("The RubyInstaller signing key", below).
 - **Ruby's own tarball**, for the phone, musl, and Fledge-built Rubies, with the SHA-256 Ruby's index gives.
 
@@ -323,7 +325,7 @@ What changed for a Mac app with the move, besides the floor: `RUBY_PLATFORM` is 
 
 The Ruby of the macOS and glibc Linux runtimes is jdx/ruby's (ADR 100). Fledge builds Ruby itself for musl Linux and the phones, and takes RubyInstaller's for Windows; for macOS and glibc Linux it builds Ruby only for testing against Ruby's master ("Fledge's own Ruby builds"), and no runtime ships it. The maintainer's word on it, 2026-11-22 (`decisions.md`): Fledge takes these Rubies from jdx/ruby because depending on a project that many people already use is preferred to depending on Fledge's own build automation, and the cost, that jdx/ruby's libraries lag, is a stated dependency, the same every mise user has.
 
-**What lags.** jdx/ruby compiles into its Ruby the libraries its `recipes/dependencies.yml` names, and a person edits that file: on 2026-11-22 it had one commit, the one that created it on 2026-06-25, and its Ruby had been rebuilt about monthly since with the same libraries. Fledge's pin watch cannot move them. Its `jdx-ruby` entry is held; its tag pattern leaves out `VERSION-N`, the tag of a rebuild; and the pin names the release of the Ruby's version (`releases/download/4.1.0-preview1/`), which the watch moves only when jdx/ruby publishes a new Ruby. On 2026-11-22, with the newest release of each library the same day:
+**What lags.** jdx/ruby compiles into its Ruby the libraries its `recipes/dependencies.yml` names, and a person edits that file: on 2026-11-22 it had one commit, the one that created it on 2026-06-25, and its Ruby had been rebuilt about monthly since with the same libraries. Fledge's pin watch cannot move them. Its `jdx-ruby` entry is held, and the watch leaves out every release GitHub marks as a prerelease, as jdx/ruby marks each build of a preview, so it reports no later build of the pinned Ruby. On 2026-11-22, with the newest release of each library the same day:
 
 | Library | In jdx/ruby's Ruby | Newest release |
 |---|---|---|
@@ -351,7 +353,7 @@ libyaml 0.2.6 fixes CVE-2026-44842 with a limit on nesting depth, libffi 3.8.1 i
 
 **What reopens it.** What ADR 100 says: building Ruby for macOS and glibc Linux waits until jdx/ruby stops publishing, publishes a build that fails Delivery, or cannot be relied on.
 
-**What is Fledge's own, whatever the Ruby's source.** The pin watch does not see a rebuild of jdx/ruby's Ruby, so it does not report that jdx/ruby has a Ruby with newer libraries, and a held pin goes overdue only 30 days after a newer release it does see ("Held pins"). Nothing in the watch reads the libraries of jdx/ruby's current Ruby, and the pin's address, the release named for the Ruby's version, is one a rebuild may change under it. The license audit does refuse a runtime whose Ruby compiles in a library that `runtime/licenses.yml` does not list.
+**What is Fledge's own, whatever the Ruby's source.** The pin watch does not see a rebuild of jdx/ruby's Ruby, so it does not report that jdx/ruby has a Ruby with newer libraries, and a held pin goes overdue only 30 days after a newer release it does see ("Held pins"). Nothing in the watch reads the libraries of jdx/ruby's current Ruby. The pin's address is the release of one build, which a later build does not change ("Sources and pins"). The license audit does refuse a runtime whose Ruby compiles in a library that `runtime/licenses.yml` does not list.
 
 ## Certificates
 

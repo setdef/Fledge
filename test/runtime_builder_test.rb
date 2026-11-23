@@ -52,12 +52,16 @@ class RuntimeBuilderTest < Minitest::Test
 
   # macOS and glibc Linux take jdx/ruby's builds, the Linux ones built
   # against glibc 2.17 (runtime/sources.yml), and say so by their build
-  # key, so that the license audit asks for what that build holds.
+  # key, so that the license audit asks for what that build holds. Each
+  # is pinned at the release of one build, VERSION-N, which jdx/ruby
+  # never publishes again, not at VERSION, which it deletes and
+  # publishes again with each build of that Ruby.
   def test_every_platform_pins_a_ruby_build_by_sha256
     pins = builder("x86_64-linux").sources.fetch("ruby").fetch("platforms")
 
     assert_equal Fledge::Platform.names.reject { |name| name.end_with?("-musl") }.sort, pins.keys.sort
     release = builder("x86_64-linux").sources.fetch("ruby").fetch("jdx_release")
+    assert_match(/\A4\.1\.0-preview1-\d+\z/, release, "the release of one build of the Ruby")
     %w[arm64-darwin x86_64-linux aarch64-linux].each do |name|
       assert pins.dig(name, "url").start_with?("https://github.com/jdx/ruby/releases/download/#{release}/ruby-4.1.0-preview1."), name
       assert_equal "jdx", pins.dig(name, "build")

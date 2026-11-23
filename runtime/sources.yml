@@ -13,11 +13,18 @@
 #
 # macOS and glibc Linux: jdx/ruby's relocatable CRuby builds
 # (github.com/jdx/ruby, a fork of rv-ruby, whose builds mise installs),
-# release 4.1.0-preview1 of 2026-10-22 (jdx_release, below), at commit
-# ad498b278b: the Linux ones built in manylinux2014 containers against
-# glibc 2.17, where rv-ruby's builds on Ubuntu 24.04 need glibc 2.38
-# (doc/contributors/design/runtimes.md, "The glibc floor"), and the Mac
-# one on GitHub's macos-26 runner, whose files declare macOS 26.0 ("The
+# from the release of one build of the Ruby, jdx_release, below. jdx/ruby
+# publishes each build of a Ruby as its own release, VERSION-N, N one
+# more than its last build of that Ruby, which it never publishes again,
+# and beside it a release VERSION, which it deletes and publishes again
+# with each build (its .github/workflows/release.yml), so a pin of
+# VERSION's files would change under its SHA-256 at the next build
+# (doc/contributors/design/runtimes.md, "Sources and pins"). The asset
+# names carry the Ruby's version and not N. The Linux ones are built in
+# manylinux2014 containers against glibc 2.17, where rv-ruby's builds on
+# Ubuntu 24.04 need glibc 2.38 (doc/contributors/design/runtimes.md,
+# "The glibc floor"), and the Mac one on GitHub's macos-26 runner, whose
+# files declare macOS 26.0 ("The
 # Mac's Ruby is jdx/ruby's"). Each carries a static libruby the launcher
 # links, the standard library the runtime ships, and the OpenSSL and
 # libyaml gems compile against ("What a runtime keeps for compiling
@@ -59,22 +66,22 @@
 # runtime keeps").
 ruby:
   version: 4.1.0-preview1
-  jdx_release: 4.1.0-preview1
+  jdx_release: 4.1.0-preview1-1
   bundled_gems: [minitest, power_assert, rake, test-unit, rexml, rss, net-imap, net-smtp, matrix, prime, rbs, typeprof,
     debug, racc, mutex_m, getoptlong, base64, bigdecimal, observer, abbrev, resolv-replace, rinda, drb, nkf, syslog, csv,
     repl_type_completor, ostruct, pstore, benchmark, logger, rdoc, prism, win32ole, irb, reline, readline, fiddle, tsort,
     win32-registry]
   platforms:
     arm64-darwin:
-      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1/ruby-4.1.0-preview1.macos.tar.gz
+      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1-1/ruby-4.1.0-preview1.macos.tar.gz
       sha256: 57fbc4a92f3dc3b21aad48ff6ba7b22fa12503946dba7e9f2c72726affbd4443
       build: jdx
     x86_64-linux:
-      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1/ruby-4.1.0-preview1.x86_64_linux.tar.gz
+      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1-1/ruby-4.1.0-preview1.x86_64_linux.tar.gz
       sha256: b56d9f6c5d318713f6a970cd60c5c773efbeba5609bf744b68e475ca9a241284
       build: jdx
     aarch64-linux:
-      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1/ruby-4.1.0-preview1.arm64_linux.tar.gz
+      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1-1/ruby-4.1.0-preview1.arm64_linux.tar.gz
       sha256: f4ce52e44c6e472a1b89f324a5e89a3c42aa0ef8e5b2849fea4c99309a1fd047
       build: jdx
     x64-mingw-ucrt:

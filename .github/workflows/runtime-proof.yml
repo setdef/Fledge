@@ -1,0 +1,138 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# The runtime's commit stage: on each push to trunk that changes what an
+# x86-64 Linux runtime, or an app built from it, is made from, the
+# proof a contributor runs before the push of a runtime change,
+# `rake runtime:prove[x86_64-linux]` (tasks/runtime_proof.rb, which
+# `bin/check --runtime` runs after the fast check, CONTRIBUTING.md,
+# "Before the push of a runtime change"). It builds the runtime as
+# ci.yml's Runtime job does, then runs CI's parity check, Delivery of
+# hello and my_cool_app with their parity probes, Delivery of build
+# --from, and the licensing page's test, in about a quarter of an hour,
+# so a commit that breaks a runtime is judged alone, as the fast tier
+# judges each push's lint and unit tests, and not only in the batch
+# ci.yml's full run covers an hour later (doc/contributors/design/
+# releases.md, "The runtime's commit stage").
+#
+# It adds to the full run and takes nothing from it: ci.yml still
+# builds, tests, and delivers every runtime on every platform. The paths
+# below are generous on purpose, since a push it skips is judged only in
+# its batch: everything the proof's code loads or runs, and everything a
+# runtime is built from. test/workflow_runtime_proof_test.rb fails when
+# the proof loads a file of the repository, or names a script, that
+# they do not cover.
+
+name: Runtime proof
+
+on:
+  push:
+    branches: [trunk]
+    paths:
+      - ".config/mise/**"
+      - ".github/scripts/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/runtime-proof.yml"
+      - "Gemfile"
+      - "LICENSE"
+      - "LICENSES/**"
+      - "Gemfile.lock"
+      - "Rakefile"
+      - "bin/**"
+      - "doc/licensing.md"
+      - "examples/**"
+      - "exe/**"
+      - "fledge.gemspec"
+      - "lib/**"
+      - "mise.toml"
+      - "runtime/**"
+      - "tasks/**"
+      - "test/fixtures/**"
+      - "test/integration/licensing_page_test.rb"
+      - "test/support/**"
+      - "test/test_helper.rb"
+  # To try a change to it on a branch.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Each push to trunk has a group of its own, named for its commit, as in
+# fast.yml, so no push cancels or replaces another's proof.
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{
+    github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    && github.sha || 'branch' }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # As in ci.yml: a missing precompiled Ruby fails instead of compiling.
+  MISE_RUBY_COMPILE: "false"
+  # Install exactly what Gemfile.lock locks, or fail.
+  BUNDLE_FROZEN: "true"
+
+jobs:
+  prove:
+    name: Runtime proof (x86_64-linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          version: 2026.10.11
+          install_args: ruby
+
+      # The key every job on ubuntu-24.04 keeps its installed gems under
+      # (fast.yml's, and ci.yml's Test (x86_64-linux)).
+      - name: Place Bundler outside the checkout
+        id: paths
+        run: |
+          echo "BUNDLE_PATH=$HOME/.cache/fledge/bundle" >> "$GITHUB_ENV"
+          echo "ruby=$(ruby -e 'print RUBY_VERSION, "-", RUBY_REVISION, "-", RUBY_PLATFORM')" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:?the runner sets no ImageOS}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/fledge/bundle
+          key: gems-${{ runner.os }}-${{ runner.arch }}-${{ steps.paths.outputs.image }}-${{ steps.paths.outputs.ruby }}-${{ hashFiles('Gemfile.lock') }}
+
+      - name: Install the bundle
+        run: bundle install
+
+      # The pinned downloads, each checked against its SHA-256 when it is
+      # used, under a prefix of their own, since the proof downloads more
+      # than ci.yml's Runtime (x86_64-linux) does.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: downloads
+        with:
+          path: ~/.cache/fledge/downloads
+          key: runtime-proof-downloads-x86_64-linux-files-
+
+      # Delivery of build --from writes an AppImage and a .deb, as ci.yml's
+      # job of it installs them for.
+      - name: Install mksquashfs
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
+
+      - name: Prove the runtime
+        run: bundle exec rake "runtime:prove[x86_64-linux]"
+
+      - name: Key the downloads by the files they hold
+        id: downloads-key
+        run: ruby .github/scripts/download_cache_key.rb
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-proof-downloads-x86_64-linux-files-{0}', steps.downloads-key.outputs.files)
+        with:
+          path: ~/.cache/fledge/downloads
+          key: runtime-proof-downloads-x86_64-linux-files-${{ steps.downloads-key.outputs.files }}

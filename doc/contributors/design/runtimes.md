@@ -225,8 +225,7 @@ What is held, and why:
 
 Once Ruby 4.1.0 is pinned, a patch of 4.1 should move as libffi does. What the move would need, and why none of it is built yet:
 
-- **jdx/ruby's assets.** The macOS and glibc Linux Rubies are jdx/ruby's, named `ruby-VERSION.PLATFORM.tar.gz` in a release named for the Ruby's version, so a move of Ruby moves both the version and `jdx_release`, with GitHub's digest of each asset.
-- **jdx/ruby's assets**, for whichever rows take jdx/ruby's builds then, by the same rule and their own asset names.
+- **jdx/ruby's assets.** The macOS and glibc Linux Rubies are jdx/ruby's, named `ruby-VERSION.PLATFORM.tar.gz` in a release named for the Ruby's version, so a move of Ruby moves both the version and `jdx_release`, with GitHub's digest of each asset. For whichever rows take jdx/ruby's builds then, the same rule holds with their own asset names.
 - **RubyInstaller's release**, `RubyInstaller-VERSION-1`, whose `.7z` for each Windows platform and its `.asc` signature replace the head build kept on Fledge's own release, each with GitHub's digest, with the signing key and its fingerprint unchanged; the runtime build already checks the signature against that key ("The RubyInstaller signing key", below).
 - **Ruby's own tarball**, for the phone, musl, and Fledge-built Rubies, with the SHA-256 Ruby's index gives.
 

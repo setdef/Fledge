@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT-0
 
-//! The extension of examples/rust_phone: a sum in Rust, and the system
+//! The extension of test/fixtures/rust_phone: a sum in Rust, and the system
 //! and processor Rust compiled it for, so that the line the app prints
 //! shows Cargo built it for the phone.
 

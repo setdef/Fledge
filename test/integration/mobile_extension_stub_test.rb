@@ -15,7 +15,7 @@ require_relative "../test_helper"
 # $LOAD_PATH after the gem's, holding the compiled extension, stands in
 # for that, and the gem's own lib/ holds only its Ruby and the stub, as
 # on a phone.
-# The Mobile apps jobs run examples/native_phone, whose gem's Ruby
+# The Mobile apps jobs run test/fixtures/native_phone, whose gem's Ruby
 # require_relatives its extension, on each phone.
 class MobileExtensionStubTest < Minitest::Test
   EXTENSION = <<~C

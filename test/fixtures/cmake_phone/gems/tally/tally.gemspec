@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.name = "tally"
   spec.version = "1.0.0"
   spec.authors = ["Kerrick Long"]
-  spec.summary = "A C extension over a C++ library that CMake builds, in examples/cmake_phone"
+  spec.summary = "A C extension over a C++ library that CMake builds, in test/fixtures/cmake_phone"
   spec.license = "MIT-0"
   spec.files = [
     "lib/tally.rb",

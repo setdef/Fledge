@@ -60,7 +60,7 @@ version = "r30"
 os = ["linux/x64"]
 platforms.linux-x64 = { url = "https://dl.google.com/android/repository/android-ndk-r30-linux.zip", checksum = "sha256:753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2" }
 
-# CMake, which examples/cmake_phone's extconf.rb runs for each of the
+# CMake, which test/fixtures/cmake_phone's extconf.rb runs for each of the
 # phone's targets, as a gem's own extconf.rb may: 3.21 or later reads
 # the toolchain file Fledge names in CMAKE_TOOLCHAIN_FILE from the
 # environment. This is Kitware's release, whose SHA-256 is Kitware's

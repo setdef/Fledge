@@ -20,17 +20,17 @@ require_relative "parity"
 # it to (os_log, logcat).
 #
 # The apps (APPS) are examples/hello; examples/mobile_app, whose pure-Ruby
-# gems Bundler sets up; examples/native_phone, whose gem has a C and C++
+# gems Bundler sets up; test/fixtures/native_phone, whose gem has a C and C++
 # extension compiled for the phone
 # (doc/contributors/design/phone-projects.md, "Gems with extensions"),
 # linked into the app on iOS and a file Ruby loads on Android;
-# examples/cmake_phone, whose gem's
+# test/fixtures/cmake_phone, whose gem's
 # extconf.rb builds a C++ library with CMake for each of the phone's
 # targets (doc/contributors/design/phone-projects.md, "CMake toolchain
 # files"), and whose Android host loads the native libraries a host may
 # name in a fixed list; examples/rake_phone,
 # whose gem from rubygems.org, digest-crc, builds its C extensions from a
-# Rakefile, with mkmf, and prints whether they ran; examples/rust_phone,
+# Rakefile, with mkmf, and prints whether they ran; test/fixtures/rust_phone,
 # whose gem's Rust extension (rb-sys and magnus) Cargo builds for each of
 # the phone's targets (doc/contributors/design/phone-projects.md, "Gems
 # with extensions"); examples/ffi_phone, whose ffi gem from
@@ -83,13 +83,13 @@ class MobileParity
       prints: /\AHello from Ruby 4\.1\.0 on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "examples/mobile_app", name: "Mobile App", identifier: "com.setdef.fledge.MobileApp",
       prints: /\AMobileApp 1\.2\.3 says hello through i18n 1\.15\.2 and concurrent-ruby 1\.3\.8, set up by Bundler\z/),
-    App.new(path: "examples/native_phone", name: "NativePhone", identifier: "com.setdef.fledge.NativePhone",
+    App.new(path: "test/fixtures/native_phone", name: "NativePhone", identifier: "com.setdef.fledge.NativePhone",
       prints: /\ANativePhone adds 5 and totals 10 with a C extension \(C and C\+\+\) on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
-    App.new(path: "examples/cmake_phone", name: "CmakePhone", identifier: "com.setdef.fledge.CmakePhone",
+    App.new(path: "test/fixtures/cmake_phone", name: "CmakePhone", identifier: "com.setdef.fledge.CmakePhone",
       prints: /\ACmakePhone totals 10 in C\+\+ that CMake \d+\.\d+\.\d+ built for (?:iOS(?: Simulator)? on arm64, on arm64-darwin|Android on (?:arm64, on aarch64|x86_64, on x86_64)-linux-android)\z/),
     App.new(path: "examples/rake_phone", name: "RakePhone", identifier: "com.setdef.fledge.RakePhone",
       prints: /\ARakePhone: CRC32 of hello is 3610a686 in C, from digest-crc 0\.7\.0's Rakefile, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
-    App.new(path: "examples/rust_phone", name: "RustPhone", identifier: "com.setdef.fledge.RustPhone",
+    App.new(path: "test/fixtures/rust_phone", name: "RustPhone", identifier: "com.setdef.fledge.RustPhone",
       prints: /\ARustPhone totals 10 in Rust built for (?:ios on aarch64, on arm64-darwin|android on (?:aarch64, on aarch64|x86_64, on x86_64)-linux-android)\z/),
     App.new(path: "examples/ffi_phone", name: "FfiPhone", identifier: "com.setdef.fledge.FfiPhone",
       prints: /\AFfiPhone: ffi 1\.17\.4 finds strlen of hello 5 and sorts \[1, 2, 3\] with a Ruby block, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),

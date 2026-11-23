@@ -607,8 +607,8 @@ jobs:
   # category of API the app's executable imports that Apple asks a reason
   # for; then each run in the Simulator on an iPhone and an iPad, its
   # output read from os_log: examples/hello; examples/mobile_app, whose
-  # pure-Ruby gems Bundler sets up; examples/native_phone,
-  # examples/cmake_phone, and examples/rust_phone, whose gems' extensions
+  # pure-Ruby gems Bundler sets up; test/fixtures/native_phone,
+  # test/fixtures/cmake_phone, and test/fixtures/rust_phone, whose gems' extensions
   # are compiled for the phone, the second's C++ library by CMake from
   # its extconf.rb, with the runner's CMake, and the third's Rust by
   # Cargo, with mise.toml's Rust and its phone targets
@@ -829,7 +829,7 @@ jobs:
   # runner boots an arm64-v8a emulator with hardware acceleration
   # (doc/contributors/design/public-interface.md, "Phones"), so the
   # arm64-v8a library is built and checked but run on no
-  # emulator here. examples/rust_phone's Rust is compiled with mise.toml's
+  # emulator here. test/fixtures/rust_phone's Rust is compiled with mise.toml's
   # Rust and its Android targets, and bindgen reads the phone's headers
   # with the runner's libclang. examples/ffi_library_phone's gems'
   # Rakefiles build libraries for ffi, which the app carries as native

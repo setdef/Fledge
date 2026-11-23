@@ -9,7 +9,7 @@ require_relative "../test_helper"
 require "open3"
 require "rbconfig"
 
-# The C extensions of examples/native_phone and examples/cmake_phone,
+# The C extensions of test/fixtures/native_phone and test/fixtures/cmake_phone,
 # which app developers copy, compiled for the Ruby running these tests
 # with their own extconf.rb, as gem install would, and called from a Ruby
 # of their own. Each totals any Array it is given, so neither its size
@@ -17,8 +17,8 @@ require "rbconfig"
 # on the C stack overran the stack, and a sum past what a long long holds
 # is undefined behaviour in C and C++.
 class ExampleExtensionsTest < Minitest::Test
-  ADDER = File.expand_path("../../examples/native_phone/gems/adder/ext/adder", __dir__)
-  TALLY = File.expand_path("../../examples/cmake_phone/gems/tally/ext/tally", __dir__)
+  ADDER = File.expand_path("../../test/fixtures/native_phone/gems/adder/ext/adder", __dir__)
+  TALLY = File.expand_path("../../test/fixtures/cmake_phone/gems/tally/ext/tally", __dir__)
 
   # Many more numbers than a thread's stack holds as long longs: 8 MiB
   # holds a million.
@@ -40,13 +40,13 @@ class ExampleExtensionsTest < Minitest::Test
   end
 
   def test_tally_totals_more_numbers_than_the_stack_holds
-    skip "examples/cmake_phone needs CMake on the PATH" unless cmake?
+    skip "test/fixtures/cmake_phone needs CMake on the PATH" unless cmake?
 
     assert_equal ["#{MANY}\n", ""], call(TALLY, "Tally", "puts Tally.sum(Array.new(#{MANY}, 1))")
   end
 
   def test_tally_refuses_a_sum_a_long_long_cannot_hold
-    skip "examples/cmake_phone needs CMake on the PATH" unless cmake?
+    skip "test/fixtures/cmake_phone needs CMake on the PATH" unless cmake?
     script = "[[2**62, 2**62], [-2**63, -1]].each { |numbers| Tally.sum(numbers) rescue puts $!.class }\n" \
       "puts Tally.sum([2**62, -2**62])"
 

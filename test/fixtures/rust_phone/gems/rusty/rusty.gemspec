@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.name = "rusty"
   spec.version = "1.0.0"
   spec.authors = ["Kerrick Long"]
-  spec.summary = "A Rust extension built with rb-sys and magnus, in examples/rust_phone"
+  spec.summary = "A Rust extension built with rb-sys and magnus, in test/fixtures/rust_phone"
   spec.license = "MIT-0"
   spec.files = [
     "lib/rusty.rb",

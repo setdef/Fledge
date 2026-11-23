@@ -51,7 +51,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   # with FLEDGE_REQUIRE_IOS set.
   def test_a_c_extension_is_compiled_for_the_device_and_the_simulator
     runtimes = real_runtimes("ios")
-    greeter = File.expand_path("../../examples/native_phone/gems/adder", __dir__)
+    greeter = File.expand_path("../../test/fixtures/native_phone/gems/adder", __dir__)
     spec_package = Fledge::PathPackage.new(path_gem(greeter))
     built = compile(runtimes, ios, { path_gem(greeter) => spec_package })
 
@@ -167,7 +167,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   def test_an_android_extension_built_as_a_file_is_a_shared_object_with_its_own_init_function
     runtimes = real_runtimes("android")
     ndk = android_ndk
-    adder = File.expand_path("../../examples/native_phone/gems/adder", __dir__)
+    adder = File.expand_path("../../test/fixtures/native_phone/gems/adder", __dir__)
 
     built = compile(runtimes, android, { path_gem(adder) => Fledge::PathPackage.new(path_gem(adder)) }, files: true)
 
@@ -220,7 +220,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   # its place, as a C++ extension and libfledgeext.so do.
   def test_an_android_c_extension_over_a_cpp_library_built_as_a_file_links_the_shared_cpp_runtime
     runtimes = real_runtimes("android")
-    android_missing("examples/cmake_phone needs CMake on the PATH") unless cmake?
+    android_missing("test/fixtures/cmake_phone needs CMake on the PATH") unless cmake?
     ndk = android_ndk
 
     built = compile(runtimes, android, { tally_gem => Fledge::PathPackage.new(tally_gem) }, files: true)
@@ -290,14 +290,14 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal({ "ios-arm64" => "IOS", "ios-arm64-simulator" => "IOSSIMULATOR" }, platforms)
   end
 
-  # examples/cmake_phone's extconf.rb runs CMake, which builds its C++
+  # test/fixtures/cmake_phone's extconf.rb runs CMake, which builds its C++
   # library from CMAKE_TOOLCHAIN_FILE for each slice (doc/contributors/design/phone-projects.md,
   # "CMake toolchain files"): the
   # device's objects are for iOS and the Simulator's for the Simulator,
   # as each slice's extension is.
   def test_a_cmake_library_an_extconf_builds_is_built_for_each_ios_slice
     runtimes = real_runtimes("ios")
-    ios_missing("examples/cmake_phone needs CMake on the PATH") unless cmake?
+    ios_missing("test/fixtures/cmake_phone needs CMake on the PATH") unless cmake?
     built = compile(runtimes, ios, { tally_gem => Fledge::PathPackage.new(tally_gem) })
 
     assert_equal [["tally/tally", "Init_fledge_0"]], built.registrations
@@ -317,7 +317,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   # ABI, with its notice, though no other library of the app needs it.
   def test_a_cmake_library_an_extconf_builds_is_linked_for_each_android_abi
     runtimes = real_runtimes("android")
-    android_missing("examples/cmake_phone needs CMake on the PATH") unless cmake?
+    android_missing("test/fixtures/cmake_phone needs CMake on the PATH") unless cmake?
     ndk = android_ndk
     built = compile(runtimes, android, { tally_gem => Fledge::PathPackage.new(tally_gem) })
     registration = File.join(@dir, "registration.c")
@@ -641,7 +641,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   def test_a_rakefile_requires_a_gem_its_gem_depends_on_compiled_for_this_computer
     runtimes = real_runtimes("android")
     android_ndk
-    adder = File.expand_path("../../examples/native_phone/gems/adder", __dir__)
+    adder = File.expand_path("../../test/fixtures/native_phone/gems/adder", __dir__)
     gem = rake_gem("thing", <<~'RAKEFILE', files: { "thing.c" => "int thing(void) { return 1; }\n" }, dependencies: ["adder"])
       require "adder"
       task :default do
@@ -682,7 +682,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     out = StringIO.new
     err = StringIO.new
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache"))
-    status = Fledge::CLI::Build.new(out:, err:, env:).call(["ios", "-o", File.join(@dir, "dist"), File.expand_path("../../examples/native_phone", __dir__)])
+    status = Fledge::CLI::Build.new(out:, err:, env:).call(["ios", "-o", File.join(@dir, "dist"), File.expand_path("../../test/fixtures/native_phone", __dir__)])
 
     assert_equal 0, status, err.string
     project = File.join(@dir, "dist", "NativePhone-ios")
@@ -721,7 +721,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_empty difference
   end
 
-  # examples/rust_phone's gem has a Rust extension, built with rb-sys and
+  # test/fixtures/rust_phone's gem has a Rust extension, built with rb-sys and
   # magnus: rb_sys, which its extconf.rb requires, is found among the
   # app's gems, and Cargo builds a static library for each slice, whose
   # objects are for iOS and the Simulator, that keeps the Init function
@@ -890,14 +890,14 @@ class MobileExtensionsBuildTest < Minitest::Test
     names.each { |name| assert_includes spec, "- framework: Frameworks/#{name}.xcframework\n        embed: true\n        link: false" }
   end
 
-  # Writes examples/+name+'s project for +phone+ with fledge build, from
+  # Writes test/fixtures/+name+'s project for +phone+ with fledge build, from
   # the runtimes in +runtimes+, and returns the project's folder, named
   # +project+.
   def build_example(phone, name, runtimes, project)
     out = StringIO.new
     err = StringIO.new
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache"))
-    status = Fledge::CLI::Build.new(out:, err:, env:).call([phone, "-o", File.join(@dir, "dist"), File.expand_path("../../examples/#{name}", __dir__)])
+    status = Fledge::CLI::Build.new(out:, err:, env:).call([phone, "-o", File.join(@dir, "dist"), File.expand_path("../../test/fixtures/#{name}", __dir__)])
 
     assert_equal 0, status, err.string
     File.join(@dir, "dist", project)
@@ -908,7 +908,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   # add installs it.
   def rust_targets(name, targets)
     targets.each do |target|
-      Fledge::MobileExtensions::Rust.check(target, gem: "examples/rust_phone's rusty", env: ENV.to_h)
+      Fledge::MobileExtensions::Rust.check(target, gem: "test/fixtures/rust_phone's rusty", env: ENV.to_h)
     rescue Fledge::Error => e
       missing(name, e.message)
     end
@@ -929,7 +929,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   def tally_gem
-    folder = File.expand_path("../../examples/cmake_phone/gems/tally", __dir__)
+    folder = File.expand_path("../../test/fixtures/cmake_phone/gems/tally", __dir__)
     Fledge::PathGem.new(name: "tally", version: "1.0.0", folder:, app_path: "vendor/cache/tally", glob: "{,*,*/*}.gemspec", inside: true)
   end
 

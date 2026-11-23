@@ -145,6 +145,23 @@ class ContributorToolsTest < Minitest::Test
     downloads.each { |line| assert_match(/checksum = "sha256:\h{64}"/, line) }
   end
 
+  # tasks/setup.rb runs mise install, naming no tool, so that with
+  # MISE_ENV=android on x86-64 Linux it installs every tool this file
+  # pins (ten, when the issue 14 run installed them from nothing on
+  # 2026-11-23): each is for linux/x64 alone and has its download for
+  # it, so no tool is skipped there, and none is installed elsewhere.
+  def test_every_tool_mise_android_toml_pins_installs_on_x86_64_linux_and_only_there
+    sections = android_toml.split(/^(?=\[tools\.")/).drop(1)
+
+    refute_empty sections
+    sections.each do |section|
+      name = section[/\A\[tools\."([^"]+)"\]/, 1]
+
+      assert_includes section, %(os = ["linux/x64"]), "#{name} would install beyond x86-64 Linux"
+      assert_match(%r{^platforms\.linux-x64 = \{ url = "https://}, section, "#{name} has no download for x86-64 Linux")
+    end
+  end
+
   # fledge build android compiles a gem's extension with the very NDK the
   # Android runtime is built with, as CI's Mobile apps job installs it.
   def test_mise_installs_for_android_the_ndk_the_android_runtime_is_built_with

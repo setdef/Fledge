@@ -11,16 +11,18 @@
 # doc/contributors/design/runtimes.md, "Sources and pins"), but Windows,
 # whose Ruby is a snapshot of Ruby's master of a month later, below.
 #
-# macOS: rv-ruby's relocatable CRuby build, release 20261023 (release,
-# below). glibc Linux: jdx/ruby's (github.com/jdx/ruby, a fork of
-# rv-ruby, whose builds mise installs), release 4.1.0-preview1 of
-# 2026-10-22 (jdx_release, below), at commit ad498b278b, built in
-# manylinux2014 containers against glibc 2.17, where rv-ruby's builds on
-# Ubuntu 24.04 need glibc 2.38 (doc/contributors/design/runtimes.md,
-# "The glibc floor"). Each carries a static libruby the launcher links,
-# and the standard library the runtime ships. The SHA-256s are those
-# GitHub records for each asset. A pin's build key says whose build it
-# is when it is not rv-ruby's or RubyInstaller's: jdx for jdx/ruby's,
+# macOS and glibc Linux: jdx/ruby's relocatable CRuby builds
+# (github.com/jdx/ruby, a fork of rv-ruby, whose builds mise installs),
+# release 4.1.0-preview1 of 2026-10-22 (jdx_release, below), at commit
+# ad498b278b: the Linux ones built in manylinux2014 containers against
+# glibc 2.17, where rv-ruby's builds on Ubuntu 24.04 need glibc 2.38
+# (doc/contributors/design/runtimes.md, "The glibc floor"), and the Mac
+# one on GitHub's macos-26 runner, whose files declare macOS 26.0 ("The
+# Mac's Ruby is jdx/ruby's"). Each carries a static libruby the launcher
+# links, the standard library the runtime ships, and the OpenSSL and
+# libyaml gems compile against ("What a runtime keeps for compiling
+# gems"). The SHA-256s are those GitHub records for each asset. A pin's
+# build key says whose build it is when it is not RubyInstaller's: jdx for jdx/ruby's,
 # fledge for Fledge's own (ruby-build, below), so that the license audit
 # asks for what that build holds (runtime/licenses.yml, ruby_build).
 #
@@ -57,7 +59,6 @@
 # runtime keeps").
 ruby:
   version: 4.1.0-preview1
-  release: "20261023"
   jdx_release: 4.1.0-preview1
   bundled_gems: [minitest, power_assert, rake, test-unit, rexml, rss, net-imap, net-smtp, matrix, prime, rbs, typeprof,
     debug, racc, mutex_m, getoptlong, base64, bigdecimal, observer, abbrev, resolv-replace, rinda, drb, nkf, syslog, csv,
@@ -65,8 +66,9 @@ ruby:
     win32-registry]
   platforms:
     arm64-darwin:
-      url: https://github.com/spinel-coop/rv-ruby/releases/download/20261023/ruby-4.1.0-preview1.arm64_sonoma.tar.gz
-      sha256: 9e3944ade8e237835a7eca5cae1ce1140c32ca6b6854c25a4d56c26512df7033
+      url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1/ruby-4.1.0-preview1.macos.tar.gz
+      sha256: 57fbc4a92f3dc3b21aad48ff6ba7b22fa12503946dba7e9f2c72726affbd4443
+      build: jdx
     x86_64-linux:
       url: https://github.com/jdx/ruby/releases/download/4.1.0-preview1/ruby-4.1.0-preview1.x86_64_linux.tar.gz
       sha256: b56d9f6c5d318713f6a970cd60c5c773efbeba5609bf744b68e475ca9a241284

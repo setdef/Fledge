@@ -108,7 +108,7 @@ class PlatformTest < Minitest::Test
   # (doc/contributors/design/releases.md, "Platform floors").
   def test_each_platform_names_its_os_and_its_oldest_macos_or_glibc
     {
-      "arm64-darwin" => ["darwin", "15.0"],
+      "arm64-darwin" => ["darwin", "26.0"],
       "x86_64-linux" => ["linux", nil],
       "aarch64-linux" => ["linux", nil],
       "x86_64-linux-musl" => ["linux", nil],

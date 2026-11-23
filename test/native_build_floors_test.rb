@@ -31,8 +31,8 @@ class NativeBuildFloorsTest < Minitest::Test
     })
 
     assert_equal [
-      "redcarpet 3.6.1's lib/redcarpet.bundle needs macOS 27.0, and apps for arm64-darwin run on macOS 15.0 and later. " \
-        "Compile it with MACOSX_DEPLOYMENT_TARGET=15.0, which Fledge sets, so check its extconf.rb does not override it.",
+      "redcarpet 3.6.1's lib/redcarpet.bundle needs macOS 27.0, and apps for arm64-darwin run on macOS 26.0 and later. " \
+        "Compile it with MACOSX_DEPLOYMENT_TARGET=26.0, which Fledge sets, so check its extconf.rb does not override it.",
     ], found
   end
 

@@ -6,12 +6,12 @@
 # such as arm64-darwin, reports it: the arch runtime/licenses.yml's
 # platforms give it, which the license audit holds every runtime build
 # to. A macOS Ruby names its platform for the macOS it was built on
-# (arm64-darwin23 on macOS 14), so a move of that Ruby's pin to a build
+# (arm64-darwin25 on macOS 26), so a move of that Ruby's pin to a build
 # made on a newer macOS changes the name there, which the move rewrites,
 # and in no workflow, which the token that pushes a move cannot change
 # (doc/contributors/design/runtimes.md, "The move").
 #
-#   .github/scripts/ruby-platform.sh arm64-darwin   # arm64-darwin23
+#   .github/scripts/ruby-platform.sh arm64-darwin   # arm64-darwin25
 set -euo pipefail
 
 platform=$1

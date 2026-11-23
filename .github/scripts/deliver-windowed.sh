@@ -93,7 +93,7 @@ case "$(uname -s)" in
     expect CFBundleShortVersionString "$(plutil -extract CFBundleShortVersionString raw "$plist")" "$version"
     expect CFBundleVersion "$(plutil -extract CFBundleVersion raw "$plist")" 1.2.417
     expect CFBundlePackageType "$(plutil -extract CFBundlePackageType raw "$plist")" APPL
-    expect LSMinimumSystemVersion "$(plutil -extract LSMinimumSystemVersion raw "$plist")" 15.0
+    expect LSMinimumSystemVersion "$(plutil -extract LSMinimumSystemVersion raw "$plist")" 26.0
     expect NSHighResolutionCapable "$(plutil -extract NSHighResolutionCapable raw "$plist")" true
     expect NSHumanReadableCopyright "$(plutil -extract NSHumanReadableCopyright raw "$plist")" "© 2026 setdef"
     icon="$bundle/Contents/Resources/$(plutil -extract CFBundleIconFile raw "$plist")"

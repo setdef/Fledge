@@ -366,9 +366,9 @@ class LicenseAuditTest < Minitest::Test
     TestReaders.need(self, :macho)
 
     assert_empty macos_floors({ "launcher" => Binaries.macho, "bin/ruby" => Binaries.macho })
-    assert_empty macos_floors({ "launcher" => Binaries.macho(minos: "15.0") }), "a file built for the floor itself"
+    assert_empty macos_floors({ "launcher" => Binaries.macho(minos: "15.0") }), "a file built for a macOS below the floor"
     %w[launcher bin/ruby lib/ruby/4.1.0+5/arm64-darwin23/a.bundle].each do |path|
-      assert_equal ["macos-floor: #{path}: needs macOS 27.1, and Fledge's macOS apps run on macOS 15.0 and later"],
+      assert_equal ["macos-floor: #{path}: needs macOS 27.1, and Fledge's macOS apps run on macOS 26.0 and later"],
         macos_floors({ path => Binaries.macho(minos: "27.1") })
     end
   end
@@ -376,7 +376,7 @@ class LicenseAuditTest < Minitest::Test
   def test_refuses_a_mach_o_that_names_no_macos_at_all
     TestReaders.need(self, :macho)
 
-    assert_equal ["macos-floor: launcher: names no macOS it runs on, and Fledge's macOS apps run on macOS 15.0 and later"],
+    assert_equal ["macos-floor: launcher: names no macOS it runs on, and Fledge's macOS apps run on macOS 26.0 and later"],
       macos_floors({ "launcher" => Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], platform: "ios") })
   end
 

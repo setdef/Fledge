@@ -50,16 +50,15 @@ class RuntimeBuilderTest < Minitest::Test
     variables.each_key { |name| saved.key?(name) ? ENV[name] = saved[name] : ENV.delete(name) }
   end
 
-  # macOS takes rv-ruby's build, and glibc Linux jdx/ruby's, which is
-  # built against glibc 2.17 (runtime/sources.yml), and says so by its
-  # build key, so that the license audit asks for what that build holds.
+  # macOS and glibc Linux take jdx/ruby's builds, the Linux ones built
+  # against glibc 2.17 (runtime/sources.yml), and say so by their build
+  # key, so that the license audit asks for what that build holds.
   def test_every_platform_pins_a_ruby_build_by_sha256
     pins = builder("x86_64-linux").sources.fetch("ruby").fetch("platforms")
 
     assert_equal Fledge::Platform.names.reject { |name| name.end_with?("-musl") }.sort, pins.keys.sort
-    assert_match(%r{\Ahttps://github\.com/spinel-coop/rv-ruby/releases/download/\d{8}/ruby-4\.1\.0-preview1\.}, pins.dig("arm64-darwin", "url"))
     release = builder("x86_64-linux").sources.fetch("ruby").fetch("jdx_release")
-    %w[x86_64-linux aarch64-linux].each do |name|
+    %w[arm64-darwin x86_64-linux aarch64-linux].each do |name|
       assert pins.dig(name, "url").start_with?("https://github.com/jdx/ruby/releases/download/#{release}/ruby-4.1.0-preview1."), name
       assert_equal "jdx", pins.dig(name, "build")
     end

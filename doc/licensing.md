@@ -42,12 +42,15 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 | Component | Version | License | How it ships |
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
-| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/digest/blake3.bundle |
-| libyaml, compiled into Ruby's psych extension | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/psych.bundle |
-| Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
-| OpenSSL, compiled into Ruby's openssl extension | 3.6.2 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/arm64-darwin23/openssl.bundle |
+| BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin25/digest/blake3.bundle |
+| jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb | 4.1.0-preview1 | `BSD-2-Clause` | lines of lib/ruby/4.1.0+5/openssl.rb and lib/ruby/4.1.0+5/arm64-darwin25/rbconfig.rb |
+| libffi, compiled into the fiddle gem's extension | 3.5.1 | `MIT` | compiled into the fiddle gem's extension |
+| libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/arm64-darwin25/psych.bundle, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against |
+| Mozilla's CA certificates, as curl publishes them | cacert-2025-07-15 | `MPL-2.0` | libexec/cert.pem, unmodified |
+| OpenSSL, compiled into Ruby's openssl extension, with its headers and static libraries for compiling gems | 3.5.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/arm64-darwin25/openssl.bundle, and as include/openssl/, lib/libssl.a, and lib/libcrypto.a for fledge build to compile gems against |
 | Ruby, with the third-party code its LEGAL lists (Onigmo, and others) | 4.1.0-preview1 | `Ruby OR BSD-2-Clause` | compiled into the launcher and bin/ruby (on iOS, FledgeRuby.framework, and on Android, libfledgeruby), and its standard library in lib/ruby/, its extensions on Android among the AAR's native libraries |
-| The Rust standard library, compiled into Ruby's YJIT and ZJIT | 1.85.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
+| The Rust standard library, compiled into Ruby's YJIT | 1.58.1 | `MIT OR Apache-2.0` | compiled into the launcher, bin/ruby, and the static libruby in lib/, which mkmf links against |
+| zlib, compiled into Ruby's zlib extension | 1.3.1 | `Zlib` | compiled into lib/ruby/4.1.0+5/arm64-darwin25/zlib.bundle |
 
 Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by the license each one's specification declares (or `runtime/licenses.yml` corrects):
 

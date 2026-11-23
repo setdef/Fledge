@@ -52,9 +52,9 @@ module Fledge
 
     # The oldest macOS an arm64-darwin app runs on: the launcher and
     # bin/ruby are built for it, a Mac app's Info.plist names it, and no
-    # file in the runtime may need a newer one (rv-ruby's need macOS 14)
+    # file in the runtime may need a newer one (jdx/ruby's need macOS 26)
     # (doc/contributors/design/releases.md, "Platform floors").
-    MACOS_MINIMUM = "15.0"
+    MACOS_MINIMUM = "26.0"
 
     # The oldest glibc a Linux runtime runs on: manylinux_2_28's, the
     # image Fledge's own compiled parts are built in, as low as a
@@ -213,7 +213,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   Fledge::Platform.find("arm64-darwin").macos_minimum # => "15.0"
+    #   Fledge::Platform.find("arm64-darwin").macos_minimum # => "26.0"
     #--
     # SPDX-SnippetEnd
     #++

@@ -137,7 +137,7 @@ class Parity
           "person's own values in both, and records theirs as BUNDLER_ORIG_*.")
     end,
     *["ENV", "child ENV", "Bundler.original_env", "Bundler.unbundled_env", "original child ENV", "unbundled child ENV"].map do |fact|
-      Justification.new(fact:, reference: [REPEATED_PKGCONFIG], app: [REPEATED_PKGCONFIG], platforms: %w[x86_64-linux aarch64-linux],
+      Justification.new(fact:, reference: [REPEATED_PKGCONFIG], app: [REPEATED_PKGCONFIG], platforms: %w[arm64-darwin x86_64-linux aarch64-linux],
         checks: %i[bundle],
         reason: "jdx/ruby's rbconfig.rb, which every Ruby loads as it boots, puts its prefix's lib/pkgconfig first in " \
           "PKG_CONFIG_PATH each time, so the folder is there once for each Ruby between the person and the program. " \

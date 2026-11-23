@@ -57,7 +57,7 @@ $ /tmp/Greet-arm64-darwin/Greet Ruby
 ```
 <!-- SPDX-SnippetEnd -->
 
-The archive is 29 MB, and 88 MB unpacked. Anyone with an Apple silicon Mac on macOS 15 or newer can run `Greet`, whether or not they have Ruby. On Windows, the same command writes `dist/Greet-x64-mingw-ucrt.zip`, which holds `Greet.exe`, and on Linux, a `.tar.gz` for your processor, such as `dist/Greet-x86_64-linux.tar.gz`.
+The archive is 29 MB, and 88 MB unpacked. Anyone with an Apple silicon Mac on macOS 26 or newer can run `Greet`, whether or not they have Ruby. On Windows, the same command writes `dist/Greet-x64-mingw-ucrt.zip`, which holds `Greet.exe`, and on Linux, a `.tar.gz` for your processor, such as `dist/Greet-x86_64-linux.tar.gz`.
 
 ### What Fledge builds
 
@@ -90,7 +90,7 @@ Fledge and the apps it builds run on Ruby 4.1, the version on the Ruby badge, an
 
 | Platform | Your users run it on | You build it on |
 | --- | --- | --- |
-| `arm64-darwin` | macOS 15 or newer, on Apple silicon | a Mac with Apple silicon |
+| `arm64-darwin` | macOS 26 or newer, on Apple silicon | a Mac with Apple silicon |
 | `x86_64-linux`, `aarch64-linux` | Linux with [glibc](https://www.gnu.org/software/libc/) 2.28 or newer (RHEL 8, Debian 10, Ubuntu 20.04, and later), unless a gem you compile needs more | Linux with glibc, on that processor |
 | `x86_64-linux-musl`, `aarch64-linux-musl` | Linux with [musl](https://musl.libc.org/), such as [Alpine](https://alpinelinux.org/) | Linux with musl, on that processor |
 | `x64-mingw-ucrt` | Windows 11 on x64 | Windows on x64 |

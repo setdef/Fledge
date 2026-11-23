@@ -15,9 +15,9 @@ require_relative "../../tasks/licensing_page"
 # the page against the nine real runtimes and fails when doc/licensing.md
 # differs.
 class LicensingPageFromRuntimesTest < Minitest::Test
-  RUST = "/rustc/4eb161250e340c8f48f66e2b929ef4a5bed7c181/"
-  # The Rust that compiled the YJIT of jdx/ruby's glibc Linux builds,
-  # which runtime/sources.yml pins for x86_64-linux and aarch64-linux.
+  # The Rust that compiled the YJIT of jdx/ruby's macOS and glibc Linux
+  # builds, which runtime/sources.yml pins for arm64-darwin,
+  # x86_64-linux, and aarch64-linux.
   JDX_RUST = "/rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b/"
 
   def runtime(directory, platform, files)
@@ -55,7 +55,7 @@ class LicensingPageFromRuntimesTest < Minitest::Test
   def page
     TestReaders.need(self, :elf, :macho, :pe)
     Dir.mktmpdir do |directory|
-      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "2d08b5f42f #{RUST}#{more}") }))
+      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "2d08b5f42f #{JDX_RUST}#{more}") }))
       %w[x86_64-linux aarch64-linux].each do |platform|
         runtime(directory, platform, unix(-> (more) { Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "2d08b5f42f #{JDX_RUST} GCC: (#{more}") }).merge(
           "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
@@ -188,7 +188,7 @@ class LicensingPageFromRuntimesTest < Minitest::Test
   def test_a_runtime_that_breaks_the_policy_makes_no_page
     TestReaders.need(self, :macho)
     Dir.mktmpdir do |directory|
-      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "2d08b5f42f #{RUST}#{more}") }).merge(
+      runtime(directory, "arm64-darwin", unix(-> (more) { Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "2d08b5f42f #{JDX_RUST}#{more}") }).merge(
         "stray.txt" => "hello\n"
       ))
 

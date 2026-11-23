@@ -108,44 +108,21 @@ watched:
     line: 2
     names: [Ruby]
     hold: The step from Ruby 4.1's preview to 4.1.0 is the maintainer's to take (releases.md, "The day Ruby 4.1.0 appears"); a patch of 4.1 after it waits on the code runtimes.md, "Ruby's patches, with no person", names.
-  # rv-ruby's release of the macOS Ruby, which compiles in its own
-  # OpenSSL and libyaml (zlib and libffi are macOS's own, in /usr/lib),
-  # so a newer rv-ruby release is how those reach the runtime. rubies is
-  # its rolling tag. Its Ruby names its platform for the macOS it was
-  # built on, which a release can change (platform). libyaml's version
-  # is the only string of three numbers between NULs in psych.bundle,
-  # in 20261023 and 20261119 alike.
-  rv-ruby:
-    pins: [ruby]
-    field: release
-    github: spinel-coop/rv-ruby
-    tag: '\A(?<version>\d{8})\z'
-    licenses: [rv-ruby]
-    platform:
-      arm64-darwin: '/lib/ruby/[^/]+/(?<arch>arm64-darwin\d*)/rbconfig\.rb\z'
-    compiled:
-      arm64-darwin:
-        openssl:
-          file: '/lib/ruby/[^/]+/[^/]+/openssl\.bundle\z'
-          version: 'OpenSSL (?<version>\d+\.\d+\.\d+) '
-          title: OpenSSL in the macOS Ruby
-        libyaml:
-          file: '/lib/ruby/[^/]+/[^/]+/psych\.bundle\z'
-          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
-          title: libyaml in the macOS Ruby
-    also:
-      lib/fledge/download.rb: []
-  # jdx/ruby's release of the glibc Linux Rubies, one per Ruby version,
-  # tagged with it, so a newer one is a Ruby that glibc Linux can take.
-  # A rebuild of the same Ruby, with newer OpenSSL or zlib, is tagged
-  # VERSION-N, which Ruby's Gem::Version orders before VERSION, so the
-  # pattern leaves rebuilds out and the watch does not report them.
+  # jdx/ruby's release of the macOS and glibc Linux Rubies, one per Ruby
+  # version, tagged with it, so a newer one is a Ruby those platforms can
+  # take. A rebuild of the same Ruby, with newer OpenSSL or zlib, is
+  # tagged VERSION-N, which Ruby's Gem::Version orders before VERSION, so
+  # the pattern leaves rebuilds out and the watch does not report them.
+  # Its Mac Ruby names its platform for the macOS it was built on, which
+  # a new runner changes (platform).
   jdx-ruby:
     pins: [ruby]
     field: jdx_release
     github: jdx/ruby
     tag: '\A(?<version>\d+\.\d+\.\d+(?:-(?:preview|rc)\d+)?)\z'
     line: 2
+    platform:
+      arm64-darwin: '/lib/ruby/[^/]+/(?<arch>arm64-darwin\d*)/rbconfig\.rb\z'
     hold: jdx/ruby releases one build per Ruby version, so its next release is a move of Ruby, which is planned work (ruby, above).
   # PyPA's manylinux_2_28 image, which the glibc Linux runtimes build
   # in, from quay.io's listing of its tags, newest first (the first page

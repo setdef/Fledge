@@ -17,7 +17,7 @@
 # its parent's run; every other job is skipped (the Changes job). Every other commit runs everything below.
 #
 # The macOS and Linux runtimes build on each platform's own runner
-# (macos-15 is Apple Silicon, ubuntu-24.04-arm is aarch64), because their
+# (macos-26 is Apple Silicon, ubuntu-24.04-arm is aarch64), because their
 # launchers link Ruby itself. The Windows runtime builds on Linux: its
 # launcher loads Ruby's DLL when it runs, so it cross-compiles with a
 # pinned llvm-mingw from Ruby's headers alone (runtime/sources.yml), and
@@ -26,11 +26,9 @@
 #
 # Each macOS job names the label whose Xcode or macOS is part of what it
 # proves, never macos-latest, which moves (doc/contributors/design/
-# releases.md, "Which macOS each job runs on"): macos-15 for the Xcode
-# 16.4 the arm64-darwin runtime is built with, and, as the oldest macOS
-# GitHub has and the macOS 15 floor, for every job that builds a Mac's
-# apps or runs them; macos-26 for the Xcode 26.5 the
-# iOS jobs build with.
+# releases.md, "Which macOS each job runs on"): macos-26, the macOS 26
+# floor, for every job that builds a Mac's apps or runs them, and for
+# the Xcode 26.5 the arm64-darwin runtime and the iOS jobs build with.
 #
 # A windowed app gets an installer too: a disk image for macOS,
 # an NSIS setup program for Windows, and an AppImage for Linux (and a
@@ -304,8 +302,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15 for Xcode 16.4 (the Select the pinned Xcode step).
-          - os: macos-15
+          # macos-26 for Xcode 26.5 (the Select the pinned Xcode step).
+          - os: macos-26
             platform: arm64-darwin
           - os: ubuntu-24.04
             platform: x86_64-linux
@@ -329,14 +327,16 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
-      # The Xcode whose clang and linker build the launcher and bin/ruby,
-      # chosen by version as the iOS runtime's is, since Apple publishes
-      # no download to pin: 16.4, macos-15's default, whose macOS 15.5 SDK
-      # built the runtimes before this pin.
+      # The Xcode whose clang and linker build the launcher and bin/ruby:
+      # the one the iOS runtime is built with (runtime/sources.yml,
+      # mobile.xcode), chosen by version since Apple publishes no download
+      # to pin. Its macOS 26 SDK matches the floor; macos-15's Xcode 16.4
+      # built the runtimes while the floor was 15.
       - name: Select the pinned Xcode
         if: runner.os == 'macOS'
         run: |
-          sudo xcode-select -s /Applications/Xcode_16.4.app
+          xcode=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcode")')
+          sudo xcode-select -s "/Applications/Xcode_$xcode.app"
           xcodebuild -version
 
       # rv-ruby, jdx/ruby, RubyInstaller, llvm-mingw, and libxcrypt
@@ -1030,8 +1030,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (the header).
-          - os: macos-15
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
             host: arm64-darwin
           - os: windows-latest
             host: x64-mingw-ucrt
@@ -1154,8 +1154,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (the header).
-          - os: macos-15
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
             platform: arm64-darwin
           - os: ubuntu-24.04
             platform: x86_64-linux
@@ -1175,8 +1175,8 @@ jobs:
 
       # The bundle's compiled extensions target the image they were built
       # on, so the key names the runner's image (ImageOS, as mise-action
-      # keys its own cache), and a bundle fast-macos.yml built on macos-26
-      # is never restored here on macos-15. On ubuntu-24.04 the key is the
+      # keys its own cache), and a bundle built on another image is never
+      # restored here. On ubuntu-24.04 the key is the
       # one fast.yml's Lint and Unit tests and the Android emulator jobs
       # use.
       - name: Place Bundler outside the checkout
@@ -1515,8 +1515,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (the header).
-          - os: macos-15
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
             platform: arm64-darwin
             rust: ""
             mise: ruby
@@ -2040,8 +2040,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (the header).
-          - os: macos-15
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
             platform: arm64-darwin
     steps: &delivery-native-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -2183,8 +2183,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (the header).
-          - os: macos-15
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
             platform: arm64-darwin
     steps: &delivery-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -2320,8 +2320,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (the header).
-          - os: macos-15
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
             platform: arm64-darwin
     steps: &delivery-windowed-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -2915,8 +2915,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (the header).
-          - os: macos-15
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
             platform: arm64-darwin
     steps: &delivery-from-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

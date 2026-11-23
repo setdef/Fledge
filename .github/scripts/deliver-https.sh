@@ -15,15 +15,17 @@
 #             when certificates do not work.
 #   variable  in the file SSL_CERT_FILE names: every app trusts.
 #   bundled   added to the runtime's CA bundle, libexec/cert.pem, in the
-#             unpacked copy: trusted on macOS and musl Linux, and on
+#             unpacked copy: trusted on musl Linux, and on macOS and
 #             glibc Linux only where the computer has no store of its
-#             own, since there the store is read in its place.
+#             own, since there the store is read in its place (every
+#             Mac has /etc/ssl/cert.pem, which jdx/ruby's openssl.rb
+#             reads).
 #   store     in the computer's own store: trusted on glibc Linux; on
 #             musl Linux, under the hashed name in /etc/ssl/certs that
 #             Alpine's update-ca-certificates gives it, which its Ruby's
 #             OpenSSL looks up, and not from the bundle file there,
 #             which it does not read; and refused on macOS, whose Ruby
-#             does not read the Keychain.
+#             reads /etc/ssl/cert.pem and not the Keychain.
 #
 #   .github/scripts/deliver-https.sh ARCHIVE FOLDER [--store-may-change]
 #
@@ -146,7 +148,7 @@ untrust() {
 check none refuses
 check variable trusts
 case $system:$store in
-  glibc:?*) check bundled refuses ;;
+  glibc:?* | macos:?*) check bundled refuses ;;
   *) check bundled trusts ;;
 esac
 if [ "${GITHUB_ACTIONS:-}" != true ] && [ -z "$may_change" ]; then

@@ -462,6 +462,33 @@ class PinMoveTest < Minitest::Test
   end
 
   RV = "https://api.github.com/repos/spinel-coop/rv-ruby/releases?per_page=100"
+
+  # An upstream that compiles libraries into a Ruby and names its
+  # platform for the macOS it was built on, as rv-ruby's did while it was
+  # the Mac's Ruby (runtime/upstreams.yml until 2026-11-22): the move's
+  # platform and compiled steps, which jdx/ruby's Mac Ruby needs once its
+  # pin moves with no person, are tested on it.
+  RV_UPSTREAM = YAML.safe_load(<<~'YAML').freeze
+    pins: [ruby]
+    field: release
+    github: spinel-coop/rv-ruby
+    tag: '\A(?<version>\d{8})\z'
+    licenses: [rv-ruby]
+    platform:
+      arm64-darwin: '/lib/ruby/[^/]+/(?<arch>arm64-darwin\d*)/rbconfig\.rb\z'
+    compiled:
+      arm64-darwin:
+        openssl:
+          file: '/lib/ruby/[^/]+/[^/]+/openssl\.bundle\z'
+          version: 'OpenSSL (?<version>\d+\.\d+\.\d+) '
+          title: OpenSSL in the macOS Ruby
+        libyaml:
+          file: '/lib/ruby/[^/]+/[^/]+/psych\.bundle\z'
+          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
+          title: libyaml in the macOS Ruby
+    also:
+      lib/fledge/download.rb: []
+  YAML
   RV_NEW = "https://github.com/spinel-coop/rv-ruby/releases/download/20261119/ruby-4.1.0-preview1.arm64_sonoma.tar.gz"
 
   # Answers as Answers does, and lists the files of each archive it is
@@ -526,7 +553,7 @@ class PinMoveTest < Minitest::Test
     releases = JSON.generate([{ "tag_name" => "20261119", "assets" => [{ "browser_download_url" => RV_NEW, "digest" => "sha256:#{'ab' * 32}" }] }])
     answers = Archives.new({ RV => releases }, RV_NEW => listing)
     checkout("runtime/sources.yml" => sources, "runtime/licenses.yml" => RV_LICENSES, "lib/fledge/download.rb" => "") do |root|
-      yield PinMove.new(root, entries, answers), answers
+      yield PinMove.new(root, entries.merge("rv-ruby" => RV_UPSTREAM), answers), answers
     end
   end
 
@@ -720,7 +747,6 @@ class PinMoveTest < Minitest::Test
     compiled = entries.reject { |_, entry| entry["hold"] }.flat_map do |_, entry|
       entry.fetch("compiled", {}).flat_map { |platform, libraries| libraries.map { |id, library| [platform, id, library] } }
     end
-    refute_empty compiled
     compiled.each do |platform, id, library|
       component = components.find { |each| each.fetch("id") == id }
       assert_equal [platform], component&.fetch("platforms"), "runtime/licenses.yml's #{id} describes #{platform} alone"

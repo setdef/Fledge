@@ -105,7 +105,10 @@ class PinWatchTest < Minitest::Test
     beta = '<remotePackage path="ndk;31.0.1"><channelRef ref="channel-1"/></remotePackage>'
     found = finding({ "mobile" => { "ndk" => { "revision" => "29.0.1" } } }, "ndk", entry("ndk"),
       Answers.new(entry("ndk")["page"] => "#{beta}\n#{stable}\n"))
-    rv = finding({ "ruby" => { "release" => "20261023" } }, "rv-ruby")
+    # rv-ruby, the Mac's Ruby until 2026-11-22, as runtime/upstreams.yml
+    # watched it: its listing has a rolling tag beside its dated ones.
+    rv_ruby = { "pins" => ["ruby"], "field" => "release", "github" => "spinel-coop/rv-ruby", "tag" => '\A(?<version>\d{8})\z' }
+    rv = finding({ "ruby" => { "release" => "20261023" } }, "rv-ruby", rv_ruby)
 
     assert_equal "30.0.1", found.newer, "only the stable channel counts"
     assert_equal "20261119", rv.newer, "rubies, the rolling tag, is not a version"

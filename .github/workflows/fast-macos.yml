@@ -18,12 +18,9 @@
 # comes in minutes.
 #
 # Any current macOS on Apple silicon will do for the unit tests, so the
-# job runs on macos-26, the label whose runners came sooner: in the same
-# full runs, a job on macos-26 waited about half as long as one created
-# at the same instant on macos-15. macos-15 stays for the jobs whose
-# label is part of what they prove, such as ci.yml's Runtime job, whose
-# pinned Xcode 16.4 only macos-15 has (doc/contributors/design/
-# releases.md, "Which macOS each job runs on").
+# job runs on macos-26, the label whose runners came sooner, and the one
+# every ci.yml job on a Mac runs on since the macOS floor is 26
+# (doc/contributors/design/releases.md, "Which macOS each job runs on").
 
 name: Fast (macOS)
 
@@ -75,7 +72,7 @@ jobs:
       # The bundle's compiled extensions target the macOS they were built
       # on, so the cache's key names the runner's image (ImageOS, as
       # mise-action keys its own cache) and a bundle built here is never
-      # restored on ci.yml's macos-15 runners.
+      # restored on another image's runners.
       - name: Place Bundler outside the checkout
         id: paths
         run: |

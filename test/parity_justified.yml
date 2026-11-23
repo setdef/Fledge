@@ -107,6 +107,7 @@
   app:
   - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
   platforms:
+  - arm64-darwin
   - x86_64-linux
   - aarch64-linux
   checks:
@@ -117,6 +118,7 @@
   app:
   - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
   platforms:
+  - arm64-darwin
   - x86_64-linux
   - aarch64-linux
   checks:
@@ -127,6 +129,7 @@
   app:
   - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
   platforms:
+  - arm64-darwin
   - x86_64-linux
   - aarch64-linux
   checks:
@@ -137,6 +140,7 @@
   app:
   - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
   platforms:
+  - arm64-darwin
   - x86_64-linux
   - aarch64-linux
   checks:
@@ -147,6 +151,7 @@
   app:
   - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
   platforms:
+  - arm64-darwin
   - x86_64-linux
   - aarch64-linux
   checks:
@@ -157,6 +162,7 @@
   app:
   - \A"PKG_CONFIG_PATH"="<prefix>/lib/pkgconfig(?::<prefix>/lib/pkgconfig)*(?<rest>(?::.*)?"\z)
   platforms:
+  - arm64-darwin
   - x86_64-linux
   - aarch64-linux
   checks:
@@ -565,6 +571,8 @@
   app:
   - \A"PORTABLE_RUBY_SSL_CERT_FILE"="<prefix>/libexec/cert\.pem"\z
   platforms:
+  - arm64-ios
+  - arm64-ios-simulator
   - aarch64-linux-android
   - x86_64-linux-android
   checks:

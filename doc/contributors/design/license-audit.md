@@ -160,7 +160,7 @@ CI proves the claim `doc/licensing.md` makes to developers, that whoever receive
 
 ## The upstream-tree audits
 
-CI's "Licenses of the whole upstream tree" jobs run the audit on the whole tree each runtime comes from, rv-ruby's, jdx/ruby's, or RubyInstaller's, for `arm64-darwin`, both glibc Linuxes, and both Windows platforms, with `--expect .github/license-expectations/PLATFORM.yml`. The audit must find exactly the violations that file lists, no more and no fewer (`LicenseAudit::CLI`): what the runtime builder removes or replaces, such as rv-ruby's and jdx/ruby's `bin/ruby` and `lib/libcrypt.a` with libxcrypt linked in, jdx/ruby's `include/crypt.h`, nkf's Java sources in its folder and its cached `.gem`, and MSYS2's GPL keyring. So the audit is shown catching the real thing on every push, not only planted files. musl's tree is Fledge's own build, and the phones' too, so they have no upstream tree to audit.
+CI's "Licenses of the whole upstream tree" jobs run the audit on the whole tree each runtime comes from, jdx/ruby's or RubyInstaller's, for `arm64-darwin`, both glibc Linuxes, and both Windows platforms, with `--expect .github/license-expectations/PLATFORM.yml`. The audit must find exactly the violations that file lists, no more and no fewer (`LicenseAudit::CLI`): what the runtime builder removes or replaces, such as jdx/ruby's `bin/ruby` and `lib/libcrypt.a` with libxcrypt linked in, jdx/ruby's `include/crypt.h`, nkf's Java sources in its folder and its cached `.gem`, and MSYS2's GPL keyring. So the audit is shown catching the real thing on every push, not only planted files. musl's tree is Fledge's own build, and the phones' too, so they have no upstream tree to audit.
 
 ## The planted-GPL jobs
 

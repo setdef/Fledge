@@ -108,9 +108,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (doc/contributors/design/
+          # macos-26, the macOS floor (doc/contributors/design/
           # releases.md, "Which macOS each job runs on").
-          - os: macos-15
+          - os: macos-26
             platform: arm64-darwin
           - os: ubuntu-24.04
             platform: x86_64-linux
@@ -654,9 +654,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-15, the oldest macOS GitHub has (doc/contributors/design/
+          # macos-26, the macOS floor (doc/contributors/design/
           # releases.md, "Which macOS each job runs on").
-          - os: macos-15
+          - os: macos-26
             platform: arm64-darwin
           - os: ubuntu-24.04
             platform: x86_64-linux

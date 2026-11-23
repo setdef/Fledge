@@ -48,9 +48,6 @@ class OpensslGemTest < Minitest::Test
   end
 
   def test_the_gem_links_the_runtimes_openssl
-    if @platform.macos_minimum && Fledge::Archive.names(File.join(@runtimes, Fledge::Runtimes.file_name(@platform))).none?(%r{/include/openssl/})
-      skip "this Mac runtime, rv-ruby's, holds no OpenSSL for compiling gems"
-    end
     err = StringIO.new
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache"))
     status = Fledge::CLI::Build.new(out: StringIO.new, err:, env:).call(["-o", File.join(@dir, "dist"), FIXTURE])

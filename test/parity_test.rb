@@ -122,11 +122,11 @@ class ParityTest < Minitest::Test
       .all?(&:justified?)
   end
 
-  # On glibc Linux the reference is jdx/ruby, built without ZJIT and with
-  # no certificate variable of its own, where an Android app's Ruby has
-  # ZJIT compiled in and off, and sets rv-ruby's variable as the iOS
-  # app's reference, rv-ruby on macOS, does: those differences between
-  # the two packagers are allowed on Android, and nothing beside them.
+  # The reference is jdx/ruby, built without ZJIT and with no
+  # certificate variable of its own, where an Android app's Ruby has ZJIT
+  # compiled in and off, and a phone's Ruby sets rv-ruby's variable: the
+  # three are allowed on Android, the variable alone on iOS, whose Ruby
+  # has no JIT, and nothing beside them.
   def test_android_parity_allows_a_reference_built_without_zjit_or_rv_rubys_certificate_variable
     reference = {
       "RubyVM::ZJIT.enabled?" => nil,
@@ -143,7 +143,7 @@ class ParityTest < Minitest::Test
     differences = compare.call({})
     assert_equal 3, differences.size
     assert differences.all?(&:justified?), differences.inspect
-    refute compare.call({}, "arm64-ios-simulator").any?(&:justified?)
+    assert_equal ["ENV from require 'openssl'"], compare.call({}, "arm64-ios-simulator").select(&:justified?).map(&:fact)
     changed = -> (fact, value) { compare.call(fact => value).find { |difference| difference.fact == fact } }
     refute_predicate changed.call("RubyVM::ZJIT.enabled?", true), :justified?
     refute_predicate changed.call("RbConfig::CONFIG's JITs", { "YJIT_SUPPORT" => "no", "ZJIT_SUPPORT" => "yes" }), :justified?
@@ -248,9 +248,10 @@ class ParityTest < Minitest::Test
 
   # jdx/ruby's rbconfig.rb puts its prefix's pkgconfig folder first in
   # PKG_CONFIG_PATH each time a Ruby loads it, and bundle exec runs one
-  # Ruby more than the app: so on glibc Linux, under the bundle check, the
-  # reference may repeat that folder, but the rest must be the same.
-  def test_a_repeated_pkgconfig_folder_is_justified_only_with_the_same_rest_on_glibc_linux
+  # Ruby more than the app: so on macOS and glibc Linux, whose Ruby is
+  # jdx/ruby's, under the bundle check, the reference may repeat that
+  # folder, but the rest must be the same.
+  def test_a_repeated_pkgconfig_folder_is_justified_only_with_the_same_rest_on_jdx_rubys_platforms
     facts = ["ENV", "child ENV", "Bundler.original_env", "Bundler.unbundled_env", "original child ENV", "unbundled child ENV"]
     pkgconfig = "<prefix>/lib/pkgconfig"
     reference = facts.to_h { |fact| [fact, { "PKG_CONFIG_PATH" => "#{pkgconfig}:#{pkgconfig}:/usr/lib/pkgconfig" }] }
@@ -263,7 +264,8 @@ class ParityTest < Minitest::Test
       platform: "aarch64-linux", check: :bundle).all?(&:justified?)
     refute Parity::Reports.compare(reference, other, platform: "x86_64-linux", check: :bundle).any?(&:justified?)
     refute Parity::Reports.compare(reference, app, platform: "x86_64-linux", check: :script).any?(&:justified?)
-    refute Parity::Reports.compare(reference, app, platform: "arm64-darwin", check: :bundle).any?(&:justified?)
+    assert Parity::Reports.compare(reference, app, platform: "arm64-darwin", check: :bundle).all?(&:justified?)
+    refute Parity::Reports.compare(reference, app, platform: "x64-mingw-ucrt", check: :bundle).any?(&:justified?)
   end
 
   # A desktop may start a windowed app with no locale, as Launch Services

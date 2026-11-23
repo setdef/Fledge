@@ -10,8 +10,7 @@
 arm64-darwin:
   prefix: ''
   abi: 4.1.0+5
-  absent:
-  - rv-ruby
+  absent: []
   files: {}
   embedded: {}
   gems:

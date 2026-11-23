@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 This file records what the maintainer has said, word for word, and nothing else. It is the source of truth for "what the maintainer decided." Everything else in this repository (the ADRs, the plans, the help header, the error messages, the layouts, this file's notes) was written by agents, and agents may change it, as long as it stays true to what is quoted here (AGENTS.md, Provenance).
 
-Each quotation is followed by a note, written by an agent, of what it governs and where it is applied. When a quotation and a note disagree, the quotation wins. When a quotation seems to conflict with another, or is ambiguous, ask in `questions.md`; never guess.
+Each quotation is followed by a note, written by an agent, of what it governs and where it is applied. When he quoted a sentence with `>`, that sentence is part of his words: it is kept inside the quotation, exactly as he typed it, above his answer. A "[re:" line says only what that does not, and keeps an agent's account apart from his words. When a quotation and a note disagree, the quotation wins. When a quotation seems to conflict with another, or is ambiguous, ask in `questions.md`; never guess.
 
 ## From the original session
 
@@ -234,7 +234,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > iPadOS, iOS, and Android are our priorities for 0.2.0.
 
-[re: the Lota session's questions about native extensions on phones, which Plan 003 had placed after 1.0, and the maintainer's wish for Lota games on iPhone, iPad, and Android.]
+[re: the orchestrating agent had written: "Decision for you: do you want the plan changed so native gems on phones come before 1.0?"]
 
 *Governs:* the work for release 0.2.0 is phones: iPadOS, iOS, and Android, ahead of the stories that wait on money. *Applied in:* Plan 003.
 
@@ -252,9 +252,9 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 The orchestrating agent received these words first-hand from the maintainer and directed that they be recorded.
 
-> I use three words for how code comes to exist. Code I wrote, I typed by hand, with nothing generated. Code I wrought, an AI agent generated while I iterated with it, and I reviewed every change before committing it, so I take responsibility for every diff. Code I requested, an agent built with little or no review from me, in the style of a "dark factory."
+> I use three words for how code and prose comes to exist. Code I wrote, I typed by hand, with nothing generated. Code I wrought, an AI agent generated while I iterated with it, and I reviewed every change before committing it, so I take responsibility for every diff. Code I requested, an agent built with little or no review from me, in the style of a "dark factory."
 
-[re: the orchestrator's question whether it had the maintainer's exact words for written, wrought, and requested, which AGENTS.md, Provenance, had only as an agent's paraphrase, asked while the README's disclosure of how Fledge was made was being written. The maintainer struck "or prose" from the definitions.]
+[re: after asking "Do you have the exact quote?", he sent these words marked with `>`, and then wrote: "You can drop "or prose" from it." The three "or prose" are left out above.]
 
 *Governs:* what *written*, *wrought*, and *requested* mean wherever Fledge uses them: the `Provenance:` trailer, AGENTS.md, and the README's disclosure. *Applied in:* AGENTS.md, Provenance; the README.
 
@@ -276,13 +276,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > Once we hit 1.0.0, we will be releasing via RubyGems (human only), not relying on GitHub Releases and git tags.
 
-[re: the orchestrator's question whether major versions after 1.0 are the maintainer's decision, and its comparison of four ways to release them.]
+[re: his own question, "Are major version bumps after 1.0.0 my decision or yours?", and the orchestrating agent's comparison of ways to release them, which ended: "Tell me which option you want."]
 
 *Governs:* from 1.0.0, Fledge is also released on RubyGems.org, by a human, so a release can be found there as well as by its git tag and GitHub Release; before 1.0.0 it is found only by its tag and GitHub Release, and nothing is pushed to RubyGems.org (the maintainer's explanation of 2026-11-04, below). Agents prepare a release and never publish it. *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; AGENTS.md, Releasing.
 
 > I can buy that for now, but will easily be swayed by the first app dev who gets upset by the deviation. And we shouldn't be cagey about it or hide it.
 
-[re: the orchestrator's argument for keeping the launcher's turning a bare C locale into a UTF-8 one, a deviation from plain Ruby that Design precedence 1 justifies.]
+[re: the orchestrating agent had written, of the launcher's turning a bare C locale into a UTF-8 one: "So coercing is Fledge improving on plain Ruby, not matching it. I think that is the right trade under Design precedence 1, for this one case."]
 
 *Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; `doc/contributors/design/launcher.md`, "The locale"; `Parity::JUSTIFIED`.
 
@@ -292,19 +292,19 @@ The orchestrating agent received these words first-hand from the maintainer and 
 >
 > I require a major version bump to drop support for a ruby, or to drop support for an OS "version" (the thing that differentiates MacOS 26 from MacOS 27, not patches etc.).
 
-[re: question A in `questions.md`, whether a 1.x release may change the Ruby inside apps or raise the minimum operating system.]
+[re: the orchestrating agent had written: "A: may a 1.x release change the Ruby inside apps, or raise the minimum operating system, or must it wait for a major?"]
 
 *Governs:* a minor release may add Rubies and may change only a default Ruby's patch version; the maintainer is open to having no default Ruby, with the app developer naming the version (the orchestrator is to weigh it); generated config files may change in a minor release because an upgrade does not regenerate them; a new Ruby minor is expected to break (Ruby does not follow SemVer); dropping a Ruby, or an operating system version (macOS 26 against 27, not a patch), requires a major version. *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "Ruby minors and runtimes"; `doc/contributors/design/public-interface.md`.
 
 > We'll be reusing the git/ruby version stuff from RatatuiRuby and Rooibos. How tags work (and release branches, backports, etc.) differ before and after 1.0.0.
 
-[re: question B in `questions.md`, whether a release from 1.0 on still gets a git tag.]
+[re: the orchestrating agent had written: "B: after 1.0, does a release still get a git tag?"]
 
 *Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it; the tooling itself waits on its extraction (2026-11-07, below). *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "From 1.0: release branches and a human publishing"; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 
 > winget, Chocolatey, Scoop, brew, apt-get, pacman, dnf, etc. are all very relevant for Ruby console apps.
 
-[re: the orchestrator's relay of a research agent's proposal to record in an ADR that Fledge does not target Flathub or the distributions' archives, and its note that Homebrew, winget, Chocolatey, and Scoop were never researched.]
+[re: the orchestrating agent had written: "Whether channels beyond the stores are in scope for Fledge at all is yours to say."]
 
 *Governs:* the package managers (winget, Chocolatey, Scoop, Homebrew, apt-get, pacman, dnf, and others) are in scope for Fledge's console apps; a decision that Fledge does not target them is not made, and none is to be recorded. *Applied in:* `doc/contributors/research/2026-11-04-app-stores.md` (which the package managers extend); Plan 003.
 
@@ -312,24 +312,24 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 The maintainer wrote this after the orchestrating agent had misread the sentence of 2026-11-03 above ("not relying on GitHub Releases and git tags"). It is quoted in part: the dictionary definitions of "rely", "dependent", "require", and "necessity" that followed it are left out.
 
+> > Once we hit 1.0.0, we will be releasing via RubyGems (human only), not relying on GitHub Releases and git tags.
+>
 > Prior to 1.0.0, this gem would not release via RubyGems by using `gem push`. This is because prior to 1.0.0 I don't know if it'll succeed and I don't want to be a name squatter with a failed project.
 > Both before and after 1.0.0, it is expected that, like RatatuiRuby before, all releases will be findable via git tags in the source repos, which automatically become GitHub Relaeses.
 > Only before 1.0.0, that is the _only_ way they'll be findable, so releases **rely** on GitHub Releases / git tags.
 > After 1.0.0, that is _one way_ they'll be findable, so releases do not **rely** on GitHub Releases / git tags, they can be found another way too.
 
-[re: the orchestrator's account of what the sentence of 2026-11-03 meant, and its design of several gem names that carried Fledge's runtimes.]
-
 *Governs:* nothing is pushed to RubyGems.org before 1.0.0; every release, before and after, has its git tag and the GitHub Release made from it; from 1.0.0 a release is also on RubyGems.org, and "not relying" means only that. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`, "Where releases are" and "From 1.0: release branches and a human publishing"; `doc/contributors/design/public-interface.md`, "Frozen for 1.x"; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 
+> > "may an agent open a free account on a second host?"
+>
 > Absolutely not. If you want a second host, you come to me asking (optionally with suggestions).
-
-[re: the orchestrator's question whether an agent may open a free account on a second host for Fledge's release files.]
 
 *Governs:* an agent never opens an account, free or paid, on any service; when one is wanted, an agent asks the maintainer, with suggestions. *Applied in:* AGENTS.md, Questions.
 
 > One third of the reason Fledge exists is to support Lota, which is a faithful port of LÖVE2D to Ruby. Drag-to-fuse is a huge part of why LÖVE2D is successful; CLIs can be scary to newbies.
 
-[re: the orchestrator's answer to Lota's session that Fledge has no single-file mode, no plan for one, and that Lota should assume folder-style output.]
+[re: the orchestrating agent had written, of its answer to Lota's session: "I told them to assume folder-style output."]
 
 *Governs:* single-file output and a drag-and-drop way to make an app, as LÖVE's fused games have, are in scope for Fledge, because supporting Lota is a main purpose of the project and a command line is a barrier to the people Lota is for; the earlier answer that they are excluded is withdrawn. *Applied in:* Plan 003, "Build from a built app, and the files an app opens".
 

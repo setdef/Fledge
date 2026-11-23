@@ -43,8 +43,9 @@ env:
   MISE_RUBY_COMPILE: "false"
 
 jobs:
-  # Which platforms, and whose runtimes: the calling run's, or at night
-  # trunk's newest run of ci.yml that passed.
+  # Which platforms, and whose runtimes: the calling run's, or, when this
+  # workflow runs by itself at night or by hand, trunk's newest run of
+  # ci.yml that passed.
   plan:
     name: ruby/spec's platforms and runtimes
     runs-on: ubuntu-24.04
@@ -58,10 +59,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           FULL: ${{ inputs.full }}
+          # github.workflow is the caller's name in a called workflow, and
+          # this workflow's own only when it runs by itself. The event
+          # cannot tell them apart: it is the caller's, and a ci.yml that
+          # cut.yml or pin-watch.yml dispatches is a workflow_dispatch too.
+          BY_ITSELF: ${{ github.workflow == 'ruby/spec' }}
           REPOSITORY: ${{ github.repository }}
         run: |
           run=""
-          if [ "$GITHUB_EVENT_NAME" = schedule ] || [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+          if [ "$BY_ITSELF" = true ]; then
             FULL=true
             # A pin commit's short run passes too, and holds no runtimes: take
             # the newest passing run that has them.

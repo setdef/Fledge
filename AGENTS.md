@@ -18,7 +18,7 @@ Where to look, in this order for a session with no memory of earlier ones:
 - `README.md`: what Fledge does today, for app developers.
 - `CONTRIBUTING.md`: how to set up, check a change, and read CI.
 - `doc/contributors/decisions.md`: the maintainer's words. The only authority.
-- The open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left before the candidate, each written so that an agent can start from it. A commit that fixes one ends its body with "Fixes #N".
+- The open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left before the candidate, each written so that an agent can start from it. A commit that fixes one ends its body with "Fixes #N". An agent that finds a defect, or work the candidate needs, files it as an issue there: a title that states it as a plain sentence, and the evidence the finder holds (the command, its output, the conditions), not where the fix might be. An agent may comment on, edit, and close the project's issues. An agent posts nothing on another project's tracker: a fault that is another project's is recorded as an issue labelled `upstream`, saying whose it is and what Fledge does meanwhile, and whether to report it there is the maintainer's (decisions, 2026-11-22, on whose bug a fault is).
 - `doc/contributors/plan/003.md`: the plan of record, with the stories and the direction behind those issues, after `001.md` and `002.md`, both done.
 - `doc/contributors/design/`: how each part works, and why. `architecture.md` there is the overview, and indexes the few ADRs in `doc/contributors/adr/`; `releases.md` there says how to release.
 - `doc/contributors/questions.md`: what only the maintainer can answer.

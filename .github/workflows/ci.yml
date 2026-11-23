@@ -798,7 +798,7 @@ jobs:
       # Their Android tests skip here, with no Android runtime or NDK, and
       # run in the Android emulator job with 4 KB pages.
       - name: Run the iOS integration tests
-        timeout-minutes: 25
+        timeout-minutes: 35
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes

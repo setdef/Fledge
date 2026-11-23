@@ -15,10 +15,11 @@
 #
 # Installed silently (/S), the app's console program, md2html.exe, must
 # be in the folder it was installed in and print EXPECTED for SAMPLE. The
-# app must be in the "Open with" list of .md and .markdown files without
-# taking their default, and a .md file in a folder whose name has a space
-# and a character outside ASCII, opened through the shell with the app's
-# ProgID as a double-click on it opens it once the app is the default,
+# app must be in the "Open with" list of .md and .markdown files, with a
+# ProgID of its own for each, without taking their default, and a .md
+# file in a folder whose name has a space and a character outside ASCII,
+# opened through the shell with the app's ProgID for .md as a
+# double-click on it opens it once the app is the default,
 # must start its windowed program with the file's path: it writes the
 # preview page into its temporary folder and hands it to the browser,
 # here a recorder that BROWSER names. Then the silent uninstaller must
@@ -135,21 +136,40 @@ if ((Get-Item -LiteralPath $err).Length -ne 0) { Get-Content -LiteralPath $err; 
 if ((Text $out) -cne (Text $Expected)) { Fail "md2html printed other HTML than bundle exec: $(Text $out)" }
 Write-Host 'ok: md2html prints what bundle exec prints'
 
+# The ProgID the app has for an extension, as
+# doc/contributors/design/desktop-apps.md, "The ProgID", specifies: the
+# identifier with every character but letters, digits, and periods
+# removed, periods squeezed, leading digits and periods removed, cut to
+# 28 characters with no trailing period, then a period and the first ten
+# hexadecimal digits of the SHA-256 of the identifier, a newline, and the
+# extension. One per extension, so .md's and .markdown's differ.
+$identifier = 'com.setdef.fledge.MarkdownPreview'
+function ProgId([string] $extension) {
+  $digest = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.UTF8Encoding]::new($false).GetBytes("$identifier`n$extension"))
+  $hash = -join ($digest | ForEach-Object { $_.ToString('x2') })
+  $readable = $identifier -creplace '[^A-Za-z0-9.]', '' -creplace '\.+', '.' -creplace '^[0-9.]+', ''
+  $readable = $readable.Substring(0, [Math]::Min($readable.Length, 28)) -creplace '\.$', ''
+  if (-not $readable) { $readable = 'App' }
+  "$readable.$($hash.Substring(0, 10))"
+}
+
 # Markdown files, in fledge.yml's file_associations: each extension's
-# "Open with" list names one ProgID, whose open command passes the path
-# as the program's one argument, and the extension's default is left
-# alone.
+# "Open with" list names one ProgID, the app's for that extension, named
+# for the entry that lists it, whose open command passes the path as the
+# program's one argument, and the extension's default is left alone.
 $command = "`"$app`" `"%1`""
-$progId = $null
+$progIds = @{}
 foreach ($extension in '.md', '.markdown') {
   Expect "the default of $extension" (Default $extension) $defaults[$extension]
-  $progIds = @((Get-Item -LiteralPath "$classes\$extension\OpenWithProgids").GetValueNames())
-  Expect "$extension's OpenWithProgids, how many" $progIds.Count 1
-  if ($progId -and $progIds[0] -cne $progId) { Fail "$extension names $($progIds[0]), and the other extension $progId" }
-  $progId = $progIds[0]
+  $listed = @((Get-Item -LiteralPath "$classes\$extension\OpenWithProgids").GetValueNames())
+  Expect "$extension's OpenWithProgids, how many" $listed.Count 1
+  $progId = $listed[0]
+  Expect "$extension's ProgID" $progId (ProgId ($extension.TrimStart('.')))
+  Expect "$progId's name" (Get-Item -LiteralPath "$classes\$progId").GetValue('') 'Markdown document'
+  Expect "$progId's command" (Get-Item -LiteralPath "$classes\$progId\shell\open\command").GetValue('') $command
+  $progIds[$extension] = $progId
 }
-Expect "$progId's name" (Get-Item -LiteralPath "$classes\$progId").GetValue('') 'Markdown document'
-Expect "$progId's command" (Get-Item -LiteralPath "$classes\$progId\shell\open\command").GetValue('') $command
+$progId = $progIds['.md']
 
 # Opened through the shell, the windowed program writes the preview into
 # its temporary folder (Ruby's Dir.tmpdir: TMPDIR, TMP, or TEMP) and
@@ -186,9 +206,10 @@ Write-Host "ok: the shell opened $document with $appName, which wrote the previe
 $process = Start-Process -FilePath (Join-Path $folder 'uninstall.exe') -ArgumentList '/S' -Wait -PassThru
 Expect 'the silent uninstall exit status' $process.ExitCode 0
 WaitFor { -not (Test-Path -LiteralPath $folder) } "$folder going away" 120
-if (Test-Path -LiteralPath "$classes\$progId") { Fail "$classes\$progId is still in the registry" }
 # Another app's ProgID may share an extension's list; only this one's must go.
 foreach ($extension in '.md', '.markdown') {
+  $progId = $progIds[$extension]
+  if (Test-Path -LiteralPath "$classes\$progId") { Fail "$classes\$progId is still in the registry" }
   $list = "$classes\$extension\OpenWithProgids"
   if ((Test-Path -LiteralPath $list) -and ((Get-Item -LiteralPath $list).GetValueNames() -contains $progId)) {
     Fail "$list still names $progId"

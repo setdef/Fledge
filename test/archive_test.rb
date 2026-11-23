@@ -76,9 +76,12 @@ class ArchiveTest < Minitest::Test
 
       listing = Fledge::Command.read(Fledge::Archive.tar, "-tvzf", archive, install: "").lines
       assert_equal 3, listing.size
+      # Windows has no account database for Etc to read, so there is no name
+      # to look for there; the ids are still checked.
+      packer = Etc.getpwuid(Process.uid)&.name
       listing.each do |line|
         assert_match(%r{\s0[ /]+0\s}, line)
-        refute_match(/#{Regexp.escape(Etc.getpwuid(Process.uid).name)}\s/, line)
+        refute_match(/#{Regexp.escape(packer)}\s/, line) if packer
         refute_match(/\sroot\s|\swheel\s/, line)
       end
     end

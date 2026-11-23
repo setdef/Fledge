@@ -106,9 +106,9 @@ class MobileSeparationNamesTest < Minitest::Test
   # static library carries it.
   private def rust_object(triple)
     sysroot, status = Open3.capture2e("rustc", "--print", "sysroot")
-    ios_missing("no rustc: install mise.toml's Rust (bin/setup)") unless status.success?
+    ios_missing("no rustc: install mise.toml's Rust (tasks/setup.rb)") unless status.success?
     rlib = Dir.glob(File.join(sysroot.strip, "lib", "rustlib", triple, "lib", "libcore-*.rlib")).first
-    ios_missing("Rust has no #{triple} target: rustup target add #{triple} (bin/setup)") unless rlib
+    ios_missing("Rust has no #{triple} target: rustup target add #{triple} (tasks/setup.rb)") unless rlib
     member = IO.popen(["ar", "t", rlib], &:readlines).map(&:strip).find { |name| name.end_with?(".o") } or flunk "#{rlib} holds no object"
     assert system("ar", "x", rlib, member, chdir: @dir), "ar extracted #{member} from #{rlib}"
     File.join(@dir, member)

@@ -8,7 +8,7 @@
 require_relative "test_helper"
 require "yaml"
 
-# The tools mise installs for a contributor from mise.toml (bin/setup).
+# The tools mise installs for a contributor from mise.toml (tasks/setup.rb).
 # Each is pinned by SHA-256, and the Ruby is the one the runtimes come
 # from on each platform: runtime/sources.yml's release on macOS and
 # Linux, and on Windows the very archive of RubyInstaller's head build

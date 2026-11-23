@@ -23,7 +23,7 @@ class LineEndingsTest < Minitest::Test
   end
 
   def test_git_checks_out_text_with_lf_on_every_system
-    out = git("check-attr", "eol", "--", "lib/fledge.rb", "exe/fledge", "README.md", "bin/setup.ps1")
+    out = git("check-attr", "eol", "--", "lib/fledge.rb", "exe/fledge", "README.md", "tasks/setup.rb")
 
     assert_equal 4, out.lines.grep(/: eol: lf$/).size, out
   end

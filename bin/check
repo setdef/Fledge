@@ -15,8 +15,8 @@
 # mise.toml pins, installing first whatever tool is missing
 # (https://mise.jdx.dev/cli/exec.html), so the command finds that Ruby
 # with no shell mise has activated, and before anything is installed.
-# The script sets the checkout up (bin/setup, or bin/setup.ps1 on
-# Windows), then runs rake check (tasks/check.rake) with the Ruby and
+# The script sets the checkout up (tasks/setup.rb, the same file on every
+# system), then runs rake check (tasks/check.rake) with the Ruby and
 # tools mise.toml pins, of the commits since BASE, which defaults to the
 # upstream, or else origin/trunk.
 #
@@ -36,11 +36,7 @@ unless proof.empty?
   tasks << (platform ? "runtime:prove[#{platform}]" : "runtime:prove")
 end
 
-setup = if Gem.win_platform?
-  %w[powershell -NoProfile -ExecutionPolicy Bypass -File bin\\setup.ps1]
-else
-  %w[bin/setup]
-end
-system(*setup) or abort "❌ bin/check: #{setup.join(' ')} failed"
+require_relative "../tasks/setup"
+Setup.new.run.zero? or abort "❌ bin/check: tasks/setup.rb failed"
 
 exec "mise", "x", "--", "bundle", "exec", "rake", *tasks

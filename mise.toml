@@ -6,7 +6,7 @@
 # would, because running them is already a decision to run the project
 # (mise's CHANGELOG, "implicitly trust config for execution commands",
 # jdx/mise#12107; https://mise.jdx.dev/security.html, "Implicit
-# trust"), so bin/setup and mise x -- ruby bin/check run on a computer
+# trust"), so tasks/setup.rb and mise x -- ruby bin/check run on a computer
 # that has never trusted this folder, with no prompt. An older mise
 # stops here and says to upgrade, where it would otherwise stop at
 # trust, or at a key it does not know.

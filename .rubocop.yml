@@ -15,7 +15,7 @@ AllCops:
   Exclude:
     # Build staging directory
     - "tmp/**/*"
-    # The gems bin/setup installs here on CI
+    # The gems tasks/setup.rb installs here on CI
     - "vendor/bundle/**/*"
     # What fledge build writes
     - "dist/**/*"

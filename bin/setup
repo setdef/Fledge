@@ -1,37 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-set -euo pipefail
-IFS=$'\n\t'
-set -vx
-
-# On a CI-like machine (CI is set, as GitHub's runners and other CI
-# systems set it) the gems, and the Bundler the lockfile names, go into
-# the workspace, as ruby/setup-ruby's bundler-cache does, so that runs
-# sharing one Ruby never write its gem folder at once. A BUNDLE_PATH the
-# environment already names (CI's cached folder) wins. On a contributor's
-# computer nothing changes.
-workspace_bundle=
-if [[ -n "${CI:-}" && -z "${BUNDLE_PATH:-}" ]]; then
-  export BUNDLE_PATH="$PWD/vendor/bundle"
-  workspace_bundle=1
-fi
-
-if command -v mise >/dev/null 2>&1; then
-  # Every tool mise.toml pins: Ruby, the REUSE tool, actionlint, and
-  # the rest, shellcheck among them. mise install trusts mise.toml
-  # itself, as mise trust would (mise.toml, min_version, says why), so
-  # no mise trust comes first; it installs only what is missing.
-  mise install
-  # Later commands, such as bundle exec rake, find the workspace's gems
-  # through .bundle/config, which git ignores.
-  if [[ -n "$workspace_bundle" ]]; then
-    mise x -- bundle config set --local path "$BUNDLE_PATH"
-  fi
-  mise x -- bundle install
-  mise x -- bundle exec rake rdoc
-else
-  echo "mise isn't installed. Please install it to continue." >&2
-  exit 1
-fi
+# The two lines CONTRIBUTING.md gives, for a habit's sake: tasks/setup.rb
+# holds every step, on every system.
+mise trust -q mise.toml
+exec mise x -- ruby tasks/setup.rb

@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+gem "puma", "8.1.2"
+gem "rackup", "2.3.1"
+gem "sinatra", "4.2.2"

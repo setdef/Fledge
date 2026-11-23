@@ -1,0 +1,22 @@
+<%#
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+%>
+<h1>Drop</h1>
+<form method="post" action="/" enctype="multipart/form-data">
+  <input type="file" name="files[]" multiple required>
+  <button>Send</button>
+</form>
+<% files = shared_files %>
+<% if files.empty? %>
+  <p>No files yet. Send one, or put one in the Drop folder on <%= h Socket.gethostname %>.</p>
+<% else %>
+  <ul>
+    <% files.each do |name| %>
+      <li>
+        <a href="/files/<%= Rack::Utils.escape_path(name) %>"><%= h name %></a>
+        <span><%= size(File.size(File.join(FOLDER, name))) %></span>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

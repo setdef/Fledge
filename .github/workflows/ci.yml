@@ -1471,8 +1471,8 @@ jobs:
   # test/fixtures/windowed_app, a
   # windowed app with its installer;
   # test/fixtures/programs, a windowed and a console program of one project in
-  # one folder; examples/roda_server, Jot, a notes board that Roda and
-  # WEBrick serve on 127.0.0.1, whose gems are plain Ruby, so it builds
+  # one folder; examples/file_drop, Drop, a file drop that Sinatra and
+  # Puma serve to the network, whose Puma and nio4r compile from source
   # on every platform, Windows on ARM64 and musl Linux included;
   # examples/markdown_preview, Markdown Preview, a windowed and a console
   # program in an app a person would use, which opens Markdown files,
@@ -1596,14 +1596,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
-      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Jot, markdown_preview, and native_app for ${{ matrix.platform }}
+      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Drop, markdown_preview, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/roda_server examples/markdown_preview test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/roda_server examples/markdown_preview)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -1969,7 +1969,7 @@ jobs:
   # musl Linux's apps, built in Alpine with Ruby, as a developer
   # on Alpine builds them: hello, the parity and console probes, the
   # probe as a gem-shaped app's program, my_cool_app, whose sqlite3
-  # compiles from source, windowed_app, with its AppImage, programs, Jot,
+  # compiles from source, windowed_app, with its AppImage, programs, Drop,
   # the server example, markdown_preview, and ffi_libc, whose ffi
   # compiles from source with the libffi it carries, which needs
   # linux-headers (doc/contributors/design/gems.md, "Examples that
@@ -2008,7 +2008,7 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/roda_server examples/markdown_preview test/fixtures/ffi_libc; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle examples/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview test/fixtures/ffi_libc; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd examples/my_cool_app && bundle install)
@@ -2228,12 +2228,13 @@ jobs:
           trap '.github/scripts/https-server.sh stop "$server"' EXIT
           .github/scripts/deliver-https.sh "$RUNNER_TEMP/delivered/Https-${{ matrix.platform }}.tar.gz" "$server"
 
-      # Jot, a server, from a read-only folder: it must listen on
-      # 127.0.0.1 alone, answer its page, keep a note in the person's data
-      # folder across a restart, refuse a taken port with 69, and stop with
-      # 0 on SIGINT and TERM (.github/scripts/deliver-server.sh).
-      - name: Run Jot, a server on 127.0.0.1, as someone with no Ruby would
-        run: .github/scripts/deliver-server.sh "$RUNNER_TEMP/delivered/Jot-${{ matrix.platform }}.tar.gz"
+      # Drop, a server, from a read-only folder: another process must
+      # reach it at the runner's own private address, with its password
+      # alone, and a file sent to it must arrive in ~/Drop and come back
+      # byte for byte; SIGINT stops it with 0
+      # (.github/scripts/deliver-server.sh).
+      - name: Run Drop, a file drop on the network, as someone with no Ruby would
+        run: .github/scripts/deliver-server.sh "$RUNNER_TEMP/delivered/Drop-${{ matrix.platform }}.tar.gz"
 
       # An app whose Gemfile.lock names a Bundler the runtime's
       # Ruby does not ship runs with it, as bundle exec did where it was
@@ -2688,7 +2689,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, and markdown_preview on Alpine with no Ruby installed
+      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, Drop, and markdown_preview on Alpine with no Ruby installed
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -2705,6 +2706,7 @@ jobs:
           .github/scripts/deliver-programs.sh "$d/Shared Save-$PLATFORM.tar.gz"
           .github/scripts/deliver-markdown.sh "$d/Markdown Preview-$PLATFORM.tar.gz" examples/markdown_preview/welcome.md "$d/markdown_preview.expected"
           .github/scripts/deliver-https.sh "$d/Https-$PLATFORM.tar.gz" /https --store-may-change
+          .github/scripts/deliver-server.sh "$d/Drop-$PLATFORM.tar.gz"
           SH
           server="$RUNNER_TEMP/https-server"
           .github/scripts/https-server.sh start "$server"
@@ -2782,13 +2784,14 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-https.ps1 -Archive "$env:RUNNER_TEMP/delivered/Https-$env:PLATFORM.zip"
 
-      # Jot, a server, in a console of its own: it must listen on
-      # 127.0.0.1 alone, answer its page, keep a note in APPDATA across a
-      # restart, refuse a taken port with 69, stop with 0 on Ctrl-C, and
-      # write nothing in its own folder (.github/scripts/deliver-server.ps1).
-      - name: Run Jot.exe, a server on 127.0.0.1, as someone with no Ruby would
+      # Drop, a server, in a console of its own: another process must
+      # reach it at the runner's own private address, with its password
+      # alone, and a file sent to it must arrive in HOME\Drop and come
+      # back byte for byte; Ctrl-C stops it with 0, and it writes nothing
+      # in its own folder (.github/scripts/deliver-server.ps1).
+      - name: Run Drop.exe, a file drop on the network, as someone with no Ruby would
         shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-server.ps1 -Archive "$env:RUNNER_TEMP/delivered/Jot-$env:PLATFORM.zip"
+        run: pwsh -NoProfile -File .github/scripts/deliver-server.ps1 -Archive "$env:RUNNER_TEMP/delivered/Drop-$env:PLATFORM.zip"
 
       # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
       # the console probe in a console of its own, ended by

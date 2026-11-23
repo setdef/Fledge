@@ -2,24 +2,26 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of a server (examples/roda_server, Jot, a notes board served
-# on 127.0.0.1) on macOS or Linux: unpacks ARCHIVE, Jot-PLATFORM.tar.gz,
-# makes the unpacked app read-only, as /Applications or an AppImage's
-# mount leaves it, and runs it from / with no Ruby of the computer
-# reachable, as a person starts it, and checks that:
+# Delivery of a server (examples/file_drop, Drop, a file drop for the
+# computers and phones on a network) on macOS or Linux: unpacks ARCHIVE,
+# Drop-PLATFORM.tar.gz, makes the unpacked app read-only, as
+# /Applications or an AppImage's mount leaves it, and runs it from / with
+# no Ruby of the computer reachable, as a person starts it, and checks
+# that:
 #
-#   - it listens on 127.0.0.1 alone, at port 8765, and answers its page;
-#   - a note sent as its form sends it is listed on the page, and kept in
-#     the person's data folder (Application Support on macOS, the XDG
-#     data folder on Linux), not in the app;
-#   - Ctrl-C's signal, SIGINT, stops it with status 0, after it says so;
-#   - started again, it lists the note it kept;
-#   - a second start while it runs says the port is taken and ends with
-#     69 (EX_UNAVAILABLE), and TERM stops the first with status 0.
+#   - it prints the address other computers open, and a password;
+#   - another process reaches it at that address, which is this
+#     computer's own private IPv4 address, not loopback, wherever the
+#     computer has one (where it has none, Drop prints localhost, and
+#     the script says that it reached loopback only);
+#   - it refuses a request without the password with 401;
+#   - a file sent as its form sends it arrives in the Drop folder of the
+#     person's home folder byte for byte, and a second client, as
+#     another device would, finds it listed and fetches the same bytes;
+#   - SIGINT, Ctrl-C's signal, stops it with status 0, and it printed
+#     nothing on stderr.
 #
-# It sends SIGINT to the app's process, which is what a terminal's Ctrl-C
-# delivers to it (deliver-console.sh shows a terminal's own Ctrl-C reach
-# a Fledge app as it reaches ruby). No request leaves the computer.
+# Each request goes to an address of this computer: none leaves it.
 #
 #   deliver-server.sh ARCHIVE
 #   deliver-server.sh --reference COMMAND...
@@ -27,8 +29,8 @@
 # With --reference, it runs COMMAND, such as bundle exec ruby main.rb in
 # the example's folder, in place of the app, with no read-only folder,
 # and expects exactly the same; the integration test runs both. It asks
-# with curl, or with BusyBox's wget where curl is missing, as on Alpine.
-# PORT sets another port than 8765.
+# with curl, as a browser would. PORT sets another port than 4567,
+# Sinatra's.
 #
 # This is POSIX sh on purpose: nothing here may need Ruby.
 
@@ -39,8 +41,7 @@ fail() {
   exit 1
 }
 
-port=${PORT:-8765}
-url="http://127.0.0.1:$port/"
+port=${PORT:-4567}
 work=$(mktemp -d)
 pid=
 cleanup() {
@@ -54,123 +55,93 @@ mkdir -p "$home" "$work/empty-path"
 
 if [ "$1" = "--reference" ]; then
   shift
-  set -- env HOME="$home" XDG_DATA_HOME= "$@"
+  set -- env HOME="$home" "$@"
   label="the reference"
 else
   archive=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
   folder=$(basename "$archive" .tar.gz)
   mkdir -p "$work/apps"
   tar -xzf "$archive" -C "$work/apps"
-  app="$work/apps/$folder/Jot"
+  app="$work/apps/$folder/Drop"
   [ -x "$app" ] || fail "$app is not executable after unpacking"
   chmod -R a-w "$work/apps"
   set -- env -i PATH="$work/empty-path" HOME="$home" "$app"
   label="the built app"
 fi
 
-case $(uname -s) in
-  Darwin) data="$home/Library/Application Support/Jot" ;;
-  *) data="$home/.local/share/jot" ;;
+show() {
+  echo "--- stdout"; cat "$work/out"; echo "--- stderr"; cat "$work/err"
+}
+
+# request NAME URL [CURL OPTION...]: asks URL with curl, into
+# $work/NAME, and prints the status of the response, 000 if none came.
+request() {
+  into="$work/$1" address=$2
+  shift 2
+  curl -s -o "$into" -w '%{http_code}' "$@" "$address" || true
+}
+
+(cd / && exec "$@" -p "$port") >"$work/out" 2>"$work/err" &
+pid=$!
+tries=0
+until grep -q '^Press Ctrl-C to stop\.$' "$work/out" 2>/dev/null; do
+  kill -0 "$pid" 2>/dev/null || { show; fail "$label ended before it printed its address"; }
+  tries=$((tries + 1))
+  [ "$tries" -lt 120 ] || { show; fail "$label did not print its address within 30 seconds"; }
+  sleep 0.25
+done
+[ "$(sed -n 1p "$work/out")" = "Drop is sharing $home/Drop" ] || { show; fail "$label does not share the Drop folder of the person's home folder"; }
+url=$(sed -n 's|^  \(http://[^ ]*/\)$|\1|p' "$work/out" | head -n 1)
+password=$(sed -n 's/^and sign in with the password \([a-z0-9]*\) (any user name)\.$/\1/p' "$work/out")
+[ -n "$url" ] && [ -n "$password" ] || { show; fail "$label printed no address and password"; }
+case $url in
+  http://localhost:*) echo "::notice::Delivery (server): this computer has no private IPv4 address, so the client reached $label on loopback only" ;;
+  http://127.*) fail "$label printed a loopback address, $url, for other computers to open" ;;
 esac
 
-# start COMMAND...: starts the server from / in the background, with
-# HOME the work folder's, and waits until it says it listens.
-start() {
-  (cd / && exec "$@" --port "$port" --no-browser) >"$work/$name.out" 2>"$work/$name.err" &
-  pid=$!
-  tries=0
-  until grep -q "^Jot is at $url\$" "$work/$name.out" 2>/dev/null; do
-    kill -0 "$pid" 2>/dev/null || { cat "$work/$name.out" "$work/$name.err"; fail "$label ($name) ended before it listened"; }
-    tries=$((tries + 1))
-    [ "$tries" -lt 120 ] || { cat "$work/$name.out" "$work/$name.err"; fail "$label ($name) did not say it listened within 30 seconds"; }
-    sleep 0.25
-  done
-}
+tries=0
+until [ "$(request page "$url")" = 401 ]; do
+  kill -0 "$pid" 2>/dev/null || { show; fail "$label ended before it answered"; }
+  tries=$((tries + 1))
+  [ "$tries" -lt 120 ] || { show; fail "$label did not answer $url without the password with 401 within 30 seconds"; }
+  sleep 0.25
+done
+echo "ok: $label answers $url, and refuses it without the password"
 
-# stop SIGNAL: sends SIGNAL to the server and fails unless it ends with
-# status 0 within 10 seconds, saying where the notes are.
-stop() {
-  kill -"$1" "$pid"
-  # A watchdog ends a server that does not stop; it leaves quietly,
-  # with no word from the shell, when the server stops first.
-  (
-    trap 'exit 0' TERM
-    sleep 10 &
-    wait
-    kill -KILL "$pid"
-  ) >/dev/null 2>&1 &
-  watchdog=$!
-  status=0
-  wait "$pid" || status=$?
-  kill "$watchdog" 2>/dev/null || true
-  wait "$watchdog" 2>/dev/null || true
-  pid=
-  expected="Jot is at $url
-Press Ctrl-C to stop it.
-Jot stopped. Your notes are in $data"
-  if [ "$status" != 0 ] || [ "$(cat "$work/$name.out")" != "$expected" ] || [ -s "$work/$name.err" ]; then
-    echo "--- stdout"; cat "$work/$name.out"; echo "--- stderr"; cat "$work/$name.err"
-    fail "$label ($name) ended by SIG$1 with status $status, not 0 with what it printed above"
-  fi
-  echo "ok ($name): SIG$1 stopped $label with status 0"
-}
+# Random bytes, by a name with a space and letters beyond ASCII, sent as
+# the page's form sends a file, from the page's origin.
+name="Été report.bin"
+encoded="%C3%89t%C3%A9%20report.bin"
+head -c 4096 /dev/urandom >"$work/sent.bin"
+code=$(request sent "$url" -u "anyone:$password" -H "Origin: ${url%/}" -F "files[]=@$work/sent.bin;filename=$name")
+[ "$code" = 303 ] || { show; fail "$label answered the form that sends a file with $code, not 303"; }
+cmp -s "$work/sent.bin" "$home/Drop/$name" || { ls -la "$home/Drop"; fail "the file sent is not in $home/Drop byte for byte"; }
+[ "$(find "$home/Drop" -type f | wc -l | tr -d ' ')" = 1 ] || { ls -la "$home/Drop"; fail "$home/Drop holds more than the one file sent"; }
+echo "ok: the file sent arrived in $home/Drop byte for byte"
 
-# ask PATH [FORM]: the page at PATH, or the page after sending FORM to
-# PATH as the page's form does, into $work/page; fails on any status but
-# 200, after the redirect a form gets.
-ask() {
-  if command -v curl >/dev/null; then
-    if [ $# = 2 ]; then
-      curl -fsSL -o "$work/page" -H "Origin: http://127.0.0.1:$port" --data "$2" "http://127.0.0.1:$port$1"
-    else
-      curl -fsS -o "$work/page" "http://127.0.0.1:$port$1"
-    fi
-  elif [ $# = 2 ]; then
-    wget -q -O "$work/page" --header "Origin: http://127.0.0.1:$port" --post-data "$2" "http://127.0.0.1:$port$1"
-  else
-    wget -q -O "$work/page" "http://127.0.0.1:$port$1"
-  fi || fail "$label ($name) did not answer $1 with 200"
-}
+[ "$(request listing "$url" -u "anyone:$password")" = 200 ] || fail "$label did not answer its page with 200"
+grep -q "<a href=\"/files/$encoded\">$name</a>" "$work/listing" || fail "$label does not list the file sent"
+[ "$(request fetched "${url}files/$encoded" -u "anyone:$password")" = 200 ] || fail "$label did not answer the file's link with 200"
+cmp -s "$work/sent.bin" "$work/fetched" || fail "the file fetched is not the file sent"
+echo "ok: a second client found the file listed and fetched it byte for byte"
 
-# listening: fails unless the server listens on 127.0.0.1 at the port,
-# and on no other address.
-listening() {
-  case $(uname -s) in
-    Darwin) addresses=$(lsof -nP -a -p "$pid" -iTCP:"$port" -sTCP:LISTEN -Fn 2>/dev/null | sed -n 's/^n//p') ;;
-    *)
-      hex=$(printf '%04X' "$port")
-      addresses=$(awk -v hex="$hex" '$4 == "0A" && $2 ~ ":" hex "$" { print $2 }' /proc/net/tcp /proc/net/tcp6 |
-        sed 's/^0100007F:.*/127.0.0.1:'"$port"'/')
-      ;;
-  esac
-  [ "$addresses" = "127.0.0.1:$port" ] || fail "$label ($name) listens on '$addresses', not on 127.0.0.1:$port alone"
-  echo "ok ($name): listens on 127.0.0.1:$port alone"
-}
-
-name=first
-start "$@"
-listening
-ask /
-grep -q '<p>No notes yet.</p>' "$work/page" || fail "$label ($name): the first page does not say there are no notes"
-ask /notes "text=Ask+Ana+about+the+%C3%A9t%C3%A9+rota"
-grep -q '<li><p>Ask Ana about the été rota</p>' "$work/page" || fail "$label ($name) does not list the note sent to it"
-echo "ok ($name): answered the page, and listed the note sent to it"
-stop INT
-[ -s "$data/notes.json" ] || fail "$label kept no notes.json in $data"
-echo "ok: the note is in $data/notes.json"
-
-name=again
-start "$@"
-ask /
-grep -q '<li><p>Ask Ana about the été rota</p>' "$work/page" || fail "$label ($name) does not list the note it kept"
-echo "ok ($name): listed the note it kept"
-first=$pid
+kill -INT "$pid"
+# A watchdog ends a server that does not stop; it leaves quietly, with no
+# word from the shell, when the server stops first.
+(
+  trap 'exit 0' TERM
+  sleep 10 &
+  wait
+  kill -KILL "$pid"
+) >/dev/null 2>&1 &
+watchdog=$!
 status=0
-(cd / && exec "$@" --port "$port" --no-browser) >"$work/taken.out" 2>"$work/taken.err" || status=$?
-if [ "$status" != 69 ] || ! grep -q "^Jot cannot start: port $port is in use" "$work/taken.err"; then
-  cat "$work/taken.out" "$work/taken.err"
-  fail "$label, started on a taken port, exited with $status, not 69 with its reason"
+wait "$pid" || status=$?
+kill "$watchdog" 2>/dev/null || true
+wait "$watchdog" 2>/dev/null || true
+pid=
+if [ "$status" != 0 ] || [ -s "$work/err" ]; then
+  show
+  fail "$label ended by SIGINT with status $status, not 0 with nothing on stderr"
 fi
-echo "ok (taken): a second start said the port is in use and exited with 69"
-pid=$first
-stop TERM
+echo "ok: SIGINT stopped $label with status 0"

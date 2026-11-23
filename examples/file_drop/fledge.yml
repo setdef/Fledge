@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+
+# A console app: the window it runs in shows the address and password,
+# and closing it stops Drop.
+name: Drop
+kind: console
+version: "1.0.0"
+publisher: setdef
+description: A file drop for the computers and phones on your network

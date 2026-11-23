@@ -1,0 +1,23 @@
+<%#
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Drop</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    form { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 1rem; border: 2px dashed GrayText; border-radius: 0.5rem; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid color-mix(in srgb, GrayText 40%, transparent); }
+    li span { color: GrayText; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <%= yield %>
+</body>
+</html>

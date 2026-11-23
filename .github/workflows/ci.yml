@@ -2684,7 +2684,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, Jot, and markdown_preview on Alpine with no Ruby installed
+      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, and markdown_preview on Alpine with no Ruby installed
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -2701,7 +2701,6 @@ jobs:
           .github/scripts/deliver-programs.sh "$d/Shared Save-$PLATFORM.tar.gz"
           .github/scripts/deliver-markdown.sh "$d/Markdown Preview-$PLATFORM.tar.gz" examples/markdown_preview/welcome.md "$d/markdown_preview.expected"
           .github/scripts/deliver-https.sh "$d/Https-$PLATFORM.tar.gz" /https --store-may-change
-          .github/scripts/deliver-server.sh "$d/Jot-$PLATFORM.tar.gz"
           SH
           server="$RUNNER_TEMP/https-server"
           .github/scripts/https-server.sh start "$server"

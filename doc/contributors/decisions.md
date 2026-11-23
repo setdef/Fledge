@@ -595,10 +595,10 @@ The orchestrating agent received these words first-hand from the maintainer.
 > Everybody and their brother trusts mise, but Fledge shouldn't?
 > Even if Fledge cuts their own Rubies, a developer still relies on e.g. our GitHub Actions not being paused/buggy. They rely on a practically-unknown third party (us) or a very famous third party (mise).
 
-[re: 2026-11-22. The orchestrating agent had found that jdx/ruby, the project whose prebuilt Rubies mise downloads and whose Ruby Fledge's macOS and glibc Linux runtimes take, compiles in OpenSSL 3.5.5 where OpenSSL's newest 3.5 release was 3.5.9, and that nothing in that project updates its libraries by itself. It had decided that Fledge should build Ruby for those platforms from pins its own automation moves, and had said that a developer can upgrade a Ruby in a minute where a person handed an app cannot.]
+[re: 2026-11-22. The first sentence followed the orchestrating agent's statement that it had decided Fledge would build Ruby itself for mainstream Linux and macOS. The second answered the orchestrating agent's "A developer who hears about a fix can upgrade their Ruby in a minute. A person who was handed an app can't." The agent had found that jdx/ruby, the project whose prebuilt Rubies mise downloads and whose Ruby Fledge's macOS and glibc Linux runtimes take, compiles in OpenSSL 3.5.5 where OpenSSL's newest 3.5 release was 3.5.9, and that nothing in that project updates its libraries by itself.]
 
 > Isn't that what I said in the first place?
 
-[re: 2026-11-22. Shown the orchestrating agent's restatement of his bar for the candidate for 1.0.0: that it needs Fledge's automation to carry every update that reaches it, not to produce updates its upstreams have not made.]
+[re: 2026-11-22. Answering the orchestrating agent's "Fledge's automation must carry every update that reaches it". The agent had gone on to say, in its own further words, that the automation need not produce updates its upstreams have not made.]
 
 *Governs:* Fledge takes its macOS and glibc Linux Ruby from jdx/ruby and does not build its own for them because that project's libraries lag. Depending on a widely used project is preferred to depending on Fledge's own unproven build automation. The lag is a stated dependency, the same every mise user has. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "Why Fledge builds no Ruby for macOS and glibc Linux".

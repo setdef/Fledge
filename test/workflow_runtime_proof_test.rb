@@ -70,8 +70,19 @@ class WorkflowRuntimeProofTest < Minitest::Test
     @proof_inputs ||= begin
       loaded = closure(File.join(ROOT, "tasks", "runtime_proof.rb"))
       named = loaded.flat_map { |file| named_paths(File.read(file)) }
-      (loaded.map { |file| file.delete_prefix("#{ROOT}/") } + named).uniq.select { |path| File.exist?(File.join(ROOT, path)) }
+      (loaded.map { |file| file.delete_prefix("#{ROOT}/") } + named).uniq.select { |path| tracked?(path) }
     end
+  end
+
+  # What the repository holds, not what the computer has made in it: a
+  # kept workspace has tmp/proof and tmp/runtime from earlier runs, which
+  # git ignores and no push can change, so no path need cover them.
+  private def tracked?(path)
+    tracked_files.any? { |file| file == path || file.start_with?("#{path}/") }
+  end
+
+  private def tracked_files
+    @tracked_files ||= IO.popen(["git", "-C", ROOT, "ls-files"], &:read).split("\n")
   end
 
   private def closure(file, seen = [])

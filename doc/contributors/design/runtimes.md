@@ -320,6 +320,40 @@ What jdx/ruby's archive is, measured on 2026-11-22 (SHA-256 `57fbc4a9`..., the o
 
 What changed for a Mac app with the move, besides the floor: `RUBY_PLATFORM` is `arm64-darwin25` where it was `arm64-darwin23`; ZJIT is gone; a gem that links OpenSSL or libyaml links the runtime's ("What a runtime keeps for compiling gems"); the app trusts macOS's own `/etc/ssl/cert.pem` ("Certificates on macOS"); and jdx/ruby's `rbconfig.rb` puts the runtime's `lib/pkgconfig` first in `PKG_CONFIG_PATH`, as on glibc Linux (`Parity::JUSTIFIED`).
 
+## Why Fledge builds no Ruby for macOS and glibc Linux
+
+The Ruby of the macOS and glibc Linux runtimes is jdx/ruby's (ADR 100). Fledge builds Ruby itself for musl Linux and the phones, and takes RubyInstaller's for Windows; for macOS and glibc Linux it builds Ruby only for testing against Ruby's master ("Fledge's own Ruby builds"), and no runtime ships it. The maintainer's word on it, 2026-11-22 (`decisions.md`): Fledge takes these Rubies from jdx/ruby because depending on a project that many people already use is preferred to depending on Fledge's own build automation, and the cost, that jdx/ruby's libraries lag, is a stated dependency, the same every mise user has.
+
+**What lags.** jdx/ruby compiles into its Ruby the libraries its `recipes/dependencies.yml` names, and a person edits that file: on 2026-11-22 it had one commit, the one that created it on 2026-06-25, and its Ruby had been rebuilt about monthly since with the same libraries. Fledge's pin watch cannot move them. Its `jdx-ruby` entry is held; its tag pattern leaves out `VERSION-N`, the tag of a rebuild; and the pin names the release of the Ruby's version (`releases/download/4.1.0-preview1/`), which the watch moves only when jdx/ruby publishes a new Ruby. On 2026-11-22, with the newest release of each library the same day:
+
+| Library | In jdx/ruby's Ruby | Newest release |
+|---|---|---|
+| OpenSSL | 3.5.5 | 3.5.9 (of the 3.5 line, which jdx/ruby takes; Fledge's musl runtimes carry a newer line) |
+| libyaml | 0.2.5 | 0.2.6 |
+| libffi | 3.5.1 | 3.8.1 |
+| zlib | 1.3.1 | 1.4 |
+
+OpenSSL 3.5.6 to 3.5.9 fixed 45 vulnerabilities, 2 High, 8 Moderate, and 35 Low by OpenSSL's own ratings (`CHANGES.md` of OpenSSL 3.5.9). Most are in code Ruby's `openssl` extension (gem 4.0.2, read in Ruby's master of 2026-11-10) does not call: CMS, CMP, QUIC, and DTLS, where the second High is, a read past a buffer in DTLS retransmission. Ruby code reaches others, among them:
+
+- CVE-2026-45447, High, fixed in 3.5.7: a use-after-free in `PKCS7_verify()` that OpenSSL says may result in "potentially, remote code execution". `OpenSSL::PKCS7#verify` calls it.
+- CVE-2026-35189, Low, fixed in 3.5.9: a crafted peer certificate with many relative CRL distribution points makes OpenSSL use disproportionate memory, in clients and in servers that ask for client certificates. Any HTTPS client, `net/http` included, meets it.
+- CVE-2026-72897, Low, fixed in 3.5.9: a TLS server that switches context during a handshake with `SSL_set_SSL_CTX()` may read and write out of bounds. Ruby's `servername_cb` does.
+
+libyaml 0.2.6 fixes CVE-2026-44842 with a limit on nesting depth, libffi 3.8.1 is "a bug-fix and security release", and zlib 1.4 fixes overflows and bad writes in several functions. A gem that links OpenSSL or libyaml against the runtime (`doc/gems.md`) holds the same versions. An app developer who needs a newer OpenSSL has no setting for it: `fledge.yml` has no key for the runtime's libraries, and a fix reaches an app when a Fledge release carries a runtime whose Ruby has it, and the app is built again.
+
+**What was examined instead, and why none was taken.**
+
+- *Another project's Ruby.* rv-ruby's newest OpenSSL was 3.6.2 on 2026-11-22, no automated bump of it had landed in its newest 100 pull requests, its Linux builds need glibc 2.38 or newer, its macOS tree has no OpenSSL files for gems, and its releases are moving off GitHub. Traveling Ruby's OpenSSL, 3.5.9, was current, but its builds remove the static libruby the launcher links, are not relocatable by `--enable-load-relative`, and stop at Ruby 4.0.9. ruby/ruby-builder's and conda-forge's builds link a shared libruby and a shared OpenSSL under a fixed prefix. Homebrew's portable-ruby is archived, and python-build-standalone publishes no Ruby.
+- *Asking jdx/ruby to bump its libraries by automation.* It is not enough alone: a pull request and a rebuild would each wait on a person there, and the Mac's floor would still be the runner's default.
+- *Pinning jdx/ruby's numbered rebuilds.* A rebuild carries the same libraries, so it fixes nothing.
+- *Keeping jdx/ruby's Ruby and rebuilding the extensions that link these libraries* (`openssl`, `psych`, `zlib`, `fiddle`) and the headers gems compile against: about 100 to 150 lines (estimated), a hybrid no other project builds or tests, and it leaves the floor and the pin's address as they are.
+- *A fork of jdx/ruby under setdef:* a repository to stand up and about 1,000 lines of jdx/ruby's `libexec/package.rb` to keep, against the 133 lines of `RuntimeBuilder::RubyBuild`.
+- *Fledge builds Ruby for these platforms in the Runtime job, as for musl.* The pins the watch already moves would serve it. The cost, as the study measured and estimated it: 4 to 5 minutes more in each glibc Runtime job (estimated from the musl jobs' 5 to 6 minutes against the glibc jobs' under 1), 575 seconds of wall time for the Mac's Ruby on a 10-core M1 Max (measured) and 8 to 12 minutes on GitHub's `macos-26` runner (estimated), and about 150 to 250 lines changed (estimated), most of them `runtime/licenses.yml`, tests, and documents. It would give a fix in about a day with nobody acting, and it would make Fledge's own automation the thing every desktop developer relies on.
+
+**What reopens it.** What ADR 100 says: building Ruby for macOS and glibc Linux waits until jdx/ruby stops publishing, publishes a build that fails Delivery, or cannot be relied on.
+
+**What is Fledge's own, whatever the Ruby's source.** The pin watch does not see a rebuild of jdx/ruby's Ruby, so it does not report that jdx/ruby has a Ruby with newer libraries, and a held pin goes overdue only 30 days after a newer release it does see ("Held pins"). Nothing in the watch reads the libraries of jdx/ruby's current Ruby, and the pin's address, the release named for the Ruby's version, is one a rebuild may change under it. The license audit does refuse a runtime whose Ruby compiles in a library that `runtime/licenses.yml` does not list.
+
 ## Certificates
 
 An app that makes an HTTPS request with Ruby's own `net/http` and `openssl` verifies the server's certificate against what the runtime's Ruby trusts, on each platform, as the same program does under `ruby main.rb` on the Ruby the runtime came from. Fledge changes none of it: the rule is that Ruby's, and the parity check holds the app to it. The rules differ by platform, because the Rubies do.
@@ -468,7 +502,7 @@ A gem whose extension links OpenSSL, as Puma's does (the server Sinatra's own in
 
 **What a developer sees.** Puma, and any gem whose extension links OpenSSL or libyaml, builds on a developer's computer whatever OpenSSL it has or lacks, a Mac with Homebrew's or one with none, links the runtime's statically, needs nothing of the computer an app goes to, and runs with TLS where `bundle exec` has it, with no key in `fledge.yml`; the OpenSSL is the one Ruby's own openssl extension has, so one version serves the app's process, in two copies. `test/fixtures/openssl_gem` builds a gem that finds OpenSSL as Puma does and stops when it finds none, and `test/integration/openssl_gem_test.rb` runs it: the gem's headers, its library, and Ruby's openssl must name one version.
 
-**Security fixes.** A fix reaches such a gem when the runtime's own OpenSSL moves and the app is built again. On musl Linux that is the `musl-ruby` pins, which the watch moves with no person ("Keeping the pins current"). On macOS and glibc Linux it is jdx/ruby's release, and that pin is held: jdx/ruby rebuilds a Ruby with a newer OpenSSL under the tag `VERSION-N`, which the watch's pattern leaves out on purpose (`runtime/upstreams.yml`, `jdx-ruby`), so neither Ruby's own OpenSSL nor a gem's moves until a person moves the Ruby. That is a gap against the maintainer's requirement that security updates reach apps by unattended pin moves (`decisions.md`, 2026-11-22), and it is open.
+**Security fixes.** A fix reaches such a gem when the runtime's own OpenSSL moves and the app is built again. On musl Linux that is the `musl-ruby` pins, which the watch moves with no person ("Keeping the pins current"). On macOS and glibc Linux it is jdx/ruby's release, and that pin is held: jdx/ruby rebuilds a Ruby with a newer OpenSSL under the tag `VERSION-N`, which the watch's pattern leaves out on purpose (`runtime/upstreams.yml`, `jdx-ruby`), so neither Ruby's own OpenSSL nor a gem's moves until a person moves the Ruby. That is the dependency the maintainer chose to state rather than remove ("Why Fledge builds no Ruby for macOS and glibc Linux", `decisions.md`, 2026-11-22), and what it leaves is set out there.
 
 ## What a runtime prunes, and why nothing reads it
 

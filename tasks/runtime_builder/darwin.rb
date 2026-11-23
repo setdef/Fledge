@@ -23,7 +23,8 @@ class RuntimeBuilder
       end
       static = Dir.glob(File.join(@prefix, "lib", "libruby.*-static.a")).first or raise "#{@prefix} has no static libruby"
       FileUtils.mkdir_p(File.dirname(output))
-      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, "-mmacosx-version-min=#{Fledge::Platform::MACOS_MINIMUM}", *includes, *sources,
+      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, "-mmacosx-version-min=#{Fledge::Platform::MACOS_MINIMUM}", *Hardening::COMPILE.fetch(:darwin),
+        *includes, *sources, *Hardening::LINK.fetch(:darwin),
         "-Wl,-force_load,#{static}", *frameworks(sources), "-ldl", "-lobjc", "-lpthread", "-o", output)
       @builder.run("strip", "-x", output)
       @builder.run("codesign", "--sign", "-", "--force", output)
@@ -31,6 +32,10 @@ class RuntimeBuilder
     end
 
     def finish(_stage); end
+
+    def hardening_kind
+      :darwin
+    end
 
     private def os_file
       "darwin.c"

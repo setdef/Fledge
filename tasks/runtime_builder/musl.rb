@@ -44,7 +44,7 @@ class RuntimeBuilder
       analyze_with_gcc(cc, sources)
       static = File.join(@prefix, "lib", "libruby-static.a")
       FileUtils.mkdir_p(File.dirname(output))
-      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *includes, *sources, "-rdynamic", "-static-libgcc",
+      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *Hardening::COMPILE.fetch(:musl), *includes, *sources, *Hardening::LINK.fetch(:musl), "-rdynamic", "-static-libgcc",
         "-Wl,--whole-archive", static, "-Wl,--no-whole-archive", *libruby_libraries, "-o", output)
       @builder.run("strip", "--strip-unneeded", output)
       check_dynamic_section(output)
@@ -83,6 +83,10 @@ class RuntimeBuilder
       FileUtils.mkdir_p(File.dirname(to))
       FileUtils.cp(@builder.fetch(pin.fetch("url"), pin.fetch("sha256")), to)
       FileUtils.chmod(0o755, to)
+    end
+
+    def hardening_kind
+      :musl
     end
 
     private def os_file

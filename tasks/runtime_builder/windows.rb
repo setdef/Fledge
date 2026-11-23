@@ -56,6 +56,21 @@ class RuntimeBuilder
       copy_readobj(File.join(stage, "tools", "llvm-readobj.exe"))
     end
 
+    def hardening_kind
+      :windows
+    end
+
+    # The programs Hardening reads: both launchers, and Ruby's console and
+    # GUI programs.
+    def programs(stage)
+      [
+        File.join(stage, "launcher.exe"),
+        File.join(stage, "launcherw.exe"),
+        File.join(stage, "ruby", "bin", "ruby.exe"),
+        File.join(stage, "ruby", "bin", "rubyw.exe"),
+      ]
+    end
+
     # LLVM's own tools, which read the Windows runtime's every file for
     # the license audit (Fledge::Binary::Readers.llvm): llvm-mingw's.
     def readers
@@ -228,8 +243,9 @@ class RuntimeBuilder
       resources = File.join(@build_dir, "windows.res.o")
       @builder.run(tool("windres"), "windows.rc", "-O", "coff", "-o", resources, chdir: LAUNCHER)
       windowed = File.join(File.dirname(output), "launcherw.exe")
-      @builder.run(tool("clang"), "-O2", *flags, *sources, resources, "-mconsole", "-s", "-o", output)
-      @builder.run(tool("clang"), "-O2", *flags, "-DFLEDGE_WINDOWED", *sources, resources, "-mwindows", "-s", "-o", windowed)
+      @builder.run(tool("clang"), "-O2", *flags, *sources, resources, *Hardening::LINK.fetch(:windows), "-mconsole", "-s", "-o", output)
+      @builder.run(tool("clang"), "-O2", *flags, "-DFLEDGE_WINDOWED", *sources, resources, *Hardening::LINK.fetch(:windows), "-mwindows", "-s",
+        "-o", windowed)
       check(output, CONSOLE, IMPORTS)
       check(windowed, GUI, Regexp.union(IMPORTS, WINDOWED_IMPORTS))
     end
@@ -259,7 +275,7 @@ class RuntimeBuilder
       { "ruby.exe" => ["-mconsole", CONSOLE], "rubyw.exe" => ["-mwindows", GUI] }.each do |name, (subsystem_flag, subsystem)|
         program = File.join(bin, name)
         FileUtils.rm_f(program)
-        @builder.run(tool("clang"), "-O2", *flags, *sources, resources, import, subsystem_flag, "-s", "-o", program)
+        @builder.run(tool("clang"), "-O2", *flags, *sources, resources, import, *Hardening::LINK.fetch(:windows), subsystem_flag, "-s", "-o", program)
         check(program, subsystem, allowed)
       end
     end

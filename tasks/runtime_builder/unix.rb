@@ -23,6 +23,11 @@ class RuntimeBuilder
       finish(stage)
     end
 
+    # The launcher and bin/ruby, which Hardening reads.
+    def programs(stage)
+      [File.join(stage, "launcher"), File.join(stage, "bin", "ruby")]
+    end
+
     # Ruby's own main.c, which chooses its locale as the launcher does,
     # and hands an app's own program back to its launcher.
     private def ruby_sources

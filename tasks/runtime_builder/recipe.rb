@@ -23,6 +23,25 @@ class RuntimeBuilder
       [@builder.platform.name]
     end
 
+    # The kind of program this recipe compiles, for RuntimeBuilder::Hardening
+    # (:glibc, :musl, :darwin, or :windows), or nil where it compiles
+    # none.
+    def hardening_kind
+      nil
+    end
+
+    # The programs this recipe compiled in +stage+: those Hardening reads.
+    def programs(_stage)
+      []
+    end
+
+    # Raises, naming what each compiled program lacks, when one lacks a
+    # protection Hardening asks for (+stage+ is the runtime's folder).
+    def verify_hardening(stage)
+      kind = hardening_kind or return
+      Hardening.new(kind:, readers:).check(programs(stage))
+    end
+
     # The tools the license audit reads the runtime's compiled files with
     # (LicenseAudit.readers): the building computer's own, or LLVM's in
     # FLEDGE_LLVM.

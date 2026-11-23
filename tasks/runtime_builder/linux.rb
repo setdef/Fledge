@@ -49,7 +49,7 @@ class RuntimeBuilder
       analyze_with_gcc(cc, sources)
       static = File.join(@prefix, "lib", "libruby-static.a")
       FileUtils.mkdir_p(File.dirname(output))
-      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *includes, *sources, "-rdynamic", "-static-libgcc",
+      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *Hardening::COMPILE.fetch(:glibc), *includes, *sources, *Hardening::LINK.fetch(:glibc), "-rdynamic", "-static-libgcc",
         "-Wl,--whole-archive", static, "-Wl,--no-whole-archive", "-L#{File.join(xcrypt, 'lib')}", "-lcrypt",
         "-Wl,--disable-new-dtags,-rpath,#{rpath}", "-lrt", "-ldl", "-lm", "-lpthread", "-o", output)
       @builder.run("strip", "--strip-unneeded", output)
@@ -125,6 +125,10 @@ class RuntimeBuilder
       FileUtils.cp(File.realpath(linked), target)
       FileUtils.chmod(0o755, target)
       @builder.run("strip", "--strip-unneeded", target)
+    end
+
+    def hardening_kind
+      :glibc
     end
 
     private def os_file

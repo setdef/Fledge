@@ -61,10 +61,14 @@ class Parity
       reason: "As for RUBY_PLATFORM: Ruby's folders of platform-specific files are named for its platform, in the " \
         "same places and order."),
     Justification.new(fact: "$LOADED_FEATURES",
-      reference: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{DESKTOP_ARCH}/(?<file>rbconfig\.rb|[^"]+\.(?:so|bundle))"\z}o],
-      app: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{MOBILE_ARCH}/(?<file>rbconfig\.rb|[^"]+\.(?:so|bundle))"\z}o], platforms: MOBILE,
+      reference: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{DESKTOP_ARCH}/(?<file>rbconfig\.rb|[^"]+(?=\.(?:so|bundle)"))(?:\.(?:so|bundle))?"\z}o],
+      app: [%r{\A"<prefix>/lib/ruby/(?<abi>#{ABI})/#{MOBILE_ARCH}/(?<file>rbconfig\.rb|[^"]+(?=\.(?:so|bundle)"))(?:\.(?:so|bundle))?"\z}o], platforms: MOBILE,
       reason: "As for $LOAD_PATH: rbconfig.rb, and each of Ruby's extensions and encodings, is in the folder of " \
-        "Ruby's platform."),
+        "Ruby's platform. An extension is a file on both sides, which differ in the suffix each system gives a " \
+        "loadable extension (RbConfig::CONFIG[\"DLEXT\"]): .so on Linux and Android, .bundle on macOS, where the " \
+        "reference may run. The check pairs the two sides' entries after setting each one's own suffix aside, so " \
+        "the rest of the path, folder and name, must be the same; an entry that differs in anything but the " \
+        "suffix is still a difference."),
     *%w[YJIT ZJIT].map do |jit|
       Justification.new(fact: "RubyVM::#{jit}.enabled?", reference: [/\Afalse\z/], app: [/\Anull\z/], platforms: IOS,
         reason: "iOS's Ruby is an interpreter only: iOS gives no app memory it may write code into and run, but a " \

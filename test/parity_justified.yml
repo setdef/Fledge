@@ -500,9 +500,9 @@
   - bundle
 - fact: "$LOADED_FEATURES"
   reference:
-  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin\d+|x86_64-linux|aarch64-linux)/(?<file>rbconfig\.rb|[^"]+\.(?:so|bundle))"\z
+  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin\d+|x86_64-linux|aarch64-linux)/(?<file>rbconfig\.rb|[^"]+(?=\.(?:so|bundle)"))(?:\.(?:so|bundle))?"\z
   app:
-  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/(?<file>rbconfig\.rb|[^"]+\.(?:so|bundle))"\z
+  - \A"<prefix>/lib/ruby/(?<abi>\d+\.\d+\.0(?:\+\d+)?)/(?:arm64-darwin|x86_64-linux-android|aarch64-linux-android)/(?<file>rbconfig\.rb|[^"]+(?=\.(?:so|bundle)"))(?:\.(?:so|bundle))?"\z
   platforms:
   - arm64-ios
   - arm64-ios-simulator

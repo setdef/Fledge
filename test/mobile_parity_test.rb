@@ -236,6 +236,36 @@ class MobileParityTest < Minitest::Test
     assert_empty differences.call("arm64-ios-simulator", given)
   end
 
+  # An extension loaded from a file on both sides differs only in the
+  # suffix each system gives a loadable extension (RbConfig::CONFIG["DLEXT"]),
+  # ".bundle" on a Mac's reference and ".so" on Android, so each side's own
+  # is set aside and the rest of the path must be the same. Any other
+  # difference stays one: a name, a folder, a suffix of neither system, an
+  # extension on one side only.
+  def test_android_pairs_a_macs_bundle_extensions_with_its_so_files_by_everything_else
+    paths = { "app" => "/data/app", "prefix" => "/data/ruby", "home" => "/data/files" }
+    reference_paths = { "app" => "/w/app", "prefix" => "/w/ruby", "home" => "/w/home" }
+    mac = "/w/ruby/lib/ruby/4.1.0/arm64-darwin25"
+    android = "/data/ruby/lib/ruby/4.1.0/x86_64-linux-android"
+    reference = -> (*files) { { "paths" => reference_paths, "$LOADED_FEATURES" => ["#{mac}/rbconfig.rb", *files.map { |file| "#{mac}/#{file}" }] } }
+    report = -> (*files) { { "paths" => paths, "$LOADED_FEATURES" => ["#{android}/rbconfig.rb", *files.map { |file| "#{android}/#{file}" }] } }
+    differences = lambda do |expected, actual|
+      MobileParity.differences(expected, actual, {}, platform: "x86_64-linux-android", work: "/w").select { |found| found.fact == "$LOADED_FEATURES" }
+    end
+
+    whole = differences.call(reference.call("enc/utf_16le.bundle", "json/ext/parser.bundle"),
+      report.call("enc/utf_16le.so", "json/ext/parser.so"))
+    assert_equal 1, whole.size
+    assert_empty whole.reject(&:justified?)
+    refute_empty differences.call(reference.call("enc/utf_16le.bundle", "json/ext/parser.bundle"),
+      report.call("enc/utf_16be.so", "json/ext/parser.so")).reject(&:justified?)
+    refute_empty differences.call(reference.call("json/ext/parser.bundle"), report.call("json/generator/parser.so")).reject(&:justified?)
+    refute_empty differences.call(reference.call("json/ext/parser.bundle"), report.call("json/ext/parser.dll")).reject(&:justified?)
+    refute_empty differences.call(reference.call("json/ext/parser.bundle", "date_core.bundle"), report.call("json/ext/parser.so")).reject(&:justified?)
+    refute_empty differences.call(reference.call("json/ext/parser.bundle"), report.call("json/ext/parser.so", "date_core.so")).reject(&:justified?)
+    refute_empty differences.call(reference.call("json/ext/parser.bundle", "set.rb"), report.call("json/ext/parser.so", "set.rb")).reject(&:justified?)
+  end
+
   # Android compares how a program runs a gem's command; iOS, which lets
   # no app start a program, does not yet.
   def test_android_compares_the_gem_commands

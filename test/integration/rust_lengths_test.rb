@@ -29,7 +29,7 @@ class RustLengthsTest < Minitest::Test
   FIXTURE = File.expand_path("../fixtures/rust_lengths", __dir__)
 
   # The Rust mise.toml pins.
-  RUST = File.read(File.expand_path("../../mise.toml", __dir__))[/^rust = \[\n *\{ version = "([^"]+)"/, 1]
+  RUST = File.read(File.expand_path("../../mise.toml", __dir__))[/^rust = \{ version = "([^"]+)"/, 1]
 
   EXPECTED = "RustLengths binds rb_len_t in 8 bytes, finds 3 at -1 of [1, 2, 3], " \
     "and takes 2 and 3 of 10 for 2..4 with its canaries whole"

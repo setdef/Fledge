@@ -166,19 +166,33 @@ class ContributorToolsTest < Minitest::Test
   # The Rust a contributor's mise installs is the release CI's desktop
   # jobs install, with the standard library of every phone target, which
   # a Rust gem's extension is compiled for (MobileExtensions::Rust). On
-  # x64 Windows it is the same release for Rust's GNU host, as CI's
-  # Windows Build job asks for it, with RubyInstaller's MinGW Ruby.
+  # x64 Windows, under MISE_ENV=rust, it is the same release for Rust's
+  # GNU host, as CI's Windows Build job asks for it, with RubyInstaller's
+  # MinGW Ruby; mise.rust.toml's Rust replaces mise.toml's, so it begins
+  # with mise.toml's entry, unchanged.
   def test_mise_installs_cis_rust_with_every_phone_target
     ci = YAML.safe_load_file(File.join(ROOT, ".github", "workflows", "ci.yml"), aliases: true)
     rust = ci.fetch("env").fetch("RUST_TOOLCHAIN")
     windows = ci.dig("jobs", "build-x64-mingw-ucrt", "strategy", "matrix", "include", 0, "rust")
-    entries = mise_toml[/^rust = \[\n(.*?)^\]\n/m, 1] or flunk "mise.toml installs no Rust"
-    desktop, gnu = entries.lines
+    desktop = mise_toml[/^rust = (\{.*\})\n/, 1] or flunk "mise.toml installs no Rust"
+    entries = rust_toml[/^rust = \[\n(.*?)^\]\n/m, 1] or flunk "mise.rust.toml installs no Rust"
 
     assert_includes desktop, %(version = "#{rust}")
     assert_includes desktop, %(targets = "#{Fledge::MobileExtensions::Rust::TRIPLES.values.join(',')}")
     assert_includes desktop, %(os = ["linux", "macos"])
-    assert_equal %(  { version = "#{rust}#{windows}", profile = "minimal", os = ["windows/x64"] },\n), gnu
+    assert_equal [%(  #{desktop},\n), %(  { version = "#{rust}#{windows}", profile = "minimal", os = ["windows/x64"] },\n)], entries.lines
+  end
+
+  # mise 2026.10.11, the release CI pins, installs every entry of a tool
+  # named on its command line whatever its os, and CI's Linux and macOS
+  # jobs run mise install ruby rust. So mise.toml gives each tool one
+  # entry, and a second one for another system, Windows's Rust, waits in
+  # mise.rust.toml, which no CI job reads.
+  def test_mise_toml_gives_each_tool_one_entry
+    tools = mise_toml[/^\[tools\]\n(.*?)^\[/m, 1] or flunk "mise.toml has no [tools]"
+
+    refute_match(/^[^#\s][^=]* = \[/, tools)
+    Dir[File.join(ROOT, ".github", "workflows", "*.yml")].each { |workflow| refute_includes File.read(workflow), "MISE_ENV: rust" }
   end
 
   # rustup and cargo ask Windows for the account's profile folder and

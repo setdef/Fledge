@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# What compiling a Rust gem on x64 Windows needs beyond mise.toml, whose
-# Rust it uses: the libclang bindgen loads to read Ruby's headers, with
+# What compiling a Rust gem on x64 Windows needs beyond mise.toml: Rust
+# itself, and the libclang bindgen loads to read Ruby's headers, with
 # clang's own headers beside it, as CI's Windows runners give them from
 # the LLVM their image installs. mise reads this file beside mise.toml
 # only when MISE_ENV is rust (MISE_ENV=rust mise install), so a
@@ -11,11 +11,28 @@
 # unpacked. mise.toml's [env] then names its bin/ folder in
 # LIBCLANG_PATH and points clang at MinGW and the MSYS2 mise installs,
 # as CI's Build job does. On Linux and macOS this file adds nothing:
-# there mise.toml's libclang wheel, or Xcode's, serves. The wheel does
-# not serve on Windows: it lacks clang's headers, and MSYS2's GCC, whose
-# headers Linux lends it, begins its stdarg.h and stddef.h with an
-# #include_next that clang cannot follow.
+# there mise.toml's Rust and libclang wheel, or Xcode's libclang, serve.
+# The wheel does not serve on Windows: it lacks clang's headers, and
+# MSYS2's GCC, whose headers Linux lends it, begins its stdarg.h and
+# stddef.h with an #include_next that clang cannot follow.
 #
+# Rust here replaces mise.toml's entry for it, so its first entry is
+# mise.toml's, unchanged, and Linux and macOS keep their Rust under
+# MISE_ENV=rust. On x64 Windows the toolchain's name carries its host,
+# Rust's GNU target, since RubyInstaller's Ruby is a MinGW build and
+# rb-sys refuses MSVC's, and rustup, which mise starts with MSVC's host
+# there, would otherwise install MSVC's. ARM64 Windows would take
+# aarch64-pc-windows-gnullvm, which nothing of Fledge's has tried, so
+# it has none. The Windows entry is here, and not in mise.toml, because
+# mise 2026.10.11, the release CI pins, installs every entry of a tool
+# named on its command line whatever its os, and CI's Linux and macOS
+# jobs name rust there; none of them sets MISE_ENV=rust.
+[tools]
+rust = [
+  { version = "1.99.1", profile = "minimal", targets = "aarch64-apple-ios,aarch64-apple-ios-sim,aarch64-linux-android,x86_64-linux-android", os = ["linux", "macos"] },
+  { version = "1.99.1-x86_64-pc-windows-gnu", profile = "minimal", os = ["windows/x64"] },
+]
+
 # LLVM 23.1.6, by the SHA-256 GitHub records for the asset. It runs at
 # build time only, and no runtime or app carries it.
 [tools."http:llvm"]

@@ -168,8 +168,8 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
 
     # Whether +version+ is another build of the release the pin's version
     # +current+ is a build of: the rebuild pattern's +of+ capture takes
-    # the same release from both, as 4.1.0-preview1 from jdx/ruby's
-    # 4.1.0-preview1-1 and 4.1.0-preview1-2.
+    # the same release from both, as 4.0.10 from jdx/ruby's
+    # 4.0.10-1 and 4.0.10-2.
     def rebuild?(version, current)
       return false unless rebuild
 

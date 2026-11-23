@@ -43,7 +43,7 @@ Each gem ships as RubyGems or Bundler installs it, with all of its own files, it
 |---|---|---|---|
 | Fledge launcher and RubyGems defaults | 0.17.0 | `MIT` | the program the app's user runs; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's; and lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb |
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin25/digest/blake3.bundle |
-| jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb | 4.1.0-preview1 | `BSD-2-Clause` | lines of lib/ruby/4.1.0+5/openssl.rb and lib/ruby/4.1.0+5/arm64-darwin25/rbconfig.rb |
+| jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb | 4.1.0-preview1-1 | `BSD-2-Clause` | lines of lib/ruby/4.1.0+5/openssl.rb and lib/ruby/4.1.0+5/arm64-darwin25/rbconfig.rb |
 | libffi, compiled into the fiddle gem's extension | 3.5.1 | `MIT` | compiled into the fiddle gem's extension |
 | libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems | 0.2.5 | `MIT` | compiled into lib/ruby/4.1.0+5/arm64-darwin25/psych.bundle, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against |
 | Mozilla's CA certificates, as curl publishes them | cacert-2025-07-15 | `MPL-2.0` | libexec/cert.pem, unmodified |
@@ -75,7 +75,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/x86_64-linux/digest/blake3.so |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 14.2.1 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
-| jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb | 4.1.0-preview1 | `BSD-2-Clause` | lines of lib/ruby/4.1.0+5/openssl.rb and lib/ruby/4.1.0+5/x86_64-linux/rbconfig.rb |
+| jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb | 4.1.0-preview1-1 | `BSD-2-Clause` | lines of lib/ruby/4.1.0+5/openssl.rb and lib/ruby/4.1.0+5/x86_64-linux/rbconfig.rb |
 | libffi, compiled into the fiddle gem's extension | 3.5.1 | `MIT` | compiled into the fiddle gem's extension |
 | libfuse's source code, as its authors released it | 3.15.0 | `LGPL-2.1-only` | notices/sources/libfuse/, in every app |
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
@@ -116,7 +116,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/aarch64-linux/digest/blake3.so |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher and bin/ruby (-static-libgcc) | 14.2.1 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher and bin/ruby |
-| jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb | 4.1.0-preview1 | `BSD-2-Clause` | lines of lib/ruby/4.1.0+5/openssl.rb and lib/ruby/4.1.0+5/aarch64-linux/rbconfig.rb |
+| jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb | 4.1.0-preview1-1 | `BSD-2-Clause` | lines of lib/ruby/4.1.0+5/openssl.rb and lib/ruby/4.1.0+5/aarch64-linux/rbconfig.rb |
 | libffi, compiled into the fiddle gem's extension | 3.5.1 | `MIT` | compiled into the fiddle gem's extension |
 | libfuse's source code, as its authors released it | 3.15.0 | `LGPL-2.1-only` | notices/sources/libfuse/, in every app |
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |

@@ -39,8 +39,8 @@
 #   once it has been behind for longer than PinWatch::HELD_DAYS; the move
 #   refuses it.
 # rebuild: for an upstream that publishes each build of a release under
-#   a version of its own, as jdx/ruby publishes 4.1.0-preview1-1 and then
-#   4.1.0-preview1-2, a pattern whose of capture takes the release out
+#   a version of its own, as jdx/ruby publishes 4.0.10-1 and then
+#   4.0.10-2, a pattern whose of capture takes the release out
 #   of a version. A newer build of the pin's own release is its next
 #   version even when the upstream is held, and the move takes it, since
 #   a hold is for a new release; GitHub's prerelease mark does not leave
@@ -121,18 +121,79 @@ watched:
   # build of a Ruby, tagged VERSION-N, which it never publishes again; the
   # release VERSION beside them, which it deletes and publishes again with
   # each build, is left out, as the pin leaves it. The watch orders the
-  # builds of one Ruby by N, since it reads 4.1.0-preview1-2 as
-  # 4.1.0.preview1.2. Its Mac Ruby names its platform for the macOS it
-  # was built on, which a new runner changes (platform).
+  # builds of one Ruby by N, since it reads 4.1.0-preview2-3 as
+  # 4.1.0.preview2.3. A new Ruby is held; a later build of the pinned one
+  # moves with no person (rebuild), with the libraries jdx/ruby's recipe
+  # then names, which the move reads out of each platform's archive
+  # (compiled): one recipes/dependencies.yml builds every target, so one
+  # entry of runtime/licenses.yml describes each library on all three.
+  # Its Mac Ruby names its platform for the macOS it was built on, which
+  # a new runner changes (platform).
   jdx-ruby:
     pins: [ruby]
     field: jdx_release
     github: jdx/ruby
     tag: '\A(?<version>\d+\.\d+\.\d+(?:-(?:preview|rc)\d+)?-\d+)\z'
+    rebuild: '\A(?<of>.+)-\d+\z'
     line: 2
+    keep: [build]
+    names: [jdx/ruby's build of Ruby for macOS and glibc Linux, jdx/ruby]
+    licenses: [jdx-ruby]
     platform:
       arm64-darwin: '/lib/ruby/[^/]+/(?<arch>arm64-darwin\d*)/rbconfig\.rb\z'
-    hold: jdx/ruby releases one build per Ruby version, so its next release is a move of Ruby, which is planned work (ruby, above).
+    compiled:
+      arm64-darwin:
+        openssl-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/openssl\.bundle\z'
+          version: 'OpenSSL (?<version>\d+\.\d+\.\d+) '
+          title: OpenSSL in the macOS and glibc Linux Ruby
+        libyaml-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/psych\.bundle\z'
+          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
+          title: libyaml in the macOS and glibc Linux Ruby
+        zlib-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/zlib\.bundle\z'
+          version: 'inflate (?<version>\d+\.\d+(?:\.\d+)*) '
+          title: zlib in the macOS and glibc Linux Ruby
+        libffi-jdx:
+          file: '/fiddle-[^/]+/fiddle\.bundle\z'
+          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
+          title: libffi in the macOS and glibc Linux Ruby
+      x86_64-linux:
+        openssl-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/openssl\.so\z'
+          version: 'OpenSSL (?<version>\d+\.\d+\.\d+) '
+          title: OpenSSL in the macOS and glibc Linux Ruby
+        libyaml-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/psych\.so\z'
+          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
+          title: libyaml in the macOS and glibc Linux Ruby
+        zlib-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/zlib\.so\z'
+          version: 'inflate (?<version>\d+\.\d+(?:\.\d+)*) '
+          title: zlib in the macOS and glibc Linux Ruby
+        libffi-jdx:
+          file: '/fiddle-[^/]+/fiddle\.so\z'
+          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
+          title: libffi in the macOS and glibc Linux Ruby
+      aarch64-linux:
+        openssl-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/openssl\.so\z'
+          version: 'OpenSSL (?<version>\d+\.\d+\.\d+) '
+          title: OpenSSL in the macOS and glibc Linux Ruby
+        libyaml-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/psych\.so\z'
+          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
+          title: libyaml in the macOS and glibc Linux Ruby
+        zlib-jdx:
+          file: '/lib/ruby/[^/]+/[^/]+/zlib\.so\z'
+          version: 'inflate (?<version>\d+\.\d+(?:\.\d+)*) '
+          title: zlib in the macOS and glibc Linux Ruby
+        libffi-jdx:
+          file: '/fiddle-[^/]+/fiddle\.so\z'
+          version: '(?<=\0)(?<version>\d+\.\d+\.\d+)(?=\0)'
+          title: libffi in the macOS and glibc Linux Ruby
+    hold: A new Ruby from jdx/ruby is a move of Ruby, which is planned work (ruby, above); a later build of the pinned Ruby is not held (rebuild).
   # PyPA's manylinux_2_28 image, which the glibc Linux runtimes build
   # in, from quay.io's listing of its tags, newest first (the first page
   # of 100 holds the newest). Each processor's image has its own

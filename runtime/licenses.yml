@@ -402,10 +402,29 @@ components:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/libcrypto-3-{x64,arm64}.dll"]
         evidence: "OpenSSL 3.6.5 "
 
-  # glibc Linux's libyaml, as jdx/ruby and Fledge's own build of Ruby
-  # compile it; jdx/ruby ships its header, static library, and pkg-config
-  # file for compiling gems, which a runtime keeps for fledge build and no
-  # app holds.
+  # jdx/ruby's libyaml (its recipes/dependencies.yml), whose header,
+  # static library, and pkg-config file it ships for compiling gems, which
+  # a runtime keeps for fledge build and no app holds. A later build of
+  # jdx/ruby's Ruby moves it (runtime/upstreams.yml, compiled), so it is
+  # apart from Fledge's own build's below.
+  - id: libyaml-jdx
+    name: libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems
+    version: 0.2.5
+    license: MIT
+    kind: program
+    download: https://github.com/yaml/libyaml/releases/download/0.2.5/yaml-0.2.5.tar.gz
+    notice: libyaml
+    ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against"
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    ruby_build: jdx
+    files: ["{prefix}lib/libyaml.a", "{prefix}include/yaml.h", "{prefix}lib/pkgconfig/yaml-0.1.pc"]
+    binaries: ["{prefix}lib/libyaml.a"]
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
+        evidence: "0.2.5\0"
+
+  # libyaml as Fledge's own build of Ruby compiles it on macOS and glibc
+  # Linux, with its header and static library for compiling gems.
   - id: libyaml-glibc
     name: libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems
     version: 0.2.5
@@ -415,6 +434,7 @@ components:
     notice: libyaml
     ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    ruby_build: [upstream, fledge]
     files: ["{prefix}lib/libyaml.a", "{prefix}include/yaml.h", "{prefix}lib/pkgconfig/yaml-0.1.pc"]
     binaries: ["{prefix}lib/libyaml.a"]
     embedded:
@@ -1064,13 +1084,16 @@ components:
   # jdx/ruby's own code in its Ruby: the lines it adds to openssl.rb,
   # which choose the CA certificates, and to rbconfig.rb, which point
   # mkmf at the tree's own headers and libraries, both of which a
-  # runtime ships, and its load-path helper, which a runtime prunes.
+  # runtime ships, and its load-path helper, which a runtime prunes. Its
+  # version is the build runtime/sources.yml pins (jdx_release), and its
+  # download that build's tag, which names the commit jdx/ruby built it
+  # from; a move of the pin moves both.
   - id: jdx-ruby
     name: jdx/ruby's additions to Ruby's openssl.rb and rbconfig.rb
-    version: 4.1.0-preview1
+    version: 4.1.0-preview1-1
     license: BSD-2-Clause
     kind: files
-    download: https://github.com/jdx/ruby/tree/ad498b278b97f1c631e3e6db5aafee01ab326901
+    download: https://github.com/jdx/ruby/tree/4.1.0-preview1-1
     notice: jdx-ruby
     ships: "lines of lib/ruby/{abi}/openssl.rb and lib/ruby/{abi}/{arch}/rbconfig.rb"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]

@@ -239,6 +239,23 @@ class PinWatchTest < Minitest::Test
     assert_equal [:current, nil], [preview.status, preview.newer], "a release GitHub marks a prerelease counts only as a build of the pin"
   end
 
+  # runtime/upstreams.yml's jdx-ruby, as it is: a later build of the
+  # pinned preview, marked a prerelease as jdx/ruby marks it, is newer;
+  # the release VERSION it publishes again with every build is not a
+  # version; a new Ruby is held.
+  def test_jdx_rubys_later_build_of_the_pinned_ruby_is_newer_and_its_next_ruby_is_held
+    url = PinWatch::Upstream.from("jdx-ruby", entry("jdx-ruby")).url
+    listing = lambda do |*tags|
+      Answers.new(url => JSON.generate(tags.map { |tag| { "tag_name" => tag, "draft" => false, "prerelease" => tag.include?("preview") } }))
+    end
+    sources = { "ruby" => { "jdx_release" => "4.1.0-preview1-1" } }
+    later = finding(sources, "jdx-ruby", entry("jdx-ruby"), listing.("4.1.0-preview1", "4.1.0-preview1-2", "4.1.0-preview1-1", "4.0.10-1"))
+    release = finding({ "ruby" => { "jdx_release" => "4.1.0-1" } }, "jdx-ruby", entry("jdx-ruby"), listing.("4.1.1", "4.1.1-1", "4.1.0-1"))
+
+    assert_equal [:newer, "4.1.0-preview1-2", nil], [later.status, later.newer, later.held]
+    assert_equal [:held, "4.1.1-1"], [release.status, release.newer]
+  end
+
   # A rebuild of many releases at once can list a hundred builds of other
   # releases above the pin's, so every page of such an upstream's
   # releases is read, until one lists fewer than a page holds.

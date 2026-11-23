@@ -21,12 +21,6 @@ class LicenseAudit
   # own folder, or, for a default gem, from Ruby's own COPYING and LEGAL.
   # #missing lists the components whose text none of these holds, which
   # RuntimeBuilder refuses to ship.
-  #
-  # With +archive+, the file is Fledge's own Ruby archive's
-  # (tasks/ruby_archive.rb): it speaks of the archive and no app, and
-  # names no release's source bundle, since the pre-release that holds
-  # the archive holds no other file; each LGPL library's source is in the
-  # archive's own notices/sources/.
   class Notices
     NOTICES = File.join(ROOT, "runtime", "notices")
     RELEASES = "https://github.com/setdef/Fledge/releases/download"
@@ -37,8 +31,7 @@ class LicenseAudit
     # among its binaries, the launcher too; a phone runtime has none.
     LAUNCHER = "fledge"
 
-    def initialize(report, version:, map:, archive: false)
-      @archive = archive
+    def initialize(report, version:, map:)
       @report = report
       @version = version
       @map = map
@@ -73,8 +66,6 @@ class LicenseAudit
     end
 
     private def header
-      return archive_header if @archive
-
       <<~HEADER
         The Fledge runtime in this app
 
@@ -87,23 +78,6 @@ class LicenseAudit
 
         The app's own code, and the gems its developer added, are not listed
         here: their licenses are for the app's developer to give.
-
-      HEADER
-    end
-
-    private def archive_header
-      <<~HEADER
-        Fledge's own build of Ruby in this archive
-
-        This archive holds a Ruby that Fledge #{@version} (https://github.com/setdef/Fledge)
-        built. Ruby, and the libraries compiled into it or shipped beside it,
-        are the work of the people below, under the licenses named. The full
-        text of each license is at the end of this file. notices/sbom.spdx.json,
-        an SPDX 2.3 software bill of materials, lists every file of the archive
-        with its checksums, and what each compiled file links.
-
-        The gems the archive's owner installs later are not listed here: their
-        licenses are for whoever installs them.
 
       HEADER
     end
@@ -191,7 +165,7 @@ class LicenseAudit
       libraries = present.select { |component| component.kind == "shared_library" && component.license.include?("LGPL") }
       return [] if libraries.empty?
 
-      bundle = release_bundle
+      bundle = "#{RELEASES}/v#{@version}/#{Notices.source_bundle(@version, @report.platform)}"
       [
         "LIBRARIES UNDER THE GNU LESSER GENERAL PUBLIC LICENSE",
         "",
@@ -199,23 +173,18 @@ class LicenseAudit
       ]
     end
 
-    # The release's source bundle, which an archive has none of.
-    private def release_bundle
-      "#{RELEASES}/v#{@version}/#{Notices.source_bundle(@version, @report.platform)}" unless @archive
-    end
-
     private def lgpl_entry(library, bundle)
       files = @report.owned(library).map { |path| "  #{path}" }.join("\n")
       <<~LGPL
         #{library.name}, version #{library.version}, is licensed under
         #{library.license}.
-        It is not part of #{@archive ? "Ruby's" : "this app's"} own code: it ships as its own shared
-        library, which #{@archive ? 'bin/ruby' : 'the app'} loads when it starts:
+        It is not part of this app's own code: it ships as its own shared
+        library, which the app loads when it starts:
 
         #{files}
 
         You may replace that file with another build of the library, including
-        one you modified, as long as it keeps the same interface, and #{@archive ? 'Ruby' : 'the app'}
+        one you modified, as long as it keeps the same interface, and the app
         will use it. #{where_source(library, bundle)}
         and its authors publish it at #{library.download}.
 
@@ -227,8 +196,6 @@ class LicenseAudit
     # carries it there (SourceBundle), and in the release's +bundle+.
     private def where_source(component, bundle)
       folder = in_app(component)
-      return in_archive(folder) if @archive
-
       return "Its complete source code, and how this copy was built from it,\nare at\n\n  #{bundle}\n" unless folder
 
       <<~WHERE
@@ -241,18 +208,6 @@ class LicenseAudit
         keep this app's notices/ folder whole; and in Fledge's release, at
 
           #{bundle}
-      WHERE
-    end
-
-    private def in_archive(folder)
-      <<~WHERE
-        Its complete source code, and how this copy was built from it,
-        are in this archive, in
-
-          #{folder}
-
-        which whoever passes this archive on passes on with it, as long as they
-        keep its notices/ folder whole;
       WHERE
     end
 
@@ -275,7 +230,7 @@ class LicenseAudit
       components = present.select { |component| component.source && !%w[shared_library source].include?(component.kind) }
       return [] if components.empty?
 
-      bundle = release_bundle
+      bundle = "#{RELEASES}/v#{@version}/#{Notices.source_bundle(@version, @report.platform)}"
       [
         "SOURCE THAT FLEDGE PUBLISHES FOR THIS APP'S INSTALLER",
         "",

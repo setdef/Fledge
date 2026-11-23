@@ -284,67 +284,6 @@ class LicenseAuditTest < Minitest::Test
     end
   end
 
-  FLEDGE_RUST = "/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/"
-
-  # Fledge's own Ruby archive (tasks/ruby_archive.rb) is a Ruby prefix:
-  # no launcher, no Fledge code in bin/ruby, no AppImage. The audit reads
-  # it as that build, whatever the platform's Ruby pin names.
-  def write_archive_tree
-    openssl = YAML.safe_load_file(File.expand_path("../runtime/sources.yml", __dir__)).dig("musl-ruby", "openssl", "version")
-    FileUtils.rm_f(File.join(@tree, "launcher"))
-    write("bin/ruby", Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) #{FLEDGE_RUST} GCC: (Ubuntu 11.4.0)"))
-    write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL #{openssl} "))
-    write("libexec/cert.pem", CaBundles.curl)
-    FileUtils.rm_f(File.join(@tree, "lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb"))
-  end
-
-  def archive_audit(**)
-    run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0", archive: true, **)
-    [run, run.call]
-  end
-
-  def test_the_audit_of_fledges_ruby_archive_holds_its_build_and_none_of_a_runtimes_own_files
-    write_archive_tree
-    _run, report = archive_audit
-
-    assert_empty report.violations.map(&:to_s)
-    assert_equal %w[ca-certificates gcc-runtime gem-csv-3.3.5 libxcrypt openssl-fledge ruby rust-std-fledge], report.present.map(&:id).sort
-  end
-
-  def test_the_audit_of_the_archive_refuses_a_runtimes_files
-    write_archive_tree
-    write("launcher", Binaries.elf(needed: %w[libc.so.6], payload: "#{FLEDGE_RUST} GCC: (Ubuntu 11.4.0)"))
-    write("tools/appimage-runtime", Binaries.elf(payload: APPIMAGE_RUNTIME))
-    _run, report = archive_audit
-
-    assert_includes rules(report), ["unaccounted", "launcher"]
-    assert_includes rules(report), ["unaccounted", "tools/appimage-runtime"]
-  end
-
-  # The notices of the archive speak of the archive, name no app and no
-  # Fledge file, and point at the source inside the archive alone: the
-  # pre-release that holds it carries no source bundle of a release.
-  def test_the_notices_of_the_archive_speak_of_the_archive_and_point_at_its_own_sources
-    write_archive_tree
-    Dir.mktmpdir do |directory|
-      linux_bundle(directory, archive: true).copy_into(@tree)
-    end
-    run, report = archive_audit
-    notices = LicenseAudit::Notices.new(report, version: "0.0.0", map: run.map, archive: true)
-    text = notices.text
-
-    assert_empty report.violations.map(&:to_s)
-    assert_empty notices.missing
-    assert_equal "Fledge's own build of Ruby in this archive", text.lines.first.chomp
-    assert_includes text, "LIBRARIES UNDER THE GNU LESSER GENERAL PUBLIC LICENSE"
-    assert_includes text, "in this archive, in\n\n  notices/sources/libxcrypt/\n"
-    assert_includes text, "=== libxcrypt/COPYING.LIB"
-    refute_includes text, "FLEDGE'S OWN FILES"
-    refute_includes text, "This app"
-    refute_includes text, "lgpl-sources.tar.gz"
-    assert_equal %w[libxcrypt], Dir.children(File.join(@tree, "notices/sources"))
-  end
-
   # An entry may describe several builds of Ruby but not every one, as
   # an OpenSSL that rv-ruby's and Fledge's builds share and jdx/ruby's
   # does not.
@@ -612,7 +551,7 @@ class LicenseAuditTest < Minitest::Test
   # A sources.yml in +directory+ that pins libxcrypt, AppImage's runtime,
   # and libfuse to small files already in its download cache, and the
   # SourceBundle for x86_64-linux that reads it.
-  def linux_bundle(directory, archive: false)
+  def linux_bundle(directory)
     downloads = File.join(directory, "downloads")
     pin = lambda do |name|
       in_download_cache(downloads, name, "pretend #{name}")
@@ -629,7 +568,7 @@ class LicenseAuditTest < Minitest::Test
       },
       "libfuse" => { "version" => "3.15.0", **pin.call("fuse-3.15.0.tar.xz") },
     }.to_yaml)
-    LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: "0.0.0", sources:, downloads:, archive:)
+    LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: "0.0.0", sources:, downloads:)
   end
 
   # The app carries the source of each component whose license asks for

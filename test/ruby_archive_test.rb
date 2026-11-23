@@ -6,8 +6,6 @@
 #++
 
 require_relative "test_helper"
-require_relative "support/binaries"
-require_relative "support/ca_bundles"
 require_relative "../tasks/ruby_archive"
 
 class RubyArchiveTest < Minitest::Test
@@ -131,58 +129,6 @@ class RubyArchiveTest < Minitest::Test
       options = archive("arm64-darwin", dir).ruby_build(nil).configure_options("/prefix", "/deps")
 
       refute options.any? { |option| option.start_with?("LDFLAGS") }, options.inspect
-    end
-  end
-
-  # What the archive carries is what a runtime carries (doc/contributors/
-  # design/license-audit.md): NOTICES.txt and the SBOM in notices/, and
-  # the source of its LGPL library in notices/sources/, made by the
-  # license audit, which refuses an archive holding a file nothing
-  # accounts for.
-  def test_the_archive_carries_notices_an_sbom_and_the_source_of_its_lgpl_library
-    TestReaders.need(self, :elf)
-    Dir.mktmpdir do |dir|
-      prefix = File.join(dir, "ruby", "4.1.0-preview1")
-      work = File.join(dir, "work")
-      ruby = archive("x86_64-linux", work, RuntimeBuilder.new(platform: Fledge::Platform.find("x86_64-linux"), work:))
-      rust = "/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/"
-      openssl = SOURCES.dig("musl-ruby", "openssl", "version")
-      files = {
-        "bin/ruby" => Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "ruby (revision 2d08b5f42f) #{rust} GCC: (Ubuntu 11.4.0)"),
-        "lib/libcrypt.so.2" => Binaries.elf(needed: %w[libc.so.6], payload: "XCRYPT_4.4\0yescrypt-ROMhash"),
-        "lib/ruby/4.1.0+5/x86_64-linux/openssl.so" => Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL #{openssl} "),
-        "lib/ruby/4.1.0+5/set.rb" => "class Set; end\n",
-        "libexec/cert.pem" => CaBundles.curl,
-      }
-      files.each do |path, bytes|
-        FileUtils.mkdir_p(File.dirname(File.join(prefix, path)))
-        File.binwrite(File.join(prefix, path), bytes)
-      end
-      downloads = File.join(dir, "downloads")
-      pretend = "pretend libxcrypt"
-      FileUtils.mkdir_p(File.join(downloads, Digest::SHA256.hexdigest(pretend)))
-      File.write(File.join(downloads, Digest::SHA256.hexdigest(pretend), "libxcrypt-pretend.tar.xz"), pretend)
-      sources = File.join(dir, "sources.yml")
-      File.write(sources, {
-"libxcrypt" => {
-"version" => "1.0",
-"url" => "https://example.com/libxcrypt-pretend.tar.xz",
-"sha256" => Digest::SHA256.hexdigest(pretend),
-},
-}.to_yaml)
-      bundle = LicenseAudit::SourceBundle.new(platform: "x86_64-linux", version: Fledge::VERSION, sources:, downloads:, archive: true)
-
-      ruby.license(prefix, bundle:, readers: TestReaders.all)
-
-      text = File.read(File.join(prefix, "notices", "NOTICES.txt"))
-      assert_equal "Fledge's own build of Ruby in this archive", text.lines.first.chomp
-      assert_includes text, "notices/sources/libxcrypt/"
-      assert_equal "SPDX-2.3", JSON.parse(File.read(File.join(prefix, "notices", "sbom.spdx.json"))).fetch("spdxVersion")
-      assert_equal pretend, File.read(File.join(prefix, "notices", "sources", "libxcrypt", "libxcrypt-pretend.tar.xz"))
-
-      File.write(File.join(prefix, "stray.txt"), "nobody's\n")
-      failure = assert_raises(LicenseAudit::Failure) { ruby.license(prefix, bundle:, readers: TestReaders.all) }
-      assert_includes failure.message, "stray.txt"
     end
   end
 end

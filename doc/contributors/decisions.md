@@ -568,9 +568,9 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 > > Expect no candidate in these six hours.
 >
-> I expect solid work towards a candidate, I am not setting a deadline. Quality! (The non-deadline hopeful date is Christmas Day, a 1.0.0 co-release with Ruby 4.1, and therefore a release candidate maybe a week beforehand)
+> I expect solid work towards a candidate, I am not setting a deadline. Quality!
 
-*Governs:* there is no deadline, and quality comes first. The hope, which binds nothing, is 1.0.0 on 2026-12-25 beside Ruby 4.1.0, and a candidate about a week before.
+*Governs:* there is no deadline, and quality comes first.
 
 > > which is how other bundlers such as PyInstaller handle it.
 >

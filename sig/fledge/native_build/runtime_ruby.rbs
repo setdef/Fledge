@@ -9,9 +9,10 @@ module Fledge
       @work: String
       @log: CLI::_Output
       @env: Runtimes::_Env
+      @prefix: String
       @ruby: String?
 
-      def initialize: (platform: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, env: Runtimes::_Env) -> void
+      def initialize: (platform: Platform, runtimes: Runtimes, work: String, log: CLI::_Output, env: Runtimes::_Env, ?prefix: String) -> void
 
       def run: (Array[Hash[String, String | Array[String]]] jobs, ?source: String, ?message: String, ?failure: String) -> Array[Hash[String, String | Array[String]]]
 
@@ -22,6 +23,8 @@ module Fledge
       def home: () -> String
 
       def env: () -> Hash[String, String?]
+
+      private def pkg_config_path: (String given) -> String?
     end
   end
 end

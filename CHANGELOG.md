@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A gem `fledge build` compiles no longer links what the Ruby running `fledge build` added to `PKG_CONFIG_PATH`, as jdx/ruby, mise's default Ruby, adds its own static OpenSSL there, so what a gem links no longer depends on which Ruby ran the build.
 - `fledge build` takes a gemspec that needs what the `Gemfile` defined before its `gemspec` line, such as a `Gemfile` that requires `lib/my_cool_app/version` for a gemspec that names `MyCoolApp::VERSION`, as `bundle exec` does; before, it refused it with "Ruby can't evaluate".
 - `fledge build` reads a project's gemspec as `bundle exec` does, after the `Gemfile` and from the gemspec's own folder, so a folder whose gemspec needs what the `Gemfile` defined builds the one program it names, with its version, and a gemspec that loads a file by a path from its folder no longer stops the build with Ruby's `LoadError`.
 - An app loads the project's files that its gemspec loads with `load`, before the program's first line, as Bundler does under `bundle exec`; before, only the files it required were loaded.

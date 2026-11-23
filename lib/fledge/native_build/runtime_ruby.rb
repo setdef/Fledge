@@ -20,13 +20,15 @@ module Fledge
     class RuntimeRuby # :nodoc:
       # The Ruby of +platform+'s runtime, which +runtimes+ finds, unpacked
       # under +work+ when it first runs, its output going to +log+, in an
-      # environment made from +env+.
-      def initialize(platform:, runtimes:, work:, log:, env:)
+      # environment made from +env+, less what the Ruby installed at
+      # +prefix+ (default: the one running Fledge) added to it.
+      def initialize(platform:, runtimes:, work:, log:, env:, prefix: RbConfig::CONFIG.fetch("prefix"))
         @platform = platform
         @runtimes = runtimes
         @work = work
         @log = log
         @env = env
+        @prefix = prefix
         @ruby = nil # : String?
       end
 
@@ -91,15 +93,35 @@ module Fledge
       # did, since the parser RubyGems 4.1 (4.1.0.beta2 and beta3) reads
       # it with by default gives every name in it as a BINARY string; and
       # on macOS the runtime's oldest macOS as the deployment target,
-      # which clang and rustc both read.
+      # which clang and rustc both read; and with PKG_CONFIG_PATH less
+      # the folders inside the developer's own Ruby, which jdx/ruby's
+      # rbconfig.rb puts first in it whenever that Ruby starts, so that
+      # what a gem links does not depend on which Ruby ran Fledge
+      # (gems.md, "What the build takes from the developer's
+      # environment").
       def env
         env = @env.to_h.keys.grep(SCRUBBED).to_h { |name| [name, nil] } # : Hash[String, String?]
+        given = @env.to_h["PKG_CONFIG_PATH"]
+        path = pkg_config_path(given.to_s)
+        env["PKG_CONFIG_PATH"] = path unless path == given
         env["GEM_HOME"] = home
         env["GEM_PATH"] = "#{home}#{File::PATH_SEPARATOR}"
         env["RUBYGEMS_USE_PSYCH"] = "true"
         minimum = @platform.macos_minimum
         env["MACOSX_DEPLOYMENT_TARGET"] = minimum if minimum
         env
+      end
+
+      # +given+ without any folder inside the developer's own Ruby, or nil
+      # when nothing is left: such a folder describes that Ruby's
+      # libraries, never the runtime's.
+      private def pkg_config_path(given)
+        prefix = File.expand_path(@prefix)
+        folders = given.split(File::PATH_SEPARATOR).reject do |folder|
+          path = File.expand_path(folder)
+          path == prefix || path.start_with?("#{prefix}/")
+        end
+        folders.empty? ? nil : folders.join(File::PATH_SEPARATOR)
       end
     end
   end

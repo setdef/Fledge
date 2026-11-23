@@ -75,6 +75,20 @@ class IOSRubyExtensionsTest < Minitest::Test
     assert_empty extensions.manifests("fledgerubyext.etc.bundle")
   end
 
+  # The runtime's build had Xcode write each extension's XCFramework
+  # index once, so that fledge build need not start Xcode's build tool
+  # for each extension of each app; an extension it wrote none for has
+  # none, and is made the slow way.
+  def test_an_extension_whose_xcframework_the_runtime_indexed_has_that_index
+    runtime("fledgerubyext.etc.bundle" => "4.1.0/arm64-darwin/etc.bundle",
+      "fledgerubyext.zlib.bundle" => "4.1.0/arm64-darwin/zlib.bundle")
+    FileUtils.mkdir_p(File.join(@runtime, "fledge.xcframeworks"))
+    File.write(File.join(@runtime, "fledge.xcframeworks", "fledgerubyext.etc.bundle.plist"), "<plist/>")
+
+    assert_equal File.join(@runtime, "fledge.xcframeworks", "fledgerubyext.etc.bundle.plist"), extensions.index("fledgerubyext.etc.bundle")
+    assert_nil extensions.index("fledgerubyext.zlib.bundle")
+  end
+
   # A bundled gem's extension is installed twice, in the gem's require
   # path and its extension folder, and both paths lead to one framework.
   def test_each_listed_path_in_each_slice_becomes_a_link_to_its_framework_in_the_app

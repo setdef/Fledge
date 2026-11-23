@@ -153,25 +153,45 @@ module Fledge
       # for an app whose bundle identifier is +identifier+ and bundle
       # version +version+, and for each slice in +manifests+ that privacy
       # manifest as its PrivacyInfo.xcprivacy.
-      def self.xcframework(project, name, slices, identifier:, version:, manifests: {})
+      #
+      # Given +index+, the Info.plist <tt>xcodebuild -create-xcframework</tt>
+      # wrote for these slices of this framework when the runtime was
+      # built, it puts each slice's framework at the path that index
+      # names, and the index beside them, as that command copies them, so
+      # an app with a hundred of Ruby's extensions does not start Xcode's
+      # build tool a hundred times (doc/contributors/design/phone-runtimes.md,
+      # "Ruby's extensions on iOS").
+      def self.xcframework(project, name, slices, identifier:, version:, manifests: {}, index: nil)
+        output = File.join(project, FOLDER, "#{name}.xcframework")
         Dir.mktmpdir("fledge-framework") do |work|
-          made = slices.flat_map do |slice, path|
-            folder = File.join(work, slice, "#{name}.framework")
-            FileUtils.mkdir_p(folder)
-            binary = File.join(folder, name)
-            FileUtils.cp(path, binary)
-            manifest = manifests[slice]
-            FileUtils.cp(manifest, File.join(folder, "PrivacyInfo.xcprivacy")) if manifest
-            Command.run("xcrun", "install_name_tool", "-id", "@rpath/#{name}.framework/#{name}", binary,
-              install: MobileExtensions::INSTALL_XCODE)
-            json = File.join(work, "#{slice}.json")
-            File.write(json, JSON.generate(info(name, identifier:, version:, platform: PLATFORMS.fetch(slice))))
-            Command.run("plutil", "-convert", "xml1", "-o", File.join(folder, "Info.plist"), json, install: MobileExtensions::INSTALL_XCODE)
-            ["-framework", folder]
+          made = slices.map do |slice, path|
+            folder = File.join(index ? output : work, slice, "#{name}.framework")
+            framework(folder, name, path, manifests[slice], json: File.join(work, "#{slice}.json"),
+              info: info(name, identifier:, version:, platform: PLATFORMS.fetch(slice)))
+            folder
           end
-          Command.run("xcodebuild", "-create-xcframework", *made, "-output", File.join(project, FOLDER, "#{name}.xcframework"),
-            install: MobileExtensions::INSTALL_XCODE)
+          if index
+            FileUtils.cp(index, File.join(output, "Info.plist"))
+          else
+            Command.run("xcodebuild", "-create-xcframework", *made.flat_map { |folder| ["-framework", folder] }, "-output", output,
+              install: MobileExtensions::INSTALL_XCODE)
+          end
         end
+      end
+
+      # Writes at +folder+ the framework +name+: a copy of the dynamic
+      # library at +path+ as its binary, with the install name
+      # <tt>@rpath/NAME.framework/NAME</tt>, the privacy manifest at
+      # +manifest+ if there is one, and +info+ as its Info.plist, by way
+      # of the file +json+.
+      private_class_method def self.framework(folder, name, path, manifest, json:, info:)
+        FileUtils.mkdir_p(folder)
+        binary = File.join(folder, name)
+        FileUtils.cp(path, binary)
+        FileUtils.cp(manifest, File.join(folder, "PrivacyInfo.xcprivacy")) if manifest
+        Command.run("xcrun", "install_name_tool", "-id", "@rpath/#{name}.framework/#{name}", binary, install: MobileExtensions::INSTALL_XCODE)
+        File.write(json, JSON.generate(info))
+        Command.run("plutil", "-convert", "xml1", "-o", File.join(folder, "Info.plist"), json, install: MobileExtensions::INSTALL_XCODE)
       end
 
       # [built] The MobileExtensions::Built whose libraries the app

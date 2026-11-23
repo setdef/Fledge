@@ -20,7 +20,9 @@ module Fledge
 
       def self.info: (String name, identifier: String, version: String, platform: String) -> Hash[String, String | Array[String]]
 
-      def self.xcframework: (String project, String name, Hash[String, String] slices, identifier: String, version: String, ?manifests: Hash[String, String]) -> void
+      def self.xcframework: (String project, String name, Hash[String, String] slices, identifier: String, version: String, ?manifests: Hash[String, String], ?index: String?) -> void
+
+      private def self.framework: (String folder, String name, String path, String? manifest, json: String, info: Hash[String, String | Array[String]]) -> void
 
       def initialize: (MobileExtensions::Built built, identifier: String, version: String) -> void
 

@@ -696,6 +696,29 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_includes yml, 'OTHER_LDFLAGS: "$(inherited) -lc++"'
     marks = Dir.glob(File.join(project, "fledge", "lib", "ruby", "gems", "*", "**", "gem.build_complete"))
     assert_empty marks, "a path gem needs no mark, as on a desktop"
+    assert_rubys_extensions_are_what_xcode_makes(project)
+  end
+
+  # Each of Ruby's extensions is an XCFramework in the app's project,
+  # put together from the index the runtime's build had Xcode write for
+  # it, which is what xcodebuild -create-xcframework makes of the same
+  # frameworks, file for file.
+  private def assert_rubys_extensions_are_what_xcode_makes(project)
+    indexes = Dir.glob("*.plist", base: File.join(project, "FledgeRuby.xcframework", "fledge.xcframeworks")).sort
+    assert_operator indexes.size, :>, 90, "the runtime indexes every one of Ruby's extensions"
+    indexes.each do |index|
+      name = File.basename(index, ".plist")
+      assert_equal File.binread(File.join(project, "FledgeRuby.xcframework", "fledge.xcframeworks", index)),
+        File.binread(File.join(project, "Frameworks", "#{name}.xcframework", "Info.plist")), name
+    end
+    name = "fledgerubyext.etc.bundle"
+    placed = File.join(project, "Frameworks", "#{name}.xcframework")
+    made = File.join(@dir, "made", "#{name}.xcframework")
+    frameworks = %w[ios-arm64 ios-arm64-simulator].flat_map { |slice| ["-framework", File.join(placed, slice, "#{name}.framework")] }
+    _, status = Open3.capture2e("xcodebuild", "-create-xcframework", *frameworks, "-output", made)
+    assert status.success?, "xcodebuild -create-xcframework"
+    difference, = Open3.capture2e("diff", "-r", made, placed)
+    assert_empty difference
   end
 
   # examples/rust_phone's gem has a Rust extension, built with rb-sys and

@@ -11,6 +11,7 @@ require "json"
 require "tmpdir"
 require_relative "mobile"
 require_relative "../../lib/fledge/mobile_project/ios_libraries"
+require_relative "../../lib/fledge/mobile_project/ios_ruby_extensions"
 
 class RuntimeBuilder
   # iOS and iPadOS: Ruby for devices and for the Simulator, both arm64,
@@ -176,6 +177,30 @@ class RuntimeBuilder
         FileUtils.cp_r(File.join(root, "include"), File.join(slice, "include"))
         copy_certificates(File.join(slice, "libexec"))
         list_extensions(target, slice, library_line(root))
+      end
+      indexes(xcframework)
+    end
+
+    # The Info.plist of each extension's XCFramework, in the runtime's
+    # Fledge::MobileProject::IOSRubyExtensions::INDEXES as NAME.plist:
+    # what <tt>xcodebuild -create-xcframework</tt> writes for that
+    # extension's frameworks, made as fledge build makes them. It depends
+    # on no app, so the runtime's build starts Xcode's build tool once
+    # for each extension, and fledge build does not, for each app
+    # (doc/contributors/design/phone-runtimes.md, "Ruby's extensions on
+    # iOS").
+    private def indexes(xcframework)
+      extensions = Fledge::MobileProject::IOSRubyExtensions.new(xcframework)
+      folder = File.join(xcframework, Fledge::MobileProject::IOSRubyExtensions::INDEXES)
+      FileUtils.mkdir_p(folder)
+      Dir.mktmpdir("fledge-indexes") do |work|
+        extensions.frameworks.each do |name, files|
+          Fledge::MobileProject::IOSLibraries.xcframework(work, name, files, identifier: "org.setdef.fledge",
+            version: Fledge::VERSION[/\A\d+(?:\.\d+)*/].to_s, manifests: extensions.manifests(name))
+          made = File.join(work, Fledge::MobileProject::IOSLibraries::FOLDER, "#{name}.xcframework")
+          FileUtils.cp(File.join(made, "Info.plist"), File.join(folder, "#{name}.plist"))
+          FileUtils.rm_rf(made)
+        end
       end
     end
 

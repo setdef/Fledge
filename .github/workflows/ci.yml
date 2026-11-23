@@ -628,10 +628,9 @@ jobs:
     # step's middle; the job's limit is the step's with the setup's, as a
     # backstop. A green run took about 28 minutes to build and run the
     # apps, and 38 on a slow runner (CONTRIBUTING.md, "When CI fails"),
-    # until each of Ruby's extensions on iOS became a framework that
-    # fledge build makes for each app: since then the step takes about 58
-    # minutes, 33 of them the ten apps' fledge build.
-    timeout-minutes: 90
+    # before each of Ruby's extensions on iOS was a framework; archiving
+    # the ten apps' 99 frameworks each adds about 4 minutes to that.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -679,7 +678,7 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       - name: Build the apps with fledge build ios, and run them in the iOS Simulator
-        timeout-minutes: 75
+        timeout-minutes: 50
         run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP/runtimes"
 
       - name: Key the downloads by the files they hold
@@ -723,11 +722,9 @@ jobs:
     name: iOS integration tests (iOS Simulator)
     needs: [runtime, runtime-mobile]
     runs-on: macos-26
-    # A green run took 13 to 16 minutes for the tests until each of
-    # Ruby's extensions on iOS became a framework that fledge build makes
-    # for each app; since then they take about 31. The step's limit is
-    # 45, and the job's that with the setup's, as a backstop.
-    timeout-minutes: 60
+    # A green run takes 13 to 16 minutes for the tests; the step's limit
+    # is 25, and the job's that with the setup's, as a backstop.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -795,7 +792,7 @@ jobs:
       # Their Android tests skip here, with no Android runtime or NDK, and
       # run in the Android emulator job with 4 KB pages.
       - name: Run the iOS integration tests
-        timeout-minutes: 45
+        timeout-minutes: 25
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes

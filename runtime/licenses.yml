@@ -183,8 +183,10 @@ components:
   # Java class and its packaging, and the Android runtime's ruby program,
   # libfledgerubyexe.so, which links libfledgeruby.so (doc/contributors/design/phone-runtimes.md,
   # "The ruby program on Android"); each runtime's fledge.links, the
-  # Android runtime's at its root and the iOS runtime's in each slice
-  # (same document, "Ruby's extensions on iOS"), and the Android
+  # Android runtime's at its root and the iOS runtime's in each slice,
+  # with the iOS runtime's index of each extension's XCFramework, which
+  # Xcode's build tool wrote (same document, "Ruby's extensions on
+  # iOS"), and the Android
   # runtime's openssl_certificates.c, compiled into Ruby's openssl
   # extension (same document, "Certificates").
   - id: fledge-embedding
@@ -204,6 +206,7 @@ components:
       - fledge.links
       - FledgeRuby.xcframework/Info.plist
       - FledgeRuby.xcframework/*/fledge.links
+      - FledgeRuby.xcframework/fledge.xcframeworks/*.plist
       - FledgeRuby.xcframework/*/FledgeRuby.framework/{FledgeRuby,Info.plist,Headers/fledge_ruby.h,Modules/module.modulemap}
       - include/fledge_ruby.h
       - FledgeRuby.aar!{AndroidManifest.xml,classes.jar,R.txt,proguard.txt}

@@ -22,8 +22,10 @@ module Fledge
     # under <tt>lib/ruby</tt>, and LINKS, a line for each path: the name
     # of the extension's framework, a tab, and the path under the slice.
     # Each framework is made as a library for Ruby's ffi is
-    # (IOSLibraries.xcframework), and each listed file becomes a relative
-    # link to its framework's binary in the app (IOSLibraries.target).
+    # (IOSLibraries.xcframework), but with the XCFramework's Info.plist
+    # that the runtime's build had Xcode write for it, in INDEXES, and
+    # each listed file becomes a relative link to its framework's binary
+    # in the app (IOSLibraries.target).
     # Its first line names Ruby's own library, at libdir/LIBRUBY_SO
     # (<tt>lib/libfledgeruby.dylib</tt>), under LIBRARY: that path too
     # becomes a link, to FledgeRuby.framework's binary, so the library is
@@ -59,6 +61,11 @@ module Fledge
 
       # The folder in each slice of the extensions' privacy manifests.
       PRIVACY = "privacy"
+
+      # The folder, in the runtime's XCFramework, of the Info.plist
+      # <tt>xcodebuild -create-xcframework</tt> wrote for each extension's
+      # XCFramework when the runtime was built, as NAME.plist.
+      INDEXES = "fledge.xcframeworks"
 
       # The framework of Ruby's own in each slice of a runtime whose Ruby
       # is dynamic.
@@ -99,12 +106,19 @@ module Fledge
         slices.to_h { |slice| [slice, File.join(@runtime, slice, PRIVACY, "#{name}.xcprivacy")] }.select { |_slice, path| File.file?(path) }
       end
 
+      # The Info.plist the runtime's build made for the XCFramework of the
+      # framework +name+, if it made one.
+      def index(name)
+        path = File.join(@runtime, INDEXES, "#{name}.plist")
+        path if File.file?(path)
+      end
+
       # Writes each framework's XCFramework into +project+, for an app
       # whose bundle identifier is +identifier+ and bundle version
       # +version+, and returns their names.
       def call(project, identifier:, version:)
         frameworks.map do |name, files|
-          IOSLibraries.xcframework(project, name, files, identifier:, version:, manifests: manifests(name))
+          IOSLibraries.xcframework(project, name, files, identifier:, version:, manifests: manifests(name), index: index(name))
           name
         end
       end

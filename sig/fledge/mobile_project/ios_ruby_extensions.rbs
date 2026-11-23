@@ -8,6 +8,7 @@ module Fledge
       RUBY: String
       LIBRARY: String
       PRIVACY: String
+      INDEXES: String
 
       @runtime: String
       @listed: Hash[String, Hash[String, Array[String]]]?
@@ -19,6 +20,8 @@ module Fledge
       def frameworks: () -> Hash[String, Hash[String, String]]
 
       def manifests: (String name) -> Hash[String, String]
+
+      def index: (String name) -> String?
 
       def call: (String project, identifier: String, version: String) -> Array[String]
 

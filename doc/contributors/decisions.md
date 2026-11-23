@@ -234,7 +234,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > iPadOS, iOS, and Android are our priorities for 0.2.0.
 
-[re: the orchestrating agent had written: "Decision for you: do you want the plan changed so native gems on phones come before 1.0?"]
+[re: the orchestrating agent had written: "do you want the plan changed so native gems on phones come before 1.0?"]
 
 *Governs:* the work for release 0.2.0 is phones: iPadOS, iOS, and Android, ahead of the stories that wait on money. *Applied in:* Plan 003.
 
@@ -464,7 +464,7 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 > Does WIP get us to 0.X.0, where X is the Release Candidate for 1.0.0?
 
-[re: the work then in flight, all of it on CI's reliability. The orchestrating agent answered that it did not: a candidate also needed what the maintainer's accounts do not block (libraries for Ruby's ffi on iOS, the smaller known defects, CI running the Android integration tests), and any fix his testing called for would make a later 0.x release the candidate.]
+[re: the work then in flight was all on CI's reliability. The orchestrating agent answered that it did not, and wrote: "The candidate moves with your testing."]
 
 > My goal by 7:59am is to get Fledge to that release candidate release. My testing happens _on_ the release candidate, which, if it all passes, will be simply made into 1.0.0.
 
@@ -476,13 +476,13 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 > Wait did you say windows TEN? Lol https://support.microsoft.com/en-us/windows/deployment/updates-lifecycle/windows-10-support-has-ended-on-october-14-2025
 
-[re: the orchestrating agent's report that Fledge's README named Windows 10 as the oldest Windows its apps run on, with no run there on record. The maintainer had said he ran a game on it; the game's own records showed that run, of 2026-11-05, to have been on Windows 11.]
+[re: the orchestrating agent had written: "Windows 10: the README claims Windows 10, and no built app has ever run on a real Windows 10 machine." The maintainer had said he ran a game on it; the game's own records showed that run, of 2026-11-05, to have been on Windows 11.]
 
 *Governs:* Fledge does not name Windows 10 as a system its apps run on: Microsoft's support for it ended on 2025-10-14, before Fledge's first release. The oldest Windows Fledge names is Windows 11. *Applied in:* `README.md`; `README.rdoc`; `doc/contributors/design/releases.md`, "Platform floors"; `doc/contributors/account-tests.md`.
 
+> > Known defects
+>
 > How can you possibly think we can ship 1.0.0 with **known** bugs?
-
-[re: the orchestrating agent's statement that the release it was about to call the candidate for 1.0.0 left known defects unfixed, of which it named three: two gems whose extensions define one global name clash on a phone; a library for ffi that a gem's package holds built for iOS had never been tried; and CI ran none of the iOS integration tests.]
 
 *Governs:* the candidate for 1.0.0 is a release with no bug the project knows of. A known defect is fixed, or shown not to be one, before a release is called the candidate; it is not listed beside it. *Applied in:* `doc/contributors/design/releases.md`, "Versions".
 
@@ -492,25 +492,27 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 > And hey, Fledge needs to support Lota and Tokra in _their_ goals to test with Fledge's releases and shipping sample apps on more recent rubies too, right?
 
-[re: the orchestrating agent's plan, made in answer to the words above, for a nightly run that tests Fledge against Ruby's main branch while Fledge's releases stayed on the preview. The agent answered yes, and took the question as direction.]
+[re: the orchestrating agent had written: "I passed your question to the agent working on this, so its design says where `ruby-dev` fits." It answered yes to this, and took the question as direction.]
 
 *Governs:* Fledge is tested against a recent Ruby on every platform, not only on Windows; and before 1.0 a release may carry a recent snapshot of Ruby's main branch on every platform, built by Fledge where no project publishes one that can move, so that the frameworks built on Fledge can test with its releases and ship their sample apps on it. *Applied in:* `.github/workflows/ruby-master.yml`; `doc/contributors/design/runtimes.md`, "Testing against Ruby's master" and "Fledge's own Ruby builds".
 
+> > ## G. May Fledge copy Microsoft's Visual C++ runtime into a Windows app? (open, no deadline)
+>
 > An app developer who has the rights to do a thing should _be able_ to do it and distribute their app with Fledge.
 
-[re: the orchestrating agent's question whether Fledge may copy Microsoft's Visual C++ runtime (`vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`) into a Windows app. A gem's DLL built with Visual Studio needs it, Windows does not include it, and Microsoft's documentation limits distributing it to licensed Visual Studio users, a license Fledge cannot check; `fledge build` refused such a gem. The maintainer began: "I am not a lawyer or a MS-ecosystem dev. I have no idea what any of this means from any angle."]
+[re: between the quoted heading and these words he wrote: "I am not a lawyer or a MS-ecosystem dev. I have no idea what any of this means from any angle. But I think once I saw something related in an installer I ran on my PC maybe?"]
 
 *Governs:* where distributing a file with an app needs a right only the app's developer can hold, Fledge gives the developer a way to do it, and does not refuse the app for want of a right it cannot check; the right, and the duty to hold it, stay the developer's, as a gem's license does (2026-10-28). *Applied in:* the work to let a Windows app carry the Visual C++ runtime.
 
+> > distributing Microsoft's files
+>
 > Neither should setdef, right?
-
-[re: the orchestrating agent's remark, of whether Fledge should copy the Visual C++ runtime unasked, that a developer who never asked should not end up distributing Microsoft's files without knowing it.]
 
 *Governs:* nothing setdef publishes carries Microsoft's Visual C++ runtime: not the gem, not a runtime, not a release's files, not a fixture in the repository, and not an app that Fledge's CI builds and uploads. The files go only from a developer's own computer into that developer's own app. *Applied in:* `doc/contributors/design/gems.md`, "The Visual C++ runtime"; the tests' stand-in DLLs.
 
 > This is not the kind of thing that belongs in-repo.
 
-[re: `doc/contributors/handoff.md`, the page where agents kept where the project stands, the bugs it knows of, and what to do next, which the maintainer deleted from his checkout with these words.]
+[re: his message was the command `rm doc/contributors/handoff.md`, then a comment of these words. `doc/contributors/handoff.md` was the page where agents kept where the project stands, the bugs it knows of, and what to do next.]
 
 *Governs:* the repository holds no running account of the project's state for the next session; that is kept outside it. What a contributor needs to check or release Fledge stays in the contributor documents. *Applied in:* the removal of `doc/contributors/handoff.md`, whose checks and release steps are in CONTRIBUTING.md, "After a push" and "When CI fails", and `doc/contributors/design/releases.md`, "How a release is made"; AGENTS.md, Project.
 
@@ -520,93 +522,112 @@ The orchestrating agent received these words first-hand from the maintainer.
 
 *Governs:* an app under `examples/` is a small realistic app that does something useful, however simple; an app that exists to be checked, and only starts and exits, is a fixture under `test/`, with the integration tests. *Applied in:* the LibUI example and its fixture; the review of the other examples.
 
+## 2026-11-22
+
+The orchestrating agent received these words first-hand from the maintainer.
+
 > question G is a confusing slop storm. It seems like it was written by a lower quality model that doesn't understand the difference between Fledge's bug and somebody else's bug.
 
-[re: a question agents had put to him, 2026-11-22: whether a limit the platform itself imposes (Android cutting a process title at the length of the app's identifier; a gem that publishes no build for a platform) is a bug the candidate for 1.0.0 may not have.]
+[re: the orchestrating agent had written, as item 5 of its numbered questions, of question G: "It asks whether a limit the platform itself imposes counts as a bug the candidate may not have." His message answered its numbered items.]
 
 *Governs:* the question is withdrawn. The agents read his words so: a fault in a platform, a gem, or another project is that project's bug, not one of Fledge's known bugs, and it does not keep a release from being the candidate. Fledge's part is to show it from the other project's own documentation or source, and to say it where a developer reads. Anything Fledge itself could close is Fledge's bug. *Applied in:* `doc/contributors/design/releases.md`, "Versions"; the removal of question G from `questions.md`.
 
+> > Security updates become Fledge's duty to notice.
+>
+> This scares me. Unless it can be fully automated e.g. with GitHub Actions.
+
+> > Security updates: most of that duty exists already, and the noticing can be automated.
+>
 > I don't think we can call any version without that a release candidate, then.
 
-[re: 2026-11-22. The orchestrating agent had said that when a library inside a runtime (OpenSSL, say) gets a security fix, nothing reaches an app's users until Fledge moves a pin and releases, whoever compiled the Ruby; that noticing a newer upstream release could be automated with a scheduled GitHub Actions job; and that Fledge had no such job for the inputs it pins. Before that, of noticing security updates being Fledge's duty, he had said: "This scares me. Unless it can be fully automated e.g. with GitHub Actions."]
-
+> > automation that notices
+>
 > Not that notices. That takes care of all of it. I don't want to be pinged, I want Fledge to just... get a new release. (on the happy path)
-
-[re: the agents' first reading of the words above, that the candidate needs automation that notices a newer upstream release.]
 
 *Governs:* the candidate for 1.0.0 has automation that takes care of all of it: when an input a runtime is built from has a newer release upstream, Fledge moves the pin, proves the new runtimes in CI, and releases, with no person or agent in the loop on the happy path, and the maintainer is not pinged. A person is called only when that path fails. This governs what Fledge does with a release an upstream has made. It does not make Fledge the maker of releases its upstreams have not made: a library compiled into another project's build of Ruby (jdx/ruby's, RubyInstaller's) is as new as that project's newest build, and a lag there is a stated dependency, not a failure of this rule and not a reason for Fledge to build that Ruby itself (the entry of 2026-11-22 on trusting mise, below). *Applied in:* `doc/contributors/design/releases.md`, "Versions"; the scheduled workflow that keeps the pins current.
 
+> > One thing is yours and I've told the agent not to decide it. From 1.0, your rule is that publishing to RubyGems.org is done by a human only.
+>
 > My reading of this is that if a human decides to trust a deterministic process with it, that counts as a human decision. For example, trusting `gem push` instead of making raw HTTP requests. For another example... trusting GitHub Actions.
-
-[re: 2026-11-22. The orchestrating agent had said that his rule of 2026-11-02, that publishing to RubyGems.org is a human-only activity, left open whether a workflow may publish there when a release is made with nobody in the loop.]
 
 *Governs:* a deterministic process that the maintainer has decided to trust may publish Fledge to RubyGems.org, and that counts as the human's act: a GitHub Actions workflow, once he has set RubyGems.org to trust it. An agent still never publishes there itself, and never sets up that trust, which is done in his account. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`.
 
-> I'd be okay moving the floor to 15 for now, and maybe 26 if it becomes costly to keep it at 15.
+> > Fledge promises macOS 14.
+>
+> That's... really old. Older than I would've guessed. Older that Apple supports maybe even?
 
-[re: 2026-11-22. Told that Fledge promises macOS 14 or newer, he had said: "That's... really old. Older than I would've guessed. Older that Apple supports maybe even?"]
+> I'd be okay moving the floor to 15 for now, and maybe 26 if it becomes costly to keep it at 15.
 
 *Governs:* the oldest macOS a Fledge app runs on may be raised to 15, and to 26 if keeping 15 becomes costly. *Applied in:* `doc/contributors/design/releases.md`, "Platform floors", when the floor moves.
 
+> > Is the glibc switch fine to land before the candidate?
+>
 > Yes, and so would be switching away from rv-ruby entirely if you so judge it valuable.
-
-[re: 2026-11-22. Asked whether taking mainstream Linux's Ruby from jdx/ruby, the builds mise downloads, in place of rv-ruby, to lower the glibc floor from 2.39 to 2.17, may land before the candidate for 1.0.0.]
 
 *Governs:* the Linux Ruby's source may change before the candidate, and whether Fledge takes any Ruby from rv-ruby at all is the agents' to judge. This replaces "2.39 is fine" (2026-10-26, decision 7) as the word on the Linux floor: a lower floor is wanted where a maintained upstream gives it. *Applied in:* ADR 100.
 
+> > Expect no candidate in these six hours.
+>
 > I expect solid work towards a candidate, I am not setting a deadline. Quality! (The non-deadline hopeful date is Christmas Day, a 1.0.0 co-release with Ruby 4.1, and therefore a release candidate maybe a week beforehand)
-
-[re: 2026-11-22. The orchestrating agent had said no release that day could be the candidate, with four long items before it.]
 
 *Governs:* there is no deadline, and quality comes first. The hope, which binds nothing, is 1.0.0 on 2026-12-25 beside Ruby 4.1.0, and a candidate about a week before.
 
+> > which is how other bundlers such as PyInstaller handle it.
+>
 > As long as setdef and/or Fledge aren't taking responsibility for any kinds of licenses here, and the App Dev is making choices so they can comply with licensing, you can do it if you think it's correct. And if you do, it should probably be in 1.0.0's release candidate 0.X.y release, right?
 
-[re: 2026-11-22. On a Mac, a gem whose compiled files link a library that the developer installed with a package manager such as Homebrew is refused by `fledge build`, since the library would be missing on the computer of a person who runs the app, and a Mac has no system package manager to name it to. The orchestrating agent had recommended that Fledge copy such libraries from the developer's Mac into the app, as PyInstaller does, and asked whether to do it before 1.0.]
+[re: on a Mac, `fledge build` refuses a gem whose compiled files link a library that the developer installed with a package manager such as Homebrew, since the library would be missing on the computer of a person who runs the app. The orchestrating agent had recommended that Fledge copy such libraries from the developer's Mac into the app.]
 
 *Governs:* Fledge may carry, in a Mac app, libraries from the developer's computer that the app's gems link, when the app's developer chooses it. The choice and the licenses of what is carried are the developer's, as with the app's gems (2026-10-28); neither setdef nor Fledge takes responsibility for them. Whether to build it is the agents' to judge; if built, it is in the candidate for 1.0.0. *Applied in:* the design document for gems, when it is built.
 
 > Whatever you can do to reduce wall clock time, reduce risk of red on trunk, reduce metered usage, hasten cycle time, increase confidence, and decrease actual-real-world-regression risk is great.
 
-[re: 2026-11-22. Of CI: the per-push check took 1 to 3 minutes and the full run about an hour, and a runtime change had passed the first and broken the second.]
+[re: of CI: the per-push check took 1 to 3 minutes and the full run about an hour, and a runtime change had passed the first and broken the second.]
 
 > All that potential software AND legal complexity was answered by just... not caching? Silly to even have suggested caching, then.
 
-[re: 2026-11-22. Asked whether Fledge may publish copies of the files Gradle downloads, so that CI never needs Maven Central, the orchestrating agent had recommended against it and for relying on Gradle's own retries. The orchestrating agent read this as no, and told him so; he did not object.]
+[re: the orchestrating agent had written: "If you agree, say "no" and the next session removes K, records the decision, and builds those two items." It had recommended against publishing copies of the files Gradle downloads, and for relying on Gradle's own retries, and read his reply as no and told him so; he did not object.]
 
 *Governs:* Fledge publishes no copies of the files Gradle downloads, and keeps no pinned sets of them; CI relies on Gradle's own retries. *Applied in:* `doc/contributors/design/phone-projects.md`, "Gradle's downloads in CI".
 
+> > What's left in question I is a hypothetical
+>
 > a hypothetical is not a meaningful question
-
-[re: 2026-11-22. Asked whether Fledge should build its own Ruby for mainstream Linux if no maintained project's Ruby ran on older Linux, he was told the question concerned a situation that does not exist.]
 
 *Governs:* agents do not put a hypothetical to the maintainer; a question is about something that exists or is about to. *Applied in:* AGENTS.md, Questions.
 
+> > Nobody checked until I stumbled on it ten minutes ago
+>
 > Whenever we're adding a platform, that should be the first thing we check before building our own.
 
-[re: 2026-11-22. On learning that rv-ruby publishes musl Linux builds while Fledge builds its own. "That" is whether a maintained project already publishes a portable Ruby for the platform.]
+[re: "That" is whether a maintained project already publishes a portable Ruby for the platform. rv-ruby publishes musl Linux builds, and Fledge builds its own.]
 
 *Governs:* a standing rule: when a platform is added, the first check is whether a maintained project already publishes a portable Ruby for it, before Fledge builds one. *Applied in:* AGENTS.md, How to work.
 
+> > What it costs: apps would need macOS 26 or newer.
+>
 > What else it buys: Intel Mac is a non-decision.
 
-[re: 2026-11-22. Told that taking the Mac's Ruby from jdx/ruby, in place of rv-ruby, would cost that "apps would need macOS 26 or newer", he added this. jdx/ruby builds no Intel Mac Ruby, and rv-ruby's Intel build was the only one Fledge could have taken.]
+[re: jdx/ruby builds no Intel Mac Ruby, and rv-ruby's Intel build was the only one Fledge could have taken.]
 
 *Governs:* Fledge builds no Intel Mac apps, since no maintained project publishes an Intel Mac Ruby that Fledge takes; whether to build them is no longer a question. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "The Mac's Ruby is jdx/ruby's".
 
 > You know how to weight the costs and benefits.
 
-[re: 2026-11-22. Asked to choose between raising the macOS floor to 26, which taking the Mac's Ruby from jdx/ruby costs, and Fledge building and keeping an OpenSSL of its own for the Mac.]
+[re: asked to choose between raising the macOS floor to 26, which taking the Mac's Ruby from jdx/ruby costs, and Fledge building and keeping an OpenSSL of its own for the Mac.]
 
 *Governs:* the weighing of the macOS floor against a Fledge-built OpenSSL was the agents' to do. They chose the floor of 26, with his earlier leave to raise it ("maybe 26 if it becomes costly to keep it at 15", above). *Applied in:* ADR 100; `doc/contributors/design/releases.md`, "Platform floors".
 
 > Everybody and their brother trusts mise, but Fledge shouldn't?
+
+> > A developer who hears about a fix can upgrade their Ruby in a minute. A person who was handed an app can't.
+>
 > Even if Fledge cuts their own Rubies, a developer still relies on e.g. our GitHub Actions not being paused/buggy. They rely on a practically-unknown third party (us) or a very famous third party (mise).
 
-[re: 2026-11-22. The first sentence followed the orchestrating agent's statement that it had decided Fledge would build Ruby itself for mainstream Linux and macOS. The second answered the orchestrating agent's "A developer who hears about a fix can upgrade their Ruby in a minute. A person who was handed an app can't." The agent had found that jdx/ruby, the project whose prebuilt Rubies mise downloads and whose Ruby Fledge's macOS and glibc Linux runtimes take, compiles in OpenSSL 3.5.5 where OpenSSL's newest 3.5 release was 3.5.9, and that nothing in that project updates its libraries by itself.]
+[re: the orchestrating agent had found that jdx/ruby, the project whose prebuilt Rubies mise downloads and whose Ruby Fledge's macOS and glibc Linux runtimes take, compiles in OpenSSL 3.5.5 where OpenSSL's newest 3.5 release was 3.5.9, and that nothing in that project updates its libraries by itself.]
 
+> > Fledge's automation must carry every update that reaches it
+>
 > Isn't that what I said in the first place?
-
-[re: 2026-11-22. Answering the orchestrating agent's "Fledge's automation must carry every update that reaches it". The agent had gone on to say, in its own further words, that the automation need not produce updates its upstreams have not made.]
 
 *Governs:* Fledge takes its macOS and glibc Linux Ruby from jdx/ruby and does not build its own for them because that project's libraries lag. Depending on a widely used project is preferred to depending on Fledge's own unproven build automation. The lag is a stated dependency, the same every mise user has. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "Why Fledge builds no Ruby for macOS and glibc Linux".

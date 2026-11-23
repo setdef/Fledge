@@ -40,6 +40,49 @@ class LinkageTest < Minitest::Test
 ], linux
   end
 
+  # A file that needs several libraries nothing provides is one entry,
+  # naming the gem and the file once, then the libraries, and the
+  # advice once, as the same file needs every one of them rebuilt.
+  def test_a_file_that_needs_several_unprovided_libraries_is_one_refusal
+    linux = problems("linux", { "lib/ext.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2 libpq.so.5 libyaml-0.so.2]) })
+    assert_equal [
+"linked 1.0.0's lib/ext.so needs libxml2.so.2, libpq.so.5, and libyaml-0.so.2, which neither linux, nor Fledge's " \
+  "runtime, nor the gem itself provides, so the app could not load them on another computer. Build the gem so that it " \
+  "carries the libraries, or links them statically, or, when every computer the app goes to has them from its Linux " \
+  "distribution, list them in fledge.yml as linux: { system_libraries: [libxml2.so.2, libpq.so.5, libyaml-0.so.2] }.",
+], linux
+
+    two = problems("linux", { "lib/ext.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2 libpq.so.5]) })
+    assert_equal 1, two.size
+    assert_includes two.first, "needs libxml2.so.2 and libpq.so.5, which"
+
+    other = problems("linux", {
+      "lib/a.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2 libpq.so.5]),
+      "lib/b.so" => Binaries.elf(needed: %w[libc.so.6 libpq.so.5]),
+    })
+    assert_equal 2, other.size
+  end
+
+  def test_the_same_goes_for_dlls_and_an_androids_libraries
+    windows = problems("windows", { "lib/ext.so" => Binaries.pe(needed: %w[KERNEL32.dll libxml2-16.dll libgmp-10.dll]) })
+    assert_equal 1, windows.size
+    assert_includes windows.first, "lib/ext.so needs libxml2-16.dll and libgmp-10.dll, which neither windows"
+
+    android = problems("android", { "ext/libheld.so" => Binaries.elf(needed: %w[libc.so.6 libxml2.so.2 libSDL3.so]) })
+    assert_equal 2, android.size
+    assert_includes android.first, "ext/libheld.so needs libc.so.6 and libxml2.so.2, which neither Android"
+    assert_includes android.last, "ext/libheld.so needs libSDL3.so, which neither Android"
+    assert_includes android.last, "android: { host_libraries: [libSDL3.so] }"
+  end
+
+  def test_the_visual_c_runtime_is_one_refusal_for_a_file_and_not_mixed_with_other_dlls
+    dll = Binaries.pe(needed: %w[KERNEL32.dll MSVCP140.dll VCRUNTIME140.dll libgmp-10.dll])
+    found = problems("windows", { "vendor/libui.x64.dll" => dll })
+    assert_equal 2, found.size
+    assert_includes found.first, "vendor/libui.x64.dll needs MSVCP140.dll and VCRUNTIME140.dll, of Microsoft's Visual C++ runtime"
+    assert_includes found.last, "vendor/libui.x64.dll needs libgmp-10.dll, which neither windows"
+  end
+
   # A library the project lists as its gems' to load from the Linux
   # distribution may be needed, on glibc's Linux and musl's,
   # and every other still keeps a gem from shipping.
@@ -206,7 +249,7 @@ class LinkageTest < Minitest::Test
     dll = Binaries.pe(needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll])
     %w[windows windows-arm64].each do |os|
       unprovided = problems(os, { "vendor/libui.x64.dll" => dll }).map { |problem| problem[/needs (\S+),/, 1] }
-      assert_equal %w[MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll], unprovided, os
+      assert_equal ["MSVCP140.dll"], unprovided, os
     end
   end
 
@@ -216,13 +259,13 @@ class LinkageTest < Minitest::Test
   def test_the_refusal_names_the_visual_c_runtime_and_the_key_that_ships_it
     dll = Binaries.pe(needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll])
     found = problems("windows", { "vendor/libui.x64.dll" => dll })
-    assert_equal %w[MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll], found.map { |text| text[/needs (\S+),/, 1] }
-    assert_equal "linked 1.0.0's vendor/libui.x64.dll needs VCRUNTIME140.dll, of Microsoft's Visual C++ runtime, which Windows does " \
-      "not include, so the app could not load it on a computer without the Visual C++ Redistributable. Set windows: " \
+    assert_equal 1, found.size
+    assert_equal "linked 1.0.0's vendor/libui.x64.dll needs MSVCP140.dll, VCRUNTIME140.dll, and VCRUNTIME140_1.dll, of Microsoft's Visual C++ runtime, which Windows does " \
+      "not include, so the app could not load them on a computer without the Visual C++ Redistributable. Set windows: " \
       "{ visual_c_runtime: local } in fledge.yml to copy the runtime from this computer into the app, if you may distribute it " \
       "(Microsoft limits that to licensed Visual Studio users), or windows: { visual_c_runtime: central } if every computer the " \
       "app goes to has the Redistributable; or use a build of the gem that links the runtime statically (/MT).",
-      found[1]
+      found.first
   end
 
   # With either way chosen the runtime's DLLs are no gem's problem: the
@@ -257,11 +300,11 @@ class LinkageTest < Minitest::Test
     android = problems("android", {
       "ext/x86_64-linux/libheld.so" => Binaries.elf(needed: %w[libc.so.6 libcrypt.so.2 libxml2.so.2 libown.so]),
     }, provided: %w[libfledgeruby.so libcrypt.so.2 libown.so])
-    assert_equal %w[libc.so.6 libxml2.so.2].map { |library|
-      "linked 1.0.0's ext/x86_64-linux/libheld.so needs #{library}, which neither Android, nor Fledge's runtime, nor the app's " \
-        "own native libraries provide, so the app could not load it on a phone. Build the gem so that it carries the library, " \
-        "or links it statically."
-    }, android
+    assert_equal [
+      "linked 1.0.0's ext/x86_64-linux/libheld.so needs libc.so.6 and libxml2.so.2, which neither Android, nor Fledge's runtime, " \
+        "nor the app's own native libraries provide, so the app could not load them on a phone. Build the gem so that it carries " \
+        "the libraries, or links them statically.",
+    ], android
   end
 
   # raylib-bindings carries libraylib as lib/libraylib.x86_64.so, whose

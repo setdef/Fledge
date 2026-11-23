@@ -3,6 +3,15 @@
 
 module Fledge
   class Linkage
+    class Carried < Data
+      attr_reader library: String
+      attr_reader copies: Array[String]
+      attr_reader searched: Array[String]
+      attr_reader folder: String
+
+      def self.new: (String library, Array[String] copies, Array[String] searched, String folder) -> instance
+    end
+
     SYSTEM_LIBRARIES: Hash[String, Array[Regexp]]
     WINDOWS_DLLS: String
     SYSTEM_DLLS: Hash[String, Set[String]]
@@ -37,17 +46,27 @@ module Fledge
 
     private def system?: (String library) -> bool
 
-    private def unprovided: (String label, String path, String library) -> String?
+    private def unprovided: (String library) -> [Symbol, String]?
+
+    private def list: (Array[String] names) -> String
+
+    private def refuse_unprovided: (String label, String path, Array[String] libraries) -> String
 
     private def glibc_need: (Binary binary) -> String?
 
     private def built_for_glibc: (String label, String path, String library) -> String
 
-    private def android_unprovided: (String label, String path, String library) -> String
+    private def refuse_android: (String label, String path, Array[String] libraries) -> String
 
-    private def visual_c: (String label, String path, String library) -> String?
+    private def refuse_android_host: (String label, String path, Array[String] libraries) -> String
 
-    private def unreached: (String label, String path, String library, Dyld dyld, Array[String] paths) -> String?
+    private def refuse_visual_c: (String label, String path, Array[String] libraries) -> String
+
+    private def unreached: (String path, String library, Dyld dyld, Array[String] paths) -> [Symbol, Carried]?
+
+    private def refuse_unreached: (String label, String path, Array[Carried] found) -> String
+
+    private def refuse_unplaced: (String label, String path, Array[Carried] found) -> String
 
     private def loader_path: (String path, String target) -> String
   end

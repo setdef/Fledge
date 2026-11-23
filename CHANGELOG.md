@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `fledge build`'s refusal of a compiled file that needs several libraries nothing provides is one entry naming the gem and the file once, then the libraries, not one line for each, on every system.
 - An app's `notices/NOTICES.txt` is headed "The Fledge runtime in this app", not "Third-party software in this app", and says that the app's own code and gems are not listed.
 - A gem refused because it does not run on the runtime's Ruby names the way out: re-lock it with `bundle update` on that Ruby.
 - A gem whose extension fails to compile shows its build output and a sentence naming the gem, with no Ruby backtrace of Fledge's compile script.

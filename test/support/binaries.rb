@@ -115,6 +115,12 @@ needed: [
     { format: "elf", cpu: "aarch64", needed: %w[libc.so.6], versions: %w[GLIBC_2.17 GLIBC_2.41] },
     { format: "macho", cpu: "x86_64", needed: [], minos: "15.0" },
     { format: "elf", cpu: "aarch64", needed: %w[libz.so.1 libc.so.6] },
+    { format: "elf", needed: %w[libc.so.6 libxml2.so.2 libpq.so.5 libyaml-0.so.2] },
+    { format: "elf", needed: %w[libc.so.6 libxml2.so.2 libpq.so.5] },
+    { format: "elf", needed: %w[libc.so.6 libpq.so.5] },
+    { format: "elf", needed: %w[libc.so.6 libxml2.so.2 libSDL3.so] },
+    { format: "pe", needed: %w[KERNEL32.dll libxml2-16.dll libgmp-10.dll] },
+    { format: "pe", needed: %w[KERNEL32.dll MSVCP140.dll VCRUNTIME140.dll libgmp-10.dll] },
   ].freeze
 
   # The processor each format's files are for unless a spec names

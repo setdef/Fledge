@@ -620,11 +620,9 @@ class MobileBuildTest < Minitest::Test
 
     assert_equal [
       "Hello can't ship for android:",
-      *%w[libc.so.6 libxml2.so.2].map { |library|
-        "  llhttp-ffi's ext/x86_64-linux/libllhttp-ext.so needs #{library}, which neither Android, nor Fledge's runtime, nor the " \
-          "app's own native libraries provide, so the app could not load it on a phone. Build the gem so that it carries the " \
-          "library, or links it statically."
-      },
+      "  llhttp-ffi's ext/x86_64-linux/libllhttp-ext.so needs libc.so.6 and libxml2.so.2, which neither Android, nor Fledge's " \
+        "runtime, nor the app's own native libraries provide, so the app could not load them on a phone. Build the gem so that " \
+        "it carries the libraries, or links them statically.",
     ], error.message.lines.map(&:chomp)
     refute_path_exists File.join(@dir, "dist", "Hello-android")
 
@@ -653,10 +651,11 @@ class MobileBuildTest < Minitest::Test
 
     assert_equal [
       "Hello can't ship for android:",
-      *[%w[lib/libdrawn.aarch64.so libc.so.6], %w[lib/libdrawn.aarch64.so libGLX.so.0], %w[lib/libdrawn.x86_64.so libc.so.6]].map { |file, library|
-        "  drawn 1.0.0's #{file} needs #{library}, which neither Android, nor Fledge's runtime, nor the app's own native libraries " \
-          "provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically."
-      },
+      "  drawn 1.0.0's lib/libdrawn.aarch64.so needs libc.so.6 and libGLX.so.0, which neither Android, nor Fledge's runtime, nor the " \
+        "app's own native libraries provide, so the app could not load them on a phone. Build the gem so that it carries the " \
+        "libraries, or links them statically.",
+      "  drawn 1.0.0's lib/libdrawn.x86_64.so needs libc.so.6, which neither Android, nor Fledge's runtime, nor the app's own native " \
+        "libraries provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically.",
     ], error.message.lines.map(&:chomp)
 
     project = android_project_with_gem_files(gem, "drawn 1.0.0", { "lib/libdrawn.x86_64.so" => Binaries.elf(needed: %w[libc.so]) })

@@ -140,6 +140,13 @@ module Fledge
       "linux" => :elf, "linux-musl" => :elf, "android" => :elf, "darwin" => :macho, "windows" => :pe, "windows-arm64" => :pe
     }.freeze
 
+    # A library a file names that the gem carries, for a refusal: the
+    # name, where the gem carries it, the run paths the file has, and the
+    # folder one would have to lead to (empty for a name relative to the
+    # file).
+    class Carried < Data.define(:library, :copies, :searched, :folder)
+    end
+
     # Creates the check.
     #
     # [os] The operating system the app is for (Fledge::Platform#os).
@@ -195,7 +202,9 @@ module Fledge
 
     # Why the gem whose files are +files+ (paths relative to its folder,
     # and their bytes), named +label+, would not load where the app goes,
-    # one sentence each, or none.
+    # one sentence for each file and each way it would fail, which
+    # names the file once and every library that fails that way, or
+    # none.
     #
     # A file that needs another Ruby's DLL is built for that Ruby, as a
     # gem precompiled for several Ruby versions ships one file for each
@@ -231,13 +240,14 @@ module Fledge
         glibc = glibc_need(binary)
         next [built_for_glibc(label, path, glibc)] if glibc
 
-        binary.needed.reject { |library| system?(library) }.filter_map do |library|
+        refusals = binary.needed.reject { |library| system?(library) }.filter_map do |library|
           if !shipped.include?(File.basename(library).downcase)
-            unprovided(label, path, library) unless loaded_by_name?(library, loaded)
+            unprovided(library) unless loaded_by_name?(library, loaded)
           elsif dyld && !@provided.map(&:downcase).include?(File.basename(library).downcase)
-            unreached(label, path, library, dyld, binaries.keys)
+            unreached(path, library, dyld, binaries.keys)
           end
         end
+        refusals.group_by(&:first).map { |kind, found| __send__(kind, label, path, found.map(&:last)) }
       end
     end
 
@@ -303,30 +313,52 @@ module Fledge
       @dlls.include?(library.downcase) || @system.any? { |pattern| pattern.match?(library) }
     end
 
-    # Why the file at +path+ would not load +library+, which nothing
-    # provides, or +nil+ when the project listed it as the Linux
-    # distribution's (Config::Linux), or as one the macOS app carries
-    # (Config::Macos).
-    private def unprovided(label, path, library)
+    # How the file would fail to load +library+, which nothing provides:
+    # the name of the method that words the refusal and the library, or
+    # +nil+ when the project listed it as the Linux distribution's
+    # (Config::Linux), as one the macOS app carries (Config::Macos), or
+    # as a library of the Visual C++ runtime whose way into the app the
+    # project chose, which #visual_c_libraries then names.
+    private def unprovided(library)
       if @declared.include?(library)
         @needed |= [library]
         return
       end
       return if @carried.include?(File.basename(library))
 
-      return android_unprovided(label, path, library) if @os == "android"
+      return [library.match?(Config::Phone::LIBRARY) ? :refuse_android_host : :refuse_android, library] if @os == "android"
 
-      return visual_c(label, path, library) if library.match?(VISUAL_C_RUNTIME)
+      if library.match?(VISUAL_C_RUNTIME)
+        @visual_c << library if @visual_c_runtime
+        return @visual_c_runtime ? nil : [:refuse_visual_c, library]
+      end
 
-      problem = "#{label}'s #{path} needs #{library}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \
-        "the app could not load it on another computer. Build the gem so that it carries the library, or links it statically"
+      [:refuse_unprovided, library]
+    end
+
+    # "a", "a and b", or "a, b, and c".
+    private def list(names)
+      return names.first.to_s if names.one?
+
+      (names.size == 2) ? names.join(" and ") : "#{names.first(names.size - 1).join(', ')}, and #{names.last}"
+    end
+
+    # Why the file at +path+ would not load +libraries+, which nothing
+    # provides: one refusal for the file, which names the gem and the
+    # file once, since its advice is the same for every library.
+    private def refuse_unprovided(label, path, libraries)
+      them = libraries.one? ? "it" : "them"
+      problem = "#{label}'s #{path} needs #{list(libraries)}, which neither #{@os}, nor Fledge's runtime, nor the gem itself provides, so " \
+        "the app could not load #{them} on another computer. Build the gem so that it carries " \
+        "#{libraries.one? ? 'the library' : 'the libraries'}, or links #{them} statically"
       case FORMATS.fetch(@os)
       when :elf
-        "#{problem}, or, when every computer the app goes to has it from its Linux distribution, list it in fledge.yml as " \
-          "linux: { system_libraries: [#{library}] }."
+        "#{problem}, or, when every computer the app goes to has #{them} from its Linux distribution, list " \
+          "#{them} in fledge.yml as linux: { system_libraries: [#{libraries.join(', ')}] }."
       when :macho
-        "#{problem}, or, if you may distribute it, list it in fledge.yml as macos: { carried_libraries: [#{File.basename(library)}] } " \
-          "to have the app carry it from this computer."
+        "#{problem}, or, if you may distribute #{them}, list #{them} in fledge.yml as macos: " \
+          "{ carried_libraries: [#{libraries.map { |library| File.basename(library) }.join(', ')}] } to have the app carry " \
+          "#{them} from this computer."
       else "#{problem}."
       end
     end
@@ -354,56 +386,73 @@ module Fledge
         "install the gem from its source, with force_ruby_platform: true on its line in the Gemfile."
     end
 
-    # Why the file at +path+ would not load +library+ on an Android phone,
-    # naming the key by which the project lists it as its host's
-    # (Config::Phone#host_libraries) when it is a name a host's library
-    # could have there (Config::Phone::LIBRARY), and not glibc's
-    # <tt>libc.so.6</tt>, say, which no host can add.
-    private def android_unprovided(label, path, library)
-      problem = "#{label}'s #{path} needs #{library}, which neither Android, nor Fledge's runtime, nor the app's own native " \
-        "libraries provide, so the app could not load it on a phone. Build the gem so that it carries the library, or links it statically"
-      return "#{problem}." unless library.match?(Config::Phone::LIBRARY)
-
-      "#{problem}, or, when the app's host adds it through its own Gradle dependencies, list it in fledge.yml as " \
-        "android: { host_libraries: [#{library}] }."
+    # Why the file at +path+ would not load +libraries+ on an Android
+    # phone, for the names no host's library could have there (not
+    # glibc's <tt>libc.so.6</tt>, say, which no host can add).
+    private def refuse_android(label, path, libraries)
+      them = libraries.one? ? "it" : "them"
+      "#{label}'s #{path} needs #{list(libraries)}, which neither Android, nor Fledge's runtime, nor the app's own native " \
+        "libraries provide, so the app could not load #{them} on a phone. Build the gem so that it carries " \
+        "#{libraries.one? ? 'the library' : 'the libraries'}, or links #{them} statically."
     end
 
-    # Why the file at +path+ would not load +library+, a DLL of the Visual
-    # C++ runtime, or +nil+ when the project chose how the app comes by
-    # it, which #visual_c_libraries then names.
-    private def visual_c(label, path, library)
-      if @visual_c_runtime
-        @visual_c << library
-        return
-      end
-
-      "#{label}'s #{path} needs #{library}, of Microsoft's Visual C++ runtime, which Windows does not include, so the app could " \
-        "not load it on a computer without the Visual C++ Redistributable. Set windows: { visual_c_runtime: local } in fledge.yml " \
-        "to copy the runtime from this computer into the app, if you may distribute it (Microsoft limits that to licensed Visual " \
-        "Studio users), or windows: { visual_c_runtime: central } if every computer the app goes to has the Redistributable; or " \
-        "use a build of the gem that links the runtime statically (/MT)."
+    # As #refuse_android, for names a host's library could have there
+    # (Config::Phone::LIBRARY), with the key by which the project lists
+    # them as its host's (Config::Phone#host_libraries).
+    private def refuse_android_host(label, path, libraries)
+      them = libraries.one? ? "it" : "them"
+      refuse_android(label, path, libraries).delete_suffix(".") + ", or, when the app's host adds #{them} through " \
+        "its own Gradle dependencies, list #{them} in fledge.yml as android: { host_libraries: [#{libraries.join(', ')}] }."
     end
 
-    # Why dyld would not find +library+, which the file at +path+ names
-    # and the gem carries among +paths+, or +nil+ when it would, or when
-    # where it looks depends on where the gem sits in the app
+    # Why the file at +path+ would not load +libraries+, DLLs of the
+    # Visual C++ runtime, when the project chose no way for the app to
+    # come by them.
+    private def refuse_visual_c(label, path, libraries)
+      "#{label}'s #{path} needs #{list(libraries)}, of Microsoft's Visual C++ runtime, which Windows does not include, so the app could " \
+        "not load #{libraries.one? ? 'it' : 'them'} on a computer without the Visual C++ Redistributable. Set windows: " \
+        "{ visual_c_runtime: local } in fledge.yml to copy the runtime from this computer into the app, if you may distribute it " \
+        "(Microsoft limits that to licensed Visual Studio users), or windows: { visual_c_runtime: central } if every computer the " \
+        "app goes to has the Redistributable; or use a build of the gem that links the runtime statically (/MT)."
+    end
+
+    # How dyld would not find +library+, which the file at +path+ names
+    # and the gem carries among +paths+: the name of the method that
+    # words the refusal and what it needs, or +nil+ when dyld would find
+    # it, or when where it looks depends on where the gem sits in the app
     # (Fledge::Linkage::Dyld).
-    private def unreached(label, path, library, dyld, paths)
+    private def unreached(path, library, dyld, paths)
       return unless Dyld.relative?(library) && dyld.resolve(path, library).nil?
 
       copies = paths.select { |copy| File.basename(copy).casecmp?(File.basename(library)) }
-      if library.start_with?("@rpath/")
-        searched = dyld.run_paths(path)
-        folder = copies.first.to_s.delete_suffix("/#{library.delete_prefix('@rpath/')}")
-        "#{label}'s #{path} needs #{library}, which the gem carries at #{copies.join(', ')}, but none of the run paths dyld would " \
-          "search for it (#{searched.empty? ? 'it has none' : searched.join(', ')}) leads there, so the app could not load it on " \
-          "another computer. Give the file a run path that does, such as #{loader_path(path, folder)} (install_name_tool -add_rpath), " \
-          "or build the gem so that it has one."
-      else
-        "#{label}'s #{path} needs #{library}, which is not there: the gem carries #{File.basename(library)} at #{copies.join(', ')}, " \
-          "so the app could not load it on another computer. Build the gem so that the file names the library where it is, such as " \
-          "#{loader_path(path, copies.first.to_s)}."
-      end
+      return [:refuse_unplaced, Carried.new(library, copies, [], "")] unless library.start_with?("@rpath/")
+
+      folder = copies.first.to_s.delete_suffix("/#{library.delete_prefix('@rpath/')}")
+      [:refuse_unreached, Carried.new(library, copies, dyld.run_paths(path), folder)]
+    end
+
+    # Why dyld would not search where the gem carries +found+: for each,
+    # the library the file at +path+ names by <tt>@rpath/</tt>, where
+    # the gem carries it, the run paths the file has, and the folder one
+    # would have to lead to.
+    private def refuse_unreached(label, path, found)
+      searched = found.first.searched
+      them = found.one? ? "it" : "them"
+      "#{label}'s #{path} needs #{list(found.map(&:library))}, which the gem carries at #{found.flat_map(&:copies).join(', ')}, but " \
+        "none of the run paths dyld would search for #{them} (#{searched.empty? ? 'it has none' : searched.join(', ')}) " \
+        "leads there, so the app could not load #{them} on another computer. Give the file a run path that does, such " \
+        "as #{list(found.map { |entry| loader_path(path, entry.folder) }.uniq)} (install_name_tool -add_rpath), or build the gem so that it has one."
+    end
+
+    # Why dyld would not find +found+: for each, the library the file at
+    # +path+ names relative to itself and where the gem carries it.
+    private def refuse_unplaced(label, path, found)
+      many = found.size > 1
+      carried = found.map { |entry| "#{File.basename(entry.library)} at #{entry.copies.join(', ')}" }
+      "#{label}'s #{path} needs #{list(found.map(&:library))}, which #{many ? 'are' : 'is'} not there: the gem carries " \
+        "#{list(carried)}, so the app could not load #{many ? 'them' : 'it'} on another computer. Build the gem so that the file names " \
+        "#{many ? 'them' : 'the library'} where #{many ? 'they are' : 'it is'}, such as " \
+        "#{list(found.map { |entry| loader_path(path, entry.copies.first.to_s) })}."
     end
 
     # +target+, a path in the gem's folder, as the file at +path+ reaches

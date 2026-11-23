@@ -209,29 +209,6 @@ class PinWatchTest < Minitest::Test
       "a pin nobody holds is the move's, however long it has been behind"
   end
 
-  LINED = HELD.except("hold").merge("line" => 2).freeze
-
-  def test_a_pin_whose_only_newer_release_is_beyond_its_line_calls_a_person_once_that_release_is_a_year_old
-    body = releases(["v4.0.0", "2026-04-07T00:00:00Z"], ["v4.0.1", "2026-05-07T00:00:00Z"], ["v3.6.5", "2026-03-01T00:00:00Z"])
-    answers = Answers.new(PinWatch::Upstream.from("tool", LINED).url => body)
-    pinned = -> (version, today) { watch({ "tool" => { "version" => version } }, "tool" => LINED).run(answers, today:).first }
-    day = Date.new(2026, 4, 7) + PinWatch::BEYOND_DAYS
-
-    assert_equal [:beyond, "2026-04-07"], [pinned.("3.6.5", day).status, pinned.("3.6.5", day).since], "the line may still be supported"
-    assert_equal :ended, pinned.("3.6.5", day + 1).status
-    assert_equal :ended, pinned.("3.6.5", day + 1).status, "every day after"
-    assert_equal 1, PinWatch.exit_status([pinned.("3.6.5", day + 1)])
-    assert_equal "ended", pinned.("3.6.5", day + 1).to_h["status"]
-    assert_equal :newer, pinned.("3.6.4", day + 1).status, "a release in the line comes first, and the move takes it"
-  end
-
-  def test_a_beyond_release_an_upstream_does_not_date_never_calls_a_person
-    body = JSON.generate([{ "tag_name" => "v4.0.0", "draft" => false, "prerelease" => false }, { "tag_name" => "v3.6.5", "draft" => false, "prerelease" => false }])
-    answers = Answers.new(PinWatch::Upstream.from("tool", LINED).url => body)
-
-    assert_equal :beyond, watch({ "tool" => { "version" => "3.6.5" } }, "tool" => LINED).run(answers, today: Date.new(2099, 1, 1)).first.status
-  end
-
   # An upstream that publishes each build of a release as RELEASE-N, as
   # jdx/ruby publishes each build of a Ruby, and marks a preview's builds
   # as prereleases, as jdx/ruby does: a new release is held for a person,

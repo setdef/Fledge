@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 This file records what the maintainer has said, word for word, and nothing else. It is the source of truth for "what the maintainer decided." Everything else in this repository (the ADRs, the plans, the help header, the error messages, the layouts, this file's notes) was written by agents, and agents may change it, as long as it stays true to what is quoted here (AGENTS.md, Provenance).
 
-Each quotation is followed by a note, written by an agent, of what it governs and where it is applied. When he quoted a sentence with `>`, that sentence is part of his words: it is kept inside the quotation, exactly as he typed it, above his answer. A "[re:" line says only what that does not, and keeps an agent's account apart from his words. When a quotation and a note disagree, the quotation wins. When a quotation seems to conflict with another, or is ambiguous, ask in `questions.md`; never guess.
+His words are the blockquotes. When he quoted a sentence with `>`, that sentence is part of his words, kept inside the quotation exactly as he typed it. Under a quotation, an agent notes what it governs and where it is applied, and a "[re:" line says what his words refer to when they do not say. When a quotation and a note disagree, the quotation wins. When a quotation seems to conflict with another, or is ambiguous, ask in `questions.md`; never guess.
 
 ## From the original session
 
@@ -16,19 +16,19 @@ The project was started with these directions, given in prose rather than as a n
 
 > Fledge is requested.
 
-*Governs:* how every piece of work here comes to exist, and the `Provenance: requested` trailer on every commit. *Applied in:* AGENTS.md, Provenance.
+*Governs:* how every piece of work here comes to exist. *Applied in:* AGENTS.md, Provenance.
 
 > Agents may push to trunk.
 
-*Governs:* where agents put their work. *Applied in:* AGENTS.md, Committing. Extended by decision 6 below.
+*Governs:* where agents put their work. *Applied in:* AGENTS.md, Committing.
 
 > Never publish to RubyGems.org.
 
-*Governs:* the gem's distribution, forever. *Applied in:* AGENTS.md, Releasing; `fledge.gemspec`'s `allowed_push_host`; `doc/contributors/design/releases.md`, "Where releases are".
+*Governs:* agents never publish the gem to RubyGems.org. *Applied in:* AGENTS.md, Releasing; `fledge.gemspec`'s `allowed_push_host`; `doc/contributors/design/releases.md`, "Where releases are".
 
 > The walking skeleton must walk on macOS, Windows, and Linux.
 
-*Governs:* the scope of Plan 001 and the Delivery jobs. *Applied in:* Plan 001; `.github/workflows/ci.yml`.
+*Governs:* the scope of the first plan. *Applied in:* Plan 001; `.github/workflows/ci.yml`.
 
 > High quality, tests, linters.
 
@@ -40,19 +40,19 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 2. What are the other options? [re: "an app is a folder with a main.rb" — still open]
 
-*Governs:* nothing yet; the maintainer asked a question back. *Applied in:* `questions.md`, entry A. The current layout (a folder with a `main.rb`) stays until it is answered.
+*Governs:* nothing; he asked a question back, which the first reply below answers.
 
 > 3. None at all, for now. I'll tackle Provenance before releasing 1.0. [re: the provenance statement under exe/fledge's help header]
 
-*Governs:* `exe/fledge` carries no provenance statement. Commits still carry the `Provenance: requested` trailer, which is AGENTS.md's process, not a statement in the product. *Applied in:* `exe/fledge`; `test/cli_test.rb`.
+*Governs:* `exe/fledge` carries no provenance statement. *Applied in:* `exe/fledge`; `test/cli_test.rb`.
 
 > 4. What is the GNU standard? What is the Unix standard? What would Windows users expect? [re: -V and bare-fledge behavior]
 
-*Governs:* the maintainer asked that agents follow the standards rather than ask (see decision 16). *Applied in:* `doc/contributors/design/public-interface.md`, "The command's conventions" (`-h`, `-?`, `--help`, `-v`, `--version`; exit status 2 for usage errors).
+*Governs:* agents follow the standards rather than ask (see decision 16). *Applied in:* `doc/contributors/design/public-interface.md`, "The command's conventions".
 
 > 5. You invented the help header, so that's a problem you created. My instinct is to use the app's primary class/module's name, like MyCoolApp. [re: NAME in dist/NAME-PLATFORM — depends on #2, still open]
 
-*Governs:* where NAME comes from, once decision 2 is settled. *Applied in:* `questions.md`, entry B. NAME stays the app folder's name until then.
+*Governs:* his instinct is that NAME is the app's primary class or module name.
 
 > 6. Before the release of 1.0, you may push to trunk and you may create and push tags and you may create github releases, but you may not release to rubygems.
 
@@ -64,19 +64,19 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 8. Because of what I said re: #1, we must be VERY careful to be able to let app devs _not_ be copyleft-laden when they pay for a commercial license.
 
-*Governs:* the license of everything Fledge itself copies into an app, its runtime: no third-party component may leave an app's developer with copyleft obligations beyond notices. It stands on its own since 2026-11-07, when Fledge itself became MIT ("#1" and the commercial license it names are gone). It does not reach the app's own gems, which the 2026-10-28 reply leaves to the app's developer. *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe, from CI."
+*Governs:* no third-party component of a runtime may leave an app's developer with copyleft obligations beyond notices; since 2026-11-07, when Fledge became MIT, it stands without "#1" and the commercial license, and it does not reach the app's own gems (2026-10-28). *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe, from CI."
 
 > 9. When using fledge, your ruby source code should be able to be identical to how it was without Fledge, so the things you had to `require` before you can still need the app dev to `require`, but the things you didn't have to `require` before the app dev still shouldn't have to require.
 
-*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 081; `doc/contributors/design/runtimes.md`, "What a runtime keeps"; the parity check (`tasks/parity.rb`, run in CI on every platform); `RuntimeBuilder` keeping every default and bundled gem.
+*Governs:* what a runtime ships and what the launcher does to Ruby's state. *Applied in:* ADR 081; `doc/contributors/design/runtimes.md`, "What a runtime keeps"; `tasks/parity.rb`.
 
 > 10. All the ruby globals should be non-surprising to app devs, for the same motivation as #9.
 
-*Governs:* `$0`, `$LOAD_PATH`, `$LOADED_FEATURES`, and every other global an app sees. *Applied in:* ADR 081; the launcher (no `-I`, no `--yjit`); the parity check.
+*Governs:* `$0`, `$LOAD_PATH`, `$LOADED_FEATURES`, and every other global an app sees. *Applied in:* ADR 081; `tasks/parity.rb`.
 
 > 11. I don't understand what I'd be deciding here. [re: restoring the person's own RUBY*/GEM*/BUNDLE* env for child processes — orchestrator is explaining; still open]
 
-*Governs:* nothing yet. *Applied in:* `questions.md`, entry C, which tracks the follow-up. The launcher now restores the person's environment after Ruby boots, as the orchestrating agent directed (`doc/contributors/design/launcher.md`, "Hiding and restoring the person's Ruby settings").
+*Governs:* nothing; the next section answers it.
 
 > 12. Many CI platforms only run on musl for Linux, so I'd like to support it eventually, but it's not a blocker to continuing to iterate. It may be a blocker to 1.0 though.
 
@@ -84,23 +84,23 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 13. Again, you invented the help header. Recall the difference between what _I've said_ vs. what's on disk. You need _me_ to second-guess _me_, but you don't need _me_ to second-guess _yourself_.
 
-*Governs:* the `fledge build` surface is the agents' to decide. *Applied in:* AGENTS.md, Questions; `doc/contributors/design/public-interface.md`, "The command's conventions".
+*Governs:* the `fledge build` surface is the agents' to decide. *Applied in:* AGENTS.md, Questions.
 
 > 14. You wrote the ADRs. Recall the difference between what _I've said_ vs. what's on disk. me/me vs. me/yourself
 
-*Governs:* ADR content is the agents' to decide and change. *Applied in:* AGENTS.md, Questions; `doc/contributors/design/releases.md`, "The pins" (how a version pins its runtimes).
+*Governs:* ADR content is the agents' to decide and change. *Applied in:* AGENTS.md, Questions.
 
 > 15. You wrote the plans. Recall the difference between what _I've said_ vs. what's on disk. me/me vs. me/yourself
 
-*Governs:* plan content is the agents' to decide and change. *Applied in:* AGENTS.md, Questions; Plan 001 (what hello prints).
+*Governs:* plan content is the agents' to decide and change. *Applied in:* AGENTS.md, Questions.
 
 > 16. Why is this something I should decide? Isn't this something where there's prior art or an industry standard we can/should follow?
 
-*Governs:* behavior with prior art or a standard is the agents' to decide, citing it. *Applied in:* AGENTS.md, Questions; `doc/contributors/design/public-interface.md`, "The command's conventions"; `doc/contributors/design/launcher.md`, "Messages and exit statuses" (launcher errors follow `ruby:` messages and sysexits.h).
+*Governs:* behavior with prior art or a standard is the agents' to decide, citing it. *Applied in:* AGENTS.md, Questions; `doc/contributors/design/launcher.md`, "Messages and exit statuses".
 
 > 17. Ideally, fledge developers should have the option to make it so Windows/macOS don't block the use of the app. But not every app dev will have the done the required ceremony with Microsoft and/or Apple.
 
-*Governs:* code signing and notarization: an option for developers who have the credentials, with unsigned builds still working. *Applied in:* Plan 002, "Signing and notarization."
+*Governs:* code signing and notarization are an option for developers who have the credentials, with unsigned builds still working. *Applied in:* Plan 002, "Signing and notarization."
 
 > 18. Would this affect what shows up in the taskbar? task manager? start menu? desktop icons? app window top-left corner and/or title bar? If so, app devs need to be able to control it.
 
@@ -108,23 +108,23 @@ Answers to the numbered entries of an earlier `questions.md`. Each answer names,
 
 > 19. I don't understand what I'd be deciding here. [re: RubyInstaller signing key expiry — agents own this]
 
-*Governs:* the RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "The RubyInstaller signing key"; `runtime/sources.yml`.
+*Governs:* the RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "The RubyInstaller signing key".
 
 > 20. Tiny filesize is not a priority; "my ruby code just works" _is_ a (high) priority.
 
-*Governs:* what runtimes prune: only what no running Ruby code can observe. *Applied in:* `doc/contributors/design/runtimes.md`, "What a runtime keeps" and "What a runtime prunes, and why nothing reads it"; `RuntimeBuilder::Pruning.prune`.
+*Governs:* a runtime prunes only what no running Ruby code can observe. *Applied in:* `doc/contributors/design/runtimes.md`, "What a runtime keeps" and "What a runtime prunes, and why nothing reads it".
 
 > 21. I don't understand what I'd be deciding here. [re: Windows console code pages and Ctrl-C — agents own this]
 
-*Governs:* console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 081 (the launcher matches `ruby.exe`, but for the ANSI code page: `doc/contributors/design/launcher.md`, "The locale"); the parity check's `chcp 437` run; Plan 002, "Ctrl-C and the console."
+*Governs:* console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 081; `doc/contributors/design/launcher.md`, "The locale"; Plan 002, "Ctrl-C and the console."
 
 > 22. I'd like to support Windows on ARM (and Linux on ARM) eventually, but it's not a blocker to continuing to iterate. It may be a blocker to 1.0 though.
 
-*Governs:* ARM targets. Linux on ARM already ships as `aarch64-linux`. *Applied in:* Plan 002, "Windows on ARM."
+*Governs:* ARM targets. *Applied in:* Plan 002, "Windows on ARM."
 
 > 23. Would this require app devs to have a bunch of `if`s or polymorphic objects used throughout their app to handle the difference? [re: Windows ruby\ vs Unix lib/ layout — answer is no; agents own this]
 
-*Governs:* the internal layout of a runtime is the agents' to decide, as long as app code needs no per-OS branches for it. *Applied in:* `doc/contributors/design/runtimes.md`, "Layout on Windows".
+*Governs:* a runtime's internal layout is the agents' to decide, as long as app code needs no per-OS branches for it. *Applied in:* `doc/contributors/design/runtimes.md`, "Layout on Windows".
 
 > 24. See #8 [re: GMP being LGPL]
 
@@ -136,21 +136,21 @@ Replies to the orchestrating agent's answers in chat, quoted from the maintainer
 
 > 2. Ok.
 
-[re: what the options are besides a folder with a `main.rb`: the orchestrator offered (a) a folder with a `main.rb`; (b) the executable you already run, such as `exe/my_cool_app` or `bin/server`, with the project root where the Gemfile or gemspec is; (c) a configuration file naming the entry point; (d) the gemspec's `executables`. It recommended (b), with configuration only where it's needed, and NAME taken from the project (the gemspec's name or the folder's, camelized, such as `MyCoolApp`), which configuration can override.]
+[re: the orchestrator's recommendation: ship the executable you already run, with the project root where the Gemfile or gemspec is, and NAME taken from the project's name]
 
-*Governs:* an app's layout and entry point, and, with decision 5, where NAME comes from. *Applied in:* Plan 002, "Ship the executable you already run."
+*Governs:* an app's entry point is the executable it already runs, and NAME comes from the project, which configuration can override. *Applied in:* Plan 002, "Ship the executable you already run."
 
 > 4. Ok.
 
-[re: the CLI conventions: `-h`, `-?`, and `--help`, and `-v` and `--version`, print to standard output and exit 0; a usage error prints a short usage to standard error and exits 2.]
+[re: `-h`, `-?`, `--help`, `-v`, and `--version` print to standard output and exit 0; a usage error prints to standard error and exits 2]
 
 *Governs:* the CLI conventions. *Applied in:* `doc/contributors/design/public-interface.md`, "The command's conventions".
 
 > 11. I think yes?
 
-[re: whether to restore the person's own `RUBYOPT`, `GEM_*`, `BUNDLE_*`, and the rest into `ENV` after Ruby has booted, so the app's `ENV` and its child processes look as they would without Fledge, while the app's own boot stays protected. The orchestrator recommended restoring.]
+[re: restoring the person's own `RUBYOPT`, `GEM_*`, `BUNDLE_*`, and the rest into `ENV` after Ruby has booted]
 
-*Governs:* the environment an app and its child processes see. *Applied in:* `doc/contributors/design/launcher.md`, "Hiding and restoring the person's Ruby settings"; `runtime/launcher/unix.c` and `windows.c`; the parity check and Delivery.
+*Governs:* after Ruby boots, an app and its child processes see the person's own Ruby environment variables. *Applied in:* `doc/contributors/design/launcher.md`, "Hiding and restoring the person's Ruby settings"; `runtime/launcher/unix.c`; `runtime/launcher/windows.c`.
 
 > 8 and 24. Remember that LGPL and GPL/AGPL's main differentiator is dynamic linking. Relevant here or not?
 
@@ -158,27 +158,27 @@ Replies to the orchestrating agent's answers in chat, quoted from the maintainer
 
 > As long as we're clear about that to app devs, that's great.
 
-[re: libxcrypt on Linux and GMP on Windows, both LGPL. The orchestrator explained that, shipped as separate, replaceable shared libraries, they leave the app proprietary but still require a notice, the library's source or a written offer of it, the ability to replace the library, and app terms that permit reverse engineering for debugging such a replacement (LGPL-2.1 section 6, LGPL-3.0 section 4).]
+[re: libxcrypt on Linux and GMP on Windows, both LGPL, shipped as separate shared libraries]
 
-*Governs:* LGPL components may ship in a runtime only as separate, replaceable shared libraries, never linked statically; Fledge publishes the source of each LGPL library it ships and never requires an app's source or object files; what app developers owe for what Fledge ships is stated to them plainly. These replies govern Fledge's runtimes, not the app's own gems (2026-10-28). *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe."
+*Governs:* an LGPL library may ship in a runtime as a separate shared library with its own source offered, never the app's, and app developers are told plainly what they owe; it governs Fledge's runtimes, not the app's own gems (2026-10-28). *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe, from CI."
 
 > "lists, for each platform, everything that..." Better to automate this as part of the DevOps pipeline, yes?
 
-[re: a user-facing page listing, for each platform, every third-party component that ships in an app, its license, and what the app developer must do.]
+[re: a page listing each platform's third-party components, their licenses, and what the app developer must do]
 
-*Governs:* the component list, license notices, SBOM, and licensing page are generated from each built runtime in CI, behind a license policy gate, never written by hand. *Applied in:* Plan 002, "Tell app developers what they owe."
+*Governs:* that page is generated in CI, not written by hand. *Applied in:* Plan 002, "Tell app developers what they owe, from CI."
 
 ## 2026-10-27
 
 > We should, if we can, support iOS and iPadOS and Android. Ideally before 1.0 but I could be swayed if it turns out incredibly burdensome.
 
-[re: whether Fledge should target iOS, iPadOS, and Android, which Lota's session raised after the maintainer asked for Lota games on those platforms. The orchestrator had noted that mobile changes Fledge's model: a build step inside Xcode or Gradle, Ruby linked statically with no JIT, and mandatory store rules.]
-
-*Governs:* mobile targets are in scope, aimed at 1.0, unless a spike shows them incredibly burdensome. *Applied in:* Plan 002, "iOS, iPadOS, and Android"; `doc/contributors/research/2026-10-27-mobile.md`.
+*Governs:* mobile targets are in scope, aimed at 1.0, unless they prove incredibly burdensome. *Applied in:* Plan 002, "iOS, iPadOS, and Android"; `doc/contributors/research/2026-10-27-mobile.md`.
 
 > Would it be a good idea to move that research somewhere more durable for cross-session reference? Maybe the repo?
 
-*Governs:* research that sessions share lives in the repository, under `doc/contributors/research/`. *Applied in:* `doc/contributors/research/`.
+[re: the mobile research]
+
+*Governs:* he proposed keeping research that sessions share in the repository. *Applied in:* `doc/contributors/research/`.
 
 ## 2026-10-28
 
@@ -186,23 +186,23 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > Why does it refuse GPL and AGPL gems? That's up to the app dev to decide, not up to Fledge. In fact, why is Fledge taking any kind of opinion at all about what license the gems the app dev uses are under?
 
-[re: the orchestrator's report that `fledge build` refused GPL and AGPL app gems, such as Tokra, allowed LGPL ones only with their source pinned, and refused gems whose binaries had LGPL code linked in statically.]
+[re: `fledge build` refusing GPL and AGPL app gems]
 
-*Governs:* Fledge takes no position on the licenses of the gems an app depends on — those are the app developer's choice and responsibility; decision 8 and the LGPL replies govern only what Fledge itself puts into apps (its runtime). *Applied in:* `doc/contributors/design/gems.md`, "Checks that are not about licenses"; AGENTS.md, Licensing; `Fledge::AppGems`, which no longer judges a gem's license or what its compiled files hold, and `Fledge::Linkage`, which checks only that they load; `fledge.yml`, which no longer has `licenses` or `compiled`; the removal of `lib/fledge/compiled_code.yml`, `Fledge::RustCrates`, and `notices/GEMS.txt`; `doc/licensing.md`, "Your app's own gems"; the README; `exe/fledge`'s help; Plan 002; `test/fixtures/native_app`, which ships spreadsheet (GPL-3.0), and `test/fixtures/nokogiri_app`, which ships for Windows with GNU libiconv linked in.
+*Governs:* Fledge takes no position on the licenses of the gems an app depends on; they are the app developer's choice and responsibility. *Applied in:* `doc/contributors/design/gems.md`, "Checks that are not about licenses"; AGENTS.md, Licensing; `Fledge::AppGems`; `Fledge::Linkage`; `doc/licensing.md`, "Your app's own gems"; the README; `exe/fledge`'s help; Plan 002; `test/fixtures/native_app`; `test/fixtures/nokogiri_app`.
 
 > We should eventually get an Apple Developer account, but I'd like to wait until the last responsible moment.
 
-[re: whether setdef should get an Apple Developer account, and real devices or a device cloud, which the mobile spike (branch `spike/mobile`, `spike/mobile/FINDINGS.txt`) needs for testing on a real device and for App Store submission; until then testing stays on simulators and emulators. Asked whether to record this, the maintainer said: "Yes, record it in decisions.md."]
+[re: an Apple Developer account and real devices, for testing and App Store submission. Asked whether to record this, he said: "Yes, record it in decisions.md."]
 
-*Governs:* agents proceed without an Apple Developer account, and raise it in `questions.md` at the last responsible moment: when a story cannot be done without one. *Applied in:* Plan 002, which marks the stories that reach that moment.
+*Governs:* agents proceed without an Apple Developer account, and raise it in `questions.md` when a story cannot be done without one. *Applied in:* Plan 002.
 
 > Code is a liability and we should _not_ have 4k+ lines of things we could use existing tools for.
 
 > We already have to have target-environment-platform machines to compile on, right? If so, what value does cross-platform non-compilation building add?
 
-[re: the orchestrator's report that agents had written about 4,500 lines of Ruby for file formats existing tools handle (a DMG writer, PNG and icon codecs, Windows resource editing, Apple ad-hoc signing, ZIP and tar, SquashFS) and a libfuse shim with a patched AppImage runtime, so that one computer could build every platform, which the maintainer had never asked for. The orchestrator answered that target machines are needed only to compile gems from source, that cross-building adds little because developers need each platform to test and sign on anyway and Tauri, Electron's tooling, and Briefcase build on each OS, and recommended building each target on its own OS with that OS's maintained tools, switching NSIS to LZMA with NSIS's source published, and using the upstream AppImage runtime with its LGPL sources published. The maintainer accepted that recommendation.]
+[re: he accepted the orchestrator's recommendation to build each target on its own OS with that OS's maintained tools]
 
-*Governs:* Fledge builds each target on its own OS and uses maintained existing tools rather than code of its own wherever such tools exist; it does not build one platform's app on another. *Applied in:* AGENTS.md, How to work; the story that replaces Fledge's own format writers.
+*Governs:* Fledge builds each target on its own OS and uses maintained existing tools rather than code of its own wherever such tools exist; it does not build one platform's app on another. *Applied in:* AGENTS.md, How to work.
 
 ## 2026-11-02
 
@@ -210,15 +210,15 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > We can't spend money on this right now.
 
-[re: `questions.md` entry C, which asked for a device cloud account or an Apple-silicon Mac with hardware virtualization so CI could run Android's arm64-v8a build, after no free GitHub-hosted runner could boot an arm64-v8a emulator.]
+[re: a device cloud account or an Apple-silicon Mac so CI could run Android's arm64-v8a build]
 
-*Governs:* agents spend no money on Android's arm64-v8a proof: no device cloud, paid runner, or machine; the story waits for a free way to run it. *Applied in:* Plan 003, "Android on arm64"; ADR 099 and ADR 012.
+*Governs:* agents spend no money on Android's arm64-v8a proof. *Applied in:* Plan 003, "Android on arm64"; ADR 099 and ADR 012.
 
 > We can't spend money on this right now.
 
-[re: `questions.md` entries A and B, asked in the same session as the Android answer above: an Apple Developer account for a real iPhone and iPad, App Review, Developer ID, and notarization, and a Windows code signing certificate or Azure Trusted Signing account. The orchestrator had said the Apple account was probably due, and the Windows half was not. The maintainer's words follow the question of whether it was the last responsible moment for each.]
+[re: an Apple Developer account for a real iPhone and iPad, and a Windows code signing certificate or Azure Trusted Signing account]
 
-*Governs:* agents open and pay for no account, certificate, device, or service, including Apple's, Microsoft's, and a certificate authority's, until the maintainer says otherwise; the stories that need one wait. *Applied in:* Plan 003, "iOS on a real device, and App Review" and "Notarization and real trust chains"; ADR 012 and `doc/contributors/design/signing.md`, "What CI proves, and the stand-ins", which already list what is unproven; `questions.md`, entry D.
+*Governs:* agents spend no money on those accounts; the stories that need them wait. *Applied in:* Plan 003, "iOS on a real device, and App Review" and "Notarization and real trust chains"; `doc/contributors/design/signing.md`, "What CI proves, and the stand-ins".
 
 ## 2026-11-02
 
@@ -228,15 +228,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 > 2. We really shouldn't have external dependencies on those repos; they are expected to depend upon us, not the other way around.
 > 3. Go for .deb
 
-[re: the orchestrator's briefing of what it needed: (1) `questions.md` entry D, whether 1.0 may ship with iOS on a real device and App Review, real signing trust chains, and Android arm64 unproven; (2) two unsent drafts, one asking Rooibos to add CI jobs that build its app with a tagged Fledge and one telling Tokra what Fledge now has, the first of which completed Plan 003's wrapper story only if Rooibos's own CI ran it; (3) optional work, of which the `.deb` installer was the cheapest. The numbering is the maintainer's, answering that briefing.]
+[re: the numbering is his, answering the orchestrator's briefing; "those repos" are Rooibos's and Tokra's]
 
-*Governs:* 1.0 waits until at least some of the unproven things are proven; releases may move from the `0.0.1.pre.N` form to ordinary 0.MINOR.PATCH versions, beginning with 0.1.0; Fledge depends on no wrapper's repository, wrappers depend on Fledge; a `.deb` installer is built. *Applied in:* Plan 003; `questions.md` (entry D removed); the drafts; the next release.
+*Governs:* 1.0 waits until at least some of the unproven things are proven; releases move to ordinary 0.MINOR.PATCH versions, beginning with 0.1.0; Fledge depends on no wrapper's repository; a `.deb` installer is built. *Applied in:* Plan 003.
 
 > iPadOS, iOS, and Android are our priorities for 0.2.0.
 
-[re: the orchestrating agent had written: "do you want the plan changed so native gems on phones come before 1.0?"]
-
-*Governs:* the work for release 0.2.0 is phones: iPadOS, iOS, and Android, ahead of the stories that wait on money. *Applied in:* Plan 003.
+*Governs:* the work for release 0.2.0 is phones: iPadOS, iOS, and Android. *Applied in:* Plan 003.
 
 ## 2026-11-02, later
 
@@ -244,9 +242,7 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > "Never publish to RubyGems.org" was an instruction to agents (for AGENTS.md) not a position the project takes; even when the library is on RubyGems.org I'll continue to make that a human-only activity.
 
-[re: a draft line saying Fledge is "never" installed from RubyGems.org, which followed AGENTS.md's "Never publish to RubyGems.org" as if that rule were a position of the project.]
-
-*Governs:* publishing to RubyGems.org is a human-only activity, whether or not Fledge is on RubyGems.org; the earlier "Never publish to RubyGems.org" and decision 6's "you may not release to rubygems" bind agents and say nothing about the project, so documents for developers do not say Fledge is never published there. *Applied in:* AGENTS.md, Releasing; Plan 003, "1.0"; `doc/contributors/design/releases.md`, "Where releases are".
+*Governs:* publishing to RubyGems.org is a human-only activity, whether or not Fledge is on it; "Never publish to RubyGems.org" binds agents and is not a position of the project, so documents for developers do not say Fledge is never published there. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`, "Where releases are".
 
 ## 2026-11-02, later again
 
@@ -254,21 +250,21 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > I use three words for how code and prose comes to exist. Code I wrote, I typed by hand, with nothing generated. Code I wrought, an AI agent generated while I iterated with it, and I reviewed every change before committing it, so I take responsibility for every diff. Code I requested, an agent built with little or no review from me, in the style of a "dark factory."
 
-[re: after asking "Do you have the exact quote?", he sent these words marked with `>`, and then wrote: "You can drop "or prose" from it." The three "or prose" are left out above.]
+[re: he then wrote: "You can drop "or prose" from it." The three "or prose" are left out above.]
 
-*Governs:* what *written*, *wrought*, and *requested* mean wherever Fledge uses them: the `Provenance:` trailer, AGENTS.md, and the README's disclosure. *Applied in:* AGENTS.md, Provenance; the README.
+*Governs:* what *written*, *wrought*, and *requested* mean wherever Fledge uses them. *Applied in:* AGENTS.md, Provenance; the README.
 
 > I want to get to "I can playtest [a game written in Ruby using Lota] on [an M1 iPad Pro running iPadOS 27] and [a OnePlus Nord N30 5G running Android 13]" as the litmus test for "phones and tablets" (0.2.0).
 
-[re: the orchestrator's report that native gems with C and C++ extensions now run on phones in CI, and its answer that a Lota game could not yet be deployed to a tablet. The maintainer's words named the game and the devices, and then made them specific; the brackets stand for what the maintainer named.]
+[re: the brackets stand for what the maintainer named]
 
 *Governs:* release 0.2.0 means a Ruby game on Lota can be playtested on an iPad and on an Android phone, built through Fledge. *Applied in:* Plan 003, "A game plays on a tablet and a phone".
 
 > Remember: this entire rule is because _Fledge should never surprise an app dev with how it behaves or causes Ruby or its globals, built-ins, and standard library to behave compared to not using Fledge_.
 
-[re: Design precedence 2, in the discussion of whether a restart through `RbConfig.ruby` in a built app differs from `ruby main.rb`.]
+[re: Design precedence 2]
 
-*Governs:* the purpose of Design precedence 2 and of the parity check: a difference between a Fledge app and the same program run without Fledge is a bug unless it is justified and documented. *Applied in:* AGENTS.md, Design precedence 2; `doc/contributors/design/launcher.md`, "bin/ruby and restarts".
+*Governs:* the purpose of Design precedence 2 and of the parity check: a difference from the same program run without Fledge is a bug unless it is justified and documented. *Applied in:* AGENTS.md, Design precedence 2; `doc/contributors/design/launcher.md`, "bin/ruby and restarts".
 
 ## 2026-11-03
 
@@ -276,15 +272,13 @@ The orchestrating agent received these words first-hand from the maintainer and 
 
 > Once we hit 1.0.0, we will be releasing via RubyGems (human only), not relying on GitHub Releases and git tags.
 
-[re: his own question, "Are major version bumps after 1.0.0 my decision or yours?", and the orchestrating agent's comparison of ways to release them, which ended: "Tell me which option you want."]
-
-*Governs:* from 1.0.0, Fledge is also released on RubyGems.org, by a human, so a release can be found there as well as by its git tag and GitHub Release; before 1.0.0 it is found only by its tag and GitHub Release, and nothing is pushed to RubyGems.org (the maintainer's explanation of 2026-11-04, below). Agents prepare a release and never publish it. *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; AGENTS.md, Releasing.
+*Governs:* from 1.0.0, Fledge is also released on RubyGems.org, by a human; before it, only by git tag and GitHub Release (his explanation of 2026-11-04, below). *Applied in:* Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0"; AGENTS.md, Releasing.
 
 > I can buy that for now, but will easily be swayed by the first app dev who gets upset by the deviation. And we shouldn't be cagey about it or hide it.
 
-[re: the orchestrating agent had written, of the launcher's turning a bare C locale into a UTF-8 one: "So coercing is Fledge improving on plain Ruby, not matching it. I think that is the right trade under Design precedence 1, for this one case."]
+[re: the launcher's turning a bare C locale into a UTF-8 one]
 
-*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; and any deviation from plain Ruby is documented where app developers read, plainly. *Applied in:* the README; `doc/contributors/design/launcher.md`, "The locale"; `Parity::JUSTIFIED`.
+*Governs:* the locale coercion stays until the first app developer reports it as a surprise, then it is reversed; any deviation from plain Ruby is documented plainly where app developers read. *Applied in:* the README; `doc/contributors/design/launcher.md`, "The locale"; `Parity::JUSTIFIED`.
 
 > A minor release can make additional rubies available, but can only change the defaults' patch versions--unless we abandon the concept of default entirely, and require app devs to specify a version (maybe better?); then it's limited to e.g. generated config files, which can change in a minor version because they don't get re-generated on upgrade.
 >
@@ -292,25 +286,19 @@ The orchestrating agent received these words first-hand from the maintainer and 
 >
 > I require a major version bump to drop support for a ruby, or to drop support for an OS "version" (the thing that differentiates MacOS 26 from MacOS 27, not patches etc.).
 
-[re: the orchestrating agent had written: "A: may a 1.x release change the Ruby inside apps, or raise the minimum operating system, or must it wait for a major?"]
-
-*Governs:* a minor release may add Rubies and may change only a default Ruby's patch version; the maintainer is open to having no default Ruby, with the app developer naming the version (the orchestrator is to weigh it); generated config files may change in a minor release because an upgrade does not regenerate them; a new Ruby minor is expected to break (Ruby does not follow SemVer); dropping a Ruby, or an operating system version (macOS 26 against 27, not a patch), requires a major version. *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "Ruby minors and runtimes"; `doc/contributors/design/public-interface.md`.
+*Governs:* a minor release may add Rubies and change only a default Ruby's patch version, and dropping a Ruby, or an operating system version (macOS 26 against 27, not a patch), requires a major version. *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "Ruby minors and runtimes"; `doc/contributors/design/public-interface.md`.
 
 > We'll be reusing the git/ruby version stuff from RatatuiRuby and Rooibos. How tags work (and release branches, backports, etc.) differ before and after 1.0.0.
 
-[re: the orchestrating agent had written: "B: after 1.0, does a release still get a git tag?"]
-
-*Governs:* Fledge's versioning, tagging, release branches, and backports reuse what RatatuiRuby and Rooibos do, and work differently before 1.0.0 and after it; the tooling itself waits on its extraction (2026-11-07, below). *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "From 1.0: release branches and a human publishing"; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
+*Governs:* Fledge's versioning, tagging, release branches, and backports reuse RatatuiRuby's and Rooibos's, and differ before and after 1.0.0; the tooling waits on its extraction (2026-11-07, below). *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "From 1.0: release branches and a human publishing"; Plan 003, "1.0".
 
 > winget, Chocolatey, Scoop, brew, apt-get, pacman, dnf, etc. are all very relevant for Ruby console apps.
 
-[re: the orchestrating agent had written: "Whether channels beyond the stores are in scope for Fledge at all is yours to say."]
-
-*Governs:* the package managers (winget, Chocolatey, Scoop, Homebrew, apt-get, pacman, dnf, and others) are in scope for Fledge's console apps; a decision that Fledge does not target them is not made, and none is to be recorded. *Applied in:* `doc/contributors/research/2026-11-04-app-stores.md` (which the package managers extend); Plan 003.
+*Governs:* package managers are in scope for Fledge's console apps. *Applied in:* `doc/contributors/research/2026-11-04-app-stores.md`; Plan 003.
 
 ## 2026-11-04
 
-The maintainer wrote this after the orchestrating agent had misread the sentence of 2026-11-03 above ("not relying on GitHub Releases and git tags"). It is quoted in part: the dictionary definitions of "rely", "dependent", "require", and "necessity" that followed it are left out.
+He wrote this about the sentence of 2026-11-03 above. It is quoted in part: the dictionary definitions of "rely", "dependent", "require", and "necessity" that followed it are left out.
 
 > > Once we hit 1.0.0, we will be releasing via RubyGems (human only), not relying on GitHub Releases and git tags.
 >
@@ -319,32 +307,29 @@ The maintainer wrote this after the orchestrating agent had misread the sentence
 > Only before 1.0.0, that is the _only_ way they'll be findable, so releases **rely** on GitHub Releases / git tags.
 > After 1.0.0, that is _one way_ they'll be findable, so releases do not **rely** on GitHub Releases / git tags, they can be found another way too.
 
-*Governs:* nothing is pushed to RubyGems.org before 1.0.0; every release, before and after, has its git tag and the GitHub Release made from it; from 1.0.0 a release is also on RubyGems.org, and "not relying" means only that. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`, "Where releases are" and "From 1.0: release branches and a human publishing"; `doc/contributors/design/public-interface.md`, "Frozen for 1.x"; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
+*Governs:* nothing is pushed to RubyGems.org before 1.0.0; every release has its git tag and the GitHub Release made from it; from 1.0.0 a release is also on RubyGems.org. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`, "Where releases are" and "From 1.0: release branches and a human publishing"; `doc/contributors/design/public-interface.md`, "Frozen for 1.x"; Plan 003, "Fledge on RubyGems.org, and runtimes that do not depend on one host" and "1.0".
 
 > > "may an agent open a free account on a second host?"
 >
 > Absolutely not. If you want a second host, you come to me asking (optionally with suggestions).
 
-*Governs:* an agent never opens an account, free or paid, on any service; when one is wanted, an agent asks the maintainer, with suggestions. *Applied in:* AGENTS.md, Questions.
+*Governs:* an agent never opens an account, free or paid, on any service; when one is wanted, it asks the maintainer, with suggestions. *Applied in:* AGENTS.md, Questions.
 
 > One third of the reason Fledge exists is to support Lota, which is a faithful port of LÖVE2D to Ruby. Drag-to-fuse is a huge part of why LÖVE2D is successful; CLIs can be scary to newbies.
 
-[re: the orchestrating agent had written, of its answer to Lota's session: "I told them to assume folder-style output."]
-
-*Governs:* single-file output and a drag-and-drop way to make an app, as LÖVE's fused games have, are in scope for Fledge, because supporting Lota is a main purpose of the project and a command line is a barrier to the people Lota is for; the earlier answer that they are excluded is withdrawn. *Applied in:* Plan 003, "Build from a built app, and the files an app opens".
+*Governs:* drag-to-fuse, as LÖVE's fused games have it, is in scope for Fledge, because supporting Lota is a main purpose of the project. *Applied in:* Plan 003, "Build from a built app, and the files an app opens".
 
 > Question D. My main concern was adding a lot of code, complexity, and surface area for bugs re: cross-compiling. Anything that doesn't do those is fine by me.
 
-[re: question D in `questions.md`, whether a repack may make one system's app on another system when it compiles nothing.]
+[re: whether a repack may make one system's app on another system when it compiles nothing]
 
-*Governs:* making an app for another system from an already built app is allowed when it adds little code and complexity and little room for bugs, and above all when it needs no cross-compiling; the earlier rule that each system's app is built on that system (decisions, 2026-10-28) was about code that writes formats and compiles, and is not extended to a step that only copies. *Applied in:* `doc/contributors/design/desktop-apps.md`, "Building from a built app".
+*Governs:* making an app for another system from an already built app is allowed when it adds little code, complexity, and room for bugs, and above all needs no cross-compiling. *Applied in:* `doc/contributors/design/desktop-apps.md`, "Building from a built app".
 
 > I've decided to pay Apple, Microsoft, Google, whoever I need.
 
-[re: the maintainer's wish to publish Dot Popper on the Play Store, App Store, Mac App Store, Windows Store, and brew, after the rulings of 2026-10-28 and 2026-11-02 that no money is spent now.]
+[re: publishing Dot Popper on the Play Store, App Store, Mac App Store, Windows Store, and brew]
 
-*Governs:* the maintainer will spend money on the accounts and certificates the stores need (Apple, Microsoft, Google, a certificate authority, and others), which ends the earlier rulings that none is spent; the maintainer opens and pays for each account, since an agent never opens one, even a free one; agents plan and prepare the work that needs them (signing, notarization, store submissions) and say what each costs. *Applied in:* Plan 003's store and signing stories.
-
+*Governs:* he will pay for the accounts and certificates the stores need, which ends the rulings of 2026-10-28 and 2026-11-02 that no money is spent; an agent still never opens an account. *Applied in:* Plan 003's store and signing stories.
 
 ## 2026-11-07
 

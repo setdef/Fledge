@@ -33,9 +33,10 @@ class Setup
   # recorder in its place.
   class Runner
     # Standard input is closed, so no command can wait for a person.
+    # Returns the exit status, or -1 for a command a signal ended.
     def call(argv, env:, chdir:)
       IO.popen(env, argv, in: File::NULL, err: %i[child out], chdir:) { |io| io.each_line { |line| yield line } }
-      Process.last_status.success?
+      Process.last_status.exitstatus || -1
     end
   end
 
@@ -101,21 +102,34 @@ class Setup
     step(%w[mise ls --missing], show: :failure) { |line| missing << line } or return false
     (missing.strip.empty? || step(%w[mise install])) &&
       (workspace_bundle.nil? || step(["mise", "x", "--", "bundle", "config", "set", "--local", "path", workspace_bundle], announce: true)) &&
-      (step(%w[mise x -- bundle check], show: :never) || step(%w[mise x -- bundle install]))
+      install_gems
   end
 
-  # Runs one command and says whether it succeeded, handing each line it
+  # Installs the gems when bundle check answers no, and stops when it
+  # could not be asked.
+  private def install_gems
+    answer = step(%w[mise x -- bundle check], answer: 1)
+    return false if answer == false
+
+    answer == true || step(%w[mise x -- bundle install])
+  end
+
+  # Runs one command and says whether it succeeded (true), failed
+  # (false), or gave its +answer+ (:no), handing each line it
   # writes to the block. A command shown as :output is announced with
   # the shell's "+ " before its first line, as set -x does, and prints as
   # it goes; one shown as :failure keeps what it writes and prints it
-  # only if the command fails, and one shown as :never not even then,
-  # since its failure is an answer. A step +announce+d writes something,
-  # so it is announced even when it prints nothing.
-  private def step(argv, show: :output, announce: false)
+  # only if the command fails. A command whose exit status is its
+  # +answer+ (bundle check exits 1 when the bundle is incomplete) fails
+  # silently with that status, since it is an answer; any other status,
+  # such as a program that is not there, is a failure and is shown. A
+  # step +announce+d writes something, so it is announced even when it
+  # prints nothing.
+  private def step(argv, show: :output, announce: false, answer: nil)
     @out.puts "+ #{argv.join(' ')}" if announce
     shown = announce
     written = +""
-    succeeded = @runner.call(argv, env: child_env, chdir: @root) do |line|
+    status = @runner.call(argv, env: child_env, chdir: @root) do |line|
       yield line if block_given?
       if show == :output
         @out.puts "+ #{argv.join(' ')}" unless shown
@@ -125,8 +139,8 @@ class Setup
         written << line
       end
     end
-    return true if succeeded
-    return false if show == :never
+    return true if status.zero?
+    return :no if status == answer
 
     @out.puts "+ #{argv.join(' ')}" unless shown
     @out.print written

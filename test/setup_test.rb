@@ -19,9 +19,10 @@ class SetupTest < Minitest::Test
   class Recorder
     attr_reader :commands, :environments, :locked
 
-    def initialize(lock_path: nil, fail_on: [], output: {}, raise_on: {})
+    def initialize(lock_path: nil, fail_on: [], exit_with: {}, output: {}, raise_on: {})
       @lock_path = lock_path
       @fail_on = fail_on
+      @exit_with = exit_with
       @output = output
       @raise_on = raise_on
       @commands = []
@@ -36,7 +37,7 @@ class SetupTest < Minitest::Test
       @environments << env
       @locked << held? if @lock_path
       Array(@output[argv]).each { |line| yield line }
-      !@fail_on.include?(argv)
+      @exit_with.fetch(argv) { @fail_on.include?(argv) ? 1 : 0 }
     end
 
     private def held?
@@ -92,6 +93,15 @@ class SetupTest < Minitest::Test
     assert_equal 0, run_setup(runner: recorder)
     assert_equal [MISSING, BUNDLE_CHECK, BUNDLE_INSTALL, RDOC], recorder.commands
     assert_equal "+ mise x -- bundle install\nBundle complete!\n", @out.string
+  end
+
+  def test_a_bundle_that_could_not_be_asked_about_stops_setup_and_shows_why_without_installing
+    recorder = Recorder.new(exit_with: { BUNDLE_CHECK => 127 }, output: { BUNDLE_CHECK => ["mise ERROR bundle: command not found\n"] })
+
+    assert_equal 1, run_setup(runner: recorder)
+    assert_equal [MISSING, BUNDLE_CHECK], recorder.commands
+    assert_equal "+ mise x -- bundle check\nmise ERROR bundle: command not found\n", @out.string
+    assert_match(/bundle check failed/, @err.string)
   end
 
   def test_a_tool_that_is_missing_is_installed_and_the_command_shown_with_its_output
@@ -170,7 +180,7 @@ class SetupTest < Minitest::Test
     ran = Queue.new
     File.open(lock_path, File::RDWR | File::CREAT) do |first|
       first.flock(File::LOCK_EX)
-      second = Thread.new { run_setup(runner: -> (*, **) { ran << true }) }
+      second = Thread.new { run_setup(runner: -> (*, **) { ran << true; 0 }) }
       sleep 0.2
 
       assert_empty ran, "the second setup ran while the first held the lock"

@@ -291,6 +291,19 @@ RubySpec::Results::Run.new(directory: "core", failures: failures.to_h { |name| [
     refute_predicate RubySpec::Results.compare(setgid.fetch(:stock), setgid.fetch(:app), platform: "arm64-ios-simulator").first, :justified?
   end
 
+  # MSpec's with_block_device runs find in each describe that uses it, so
+  # one run of stock Ruby left out Dir.scan's example and ran File.ftype's
+  # (run 45123861976), where the run before ran both: neither side ran
+  # it, which explains nothing and is not a difference.
+  def test_a_justification_for_examples_stock_ruby_sometimes_leaves_out_may_explain_none
+    block = "core: Dir.scan handles block devices"
+    unused = RubySpec::Justification.unused(RubySpec::JUSTIFIED, [], "arm64-ios-simulator").map(&:name)
+
+    refute_includes unused, block
+    assert_includes unused, "core: File.setuid? returns true when the gid bit is set",
+      "every other justification still must explain a difference"
+  end
+
   def test_a_run_that_did_not_finish_is_a_difference
     stopped = [RubySpec::Results::Run.new(directory: "core", failures: {}, totals: nil)]
     finished = [RubySpec::Results::Run.new(directory: "core", failures: {}, totals: "1 file")]

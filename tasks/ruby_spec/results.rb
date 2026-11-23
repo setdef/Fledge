@@ -160,9 +160,12 @@ class RubySpec
   # description, or a Regexp for a family of them, as a directory's
   # files that fail to load, and each must explain a difference in every
   # run on its platforms (Justification.unused), so none outlives the
-  # differences it was written for or explains more than they.
-  class Justification < Data.define(:examples, :side, :platforms, :reason, :outcome)
-    def initialize(examples:, side:, platforms:, reason:, outcome: :fails)
+  # differences it was written for or explains more than they. One with
+  # +sometimes+ true is for examples whose guard stock Ruby decides anew
+  # each time it meets one, so that a run may leave them out on both
+  # sides, and a run where they explain nothing is not a difference.
+  class Justification < Data.define(:examples, :side, :platforms, :reason, :outcome, :sometimes)
+    def initialize(examples:, side:, platforms:, reason:, outcome: :fails, sometimes: false)
       super
     end
 
@@ -183,7 +186,7 @@ class RubySpec
     # A difference for each of the examples of each of +justifications+
     # on +platform+ that explains none of +differences+.
     def self.unused(justifications, differences, platform)
-      justifications.select { |justification| justification.applies?(platform) }.flat_map do |justification|
+      justifications.select { |justification| justification.applies?(platform) && !justification.sometimes }.flat_map do |justification|
         explained = differences.select { |difference| difference.justification.equal?(justification) }.map(&:name)
         justification.examples.reject { |example| explained.any? { |name| names?(example, name) } }.map do |example|
           Results::Difference.new(name: example.is_a?(Regexp) ? example.inspect : example, side: justification.side, kind: :unused,

@@ -216,11 +216,14 @@ class RubySpec
         "core: File.ftype returns 'blockSpecial' when the file is a block",
         "core: File::Stat#ftype returns 'blockSpecial' when the file is a block",
       ],
-      side: :stock, platforms: %w[arm64-ios-simulator], outcome: :runs,
+      side: :stock, platforms: %w[arm64-ios-simulator], outcome: :runs, sometimes: true,
       reason: "MSpec's with_block_device runs these only where find /dev /devices -type b finds a block device " \
         "(mspec/guards/block_device.rb, lines 4 to 11 at MSpec 521207f), and iOS lets no app start find: Apple's SDK " \
         "marks system() prohibited there, \"On iOS, process spawning is unavailable\" (iPhoneOS27.2.sdk, " \
-        "usr/include/_stdlib.h, lines 205 to 208).",
+        "usr/include/_stdlib.h, lines 205 to 208). The guard runs find again at each describe that uses it, and on " \
+        "CI's Mac the find of one of them came back empty while the others found a device (run 45123861976 left " \
+        "out Dir.scan's example in stock Ruby, run 45118577919 ran it, on the same stock Ruby and runner image), so " \
+        "any of the three may be left out of stock Ruby's run, and then neither side runs it.",
     ),
     Justification.new(
       examples: [
@@ -228,10 +231,12 @@ class RubySpec
         "core: File.ftype returns 'blockSpecial' when the file is a block",
         "core: File::Stat#ftype returns 'blockSpecial' when the file is a block",
       ],
-      side: :stock, platforms: ANDROID, outcome: :runs,
+      side: :stock, platforms: ANDROID, outcome: :runs, sometimes: true,
       reason: "MSpec's with_block_device runs these only where find /dev /devices -type b finds a block device " \
         "(mspec/guards/block_device.rb, lines 4 to 11 at MSpec 521207f), and Android's SELinux policy keeps an app " \
-        "from reading /dev, as for Dir.scan's example of character devices, so the app finds none.",
+        "from reading /dev, as for Dir.scan's example of character devices, so the app finds none. The guard runs " \
+        "find again at each describe that uses it, so stock Ruby may leave any of the three out, and then neither " \
+        "side runs it.",
     ),
     Justification.new(
       examples: ["core: Time.utc handles real leap seconds in zone 'right/UTC'"],

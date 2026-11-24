@@ -71,5 +71,6 @@ jobs:
       - name: Take the next step
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_COP_REVERT: ${{ vars.BUILD_COP_REVERT }}
           BUILD_COP_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
         run: .github/scripts/build-cop.sh

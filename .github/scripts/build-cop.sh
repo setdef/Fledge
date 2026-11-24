@@ -66,11 +66,29 @@ rerun)
   gh run rerun "$run" --failed
   ;;
 revert)
-  if git log FETCH_HEAD --format=%B | grep -q "^This reverts commit $commit"; then
-    echo "$commit is reverted on trunk already; trunk's next green run ends this." | tee -a "$summary"
+  # Not a pipe into grep -q: with pipefail, grep leaving early makes git
+  # log die of SIGPIPE, and the test then says "not reverted".
+  already=$(git log -1 --format=%H --grep="^This reverts commit $commit" FETCH_HEAD)
+  if [ -n "$already" ]; then
+    echo "$commit is reverted on trunk already as $already; trunk's next green run ends this." | tee -a "$summary"
     exit 0
   fi
   subject=$(git log -1 --format=%s "$commit")
+  # A release's commits are tagged and published, and a revert of the
+  # cop's own revert would undo its work: a person decides those.
+  case "$subject" in
+  "chore: release "* | "chore: pin "* | "chore: record "* | "revert: "* | "Revert \""*)
+    echo "::warning::The build cop would revert $commit ($subject), which is a person's to revert: $reason"
+    exit 0
+    ;;
+  esac
+  # Off until a failure that outlasts one rerun, as a rate limit of Maven
+  # Central's may, cannot blame the batch's oldest commit (releases.md,
+  # "The build cop").
+  if [ "${BUILD_COP_REVERT:-false}" != true ]; then
+    echo "::warning::The build cop would revert $commit ($subject); BUILD_COP_REVERT is not true: $reason"
+    exit 0
+  fi
   for _ in 1 2 3; do
     git fetch --quiet origin trunk
     git checkout --quiet --detach FETCH_HEAD

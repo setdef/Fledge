@@ -26,19 +26,20 @@ The repository keeps no running account of the project's state (decisions, 2026-
 
 ## Design precedence
 
-1. **A person who double-clicks or runs the app never meets Ruby.** No install step, no Ruby on `PATH`, no error that names a gem, no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot, and the app's gems are the runtime's). When anything below conflicts with this, this wins.
-2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`.** Same requires, same globals, same `ENV`, same standard library, bundled gems, and locked gems (decisions 9, 10, and 20; ADR 081). The parity check proves it on every platform; a difference is a bug unless `Parity::JUSTIFIED` says why it is right, because Fledge must never surprise an app developer with how Ruby, its globals, built-ins, and standard library behave compared with not using Fledge (decisions, 2026-11-02).
-3. **Ruby the language and its conventions.** RubyGems platform names for targets, CRuby's own `main.c` for how the launcher starts the interpreter, Ruby's layout for the standard library. Read the source at the pinned Ruby version; do not guess.
-4. **Prior art and standards.** GNU's and POSIX's command-line conventions, sysexits.h, LÖVE's fused games, the Tauri bundler, PyInstaller and Briefcase, and python-build-standalone. When Fledge needs a behavior these already settled, match them and cite them in the design document that specifies the behavior.
-5. **Ruby culture.** Idioms yield to 1 through 4.
+When two parts of the design pull apart, these decide, in this order. `doc/contributors/design/architecture.md`, "What the design answers to", says each in full, with the prior art it names.
+
+1. **A person who double-clicks or runs the app never meets Ruby,** and no Ruby the person happens to have influences the app. This wins over everything below.
+2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`** (decisions 9, 10, and 20; ADR 081). Fledge must never surprise an app developer with how Ruby, its globals, built-ins, and standard library behave compared with not using Fledge (decisions, 2026-11-02), so a difference is a bug unless `Parity::JUSTIFIED` says why it is right.
+3. **Ruby the language and its conventions,** read in Ruby's source at the pinned version, never guessed.
+4. **Prior art and standards,** matched, and cited in the design document that specifies the behavior.
+5. **Ruby culture,** whose idioms yield to 1 through 4.
 
 ## How to work
 
 - Research before designing: read the part's design document, and the prior art's source or documentation. Never guess at a reference's contents; cite the file and lines you relied on.
 - Root-cause every fix. If you cannot explain why a change fixed the symptom, it is not a fix.
 - Write tests first. A test must fail if the code it covers is deleted or mutated, and must exercise real collaborators, not stubs that hide missing behavior. The acceptance test for a build is a built app run on a fresh machine with no Ruby.
-- Code is a liability (decisions, 2026-10-28). Never write a file format, archive, image codec, signer, or other tool that a maintained, pinnable tool or gem provides: use the tool, and when none fits, say in the part's design document which were considered and why. Build each target on its own operating system with that system's tools, never one platform's app on another (decisions, 2026-10-28; ADR 010). Before adding a platform, first check whether a maintained project already publishes a portable Ruby for it (decisions, 2026-11-22).
-- Pin every external input (Ruby builds, actions, tools, gems) by version and, where it is downloaded, by SHA-256. Updates arrive on purpose.
+- Code is a liability (decisions, 2026-10-28): never write a tool that a maintained, pinnable tool or gem provides, and pin every external input by version and, where it is downloaded, by SHA-256 (`architecture.md`, "What the design answers to", says both in full). Build each target on its own operating system with that system's tools, never one platform's app on another (decisions, 2026-10-28; ADR 010). Before adding a platform, first check whether a maintained project already publishes a portable Ruby for it (decisions, 2026-11-22).
 - Add no requirement the maintainer did not ask for without weighing what it costs, and say what it costs when you propose one.
 - Design in the spirit of Kent Beck (small steps), Freeman & Pryce (tests drive interfaces), Sandi Metz (duplication over the wrong abstraction), Rebecca Wirfs-Brock (responsibility-driven roles), Martin Fowler (behavior-preserving refactors), and Matz (programmer happiness).
 

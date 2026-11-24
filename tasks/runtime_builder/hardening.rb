@@ -42,6 +42,7 @@ class RuntimeBuilder
       glibc: %w[-fPIE -fstack-protector-strong -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3],
       musl: %w[-fPIE -fstack-protector-strong],
       darwin: %w[-fPIE -fstack-protector-strong -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2],
+      darwin_objects: [],
       windows: [],
     }.freeze
 
@@ -56,6 +57,7 @@ class RuntimeBuilder
       glibc: %w[-pie -Wl,-z,relro,-z,now,-z,noexecstack],
       musl: %w[-pie -Wl,-z,relro,-z,now,-z,noexecstack],
       darwin: %w[-Wl,-pie],
+      darwin_objects: [],
       windows: %w[-Wl,--dynamicbase,--high-entropy-va,--nxcompat],
     }.freeze
 
@@ -65,6 +67,7 @@ class RuntimeBuilder
       glibc: %w[PIE RELRO BIND_NOW non-executable\ stack stack\ protector FORTIFY],
       musl: %w[PIE RELRO BIND_NOW non-executable\ stack stack\ protector],
       darwin: %w[PIE stack\ protector FORTIFY],
+      darwin_objects: %w[stack\ protector FORTIFY],
       windows: %w[DYNAMIC_BASE HIGH_ENTROPY_VA NX_COMPAT],
     }.freeze
 
@@ -76,8 +79,11 @@ class RuntimeBuilder
 
     attr_reader :kind
 
-    # +kind+ is :glibc, :musl, :darwin, or :windows; +readers+ the
-    # Fledge::Binary::Readers that read this kind's programs.
+    # +kind+ is :glibc, :musl, :darwin, :windows, or :darwin_objects (the
+    # object files a Mac's programs are linked from, which show whether
+    # Fledge's own code was compiled with the flags, where the program
+    # also holds libruby's); +readers+ the Fledge::Binary::Readers that
+    # read this kind's files.
     def initialize(kind:, readers:)
       raise ArgumentError, "no hardening of #{kind}" unless REQUIRED.key?(kind)
 
@@ -85,23 +91,19 @@ class RuntimeBuilder
       @readers = readers
     end
 
-    # The protections of REQUIRED that the program at +path+ lacks, by
-    # name. Raises when no reader reads the program.
-    def missing(path)
-      format = Fledge::Binary.format_of(File.binread(path, 8).to_s) or raise "#{path} is not a compiled program"
-      have = case format
-      when :elf then Hardening.elf(tool(:elf, "-p", path), tool(:elf, "-T", path))
-      when :macho then Hardening.macho(tool(:macho, "-p", path), tool(:macho, "-t", path))
-      when :pe then Hardening.pe(tool(:pe, "--file-headers", path))
-      else raise "#{path} is a #{format} file, not a program"
-      end
+    # The protections of REQUIRED that the files at +paths+, which are
+    # one program or the object files of one, all together lack, by name.
+    # Raises when no reader reads a file.
+    def missing(*paths)
+      have = paths.flat_map { |path| protections(path) }
       REQUIRED.fetch(kind).reject { |name| have.include?(name) }
     end
 
-    # Raises, naming what each of +paths+ lacks, when any lacks a
-    # protection.
-    def check(paths)
-      lacking = paths.to_h { |path| [path, missing(path)] }.reject { |_, names| names.empty? }
+    # Raises, naming what each of +programs+ lacks, when any lacks a
+    # protection. A program is a path, or an array of the paths of the
+    # object files it is linked from.
+    def check(programs)
+      lacking = programs.to_h { |program| [Array(program).join(", "), missing(*program)] }.reject { |_, names| names.empty? }
       return if lacking.empty?
 
       raise lacking.map { |path, names| "#{path} lacks #{names.join(', ')}" }.join("; ") +
@@ -149,6 +151,16 @@ class RuntimeBuilder
       have
     end
     private_class_method :symbols
+
+    private def protections(path)
+      format = Fledge::Binary.format_of(File.binread(path, 8).to_s) or raise "#{path} is not a compiled program"
+      case format
+      when :elf then Hardening.elf(tool(:elf, "-p", path), tool(:elf, "-T", path))
+      when :macho then Hardening.macho(tool(:macho, "-p", path), tool(:macho, "-t", path))
+      when :pe then Hardening.pe(tool(:pe, "--file-headers", path))
+      else raise "#{path} is a #{format} file, not a program"
+      end
+    end
 
     private def tool(format, *arguments)
       command = @readers.commands.fetch(format) { raise "no tool on this computer reads #{format} files. #{@readers.install}" }

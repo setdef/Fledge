@@ -854,10 +854,10 @@ class RuntimeBuilderTest < Minitest::Test
     end
   end
 
-  # The frameworks the link command among +commands+, the one at -O2,
-  # names.
+  # The frameworks the link command among +commands+, the one with
+  # -Wl,-pie, names.
   def frameworks_linked(commands)
-    commands.find { |command| command.include?("-O2") }.each_cons(2).select { |flag, _| flag == "-framework" }.map(&:last)
+    commands.find { |command| command.include?("-Wl,-pie") }.each_cons(2).select { |flag, _| flag == "-framework" }.map(&:last)
   end
 
   # The Windows launcher cross-compiles, so Windows runtimes build where

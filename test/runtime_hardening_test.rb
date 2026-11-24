@@ -148,6 +148,37 @@ class RuntimeHardeningTest < Minitest::Test
     assert_equal %w[DYNAMIC_BASE HIGH_ENTROPY_VA NX_COMPAT], required.fetch(:windows)
   end
 
+  # Fledge's own object files carry the canary in some and a checked call
+  # in others: the program is hardened when its files are, together.
+  def test_the_object_files_of_a_program_are_read_together
+    Dir.mktmpdir do |dir|
+      canary = File.join(dir, "canary.o")
+      checked = File.join(dir, "checked.o")
+      plain = File.join(dir, "plain.o")
+      [canary, checked, plain].each { |path| File.binwrite(path, "\xCF\xFA\xED\xFE".b + ("\0" * 8)) }
+      listings = {
+        canary => "SYMBOL TABLE:\n0000000000000000         *UND* ___stack_chk_fail\n",
+        checked => "SYMBOL TABLE:\n0000000000000000         *UND* ___strcpy_chk\n",
+        plain => "SYMBOL TABLE:\n0000000000000000         *UND* _puts\n",
+      }
+      readers = Object.new
+      readers.define_singleton_method(:commands) { { macho: "objdump-stub" } }
+      hardening = RuntimeBuilder::Hardening.new(kind: :darwin_objects, readers:)
+      hardening.define_singleton_method(:tool) do |_format, flag, path|
+        (flag == "-t") ? listings.fetch(path) : MACHO_HEADER
+      end
+
+      assert_empty hardening.missing(canary, checked, plain)
+      assert_equal ["FORTIFY"], hardening.missing(canary, plain)
+      error = assert_raises(RuntimeError) { hardening.check([[canary, plain]]) }
+      assert_includes error.message, "#{canary}, #{plain} lacks FORTIFY"
+    end
+  end
+
+  def test_the_object_files_of_a_mac_program_need_the_canary_and_checked_calls_not_pie
+    assert_equal %w[stack\ protector FORTIFY], RuntimeBuilder::Hardening::REQUIRED.fetch(:darwin_objects)
+  end
+
   def test_an_unknown_kind_is_refused
     assert_raises(ArgumentError) { RuntimeBuilder::Hardening.new(kind: :plan9, readers: nil) }
   end
@@ -188,6 +219,26 @@ class RuntimeHardeningTest < Minitest::Test
         raise unless e.message == "libxcrypt built no libcrypt.so.N"
       end
       commands.ran.find { |command| command.include?("-O2") }
+    end
+  end
+
+  # A Mac's launcher is compiled to object files with the flags, which
+  # Hardening reads, and then linked from them.
+  def test_a_darwin_compile_makes_object_files_with_the_flags_and_links_them
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, "prefix", "include", "ruby-4.0.0", "arm64-darwin"))
+      FileUtils.mkdir_p(File.join(dir, "prefix", "lib"))
+      FileUtils.touch(File.join(dir, "prefix", "lib", "libruby.4.0-static.a"))
+      commands = Commands.new
+      recipe = RuntimeBuilder::Darwin.new(builder: commands, build_dir: dir)
+      recipe.instance_variable_set(:@prefix, File.join(dir, "prefix"))
+      recipe.compile(File.join(dir, "launcher"), [File.join(RuntimeBuilder::Recipe::LAUNCHER, "unix.c")], "")
+      compile = commands.ran.find { |command| command.include?("-c") && command.include?("-O2") }
+      link = commands.ran.find { |command| command.include?("-Wl,-pie") }
+
+      RuntimeBuilder::Hardening::COMPILE.fetch(:darwin).each { |flag| assert_includes compile, flag }
+      assert_equal [[File.join(dir, "objects", "launcher", "unix.o")]], recipe.objects
+      assert_includes link, File.join(dir, "objects", "launcher", "unix.o")
     end
   end
 

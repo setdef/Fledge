@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Tests Blocked on Your Developer Accounts
 
-This is your working checklist: every test that only your Apple, Microsoft, Google, or package-repository accounts, or a certificate you buy, can run. Agents keep it current (AGENTS.md, Releasing); you work through it.
+This is your working checklist: every test that only your Apple, Microsoft, Google, or package-repository accounts, or a certificate you buy, can run. Agents keep it current (decisions, 2026-11-08); you work through it.
 
 ## How to use this list
 

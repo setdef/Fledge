@@ -686,8 +686,8 @@ class BuiltAppTest < Minitest::Test
   # RUBYOPT sets up the app's own Gemfile, as under bundle exec, though
   # the person's own Bundler settings, in HOME's .bundle/config, name
   # another, and so does their BUNDLE_GEMFILE, which on Windows, whose
-  # variable names ignore case, they may spell bundle_gemfile (AGENTS.md,
-  # Design precedence 1; doc/contributors/design/launcher.md, "Bundler's
+  # variable names ignore case, they may spell bundle_gemfile (doc/contributors/design/architecture.md, "What the design answers
+  # to"; doc/contributors/design/launcher.md, "Bundler's
   # variables spelled otherwise").
   def test_a_child_ruby_of_a_bundler_app_sets_up_the_apps_gemfile
     Dir.mktmpdir do |dir|

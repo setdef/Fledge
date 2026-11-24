@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 # Everything a runtime is built from that comes from outside this
-# repository, pinned by version and SHA-256 (AGENTS.md: "Pin every
-# external input"). rake runtime reads this file; a download whose
+# repository, pinned by version and SHA-256 (doc/contributors/design/runtimes.md,
+# "Sources and pins"). rake runtime reads this file; a download whose
 # SHA-256 differs fails the build. Change a pin on purpose, and run
 # Delivery (ci.yml) before trusting it.
 
@@ -460,7 +460,7 @@ nsis:
 # The mobile runtimes (ADR 099): CRuby built from its own source for
 # iOS and iPadOS and for Android, interpreter only, as a shared library
 # with its extensions as files, which no prebuilt Ruby offers. Each builds on its
-# own system (AGENTS.md): iOS on a Mac with the Xcode below, Android on
+# own system (decisions, 2026-10-28): iOS on a Mac with the Xcode below, Android on
 # Linux with the NDK below. Their sources are Ruby's release tarball, the
 # same 4.1.0-preview1 the macOS and Linux runtimes carry; OpenSSL 3.6.5, the release
 # RubyInstaller's Windows Ruby links; libyaml 0.2.5, as every desktop

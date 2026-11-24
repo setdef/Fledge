@@ -3,7 +3,7 @@
 
 # Publishes a Fledge release when a vX.Y.Z tag is pushed
 # (doc/contributors/design/releases.md, "Where releases are";
-# AGENTS.md, Releasing). Only when CI passed on every job, the license
+# "How a release is made"). Only when CI passed on every job, the license
 # audit and Delivery included, for the tagged commit's parent, and for the tagged commit the short CI
 # a pin commit runs, does it create the GitHub Release, with, for each
 # platform:
@@ -62,8 +62,7 @@
 # each platform and builds and delivers the examples there with runtimes
 # downloaded from the release itself (installed.yml).
 #
-# Before 1.0, agents may push tags and create releases (AGENTS.md,
-# Releasing; decision 6 in doc/contributors/decisions.md), on a commit
+# Before 1.0, agents may push tags and create releases (decision 6 in doc/contributors/decisions.md), on a commit
 # whose CI is green. From 1.0.0, once the maintainer has set
 # RubyGems.org to trust this workflow, its last job pushes the gem there
 # (doc/contributors/releasing-1.0.md); before that, nothing here
@@ -165,7 +164,7 @@ jobs:
             exit 1
           fi
 
-      # AGENTS.md, Releasing: tag only a commit whose CI is green. Its run,
+      # doc/contributors/design/releases.md, "How a release is made": tag only a commit whose CI is green. Its run,
       # on a push or a dispatch, must have finished with the latest attempt of
       # every job a success, so failed jobs run again and passed count.
       # A pin commit's run is the short one: the gate and ci.yml's Changes

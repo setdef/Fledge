@@ -160,7 +160,7 @@ class Parity
           "since Ruby's ENV writes keep a variable's name. But Bundler's settings read ENV by Bundler's spelling alone " \
           "(bundler/settings.rb, Settings#initialize), and Bundler.setup takes the Gemfile from them (bundler.rb, " \
           "configure_custom_gemfile), so with the person's spelling a Ruby the app starts with bundler/setup sets up " \
-          "the Gemfile the person's own .bundle/config names (AGENTS.md, Design precedence 1; " \
+          "the Gemfile the person's own .bundle/config names (doc/contributors/design/architecture.md, \"What the design answers to\"; " \
           "doc/contributors/design/launcher.md, \"Bundler's variables spelled otherwise\").")
     end,
     *["Bundler.original_env", "Bundler.unbundled_env", "original child ENV", "unbundled child ENV"].map do |fact|
@@ -173,7 +173,7 @@ class Parity
           "before a restart or after it (doc/contributors/design/launcher.md, \"Bundler's variables spelled otherwise\").")
     end,
     Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
-      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (AGENTS.md, Design precedence 1), " \
+      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (doc/contributors/design/architecture.md, \"What the design answers to\"), " \
         "so it cannot change how the app runs; it still reaches the app's ENV and every program the app starts."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"(?:<prefix>/lib/ruby/#{ABI}|#{PERSON_GEMS}/gems/bundler-[^/"]+/lib)/bundler/feature_flag\.rb"\z}o],
       checks: %i[bundle],
@@ -222,7 +222,7 @@ class Parity
           "runtime's bin/ruby take a UTF-8 locale instead, as Python does under PEP 538. launchd gives a " \
           "double-clicked app no locale at all, and Ruby still boots in the C locale, but it gives a folder " \
           "named outside ASCII in the app's path, or the person's home, three encodings, so Bundler's setup " \
-          "and the app's own code fail for a person who never meets Ruby (Design precedence 1; " \
+          "and the app's own code fail for a person who never meets Ruby (doc/contributors/design/architecture.md, \"What the design answers to\"; " \
           "doc/contributors/research/2026-11-13-c-locale.md, Verdict). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
           "nothing is exported: ENV and every program the app starts see the person's own locale.")
     end,

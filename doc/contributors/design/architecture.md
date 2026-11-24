@@ -20,6 +20,18 @@ Fledge copies a program its developer already runs, with its project and the gem
 - **Proof.** The parity check, the ruby/spec comparison, and Delivery prove a built app runs as Ruby runs it, on a fresh computer with no Ruby (ADR 081). `doc/contributors/design/parity.md` describes them.
 - **CI and releases.** `.github/workflows/fast.yml` runs the lint and the unit tests on Linux and Windows on every push, in minutes, `.github/workflows/fast-macos.yml` the unit tests on macOS, when a macOS runner comes, and `.github/workflows/ci.yml`, which a push to trunk never cancels, runs the gate, builds every runtime, runs the tests, the parity check, and ruby/spec, builds the example apps on each platform, delivers them on fresh runners and containers, and audits licenses. A tag runs `release.yml`, which publishes the runtimes its commit's CI built and tested, then `installed.yml`, which installs Fledge from the tag and delivers apps with the published runtimes, and `package-managers.yml`. `doc/contributors/design/releases.md` describes versions and releases, and `doc/contributors/design/public-interface.md` what a release promises.
 
+## What the design answers to
+
+When two parts of the design pull apart, these decide, in this order.
+
+1. **A person who double-clicks or runs the app never meets Ruby.** There is no install step, no Ruby on `PATH`, and no error that names a gem. No Ruby the person happens to have influences the app: `RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot, and the app's gems are the runtime's (`launcher.md`, "Hiding and restoring the person's Ruby settings"). Where something below conflicts with this, this wins.
+2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`.** The same requires, globals, `ENV`, standard library, bundled gems, and locked gems (decisions 9, 10, and 20 in `doc/contributors/decisions.md`; ADR 081). The maintainer's reason, of 2026-11-02, is that Fledge must never surprise an app developer with how Ruby, its globals, built-ins, and standard library behave compared with not using Fledge. The parity check proves it on every platform (`parity.md`); a difference is a bug unless `Parity::JUSTIFIED` says why it is right.
+3. **Ruby the language and its conventions.** RubyGems platform names for targets, CRuby's own `main.c` for how the launcher starts the interpreter, Ruby's layout for the standard library, read at the pinned Ruby version.
+4. **Prior art and standards.** GNU's and POSIX's command-line conventions, sysexits.h, LÖVE's fused games, the Tauri bundler, PyInstaller and Briefcase, and python-build-standalone. Where one settled a behavior, Fledge matches it and the design document that specifies the behavior cites it.
+5. **Ruby culture.** Idioms yield to 1 through 4.
+
+Two more rules shape every part. Code is a liability (decisions, 2026-10-28): Fledge writes no file format, archive, image codec, signer, or other tool that a maintained, pinnable tool already provides, runs the tool on the platform it belongs to, and says in the part's design document which tools were considered and why none fit. Every external input, whether a Ruby build, an action, a tool, or a gem, is pinned by version and, where it is downloaded, by SHA-256; updates arrive on purpose (`runtimes.md`, "Sources and pins").
+
 ## Design documents
 
 | Document | What it describes |

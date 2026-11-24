@@ -27,7 +27,7 @@ namespace :reuse do
     sh "reuse lint"
   end
 
-  desc "Add SPDX headers to files missing them (per AGENTS.md standards)"
+  desc "Add SPDX headers to files missing them"
   task :fix do
     copyright = "setdef <kerrick@setdef.com>"
 

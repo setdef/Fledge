@@ -12,8 +12,8 @@ require "uri"
 # Finds a commit's green run of ci.yml, on a push or a dispatch, from
 # GitHub's REST API.
 #
-# A release tags a commit only once CI has passed on it (AGENTS.md,
-# Releasing), and publishes the runtimes CI built from that commit's
+# A release tags a commit only once CI has passed on it (doc/contributors/design/releases.md,
+# "How a release is made"), and publishes the runtimes CI built from that commit's
 # parent. Running all of CI again on the tag proves nothing the push
 # already proved, takes half an hour, and draws every flaky mirror and
 # runner a second time; 0.2.0 was never published because that second

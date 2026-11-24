@@ -18,8 +18,7 @@ class FastCheck
   # Raised for a base that names no commit.
   class Error < StandardError; end
 
-  # The trailer every commit carries (AGENTS.md, Provenance), as git
-  # parses it.
+  # The trailer every commit carries (CONTRIBUTING.md), as git parses it.
   TRAILER = "Provenance"
   # Its value.
   PROVENANCE = "requested"

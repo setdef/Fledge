@@ -62,7 +62,8 @@ end
 # runtime keeps there, as under ruby.exe: rugged's, compiled from
 # source, imports the libz-1.dll the runtime adds there. The other two
 # would let the person's own folders into the app's DLL search
-# (AGENTS.md, Design precedence 1), and the launcher hides RUBY_DLL_PATH
+# (doc/contributors/design/architecture.md, "What the design
+# answers to"), and the launcher hides RUBY_DLL_PATH
 # from Ruby's boot (scrub.c). The rest of RubyInstaller's file writes
 # into the gem folder, may set GEM_HOME, and creates
 # %ProgramData%\gemrc, which no app may do

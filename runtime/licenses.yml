@@ -25,7 +25,7 @@
 #     categories").
 #
 # The maintainer's rule (decisions 8 and 24, and the replies of
-# 2026-10-26 in doc/contributors/decisions.md; AGENTS.md, Licensing): an
+# 2026-10-26 in doc/contributors/decisions.md; design/license-audit.md): an
 # app's developer must owe nothing beyond notices for what Fledge copies
 # into the app, Fledge's own MIT files among them (decisions,
 # 2026-11-07), except for LGPL libraries, which may ship only as

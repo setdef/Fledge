@@ -113,7 +113,7 @@ class PinMove
   # The commit message of the moves of +findings+, as the workflow that
   # proves them commits it: a subject in Conventional Commits' form, a
   # body that says what moved and why, wrapped at 72, and the trailer
-  # every commit of Fledge's carries (AGENTS.md, "Committing").
+  # every commit of Fledge's carries (CONTRIBUTING.md).
   def message(findings)
     moves = findings.map(&:to_h).map { |finding| "#{title(finding.fetch('name'))} #{finding.fetch('current')} to #{finding.fetch('newer')}" }
     subject = if findings.one?

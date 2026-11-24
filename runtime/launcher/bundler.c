@@ -66,7 +66,7 @@
  * (bundler.rb, configure_custom_gemfile), so with the person's spelling
  * a Ruby the app starts with bundler/setup in RUBYOPT would set up the
  * Gemfile the person's own .bundle/config names: the person's Ruby
- * reaching the app (AGENTS.md, Design precedence 1).
+ * reaching the app (architecture.md, "What the design answers to").
  *
  * The variables travel as hexadecimal inside the code itself, so the
  * launcher needs no Ruby function but rb_eval_string_protect, and the

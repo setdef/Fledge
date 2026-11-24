@@ -14,8 +14,8 @@ require_relative "ruby_spec/listing"
 # The ruby/spec comparison: ruby/spec, run by MSpec, on stock Ruby and in
 # a built app, with every example that fails on one side only either
 # justified in JUSTIFIED or failing the check
-# (doc/contributors/design/parity.md, "ruby/spec"; AGENTS.md, Design
-# precedence 2).
+# (doc/contributors/design/parity.md, "ruby/spec"; architecture.md,
+# "What the design answers to").
 #
 # It downloads ruby/spec and MSpec at their pinned commits (SOURCES),
 # each checked against its SHA-256, and writes a project of

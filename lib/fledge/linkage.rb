@@ -18,8 +18,8 @@ module Fledge
   # that computer has (nokogiri's vendored libxml2, built from source on a
   # Mac with Homebrew, linked Homebrew's liblzma), and the app would then
   # fail to start everywhere else, with a loader's error that names a gem,
-  # which a person who runs the app must never meet (AGENTS.md, Design
-  # precedence 1).
+  # which a person who runs the app must never meet (doc/contributors/design/architecture.md,
+  # "What the design answers to").
   #
   # This class reads each compiled file of a gem in the format of the
   # target's own loader, ELF, Mach-O, or PE, since a loader loads no other

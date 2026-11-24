@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+
+# A console app, for a terminal: a person downloads one folder, with no
+# Ruby on their computer, and runs Lectern on a Markdown file. Its gems
+# are pure Ruby, so one Gemfile.lock serves every platform.
+name: Lectern
+kind: console
+version: "1.0.0"
+publisher: setdef
+description: Reads Markdown in your terminal

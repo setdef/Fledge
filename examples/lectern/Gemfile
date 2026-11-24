@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+# kramdown, with its parser for GitHub-Flavored Markdown, reads the
+# Markdown; rouge colors the code blocks. All are pure Ruby, so one
+# Gemfile.lock serves every platform Fledge targets, and nothing is
+# compiled.
+gem "kramdown", "2.5.1"
+gem "kramdown-parser-gfm", "1.1.0"
+gem "rouge", "4.7.0"

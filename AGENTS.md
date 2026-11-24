@@ -18,7 +18,7 @@ The repository keeps no running account of the project's state (decisions, 2026-
 ## Where to look
 
 - `README.md`: what Fledge does, for app developers.
-- `CONTRIBUTING.md`: setup, the tests, checking a change before and after its push, and reading CI.
+- `CONTRIBUTING.md`: how to put a question to the maintainer, setup, the tests, checking a change before and after its push, and reading CI.
 - `doc/contributors/decisions.md`: the maintainer's words that shaped Fledge up to now. His replies on `question` issues are his words too, and stay on those issues.
 - The milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left, each issue written so that an agent can start from it. `doc/contributors/plan/003.md`, the plan of record, holds the stories and the direction behind them.
 - `doc/contributors/design/`: how each part works, and why. `architecture.md` is the overview, indexes the few ADRs, and says when one is written and how it changes; `releases.md` says how a release is made, and `license-audit.md` how the license policy is enforced.
@@ -86,7 +86,7 @@ A question is an open issue labelled `question`, assigned to the maintainer, of 
 
 Everything agents invented is the agents' to decide: design-document, ADR, and plan content, CLI details, `fledge.yml` keys, the help header, error messages, internal layouts, and names inside the runtime. Decide it by the design precedence, record why in the design document that specifies it, and change it when a better reason arrives. Never ask him to second-guess an agent's invention, and ask nothing hypothetical: a question is about something that exists or is about to (decisions, 2026-11-22).
 
-Open one with `gh issue create --label question --assignee Kerrick`, titled as a sentence. Name the context, the default the work proceeds on, and how to reverse it, in plain words he can answer from the question alone: quote his earlier words where they bear on it, and send him to no ADR, plan, or other file. Build on the default meanwhile. When he answers, apply the answer, correct each document it makes untrue, and close the issue with a comment saying how (the commit, or that nothing needed changing).
+Write one, and act on its answer, as CONTRIBUTING.md, "Ask for what you want", says, and build on its default meanwhile.
 
 ## Licensing
 

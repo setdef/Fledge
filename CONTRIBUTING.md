@@ -10,6 +10,8 @@ Fledge's code, tests, and documents are written by LLM agents at the maintainer'
 
 Open an [issue](https://github.com/setdef/Fledge/issues). Describe the problem or the feature, the platform you build on, the platform you run on, and what `bundle exec fledge --version` prints. The maintainer decides what Fledge does, and an agent builds it.
 
+An agent puts a question to the maintainer, of the two kinds [AGENTS.md](AGENTS.md), "Questions", names, as an issue: `gh issue create --label question --assignee Kerrick`, with a title that states the question as a sentence. It names the context, the default the work proceeds on, and how to reverse that default, in plain words he can answer from the question alone: it quotes his earlier words where they bear on it, and sends him to no ADR, plan, or other file. The work builds on the default meanwhile. When he answers, the agent applies the answer, corrects each document it makes untrue, and closes the issue with a comment saying how (the commit, or that nothing needed changing).
+
 ## Work on Fledge
 
 Start with [AGENTS.md](AGENTS.md), which is binding, then read:

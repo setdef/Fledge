@@ -1731,6 +1731,25 @@ jobs:
           ruby -I lib exe/fledge build -o dist test/fixtures/libui
           ruby -I lib exe/fledge build -o "$RUNNER_TEMP/libui-example" examples/libui_app
 
+      # examples/lota_pop, Pop, a game written with Lota, whose gem is
+      # not on RubyGems.org: the script takes it from Lota's release,
+      # checked against the SHA-256 it pins, into the project's
+      # vendor/cache. Built but not uploaded, as Focus Timer is. Not on
+      # musl Linux (build-musl): Lota publishes no gem for it.
+      - name: Build Pop, a Lota game, for ${{ matrix.platform }}
+        shell: bash
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
+        run: |
+          case "${{ matrix.platform }}" in
+            x86_64-linux) gem_platform=x86_64-linux-gnu ;;
+            aarch64-linux) gem_platform=aarch64-linux-gnu ;;
+            *) gem_platform=${{ matrix.platform }} ;;
+          esac
+          .github/scripts/lota-pop.sh examples/lota_pop "$gem_platform"
+          ruby -I lib exe/fledge build -o "$RUNNER_TEMP/lota-pop" examples/lota_pop
+
       # Plan 003, "A Linux build takes the icon sizes a developer has":
       # windowed_app with only three of its PNGs builds, warns, and ships
       # three icons in its .deb and AppImage; with none it fails.

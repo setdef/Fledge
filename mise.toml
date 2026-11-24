@@ -201,6 +201,27 @@ os = ["macos"]
 platforms.macos-arm64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip", checksum = "sha256:4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806", bin_path = "xcodegen/bin" }
 platforms.macos-x64 = { url = "https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip", checksum = "sha256:4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806", bin_path = "xcodegen/bin" }
 
+# CMake, which test/fixtures/cmake_phone's extconf.rb runs for each of the
+# phone's targets, as a gem's own extconf.rb may: 3.21 or later reads
+# the toolchain file Fledge names in CMAKE_TOOLCHAIN_FILE from the
+# environment, and the iOS slice's toolchain is CMake's own iOS support.
+# A stock Mac and a stock Linux computer have no CMake, and GitHub's
+# runner images happen to; here every computer gets this one, first on
+# PATH under mise x. Kitware's release, whose SHA-256 is Kitware's own
+# (cmake-3.31.6-SHA-256.txt, published beside it). Each archive holds
+# one top-level folder, which strip_components takes off, so that
+# bin_path names a folder and a computer's own CMake does not come
+# first. The Mac's one archive is universal and holds CMake.app, whose
+# Contents/bin has the cmake that finds its modules in Contents/share.
+# It runs at build time only, and no runtime or app carries it.
+[tools."http:cmake"]
+version = "3.31.6"
+os = ["linux", "macos"]
+platforms.linux-x64 = { url = "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-linux-x86_64.tar.gz", checksum = "sha256:5a1133ff103c71eb5120e2cc3de922733e7d8a26a98ae716397e8676adb367bf", bin_path = "bin", strip_components = 1 }
+platforms.linux-arm64 = { url = "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-linux-aarch64.tar.gz", checksum = "sha256:b4cc788d63112b2749b40627e719eb5d3b8ed8f00c36d77189f4019cfe64bc9e", bin_path = "bin", strip_components = 1 }
+platforms.macos-arm64 = { url = "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-macos-universal.tar.gz", checksum = "sha256:330b9514f5112e5ed4fb08b8b05803b776fd9b539a6ae12927d14dcc0ee2ba8d", bin_path = "CMake.app/Contents/bin", strip_components = 1 }
+platforms.macos-x64 = { url = "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-macos-universal.tar.gz", checksum = "sha256:330b9514f5112e5ed4fb08b8b05803b776fd9b539a6ae12927d14dcc0ee2ba8d", bin_path = "CMake.app/Contents/bin", strip_components = 1 }
+
 # On macOS, the pkg-config and xzcat commands that compiling sqlite3 and
 # nokogiri from source runs, as they compile on the Ruby 4.1 above,
 # which their precompiled gems do not take (CONTRIBUTING.md): sqlite3's

@@ -5,14 +5,14 @@
 # computer needs, and running them on an emulator, as CI's Runtime
 # (android) and Mobile apps (Android emulator) jobs do: a JDK, for
 # Gradle, which packs the runtime's AAR and builds each app, and for
-# bundletool; the NDK; CMake, for an extconf.rb that runs it; and the
+# bundletool; the NDK; and the
 # packages of Android's SDK that Gradle and the emulator need. mise
 # reads this file beside mise.toml only when MISE_ENV is android
 # (MISE_ENV=android mise install), so a contributor who never builds for
 # Android downloads none of its five gigabytes; bin/android-sdk then
 # lays the SDK's packages out as one SDK, in ANDROID_HOME, and
 # bin/android-emulator boots an emulator from it. CI installs none of
-# this: its runner image has a JDK, CMake, and an SDK, and
+# this: its runner image has a JDK and an SDK, and
 # android-emulator-runner installs the emulator and a system image.
 #
 # Each package is the one CI's jobs used on 2026-11-12, run 43244631646,
@@ -32,7 +32,7 @@
 # computer. Temurin's is Adoptium's own, published beside the archive
 # (.sha256.txt). mise's http backend refuses a download whose SHA-256
 # differs, and unpacks it into a folder of its own, without the
-# archive's one top-level folder, but for CMake's, which says why.
+# archive's one top-level folder.
 #
 # Android's command-line tools are left out: nothing here runs
 # sdkmanager, and avdmanager finds no package in an SDK of links, so
@@ -59,21 +59,6 @@ platforms.linux-x64 = { url = "https://github.com/adoptium/temurin21-binaries/re
 version = "r30"
 os = ["linux/x64"]
 platforms.linux-x64 = { url = "https://dl.google.com/android/repository/android-ndk-r30-linux.zip", checksum = "sha256:753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2" }
-
-# CMake, which test/fixtures/cmake_phone's extconf.rb runs for each of the
-# phone's targets, as a gem's own extconf.rb may: 3.21 or later reads
-# the toolchain file Fledge names in CMAKE_TOOLCHAIN_FILE from the
-# environment. This is Kitware's release, whose SHA-256 is Kitware's
-# own (cmake-3.31.6-SHA-256.txt, published beside it), the same on a
-# download on 2026-11-19. mise 2026.10.11 kept this archive's
-# top-level folder, with bin_path given, so that bin_path named no
-# folder and a computer's own CMake came first on PATH; strip_components
-# takes the folder off.
-# CI's runner image has a CMake of its own.
-[tools."http:cmake"]
-version = "3.31.6"
-os = ["linux/x64"]
-platforms.linux-x64 = { url = "https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-linux-x86_64.tar.gz", checksum = "sha256:5a1133ff103c71eb5120e2cc3de922733e7d8a26a98ae716397e8676adb367bf", bin_path = "bin", strip_components = 1 }
 
 # adb.
 [tools."http:android-platform-tools"]

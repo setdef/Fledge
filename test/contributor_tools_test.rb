@@ -245,6 +245,27 @@ class ContributorToolsTest < Minitest::Test
     end
   end
 
+  # test/fixtures/cmake_phone's extconf.rb needs CMake 3.21 or later, which
+  # a stock Mac or Linux computer lacks and CI's runner images happen to
+  # have. mise installs Kitware's release on both, by its SHA-256, and
+  # puts the folder that holds cmake first on PATH.
+  def test_mise_installs_on_linux_and_macos_the_cmake_cmake_phone_needs
+    section = mise_toml[/^\[tools\."http:cmake"\]\n(?:(?!\n\n).)*/m] or flunk "mise.toml pins no CMake"
+    version = section[/^version = "(\d+)\.(\d+)\.\d+"$/, 0] or flunk "no version"
+    major, minor = section.match(/^version = "(\d+)\.(\d+)\./).captures.map(&:to_i)
+
+    assert_includes section, %(os = ["linux", "macos"])
+    assert_operator([major, minor] <=> [3, 21], :>=, 0, version)
+    %w[linux-x64 linux-arm64 macos-arm64 macos-x64].each do |platform|
+      line = section.lines.grep(/^platforms\.#{platform} = /).first or flunk "no CMake for #{platform}"
+
+      assert_match(%r{url = "https://github\.com/Kitware/CMake/releases/download/v[\d.]+/cmake-[\d.]+-[\w.-]+\.tar\.gz"}, line)
+      assert_match(/checksum = "sha256:\h{64}"/, line)
+      assert_match(%r{bin_path = "(?:bin|CMake\.app/Contents/bin)", strip_components = 1 \}$}, line)
+    end
+    refute_includes android_toml, "http:cmake"
+  end
+
   # On Ruby 4.1 sqlite3 and nokogiri compile from source, and
   # mini_portile2, which builds their libraries, runs the commands
   # pkg-config and xzcat by those names. A stock Mac has neither, so on

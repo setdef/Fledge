@@ -10,13 +10,13 @@ Fledge's code, tests, and documents are written by LLM agents at the maintainer'
 
 Open an [issue](https://github.com/setdef/Fledge/issues). Describe the problem or the feature, the platform you build on, the platform you run on, and what `bundle exec fledge --version` prints. The maintainer decides what Fledge does, and an agent builds it.
 
-An agent puts a question to the maintainer, of the two kinds [AGENTS.md](AGENTS.md), "Questions", names, as an issue: `gh issue create --label question --assignee Kerrick`, with a title that states the question as a sentence. It names the context, the default the work proceeds on, and how to reverse that default, in plain words he can answer from the question alone: it quotes his earlier words where they bear on it, and sends him to no ADR, plan, or other file. The work builds on the default meanwhile. When he answers, the agent applies the answer, corrects each document it makes untrue, and closes the issue with a comment saying how (the commit, or that nothing needed changing).
+An agent puts a question to the maintainer, of the two kinds [AGENTS.md](AGENTS.md), "Questions", names, as an issue: `gh issue create --label question --assignee Kerrick`, with a title that states the question as a sentence. It names the context, the default the work proceeds on, and how to reverse that default, in plain words he can answer from the question alone: it states, in its own words, the decisions of `doc/contributors/decisions.md` that bear on it, by date, and sends him to no ADR, plan, or other file. It quotes nobody, and says nothing of what anyone said in private (AGENTS.md, "Provenance"). The work builds on the default meanwhile. When he answers, the agent applies the answer, corrects each document it makes untrue, and closes the issue with a comment that says what changed (the commit, or that nothing needed changing) as the project's work, without restating the answer or saying who gave it.
 
 ## Work on Fledge
 
 Start with [AGENTS.md](AGENTS.md), which is binding, then read:
 
-- [`doc/contributors/decisions.md`](doc/contributors/decisions.md): the maintainer's own words up to now. His later answers are his replies on the `question` issues, which stay there.
+- [`doc/contributors/decisions.md`](doc/contributors/decisions.md): the project's decisions that shape what Fledge is and does, each dated.
 - The open issues of the milestone "1.0.0 release candidate" at [github.com/setdef/Fledge](https://github.com/setdef/Fledge/milestones): the work left before the candidate (`gh issue list --milestone "1.0.0 release candidate"`). [`doc/contributors/plan/`](doc/contributors/plan) holds the stories and the direction, with the current plan last.
 - [`doc/contributors/design/`](doc/contributors/design): how each part works, and why, with [`architecture.md`](doc/contributors/design/architecture.md) as the overview and [`releases.md`](doc/contributors/design/releases.md) for how a release is made.
 - [`doc/contributors/adr/`](doc/contributors/adr): the decisions behind each behavior.

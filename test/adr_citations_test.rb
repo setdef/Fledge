@@ -51,14 +51,11 @@ class AdrCitationsTest < Minitest::Test
 
   # The text of a file that a citation in must name an ADR that exists:
   # CHANGELOG.md's Unreleased section and not the released ones, which
-  # are never edited; and doc/contributors/decisions.md without the
-  # maintainer's quoted words, while the agents' notes there count.
+  # are never edited.
   def checked_text(path, text)
-    case path
-    when "CHANGELOG.md" then text[/\A.*?^## \[Unreleased\].*?(?=^## \[|\z)/m].to_s
-    when "doc/contributors/decisions.md" then text.gsub(/^>.*$/, "")
-    else text
-    end
+    return text unless path == "CHANGELOG.md"
+
+    text[/\A.*?^## \[Unreleased\].*?(?=^## \[|\z)/m].to_s
   end
 
   # Each [line, number] the text cites that has no ADR. In an ADR, the
@@ -140,10 +137,5 @@ class AdrCitationsTest < Minitest::Test
   def test_reads_the_changelogs_unreleased_section_and_not_the_released_ones
     changelog = "# Changelog\n\n## [Unreleased]\n\n- A (ADR #{NONE})\n\n## [0.1.0] - 2026-01-01\n\n- B (ADR #{OTHER})\n"
     assert_equal [[5, NONE]], missing("CHANGELOG.md", changelog)
-  end
-
-  def test_reads_the_notes_in_decisions_and_not_the_quoted_words
-    decisions = "> Do as ADR #{OTHER} says.\n\n*Applied in:* ADR #{NONE}.\n"
-    assert_equal [[3, NONE]], missing("doc/contributors/decisions.md", decisions)
   end
 end

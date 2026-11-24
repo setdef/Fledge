@@ -19,7 +19,7 @@ The repository keeps no running account of the project's state (decisions, 2026-
 
 - `README.md`: what Fledge does, for app developers.
 - `CONTRIBUTING.md`: how to put a question to the maintainer, setup, the tests, checking a change before and after its push, and reading CI.
-- `doc/contributors/decisions.md`: the maintainer's words that shaped Fledge up to now (Provenance, below, says where the rest are).
+- `doc/contributors/decisions.md`: the project's decisions that shape what Fledge is and does, each dated (Provenance, below, says how it is kept).
 - The open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left, each issue written so that an agent can start from it. `doc/contributors/plan/003.md`, the plan of record, holds the stories and the direction behind them.
 - `doc/contributors/design/`: how each part works, and why. `architecture.md` is the overview, indexes the few ADRs, and says when one is written and how it changes; `releases.md` says how a release is made, and `license-audit.md` how the license policy is enforced.
 - `doc/contributors/documentation_style.md`: how to write prose, RDoc, and the READMEs.
@@ -40,7 +40,7 @@ When two parts of the design pull apart, these decide, in this order. `doc/contr
 - Root-cause every fix. If you cannot explain why a change fixed the symptom, it is not a fix.
 - Write tests first. A test must fail if the code it covers is deleted or mutated, and must exercise real collaborators, not stubs that hide missing behavior. The acceptance test for a build is a built app run on a fresh machine with no Ruby.
 - Code is a liability (decisions, 2026-10-28): never write a tool that a maintained, pinnable tool or gem provides, and pin every external input by version and, where it is downloaded, by SHA-256 (`architecture.md`, "What the design answers to", says both in full). Build each target on its own operating system with that system's tools, never one platform's app on another (decisions, 2026-10-28; ADR 010). Before adding a platform, first check whether a maintained project already publishes a portable Ruby for it (decisions, 2026-11-22).
-- Add no requirement the maintainer did not ask for without weighing what it costs, and say what it costs when you propose one.
+- Add no requirement that no decision or story calls for without weighing what it costs, and say what it costs when you propose one.
 - Design in the spirit of Kent Beck (small steps), Freeman & Pryce (tests drive interfaces), Sandi Metz (duplication over the wrong abstraction), Rebecca Wirfs-Brock (responsibility-driven roles), Martin Fowler (behavior-preserving refactors), and Matz (programmer happiness).
 
 ## Working as an agent
@@ -73,15 +73,17 @@ When two parts of the design pull apart, these decide, in this order. `doc/contr
 
 ## Provenance
 
-Everything in Fledge is *requested*: an agent built it with little or no review from the maintainer, as against *written* by his hand or *wrought* with his review of every change (decisions, 2026-11-02, later again). That holds for ADRs, plans, this file, the README, the code, the tests, and the workflows. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass. Every commit carries a `Provenance: requested` trailer.
+Everything in Fledge is *requested*: an agent built it with little or no review, as against *written* by the maintainer's hand or *wrought* with the maintainer's review of every change (decisions, 2026-11-02, later again). That holds for ADRs, plans, this file, the README, the code, the tests, and the workflows. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass. Every commit carries a `Provenance: requested` trailer.
 
-The maintainer's words are in two places. `doc/contributors/decisions.md` holds, verbatim and dated, only his decisions that shape what Fledge is or does, as he made them before questions moved to issues; corrections, wording changes, and asides go into the document they touch. His reply on a `question` issue is the record of that answer, and stays there, with no copy in decisions.md. A sentence he quotes with `>` is part of his words, kept inside the quotation exactly as he typed it, above his answer; an agent's own account of the context is kept apart from it and adds nothing to what he was shown. Everything else, this file included, was written by agents, who change it as long as it stays true to his words.
+`doc/contributors/decisions.md` holds, dated, only the decisions that shape what Fledge is or does, each stated as the project's rule; corrections, wording changes, and asides go into the document they touch. An answer to a `question` issue is applied and the issue closed, and the documents that apply it state the rule as the project's. Everything else, this file included, was written by agents, who change it as long as it stays true to decisions.md.
+
+The maintainer's conversations with agents are private. Nothing public (a file here, an issue, a comment, a commit message) quotes him, paraphrases him, or says what he said, asked, wanted, suggested, preferred, ruled, or decided, and nothing public carries private details of his setup, his machines, or his accounts, or his informal remarks about other projects, people, or controversies. Work and its reasons are stated as the project's own. A statement of who does what (that a person publishes to RubyGems.org, or opens an account) stays, said without reporting what anyone said. An issue or comment that breaks this is deleted, not edited, since an edit keeps its history.
 
 ## Questions
 
 A question is an open issue labelled `question`, assigned to the maintainer, of one of two kinds:
 
-1. An apparent conflict with, or ambiguity in, his words.
+1. An apparent conflict with, or ambiguity in, `doc/contributors/decisions.md`.
 2. Direction only he can give: product scope, licensing and commercial terms, money, and external accounts (Apple, Microsoft, certificate authorities, package registries, a second host for release files). An agent never opens an account, even a free one: when one is wanted, ask him, with suggestions (decisions, 2026-11-02 and 2026-11-04).
 
 Everything agents invented is the agents' to decide: design-document, ADR, and plan content, CLI details, `fledge.yml` keys, the help header, error messages, internal layouts, and names inside the runtime. Decide it by the design precedence, record why in the design document that specifies it, and change it when a better reason arrives. Never ask him to second-guess an agent's invention, and ask nothing hypothetical: a question is about something that exists or is about to (decisions, 2026-11-22).
@@ -106,8 +108,8 @@ Fledge is MIT, copyright setdef (decisions, 2026-11-07); released tags through `
 
 Before 1.0, agents may push `trunk`, create and push tags (`vX.Y.Z`), and create GitHub Releases (decision 6). Versions are 0.MINOR.PATCH from 0.1.0 (decisions, 2026-11-02), and agents cut 0.x releases as work accumulates, so that the newest has what 1.0.0 will (decisions, 2026-11-08). A release is cut only by `cut.yml`, on a commit whose CI passed on every job, and is never deleted, since each runtime's NOTICES links its LGPL source bundle there: `doc/contributors/design/releases.md`, "How a release is made", says how, and what a release holds.
 
-- Keep `doc/contributors/account-tests.md`, every test blocked on the maintainer's developer accounts, current in the same commit as any change that adds, proves, or removes one (decisions, 2026-11-08).
-- Agents never publish to RubyGems.org: no `gem push`, ever. Publishing there is a human-only activity, now and after Fledge is on RubyGems.org (decisions, 2026-11-02). A deterministic process the maintainer has decided to trust with it counts as his act: a workflow he has set RubyGems.org to trust, in his own account, which no agent does for him (decisions, 2026-11-22). From 1.0.0 he also releases Fledge there, and every release keeps its git tag and GitHub Release (decisions, 2026-11-03 and 2026-11-04); agents prepare the release and he publishes it. The rule binds agents and is not a position of the project, so documents for developers do not say Fledge is never published there. The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses.
+- Keep `doc/contributors/account-tests.md`, every test blocked on the project's developer accounts, current in the same commit as any change that adds, proves, or removes one (decisions, 2026-11-08).
+- Agents never publish to RubyGems.org: no `gem push`, ever. Publishing there is a human-only activity, now and after Fledge is on RubyGems.org (decisions, 2026-11-02). A deterministic process the maintainer has decided to trust with it counts as a person's act: a workflow that RubyGems.org has been set to trust, which no agent sets up (decisions, 2026-11-22). From 1.0.0 the maintainer also releases Fledge there, and every release keeps its git tag and GitHub Release (decisions, 2026-11-03 and 2026-11-04); agents prepare the release and the maintainer publishes it. The rule binds agents and is not a position of the project, so documents for developers do not say Fledge is never published there. The gemspec's `allowed_push_host` points nowhere, and `rake release` refuses.
 
 ## Changelog
 
@@ -119,5 +121,5 @@ Keep a Changelog and SemVer, in terse one-line entries under `## [Unreleased]`, 
 2. Behavior follows the design precedence; a departure from prior art is justified in its design document.
 3. The gate passes in `trunk`'s CI on the story's last commit, with zero errors and zero warnings.
 4. RDoc, RBS, the help header, the `fledge.yml` schema, `doc/`, the READMEs, and CHANGELOG.md are true to the new behavior.
-5. The work is true to the maintainer's words, and any conflict or open direction is an open `question` issue.
+5. The work is true to `doc/contributors/decisions.md`, and any conflict or open direction is an open `question` issue.
 6. It is committed and pushed, per Committing.

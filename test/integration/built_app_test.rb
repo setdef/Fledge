@@ -127,6 +127,13 @@ class BuiltAppTest < Minitest::Test
 
   class << self
     def built = (@built ||= {})
+
+    # The paths fledge build printed for each project of this checkout,
+    # which no test changes, so that a test that needs one of them in a
+    # place of its own unpacks the archive another test built, and does
+    # not build it again: a build packs the whole runtime, a gzip of
+    # some hundreds of megabytes, which is most of its time.
+    def builds = (@builds ||= {})
   end
 
   # ADR 081: Ctrl-C typed into a terminal, and a hangup, end the built
@@ -1318,10 +1325,8 @@ class BuiltAppTest < Minitest::Test
   # mksquashfs and dpkg-deb.
   def test_the_windowed_apps_installer_holds_the_app_and_runs_it
     Dir.mktmpdir do |dir|
-      out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(dir, "cache") }, RbConfig.ruby,
-        "-I", LIB, EXE, "build", "-o", File.join(dir, "dist"), WINDOWED_APP)
-      assert_predicate status, :success?, err
-      installer = File.expand_path(out.lines.fetch(1).chomp, Dir.pwd)
+      printed = build_printed(dir, WINDOWED_APP)
+      installer = printed.fetch(1)
       report = File.join(dir, "report.json")
       facts = { "ruby" => "4.1.0", "platform" => expected_platform, "program" => "main.rb", "folder" => "app", "arguments" => 2 }
       case @platform.os
@@ -1347,11 +1352,11 @@ class BuiltAppTest < Minitest::Test
         assert_equal "Hello Window", File.readlink(File.join(root, "AppRun"))
         assert_path_exists File.join(root, "com.setdef.fledge.HelloWindow.desktop")
         assert_equal "com.setdef.fledge.HelloWindow.png", File.readlink(File.join(root, ".DirIcon"))
-        assert_deb(out.lines.fetch(2).chomp) if Fledge::Deb::ARCHITECTURES.key?(@platform.name)
+        assert_deb(printed.fetch(2)) if Fledge::Deb::ARCHITECTURES.key?(@platform.name)
       else
         assert_equal "Hello Window-#{@platform}-setup.exe", File.basename(installer)
         assert_equal "MZ", File.binread(installer, 2)
-        assert_msix(out.lines.fetch(2).chomp, dir)
+        assert_msix(printed.fetch(2), dir)
       end
       assert_equal facts, JSON.parse(File.read(report)).slice(*facts.keys) unless @platform.windows?
     end
@@ -1399,14 +1404,33 @@ class BuiltAppTest < Minitest::Test
   # the project would load a copy of my_cool_app's gemspec, and so its
   # version constant, again.
   def build_and_unpack(dir, source, name: Fledge::App.at(source).name, place: File.join(dir, "My Apps", "Ünïcödé 日本"))
-    out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build",
-      "-o", File.join(dir, "dist"), source)
-    assert_predicate status, :success?, err
-    archive = File.expand_path(out.lines.first.to_s.chomp, Dir.pwd)
+    archive = build_printed(dir, source).first
 
     FileUtils.mkdir_p(place)
     unpack(archive, place)
     File.join(place, "#{name}-#{@platform}", @platform.executable(name))
+  end
+
+  # The paths fledge build printed for +source+, the archive and any
+  # installer, built into DIR/dist. A project of this checkout is built
+  # the first time a test asks, into a folder that lasts until the run
+  # ends, and every later test gets those paths; a project a test wrote
+  # in its own folder is built each time, since the test may change it.
+  def build_printed(dir, source)
+    checkout = File.expand_path("../..", __dir__)
+    return build_into(File.join(dir, "dist"), source) unless File.expand_path(source).start_with?("#{checkout}/")
+
+    self.class.builds[source] ||= begin
+      shared = Dir.mktmpdir
+      Minitest.after_run { FileUtils.rm_rf(shared) }
+      build_into(File.join(shared, "dist"), source)
+    end
+  end
+
+  def build_into(out_dir, source)
+    out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build", "-o", out_dir, source)
+    assert_predicate status, :success?, err
+    out.lines.map { |line| File.expand_path(line.chomp, Dir.pwd) }
   end
 
   # Windows' own Expand-Archive for a .zip, as a person on Windows has

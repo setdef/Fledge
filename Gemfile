@@ -29,6 +29,15 @@ gem "rdoc", "~> 8.1"
 # (doc/contributors/design/public-interface.md). Development only: nothing Fledge ships loads it.
 gem "json_schemer", "~> 2.5", group: :development
 
+# Lets test/objc_bridge_test.rb load the iOS runtime's bridge to the
+# Objective-C runtime, which needs fiddle, a gem Ruby bundles and Bundler
+# hides until a Gemfile names it. Development only, and only on a Mac,
+# the one system with that runtime, so that no other computer compiles
+# fiddle against a libffi of its own: Fledge itself never loads it.
+install_if -> { RUBY_PLATFORM.include?("darwin") } do
+  gem "fiddle", "~> 1.1", group: :development
+end
+
 # Takes the desktop input lock around local runs that can take focus or
 # the pointer, such as a phone simulator. Pinned to
 # a tag, and Gemfile.lock records its commit; nothing Fledge ships loads it.

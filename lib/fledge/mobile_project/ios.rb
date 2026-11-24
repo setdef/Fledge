@@ -125,7 +125,8 @@ module Fledge
 "IDENTIFIER" => identifier,
 "VERSION" => version,
 "APP_ICON" => icon,
-"LDFLAGS" => ["$(inherited)", *extension_flags].join(" "),
+"LDFLAGS" => ["$(inherited)", *extension_flags, *main_thread_flags].join(" "),
+"DEFINITIONS" => "$(inherited) FLEDGE_WINDOWED=#{windowed? ? 1 : 0}",
 "RUBY_EMBED" => ruby_extensions.dynamic?,
 }.transform_values { |value| JSON.generate(value) }
         frameworks = @ruby_frameworks || [] # : Array[String]
@@ -159,6 +160,20 @@ module Fledge
 
       # The linker flags the extensions' extconf.rb files asked for, and
       # the C++ runtime for an extension that has C++, for both slices.
+      # Whether the app's Ruby draws its own screen (kind: windowed), and
+      # so runs on the main thread, which UIKit's objects need
+      # (doc/contributors/design/phone-widgets.md, "Threads").
+      private def windowed?
+        @app.identity.windowed?
+      end
+
+      # The linker's flag that gives the main thread the 64 MB stack Ruby
+      # has on a thread of its own, for an app whose Ruby runs there, as
+      # test/fixtures/sdl_phone's host asks for it.
+      private def main_thread_flags
+        windowed? ? ["-Wl,-stack_size,0x4000000"] : []
+      end
+
       private def extension_flags
         built = @built or return []
         builds = built.targets.values

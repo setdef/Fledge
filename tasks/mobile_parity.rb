@@ -19,7 +19,10 @@ require_relative "parity"
 # reaches its developer: from the system log the embedding API forwards
 # it to (os_log, logcat).
 #
-# The apps (APPS) are examples/hello; test/fixtures/mobile_app, whose pure-Ruby
+# The apps (APPS) are examples/hello; examples/basket, a shopping list
+# whose Ruby draws it with each phone's own widgets, through the bridge
+# each phone's runtime carries (doc/contributors/design/phone-widgets.md),
+# and which stays open, as a real app does; test/fixtures/mobile_app, whose pure-Ruby
 # gems Bundler sets up; test/fixtures/native_phone, whose gem has a C and C++
 # extension compiled for the phone
 # (doc/contributors/design/phone-projects.md, "Gems with extensions"),
@@ -58,7 +61,7 @@ require_relative "parity"
 #   ruby tasks/mobile_parity.rb android-bundle AAB
 #
 # APPS=PATH,... in the environment builds and runs only the apps of
-# those paths, such as APPS=examples/hello, to prove one app alone.
+# those paths, such as APPS=examples/basket, to prove one app alone.
 class MobileParity
   ROOT = Parity::ROOT
 
@@ -66,11 +69,18 @@ class MobileParity
   # identifier its fledge.yml gives it, the line it must print, or nil
   # for the parity probe, whose report is compared instead, the phones
   # it runs on (default: both), whether it asks the check's HTTPS
-  # server (HTTPS; default: no), and a second line it must print, if any
-  # (+also+).
-  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also)
-    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil)
+  # server (HTTPS; default: no), a second line it must print, if any
+  # (+also+), and whether it stays open, as a real app does, so that its
+  # line, not its program's end, finishes its run (default: no).
+  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open)
+    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil, stays_open: false)
       super
+    end
+
+    # Whether what the app logged, +entries+, finishes its run: its
+    # status, or for an app that stays open, its line.
+    def finished?(entries)
+      !MobileParity.status(entries).nil? || (stays_open && entries.any? { |entry| entry.match?(prints) })
     end
   end
 
@@ -118,6 +128,8 @@ class MobileParity
       prints: /\AMobileCommands runs thor by name \(Thor 1\.5\.0\), from a shell \(Thor 1\.5\.0\), and with ruby -S \(Thor 1\.5\.0\), with Bundler's thor 1\.5\.0, on (?:aarch64|x86_64)-linux-android\z/,
       phones: %w[android]),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
+    App.new(path: "examples/basket", name: "Basket", identifier: "com.setdef.fledge.Basket",
+      prints: /\ABasket shows \d+ items?\z/, stays_open: true),
   ].freeze
 
   # The line the host app of every project fledge build writes logs when
@@ -179,13 +191,13 @@ class MobileParity
     HOSTS = {
       "ios" => [
         "Host/main.m",
-        "        if (fledge_ruby_forward_output(",
-        "        extern char **environ;\n" \
-          "        for (char **variable = environ; *variable != NULL; variable++) os_log(log, \"#{LINE}%{public}s\", *variable);\n",
+        "    if (fledge_ruby_forward_output(",
+        "    extern char **environ;\n" \
+          "    for (char **variable = environ; *variable != NULL; variable++) os_log(log, \"#{LINE}%{public}s\", *variable);\n",
       ],
       "android" => [
         "src/main/java/org/setdef/fledge/host/MainActivity.java",
-        "        FledgeRuby.startApp(",
+        "        IntConsumer exited =",
         "        for (String variable : android.system.Os.environ()) Log.i(tag, \"#{LINE}\" + variable);\n",
       ],
     }.freeze
@@ -345,7 +357,8 @@ class MobileParity
   end
 
   # Checks what +app+ logged on the device named +device+, a Logged:
-  # that it exited with status 0 and printed its line, or, for the parity
+  # that it exited with status 0 and printed its line, or that an app
+  # that stays open printed its line and has not ended, or, for the parity
   # probe, that every difference its report shows, read from its standard
   # output alone, from ruby main.rb's and from the environment its host
   # logged, is justified. A failure reports both streams. Returns
@@ -353,7 +366,11 @@ class MobileParity
   def check(app, logged, device)
     entries = logged.entries
     status = MobileParity.status(entries)
-    raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}" unless status&.zero?
+    if app.stays_open
+      raise "#{app.name} on #{device} ended, with status #{status}:\n#{entries.last(40).join("\n")}" if status
+    elsif !status&.zero?
+      raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}"
+    end
     return compare(MobileParity.report(logged.output), device, environment: Environment.read(entries)) unless app.prints
 
     line = entries.find { |entry| entry.match?(app.prints) }

@@ -42,12 +42,12 @@ class MobileTemplateContractTest < Minitest::Test
   }.freeze
 
   MARKS = {
-    "ios" => { "project.yml" => %w[APP_ICON EXTENSIONS IDENTIFIER LDFLAGS NAME RUBY_EMBED VERSION] },
+    "ios" => { "project.yml" => %w[APP_ICON DEFINITIONS EXTENSIONS IDENTIFIER LDFLAGS NAME RUBY_EMBED VERSION] },
     "android" => {
       "build.gradle" => %w[APPLICATION_ID VERSION_CODE VERSION_NAME],
       "settings.gradle" => %w[AGP PROJECT_NAME],
       "src/main/AndroidManifest.xml" => %w[ICON],
-      "src/main/java/org/setdef/fledge/host/MainActivity.java" => %w[LOAD_EXTENSIONS],
+      "src/main/java/org/setdef/fledge/host/MainActivity.java" => %w[LOAD_EXTENSIONS WINDOWED],
       "src/main/res/values/strings.xml" => %w[NAME],
     },
   }.freeze

@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.widget.TextView;
+import java.util.function.IntConsumer;
 import org.setdef.fledge.FledgeRuby;
 
 /**
@@ -19,9 +20,18 @@ import org.setdef.fledge.FledgeRuby;
  * Ruby runs once per process, so an Activity Android creates again does
  * not start it again. Change this screen as your app needs; FledgeRuby's
  * calls are what it must keep.
+ *
+ * <p>An app whose Ruby draws its own screen with Android's views
+ * (kind: windowed in fledge.yml) runs that Ruby on the main thread, the
+ * one Android's views belong to, and its program replaces this screen's
+ * content with its own, on the activity FledgeRuby.activity() names
+ * (doc/contributors/design/phone-widgets.md).
  */
 public class MainActivity extends Activity {
     private static boolean started;
+
+    // Whether the app's Ruby draws its own screen (kind: windowed).
+    private static final boolean WINDOWED = @@WINDOWED@@;
 
     // Nothing to load: FledgeRuby loads Ruby's library, and the runtime
     // loads the app's gems' extensions before Ruby boots. A host that
@@ -42,6 +52,11 @@ public class MainActivity extends Activity {
             started = true;
         }
         String tag = getPackageName();
-        FledgeRuby.startApp(this, "fledge.zip", new String[0], status -> Log.i(tag, name + " exited with status " + status));
+        IntConsumer exited = status -> Log.i(tag, name + " exited with status " + status);
+        if (WINDOWED) {
+            FledgeRuby.startAppOnMainThread(this, "fledge.zip", new String[0], exited);
+        } else {
+            FledgeRuby.startApp(this, "fledge.zip", new String[0], exited);
+        }
     }
 }

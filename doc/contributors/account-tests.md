@@ -174,6 +174,15 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
 
+#### IOS-6: An app whose Ruby draws its screen with UIKit runs on a device and passes App Review
+
+- **Proves:** `examples/basket`, whose screen its Ruby makes of UIKit's own objects through the runtime's bridge to the Objective-C runtime, runs on an iPhone and is accepted by App Review (`doc/contributors/design/phone-widgets.md`, "The stores"). UIKit calls the app's Ruby through libffi's closures, which a device makes from pre-signed trampolines and the Simulator does not need to, so only a device shows that they hold; and only App Review shows that a store takes an app whose UIKit calls are sent from Ruby. CI runs Basket in the Simulator; no device has.
+- **Needs:** for the device, a free Personal Team, Xcode, and XcodeGen; for App Review, IOS-1's account and an app record.
+- **Steps:** in a checkout of Fledge at the release, `fledge build ios -o dist examples/basket` (add `version: 1.0.0` and your identifier to its `fledge.yml` first), open `dist/Basket-ios/Basket.xcodeproj`, choose your team under Signing & Capabilities, and run it on your iPhone from Xcode. Add an item, swipe it away, and turn the phone. Then Product > Archive, Validate App, Distribute App to App Store Connect, and submit it for review.
+- **Passing:** the app starts with its list, Console.app shows `Basket shows N items` for the app's identifier, adding and deleting an item work, and App Review approves the build. A crash in libffi or in `objc_msgSend` on the device, or a rejection under guideline 2.5.1 or 2.5.2, is the finding: keep its whole text.
+- **Status:** not run.
+- **Blocks 1.0.0?** not decided.
+
 ### On Android, with a Google Play Console account
 
 #### AND-1: Google Play takes a Fledge app bundle

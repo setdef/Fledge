@@ -174,6 +174,7 @@ class RuntimeBuilder
 
         FileUtils.mkdir_p(File.join(slice, "lib"))
         FileUtils.cp_r(File.join(root, "lib", "ruby"), File.join(slice, "lib", "ruby"))
+        copy_bridge(File.join(slice, "lib", "ruby"), "objc")
         FileUtils.cp_r(File.join(root, "include"), File.join(slice, "include"))
         copy_certificates(File.join(slice, "libexec"))
         list_extensions(target, slice, library_line(root))

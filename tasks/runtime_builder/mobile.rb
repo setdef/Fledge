@@ -385,6 +385,17 @@ class RuntimeBuilder
       prefix
     end
 
+    # Puts the phone's bridge to its own widgets, +name+.rb in
+    # MOBILE/vendor_ruby/fledge, where Ruby's vendor folder +lib_ruby+
+    # (+lib/ruby+) holds it, on the load path as under any Ruby whose
+    # distributor puts its own libraries there
+    # (doc/contributors/design/phone-widgets.md, "Where the bridge lives").
+    private def copy_bridge(lib_ruby, name)
+      folder = File.join(lib_ruby, "vendor_ruby", "fledge")
+      FileUtils.mkdir_p(folder)
+      FileUtils.cp(File.join(MOBILE, "vendor_ruby", "fledge", "#{name}.rb"), folder)
+    end
+
     # Copies the pinned CA certificates into the folder +libexec+ as
     # cert.pem, where a desktop runtime keeps rv-ruby's copy of the same
     # file and openssl.rb points OpenSSL (Certificates).

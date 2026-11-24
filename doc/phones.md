@@ -13,6 +13,54 @@ Lock `ruby` as a platform first (`bundle lock --add-platform ruby`). To build a 
 
 A phone's Ruby has the standard library and gems of a desktop's, `fiddle` among them, each extension a file at the path a desktop has it. On iOS each of those files leads to a framework of its own in the app: a small app carries 99, Ruby's own among them, which add about 7 MB to it and about a minute to `fledge build ios`. A phone also forbids some things a desktop lets your code do, such as starting a program. [What a phone forbids](#what-a-phone-forbids) lists them, with what to do instead.
 
+## Your app's screen
+
+Draw your app's screen in Ruby with each phone's own widgets, so that it looks and behaves as the phone's own apps do: UIKit's views on iOS, Android's views on Android. Each phone's Ruby carries a bridge to them. You make the platform's own objects and send them the platform's own messages, as Apple's and Google's documentation names them; Fledge adds no widgets of its own.
+
+Say `kind: windowed` in `fledge.yml`. A phone's widgets belong to its main thread, so an app of that kind runs its Ruby there, and your program hands the thread back to the phone when its screen is ready. An app without it runs its Ruby on a thread of its own and shows its name, as before.
+
+On iOS, `require "fledge/objc"`. A class of UIKit's is a constant of `Fledge::ObjC`, a message is a method whose keywords spell the rest of its selector, and `name = value` sends `setName:`. Write your delegates as Ruby classes that inherit from UIKit's, with `objc_method` for each method UIKit calls. Name one `SceneDelegate`, which the app's `Info.plist` names, and end your program with `Fledge::ObjC.application_main(AppDelegate)`:
+
+```ruby
+require "fledge/objc"
+ObjC = Fledge::ObjC
+
+class AppDelegate < ObjC::UIResponder
+  objc_protocols "UIApplicationDelegate"
+  objc_method("application:didFinishLaunchingWithOptions:") { |_application, _options| true }
+end
+
+class SceneDelegate < ObjC::UIResponder
+  objc_protocols "UIWindowSceneDelegate"
+  objc_method("scene:willConnectToSession:options:") do |scene, _session, _options|
+    label = ObjC::UILabel.new
+    label.text = "Hello from Ruby"
+    controller = ObjC::UIViewController.new
+    controller.view = label
+    @window = ObjC::UIWindow.alloc.initWithWindowScene(scene)
+    @window.rootViewController = controller
+    @window.makeKeyAndVisible
+  end
+end
+
+ObjC.application_main(AppDelegate)
+```
+
+On Android, `require "fledge/jni"`. `Fledge::JNI.import` names a Java class, its methods and static fields are Ruby methods of the same names, and `Fledge::JNI.implement` makes a listener of a Ruby object or a Hash of lambdas. Draw on the activity `org.setdef.fledge.FledgeRuby.activity` names, and end your program with `Fledge::JNI.loop`:
+
+```ruby
+require "fledge/jni"
+JNI = Fledge::JNI
+
+activity = JNI.import("org.setdef.fledge.FledgeRuby").activity
+label = JNI.import("android.widget.TextView").new(activity)
+label.setText("Hello from Ruby")
+activity.setContentView(label)
+JNI.loop
+```
+
+Both bridges use `fiddle`: if your app has a `Gemfile`, add `gem "fiddle"` to it. [`examples/basket`](../examples/basket) is a shopping list drawn this way on both phones, its screen for each in a file of its own. The bridges cannot yet pass a struct such as `CGRect`, make an Objective-C block, or subclass a Java class such as `View`; lay a screen out with Auto Layout's anchors on iOS, and implement listeners' interfaces on Android. Touch the widgets only from the main thread, as in any phone app: a Ruby thread of your own posts its work there.
+
 ## Gems with extensions
 
 Fledge compiles a gem's C, C++, or Rust extension for the phone: with Xcode on iOS, and with the [Android NDK](https://developer.android.com/ndk) on Android. Set `ANDROID_NDK_ROOT`, or install the NDK in the SDK's `ndk/` folder.
@@ -34,10 +82,11 @@ For each case, see [`test/fixtures/native_phone`](../test/fixtures/native_phone)
 
 Some frameworks, such as SDL3, need their startup files on each phone. Name a folder of them under `ios: host:` and `android: host:` in `fledge.yml`, and `fledge build` copies them over the project it writes. [`test/fixtures/sdl_phone`](../test/fixtures/sdl_phone) is a game loop that uses this. On Android, Fledge loads the app's extensions itself before Ruby starts, so a host need load no library of the app's; one that loads its libraries by name in a fixed list, as SDL's does, may name `fledgeruby` and, in an app with a compiled extension, `fledgeext`, and no other library Fledge puts in the app. [`test/fixtures/cmake_phone`](../test/fixtures/cmake_phone) has such a host. Fledge checks that each library of your gems needs only what Android offers every app, Fledge's runtime, and the app's own native libraries, among them those in your host's `src/main/jniLibs/`. A library your host adds through its own Gradle dependencies, such as one inside an AAR, is out of the check's sight, since Gradle adds it after Fledge writes the project: list each one your gems' libraries need under `android: host_libraries:`, such as `[libSDL3.so]`, and `fledge build android` takes it as the app's.
 
-A host's file replaces Fledge's whole, so when you update Fledge, compare each of your copies with Fledge's template at the new version (`lib/fledge/templates/` in Fledge's repository) and take what changed; the CHANGELOG says why each change was made. Three changes matter to an older copy:
+A host's file replaces Fledge's whole, so when you update Fledge, compare each of your copies with Fledge's template at the new version (`lib/fledge/templates/` in Fledge's repository) and take what changed; the CHANGELOG says why each change was made. These changes matter to an older copy:
 
 - **Android's `build.gradle`** must set `useLegacyPackaging = true` in its `packaging { jniLibs { } }` block, where the template set `false` until 0.13.0. Without it Ruby's own extensions and encodings do not load, which every app needs, nor does a gem's C or C++ extension, and `RbConfig.ruby` names nothing. `fledge build android` refuses a copy that sets `false`, or sets nothing, naming the file and the line to add.
 - **iOS's `project.yml`** copies the slice's `include/` into the app in its build phase "Copy Ruby and the app" from 0.13.0. Without that line, `require "mkmf"` aborts in the app. Nothing else needs it, and nothing checks it.
+- **iOS's `Host/main.m` and `project.yml`, and Android's `MainActivity.java`,** run an app of `kind: windowed` on the main thread, through the marks `@@DEFINITIONS@@` and `@@WINDOWED@@`. A copy without them runs every app's Ruby on a thread of its own, where a program that draws with the phone's widgets stops.
 - **iOS's `project.yml`** embeds `FledgeRuby.xcframework` after 0.17.0, since Ruby is now a framework the app carries: its dependency says `embed: @@RUBY_EMBED@@`, which `fledge build` fills in. Without it the app stops as it starts. `fledge build ios` refuses a copy that links the framework without embedding it, and says what to write.
 
 ## The privacy manifest

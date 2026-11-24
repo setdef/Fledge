@@ -76,9 +76,10 @@ name it in Bundler's +without+ setting.
   if you ask, a <tt>.deb</tt> on Linux. Each system shows your app's name,
   icon, and version, and offers your app for the files you name.
 [Phones]
-  An Xcode or Gradle project for iPhone, iPad, and Android, with your
-  gems' C, C++, and Rust extensions compiled for the phone, and the +ffi+
-  gem and Ruby's +fiddle+ working there.
+  An Xcode or Gradle project for iPhone, iPad, and Android, whose screen
+  your Ruby draws with each phone's own widgets, UIKit's and Android's
+  views, with your gems' C, C++, and Rust extensions compiled for the
+  phone, and the +ffi+ gem and Ruby's +fiddle+ working there.
 [Signing]
   <tt>--sign</tt> signs every program, library, bundle, and installer
   with your macOS identity or your Windows certificate, and

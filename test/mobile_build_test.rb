@@ -251,6 +251,24 @@ class MobileBuildTest < Minitest::Test
     assert_includes copy, "ditto \"$PROJECT_DIR/FledgeRuby.xcframework/$slice/include\" \"$root/include\"\n", "mkmf finds Ruby's headers"
   end
 
+  # An app whose Ruby draws its screen with UIKit runs that Ruby on the
+  # main thread, with the stack Ruby has on a thread of its own
+  # (doc/contributors/design/phone-widgets.md, "Threads"); any other app
+  # keeps Ruby on its own thread.
+  def test_an_ios_app_whose_ruby_draws_its_screen_runs_it_on_the_main_thread
+    skip "this computer has no XcodeGen" unless xcodegen?
+    settings = %w[console windowed].to_h do |kind|
+      root = script_app("identifier: com.example.Hello\nkind: #{kind}\n")
+      _, err, status = build("ios", root, host: "arm64-darwin-24")
+      assert_equal 0, status, err
+      base = YAML.safe_load_file(File.join(@dir, "dist/Hello-ios/project.yml")).dig("targets", "Hello", "settings", "base")
+      FileUtils.rm_rf(File.join(@dir, "dist"))
+      [kind, base.values_at("GCC_PREPROCESSOR_DEFINITIONS", "OTHER_LDFLAGS", "ENABLE_DEBUG_DYLIB")]
+    end
+    assert_equal ["$(inherited) FLEDGE_WINDOWED=0", "$(inherited)", false], settings.fetch("console")
+    assert_equal ["$(inherited) FLEDGE_WINDOWED=1", "$(inherited) -Wl,-stack_size,0x4000000", false], settings.fetch("windowed")
+  end
+
   def test_an_ios_app_without_an_icon_has_no_asset_catalog
     skip "this computer has no XcodeGen" unless xcodegen?
     root = script_app("identifier: com.example.Hello\n")
@@ -400,14 +418,14 @@ class MobileBuildTest < Minitest::Test
     spec = File.read(File.join(Fledge::MobileProject::TEMPLATES, "ios", "project.yml"))
     host_files(root, "host/ios", {
       "Host/main.m" => "int main(void) { return 0; }\n",
-      "project.yml" => spec.sub("        OTHER_LDFLAGS:", "        ENABLE_DEBUG_DYLIB: NO\n        OTHER_LDFLAGS:"),
+      "project.yml" => spec.sub("        OTHER_LDFLAGS:", "        FLEDGE_HOST_TEST: YES\n        OTHER_LDFLAGS:"),
     })
 
     out, err, status = build("ios", root, host: "arm64-darwin-24")
 
     assert_equal [0, "dist/Hello-ios\n", "host/ios replaces Fledge's Host/main.m, project.yml\n"], [status, out, err]
     assert_equal "int main(void) { return 0; }\n", read("dist/Hello-ios/Host/main.m")
-    assert_includes read("dist/Hello-ios/Hello.xcodeproj/project.pbxproj"), "ENABLE_DEBUG_DYLIB = NO;"
+    assert_includes read("dist/Hello-ios/Hello.xcodeproj/project.pbxproj"), "FLEDGE_HOST_TEST = YES;"
     assert_includes read("dist/Hello-ios/Hello.xcodeproj/project.pbxproj"), "PRODUCT_BUNDLE_IDENTIFIER = com.example.Hello;"
   end
 

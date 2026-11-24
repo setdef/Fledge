@@ -201,7 +201,7 @@ class MobileParity
     end
 
     # Launches +app+ on the booted simulator +udid+, and returns the lines
-    # its process logged up to its status, and after, until the log
+    # its process logged up to its status (App#finished?), and after, until the log
     # settles (MobileParity.settled), as log show
     # reads them from the simulator's unified log. log stream would miss a
     # short program's lines on a slow runner, where it can attach after the
@@ -216,7 +216,7 @@ class MobileParity
       launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier, env:)
       pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
       deadline = Time.now + timeout
-      until MobileParity.status(messages(udid, since, pid, app).entries)
+      until app.finished?(messages(udid, since, pid, app).entries)
         if Time.now > deadline
           raise "#{app.name} did not finish in #{timeout} seconds:\n#{messages(udid, since, pid, app).entries.last(40).join("\n")}\n" \
             "#{diagnosis(udid, app)}"

@@ -28,7 +28,7 @@ No maintained tool judges a whole runtime tree this way, so the audit's rules ar
 
 A component of kind `source`, the published source of a pinned component in `notices/sources/`, is allowed under its own license whatever its category, since carrying source asks nothing of the app; see "notices/sources/ and the source bundles".
 
-Fledge's own files in a runtime (the launcher, `bin/ruby`'s Fledge code, the RubyGems defaults, the phones' embedding API) are MIT (`decisions.md`, 2026-11-07), so `notice_only`. Their components in `runtime/licenses.yml` say `first_party: true`, which names them as Fledge's in `NOTICES.txt` and `doc/licensing.md` and forbids any LGPL library linked into them.
+Fledge's own files in a runtime (the launcher, `bin/ruby`'s Fledge code, the RubyGems defaults, the phones' embedding API and their bridges to the phones' widgets) are MIT (`decisions.md`, 2026-11-07), so `notice_only`. Their components in `runtime/licenses.yml` say `first_party: true`, which names them as Fledge's in `NOTICES.txt` and `doc/licensing.md` and forbids any LGPL library linked into them.
 
 ## How an SPDX expression is judged
 

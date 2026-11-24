@@ -20,7 +20,12 @@
 # Host/fledge_extensions.c registers them. Each library a gem's build
 # made for Ruby's ffi is Frameworks/NAME.xcframework, embedded and not
 # linked, which a link at the gem's path in fledge/ leads to in the
-# app. No signing is configured:
+# app. An app whose Ruby draws its own screen (kind: windowed in
+# fledge.yml) is compiled with FLEDGE_WINDOWED=1, so that Host/main.m
+# runs its Ruby on the main thread, which the linker gives a 64 MB
+# stack (-stack_size), as Ruby's own thread has; the linker takes that
+# only for an executable, so the app's code is never the debug dylib
+# Xcode would otherwise make of it (ENABLE_DEBUG_DYLIB). No signing is configured:
 # choose your team under Signing & Capabilities to run it on a device.
 name: @@NAME@@
 options:
@@ -64,4 +69,6 @@ targets:
         CLANG_ENABLE_MODULES: YES
         CLANG_ENABLE_OBJC_ARC: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
+        ENABLE_DEBUG_DYLIB: NO
+        GCC_PREPROCESSOR_DEFINITIONS: @@DEFINITIONS@@
         OTHER_LDFLAGS: @@LDFLAGS@@

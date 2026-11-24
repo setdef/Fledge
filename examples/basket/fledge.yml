@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+
+# Basket is a lone script, with no Gemfile, so it needs no gem but those
+# Ruby bundles: fiddle, which each phone's bridge to its widgets uses,
+# and json. It sits inside Fledge's own gem, so without this file fledge
+# build would take Fledge's Gemfile for Basket's. The identifier is what
+# iOS and Android know it by (ADR 012). kind: windowed says that its
+# Ruby draws the app's screen, so a phone runs that Ruby on the thread
+# its widgets belong to (doc/contributors/design/phone-widgets.md).
+name: Basket
+identifier: com.setdef.fledge.Basket
+kind: windowed

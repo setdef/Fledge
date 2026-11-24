@@ -76,6 +76,30 @@ JNIEXPORT jint JNICALL Java_org_setdef_fledge_FledgeRuby_nativeRunApp(JNIEnv *en
 
 static char *log_tag;
 
+/*
+ * The Java VM, which JNI_OnLoad is given when Java loads this library,
+ * for Fledge::JNI, the runtime's bridge from Ruby to Android's classes
+ * (doc/contributors/design/phone-widgets.md), which asks for it with
+ * fledge_ruby_java_vm.
+ */
+static JavaVM *java_vm;
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved);
+
+JNIEXPORT jint JNICALL
+JNI_OnLoad(JavaVM *vm, void *reserved)
+{
+    (void)reserved;
+    java_vm = vm;
+    return JNI_VERSION_1_6;
+}
+
+void *
+fledge_ruby_java_vm(void)
+{
+    return java_vm;
+}
+
 /* logcat copies nothing to an app's standard error. */
 int
 fledge_log_echoes(void)

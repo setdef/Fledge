@@ -153,6 +153,7 @@ module Fledge
           "NAME" => string_resource(@app.name),
           "ICON" => @app.identity.icon ? ' android:icon="@mipmap/ic_launcher"' : "",
           "LOAD_EXTENSIONS" => "",
+          "WINDOWED" => @app.identity.windowed?.to_s,
         }
       end
 

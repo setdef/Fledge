@@ -1,0 +1,113 @@
+<!--
+SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
+# Phone Widgets
+
+This document says how an app's Ruby draws its screen with each phone's own widgets: UIKit's on iOS and iPadOS, Android's views on Android. The runtime carries a bridge for each phone, `Fledge::ObjC` to the Objective-C runtime and `Fledge::JNI` to Java, and the app's Ruby runs on the thread those widgets belong to. Fledge ships no widgets of its own and no layer over them: the app makes the platform's own objects and calls them as the platform documents them. How the runtimes are built is `phone-runtimes.md`; the projects `fledge build` writes around them, `phone-projects.md`; what a developer does, `doc/phones.md`.
+
+## The problem
+
+A developer who knows Ruby, and no other language, should be able to ship a phone app whose screen follows each platform's interface guidelines, because it is made of that platform's widgets. Before this, a phone's Ruby could print to the log and run its program, and nothing else: no Ruby could make a `UILabel` or an Android `TextView`, lay it out, or hear a tap. The first phone app among the examples drew its screen from hosts of its own, 200 lines of Objective-C and 200 of Java per app, which asked the developer for two languages that are not Ruby; it was taken off `trunk` (a5ea8ab9). Every line of Objective-C, Swift, Java, or Kotlin an app needs is Fledge's, in its runtime or its templates, never the developer's.
+
+## What a developer writes
+
+Ruby, calling each platform's own classes. On iOS a message is a method call whose name is the selector's first part and whose keywords are the rest, as RubyMotion spells them, and a Ruby class that inherits from one of UIKit's is an Objective-C class of that name:
+
+```ruby
+require "fledge/objc"
+ObjC = Fledge::ObjC
+
+class Rows < ObjC::NSObject
+  objc_protocols "UITableViewDataSource"
+  objc_method("tableView:numberOfRowsInSection:") { |_table, _section| ITEMS.size }
+  objc_method("tableView:cellForRowAtIndexPath:") do |table, path|
+    cell = table.dequeueReusableCellWithIdentifier("item", forIndexPath: path)
+    content = cell.defaultContentConfiguration
+    content.text = ITEMS.fetch(path.row)
+    cell.contentConfiguration = content
+    cell
+  end
+end
+```
+
+On Android a class is `JNI.import`'s, by its Java name, its methods are called by their Java names, and a Ruby object or Hash of lambdas becomes a Java interface's object:
+
+```ruby
+require "fledge/jni"
+JNI = Fledge::JNI
+
+button = JNI.import("android.widget.Button").new(activity)
+button.setText("Add")
+button.setOnClickListener(JNI.implement("android.view.View$OnClickListener", onClick: ->(_view) { add }))
+```
+
+`fledge.yml` says `kind: windowed`, the key a desktop app names to open its own windows, so that the phone runs the app's Ruby on its widgets' thread ("Threads", below). `examples/basket` is such an app: a shopping list, its model in `lib/basket/list.rb`, its screen on iOS in `lib/basket/ios.rb`, and on Android in `lib/basket/android.rb`, with no file in any language but Ruby and YAML.
+
+The developer writes two screens, one per platform, because each platform's widgets are its own and its guidelines differ: a table under a large navigation title with swipe-to-delete on iOS, a list under the app bar with a long press on Android. A layer that wrote one screen for both would be a widget toolkit, which is a framework's work, above Fledge, as Toga's is above rubicon-objc and rubicon-java; Fledge supplies the bridge any such framework, or any app, stands on.
+
+## The ways weighed
+
+1. **The Objective-C runtime and JNI, called from Ruby through Fiddle (chosen).** Fiddle is in both phone runtimes already (`phone-runtimes.md`, "What a phone runtime holds"). On iOS the bridge is Ruby only: `objc_msgSend` with the types each method's encoding gives, `objc_allocateClassPair` and `class_addMethod` with a Fiddle closure for each method a Ruby class defines, as BeeWare's rubicon-objc does from Python's ctypes (beeware/rubicon-objc at 21378c10, `src/rubicon/objc/api.py`, lines 187 to 188, a ctypes function per method encoding; lines 1335 and 1387, the class pair; `runtime.py`, lines 1156 to 1161, a `CFUNCTYPE` as each IMP). On Android the bridge is Ruby over JNI's own table of C functions, which Fiddle calls by pointer, with a dozen lines of C in the runtime that keep the Java VM Java hands the runtime's library (`JNI_OnLoad`, `fledge_ruby_java_vm` in `android.c`) and a Java class of 47 lines, `org.setdef.fledge.RubyProxy`, through which a Java interface's methods reach Ruby, as pyjnius's `NativeInvocationHandler` reaches Python (kivy/pyjnius at 24a32850, `jnius/src/org/jnius/NativeInvocationHandler.java`, line 38, `native Object invoke0`; `jnius/jnius_proxy.pxi`, lines 170 to 180, `RegisterNatives` and `Proxy.newProxyInstance`) and rubicon-java's `PythonInstance` reaches it (beeware/rubicon-java at 2d3842db, `org/beeware/rubicon/PythonInstance.java`, line 33). What Fledge maintains is two Ruby files, about 680 and 740 lines, and those few lines of C and Java.
+2. **The same bridges as a C extension in each runtime.** Calls would be faster, and the bridge would not need the `fiddle` gem, which a Gemfile must name ("Where the bridge lives"). But it is C that Fledge would write and keep for both phones, much of it the marshalling Fiddle already does, and on iOS it would need its own libffi for closures, where the runtime keeps libffi to Fiddle's extension alone so an app's own ffi gem finds no second copy (`phone-runtimes.md`, "What a phone runtime holds"). Code is a liability (decisions, 2026-10-28), so the bridge is written in C only where Ruby cannot reach: the Java VM's pointer. A bridge that proves too slow on a device moves its hot path to C then, behind the same Ruby methods.
+3. **A layer of widgets of Fledge's own** above either bridge, one screen for both phones. Not Fledge's job: Fledge ships a Ruby app, and a toolkit's choices (which widgets, which layout, which look) are a framework's, which the developer picks. Toga, Flutter, and React Native are frameworks, not packagers.
+4. **Native hosts for each app,** as the first phone example had: refused, since they are the developer's Objective-C and Java.
+5. **HTML in a web view, or an HTTP server on the phone,** to draw the app's own screen: refused. A native app draws with the platform's widgets, and a server on the loopback address is one every app on an Android phone can reach.
+6. **Ruby on its own thread, with every call handed to the main thread and every callback handed back.** It would keep one thread model for every app, but CRuby runs Ruby only on its own threads ("Threads"), so each callback from UIKit or a view would wait on Ruby's thread while Ruby's calls waited on the main thread: a rendezvous in C on both phones, a thread switch for each call, and a deadlock wherever the two waits cross. No bridge of the prior art works so; each runs its language on the main thread.
+
+## Threads
+
+UIKit's objects are the main thread's alone, and an Android view is its window's thread's, which for an activity is the main thread: `ViewRootImpl.checkThread` throws "Only the original thread that created a view hierarchy can touch its views" (aosp-mirror/platform_frameworks_base at android-16.0.0_r1, `core/java/android/view/ViewRootImpl.java`, lines 11351 to 11357). So every call into the widgets, and every callback from them, is on the main thread.
+
+CRuby runs Ruby only on a thread it made. A callback that arrives on another thread and asks for Ruby's lock ends the process: `rb_thread_call_with_gvl` prints "[BUG] rb_thread_call_with_gvl() is called by non-ruby thread" and exits (ruby/ruby at v4.1.0-preview1, `thread.c`, lines 2320 to 2335), and "You cannot convert a non-Ruby thread into a Ruby thread using this API" (`include/ruby/thread.h`, lines 111 to 114); no other public function does it. Fiddle's closures ask for the lock that way (fiddle 1.1.8, `ext/fiddle/closure.c`, lines 229 to 232). CPython differs: any thread may take Python's lock, and Python gives it up before it returns to Java (chaquo/chaquopy at 5cbe01a8, `product/runtime/src/main/python/chaquopy_java.pyx`, lines 88 to 92 and 319 to 320), so Python's bridges run Python wherever they are called. Ruby's must run Ruby on the main thread itself.
+
+- **iOS.** For an app of `kind: windowed`, Fledge's `Host/main.m` runs the app's Ruby on the main thread, with the 64 MB stack Ruby has on a thread of its own (`-Wl,-stack_size,0x4000000`, as `test/fixtures/sdl_phone`'s host asks for it, proven on an iPhone; `phone-projects.md`, "A host that owns the main loop"), and the program hands the thread to UIKit with `Fledge::ObjC.application_main`, which is `UIApplicationMain` with an application delegate written in Ruby. That is an Objective-C app's own shape, and RubyMotion's: its generated `main` calls `UIApplicationMain(argc, argv, nil, @"#{delegate_class}")` on the main thread, after Ruby starts there (HipByte/RubyMotion at afc2f632, `lib/motion/project/template/ios/config.rb`, lines 600 to 614); NativeScript's script calls `UIApplicationMain(0, null, null, ...)` itself (NativeScript/NativeScript at 91cc673c, `packages/core/application/application.ios.ts`, line 758). Briefcase's template runs Python on the main thread too, and calls `UIApplicationMain` in C once Python has given up its lock (beeware/briefcase-iOS-Xcode-template at eccb2cde, `main.m`, lines 323 to 344), which Ruby has no way to do and return.
+- **Android.** For an app of `kind: windowed`, Fledge's `MainActivity` starts Ruby with `FledgeRuby.startAppOnMainThread`: the asset is unpacked on a thread of its own, so the main thread never waits on the disk, and the app's Ruby then runs on the main thread, as Briefcase's Android template runs Python there, from the activity's `onCreate` (beeware/briefcase-android-gradle-template at 06e840f9, `MainActivity.java`, lines 61 to 131). Python's module returns to Android's loop; Ruby's cannot return and keep running, so the program hands the thread back with `Fledge::JNI.loop`, which calls `Looper.loop()` inside the loop Android's main thread already runs. Android allows that and logs a warning: `if (me.mInLoop) { Slog.w(TAG, "Loop again would have the queued messages be executed before this one completed."); }`, then loops (`core/java/android/os/Looper.java`, lines 319 to 324 at the same tag). Every message, every lifecycle call, and every listener's call into Ruby then comes from that loop. The main thread's stack is the process's, 8 MB on Android, which is what Ruby has on a Linux desktop's main thread.
+- **Ruby's other threads** run meanwhile: Fiddle lets Ruby's lock go during each foreign call, `UIApplicationMain` and `Looper.loop` among them, and each callback takes it again. As in a native app, a thread other than the main one leaves the widgets alone, and posts its work to the main thread: on iOS with `performSelectorOnMainThread:withObject:waitUntilDone:` to an object of a class written in Ruby, on Android with a `Handler`'s `post` and a `Runnable` written in Ruby.
+- **An app that draws nothing** keeps its Ruby on a thread of its own, as before (`kind: console`, the default), so a program that runs long never holds up the screen, and iOS's watchdog never stops it.
+
+`kind: windowed` is the switch because it already means "this program draws its own screen" on every desktop, and a phone's build ignored it. A host that is not Fledge's, as SDL's is, runs Ruby where its framework does and is not touched (`phone-projects.md`, "A host that owns the main loop").
+
+## The iOS bridge
+
+`Fledge::ObjC` (`runtime/mobile/vendor_ruby/fledge/objc.rb`):
+
+- **Classes.** `ObjC::UILabel` is the Ruby class for Objective-C's `UILabel`, made on first use, with Objective-C's superclasses as its own, so `is_a?` and inherited Ruby methods follow Objective-C's hierarchy. `new` is `[[Class alloc] init]`.
+- **Messages.** A call's name and keywords spell the selector: `setTitle("Add", forState: 0)` sends `setTitle:forState:`, and `name = value` sends `setName:`. The method's own encoding, from `method_getTypeEncoding`, gives each argument's and the result's type, as rubicon-objc reads it; `objc_send("display")` sends a selector spelled in full, for a name Ruby's own objects take. A Ruby String passed as an object becomes an NSString, an Array an NSArray, and a Ruby class its Objective-C class. On arm64, the only architecture of Fledge's iOS targets, every result comes back through `objc_msgSend` itself: "The _stret variants only exist on x86-based architectures and ARM32" (rubicon-objc, `runtime.py`, lines 566 to 567).
+- **Classes written in Ruby.** `class SceneDelegate < Fledge::ObjC::UIResponder` registers an Objective-C class of the Ruby class's name; `objc_protocols` declares its protocols; `objc_method`, with a selector and a block or with the name of a Ruby method whose parameters spell the selector, adds a method whose types come from the protocol, the superclass, or else are objects. Objective-C's object and Ruby's are one: the bridge keeps the Ruby object of each instance until Objective-C deallocates it, so its instance variables last, as rubicon-objc keeps them by pointer (`api.py`, line 885).
+- **References.** An object the bridge gives Ruby holds one reference to it, which it takes unless the method's family already gave the caller one, by clang's rules for automatic reference counting, as rubicon-objc reads them: `alloc`, `new`, `copy`, `mutableCopy`, and `init`, which also consumes its receiver's (`api.py`, lines 96, 278 to 279, and 974 to 975). When Ruby collects the object, the reference goes back on the main queue, with `dispatch_async_f` and `objc_release`, where rubicon-objc autoreleases on whichever thread Python collects on (`api.py`, lines 1002 to 1007), because UIKit's objects are the main thread's to free. That also keeps an object a Ruby method returns alive until the run loop's next turn, after UIKit has taken its own reference. An instance of a class written in Ruby that Ruby made itself is never given back: it lasts as long as the process, which a delegate, whose holder keeps only a weak reference, needs.
+- **Exceptions.** A Ruby exception in a method Objective-C called would unwind through UIKit's frames, which corrupts them, so the bridge prints it as Ruby prints one its program does not rescue and returns zero, nil, or false; `exit` there ends the process with its status, without running `at_exit`. An Objective-C exception thrown under a call from Ruby ends the process, as it ends a native app.
+
+What it does not yet do: pass or return a struct by value (`CGRect`, `NSRange`), which Fiddle cannot, so it refuses the method by name and a screen lays out with Auto Layout's anchors instead of frames; make a block, as `UIAction`'s handler takes; call a superclass's implementation from a Ruby method; and answer a message on a thread Ruby did not make, which ends the process ("Threads"). Each waits for an app that needs it.
+
+## The Android bridge
+
+`Fledge::JNI` (`runtime/mobile/vendor_ruby/fledge/jni.rb`):
+
+- **The VM and each thread's JNIEnv.** The runtime's `JNI_OnLoad` keeps the Java VM, which `fledge_ruby_java_vm` gives the bridge; each Ruby thread takes its JNIEnv with `GetEnv`, and attaches first when Java has not seen it.
+- **Classes and members.** `JNI.import("android.widget.TextView")` is the class, by `FindClass`, or by the runtime's class loader for an app's class from a thread Ruby made, where `FindClass` sees only the system's. A method, constructor, or static field is found by Java's reflection, once per class and name, and called by the JNI ID `FromReflectedMethod` gives it, with the overload whose parameters fit the arguments best (an Integer fits `int` before `long`, a String fits `String` before `CharSequence`), as pyjnius and Chaquopy pick one. A Java string comes back as a Ruby String, and every other object as a `JNI::Object`, which holds a global reference until Ruby collects it.
+- **Strings** cross as UTF-16, with `NewString` and `GetStringRegion`, never as JNI's modified UTF-8, which differs past Unicode's first plane (`phone-runtimes.md`, "The Java class").
+- **Interfaces written in Ruby.** `JNI.implement(interface, object)` asks `RubyProxy.of` for a `java.lang.reflect.Proxy` of the interface; each call of one of its methods reaches `RubyProxy.call`, a native method whose code is a Fiddle closure the bridge registers with `RegisterNatives`, which calls the Ruby object's method of the same name with Java's arguments unboxed and boxes its result for the method's type. A Hash of lambdas serves as the object. Object's `hashCode`, `equals`, and `toString` are the proxy's own unless the object has them, and an interface method it lacks returns null, zero, or false, which is what a lifecycle's default methods do. A Ruby exception is printed and returns null, zero, or false, as on iOS.
+- **Java's exceptions** become `JNI::JavaError`, with the throwable's `toString`, after the bridge clears them.
+- **R8.** The AAR's `consumer-rules.pro` keeps `FledgeRuby`'s public methods and `RubyProxy`, which only Ruby calls, by name, for an app that shrinks its code.
+
+What it does not yet do: subclass a Java class, an `Activity` or a `View`, which a proxy cannot (each would need a class generated at build time, as Chaquopy's static proxies are); read or write an instance's field, or write a static field; pass a Ruby Array as a Java array; and detach a thread Ruby made from Java before it ends, which ART asks of a thread JNI attached. The program builds its views on the activity `FledgeRuby.activity()` names, and on each one Android makes in its place, as when the phone turns, through `Application.ActivityLifecycleCallbacks`, Android's own interface, implemented in Ruby.
+
+## Where the bridge lives
+
+Each phone's runtime puts its bridge in Ruby's vendor folder, `lib/ruby/vendor_ruby/fledge/`, which is on `$LOAD_PATH` under every Ruby whose distributor has libraries of its own there, as Debian's does: `objc.rb` in each iOS slice, `jni.rb` in the Android tree (`RuntimeBuilder::Mobile#copy_bridge`). `$LOAD_PATH` is what it is under `ruby main.rb`, so the parity check sees no difference; a `require "fledge/objc"` succeeds only on iOS, as `require "win32ole"` succeeds only on Windows. Both need `fiddle`, a gem Ruby bundles: an app with no Gemfile has it, as under `ruby main.rb`, and an app with a Gemfile names it, as under `bundle exec`.
+
+The bridge is in the runtime, not in the `fledge` gem, because its C and Java half must be: the bridge and the code it calls change together, in one artifact that the license audit and the release carry.
+
+## The stores
+
+- **iOS.** App Review's guideline 2.5.2 forbids an app to download or run code that adds or changes its features, and 2.5.1 asks that it use public APIs (`doc/contributors/research/2026-11-12-ffi-and-fiddle-on-phones.md`). The app's Ruby ships in its bundle, and the bridge sends UIKit's public messages through `objc_msgSend`, which is how every Objective-C call is made. The bridge generates no code: a Fiddle closure is libffi's, which on Apple's arm64 maps a pre-signed trampoline page with `vm_remap`, so no page is both writable and executable (`phone-runtimes.md`, "What a phone runtime holds", `closures.c`, lines 161 to 245). The Simulator does not enforce that, and a device does. What covers it now: the iOS Simulator runs Basket in CI; the runtime's closures are libffi's own; an unsigned archive of every example passes Fledge's archive check. What does not yet: Basket on an iPhone, which needs a signing identity, and App Review, which needs an account (`doc/contributors/account-tests.md`, IOS-6).
+- **Android.** Google Play's policy forbids downloading executable code from elsewhere than Play. The app's Ruby is in its APK, and `java.lang.reflect.Proxy` is Java's own way to implement an interface at run time, which ART carries out; nothing is downloaded.
+
+## How it is checked
+
+- `test/objc_bridge_test.rb` loads the iOS bridge into the test's Ruby on a Mac, whose libobjc and Foundation are iOS's: messages and keywords, strings past the first plane, arrays, a class written in Ruby that Objective-C calls, a protocol's encoding, an exception printed and not raised, a struct refused by name, and the reference each object holds. It skips elsewhere.
+- `test/integration/jni_bridge_test.rb` runs the Android bridge against a desktop Java VM, made by `JNI_CreateJavaVM`, whose JNI is the one ART implements: overloads, a static field and method, strings past the first plane, a Java exception as a `JavaError`, a `Runnable` and a `Comparator` written in Ruby that Java calls, and an exception in Ruby printed and returned as null. It needs a JDK in `JAVA_HOME`.
+- The mobile parity check builds and runs `examples/basket` in the iOS Simulator and on Android emulators (`tasks/mobile_parity.rb`). Its line, `Basket shows N items`, comes on iOS from the scene delegate written in Ruby, after the table asked Ruby's data source for its rows, and on Android from a `Runnable` written in Ruby that the main loop runs once the list is laid out: so it proves Ruby on the main thread, the platform calling Ruby, and Ruby's views on the screen. Nothing taps the screen, so adding and removing an item is proven only by hand.

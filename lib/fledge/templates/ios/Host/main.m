@@ -12,6 +12,15 @@
 // The screen shows the app's name, in the one UIKit scene that apps built
 // with the iOS 26 SDK and later must use. Change it as your app needs;
 // the two FledgeRuby calls are what it must keep.
+//
+// An app whose Ruby draws its own screen with UIKit (kind: windowed in
+// fledge.yml, which compiles this with FLEDGE_WINDOWED=1) is the other
+// way round: UIKit's objects are the main thread's alone, so its Ruby
+// runs there, and its program hands that thread to UIKit itself, with
+// Fledge::ObjC.application_main, as an Objective-C app's main function
+// calls UIApplicationMain, with the delegates it defines in Ruby,
+// SceneDelegate among them, as Info.plist names it
+// (doc/contributors/design/phone-widgets.md).
 @import FledgeRuby;
 @import UIKit;
 
@@ -19,13 +28,41 @@
 #include <os/log.h>
 #include <string.h>
 
-// The stack of Ruby's thread, as Android's FledgeRuby.STACK_SIZE.
-static const NSUInteger RubyStackSize = 64 * 1024 * 1024;
-
 static NSString *AppName(void) {
     NSDictionary *info = NSBundle.mainBundle.infoDictionary;
     return info[@"CFBundleDisplayName"] ?: info[@"CFBundleName"];
 }
+
+// The app's log, with its bundle identifier as subsystem, where the
+// app's standard output and standard error go from here on.
+static os_log_t ForwardOutput(void) {
+    NSString *identifier = NSBundle.mainBundle.bundleIdentifier;
+    os_log_t log = os_log_create(identifier.UTF8String, "app");
+    if (fledge_ruby_forward_output(identifier.UTF8String) != 0) {
+        os_log_error(log, "could not send the app's output to the log: %{public}s", strerror(errno));
+    }
+    return log;
+}
+
+// The folder of the app's Ruby, its program, and its gems.
+static NSString *RubyRoot(void) {
+    return [NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"fledge"];
+}
+
+#if FLEDGE_WINDOWED
+int main(void) {
+    @autoreleasepool {
+        os_log_t log = ForwardOutput();
+        // Returns only when the program ends without giving UIKit the
+        // thread, as when it raises before it does.
+        int status = fledge_ruby_run_app(RubyRoot().fileSystemRepresentation, 0, NULL);
+        os_log(log, "%{public}@ exited with status %d", AppName(), status);
+        return status;
+    }
+}
+#else
+// The stack of Ruby's thread, as Android's FledgeRuby.STACK_SIZE.
+static const NSUInteger RubyStackSize = 64 * 1024 * 1024;
 
 @interface SceneDelegate : UIResponder <UIWindowSceneDelegate>
 @property (strong, nonatomic) UIWindow *window;
@@ -54,12 +91,8 @@ static NSString *AppName(void) {
 
 int main(int argc, char *argv[]) {
     @autoreleasepool {
-        NSString *identifier = NSBundle.mainBundle.bundleIdentifier;
-        NSString *root = [NSBundle.mainBundle.resourcePath stringByAppendingPathComponent:@"fledge"];
-        os_log_t log = os_log_create(identifier.UTF8String, "app");
-        if (fledge_ruby_forward_output(identifier.UTF8String) != 0) {
-            os_log_error(log, "could not send the app's output to the log: %{public}s", strerror(errno));
-        }
+        os_log_t log = ForwardOutput();
+        NSString *root = RubyRoot();
         NSThread *ruby = [[NSThread alloc] initWithBlock:^{
             int status = fledge_ruby_run_app(root.fileSystemRepresentation, 0, NULL);
             os_log(log, "%{public}@ exited with status %d", AppName(), status);
@@ -70,3 +103,4 @@ int main(int argc, char *argv[]) {
         return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
     }
 }
+#endif

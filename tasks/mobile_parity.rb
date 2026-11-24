@@ -19,10 +19,7 @@ require_relative "parity"
 # reaches its developer: from the system log the embedding API forwards
 # it to (os_log, logcat).
 #
-# The apps (APPS) are examples/hello; examples/basket, a shopping list
-# whose hosts draw it with each phone's own widgets and talk to its Ruby
-# through a pair of pipes, and which stays open, as a real app does;
-# test/fixtures/mobile_app, whose pure-Ruby
+# The apps (APPS) are examples/hello; test/fixtures/mobile_app, whose pure-Ruby
 # gems Bundler sets up; test/fixtures/native_phone, whose gem has a C and C++
 # extension compiled for the phone
 # (doc/contributors/design/phone-projects.md, "Gems with extensions"),
@@ -61,25 +58,17 @@ require_relative "parity"
 #   ruby tasks/mobile_parity.rb android-bundle AAB
 #
 # APPS=PATH,... in the environment builds and runs only the apps of
-# those paths, such as APPS=examples/basket, to prove one app alone.
+# those paths, such as APPS=examples/hello, to prove one app alone.
 class MobileParity
   ROOT = Parity::ROOT
 
   # An app the check builds and runs: its project, the name and
   # identifier its fledge.yml gives it, the line it must print, or nil
-  # for the parity probe, whose report is compared instead, the phones
-  # it runs on (default: both), and whether it stays open, as a real app
-  # does, so that its line, not its program's end, finishes its run
-  # (default: no).
-  class App < Data.define(:path, :name, :identifier, :prints, :phones, :stays_open)
-    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], stays_open: false)
+  # for the parity probe, whose report is compared instead, and the
+  # phones it runs on (default: both).
+  class App < Data.define(:path, :name, :identifier, :prints, :phones)
+    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android])
       super
-    end
-
-    # Whether what the app logged, +entries+, finishes its run: its
-    # status, or for an app that stays open, its line.
-    def finished?(entries)
-      !MobileParity.status(entries).nil? || (stays_open && entries.any? { |entry| entry.match?(prints) })
     end
   end
 
@@ -97,8 +86,6 @@ class MobileParity
       prints: /\AHello from Ruby 4\.1\.0 on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/mobile_app", name: "Mobile App", identifier: "com.setdef.fledge.MobileApp",
       prints: /\AMobileApp 1\.2\.3 says hello through i18n 1\.15\.2 and concurrent-ruby 1\.3\.8, set up by Bundler\z/),
-    App.new(path: "examples/basket", name: "Basket", identifier: "com.setdef.fledge.Basket",
-      prints: /\ABasket shows \d+ items?\z/, stays_open: true),
     App.new(path: "test/fixtures/native_phone", name: "NativePhone", identifier: "com.setdef.fledge.NativePhone",
       prints: /\ANativePhone adds 5 and totals 10 with a C extension \(C and C\+\+\) on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/cmake_phone", name: "CmakePhone", identifier: "com.setdef.fledge.CmakePhone",
@@ -341,8 +328,7 @@ class MobileParity
   end
 
   # Checks what +app+ logged on the device named +device+, a Logged:
-  # that it exited with status 0 and printed its line, or that an app
-  # that stays open printed its line and has not ended, or, for the parity
+  # that it exited with status 0 and printed its line, or, for the parity
   # probe, that every difference its report shows, read from its standard
   # output alone, from ruby main.rb's and from the environment its host
   # logged, is justified. A failure reports both streams. Returns
@@ -350,11 +336,7 @@ class MobileParity
   def check(app, logged, device)
     entries = logged.entries
     status = MobileParity.status(entries)
-    if app.stays_open
-      raise "#{app.name} on #{device} ended, with status #{status}:\n#{entries.last(40).join("\n")}" if status
-    elsif !status&.zero?
-      raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}"
-    end
+    raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}" unless status&.zero?
     return compare(MobileParity.report(logged.output), device, environment: Environment.read(entries)) unless app.prints
 
     line = entries.find { |entry| entry.match?(app.prints) }

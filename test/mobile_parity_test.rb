@@ -561,25 +561,6 @@ class MobileParityTest < Minitest::Test
     end
   end
 
-  # A real app stays open, as examples/basket does: its line, not its
-  # program's end, finishes its launch, and the check fails it if it
-  # ended.
-  def test_an_app_that_stays_open_is_done_when_it_prints_its_line_and_fails_if_it_ended
-    app = MobileParity::App.new(path: "examples/basket", name: "Basket", identifier: "com.setdef.fledge.Basket",
-      prints: /\ABasket shows \d+ items?\z/, stays_open: true)
-    Dir.mktmpdir do |work|
-      logged = Emulator.new(app, work:, said: ["Basket shows 0 items"]).launch(app, timeout: 60, interval: 0)
-      parity = MobileParity.new(target: "x86_64-linux-android", work:, out: StringIO.new)
-
-      assert_nil MobileParity.status(logged.entries)
-      assert parity.check(app, logged, "an emulator")
-      ended = MobileParity::Logged.new(entries: ["Basket shows 0 items", "Basket exited with status 0"], output: [])
-      assert_raises(RuntimeError) { parity.check(app, ended, "an emulator") }
-      refute app.finished?(["running"])
-      refute MobileParity::APPS.fetch(0).finished?(["Hello from Ruby 4.1.0 on arm64-darwin"])
-    end
-  end
-
   # APPS=PATH,... picks the apps a run builds, to prove one alone.
   def test_only_the_apps_named_run_when_some_are
     assert_equal ["Hello"], MobileParity.apps("ios", only: "examples/hello").map(&:name)

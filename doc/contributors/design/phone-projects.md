@@ -342,27 +342,6 @@ kivy-ios runs Python under SDL the same way: its template's `main` becomes SDL's
 
 The measurements and device runs behind these choices are in `doc/contributors/research/2026-11-10-findings-from-the-adrs.md`. A real iPhone granted the 64 MB main-thread stack `-stack_size` asks for; Apple documents 1 MB for a device's main thread, and an iPad's grant is not measured.
 
-## A host that draws the app's own screen
-
-`examples/basket`, Basket, is the phone app among the examples (issue 69). It is a shopping list: add an item, tick it off, clear the ticked ones. Its Ruby, `main.rb`, keeps the list and saves it as JSON in `Dir.home` at each change, since a phone may stop an app in the background without running `at_exit`. Each phone's own widgets draw it, from a host of the example's own (see "Host files"). `host/ios/Host/main.m` uses UIKit: a table in a navigation controller, a text field to add, a checkmark to tick, and a bar button to clear. `host/android/.../MainActivity.java` uses Android's views: an `EditText`, a `ListView` of check boxes, and a Clear action in the app bar.
-
-**How the host and Ruby talk.** The embedding API gives a host one way in, the arguments of `fledge_ruby_run_app` (`FledgeRuby.startApp` on Android), and no call from the host into a running Ruby. So the host makes two pipes, with `pipe` on iOS and `ParcelFileDescriptor.createPipe` on Android, and passes Ruby their ends as `--in FD --out FD`. It writes one command a line down the first, and a thread of its own reads each answer from the second and shows it on the main thread. Ruby opens the descriptors with `IO.for_fd`, and answers each command, and its start, with the whole list as one line of JSON. Without the options, `main.rb` reads standard input and writes standard output, so `ruby main.rb` runs the same program in a terminal. This is the standard input and output a language server or a coprocess speaks, made of what both systems already offer, so Fledge adds no code for it. The app uses only Ruby's standard library, so it builds on each phone with nothing to compile.
-
-**Why this kind of app.** These kinds were weighed:
-
-- **A list kept by Ruby and drawn natively** was chosen. A Ruby developer recognizes it as a real app. It needs no gem, so it carries none of the risk that took the Lent example off `trunk` (7e31227a: a gem compiled against Homebrew's library on GitHub's macOS runner), and it follows each platform's interface guidelines with its own widgets, as an example's app should, since that is how a native app draws its screen.
-- **A Sinatra app on a loopback server, shown in a web view,** was the first design. A native app draws its screen with the platform's widgets, and does not run an HTTP server only to draw it. It would also listen on the loopback address, which every app on an Android phone shares, so it would have needed a secret to keep other apps out.
-- **A game on SDL3**, as `test/fixtures/sdl_phone` is: SDL3 must be built from source for every target by the example's own script, which no CI job runs (issue 56).
-- **Ruby that drives UIKit itself,** through `fiddle` and the Objective-C runtime, as BeeWare's rubicon-objc drives it from Python: iOS has the runtime to call, and Android has nothing like it short of a JNI bridge written in Ruby.
-- **A gem whose C extension bridges the two:** on Android a Java method's native code must be in a library the host loads by name ("Fledge provides", `public-interface.md`), so the example would carry a library built for each ABI, and a C extension, for a list.
-- **A new call in the embedding API** for the host to send Ruby a message: that is new public interface in Fledge, not an example, and the pipes need none.
-
-Each phone is one host, so one example serves both. Separate examples for iOS and Android would each carry the same `main.rb`.
-
-**What it costs.** The hosts are each about 200 lines, Objective-C and Java, in the languages of Fledge's own templates: SwiftUI would need Swift beside the template's Objective-C, and Jetpack Compose or Material Components would need Kotlin, Compose's compiler plugin, and more Maven downloads in CI's Gradle builds (see "Gradle's downloads in CI"). Each host's `main.m` and `MainActivity.java` replace Fledge's whole, so a developer who copies them keeps them in step with the templates (see "A host's copy after an upgrade"). Basket has no icon, so the archive check checks none for it.
-
-**How it is checked.** `tasks/mobile_parity.rb` builds and runs Basket with the other apps, in the Simulator on an iPhone and an iPad and on both Android emulators. A real app stays open, so its `App` says `stays_open`: its launch is done once the host logs `Basket shows 0 items`, after it has drawn the list Ruby sent, and the check fails if Ruby has ended by then. That line proves the whole path: the host started Ruby with the pipes, Ruby answered, and the host's widgets showed the answer. Nothing in CI taps the screen, so a command sent after the start is proven only by `ruby main.rb` in a terminal. `APPS=examples/basket` in the environment builds and runs that app alone, to prove it before a push.
-
 ## The Android App Bundle check
 
 Google Play takes an Android App Bundle from a new app, not an APK. The project is a standard application module, so the plugin's `bundleRelease` and `bundleDebug` make one with no change to the template, and three things hold for it:

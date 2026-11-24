@@ -40,10 +40,6 @@ A host's file replaces Fledge's whole, so when you update Fledge, compare each o
 - **iOS's `project.yml`** copies the slice's `include/` into the app in its build phase "Copy Ruby and the app" from 0.13.0. Without that line, `require "mkmf"` aborts in the app. Nothing else needs it, and nothing checks it.
 - **iOS's `project.yml`** embeds `FledgeRuby.xcframework` after 0.17.0, since Ruby is now a framework the app carries: its dependency says `embed: @@RUBY_EMBED@@`, which `fledge build` fills in. Without it the app stops as it starts. `fledge build ios` refuses a copy that links the framework without embedding it, and says what to write.
 
-## Your app's own screen
-
-Fledge's host shows only your app's name. To give your app a real screen, draw it with each phone's own widgets in a host of your own, and let Ruby do the rest. The host can pass your program arguments: give it two pipes, write it a command a line down one, and read its answers from the other. [`examples/basket`](../examples/basket), a shopping list, works this way. On iOS its `Host/main.m` draws the list with UIKit, and on Android its `MainActivity.java` with Android's views. Each starts `main.rb` with `--in FD --out FD`, and `main.rb` opens those pipes with `IO.for_fd`, keeps the list, and answers each command with the whole list as a line of JSON. Without the options, it reads and writes a terminal, so `ruby main.rb` runs the same program on your computer.
-
 ## The privacy manifest
 
 Apple asks for a reason each time an app uses certain system calls, and an app declares them in `PrivacyInfo.xcprivacy`. Fledge's manifest declares the file-timestamp and boot-time APIs that Ruby calls, for files in the app's container (C617.1) and for elapsed time (35F9.1). If your app shows a file's dates to the person (DDA9.1) or reads files the person picked (3B52.1), or if its gems call other required-reason APIs, add those to your own copy. Put it in your `ios: host:` folder as `Host/PrivacyInfo.xcprivacy`, which replaces Fledge's whole.

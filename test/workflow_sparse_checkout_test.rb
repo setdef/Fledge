@@ -11,7 +11,7 @@ require "yaml"
 # A Delivery job checks out only the paths its sparse checkout lists, so
 # a step that names any other file of the repository finds nothing there,
 # and only CI would show it: on 2026-11-22 three Delivery jobs passed
-# examples/markdown_preview/welcome.md to deliver-markdown.sh with no
+# examples/markdown_to_html/sample.md to deliver-markdown.sh with no
 # examples/ in their checkout. Every path of the repository that a job's
 # steps name must be under one its sparse checkouts list. A job with a
 # whole checkout is left out; one with several sparse checkouts, each in

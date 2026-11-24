@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of examples/markdown_preview on Windows: its NSIS setup
+# Delivery of examples/markdown_to_html on Windows: its NSIS setup
 # program, installed as a person installs it, with nothing of Fledge or
 # Ruby on this computer.
 #
 #   pwsh -NoProfile -File deliver-markdown.ps1 -Installer INSTALLER -Sample SAMPLE -Expected EXPECTED [-Work FOLDER]
 #
-# INSTALLER is "Markdown Preview-x64-mingw-ucrt-setup.exe", or
+# INSTALLER is "Markdown to HTML-x64-mingw-ucrt-setup.exe", or
 # aarch64-mingw-ucrt's. SAMPLE is a Markdown file, and EXPECTED the HTML
 # bundle exec ruby bin/md2html printed for it on the Build job. WORK is
 # the one folder the script writes in: RUNNER_TEMP on a runner, and the
@@ -21,9 +21,8 @@
 # opened through the shell with the app's ProgID for .md as a
 # double-click on it opens it once the app is the default,
 # must start its windowed program with the file's path: it writes the
-# preview page into its temporary folder and hands it to the browser,
-# here a recorder that BROWSER names. Then the silent uninstaller must
-# remove the app and its file associations.
+# file's HTML beside it. Then the silent uninstaller must remove the app
+# and its file associations.
 
 param(
   [Parameter(Mandatory)] [string] $Installer,
@@ -36,10 +35,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
-$appName = 'Markdown Preview'
+$appName = 'Markdown to HTML'
 
 function Fail([string] $message) {
-  Write-Host "::error::Delivery (markdown_preview): $message"
+  Write-Host "::error::Delivery (markdown_to_html): $message"
   exit 1
 }
 
@@ -143,7 +142,7 @@ Write-Host 'ok: md2html prints what bundle exec prints'
 # 28 characters with no trailing period, then a period and the first ten
 # hexadecimal digits of the SHA-256 of the identifier, a newline, and the
 # extension. One per extension, so .md's and .markdown's differ.
-$identifier = 'com.setdef.fledge.MarkdownPreview'
+$identifier = 'com.setdef.fledge.MarkdownToHtml'
 function ProgId([string] $extension) {
   $digest = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.UTF8Encoding]::new($false).GetBytes("$identifier`n$extension"))
   $hash = -join ($digest | ForEach-Object { $_.ToString('x2') })
@@ -171,37 +170,19 @@ foreach ($extension in '.md', '.markdown') {
 }
 $progId = $progIds['.md']
 
-# Opened through the shell, the windowed program writes the preview into
-# its temporary folder (Ruby's Dir.tmpdir: TMPDIR, TMP, or TEMP) and
-# starts BROWSER with its path: a batch file, which Ruby runs through
-# cmd.exe, and which writes the path it is handed where this script reads
-# it. The recorder and the temporary folder have ASCII names, since cmd.exe
-# reads a batch file in the console's code page.
-$recorder = Join-Path $Work 'markdown-recorder'
-$temporary = Join-Path $recorder 'tmp'
-New-Item -ItemType Directory -Force $temporary | Out-Null
-$opened = Join-Path $recorder 'opened.txt'
-$browser = Join-Path $recorder 'browser.cmd'
-Set-Content -LiteralPath $browser -Encoding ascii -Value "@echo off`r`n> `"$opened`" echo %~1"
-$env:BROWSER = $browser
-$env:TMPDIR = $temporary
-$env:TMP = $temporary
-$env:TEMP = $temporary
-
 $documents = Join-Path $Work "Markdown d$([char]0xF6)cs"
 New-Item -ItemType Directory -Force $documents | Out-Null
 $document = Join-Path $documents 'notes.md'
 Copy-Item -LiteralPath $Sample -Destination $document
 $failed = [Fledge.Shell]::Open($document, 'open', $progId)
 if ($failed) { Fail "the shell could not open $document with ${progId}: $failed" }
-WaitFor { Test-Path -LiteralPath $opened } "$appName handing its preview to the browser"
+$page = Join-Path $documents 'notes.html'
+WaitFor { (Test-Path -LiteralPath $page) -and ((Get-Item -LiteralPath $page).Length -gt 0) } "$appName writing its page"
 Start-Sleep -Seconds 1
-$page = Join-Path $temporary 'markdown-preview\notes.html'
-Expect 'the page the browser was handed' ((Get-Content -LiteralPath $opened -Raw).Trim().Replace('/', '\')) $page
 $lines = [Collections.Generic.HashSet[string]]::new([string[]] (Text $page).Split("`n"))
 $missing = @((Text $Expected).Split("`n") | Where-Object { -not $lines.Contains($_) })
-if ($missing.Count -ne 0) { Fail "the preview lacks these lines of the file's HTML: $($missing -join ' / ')" }
-Write-Host "ok: the shell opened $document with $appName, which wrote the preview and opened it in the browser"
+if ($missing.Count -ne 0) { Fail "the page lacks these lines of the file's HTML: $($missing -join ' / ')" }
+Write-Host "ok: the shell opened $document with $appName, which wrote its page beside it"
 
 $process = Start-Process -FilePath (Join-Path $folder 'uninstall.exe') -ArgumentList '/S' -Wait -PassThru
 Expect 'the silent uninstall exit status' $process.ExitCode 0

@@ -6,14 +6,14 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# Markdown Preview's console program: prints the HTML of the Markdown
+# Markdown to HTML's console program: prints the HTML of the Markdown
 # files it is given, one after another, or of what it reads when it is
 # given none or -, as Markdown.pl and kramdown's own command do; with
-# --page, as a whole page, the one the preview shows.
+# --page, as a whole page, the one the droplet writes.
 #
 #   bin/md2html [--page] [FILE...] > out.html
 
-require_relative "../lib/markdown_preview"
+require_relative "../lib/markdown_to_html"
 
 USAGE = "usage: md2html [--page] [FILE...]"
 
@@ -28,15 +28,14 @@ if unknown
   exit 64
 end
 
-# A page's title and links come from its first file, or from the folder
-# it is run in.
-source = (ARGV.fetch(0, "-") == "-") ? File.join(Dir.pwd, "stdin") : ARGV.fetch(0)
+# A page's title comes from its first file, or is stdin.
+source = (ARGV.fetch(0, "-") == "-") ? "stdin" : ARGV.fetch(0)
 begin
   markdown = ARGF.read.force_encoding(Encoding::UTF_8).delete_prefix("\u{FEFF}")
 rescue SystemCallError => e
-  warn "md2html: #{MarkdownPreview.reason(e)}"
+  warn "md2html: #{MarkdownToHtml.reason(e)}"
   exit 66
 end
-html = MarkdownPreview.to_html(markdown)
-html = MarkdownPreview::Page.html(html, title: File.basename(source), base: MarkdownPreview::Page.base(source)) if page
+html = MarkdownToHtml.to_html(markdown)
+html = MarkdownToHtml::Page.html(html, title: File.basename(source)) if page
 $stdout.write(html)

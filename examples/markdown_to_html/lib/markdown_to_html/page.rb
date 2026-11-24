@@ -5,12 +5,9 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-require "uri"
-
-module MarkdownPreview
-  # A preview's page: the HTML that kramdown made, in a document a
-  # browser shows with a readable column of text, and where it is
-  # written.
+module MarkdownToHtml
+  # A written page: the HTML that kramdown made, in a document a browser
+  # shows with a readable column of text, and where it is written.
   module Page
     # The page's style: a column of text as wide as a book's, code on a
     # tinted ground, and tables ruled.
@@ -26,15 +23,13 @@ module MarkdownPreview
       img { max-width: 100%; }
     CSS
 
-    # The page for +body+, HTML from a Markdown file called +title+,
-    # whose relative links and images are taken from the folder +base+.
-    def self.html(body, title:, base:)
+    # The page for +body+, HTML from a Markdown file called +title+.
+    def self.html(body, title:)
       <<~HTML
         <!DOCTYPE html>
         <html>
         <head>
         <meta charset="utf-8">
-        <base href="#{escape(base)}">
         <title>#{escape(title)}</title>
         <style>
         #{STYLE}</style>
@@ -45,19 +40,10 @@ module MarkdownPreview
       HTML
     end
 
-    # Where the preview of the Markdown file +source+ is written, in
-    # +folder+: one page for each file name, so a second preview of a
-    # file replaces its first.
-    def self.path(source, folder)
-      File.join(folder, "markdown-preview", "#{File.basename(source, '.*')}.html")
-    end
-
-    # The file URL of the folder that holds +source+, which a page's
-    # relative links are taken from, on Windows with its drive letter.
-    def self.base(source)
-      folder = File.dirname(File.expand_path(source))
-      folder = "/#{folder}" unless folder.start_with?("/")
-      "file://#{URI::RFC2396_PARSER.escape(folder.chomp('/'))}/"
+    # Where the page for the Markdown file +source+ is written: beside
+    # it, so its relative links and images still reach what they name.
+    def self.path(source)
+      File.join(File.dirname(source), "#{File.basename(source, '.*')}.html")
     end
 
     # +text+ as HTML shows it.

@@ -105,7 +105,17 @@ file_associations:
 
 Your program receives the path of each file or folder it is opened with, or that is dropped on it, in `ARGV`, as `ruby main.rb FILE` would, after any arguments it was started with. macOS sends those paths as an Apple event rather than as arguments, and the app's launcher takes that event before your program starts, so your GUI library does not see it: read the paths from `ARGV` on every system. For this the launcher waits, before Ruby starts, for the first event macOS sends an app, up to about a fifth of a second, most of which a GUI library spends anyway when it starts; only an app with `file_associations` waits. A file opened with the app while it is already running is not an argument: on macOS it reaches only your GUI library's event loop, as SDL3's `SDL_EVENT_DROP_FILE`, and a program with no event loop does not see it. The LibUI gem's library, libui-ng, has no handler for that event, so macOS handles a file opened with a running LibUI app itself, and your program never sees it; the launcher spares a LibUI app only the file it starts with, which, before the launcher took it, kept such an app from running its timers at all.
 
-[`examples/markdown_preview`](../examples/markdown_preview), Markdown Preview, is a complete example: its `fledge.yml` lists Markdown files by their extensions and the MIME type every Linux desktop knows, so it defines no type, and its windowed program shows each file it is given in `ARGV` in the browser, rendered. Started with no file, it shows its welcome page.
+[`examples/markdown_to_html`](../examples/markdown_to_html), Markdown to HTML, is a complete example of a droplet: its `fledge.yml` lists Markdown files by their extensions and the MIME type every Linux desktop knows, so it defines no type, and its windowed program writes each file it is given in `ARGV`, dropped on the app or opened with it, as an HTML page beside the file. It opens no window and no browser. Started with no file, it says how to use it.
+
+### Tell the person without a window
+
+A program that opens no window has no place to say what it did, so decide for each system what, if anything, it says, as that system's own apps without a window do:
+
+- **A success is not told.** The result is a file beside the one dropped, which the file manager shows at once, as it shows the file Finder's Compress leaves. A notification for every drop, of which a person dropping fifty files would get fifty, would be noise.
+- **A failure is told, once for the drop.** On macOS, `osascript` shows a notification, and on Linux, `notify-send` shows one through the desktop's notification service (freedesktop.org's Desktop Notifications specification), if the computer has it: both are tools those systems ship or nearly always have, so the app carries nothing, and a computer without `notify-send` shows nothing. On Windows, a notification toast needs an app identity that an unpackaged app has not, so the app shows a message box through PowerShell, which Windows ships. In every case the program also writes the message to standard error and ends with status 66, `EX_NOINPUT` in sysexits.h, for a terminal or a script that started it. The message reaches each tool as an argument or an environment variable and is never part of code the tool runs, because a file's name is the person's.
+- **Started with nothing,** from a menu, the Dock, or a double-click, it tells how to use it the same way, since an app that silently does nothing looks broken.
+
+A person may turn the system's notifications off, and then a failure shows nothing but the exit status.
 
 ## Ship several programs in one app
 
@@ -129,7 +139,7 @@ programs:
 
 `fledge build` with no argument builds all of them, and `fledge build bin/shared-save` builds that program alone. At most one program is windowed. Fledge gives it the app's name unless you give it a `name`, builds the installers for it, and on macOS puts the console programs inside its `.app` bundle. Fledge names each console program after its file, such as `shared-save`, the command your users type.
 
-Markdown Preview, in [`examples/markdown_preview`](../examples/markdown_preview), is a complete example of two programs: `preview.rb`, the windowed one a double-click starts, and `bin/md2html`, a console one that prints a Markdown file's HTML, which share the project's `lib/` and its one copy of kramdown.
+Markdown to HTML, in [`examples/markdown_to_html`](../examples/markdown_to_html), is a complete example of two programs: `markdown_to_html.rb`, the windowed droplet a drop or a double-click starts, and `bin/md2html`, a console one that prints a Markdown file's HTML in a terminal, which share the project's `lib/` and its one copy of kramdown.
 
 ## Serve the computers on your network
 

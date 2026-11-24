@@ -25,6 +25,11 @@ class WorkflowConcurrencyTest < Minitest::Test
   # tests, and the macOS unit tests.
   FAST_TIER = %w[fast.yml fast-macos.yml].freeze
 
+  # The part of ci.yml's group that names a group for the commit of a
+  # dispatched run, or of an attempt after the first, on trunk.
+  OWN_ON_TRUNK = "github.ref == format('refs/heads/{0}', github.event.repository.default_branch) " \
+    "&& (github.event_name == 'workflow_dispatch' || github.run_attempt != '1')"
+
   def test_ci_cancels_runs_in_progress_on_branches_only
     assert_equal BRANCHES_ONLY, workflow("ci.yml").dig("concurrency", "cancel-in-progress")
   end
@@ -40,6 +45,16 @@ class WorkflowConcurrencyTest < Minitest::Test
     assert_includes group, "startsWith(github.event.head_commit.message, 'chore: release ')"
     assert_includes group, "startsWith(github.event.head_commit.message, 'chore: pin ')"
     assert_includes group, "format('-{0}', github.sha)"
+  end
+
+  # On trunk, a dispatched run and every attempt after a run's first
+  # have a group of their own too, named for the commit: a failed job run
+  # again joins its run's group anew, and in trunk's shared group the
+  # next push replaced it while it waited (issue 75, run 45292798092).
+  def test_ci_gives_trunks_reruns_and_dispatched_runs_a_group_of_their_own
+    group = workflow("ci.yml").dig("concurrency", "group")
+
+    assert_includes group, OWN_ON_TRUNK
   end
 
   # A push runs the full run only on trunk; a branch's full run is

@@ -96,13 +96,19 @@ permissions:
 # release X.Y.Z") and a pin commit ("chore: pin ...") get a group of
 # their own, named for the commit, so their runs start at once and no
 # push replaces them (doc/contributors/design/releases.md, "Runs,
-# batches, and the release commit"). fast.yml and fast-macos.yml judge
-# every push alone.
+# batches, and the release commit"). So does, on trunk, a run started
+# by hand or by a workflow, and any attempt after a run's first: a
+# failed job run again joins its run's group anew, and in trunk's
+# shared group the next push replaced it while it waited, so a red run
+# on trunk could never be put right while agents pushed (issue 75).
+# fast.yml and fast-macos.yml judge every push alone.
 concurrency:
   group: >-
     ${{ github.workflow }}-${{ github.ref }}${{
     (startsWith(github.event.head_commit.message, 'chore: release ')
-    || startsWith(github.event.head_commit.message, 'chore: pin '))
+    || startsWith(github.event.head_commit.message, 'chore: pin ')
+    || (github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    && (github.event_name == 'workflow_dispatch' || github.run_attempt != '1')))
     && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
 

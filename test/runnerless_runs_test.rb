@@ -218,20 +218,31 @@ class RunnerlessRunsTest < Minitest::Test
 
   # Trunk's runs of CI share a concurrency group, in which GitHub keeps
   # one run going and one waiting, and a run queued again takes the
-  # waiting one's place. A newer push's waiting run covers this run's
-  # commits, so it is not replaced: here release run 44513751573 as if
-  # its commit's message were an ordinary one, which puts it in trunk's
-  # group, or as if a person had started it, whose run has no pushed
-  # commit for the group to read; and beside it a newer run waiting in
-  # trunk's group (PENDING).
-  def test_leaves_a_run_whose_rerun_would_replace_a_newer_run_waiting_in_its_group
-    [{ "head_commit" => { "message" => "docs: say what 0.14.0 left open" } }, { "event" => "workflow_dispatch" }].each do |change|
-      with_case("44513751573-1", run: change, waiting: [pending]) do |server, runs|
-        verdict = runs.call(44_513_751_573, 1)
-        assert_equal :leave, verdict.action, change
-        assert_includes verdict.reason, pending.fetch("id").to_s
-        assert_empty posts(server)
-      end
+  # waiting one's place. Its second attempt and after have a group of
+  # their own, named for the commit (ci.yml's concurrency, issue 75), so
+  # a rerun replaces no newer push's run: here release run 44513751573
+  # as if its commit's message were an ordinary one, beside a newer run
+  # waiting in trunk's group (PENDING).
+  def test_a_rerun_of_a_run_in_trunks_group_is_not_held_back_by_a_newer_run_waiting_there
+    ordinary = { "head_commit" => { "message" => "docs: say what 0.14.0 left open" } }
+    with_case("44513751573-1", run: ordinary, waiting: [pending]) do |server, runs|
+      assert_equal :rerun, runs.call(44_513_751_573, 1).action
+      assert_equal 1, posts(server).size
+    end
+  end
+
+  # A run that waits in the group a rerun joins is one of the same
+  # commit's, an attempt after its first or a dispatched run, and the
+  # rerun would replace it: here PENDING as a second attempt of run
+  # 44513751573's commit.
+  def test_leaves_a_run_whose_rerun_would_replace_a_run_of_its_commit_waiting_in_its_group
+    ordinary = { "head_commit" => { "message" => "docs: say what 0.14.0 left open" } }
+    same = pending.merge("head_sha" => recorded_run("44513751573-1").fetch("head_sha"), "run_attempt" => 2)
+    with_case("44513751573-1", run: ordinary, waiting: [same]) do |server, runs|
+      verdict = runs.call(44_513_751_573, 1)
+      assert_equal :leave, verdict.action
+      assert_includes verdict.reason, pending.fetch("id").to_s
+      assert_empty posts(server)
     end
   end
 
@@ -316,7 +327,7 @@ class RunnerlessRunsTest < Minitest::Test
   def test_it_knows_the_concurrency_group_of_every_workflow_it_follows
     trunk_group = "${{ github.workflow }}-${{ github.ref }}-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.sha || 'branch' }}"
     groups = {
-      "ci.yml" => "${{ github.workflow }}-${{ github.ref }}${{ (startsWith(github.event.head_commit.message, 'chore: release ') || startsWith(github.event.head_commit.message, 'chore: pin ')) && format('-{0}', github.sha) || '' }}",
+      "ci.yml" => "${{ github.workflow }}-${{ github.ref }}${{ (startsWith(github.event.head_commit.message, 'chore: release ') || startsWith(github.event.head_commit.message, 'chore: pin ') || (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'workflow_dispatch' || github.run_attempt != '1'))) && format('-{0}', github.sha) || '' }}",
       "fast.yml" => trunk_group,
       "fast-macos.yml" => trunk_group,
       "ruby-spec.yml" => nil,

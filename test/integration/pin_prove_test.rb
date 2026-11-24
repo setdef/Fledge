@@ -61,16 +61,21 @@ class PinProveTest < Minitest::Test
       git(work, "push", "--quiet", "origin", "HEAD:trunk")
       write_shims(bin, dir, branch_run, trunk_run)
       env = {
-        "PATH" => "#{bin}:#{ENV.fetch("PATH")}", "GITHUB_OUTPUT" => File.join(dir, "output"),
-        "GITHUB_STEP_SUMMARY" => File.join(dir, "summary"), "GITHUB_SERVER_URL" => "https://github.test",
-        "GITHUB_REPOSITORY" => "setdef/Fledge"
+        "PATH" => "#{bin}:#{ENV.fetch('PATH')}",
+        "GITHUB_OUTPUT" => File.join(dir, "output"),
+        "GITHUB_STEP_SUMMARY" => File.join(dir, "summary"),
+        "GITHUB_SERVER_URL" => "https://github.test",
+        "GITHUB_REPOSITORY" => "setdef/Fledge",
       }
       FileUtils.touch([env["GITHUB_OUTPUT"], env["GITHUB_STEP_SUMMARY"]])
       _out, err, status = Open3.capture3(env, "bash", SCRIPT, "report.json", chdir: checkout)
       git(work, "pull", "--quiet", "origin", "trunk")
       {
-        status: status.exitstatus, stderr: err, summary: File.read(env["GITHUB_STEP_SUMMARY"]),
-        output: File.read(env["GITHUB_OUTPUT"]), trunk_version: File.read(File.join(work, "version")).strip
+        status: status.exitstatus,
+        stderr: err,
+        summary: File.read(env["GITHUB_STEP_SUMMARY"]),
+        output: File.read(env["GITHUB_OUTPUT"]),
+        trunk_version: File.read(File.join(work, "version")).strip,
       }
     end
   end
@@ -106,8 +111,8 @@ class PinProveTest < Minitest::Test
     git(dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", text)
   end
 
-  private def git(dir, *args)
-    out, status = Open3.capture2e("git", *args, chdir: dir)
+  private def git(dir, *)
+    out, status = Open3.capture2e("git", *, chdir: dir)
     assert status.success?, out
     out
   end

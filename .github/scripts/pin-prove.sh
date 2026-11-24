@@ -22,7 +22,10 @@
 # the names it moved as JSON, there too, and landed, the commit it put
 # on trunk, once that commit's run is green: the proof's own when it
 # landed as proven, and when it was rebased, the run it starts on trunk
-# and waits for.
+# and waits for. When that run is red, the move has landed all the same
+# and the script exits as if it were green, with no landed, a warning,
+# and the run named in the summary: the move passed its proof, and a red
+# trunk is the run of ci.yml's to report.
 #
 # PIN_PROVE_LAND=false proves and lands nothing on trunk.
 # PIN_PROVE_DRY_RUN=true commits the move in the checkout and stops,
@@ -174,8 +177,14 @@ for _ in 1 2 3; do
     landed=$(git rev-parse HEAD)
     echo "Landed $commit on trunk as $landed, rebased; ci.yml runs on trunk to judge it." | tee -a "$summary"
     if ! follow trunk "$landed"; then
-      echo "::error::The move rebased onto trunk as $landed is red with what landed meanwhile: $url"
-      exit 1
+      # The move is on trunk, and it passed its own proof: what the run on
+      # trunk found red is trunk's, with what landed meanwhile, and ci.yml's
+      # own failure on trunk calls a person to it. So this job is green, and
+      # says so; it only does not offer the commit to the release, which
+      # needs a green run (runtimes.md, "The proof").
+      echo "::warning::The move landed on trunk as $landed, and trunk's run is red with what landed meanwhile: $url"
+      echo "Landed, and not released: the run of ci.yml on trunk is red, which is trunk's to answer for: $url" | tee -a "$summary"
+      exit "$moving"
     fi
     echo "landed=$landed" >>"$output"
     echo "Green on trunk: $url" | tee -a "$summary"

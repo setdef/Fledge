@@ -19,7 +19,7 @@ The repository keeps no running account of the project's state (decisions, 2026-
 
 - `README.md`: what Fledge does, for app developers.
 - `CONTRIBUTING.md`: how to put a question to the maintainer, setup, the tests, checking a change before and after its push, and reading CI.
-- `doc/contributors/decisions.md`: the project's decisions that shape what Fledge is and does, each dated (Provenance, below, says how it is kept).
+- `doc/contributors/decisions.md`: the project's decisions that shape what Fledge is and does, each dated.
 - The open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left, each issue written so that an agent can start from it. `doc/contributors/plan/003.md`, the plan of record, holds the stories and the direction behind them.
 - `doc/contributors/design/`: how each part works, and why. `architecture.md` is the overview, indexes the few ADRs, and says when one is written and how it changes; `releases.md` says how a release is made, and `license-audit.md` how the license policy is enforced.
 - `doc/contributors/documentation_style.md`: how to write prose, RDoc, and the READMEs.
@@ -75,7 +75,7 @@ When two parts of the design pull apart, these decide, in this order. `doc/contr
 
 Everything in Fledge is *requested*: an agent built it with little or no review, as against *written* by the maintainer's hand or *wrought* with the maintainer's review of every change (decisions, 2026-11-02, later again). That holds for ADRs, plans, this file, the README, the code, the tests, and the workflows. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass. Every commit carries a `Provenance: requested` trailer.
 
-`doc/contributors/decisions.md` holds, dated, only the decisions that shape what Fledge is or does, each stated as the project's rule; corrections, wording changes, and asides go into the document they touch. An answer to a `question` issue is applied and the issue closed, and the documents that apply it state the rule as the project's. Everything else, this file included, was written by agents, who change it as long as it stays true to decisions.md.
+Everything in the repository but `doc/contributors/decisions.md`, this file included, was written by agents, who change it as long as it stays true to decisions.md.
 
 The maintainer's conversations with agents are private. Nothing public (a file here, an issue, a comment, a commit message) quotes him, paraphrases him, or says what he said, asked, wanted, suggested, preferred, ruled, or decided, and nothing public carries private details of his setup, his machines, or his accounts, or his informal remarks about other projects, people, or controversies. Work and its reasons are stated as the project's own. A statement of who does what (that a person publishes to RubyGems.org, or opens an account) stays, said without reporting what anyone said. An issue or comment that breaks this is deleted, not edited, since an edit keeps its history.
 

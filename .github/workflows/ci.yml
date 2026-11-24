@@ -1532,9 +1532,9 @@ jobs:
   # one folder; examples/file_drop, Drop, a file drop that Sinatra and
   # Puma serve to the network, whose Puma and nio4r compile from source
   # on every platform, Windows on ARM64 and musl Linux included;
-  # examples/markdown_preview, Markdown Preview, a windowed and a console
-  # program in an app a person would use, which opens Markdown files,
-  # with its installers; examples/lectern, Lectern, a console app that
+  # examples/markdown_to_html, Markdown to HTML, a windowed and a console
+  # program in an app a person would use, a droplet that writes the HTML
+  # of Markdown files beside them, with its installers; examples/lectern, Lectern, a console app that
   # reads Markdown in a terminal with pure-Ruby gems; and
   # test/fixtures/native_app, whose gems must be compiled: redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys and
@@ -1656,14 +1656,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
-      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Drop, markdown_preview, lectern, and native_app for ${{ matrix.platform }}
+      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Drop, markdown_to_html, lectern, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview examples/lectern test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview examples/lectern)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_to_html examples/lectern test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_to_html examples/lectern)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -1910,16 +1910,16 @@ jobs:
             (cd "$app" && bundle exec ruby main.rb) | tee "dist/$(basename "$app").expected"
           done
 
-      # The HTML Markdown Preview's md2html prints for its welcome page
+      # The HTML Markdown to HTML's md2html prints for its sample file
       # under bundle exec, which the built md2html must print too. Its
       # gems are pure Ruby, so this runs on every platform.
-      - name: Run Markdown Preview's md2html with bundle exec
+      - name: Run Markdown to HTML's md2html with bundle exec
         env:
-          BUNDLE_GEMFILE: ${{ github.workspace }}/examples/markdown_preview/Gemfile
+          BUNDLE_GEMFILE: ${{ github.workspace }}/examples/markdown_to_html/Gemfile
           BUNDLE_PATH: ${{ runner.temp }}/markdown-bundle
         run: |
           bundle install
-          bundle exec ruby examples/markdown_preview/bin/md2html examples/markdown_preview/welcome.md > dist/markdown_preview.expected
+          bundle exec ruby examples/markdown_to_html/bin/md2html examples/markdown_to_html/sample.md > dist/markdown_to_html.expected
 
       # What Lectern prints for its own README under bundle exec, as a
       # pipe gets it and with --color=always, which the built app must
@@ -2061,7 +2061,7 @@ jobs:
   # on Alpine builds them: hello, the parity and console probes, the
   # probe as a gem-shaped app's program, my_cool_app, whose sqlite3
   # compiles from source, windowed_app, with its AppImage, programs, Drop,
-  # the server example, markdown_preview, and ffi_libc, whose ffi
+  # the server example, markdown_to_html, and ffi_libc, whose ffi
   # compiles from source with the libffi it carries, which needs
   # linux-headers (doc/contributors/design/gems.md, "Examples that
   # exercise these rules"). It builds no native_app, whose ferro-idna
@@ -2099,14 +2099,14 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview examples/lectern test/fixtures/ffi_libc; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_to_html examples/lectern test/fixtures/ffi_libc; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd test/fixtures/my_cool_app && bundle install)
           (cd test/fixtures/my_cool_app && bundle exec ruby exe/my_cool_app) > dist/my_cool_app.expected
           cat dist/my_cool_app.expected
-          BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle install
-          BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle exec ruby examples/markdown_preview/bin/md2html examples/markdown_preview/welcome.md > dist/markdown_preview.expected
+          BUNDLE_GEMFILE="$PWD/examples/markdown_to_html/Gemfile" bundle install
+          BUNDLE_GEMFILE="$PWD/examples/markdown_to_html/Gemfile" bundle exec ruby examples/markdown_to_html/bin/md2html examples/markdown_to_html/sample.md > dist/markdown_to_html.expected
           BUNDLE_GEMFILE="$PWD/examples/lectern/Gemfile" bundle install
           BUNDLE_GEMFILE="$PWD/examples/lectern/Gemfile" bundle exec ruby examples/lectern/main.rb examples/lectern/README.md > dist/lectern.expected
           BUNDLE_GEMFILE="$PWD/examples/lectern/Gemfile" bundle exec ruby examples/lectern/main.rb --color=always examples/lectern/README.md > dist/lectern-color.expected
@@ -2412,10 +2412,10 @@ jobs:
   # --appimage-extract (deliver-appimage.sh). And test/fixtures/programs:
   # a windowed and a console program from one folder, with one
   # project and one Ruby, sharing one save (deliver-programs.sh). And
-  # examples/markdown_preview: its md2html prints what it printed under
+  # examples/markdown_to_html: its md2html prints what it printed under
   # bundle exec, it declares Markdown files to the system, and its
   # windowed program, opened with a file as each system's file manager
-  # opens it (open -a on macOS), previews the file in the browser
+  # opens it (open -a on macOS), writes the file's HTML beside it
   # (deliver-markdown.sh). On
   # macOS, the LibUI probe opens its window through its own program,
   # through open -W, and through open -a with a document, and reports it
@@ -2436,11 +2436,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # The scripts, and the Markdown file Markdown Preview's step
-          # previews, as a person would open one of their own.
+          # The scripts, and the Markdown file Markdown to HTML's step
+          # converts, as a person would open one of their own.
           sparse-checkout: |
             .github/scripts
-            examples/markdown_preview/welcome.md
+            examples/markdown_to_html/sample.md
           sparse-checkout-cone-mode: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -2461,10 +2461,10 @@ jobs:
       - name: Run Shared Save and shared-save from one folder, with one save
         run: .github/scripts/deliver-programs.sh "$RUNNER_TEMP/delivered/Shared Save-${{ matrix.platform }}.tar.gz"
 
-      - name: Preview a Markdown file with Markdown Preview, and print its HTML with md2html
+      - name: Convert a Markdown file with Markdown to HTML, and print its HTML with md2html
         run: >-
-          .github/scripts/deliver-markdown.sh "$RUNNER_TEMP/delivered/Markdown Preview-${{ matrix.platform }}.tar.gz"
-          examples/markdown_preview/welcome.md "$RUNNER_TEMP/delivered/markdown_preview.expected"
+          .github/scripts/deliver-markdown.sh "$RUNNER_TEMP/delivered/Markdown to HTML-${{ matrix.platform }}.tar.gz"
+          examples/markdown_to_html/sample.md "$RUNNER_TEMP/delivered/markdown_to_html.expected"
 
       - name: Install Hello Window from its disk image as a person would
         if: runner.os == 'macOS'
@@ -2783,7 +2783,7 @@ jobs:
           sparse-checkout: |
             .github/scripts
             runtime/sources.yml
-            examples/markdown_preview/welcome.md
+            examples/markdown_to_html/sample.md
             examples/lectern/README.md
           sparse-checkout-cone-mode: false
 
@@ -2795,7 +2795,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, Drop, markdown_preview, and lectern on Alpine with no Ruby installed
+      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, Drop, markdown_to_html, and lectern on Alpine with no Ruby installed
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -2810,7 +2810,7 @@ jobs:
           .github/scripts/deliver-windowed.sh "$d/Hello Window-$PLATFORM.tar.gz"
           .github/scripts/deliver-appimage.sh "$d/Hello Window-$PLATFORM.AppImage" extract
           .github/scripts/deliver-programs.sh "$d/Shared Save-$PLATFORM.tar.gz"
-          .github/scripts/deliver-markdown.sh "$d/Markdown Preview-$PLATFORM.tar.gz" examples/markdown_preview/welcome.md "$d/markdown_preview.expected"
+          .github/scripts/deliver-markdown.sh "$d/Markdown to HTML-$PLATFORM.tar.gz" examples/markdown_to_html/sample.md "$d/markdown_to_html.expected"
           .github/scripts/deliver-https.sh "$d/Https-$PLATFORM.tar.gz" /https --store-may-change
           .github/scripts/deliver-server.sh "$d/Drop-$PLATFORM.tar.gz"
           .github/scripts/deliver-lectern.sh "$d/Lectern-$PLATFORM.tar.gz" examples/lectern/README.md "$d/lectern.expected" "$d/lectern-color.expected"
@@ -2843,11 +2843,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # The scripts, and the Markdown files Markdown Preview's and
+          # The scripts, and the Markdown files Markdown to HTML's and
           # Lectern's steps read, as a person would open one of their own.
           sparse-checkout: |
             .github/scripts
-            examples/markdown_preview/welcome.md
+            examples/markdown_to_html/sample.md
             examples/lectern/README.md
           sparse-checkout-cone-mode: false
 
@@ -2939,17 +2939,17 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-programs.ps1 -Archive "$env:RUNNER_TEMP/delivered/Shared Save-$env:PLATFORM.zip"
 
-      # examples/markdown_preview, from its NSIS installer: md2html.exe in
+      # examples/markdown_to_html, from its NSIS installer: md2html.exe in
       # the installed folder prints what it printed under bundle exec, and
       # a .md file opened through the shell with the app's ProgID starts
-      # Markdown Preview.exe with its path, which previews it in the
-      # browser (.github/scripts/deliver-markdown.ps1).
-      - name: Install Markdown Preview, preview a Markdown file with it, and print its HTML with md2html
+      # Markdown to HTML.exe with its path, which writes its HTML
+      # beside it (.github/scripts/deliver-markdown.ps1).
+      - name: Install Markdown to HTML, convert a Markdown file with it, and print its HTML with md2html
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver-markdown.ps1
-          -Installer "$env:RUNNER_TEMP/delivered/Markdown Preview-$env:PLATFORM-setup.exe"
-          -Sample examples/markdown_preview/welcome.md -Expected "$env:RUNNER_TEMP/delivered/markdown_preview.expected"
+          -Installer "$env:RUNNER_TEMP/delivered/Markdown to HTML-$env:PLATFORM-setup.exe"
+          -Sample examples/markdown_to_html/sample.md -Expected "$env:RUNNER_TEMP/delivered/markdown_to_html.expected"
 
       # The NSIS installer: installed silently for this person,
       # its Start menu shortcut's AppUserModelID read back and matched to

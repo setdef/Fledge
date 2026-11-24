@@ -93,16 +93,26 @@ class RuntimeBuilder
   end
 
   # Builds the runtime, audits it, and returns the path of its archive,
-  # with the release assets that go with it beside it (#assets). Raises
-  # LicenseAudit::Failure, and archives nothing, when the runtime breaks
-  # the license policy.
+  # with the release assets that go with it beside it (#assets). A
+  # runtime already in the work folder, built from the very inputs this
+  # one would be (#key), is returned as it is, and any other is built
+  # again, and the output says which and why. Raises LicenseAudit::Failure,
+  # and archives nothing, when the runtime breaks the license policy.
   def call
     recipe = recipe_class.new(builder: self, build_dir:)
     hosts = recipe.hosts
     raise "#{platform} runtimes build on #{hosts.join(', ')} only; this is #{host}" unless hosts.include?(host.name)
 
+    key = self.key
+    reason = rebuild_reason(key)
+    if reason.nil?
+      puts "#{platform}: reusing #{archive_path}, built from the inputs it would be built from now"
+      return archive_path
+    end
+
+    puts "#{platform}: building, because #{reason}"
     FileUtils.rm_rf(build_dir)
-    FileUtils.rm_f(assets.values.map { |name| File.join(@work, name) })
+    FileUtils.rm_f([key_path, *assets.values.map { |name| File.join(@work, name) }])
     FileUtils.mkdir_p(stage)
     recipe.build(stage)
     recipe.verify_hardening(stage)
@@ -111,7 +121,36 @@ class RuntimeBuilder
     license(stage, readers: recipe.readers)
     path = archive
     publish(stage)
+    File.write(key_path, key.to_json)
     path
+  end
+
+  # What this runtime is built from (Key).
+  def key
+    cc = ENV.fetch("CC", platform.name.end_with?("-darwin") ? "clang" : "cc")
+    Key.new(root: ROOT, describing: "#{platform.name} on #{host.name}, Fledge #{Fledge::VERSION}",
+      toolchain: Key.toolchain(Key.probes(platform, cc:)))
+  end
+
+  # Why the runtime in the work folder must be built again, as a clause
+  # that follows "because", or nil when it is the runtime +key+ names and
+  # every file of it is there.
+  def rebuild_reason(key)
+    absent = [archive_path, *assets.values.map { |name| File.join(@work, name) }].reject { |file| File.file?(file) }
+    return "#{File.basename(absent.first)} is not there" unless absent.empty?
+
+    key.mismatch(File.file?(key_path) ? File.read(key_path) : nil)
+  end
+
+  # The file beside the archive that records the key the runtime was
+  # built from.
+  def key_path
+    File.join(@work, "#{File.basename(archive_path, Fledge::Runtimes::EXTENSION)}.key.json")
+  end
+
+  # The archive's path in the work folder.
+  def archive_path
+    File.join(@work, Fledge::Runtimes.file_name(platform))
   end
 
   # The runtime named +name+: a desktop platform's (Fledge::Platform), or
@@ -294,6 +333,7 @@ class RuntimeBuilder
   end
 end
 
+require_relative "runtime_builder/key"
 require_relative "runtime_builder/armor"
 require_relative "runtime_builder/gem_repack"
 require_relative "runtime_builder/pruning"
